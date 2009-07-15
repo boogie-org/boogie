@@ -1,0 +1,56 @@
+var floors as Set of Integer
+var DoorsOpen as Set of Integer = {}
+var liftDoorOpen as Boolean = false
+var liftLevel as Integer = 1
+var moving as Boolean = false
+var headingTo as Integer = 0
+
+[Action]
+ButtonPress(i as Integer)
+  require i in floors
+  headingTo := i
+
+[Action]
+MoveUp()
+  require liftDoorOpen = false and liftLevel < headingTo
+  require not (liftLevel in DoorsOpen)
+  moving := true
+  liftLevel:= liftLevel + 1
+
+[Action]
+MoveDown()
+  //bug, should require that liftDoorOpen = false
+  require  liftLevel > headingTo and headingTo > 0
+  require not (liftLevel in DoorsOpen)
+  moving := true
+  liftLevel := liftLevel - 1
+
+[Action]  
+Stop()
+  require liftLevel = headingTo
+  moving := false
+  
+[Action]
+OpenLiftDoor()
+  require moving = false
+  liftDoorOpen := true
+  
+[Action]
+CloseLiftDoor()
+  liftDoorOpen := false  
+
+[Action]
+OpenFloorDoor(i as Integer)
+  require liftLevel = i 
+  DoorsOpen := DoorsOpen union {i}
+
+[Action]
+CloseFloorDoor(i as Integer)
+  DoorsOpen := DoorsOpen - {i}
+
+  
+Invariant ()
+  require not (liftDoorOpen = true and moving = true)
+  
+  
+  

@@ -1,0 +1,77 @@
+/* Example taken from ESOP submission */
+
+class T {
+  var k: int;
+  var l: int;
+
+  method run()
+    requires acc(k);
+    ensures acc(k) && k == old(k) + 1;
+  {
+    k := k + 1;
+  }
+}
+
+class Program {
+  method main() {
+    var x := new T;
+    x.k := 17;
+    x.l := 20;
+    fork tok := x.run();
+    x.l := 10;
+    join tok;
+    assert x.k == 18 && x.l == 10;
+  }
+
+  method justJoin(tok: token<T.run>, x: T) returns (rt: int) 
+    requires x!=null && tok!=null && acc(tok.joinable) && tok.joinable && eval(tok.fork x.run(), acc(x.k));
+    ensures rt == old(eval(tok.fork x.run(), x.k)) + 1;
+  {
+    join tok;
+    rt := x.k;
+  }
+}
+
+/* example using asynchronous method calls */
+
+class C {
+  var x: int;
+
+  method m(v: int) returns (rt: int)
+    ensures rt == v + 1;
+  {
+    rt := v + 1;
+  }
+}
+
+class Program2 {
+  method main1(){
+    var c := new C;
+    var tok: token<C.m>;
+    fork tok := c.m(5);
+
+    // do some computation
+    
+    var x : int;
+    join x := tok;
+    assert x == 6;
+  }
+
+  method main2(){
+    var c := new C;
+    var tok: token<C.m>;
+    fork tok := c.m(5);
+
+    // do some computation
+    
+    call foo(tok, c);
+  }
+
+  method foo(tok: token<C.m>, o: C)
+    requires tok!=null && acc(tok.joinable) && tok.joinable && eval(tok.fork o.m(5), true);
+  {
+    var x: int;
+    join x := tok;
+    assert x == 6;
+  }
+}

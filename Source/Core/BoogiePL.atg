@@ -1,0 +1,1374 @@
+
+/*---------------------------------------------------------------------------
+// BoogiePL -
+//--------------------------------------------------------------------------*/
+
+/*using System;*/
+using PureCollections;
+using System.Collections;
+using System.Collections.Generic;
+using Microsoft.Boogie;
+using Microsoft.Basetypes;
+using Bpl = Microsoft.Boogie;
+using AI = Microsoft.AbstractInterpretationFramework;
+
+
+COMPILER BoogiePL
+
+/*--------------------------------------------------------------------------*/
+
+static Program! Pgm = new Program();
+
+static Expr! dummyExpr = new LiteralExpr(Token.NoToken, false);
+static Cmd! dummyCmd = new AssumeCmd(Token.NoToken, dummyExpr);
+static Block! dummyBlock = new Block(Token.NoToken, "dummyBlock", new CmdSeq(),
+                                     new ReturnCmd(Token.NoToken));
+static Bpl.Type! dummyType = new BasicType(Token.NoToken, SimpleType.Bool);
+static Bpl.ExprSeq! dummyExprSeq = new ExprSeq ();
+static TransferCmd! dummyTransferCmd = new ReturnCmd(Token.NoToken);
+static StructuredCmd! dummyStructuredCmd = new BreakCmd(Token.NoToken, null);
+
+///<summary>
+///Returns the number of parsing errors encountered.  If 0, "program" returns as
+///the parsed program.
+///</summary>
+public static int Parse (string! filename, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
+  using (System.IO.StreamReader reader = new System.IO.StreamReader(filename)) {
+    Buffer.Fill(reader);
+    Scanner.Init(filename);
+    return Parse(out program);
+  }
+}
+
+///<summary>
+///Returns the number of parsing errors encountered.  If 0, "program" returns as
+///the parsed program.
+///Note: first initialize the Scanner.
+///</summary>
+public static int Parse (out /*maybe null*/ Program program) {
+  Pgm = new Program(); // reset the global variable
+    Parse();
+    if (Errors.count == 0)
+    {
+      program = Pgm;
+      return 0;
+    }
+    else
+    {
+      program = null;
+      return Errors.count;
+    }
+}
+
+
+public static int ParseProposition (string! text, out Expr! expression)
+{
+  Buffer.Fill(text);
+  Scanner.Init(string.Format("\"{0}\"", text));
+
+  Errors.SynErr = new ErrorProc(SynErr);
+  t = new Token();
+  Get();
+  Proposition(out expression);
+  return Errors.count;
+}
+
+// Class to represent the bounds of a bitvector expression t[a:b].
+// Objects of this class only exist during parsing and are directly
+// turned into BvExtract before they get anywhere else
+private class BvBounds : Expr {
+  public BigNum Lower;
+  public BigNum Upper;
+  public BvBounds(IToken! tok, BigNum lower, BigNum upper) {
+    base(tok);
+    this.Lower = lower;
+    this.Upper = upper;
+  }
+  public override Type! ShallowType { get { return Bpl.Type.Int; } }
+  public override void Resolve(ResolutionContext! rc) {
+    rc.Error(this, "bitvector bounds in illegal position");
+  }
+  public override void Emit(TokenTextWriter! stream,
+                            int contextBindingStrength, bool fragileContext) {
+    assert false;
+  }
+  public override void ComputeFreeVariables(Set! freeVars) { assert false; }
+  public override AI.IExpr! IExpr { get { assert false; } }
+}
+
+/*--------------------------------------------------------------------------*/
+CHARACTERS
+  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".
+  digit = "0123456789".
+  special = "'~#$^_.?`".
+  glyph = "`~!@#$%^&*()-_=+[{]}|;:',<.>/?\\".
+
+  cr        = '\r'.
+  lf        = '\n'.
+  tab       = '\t'.
+
+  space = ' '.
+  quote = '"'.
+
+  nondigit = letter + special.
+  nonquote = letter + digit + space + glyph.
+
+
+/*------------------------------------------------------------------------*/
+TOKENS
+  ident =  [ '\\' ] nondigit {nondigit | digit}.
+  bvlit = digit {digit} 'b' 'v' digit {digit}.
+  digits = digit {digit}.
+  string = quote {nonquote} quote.
+  float = digit {digit} '.' {digit}.
+
+COMMENTS FROM "/*" TO "*/" NESTED
+COMMENTS FROM "//" TO lf
+
+IGNORE cr + lf + tab
+
+
+/*------------------------------------------------------------------------*/
+PRODUCTIONS
+
+
+/*------------------------------------------------------------------------*/
+BoogiePL
+= (. VariableSeq! vs;
+     DeclarationSeq! ds;
+     Axiom! ax;
+     List<Declaration!>! ts;
+     Procedure! pr;
+     Implementation im;
+     Implementation! nnim;
+  .)
+  { Consts<out vs>             (. foreach (Bpl.Variable! v in vs) { Pgm.TopLevelDeclarations.Add(v); } .)
+  | Function<out ds>           (. foreach (Bpl.Declaration! d in ds) { Pgm.TopLevelDeclarations.Add(d); } .)
+  | Axiom<out ax>              (. Pgm.TopLevelDeclarations.Add(ax); .)
+  | UserDefinedTypes<out ts>   (. foreach (Declaration! td in ts) {
+                                        Pgm.TopLevelDeclarations.Add(td);
+                                      } .)
+  | GlobalVars<out vs>         (. foreach (Bpl.Variable! v in vs) { Pgm.TopLevelDeclarations.Add(v); } .)
+  | Procedure<out pr, out im>  (. Pgm.TopLevelDeclarations.Add(pr);
+                                   if (im != null) {
+                                     Pgm.TopLevelDeclarations.Add(im);
+                                   }
+                               .)
+  | Implementation<out nnim>   (. Pgm.TopLevelDeclarations.Add(nnim); .)
+  }
+  EOF
+  .
+
+/*------------------------------------------------------------------------*/
+GlobalVars<out VariableSeq! ds>
+= (. TypedIdentSeq! tyds = new TypedIdentSeq(); ds = new VariableSeq(); QKeyValue kv = null; .)
+  "var"
+  { Attribute<ref kv> }
+  IdsTypeWheres<true, tyds> ";"
+  (. foreach(TypedIdent! tyd in tyds) {
+       ds.Add(new GlobalVariable(tyd.tok, tyd, kv));
+     }
+  .)
+  .
+
+LocalVars<VariableSeq! ds>
+= (. TypedIdentSeq! tyds = new TypedIdentSeq(); QKeyValue kv = null; .)
+  "var"
+  { Attribute<ref kv> }
+  IdsTypeWheres<true, tyds> ";"
+  (. foreach(TypedIdent! tyd in tyds) {
+       ds.Add(new LocalVariable(tyd.tok, tyd, kv));
+     }
+  .)
+  .
+
+ProcFormals<bool incoming, bool allowWhereClauses, out VariableSeq! ds>
+= (. TypedIdentSeq! tyds = new TypedIdentSeq(); ds = new VariableSeq(); .)
+  "("
+  [ IdsTypeWheres<allowWhereClauses, tyds> ]
+  ")"
+  (. foreach (TypedIdent! tyd in tyds) {
+       ds.Add(new Formal(tyd.tok, tyd, incoming));
+     }
+  .)
+  .
+
+BoundVars<IToken! x, out VariableSeq! ds>
+= (. TypedIdentSeq! tyds = new TypedIdentSeq(); ds = new VariableSeq(); .)
+  IdsTypeWheres<false, tyds>
+  (. foreach (TypedIdent! tyd in tyds) {
+       ds.Add(new BoundVariable(tyd.tok, tyd));
+     }
+  .)
+  .
+
+/*------------------------------------------------------------------------*/
+/* IdsType is used with const declarations */
+IdsType<out TypedIdentSeq! tyds>
+= (. TokenSeq! ids;  Bpl.Type! ty; .)
+  Idents<out ids> ":" Type<out ty>
+  (. tyds = new TypedIdentSeq();
+     foreach (Token! id in ids) {
+       tyds.Add(new TypedIdent(id, id.val, ty, null));
+     }
+  .)
+  .
+
+/* IdsTypeWheres is used with the declarations of global and local variables,
+   procedure parameters, and quantifier bound variables. */
+IdsTypeWheres<bool allowWhereClauses, TypedIdentSeq! tyds>
+=
+  IdsTypeWhere<allowWhereClauses, tyds>
+  { "," IdsTypeWhere<allowWhereClauses, tyds> }
+  .
+
+IdsTypeWhere<bool allowWhereClauses, TypedIdentSeq! tyds>
+= (. TokenSeq! ids;  Bpl.Type! ty;  Expr wh = null;  Expr! nne; .)
+  Idents<out ids> ":" Type<out ty>
+  [ "where" Expression<out nne>  (. if (allowWhereClauses) {
+                                      wh = nne;
+                                    } else {
+                                      SemErr("where clause not allowed here");
+                                    }
+                                 .)
+  ]
+  (. foreach (Token! id in ids) {
+       tyds.Add(new TypedIdent(id, id.val, ty, wh));
+     }
+  .)
+  .
+
+/*------------------------------------------------------------------------*/
+Type<out Bpl.Type! ty>
+= (. IToken! tok; ty = dummyType; .)
+  (
+    TypeAtom<out ty>
+  |
+    Ident<out tok>       (. TypeSeq! args = new TypeSeq (); .)
+    [ TypeArgs<args> ]   (. ty = new UnresolvedTypeIdentifier (tok, tok.val, args); .)
+  |
+    MapType<out ty>
+  )
+  .
+
+TypeArgs<TypeSeq! ts>
+= (. IToken! tok; Type! ty; .)
+  (
+    TypeAtom<out ty>     (. ts.Add(ty); .)
+    [ TypeArgs<ts> ]
+  |
+    Ident<out tok>       (. TypeSeq! args = new TypeSeq ();
+                            ts.Add(new UnresolvedTypeIdentifier (tok, tok.val, args)); .)
+    [ TypeArgs<ts> ]
+  |
+    MapType<out ty>      (. ts.Add(ty); .)
+  )
+  .
+
+TypeAtom<out Bpl.Type! ty>
+= (. ty = dummyType; .)
+  ( "int"              (. ty = new BasicType(token, SimpleType.Int); .)
+  | "bool"             (. ty = new BasicType(token, SimpleType.Bool); .)
+  /* note: bitvectors are handled in UnresolvedTypeIdentifier */
+  |
+  "("
+  Type<out ty>
+  ")"
+  )
+  .
+
+MapType<out Bpl.Type! ty>
+= (. IToken tok = null;
+     IToken! nnTok;
+     TypeSeq! arguments = new TypeSeq();
+     Type! result;
+     TypeVariableSeq! typeParameters = new TypeVariableSeq();
+   .)
+  [ TypeParams<out nnTok, out typeParameters> (. tok = nnTok; .) ]
+  "["                                         (.  if (tok == null) tok = token;  .)
+    [ Types<arguments> ]
+  "]"
+  Type<out result>
+  (.
+    ty = new MapType(tok, typeParameters, arguments, result);
+  .)
+  .
+
+TypeParams<out IToken! tok, out Bpl.TypeVariableSeq! typeParams>
+= (. TokenSeq! typeParamToks; .)
+  "<"    (.  tok = token;  .)
+    Idents<out typeParamToks>
+  ">"
+  (.
+    typeParams = new TypeVariableSeq ();
+    foreach (Token! id in typeParamToks)
+      typeParams.Add(new TypeVariable(id, id.val));
+   .)
+  .
+
+Types<TypeSeq! ts>
+= (. Bpl.Type! ty; .)
+  Type<out ty>                 (. ts.Add(ty); .)
+  { "," Type<out ty>           (. ts.Add(ty); .)
+  }
+  .
+
+
+/*------------------------------------------------------------------------*/
+Consts<out VariableSeq! ds> 
+= (. IToken! y; TypedIdentSeq! xs;
+     ds = new VariableSeq();
+     bool u = false; QKeyValue kv = null;
+     bool ChildrenComplete = false;
+     List<ConstantParent!> Parents = null; .)
+  "const"                 (. y = token; .)
+  { Attribute<ref kv> }
+  [ "unique"              (. u = true;  .)
+  ]
+  IdsType<out xs>
+  [ OrderSpec<out ChildrenComplete, out Parents> ]
+  (. bool makeClone = false;
+     foreach(TypedIdent! x in xs) {
+
+       // ensure that no sharing is introduced
+       List<ConstantParent!> ParentsClone;
+       if (makeClone && Parents != null) {
+         ParentsClone = new List<ConstantParent!> ();
+         foreach (ConstantParent! p in Parents)
+           ParentsClone.Add(new ConstantParent (
+                            new IdentifierExpr (p.Parent.tok, p.Parent.Name),
+                            p.Unique));
+       } else {
+         ParentsClone = Parents;
+       }
+       makeClone = true;
+
+       ds.Add(new Constant(y, x, u, ParentsClone, ChildrenComplete, kv));
+     }
+  .)
+  ";"
+  .
+
+OrderSpec<out bool ChildrenComplete, out List<ConstantParent!\> Parents>
+= (. ChildrenComplete = false;
+     Parents = null;
+     bool u;
+     IToken! parent; .)
+  "extends"                (. Parents = new List<ConstantParent!> ();
+                              u = false; .)
+  [
+    [ "unique"             (. u = true; .)
+    ]
+    Ident<out parent>      (. Parents.Add(new ConstantParent (
+                                          new IdentifierExpr(parent, parent.val), u)); .)
+    {
+      ","                  (. u = false; .)
+      [ "unique"           (. u = true; .)
+      ]
+      Ident<out parent>    (. Parents.Add(new ConstantParent (
+                                          new IdentifierExpr(parent, parent.val), u)); .)
+    }
+  ]
+  [ "complete"             (. ChildrenComplete = true; .)
+  ]
+  .
+
+/*------------------------------------------------------------------------*/
+Function<out DeclarationSeq! ds>
+= (. ds = new DeclarationSeq(); IToken! z;
+     IToken! typeParamTok;
+     TypeVariableSeq! typeParams = new TypeVariableSeq();
+     VariableSeq arguments = new VariableSeq();
+     TypedIdent! tyd;
+     QKeyValue kv = null;
+     Expr definition = null;
+     Expr! tmp;
+  .)
+  "function" { Attribute<ref kv> } Ident<out z> 
+  [ TypeParams<out typeParamTok, out typeParams> ]
+  "("
+  [ VarOrType<out tyd>      (. arguments.Add(new Formal(tyd.tok, tyd, true)); .)
+  { "," VarOrType<out tyd>  (. arguments.Add(new Formal(tyd.tok, tyd, true)); .)
+  } ] ")"
+  "returns" "(" VarOrType<out tyd> ")"
+  ( "{" Expression<out tmp> (. definition = tmp; .) "}" | ";" )
+  (.
+    Function! func = new Function(z, z.val, typeParams, arguments,
+                           new Formal(tyd.tok, tyd, false), null, kv);
+    ds.Add(func);
+    if (definition != null) {
+      // generate either an axiom or a function body
+      if (QKeyValue.FindBoolAttribute(kv, "inline")) {
+        func.Body = definition;
+      } else {
+        VariableSeq dummies = new VariableSeq();
+        ExprSeq callArgs = new ExprSeq();
+        int i = 0;
+        foreach (Formal! f in arguments) {
+          string nm = f.TypedIdent.HasName ? f.TypedIdent.Name : "_" + i;
+          dummies.Add(new BoundVariable(f.tok, new TypedIdent(f.tok, nm, f.TypedIdent.Type)));
+          callArgs.Add(new IdentifierExpr(f.tok, nm));
+          i++;
+        }
+        TypeVariableSeq! quantifiedTypeVars = new TypeVariableSeq ();
+        foreach (TypeVariable! t in typeParams)
+          quantifiedTypeVars.Add(new TypeVariable (Token.NoToken, t.Name));
+
+        Expr call = new NAryExpr(z, new FunctionCall(new IdentifierExpr(z, z.val)), callArgs);
+        // specify the type of the function, because it might be that
+        // type parameters only occur in the output type
+        call = Expr.CoerceType(z, call, (Type)tyd.Type.Clone());
+        Expr def = new ForallExpr(z, quantifiedTypeVars, dummies, 
+                                  kv, 
+                                  new Trigger(z, true, new ExprSeq(call), null),
+                                  Expr.Eq(call, definition));
+        ds.Add(new Axiom(z, def, "autogenerated definition axiom", null));
+      }
+    }
+  .)
+  .
+
+VarOrType<out TypedIdent! tyd>
+= (. string! varName = ""; Bpl.Type! ty; IToken! tok; .)
+  Type<out ty>    (. tok = ty.tok; .)
+  [ ":"           (. if (ty is UnresolvedTypeIdentifier &&
+                         ((!)(ty as UnresolvedTypeIdentifier)).Arguments.Length == 0) {
+                       varName = ((!)(ty as UnresolvedTypeIdentifier)).Name;
+                     } else {
+                       SemErr("expected identifier before ':'");
+                     }
+                  .)
+    Type<out ty>
+  ]
+  (. tyd = new TypedIdent(tok, varName, ty); .)
+  .
+
+/*------------------------------------------------------------------------*/
+Axiom<out Axiom! m>
+= (. Expr! e; QKeyValue kv = null; .)
+  "axiom"
+   { Attribute<ref kv> }
+   (. IToken! x = token; .)
+  Proposition<out e> ";"  (. m = new Axiom(x,e, null, kv); .)
+  .
+
+/*------------------------------------------------------------------------*/
+UserDefinedTypes<out List<Declaration!\>! ts>
+= (. Declaration! decl; QKeyValue kv = null; ts = new List<Declaration!> (); .)
+  "type"
+  { Attribute<ref kv> }
+  UserDefinedType<out decl, kv>          (.  ts.Add(decl);  .)
+  { "," UserDefinedType<out decl, kv>    (.  ts.Add(decl);  .) }
+  ";"
+  .
+
+UserDefinedType<out Declaration! decl, QKeyValue kv>
+= (. IToken! id; IToken! id2; TokenSeq! paramTokens = new TokenSeq ();
+     Type! body = dummyType; bool synonym = false; .)
+  Ident<out id>
+  [ WhiteSpaceIdents<out paramTokens> ]
+  [
+    "=" Type<out body>
+    (. synonym = true; .)
+  ]
+  (.
+     if (synonym) {
+       TypeVariableSeq! typeParams = new TypeVariableSeq();
+       foreach (Token! t in paramTokens)
+         typeParams.Add(new TypeVariable(t, t.val));
+       decl = new TypeSynonymDecl(id, id.val, typeParams, body, kv);
+     } else {
+       decl = new TypeCtorDecl(id, id.val, paramTokens.Length, kv);
+     }
+   .)
+  .
+
+
+/*------------------------------------------------------------------------*/
+Procedure<out Procedure! proc, out /*maybe null*/ Implementation impl>
+= (. IToken! x;
+     TypeVariableSeq! typeParams;
+     VariableSeq! ins, outs;
+     RequiresSeq! pre = new RequiresSeq();
+     IdentifierExprSeq! mods = new IdentifierExprSeq();
+     EnsuresSeq! post = new EnsuresSeq();
+
+     VariableSeq! locals = new VariableSeq();
+     StmtList! stmtList;
+     QKeyValue kv = null;
+     impl = null;
+  .)
+
+  "procedure"
+  ProcSignature<true, out x, out typeParams, out ins, out outs, out kv>
+  ( ";"
+    { Spec<pre, mods, post> }
+  | { Spec<pre, mods, post> }
+    ImplBody<out locals, out stmtList>
+    (.
+      // here we attach kv only to the Procedure, not its implementation
+      impl = new Implementation(x, x.val, typeParams,
+                                Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, null); 
+    .)
+  )
+  (. proc = new Procedure(x, x.val, typeParams, ins, outs, pre, mods, post, kv); .)
+  .
+
+
+Implementation<out Implementation! impl>
+= (. IToken! x;
+     TypeVariableSeq! typeParams;
+     VariableSeq! ins, outs;
+     VariableSeq! locals;
+     StmtList! stmtList;
+     QKeyValue kv;
+  .)
+
+  "implementation"
+  ProcSignature<false, out x, out typeParams, out ins, out outs, out kv>
+  ImplBody<out locals, out stmtList>
+    (. impl = new Implementation(x, x.val, typeParams, ins, outs, locals, stmtList, kv); .)
+  .
+
+
+ProcSignature<bool allowWhereClausesOnFormals, out IToken! name, out TypeVariableSeq! typeParams,
+              out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv>
+= (. IToken! typeParamTok; typeParams = new TypeVariableSeq();
+     outs = new VariableSeq(); kv = null; .)
+  { Attribute<ref kv> }
+  Ident<out name>
+  [ TypeParams<out typeParamTok, out typeParams> ]
+  ProcFormals<true, allowWhereClausesOnFormals, out ins>
+  [ "returns" ProcFormals<false, allowWhereClausesOnFormals, out outs> ]
+  .
+
+
+Spec<RequiresSeq! pre, IdentifierExprSeq! mods, EnsuresSeq! post>
+= (. TokenSeq! ms; .)
+  ( "modifies"
+    [ Idents<out ms>        (. foreach (IToken! m in ms) {
+                                 mods.Add(new IdentifierExpr(m, m.val));
+                               }
+                            .)
+    ] ";"
+  | "free" SpecPrePost<true, pre, post>
+  | SpecPrePost<false, pre, post>
+  )
+  .
+
+SpecPrePost<bool free, RequiresSeq! pre, EnsuresSeq! post>
+= (. Expr! e; VariableSeq! locals; BlockSeq! blocks; Token tok = null; QKeyValue kv = null; .)
+  ( "requires"              (. tok = token; .)
+    { Attribute<ref kv> }
+    (Proposition<out e> ";"  (. pre.Add(new Requires(tok, free, e, null, kv)); .)
+    |
+     SpecBody<out locals, out blocks> ";"
+                            (. pre.Add(new Requires(tok, free, new BlockExpr(locals, blocks), null, kv)); .)
+    )
+  | "ensures"               (. tok = token; .)
+    { Attribute<ref kv> }
+    (Proposition<out e> ";"  (. post.Add(new Ensures(tok, free, e, null, kv)); .)
+    |
+     SpecBody<out locals, out blocks> ";"
+                            (. post.Add(new Ensures(tok, free, new BlockExpr(locals, blocks), null, kv)); .)
+    )
+  )
+  .
+
+SpecBody<out VariableSeq! locals, out BlockSeq! blocks>
+= (. locals = new VariableSeq(); Block! b; .)
+  "{{"
+  { LocalVars<locals> }
+  SpecBlock<out b>          (. blocks = new BlockSeq(b); .)
+  { SpecBlock<out b>        (. blocks.Add(b); .)
+  }
+  "}}"
+  .
+
+SpecBlock<out Block! b>
+= (. IToken! x; IToken! y;
+     Cmd c;  IToken label;
+     CmdSeq cs = new CmdSeq();
+     TokenSeq! xs;
+     StringSeq ss = new StringSeq();
+     b = dummyBlock;
+     Expr! e;
+  .)
+  Ident<out x> ":"
+  { LabelOrCmd<out c, out label>
+                       (. if (c != null) {
+                            assert label == null;
+                            cs.Add(c);
+                          } else {
+                            assert label != null;
+                            SemErr("SpecBlock's can only have one label");
+                          }
+                       .)
+  }
+  ( "goto"             (. y = token; .)
+    Idents<out xs>     (. foreach (IToken! s in xs) { ss.Add(s.val); }
+                          b = new Block(x,x.val,cs,new GotoCmd(y,ss));
+                       .)
+  | "return" Expression<out e>
+                       (. b = new Block(x,x.val,cs,new ReturnExprCmd(token,e)); .)
+  ) ";"
+  .
+
+/*------------------------------------------------------------------------*/
+
+ImplBody<out VariableSeq! locals, out StmtList! stmtList>
+= (. locals = new VariableSeq(); .)
+  "{"
+  { LocalVars<locals> }
+  StmtList<out stmtList>
+  .
+
+/* the StmtList also reads the final curly brace */
+StmtList<out StmtList! stmtList>
+= (. List<BigBlock!> bigblocks = new List<BigBlock!>();
+     /* built-up state for the current BigBlock: */
+     IToken startToken = null;  string currentLabel = null;
+     CmdSeq cs = null;  /* invariant: startToken != null ==> cs != null */
+     /* temporary variables: */
+     IToken label;  Cmd c;  BigBlock b;
+     StructuredCmd ec = null;  StructuredCmd! ecn;
+     TransferCmd tc = null;  TransferCmd! tcn;
+  .)
+
+  {
+  ( LabelOrCmd<out c, out label>
+    (. if (c != null) {
+         // LabelOrCmd read a Cmd
+         assert label == null;
+         if (startToken == null) { startToken = c.tok;  cs = new CmdSeq(); }
+         assert cs != null;
+         cs.Add(c);
+       } else {
+         // LabelOrCmd read a label
+         assert label != null;
+         if (startToken != null) {
+           assert cs != null;
+           // dump the built-up state into a BigBlock
+           b = new BigBlock(startToken, currentLabel, cs, null, null);
+           bigblocks.Add(b);
+           cs = null;
+         }
+         startToken = label;
+         currentLabel = label.val;
+         cs = new CmdSeq();
+       }
+    .)
+
+  | StructuredCmd<out ecn>
+    (. ec = ecn;
+       if (startToken == null) { startToken = ec.tok;  cs = new CmdSeq(); }
+       assert cs != null;
+       b = new BigBlock(startToken, currentLabel, cs, ec, null);
+       bigblocks.Add(b);
+       startToken = null;  currentLabel = null;  cs = null;
+    .)
+
+  | TransferCmd<out tcn>
+    (. tc = tcn;
+       if (startToken == null) { startToken = tc.tok;  cs = new CmdSeq(); }
+       assert cs != null;
+       b = new BigBlock(startToken, currentLabel, cs, null, tc);
+       bigblocks.Add(b);
+       startToken = null;  currentLabel = null;  cs = null;
+    .)
+
+  )
+  }
+  "}"
+  (. IToken! endCurly = token;
+     if (startToken == null && bigblocks.Count == 0) {
+       startToken = token;  cs = new CmdSeq();
+     }
+     if (startToken != null) {
+       assert cs != null;
+       b = new BigBlock(startToken, currentLabel, cs, null, null);
+       bigblocks.Add(b);
+     }
+
+     stmtList = new StmtList(bigblocks, endCurly);
+  .)
+  .
+
+TransferCmd<out TransferCmd! tc>
+= (. tc = dummyTransferCmd;
+     Token y;  TokenSeq! xs;
+     StringSeq ss = new StringSeq();
+  .)
+  ( "goto"             (. y = token; .)
+    Idents<out xs>     (. foreach (IToken! s in xs) { ss.Add(s.val); }
+                          tc = new GotoCmd(y, ss);
+                       .)
+  | "return"           (. tc = new ReturnCmd(token); .)
+  ) ";"
+  .
+
+StructuredCmd<out StructuredCmd! ec>
+= (. ec = dummyStructuredCmd;  assume ec.IsPeerConsistent;
+     IfCmd! ifcmd;  WhileCmd! wcmd;  BreakCmd! bcmd;
+  .)
+  ( IfCmd<out ifcmd>    (. ec = ifcmd; .)
+  | WhileCmd<out wcmd>  (. ec = wcmd; .)
+  | BreakCmd<out bcmd>  (. ec = bcmd; .)
+  )
+  .
+
+IfCmd<out IfCmd! ifcmd>
+= (. IToken! x;
+     Expr guard;
+     StmtList! thn;
+     IfCmd! elseIf;  IfCmd elseIfOption = null;
+     StmtList! els;  StmtList elseOption = null;
+  .)
+  "if"                       (. x = token; .)
+  Guard<out guard>
+  "{" StmtList<out thn>
+  [ "else"
+    ( IfCmd<out elseIf>      (. elseIfOption = elseIf; .)
+    | "{"
+      StmtList<out els>      (. elseOption = els; .)
+    )
+  ]
+  (. ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption); .)
+  .
+
+WhileCmd<out WhileCmd! wcmd>
+= (. IToken! x;  Token z;
+     Expr guard;  Expr! e;  bool isFree;
+     List<PredicateCmd!> invariants = new List<PredicateCmd!>();
+     StmtList! body;
+  .)
+  "while"             (. x = token; .)
+  Guard<out guard>    (. assume guard == null || Owner.None(guard); .)
+  {                   (. isFree = false; z = t/*lookahead token*/; .)
+    [ "free"          (. isFree = true;  .)
+    ]
+    "invariant"
+    Expression<out e> (. if (isFree) {
+                           invariants.Add(new AssumeCmd(z, e));
+                         } else {
+                           invariants.Add(new AssertCmd(z, e));
+                         }
+                      .)
+    ";"
+  }
+  "{"
+  StmtList<out body>  (. wcmd = new WhileCmd(x, guard, invariants, body); .)
+  .
+
+Guard<out Expr e>
+= (. Expr! ee;  e = null; .)
+  "("
+  ( "*"                   (. e = null; .)
+  | Expression<out ee>    (. e = ee; .)
+  )
+  ")"
+  .
+
+BreakCmd<out BreakCmd! bcmd>
+= (. IToken! x;  IToken! y;
+     string breakLabel = null;
+  .)
+  "break"             (. x = token; .)
+  [ Ident<out y>      (. breakLabel = y.val; .)
+  ] ";"               (. bcmd = new BreakCmd(x, breakLabel); .)
+  .
+
+/*------------------------------------------------------------------------*/
+
+LabelOrCmd<out Cmd c, out IToken label>
+/* ensures (c == null) != (label != null) */
+= (. IToken! x; Expr! e;
+     TokenSeq! xs;
+     IdentifierExprSeq ids;
+     c = dummyCmd;  label = null;
+     Cmd! cn;
+     QKeyValue kv = null;
+  .)
+  ( LabelOrAssign<out c, out label>
+  | "assert"              (. x = token; .)
+    { Attribute<ref kv> }
+    Proposition<out e>    (. c = new AssertCmd(x,e, kv); .)
+    ";"
+  | "assume"              (. x = token; .)
+    Proposition<out e>    (. c = new AssumeCmd(x,e); .)
+    ";"
+  | "havoc"               (. x = token; .)
+    Idents<out xs> ";"    (. ids = new IdentifierExprSeq();
+                             foreach (IToken! y in xs) {
+                               ids.Add(new IdentifierExpr(y, y.val));
+                             }
+                             c = new HavocCmd(x,ids);
+                          .)
+  | CallCmd<out cn> ";"   (. c = cn; .)
+  )
+  .
+
+/*------------------------------------------------------------------------*/
+
+LabelOrAssign<out Cmd c, out IToken label>
+/* ensures (c == null) != (label != null) */
+= (. IToken! id; IToken! x; Expr! e, e0;
+     c = dummyCmd;  label = null;
+     AssignLhs! lhs;
+     List<AssignLhs!>! lhss;
+     List<Expr!>! rhss;
+  .)
+  Ident<out id>              (. x = token; .)
+  ( ":"                      (. c = null;  label = x; .)
+  | 
+    MapAssignIndexes<id, out lhs>    (. lhss = new List<AssignLhs!> ();
+                                        lhss.Add(lhs); .)
+    { ","
+      Ident<out id>
+      MapAssignIndexes<id, out lhs>  (. lhss.Add(lhs); .)
+    }
+    ":="                     (. x = token; /* use location of := */ .)
+    Expression<out e0>       (. rhss = new List<Expr!> ();
+                                rhss.Add(e0); .)
+    { ","
+      Expression<out e0>     (. rhss.Add(e0); .)
+    }
+    ";"                      (. c = new AssignCmd(x, lhss, rhss); .)
+  )
+  .
+
+MapAssignIndexes<IToken! assignedVariable, out AssignLhs! lhs>
+= (. IToken! x;
+     AssignLhs! runningLhs =
+       new SimpleAssignLhs(assignedVariable,
+                           new IdentifierExpr(assignedVariable, assignedVariable.val));
+     List<Expr!>! indexes;
+     Expr! e0;
+  .)
+  {
+    "["                        (. x = token;
+                                  indexes = new List<Expr!> (); .)
+      [
+        Expression<out e0>     (. indexes.Add(e0); .)
+        { ","
+          Expression<out e0>   (. indexes.Add(e0); .)
+        }
+      ]     
+    "]"                        (. runningLhs =
+                                    new MapAssignLhs (x, runningLhs, indexes);  .)
+  }
+                               (. lhs = runningLhs; .)
+  .
+
+/*------------------------------------------------------------------------*/
+CallCmd<out Cmd! c>
+= (. IToken! x; IToken! first; IToken p;
+     List<IdentifierExpr>! ids = new List<IdentifierExpr>();
+     List<Expr>! es = new List<Expr>();
+     Expr en;  List<Expr> args;
+     c = dummyCmd;
+  .)
+  "call"                          (. x = token; .)
+  ( Ident<out first>
+    ( "("
+      [ CallForallArg<out en>       (. es.Add(en); .)
+        { "," CallForallArg<out en> (. es.Add(en); .)
+        }
+      ]
+      ")"                         (. c = new CallCmd(x, first.val, es, ids); .)
+    |
+                                  (. ids.Add(new IdentifierExpr(first, first.val)); .)
+      [ "," CallOutIdent<out p>  (.
+                                     if (p==null) {
+                                        ids.Add(null);
+                                     } else {
+                                        ids.Add(new IdentifierExpr(p, p.val));
+                                     }
+                                  .)
+        { "," CallOutIdent<out p>  (.
+                                     if (p==null) {
+                                        ids.Add(null);
+                                     } else {
+                                        ids.Add(new IdentifierExpr(p, p.val));
+                                     }
+                                  .)
+        }
+      ] ":="
+      Ident<out first> "("
+      [ CallForallArg<out en>       (. es.Add(en); .)
+        { "," CallForallArg<out en> (. es.Add(en); .)
+        }
+      ]
+      ")"                         (. c = new CallCmd(x, first.val, es, ids); .)
+    )
+  | "forall"
+    Ident<out first> "("              (. args = new List<Expr>(); .)
+    [ CallForallArg<out en>       (. args.Add(en); .)
+      { "," CallForallArg<out en> (. args.Add(en); .)
+      }
+    ]
+    ")"                           (. c = new CallForallCmd(x, first.val, args); .)
+  | "*"
+                                  (. ids.Add(null); .)
+      [ "," CallOutIdent<out p>  (.
+                                     if (p==null) {
+                                        ids.Add(null);
+                                     } else {
+                                        ids.Add(new IdentifierExpr(p, p.val));
+                                     }
+                                  .)
+        { "," CallOutIdent<out p>  (.
+                                     if (p==null) {
+                                        ids.Add(null);
+                                     } else {
+                                        ids.Add(new IdentifierExpr(p, p.val));
+                                     }
+                                  .)
+        }
+      ] ":="
+      Ident<out first> "("
+      [ CallForallArg<out en>       (. es.Add(en); .)
+        { "," CallForallArg<out en> (. es.Add(en); .)
+        }
+      ]
+      ")"                         (. c = new CallCmd(x, first.val, es, ids); .)
+  )
+  .
+
+CallOutIdent<out IToken id>
+= (. id = null;
+     IToken! p;
+  .)
+  ( "*"
+  | Ident<out p>                   (. id = p; .)
+  )
+  .
+
+CallForallArg<out Expr exprOptional>
+= (. exprOptional = null;
+     Expr! e;
+  .)
+  ( "*"
+  | Expression<out e>             (. exprOptional = e; .)
+  )
+  .
+
+/*------------------------------------------------------------------------*/
+Proposition<out Expr! e>
+=
+  Expression<out e>
+  .
+
+/*------------------------------------------------------------------------*/
+Idents<out TokenSeq! xs>
+= (. IToken! id; xs = new TokenSeq(); .)
+  Ident<out id>                 (. xs.Add(id); .)
+  { "," Ident<out id>           (. xs.Add(id); .)
+  }
+  .
+
+/*------------------------------------------------------------------------*/
+WhiteSpaceIdents<out TokenSeq! xs>
+= (. IToken! id; xs = new TokenSeq(); .)
+  Ident<out id>                 (. xs.Add(id); .)
+  { Ident<out id>               (. xs.Add(id); .)
+  }
+  .
+
+/*------------------------------------------------------------------------*/
+Expressions<out ExprSeq! es>
+= (. Expr! e; es = new ExprSeq(); .)
+  Expression<out e>             (. es.Add(e); .)
+  { "," Expression<out e>       (. es.Add(e); .)
+  }
+  .
+
+/*------------------------------------------------------------------------*/
+Expression<out Expr! e0>
+= (. IToken! x; Expr! e1; .)
+  ImpliesExpression<false, out e0>
+  { EquivOp        (. x = token; .)
+    ImpliesExpression<false, out e1>
+                   (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Iff, e0, e1); .)
+  }
+  .
+
+EquivOp = "<==>" | '\u21d4'.
+
+/*------------------------------------------------------------------------*/
+ImpliesExpression<bool noExplies, out Expr! e0>
+= (. IToken! x; Expr! e1; .)
+  LogicalExpression<out e0>
+  [
+    ImpliesOp      (. x = token; .)
+    /* recurse because implication is right-associative */
+    ImpliesExpression<true, out e1>
+                   (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e0, e1); .)
+  |
+    ExpliesOp      (. if (noExplies)
+                        SemErr("illegal mixture of ==> and <==, use parentheses to disambiguate");
+                      x = token; .)
+    LogicalExpression<out e1> 
+                   (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e1, e0); .)
+    /* loop because explies is left-associative */
+    {
+      ExpliesOp    (. x = token; .)
+      LogicalExpression<out e1> 
+                   (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e1, e0); .)
+    }
+  ]
+  .
+
+ImpliesOp = "==>" | '\u21d2'.
+ExpliesOp = "<==" | '\u21d0'.
+
+/*------------------------------------------------------------------------*/
+LogicalExpression<out Expr! e0>
+= (. IToken! x; Expr! e1; BinaryOperator.Opcode op; .)
+  RelationalExpression<out e0>
+  [ AndOp          (. x = token; .)
+    RelationalExpression<out e1>
+    (. e0 = Expr.Binary(x, BinaryOperator.Opcode.And, e0, e1); .)
+    { AndOp        (. x = token; .)
+      RelationalExpression<out e1>
+      (. e0 = Expr.Binary(x, BinaryOperator.Opcode.And, e0, e1); .)
+    }
+  | OrOp           (. x = token; .)
+    RelationalExpression<out e1>
+    (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Or, e0, e1); .)
+    { OrOp         (. x = token; .)
+      RelationalExpression<out e1>
+      (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Or, e0, e1); .)
+    }
+  ]
+  .
+
+AndOp = "&&" | '\u2227'.
+OrOp = "||" | '\u2228'.
+
+/*------------------------------------------------------------------------*/
+RelationalExpression<out Expr! e0>
+= (. IToken! x; Expr! e1; BinaryOperator.Opcode op; .)
+  BvTerm<out e0>
+  [ RelOp<out x, out op>
+    BvTerm<out e1>            (. e0 = Expr.Binary(x, op, e0, e1); .)
+  ]
+  .
+
+RelOp<out IToken! x, out BinaryOperator.Opcode op>
+=                  (. x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
+  ( "=="           (. x = token; op=BinaryOperator.Opcode.Eq; .)
+  | "<"            (. x = token; op=BinaryOperator.Opcode.Lt; .)
+  | ">"            (. x = token; op=BinaryOperator.Opcode.Gt; .)
+  | "<="           (. x = token; op=BinaryOperator.Opcode.Le; .)
+  | ">="           (. x = token; op=BinaryOperator.Opcode.Ge; .)
+  | "!="           (. x = token; op=BinaryOperator.Opcode.Neq; .)
+  | "<:"           (. x = token; op=BinaryOperator.Opcode.Subtype; .)
+  | '\u2260'       (. x = token; op=BinaryOperator.Opcode.Neq; .)
+  | '\u2264'       (. x = token; op=BinaryOperator.Opcode.Le; .)
+  | '\u2265'       (. x = token; op=BinaryOperator.Opcode.Ge; .)
+  )
+  .
+
+/*------------------------------------------------------------------------*/
+BvTerm<out Expr! e0>
+= (. IToken! x; Expr! e1; .)
+  Term<out e0>
+  { "++"                  (. x = token; .)
+    Term<out e1>          (. e0 = new BvConcatExpr(x, e0, e1); .)
+  }
+  .
+
+
+/*------------------------------------------------------------------------*/
+Term<out Expr! e0>
+= (. IToken! x; Expr! e1; BinaryOperator.Opcode op; .)
+  Factor<out e0>
+  { AddOp<out x, out op>
+    Factor<out e1>          (. e0 = Expr.Binary(x, op, e0, e1); .)
+  }
+  .
+
+AddOp<out IToken! x, out BinaryOperator.Opcode op>
+=                  (. x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
+  ( "+"            (. x = token; op=BinaryOperator.Opcode.Add; .)
+  | "-"            (. x = token; op=BinaryOperator.Opcode.Sub; .)
+  )
+  .
+
+/*------------------------------------------------------------------------*/
+Factor<out Expr! e0>
+= (. IToken! x; Expr! e1; BinaryOperator.Opcode op; .)
+  UnaryExpression<out e0>
+  { MulOp<out x, out op>
+    UnaryExpression<out e1> (. e0 = Expr.Binary(x, op, e0, e1); .)
+  }
+  .
+
+MulOp<out IToken! x, out BinaryOperator.Opcode op>
+=                  (. x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
+  ( "*"            (. x = token; op=BinaryOperator.Opcode.Mul; .)
+  | "/"            (. x = token; op=BinaryOperator.Opcode.Div; .)
+  | "%"            (. x = token; op=BinaryOperator.Opcode.Mod; .)
+  )
+  .
+
+/*------------------------------------------------------------------------*/
+UnaryExpression<out Expr! e>
+= (. IToken! x;
+     e = dummyExpr;
+  .)
+  ( "-"                        (. x = token; .)
+    UnaryExpression<out e>     (. e = Expr.Binary(x, BinaryOperator.Opcode.Sub, new LiteralExpr(x, BigNum.ZERO), e); .)
+  | NegOp                      (. x = token; .)
+    UnaryExpression<out e>     (. e = Expr.Unary(x, UnaryOperator.Opcode.Not, e); .)
+  | CoercionExpression<out e>
+  )
+  .
+
+NegOp = "!" | '\u00ac'.
+
+/*------------------------------------------------------------------------*/
+
+/* This production creates ambiguities, because types can start with "<"
+   (polymorphic map types), but can also be followed by "<" (inequalities).
+   Coco deals with these ambiguities in a reasonable way by preferring to read
+   further types (type arguments) over relational symbols. E.g., "5 : C < 0"
+   will cause a parse error because "<" is treated as the beginning of a
+   map type. */
+
+CoercionExpression<out Expr! e>
+= (. IToken! x;
+     Type! coercedTo;
+     BigNum bn;
+    .)
+  ArrayExpression<out e>
+  { ":"                     (. x = token; .)
+    (
+      Type<out coercedTo>   (. e = Expr.CoerceType(x, e, coercedTo); .)
+    |
+      Nat<out bn>           /* This means that we really look at a bitvector
+                               expression t[a:b] */
+                            (. if (!(e is LiteralExpr) || !((LiteralExpr)e).isBigNum) {
+                                 SemErr("arguments of extract need to be integer literals");
+                                 e = new BvBounds(x, bn, BigNum.ZERO);
+                               } else {
+                                 e = new BvBounds(x, bn, ((LiteralExpr)e).asBigNum);
+                               }
+                             .)
+    )
+  }
+  .
+
+/*------------------------------------------------------------------------*/
+ArrayExpression<out Expr! e>
+= (. IToken! x;
+     Expr! index0 = dummyExpr; Expr! e1;
+     bool store; bool bvExtract;
+     ExprSeq! allArgs = dummyExprSeq;
+  .)
+  AtomExpression<out e>
+  { "["        (. x = token; allArgs = new ExprSeq ();
+                  allArgs.Add(e);
+                  store = false; bvExtract = false; .)
+      [
+        Expression<out index0> 
+               (. if (index0 is BvBounds)
+                    bvExtract = true;
+                  else
+                    allArgs.Add(index0);
+               .)
+        { "," Expression<out e1> 
+               (. if (bvExtract || e1 is BvBounds)
+                    SemErr("bitvectors only have one dimension");
+                  allArgs.Add(e1);
+               .)
+        }
+        [ ":=" Expression<out e1> 
+               (. if (bvExtract || e1 is BvBounds)
+                    SemErr("assignment to bitvectors is not possible");
+                  allArgs.Add(e1); store = true;
+               .)
+        ]
+      | ":=" Expression<out e1>       (. allArgs.Add(e1); store = true; .)
+      ]
+    "]"
+    (. if (store)
+         e = new NAryExpr(x, new MapStore(x, allArgs.Length - 2), allArgs);
+       else if (bvExtract)
+         e = new ExtractExpr(x, e,
+                             ((BvBounds)index0).Upper.ToIntSafe,
+                             ((BvBounds)index0).Lower.ToIntSafe);
+       else
+         e = new NAryExpr(x, new MapSelect(x, allArgs.Length - 1), allArgs); 
+    .)
+  }
+  .
+
+
+/*------------------------------------------------------------------------*/
+AtomExpression<out Expr! e>
+= (. IToken! x; int n; BigNum bn;
+     ExprSeq! es;  VariableSeq! ds;  Trigger trig;
+     TypeVariableSeq! typeParams;
+     IdentifierExpr! id;
+     Bpl.Type! ty;
+     QKeyValue kv;
+     e = dummyExpr;
+  .)
+  ( "false"           (. e = new LiteralExpr(token, false); .)
+  | "true"            (. e = new LiteralExpr(token, true); .)
+  | Nat<out bn>            (. e = new LiteralExpr(token, bn); .)
+  | BvLit<out bn, out n> (. e = new LiteralExpr(token, bn, n); .)
+
+  | Ident<out x>            (. id = new IdentifierExpr(x, x.val);  e = id; .)
+    [ "("
+      ( Expressions<out es> (. e = new NAryExpr(x, new FunctionCall(id), es); .)
+      | /* empty */         (. e = new NAryExpr(x, new FunctionCall(id), new ExprSeq()); .)
+      )
+      ")"
+    ]
+
+  | "old"                   (. x = token; .)
+    "("
+    Expression<out e>
+    ")"                     (. e = new OldExpr(x, e); .)
+
+  | "(" ( Expression<out e>                 (. if (e is BvBounds)
+                                                 SemErr("parentheses around bitvector bounds " +
+                                                        "are not allowed"); .)
+        | Forall                            (. x = token; .)
+          QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e>
+                                            (. if (typeParams.Length + ds.Length > 0)
+                                                 e = new ForallExpr(x, typeParams, ds, kv, trig, e); .)
+        | Exists                            (. x = token; .)
+          QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e> 
+                                            (. if (typeParams.Length + ds.Length > 0)
+                                                 e = new ExistsExpr(x, typeParams, ds, kv, trig, e); .)
+        )
+    ")"
+  )
+  .
+
+Attribute<ref QKeyValue kv>
+= (. Trigger trig = null; .)
+  AttributeOrTrigger<ref kv, ref trig> (.  if (trig != null) SemErr("only attributes, not triggers, allowed here"); .)
+.
+
+AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
+= (. IToken! tok;  Expr! e;  ExprSeq! es;
+     string key;  string value;
+     List<object!> parameters;  object! param;
+  .)
+  "{"                                         (. tok = token; .)
+     (
+       ":" ident                              (. key = token.val;  parameters = new List<object!>(); .)
+       [ AttributeParameter<out param>        (. parameters.Add(param); .)
+         { "," AttributeParameter<out param>  (. parameters.Add(param); .)
+         }
+       ]
+       (. if (key == "nopats") {
+            if (parameters.Count == 1 && parameters[0] is Expr) {
+              e = (Expr)parameters[0];
+              if(trig==null){
+                trig = new Trigger(tok, false, new ExprSeq(e), null);
+              } else {
+                trig.AddLast(new Trigger(tok, false, new ExprSeq(e), null));
+              }
+            } else {
+              SemErr("the 'nopats' quantifier attribute expects a string-literal parameter");
+            }
+          } else {
+            if (kv==null) {
+              kv = new QKeyValue(tok, key, parameters, null);
+            } else {
+              kv.AddLast(new QKeyValue(tok, key, parameters, null));
+            }
+          }
+       .)
+     |
+       Expression<out e>       (. es = new ExprSeq(e); .)
+       { "," Expression<out e> (. es.Add(e); .)
+       }                       (. if (trig==null) {
+                                    trig = new Trigger(tok, true, es, null);
+                                  } else {
+                                    trig.AddLast(new Trigger(tok, true, es, null));
+                                  }
+                               .)
+     )
+  "}"
+  .
+
+AttributeParameter<out object! o>
+= (. o = "error";
+     Expr! e;
+  .)
+  ( string                (. o = token.val.Substring(1, token.val.Length-2); .)
+  | Expression<out e>     (. o = e; .)
+  )
+  .
+
+QuantifierBody<IToken! q, out TypeVariableSeq! typeParams, out VariableSeq! ds,
+               out QKeyValue kv, out Trigger trig, out Expr! body>
+= (. trig = null; typeParams = new TypeVariableSeq ();
+     IToken! tok;  Expr! e;  ExprSeq! es;
+     kv = null;  string key;  string value;
+     ds = new VariableSeq ();
+  .)
+  (
+     TypeParams<out tok, out typeParams>
+     [ BoundVars<q, out ds> ]
+  |
+     BoundVars<q, out ds>
+  )
+  QSep
+  { AttributeOrTrigger<ref kv, ref trig> }
+  Expression<out body>
+  .
+
+Forall = "forall" | '\u2200'.
+Exists = "exists" | '\u2203'.
+QSep = "::" | '\u2022'.
+
+/*------------------------------------------------------------------------*/
+Ident<out IToken! x>
+=
+  ident            (.  x = token;
+                       if (x.val.StartsWith("\\"))
+                         x.val = x.val.Substring(1);
+                    .)
+  .
+
+/*------------------------------------------------------------------------*/
+Nat<out BigNum n>
+=
+  digits
+  (. try {
+       n = BigNum.FromString(token.val);
+     } catch (FormatException) {
+       SemErr("incorrectly formatted number");
+       n = BigNum.ZERO;
+     }
+  .)
+  .
+
+/*------------------------------------------------------------------------*/
+BvLit<out BigNum n, out int m>
+=
+  bvlit
+  (.
+     int pos = token.val.IndexOf("bv");
+     string a = token.val.Substring(0, pos);
+     string b = token.val.Substring(pos + 2);
+     try {
+       n = BigNum.FromString(a);
+       m = Convert.ToInt32(b);
+     } catch (FormatException) {
+       SemErr("incorrectly formatted bitvector");
+       n = BigNum.ZERO;
+       m = 0;
+     }
+  .)
+  .
+
+END BoogiePL.

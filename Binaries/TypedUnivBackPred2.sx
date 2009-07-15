@@ -1,0 +1,131 @@
+; -------------------------------------------------------------------------
+; Boogie 2 universal background predicate for Z3 (Simplify notation with types)
+; Copyright (c) 2004-2009, Microsoft Corp.
+
+(DEFTYPE $int :BUILTIN Int)
+(DEFTYPE $bool :BUILTIN bool)
+(DEFTYPE U)
+(DEFTYPE T)
+
+(DEFOP <: U U $bool)         ; used for translation with type premisses
+(DEFOP <:: T U U $bool)      ; used for translation with type arguments
+
+(BG_PUSH (AND
+
+  ; false is not true
+
+  (DISTINCT |@false| |@true|)
+
+  ; we assume type correctness of the operations here
+  ; a-l>=0 ==> (v ++ w:l)[a:b] = v[a-l:b-l]
+  (FORALL (v lv w lw lvw a b)
+    (QID bv:e:c1)
+    (PATS ($bv_extract ($bv_concat v lv w lw) lvw a b))
+    (IMPLIES
+      (>= (- a lw) 0)
+      (EQ ($bv_extract ($bv_concat v lv w lw) lvw a b) ($bv_extract v lv (- a lw) (- b lw)))))
+
+  ; b<=l ==> (v ++ w:l)[a:b] = w[a:b]
+  (FORALL (v lv w lw lvw a b)
+    (QID bv:e:c2)
+    (PATS ($bv_extract ($bv_concat v lv w lw) lvw a b))
+    (IMPLIES
+      (<= b lw)
+      (EQ ($bv_extract ($bv_concat v lv w lw) lvw a b) ($bv_extract w lw a b))))
+
+  ; v:l
+  ; a>=x || b<=y ==> (v[x:l] ++ w ++ v[0:y])[a:b] = v[a:b]
+  (FORALL (v lv x lxv w lw lwy y a b)
+    (QID bv:e:c3)
+    (PATS 
+      ($bv_extract 
+        ($bv_concat 
+          ($bv_extract v lv x lv) lxv
+	  ($bv_concat 
+	    w lw
+            ($bv_extract v lv 0 y) y) lwy) lv a b))
+    (IMPLIES
+      (AND
+        (EQ lw (- x y))
+        (EQ lxv (- lv x))
+        (EQ lwy (+ w y))
+        (OR (>= a x) (<= b y)))
+      (EQ
+        ($bv_extract 
+          ($bv_concat 
+            ($bv_extract v lv x lv) lxv
+	    ($bv_concat 
+	      w lw
+              ($bv_extract v lv 0 y) y) lwy) lv a b)
+	($bv_extract v lv a b))))
+
+  ; a>=x ==> (v[x:l] ++ w)[a:b] = v[a:b]
+  (FORALL (v lv x lxv w a b)
+    (QID bv:e:c4)
+    (PATS 
+      ($bv_extract 
+        ($bv_concat 
+          ($bv_extract v lv x lv) lxv 
+	  w x) 
+	lv a b))
+    (IMPLIES
+      (AND
+        (EQ lxv (- lv x))
+        (>= a x))
+      (EQ
+        ($bv_extract 
+          ($bv_concat 
+            ($bv_extract v lv x lv) lxv 
+	    w x) 
+	  lv a b)
+	($bv_extract v lv a b))))
+
+  (FORALL (v l)
+    (QID bv:e:0)
+    (PATS ($bv_extract v l 0 l))
+      (EQ ($bv_extract v l 0 l) v))
+
+  (FORALL (n)
+    (QID bv:pow)
+    (PATS ($pow2 n))
+      (IMPLIES (> n 0) (EQ ($pow2 n) (* 2 ($pow2 (- n 1))))))
+
+  (EQ ($pow2 0) 1)
+
+  ; 0 <= v < 2^Y ==> 0bvX ++ v[0:Y] == v
+  (FORALL (v l a b)
+    (QID bv:e:pow)
+    (PATS ($bv_concat 0 b ($bv_extract v l 0 a) a))
+    (IMPLIES
+      (AND
+        (<= 0 v)
+        (< v ($pow2 a))
+        (EQ l (+ a b)))
+      (EQ ($bv_concat 0 b ($bv_extract v l 0 a) a) v)))
+  
+  ; X > 0 ==> 0bvX ++ v >= 0
+  (FORALL (v a b)
+    (QID bv:e:pos)
+    (PATS ($bv_concat 0 b v a))
+    (IMPLIES
+      (> b 0)
+      (>= ($bv_concat 0 b v a) 0)))
+
+  ;; unsound?
+;  (FORALL (lv w lw)
+;    (QID bv:c:0)
+;    (PATS ($bv_concat 0 lv w lw))
+;    (EQ ($bv_concat 0 lv w lw) w))
+  ;; matching loop
+;  (FORALL (v l1 a b l2 c d)
+;    (QID bv:e:e)
+;    (PATS ($bv_extract ($bv_extract v l1 a b) l2 c d))
+;    (EQ ($bv_extract ($bv_extract v l1 a b) l2 c d) ($bv_extract v l1 (+ c a) (+ d a))))
+  
+
+  ; Reflect plus
+  (FORALL (a b) (PATS (Reflect$Add a b)) (EQ (Reflect$Add a b) (+ a b)))
+
+))  ;; AND, BG_PUSH
+; End Boogie universal background predicate
+; -------------------------------------------------------------------------

@@ -1,0 +1,563 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+namespace Microsoft.AbstractInterpretationFramework
+{
+    using Microsoft.Contracts;
+    using System.Collections;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using Microsoft.AbstractInterpretationFramework.Collections;
+
+    using Microsoft.Boogie;    
+    using ISet = Microsoft.Boogie.Set;
+
+
+    /// <summary>
+    ///  The cartesian product lattice.
+    /// </summary>
+    public class MultiLattice : Lattice, IEnumerable
+    {
+        internal class Elt : Element
+        {
+            public /*MaybeNull*/Element[] elementPerLattice;
+
+            public Elt(int domainCount, bool isBottom)
+            {
+                this.elementPerLattice = (domainCount == 0 && isBottom) ? null : new Element[domainCount];
+            }
+            
+            private Elt(Elt! other)
+            {
+                Element[] otherEPL = other.elementPerLattice;
+                if (otherEPL != null)
+                {
+                    Element[] newEPL = new Element[otherEPL.Length];
+                    for (int i = 0; i < newEPL.Length; i++)
+                    {
+                        newEPL[i] = (Element) ((!)otherEPL[i]).Clone();
+                    }
+                    this.elementPerLattice = newEPL;          
+                }
+            }
+            
+            public override Element! Clone()
+            {
+                return new Elt(this);
+            }
+
+            [Pure][Reads(ReadsAttribute.Reads.Owned)]
+            public override string! ToString()
+            {
+//                string s = "MultiLattice+Elt{";
+//                string sep = "";
+//                Element[] epl = this.elementPerLattice;
+//                if (epl != null)
+//                {
+//                    foreach (Element! e in epl)
+//                    {
+//                        s += sep + e.ToString();
+//                        sep = ", ";
+//                    }
+//                }
+//                return s + "}";
+                if (elementPerLattice == null) return "";
+                System.Text.StringBuilder buffer = new System.Text.StringBuilder();
+                for (int i = 0; i < this.Count; i++)
+                {
+                    if (i > 0) buffer.Append("; ");
+                    buffer.AppendFormat("{0}", elementPerLattice[i]);
+                }
+                return buffer.ToString();
+            }
+
+            public override void Dump(string! msg) {
+                System.Console.WriteLine("MultiLattice.Elt.Dump({0})", msg);
+                Element[] epl = this.elementPerLattice;
+                if (epl != null) {
+                    foreach (Element! e in epl) {
+                        e.Dump(msg);
+                    }
+                }
+            }
+            
+            [Pure][Reads(ReadsAttribute.Reads.Owned)]
+            public override ICollection<IVariable!>! FreeVariables()
+            {
+                List<IVariable!>! list = new List<IVariable!>();
+                for (int i = 0; i < this.Count; i++)
+                {
+                    list.AddRange(((!)this[i]).FreeVariables());
+                }
+                return (!)list.AsReadOnly();
+            }
+
+            public static Elt! Top(ArrayList/*<Lattice>*/! lattices)
+            {
+                Elt multiValue = new Elt(lattices.Count, false);
+                for (int i = 0; i < lattices.Count; i++)
+                {
+                    Lattice d = (Lattice!)lattices[i];
+                    multiValue[d.Index] = d.Top;
+                }
+                Debug.Assert(multiValue.IsValid);
+                return multiValue;
+            }
+
+
+            public static Elt! Bottom(ArrayList/*<Lattice>*/! lattices)
+            {
+                Elt multiValue = new Elt(lattices.Count, true);
+                for (int i = 0; i < lattices.Count; i++)
+                {
+                    Lattice d = (Lattice!)lattices[i];
+                    multiValue[d.Index] = d.Bottom;
+                }
+                Debug.Assert(multiValue.IsValid);
+                return multiValue;
+            }
+
+            public bool IsValid
+            {
+                get
+                {
+                    if (this.elementPerLattice == null) { return true; /*bottom*/ }
+
+                    Element[] epl = this.elementPerLattice;
+                    for (int i = 0; i < epl.Length; i++)
+                    {
+                        if (epl[i] == null) { return false; }
+                    }
+                    return true;
+                }
+            }
+
+            public int Count { get { return this.elementPerLattice == null ? 0 : this.elementPerLattice.Length; } }
+
+            public bool Contains(int i) { return 0 <= i && i < this.Count; }
+
+            public Element this[int i] // just syntactic sugar
+            {
+                get { Element[] epl = this.elementPerLattice; return epl == null ? null : epl[i]; }
+                set { Element[] epl = this.elementPerLattice; if (epl == null) return; epl[i] = value; }
+            }
+
+        } // class
+
+
+
+        ArrayList/*<Lattice>*/! lattices = new ArrayList();
+
+        private readonly IPropExprFactory! propExprFactory;
+
+
+        public MultiLattice(IPropExprFactory! propExprFactory, IValueExprFactory! valueExprFactory)
+            : base(valueExprFactory)
+        {
+            this.propExprFactory = propExprFactory;
+            // base(valueExprFactory);
+        }
+
+        
+
+        public void AddLattice(Lattice lattice) { this.lattices.Add(lattice); }
+
+        private Lattice! SubLattice(int i) { return (Lattice!)this.lattices[i]; }
+
+
+        public override Element! Top { get { return Elt.Top(this.lattices); } }
+
+        public override Element! Bottom { get { return Elt.Bottom(this.lattices); } }
+
+
+
+
+        public override bool IsBottom(Element! element)
+        {
+            Elt e = (Elt)element;
+            // The program is errorneous/nonterminating if any subdomain knows it is.
+            //
+            if (e.elementPerLattice == null) { return true; }
+            for (int i = 0; i < e.Count; i++) { if (SubLattice(i).IsBottom((!)e[i])) { return true; } }
+            return false;
+        }
+
+        public override bool IsTop(Element! element)
+        {
+            Elt e = (Elt)element;
+            if (e.elementPerLattice == null) { return false; }
+            // The multidomain knows nothing about the program only if no subdomain
+            // knows anything about it.
+            //
+            for (int i = 0; i < e.Count; i++) { if (!SubLattice(i).IsTop((!)e[i])) { return false; } }
+            return true;
+        }
+
+        protected override bool AtMost(Element! first, Element! second)
+        {
+            Elt a = (Elt)first;
+            Elt b = (Elt)second;
+
+            for (int i = 0; i < a.Count; i++)
+            {
+                Element thisElement = (!) a[i];
+                Element thatElement = (!) b[i];
+                if (thisElement.GetType() != thatElement.GetType())
+                {
+                    throw new System.InvalidOperationException(
+                      "AtMost called on MultiDomain objects with different lattices"
+                      );
+                }
+                if (!SubLattice(i).LowerThan(thisElement, thatElement)) { return false; }
+            }
+            return true;
+        }
+        
+        protected override bool AtMost(Element! first, ICombineNameMap! firstToResult, Element! second, ICombineNameMap! secondToResult)
+        {
+            Elt a = (Elt)first;
+            Elt b = (Elt)second;
+
+            for (int i = 0; i < a.Count; i++)
+            {
+                Element thisElement = (!) a[i];
+                Element thatElement = (!) b[i];
+                if (thisElement.GetType() != thatElement.GetType())
+                {
+                    throw new System.InvalidOperationException(
+                      "AtMost called on MultiDomain objects with different lattices"
+                      );
+                }
+                if (!SubLattice(i).LowerThan(thisElement, firstToResult, thatElement, secondToResult)) { return false; }
+            }
+            return true;
+        }
+
+
+        private enum CombineOp { Meet, Join, Widen }
+        
+        private Element! Combine(Element! first, ICombineNameMap/*?*/ firstToResult, Element! second, ICombineNameMap/*?*/ secondToResult, CombineOp c)
+        {
+            Elt a = (Elt)first;
+            Elt b = (Elt)second;
+
+            int unionCount = System.Math.Max(a.Count, b.Count);
+            Elt combined = new Elt(unionCount, IsBottom(a) && IsBottom(b));
+            for (int i = 0; i < unionCount; i++)
+            {
+                bool thisExists = a.Contains(i);
+                bool thatExists = b.Contains(i);
+
+                if (thisExists && thatExists)
+                {
+                    Lattice.Element suba = a[i];
+                    Lattice.Element subb = b[i];
+                    assert suba != null && subb != null;
+                    
+                    switch (c)
+                    {
+                      case CombineOp.Meet:
+                        combined[i] = SubLattice(i).Meet(suba, subb);
+                        break;
+                      case CombineOp.Join:
+                        if (firstToResult != null && secondToResult != null)
+                            combined[i] = SubLattice(i).Join(suba, firstToResult, subb, secondToResult);
+                        else
+                            combined[i] = SubLattice(i).Join(suba, subb);
+                        break;
+                      case CombineOp.Widen:
+                        if (firstToResult != null && secondToResult != null)
+                            combined[i] = SubLattice(i).Widen(suba, firstToResult, subb, secondToResult);
+                        else
+                            combined[i] = SubLattice(i).Widen(suba, subb);
+                        break;
+                    }
+                }
+                else if (thisExists)
+                {
+                    combined[i] = a[i];
+                }
+                else
+                {
+                    combined[i] = b[i];
+                }
+            }
+            Debug.Assert(combined.IsValid);
+            return combined;
+        }
+
+        public override Element! NontrivialJoin(Element! a, Element! b) { return this.Combine(a, null, b, null, CombineOp.Join); }
+
+        public override Element! NontrivialJoin(Element! a, ICombineNameMap! aToResult, Element! b, ICombineNameMap! bToResult) { return this.Combine(a, aToResult, b, bToResult, CombineOp.Join); }
+
+        public override Element! NontrivialMeet(Element! a, Element! b) { return this.Combine(a, null, b, null, CombineOp.Meet); }
+
+        public override Element! Widen(Element! a, Element! b) { return this.Combine(a, null, b, null, CombineOp.Widen); }
+
+        public override Element! Widen(Element! a, ICombineNameMap! aToResult, Element! b, ICombineNameMap! bToResult) { return this.Combine(a, aToResult, b, bToResult, CombineOp.Widen); }
+
+        public override Element! Eliminate(Element! element, IVariable! variable)
+        {
+            Elt e = (Elt)element;
+            if (IsBottom(e))
+            {
+                return e;
+            }
+            Elt newValue = new Elt(e.Count, false);
+            for (int i = 0; i < this.lattices.Count; i++)
+            {
+                newValue[i] = SubLattice(i).Eliminate((!) e[i], variable);
+            }
+            return newValue;
+        }
+
+
+        public override Element! Constrain(Element! element, IExpr! expr)
+        {
+            Elt e = (Elt)element;
+            if (IsBottom(e))
+            {
+                return e;
+            }
+            Elt newValue = new Elt(e.Count, false);
+            for (int i = 0; i < this.lattices.Count; i++)
+            {
+                newValue[i] = SubLattice(i).Constrain((!)e[i], expr);
+            }
+            return newValue;
+        }
+
+
+        public override Element! Rename(Element! element, IVariable! oldName, IVariable! newName)
+        {
+            Elt e = (Elt)element;
+            if (IsBottom(e))
+            {
+                return e;
+            }
+            Elt newValue = new Elt(e.Count, false);
+            for (int i = 0; i < this.lattices.Count; i++)
+            {
+                newValue[i] = SubLattice(i).Rename((!)e[i], oldName, newName);
+            }
+            return newValue;
+        }
+
+
+        public override bool Understands(IFunctionSymbol! f, IList! args)
+        {
+            bool result = false;
+
+            for (int i = 0; i < this.lattices.Count; i++)
+            {
+                result = (result || SubLattice(i).Understands(f, args));
+            }
+
+            return result;
+        }
+
+
+        public override string! ToString(Element! element)
+        {
+            Elt e = (Elt)element;
+            return e.ToString();
+        }
+
+
+        public override IExpr! ToPredicate(Element! element)
+        {
+            Elt e = (Elt)element;
+            
+            IExpr result = propExprFactory.True;
+            for (int i = 0; i < e.Count; i++)
+            {
+                IExpr conjunct = SubLattice(i).ToPredicate((!)e[i]);
+                assert conjunct != null;
+
+                result = Prop.SimplifiedAnd(propExprFactory, conjunct, result);
+            }
+            return result;
+        }
+        
+        /// <summary>
+        ///  Return an expression that is equivalent to the given expression that does not
+        ///  contain the given variable according to the lattice element and queryable.
+        /// 
+        ///  Simply asks each sublattice to try to generate an equivalent expression.  We
+        ///  do not try to combine information to infer new equivalences here.
+        /// </summary>
+        /// <param name="e">The lattice element.</param>
+        /// <param name="q">A queryable for asking addtional information.</param>
+        /// <param name="expr">The expression to find an equivalent expression.</param>
+        /// <param name="var">The variable to eliminate.</param>
+        /// <returns>
+        /// An equivalent expression to <paramref name="expr"/> without <paramref name="var"/>
+        /// or null if not possible.
+        /// </returns>
+        public override IExpr/*?*/ EquivalentExpr(Element! element, IQueryable! q, IExpr! expr, IVariable! var, Set/*<IVariable!>*/! prohibitedVars)
+        {
+            Elt! e = (Elt!)element;
+
+            for (int i = 0; i < e.Count; i++)
+            {
+                IExpr equivexpr = SubLattice(i).EquivalentExpr((!)e[i], q, expr, var, prohibitedVars);
+
+                if (equivexpr != null)
+                    return equivexpr;
+            }
+
+            return null;
+        }
+
+
+        public override Answer CheckPredicate(Element! element, IExpr! pred)
+        {
+            Elt! e = (Elt!)element;
+
+            for (int i = 0; i < e.Count; i++)
+            {
+                Answer ans = SubLattice(i).CheckPredicate((!)e[i], pred);
+
+                if (ans == Answer.Yes || ans == Answer.No)
+                    return ans;
+            }
+
+            return Answer.Maybe;
+        }
+
+
+        public override Answer CheckVariableDisequality(Element! element, IVariable! var1, IVariable! var2)
+        {
+            Elt! e = (Elt!)element;
+
+            for (int i = 0; i < e.Count; i++)
+            {
+                Answer ans = SubLattice(i).CheckVariableDisequality((!)e[i], var1, var2);
+
+                if (ans == Answer.Yes || ans == Answer.No)
+                    return ans;
+            }
+
+            return Answer.Maybe;
+        }
+
+
+
+        public override void Validate()
+        {
+            base.Validate();
+            foreach (Lattice! l in lattices)
+            {
+                l.Validate();
+            }
+        }
+
+        /// <summary>
+        ///  The enumeration over a MultiLattice is its sublattices.
+        /// </summary>
+        /// <returns>An enumerator over the sublattices.</returns>
+        [Pure] [GlobalAccess(false)] [Escapes(true,false)]
+        public IEnumerator/*<Lattice!>*/! GetEnumerator()
+        {
+            return lattices.GetEnumerator();
+        }
+
+        /// <summary>
+        ///  Return an enumerable over a mapping of sublattices to the their corresponding
+        ///  lattice elements given a MultiLattice element.
+        /// </summary>
+        /// <param name="element">The MultiLattice element.</param>
+        /// <returns>
+        /// An enumerable that yields an IDictionaryEnumerator over the
+        /// (Lattice, Lattice.Element) pairs.
+        /// </returns>
+        public IEnumerable! Subelements(Element! element)
+        {
+            return new SubelementsEnumerable(this, (Elt!) element);
+        }
+
+        /// <summary>
+        ///  An enumerator over the sublattices and elements.
+        /// </summary>
+        private sealed class SubelementsEnumerable : IEnumerable
+        {
+            private sealed class SubelementsEnumerator : IDictionaryEnumerator
+            {
+                private readonly IEnumerator/*<Lattice!>*/! multiLatticeIter;
+                private readonly IEnumerator/*<Lattice.Element!>*/! multiElementIter;
+
+                public SubelementsEnumerator(MultiLattice! multiLattice, Elt! multiElement)
+                  requires multiElement.elementPerLattice != null;
+                {
+                    this.multiLatticeIter = multiLattice.lattices.GetEnumerator();
+                    this.multiElementIter = multiElement.elementPerLattice.GetEnumerator();
+                    // base();
+                }
+
+                public DictionaryEntry Entry
+                {
+                    get
+                    {
+                        return new DictionaryEntry((!)multiLatticeIter.Current, multiElementIter.Current);
+                    }
+                }
+
+                public object Key
+                {
+                    get
+                    {
+                        return multiLatticeIter.Current;
+                    }
+                }
+
+                public object Value
+                {
+                    get
+                    {
+                        return multiElementIter.Current;
+                    }
+                }
+
+                public object Current
+                {
+                    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+                    get
+                    {
+                        return this.Entry;
+                    }
+                }
+
+                public bool MoveNext()
+                {
+                    return multiLatticeIter.MoveNext() && multiElementIter.MoveNext();
+                }
+
+                public void Reset()
+                {
+                    multiLatticeIter.Reset();
+                    multiElementIter.Reset();
+                }
+            }
+
+            private MultiLattice! multiLattice;
+            private Elt! multiElement;
+            
+            public SubelementsEnumerable(MultiLattice! multiLattice, Elt! multiElement)
+            {
+                this.multiLattice = multiLattice;
+                this.multiElement = multiElement;
+                // base();
+            }
+
+            [Pure] [GlobalAccess(false)] [Escapes(true,false)]
+            public IEnumerator! GetEnumerator()
+            {
+                return new SubelementsEnumerator(multiLattice, multiElement);
+            }
+        }
+
+
+    }
+}

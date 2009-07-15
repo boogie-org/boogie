@@ -1,0 +1,449 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+using System;
+using System.Text;
+using System.IO;
+using System.Collections;
+using System.Collections.Generic;
+using Microsoft.Contracts;
+using Microsoft.Basetypes;
+using Microsoft.Boogie.VCExprAST;
+
+// Code for managing and clusterings sets of terms; this is used to
+// compress the input given to the theorem prover
+
+namespace Microsoft.Boogie.Clustering
+{
+  using Microsoft.Boogie.VCExprAST;
+
+
+  public class SubtermCollector : BoundVarTraversingVCExprVisitor<bool, bool> {
+    
+    private readonly VCExpressionGenerator! Gen;
+
+    public SubtermCollector(VCExpressionGenerator! gen) {
+      Gen = gen;
+    }
+
+    // variables that are global and treated like constants
+    private readonly IDictionary<VCExprVar!, VCExprVar!>! GlobalVariables =
+      new Dictionary<VCExprVar!, VCExprVar!> ();
+
+    private readonly IDictionary<VCExprOp!, TermClustersSameHead!>! SubtermClusters =
+      new Dictionary<VCExprOp!, TermClustersSameHead!> ();
+
+    public void UnifyClusters() {
+      foreach (KeyValuePair<VCExprOp!, TermClustersSameHead!> pair
+                 in SubtermClusters)
+        pair.Value.UnifyClusters();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    protected override bool StandardResult(VCExpr! node, bool arg) {
+      return false;   // by default, do not collect terms containing node
+    }
+
+    public override bool Visit(VCExprLiteral! node, bool arg) {
+      return true;
+    }
+
+    public override bool Visit(VCExprNAry! node, bool arg) {
+      VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
+      if (op == null) {
+        base.Visit(node, arg);
+        return false;
+      }
+
+      bool res = true;
+      foreach (VCExpr! subexpr in node)
+        res &= this.Traverse(subexpr, arg);
+
+      if (res) {
+        TermClustersSameHead clusters;
+        if (!SubtermClusters.TryGetValue(op, out clusters)) {
+          clusters = new TermClustersSameHead(op, GlobalVariables, Gen);
+          SubtermClusters.Add(op, clusters);
+        }
+        ((!)clusters).AddExpr(node);
+      }
+
+      return res;
+    }
+
+    public override bool Visit(VCExprVar! node, bool arg) {
+      if (!BoundTermVars.Contains(node))
+        GlobalVariables[node] = node;
+      return true;
+    }
+
+    [Pure]
+    public override string! ToString()
+    {
+      string! res = "";
+      foreach (KeyValuePair<VCExprOp!, TermClustersSameHead!> pair
+                 in SubtermClusters)
+        res = res + pair.Value + "\n";
+      return res;
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  // Class for managing and clustering a set of terms that all start
+  // with the same function symbol
+  internal class TermClustersSameHead {
+
+    public readonly VCExprOp! Op;
+    private readonly VCExpressionGenerator! Gen;
+
+    public TermClustersSameHead(VCExprOp! op,
+                                IDictionary<VCExprVar!, VCExprVar!>! globalVars,
+                                VCExpressionGenerator! gen) {
+      Op = op;
+      GlobalVariables = globalVars;
+      Gen = gen;
+    }
+
+    // variables that are global and treated like constants
+    private readonly IDictionary<VCExprVar!, VCExprVar!>! GlobalVariables;
+
+    private readonly List<Cluster>! Clusters = new List<Cluster> ();
+
+    private struct Cluster {
+      public readonly VCExprNAry! Generator;
+      public readonly int Size;
+
+      public Cluster(VCExprNAry! generator, int size) {
+        Generator = generator;
+        Size = size;
+      }
+    }
+
+    private int Distance(Cluster a, Cluster b) {
+      AntiUnificationVisitor! visitor = new AntiUnificationVisitor (Gen);
+      visitor.AntiUnify(a.Generator, b.Generator);
+
+      int reprSizeA, reprSizeB;
+      visitor.RepresentationSize(GlobalVariables, out reprSizeA, out reprSizeB);
+      return (a.Size - 1) * reprSizeA + (b.Size - 1) * reprSizeB;
+    }
+
+    private bool EqualUpToRenaming(Cluster a, Cluster b) {
+      AntiUnificationVisitor! visitor = new AntiUnificationVisitor (Gen);
+      visitor.AntiUnify(a.Generator, b.Generator);
+      return visitor.RepresentationIsRenaming(GlobalVariables);
+    }
+
+    private Cluster Merge(Cluster a, Cluster b) {
+      AntiUnificationVisitor! visitor = new AntiUnificationVisitor (Gen);
+      VCExpr! generator = visitor.AntiUnify(a.Generator, b.Generator);
+      VCExprNAry generatorNAry = generator as VCExprNAry;
+      assert generatorNAry != null && Op.Equals(generatorNAry.Op);
+      return new Cluster(generatorNAry, a.Size + b.Size);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    public void AddExpr(VCExprNAry! expr)
+      requires Op.Equals(expr.Op); {
+
+      Cluster c = new Cluster (expr, 1);
+      for (int i = 0; i < Clusters.Count; ++i) {
+        Cluster d = Clusters[i];
+        if (EqualUpToRenaming(c, d)) {
+          Clusters[i] = new Cluster (d.Generator, d.Size + 1);
+          return;
+        }
+      }
+
+      Clusters.Add(c);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    private struct ClusteringMatrix {
+      
+      private readonly VCExpressionGenerator! Gen;
+      private readonly IDictionary<VCExprVar!, VCExprVar!>! GlobalVariables;
+
+      public readonly List<Cluster>! Clusters;
+      public readonly bool[]! RemainingClusters;
+
+      public readonly Distance[,]! Distances;
+
+      public struct Distance {
+        public readonly int Dist;
+        public readonly VCExprNAry! Generator;
+
+        public Distance(Cluster a, Cluster b,
+                        IDictionary<VCExprVar!, VCExprVar!>! globalVars,
+                        VCExpressionGenerator! gen) {
+          AntiUnificationVisitor! visitor = new AntiUnificationVisitor (gen);
+          Generator = (VCExprNAry)visitor.AntiUnify(a.Generator, b.Generator);
+
+          int reprSizeA, reprSizeB;
+          visitor.RepresentationSize(globalVars, out reprSizeA, out reprSizeB);
+          Dist = (a.Size - 1) * reprSizeA + (b.Size - 1) * reprSizeB;          
+        }
+      }
+
+      public ClusteringMatrix(List<Cluster>! clusters,
+                              IDictionary<VCExprVar!, VCExprVar!>! globalVars,
+                              VCExpressionGenerator! gen) {
+        List<Cluster>! c = new List<Cluster> ();
+        c.AddRange(clusters);
+        Clusters = c;
+
+        GlobalVariables = globalVars;
+        Gen = gen;
+
+        bool[] remaining = new bool [clusters.Count];
+        RemainingClusters = remaining;
+        for (int i = 0; i < remaining.Length; ++i)
+          remaining[i] = true;
+
+        Distance[,]! distances = new Distance [clusters.Count, clusters.Count];
+        Distances = distances;
+        for (int i = 1; i < clusters.Count; ++i)
+          for (int j = 0; j < i; ++j)
+            distances[i, j] =
+              new Distance (clusters[i], clusters[j], GlobalVariables, Gen);
+      }
+      
+      public void UnifyClusters(int maxDist) {
+        while (true) {
+          int i, j;
+          int minDist = FindMinDistance(out i, out j);
+        
+          if (minDist > maxDist)
+            return;
+
+          MergeClusters(i, j);
+        }
+      }
+
+      public void ResultingClusters(List<Cluster>! clusters) {
+        clusters.Clear();
+        for (int i = 0; i < Clusters.Count; ++i)
+          if (RemainingClusters[i])
+            clusters.Add(Clusters[i]);
+      }
+
+      //////////////////////////////////////////////////////////////////////////
+
+      private void Update(int i) {
+        for (int j = 0; j < i; ++j) {
+          if (RemainingClusters[j])
+            Distances[i, j] =
+              new Distance (Clusters[i], Clusters[j], GlobalVariables, Gen);
+        }
+        for (int j = i + 1; j < Clusters.Count; ++j) {
+          if (RemainingClusters[j])
+            Distances[j, i] =
+              new Distance (Clusters[j], Clusters[i], GlobalVariables, Gen);
+        }
+      }
+
+      private int FindMinDistance(out int c0, out int c1) {
+        int minDist = int.MaxValue;
+        c0 = -1;
+        c1 = -1;
+
+        for (int i = 0; i < Clusters.Count; ++i)
+          if (RemainingClusters[i]) {
+            for (int j = 0; j < i; ++j)
+              if (RemainingClusters[j]) {
+                if (Distances[i, j].Dist < minDist) {
+                  minDist = Distances[i, j].Dist;
+                  c0 = i;
+                  c1 = j;
+                }
+              }
+          }
+
+        assert c0 == -1 && c1 == -1 || c0 > c1 && c1 >= 0;
+        return minDist;
+      }
+
+      private void MergeClusters(int i, int j)
+        requires j >= 0 && i > j &&
+                 RemainingClusters[i] && RemainingClusters[j]; {
+        Clusters[i] = new Cluster (Distances[i, j].Generator,
+                                   Clusters[i].Size + Clusters[j].Size);
+        RemainingClusters[j] = false;
+        Update(i);
+      }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    public void UnifyClusters() {
+      ClusteringMatrix matrix =
+        new ClusteringMatrix (Clusters, GlobalVariables, Gen);
+      matrix.UnifyClusters(50);
+      matrix.ResultingClusters(Clusters);
+    }
+
+    [Pure]
+    public override string! ToString()
+    {
+      string! res = "";
+      foreach (Cluster c in Clusters)
+        res = res + c.Generator + "\t" + c.Size + "\n";
+      return res;
+    }    
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  internal class AntiUnificationVisitor : TraversingVCExprVisitor<VCExpr!, VCExpr!> {
+
+    private readonly VCExpressionGenerator! Gen;
+
+    public AntiUnificationVisitor(VCExpressionGenerator! gen) {
+      Gen = gen;
+    }
+
+    // Sub-expressions in the first and second expression to be
+    // anti-unified that are replaced with variables
+    private readonly IDictionary<ExprPair, VCExprVar!>! Representation =
+      new Dictionary<ExprPair, VCExprVar!> ();
+
+    private struct ExprPair {
+      public readonly VCExpr! Expr0, Expr1;
+      public ExprPair(VCExpr! expr0, VCExpr! expr1) {
+        Expr0 = expr0;
+        Expr1 = expr1;
+      }
+      [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+      public override bool Equals(object that) {
+        if (that is ExprPair) {
+          ExprPair thatPair = (ExprPair)that;
+          return this.Expr0.Equals(thatPair.Expr0) &&
+                 this.Expr1.Equals(thatPair.Expr1);
+        }
+        return false;
+      }
+      [Pure]
+      public override int GetHashCode() {
+        return Expr0.GetHashCode() + Expr1.GetHashCode() * 13;
+      }      
+    }
+
+    public void Reset() {
+      Representation.Clear ();
+    }
+
+    public bool RepresentationIsRenaming(IDictionary<VCExprVar!, VCExprVar!>! globalVars) {
+      if (!forall{KeyValuePair<ExprPair, VCExprVar!> pair in Representation;
+                  pair.Key.Expr0 is VCExprVar &&
+                  pair.Key.Expr1 is VCExprVar &&
+                  !globalVars.ContainsKey((VCExprVar!)pair.Key.Expr0) &&
+                  !globalVars.ContainsKey((VCExprVar!)pair.Key.Expr1)})
+        return false;
+      // check that all substituted variables are distinct
+      // TODO: optimise
+      return
+        forall{KeyValuePair<ExprPair, VCExprVar!> pair1 in Representation;
+        forall{KeyValuePair<ExprPair, VCExprVar!> pair2 in Representation;
+          pair1.Value.Equals(pair2.Value) || !pair1.Key.Expr0.Equals(pair2.Key.Expr0)
+                                             && !pair1.Key.Expr1.Equals(pair2.Key.Expr1)
+        }};
+    }
+
+    public void RepresentationSize(IDictionary<VCExprVar!, VCExprVar!>! globalVars,
+                                   out int expr0Size, out int expr1Size) {
+      ReprSizeComputingVisitor! size0Visitor = new ReprSizeComputingVisitor ();
+      ReprSizeComputingVisitor! size1Visitor = new ReprSizeComputingVisitor ();
+
+      foreach (KeyValuePair<ExprPair, VCExprVar!> pair in Representation) {
+        size0Visitor.ComputeSize(pair.Key.Expr0, globalVars);
+        size1Visitor.ComputeSize(pair.Key.Expr1, globalVars);
+      }
+
+      expr0Size = size0Visitor.Size;
+      expr1Size = size1Visitor.Size;
+    }
+
+    public VCExpr! AntiUnify(VCExpr! s, VCExpr! t)
+      requires s.Type.Equals(t.Type); {
+      return Traverse(s, t);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    private VCExprVar! AbstractWithVariable(VCExpr! s, VCExpr! t)
+      requires s.Type.Equals(t.Type); {
+
+      ExprPair pair = new ExprPair (s, t);
+      VCExprVar repr;
+      if (!Representation.TryGetValue(pair, out repr)) {
+        repr = Gen.Variable("abs" + Representation.Count, s.Type);
+        Representation.Add(pair, repr);
+      }
+      return (!)repr;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    public override VCExpr! Visit(VCExprLiteral! node, VCExpr! that) {
+      if (node.Equals(that))
+        return node;
+      return AbstractWithVariable(node, that);
+    }
+
+    public override VCExpr! Visit(VCExprNAry! node, VCExpr! that) {
+      VCExprNAry thatNAry = that as VCExprNAry;
+      if (thatNAry != null && node.Op.Equals(thatNAry.Op)) {
+        // type parameters should already have been eliminated at this
+        // stage
+        assert node.TypeParamArity == 0 && thatNAry.TypeParamArity == 0 &&
+               node.Arity == thatNAry.Arity;
+        
+        List<VCExpr!>! unifiedArgs = new List<VCExpr!> ();
+        for (int i = 0; i < node.Arity; ++i)
+          unifiedArgs.Add(Traverse(node[i], thatNAry[i]));
+        
+        return Gen.Function(node.Op, unifiedArgs);
+      }
+      return AbstractWithVariable(node, that);
+    }
+
+    public override VCExpr! Visit(VCExprVar! node, VCExpr! that) {
+      if (node.Equals(that))
+        return node;
+      return AbstractWithVariable(node, that);
+    }
+
+    protected override VCExpr! StandardResult(VCExpr! node, VCExpr! that) {
+      assert false; // not handled here      
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  internal class ReprSizeComputingVisitor
+                 : TraversingVCExprVisitor<bool,
+                                           // variables considered as global constants
+                                           IDictionary<VCExprVar!, VCExprVar!>!> {
+
+    public int Size = 0;
+
+    public void ComputeSize(VCExpr! expr,
+                            IDictionary<VCExprVar!, VCExprVar!>! globalVars) {
+      Traverse(expr, globalVars);
+    }
+    
+    protected override bool StandardResult(VCExpr! node,
+                                           IDictionary<VCExprVar!, VCExprVar!>! globalVars) {
+      VCExprVar nodeAsVar = node as VCExprVar;
+      if (nodeAsVar == null || globalVars.ContainsKey(nodeAsVar))
+        Size = Size + 1;
+      return true;      
+    }
+  }
+}

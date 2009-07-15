@@ -1,0 +1,22 @@
+test0            Use    Name resolution tests
+test1            Use    Typechecking tests
+test2            Use    VC generation
+test7            Use    Some tests for VCVariety.BlockNested
+test20           Use    Types introduced in Boogie2
+test21           Use    Verify Boogie 2 programs
+aitest0          Use    Constant propagation test
+aitest1          Use    Linear ineqality test
+aitest9          Use    Test for the abstract domain of intervals
+lock             Use    SLAM example
+test13           Use    ExistsUnique
+inline           Use    Procedure inlining
+textbook         Use    Some textbook examples
+test15           Use    Benchmarks for error messages
+bitvectors       Use    Smoke tests for bitvectors
+smoke            Use    Soundness smoke testing
+test16           Use    Tests methodology of visible-state semantics and loop unrolling
+test17           Postponed    Tests inference of parameterized contracts
+z3api            Postponed    Test for Z3 Managed .NET API prover
+houdini          Postponed    Test for Houdini decision procedure
+dafny0           Use    Dafny programs
+havoc0           Use    HAVOC-generated bpl files

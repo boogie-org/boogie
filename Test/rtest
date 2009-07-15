@@ -1,0 +1,25 @@
+#!/usr/bin/bash
+
+if [ $# -eq 0 ] ; then
+  echo "rtest: Error: Syntax: rtest testDirectory [ additionalTestArguments ... ]"
+  exit 1
+elif [ ! -d $1 ] ; then
+  echo rtest: Error: There is no test directory $1
+  exit 1
+fi
+
+TESTDIR=$1
+echo ----- Running regression test $TESTDIR
+cd $TESTDIR
+
+shift
+cmd /c .\\runtest.bat -nologo -logPrefix:$TESTDIR "$@" > Output
+# perl ../filter.pl Output Output.filtered
+# perl ../filter.pl Answer Answer.filtered
+# diff -w Answer.filtered Output.filtered > Diffs
+if c:/Windows/system32/fc /W Answer Output > /dev/null ; then
+  echo Succeeded
+else
+  echo FAILED
+fi
+cd ..

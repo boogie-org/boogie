@@ -1,0 +1,62 @@
+-------------------- arrays.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors
+-------------------- bv0.bpl --------------------
+bv0.bpl(4,3): Error: mismatched types in assignment command (cannot assign bv31 to bv32)
+bv0.bpl(5,3): Error: mismatched types in assignment command (cannot assign int to bv32)
+bv0.bpl(6,4): Error: mismatched types in assignment command (cannot assign bv1 to bv32)
+bv0.bpl(7,10): Error: start index in extract must be no bigger than the end index
+bv0.bpl(8,4): Error: mismatched types in assignment command (cannot assign bv1 to bv32)
+bv0.bpl(9,4): Error: mismatched types in assignment command (cannot assign bv1 to bv32)
+bv0.bpl(10,4): Error: mismatched types in assignment command (cannot assign concat$bvproxy#10 to bv32)
+7 type checking errors detected in bv0.bpl
+-------------------- bv1.bpl --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+-------------------- bv2.bpl --------------------
+bv2.bpl(4,13): Error: bitvector bounds in illegal position
+bv2.bpl(6,13): Error: undeclared type: x
+bv2.bpl(7,14): Error: bitvector bounds in illegal position
+3 name resolution errors detected in bv2.bpl
+-------------------- bv3.bpl --------------------
+bv3.bpl(2,5): Error: type name: bv16 is registered for bitvectors
+1 name resolution errors detected in bv3.bpl
+-------------------- bv4.bpl --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+-------------------- bv7.bpl --------------------
+bv7.bpl(4,14): Error: arguments of extract need to be integer literals
+bv7.bpl(5,15): Error: parentheses around bitvector bounds are not allowed
+2 parse errors detected in bv7.bpl
+-------------------- vcc0.bpl --------------------
+vcc0.bpl(553,22): syntax error: [ expected
+vcc0.bpl(553,28): syntax error: ] expected
+vcc0.bpl(555,29): syntax error: [ expected
+vcc0.bpl(557,28): syntax error: [ expected
+vcc0.bpl(557,37): syntax error: ] expected
+5 parse errors detected in vcc0.bpl
+-------------------- vcc0.bpl - toInt --------------------
+vcc0.bpl(553,22): syntax error: [ expected
+vcc0.bpl(553,28): syntax error: ] expected
+vcc0.bpl(555,29): syntax error: [ expected
+vcc0.bpl(557,28): syntax error: [ expected
+vcc0.bpl(557,37): syntax error: ] expected
+5 parse errors detected in vcc0.bpl
+-------------------- bv4.bpl - /bv:n --------------------
+bv4.bpl(3,6): Error: no bitvector handling specified, please use /bv:i or /bv:z flag
+bv4.bpl(3,13): Error: no bitvector handling specified, please use /bv:i or /bv:z flag
+bv4.bpl(5,6): Error: no bitvector handling specified, please use /bv:i or /bv:z flag
+bv4.bpl(5,14): Error: no bitvector handling specified, please use /bv:i or /bv:z flag
+4 type checking errors detected in bv4.bpl
+-------------------- bv5.bpl --------------------
+bv5.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    bv5.bpl(5,12): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+-------------------- bv6.bpl --------------------
+bv6.bpl(8,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    bv6.bpl(5,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

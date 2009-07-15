@@ -1,0 +1,175 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+using System.Collections.Generic;
+using Microsoft.Contracts;
+
+namespace Microsoft.Boogie
+{
+  public delegate System.Collections.IEnumerable/*<Node!>*/! Adjacency<T>(T! node);
+
+
+  // An SCC is a set of nodes
+  public sealed class SCC<Node> : ICollection<Node>
+  {
+    private IDictionary<Node,object>! nodesMap = new Dictionary<Node,object>();
+    private ICollection<Node>! nodes { get { return (!) nodesMap.Keys; } }
+    
+    [Pure] [GlobalAccess(false)] [Escapes(true,false)]
+    System.Collections.IEnumerator! System.Collections.IEnumerable.GetEnumerator()
+    {
+      return ((System.Collections.IEnumerable)nodes).GetEnumerator();
+    }
+
+    [Pure] [GlobalAccess(false)] [Escapes(true,false)]
+    IEnumerator<Node>! IEnumerable<Node>.GetEnumerator()
+    {
+      return ((IEnumerable<Node>)nodes).GetEnumerator();
+    }
+    
+    public int Count { get { return nodes.Count; } }
+    public bool IsReadOnly { get { return nodesMap.IsReadOnly; } }
+    public void Add(Node item) { nodesMap.Add(item,null); }
+    public void Clear() { nodesMap.Clear(); }
+    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    public bool Contains(Node item) { return nodesMap.ContainsKey(item); }
+    public void CopyTo(Node[]! array, int arrayIndex) { nodes.CopyTo(array, arrayIndex); }
+    public bool Remove(Node item) { return nodesMap.Remove(item); }
+  }
+
+  public sealed class StronglyConnectedComponents<Node> : IEnumerable<SCC<Node>!>
+  {
+    private readonly IDictionary<Node!,object>! graph;
+    private readonly Adjacency<Node>! preds;
+    private readonly Adjacency<Node>! succs;
+
+    private bool computed = false;
+    public bool Computed { get { return computed; } }
+    
+    [NotDelayed]
+    public StronglyConnectedComponents(System.Collections.IEnumerable/*<Node!>*/! graph, Adjacency<Node>! preds, Adjacency<Node>! succs)
+      ensures !Computed;
+    {
+      IDictionary<Node!,object>! dict = new Dictionary<Node!,object>();
+      foreach (Node! n in graph) { dict.Add(n,null); } 
+      
+      this.graph = dict;
+      this.preds = preds;
+      this.succs = succs;
+      base();
+    }
+          
+    [Pure] [GlobalAccess(false)] [Escapes(true,false)]
+    System.Collections.IEnumerator! System.Collections.IEnumerable.GetEnumerator()
+    {
+      return ((System.Collections.IEnumerable)sccs).GetEnumerator();
+    }
+
+    [Pure] [GlobalAccess(false)] [Escapes(true,false)]
+    IEnumerator<SCC<Node>!>! IEnumerable<SCC<Node>!>.GetEnumerator()
+    {
+      assume Computed;
+      return ((IEnumerable<SCC<Node>!>)sccs).GetEnumerator();
+    }
+
+    private readonly IList<SCC<Node>!>! sccs = new List<SCC<Node>!>();
+
+    public void Compute()
+      requires !Computed;
+      ensures  Computed;
+    {
+      // Compute post times on graph with edges reversed
+      this.dfsNext = this.preds;
+      foreach (Node! n in (!)graph.Keys)
+      {
+        if (!seen.ContainsKey(n))
+        {
+          OrderNodes(n);
+        }
+      }
+
+      // Clear seen
+      seen.Clear();
+
+      // Compute SCCs
+      this.dfsNext = this.succs;
+      while (postOrder.Count > 0)
+      {
+        Node! n = postOrder.Pop();
+
+        if (!seen.ContainsKey(n))
+        {
+          SCC<Node>! curr = new SCC<Node>();
+          FindSCCs(n, curr);
+          sccs.Add(curr);
+        }
+      }
+
+      // Clear seen
+      seen.Clear();
+      
+      this.computed = true;
+    }
+
+    private Adjacency<Node>/*?*/ dfsNext = null;
+
+    private readonly IDictionary<Node!,object>! seen = new Dictionary<Node!,object>();
+    private readonly Stack<Node!>! postOrder = new Stack<Node!>();
+    
+    // DFS to order nodes by post times
+    private void OrderNodes(Node! node)
+    {
+      seen.Add(node,null);
+
+      assert dfsNext != null;
+      System.Collections.IEnumerable! nexts = dfsNext(node);
+      foreach (Node! n in nexts)
+      {
+        if (graph.ContainsKey(n) && !seen.ContainsKey(n)) { OrderNodes(n); }
+      }
+
+      postOrder.Push(node);
+    }
+
+    // DFS to compute SCCs
+    private void FindSCCs(Node! node, SCC<Node>! currSCC)
+      //modifies currSCC.*;
+    {
+      seen.Add(node,null);
+      currSCC.Add(node);
+
+      assert dfsNext != null;
+      System.Collections.IEnumerable! nexts = dfsNext(node);
+      foreach (Node! n in nexts)
+      {
+        if (graph.ContainsKey(n) && !seen.ContainsKey(n)) { FindSCCs(n,currSCC); }
+      }
+    }
+
+    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    public override string! ToString()
+    {
+      string outStr = "";
+      int i = 0;
+
+      foreach(ICollection<Node> component in this) 
+      {      
+        string! tmp = System.String.Format("\nComponent #{0} = ", i++);       
+        outStr += tmp;
+
+        bool firstInRow = true;
+
+        foreach(Node b in component)
+        {
+          string! tmpComponent = System.String.Format("{0}{1}", firstInRow? "" : ", ", b);
+          outStr += tmpComponent;
+          firstInRow = false;
+        }
+      }
+      return outStr;
+    }
+
+  }
+}

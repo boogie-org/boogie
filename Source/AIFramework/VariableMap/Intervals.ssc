@@ -1,0 +1,790 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+using System;
+using System.Collections;
+using System.Compiler.Analysis;
+using Microsoft.AbstractInterpretationFramework.Collections;
+using Microsoft.Contracts;
+using Microsoft.Basetypes;
+
+/////////////////////////////////////////////////////////////////////////////////
+// An implementation of the interval abstract domain
+/////////////////////////////////////////////////////////////////////////////////
+
+namespace Microsoft.AbstractInterpretationFramework 
+{
+  public class IntervalLattice : MicroLattice 
+  {
+    readonly ILinearExprFactory! factory;
+    
+    public IntervalLattice(ILinearExprFactory! factory)
+    {
+      this.factory = factory;
+      // base();
+    }
+
+    public override bool UnderstandsBasicArithmetics
+    {   
+      get
+      {
+        return true;
+      }
+    }
+
+    public override Element! Top 
+    {
+      get 
+      {
+        return IntervalElement.Top;
+      }
+    }
+    
+    public override Element! Bottom
+    { 
+      get
+      {
+        return IntervalElement.Bottom;
+      }
+    }
+
+    /// <summary>
+    /// The paramter is the top?
+    /// </summary>
+    public override bool IsTop(Element! element)
+    {
+      IntervalElement interval = (IntervalElement) element;
+      
+      return interval.IsTop();      
+    }
+
+    /// <summary>
+    /// The parameter is the bottom?
+    /// </summary>
+    public override bool IsBottom(Element! element)
+    {
+      IntervalElement interval = (IntervalElement) element;
+      
+      return interval.IsBottom(); 
+    }
+
+    /// <summary>
+    /// The classic, pointwise, join of intervals
+    /// </summary>
+    public override Element! NontrivialJoin(Element! left, Element! right)
+    {
+      IntervalElement! leftInterval = (IntervalElement!) left;
+      IntervalElement! rightInterval = (IntervalElement) right;
+        
+      ExtendedInt inf = ExtendedInt.Inf(leftInterval.Inf, rightInterval.Inf);
+      ExtendedInt sup = ExtendedInt.Sup(leftInterval.Sup, rightInterval.Sup);
+
+      IntervalElement! join =  IntervalElement.Factory(inf, sup);
+
+      return join;    
+    }
+
+    /// <summary>
+    /// The classic, pointwise, meet of intervals
+    /// </summary>
+    public override Element! NontrivialMeet(Element! left, Element! right)
+    {
+      IntervalElement! leftInterval = (IntervalElement!) left;
+      IntervalElement! rightInterval = (IntervalElement) right;
+        
+      ExtendedInt inf = ExtendedInt.Sup(leftInterval.Inf, rightInterval.Inf);
+      ExtendedInt sup = ExtendedInt.Inf(leftInterval.Sup, rightInterval.Sup);
+
+      return IntervalElement.Factory(inf, sup);
+    }
+
+
+    /// <summary>
+    /// The very simple widening of intervals, to be improved with thresholds
+    /// left is the PREVIOUS value in the iterations and right is the NEW one
+    /// </summary>
+    public override Element! Widen(Element! left, Element! right)
+    {      
+      IntervalElement! prevInterval = (IntervalElement!) left;
+      IntervalElement! nextInterval = (IntervalElement!) right;
+  
+      ExtendedInt inf = nextInterval.Inf < prevInterval.Inf ? ExtendedInt.MinusInfinity : prevInterval.Inf;
+      ExtendedInt sup = nextInterval.Sup > prevInterval.Sup ? ExtendedInt.PlusInfinity : prevInterval.Sup;
+
+      IntervalElement widening = IntervalElement.Factory(inf, sup);
+
+      return widening;
+    }
+
+
+    /// <summary>
+    /// Return true iff the interval left is containted in right
+    /// </summary>
+    protected override bool AtMost(Element! left, Element! right)
+    {
+      IntervalElement! leftInterval = (IntervalElement!) left;
+      IntervalElement! rightInterval = (IntervalElement!) right;
+
+      if(leftInterval.IsBottom() || rightInterval.IsTop())
+        return true;
+
+      return rightInterval.Inf <= leftInterval.Inf && leftInterval.Sup <= rightInterval.Sup;
+    }
+
+    /// <summary>
+    /// Return just null
+    /// </summary>
+    public override IExpr GetFoldExpr(Element! element)
+    {
+      return null;
+    }    
+
+    /// <summary>
+    /// return a predicate inf "\leq x and x "\leq" sup (if inf [or sup] is not oo)
+    /// </summary>
+    public override IExpr! ToPredicate(IVariable! var, Element! element)
+    {
+      IntervalElement! interval = (IntervalElement!) element;      
+      IExpr lowerBound = null;
+      IExpr upperBound = null;      
+
+      if(! (interval.Inf is InfinitaryInt)) 
+      {
+        IExpr constant = this.factory.Const(interval.Inf.Value);
+        lowerBound = this.factory.AtMost(constant, var);        // inf <= var 
+      }
+      if(! (interval.Sup is InfinitaryInt))
+      {
+        IExpr constant = this.factory.Const(interval.Sup.Value);
+        upperBound = this.factory.AtMost(var, constant);       // var <= inf
+      }
+
+      if(lowerBound != null && upperBound != null)
+        return this.factory.And(lowerBound, upperBound);        // inf <= var && var <= sup         
+      else
+        if(lowerBound != null)
+          return lowerBound;
+      else 
+        if(upperBound != null)
+          return upperBound;      
+      else      // If we reach this point, both lowerBound and upperBound are null, i.e. we have no bounds on var, so we return simply true...
+          return this.factory.True;
+    }    
+
+    /// <summary>
+    /// For the moment consider just equalities. Other case must be considered
+    /// </summary>
+    public override bool Understands(IFunctionSymbol! f, IList /*<IExpr*/ ! args)
+    {          
+      return f.Equals(Microsoft.AbstractInterpretationFramework.Value.Eq);  
+    }
+
+
+    /// <summary>
+    /// Evaluate the predicate passed as input according the semantics of intervals
+    /// </summary>
+    public override Element! EvaluatePredicate(IExpr! pred)
+    {          
+      return this.EvaluatePredicateWithState(pred, null);
+    }
+   
+    /// <summary>
+    /// Evaluate the predicate passed as input according the semantics of intervals and the given state.
+    /// Right now just basic arithmetic operations are supported. A future extension may consider an implementation of boolean predicates 
+    /// </summary>
+    public override Element! EvaluatePredicateWithState(IExpr! pred, IFunctionalMap/* Var -> Element */ state)
+    {
+      if(pred is IFunApp)
+      {
+        IFunApp fun = (IFunApp) pred;
+        if(fun.FunctionSymbol.Equals(Microsoft.AbstractInterpretationFramework.Value.Eq)) // if it is a symbol of equality
+        {                     
+          IExpr! leftArg = (IExpr!) fun.Arguments[0];
+          IExpr! rightArg = (IExpr!) fun.Arguments[1];
+          if (leftArg is IVariable) {
+            return Eval(rightArg, state);
+          } else if (rightArg is IVariable) {
+            return Eval(leftArg, state);
+          }
+        }                
+      }
+      // otherwise we simply return Top
+      return IntervalElement.Top;      
+    }
+
+    /// <summary>
+    /// Evaluate the expression (that is assured to be an arithmetic expression, in the state passed as a parameter
+    /// </summary>
+    private IntervalElement! Eval(IExpr! exp, IFunctionalMap/* Var -> Element */ state)
+    {  
+
+      IntervalElement! retVal = (IntervalElement!) Top;
+
+      // Eval the expression by structural induction
+
+
+      if(exp is IVariable && state != null) // A variable
+      {
+        object lookup = state[exp];
+        if(lookup is IntervalElement)
+          retVal = (IntervalElement) lookup;
+        else
+        {    
+          retVal = (IntervalElement) Top;
+        }
+      }
+      else if(exp is IFunApp)
+      {    
+        IFunApp fun = (IFunApp) exp;      
+        
+        if(fun.FunctionSymbol is IntSymbol)   // An integer
+        {
+          IntSymbol intSymb =  (IntSymbol) fun.FunctionSymbol;
+          BigNum val = intSymb.Value;
+        
+          retVal = IntervalElement.Factory(val);
+        } 
+        else if(fun.FunctionSymbol.Equals(Int.Negate)) // An unary minus
+        {
+          IExpr! arg = (IExpr!) fun.Arguments[0];
+          IntervalElement! argEval = Eval(arg, state);
+          IntervalElement! zero = IntervalElement.Factory(BigNum.ZERO);
+          
+          retVal = zero - argEval;
+        }
+        else if(fun.Arguments.Count == 2)
+        {
+          IExpr! left = (IExpr!) fun.Arguments[0];
+          IExpr! right = (IExpr!) fun.Arguments[1];
+          
+          IntervalElement! leftVal = Eval(left, state);
+          IntervalElement! rightVal = Eval(right, state);
+
+          if(fun.FunctionSymbol.Equals(Int.Add))
+            retVal = leftVal + rightVal;
+          else if(fun.FunctionSymbol.Equals(Int.Sub))
+            retVal = leftVal - rightVal;
+          else if(fun.FunctionSymbol.Equals(Int.Mul))
+            retVal = leftVal * rightVal;
+          else if(fun.FunctionSymbol.Equals(Int.Div))
+            retVal = leftVal / rightVal;
+          else if(fun.FunctionSymbol.Equals(Int.Mod))
+            retVal = leftVal % rightVal;                
+        }
+      }  
+        
+      return retVal;
+    }
+
+    /// <summary> 
+    /// Inner class standing for an interval on integers, possibly unbounded
+    /// </summary>
+    private class IntervalElement : Element 
+    {
+        protected static readonly IntervalElement! TopInterval = new IntervalElement(new MinusInfinity(), new PlusInfinity());    // Top    = [-oo , +oo]
+        protected static readonly IntervalElement! BottomInterval = new IntervalElement(new PlusInfinity(), new MinusInfinity()); // Bottom = [+oo, -oo] 
+
+        private readonly ExtendedInt! inf;
+        private readonly ExtendedInt! sup;
+        
+        public ExtendedInt! Inf
+        {
+          get
+          {
+            return inf;
+          }
+        }
+    
+        public ExtendedInt! Sup
+        {
+          get
+          {
+            return sup;
+          }
+        }
+      
+        // Construct the inteval [val, val]
+        protected  IntervalElement(BigNum val) 
+        {
+          this.inf = this.sup = ExtendedInt.Factory(val);
+          // base();
+        }
+
+        // Construct the interval [inf, sup]
+        protected IntervalElement(BigNum infInt, BigNum supInt)
+        {
+          this.inf = ExtendedInt.Factory(infInt);
+          this.sup = ExtendedInt.Factory(supInt);
+          // base();   // to please the compiler...
+        }
+              
+        protected IntervalElement(ExtendedInt! inf, ExtendedInt! sup)
+        {
+          this.inf = inf;
+          this.sup = sup;
+          // base();
+        }
+
+        // Construct an Interval
+        public static IntervalElement! Factory(ExtendedInt! inf, ExtendedInt! sup)
+        { 
+          if(inf is MinusInfinity && sup is PlusInfinity)
+            return Top;
+          if(inf > sup)
+            return Bottom;
+          // otherwise...
+          return new IntervalElement(inf, sup);
+        }
+
+        public static IntervalElement! Factory(BigNum i)
+        {
+          return new IntervalElement(i);
+        }
+
+        public static IntervalElement! Factory(BigNum inf, BigNum sup)
+        {
+          ExtendedInt! i = ExtendedInt.Factory(inf);
+          ExtendedInt! s = ExtendedInt.Factory(sup);
+
+          return Factory(i, s);
+        }
+
+        static public IntervalElement! Top
+        {
+          get
+          {
+            return TopInterval;
+          }
+        } 
+
+        static public IntervalElement! Bottom
+        {
+          get
+          {
+            return BottomInterval;
+          }
+        }
+
+        public bool IsTop()
+        {
+          return this.inf is MinusInfinity && this.sup is PlusInfinity;
+        }
+
+        public bool IsBottom()
+        {
+          return this.inf > this.sup;
+        }
+
+        #region Below are the arithmetic operations lifted to intervals 
+
+        // Addition
+        public static IntervalElement! operator+(IntervalElement! a, IntervalElement! b) 
+        {
+          ExtendedInt! inf = a.inf + b.inf;
+          ExtendedInt! sup = a.sup + b.sup;
+
+          return Factory(inf, sup);                      
+        }
+
+         // Subtraction
+        public static IntervalElement! operator-(IntervalElement! a, IntervalElement! b) 
+        {             
+          ExtendedInt! inf = a.inf - b.sup;
+          ExtendedInt! sup = a.sup - b.inf;
+
+          IntervalElement! sub = Factory(inf, sup);                      
+
+          return sub;
+        }       
+
+        // Multiplication
+        public static IntervalElement! operator*(IntervalElement! a, IntervalElement! b)
+        {
+          ExtendedInt! infinf = a.inf * b.inf;
+          ExtendedInt! infsup = a.inf * b.sup;
+          ExtendedInt! supinf = a.sup * b.inf;
+          ExtendedInt! supsup = a.sup * b.sup;
+
+          ExtendedInt! inf = ExtendedInt.Inf(infinf, infsup, supinf, supsup);
+          ExtendedInt! sup = ExtendedInt.Sup(infinf, infsup, supinf, supsup);
+
+          return Factory(inf, sup);
+        }
+
+        // Division
+        public static IntervalElement! operator/(IntervalElement! a, IntervalElement! b)
+        {
+          if(b.inf.IsZero && b.sup.IsZero)   //  Check division by zero
+            return IntervalElement.Top;
+
+          ExtendedInt! infinf = a.inf / b.inf;
+          ExtendedInt! infsup = a.inf / b.sup;
+          ExtendedInt! supinf = a.sup / b.inf;
+          ExtendedInt! supsup = a.sup / b.sup;
+
+          ExtendedInt! inf = ExtendedInt.Inf(infinf, infsup, supinf, supsup);
+          ExtendedInt! sup = ExtendedInt.Sup(infinf, infsup, supinf, supsup);
+
+          return Factory(inf, sup);
+        }
+
+        // Division
+        public static IntervalElement! operator%(IntervalElement! a, IntervalElement! b)
+        {
+          if(b.inf.IsZero && b.sup.IsZero)   //  Check division by zero
+            return IntervalElement.Top;
+
+          ExtendedInt! infinf = a.inf % b.inf;
+          ExtendedInt! infsup = a.inf % b.sup;
+          ExtendedInt! supinf = a.sup % b.inf;
+          ExtendedInt! supsup = a.sup % b.sup;
+
+          ExtendedInt inf = ExtendedInt.Inf(infinf, infsup, supinf, supsup);
+          ExtendedInt sup = ExtendedInt.Sup(infinf, infsup, supinf, supsup);
+
+          return Factory(inf, sup);
+        }
+
+        #endregion
+
+        #region Overriden methods
+
+        public override Element! Clone()
+        {
+          // Real copying should not be needed because intervals are immutable?
+		  return this;
+		  /*
+          int valInf = this.inf.Value;
+          int valSup = this.sup.Value;
+
+          ExtendedInt clonedInf = ExtendedInt.Factory(valInf);
+          ExtendedInt clonedSup = ExtendedInt.Factory(valSup);
+
+          return Factory(clonedInf, clonedSup);
+          */
+        }
+
+        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        public override System.Collections.Generic.ICollection<IVariable!>! FreeVariables()
+        {
+          return (!) (new System.Collections.Generic.List<IVariable!>()).AsReadOnly();
+        }
+
+        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        public override string! ToString() 
+        {
+          return "[" + this.inf + ", " + this.sup + "]";
+        }
+
+        #endregion
+    }
+}
+
+    
+  /// The interface for an extended integer
+  abstract class ExtendedInt 
+  {
+    private static readonly PlusInfinity! cachedPlusInf = new PlusInfinity();
+    private static readonly MinusInfinity! cachedMinusInf = new MinusInfinity();
+
+    static public ExtendedInt! PlusInfinity
+    {
+      get
+      {
+        return cachedPlusInf;
+      }
+    }
+
+    static public ExtendedInt! MinusInfinity
+    {
+      get
+      {
+        return cachedMinusInf;
+      } 
+    }
+
+    public abstract BigNum Value { get; }
+
+    public abstract int Signum { get; }
+
+    public bool IsZero {
+      get {
+        return Signum == 0;
+      }
+    }
+
+    public bool IsPositive {
+      get {
+        return Signum > 0;
+      }
+    }
+
+    public bool IsNegative {
+      get {
+        return Signum < 0;
+      }
+    }
+
+
+    #region Below are the extensions of arithmetic operations on extended integers
+
+    // Addition
+    public static ExtendedInt! operator+(ExtendedInt! a, ExtendedInt! b)
+    {
+        if (a is InfinitaryInt) {
+          return a;
+        } else if (b is InfinitaryInt) {
+          return b;
+        } else {
+          return ExtendedInt.Factory(a.Value + b.Value);
+        }
+    }
+
+    // Subtraction
+    public static ExtendedInt! operator-(ExtendedInt! a, ExtendedInt! b)
+    {
+        if (a is InfinitaryInt) {
+          return a;
+        } else if (b is InfinitaryInt) {
+          return UnaryMinus(b);
+        } else {
+          return ExtendedInt.Factory(a.Value - b.Value);
+        }
+    }  
+  
+    // Unary minus
+    public static ExtendedInt! operator-(ExtendedInt! a)
+    {
+      // BUGBUG: Some compiler error prevents the unary minus operator from being used
+      return UnaryMinus(a);
+    }
+
+    // Unary minus
+    public static ExtendedInt! UnaryMinus(ExtendedInt! a)
+    {
+      if(a is PlusInfinity)
+        return cachedMinusInf;
+      if(a is MinusInfinity)
+        return cachedPlusInf;
+      else // a is a PureInteger
+        return new PureInteger(-a.Value);
+    }
+
+    // Multiplication
+    public static ExtendedInt! operator*(ExtendedInt! a, ExtendedInt! b)        
+    {
+        if (a.IsZero) {
+          return a;
+        } else if (b.IsZero) {
+          return b;
+        } else if (a is InfinitaryInt) {
+          if (b.IsPositive) {
+            return a;
+          } else {
+            return UnaryMinus(a);
+          }
+        } else if (b is InfinitaryInt) {
+          if (a.IsPositive) {
+            return b;
+          } else {
+            return UnaryMinus(b);
+          }
+        } else {
+          return ExtendedInt.Factory(a.Value * b.Value);
+        }
+    }    
+
+    // Division
+    public static ExtendedInt! operator/(ExtendedInt! a, ExtendedInt! b)  
+    {
+        if(b.IsZero) 
+        {
+          return a.IsPositive? (ExtendedInt) cachedPlusInf : cachedMinusInf;
+        }
+        if (a is InfinitaryInt) {
+          return a;
+        } else if (b is InfinitaryInt) {
+          return b;
+        } else {
+          return ExtendedInt.Factory(a.Value / b.Value);
+        }
+    }
+
+    // Modulo
+    public static ExtendedInt! operator%(ExtendedInt! a, ExtendedInt! b)     
+    {
+        if(b.IsZero) 
+        {
+          return a.IsPositive? (ExtendedInt) cachedPlusInf : cachedMinusInf;
+        } 
+        if (a is InfinitaryInt) {
+          return a;
+        } else if (b is InfinitaryInt) {
+          return b;
+        } else {
+          return ExtendedInt.Factory(a.Value % b.Value);
+        }
+    }
+
+    #endregion
+
+    #region Inf and Sup operations
+
+    public abstract int CompareTo(ExtendedInt! that);
+
+    public static bool operator<(ExtendedInt! inf, ExtendedInt! sup)
+    {
+      return inf.CompareTo(sup) < 0;
+    }
+
+    public static bool operator>(ExtendedInt! inf, ExtendedInt! sup)
+    {
+      return inf.CompareTo(sup) > 0;
+    }
+
+    public static bool operator<=(ExtendedInt! inf, ExtendedInt! sup)
+    {
+      return inf.CompareTo(sup) <= 0;
+    }
+
+    public static bool operator>=(ExtendedInt! inf, ExtendedInt! sup)
+      requires inf != null && sup != null;
+    {
+      return inf.CompareTo(sup) >= 0;
+    }
+
+    public static ExtendedInt! Inf(ExtendedInt! inf, ExtendedInt! sup)
+    {
+      if(inf < sup)
+        return inf;
+      else
+        return sup;
+    }
+
+    public static ExtendedInt! Inf(ExtendedInt! a, ExtendedInt! b, ExtendedInt! c, ExtendedInt! d)
+    {
+      ExtendedInt! infab = Inf(a,b);
+      ExtendedInt! infcd = Inf(c,d);
+
+      return Inf(infab, infcd);
+    }
+  
+    public static ExtendedInt! Sup(ExtendedInt! inf, ExtendedInt! sup)
+    {
+      if(inf > sup)
+        return inf;
+      else
+        return sup;
+    }  
+
+    public static ExtendedInt! Sup(ExtendedInt! a, ExtendedInt! b, ExtendedInt! c, ExtendedInt! d)
+    {
+      ExtendedInt! supab = Sup(a,b);
+      ExtendedInt! supcd = Sup(c,d);
+
+      return Sup(supab, supcd);
+    }
+
+    #endregion
+
+    // Return the ExtendedInt corresponding to the value
+    public static ExtendedInt! Factory(BigNum val) 
+    {
+      return new PureInteger(val);
+    }
+ }
+
+  // Stands for a normal (finite) integer x
+  class  PureInteger : ExtendedInt
+  {    
+    public PureInteger(BigNum i)
+    {
+      this.val = i;
+    }
+
+    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    public override string! ToString()
+    {
+      return this.Value.ToString();
+    }
+
+    private BigNum val;
+    public override BigNum Value {
+      get 
+      {
+        return this.val;
+      }
+    }
+
+    public override int Signum {
+		get {
+			return val.Signum;
+		}
+	}
+
+    public override int CompareTo(ExtendedInt! that) {
+		if (that is PlusInfinity)
+			return -1;
+		else if (that is PureInteger)
+			return this.Value.CompareTo(that.Value);
+		else // then that is a MinusInfinity
+			return 1;
+	}
+  }
+
+  abstract class InfinitaryInt : ExtendedInt 
+  {
+    public override BigNum Value 
+    {
+      get {
+        throw new InvalidOperationException();
+      }
+    }
+  }
+
+  class PlusInfinity : InfinitaryInt
+  {
+    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    public override string! ToString()
+    {
+      return "+oo";
+    }
+
+    public override int Signum {
+		get {
+			return 1;
+		}
+	}
+
+    public override int CompareTo(ExtendedInt! that) {
+		if (that is PlusInfinity)
+			return 0;
+		else
+		    return 1;
+	}
+  }
+
+  class MinusInfinity : InfinitaryInt
+  {
+    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    public override string! ToString()
+    {
+      return "-oo";
+    }
+
+    public override int Signum {
+		get {
+			return -1;
+		}
+	}
+
+    public override int CompareTo(ExtendedInt! that) {
+		if (that is MinusInfinity)
+			return 0;
+		else
+		    return -1;
+	}
+  }
+}

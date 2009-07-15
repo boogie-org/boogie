@@ -1,0 +1,926 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+namespace Microsoft.AbstractInterpretationFramework
+{
+    using Microsoft.Contracts;
+    using System.Collections;
+    using Microsoft.SpecSharp.Collections;
+	using Microsoft.Basetypes;
+
+    /// <summary>
+    ///  A basic class for function symbols.
+    /// </summary>
+    public class FunctionSymbol : IFunctionSymbol
+    {
+        private readonly string! display;
+        private readonly AIType! typ;
+
+        public FunctionSymbol(AIType! typ)
+        : this("FunctionSymbol", typ)
+        {
+        }
+
+        internal FunctionSymbol(string! display, AIType! typ)
+        {
+            this.display = display;
+            this.typ = typ;
+            //            base();
+        }
+
+//        public AIType! AIType { [Pure][Reads(ReadsAttribute.Reads.Owned)] get { return typ; } }
+        public AIType! AIType { [Pure][Reads(ReadsAttribute.Reads.Owned)] get { return typ; } }
+
+        [NoDefaultContract]
+        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        public override string! ToString()
+        {
+            return display;
+        }
+
+    }
+    
+    /// <summary>
+    ///  A class for integer constants.
+    /// </summary>
+    public class IntSymbol : FunctionSymbol
+    {
+        public readonly BigNum Value;
+        
+        /// <summary>
+        /// The intention is that this constructor be called only from the Int.Const method.
+        /// </summary>
+        internal IntSymbol(BigNum x)
+        : base((!)x.ToString(), Int.Type)
+        {
+            this.Value = x;
+        }
+
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+        public override bool Equals(object other)
+        {
+            IntSymbol isym = other as IntSymbol;
+            return isym != null && isym.Value.Equals(this.Value);
+        }
+        
+        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
+    }
+
+    /// <summary>
+    ///  A class for bitvector constants.
+    /// </summary>
+    public class BvSymbol : FunctionSymbol
+    {
+        public readonly BigNum Value;
+        public readonly int Bits;
+        
+        /// <summary>
+        /// The intention is that this constructor be called only from the Int.Const method.
+        /// </summary>
+        internal BvSymbol(BigNum x, int y)
+        : base(x + "bv" + y, Bv.Type)
+        {
+            this.Value = x;
+            this.Bits = y;
+        }
+
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+        public override bool Equals(object other)
+        {
+            BvSymbol isym = other as BvSymbol;
+            return isym != null && isym.Value == this.Value && isym.Bits == this.Bits;
+        }
+        
+        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        public override int GetHashCode()
+        {
+            unchecked {
+              return Value.GetHashCode() ^ Bits;
+            }
+        }
+    }
+
+    public class DoubleSymbol : FunctionSymbol
+    {
+        public readonly double Value;
+        
+        /// <summary>
+        /// The intention is that this constructor be called only from the Double.Const method.
+        /// </summary>
+        internal DoubleSymbol(double x)
+        : base((!)x.ToString(), Double.Type)
+        {
+            this.Value = x;
+        }
+        
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+        public override bool Equals(object other)
+        {
+            DoubleSymbol dsym = other as DoubleSymbol;
+            return dsym != null && dsym.Value == this.Value;
+        }
+
+        [Pure][Reads(ReadsAttribute.Reads.Owned)] 
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
+    }
+
+    /// <summary>
+    ///  Function symbol based on a string.  Uses the string equality for determining equality
+    ///  of symbol.
+    /// </summary>
+    public class NamedSymbol : FunctionSymbol
+    {
+        public string! Value { [NoDefaultContract] get { return (!) this.ToString(); } }
+
+        public NamedSymbol(string! symbol, AIType! typ)
+        : base(symbol, typ)
+        {
+        }
+
+        [NoDefaultContract]
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+        public override bool Equals(object other)
+        {
+            NamedSymbol nsym = other as NamedSymbol;
+            return nsym != null && this.Value.Equals(nsym.Value);
+        }
+
+        [NoDefaultContract]
+        [Pure][Reads(ReadsAttribute.Reads.Owned)] 
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
+    }
+
+    //
+    // In the following, the classes like Value and Prop serve two
+    // roles.  The primary role is to be the base types for AIType. 
+    // The only objects of these classes are the representative
+    // objects that denote an AIType, which are given by the
+    // "Type" property.  Subtypes in the AIType language are
+    // encoded by subclassing.  This yields some "higher-orderness"
+    // for checking subtyping in the AIType language, by using
+    // the Spec#/C# subclassing checks.
+    //
+    // The other role is simply as a module for collecting like function
+    // symbols.
+    //
+
+    //-------------------------- Terms ----------------------------------
+
+    /// <summary>
+    ///  A class with the equality symbol and the ValueType.Type.
+    /// </summary>
+    public class Value : AIType
+    {
+        private static readonly AIType! valtype = new Value();
+        public static AIType! Type { get { return valtype; } }
+
+        private static readonly FunctionType[]! funtypeCache = new FunctionType[5];
+        public static FunctionType! FunctionType(int inParameterCount)
+            requires 0 <= inParameterCount;
+            // ensures result.Arity == inParameterCount;
+        {
+            FunctionType result;
+            if (inParameterCount < funtypeCache.Length) {
+                result = funtypeCache[inParameterCount];
+                if (result != null) {
+                    return result;
+                }
+            }
+            AIType[] signature = new AIType[1 + inParameterCount];
+            for (int i = 0; i < signature.Length; i++) {
+                signature[i] = valtype;
+            }
+            result = new FunctionType(signature);
+            if (inParameterCount < funtypeCache.Length) {
+                funtypeCache[inParameterCount] = result;
+            }
+            return result;
+        }
+
+        [Once] private static AIType! binreltype;
+        private static AIType! BinrelType {
+          get {
+            if (binreltype == null) {
+              binreltype = new FunctionType(Type, Type, Prop.Type);
+            }
+            return binreltype;
+          }
+        }
+
+        [Once] private static FunctionSymbol! _eq;
+        public static FunctionSymbol! Eq {
+          get {
+            if (_eq == null) {
+              _eq = new FunctionSymbol("=", BinrelType);
+            }
+            return _eq;
+          }
+        }
+        [Once] private static FunctionSymbol! _neq;
+        public static FunctionSymbol! Neq {
+          get {
+            if (_neq == null) {
+              _neq = new FunctionSymbol("!=", BinrelType);
+            }
+            return _neq;
+          }
+        }
+        [Once] private static FunctionSymbol! _subtype;
+        public static FunctionSymbol! Subtype {
+          get {
+            if (_subtype == null) {
+              _subtype = new FunctionSymbol("<:", BinrelType);
+            }
+            return _subtype;
+          }
+        }
+
+        [Once] private static AIType! typeof_type;
+        private static AIType! TypeofType {
+          get {
+            if (typeof_type == null) {
+              typeof_type = new FunctionType(Ref.Type, Type);
+            }
+            return typeof_type;
+          }
+        }
+        [Once] private static FunctionSymbol! _typeof;
+        public static FunctionSymbol! Typeof {
+          get {
+            if (_typeof == null) {
+              _typeof = new FunctionSymbol("typeof", TypeofType);
+            }
+            return _typeof;
+          }
+        }
+
+        /// <summary>
+        /// Value should not be instantiated from the outside, except perhaps in
+        /// subclasses.
+        /// </summary>
+        protected Value() { }
+ 
+    }
+
+    public class Int : Value
+    {
+        private static readonly AIType! inttype = new Int();
+        public static AIType! Type { get { return inttype; } }
+        
+        private static readonly AIType! unaryinttype = new FunctionType(Type, Type);
+        private static readonly AIType! bininttype = new FunctionType(Type, Type, Type);
+        private static readonly AIType! relationtype = new FunctionType(Type, Type, Prop.Type);
+
+        private static readonly FunctionSymbol! _negate = new FunctionSymbol("~", unaryinttype);
+        private static readonly FunctionSymbol! _add = new FunctionSymbol("+", bininttype);
+        private static readonly FunctionSymbol! _sub = new FunctionSymbol("-", bininttype);
+        private static readonly FunctionSymbol! _mul = new FunctionSymbol("*", bininttype);
+        private static readonly FunctionSymbol! _div = new FunctionSymbol("/", bininttype);
+        private static readonly FunctionSymbol! _mod = new FunctionSymbol("%", bininttype);
+        private static readonly FunctionSymbol! _atmost = new FunctionSymbol("<=", relationtype);
+        private static readonly FunctionSymbol! _less = new FunctionSymbol("<", relationtype);
+        private static readonly FunctionSymbol! _greater = new FunctionSymbol(">", relationtype);
+        private static readonly FunctionSymbol! _atleast = new FunctionSymbol(">=", relationtype);
+
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Negate { get { return _negate; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Add { get { return _add; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Sub { get { return _sub; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Mul { get { return _mul; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Div { get { return _div; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Mod { get { return _mod; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! AtMost { get { return _atmost; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Less { get { return _less; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Greater { get { return _greater; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! AtLeast { get { return _atleast; } }
+
+        public static IntSymbol! Const(BigNum x)
+        {
+            // We could cache things here, but for now we don't.
+            return new IntSymbol(x);
+        }
+
+        /// <summary>
+        /// Int should not be instantiated from the outside, except perhaps in
+        /// subclasses.
+        /// </summary>
+        private Int() { }
+    }
+
+    public class Double : Value
+    {
+        private static readonly AIType! doubletype = new Double();
+        public static AIType! Type { get { return doubletype; } }
+        
+        public static DoubleSymbol! Const(double x)
+        {
+            // We could cache things here, but for now we don't.
+            return new DoubleSymbol(x);
+        }
+
+        /// <summary>
+        /// Double should not be instantiated from the outside, except perhaps in
+        /// subclasses.
+        /// </summary>
+        private Double() { }
+    }
+
+    public class Bv : Value
+    {
+        private static readonly AIType! bvtype = new Bv();
+        public static AIType! Type { get { return bvtype; } }
+        
+        private static readonly AIType! unaryinttype = new FunctionType(Type, Type);
+        private static readonly AIType! bininttype = new FunctionType(Type, Type, Type);
+        private static readonly AIType! relationtype = new FunctionType(Type, Type, Prop.Type);
+
+        private static readonly FunctionSymbol! _negate = new FunctionSymbol("~", unaryinttype);
+        private static readonly FunctionSymbol! _add = new FunctionSymbol("+", bininttype);
+        private static readonly FunctionSymbol! _sub = new FunctionSymbol("-", bininttype);
+        private static readonly FunctionSymbol! _mul = new FunctionSymbol("*", bininttype);
+        private static readonly FunctionSymbol! _div = new FunctionSymbol("/", bininttype);
+        private static readonly FunctionSymbol! _mod = new FunctionSymbol("%", bininttype);
+        private static readonly FunctionSymbol! _concat = new FunctionSymbol("$concat", bininttype);
+        private static readonly FunctionSymbol! _extract = new FunctionSymbol("$extract", unaryinttype);
+        private static readonly FunctionSymbol! _atmost = new FunctionSymbol("<=", relationtype);
+        private static readonly FunctionSymbol! _less = new FunctionSymbol("<", relationtype);
+        private static readonly FunctionSymbol! _greater = new FunctionSymbol(">", relationtype);
+        private static readonly FunctionSymbol! _atleast = new FunctionSymbol(">=", relationtype);
+
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Negate { get { return _negate; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Add { get { return _add; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Sub { get { return _sub; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Mul { get { return _mul; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Div { get { return _div; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Mod { get { return _mod; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! AtMost { get { return _atmost; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Less { get { return _less; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Greater { get { return _greater; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! AtLeast { get { return _atleast; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Extract { get { return _extract; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Concat { get { return _concat; } }
+
+        public static BvSymbol! Const(BigNum x, int y)
+        {
+            // We could cache things here, but for now we don't.
+            return new BvSymbol(x, y);
+        }
+
+        /// <summary>
+        /// Int should not be instantiated from the outside, except perhaps in
+        /// subclasses.
+        /// </summary>
+        private Bv() { }
+    }
+
+    public class Ref : Value
+    {
+        private static readonly AIType! reftype = new Ref();
+        public static AIType! Type { get { return reftype; } }
+
+        private static readonly FunctionSymbol! _null = new FunctionSymbol("null", Type);
+
+        public static FunctionSymbol! Null { get { return _null; } }
+
+        /// <summary>
+        /// Ref should not be instantiated from the outside, except perhaps in
+        /// subclasses.
+        /// </summary>
+        private Ref() { }
+    }
+
+    public class HeapStructure : Value
+    {
+        private static readonly AIType! reftype = new HeapStructure();
+        public static AIType! Type { get { return reftype; } }
+        
+
+
+        /// <summary>
+        /// HeapStructure should not be instantiated from the outside, except perhaps in
+        /// subclasses.
+        /// </summary>
+        private HeapStructure() { }
+    }
+
+    public class FieldName : Value
+    {
+        private static readonly AIType! fieldnametype = new FieldName();
+        public static AIType! Type { get { return fieldnametype; } }
+
+        private static readonly FunctionSymbol! _allocated = new FunctionSymbol("$allocated", FieldName.Type);
+        public static FunctionSymbol! Allocated { get { return _allocated; } }
+
+        /// <summary>
+        /// Is this a boolean field that monotonically goes from false to true?
+        /// </summary>
+        public static bool IsBooleanMonotonicallyWeakening(IFunctionSymbol! f)
+        {
+            return f.Equals(Allocated);
+        }
+
+        /// <summary>
+        /// FieldName should not be instantiated from the outside, except perhaps in
+        /// subclasses.
+        /// </summary>
+        private FieldName() { }
+    }
+
+    public class Heap : Value
+    {
+        private static readonly AIType! heaptype = new Heap();
+        public static AIType! Type { get { return heaptype; } }
+
+        // the types in the following, select1, select2, are hard-coded; 
+        // these types may not always be appropriate
+        private static readonly FunctionSymbol! _select1 = new FunctionSymbol("sel1",
+            // Heap x FieldName -> Prop
+            new FunctionType(Type, FieldName.Type, Prop.Type)
+        );
+        public static FunctionSymbol! Select1 { get { return _select1; } }
+
+        private static readonly FunctionSymbol! _select2 = new FunctionSymbol("sel2",
+            // Heap x Ref x FieldName -> Value
+            new FunctionType(Type, Ref.Type, FieldName.Type, Value.Type)
+        );
+        public static FunctionSymbol! Select2 { get { return _select2; } }
+
+        // the types in the following, store1, store2, are hard-coded; 
+        // these types may not always be appropriate
+        private static readonly FunctionSymbol! _update1 = new FunctionSymbol("upd1",
+            // Heap x FieldName x Value -> Heap
+            new FunctionType(Type, FieldName.Type, Value.Type, Type)
+        );
+        public static FunctionSymbol! Update1 { get { return _update1; } }
+
+        private static readonly FunctionSymbol! _update2 = new FunctionSymbol("upd2",
+            // Heap x Ref x FieldName x Value -> Heap
+            new FunctionType(Type, Ref.Type, FieldName.Type, Value.Type, Type)
+        );
+        public static FunctionSymbol! Update2 { get { return _update2; } }
+
+        private static readonly FunctionSymbol! _unsupportedHeapOp =
+            new FunctionSymbol("UnsupportedHeapOp",
+            // Heap x FieldName -> Prop
+            new FunctionType(Type, FieldName.Type, Prop.Type)
+        );
+        public static FunctionSymbol! UnsupportedHeapOp { get { return _unsupportedHeapOp; } }
+
+        /// <summary>
+        /// Heap should not be instantiated from the outside, except perhaps in
+        /// subclasses.
+        /// </summary>
+        private Heap() { }
+    }
+
+//    public class List : Value
+//    {
+//        private static IDictionary/*<AIType!,AIType!>*/! lists = new Hashtable();
+//        public static AIType! Type(AIType! typeParameter)
+//        {
+//            if (lists.Contains(typeParameter))
+//                return lists[typeParameter];
+//            else
+//            {
+//                AIType! result = new List(typeParameter);
+//                lists[typeParameter] = result;
+//                return result;
+//            }
+//        }
+//
+//        private static IDictionary/*<AIType!,AIType!>*/! nils = new Hashtable();
+//        public static FunctionSymbol! Nil(AIType! typeParameter)
+//        {
+//            if (nils.Contains(typeParameter))
+//                return nils[typeParameter];
+//            else
+//            {
+//                FunctionSymbol! result = new FunctionSymbol(Type(typeParameter));
+//                nils[typeParameter] = result;
+//                return result;
+//            }
+//        }
+//
+//        private static IDictionary/*<AIType!,AIType!>*/! cons = new Hashtable();
+//        public static FunctionSymbol! Cons(AIType! typeParameter)
+//        {
+//            if (cons.Contains(typeParameter))
+//                return cons[typeParameter];
+//            else
+//            {
+//                FunctionSymbol! result = new FunctionSymbol(
+//                    new FunctionType(typeParameter, Type(typeParameter), Type(typeParameter))
+//                );
+//                cons[typeParameter] = result;
+//                return result;
+//            }
+//        }
+//
+//        private AIType! typeParameter;
+//        public AIType! TypeParameter { get { return typeParameter; } }
+//
+//        /// <summary>
+//        /// List should not be instantiated from the outside.
+//        /// </summary>
+//        private List(AIType! typeParameter)
+//        {
+//            this.typeParameter = typeParameter;
+//        }
+//    }
+//
+//    public class Pair : Value
+//    {
+//        private static IDictionary! pairs = new Hashtable();
+//        public static AIType! Type(AIType! type1, AIType! type2)
+//        {
+//            Microsoft.AbstractInterpretationFramework.Collections.Pair typpair
+//                = new Microsoft.AbstractInterpretationFramework.Collections.Pair(type1, type2);
+//
+//            if (pairs.Contains(typpair))
+//                return pairs[typpair];
+//            else
+//            {
+//                AIType! result = new Pair(type1, type2);
+//                pairs[typpair] = result;
+//                return result;
+//            }
+//        }
+//
+//        private static IDictionary! constructs = new Hashtable();
+//        public static FunctionSymbol! Pair(AIType! type1, AIType! type2)
+//        {
+//            Microsoft.AbstractInterpretationFramework.Collections.Pair typpair
+//                = new Microsoft.AbstractInterpretationFramework.Collections.Pair(type1, type2);
+//
+//            if (constructs.Contains(typpair))
+//                return constructs[typpair];
+//            else
+//            {
+//                FunctionSymbol! result = new FunctionSymbol(
+//                    new FunctionType(type1, type2, Type(type1, type2))
+//                );
+//                constructs[typpair] = result;
+//                return result;
+//            }
+//        }
+//
+//        protected AIType! type1;
+//        protected AIType! type2;
+//
+//        public AIType! Type1 { get { return type1; } }
+//        public AIType! Type2 { get { return type2; } }
+//
+//        /// <summary>
+//        /// Pair should not be instantiated from the outside, except by subclasses.
+//        /// </summary>
+//        protected Pair(AIType! type1, AIType! type2)
+//        {
+//            this.type1 = type1;
+//            this.type2 = type2;
+//        }
+//    }
+
+    //-------------------------- Propositions ---------------------------
+
+
+    /// <summary>
+    ///  A class with global propositional symbols and the Prop.Type.
+    /// </summary>
+    public sealed class Prop : AIType
+    {
+        private static readonly AIType! proptype = new Prop();
+        public static AIType! Type { get { return proptype; } }
+
+        private static readonly AIType! unaryproptype = new FunctionType(Type, Type);
+        private static readonly AIType! binproptype = new FunctionType(Type, Type, Type);
+        private static readonly AIType! quantifiertype =
+            new FunctionType(new FunctionType(Value.Type, Type), Type);
+
+        private static readonly FunctionSymbol! _false = new FunctionSymbol("false", Type);
+        private static readonly FunctionSymbol! _true = new FunctionSymbol("true", Type);
+        private static readonly FunctionSymbol! _not = new FunctionSymbol("!", unaryproptype);
+        private static readonly FunctionSymbol! _and = new FunctionSymbol("/\\", binproptype);
+        private static readonly FunctionSymbol! _or = new FunctionSymbol("\\/", binproptype);
+        private static readonly FunctionSymbol! _implies = new FunctionSymbol("==>", binproptype);
+        private static readonly FunctionSymbol! _exists = new FunctionSymbol("Exists", quantifiertype);
+        private static readonly FunctionSymbol! _forall = new FunctionSymbol("Forall", quantifiertype);
+
+
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! False { get { return _false; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! True { get { return _true; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Not { get { return _not; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! And { [Pure] get { return _and; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Or { get { return _or; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Implies { get { return _implies; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Exists { get { return _exists; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Forall { get { return _forall; } }
+
+
+        /// <summary>
+        ///  Prop should not be instantiated from the outside.
+        /// </summary>
+        private Prop() { }
+
+
+
+        //
+        // Utility Methods
+        //
+        
+        public static IExpr! SimplifiedAnd(IPropExprFactory! factory, IExpr! e0, IExpr! e1)
+        {
+            IFunApp fun0 = e0 as IFunApp;
+            if (fun0 != null)
+            {
+                if (fun0.FunctionSymbol.Equals(Prop.True))
+                {
+                    return e1;
+                }
+                else if (fun0.FunctionSymbol.Equals(Prop.False))
+                {
+                    return e0;
+                }
+            }
+            
+            IFunApp fun1 = e1 as IFunApp;
+            if (fun1 != null)
+            {
+                if (fun1.FunctionSymbol.Equals(Prop.True))
+                {
+                    return e0;
+                }
+                else if (fun1.FunctionSymbol.Equals(Prop.False))
+                {
+                    return e1;
+                }
+            }
+            
+            return factory.And(e0, e1);
+        }
+        
+        public static IExpr! SimplifiedAnd(IPropExprFactory! factory, IEnumerable/*<IExpr!>*/! exprs)
+        {
+            IExpr! result = factory.True;
+            foreach (IExpr! conjunct in exprs)
+            {
+                result = SimplifiedAnd(factory, result, conjunct);
+            }
+            return result;
+        }
+
+        public static IExpr! SimplifiedOr(IPropExprFactory! factory, IExpr! e0, IExpr! e1)
+        {
+            IFunApp fun0 = e0 as IFunApp;
+            if (fun0 != null)
+            {
+                if (fun0.FunctionSymbol.Equals(Prop.False))
+                {
+                    return e1;
+                }
+                else if (fun0.FunctionSymbol.Equals(Prop.True))
+                {
+                    return e0;
+                }
+            }
+            
+            IFunApp fun1 = e1 as IFunApp;
+            if (fun1 != null)
+            {
+                if (fun1.FunctionSymbol.Equals(Prop.False))
+                {
+                    return e0;
+                }
+                else if (fun1.FunctionSymbol.Equals(Prop.True))
+                {
+                    return e1;
+                }
+            }
+            
+            return factory.Or(e0, e1);
+        }
+        
+        public static IExpr! SimplifiedOr(IPropExprFactory! factory, IEnumerable/*<IExpr!>*/! exprs)
+        {
+            IExpr! result = factory.False;
+            foreach (IExpr! disj in exprs)
+            {
+                result = SimplifiedOr(factory, result, disj);
+            }
+            return result;
+        }
+
+
+
+        /// <summary>
+        ///  Break top-level conjuncts into a list of sub-expressions.
+        /// </summary>
+        /// <param name="e">The expression to examine.</param>
+        /// <returns>A list of conjuncts.</returns>
+        internal static IList/*<IExpr!>*/! BreakConjuncts(IExpr! e)
+          ensures forall{ IExpr sub in result; sub is IFunApp ==> !((IFunApp) sub).FunctionSymbol.Equals(Prop.And) };
+        {
+            return BreakJuncts(e, Prop.And);
+        }
+
+        /// <summary>
+        ///  Break top-level disjuncts into a list of sub-expressions.
+        /// </summary>
+        /// <param name="e">The expression to examine.</param>
+        /// <returns>A list of conjuncts.</returns>
+        internal static IList/*<IExpr!>*/! BreakDisjuncts(IExpr! e)
+          ensures forall{ IExpr sub in result; sub is IFunApp ==> !((IFunApp) sub).FunctionSymbol.Equals(Prop.Or) };
+        {
+            return BreakJuncts(e, Prop.Or);
+        }
+        
+        private static IList/*<IExpr!>*/! BreakJuncts(IExpr! e, IFunctionSymbol! sym)
+          ensures forall{ IExpr sub in result; sub is IFunApp ==> !((IFunApp) sub).FunctionSymbol.Equals(sym) };
+        {
+            ArrayList/*<IExpr!>*/! result = new ArrayList();
+
+            IFunApp f = e as IFunApp;
+            if (f != null)
+            {
+                // If it is a sym, go down into sub-expressions.
+                if (f.FunctionSymbol.Equals(sym))
+                {
+                    foreach (IExpr! arg in f.Arguments)
+                    {
+                        result.AddRange(BreakJuncts(arg,sym));
+                    }
+                }
+                // Otherwise, stop.
+                else
+                {
+                    result.Add(e);
+                }
+            }
+            else
+            {
+                result.Add(e);
+            }
+
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// A callback to produce a function body given the bound variable.
+    /// </summary>
+    /// <param name="var">The bound variable to use.</param>
+    /// <returns>The function body.</returns>
+    public delegate IExpr! FunctionBody(IVariable! var);
+
+    /// <summary>
+    ///  An interface for constructing propositional expressions.
+    /// 
+    ///  This interface should be implemented by the client.  An implementation of
+    ///  of this class should generally be used as a singleton object.
+    /// </summary>
+    public interface IPropExprFactory
+    {
+        IFunApp! False { get /*ensures result.FunctionSymbol.Equals(Prop.False);*/; }
+        IFunApp! True { get /*ensures result.FunctionSymbol.Equals(Prop.True);*/; }
+
+        IFunApp! Not(IExpr! p) /*ensures result.FunctionSymbol.Equals(Prop.Not);*/;
+
+        IFunApp! And(IExpr! p, IExpr! q) /*ensures result.FunctionSymbol.Equals(Prop.And);*/;
+        IFunApp! Or(IExpr! p, IExpr! q) /*ensures result.FunctionSymbol.Equals(Prop.Or);*/;
+        
+        IFunApp! Implies(IExpr! p, IExpr! q) /*ensures result.FunctionSymbol.Equals(Prop.Implies);*/;
+    }
+    
+    /// <summary>
+    /// Like IPropExprFactory, but also with quantifiers.
+    /// </summary>
+    public interface IQuantPropExprFactory : IPropExprFactory {
+        /// <summary>
+        /// Produce an existential given the lambda-expression.
+        /// </summary>
+        /// <param name="p">The lambda-expression.</param>
+        /// <returns>The existential.</returns>
+        IFunApp! Exists(IFunction! p) /*ensures result.FunctionSymbol.Equals(Prop.Exists);*/;
+        IFunApp! Forall(IFunction! p) /*ensures result.FunctionSymbol.Equals(Prop.Forall);*/;
+
+        /// <summary>
+        /// Produce an existential given a callback that can produce a function body given the
+        /// bound variable to use.  The implementer of this method is responsible for generating
+        /// a fresh new variable to pass to the FunctionBody callback to use as the bound variable.
+        /// </summary>
+        /// <param name="body">The function body callback.</param>
+        /// <returns>The existential.</returns>
+        IFunApp! Exists(AIType paramType, FunctionBody! body) /*ensures result.FunctionSymbol.Equals(Prop.Exists);*/;
+        IFunApp! Forall(AIType paramType, FunctionBody! body) /*ensures result.FunctionSymbol.Equals(Prop.Forall);*/;
+    }
+
+    /// <summary>
+    ///  An interface for constructing value expressions.
+    /// 
+    ///  This interface should be implemented by the client.  An implementation of
+    ///  of this class should generally be used as a singleton object.
+    /// </summary>
+    public interface IValueExprFactory
+    {
+        IFunApp! Eq(IExpr! e0, IExpr! e1) /*ensures result.FunctionSymbol.Equals(Value.Eq);*/;
+        IFunApp! Neq(IExpr! e0, IExpr! e1) /*ensures result.FunctionSymbol.Equals(Value.Neq);*/;
+    }
+
+    /// <summary>
+    ///  An interface for constructing value expressions having to with null.
+    /// 
+    ///  This interface should be implemented by the client.  An implementation of
+    ///  of this class should generally be used as a singleton object.
+    /// </summary>
+    public interface INullnessFactory
+    {
+        IFunApp! Eq(IExpr! e0, IExpr! e1) /*ensures result.FunctionSymbol.Equals(Value.Eq);*/;
+        IFunApp! Neq(IExpr! e0, IExpr! e1) /*ensures result.FunctionSymbol.Equals(Value.Neq);*/;
+        IFunApp! Null { get; /*ensures result.FunctionSymbol.Equals(Ref.Null);*/ }
+    }
+
+    /// <summary>
+    ///  An interface for constructing integer expressions.
+    /// 
+    ///  This interface should be implemented by the client.  An implementation of
+    ///  of this class should generally be used as a singleton object.
+    /// </summary>
+    public interface IIntExprFactory : IValueExprFactory
+    {
+        IFunApp! Const(BigNum i) /*ensures result.FunctionSymbol.Equals(new IntSymbol(i));*/;
+    }
+
+    /// <summary>
+    ///  An interface for constructing linear integer expressions.
+    /// 
+    ///  This interface should be implemented by the client.  An implementation of
+    ///  of this class should generally be used as a singleton object.
+    /// </summary>
+    public interface ILinearExprFactory : IIntExprFactory
+    {
+        IFunApp! AtMost(IExpr! e0, IExpr! e1) /*ensures result.FunctionSymbol.Equals(Value.AtMost);*/;
+        IFunApp! Add(IExpr! e0, IExpr! e1) /*ensures result.FunctionSymbol.Equals(Value.Add);*/;
+        /// <summary>
+        /// If "var" is null, returns an expression representing r.
+        /// Otherwise, returns an expression representing r*var.
+        /// </summary>
+        IExpr! Term(Microsoft.Basetypes.Rational r, IVariable var);
+
+        IFunApp! False { get /*ensures result.FunctionSymbol.Equals(Prop.False);*/; }
+        IFunApp! True { get /*ensures result.FunctionSymbol.Equals(Prop.True);*/; }
+        IFunApp! And(IExpr! p, IExpr! q) /*ensures result.FunctionSymbol.Equals(Prop.And);*/;
+    }
+
+    /// <summary>
+    ///  An interface for constructing type expressions and performing some type operations.
+    ///  The types are assumed to be arranged in a rooted tree.
+    ///
+    ///  This interface should be implemented by the client.  An implementation of
+    ///  of this class should generally be used as a singleton object.
+    /// </summary>
+    public interface ITypeExprFactory
+    {
+        /// <summary>
+        /// Returns an expression denoting the top of the type hierarchy.
+        /// </summary>
+        IExpr! RootType { get; }
+
+        /// <summary>
+        /// Returns true iff "t" denotes a type constant.
+        /// </summary>
+        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        bool IsTypeConstant(IExpr! t);
+
+        /// <summary>
+        /// Returns true iff t0 and t1 are types such that t0 and t1 are equal.
+        /// </summary>
+        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        bool IsTypeEqual(IExpr! t0, IExpr! t1);
+
+        /// <summary>
+        /// Returns true iff t0 and t1 are types such that t0 is a subtype of t1.
+        /// </summary>
+        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        bool IsSubType(IExpr! t0, IExpr! t1);
+
+        /// <summary>
+        /// Returns the most derived supertype of both "t0" and "t1".  A precondition is
+        /// that "t0" and "t1" both represent types.
+        /// </summary>
+        IExpr! JoinTypes(IExpr! t0, IExpr! t1);
+
+        IFunApp! IsExactlyA(IExpr! e, IExpr! type) /*requires IsTypeConstant(type); ensures result.FunctionSymbol.Equals(Value.Eq);*/;
+        IFunApp! IsA(IExpr! e, IExpr! type) /*requires IsTypeConstant(type); ensures result.FunctionSymbol.Equals(Value.Subtype);*/;
+    }
+
+}

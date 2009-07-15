@@ -1,0 +1,137 @@
+Frame0.bpl(10,11): Error: undeclared identifier: a
+Frame0.bpl(12,11): Error: undeclared identifier: b
+2 name resolution errors detected in Frame0.bpl
+Frame1.bpl(16,7): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: g1
+Frame1.bpl(17,6): Error: command assigns to an immutable variable: a
+Frame1.bpl(22,4): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: g1
+Frame1.bpl(23,4): Error: command assigns to an immutable variable: a
+Frame1.bpl(27,12): Error: command assigns to an immutable variable: hh
+Frame1.bpl(28,12): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: h0
+Frame1.bpl(30,7): Error: command assigns to an immutable variable: hh
+Frame1.bpl(31,7): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: h0
+Frame1.bpl(33,4): Error: command assigns to an immutable variable: hh
+Frame1.bpl(34,4): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: h0
+Frame1.bpl(55,4): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: g0
+Frame1.bpl(68,4): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: g0
+Frame1.bpl(68,4): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: g1
+Frame1.bpl(68,4): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: h0
+Frame1.bpl(84,15): Error: mismatched type of in-parameter in implementation MismatchedTypes: x
+Frame1.bpl(89,15): Error: mismatched type of in-parameter in implementation MismatchedTypes: x (named y in implementation)
+16 type checking errors detected in Frame1.bpl
+
+Boogie program verifier finished with 0 verified, 0 errors
+Arrays.bpl(15,14): Error: wrong number of arguments in map select: 2 instead of 1
+Arrays.bpl(16,14): Error: wrong number of arguments in map select: 1 instead of 2
+Arrays.bpl(20,7): Error: wrong number of arguments in map assignment: 2 instead of 1
+Arrays.bpl(21,7): Error: wrong number of arguments in map assignment: 1 instead of 2
+Arrays.bpl(41,13): Error: invalid type for argument 0 in map select: bool (expected: int)
+Arrays.bpl(42,16): Error: invalid argument types (bool and int) to binary operator ==
+Arrays.bpl(43,13): Error: invalid type for argument 0 in map select: int (expected: bool)
+Arrays.bpl(43,15): Error: invalid type for argument 1 in map select: int (expected: ref)
+Arrays.bpl(44,15): Error: invalid type for argument 1 in map select: bool (expected: ref)
+Arrays.bpl(44,23): Error: invalid type for argument 0 in map select: ref (expected: bool)
+Arrays.bpl(45,13): Error: invalid type for argument 0 in map select: ref (expected: bool)
+Arrays.bpl(45,18): Error: invalid type for argument 1 in map select: int (expected: ref)
+Arrays.bpl(45,2): Error: preconditions must be of type bool
+Arrays.bpl(46,13): Error: invalid type for argument 0 in map select: int (expected: bool)
+Arrays.bpl(46,15): Error: invalid type for argument 1 in map select: int (expected: ref)
+Arrays.bpl(50,6): Error: invalid type for argument 0 in map assignment: bool (expected: int)
+Arrays.bpl(51,6): Error: invalid type for argument 0 in map assignment: int (expected: bool)
+Arrays.bpl(51,8): Error: invalid type for argument 1 in map assignment: int (expected: ref)
+Arrays.bpl(51,5): Error: mismatched types in assignment command (cannot assign ref to int)
+Arrays.bpl(52,7): Error: invalid type for argument 0 in map assignment: bool (expected: int)
+Arrays.bpl(52,5): Error: mismatched types in assignment command (cannot assign int to bool)
+Arrays.bpl(53,12): Error: invalid type for argument 1 in map assignment: bool (expected: ref)
+Arrays.bpl(113,11): Error: invalid type for argument 0 in map select: name (expected: [int,int]bool)
+Arrays.bpl(114,4): Error: mismatched types in assignment command (cannot assign [int,int]bool to [[int,int]bool,[name]name]int)
+Arrays.bpl(115,4): Error: mismatched types in assignment command (cannot assign name to [int,int]bool)
+Arrays.bpl(116,5): Error: mismatched types in assignment command (cannot assign name to bool)
+Arrays.bpl(117,8): Error: invalid type for argument 1 in map assignment: name (expected: [name]name)
+Arrays.bpl(118,4): Error: mismatched types in assignment command (cannot assign [int,int][int]int to [[int,int]bool,[name]name]int)
+Arrays.bpl(123,10): Error: wrong number of arguments in map select: 1 instead of 2
+Arrays.bpl(124,14): Error: wrong number of arguments in map select: 1 instead of 2
+Arrays.bpl(125,6): Error: invalid type for argument 0 in map assignment: bool (expected: int)
+Arrays.bpl(126,4): Error: mismatched types in assignment command (cannot assign [int,int][int]int to [int,int][name]int)
+Arrays.bpl(127,4): Error: mismatched types in assignment command (cannot assign [int,int][name]int to [int,int][int]int)
+Arrays.bpl(130,21): Error: wrong number of arguments in map select: 2 instead of 1
+Arrays.bpl(131,5): Error: wrong number of arguments in map assignment: 2 instead of 1
+Arrays.bpl(132,13): Error: wrong number of arguments in map select: 2 instead of 1
+Arrays.bpl(133,17): Error: wrong number of arguments in map select: 1 instead of 2
+Arrays.bpl(134,14): Error: wrong number of arguments in map select: 2 instead of 1
+Arrays.bpl(166,12): Error: invalid type for argument 0 in application of Sf: [int,int]bool (expected: any)
+Arrays.bpl(176,4): Error: mismatched types in assignment command (cannot assign [int,int]bool to <a>[int,a]bool)
+Arrays.bpl(177,4): Error: mismatched types in assignment command (cannot assign <a>[int,a]bool to [int,int]bool)
+Arrays.bpl(178,4): Error: mismatched types in assignment command (cannot assign [any,any]bool to <a>[int,a]bool)
+Arrays.bpl(179,4): Error: mismatched types in assignment command (cannot assign <a>[int,a]bool to [any,any]bool)
+Arrays.bpl(180,4): Error: mismatched types in assignment command (cannot assign [ref]bool to [any]bool)
+Arrays.bpl(191,18): Error: invalid type for argument 0 in map select: any (expected: int)
+Arrays.bpl(198,11): Error: invalid type for argument 0 in map assignment: any (expected: int)
+Arrays.bpl(214,24): Error: invalid type for argument 0 in call to IntMethod: int (expected: any)
+Arrays.bpl(214,9): Error: invalid type for out-parameter 0 in call to IntMethod: any (expected: int)
+Arrays.bpl(215,4): Error: mismatched types in assignment command (cannot assign int to any)
+Arrays.bpl(216,4): Error: mismatched types in assignment command (cannot assign any to int)
+Arrays.bpl(218,24): Error: invalid type for argument 0 in call to AnyMethod: any (expected: int)
+Arrays.bpl(218,9): Error: invalid type for out-parameter 0 in call to AnyMethod: int (expected: any)
+52 type checking errors detected in Arrays.bpl
+WhereTyping.bpl(25,34): Error: invalid argument types (double and int) to binary operator +
+WhereTyping.bpl(26,12): Error: where clauses must be of type bool
+WhereTyping.bpl(36,22): Error: invalid argument types (name and int) to binary operator !=
+WhereTyping.bpl(41,30): Error: invalid argument types (name and int) to binary operator ==
+4 type checking errors detected in WhereTyping.bpl
+Family.bpl(30,4): Error: mismatched types in assignment command (cannot assign int to bool)
+Family.bpl(31,8): Error: mismatched types in assignment command (cannot assign bool to int)
+Family.bpl(33,8): Error: mismatched types in assignment command (cannot assign int to y)
+Family.bpl(34,15): Error: invalid type for argument 1 in map assignment: any (expected: Field x)
+Family.bpl(35,15): Error: invalid type for argument 1 in map assignment: any (expected: Field x)
+Family.bpl(37,8): Error: mismatched types in assignment command (cannot assign bool to any)
+Family.bpl(38,8): Error: mismatched types in assignment command (cannot assign Field any to any)
+Family.bpl(39,8): Error: mismatched types in assignment command (cannot assign Field y to any)
+8 type checking errors detected in Family.bpl
+AttributeTyping.bpl(3,23): Error: ++ operands need to be bitvectors (got int, int)
+AttributeTyping.bpl(5,29): Error: invalid type for argument 0 in application of F0: bool (expected: int)
+AttributeTyping.bpl(7,26): Error: invalid type for argument 0 in application of F0: bool (expected: int)
+AttributeTyping.bpl(9,21): Error: invalid argument types (int and int) to binary operator &&
+AttributeTyping.bpl(11,22): Error: invalid argument type (int) to unary operator !
+AttributeTyping.bpl(13,32): Error: invalid argument types (int and int) to binary operator ==>
+6 type checking errors detected in AttributeTyping.bpl
+UpdateExprTyping.bpl(3,11): Error: invalid argument types ([int]bool and [int]ref) to binary operator ==
+UpdateExprTyping.bpl(4,11): Error: invalid argument types ([int]bool and [bool]bool) to binary operator ==
+UpdateExprTyping.bpl(7,16): Error: invalid type for argument 0 in map store: bool (expected: int)
+UpdateExprTyping.bpl(8,21): Error: right-hand side in map store with wrong type: int (expected: bool)
+UpdateExprTyping.bpl(9,11): Error: invalid argument types ([int]bool and [int]ref) to binary operator ==
+UpdateExprTyping.bpl(15,18): Error: invalid type for argument 0 in map store: ref (expected: int)
+UpdateExprTyping.bpl(16,20): Error: invalid type for argument 1 in map store: bool (expected: ref)
+UpdateExprTyping.bpl(17,28): Error: right-hand side in map store with wrong type: ref (expected: bool)
+UpdateExprTyping.bpl(32,2): Error: mismatched types in assignment command (cannot assign int to any)
+UpdateExprTyping.bpl(36,28): Error: right-hand side in map store with wrong type: ref (expected: any)
+UpdateExprTyping.bpl(38,27): Error: right-hand side in map store with wrong type: ref (expected: int)
+UpdateExprTyping.bpl(39,27): Error: right-hand side in map store with wrong type: int (expected: ref)
+12 type checking errors detected in UpdateExprTyping.bpl
+CallForallResolve.bpl(15,2): Error: call forall is allowed only on procedures with no modifies clause: Q
+1 type checking errors detected in CallForallResolve.bpl
+MapsTypeErrors.bpl(26,6): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: m
+MapsTypeErrors.bpl(32,2): Error: mismatched types in assignment command (cannot assign int to []int)
+MapsTypeErrors.bpl(33,3): Error: mismatched types in assignment command (cannot assign []int to int)
+MapsTypeErrors.bpl(39,3): Error: mismatched types in assignment command (cannot assign bool to int)
+MapsTypeErrors.bpl(67,14): Error: invalid argument types (Field int and Field bool) to binary operator ==
+MapsTypeErrors.bpl(70,27): Error: invalid type for argument 1 in application of StrictEqual: Field bool (expected: a)
+MapsTypeErrors.bpl(75,33): Error: invalid type for argument 1 in application of StrictEqual: Field int (expected: a)
+MapsTypeErrors.bpl(77,31): Error: invalid type for argument 1 in application of IntEqual: Field alpha (expected: Field int)
+MapsTypeErrors.bpl(90,8): Error: extract operand must be a bitvector of at least 32 bits (got bv31)
+MapsTypeErrors.bpl(91,8): Error: extract operand must be a bitvector of at least 32 bits (got int)
+MapsTypeErrors.bpl(95,2): Error: mismatched types in assignment command (cannot assign bv33 to bv32)
+MapsTypeErrors.bpl(104,2): Error: mismatched types in assignment command (cannot assign bv20 to bv32)
+MapsTypeErrors.bpl(110,56): Error: invalid type for argument 1 in application of Same: bv18 (expected: T)
+MapsTypeErrors.bpl(120,4): Error: mismatched types in assignment command (cannot assign [?, ?]? to [int,int]bool)
+MapsTypeErrors.bpl(122,4): Error: mismatched types in assignment command (cannot assign [?, ?]? to HeapType)
+15 type checking errors detected in MapsTypeErrors.bpl
+Orderings.bpl(6,19): Error: parent of constant has incompatible type (int instead of C)
+1 type checking errors detected in Orderings.bpl
+EmptyCallArgs.bpl(15,17): Error: invalid type for argument 0 in call to P: int (expected: bool)
+EmptyCallArgs.bpl(26,7): Error: invalid type for out-parameter 0 in call to Q: int (expected: bool)
+EmptyCallArgs.bpl(28,7): Error: invalid type for out-parameter 0 in call to Q: int (expected: bool)
+3 type checking errors detected in EmptyCallArgs.bpl
+FunBody.bpl(6,45): Error: function body with invalid type: bool (expected: int)
+FunBody.bpl(8,61): Error: function body with invalid type: int (expected: alpha)
+FunBody.bpl(10,58): Error: function body with invalid type: int (expected: alpha)
+3 type checking errors detected in FunBody.bpl

@@ -1,0 +1,95 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+using System;
+
+// Visitor to search for types proxies that could not completely be
+// determined by type inference. If this happens, a warning is
+// generated and the proxies are instantiated in a more or less arbitrary
+// fashion.
+
+namespace Microsoft.Boogie 
+{
+
+  public class TypeAmbiguitySeeker : StandardVisitor {
+
+    private readonly InTypeSeeker! inTypeSeeker = new InTypeSeeker ();
+    private readonly TypecheckingContext! TC;
+
+    public TypeAmbiguitySeeker(TypecheckingContext! tc) {
+      TC = tc;
+    }
+
+    private void CheckTypeParams(Absy! node, TypeParamInstantiation! insts) {
+      foreach (TypeVariable! var in insts.FormalTypeParams) {
+        Type! inst = insts[var];
+        inTypeSeeker.FoundAmbiguity = false;
+        inTypeSeeker.Visit(inst);
+        if (inTypeSeeker.FoundAmbiguity)
+          TC.Warning(node,
+                     "type parameter {0} is ambiguous, instantiating to {1}",
+                     var, inst);
+      }
+    }
+
+    public override Expr! VisitNAryExpr(NAryExpr! node)
+    {
+      CheckTypeParams(node, (!)node.TypeParameters);
+      return base.VisitNAryExpr(node);
+    }
+
+    public override AssignLhs! VisitMapAssignLhs(MapAssignLhs! node) {
+      CheckTypeParams(node, (!)node.TypeParameters);
+      return base.VisitMapAssignLhs(node);      
+    }
+  }
+
+  internal class InTypeSeeker : StandardVisitor {
+    
+    internal bool FoundAmbiguity = false;
+
+    // called when an uninstantiated proxy was found
+    private Type! Instantiate(Type! node, Type! inst) {
+       FoundAmbiguity = true;
+       bool success = node.Unify(inst);
+       assert success;
+       return node;
+    }
+
+    public override Type! VisitTypeProxy(TypeProxy! node) {
+      if (node.ProxyFor != null)
+        return base.VisitTypeProxy(node);
+
+       return Instantiate(node, Type.Int);
+    }
+
+    public override Type! VisitMapTypeProxy(MapTypeProxy! node) {
+      if (node.ProxyFor != null)
+        return base.VisitMapTypeProxy(node);
+
+       TypeVariableSeq! typeParams = new TypeVariableSeq ();
+       TypeSeq! arguments = new TypeSeq ();
+       for (int i = 0; i < node.Arity; ++i) {
+         TypeVariable! param = new TypeVariable (Token.NoToken, "arg" + i);
+         typeParams.Add(param);
+         arguments.Add(param);
+       }
+       TypeVariable! result = new TypeVariable (Token.NoToken, "res");
+       typeParams.Add(result);
+
+       Type! instantiation = new MapType (Token.NoToken, typeParams, arguments, result);
+
+       return Instantiate(node, instantiation);
+    }
+
+    public override Type! VisitBvTypeProxy(BvTypeProxy! node) {
+      if (node.ProxyFor != null)
+        return base.VisitBvTypeProxy(node);
+
+       return Instantiate(node, new BvType (node.MinBits));
+    }
+  }
+
+}

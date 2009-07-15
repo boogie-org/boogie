@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VisualStudioProject>
+  <XEN ProjectType="Local"
+     SchemaVersion="1.0"
+     Name="BoogieDriver"
+     ProjectGuid="d2b98e4a-2eab-4065-abfa-709ac5ca7d4c"
+    >
+    <Build>
+      <Settings ApplicationIcon=""
+         AssemblyName="Boogie"
+         OutputType="Exe"
+         RootNamespace="Boogie"
+         StartupObject=""
+         StandardLibraryLocation=""
+         TargetPlatform="v2"
+         TargetPlatformLocation=""
+        >
+        <Config Name="Debug"
+           AllowUnsafeBlocks="False"
+           BaseAddress="285212672"
+           CheckForOverflowUnderflow="False"
+           ConfigurationOverrideFile=""
+           DefineConstants="DEBUG;TRACE"
+           DocumentationFile=""
+           DebugSymbols="True"
+           FileAlignment="4096"
+           IncrementalBuild="True"
+           Optimize="False"
+           OutputPath="..\..\Binaries"
+           RegisterForComInterop="False"
+           RemoveIntegerChecks="false"
+           TreatWarningsAsErrors="False"
+           WarningLevel="4"
+           CheckContractAdmissibility="True"
+           CheckPurity="False"
+           />
+        <Config Name="Release"
+           AllowUnsafeBlocks="false"
+           BaseAddress="285212672"
+           CheckForOverflowUnderflow="false"
+           ConfigurationOverrideFile=""
+           DefineConstants="TRACE"
+           DocumentationFile=""
+           DebugSymbols="false"
+           FileAlignment="4096"
+           IncrementalBuild="false"
+           Optimize="true"
+           OutputPath="bin\release"
+           RegisterForComInterop="false"
+           RemoveIntegerChecks="false"
+           TreatWarningsAsErrors="false"
+           WarningLevel="4"
+           CheckContractAdmissibility="True"
+           CheckPurity="False"
+           />
+      </Settings>
+      <References>
+        <Reference Name="System"
+             AssemblyName="System"
+             Private="false"
+             />
+        <Reference Name="System.Data"
+             AssemblyName="System.Data"
+             Private="false"
+             />
+        <Reference Name="System.Xml"
+             AssemblyName="System.Xml"
+             Private="false"
+             />
+        <Reference Name="System.Compiler"
+             AssemblyName="System.Compiler"
+             Private="false"
+             HintPath="../../Binaries/System.Compiler.dll"
+             />
+        <Reference Name="Microsoft.SpecSharp"
+             AssemblyName="Microsoft.SpecSharp"
+             Private="false"
+             HintPath="../../Binaries/Microsoft.SpecSharp.dll"
+             />
+        <Reference Name="System.Compiler.Framework"
+             AssemblyName="System.Compiler.Framework"
+             Private="false"
+             HintPath="../../Binaries/System.Compiler.Framework.dll"
+             />
+        <Reference Name="AbsInt"
+             Project="{11D06232-2039-4BCA-853B-C596E2A4EDB0}"
+             Private="true"
+             />
+        <Reference Name="AIFramework"
+             Project="{24B55172-AD8B-47D1-8952-5A95CFDB9B31}"
+             Private="true"
+             />
+        <Reference Name="Basetypes"
+             Project="{0C692837-77EC-415F-BF04-395E3ED06E9A}"
+             Private="true"
+             />
+        <Reference Name="Core"
+             Project="{47BC34F1-A173-40BE-84C2-9332B4418387}"
+             Private="true"
+             />
+        <Reference Name="Graph"
+             Project="{4C28FB90-630E-4B55-A937-11A011B79765}"
+             Private="true"
+             />
+        <Reference Name="Simplify"
+             Project="{F75666DE-FB56-457C-8782-09BE243450FC}"
+             Private="true"
+             />
+        <Reference Name="SMTLib"
+             Project="{13C3A68C-462A-4CDA-A480-738046E37C5A}"
+             Private="true"
+             />
+        <Reference Name="Z3"
+             Project="{F75666DE-CD56-457C-8782-09BE243450FC}"
+             Private="true"
+             />
+        <Reference Name="VCExpr"
+             Project="{CF42B700-10AA-4DA9-8992-48A800251C11}"
+             Private="true"
+             />
+        <Reference Name="VCGeneration"
+             Project="{F65666DE-FB56-457C-8782-09BE243450FC}"
+             Private="true"
+             />
+      </References>
+    </Build>
+    <Files>
+      <Include>
+        <File RelPath="BoogieDriver.ssc"
+                 SubType="Code"
+                 BuildAction="Compile"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="..\version.ssc"
+                 />
+      </Include>
+    </Files>
+  </XEN>
+</VisualStudioProject>

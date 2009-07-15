@@ -1,0 +1,78 @@
+
+-------------------- houd1.bpl --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+
+-------------------- houd2.bpl --------------------
+----------------------------------------
+Functions: Errors
+	bar
+----------------------------------------
+houd2.bpl(12,1): Error BP5003: A postcondition might not hold at this return statement.
+houd2.bpl(9,1): Related location: This is the postcondition that might not hold.
+Execution trace:
+    houd2.bpl(11,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+
+-------------------- houd3.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors
+
+-------------------- houd4.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors
+
+-------------------- houd5.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors
+
+-------------------- houd6.bpl --------------------
+
+Boogie program verifier finished with 3 verified, 0 errors
+
+-------------------- houd7.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors
+
+-------------------- houd8.bpl --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+
+-------------------- houd9.bpl --------------------
+----------------------------------------
+Functions: Errors
+	foo
+----------------------------------------
+houd9.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    houd9.bpl(18,9): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+
+-------------------- houd10.bpl --------------------
+----------------------------------------
+Functions: Errors
+	foo
+----------------------------------------
+houd10.bpl(15,3): Error BP5002: A precondition for this call might not hold.
+houd10.bpl(20,1): Related location: This is the precondition that might not hold.
+Execution trace:
+    houd10.bpl(14,9): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+
+-------------------- houd11.bpl --------------------
+----------------------------------------
+Functions: Errors
+	foo
+----------------------------------------
+houd11.bpl(8,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    houd11.bpl(7,9): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+
+-------------------- houd12.bpl --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors

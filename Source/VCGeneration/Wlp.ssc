@@ -1,0 +1,131 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+using System;
+using System.Collections;
+using Microsoft.Boogie;
+using Microsoft.Boogie.VCExprAST;
+using Microsoft.Contracts;
+
+namespace VC {
+  public class VCContext 
+  {
+    [Rep] public readonly Hashtable/*<int, Absy!>*/! Label2absy;
+    [Rep] public readonly ProverContext! Ctxt;
+    
+    public VCContext(Hashtable/*<int, Absy!>*/! label2absy, ProverContext! ctxt)
+    {
+      this.Label2absy = label2absy;
+      this.Ctxt = ctxt;
+      // base();
+    }
+  }
+
+  #region A class to compute wlp of a passive command program
+  
+  public class Wlp
+  {
+    public static VCExpr! Block(Block! b, VCExpr! N, VCContext! ctxt)
+      modifies ctxt.*;
+    {
+      VCExpressionGenerator! gen = ctxt.Ctxt.ExprGen;
+      VCExpr! res = N;
+      
+      for (int i = b.Cmds.Length; --i>=0; )
+      {
+        res = Cmd((!) b.Cmds[i], res, ctxt);
+      }
+      
+      int id = b.UniqueId;
+      expose (ctxt) {
+        ctxt.Label2absy[id] = b;
+        return gen.Implies(gen.LabelPos((!)id.ToString(), VCExpressionGenerator.True), res);
+      }
+    }
+
+    /// <summary>
+    /// Computes the wlp for an assert or assume command "cmd".
+    /// </summary>
+    public static VCExpr! Cmd(Cmd! cmd, VCExpr! N, VCContext! ctxt)
+    {
+      VCExpressionGenerator! gen = ctxt.Ctxt.ExprGen;
+      if (cmd is AssertCmd) {
+        AssertCmd ac = (AssertCmd)cmd;
+        VCExpr C = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
+        if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
+          return gen.Implies(C, N);
+        } else {
+          int id = ac.UniqueId;
+          ctxt.Label2absy[id] = ac;
+          switch (CommandLineOptions.Clo.UseSubsumption) {
+            case CommandLineOptions.SubsumptionOption.Never:
+              break;
+            case CommandLineOptions.SubsumptionOption.Always:
+              N = gen.Implies(C, N);
+              break;
+            case CommandLineOptions.SubsumptionOption.NotForQuantifiers:
+              if (!(C is VCExprQuantifier)) {
+                N = gen.Implies(C, N);
+              }
+              break;
+            default:
+              assert false;  // unexpected case
+          }
+// (MSchaef) Hack: This line might be useless, but at least it is not harmfull
+// need to test it
+        if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) return gen.Implies(C, N);
+      
+          return gen.And(gen.LabelNeg((!)id.ToString(), C), N);
+        }
+
+      } else if (cmd is AssumeCmd) {
+        AssumeCmd ac = (AssumeCmd)cmd;
+        return gen.Implies(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N);
+
+      } else {
+        assert false;  // unexpected command
+      }
+    }
+
+    public static VCExpr! RegExpr(RE! r, VCExpr! N, VCContext! ctxt)
+    {
+      if ( r is AtomicRE )
+      {
+        AtomicRE ar = (AtomicRE) r;
+        return Block(ar.b, N, ctxt);
+      }
+      else if ( r is Sequential )
+      {
+        Sequential s = (Sequential) r;
+        return RegExpr(s.first, RegExpr(s.second, N, ctxt), ctxt);
+      }
+      else if ( r is Choice )
+      {
+        Choice ch = (Choice) r;
+        VCExpr! res;
+        if (ch.rs == null || ch.rs.Length==0) 
+        {
+          res = N;
+        } 
+        else 
+        {
+          VCExpr currentWLP = RegExpr((!)ch.rs[0], N, ctxt);
+          for (int i = 1, n = ch.rs.Length; i < n; i++)
+          {
+            currentWLP = ctxt.Ctxt.ExprGen.And(currentWLP, RegExpr((!)ch.rs[i], N, ctxt));
+          }
+          res = currentWLP;
+        }
+        return res;
+      }
+      else
+      {
+        assert false;  // unexpected RE subtype
+      }
+    }
+  }
+  #endregion
+
+}

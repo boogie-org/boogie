@@ -1,0 +1,999 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+using System;
+using System.Text;
+using System.IO;
+using System.Collections;
+using System.Collections.Generic;
+using Microsoft.Contracts;
+using Microsoft.Basetypes;
+
+// Some visitor skeletons for the VCExpression AST
+
+namespace Microsoft.Boogie.VCExprAST
+{
+  using Microsoft.Boogie;
+
+  public interface IVCExprVisitor<Result, Arg> {
+    Result Visit(VCExprLiteral! node, Arg arg);
+    Result Visit(VCExprNAry! node, Arg arg);
+    Result Visit(VCExprVar! node, Arg arg);
+    Result Visit(VCExprQuantifier! node, Arg arg);
+    Result Visit(VCExprLet! node, Arg arg);
+  }
+
+  public interface IVCExprOpVisitor<Result, Arg> {
+    Result VisitNotOp      (VCExprNAry! node, Arg arg);
+    Result VisitEqOp       (VCExprNAry! node, Arg arg);
+    Result VisitNeqOp      (VCExprNAry! node, Arg arg);
+    Result VisitAndOp      (VCExprNAry! node, Arg arg);
+    Result VisitOrOp       (VCExprNAry! node, Arg arg);
+    Result VisitImpliesOp  (VCExprNAry! node, Arg arg);
+    Result VisitDistinctOp (VCExprNAry! node, Arg arg);
+    Result VisitLabelOp    (VCExprNAry! node, Arg arg);
+    Result VisitSelectOp   (VCExprNAry! node, Arg arg);
+    Result VisitStoreOp    (VCExprNAry! node, Arg arg);
+    Result VisitBvOp       (VCExprNAry! node, Arg arg);
+    Result VisitBvExtractOp(VCExprNAry! node, Arg arg);
+    Result VisitBvConcatOp (VCExprNAry! node, Arg arg);
+    Result VisitAddOp            (VCExprNAry! node, Arg arg);
+    Result VisitSubOp            (VCExprNAry! node, Arg arg);
+    Result VisitMulOp            (VCExprNAry! node, Arg arg);
+    Result VisitDivOp            (VCExprNAry! node, Arg arg);
+    Result VisitModOp            (VCExprNAry! node, Arg arg);
+    Result VisitLtOp             (VCExprNAry! node, Arg arg);
+    Result VisitLeOp             (VCExprNAry! node, Arg arg);
+    Result VisitGtOp             (VCExprNAry! node, Arg arg);
+    Result VisitGeOp             (VCExprNAry! node, Arg arg);
+    Result VisitSubtypeOp        (VCExprNAry! node, Arg arg);
+    Result VisitSubtype3Op       (VCExprNAry! node, Arg arg);
+    Result VisitBoogieFunctionOp (VCExprNAry! node, Arg arg);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Standard implementations that make it easier to create own visitors
+
+  // Simple traversal of VCExprs. The Visit implementations work
+  // recursively, apart from the implementation for VCExprNAry that
+  // uses a stack when applied to nested nodes with the same
+  // operator, e.g., (AND (AND (AND ...) ...) ...). This is necessary
+  // to avoid stack overflows
+
+  public abstract class TraversingVCExprVisitor<Result, Arg>
+                        : IVCExprVisitor<Result, Arg> {
+    protected abstract Result StandardResult(VCExpr! node, Arg arg);
+
+    public Result Traverse(VCExpr! node, Arg arg) {
+      return node.Accept(this, arg);
+    }
+
+    public virtual Result Visit(VCExprLiteral! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+
+    public virtual Result Visit(VCExprNAry! node, Arg arg) {
+      Result res = StandardResult(node, arg);
+
+      if (node.TypeParamArity == 0) {
+        VCExprOp! op = node.Op;
+        
+        IEnumerator enumerator = new VCExprNAryUniformOpEnumerator(node);
+        enumerator.MoveNext();
+
+        while (enumerator.MoveNext()) {
+          VCExpr! expr = (VCExpr!)enumerator.Current;
+          VCExprNAry naryExpr = expr as VCExprNAry;
+          if (naryExpr == null || !naryExpr.Op.Equals(op)) {
+            expr.Accept(this, arg);
+          } else {
+            StandardResult(expr, arg);
+          }
+        }
+      } else {
+        foreach (VCExpr! e in node)
+          e.Accept(this, arg);
+      }
+
+      return res;
+    }
+
+    public virtual Result Visit(VCExprVar! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result Visit(VCExprQuantifier! node, Arg arg) {
+      Result res = StandardResult(node, arg);
+      foreach (VCTrigger! trigger in node.Triggers)
+        foreach (VCExpr! expr in trigger.Exprs)
+          expr.Accept(this, arg);
+      node.Body.Accept(this, arg);
+      return res;
+    }
+    public virtual Result Visit(VCExprLet! node, Arg arg) {
+      Result res = StandardResult(node, arg);
+      // visit the bound expressions first
+      foreach (VCExprLetBinding! binding in node)
+        binding.E.Accept(this, arg);
+      node.Body.Accept(this, arg);
+      return res;
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Class to iterate over the nodes of a tree of VCExprNAry. This is
+  // used to avoid handling such VCExpr recursively, which can easily
+  // lead to stack overflows
+
+  public class VCExprNAryEnumerator : IEnumerator {
+
+    private readonly VCExprNAry! CompleteExpr;
+    private VCExpr CurrentExpr = null;
+    private readonly Stack<VCExpr!>! ExprTodo = new Stack<VCExpr!> ();
+    
+    public VCExprNAryEnumerator(VCExprNAry! completeExpr) {
+      this.CompleteExpr = completeExpr;
+      Stack<VCExpr!>! exprTodo = new Stack<VCExpr!> ();
+      exprTodo.Push(completeExpr);
+      ExprTodo = exprTodo;
+    }
+
+    // Method using which a subclass can decide whether the
+    // subexpressions of an expression should be enumerated as well
+    // The default is to enumerate all nodes
+    protected virtual bool Descend(VCExprNAry! expr) {
+      return true;
+    }
+    
+    ////////////////////////////////////////////////////////////////////////////
+
+    public bool MoveNext() {
+      if (ExprTodo.Count == 0)
+        return false;
+
+      CurrentExpr = ExprTodo.Pop();
+      VCExprNAry currentNAry = CurrentExpr as VCExprNAry;
+      if (currentNAry != null && Descend(currentNAry)) {
+        for (int i = currentNAry.Arity - 1; i >= 0; --i)
+          ExprTodo.Push(currentNAry[i]);
+      }
+      
+      return true;
+    }
+
+    public object Current {
+      [Pure][Reads(ReadsAttribute.Reads.Owned)]
+      get {
+        return (!)CurrentExpr;
+    } }
+
+    public void Reset() {
+      ExprTodo.Clear();
+      CurrentExpr = null;
+      ExprTodo.Push(CompleteExpr);
+    }
+  }
+
+  
+  //////////////////////////////////////////////////////////////////////////////
+
+  public class VCExprNAryUniformOpEnumerator : VCExprNAryEnumerator {
+    private readonly VCExprOp! Op;
+    public VCExprNAryUniformOpEnumerator(VCExprNAry! completeExpr) {
+      base(completeExpr);
+      this.Op = completeExpr.Op;
+    }
+    protected override bool Descend(VCExprNAry! expr) {
+      return expr.Op.Equals(Op) &&
+             // we never skip nodes with type parameters
+             // (those are too interesting ...)
+             expr.TypeParamArity == 0;
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Visitor that knows about the variables bound at each location in a VCExpr
+
+  public abstract class BoundVarTraversingVCExprVisitor<Result, Arg>
+                        : TraversingVCExprVisitor<Result, Arg> {
+    // Maps with all variables bound above a certain location in the VCExpression.
+    // The value of the map tells how often a particular symbol was bound
+    private readonly IDictionary<VCExprVar!, int>! BoundTermVarsDict =
+      new Dictionary<VCExprVar!, int> ();
+    private readonly IDictionary<TypeVariable!, int>! BoundTypeVarsDict =
+      new Dictionary<TypeVariable!, int> ();
+
+    protected ICollection<VCExprVar!>! BoundTermVars { get {
+      return BoundTermVarsDict.Keys;
+    } }
+    protected ICollection<TypeVariable!>! BoundTypeVars { get {
+      return BoundTypeVarsDict.Keys;
+    } }
+
+    private void AddBoundVar<T>(IDictionary<T!, int>! dict, T! sym) {
+      int n;
+      if (dict.TryGetValue(sym, out n))
+        dict[sym] = n + 1;
+      else
+        dict[sym] = 1;
+    }
+
+    private void RemoveBoundVar<T>(IDictionary<T!, int>! dict, T! sym) {
+      int n;
+      bool b = dict.TryGetValue(sym, out n);
+      assert b && n > 0;
+      if (n == 1)
+        dict.Remove(sym);
+      else
+        dict[sym] = n - 1;
+    }
+
+    public override Result Visit(VCExprQuantifier! node, Arg arg) {
+      // we temporarily add bound (term and type) variables to the
+      // corresponding lists
+      foreach (VCExprVar! v in node.BoundVars)
+        AddBoundVar<VCExprVar>(BoundTermVarsDict, v);
+      foreach (TypeVariable! v in node.TypeParameters)
+        AddBoundVar<TypeVariable>(BoundTypeVarsDict, v);
+
+      Result res;
+      try {
+        res = VisitAfterBinding(node, arg);
+      } finally {
+        foreach (VCExprVar! v in node.BoundVars)
+          RemoveBoundVar<VCExprVar>(BoundTermVarsDict, v);
+        foreach (TypeVariable! v in node.TypeParameters)
+          RemoveBoundVar<TypeVariable>(BoundTypeVarsDict, v);
+      }
+      return res;
+    }
+    public override Result Visit(VCExprLet! node, Arg arg) {
+      // we temporarily add bound term variables to the
+      // corresponding lists
+      foreach (VCExprVar! v in node.BoundVars)
+        AddBoundVar<VCExprVar>(BoundTermVarsDict, v);
+
+      Result res;
+      try {
+        res = VisitAfterBinding(node, arg);
+      } finally {
+        foreach (VCExprVar! v in node.BoundVars)
+          RemoveBoundVar<VCExprVar>(BoundTermVarsDict, v);
+      }
+      return res;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // The possibility is provided to look at a (quantifier or let) node
+    // after its bound variables have been registered
+    // (when overriding the normal visit-methods, the node will be visited
+    // before the binding happens)
+
+    protected virtual Result VisitAfterBinding(VCExprQuantifier! node, Arg arg) {
+      return base.Visit(node, arg);
+    }
+
+    protected virtual Result VisitAfterBinding(VCExprLet! node, Arg arg) {
+      return base.Visit(node, arg);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  // General visitor for recursively collecting information in a VCExpr.
+  // As the visitor is not used anywhere for the time being, it maybe should
+  // be removed
+
+  public abstract class CollectingVCExprVisitor<Result, Arg>
+                        : IVCExprVisitor<Result, Arg> {
+    protected abstract Result CombineResults(List<Result>! results, Arg arg);
+
+    public Result Collect(VCExpr! node, Arg arg) {
+      return node.Accept(this, arg);
+    }
+
+    public virtual Result Visit(VCExprLiteral! node, Arg arg) {
+      return CombineResults(new List<Result> (), arg);
+    }
+    public virtual Result Visit(VCExprNAry! node, Arg arg) {
+      List<Result>! results = new List<Result> ();
+      foreach (VCExpr! subnode in node)
+        results.Add(subnode.Accept(this, arg));
+      return CombineResults(results, arg);
+    }
+    public virtual Result Visit(VCExprVar! node, Arg arg) {
+      return CombineResults(new List<Result> (), arg);
+    }
+    public virtual Result Visit(VCExprQuantifier! node, Arg arg) {
+      List<Result>! result = new List<Result> ();
+      result.Add(node.Body.Accept(this, arg));
+      foreach (VCTrigger! trigger in node.Triggers)
+        foreach (VCExpr! expr in trigger.Exprs)
+          result.Add(expr.Accept(this, arg));
+      return CombineResults(result, arg);
+    }
+    public virtual Result Visit(VCExprLet! node, Arg arg) {
+      List<Result>! results = new List<Result> ();
+      // visit the bound expressions first
+      foreach (VCExprLetBinding! binding in node)
+        results.Add(binding.E.Accept(this, arg));
+      results.Add(node.Body.Accept(this, arg));
+      return CombineResults(results, arg);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+
+  public class SizeComputingVisitor : TraversingVCExprVisitor<bool, bool> {
+
+    private int Size = 0;
+
+    public static int ComputeSize(VCExpr! expr) {
+      SizeComputingVisitor! visitor = new SizeComputingVisitor();
+      visitor.Traverse(expr, true);
+      return visitor.Size;
+    }
+    
+    protected override bool StandardResult(VCExpr! node, bool arg) {
+      Size = Size + 1;
+      return true;      
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+
+  // Collect all free term and type variables in a VCExpr. Type variables
+  // can occur free either in the types of bound variables, or in the type
+  // parameters of VCExprNAry.
+
+  // the result and argument (of type bool) are not used currently
+  public class FreeVariableCollector : BoundVarTraversingVCExprVisitor<bool, bool> {
+    public readonly Dictionary<VCExprVar!,object>! FreeTermVars = new Dictionary<VCExprVar!,object> ();
+    public readonly List<TypeVariable!>! FreeTypeVars = new List<TypeVariable!> ();
+
+    // not used
+    protected override bool StandardResult(VCExpr! node, bool arg) {
+      return true;
+    }
+
+    public static Dictionary<VCExprVar!,object>! FreeTermVariables(VCExpr! node) {
+      FreeVariableCollector collector = new FreeVariableCollector ();
+      collector.Traverse(node, true);
+      return collector.FreeTermVars;
+    }
+
+    public static List<TypeVariable!>! FreeTypeVariables(VCExpr! node) {
+      FreeVariableCollector collector = new FreeVariableCollector ();
+      collector.Traverse(node, true);
+      return collector.FreeTypeVars;
+    }
+
+    public void Reset() {
+      FreeTermVars.Clear();
+      FreeTypeVars.Clear();
+    }
+
+    public void Collect(VCExpr! node) {
+      Traverse(node, true);
+    }
+
+    public void Collect(Type! type) {
+      AddTypeVariables(type.FreeVariables.ToList());
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+
+    private void CollectTypeVariables(IEnumerable<VCExprVar!>! boundVars) {
+      foreach (VCExprVar! var in boundVars)
+        Collect(var.Type);
+    }
+
+    private void AddTypeVariables(IEnumerable<TypeVariable!>! typeVars) {
+      foreach (TypeVariable! tvar in typeVars)
+        if (!BoundTypeVars.Contains(tvar) && !FreeTypeVars.Contains(tvar))
+          FreeTypeVars.Add(tvar);
+    }
+
+    public override bool Visit(VCExprVar! node, bool arg) {
+      if (!BoundTermVars.Contains(node) && !FreeTermVars.ContainsKey(node)) {
+        FreeTermVars.Add(node, null);
+        Collect(node.Type);
+      }
+      return true;
+    }
+
+    public override bool Visit(VCExprNAry! node, bool arg) {
+      foreach (Type! t in node.TypeArguments)
+        Collect(t);
+      return base.Visit(node, arg);
+    }
+
+    protected override bool VisitAfterBinding(VCExprQuantifier! node, bool arg) {
+      CollectTypeVariables(node.BoundVars);
+      return base.VisitAfterBinding(node, arg);
+    }
+
+    protected override bool VisitAfterBinding(VCExprLet! node, bool arg) {
+      CollectTypeVariables(node.BoundVars);
+      return base.VisitAfterBinding(node, arg);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  // Framework for mutating VCExprs
+
+  // The Visit implementations in the following visitor work
+  // recursively, apart from the implementation for VCExprNAry that
+  // uses its own stack when applied to nested nodes with the same
+  // operator, e.g., (AND (AND (AND ...) ...) ...). This is necessary
+  // to avoid stack overflows (like in TraversingVCExprVisitor)
+
+  public abstract class MutatingVCExprVisitor<Arg>
+                        : IVCExprVisitor<VCExpr!, Arg> {
+    protected readonly VCExpressionGenerator! Gen;
+
+    public MutatingVCExprVisitor(VCExpressionGenerator! gen) {
+      this.Gen = gen;
+    }
+
+    public VCExpr! Mutate(VCExpr! expr, Arg arg) {
+      return expr.Accept(this, arg);
+    }
+
+    public List<VCExpr!>! MutateSeq(IEnumerable<VCExpr!>! exprs, Arg arg) {
+      List<VCExpr!>! res = new List<VCExpr!> ();
+      foreach (VCExpr! expr in exprs)
+        res.Add(expr.Accept(this, arg));
+      return res;
+    }
+
+    private List<VCExpr!>! MutateList(List<VCExpr!>! exprs, Arg arg) {
+      bool changed = false;
+      List<VCExpr!>! res = new List<VCExpr!> ();
+      foreach (VCExpr! expr in exprs) {
+        VCExpr! newExpr = expr.Accept(this, arg);
+        if (!Object.ReferenceEquals(expr, newExpr))
+          changed = true;
+        res.Add(newExpr);
+      }
+      if (!changed)
+        return exprs;
+      return res;
+    }
+
+    public virtual VCExpr! Visit(VCExprLiteral! node, Arg arg) {
+      return node;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    // Special element used to mark the positions in the todo-stack where
+    // results have to be popped from the result-stack.
+    private static readonly VCExpr! CombineResultsMarker = new VCExprLiteral (Type.Bool);
+
+    // The todo-stack contains records of the shape
+    //
+    //     arg0
+    //     arg1
+    //     arg2
+    //     ...
+    //     CombineResultsMarker
+    //     f(arg0, arg1, arg2, ...)               (the original expression)
+
+    private readonly Stack<VCExpr!>! NAryExprTodoStack = new Stack<VCExpr!> ();
+    private readonly Stack<VCExpr!>! NAryExprResultStack = new Stack<VCExpr!> ();
+
+    private void PushTodo(VCExprNAry! exprTodo) {
+      NAryExprTodoStack.Push(exprTodo);
+      NAryExprTodoStack.Push(CombineResultsMarker);
+      for (int i = exprTodo.Arity - 1; i >= 0; --i)
+        NAryExprTodoStack.Push(exprTodo[i]);
+    }
+
+    public virtual VCExpr! Visit(VCExprNAry! node, Arg arg) {
+      VCExprOp! op = node.Op;
+      int initialStackSize = NAryExprTodoStack.Count;
+      int initialResultStackSize = NAryExprResultStack.Count;
+
+      PushTodo(node);
+      
+      while (NAryExprTodoStack.Count > initialStackSize) {
+        VCExpr! subExpr = NAryExprTodoStack.Pop();
+        
+        if (Object.ReferenceEquals(subExpr, CombineResultsMarker)) {
+          //
+          // assemble a result
+          VCExprNAry! originalExpr = (VCExprNAry)NAryExprTodoStack.Pop();
+          bool changed = false;
+          List<VCExpr!>! newSubExprs = new List<VCExpr!> ();
+
+          for (int i = op.Arity - 1; i >= 0; --i) {
+            VCExpr! nextSubExpr = NAryExprResultStack.Pop();
+            if (!Object.ReferenceEquals(nextSubExpr, originalExpr[i]))
+              changed = true;
+            newSubExprs.Insert(0, nextSubExpr);
+          }
+          
+          NAryExprResultStack.Push(UpdateModifiedNode(originalExpr, newSubExprs, changed, arg));
+          //
+        } else {
+          //
+          VCExprNAry narySubExpr = subExpr as VCExprNAry;
+          if (narySubExpr != null && narySubExpr.Op.Equals(op) &&
+              // as in VCExprNAryUniformOpEnumerator, all expressions with
+              // type parameters are allowed to be inspected more closely
+              narySubExpr.TypeParamArity == 0) {
+            PushTodo(narySubExpr);
+          } else {
+            NAryExprResultStack.Push(subExpr.Accept(this, arg));
+          }
+          //
+        }
+      }
+
+      assert NAryExprTodoStack.Count == initialStackSize &&
+             NAryExprResultStack.Count == initialResultStackSize + 1;
+      return NAryExprResultStack.Pop();
+    }
+
+    protected virtual VCExpr! UpdateModifiedNode(VCExprNAry! originalNode,
+                                                 List<VCExpr!>! newSubExprs,
+                                                 // has any of the subexpressions changed?
+                                                 bool changed,
+                                                 Arg arg) {
+      if (changed)
+        return Gen.Function(originalNode.Op,
+                            newSubExprs, originalNode.TypeArguments);
+      else
+        return originalNode;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    public virtual VCExpr! Visit(VCExprVar! node, Arg arg) {
+      return node;
+    }
+
+    protected List<VCTrigger!>! MutateTriggers(List<VCTrigger!>! triggers, Arg arg) {
+      List<VCTrigger!>! newTriggers = new List<VCTrigger!> ();
+      bool changed = false;
+      foreach (VCTrigger! trigger in triggers) {
+        List<VCExpr!>! exprs = trigger.Exprs;
+        List<VCExpr!>! newExprs = MutateList(exprs, arg);
+        if (Object.ReferenceEquals(exprs, newExprs)) {
+          newTriggers.Add(trigger);
+        } else {
+          newTriggers.Add(Gen.Trigger(trigger.Pos, newExprs));
+          changed = true;
+        }
+      }
+      if (!changed)
+        return triggers;
+      return newTriggers;
+    }
+
+    public virtual VCExpr! Visit(VCExprQuantifier! node, Arg arg) {
+      bool changed = false;
+
+      VCExpr! body = node.Body;
+      VCExpr! newbody = body.Accept(this, arg);
+      if (!Object.ReferenceEquals(body, newbody))
+        changed = true;
+
+      // visit the trigger expressions as well
+      List<VCTrigger!>! triggers = node.Triggers;
+      List<VCTrigger!>! newTriggers = MutateTriggers(triggers, arg);
+      if (!Object.ReferenceEquals(triggers, newTriggers))
+        changed = true;
+
+      if (!changed)
+        return node;
+      return Gen.Quantify(node.Quan, node.TypeParameters, node.BoundVars,
+                          newTriggers, node.Infos, newbody);
+    }
+
+    public virtual VCExpr! Visit(VCExprLet! node, Arg arg) {
+      bool changed = false;
+
+      VCExpr! body = node.Body;
+      VCExpr! newbody = body.Accept(this, arg);
+      if (!Object.ReferenceEquals(body, newbody))
+        changed = true;
+
+      List<VCExprLetBinding!>! newbindings = new List<VCExprLetBinding!> ();
+      for (int i = 0; i < node.Length; ++i) {
+        VCExprLetBinding! binding = node[i];
+        VCExpr! e = binding.E;
+        VCExpr! newE = e.Accept(this, arg);
+        if (Object.ReferenceEquals(e, newE)) {
+          newbindings.Add(binding);
+        } else {
+          changed = true;
+          newbindings.Add(Gen.LetBinding(binding.V, newE));
+        }
+      }
+
+      if (!changed)
+        return node;
+      return Gen.Let(newbindings, newbody);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  // Substitutions and a visitor for applying substitutions. A substitution can
+  // substitute both type variables and term variables
+
+  public class VCExprSubstitution {
+    private readonly List<IDictionary<VCExprVar!, VCExpr!>!>! TermSubsts;
+    private readonly List<IDictionary<TypeVariable!, Type!>!>! TypeSubsts;
+
+    public VCExprSubstitution(IDictionary<VCExprVar!, VCExpr!>! termSubst,
+                              IDictionary<TypeVariable!, Type!>! typeSubst) {
+      List<IDictionary<VCExprVar!, VCExpr!>!>! termSubsts =
+        new List<IDictionary<VCExprVar!, VCExpr!>!> ();
+      termSubsts.Add(termSubst);
+      List<IDictionary<TypeVariable!, Type!>!>! typeSubsts =
+        new List<IDictionary<TypeVariable!, Type!>!> ();
+      typeSubsts.Add(typeSubst);
+      this.TermSubsts = termSubsts;
+      this.TypeSubsts = typeSubsts;
+    }
+
+    public VCExprSubstitution() {
+      this(new Dictionary<VCExprVar!, VCExpr!> (), new Dictionary<TypeVariable!, Type!> ());
+    }
+
+    public void PushScope() {
+      TermSubsts.Add(new Dictionary<VCExprVar!, VCExpr!> ());
+      TypeSubsts.Add(new Dictionary<TypeVariable!, Type!> ());
+    }
+
+    public void PopScope() {
+      TermSubsts.RemoveAt(TermSubsts.Count - 1);
+      TypeSubsts.RemoveAt(TypeSubsts.Count - 1);
+    }
+
+    public VCExpr this[VCExprVar! var] {
+      get {
+        VCExpr res;
+        for (int i = TermSubsts.Count - 1; i >= 0; --i) {
+          if (TermSubsts[i].TryGetValue(var, out res))
+            return res;
+        }
+        return null;
+      }
+      set {
+        TermSubsts[TermSubsts.Count - 1][var] = (!)value;
+      }
+    }
+
+    public Type this[TypeVariable! var] {
+      get {
+        Type res;
+        for (int i = TypeSubsts.Count - 1; i >= 0; --i) {
+          if (TypeSubsts[i].TryGetValue(var, out res))
+            return res;
+        }
+        return null;
+      }
+      set {
+        TypeSubsts[TypeSubsts.Count - 1][var] = (!)value;
+      }
+    }
+
+    public bool ContainsKey(VCExprVar! var) {
+      return this[var] != null;
+    }
+
+    public bool ContainsKey(TypeVariable! var) {
+      return this[var] != null;
+    }
+
+    public bool TermSubstIsEmpty { get {
+        return forall{IDictionary<VCExprVar!, VCExpr!>! dict in TermSubsts;
+                      dict.Count == 0};
+      } }
+
+    public bool TypeSubstIsEmpty { get {
+        return forall{IDictionary<TypeVariable!, Type!>! dict in TypeSubsts;
+                      dict.Count == 0};
+      } }
+
+    public IDictionary<TypeVariable!, Type!>! ToTypeSubst { get {
+        IDictionary<TypeVariable!, Type!>! res = new Dictionary<TypeVariable!, Type!> ();
+        foreach (IDictionary<TypeVariable!, Type!>! dict in TypeSubsts)
+          foreach (KeyValuePair<TypeVariable!, Type!> pair in dict)
+            // later ones overwrite earlier ones
+            res[pair.Key] = pair.Value;
+        return res;
+      } }
+
+    // the variables that are not mapped to themselves
+    public IEnumerable<VCExprVar!>! TermDomain { get {
+      Dictionary<VCExprVar!, bool>! domain = new Dictionary<VCExprVar!, bool> ();
+      foreach (IDictionary<VCExprVar!, VCExpr!>! dict in TermSubsts)
+        foreach (VCExprVar! var in dict.Keys)
+          if (!var.Equals(this[var]))
+            domain.Add(var, true);
+      return domain.Keys;
+    } }
+
+    // the variables that are not mapped to themselves
+    public IEnumerable<TypeVariable!>! TypeDomain { get {
+      Dictionary<TypeVariable!, bool>! domain = new Dictionary<TypeVariable!, bool> ();
+      foreach (IDictionary<TypeVariable!, Type!>! dict in TypeSubsts)
+        foreach (TypeVariable! var in dict.Keys)
+          if (!var.Equals(this[var]))
+            domain.Add(var, true);
+      return domain.Keys;
+    } }
+
+    public FreeVariableCollector! Codomains { get {
+        FreeVariableCollector! coll = new FreeVariableCollector ();
+        foreach (VCExprVar! var in TermDomain)
+          coll.Collect((!)this[var]);
+        foreach (TypeVariable! var in TypeDomain)
+          coll.Collect((!)this[var]);
+        return coll;
+      } }
+
+    public VCExprSubstitution! Clone() {
+      VCExprSubstitution! res = new VCExprSubstitution ();
+      foreach (IDictionary<VCExprVar!, VCExpr!>! dict in TermSubsts)
+        res.TermSubsts.Add(HelperFuns.Clone(dict));
+      foreach (IDictionary<TypeVariable!, Type!>! dict in TypeSubsts)
+        res.TypeSubsts.Add(HelperFuns.Clone(dict));
+      return res;
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  public class SubstitutingVCExprVisitor
+               : MutatingVCExprVisitor<VCExprSubstitution!> {
+    public SubstitutingVCExprVisitor(VCExpressionGenerator! gen) {
+      base(gen);
+    }
+
+    // when descending across a binder, we have to check that no collisions
+    // or variable capture can occur. if this might happen, we replace the
+    // term and type variables bound by the binder with fresh variables
+    private bool CollisionPossible(IEnumerable<TypeVariable!>! typeParams,
+                                   IEnumerable<VCExprVar!>! boundVars,
+                                   VCExprSubstitution! substitution) {
+      // variables can be shadowed by a binder
+      if (exists{TypeVariable! var in typeParams; substitution.ContainsKey(var)} ||
+          exists{VCExprVar! var in boundVars; substitution.ContainsKey(var)})
+        return true;
+      // compute the codomain of the substitution
+      FreeVariableCollector! coll = substitution.Codomains;
+      // variables could be captured when applying the substitution
+      return exists{TypeVariable! var in typeParams; coll.FreeTypeVars.Contains(var)} ||
+             exists{VCExprVar! var in boundVars; coll.FreeTermVars.ContainsKey(var)};
+    }
+
+    // can be overwritten if names of bound variables are to be changed
+    protected virtual string! ChooseNewVariableName(string! oldName) {
+      return oldName;
+    }
+
+    // handle type parameters in VCExprNAry
+    protected override VCExpr! UpdateModifiedNode(VCExprNAry! originalNode,
+                                                  List<VCExpr!>! newSubExprs,
+                                                  bool changed,
+                                                  VCExprSubstitution! substitution) {
+      List<Type!>! typeParams = new List<Type!> ();
+      foreach (Type! t in originalNode.TypeArguments) {
+        Type! newType = t.Substitute(substitution.ToTypeSubst);
+        if (!ReferenceEquals(t, newType))
+          changed = true;
+        typeParams.Add(newType);
+      }
+      if (changed)
+        return Gen.Function(originalNode.Op, newSubExprs, typeParams);
+      else
+        return originalNode;
+    }
+
+    public override VCExpr! Visit(VCExprQuantifier! node,
+                                  VCExprSubstitution! substitution) {
+      // the default is to refresh bound variables only if necessary
+      // because of collisions
+      return Visit(node, substitution, false);
+    }
+
+    public VCExpr! Visit(VCExprQuantifier! node,
+                         VCExprSubstitution! substitution,
+                         bool refreshBoundVariables) {
+      substitution.PushScope(); try {
+
+      List<TypeVariable!>! typeParams = node.TypeParameters;
+      bool refreshAllVariables = refreshBoundVariables ||
+                                 CollisionPossible(node.TypeParameters, node.BoundVars, substitution);
+      if (refreshAllVariables) {
+        // we introduce fresh type variables to ensure that none gets captured
+        typeParams = new List<TypeVariable!> ();
+        foreach (TypeVariable! var in node.TypeParameters) {
+          TypeVariable! freshVar =
+            new TypeVariable (Token.NoToken, ChooseNewVariableName(var.Name));
+          typeParams.Add(freshVar);
+          substitution[var] = freshVar;
+          // this might overwrite other elements of the substitution, deliberately
+        }
+      }
+
+      List<VCExprVar!>! boundVars = node.BoundVars;
+      if (refreshAllVariables || !substitution.TypeSubstIsEmpty) {
+        // collisions are possible, or we also substitute type variables. in this case
+        // the bound term variables have to be replaced with fresh variables with the
+        // right types
+        boundVars = new List<VCExprVar!> ();
+        IDictionary<TypeVariable!, Type!>! typeSubst = substitution.ToTypeSubst;
+        foreach (VCExprVar! var in node.BoundVars) {
+          VCExprVar! freshVar =
+            Gen.Variable(ChooseNewVariableName(var.Name),
+                         var.Type.Substitute(typeSubst));
+          boundVars.Add(freshVar);
+          substitution[var] = freshVar;
+          // this might overwrite other elements of the substitution, deliberately
+        }
+      }
+
+      List<VCTrigger!>! newTriggers = new List<VCTrigger!> ();
+      foreach (VCTrigger! trigger in node.Triggers)
+        newTriggers.Add(Gen.Trigger(trigger.Pos, MutateSeq(trigger.Exprs, substitution)));
+
+      VCExpr! newBody = Mutate(node.Body, substitution);
+
+      return Gen.Quantify(node.Quan, typeParams, boundVars,
+                          newTriggers, node.Infos, newBody);
+
+      } finally {
+        substitution.PopScope();
+      }
+    }
+
+    public override VCExpr! Visit(VCExprVar! node,
+                                  VCExprSubstitution! substitution) {
+      VCExpr res = substitution[node];
+      if (res != null)
+        return res;
+      return node;
+    }
+
+    public override VCExpr! Visit(VCExprLet! node,
+                                  VCExprSubstitution! substitution) {
+      // the default is to refresh bound variables only if necessary
+      // because of collisions
+      return Visit(node, substitution, false);
+    }
+
+    public VCExpr! Visit(VCExprLet! node,
+                         VCExprSubstitution! substitution,
+                         bool refreshBoundVariables) {
+      // let-expressions do not have type parameters (fortunately ...)
+      substitution.PushScope (); try {
+
+      bool refreshAllVariables =
+        refreshBoundVariables ||
+        !substitution.TypeSubstIsEmpty ||
+        CollisionPossible(new List<TypeVariable!> (), node.BoundVars, substitution);
+
+      List<VCExprVar!>! newBoundVars = node.BoundVars;
+      if (refreshAllVariables) {
+        // collisions are possible, or we also substitute type variables. in this case
+        // the bound term variables have to be replaced with fresh variables with the
+        // right types
+        newBoundVars = new List<VCExprVar!> ();
+        IDictionary<TypeVariable!, Type!>! typeSubst = substitution.ToTypeSubst;
+        foreach (VCExprVar! var in node.BoundVars) {
+          VCExprVar! freshVar =
+            Gen.Variable(ChooseNewVariableName(var.Name),
+                         var.Type.Substitute(typeSubst));
+          newBoundVars.Add(freshVar);
+          substitution[var] = freshVar;
+          // this might overwrite other elements of the substitution, deliberately
+        }
+      }
+
+      List<VCExprLetBinding!>! newbindings = new List<VCExprLetBinding!> ();
+      for (int i = 0; i < node.Length; ++i) {
+        VCExprLetBinding! binding = node[i];
+        newbindings.Add(Gen.LetBinding(newBoundVars[i], Mutate(binding.E, substitution)));
+      }
+      
+      VCExpr! newBody = Mutate(node.Body, substitution);
+      return Gen.Let(newbindings, newBody);
+
+      } finally {
+        substitution.PopScope();
+      }
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+
+  public abstract class StandardVCExprOpVisitor<Result, Arg>
+                        : IVCExprOpVisitor<Result, Arg> {
+    protected abstract Result StandardResult(VCExprNAry! node, Arg arg);
+
+    public virtual Result VisitNotOp      (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitEqOp       (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitNeqOp      (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitAndOp      (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitOrOp       (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitImpliesOp  (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitDistinctOp (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitLabelOp    (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitSelectOp   (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitStoreOp    (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitBvOp       (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitBvExtractOp(VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitBvConcatOp (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitAddOp            (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitSubOp            (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitMulOp            (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitDivOp            (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitModOp            (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitLtOp             (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitLeOp             (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitGtOp             (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitGeOp             (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitSubtypeOp        (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitSubtype3Op       (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitBoogieFunctionOp (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+  }
+
+}
+
+

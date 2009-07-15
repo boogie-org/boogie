@@ -1,0 +1,252 @@
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+Boogie program verifier finished with 0 verified, 0 errors
+Triggers0.bpl(14,31): Error: the 'nopats' quantifier attribute expects a string-literal parameter
+1 parse errors detected in Triggers0.bpl
+Triggers1.bpl(7,17): Error: boolean operators are not allowed in triggers
+Triggers1.bpl(11,21): Error: boolean operators are not allowed in triggers
+Triggers1.bpl(15,9): Error: boolean operators are not allowed in triggers
+Triggers1.bpl(19,10): Error: boolean operators are not allowed in triggers
+Triggers1.bpl(23,17): Error: boolean operators are not allowed in triggers
+Triggers1.bpl(27,17): Error: boolean operators are not allowed in triggers
+Triggers1.bpl(32,17): Error: equality is not allowed in triggers
+Triggers1.bpl(36,17): Error: arithmetic comparisons are not allowed in triggers
+Triggers1.bpl(45,10): Error: quantifiers are not allowed in triggers
+Triggers1.bpl(53,7): Error: trigger must mention all quantified variables, but does not mention: x
+Triggers1.bpl(61,7): Error: trigger must mention all quantified variables, but does not mention: y
+Triggers1.bpl(62,7): Error: trigger must mention all quantified variables, but does not mention: x
+Triggers1.bpl(70,9): Error: a matching pattern must be more than just a variable by itself: x
+Triggers1.bpl(82,7): Error: trigger must mention all quantified variables, but does not mention: z
+Triggers1.bpl(94,16): Error: a matching pattern must be more than just a variable by itself: x
+Triggers1.bpl(95,16): Error: a matching pattern must be more than just a variable by itself: g
+Triggers1.bpl(105,40): Error: trigger must mention all quantified variables, but does not mention: y
+Triggers1.bpl(106,40): Error: trigger must mention all quantified variables, but does not mention: x
+Triggers1.bpl(109,57): Error: trigger must mention all quantified variables, but does not mention: z
+Triggers1.bpl(110,57): Error: trigger must mention all quantified variables, but does not mention: y
+Triggers1.bpl(111,57): Error: trigger must mention all quantified variables, but does not mention: x
+Triggers1.bpl(119,33): Error: cannot refer to a global variable in this context: h1
+Triggers1.bpl(120,33): Error: cannot refer to a global variable in this context: h0
+23 name resolution errors detected in Triggers1.bpl
+const x: int;
+
+const y: int;
+
+const z: int;
+
+const P: bool;
+
+const Q: bool;
+
+const R: bool;
+
+axiom x * (y + z) == x + y * z;
+
+axiom x * y + z == (x + y) * z;
+
+axiom x * y * z == x * y * z;
+
+axiom x * y * z * x == x * y * z;
+
+axiom x / y / z == x / (y / z);
+
+axiom x / y / (z / x) == x / y / z;
+
+axiom x - y - z == x - (y - z);
+
+axiom x - y - (z - x) == x - y - z;
+
+axiom x + y - z - x + y == 0;
+
+axiom x + y - z - x + y == x + y - (z - (x + y));
+
+axiom P ==> Q ==> R <==> P ==> Q ==> R;
+
+axiom (P ==> Q) ==> R ==> P <==> (P ==> Q) ==> R;
+
+axiom P <==> Q <==> R;
+
+axiom P ==> Q <==> Q ==> R <==> R ==> P;
+
+axiom (P && Q) || (Q && R);
+
+axiom (P || Q) && (Q || R);
+
+axiom P || Q || Q || R;
+
+axiom P && Q && Q && R;
+
+function f(int) returns (int);
+
+axiom (forall x: int :: {:xname "hello"} {:weight 5} {:ValueFunc f(x + 1)} { f(x + x) } { f(x) * f(x) } {:nopats f(x + x + x) } f(f(x)) < 200);
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+Boogie program verifier finished with 0 verified, 0 errors
+Arrays1.bpl(11,11): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: Q
+Arrays1.bpl(14,15): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: Q
+2 type checking errors detected in Arrays1.bpl
+Types0.bpl(6,18): Error: expected identifier before ':'
+1 parse errors detected in Types0.bpl
+Types1.bpl(6,11): Error: undeclared type: x
+Types1.bpl(7,18): Error: undeclared type: x
+2 name resolution errors detected in Types1.bpl
+WhereParsing.bpl(14,37): Error: where clause not allowed here
+WhereParsing.bpl(15,33): Error: where clause not allowed here
+2 parse errors detected in WhereParsing.bpl
+WhereParsing0.bpl(17,38): Error: where clause not allowed here
+WhereParsing0.bpl(18,38): Error: where clause not allowed here
+2 parse errors detected in WhereParsing0.bpl
+WhereParsing1.bpl(14,27): syntax error: ) expected
+1 parse errors detected in WhereParsing1.bpl
+WhereParsing2.bpl(1,14): syntax error: ; expected
+1 parse errors detected in WhereParsing2.bpl
+WhereResolution.bpl(28,38): Error: undeclared identifier: alpha
+WhereResolution.bpl(32,30): Error: old expressions allowed only in two-state contexts
+2 name resolution errors detected in WhereResolution.bpl
+BadLabels0.bpl(4,2): Error: more than one declaration of block name: X
+BadLabels0.bpl(11,4): Error: more than one declaration of block name: Y
+2 name resolution errors detected in BadLabels0.bpl
+BadLabels1.bpl(4,3): Error: Error: goto label 'X' is undefined or out of reach
+BadLabels1.bpl(5,3): Error: Error: goto label 'Y' is undefined or out of reach
+BadLabels1.bpl(10,3): Error: Error: goto label 'X' is undefined or out of reach
+BadLabels1.bpl(24,5): Error: Error: goto label 'K' is undefined or out of reach
+BadLabels1.bpl(30,5): Error: Error: goto label 'A' is undefined or out of reach
+BadLabels1.bpl(38,7): Error: Error: goto label 'M' is undefined or out of reach
+BadLabels1.bpl(41,3): Error: Error: goto label 'B' is undefined or out of reach
+BadLabels1.bpl(47,3): Error: Error: break statement is not inside a loop
+BadLabels1.bpl(49,5): Error: Error: break statement is not inside a loop
+BadLabels1.bpl(60,5): Error: Error: break label 'B' must designate an enclosing statement
+BadLabels1.bpl(63,5): Error: Error: break label 'A' must designate an enclosing statement
+BadLabels1.bpl(64,5): Error: Error: break label 'C' must designate an enclosing statement
+BadLabels1.bpl(65,8): Error: Error: break label 'F' must designate an enclosing statement
+13 parse errors detected in BadLabels1.bpl
+LineParse.bpl(1,0): Error: Malformed (#line num [filename]) pragma: #line
+LineParse.bpl(2,0): Error: Malformed (#line num [filename]) pragma: #line
+LineParse.bpl(1,0): Error: Unrecognized pragma: #dontknow what this is    No, I don't    well, it's an error is what it is
+LineParse.bpl(3,0): Error: Unrecognized pragma: #define ASSERT(x) {if (!(x)) { crash(); }}  // error: A B C . txt(12,0)
+LineParse.bpl(6,2): syntax error: EOF expected
+5 parse errors detected in LineParse.bpl
+LineResolve.bpl(5,1): Error: undeclared identifier: a
+LineResolve.bpl(7,2): Error: undeclared identifier: b
+LineResolve.bpl(12,0): Error: undeclared identifier: c
+LineResolve.bpl(13,10): Error: undeclared identifier: d
+LineResolve.bpl(12,0): Error: undeclared identifier: e
+LineResolve.bpl(2,0): Error: undeclared identifier: f
+LineResolve.bpl(900,0): Error: undeclared identifier: g
+Abc.txt(11,3): Error: undeclared identifier: h
+Abc.txt(13,0): Error: undeclared identifier: i
+Abc.txt(99,0): Error: undeclared identifier: j
+c:\Users\leino\Documents\Programs\MyClass.ssc(104,0): Error: undeclared identifier: k
+A B C . txt(12,0): Error: undeclared identifier: l
+12 name resolution errors detected in LineResolve.bpl
+AttributeParsingErr.bpl(1,33): Error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(3,33): Error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(5,52): Error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(7,37): Error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(9,31): Error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(11,29): Error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(13,13): Error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(15,18): Error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(20,26): Error: only attributes, not triggers, allowed here
+9 parse errors detected in AttributeParsingErr.bpl
+
+type {:sourcefile "test.ssc"} T;
+
+function {:source "test.scc"} f(int) returns (int);
+
+const {:description "The largest integer value"} unique MAXINT: int;
+
+axiom {:naming "MyFavoriteAxiom"} (forall i: int :: { f(i) } f(i) == i + 1);
+
+var {:description "memory"} $Heap: [ref,name]any;
+
+var {:sort_of_like_a_trigger (forall i: int :: true)} Bla: [ref,name]any;
+
+procedure {:use_impl 1} foo(x: int) returns (n: int);
+
+
+
+implementation {:id 1} foo(x: int) returns (n: int)
+{
+  block1:
+    return;
+}
+
+
+
+implementation {:id 2} foo(x: int) returns (n: int)
+{
+  block1:
+    return;
+}
+
+
+
+type ref;
+
+type any;
+
+type name;
+
+Boogie program verifier finished with 0 verified, 0 errors
+AttributeResolution.bpl(1,18): Error: undeclared identifier: foo
+AttributeResolution.bpl(3,18): Error: undeclared identifier: bar
+AttributeResolution.bpl(7,15): Error: undeclared identifier: qux
+AttributeResolution.bpl(7,41): Error: undeclared identifier: ij
+AttributeResolution.bpl(13,21): Error: undeclared identifier: bzzt
+AttributeResolution.bpl(15,20): Error: undeclared identifier: blt
+AttributeResolution.bpl(5,20): Error: undeclared identifier: baz
+AttributeResolution.bpl(9,18): Error: undeclared identifier: mux
+AttributeResolution.bpl(11,29): Error: undeclared identifier: fux
+9 name resolution errors detected in AttributeResolution.bpl
+
+function \true() returns (bool);
+
+type \procedure;
+
+procedure \old(any: \procedure) returns (\var: \procedure);
+
+
+
+implementation \old(any: \procedure) returns (\var: \procedure)
+{
+  var \modifies: \procedure;
+
+    \modifies := any;
+    \var := \modifies;
+}
+
+
+
+procedure qux(a: \procedure);
+
+
+
+implementation qux(a: \procedure)
+{
+  var \var: \procedure;
+  var x: bool;
+
+    call \var := \old(a);
+    x := \true();
+}
+
+
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+Boogie program verifier finished with 0 verified, 0 errors
+MapsResolutionErrors.bpl(6,9): Error: type variable must occur in map arguments: b
+MapsResolutionErrors.bpl(20,10): Error: type variable must occur in procedure arguments: a
+2 name resolution errors detected in MapsResolutionErrors.bpl
+Orderings.bpl(12,20): Error: undeclared identifier: x
+Orderings.bpl(15,23): Error: c0 occurs more than once as parent
+Orderings.bpl(16,19): Error: constant cannot be its own parent
+Orderings.bpl(18,20): Error: the parent of a constant has to be a constant
+4 name resolution errors detected in Orderings.bpl
+BadQuantifier.bpl(3,15): syntax error: invalid QuantifierBody
+1 parse errors detected in BadQuantifier.bpl
+EmptyCallArgs.bpl(31,2): Error: type variable must occur in types of given arguments: a
+EmptyCallArgs.bpl(32,2): Error: type variable must occur in types of given arguments: a
+2 name resolution errors detected in EmptyCallArgs.bpl

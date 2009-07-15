@@ -1,0 +1,3256 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------
+// BoogiePL - Absy.cs
+//---------------------------------------------------------------------------------------------
+
+namespace Microsoft.Boogie 
+{
+  using System;
+  using System.Collections;
+  using System.Diagnostics;
+  using System.Collections.Generic;
+  using Microsoft.Boogie.AbstractInterpretation;
+  using AI = Microsoft.AbstractInterpretationFramework;
+  using Microsoft.Contracts;
+  using Microsoft.Basetypes;
+ 
+
+  //---------------------------------------------------------------------
+  // Expressions
+  //
+  // For expressions, we override the Equals and GetHashCode method to
+  // implement structural equality.  Note this is not logical equivalence
+  // and is not modulo alpha-renaming.
+  //---------------------------------------------------------------------
+
+
+  public abstract class Expr : Absy
+  {
+    public Expr(IToken! tok)
+      : base(tok) 
+    {
+    }
+
+    public void Emit (TokenTextWriter! stream) 
+    {
+      Emit(stream, 0, false);
+    }
+
+    public abstract void Emit (TokenTextWriter! wr, int contextBindingStrength, bool fragileContext);
+    
+    [Pure]
+    public override string! ToString ()
+    {
+      System.IO.StringWriter buffer = new System.IO.StringWriter();
+      using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false))
+      {
+        this.Emit(stream, 0, false);
+      }
+      return buffer.ToString();
+    }
+
+    /// <summary>
+    /// Add to "freeVars" the free variables in the expression.
+    /// </summary>
+    public abstract void ComputeFreeVariables(Set /*Variable*/! freeVars);
+
+    /// <summary>
+    /// Filled in by the Typecheck method.  A value of "null" means a succeeding
+    /// call to Typecheck has not taken place (that is, either Typecheck hasn't
+    /// been called or Typecheck encountered an error in the expression to be
+    /// typechecked).
+    /// </summary>
+    public Type Type;
+
+    public override void Typecheck (TypecheckingContext! tc)
+      ensures Type != null;
+    {
+      // This body is added only because C# insists on it.  It should really be left out, as if TypeCheck still were abstract.
+      // The reason for mentioning the method here at all is to give TypeCheck a postcondition for all expressions.
+      assert false;
+    }
+
+    /// <summary>
+    /// Returns the type of the expression, supposing that all its subexpressions are well typed.
+    /// </summary>
+    public abstract Type! ShallowType { get; }
+
+    // Handy syntactic sugar follows:
+
+    public static NAryExpr! Binary (IToken! x, BinaryOperator.Opcode op, Expr! e1, Expr! e2) 
+    {
+      return new NAryExpr(x, new BinaryOperator(x, op), new ExprSeq(e1, e2));
+    }
+
+    public static NAryExpr! Unary (IToken! x, UnaryOperator.Opcode op, Expr! e1) 
+    {
+      return new NAryExpr(x, new UnaryOperator(x, op), new ExprSeq(e1));
+    }
+
+    public static NAryExpr! Binary (BinaryOperator.Opcode op, Expr! e1, Expr! e2) 
+    {
+      return new NAryExpr(Token.NoToken, new BinaryOperator(Token.NoToken, op), new ExprSeq(e1, e2));
+    }
+
+    public static NAryExpr! Eq (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Eq, e1, e2); }
+    public static NAryExpr! Neq (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Neq, e1, e2); }
+    public static NAryExpr! Le (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Le, e1, e2); }
+    public static NAryExpr! Ge (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Ge, e1, e2); }
+    public static NAryExpr! Lt (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Lt, e1, e2); }
+    public static NAryExpr! Gt (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Gt, e1, e2); }
+    public static Expr! And (Expr! e1, Expr! e2) {
+      if (e1 == true_) { return e2; }
+      else if (e2 == true_) { return e1; }
+      else if (e1 == false_ || e2 == false_) { return false_; }
+      else { return Binary(BinaryOperator.Opcode.And, e1, e2); }
+    }
+    public static Expr! Or (Expr! e1, Expr! e2) {
+      if (e1 == false_) { return e2; }
+      else if (e2 == false_) { return e1; }
+      else if (e1 == true_ || e2 == true_) { return true_; }
+      else { return Binary(BinaryOperator.Opcode.Or, e1, e2); }
+    }
+    public static Expr! Not (Expr! e1) {
+        NAryExpr nary = e1 as NAryExpr;     
+        
+        if (e1 == true_) { return false_; }
+        else if (e1 == false_) { return true_; }
+        else if (nary != null) 
+        {
+            if (nary.Fun is UnaryOperator)
+            {
+                UnaryOperator op = (UnaryOperator)nary.Fun;
+                if (op.Op == UnaryOperator.Opcode.Not) { return (!) nary.Args[0]; }
+            }
+            else if (nary.Fun is BinaryOperator)
+            {
+                BinaryOperator op = (BinaryOperator)nary.Fun;
+                Expr arg0 = (!)nary.Args[0];
+                Expr arg1 = (!)nary.Args[1];
+                if (op.Op == BinaryOperator.Opcode.Eq) { return Neq(arg0, arg1); }
+                else if (op.Op == BinaryOperator.Opcode.Neq) { return Eq(arg0, arg1); }
+                else if (op.Op == BinaryOperator.Opcode.Lt) { return Ge(arg0, arg1); }
+                else if (op.Op == BinaryOperator.Opcode.Le) { return Gt(arg0, arg1); }
+                else if (op.Op == BinaryOperator.Opcode.Ge) { return Lt(arg0, arg1); }
+                else if (op.Op == BinaryOperator.Opcode.Gt) { return Le(arg0, arg1); }
+            }
+        }
+
+        return Unary(Token.NoToken, UnaryOperator.Opcode.Not, e1);
+    }
+    public static NAryExpr! Imp (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Imp, e1, e2); }
+    public static NAryExpr! Iff (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Iff, e1, e2); }
+    public static NAryExpr! Add (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Add, e1, e2); }
+    public static NAryExpr! Sub (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Sub, e1, e2); }
+    public static NAryExpr! Mul (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Mul, e1, e2); }
+    public static NAryExpr! Div (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Div, e1, e2); }
+    public static NAryExpr! Mod (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Mod, e1, e2); }
+    public static NAryExpr! Subtype (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Subtype, e1, e2); }
+    
+    public static IdentifierExpr! Ident (string! name, Type! type) 
+    {
+      return new IdentifierExpr(Token.NoToken, name, type);
+    }
+
+    public static IdentifierExpr! Ident (Variable! decl) 
+    {
+      IdentifierExpr result = new IdentifierExpr(Token.NoToken, decl);
+      return result;
+    }
+
+    public static LiteralExpr! Literal (bool value) { return new LiteralExpr(Token.NoToken, value); }
+    public static LiteralExpr! Literal (int value) { return new LiteralExpr(Token.NoToken, BigNum.FromInt(value)); }
+    public static LiteralExpr! Literal (BigNum value) { return new LiteralExpr(Token.NoToken, value); }
+
+    private static LiteralExpr! true_ = Literal(true);
+    public static LiteralExpr! True { get { return true_; } }
+
+    private static LiteralExpr! false_ = Literal(false);
+    public static LiteralExpr! False { get { return false_; } }
+
+
+    public static NAryExpr! Select(Expr! map, params Expr[]! args) {
+      return SelectTok(Token.NoToken, map, args);
+    }
+
+    public static NAryExpr! Select(Expr! map, List<Expr!>! args) {
+      return Select(map, args.ToArray());
+    }
+
+    // use a different name for this variant of the method
+    // (-> some bug prevents overloading in this case)
+    public static NAryExpr! SelectTok(IToken! x, Expr! map, params Expr[]! args)
+    {
+      ExprSeq! allArgs = new ExprSeq ();
+      allArgs.Add(map);
+      foreach (Expr! a in args)
+        allArgs.Add(a);
+      return new NAryExpr(x, new MapSelect(Token.NoToken, args.Length), allArgs);
+    }
+    
+    public static NAryExpr! Store(Expr! map, params Expr[]! args) {
+      return StoreTok(Token.NoToken, map, args);
+    }
+
+    public static NAryExpr! Store(Expr! map, List<Expr!>! indexes, Expr! rhs) {
+      Expr[]! allArgs = new Expr [indexes.Count + 1];
+      for (int i = 0; i < indexes.Count; ++i)
+        allArgs[i] = indexes[i];
+      allArgs[indexes.Count] = rhs;
+      return Store(map, allArgs);
+    }
+
+    // use a different name for this variant of the method
+    // (-> some bug prevents overloading in this case)
+    public static NAryExpr! StoreTok(IToken! x, Expr! map, params Expr[]! args)
+      requires args.Length > 0;    // zero or more indices, plus the value
+    {
+      ExprSeq! allArgs = new ExprSeq ();
+      allArgs.Add(map);
+      foreach (Expr! a in args)
+        allArgs.Add(a);
+      return new NAryExpr(x, new MapStore(Token.NoToken, args.Length - 1), allArgs);
+    }
+    
+    public static NAryExpr! CoerceType(IToken! x, Expr! subexpr, Type! type) {
+      ExprSeq! args = new ExprSeq ();
+      args.Add(subexpr);
+      return new NAryExpr(x, new TypeCoercion(x, type), args);
+    }
+
+
+    /// <summary>
+    /// This property returns a representation for the expression suitable for use
+    /// by the AIFramework.  Usually, the property just returns "this", but not
+    /// every Expr is an AI.IExpr (besides, AI.IExpr is to be thought of as an
+    /// abstract interface--any class that implements AI.IExpr is supposed to
+    /// implement some proper subinterface of AI.IExpr).
+    /// The converse operations of this property are found in AbsInt\ExprFactories.ssc.
+    /// </summary>
+    public abstract AI.IExpr! IExpr {
+        [Peer] get;
+    }
+
+  }
+  
+  public class LiteralExpr : Expr, AI.IFunApp
+  {
+    public readonly object! Val;  // false, true, a BigNum, or a BvConst
+    /// <summary>
+    /// Creates a literal expression for the boolean value "b".
+    /// </summary>
+    /// <param name="tok"></param>
+    /// <param name="b"></param>
+    public LiteralExpr(IToken! tok, bool b)
+      : base(tok) 
+    {
+      Val = b;
+    }
+    /// <summary>
+    /// Creates a literal expression for the integer value "v".
+    /// </summary>
+    /// <param name="tok"></param>
+    /// <param name="v"></param>
+    public LiteralExpr(IToken! tok, BigNum v)
+      : base(tok) 
+    {
+      Val = v;
+    }
+    
+    /// <summary>
+    /// Creates a literal expression for the bitvector value "v".
+    /// </summary>
+    public LiteralExpr(IToken! tok, BigNum v, int b)
+      : base(tok) 
+    {
+      Val = new BvConst(v, b);
+    }
+    
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj == null) return false;
+      if (!(obj is LiteralExpr)) return false;
+
+      LiteralExpr other = (LiteralExpr)obj;
+      return object.Equals(this.Val, other.Val);
+    }
+    [Pure]
+    public override int GetHashCode()
+    {
+      return this.Val.GetHashCode();
+    }
+    public override void Emit(TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      stream.SetToken(this);
+      if (this.Val is bool) 
+      {
+        stream.Write((bool)this.Val ? "true" : "false"); // correct capitalization
+      } 
+      else 
+      {
+        stream.Write((!) this.Val.ToString());
+      }
+    }
+    public override void Resolve(ResolutionContext! rc) 
+    {
+      // nothing to resolve
+    }
+    public override void ComputeFreeVariables(Set /*Variable*/! freeVars) {
+      // no free variables to add
+    }
+
+    public override void Typecheck(TypecheckingContext! tc) 
+    {
+      if (Val is BvConst && CommandLineOptions.Clo.Verify && CommandLineOptions.Clo.Bitvectors == CommandLineOptions.BvHandling.None)
+        tc.Error(this, "no bitvector handling specified, please use /bv:i or /bv:z flag");
+      this.Type = ShallowType;
+    }
+
+    public override Type! ShallowType {
+      get {
+        if (Val is bool) 
+        {
+          return Type.Bool;
+        } 
+        else if (Val is BigNum) 
+        {
+          return Type.Int;
+        } 
+        else if (Val is BvConst)
+        {
+          return Type.GetBvType(((BvConst)Val).Bits);
+        }
+        else 
+        {
+          assert false;  // like, where did this value come from?!
+        }
+      }
+    }
+
+    public bool IsFalse {
+      get {
+        return Val is bool && ((bool)Val) == false;
+      }
+    }
+    public bool IsTrue {
+      get {
+        return Val is bool && ((bool)Val) == true;
+      }
+    }
+    public override AI.IExpr! IExpr {
+        get {
+            return this;
+        }
+    }
+
+    // should be eliminated after converting everything to BigNums
+    private int asInt {
+		get {
+			return asBigNum.ToIntSafe;
+		}
+	}
+
+    public bool isBigNum {
+		get {
+			return Val is BigNum;
+		}
+	}
+
+    public BigNum asBigNum {
+		get {
+			assert isBigNum;
+			return (BigNum)(!)Val;
+		}
+    }
+
+    public bool isBool {
+		get {
+			return Val is bool;
+		}
+	}
+
+    public bool asBool {
+		get {
+			assert isBool;
+			return (bool)(!)Val;
+		}
+    }
+
+    public AI.IFunctionSymbol! FunctionSymbol {
+        get {
+            if (Val is bool) 
+            {
+                if ((bool)Val)
+                {
+                    return AI.Prop.True;
+                }
+                else
+                {
+                    return AI.Prop.False;
+                }        
+            } 
+            else if (Val is BigNum) 
+            {
+                return AI.Int.Const((BigNum)Val);
+            } 
+            else if (Val is BvConst)
+            {
+                return AI.Bv.Const(((BvConst)Val).Value, ((BvConst)Val).Bits);
+            }
+            else 
+            {
+                assert false;  // like, where did this value come from?!
+            }
+        }
+    }
+    public IList/*<AI.IExpr!>*/! Arguments {
+        get {
+            return ArrayList.ReadOnly(new AI.IExpr[0]);
+        }
+    }
+    public Microsoft.AbstractInterpretationFramework.IFunApp! CloneWithArguments(IList/*<AI.IExpr!>*/! args) {
+        assert args.Count == 0;
+        return this;
+    }
+    public AI.AIType! AIType {
+        get {
+            if (Val is bool) {
+                return AI.Prop.Type;
+            } else if (Val is BigNum) {
+                return AI.Int.Type;
+            } else if (Val is BvConst) {
+                return AI.Bv.Type;
+            } else {
+                assert false;  // like, where did this value come from?!
+            }
+        }
+    }
+    [Pure]
+    public object DoVisit(AI.ExprVisitor! visitor)
+    {
+      return visitor.VisitFunApp(this);
+    }
+
+    public override Absy! StdDispatch(StandardVisitor! visitor)
+    {
+      return visitor.VisitLiteralExpr(this);
+    }
+  }
+
+  public class BvConst
+  {
+    public BigNum Value;
+    public int Bits;
+    
+    public BvConst(BigNum v, int b)
+    {
+		assert v.Signum >= 0;
+        Value = v;
+        Bits = b;
+    }
+    
+    [Pure]
+    public override string! ToString()
+    {
+        return Value + "bv" + Bits;
+    }
+    
+    [Pure]
+    public string! ToReadableString()
+    {
+        if (Value > BigNum.FromInt(10000)) {
+          string! val = (!)Value.ToString("x");
+          int pos = val.Length % 4;
+          string! res = "0x" + val.Substring(0, pos);
+          while (pos < val.Length) {
+            res += "." + val.Substring(pos, 4);
+            pos += 4;
+          }
+          return res + ".bv" + Bits;
+        } else
+          return ToString();
+    }
+    
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      BvConst other = obj as BvConst;
+      if (other == null) return false;      
+
+      return Bits == other.Bits && Value == other.Value;
+    }
+    
+    [Pure] 
+    public override int GetHashCode()
+    {
+      unchecked {
+        return Value.GetHashCode() ^ Bits;
+      }
+    }
+  }
+
+  public class AIVariableExpr : Expr 
+  {
+        
+    public string Name;     // identifier symbol
+    public AI.IVariable! Decl;   // identifier declaration
+
+    /// <summary>
+    /// Creates an unresolved identifier expression.
+    /// </summary>
+    /// <param name="tok"></param>
+    /// <param name="name"></param>
+    public AIVariableExpr(IToken! tok, AI.IVariable! var)
+      : base(tok) 
+    {
+      Name = var.ToString();
+      Decl = var;
+    }
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj == null) return false;
+      if (!(obj is AIVariableExpr)) return false;
+
+      AIVariableExpr other = (AIVariableExpr)obj;
+      return object.Equals(this.Name, other.Name) && object.Equals(this.Decl, other.Decl);
+    }
+    [Pure] 
+    public override int GetHashCode()
+    {
+      int h  = this.Name == null ? 0 : this.Name.GetHashCode();
+          h ^= this.Decl == null ? 0 : this.Decl.GetHashCode();
+      return h;
+    }
+    public override void Emit(TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      {
+        stream.Write("{0}^^", this.Decl == null ? "NoDecl" : "h"+this.Decl.GetHashCode());
+      }
+      stream.Write(this, "{0}", this.Name);
+    }
+    public override void Resolve(ResolutionContext! rc) 
+    {
+    }
+    public override void ComputeFreeVariables(Set /*Variable*/! freeVars) {
+      if (Decl is Variable) {
+        freeVars.Add((Variable)Decl);
+      }
+    }
+    public override void Typecheck(TypecheckingContext! tc) 
+    {
+        throw new System.NotImplementedException();
+    }
+    public override Type! ShallowType
+    {
+        get { throw new System.NotImplementedException(); }
+    }
+    public override AI.IExpr! IExpr {
+        get {
+            return Decl;
+        }
+    }
+
+    public override Absy! StdDispatch(StandardVisitor! visitor)
+    {
+      return visitor.VisitAIVariableExpr(this);
+    }
+  }
+  
+  public class IdentifierExpr : Expr
+  {
+    public string! Name;     // identifier symbol
+    public Variable Decl;   // identifier declaration
+
+    /// <summary>
+    /// Creates an unresolved identifier expression.  This constructor is intended to be called
+    /// only from within the parser; for use inside the translation, use another constructor, which
+    /// specifies the type of the expression.
+    /// </summary>
+    /// <param name="tok"></param>
+    /// <param name="name"></param>
+    internal IdentifierExpr(IToken! tok, string! name)
+      : base(tok)
+    {
+      Name = name;
+      // base(tok);
+    }
+    /// <summary>
+    /// Creates an unresolved identifier expression.
+    /// </summary>
+    /// <param name="tok"></param>
+    /// <param name="name"></param>
+    /// <param name="type"></param>
+    public IdentifierExpr(IToken! tok, string! name, Type! type)
+      : base(tok)
+    {
+      Name = name;
+      Type = type;
+      // base(tok);
+    }
+    
+    /// <summary>
+    /// Creates a resolved identifier expression.
+    /// </summary>
+    /// <param name="tok"></param>
+    /// <param name="d"></param>
+    public IdentifierExpr(IToken! tok, Variable! d)
+      : base(tok)
+    {
+      Name = (!) d.Name;
+      Decl = d;
+      Type = d.TypedIdent.Type;
+      // base(tok);
+    }
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj == null) return false;
+      if (!(obj is IdentifierExpr)) return false;
+
+      IdentifierExpr other = (IdentifierExpr)obj;
+      return object.Equals(this.Name, other.Name) && object.Equals(this.Decl, other.Decl);
+    }
+    [Pure] 
+    public override int GetHashCode()
+    {
+      int h  = this.Name == null ? 0 : this.Name.GetHashCode();
+          h ^= this.Decl == null ? 0 : this.Decl.GetHashCode();
+      return h;
+    }
+    public override void Emit(TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds)
+      {
+        stream.Write("{0}^^", this.Decl == null ? "NoDecl" : "h"+this.Decl.GetHashCode());
+      }
+      stream.Write(this, "{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
+    }
+    public override void Resolve(ResolutionContext! rc) 
+    {
+      if (Decl != null) 
+      {
+        // already resolved, but re-resolve type just in case it came from an unresolved type
+        if (Type != null) {
+          Type = Type.ResolveType(rc);
+        }
+        return;
+      }
+      Decl = rc.LookUpVariable(Name);
+      if (rc.StateMode == ResolutionContext.State.StateLess && Decl is GlobalVariable) {
+        rc.Error(this, "cannot refer to a global variable in this context: {0}", Name);
+      } else if (Decl == null) {
+        rc.Error(this, "undeclared identifier: {0}", Name);
+      }
+      if (Type != null) {
+        Type = Type.ResolveType(rc);
+      }
+    }
+    public override void ComputeFreeVariables(Set /*Variable*/! freeVars) {
+      assume this.Decl != null;
+      freeVars.Add(Decl);
+    }
+    public override void Typecheck(TypecheckingContext! tc) 
+    {
+      if (this.Decl != null)
+      { 
+        // sanity check
+        if (Type != null && !Type.Equals(Decl.TypedIdent.Type)) {
+          tc.Error(this, "internal error, shallow-type assignment was done incorrectly, {0}:{1} != {2}", 
+                         Name, Type, Decl.TypedIdent.Type);
+          assert false;
+        }
+        Type = Decl.TypedIdent.Type;
+      }
+    }
+
+    public override Type! ShallowType {
+      get {
+        assert Type != null;
+        return Type;
+      }
+    }
+    
+    public sealed class ConstantFunApp : AI.IFunApp
+    {
+        private IdentifierExpr! identifierExpr;
+        public IdentifierExpr! IdentifierExpr { get { return identifierExpr; } }
+        
+        private AI.IFunctionSymbol! symbol;
+        public AI.IFunctionSymbol! FunctionSymbol { get { return symbol; } }
+        
+        private static IList! emptyArgs = ArrayList.ReadOnly((IList!)new ArrayList());
+        public IList! Arguments { get { return emptyArgs; } }
+        
+        public AI.IFunApp! CloneWithArguments(IList! newargs) { return this; }
+        
+        [Pure]
+        public object DoVisit(AI.ExprVisitor! visitor) { return visitor.VisitFunApp(this); }
+        
+        public ConstantFunApp(IdentifierExpr! ie, Constant! c)
+        {
+            this.identifierExpr = ie;
+            this.symbol =
+                new AI.NamedSymbol(c.TypedIdent.Name, BoogieFactory.Type2AIType(c.TypedIdent.Type));
+            // base();
+        }
+        
+    }
+    private AI.IExpr iexprCache = null;
+    public override AI.IExpr! IExpr {
+        get
+        {
+            if (iexprCache == null)
+            {
+                if (Decl is Constant)
+                    iexprCache = new ConstantFunApp(this, (Constant)Decl);
+                else{
+                    assume this.Decl != null;
+                    iexprCache = Decl;
+                }
+            }
+            return iexprCache;
+        }
+    }
+
+    public override Absy! StdDispatch(StandardVisitor! visitor)
+    {
+      return visitor.VisitIdentifierExpr(this);
+    }
+  }
+
+  public class OldExpr : Expr
+                         , AI.IFunApp // HACK
+  {
+    public Expr! Expr;
+    public OldExpr(IToken! tok, Expr! expr)
+      : base(tok) 
+    {
+      Expr = expr;
+    }
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj == null) return false;
+      if (!(obj is OldExpr)) return false;
+
+      OldExpr other = (OldExpr)obj;
+      return object.Equals(this.Expr, other.Expr);
+    }
+    [Pure] 
+    public override int GetHashCode()
+    {
+      return this.Expr == null ? 0 : this.Expr.GetHashCode();
+    }
+    public override void Emit(TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      stream.Write(this, "old(");
+      this.Expr.Emit(stream);
+      stream.Write(")");
+    }
+    public override void Resolve(ResolutionContext! rc) 
+    {
+      if (rc.StateMode != ResolutionContext.State.Two)
+      {
+        rc.Error(this, "old expressions allowed only in two-state contexts");
+      }
+      Expr.Resolve(rc);
+    }
+    public override void ComputeFreeVariables(Set /*Variable*/! freeVars) {
+      Expr.ComputeFreeVariables(freeVars);
+    }
+    public override void Typecheck(TypecheckingContext! tc) 
+    {
+      Expr.Typecheck(tc);
+      Type = Expr.Type;
+    }
+    public override Type! ShallowType {
+      get {
+        return Expr.ShallowType;
+      }
+    }
+    public override AI.IExpr! IExpr {
+        get {
+// Put back these lines when "HACK" removed
+//            // An Old expression has no AI.IExpr representation
+//            assert false;
+//            throw new System.Exception(); // make compiler shut up
+          return this;  // HACK
+        }
+    }
+    [Pure]
+    public object DoVisit(AI.ExprVisitor! visitor)
+    {
+      return visitor.VisitFunApp(this);
+    }
+    public AI.IFunApp! CloneWithArguments(IList/*<IExpr!>*/! args)
+    {
+      assume args.Count == 1;
+      AI.IExpr! iexpr = (AI.IExpr!)args[0];
+      return new OldExpr(Token.NoToken, BoogieFactory.IExpr2Expr(iexpr));
+    }
+    private IList/*?*/ argCache = null;
+    public IList/*<IExpr!*/! Arguments
+    {
+      get {
+        if (argCache == null)
+        {
+          IList l = new ArrayList(1);
+          l.Add(Expr.IExpr);
+          argCache = ArrayList.ReadOnly(l);
+        }
+        return argCache;
+      }
+    }
+    private sealed class OldFunctionSymbol : AI.IFunctionSymbol
+    {
+      private static AI.AIType! aitype = new AI.FunctionType(AI.Value.Type, AI.Value.Type);
+      public AI.AIType! AIType { get { return aitype; } }
+      private OldFunctionSymbol() { }
+      internal static OldFunctionSymbol! Sym = new OldFunctionSymbol();
+      [Pure]
+      public override string! ToString() { return "old"; }
+    }
+    public AI.IFunctionSymbol! FunctionSymbol
+    {
+      get { return OldFunctionSymbol.Sym; }
+    }
+
+    public override Absy! StdDispatch(StandardVisitor! visitor)
+    {
+      return visitor.VisitOldExpr(this);
+    }
+  }
+
+  public interface IAppliableVisitor<T> {
+  
+    T Visit(UnaryOperator! unaryOperator);
+    
+    T Visit(BinaryOperator! binaryOperator);
+    
+    T Visit(FunctionCall! functionCall);
+    
+    T Visit(LoopPredicateName! loopPredicateName);
+    
+    T Visit(MapSelect! mapSelect);
+    
+    T Visit(MapStore! mapStore);
+    
+    T Visit(TypeCoercion! typeCoercion);
+  }
+
+  public interface IAppliable
+  {
+    string! FunctionName { get; }
+
+    /// <summary>
+    /// Emits to "stream" the operator applied to the given arguments.
+    /// The length of "args" can be anything that the parser allows for this appliable operator
+    /// (but can be nothing else).
+    /// </summary>
+    /// <param name="args"></param>
+    /// <param name="stream"></param>
+    /// <param name="contextBindingStrength"></param>
+    /// <param name="fragileContext"></param>
+    void Emit(ExprSeq! args, TokenTextWriter! stream, int contextBindingStrength, bool fragileContext);
+
+    void Resolve(ResolutionContext! rc, Expr! subjectForErrorReporting);
+
+    /// <summary>
+    /// Requires the object to have been properly resolved.
+    /// </summary>
+    int ArgumentCount { get; }
+
+    /// <summary>
+    /// Typechecks the arguments "args" for the Appliable.  If the arguments are
+    /// appropriate, returns the result type; otherwise returns null.
+    /// As result of the type checking, the values of type parameters of the
+    /// appliable can be returned (which are then stored in the NAryExpr and later
+    /// also used in the VCExprAST).
+    /// Requires the object to have been successfully resolved.
+    /// Requires args.Length == ArgumentCount.
+    /// Requires all elements of "args" to have a non-null Type field.
+    /// </summary>
+    /// <param name="args"></param>
+    /// <param name="tc"></param>
+    Type Typecheck(ref ExprSeq! args, out TypeParamInstantiation! tpInstantiation, TypecheckingContext! tc);
+      ensures args.Length == old(args.Length);
+      // requires Microsoft.SpecSharp.Collections.Reductions.Forall{Expr! arg in args; arg.Type != null};
+    
+    /// <summary>
+    /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
+    /// </summary>
+    Type! ShallowType(ExprSeq! args);
+    
+    AI.IFunctionSymbol! AIFunctionSymbol { get; }    
+    
+    T Dispatch<T>(IAppliableVisitor<T>! visitor);
+  }
+  
+  public interface IOverloadedAppliable
+  {
+    void ResolveOverloading(NAryExpr! expr);
+  }
+  
+  public class UnaryOperator : IAppliable
+  {
+    private IToken! tok;
+    public enum Opcode { Not };
+    private Opcode op;
+    public Opcode Op { get { return op; } }
+    public UnaryOperator (IToken! tok, Opcode op) { this.tok = tok; this.op = op; }
+
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj == null) return false;
+      if (!(obj is UnaryOperator)) return false;
+
+      UnaryOperator other = (UnaryOperator)obj;
+      return object.Equals(this.op, other.op);
+    }
+    [Pure] 
+    public override int GetHashCode()
+    {
+      return (int) this.op;
+    }
+
+    public string! FunctionName 
+    {
+      get 
+      {
+        switch (this.op) 
+        {
+          case Opcode.Not: return "!";
+        }
+        System.Diagnostics.Debug.Fail("unknown unary operator: " + op.ToString());
+        throw new Exception();
+      }
+    }
+
+    public AI.IFunctionSymbol! AIFunctionSymbol {
+        get {
+            switch (this.op) {
+                case Opcode.Not: return AI.Prop.Not;
+            }
+            System.Diagnostics.Debug.Fail("unknown unary operator: " + op.ToString());
+            throw new Exception();
+        }
+    }
+
+    public void Emit(ExprSeq! args, TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      stream.SetToken(ref this.tok);
+      assert args.Length == 1;
+      // determine if parens are needed
+      int opBindingStrength = 0x60;
+      bool parensNeeded = opBindingStrength < contextBindingStrength ||
+        (fragileContext && opBindingStrength == contextBindingStrength);
+
+      if (parensNeeded) 
+      {
+        stream.Write("(");
+      }
+      stream.Write(FunctionName);
+      ((!)args[0]).Emit(stream, opBindingStrength, false);
+      if (parensNeeded) 
+      {
+        stream.Write(")");
+      }
+    }
+
+    public void Resolve(ResolutionContext! rc, Expr! subjectForErrorReporting) 
+    {
+      if (rc.TriggerMode && this.op == Opcode.Not) {
+        rc.Error(subjectForErrorReporting, "boolean operators are not allowed in triggers");
+      }
+    }
+
+    public int ArgumentCount 
+    {
+      get 
+      {
+        return 1;
+      }
+    }
+
+    public Type Typecheck(ref ExprSeq! args, out TypeParamInstantiation! tpInstantiation, TypecheckingContext! tc) 
+    {
+      assume args.Length == 1;
+      tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+      Type arg0type = (!)((!)args[0]).Type;
+      switch (this.op) 
+      {
+        case Opcode.Not:
+          if (arg0type.Unify(Type.Bool)) 
+          {
+            return Type.Bool;
+          }
+          goto BAD_TYPE;
+      }
+      System.Diagnostics.Debug.Fail("unknown unary operator: " + op.ToString());
+      assert false;
+      BAD_TYPE:
+        tc.Error(this.tok, "invalid argument type ({1}) to unary operator {0}", 
+          this.FunctionName, arg0type);
+      return null;
+    }
+    public Type! ShallowType(ExprSeq! args) {
+      switch (this.op) {
+        case Opcode.Not:
+          return Type.Bool;
+        default:
+          assert false;  // unexpected unary operator
+      }
+    }
+
+    public object Evaluate (object argument)
+    {
+      if (argument == null) { return null; }
+      switch (this.op)
+      {
+        case Opcode.Not:
+          if (argument is bool) { return ! ((bool)argument); }
+          throw new System.InvalidOperationException("unary Not only applies to bool");
+      }
+      return null; // unreachable
+    }
+    
+    public T Dispatch<T>(IAppliableVisitor<T>! visitor) {
+      return visitor.Visit(this);
+    }
+  }
+
+  public class BinaryOperator : IAppliable, IOverloadedAppliable
+  {
+    private IToken! tok;
+    public enum Opcode { Add, Sub, Mul, Div, Mod, Eq, Neq, Gt, Ge, Lt, Le, And, Or, Imp, Iff, Subtype };
+    private Opcode op;
+    public Opcode Op { get { return op; } }
+    public BinaryOperator (IToken! tok, Opcode op) { this.tok = tok; this.op = op; }
+
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj == null) return false;
+      if (!(obj is BinaryOperator)) return false;
+
+      BinaryOperator other = (BinaryOperator)obj;
+      return object.Equals(this.op, other.op);
+    }
+
+    [Pure] 
+    public override int GetHashCode()
+    {
+      return (int) this.op << 1;
+    }
+
+    public string! FunctionName 
+    {
+      get 
+      {
+        switch (this.op) 
+        {
+          case Opcode.Add: return "+";
+          case Opcode.Sub: return "-";
+          case Opcode.Mul: return "*";
+          case Opcode.Div: return "/";
+          case Opcode.Mod: return "%";
+          case Opcode.Eq: return "==";
+          case Opcode.Neq: return "!=";
+          case Opcode.Gt: return ">";
+          case Opcode.Ge: return ">=";
+          case Opcode.Lt: return "<";
+          case Opcode.Le: return "<=";
+          case Opcode.And: return "&&";
+          case Opcode.Or: return "||";
+          case Opcode.Imp: return "==>";
+          case Opcode.Iff: return "<==>";
+          case Opcode.Subtype: return "<:";
+        }
+        System.Diagnostics.Debug.Fail("unknown binary operator: " + op.ToString());
+        throw new Exception();
+      }
+    }
+
+    public AI.IFunctionSymbol! AIFunctionSymbol {
+        get {
+            switch (this.op) {
+                case Opcode.Add: return AI.Int.Add;
+                case Opcode.Sub: return AI.Int.Sub;
+                case Opcode.Mul: return AI.Int.Mul;
+                case Opcode.Div: return AI.Int.Div;
+                case Opcode.Mod: return AI.Int.Mod;
+                case Opcode.Eq: return AI.Value.Eq;
+                case Opcode.Neq: return AI.Value.Neq;
+                case Opcode.Gt: return AI.Int.Greater;
+                case Opcode.Ge: return AI.Int.AtLeast;
+                case Opcode.Lt: return AI.Int.Less;
+                case Opcode.Le: return AI.Int.AtMost;
+                case Opcode.And: return AI.Prop.And;
+                case Opcode.Or: return AI.Prop.Or;
+                case Opcode.Imp: return AI.Prop.Implies;
+                case Opcode.Iff: return AI.Value.Eq;
+                case Opcode.Subtype: return AI.Value.Subtype;
+            }
+            System.Diagnostics.Debug.Fail("unknown binary operator: " + op.ToString());
+            throw new Exception();
+        }
+    }
+
+    public void Emit(ExprSeq! args, TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      stream.SetToken(ref this.tok);
+      assert args.Length == 2;
+      // determine if parens are needed
+      int opBindingStrength;
+      bool fragileLeftContext = false;  // false means "allow same binding power on left without parens"
+      bool fragileRightContext = false;  // false means "allow same binding power on right without parens"
+      switch (this.op) 
+      {
+        case Opcode.Add:
+          opBindingStrength = 0x40; break;
+        case Opcode.Sub:
+          opBindingStrength = 0x40; fragileRightContext = true; break;
+        case Opcode.Mul:
+          opBindingStrength = 0x50; break;
+        case Opcode.Div:
+          opBindingStrength = 0x50; fragileRightContext = true; break;
+        case Opcode.Mod:
+          opBindingStrength = 0x50; fragileRightContext = true; break;
+        case Opcode.Eq:
+        case Opcode.Neq:
+        case Opcode.Gt:
+        case Opcode.Ge:
+        case Opcode.Lt:
+        case Opcode.Le:
+        case Opcode.Subtype:
+          opBindingStrength = 0x30;
+          fragileLeftContext = fragileRightContext = true;
+          break;
+        case Opcode.And:
+          opBindingStrength = 0x20; break;
+        case Opcode.Or:
+          opBindingStrength = 0x21; break;
+        case Opcode.Imp:
+          opBindingStrength = 0x10; fragileLeftContext = true; break;
+        case Opcode.Iff:
+          opBindingStrength = 0x00; break;
+        default:
+          System.Diagnostics.Debug.Fail("unknown binary operator: " + op.ToString());
+          opBindingStrength = -1;  // to please compiler, which refuses to consider whether or not all enumeration cases have been considered!
+          break;
+      }
+      int opBS = opBindingStrength & 0xF0;
+      int ctxtBS = contextBindingStrength & 0xF0;
+      bool parensNeeded = opBS < ctxtBS ||
+        (opBS == ctxtBS && (opBindingStrength != contextBindingStrength || fragileContext));
+
+      if (parensNeeded) 
+      {
+        stream.Write("(");
+      }
+      ((!)args[0]).Emit(stream, opBindingStrength, fragileLeftContext);
+      stream.Write(" {0} ", FunctionName);
+      ((!)args[1]).Emit(stream, opBindingStrength, fragileRightContext);
+      if (parensNeeded) 
+      {
+        stream.Write(")");
+      }
+    }
+    public void Resolve(ResolutionContext! rc, Expr! subjectForErrorReporting) 
+    {
+      if (rc.TriggerMode) {
+        switch (this.op) 
+        {
+          case Opcode.Add:
+          case Opcode.Sub:
+          case Opcode.Mul:
+          case Opcode.Div:
+          case Opcode.Mod:
+          case Opcode.Neq:  // Neq is allowed, but not Eq
+          case Opcode.Subtype:
+            // These are fine
+            break;
+
+          case Opcode.Eq:
+            rc.Error(subjectForErrorReporting, "equality is not allowed in triggers");
+            break;
+
+          case Opcode.Gt:
+          case Opcode.Ge:
+          case Opcode.Lt:
+          case Opcode.Le:
+            rc.Error(subjectForErrorReporting, "arithmetic comparisons are not allowed in triggers");
+            break;
+
+          case Opcode.And:
+          case Opcode.Or:
+          case Opcode.Imp:
+          case Opcode.Iff:
+            rc.Error(subjectForErrorReporting, "boolean operators are not allowed in triggers");
+            break;
+
+          default:
+            System.Diagnostics.Debug.Fail("unknown binary operator: " + this.op.ToString());
+            break;
+        }
+      }
+    }
+    public int ArgumentCount 
+    {
+      get 
+      {
+        return 2;
+      }
+    }
+    public Type Typecheck(ref ExprSeq! args, out TypeParamInstantiation! tpInstantiation, TypecheckingContext! tc) 
+    {
+      assert args.Length == 2;
+      // the default; the only binary operator with a type parameter is equality, but right
+      // we don't store this parameter because it does not appear necessary
+      tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+      Expr arg0 = (!)args[0];
+      Expr arg1 = (!)args[1];
+      Type arg0type = (!)arg0.Type;
+      Type arg1type = (!)arg1.Type;
+      switch (this.op) 
+      {
+        case Opcode.Add:
+        case Opcode.Sub:
+        case Opcode.Mul:
+        case Opcode.Div:
+        case Opcode.Mod:
+          if (arg0type.Unify(Type.Int) && arg1type.Unify(Type.Int)) {
+            return Type.Int;
+          } 
+          goto BAD_TYPE;
+        case Opcode.Eq:
+        case Opcode.Neq:
+          // Comparison is allowed if the argument types are unifiable
+          // (i.e., if there is any chance that the values of the arguments are 
+          // in the same domain)
+          if (arg0type.Equals(arg1type)) {
+            // quick path
+            return Type.Bool;
+          }
+          TypeVariableSeq! unifiable = new TypeVariableSeq ();
+          unifiable.AddRange(arg0type.FreeVariables);
+          unifiable.AddRange(arg1type.FreeVariables);
+
+          if (arg0type.Unify(arg1type, unifiable, new Dictionary<TypeVariable!, Type!> ()))
+            return Type.Bool;
+          goto BAD_TYPE;
+        case Opcode.Gt:
+        case Opcode.Ge:
+        case Opcode.Lt:
+        case Opcode.Le:
+          if (arg0type.Unify(Type.Int) && arg1type.Unify(Type.Int)) {
+            return Type.Bool;
+          } 
+          goto BAD_TYPE;
+        case Opcode.And:
+        case Opcode.Or:
+        case Opcode.Imp:
+        case Opcode.Iff:
+          if (arg0type.Unify(Type.Bool) && arg1type.Unify(Type.Bool)) {
+            return Type.Bool;
+          } 
+          goto BAD_TYPE;
+        case Opcode.Subtype:
+          // Subtype is polymorphically typed and can compare things of
+          // arbitrary types (but both arguments must have the same type)
+          if (arg0type.Unify(arg1type))
+          {
+            return Type.Bool;
+          }
+          goto BAD_TYPE;
+      }
+      System.Diagnostics.Debug.Fail("unknown binary operator: " + op.ToString());
+      assert false;
+      BAD_TYPE:
+        tc.Error(this.tok, "invalid argument types ({1} and {2}) to binary operator {0}", this.FunctionName, arg0type, arg1type);
+      return null;
+    }
+    
+    public Type! ShallowType(ExprSeq! args) {
+      switch (this.op) 
+      {
+        case Opcode.Add:
+        case Opcode.Sub:
+        case Opcode.Mul:
+        case Opcode.Div:
+        case Opcode.Mod:
+          return Type.Int;
+
+        case Opcode.Eq:
+        case Opcode.Neq:
+        case Opcode.Gt:
+        case Opcode.Ge:
+        case Opcode.Lt:
+        case Opcode.Le:
+        case Opcode.And:
+        case Opcode.Or:
+        case Opcode.Imp:
+        case Opcode.Iff:
+        case Opcode.Subtype:
+          return Type.Bool;
+
+        default:
+          assert false;  // unexpected binary operator
+      }
+    }
+
+    public void ResolveOverloading(NAryExpr! expr)
+    {
+      Expr arg0 = (!) expr.Args[0];
+      Expr arg1 = (!) expr.Args[1];
+      switch (op)
+      {
+        case Opcode.Eq:
+          if (arg0.Type != null && arg0.Type.IsBool && arg1.Type != null && arg1.Type.IsBool)
+          {
+            expr.Fun = new BinaryOperator(tok, Opcode.Iff);
+          }
+          break;
+        case Opcode.Neq:
+          if (arg0.Type != null && arg0.Type.IsBool && arg1.Type != null && arg1.Type.IsBool)
+          {
+            expr.Fun = new BinaryOperator(tok, Opcode.Iff);
+            arg1 = new NAryExpr(expr.tok, new UnaryOperator(tok, UnaryOperator.Opcode.Not), new ExprSeq(arg1));
+
+            // ugly ... there should be some more general approach,
+            // e.g., to typecheck the whole expression again
+            arg1.Type = Type.Bool;
+            ((NAryExpr)arg1).TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+
+            expr.Args[1] = arg1;
+          }
+          break;
+      }
+    }
+        
+    public object Evaluate (object e1, object e2)
+    {
+      if (e1 == null || e2 == null) { return null; }
+
+      switch (this.op)
+      {
+        case Opcode.Add: 
+          if (e1 is BigNum && e2 is BigNum) { return ((BigNum)e1)+((BigNum)e2); } 
+          break;
+        case Opcode.Sub: 
+          if (e1 is BigNum && e2 is BigNum) { return ((BigNum)e1)-((BigNum)e2); } 
+          break;
+        case Opcode.Mul: 
+          if (e1 is BigNum && e2 is BigNum) { return ((BigNum)e1)*((BigNum)e2); } 
+          break;
+        case Opcode.Div: 
+          if (e1 is BigNum && e2 is BigNum) { return /* TODO: right semantics? */ ((BigNum)e1)/((BigNum)e2); } 
+          break;
+        case Opcode.Mod: 
+          if (e1 is BigNum && e2 is BigNum) { return /* TODO: right semantics? */ ((BigNum)e1)%((BigNum)e2); } 
+          break;
+        case Opcode.Lt: 
+          if (e1 is BigNum && e2 is BigNum) { return ((BigNum)e1)<((BigNum)e2); } 
+          break;
+        case Opcode.Le: 
+          if (e1 is BigNum && e2 is BigNum) { return ((BigNum)e1)<=((BigNum)e2); } 
+          break;
+        case Opcode.Gt: 
+          if (e1 is BigNum && e2 is BigNum) { return ((BigNum)e1)>((BigNum)e2); } 
+          break;
+        case Opcode.Ge: 
+          if (e1 is BigNum && e2 is BigNum) { return ((BigNum)e1)>=((BigNum)e2); } 
+          break;
+
+        case Opcode.And: if (e1 is bool && e2 is bool) { return (bool)e1 && (bool)e2; } break;
+        case Opcode.Or: if (e1 is bool && e2 is bool) { return (bool)e1 || (bool)e2; } break;
+        case Opcode.Imp: if (e1 is bool && e2 is bool) { return ! (bool)e1 || (bool)e2; } break;
+        case Opcode.Iff: if (e1 is bool && e2 is bool) { return e1 == e2; } break;
+
+        case Opcode.Eq: return Equals(e1,e2); 
+        case Opcode.Neq: return ! Equals(e1,e2); 
+
+        case Opcode.Subtype: throw new System.NotImplementedException();
+      }
+      throw new System.InvalidOperationException("bad types to binary operator " + this.op);
+    }
+    
+    public T Dispatch<T>(IAppliableVisitor<T>! visitor) {
+      return visitor.Visit(this);
+    }
+
+  }
+
+  public class FunctionCall : IAppliable, AI.IFunctionSymbol
+  {
+    private IdentifierExpr! name;
+    public Function Func;
+    public FunctionCall(IdentifierExpr! name) { this.name = name; }
+    public string! FunctionName { get { return this.name.Name; } }
+
+    public AI.IFunctionSymbol! AIFunctionSymbol {
+        get {
+            if (name.Name == "$typeof") {
+                return AI.Value.Typeof;
+            } else if (name.Name == "$allocated") {
+                return AI.FieldName.Allocated;
+            } else {
+                return this;
+            }
+        }
+    }
+
+    [Pure]
+    public override string! ToString() {
+        return name.Name;
+    }
+
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object other) {
+        FunctionCall fc = other as FunctionCall;
+        return fc != null && this.Func == fc.Func;
+    }
+    [Pure] 
+    public override int GetHashCode()
+    {
+        assume this.Func != null;
+        return Func.GetHashCode();
+    }
+    
+    public AI.AIType! AIType {
+        get 
+        {
+            assume this.Func != null;
+            return AI.Value.FunctionType(this.Func.InParams.Length);
+        }
+    }
+
+    virtual public void Emit(ExprSeq! args, TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      this.name.Emit(stream, 0xF0, false);
+      stream.Write("(");
+      args.Emit(stream);
+      stream.Write(")");
+    }
+    public void Resolve(ResolutionContext! rc, Expr! subjectForErrorReporting) 
+    {
+      if (Func != null) 
+      {
+        // already resolved
+        return;
+      }
+      Func = rc.LookUpProcedure(name.Name) as Function;
+      if (Func == null) 
+      {
+        rc.Error(this.name, "use of undeclared function: {0}", name.Name);
+      }
+    }
+    public virtual int ArgumentCount 
+    {
+      get 
+      {
+        assume Func != null;  // ArgumentCount requires object to be properly resolved.
+        return Func.InParams.Length;
+      }
+    }
+    public virtual Type Typecheck(ref ExprSeq! actuals, out TypeParamInstantiation! tpInstantiation, TypecheckingContext! tc) 
+    {
+      assume this.Func != null;
+      assume actuals.Length == Func.InParams.Length;
+      assume Func.OutParams.Length == 1;
+
+      List<Type!>! resultingTypeArgs;
+      TypeSeq actualResultType =
+        Type.CheckArgumentTypes(Func.TypeParameters,
+                                out resultingTypeArgs,
+                                Func.InParams.ToTypeSeq,
+                                actuals,
+                                Func.OutParams.ToTypeSeq,
+                                null,
+                                // we need some token to report a possibly wrong number of
+                                // arguments
+                                actuals.Length > 0 ? ((!)actuals[0]).tok : Token.NoToken,
+                                "application of " + name.Name,
+                                tc);
+      
+      if (actualResultType == null) {
+        tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+        return null;
+      } else {
+        assert actualResultType.Length == 1;
+        tpInstantiation =
+          SimpleTypeParamInstantiation.From(Func.TypeParameters, resultingTypeArgs);
+        return actualResultType[0];
+      }
+    }
+    public Type! ShallowType(ExprSeq! args) {
+      assume name.Type != null;
+      return name.Type;
+    }
+    
+    public virtual T Dispatch<T>(IAppliableVisitor<T>! visitor) {
+      return visitor.Visit(this);
+    }
+  }
+  
+  public class TypeCoercion : IAppliable {
+    private IToken! tok;
+    public Type! Type;
+    
+    public TypeCoercion(IToken! tok, Type! type) {
+      this.tok = tok;
+      this.Type = type;
+    }
+
+    public string! FunctionName { get {
+      return ":";
+    } }
+
+    public void Emit(ExprSeq! args, TokenTextWriter! stream,
+                     int contextBindingStrength, bool fragileContext) {
+      stream.SetToken(ref this.tok);
+      assert args.Length == 1;
+      // determine if parens are needed
+      int opBindingStrength = 0x90;
+      bool parensNeeded = opBindingStrength < contextBindingStrength ||
+        (fragileContext && opBindingStrength == contextBindingStrength);
+
+      if (parensNeeded) 
+        stream.Write("(");
+
+      ((!)args[0]).Emit(stream, opBindingStrength, false);
+      stream.Write(FunctionName);
+      Type.Emit(stream, 0);
+
+      if (parensNeeded) 
+        stream.Write(")");
+    }
+    
+    public void Resolve(ResolutionContext! rc, Expr! subjectForErrorReporting) {
+      this.Type = this.Type.ResolveType(rc);
+    }
+
+    public int ArgumentCount { get {
+      return 1;
+    } }
+
+    public Type Typecheck(ref ExprSeq! args,
+                          out TypeParamInstantiation! tpInstantiation,
+                          TypecheckingContext! tc) {
+      assume args.Length == 1;
+      tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+
+      if (!this.Type.Unify((!)((!)args[0]).Type))
+        tc.Error(this.tok, "{0} cannot be coerced to {1}",
+                 ((!)args[0]).Type, this.Type);
+      return this.Type;
+    }
+
+    public Type! ShallowType(ExprSeq! args) {
+      return this.Type;
+    }
+
+    public AI.IFunctionSymbol! AIFunctionSymbol { get {
+      // not really clear what should be returned here ...
+      // should the operation be completely invisible for the abstract interpretation?
+      return AI.Heap.UnsupportedHeapOp;
+    } }
+    
+    public T Dispatch<T>(IAppliableVisitor<T>! visitor) {
+      return visitor.Visit(this);
+    }
+
+  }
+
+  /// <summary>
+  /// A subclass of FunctionCall that stands for a zero-argument function call, used as a loop invariant placeholder
+  /// </summary>
+  public class LoopPredicateName : FunctionCall
+  {         
+    private Block! block;             // The block the predicate refers to    
+    public Block! Block
+    {    
+      get                       
+      {
+        return block;
+      }
+    }
+
+    private string! blockName;      // The name of the block
+    private ICollection<Block!>! component;
+    public ICollection<Block!>! Component
+    { 
+      get
+      {
+        return this.component;
+      }
+    }
+
+    public string! Name 
+    {
+      get
+      {
+        return "J_" + this.blockName;
+      }
+    } 
+
+    invariant block.Label == blockName;   // Note that we ask for object equality of strings...
+
+    private Hashtable /* Var -> Incarnations */ preHavocIncarnationMap;
+    public Hashtable PreHavocIncarnationMap
+    {
+      get 
+      {
+        return this.preHavocIncarnationMap;
+      }
+    }
+
+    private Hashtable /* Var -> Incarnations */ postHavocIncarnationMap;
+    public Hashtable PostHavocIncarnationMap
+    {
+      get 
+      {
+        return this.postHavocIncarnationMap;
+      }
+    }
+
+
+    // Those below are the inverse maps of the maps between variables and incarnations
+    private Hashtable /* String -> Var */ preHavocIncarnationInverseMap;
+    private Hashtable /* String -> Var */ postHavocIncarnationInverseMap;
+
+    public Hashtable PreHavocInverseMap 
+    {
+      get 
+      {
+        if(this.preHavocIncarnationInverseMap == null) 
+        {
+          this.preHavocIncarnationInverseMap = new Hashtable();
+          assert this.preHavocIncarnationMap != null;                   // If we get at this point, then something is wrong with the program
+          foreach(object! key in (!) (this.preHavocIncarnationMap).Keys) 
+          {
+            object! val = (!) this.preHavocIncarnationMap[key];
+            if(!this.preHavocIncarnationInverseMap.ContainsKey(val.ToString()))
+              this.preHavocIncarnationInverseMap.Add(val.ToString(), key);
+          }
+        }
+        return this.preHavocIncarnationInverseMap;
+      }
+    }
+
+    public Hashtable PostHavocInverseMap 
+    {
+      get 
+      {
+        if(this.postHavocIncarnationInverseMap == null) 
+        {
+          this.postHavocIncarnationInverseMap = new Hashtable();
+          assert this.postHavocIncarnationMap != null;        // If it is null, something is wrong before...
+          foreach(object! key in (!) (this.postHavocIncarnationMap).Keys) 
+          {
+            object! val = (!) this.postHavocIncarnationMap[key];
+            if(!this.postHavocIncarnationInverseMap.ContainsKey(val.ToString()))
+            this.postHavocIncarnationInverseMap.Add(val.ToString(), key);
+          }
+        }
+        return this.postHavocIncarnationInverseMap;
+      }
+    }
+
+    /// <summary>
+    /// Create a new LoopPredicate
+    /// </summary>      
+    public LoopPredicateName(Block! block, ICollection<Block!>! component) 
+      : base(new IdentifierExpr(Token.NoToken, "J_"+ block.Label, Type.Bool))
+    {
+      this.block = block;
+      this.blockName = block.Label;
+      this.component = component;
+      // base(new IdentifierExpr(Token.NoToken, "J_"+ block.Label, Type.Bool));
+    }       
+
+    public void SetPreAndPostHavocIncarnationMaps(Hashtable pre, Hashtable post) 
+    {
+      assert this.preHavocIncarnationMap == null && this.postHavocIncarnationMap == null;
+        
+      this.preHavocIncarnationMap = pre;
+      this.postHavocIncarnationMap = post;
+    }
+
+    /// <summary>
+    /// Writes down the loop predicate and the incarnations map before and after the havoc statements
+    /// </summary>
+    public override void Emit(ExprSeq! args, TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      string! pre, post;
+
+      if(this.postHavocIncarnationMap != null && this.preHavocIncarnationMap != null)        
+      {
+        pre = "pre: [ " + hashtableToString(this.preHavocIncarnationMap) +" ]";  
+        post = "post: [ " + hashtableToString(this.postHavocIncarnationMap) +" ]";        
+      }
+      else 
+      {
+        pre = post = "[]";
+      }
+
+      stream.Write("J_" + this.blockName);
+      stream.Write("(");
+      stream.Write(pre + ", " + post);
+      stream.Write(")");
+    }
+
+    public override Type Typecheck(ref ExprSeq! actuals, out TypeParamInstantiation! tpInstantiation, TypecheckingContext! tc) 
+    {
+      tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+      return Type.Bool;
+    }
+
+    public override int ArgumentCount { get { return 0; } }
+
+    private string! hashtableToString(Hashtable! map) 
+    {
+      string! outVal = "";
+
+      foreach (object! key in map.Keys) 
+      {
+        object val = map[key];
+        outVal += key + " -> " + val + ",";
+      }
+
+      return outVal;
+    }    
+
+    public override T Dispatch<T>(IAppliableVisitor<T>! visitor) {
+      return visitor.Visit(this);
+    }
+
+  }
+
+  public class NAryExpr : Expr, AI.IFunApp
+  {
+    [Additive] [Peer]
+    public IAppliable! Fun;
+    public ExprSeq! Args;
+
+    // The instantiation of type parameters that is determined during type checking.
+    // Which type parameters are available depends on the IAppliable
+    public TypeParamInstantiation TypeParameters = null;
+
+    [Captured]
+    public NAryExpr(IToken! tok, IAppliable! fun, ExprSeq! args)
+      : base(tok)
+    {
+      Fun = fun;
+      Args = args;
+      assert forall{Expr arg in args; arg != null};
+    }
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj == null) return false;
+      if (!(obj is NAryExpr)) return false;
+
+      NAryExpr other = (NAryExpr)obj;
+      return object.Equals(this.Fun, other.Fun) && object.Equals(this.Args, other.Args);
+    }
+    [Pure] 
+    public override int GetHashCode()
+    {
+      int h = this.Fun.GetHashCode();
+      h ^= this.Args.GetHashCode();
+      return h;
+    }
+    public override void Emit(TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      stream.SetToken(this);
+      Fun.Emit(Args, stream, contextBindingStrength, fragileContext);
+    }
+    public override void Resolve(ResolutionContext! rc) 
+    {
+      Fun.Resolve(rc, this);
+      foreach (Expr! e in Args) 
+      {
+        e.Resolve(rc);
+      }
+    }
+    public override void ComputeFreeVariables(Set /*Variable*/! freeVars) {
+      foreach (Expr! e in Args) {
+        e.ComputeFreeVariables(freeVars);
+      }
+      // also add the free type variables
+      if (TypeParameters != null) {
+        foreach (TypeVariable! var in TypeParameters.FormalTypeParams)
+          foreach (TypeVariable! w in TypeParameters[var].FreeVariables)
+            freeVars.Add(w);
+      }
+    }
+    public override void Typecheck(TypecheckingContext! tc) 
+    {
+      int prevErrorCount = tc.ErrorCount;
+      foreach (Expr! e in Args) 
+      {
+        e.Typecheck(tc);
+      }
+      if (Fun.ArgumentCount != Args.Length) 
+      {
+        tc.Error(this, "wrong number of arguments to function: {0} ({1} instead of {2})",
+                 Fun.FunctionName, Args.Length, Fun.ArgumentCount);
+      } 
+      else if (tc.ErrorCount == prevErrorCount &&
+               // if the type parameters are set, this node has already been
+               // typechecked and does not need to be checked again
+               TypeParameters == null)
+      {
+        TypeParamInstantiation! tpInsts;
+        Type = Fun.Typecheck(ref Args, out tpInsts, tc);
+        if (Type != null && Type.IsBv && CommandLineOptions.Clo.Verify && CommandLineOptions.Clo.Bitvectors == CommandLineOptions.BvHandling.None) {
+          tc.Error(this, "no bitvector handling specified, please use /bv:i or /bv:z flag");
+        }
+        TypeParameters = tpInsts;
+      }
+      IOverloadedAppliable oa = Fun as IOverloadedAppliable;
+      if (oa != null)
+      {
+        oa.ResolveOverloading(this);
+      }
+      if (Type == null) {
+        // set Type to some non-null value
+        Type = new TypeProxy(this.tok, "type_checking_error");
+      }
+    }
+    public override Type! ShallowType {
+      get {
+        return Fun.ShallowType(Args);
+      }
+    }
+    
+    public override AI.IExpr! IExpr {
+        get {
+            return this;
+        }
+    }
+    public AI.IFunctionSymbol! FunctionSymbol {
+        get {
+            return Fun.AIFunctionSymbol;
+        }
+    }
+    public IList/*<AI.IExpr!>*/! Arguments {
+        get {
+            AI.IExpr[] a = new AI.IExpr[Args.Length];
+            for (int i = 0; i < Args.Length; i++) {
+                a[i] = ((!)Args[i]).IExpr;
+            }
+            return ArrayList.ReadOnly(a);
+        }
+    }
+    public AI.IFunApp! CloneWithArguments(IList/*<AI.IExpr!>*/! args) {
+        return new NAryExpr(this.tok, this.Fun, BoogieFactory.IExprArray2ExprSeq(args));
+    }
+
+    [Pure]
+    public object DoVisit(AI.ExprVisitor! visitor)
+    {
+      return visitor.VisitFunApp(this);
+    }
+
+    public override Absy! StdDispatch(StandardVisitor! visitor)
+    {
+      return visitor.VisitNAryExpr(this);
+    }
+  }
+
+  /// <summary>
+  /// An instance of LoopPredicate stands for a loop invariant predicate 
+  /// </summary>
+  public class LoopPredicate : NAryExpr 
+  {
+    private static ExprSeq! emptyArgs = new ExprSeq(new Expr[0]);         // Share the emptylist of arguments among several instances
+    
+    invariant loopPredicateName == Fun;                                   // loopPredicateName is just a way of subtyping Fun...
+    LoopPredicateName! loopPredicateName; 
+
+    Hashtable /* Var -> Expr */ preHavocIncarnationMap;
+    Hashtable /* Var -> Expr */ postHavocIncarnationMap;    
+
+    private Block! block;                         // The block the predicate refers to
+    private string! BlockName;                    // Name of the widen block the predicate refers to 
+    private ICollection<Block!> component;        // The component the block belongs to 
+    
+    /// <summary>
+    /// Create a predicate (standing for a loop invariant). The parameter are the name of the block and the (strong) connect components the block belongs to
+    /// </summary>
+    public LoopPredicate(Block! block, ICollection<Block!>! component) 
+    {
+      this.block = block;
+      this.BlockName = block.Label;
+      this.component = component;      
+
+      LoopPredicateName! tmp;        // to please the compiler we introde a temp variable
+      this.loopPredicateName = tmp = new LoopPredicateName(block, component); 
+      base(Token.NoToken, tmp, emptyArgs); // due to locally computed data
+    } 
+
+    public void SetPreAndPostHavocIncarnationMaps(Hashtable pre, Hashtable post) 
+    {
+      assert this.preHavocIncarnationMap == null && this.postHavocIncarnationMap == null; // The method must be called just once
+        
+      this.preHavocIncarnationMap = pre;
+      this.postHavocIncarnationMap = post;
+      this.loopPredicateName.SetPreAndPostHavocIncarnationMaps(pre, post);
+    }  
+
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj == null) return false;
+      if (!(obj is LoopPredicate)) return false;
+
+      LoopPredicate pred = (LoopPredicate) obj;
+      return this.BlockName.Equals(pred.BlockName);
+    }
+
+    [Pure]
+    public override int GetHashCode() 
+    {
+      return this.BlockName.GetHashCode();
+    }
+
+    public override Absy! StdDispatch(StandardVisitor! visitor)
+    {
+      return visitor.VisitLoopPredicate(this);
+    }
+  }
+
+  public class MapSelect : IAppliable, AI.IFunctionSymbol {
+
+    public readonly int Arity;
+    private readonly IToken! tok;
+
+    public MapSelect(IToken! tok, int arity) {
+      this.tok = tok;
+      this.Arity = arity;
+    }
+
+    public string! FunctionName { get {
+      return "MapSelect";
+    } }
+
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (!(obj is MapSelect)) return false;
+
+      MapSelect other = (MapSelect)obj;
+      return this.Arity == other.Arity;
+    }
+
+    [Pure] 
+    public override int GetHashCode()
+    {
+      return Arity.GetHashCode() * 2823;
+    }
+
+    public void Emit(ExprSeq! args, TokenTextWriter! stream,
+                     int contextBindingStrength, bool fragileContext) {
+      assume args.Length == Arity + 1;
+      Emit(args, stream, contextBindingStrength, fragileContext, false);
+    }
+
+    public static void Emit(ExprSeq! args, TokenTextWriter! stream,
+                            int contextBindingStrength, bool fragileContext,
+                            bool withRhs) {
+      const int opBindingStrength = 0x70;
+      bool parensNeeded = opBindingStrength < contextBindingStrength ||
+        (fragileContext && opBindingStrength == contextBindingStrength);
+
+      if (parensNeeded) 
+      {
+        stream.Write("(");
+      }
+      ((!)args[0]).Emit(stream, opBindingStrength, false);
+      stream.Write("[");
+
+      string sep = "";
+      int lastIndex = withRhs ? args.Length - 1 : args.Length;
+      for (int i = 1; i < lastIndex; ++i) {
+        stream.Write(sep);
+        sep = ", ";
+        ((!)args[i]).Emit(stream);
+      }
+
+      if (withRhs) {
+        stream.Write(" := ");
+        ((!)args.Last()).Emit(stream);
+      }
+
+      stream.Write("]");
+      if (parensNeeded) 
+      {
+        stream.Write(")");
+      }      
+    }
+
+    public void Resolve(ResolutionContext! rc, Expr! subjectForErrorReporting) {
+      // PR: nothing?
+    }
+
+    public int ArgumentCount { get {
+      return Arity + 1;
+    } }
+
+    // it is assumed that each of the arguments has already been typechecked
+    public static Type Typecheck(Type! mapType,
+                                 // we just pass an Absy, because in
+                                 // the AssignCmd maps can also be
+                                 // represented by non-expressions
+                                 Absy! map,
+                                 ExprSeq! indexes,
+                                 // the type parameters, in this context, are the parameters of the
+                                 // potentially polymorphic map type. Because it might happen that
+                                 // the whole map type is unknown and represented using a MapTypeProxy,
+                                 // the instantiations given in the following out-parameter are subject
+                                 // to change if further unifications are done.
+                                 out TypeParamInstantiation! tpInstantiation,
+                                 TypecheckingContext! tc,
+                                 IToken! typeCheckingSubject,
+                                 string! opName) {
+      mapType = mapType.Expanded;
+      if (mapType.IsMap && mapType.MapArity != indexes.Length) {
+        tc.Error(typeCheckingSubject, "wrong number of arguments in {0}: {1} instead of {2}",
+                 opName, indexes.Length, mapType.MapArity);
+        tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+        return null;
+      } else if (!mapType.Unify(new MapTypeProxy(map.tok, "select", indexes.Length))) {
+        tc.Error(map.tok, "{0} applied to a non-map: {1}", opName, map);
+        tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+        return null;
+      }
+      mapType = TypeProxy.FollowProxy(mapType);
+
+      if (mapType is MapType) {
+        MapType mt = (MapType)mapType;
+        return mt.CheckArgumentTypes(indexes, out tpInstantiation,
+                                     typeCheckingSubject, opName, tc);
+      } else {
+        MapTypeProxy mt = (MapTypeProxy)mapType;
+        return mt.CheckArgumentTypes(indexes, out tpInstantiation,
+                                     typeCheckingSubject, opName, tc);
+      }
+    }
+
+    public Type Typecheck(ref ExprSeq! args, out TypeParamInstantiation! tpInstantiation, TypecheckingContext! tc)
+    {
+      assume args.Length == Arity + 1;
+
+      ExprSeq actualArgs = new ExprSeq ();
+      for (int i = 1; i < args.Length; ++i)
+        actualArgs.Add(args[i]);
+
+      return Typecheck((!)((!)args[0]).Type, (!)args[0],
+                       actualArgs, out tpInstantiation, tc, this.tok, "map select");
+    }
+
+    /// <summary>
+    /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
+    /// </summary>
+    public Type! ShallowType(ExprSeq! args) {
+      Expr a0 = (!)args[0];
+      Type a0Type = a0.ShallowType;
+      if (a0Type == null || !a0Type.IsMap) {
+        // we are unable to determine the type of the select, so just return an arbitrary type
+        return Type.Int;
+      }
+      MapType mapType = a0Type.AsMap;
+      TypeSeq actualArgTypes = new TypeSeq ();
+      for (int i = 1; i < args.Length; ++i) {
+        actualArgTypes.Add(((!)args[i]).ShallowType);
+      }
+      return Type.InferValueType(mapType.TypeParameters, mapType.Arguments, mapType.Result, actualArgTypes);
+    }
+
+    public AI.IFunctionSymbol! AIFunctionSymbol { get {
+        switch (Arity) {
+        case 1: return AI.Heap.Select1;
+        case 2: return AI.Heap.Select2;
+        default: 
+          // Maps with Arity arguments are not fully supported yet
+          return AI.Heap.UnsupportedHeapOp;
+        }
+    } }
+    
+    public AI.AIType! AIType {
+      [Rep][ResultNotNewlyAllocated]
+      get {
+        return AI.Prop.Type;     // THAT is a type? PR: no idea whether this makes sense,
+                                 // but it is the type of select1
+    } }
+
+    public T Dispatch<T>(IAppliableVisitor<T>! visitor) {
+      return visitor.Visit(this);
+    }
+  }
+
+  public class MapStore : IAppliable, AI.IFunctionSymbol {
+
+    public readonly int Arity;
+    public readonly IToken! tok;
+
+    public MapStore(IToken! tok, int arity) {
+      this.tok = tok;
+      this.Arity = arity;
+    }
+
+    public string! FunctionName { get {
+      return "MapStore";
+    } }
+
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (!(obj is MapStore)) return false;
+
+      MapStore other = (MapStore)obj;
+      return this.Arity == other.Arity;
+    }
+
+    [Pure] 
+    public override int GetHashCode()
+    {
+      return Arity.GetHashCode() * 28231;
+    }
+
+    public void Emit(ExprSeq! args, TokenTextWriter! stream,
+                     int contextBindingStrength, bool fragileContext) {
+      assert args.Length == Arity + 2;
+      MapSelect.Emit(args, stream, contextBindingStrength, fragileContext, true);
+    }
+
+    public void Resolve(ResolutionContext! rc, Expr! subjectForErrorReporting) {
+      // PR: nothing?
+    }
+
+    public int ArgumentCount { get {
+      return Arity + 2;
+    } }
+
+    // it is assumed that each of the arguments has already been typechecked
+    public static Type Typecheck(ExprSeq! args, out TypeParamInstantiation! tpInstantiation,
+                                 TypecheckingContext! tc,
+                                 IToken! typeCheckingSubject,
+                                 string! opName) {
+      // part of the type checking works exactly as for MapSelect
+      ExprSeq! selectArgs = new ExprSeq ();
+      for (int i = 1; i < args.Length - 1; ++i)
+        selectArgs.Add(args[i]);
+      Type resultType =
+        MapSelect.Typecheck((!)((!)args[0]).Type, (!)args[0],
+                            selectArgs, out tpInstantiation, tc, typeCheckingSubject, opName);
+
+      // check the the rhs has the right type
+      if (resultType == null) {
+        // error messages have already been created by MapSelect.Typecheck
+        return null;
+      }
+      Type rhsType = (!)((!)args.Last()).Type;
+      if (!resultType.Unify(rhsType)) {
+        tc.Error(((!)args.Last()).tok,
+                 "right-hand side in {0} with wrong type: {1} (expected: {2})",
+                 opName, rhsType, resultType);
+        return null;
+      }
+      
+      return ((!)args[0]).Type;      
+    }
+
+    public Type Typecheck(ref ExprSeq! args,
+                          out TypeParamInstantiation! tpInstantiation,
+                          TypecheckingContext! tc)
+    {
+      assert args.Length == Arity + 2;
+      return Typecheck(args, out tpInstantiation, tc, this.tok, "map store");
+    }
+
+    /// <summary>
+    /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
+    /// </summary>
+    public Type! ShallowType(ExprSeq! args) {
+      return ((!)args[0]).ShallowType;
+    }
+
+    public AI.IFunctionSymbol! AIFunctionSymbol { get {
+        switch (Arity) {
+        case 1: return AI.Heap.Update1;
+        case 2: return AI.Heap.Update2;
+        default: 
+          // Maps with Arity arguments are not fully supported yet
+          return AI.Heap.UnsupportedHeapOp;
+        }
+    } }
+    
+    public AI.AIType! AIType {
+      [Rep][ResultNotNewlyAllocated]
+      get {
+        return AI.Heap.Type;
+    } }
+    
+    public T Dispatch<T>(IAppliableVisitor<T>! visitor) {
+      return visitor.Visit(this);
+    }
+  }
+
+  public abstract class QuantifierExpr : Expr
+  {
+    public TypeVariableSeq! TypeParameters;
+    public VariableSeq! Dummies;
+    public QKeyValue Attributes;
+    public Trigger Triggers;
+    public Expr! Body;
+
+    static int SkolemIds = 0;
+    public readonly int SkolemId;
+    
+    public QuantifierExpr(IToken! tok, TypeVariableSeq! typeParameters,
+                          VariableSeq! dummies, QKeyValue kv, Trigger triggers, Expr! body)
+      requires dummies.Length + typeParameters.Length > 0;
+    {
+      base(tok);
+
+      assert (this is ForallExpr) || (this is ExistsExpr);
+ 
+      TypeParameters = typeParameters;
+      Dummies = dummies;
+      Attributes = kv;
+      Triggers = triggers;
+      Body = body;
+
+      SkolemId = SkolemIds++;
+    }
+
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj == null) return false;
+      if (!(obj is QuantifierExpr) ||
+          (obj is ForallExpr) != (this is ForallExpr)) return false;
+
+      QuantifierExpr other = (QuantifierExpr)obj;
+      // Note, we consider quantifiers equal modulo the Triggers.
+      return object.Equals(this.TypeParameters, other.TypeParameters)
+             && object.Equals(this.Dummies, other.Dummies)
+             && object.Equals(this.Body, other.Body);
+    }
+
+    [Pure] 
+    public override int GetHashCode()
+    {
+      int h = this.Dummies.GetHashCode();
+      // Note, we consider quantifiers equal modulo the Triggers.
+      h ^= this.Body.GetHashCode();
+      h = h*5 + this.TypeParameters.GetHashCode();
+      if (this is ForallExpr) h = h * 3;
+      return h;
+    }
+
+    public override void Emit(TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      stream.Write(this, "({0}", this is ForallExpr ? "forall" : "exists");
+      Type.EmitOptionalTypeParams(stream, TypeParameters);
+      stream.Write(this, " ");
+      this.Dummies.Emit(stream);
+      stream.Write(" :: ");
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next) {
+        kv.Emit(stream);
+        stream.Write(" ");
+      }
+      for (Trigger tr = this.Triggers; tr != null; tr = tr.Next) {
+        tr.Emit(stream);
+        stream.Write(" ");
+      }
+      
+      this.Body.Emit(stream);
+      stream.Write(")");
+    }
+    // if the user says ( forall x :: forall y :: { f(x,y) } ... ) we transform it to
+    // (forall x, y :: { f(x,y) } ... ) otherwise the prover ignores the trigger
+    private void MergeAdjecentQuantifier()
+    {
+      QuantifierExpr qbody = Body as QuantifierExpr;
+      if (!(qbody != null && (qbody is ForallExpr) == (this is ForallExpr) && Triggers == null)) {
+        return;
+      }
+      qbody.MergeAdjecentQuantifier();
+      if (qbody.Triggers == null) {
+        return;
+      }
+      Body = qbody.Body;
+      TypeParameters.AddRange(qbody.TypeParameters);
+      Dummies.AddRange(qbody.Dummies);
+      Triggers = qbody.Triggers;
+      if (qbody.Attributes != null) {
+        if (Attributes == null) {
+          Attributes = qbody.Attributes;
+        } else {
+          QKeyValue p = Attributes;
+          while (p.Next != null) {
+            p = p.Next;
+          }
+          p.Next = qbody.Attributes;
+        }
+      }
+    }
+    public override void Resolve(ResolutionContext! rc) 
+    {
+      int oldErrorCount = rc.ErrorCount;
+      
+      this.MergeAdjecentQuantifier();
+      if (rc.TriggerMode) {
+        rc.Error(this, "quantifiers are not allowed in triggers");
+      }
+
+      int previousTypeBinderState = rc.TypeBinderState;
+      try {
+        foreach (TypeVariable! v in TypeParameters)
+          rc.AddTypeBinder(v);
+
+        rc.PushVarContext();
+        foreach (Variable! v in Dummies) 
+        {
+          v.Register(rc);
+          v.Resolve(rc);
+        }
+        for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next) {
+          kv.Resolve(rc);
+        }
+        for (Trigger tr = this.Triggers; tr != null; tr = tr.Next) {
+          int prevErrorCount = rc.ErrorCount;
+          tr.Resolve(rc);
+          if (prevErrorCount == rc.ErrorCount) {
+            // for positive triggers, make sure all bound variables are mentioned
+            if (tr.Pos) {
+              Set /*Variable*/ freeVars = new Set /*Variable*/ ();
+              tr.ComputeFreeVariables(freeVars);
+              foreach (Variable! v in Dummies) {
+                if (!freeVars[v]) {
+                  rc.Error(tr, "trigger must mention all quantified variables, but does not mention: {0}", v);
+                }
+              }
+            }
+          }
+        }
+        Body.Resolve(rc);
+        rc.PopVarContext();
+      
+        // establish a canonical order of the type parameters
+        this.TypeParameters = Type.SortTypeParams(TypeParameters, Dummies.ToTypeSeq, null);
+
+      } finally {
+        rc.TypeBinderState = previousTypeBinderState;
+      }
+
+      if (oldErrorCount == rc.ErrorCount) {
+        this.ApplyNeverTriggers();
+      }
+    }
+
+    #region never triggers
+    private class NeverTriggerCollector : StandardVisitor
+    {
+      QuantifierExpr! parent;
+      public NeverTriggerCollector(QuantifierExpr! p)
+      {
+        parent = p;
+      }
+
+      public override Expr! VisitNAryExpr(NAryExpr! node)
+      {
+        FunctionCall fn = node.Fun as FunctionCall;
+        if (fn != null && ((!)fn.Func).NeverTrigger) {
+          parent.Triggers = new Trigger(fn.Func.tok, false, new ExprSeq(node), parent.Triggers);
+        }
+        return base.VisitNAryExpr(node);
+      }
+    }
+
+    private bool neverTriggerApplied;
+    private void ApplyNeverTriggers()
+    {
+      if (neverTriggerApplied) {
+        return;
+      }
+      neverTriggerApplied = true;
+
+      for (Trigger t = Triggers; t != null; t = t.Next) {
+        if (t.Pos) { return; }
+      }
+
+      NeverTriggerCollector visitor = new NeverTriggerCollector(this);
+      visitor.VisitExpr(Body);
+    }
+    #endregion
+
+    public override void ComputeFreeVariables(Set /*Variable*/! freeVars) {
+      foreach (Variable! v in Dummies) {
+        assert !freeVars[v];
+      }
+      Body.ComputeFreeVariables(freeVars);
+      foreach (Variable! v in Dummies) {
+        foreach (TypeVariable! w in v.TypedIdent.Type.FreeVariables)
+          freeVars.Add(w);
+      }
+      foreach (Variable! v in Dummies) {
+        freeVars.Remove(v);
+      }
+      foreach (TypeVariable! v in TypeParameters) {
+        freeVars.Remove(v);
+      }
+    }
+    public override void Typecheck(TypecheckingContext! tc) 
+    {
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next) {
+        kv.Typecheck(tc);
+      }
+      for (Trigger tr = this.Triggers; tr != null; tr = tr.Next) {
+        tr.Typecheck(tc);
+      }
+      Body.Typecheck(tc);
+      assert Body.Type != null;  // follows from postcondition of Expr.Typecheck
+      if (!Body.Type.Unify(Type.Bool)) 
+      {
+        tc.Error(this, "quantifier body must be of type bool");
+      }
+      this.Type = Type.Bool;
+
+      // Check that type parameters occur in the types of the
+      // dummies, or otherwise in the triggers. This can only be
+      // done after typechecking
+      TypeVariableSeq! dummyParameters = Type.FreeVariablesIn(Dummies.ToTypeSeq);
+      TypeVariableSeq! unmentionedParameters = new TypeVariableSeq ();
+      foreach (TypeVariable! var in TypeParameters)
+        if (!dummyParameters.Has(var))
+          unmentionedParameters.Add(var);
+
+      if (unmentionedParameters.Length > 0) {
+        // all the type parameters that do not occur in dummy types
+        // have to occur in triggers
+
+        for (Trigger tr = this.Triggers; tr != null; tr = tr.Next) {
+          // for positive triggers, make sure all bound variables are mentioned
+          if (tr.Pos) {
+            Set /*Variable*/ freeVars = new Set /*Variable*/ ();
+            tr.ComputeFreeVariables(freeVars);
+            foreach (TypeVariable! v in unmentionedParameters) {
+              if (!freeVars[v])
+                tc.Error(tr,
+                         "trigger does not mention {0}, which does not " +
+                         "occur in variables types either",
+                         v);
+            }
+          }
+        }
+      }
+    }
+    public override Type! ShallowType {
+      get {
+        return Type.Bool;
+      }
+    }
+    
+    public abstract AI.IFunctionSymbol! FunctionSymbol { get; }
+    
+    internal sealed class AIQuantifier : AI.IFunApp
+    {
+      internal readonly AIFunctionRep! arg;
+      internal AIQuantifier(QuantifierExpr! realQuantifier, int dummyIndex)
+      : this(new AIFunctionRep(realQuantifier, dummyIndex))
+      {
+      }
+      [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+      public override bool Equals(object obj)
+      {
+        if (obj == null) return false;
+        if (!(obj is AIQuantifier)) return false;
+    
+        AIQuantifier other = (AIQuantifier)obj;
+        return object.Equals(this.arg, other.arg);
+      }
+      [Pure] 
+      public override int GetHashCode()
+      {
+        return this.arg.GetHashCode();
+      }
+      
+      private AIQuantifier(AIFunctionRep! arg)
+      {
+        this.arg = arg;
+        // base();
+      }
+      
+      [Pure]
+      public object DoVisit(AI.ExprVisitor! visitor)
+      {
+        return visitor.VisitFunApp(this);
+      }
+      
+      public AI.IFunctionSymbol! FunctionSymbol { get { return arg.RealQuantifier.FunctionSymbol; } }
+      
+      private IList/*?*/ argCache = null;
+      public IList/*<IExpr!>*/! Arguments
+      {
+        get
+        {
+          if (argCache == null)
+          {
+            IList a = new ArrayList(1);
+            a.Add(arg);
+            argCache = ArrayList.ReadOnly(a);
+          }
+          return argCache;
+        }
+      }
+      
+      public AI.IFunApp! CloneWithArguments(IList/*<IExpr!>*/! args)
+      {
+        assume args.Count == 1;
+        
+        AIFunctionRep rep = args[0] as AIFunctionRep;
+        if (rep != null)
+          return new AIQuantifier(rep);
+        else
+          throw new System.NotImplementedException();
+      }
+      
+      [Pure]
+      public override string! ToString()
+      {
+        return string.Format("{0}({1})", FunctionSymbol, arg);
+      }
+    }
+      
+    internal sealed class AIFunctionRep : AI.IFunction
+    {
+      internal readonly QuantifierExpr! RealQuantifier;
+      private readonly int dummyIndex;
+      
+      internal AIFunctionRep(QuantifierExpr! realQuantifier, int dummyIndex)
+      {
+        this.RealQuantifier = realQuantifier;
+        this.dummyIndex = dummyIndex;
+        assert realQuantifier.TypeParameters.Length == 0; // PR: don't know how to handle this yet
+        // base();
+      }
+      [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+      public override bool Equals(object obj)
+      {
+        if (obj == null) return false;
+        if (!(obj is AIFunctionRep)) return false;
+    
+        AIFunctionRep other = (AIFunctionRep)obj;
+        return object.Equals(this.RealQuantifier, other.RealQuantifier) && this.dummyIndex == other.dummyIndex;
+      }
+      [Pure] 
+      public override int GetHashCode()
+      {
+        return this.RealQuantifier.GetHashCode() ^ dummyIndex;
+      }
+      
+      [Pure]
+      public object DoVisit(AI.ExprVisitor! visitor)
+      {
+        return visitor.VisitFunction(this);
+      }
+      
+      public AI.IVariable! Param
+      { 
+        get { return (!)RealQuantifier.Dummies[dummyIndex]; } 
+      }
+      public AI.AIType! ParamType { get { throw new System.NotImplementedException(); } }
+        
+      // We lazily convert to 1 dummy per quantifier representation for AIFramework
+      private AI.IExpr/*?*/ bodyCache = null;
+      public AI.IExpr! Body
+      {
+        get
+        {
+          if (bodyCache == null)
+          {
+            int dummyi = dummyIndex;
+            int dummylen = RealQuantifier.Dummies.Length;
+            assume dummylen > dummyi;
+          
+            // return the actual body if there are no more dummies
+            if (dummyi + 1 == dummylen)
+              bodyCache = RealQuantifier.Body.IExpr;
+            else
+            {
+              AIQuantifier innerquant = new AIQuantifier(RealQuantifier, dummyi + 1);
+              bodyCache = innerquant;
+            }
+          }
+          return bodyCache;
+        }
+      }
+      public AI.IFunction! CloneWithBody(AI.IExpr! body)
+      {
+        QuantifierExpr realquant;
+      
+        AIQuantifier innerquant = body as AIQuantifier;
+        if (innerquant == null)
+        {
+          // new quantifier body, clone the real quantifier
+          realquant = (QuantifierExpr)RealQuantifier.Clone();
+          realquant.Body = BoogieFactory.IExpr2Expr(body);
+        }
+        else
+        {
+          if (innerquant.arg.dummyIndex > 0)
+          {
+            realquant = innerquant.arg.RealQuantifier;
+          }
+          else
+          {
+            realquant = (QuantifierExpr)RealQuantifier.Clone();
+            VariableSeq! newdummies = new VariableSeq();
+            newdummies.Add(Param);
+            newdummies.AddRange(innerquant.arg.RealQuantifier.Dummies);
+            realquant.Dummies = newdummies;
+            realquant.Body = innerquant.arg.RealQuantifier.Body;
+          }
+        }
+        
+        return new AIFunctionRep(realquant, dummyIndex);
+      }
+      [Pure]
+      public override string! ToString()
+      {
+        return string.Format("\\{0} :: {1}", Param, Body);
+      }
+    }
+    
+    private AI.IExpr aiexprCache = null;
+    public override AI.IExpr! IExpr {
+      get {
+        if (TypeParameters.Length > 0)
+          return new Constant(Token.NoToken, new TypedIdent(Token.NoToken, "anon", Type.Bool));
+        if (aiexprCache == null)
+        {
+          aiexprCache = new AIQuantifier(this, 0);
+        }
+        return aiexprCache;
+      }
+    } 
+  }
+
+  public class QKeyValue : Absy {
+    public readonly string! Key;
+    public readonly List<object!>! Params;  // each element is either a string or an Expr
+    public QKeyValue Next;
+    
+    public QKeyValue(IToken! tok, string! key, [Captured] List<object!>! parameters, QKeyValue next) 
+    {
+      base(tok);
+      Key = key;
+      Params = parameters;
+      Next = next;
+    }
+    
+    public void Emit(TokenTextWriter! stream) {
+      stream.Write("{:");
+      stream.Write(Key);
+      string sep = " ";
+      foreach (object p in Params) {
+        stream.Write(sep);  sep = ", ";
+        if (p is string) {
+          stream.Write("\"");
+          stream.Write((string)p);
+          stream.Write("\"");
+        } else {
+          ((Expr)p).Emit(stream);
+        }
+      }
+      stream.Write("}");
+    }
+    
+    public override void Resolve(ResolutionContext! rc) {
+      foreach (object p in Params) {
+        if (p is Expr) {
+          ((Expr)p).Resolve(rc);
+        }
+      }
+    }
+    
+    public override void Typecheck(TypecheckingContext! tc) {
+      foreach (object p in Params) {
+        if (p is Expr) {
+          ((Expr)p).Typecheck(tc);
+        }
+      }
+    }
+    public void AddLast(QKeyValue! other){
+      QKeyValue current = this;
+      while(current.Next!=null){
+        current = current.Next;
+      }
+      current.Next = other;
+    }
+    // Look for {:name string} in list of attributes.
+    public static string? FindStringAttribute(QKeyValue? kv, string! name)
+    {
+      for (; kv != null; kv = kv.Next) {
+        if (kv.Key == name) {
+          if (kv.Params.Count == 1 && kv.Params[0] is string) {
+            return (string)kv.Params[0];
+          }
+        }
+      }
+      return null;
+    }
+    // Look for {:name expr} in list of attributes.
+    public static Expr? FindExprAttribute(QKeyValue? kv, string! name)
+    {
+      for (; kv != null; kv = kv.Next) {
+        if (kv.Key == name) {
+          if (kv.Params.Count == 1 && kv.Params[0] is Expr) {
+            return (Expr)kv.Params[0];
+          }
+        }
+      }
+      return null;
+    }
+    // Return 'true' if {:name true} or {:name} is an attribute in 'kv'
+    public static bool FindBoolAttribute(QKeyValue? kv, string! name)
+    {
+      for (; kv != null; kv = kv.Next) {
+        if (kv.Key == name) {
+          return kv.Params.Count == 0 ||
+            (kv.Params.Count == 1 && kv.Params[0] is LiteralExpr && ((LiteralExpr)kv.Params[0]).IsTrue);
+        }
+      }
+      return false;
+    }
+
+    public static int FindIntAttribute(QKeyValue? kv, string! name, int defl)
+    {
+      Expr? e = FindExprAttribute(kv, name);
+      LiteralExpr? l = e as LiteralExpr;
+      if (l != null && l.isBigNum)
+        return l.asBigNum.ToIntSafe;
+      return defl;
+    }
+  }
+  
+  public class Trigger : Absy {
+    public readonly bool Pos;
+    [Rep]
+    public ExprSeq! Tr;
+    invariant 1 <= Tr.Length;
+    invariant !Pos ==> Tr.Length == 1;
+    public Trigger Next;
+    
+    public Trigger(IToken! tok, bool pos, ExprSeq! tr)
+      requires 1 <= tr.Length;
+      requires !pos ==> tr.Length == 1;
+    {
+      this(tok, pos, tr, null);
+    }
+
+    public Trigger(IToken! tok, bool pos, ExprSeq! tr, Trigger next)
+      : base(tok)
+      requires 1 <= tr.Length;
+      requires !pos ==> tr.Length == 1;
+    {
+      this.Pos = pos;
+      this.Tr = tr;
+      this.Next = next;
+      // base(tok);
+    }
+
+    public void Emit(TokenTextWriter! stream) {
+      stream.SetToken(this);
+      assert this.Tr.Length >= 1;
+      string! sep = Pos ? "{ " : "{:nopats ";
+      foreach (Expr! e in this.Tr) {
+        stream.Write(sep);
+        sep = ", ";
+        e.Emit(stream);
+      }
+      stream.Write(" }");
+    }
+    public override void Resolve(ResolutionContext! rc) {
+      rc.TriggerMode = true;
+      foreach (Expr! e in this.Tr) {
+        e.Resolve(rc);
+
+        // just a variable by itself is not allowed
+        if (e is IdentifierExpr) {
+          rc.Error(e, "a matching pattern must be more than just a variable by itself: {0}", e);
+        }
+        
+        // the free-variable check is performed in the surrounding quantifier expression (because that's
+        // where the bound variables are known)
+      }
+      rc.TriggerMode = false;
+    }
+
+    /// <summary>
+    /// Add to "freeVars" the free variables in the triggering expressions.
+    /// </summary>
+    public void ComputeFreeVariables(Set /*Variable*/! freeVars) {
+      foreach (Expr! e in this.Tr) {
+        e.ComputeFreeVariables(freeVars);
+      }
+    }
+
+    public override void Typecheck(TypecheckingContext! tc) {
+      foreach (Expr! e in this.Tr) {
+        e.Typecheck(tc);
+      }
+    }
+
+    public void AddLast(Trigger other){
+        Trigger current = this;
+        while(current.Next!=null){
+            current = current.Next;
+        }
+        current.Next = other;
+    }
+
+    public override Absy! StdDispatch(StandardVisitor! visitor)
+    {
+      return visitor.VisitTrigger(this);
+    }
+  }
+
+  public class ForallExpr : QuantifierExpr 
+  {
+    public ForallExpr(IToken! tok, TypeVariableSeq! typeParams,
+                      VariableSeq! dummies, QKeyValue kv, Trigger triggers, Expr! body)
+      requires dummies.Length + typeParams.Length > 0;
+    {
+      base(tok, typeParams, dummies, kv, triggers, body); // here for aesthetic reasons
+    }
+    public ForallExpr(IToken! tok, VariableSeq! dummies, Trigger triggers, Expr! body)
+      requires dummies.Length > 0;
+    {
+      base(tok, new TypeVariableSeq(), dummies, null, triggers, body); // here for aesthetic reasons
+    }
+    public ForallExpr(IToken! tok, VariableSeq! dummies, Expr! body)
+      requires dummies.Length > 0;
+    {
+      base(tok, new TypeVariableSeq(), dummies, null, null, body); // here for aesthetic reasons
+    }
+    public ForallExpr(IToken! tok, TypeVariableSeq! typeParams, VariableSeq! dummies, Expr! body)
+      requires dummies.Length + typeParams.Length > 0;
+    {
+      base(tok, typeParams, dummies, null, null, body); // here for aesthetic reasons
+    }
+    public override AI.IFunctionSymbol! FunctionSymbol
+    {
+      get { 
+        return AI.Prop.Forall;
+      }
+    }
+
+    public override Absy! StdDispatch(StandardVisitor! visitor)
+    {
+      return visitor.VisitForallExpr(this);
+    }
+  }
+  public class ExistsExpr : QuantifierExpr 
+  {
+    public ExistsExpr(IToken! tok, TypeVariableSeq! typeParams, VariableSeq! dummies,
+                      QKeyValue kv, Trigger triggers, Expr! body)
+      requires dummies.Length + typeParams.Length > 0;
+    {
+      base(tok, typeParams, dummies, kv, triggers, body); // here for aesthetic reasons
+    }
+    public ExistsExpr(IToken! tok, VariableSeq! dummies, Trigger triggers, Expr! body)
+      requires dummies.Length > 0;
+    {
+      base(tok, new TypeVariableSeq (), dummies, null, triggers, body); // here for aesthetic reasons
+    }
+    public ExistsExpr(IToken! tok, VariableSeq! dummies, Expr! body)
+      requires dummies.Length > 0;
+    {
+      base(tok, new TypeVariableSeq(), dummies, null, null, body); // here for aesthetic reasons
+    }
+    public override AI.IFunctionSymbol! FunctionSymbol
+    {
+      get {
+        return AI.Prop.Exists;
+      }
+    }
+
+    public override Absy! StdDispatch(StandardVisitor! visitor)
+    {
+      return visitor.VisitExistsExpr(this);
+    }
+  }
+
+  public class BlockExpr : Expr
+  {
+    public VariableSeq! LocVars;
+    [Rep]
+    public BlockSeq! Blocks;
+    public BlockExpr(VariableSeq! localVariables, BlockSeq! blocks)
+      : base(Token.NoToken)
+    {
+      LocVars = localVariables;
+      Blocks = blocks;
+    }
+    public override AI.IExpr! IExpr {
+        get {
+          // An BlockExpr has no AI.IExpr representation
+          assert false;
+          throw new System.Exception(); // make compiler shut up
+          return Expr.False;
+        }
+    }
+    public override void ComputeFreeVariables(Set /*Variable*/! freeVars) {
+      // Treat a BlockEexpr as if it has no free variables at all
+    }
+    public override void Emit (TokenTextWriter! stream, int contextBindingStrength, bool fragileContext)
+    {
+      //level++;
+      int level = 0;
+      stream.WriteLine(level, "{0}", '{');
+
+      if (this.LocVars.Length > 0) 
+      {
+        stream.Write(level + 1, "var ");
+        this.LocVars.Emit(stream);
+        stream.WriteLine(";");
+      }
+
+      foreach (Block! b in this.Blocks) 
+      {
+        b.Emit(stream, level+1);
+      }
+
+      stream.WriteLine();
+      stream.WriteLine(level, "{0}", '}');
+
+      stream.WriteLine();
+      stream.WriteLine();
+    }
+
+    public override void Resolve(ResolutionContext! rc) 
+    {
+
+      rc.PushVarContext();
+      foreach (Variable! v in LocVars) 
+      {
+        v.Register(rc);
+        v.Resolve(rc);
+      }
+
+      rc.StartProcedureContext();
+      foreach (Block! b in Blocks) 
+      {
+        b.Register(rc);
+      }
+      
+      foreach (Block! b in Blocks) 
+      {
+        b.Resolve(rc);
+      }
+      
+      rc.EndProcedureContext();
+      rc.PopVarContext();
+    }
+
+    public override void Typecheck(TypecheckingContext! tc){
+      foreach (Variable! v in LocVars){
+        v.Typecheck(tc);
+      }
+      foreach (Block! b in Blocks){
+        b.Typecheck(tc);
+      }
+      this.Type = Type.Bool;
+    }
+    public override Type! ShallowType {
+      get {
+        return Type.Bool;
+      }
+    }
+
+    public override Absy! StdDispatch(StandardVisitor! visitor)
+    {
+      return visitor.VisitBlockExpr(this);
+    }
+  }
+
+
+
+  public class ExtractExpr : Expr, AI.IFunApp
+  {
+    public /*readonly--except in StandardVisitor*/ Expr! Bitvector;
+    public readonly int Start, End;
+    
+    public ExtractExpr(IToken! tok, Expr! bv, int end, int start)
+      : base(tok)
+    {
+      Bitvector = bv;
+      Start = start;
+      End = end;
+      // base(tok);
+    }
+
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj == null) return false;
+      if (!(obj is ExtractExpr)) return false;
+
+      ExtractExpr other = (ExtractExpr)obj;
+      return object.Equals(this.Bitvector, other.Bitvector) &&
+        this.Start.Equals(other.Start) && this.End.Equals(other.End);
+    }
+    [Pure] 
+    public override int GetHashCode()
+    {
+      int h = this.Bitvector.GetHashCode();
+      h ^= Start * 17 ^ End * 13;
+      return h;
+    }
+    public override void Emit(TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      stream.SetToken(this);
+      int opBindingStrength = 0x70;
+      bool parensNeeded = opBindingStrength < contextBindingStrength ||
+        (fragileContext && opBindingStrength == contextBindingStrength);
+
+      if (parensNeeded) 
+      {
+        stream.Write("(");
+      }
+      Bitvector.Emit(stream, opBindingStrength, false);
+      stream.Write("[" + End + ":" + Start + "]");
+      if (parensNeeded) 
+      {
+        stream.Write(")");
+      }
+    }
+    public override void Resolve(ResolutionContext! rc) 
+    {
+      Bitvector.Resolve(rc);
+    }
+    public override void ComputeFreeVariables(Set /*Variable*/! freeVars) {
+      Bitvector.ComputeFreeVariables(freeVars);
+    }
+    public override void Typecheck(TypecheckingContext! tc) 
+    {
+      Bitvector.Typecheck(tc);
+      assert Bitvector.Type != null;  // follows from postcondition of Expr.Typecheck
+
+      if (Start < 0) {
+        tc.Error(this, "start index in extract must not be negative");
+      } else if (End < 0) {
+        tc.Error(this, "end index in extract must not be negative");
+      } else if (End < Start) {
+        tc.Error(this, "start index in extract must be no bigger than the end index");
+      } else {
+        Type typeConstraint = new BvTypeProxy(this.tok, "extract", End - Start);
+        if (typeConstraint.Unify(Bitvector.Type)) {
+          Type = Type.GetBvType(End - Start);
+        } else {
+          tc.Error(this, "extract operand must be a bitvector of at least {0} bits (got {1})", End - Start, Bitvector.Type);
+        }
+      }
+      if (Type == null) {
+        Type = new TypeProxy(this.tok, "type_checking_error");
+      }
+    }
+    
+    public override Type! ShallowType {
+      get {
+        return Type.GetBvType(End - Start);
+      }
+    }
+    
+    public override AI.IExpr! IExpr {
+      get {
+        return this;
+      }
+    }
+    public AI.IFunctionSymbol! FunctionSymbol {
+      get { return AI.Bv.Extract;
+      }
+    }
+    public IList/*<AI.IExpr!>*/! Arguments {
+      get {
+        AI.IExpr[] a = new AI.IExpr[3];
+        a[0] = Bitvector.IExpr;
+        a[1] = new LiteralExpr(Token.NoToken, BigNum.FromInt(End));
+        a[2] = new LiteralExpr(Token.NoToken, BigNum.FromInt(Start));
+        return ArrayList.ReadOnly(a);
+      }
+    }
+    public AI.IFunApp! CloneWithArguments(IList/*<AI.IExpr!>*/! args)
+    {
+      AI.IFunApp! retFun;  
+    
+      if(args.Count == 3)
+      {      
+        retFun = new ExtractExpr(this.tok,
+                               BoogieFactory.IExpr2Expr((AI.IExpr!)args[0]),
+                               ((LiteralExpr!)args[1]).asBigNum.ToIntSafe,
+                               ((LiteralExpr!)args[2]).asBigNum.ToIntSafe);
+      } 
+      else
+      {
+        assert false;   // If we are something wrong is happended
+      }
+      return retFun;
+    }
+
+    [Pure]
+    public object DoVisit(AI.ExprVisitor! visitor)
+    {
+      return visitor.VisitFunApp(this);
+    }
+
+    public override Absy! StdDispatch(StandardVisitor! visitor)
+    {
+      return visitor.VisitExtractExpr(this);
+    }
+  }
+
+  public class BvConcatExpr : Expr, AI.IFunApp
+  {
+    public /*readonly--except in StandardVisitor*/ Expr! E0, E1;
+    
+    public BvConcatExpr(IToken! tok, Expr! e0, Expr! e1)
+      : base(tok)
+    {
+      E0 = e0;
+      E1 = e1;
+      // base(tok);
+    }
+
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (obj == null) return false;
+      if (!(obj is BvConcatExpr)) return false;
+
+      BvConcatExpr other = (BvConcatExpr)obj;
+      return object.Equals(this.E0, other.E0) && object.Equals(this.E1, other.E1);
+    }
+    [Pure] 
+    public override int GetHashCode()
+    {
+      int h = this.E0.GetHashCode() ^ this.E1.GetHashCode() * 17;
+      return h;
+    }
+    public override void Emit(TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      stream.SetToken(this);
+      int opBindingStrength = 0x32;
+      bool parensNeeded = opBindingStrength < contextBindingStrength ||
+        (fragileContext && opBindingStrength == contextBindingStrength);
+
+      if (parensNeeded) 
+      {
+        stream.Write("(");
+      }
+      E0.Emit(stream, opBindingStrength, false);
+      stream.Write(" ++ ");
+      // while this operator is associative, our incomplete axioms in int translation don't
+      // make much use of it, so better stick to the actual tree shape
+      E1.Emit(stream, opBindingStrength, true);
+      if (parensNeeded) 
+      {
+        stream.Write(")");
+      }
+    }
+    public override void Resolve(ResolutionContext! rc) 
+    {
+      E0.Resolve(rc);
+      E1.Resolve(rc);
+    }
+    public override void ComputeFreeVariables(Set /*Variable*/! freeVars) {
+      E0.ComputeFreeVariables(freeVars);
+      E1.ComputeFreeVariables(freeVars);
+    }
+    public override void Typecheck(TypecheckingContext! tc) 
+    {
+      E0.Typecheck(tc);
+      assert E0.Type != null;  // follows from postcondition of Expr.Typecheck
+      E1.Typecheck(tc);
+      assert E1.Type != null;  // follows from postcondition of Expr.Typecheck
+
+      if (E0.Type.Unify(new BvTypeProxy(this.tok, "concat0", 0)) && E1.Type.Unify(new BvTypeProxy(this.tok, "concat1", 0))) {
+        Type = new BvTypeProxy(this.tok, "concat", E0.Type, E1.Type);
+      } else {
+        tc.Error(this, "++ operands need to be bitvectors (got {0}, {1})", E0.Type, E1.Type);
+      }
+      if (Type == null) {
+        Type = new TypeProxy(this.tok, "type_checking_error");
+      }
+    }
+    
+    public override Type! ShallowType {
+      get {
+        Type t0 = E0.ShallowType;
+        Type t1 = E1.ShallowType;
+        int len0 = t0.IsBv ? t0.BvBits : /*expression is not type correct, so just pick an arbitrary number of bits*/0;
+        int len1 = t1.IsBv ? t1.BvBits : /*expression is not type correct, so just pick an arbitrary number of bits*/0;
+        return Type.GetBvType(len0 + len1);
+      }
+    }
+    
+    public override AI.IExpr! IExpr {
+        get {
+            return this;
+        }
+    }
+    public AI.IFunctionSymbol! FunctionSymbol {
+        get { return AI.Bv.Concat;
+        }
+    }
+    public IList/*<AI.IExpr!>*/! Arguments {
+        get {
+            AI.IExpr[] a = new AI.IExpr[2];
+            a[0] = E0.IExpr;
+            a[1] = E1.IExpr;
+            return ArrayList.ReadOnly(a);
+        }
+    }
+    public AI.IFunApp! CloneWithArguments(IList/*<AI.IExpr!>*/! args)
+    {
+      AI.IFunApp! retFun;  
+    
+      if(args.Count == 2)
+      {      
+        retFun = new BvConcatExpr(this.tok,
+                               BoogieFactory.IExpr2Expr((AI.IExpr!)args[0]),
+                               BoogieFactory.IExpr2Expr((AI.IExpr!)args[1]));
+      } 
+      else
+      {
+        assert false;   // If we are something wrong is happended
+      }
+      return retFun;
+    }
+
+    [Pure]
+    public object DoVisit(AI.ExprVisitor! visitor)
+    {
+      return visitor.VisitFunApp(this);
+    }
+
+    public override Absy! StdDispatch(StandardVisitor! visitor)
+    {
+      return visitor.VisitBvConcatExpr(this);
+    }
+  }
+}

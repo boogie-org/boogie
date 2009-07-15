@@ -1,0 +1,3215 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
+using System.IO;
+using Microsoft.Boogie;
+using Graphing;
+using AI = Microsoft.AbstractInterpretationFramework;
+using Microsoft.Contracts;
+using Microsoft.Basetypes;
+using Microsoft.Boogie.VCExprAST;
+
+
+namespace VC
+{
+  using Bpl = Microsoft.Boogie;
+  
+  public class VCGen : ConditionGeneration
+  {
+
+    /// <summary>
+    /// Constructor.  Initializes the theorem prover.
+    /// </summary>
+    public VCGen(Program! program, string/*?*/ logFilePath, bool appendLogFile)
+      // throws ProverException
+    {
+      base(program);
+      this.appendLogFile = appendLogFile;
+      this.logFilePath = logFilePath;
+      // base();
+    }
+
+    private static AssumeCmd! AssertTurnedIntoAssume(AssertCmd! assrt)
+    {
+      Expr! expr = assrt.Expr;
+
+      switch (CommandLineOptions.Clo.UseSubsumption) {
+        case CommandLineOptions.SubsumptionOption.Never:
+          expr = Expr.True;
+          break;
+        case CommandLineOptions.SubsumptionOption.Always:
+          break;
+        case CommandLineOptions.SubsumptionOption.NotForQuantifiers:
+          if (expr is QuantifierExpr) {
+            expr = Expr.True;
+          }
+          break;
+        default:
+          assert false;  // unexpected case
+      }
+
+      return new AssumeCmd(assrt.tok, expr);
+    }
+    
+    /// <summary>
+    /// Get the where clauses from the in- and out-parameters as
+    /// a sequence of assume commands.
+    /// As a side effect, this method adds these where clauses to the out parameters.
+    /// </summary>
+    /// <param name="impl"></param>
+    private static CmdSeq! GetParamWhereClauses(Implementation! impl)
+      requires impl.Proc != null;
+    {
+      TokenTextWriter debugWriter = null;
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
+        debugWriter = new TokenTextWriter("<console>", Console.Out, false);
+        debugWriter.WriteLine("Effective precondition from where-clauses:");
+      }
+    
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      CmdSeq! whereClauses = new CmdSeq();
+
+      // where clauses of in-parameters
+      foreach (Formal! f in impl.Proc.InParams)
+      {
+        if (f.TypedIdent.WhereExpr != null) {
+          Expr e = Substituter.Apply(formalProcImplSubst, f.TypedIdent.WhereExpr);
+          Cmd c = new AssumeCmd(f.tok, e);
+          whereClauses.Add(c);
+        
+          if (debugWriter != null) { c.Emit(debugWriter, 1); }
+        }
+      }
+
+      // where clauses of out-parameters
+      assert impl.OutParams.Length == impl.Proc.OutParams.Length;
+      for (int i = 0; i < impl.OutParams.Length; i++) {
+        Variable f = (!)impl.Proc.OutParams[i];
+        if (f.TypedIdent.WhereExpr != null) {
+          Expr e = Substituter.Apply(formalProcImplSubst, f.TypedIdent.WhereExpr);
+          Cmd c = new AssumeCmd(f.tok, e);
+          whereClauses.Add(c);
+          
+          Variable fi = (!)impl.OutParams[i];
+          assume fi.TypedIdent.WhereExpr == null;
+          fi.TypedIdent.WhereExpr = e;
+        
+          if (debugWriter != null) { c.Emit(debugWriter, 1); }
+        }
+      }
+
+      if (debugWriter != null) { debugWriter.WriteLine(); }
+      
+      return whereClauses;
+    }
+
+    private static void
+      ThreadInBlockExpr(Implementation! impl,
+                        Block! targetBlock,
+                        BlockExpr! blockExpr,
+                        bool replaceWithAssert,
+                        TokenTextWriter debugWriter){
+      // Go through blockExpr and for all blocks that have a "return e"
+      // as their transfer command:
+      //   Replace all "return e" with "assert/assume e"
+      //   Change the transfer command to "goto targetBlock"
+      // Then add all of the blocks in blockExpr to the implementation (at the end)
+      foreach (Block! b in blockExpr.Blocks){
+        ReturnExprCmd rec = b.TransferCmd as ReturnExprCmd;
+        if (rec != null){ // otherwise it is a goto command
+          if (replaceWithAssert){
+            Ensures! ens = new Ensures(rec.tok, false, rec.Expr, null);
+            Cmd! c = new AssertEnsuresCmd(ens);
+            b.Cmds.Add(c);
+          }else{
+            b.Cmds.Add(new AssumeCmd(rec.tok, rec.Expr));
+          }
+          b.TransferCmd = new GotoCmd(Token.NoToken,
+            new StringSeq(targetBlock.Label),
+            new BlockSeq(targetBlock));
+          targetBlock.Predecessors.Add(b);
+        }
+        impl.Blocks.Add(b);
+      }
+      if (debugWriter != null){
+        blockExpr.Emit(debugWriter, 1,false);
+      }
+      return;
+    }
+    
+    private static void AddAsPrefix(Block! b, CmdSeq! cs){
+      CmdSeq newCommands = new CmdSeq();
+      newCommands.AddRange(cs);
+      newCommands.AddRange(b.Cmds);
+      b.Cmds = newCommands;
+    }
+      
+    /// <summary>
+    /// Modifies an implementation by inserting all preconditions
+    /// as assume statements at the beginning of the implementation
+    /// </summary>
+    /// <param name="impl"></param>
+    private static void InjectPreconditions(Implementation! impl)
+      requires impl.Proc != null;
+    {
+      TokenTextWriter debugWriter = null;
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
+        debugWriter = new TokenTextWriter("<console>", Console.Out, false);
+        debugWriter.WriteLine("Effective precondition:");
+      }
+    
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      
+      Block! originalEntryPoint = (!) impl.Blocks[0];
+      Block! currentEntryPoint = (!) impl.Blocks[0];
+      CmdSeq! currentClump = new CmdSeq(); // to hold onto contiguous "regular" preconditions
+
+      // (free and checked) requires clauses
+      for (int i = impl.Proc.Requires.Length-1; 0 <= i; i--){
+        
+        // need to process the preconditions from bottom up, because
+        // for any that are BlockExprs, we need to thread them on
+        // to the top of the implementation
+
+        Requires req = impl.Proc.Requires[i];
+        Expr! e = Substituter.Apply(formalProcImplSubst, req.Condition);
+        BlockExpr be = req.Condition as BlockExpr;
+        if (be != null){
+          if (currentClump.Length > 0){
+            AddAsPrefix(currentEntryPoint, currentClump);
+            currentClump = new CmdSeq();
+          }
+          ThreadInBlockExpr(impl,currentEntryPoint, be,false,debugWriter);
+          currentEntryPoint = (!)be.Blocks[0];
+        }else{
+          Cmd! c = new AssumeCmd(req.tok, e);
+          currentClump.Add(c);
+          if (debugWriter != null) { c.Emit(debugWriter, 1); }
+        }
+        
+      }
+      
+      if (currentClump.Length > 0){
+        AddAsPrefix(currentEntryPoint, currentClump);
+      }
+      
+      if (currentEntryPoint != originalEntryPoint){
+        string EntryLabel = "PreconditionGeneratedEntry";
+        Block! newEntry = new Block(new Token(-17, -4),EntryLabel,new CmdSeq(),
+                  new GotoCmd(Token.NoToken,
+              new StringSeq(currentEntryPoint.Label),
+              new BlockSeq(currentEntryPoint)));
+        currentEntryPoint.Predecessors.Add(newEntry);
+        List<Block!> newBody = new List<Block!>();
+        newBody.Add(newEntry);
+        newBody.AddRange(impl.Blocks);
+        impl.Blocks = newBody;
+      }
+
+      if (debugWriter != null) { debugWriter.WriteLine(); }
+      
+      return;
+    }
+    /// <summary>
+    /// Modifies an implementation by inserting all postconditions
+    /// as assert statements at the end of the implementation
+    /// </summary>
+    /// <param name="impl"></param>
+    /// <param name="unifiedExitblock">The unified exit block that has
+    /// already been constructed for the implementation (and so
+    /// is already an element of impl.Blocks)
+    /// </param>
+    private static void InjectPostConditions(Implementation! impl, Block! unifiedExitBlock, Hashtable/*TransferCmd->ReturnCmd*/! gotoCmdOrigins)
+      requires impl.Proc != null;
+    {
+      TokenTextWriter debugWriter = null;
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
+        debugWriter = new TokenTextWriter("<console>", Console.Out, false);
+        debugWriter.WriteLine("Effective postcondition:");
+      }
+      
+      string ExitLabel = "ReallyLastGeneratedExit";
+      Block! newExit = new Block(new Token(-17, -4),ExitLabel,new CmdSeq(),new ReturnCmd(Token.NoToken));
+      impl.Blocks.Add(newExit);
+      Block! currentEntryPoint = newExit;
+      CmdSeq! currentClump = new CmdSeq(); // to hold onto contiguous "regular" postconditions
+
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+
+      // (free and checked) ensures clauses
+      for (int i = impl.Proc.Ensures.Length-1; 0 <= i; i--){
+        
+        // need to process the postconditions from bottom up, because
+        // for any that are BlockExprs, we need to thread them on
+        // to the top of the implementation
+
+        Ensures ens = (impl.Proc).Ensures[i];
+        if (!ens.Free) { // free ensures aren't needed for verifying the implementation
+          Expr! e = Substituter.Apply(formalProcImplSubst, ens.Condition);
+          BlockExpr be = ens.Condition as BlockExpr;
+          if (be != null){
+            if (currentClump.Length > 0){
+              AddAsPrefix(currentEntryPoint, currentClump);
+              currentClump = new CmdSeq();
+            }
+            ThreadInBlockExpr(impl,currentEntryPoint,be,true,debugWriter);
+            currentEntryPoint = (!)be.Blocks[0];
+          }else{
+            Ensures! ensCopy = (Ensures!) ens.Clone();
+            ensCopy.Condition = e;
+            Cmd! c = new AssertEnsuresCmd(ensCopy);
+            ((AssertEnsuresCmd) c).ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
+            currentClump.Add(c);
+            if (debugWriter != null) { c.Emit(debugWriter, 1); }
+          }
+        }
+          
+      }
+      
+      if (currentClump.Length > 0){
+        AddAsPrefix(currentEntryPoint, currentClump);
+      }
+      
+      GotoCmd gtc = new GotoCmd(Token.NoToken,
+            new StringSeq(currentEntryPoint.Label),
+            new BlockSeq(currentEntryPoint));
+      gotoCmdOrigins[gtc] = unifiedExitBlock.TransferCmd;
+      unifiedExitBlock.TransferCmd = gtc;
+      currentEntryPoint.Predecessors.Add(unifiedExitBlock);
+      
+      if (debugWriter != null) { debugWriter.WriteLine(); }
+      
+      return;
+    }
+
+
+    /// <summary>
+    /// Get the pre-condition of an implementation, including the where clauses from the in-parameters.
+    /// </summary>
+    /// <param name="impl"></param>
+    private static CmdSeq! GetPre(Implementation! impl)
+      requires impl.Proc != null;
+    {
+      TokenTextWriter debugWriter = null;
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
+        debugWriter = new TokenTextWriter("<console>", Console.Out, false);
+        debugWriter.WriteLine("Effective precondition:");
+      }
+    
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      CmdSeq! pre = new CmdSeq();
+
+      // (free and checked) requires clauses
+      foreach (Requires! req in impl.Proc.Requires)
+      {
+        Expr! e = Substituter.Apply(formalProcImplSubst, req.Condition);
+        Cmd! c = new AssumeCmd(req.tok, e);
+        pre.Add(c);
+
+        if (debugWriter != null) { c.Emit(debugWriter, 1); }
+      }
+      
+      if (debugWriter != null) { debugWriter.WriteLine(); }
+      
+      return pre;
+    }
+
+    /// <summary>
+    /// Get the post-condition of an implementation.
+    /// </summary>
+    /// <param name="impl"></param>
+    private static CmdSeq! GetPost(Implementation! impl)
+      requires impl.Proc != null;
+    {
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) { Console.WriteLine("Effective postcondition:"); }
+      
+      // Construct an Expr for the post-condition
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap()); 
+      CmdSeq! post = new CmdSeq();
+      foreach (Ensures! ens in impl.Proc.Ensures)
+      {
+        if (!ens.Free) {
+          Expr! e = Substituter.Apply(formalProcImplSubst, ens.Condition);
+          Ensures! ensCopy = (Ensures!) ens.Clone();
+          ensCopy.Condition = e;
+          Cmd! c = new AssertEnsuresCmd(ensCopy);
+          ((AssertEnsuresCmd) c).ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
+          post.Add(c);
+        
+          if (CommandLineOptions.Clo.PrintWithUniqueASTIds) { c.Emit(new TokenTextWriter("<console>", Console.Out, false), 1); }
+        }
+      }
+
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) { Console.WriteLine(); }
+      
+      return post;
+    }
+   
+
+    #region Soundness smoke tester
+    class SmokeTester
+    {
+      VCGen! parent;
+      Implementation! impl;
+      Block! initial;
+      Program! program;
+      int id;
+      Dictionary<Block!, Block!>! copies = new Dictionary<Block!, Block!>();
+      Dictionary<Block!, bool>! visited = new Dictionary<Block!, bool>();
+      VerifierCallback! callback;
+
+      internal SmokeTester(VCGen! par, Implementation! i, Program! prog, VerifierCallback! callback)
+      {
+        parent = par;
+        impl = i;
+        initial = i.Blocks[0];
+        program = prog;
+        this.callback = callback;
+      }
+
+      internal void Copy()
+      {
+        CloneBlock(impl.Blocks[0]);
+        initial = GetCopiedBlocks()[0];
+      }
+
+      internal void Test()
+        throws UnexpectedProverOutputException;
+      {
+        DFS(initial);
+      }
+
+      void TopologicalSortImpl()
+      {
+        Graph<Block> dag = new Graph<Block>();
+        dag.AddSource((!)impl.Blocks[0]); // there is always at least one node in the graph
+        foreach (Block b in impl.Blocks)
+        {
+          GotoCmd gtc = b.TransferCmd as GotoCmd;
+          if (gtc != null)
+          {
+            assume gtc.labelTargets != null;
+            foreach (Block! dest in gtc.labelTargets)
+            {
+              dag.AddEdge(b,dest);
+            }
+          }
+        }
+        impl.Blocks = new List<Block!>();
+        foreach (Block! b in dag.TopologicalSort()) {
+          impl.Blocks.Add(b);
+        }
+      }
+
+      void Emit()
+      {
+        TopologicalSortImpl();
+        EmitImpl(impl, false);
+      }
+
+      // this one copies forward
+      Block! CloneBlock(Block! b)
+      {
+        Block fake_res;
+        if (copies.TryGetValue(b, out fake_res)) {
+          return (!)fake_res;
+        }
+        Block! res;
+        res = new Block(b.tok, b.Label, new CmdSeq(b.Cmds), null);
+        copies[b] = res;
+        if (b.TransferCmd is GotoCmd) {
+          foreach (Block! ch in (!)((GotoCmd)b.TransferCmd).labelTargets) {
+            CloneBlock(ch);
+          }
+        }
+        foreach (Block! p in b.Predecessors) {
+          res.Predecessors.Add(CloneBlock(p));
+        }
+        return res;
+      }
+
+      // this one copies backwards
+      Block! CopyBlock(Block! b)
+      {
+        Block fake_res;
+        if (copies.TryGetValue(b, out fake_res)) {
+          // fake_res should be Block! but the compiler fails
+          return (!)fake_res;
+        }
+        Block! res;
+        CmdSeq seq = new CmdSeq();
+        foreach (Cmd! c in b.Cmds) {
+          AssertCmd turn = c as AssertCmd;
+          if (!turnAssertIntoAssumes || turn == null) {
+            seq.Add(c);
+          } else {
+            seq.Add(AssertTurnedIntoAssume(turn));
+          }
+        }
+        res = new Block(b.tok, b.Label, seq, null);
+        copies[b] = res;
+        foreach (Block! p in b.Predecessors) {
+          res.Predecessors.Add(CopyBlock(p));
+        }
+        return res;
+      }
+
+      List<Block!>! GetCopiedBlocks()
+      {
+        // the order of nodes in res is random (except for the first one, being the entry)
+        List<Block!> res = new List<Block!>();
+        res.Add(copies[initial]);
+
+        foreach (KeyValuePair<Block!,Block!> kv in copies) {
+          GotoCmd go = kv.Key.TransferCmd as GotoCmd;
+          ReturnCmd ret = kv.Key.TransferCmd as ReturnCmd;
+          if (kv.Key != initial) {
+            res.Add(kv.Value);
+          }
+          if (go != null) {
+            GotoCmd copy = new GotoCmd(go.tok, new StringSeq(), new BlockSeq());
+            kv.Value.TransferCmd = copy;
+            foreach (Block! b in (!)go.labelTargets) {
+              Block c;
+              if (copies.TryGetValue(b, out c)) {
+                copy.AddTarget((!)c);
+              }
+            }
+          } else if (ret != null) {
+            kv.Value.TransferCmd = ret;
+          } else {
+            assume false;
+          }
+        }
+
+        copies.Clear();
+
+        return res;
+      }
+
+      // check if e is true, false, !true, !false
+      // if so return true and the value of the expression in val
+      bool BooleanEval(Expr! e, ref bool val)
+      {
+        LiteralExpr lit = e as LiteralExpr;
+        NAryExpr call = e as NAryExpr;
+
+        if (lit != null && lit.isBool) {
+          val = lit.asBool;
+          return true;
+        } else if (call != null && 
+                   call.Fun is UnaryOperator && 
+                   ((UnaryOperator)call.Fun).Op == UnaryOperator.Opcode.Not &&
+                   BooleanEval((!)call.Args[0], ref val)) {
+          val = !val;
+          return true;
+        } 
+        // this is for the 0bv32 != 0bv32 generated by vcc
+        else if (call != null && 
+                   call.Fun is BinaryOperator && 
+                   ((BinaryOperator)call.Fun).Op == BinaryOperator.Opcode.Neq &&
+                   call.Args[0] is LiteralExpr &&
+                   ((!)call.Args[0]).Equals(call.Args[1]))
+        {
+          val = false;
+          return true;
+        }
+
+        return false;
+      }
+
+      bool IsFalse(Expr! e)
+      {
+        bool val = false;
+        return BooleanEval(e, ref val) && !val;
+      }
+
+      bool CheckUnreachable(Block! cur, CmdSeq! seq)
+        throws UnexpectedProverOutputException;
+       {
+        DateTime start = DateTime.Now;
+        if (CommandLineOptions.Clo.Trace) {
+          System.Console.Write("    soundness smoke test #{0} ... ", id);
+        }
+        callback.OnProgress("smoke", id, id, 0.0);
+
+        Token tok = new Token();
+        tok.val = "soundness smoke test assertion";
+        seq.Add(new AssertCmd(tok, Expr.False));
+        Block! copy = CopyBlock(cur);
+        copy.Cmds = seq;
+        List<Block!>! backup = impl.Blocks;
+        impl.Blocks = GetCopiedBlocks();
+        copy.TransferCmd = new ReturnCmd(Token.NoToken);
+        if (CommandLineOptions.Clo.TraceVerify) {
+          System.Console.WriteLine();
+          System.Console.WriteLine(" --- smoke #{0}, before passify", id);
+          Emit();
+        }
+        parent.current_impl = impl;
+        parent.PassifyImpl(impl, program);
+        Hashtable! label2Absy;
+        Checker! ch = parent.FindCheckerFor(impl, CommandLineOptions.Clo.SmokeTimeout);
+        VCExpr! vc = parent.GenerateVC(impl, out label2Absy, ch);
+        impl.Blocks = backup;
+
+        if (CommandLineOptions.Clo.TraceVerify) {
+          System.Console.WriteLine(" --- smoke #{0}, after passify", id);
+          Emit();
+        }
+        ch.BeginCheck((!) impl.Name + "_smoke" + id++, vc, new ErrorHandler(label2Absy));
+        ch.ProverDone.WaitOne();
+        ProverInterface.Outcome outcome = ch.ReadOutcome();
+        parent.current_impl = null;
+
+        DateTime end = DateTime.Now;
+        TimeSpan elapsed = end - start;
+        if (CommandLineOptions.Clo.Trace) {
+          System.Console.WriteLine("  [{0} s] {1}", elapsed.TotalSeconds, 
+            outcome == ProverInterface.Outcome.Valid ? "OOPS" : 
+              "OK" + (outcome == ProverInterface.Outcome.Invalid ? "" : " (" + outcome + ")"));
+        }
+
+        if (outcome == ProverInterface.Outcome.Valid) {
+          // copy it again, so we get the version with calls, assignments and such
+          copy = CopyBlock(cur);
+          copy.Cmds = seq;
+          impl.Blocks = GetCopiedBlocks();
+          TopologicalSortImpl();
+          callback.OnUnreachableCode(impl);
+          impl.Blocks = backup;
+          return true;
+        }
+        return false;
+      }
+
+      const bool turnAssertIntoAssumes = false;
+
+      void DFS(Block! cur)
+        throws UnexpectedProverOutputException;
+      {
+        if (visited.ContainsKey(cur)) return;
+        visited[cur] = true;
+
+        CmdSeq! seq = new CmdSeq();
+        foreach (Cmd! cmd_ in cur.Cmds) {
+          Cmd! cmd = cmd_;
+          AssertCmd assrt = cmd as AssertCmd;
+          AssumeCmd assm = cmd as AssumeCmd;
+          CallCmd call = cmd as CallCmd;
+
+          bool assumeFalse = false;
+
+          if (assrt != null) {
+            // we're not going any further
+            // it's clear the user expected unreachable code here
+            // it's not clear where did he expect it, maybe it would be right to insert
+            // a check just one command before
+            if (IsFalse(assrt.Expr)) return;
+
+            if (turnAssertIntoAssumes) {
+              cmd = AssertTurnedIntoAssume(assrt);
+            }
+          } else if (assm != null) {
+            if (IsFalse(assm.Expr)) assumeFalse = true;
+          } else if (call != null) {
+            foreach (Ensures! e in ((!)call.Proc).Ensures) {
+              if (IsFalse(e.Condition)) assumeFalse = true;
+            }
+          }
+
+          if (assumeFalse) {
+            CheckUnreachable(cur, seq);
+            return;
+          }
+
+          seq.Add(cmd);
+        }
+
+        
+        GotoCmd go = cur.TransferCmd as GotoCmd;
+        ReturnCmd ret = cur.TransferCmd as ReturnCmd;
+
+        assume !(go!= null&&go.labelTargets==null&&go.labelNames!=null&&go.labelNames.Length>0) ;
+
+        if (ret != null || (go != null && ((!)go.labelTargets).Length == 0)) {
+          // we end in return, so there will be no more places to check
+          CheckUnreachable(cur, seq);
+        } else if (go != null) {
+          bool needToCheck = true;
+          // if all of our children have more than one parent, then
+          // we're in the right place to check
+          foreach (Block! target in (!)go.labelTargets) {
+            if (target.Predecessors.Length == 1) {
+              needToCheck = false;
+            }
+          }
+          if (needToCheck) {
+            CheckUnreachable(cur, seq);
+          }
+          foreach (Block! target in go.labelTargets) {
+            DFS(target);
+          }
+        }
+      }
+      
+      class ErrorHandler : ProverInterface.ErrorHandler {
+        Hashtable! label2Absy;
+        
+        public ErrorHandler(Hashtable! label2Absy) {
+          this.label2Absy = label2Absy;
+        }
+        
+        public override Absy! Label2Absy(string! label) {
+          int id = int.Parse(label);
+          return (Absy!) label2Absy[id];
+        }
+      }
+    }
+    
+    
+    #endregion
+
+    #region Splitter
+    class Split
+    {
+      class BlockStats {
+        public bool big_block;
+        public int id;
+        public double assertion_cost;
+        public double assumption_cost; // before multiplier
+        public double incomming_paths;
+        public List<Block!>! virtual_successors = new List<Block!>();
+        public List<Block!>! virtual_predecesors = new List<Block!>();
+        public Dictionary<Block!,bool>? reachable_blocks;
+        public readonly Block! block;
+
+        public BlockStats(Block! b, int i)
+        {
+          block = b;
+          assertion_cost = -1;
+          id = i;
+        }
+      }
+
+      readonly List<Block!>! blocks;
+      readonly List<Block!>! big_blocks = new List<Block!>();
+      readonly Dictionary<Block!, BlockStats!>! stats = new Dictionary<Block!, BlockStats!>();
+      readonly int id;
+      static int current_id;
+      Block? split_block;
+      bool assert_to_assume;
+      List<Block!>! assumized_branches = new List<Block!>();
+      public AssertCmd? first_assert;
+
+      double score;
+      bool score_computed;
+      double total_cost;
+      int assertion_count;
+      double assertion_cost; // without multiplication by paths
+      Hashtable/*TransferCmd->ReturnCmd*/! gotoCmdOrigins;
+      VCGen! parent;
+      Implementation! impl;
+
+      Dictionary<Block!, Block!>! copies = new Dictionary<Block!, Block!>();
+      bool doing_slice;
+      double slice_initial_limit;
+      double slice_limit;
+      bool slice_pos;
+      Dictionary<Block!, bool>! protected_from_assert_to_assume = new Dictionary<Block!,bool>();
+      Dictionary<Block!, bool>! keep_at_all = new Dictionary<Block!,bool>();
+
+      // async interface
+      private Checker checker;
+      private int splitNo;
+      internal ErrorReporter reporter;
+
+      public Split(List<Block!>! blocks, Hashtable/*TransferCmd->ReturnCmd*/! gotoCmdOrigins, VCGen! par, Implementation! impl)
+      {
+        this.blocks = blocks;
+        this.gotoCmdOrigins = gotoCmdOrigins;
+        this.parent = par;
+        this.impl = impl;
+        this.id = current_id++;
+      }
+
+      public double Cost
+      {
+        get {
+          ComputeBestSplit();
+          return total_cost;
+        }
+      }
+
+      public bool LastChance
+      {
+        get {
+          ComputeBestSplit();
+          return assertion_count == 1 && score < 0;
+        }
+      }
+
+      public string Stats
+      {
+        get {
+          ComputeBestSplit();
+          return string.Format("(cost:{0:0}/{1:0}{2})", total_cost, assertion_cost, LastChance ? " last" : "");
+        }
+      }
+
+      public void DumpDot(int no)
+      {
+        using (System.IO.StreamWriter sw = System.IO.File.CreateText(string.Format("split.{0}.dot", no))) {
+          sw.WriteLine("digraph G {");
+
+          ComputeBestSplit();
+          List<Block!> saved = assumized_branches;
+          assumized_branches = new List<Block!>();
+          DoComputeScore(false);
+          assumized_branches = saved;
+
+          foreach (Block! b in big_blocks) {
+            BlockStats s = GetBlockStats(b);
+            foreach (Block! t in s.virtual_successors) {
+              sw.WriteLine("n{0} -> n{1};", s.id, GetBlockStats(t).id);
+            }
+            sw.WriteLine("n{0} [label=\"{1}:\\n({2:0.0}+{3:0.0})*{4:0.0}\"{5}];", 
+                      s.id, b.Label, 
+                      s.assertion_cost, s.assumption_cost, s.incomming_paths,
+                      s.assertion_cost > 0 ? ",shape=box" : "");
+       
+          }
+          sw.WriteLine("}");
+          sw.Close();
+        }
+
+        string filename = string.Format("split.{0}.bpl", no);
+        using (System.IO.StreamWriter sw = System.IO.File.CreateText(filename)) {
+          int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+          CommandLineOptions.Clo.PrintUnstructured = 2;  // print only the unstructured program
+          bool oldPrintDesugaringSetting = CommandLineOptions.Clo.PrintDesugarings;
+          CommandLineOptions.Clo.PrintDesugarings = false;
+          List<Block!> backup = impl.Blocks;
+          impl.Blocks = blocks;
+          impl.Emit(new TokenTextWriter(filename, sw, false), 0);
+          impl.Blocks = backup;
+          CommandLineOptions.Clo.PrintDesugarings = oldPrintDesugaringSetting;
+          CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+        }
+      }
+
+      int bsid;
+      BlockStats! GetBlockStats(Block! b)
+      {
+        BlockStats s;
+        if (!stats.TryGetValue(b, out s)) {
+          s = new BlockStats(b, bsid++);
+          stats[b] = s;
+        }
+        return (!)s;
+      }
+
+      double AssertionCost(PredicateCmd c)
+      {
+        return 1.0;
+      }
+
+      void CountAssertions(Block! b)
+      {
+        BlockStats s = GetBlockStats(b);
+        if (s.assertion_cost >= 0) return; // already done
+        s.big_block = true;
+        s.assertion_cost = 0;
+        s.assumption_cost = 0;
+        foreach (Cmd c in b.Cmds) {
+          if (c is AssertCmd) {
+            double cost = AssertionCost((AssertCmd)c);
+            s.assertion_cost += cost;
+            assertion_count++;
+            assertion_cost += cost;
+          } else if (c is AssumeCmd) {
+            s.assumption_cost += AssertionCost((AssumeCmd)c);
+          }
+        }
+        foreach (Block! b in Exits(b)) {
+          s.virtual_successors.Add(b);
+        }
+        if (s.virtual_successors.Count == 1) {
+          Block next = s.virtual_successors[0];
+          BlockStats se = GetBlockStats(next);
+          CountAssertions(next);
+          if (next.Predecessors.Length > 1 || se.virtual_successors.Count != 1) return;
+          s.virtual_successors[0] = se.virtual_successors[0];
+          s.assertion_cost += se.assertion_cost;
+          s.assumption_cost += se.assumption_cost;
+          se.big_block = false;
+        }
+      }
+
+      Dictionary<Block!,bool>! ComputeReachableNodes(Block! b)
+      {
+        BlockStats s = GetBlockStats(b);
+        if (s.reachable_blocks != null) {
+          return s.reachable_blocks;
+        }
+        Dictionary<Block!, bool> blocks = new Dictionary<Block!, bool>();
+        s.reachable_blocks = blocks;
+        blocks[b] = true;
+        foreach (Block! succ in Exits(b)) {
+          foreach (Block! r in ComputeReachableNodes(succ).Keys) {
+            blocks[r] = true;
+          }
+        }
+        return blocks;
+      }
+
+      double ProverCost(double vc_cost)
+      {
+        return vc_cost * vc_cost;
+      }
+
+      void ComputeBestSplit()
+      {
+        if (score_computed) return;
+        score_computed = true;
+
+        assertion_count = 0;
+        
+        foreach (Block! b in blocks) {
+          CountAssertions(b);
+        }
+
+        foreach (Block! b in blocks) {
+          BlockStats bs = GetBlockStats(b);
+          if (bs.big_block) {
+            big_blocks.Add(b);
+            foreach (Block! ch in bs.virtual_successors) {
+              BlockStats chs = GetBlockStats(ch);
+              if (!chs.big_block) {
+                Console.WriteLine("non-big {0} accessed from {1}", ch, b);
+                DumpDot(-1);
+                assert false;
+              }
+              chs.virtual_predecesors.Add(b);
+            }
+          }
+        }
+
+        assumized_branches.Clear();
+        total_cost = ProverCost(DoComputeScore(false));
+
+        score = double.PositiveInfinity;
+        Block? best_split = null;
+        List<Block!>! saved_branches = new List<Block!>();
+
+        foreach (Block! b in big_blocks) {
+          GotoCmd gt = b.TransferCmd as GotoCmd;
+          if (gt == null) continue;
+          BlockSeq targ = (!)gt.labelTargets;
+          if (targ.Length < 2) continue;
+          // caution, we only consider two first exits
+
+          double left0, right0, left1, right1;
+          split_block = b;
+
+          assumized_branches.Clear();
+          assumized_branches.Add((!)targ[0]);
+          left0 = DoComputeScore(true);
+          right0 = DoComputeScore(false);
+
+          assumized_branches.Clear();
+          for (int idx = 1; idx < targ.Length; idx++) {
+            assumized_branches.Add((!)targ[idx]);
+          }
+          left1 = DoComputeScore(true);
+          right1 = DoComputeScore(false);
+
+          double current_score = ProverCost(left1) + ProverCost(right1);
+          double other_score = ProverCost(left0) + ProverCost(right0);
+
+          if (other_score < current_score) {
+            current_score = other_score;
+            assumized_branches.Clear();
+            assumized_branches.Add((!)targ[0]);
+          }
+
+          if (current_score < score) {
+            score = current_score;
+            best_split = split_block;
+            saved_branches.Clear();
+            saved_branches.AddRange(assumized_branches);
+          }
+        }
+
+        if (CommandLineOptions.Clo.VcsPathSplitMult * score > total_cost) {
+          split_block = null;
+          score = -1;
+        } else {
+          assumized_branches = saved_branches;
+          split_block = best_split;
+        }
+      }
+
+      void UpdateIncommingPaths(BlockStats! s)
+      {
+        if (s.incomming_paths < 0.0) {
+          int count = 0;
+          s.incomming_paths = 0.0;
+          if (!keep_at_all.ContainsKey(s.block)) return;
+          foreach (Block! b in s.virtual_predecesors) {
+            BlockStats! ch = GetBlockStats(b);
+            UpdateIncommingPaths(ch);
+            if (ch.incomming_paths > 0.0) {
+              s.incomming_paths += ch.incomming_paths;
+              count++;
+            }
+          }
+          if (count > 1) {
+            s.incomming_paths *= CommandLineOptions.Clo.VcsPathJoinMult;
+          }
+        }
+      }
+
+      void ComputeBlockSetsHelper(Block! b, bool allow_small)
+      {
+        if (keep_at_all.ContainsKey(b)) return;
+        keep_at_all[b] = true;
+
+        if (allow_small) {
+          foreach (Block! ch in Exits(b)) {
+            if (b == split_block && assumized_branches.Contains(ch)) continue;
+            ComputeBlockSetsHelper(ch, allow_small);
+          }
+        } else {
+          foreach (Block! ch in GetBlockStats(b).virtual_successors) {
+            if (b == split_block && assumized_branches.Contains(ch)) continue;
+            ComputeBlockSetsHelper(ch, allow_small);
+          }
+        }
+      }
+
+      void ComputeBlockSets(bool allow_small)
+      {
+        protected_from_assert_to_assume.Clear();
+        keep_at_all.Clear();
+
+        Debug.Assert(split_block == null || GetBlockStats(split_block).big_block);
+        Debug.Assert(GetBlockStats(blocks[0]).big_block);
+
+        if (assert_to_assume) {
+          foreach (Block! b in allow_small ? blocks : big_blocks) {
+            if (ComputeReachableNodes(b).ContainsKey((!)split_block)) {
+              keep_at_all[b] = true;
+            }
+          }
+
+          foreach (Block! b in assumized_branches) {
+            foreach (Block! r in ComputeReachableNodes(b).Keys) {
+              if (allow_small || GetBlockStats(r).big_block) {
+                keep_at_all[r] = true;
+                protected_from_assert_to_assume[r] = true;
+              }
+            }
+          }
+        } else {
+          ComputeBlockSetsHelper(blocks[0], allow_small);
+        }
+      }
+
+      bool ShouldAssumize(Block! b)
+      {
+         return assert_to_assume && !protected_from_assert_to_assume.ContainsKey(b);
+      }
+
+      double DoComputeScore(bool aa)
+      {
+        assert_to_assume = aa;
+        ComputeBlockSets(false);
+
+        foreach (Block! b in big_blocks) {
+          GetBlockStats(b).incomming_paths = -1.0;
+        }
+
+        GetBlockStats(blocks[0]).incomming_paths = 1.0;
+
+        double cost = 0.0;
+        foreach (Block! b in big_blocks) {
+          if (keep_at_all.ContainsKey(b)) {
+            BlockStats s = GetBlockStats(b);
+            UpdateIncommingPaths(s);
+            double local = s.assertion_cost;
+            if (ShouldAssumize(b)) {
+              local = (s.assertion_cost + s.assumption_cost) * CommandLineOptions.Clo.VcsAssumeMult;
+            } else {
+              local = s.assumption_cost * CommandLineOptions.Clo.VcsAssumeMult + s.assertion_cost;
+            }
+            local = local + local * s.incomming_paths * CommandLineOptions.Clo.VcsPathCostMult;
+            cost += local;
+          }
+        }
+        
+        return cost;
+      }
+
+      CmdSeq! SliceCmds(Block! b)
+      {
+        CmdSeq! seq = b.Cmds;
+        if (!doing_slice && !ShouldAssumize(b)) return seq;
+        CmdSeq! res = new CmdSeq();
+        foreach (Cmd! c in seq) {
+          AssertCmd a = c as AssertCmd;
+          Cmd! the_new = c;
+          bool swap = false;
+          if (a != null) {
+            if (doing_slice) {
+              double cost = AssertionCost(a);
+              bool first = (slice_limit - cost) >= 0 || slice_initial_limit == slice_limit;
+              slice_limit -= cost;
+              swap = slice_pos == first;
+            } else if (assert_to_assume) {
+              swap = true;
+            } else {
+              assert false;
+            }
+
+            if (swap) {
+              the_new = AssertTurnedIntoAssume(a);
+            }
+          }
+          res.Add(the_new);
+        }
+        return res;
+      }
+
+      Block! CloneBlock(Block! b)
+      {
+        Block res;
+        if (copies.TryGetValue(b, out res)) {
+          return (!)res;
+        }
+        res = new Block(b.tok, b.Label, SliceCmds(b), b.TransferCmd);
+        GotoCmd gt = b.TransferCmd as GotoCmd;
+        copies[b] = res;
+        if (gt != null) {
+          GotoCmd newGoto = new GotoCmd(gt.tok, new StringSeq(), new BlockSeq());
+          res.TransferCmd = newGoto;
+          int pos = 0;
+          foreach (Block! ch in (!)gt.labelTargets) {
+            assert doing_slice || 
+                   (!assert_to_assume ==> (keep_at_all.ContainsKey(ch) || assumized_branches.Contains(ch)));
+            if (doing_slice || 
+                ((b != split_block || assumized_branches.Contains(ch) == assert_to_assume) &&
+                 keep_at_all.ContainsKey(ch))) {
+              newGoto.AddTarget(CloneBlock(ch));
+            }
+            pos++;
+          }
+        }
+        return res;
+      }
+
+      Split! DoSplit()
+      {
+        copies.Clear();
+        CloneBlock(blocks[0]);
+        List<Block!> newBlocks = new List<Block!>();
+        Hashtable newGotoCmdOrigins = new Hashtable();
+        foreach (Block! b in blocks) {
+          Block tmp;
+          if (copies.TryGetValue(b, out tmp)) {
+            newBlocks.Add((!)tmp);
+            if (gotoCmdOrigins.ContainsKey(b)) {
+              newGotoCmdOrigins[tmp] = gotoCmdOrigins[b];
+            }
+
+            foreach (Block! p in b.Predecessors) {
+              Block tmp2;
+              if (copies.TryGetValue(p, out tmp2)) {
+                tmp.Predecessors.Add(tmp2);
+              }
+            }
+          }
+        }
+
+        return new Split(newBlocks, newGotoCmdOrigins, parent, impl);
+      }
+
+      Split! SplitAt(int idx)
+      {
+        assert_to_assume = idx == 0;
+        doing_slice = false;
+        ComputeBlockSets(true);
+
+        return DoSplit();
+      }
+
+      Split! SliceAsserts(double limit, bool pos)
+      {
+        slice_pos = pos;
+        slice_limit = limit;
+        slice_initial_limit = limit;
+        doing_slice = true;
+        Split! r = DoSplit();
+
+        /*
+        Console.WriteLine("split {0} / {1} -->", limit, pos);
+        List<Block!> tmp = impl.Blocks;
+        impl.Blocks = r.blocks;
+        EmitImpl(impl, false);
+        impl.Blocks = tmp;
+        */
+
+        return r;
+      }
+
+      void Print()
+      {
+        List<Block!> tmp = impl.Blocks;
+        impl.Blocks = blocks;
+        EmitImpl(impl, false);
+        impl.Blocks = tmp;
+      }
+
+      public Counterexample! ToCounterexample()
+      {
+        BlockSeq trace = new BlockSeq();
+        foreach (Block! b in blocks) {
+          trace.Add(b);
+        }
+        foreach (Block! b in blocks) {
+          foreach (Cmd! c in b.Cmds) {
+            if (c is AssertCmd) {
+              return AssertCmdToCounterexample((AssertCmd)c, (!)b.TransferCmd, trace, null, new Dictionary<Incarnation, Absy!>());
+            }
+          }
+        }
+        assume false;
+      }
+
+      public static List<Split!>! DoSplit(Split! initial, double max_cost, int max)
+      {
+        List<Split!> res = new List<Split!>();
+        res.Add(initial);
+
+        while (res.Count < max) {
+          Split best = null;
+          int best_idx = 0, pos = 0;
+          foreach (Split! s in res) {
+            s.ComputeBestSplit(); // TODO check total_cost first
+            if (s.total_cost > max_cost && 
+                (best == null || best.total_cost < s.total_cost) &&
+                (s.assertion_count > 1 || s.split_block != null)) {
+              best = s;
+              best_idx = pos;
+            }
+            pos++;
+          }
+
+          if (best == null) break; // no split found
+
+          Split! s0, s1;
+
+          bool split_stats = CommandLineOptions.Clo.TraceVerify;
+
+          if (split_stats) {
+            Console.WriteLine("{0} {1} -->", best.split_block == null ? "SLICE" : ("SPLIT@" + best.split_block.Label), best.Stats);
+            if (best.split_block != null) {
+              GotoCmd g = best.split_block.TransferCmd as GotoCmd;
+              if (g != null) {
+                Console.Write("    exits: ");
+                foreach (Block! b in (!)g.labelTargets) {
+                  Console.Write("{0} ", b.Label);
+                }
+                Console.WriteLine("");
+                Console.Write("    assumized: ");
+                foreach (Block! b in best.assumized_branches) {
+                  Console.Write("{0} ", b.Label);
+                }
+                Console.WriteLine("");
+              }
+            }
+          }
+
+          if (best.split_block != null) {
+            s0 = best.SplitAt(0);
+            s1 = best.SplitAt(1);
+          } else {
+            best.split_block = null;
+            s0 = best.SliceAsserts(best.assertion_cost / 2, true);
+            s1 = best.SliceAsserts(best.assertion_cost / 2, false);
+          }
+
+          if (true) {
+            List<Block!> ss = new List<Block!>();
+            ss.Add(s0.blocks[0]);
+            ss.Add(s1.blocks[0]);
+            try {
+              best.SoundnessCheck(new Dictionary<PureCollections.Tuple!, bool>(), best.blocks[0], ss);
+            } catch (System.Exception e) {
+              Console.WriteLine(e);
+              best.DumpDot(-1);
+              s0.DumpDot(-2);
+              s1.DumpDot(-3);
+              assert false;
+            }
+          }
+
+          if (split_stats) {
+            s0.ComputeBestSplit();
+            s1.ComputeBestSplit();
+            Console.WriteLine("    --> {0}", s0.Stats);
+            Console.WriteLine("    --> {0}", s1.Stats);
+          }
+
+          if (CommandLineOptions.Clo.TraceVerify) {
+            best.Print();
+          }
+
+          res[best_idx] = s0;
+          res.Add(s1);
+        }
+
+        return res;
+      }
+
+      public Checker! Checker 
+      {
+        get {
+          assert checker != null;
+          return checker;
+        }
+      }
+
+      public WaitHandle ProverDone
+      {
+        get { 
+          assert checker != null;
+          return checker.ProverDone;
+        }
+      }
+
+      public void ReadOutcome(ref Outcome cur_outcome, out bool prover_failed) 
+        throws UnexpectedProverOutputException;
+      {
+        ProverInterface.Outcome outcome = ((!)checker).ReadOutcome();
+
+        if (CommandLineOptions.Clo.Trace && splitNo >= 0) {
+          System.Console.WriteLine("      --> split #{0} done,  [{1} s] {2}", splitNo, checker.ProverRunTime.TotalSeconds, outcome);
+        }
+
+        if (CommandLineOptions.Clo.VcsDumpSplits) {
+          DumpDot(splitNo);
+        }
+
+        prover_failed = false;
+
+        switch (outcome) {
+          case ProverInterface.Outcome.Valid:
+            return;
+          case ProverInterface.Outcome.Invalid:
+            cur_outcome = Outcome.Errors;
+            return;
+          case ProverInterface.Outcome.OutOfMemory:
+            prover_failed = true;
+            if (cur_outcome != Outcome.Errors && cur_outcome != Outcome.Inconclusive)
+              cur_outcome = Outcome.OutOfMemory;
+            return;
+          case ProverInterface.Outcome.TimeOut:
+            prover_failed = true;
+            if (cur_outcome != Outcome.Errors && cur_outcome != Outcome.Inconclusive)
+              cur_outcome = Outcome.TimedOut;
+            return;
+          case ProverInterface.Outcome.Undetermined:
+            prover_failed = true;
+            if (cur_outcome != Outcome.Errors)
+              cur_outcome = Outcome.Inconclusive;
+            return;
+          default:
+            assert false;
+        }
+      }
+
+      public void BeginCheck(VerifierCallback! callback, int no, int timeout) 
+      {
+        splitNo = no;
+
+        impl.Blocks = blocks;
+
+        checker = parent.FindCheckerFor(impl, timeout);
+
+        Hashtable/*<int, Absy!>*/! label2absy;
+        VCExpr! vc = parent.GenerateVC(impl, out label2absy, checker);
+        
+        if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
+          reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback);
+        } else {
+          reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback);
+        }
+        
+        if (CommandLineOptions.Clo.TraceVerify && no >= 0) 
+        {
+          Console.WriteLine("-- after split #{0}", no);
+          Print();
+        }
+
+        string! desc = (!) impl.Name;
+        if (no >= 0)
+          desc += "_split" + no;
+        checker.BeginCheck(desc, vc, reporter);
+
+      }
+
+      private void SoundnessCheck(Dictionary<PureCollections.Tuple!, bool>! cache, Block! orig, List<Block!>! copies)
+      {
+        {
+          PureCollections.Tuple t = new PureCollections.Tuple(new PureCollections.Capacity(1 + copies.Count));
+          int i = 0;
+          t[i++] = orig;
+          foreach (Block! b in copies) {
+            t[i++] = b;
+          }
+          if (cache.ContainsKey(t)) { return; }
+          cache[t] = true;
+        }
+
+        for (int i = 0; i < orig.Cmds.Length; ++i) {
+          Cmd cmd = orig.Cmds[i];
+          if (cmd is AssertCmd) {
+            int found = 0;
+            foreach (Block! c in copies) {
+              if (c.Cmds[i] == cmd) {
+                found++;
+              }
+            }
+            if (found == 0) {
+              throw new System.Exception(string.Format("missing assertion: {0}({1})", cmd.tok.filename, cmd.tok.line));
+            }
+          }
+        }
+
+        foreach (Block! exit in Exits(orig)) {
+          List<Block!>! newcopies = new List<Block!>();
+          foreach (Block! c in copies) {
+            foreach (Block! cexit in Exits(c)) {
+              if (cexit.Label == exit.Label) {
+                newcopies.Add(cexit);
+              }
+            }
+          }
+          if (newcopies.Count == 0) {
+            throw new System.Exception("missing exit " + exit.Label);
+          }
+          SoundnessCheck(cache, exit, newcopies);
+        }
+      }
+    }
+    #endregion
+
+
+    protected VCExpr! GenerateVC(Implementation! impl, out Hashtable/*<int, Absy!>*/! label2absy, Checker! ch)
+    {
+      TypecheckingContext tc = new TypecheckingContext(null);
+      impl.Typecheck(tc);
+
+      label2absy = new Hashtable/*<int, Absy!>*/();
+      VCExpr! vc;
+      switch (CommandLineOptions.Clo.vcVariety) {
+      case CommandLineOptions.VCVariety.Structured:
+        vc = VCViaStructuredProgram(impl, label2absy, ch.TheoremProver.Context);
+        break;
+      case CommandLineOptions.VCVariety.Block:
+        vc = FlatBlockVC(impl, label2absy, false, false, false, ch.TheoremProver.Context);
+        break;
+      case CommandLineOptions.VCVariety.BlockReach:
+        vc = FlatBlockVC(impl, label2absy, false, true, false, ch.TheoremProver.Context);
+        break;
+      case CommandLineOptions.VCVariety.Local:
+        vc = FlatBlockVC(impl, label2absy, true, false, false, ch.TheoremProver.Context);
+        break;
+      case CommandLineOptions.VCVariety.BlockNested:
+        vc = NestedBlockVC(impl, label2absy, false, ch.TheoremProver.Context);
+        break;
+      case CommandLineOptions.VCVariety.BlockNestedReach:
+        vc = NestedBlockVC(impl, label2absy, true, ch.TheoremProver.Context);
+        break;
+      case CommandLineOptions.VCVariety.Dag:
+        if (((!)CommandLineOptions.Clo.TheProverFactory).SupportsDags) {
+          vc = DagVC((!)impl.Blocks[0], label2absy, new Hashtable/*<Block, VCExpr!>*/(), ch.TheoremProver.Context);
+        } else {
+          vc = LetVC((!)impl.Blocks[0], label2absy, ch.TheoremProver.Context);
+        }
+        break;
+      case CommandLineOptions.VCVariety.Doomed:
+        vc = FlatBlockVC(impl, label2absy, false, false, true, ch.TheoremProver.Context);
+        break;
+      default:
+        assert false;  // unexpected enumeration value
+      }
+      return vc;
+    }
+
+    void CheckIntAttributeOnImpl(Implementation! impl, string! name, ref int val)
+    {
+      if (!((!)impl.Proc).CheckIntAttribute(name, ref val) || !impl.CheckIntAttribute(name, ref val)) {
+        Console.WriteLine("ignoring ill-formed {:{0} ...} attribute on {1}, parameter should be an int", name, impl.Name);
+      }
+    }
+
+    
+    public override Outcome VerifyImplementation(Implementation! impl, Program! program, VerifierCallback! callback)
+      throws UnexpectedProverOutputException;
+    {
+      if (impl.SkipVerification) {
+        return Outcome.Inconclusive; // not sure about this one
+      } 
+
+      callback.OnProgress("VCgen", 0, 0, 0.0);
+
+      ConvertCFG2DAG(impl, program);
+
+      SmokeTester smoke_tester = null;
+      if (CommandLineOptions.Clo.SoundnessSmokeTest) {
+        smoke_tester = new SmokeTester(this, impl, program, callback);
+        smoke_tester.Copy();
+      }
+
+      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program);
+
+      double max_vc_cost = CommandLineOptions.Clo.VcsMaxCost;
+      int tmp_max_vc_cost = -1, max_splits = CommandLineOptions.Clo.VcsMaxSplits, 
+          max_kg_splits = CommandLineOptions.Clo.VcsMaxKeepGoingSplits;
+      CheckIntAttributeOnImpl(impl, "vcs_max_cost", ref tmp_max_vc_cost);
+      CheckIntAttributeOnImpl(impl, "vcs_max_splits", ref max_splits);
+      CheckIntAttributeOnImpl(impl, "vcs_max_keep_going_splits", ref max_kg_splits);
+      if (tmp_max_vc_cost >= 0) { 
+        max_vc_cost = tmp_max_vc_cost; 
+      }
+
+      Outcome outcome = Outcome.Correct;
+
+      int cores = CommandLineOptions.Clo.VcsCores;
+      Stack<Split!> work = new Stack<Split!>();
+      List<Split!> currently_running = new List<Split!>();
+      ResetPredecessors(impl.Blocks);
+      work.Push(new Split(impl.Blocks, gotoCmdOrigins, this, impl));
+
+      bool keep_going = max_kg_splits > 1;
+      int total = 0;
+      int no = max_splits == 1 && !keep_going ? -1 : 0;
+      bool first_round = true;
+      bool do_splitting = keep_going || max_splits > 1; 
+      double remaining_cost = 0.0, proven_cost = 0.0;
+
+      if (do_splitting) {
+        remaining_cost = work.Peek().Cost;
+      }
+
+      while (work.Count > 0 || currently_running.Count > 0) {
+        bool prover_failed = false;
+        Split! s;
+
+        if (work.Count > 0 && currently_running.Count < cores) {
+          s = work.Pop();
+
+          if (first_round && max_splits > 1) {
+            prover_failed = true;
+            remaining_cost -= s.Cost;
+          } else {
+            if (CommandLineOptions.Clo.Trace && no >= 0) {
+              System.Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...", 
+                                   s.Stats, no + 1, total, 100 * proven_cost / (proven_cost + remaining_cost));
+            }
+            callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
+
+            s.BeginCheck(callback, no, 
+              (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
+                keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
+                             CommandLineOptions.Clo.ProverKillTime);
+
+            no++;
+
+            currently_running.Add(s);
+          }
+        } else {
+          WaitHandle[] handles = new WaitHandle[currently_running.Count];
+          for (int i = 0; i < currently_running.Count; ++i) {
+            handles[i] = currently_running[i].ProverDone;
+          }
+          int index = WaitHandle.WaitAny(handles);
+          s = currently_running[index];
+          currently_running.RemoveAt(index);
+
+          if (do_splitting) {
+            remaining_cost -= s.Cost;
+          }
+
+          s.ReadOutcome(ref outcome, out prover_failed);
+
+          if (do_splitting) {
+            if (prover_failed) {
+              // even if the prover fails, we have learned something, i.e., it is 
+              // annoying to watch Boogie say Timeout, 0.00% a couple of times
+              proven_cost += s.Cost / 100;
+            } else {
+              proven_cost += s.Cost;
+            }
+          }
+          callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
+
+          if (prover_failed && !first_round && s.LastChance) {
+            string! msg = "some timeout";
+            if (s.reporter != null && s.reporter.resourceExceededMessage != null) {
+              msg = s.reporter.resourceExceededMessage;
+            }
+            callback.OnCounterexample(s.ToCounterexample(), msg);
+            outcome = Outcome.Errors;
+            break;
+          }
+
+          assert prover_failed || outcome == Outcome.Correct || outcome == Outcome.Errors;
+        }
+
+        if (prover_failed) { 
+          int splits = first_round && max_splits > 1 ? max_splits : max_kg_splits;
+
+          if (splits > 1) {
+            List<Split!> tmp = Split.DoSplit(s, max_vc_cost, splits);
+            max_vc_cost = 1.0; // for future
+            first_round = false;
+            //tmp.Sort(new Comparison<Split!>(Split.Compare));
+            foreach (Split! a in tmp) {
+              work.Push(a);
+              total++;
+              remaining_cost += a.Cost;
+            }
+            if (outcome != Outcome.Errors) {
+              outcome = Outcome.Correct;
+            }
+          } else {
+            assert outcome != Outcome.Correct;
+            if (outcome == Outcome.TimedOut) {
+              string! msg = "some timeout";
+              if (s.reporter != null && s.reporter.resourceExceededMessage != null) {
+                msg = s.reporter.resourceExceededMessage;
+              }
+              callback.OnTimeout(msg);
+            } else if (outcome == Outcome.OutOfMemory) {
+              string! msg = "out of memory";
+              if (s.reporter != null && s.reporter.resourceExceededMessage != null) {
+                msg = s.reporter.resourceExceededMessage;
+              }
+              callback.OnOutOfMemory(msg);
+            }
+
+            break;
+          }
+        }
+      }
+
+      if (outcome == Outcome.Correct && smoke_tester != null) {
+        smoke_tester.Test();
+      }
+
+      callback.OnProgress("done", 0, 0, 1.0);
+
+      return outcome;
+    }
+
+    public class ErrorReporter : ProverInterface.ErrorHandler {
+      Hashtable/*TransferCmd->ReturnCmd*/! gotoCmdOrigins;
+      Hashtable/*<int, Absy!>*/! label2absy;
+      List<Block!>! blocks;
+      protected Dictionary<Incarnation, Absy!>! incarnationOriginMap;
+      protected VerifierCallback! callback;
+      internal string? resourceExceededMessage;
+      static private System.IO.TextWriter? modelWriter;
+      
+      static protected TextWriter! ModelWriter {
+        get {
+          if (ErrorReporter.modelWriter == null)
+            ErrorReporter.modelWriter = CommandLineOptions.Clo.PrintErrorModelFile == null ? Console.Out : new StreamWriter(CommandLineOptions.Clo.PrintErrorModelFile, false);
+          return ErrorReporter.modelWriter;
+        }
+      } 
+      
+      public ErrorReporter(Hashtable/*TransferCmd->ReturnCmd*/! gotoCmdOrigins,
+          Hashtable/*<int, Absy!>*/! label2absy,
+          List<Block!>! blocks,
+          Dictionary<Incarnation, Absy!>! incarnationOriginMap,
+          VerifierCallback! callback)
+      {
+        this.gotoCmdOrigins = gotoCmdOrigins;
+        this.label2absy = label2absy;
+        this.blocks = blocks;
+        this.incarnationOriginMap = incarnationOriginMap;
+        this.callback = callback;
+        // base();
+      }
+      
+      public override void OnModel(IList<string!>! labels, ErrorModel errModel) {
+        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
+            errModel.Print(ErrorReporter.ModelWriter);
+            ErrorReporter.ModelWriter.Flush();
+        }
+        Hashtable traceNodes = new Hashtable();
+        foreach (string! s in labels) {
+          Absy! absy =Label2Absy(s); 
+          if (traceNodes.ContainsKey(absy))
+            System.Console.WriteLine("Warning: duplicate label: " + s + " read while tracing nodes");
+          else
+            traceNodes.Add(absy, null);
+        }
+
+        BlockSeq! trace = new BlockSeq();
+        Block! entryBlock = (!) this.blocks[0];
+        assert traceNodes.Contains(entryBlock);
+        trace.Add(entryBlock);
+
+        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel, incarnationOriginMap);
+
+        if (newCounterexample == null) return;
+        
+        #region Map passive program errors back to original program errors
+        ReturnCounterexample returnExample = newCounterexample as ReturnCounterexample;
+        if (returnExample != null)
+        {
+          foreach (Block! b in returnExample.Trace) {
+            assume b.TransferCmd != null;
+            ReturnCmd cmd = (ReturnCmd) gotoCmdOrigins[b.TransferCmd];
+            if (cmd != null)
+            {
+              returnExample.FailingReturn = cmd;
+              break;
+            }
+          }
+        }
+        #endregion
+        callback.OnCounterexample(newCounterexample, null);
+      }
+
+      public override Absy! Label2Absy(string! label)
+      {
+        int id = int.Parse(label);
+        return (Absy!) label2absy[id];
+      }
+
+      public override void OnResourceExceeded(string! msg)
+      {
+        resourceExceededMessage = msg;
+      }
+    }
+    
+    public class ErrorReporterLocal : ErrorReporter {
+      public ErrorReporterLocal(Hashtable/*TransferCmd->ReturnCmd*/! gotoCmdOrigins,
+          Hashtable/*<int, Absy!>*/! label2absy,
+          List<Block!>! blocks,
+          Dictionary<Incarnation, Absy!>! incarnationOriginMap,
+          VerifierCallback! callback)
+      {
+        base(gotoCmdOrigins, label2absy, blocks, incarnationOriginMap, callback); // here for aesthetic purposes
+      }
+
+      public override void OnModel(IList<string!>! labels, ErrorModel errModel) {
+        // We ignore the error model here for enhanced error message purposes.
+        // It is only printed to the command line.
+        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
+          if (CommandLineOptions.Clo.PrintErrorModelFile != null) {
+            errModel.Print(ErrorReporter.ModelWriter);
+            ErrorReporter.ModelWriter.Flush();
+          }
+        }
+        List<Block!> traceNodes = new List<Block!>();
+        List<AssertCmd!> assertNodes = new List<AssertCmd!>();
+        foreach (string! s in labels) {
+          Absy node = Label2Absy(s);
+          if (node is Block) {
+            Block b = (Block)node;
+            traceNodes.Add(b);
+          } else {
+            AssertCmd a = (AssertCmd)node;
+            assertNodes.Add(a);
+          }
+        }
+        assert assertNodes.Count > 0;
+        assert traceNodes.Count == assertNodes.Count;
+
+        foreach (AssertCmd a in assertNodes) {
+          // find the corresponding Block (assertNodes.Count is likely to be 1, or small in any case, so just do a linear search here)
+          foreach (Block b in traceNodes) {
+            if (b.Cmds.Has(a)) {
+              BlockSeq trace = new BlockSeq();
+              trace.Add(b);
+              Counterexample newCounterexample = AssertCmdToCounterexample(a, (!)b.TransferCmd, trace, errModel, incarnationOriginMap);
+              callback.OnCounterexample(newCounterexample, null);
+              goto NEXT_ASSERT;
+            }
+          }
+          assert false;  // there was no block that contains the assert
+          NEXT_ASSERT: {}
+        }
+      }
+    }
+
+    protected void ConvertCFG2DAG(Implementation! impl, Program! program)
+    {
+      impl.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
+
+      current_impl = impl;
+      variable2SequenceNumber = new Hashtable/*Variable -> int*/();
+      incarnationOriginMap = new Dictionary<Incarnation, Absy!>();
+
+      #region Debug Tracing
+      if (CommandLineOptions.Clo.TraceVerify) 
+      {
+        Console.WriteLine("original implementation");
+        EmitImpl(impl, false);
+      }
+      #endregion
+
+      #region Debug Tracing
+      if (CommandLineOptions.Clo.TraceVerify) 
+      {
+        Console.WriteLine("after desugaring sugared commands like procedure calls");
+        EmitImpl(impl, true);
+      }
+      #endregion
+
+      ComputePredecessors(impl.Blocks);
+      
+      #region Convert program CFG into a DAG
+
+      #region Use the graph library to figure out where the (natural) loops are
+
+      #region Create the graph by adding the source node and each edge
+      Graph<Block>! g = GraphFromImpl(impl);
+      #endregion
+
+      g.ComputeLoops(); // this is the call that does all of the processing
+      if (!g.Reducible)
+      {
+        throw new VCGenException("Irreducible flow graphs are unsupported.");
+      }
+
+      #endregion
+
+      #region Cut the backedges, push assert/assume statements from loop header into predecessors, change them all into assume statements at top of loop, introduce havoc statements
+      foreach (Block! header in (!) g.Headers)
+      {
+        IDictionary<Block!,object> backEdgeNodes = new Dictionary<Block!,object>();
+        foreach (Block! b in (!) g.BackEdgeNodes(header)) { backEdgeNodes.Add(b, null); }
+      
+        #region Find the (possibly empty) prefix of assert commands in the header, replace each assert with an assume of the same condition
+        CmdSeq prefixOfPredicateCmdsInit = new CmdSeq();
+        CmdSeq prefixOfPredicateCmdsMaintained = new CmdSeq();
+        for (int i = 0, n = header.Cmds.Length; i < n; i++)
+        {
+          PredicateCmd a = header.Cmds[i] as PredicateCmd;
+          if (a != null)
+          {
+            if (a is AssumeCmd) {
+              prefixOfPredicateCmdsInit.Add(a);
+              prefixOfPredicateCmdsMaintained.Add(a);
+            } else {
+              Bpl.AssertCmd c = (AssertCmd) a;
+              Bpl.AssertCmd b = new Bpl.LoopInitAssertCmd(c.tok, c.Expr);
+              b.ErrorData = c.ErrorData;
+              prefixOfPredicateCmdsInit.Add(b);
+              b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+              b.ErrorData = c.ErrorData;
+              prefixOfPredicateCmdsMaintained.Add(b);
+              header.Cmds[i] = new AssumeCmd(c.tok,c.Expr);
+            }
+          }
+          else if ( header.Cmds[i] is CommentCmd )
+          {
+            // ignore
+          }
+          else
+          {
+            break; // stop when an assignment statement (or any other non-predicate cmd) is encountered
+          }
+        }
+        #endregion
+
+        #region Copy the prefix of predicate commands into each predecessor. Do this *before* cutting the backedge!!
+        for ( int predIndex = 0, n = header.Predecessors.Length; predIndex < n; predIndex++ )
+        {
+          Block! pred = (!)header.Predecessors[predIndex];
+          
+          // Create a block between header and pred for the predicate commands if header has more than one successor 
+          // or if pred is a back edge node
+          GotoCmd gotocmd = pred.TransferCmd as GotoCmd;
+          if ((backEdgeNodes.ContainsKey(pred)) || (gotocmd != null && gotocmd.labelNames != null && gotocmd.labelNames.Length > 1))
+          {
+            Block! newBlock = CreateBlockBetween(predIndex, header);
+            impl.Blocks.Add(newBlock);
+            
+            // if pred is a back edge node, then now newBlock is the back edge node
+            if (backEdgeNodes.ContainsKey(pred))
+            {
+              backEdgeNodes.Remove(pred);
+              backEdgeNodes.Add(newBlock,null);
+            }
+            
+            pred = newBlock;
+          } 
+          // Add the predicate commands
+          if (backEdgeNodes.ContainsKey(pred)){
+            pred.Cmds.AddRange(prefixOfPredicateCmdsMaintained);
+          }
+          else {
+            pred.Cmds.AddRange(prefixOfPredicateCmdsInit);
+          }
+        }
+        #endregion
+
+        #region Cut the back edge
+        foreach (Block! backEdgeNode in (!)backEdgeNodes.Keys)
+        {
+          Debug.Assert(backEdgeNode.TransferCmd is GotoCmd,"An node was identified as the source for a backedge, but it does not have a goto command.");
+          GotoCmd gtc = backEdgeNode.TransferCmd as GotoCmd;
+          if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Length > 1 )
+          {
+            // then remove the backedge by removing the target block from the list of gotos
+            BlockSeq remainingTargets = new BlockSeq();
+            StringSeq remainingLabels = new StringSeq();
+            assume gtc.labelNames != null;
+            for (int i = 0, n = gtc.labelTargets.Length; i < n; i++)
+            {
+              if ( gtc.labelTargets[i] != header )
+              {
+                remainingTargets.Add(gtc.labelTargets[i]);
+                remainingLabels.Add(gtc.labelNames[i]);
+              }
+            }
+            gtc.labelTargets = remainingTargets;
+            gtc.labelNames = remainingLabels;
+          }
+          else
+          {
+            // This backedge is the only out-going edge from this node.
+            // Add an "assume false" statement to the end of the statements
+            // inside of the block and change the goto command to a return command.
+            AssumeCmd ac = new AssumeCmd(Token.NoToken,Expr.False);
+            backEdgeNode.Cmds.Add(ac);
+            backEdgeNode.TransferCmd = new ReturnCmd(Token.NoToken);
+          }
+          #region Remove the backedge node from the list of predecessor nodes in the header
+          BlockSeq newPreds = new BlockSeq();
+          foreach ( Block p in header.Predecessors )
+          {
+            if ( p != backEdgeNode )
+              newPreds.Add(p);
+          }
+          header.Predecessors = newPreds;
+          #endregion
+        }
+        #endregion
+
+        #region Collect all variables that are assigned to in all of the natural loops for which this is the header
+        VariableSeq varsToHavoc = new VariableSeq();
+        foreach (Block! backEdgeNode in (!) g.BackEdgeNodes(header))
+        {
+          foreach ( Block! b in g.NaturalLoops(header,backEdgeNode) )
+          {
+            foreach ( Cmd! c in b.Cmds )
+            {
+              c.AddAssignedVariables(varsToHavoc);
+            }
+          }
+        }
+        IdentifierExprSeq havocExprs = new IdentifierExprSeq();
+        foreach ( Variable! v in varsToHavoc )
+        {
+          IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
+          if(!havocExprs.Has(ie))
+            havocExprs.Add(ie);
+        }
+        // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
+        // the source location for this later on
+        HavocCmd hc = new HavocCmd(header.tok,havocExprs);
+        CmdSeq newCmds = new CmdSeq();
+        newCmds.Add(hc);
+        foreach ( Cmd c in header.Cmds )
+        {
+          newCmds.Add(c);
+        }
+        header.Cmds = newCmds;
+        #endregion
+      }
+      #endregion
+      #endregion Convert program CFG into a DAG
+      
+      #region Debug Tracing
+      if (CommandLineOptions.Clo.TraceVerify) 
+      {
+        Console.WriteLine("after conversion into a DAG");
+        EmitImpl(impl, true);
+      }
+      #endregion
+    }
+
+    protected Hashtable/*TransferCmd->ReturnCmd*/! PassifyImpl(Implementation! impl, Program! program)
+    {
+      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = new Hashtable/*TransferCmd->ReturnCmd*/();
+      Block/*?*/ exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
+      
+      #region Debug Tracing
+      if (CommandLineOptions.Clo.TraceVerify) 
+      {
+        Console.WriteLine("after creating a unified exit block");
+        EmitImpl(impl, true);
+      }
+      #endregion
+
+      #region Insert pre- and post-conditions and where clauses as assume and assert statements
+      {
+        CmdSeq cc = new CmdSeq();
+        // where clauses of global variables
+        foreach (Declaration d in program.TopLevelDeclarations) {
+          GlobalVariable gvar = d as GlobalVariable;
+          if (gvar != null && gvar.TypedIdent.WhereExpr != null) {
+            Cmd c = new AssumeCmd(gvar.tok, gvar.TypedIdent.WhereExpr);
+            cc.Add(c);
+          }
+        }
+        // where clauses of in- and out-parameters
+        cc.AddRange(GetParamWhereClauses(impl));
+        // where clauses of local variables
+        foreach (Variable! lvar in impl.LocVars) {
+          if (lvar.TypedIdent.WhereExpr != null) {
+            Cmd c = new AssumeCmd(lvar.tok, lvar.TypedIdent.WhereExpr);
+            cc.Add(c);
+          }
+        }
+
+        InjectPreconditions(impl);
+        //cc.AddRange(GetPre(impl));
+
+        Block! entryBlock = (!) impl.Blocks[0];
+        cc.AddRange(entryBlock.Cmds);
+        entryBlock.Cmds = cc;
+          
+        InjectPostConditions(impl,exitBlock,gotoCmdOrigins);
+        //CmdSeq! post = GetPost(impl);
+        //exitBlock.Cmds.AddRange(post);
+      }
+      #endregion
+      
+      #region Debug Tracing
+      if (CommandLineOptions.Clo.TraceVerify) 
+      {
+        Console.WriteLine("after inserting pre- and post-conditions");
+        EmitImpl(impl, true);
+      }
+      #endregion
+
+      AddBlocksBetween(impl);
+      
+      #region Debug Tracing
+      if (CommandLineOptions.Clo.TraceVerify) 
+      {
+        Console.WriteLine("after adding empty blocks before all blocks with more than one predecessor");
+        EmitImpl(impl, true);
+      }
+      #endregion
+    
+      Convert2PassiveCmd(impl);
+      
+      #region Peep-hole optimizations
+      if (CommandLineOptions.Clo.RemoveEmptyBlocks){
+        #region Get rid of empty blocks
+        {
+          Block! entryBlock = (!) impl.Blocks[0];
+          RemoveEmptyBlocks(entryBlock);
+          impl.PruneUnreachableBlocks();  
+        }
+        #endregion Get rid of empty blocks
+        
+        #region Debug Tracing
+        if (CommandLineOptions.Clo.TraceVerify) 
+        {
+          Console.WriteLine("after peep-hole optimizations");
+          EmitImpl(impl, true);
+        }
+        #endregion
+      }
+      #endregion Peep-hole optimizations
+
+//      #region Constant Folding
+//      #endregion
+//      #region Debug Tracing
+//      if (CommandLineOptions.Clo.TraceVerify) 
+//      {
+//        Console.WriteLine("after constant folding");
+//        EmitImpl(impl, true);
+//      }
+//      #endregion
+
+      return gotoCmdOrigins;
+    }
+
+    static Counterexample TraceCounterexample(Block! b, Hashtable! traceNodes, BlockSeq! trace, ErrorModel errModel, Dictionary<Incarnation, Absy!>! incarnationOriginMap)
+    {
+      // After translation, all potential errors come from asserts.
+      CmdSeq! cmds = b.Cmds;
+      TransferCmd! transferCmd = (!)b.TransferCmd;
+      for (int i = 0; i < cmds.Length; i++)
+      {
+        Cmd! cmd = (!) cmds[i];
+        
+        // Skip if 'cmd' not contained in the trace or not an assert
+        if (!(cmd is AssertCmd) || !traceNodes.Contains(cmd))
+          continue;
+
+        return AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, incarnationOriginMap);
+      }
+      
+      GotoCmd gotoCmd = transferCmd as GotoCmd;
+      if (gotoCmd != null)
+      {
+        foreach (Block! bb in (!)gotoCmd.labelTargets)
+        {
+          if (traceNodes.Contains(bb)){
+            trace.Add(bb);
+            return TraceCounterexample(bb, traceNodes, trace, errModel, incarnationOriginMap);
+          }
+        }
+      }
+
+      return null;
+
+      // Debug.Fail("Could not find failing node.");
+      // throw new Microsoft.Contracts.AssertException();
+    }
+    
+    
+    static void /*return printable error!*/ ApplyEnhancedErrorPrintingStrategy (Bpl.Expr! expr, Hashtable /*Variable -> Expr*/! incarnationMap, MiningStrategy errorDataEnhanced, ErrorModel! errModel, Dictionary<Expr!, object>! exprToPrintableValue, List<string!>! relatedInformation, bool printInternalStateDumpOnce, Dictionary<Incarnation, Absy!>! incarnationOriginMap) {
+      if (errorDataEnhanced is ListOfMiningStrategies) {
+        ListOfMiningStrategies loms = (ListOfMiningStrategies) errorDataEnhanced;
+        List<MiningStrategy>! l = loms.msList;
+        for (int i = 0; i < l.Count; i++) {
+          MiningStrategy ms = l[i];
+          if (ms != null) {
+            ApplyEnhancedErrorPrintingStrategy(expr, incarnationMap, l[i], errModel, exprToPrintableValue, relatedInformation, false, incarnationOriginMap);
+          }
+        }
+      }
+      else if (errorDataEnhanced is EEDTemplate /*EDEverySubExpr*/) {
+        EEDTemplate eedT = (EEDTemplate) errorDataEnhanced;
+        string reason = eedT.reason;
+        List<Bpl.Expr!> listOfExprs = eedT.exprList;
+        if (listOfExprs != null) {
+          List<string> holeFillers = new List<string>();
+          for (int i = 0; i < listOfExprs.Count; i++) {
+            bool alreadySet = false;
+            foreach (KeyValuePair<Bpl.Expr!, object> kvp in exprToPrintableValue) {
+              Bpl.Expr! e = kvp.Key;
+              Bpl.Expr! f = listOfExprs[i];
+              // the strings are compared instead of the actual expressions because 
+              // the expressions might not be identical, but their print-out strings will be
+              if (e.ToString() == f.ToString()) {
+                object o = kvp.Value;
+                if (o != null) {
+                  holeFillers.Add(o.ToString());
+                  alreadySet = true;
+                  break;
+                } 
+              }
+            }
+            if (!alreadySet) {
+              // no information about that Expression found, so put in <unknown>
+              holeFillers.Add("<unknown>");
+            }
+          }
+          reason = FormatReasonString(reason, holeFillers);
+        }
+        if (reason != null) {
+          relatedInformation.Add("(related information): "+reason);
+        }
+      } else  {
+        // define new templates here!
+      } 
+      
+      if (printInternalStateDumpOnce) {
+        ComputeAndTreatHeapSuccessions(incarnationMap, errModel, incarnationOriginMap, relatedInformation);
+
+        // default action: print all values!
+        foreach (KeyValuePair<Bpl.Expr!, object> kvp in exprToPrintableValue) {
+          object o = kvp.Value;
+          if (o != null) {
+            // We do not want to print LiteralExprs because that gives things like 0 == 0.
+            // If both arguments to the string.Format are the same it is also useless, 
+            //   as that would print e.g. $a == $a.
+            if (!(kvp.Key is LiteralExpr)&& kvp.Key.ToString() != o.ToString()) {
+              string boogieExpr;
+              // check whether we are handling BPL or SSC input
+              if (CommandLineOptions.Clo.RunningBoogieOnSsc) {
+                boogieExpr = Helpers.PrettyPrintBplExpr(kvp.Key);
+              } else {
+                boogieExpr = kvp.Key.ToString();
+              }
+              relatedInformation.Add("(internal state dump): "+string.Format("{0} == {1}", boogieExpr, o));
+            }
+          }
+        }
+      }
+    }
+    
+    static void ComputeAndTreatHeapSuccessions(System.Collections.Hashtable! incarnationMap, ErrorModel! errModel, Dictionary<Incarnation, Absy!>! incarnationOriginMap, List<string!>! relatedInformation) {
+      List<int> heapSuccList = ComputeHeapSuccessions(incarnationMap, errModel);
+      TreatHeapSuccessions(heapSuccList, incarnationMap, errModel, incarnationOriginMap, relatedInformation);
+    }
+    
+    static List<int> ComputeHeapSuccessions(System.Collections.Hashtable! incarnationMap, ErrorModel! errModel) {
+      // find the heap variable
+      Variable heap = null;
+      ICollection ic = incarnationMap.Keys;
+      foreach (object o in ic) {
+        if (o is GlobalVariable) {
+          GlobalVariable gv = (GlobalVariable) o;
+          if (gv.Name == "$Heap") {
+            heap = gv;
+          }
+        }
+      }
+      List<int> heapIdSuccession = new List<int>();
+      if (heap == null) {
+        // without knowing the name of the current heap we cannot create a heap succession!
+      } else {
+        object oHeap = incarnationMap[heap];
+        if (oHeap != null) {
+          string currentHeap = oHeap.ToString();
+          int currentHeapId;
+          if (errModel.identifierToPartition.TryGetValue(currentHeap, out currentHeapId)) {
+            while (currentHeapId != -1) {
+              if (!heapIdSuccession.Contains(currentHeapId)) {
+                heapIdSuccession.Add(currentHeapId);
+                currentHeapId = ComputePredecessorHeapId(currentHeapId, errModel);
+              } else {
+                // looping behavior, just stop here and do not add this value (again!)
+                break;
+              }
+            }
+          }
+        }
+      }
+      if (heapIdSuccession.Count > 0) {
+        int heapId = heapIdSuccession[heapIdSuccession.Count-1];
+        List<string!> strl = errModel.partitionToIdentifiers[heapId];
+        if (strl != null && strl.Contains("$Heap")) {
+          // we have a proper succession of heaps that starts with $Heap
+          return heapIdSuccession;
+        } else {
+          // no proper heap succession, not starting with $Heap!
+          return null;
+        }
+      } else {
+        // no heap succession found because either the $Heap does not have a current incarnation
+        // or because (unlikely!) the model is somehow messed up
+        return null;
+      }
+    }
+    
+    static int ComputePredecessorHeapId(int id, ErrorModel! errModel) {
+      //check "$HeapSucc" and "store2" functions:
+      List<int> heapSuccPredIdList = new List<int>();
+      List<List<int>> heapSuccFunc;
+      errModel.definedFunctions.TryGetValue("$HeapSucc", out heapSuccFunc);
+      if (heapSuccFunc != null) {
+        foreach (List<int> heapSuccFuncDef in heapSuccFunc) {
+          // do not look at the else case of the function def, so check .Count
+          if (heapSuccFuncDef != null && heapSuccFuncDef.Count == 3 && heapSuccFuncDef[1] == id) {
+            // make sure each predecessor is put into the list at most once
+            if (!heapSuccPredIdList.Contains(heapSuccFuncDef[0])) {
+              heapSuccPredIdList.Add(heapSuccFuncDef[0]);
+            }
+          }
+        }
+      }
+      List<int> store2PredIdList = new List<int>();;
+      List<List<int>> store2Func;
+      errModel.definedFunctions.TryGetValue("store2", out store2Func);
+      if (store2Func != null) {
+        foreach (List<int> store2FuncDef in store2Func) {
+          // do not look at the else case of the function def, so check .Count
+          if (store2FuncDef != null && store2FuncDef.Count == 5 && store2FuncDef[4] == id) {
+            // make sure each predecessor is put into the list at most once
+            if (!store2PredIdList.Contains(store2FuncDef[0])) {
+              store2PredIdList.Add(store2FuncDef[0]);
+            }
+          }
+        }
+      }
+      if (heapSuccPredIdList.Count + store2PredIdList.Count > 0) {
+        if (store2PredIdList.Count == 1) {
+          return store2PredIdList[0];
+        } else if (store2PredIdList.Count == 0) {
+          if (heapSuccPredIdList.Count == 1) {
+            return heapSuccPredIdList[0];
+          } else { //(heapSuccPredIdList.Count > 1)
+            if (heapSuccPredIdList.Count == 2) {
+              // if one of the 2 is a self-loop, take the other!
+              if (heapSuccPredIdList[0] == id) {
+                return heapSuccPredIdList[1];
+              } else if (heapSuccPredIdList[1] == id) {
+                return heapSuccPredIdList[0];
+              } else {
+                //no self-loop, two different predecessors, cannot choose
+                return -1;
+              }
+            } else {
+              // at least 3 different predecessors available, one of them could be a self-loop, but 
+              // we cannot choose between the other 2 (or more) candidates
+              return -1;
+            }
+          } 
+        } else { 
+          // more than one result in the succession coming from store2, no way 
+          // to decide which is right, end here
+          return -1;
+        }
+      } else {
+        // no predecessor found
+        return -1;
+      }
+    }
+    
+    static void TreatHeapSuccessions (List<int> heapSuccessionList, System.Collections.Hashtable! incarnationMap, ErrorModel! errModel, Dictionary<Incarnation, Absy!>! incarnationOriginMap, List<string!>! relatedInformation) {
+      if (heapSuccessionList == null) {
+        // empty list of heap successions, nothing we can do!
+        return;
+      }
+      // primarily look for $o and $f (with skolem-id stuff) and then look where they were last changed!
+      // find the o and f variables
+      Variable dollarO = null;
+      Variable dollarF = null;
+      ICollection ic = incarnationMap.Keys;
+      foreach (object o in ic) {
+        if (o is BoundVariable) {
+          BoundVariable bv = (BoundVariable) o;
+          if (bv.Name == "$o") {
+            dollarO = bv;
+          }
+          else if (bv.Name == "$f") {
+            dollarF = bv;
+          }
+        }
+      }
+      if (dollarO == null || dollarF == null) {
+        // without knowing the name of the current incarnation of $Heap, $o and $f we don't do anything here
+      } else {
+        object objO = incarnationMap[dollarO];
+        object objF = incarnationMap[dollarF];
+        if (objO != null && objF != null) {
+          int zidO = errModel.identifierToPartition[objO.ToString()];
+          int zidF = errModel.identifierToPartition[objF.ToString()];
+
+          List<List<int>> select2Func = null;
+          if (errModel.definedFunctions.TryGetValue("select2", out select2Func) && select2Func != null) {
+            // check for all changes to $o.$f!
+            List<int> heapsChangedOFZid = new List<int>();
+            int oldValueZid = -1;
+            int newValueZid = -1;
+            
+            for (int i = 0; i < heapSuccessionList.Count; i++) {
+              bool foundValue = false;
+              foreach (List<int> f in select2Func) {
+                if (f != null && f.Count == 4 && f[0] == heapSuccessionList[i] && f[1] == zidO && f[2] == zidF) {
+                  newValueZid = f[3];
+                  foundValue = true;
+                  break;
+                }
+              }
+              if (!foundValue) {
+                //    get default of the function once Leo&Nikolaj have changed it so the default is type correct
+                //    for now treat it as a -1 !
+                // the last element of select2Func is the else case, it has only 1 element, so grab that:
+                // newValueZid = (select2Func[select2Func.Count-1])[0];
+                newValueZid = -1;
+              }
+              
+              if (oldValueZid != newValueZid) {
+                // there was a change here, record that in the list:
+                if (oldValueZid != -1) {
+                  // don't record a change at the "initial" location, which refers to the $Heap in
+                  // its current incarnation, and is marked by the oldValueZid being uninitialized
+                  heapsChangedOFZid.Add(heapSuccessionList[i-1]);
+                }
+                oldValueZid = newValueZid;
+              } 
+            }
+            
+            foreach (int id in heapsChangedOFZid) {
+              //get the heap name out of the errModel for this zid:
+              List<string!> l = errModel.partitionToIdentifiers[id];
+              List<string!> heaps = new List<string!>();
+              if (l!=null) {
+                foreach (string s in l) {
+                  if (s.StartsWith("$Heap")) {
+                    heaps.Add(s);
+                  }
+                }
+              }
+              // easy case first:
+              if (heaps.Count == 1) {
+                string heapName = heaps[0];
+                // we have a string with the name of the heap, but we need to get the 
+                // source location out of a map that uses Incarnations!
+                
+                ICollection incOrgMKeys = incarnationOriginMap.Keys;
+                foreach (Incarnation inc in incOrgMKeys) {
+                  if (inc!= null) {
+                    if (inc.Name == heapName) {
+                      Absy source = null;
+                      incarnationOriginMap.TryGetValue(inc, out source);
+                      if (source != null) {
+                        if (source is Block) {
+                          Block b = (Block) source;
+                          string fileName = b.tok.filename;
+                          if (fileName != null) {
+                            fileName = fileName.Substring(fileName.LastIndexOf('\\') + 1);
+                          }
+                          relatedInformation.Add("(related information): Changed $o.$f here: " + fileName + "(" + b.tok.line + "," + b.tok.col + ")");
+                        } else if (source is Cmd) {
+                          Cmd c = (Cmd) source;
+                          string fileName = c.tok.filename;
+                          if (fileName != null) {
+                            fileName = fileName.Substring(fileName.LastIndexOf('\\') + 1);
+                          }
+                          relatedInformation.Add("(related information) Changed $o.$f here: " + fileName + "(" + c.tok.line + "," + c.tok.col + ")");
+                        } else {
+                          assert false;
+                        }
+                      }
+                    }
+                  }
+                }
+              } else {
+                // more involved! best use some of the above code and try to synchronize joint parts
+                // here there is more than one "$Heap@i" in the partition, check if they all agree on one
+                // source location or maybe if some of them are joins (i.e. blocks) that should be ignored
+              }
+              
+            }
+          }          
+        }
+      }
+    }
+    
+    static string FormatReasonString (string reason, List<string> holeFillers) {
+      if (holeFillers != null) {
+        // in case all elements of holeFillers are "<unknown>" we can not say anything useful
+        // so just say nothing and return null
+        bool allUnknown = true;
+        foreach (string s in holeFillers) {
+          if (s != "<unknown>") {
+            allUnknown = false;
+            break;
+          }
+        }
+        if (allUnknown) {
+          return null;
+        }
+        string[] a = holeFillers.ToArray();
+        reason = string.Format(reason, a);
+      }
+      return reason;
+    }
+    
+    static object ValueFromZID (ErrorModel! errModel, int id) {
+      return ValueFromZID(errModel, id, null);
+    }
+
+    static object ValueFromZID (ErrorModel! errModel, int id, string searchForAlternate) {
+      object o = errModel.partitionToValue[id];
+      if (o != null) {
+        return o;
+      } else {
+        // more elaborate scheme to find something better, as in: look at the identifiers that
+        // this partition maps to, or similar things!
+        
+        //treatment for 'null':
+        int idForNull = -1;
+        if (errModel.valueToPartition.TryGetValue("nullObject", out idForNull) && idForNull == id) {
+          return "nullObject";
+        }
+        
+        string returnStr = null;
+        
+        // "good identifiers" if there is no value found are 'unique consts' or 
+        // '$in' parameters; '$in' parameters are treated, unclear how to get 'unique const' info
+        List<string!> identifiers = errModel.partitionToIdentifiers[id];
+        if (identifiers != null) {
+          foreach (string s in identifiers)  {
+            //$in parameters are (more) interesting than other identifiers, return the
+            // first one found
+            if (s.EndsWith("$in")) {
+              returnStr = s;
+              break;
+            }
+          }
+        }
+        
+        // try to get mappings from one identifier to another if there are exactly 
+        // two identifiers in the partition, where one of them is the identifier for which 
+        // we search for alternate encodings (third parameter of the method) [or an incarnation
+        // of such an identifier]
+        if (returnStr == null && searchForAlternate != null && identifiers != null && identifiers.Count == 2) {
+          if (identifiers[0] == searchForAlternate || identifiers[0].StartsWith(searchForAlternate + ".sk.")) {
+            returnStr = identifiers[1];
+          } else if (identifiers[1] == searchForAlternate || identifiers[1].StartsWith(searchForAlternate + ".sk.")) {
+            returnStr = identifiers[0];
+          }
+        }
+        
+        if (returnStr != null) {
+          return Helpers.BeautifyBplString(returnStr);
+        }
+        
+        return null;
+      }
+    }
+    
+    static int TreatInterpretedFunction(string! functionName, List<int>! zargs, ErrorModel! errModel) {
+      if (zargs.Count != 2) {
+        //all interpreted functions are binary, so there have to be exactly two arguments
+        return -1;
+      }
+      else {
+        object arg0 =  ValueFromZID(errModel, zargs[0]);
+        object arg1 = ValueFromZID(errModel, zargs[1]);
+        if (arg0 is BigNum && arg1 is BigNum) {
+          BigNum arg0i = (BigNum)arg0;
+          BigNum arg1i = (BigNum)arg1;
+          BigNum result;
+          if (functionName == "+") {
+            result = arg0i + arg1i;
+          } else if (functionName == "-") {
+            result = arg0i - arg1i;
+          } else /*if (functionName == "*")*/ {
+            result = arg0i * arg1i;
+          }
+          int returnId = -1;
+          if (errModel.valueToPartition.TryGetValue(result, out returnId)) {
+            return returnId;
+          } else {
+            return -1;
+          }
+        }
+        else {
+          //both arguments need to be integers for this to work!
+          return -1;
+        }
+      }
+    }
+    
+    static int TreatFunction (string! functionName, List<int>! zargs, bool undefined, ErrorModel! errModel) {
+      List<List<int>> functionDef;
+      if ((!errModel.definedFunctions.TryGetValue(functionName, out functionDef) && functionName != "+" && functionName != "-" && functionName != "*") || undefined) { 
+        // no fitting function found or one of the arguments is undefined
+        return -1;
+      } else {
+        if (functionName == "+" || functionName == "-" || functionName == "*") {
+          return TreatInterpretedFunction(functionName, zargs, errModel);
+        }
+        assert functionDef != null;
+        foreach (List<int> pWiseF in functionDef) {
+          assert pWiseF != null;
+          // else case in the function definition:
+          if (pWiseF.Count == 1) {
+            return pWiseF[0];
+          }
+          // number of arguments is exactly the right number
+          assert zargs.Count == pWiseF.Count - 1;
+          if (forall{int i in (0: zargs.Count); zargs[i] == pWiseF[i]}) {
+            return pWiseF[pWiseF.Count - 1];
+          }
+        }
+        // all functions should have an 'else ->' case defined, therefore this should be
+        // unreachable code!
+        assert false;
+      }
+    }
+    
+    //returned int is zID
+    static int GetValuesFromModel (Bpl.Expr! expr, Hashtable /*Variable -> Expr*/! incarnationMap, ErrorModel! errModel, Dictionary<Bpl.Expr!, object>! exprToPrintableValue) 
+      modifies exprToPrintableValue.*;
+    {
+      // call GetValuesFromModel on all proper subexpressions, returning their value, 
+      // so they only have to be computed once!
+      if (expr is LiteralExpr) {
+        // nothing needs to be added to the exprToPrintableValue map, because e.g. 0 -> 0 is not interesting
+        object o = ((LiteralExpr) expr).Val;
+        if (o == null) {
+          o = "nullObject";
+        } 
+        int idForExprVal;
+        if (errModel.valueToPartition.TryGetValue(o, out idForExprVal)) {
+          return idForExprVal;
+        } else {
+          return -1;
+        }
+      }
+      else if (expr is IdentifierExpr) {
+        // if the expression expr is in the incarnation map, then use its incarnation, 
+        // otherwise just use the actual expression 
+        string s = ((IdentifierExpr) expr).Name;
+        object o = null;
+        Variable v = ((IdentifierExpr) expr).Decl;
+        if (v != null && incarnationMap.ContainsKey(v)) {
+          if (incarnationMap[v] is IdentifierExpr!) {
+            s = ((IdentifierExpr!) incarnationMap[v]).Name;
+          } else if (incarnationMap[v] is LiteralExpr!) {
+            o = ((LiteralExpr!) incarnationMap[v]).Val;
+          }
+        }
+        // if o is not null, then we got a LiteralExpression, that needs separate treatment
+        if (o == null) {
+          // if the expression (respectively its incarnation) is mapped to some partition
+          // then return that id, else return the error code -1
+          if (errModel.identifierToPartition.ContainsKey(s)) {
+            int i = errModel.identifierToPartition[s];
+            // if the key is already in the map we can assume that it is the same map we would
+            // get now and thus just ignore it
+            if (!exprToPrintableValue.ContainsKey(expr)) {
+              exprToPrintableValue.Add(expr, ValueFromZID(errModel, i, ((IdentifierExpr) expr).Name));
+            }
+            return i;
+          } else {
+            return -1;
+          }
+        } else if (errModel.valueToPartition.ContainsKey(o)) {
+          int i = errModel.valueToPartition[o];
+          if (!exprToPrintableValue.ContainsKey(expr))
+            exprToPrintableValue.Add(expr, ValueFromZID(errModel, i));
+          return i;
+        } else {
+          return -1;
+        }
+      }
+      else if (expr is Bpl.NAryExpr) {
+        Bpl.NAryExpr e = (Bpl.NAryExpr)expr;
+        List<int> zargs = new List<int>();
+        bool undefined = false;
+        // do the recursion first
+        foreach (Expr argument in ((NAryExpr) expr).Args) {
+          int zid = -1;
+          if (argument != null) {
+            zid = GetValuesFromModel(argument, incarnationMap, errModel, exprToPrintableValue);
+          }
+          // if one of the arguments is 'undefined' then return -1 ('noZid') for this
+          // but make sure the recursion is complete first1
+          if (zid == -1) {
+            undefined = true;
+          }
+          zargs.Add(zid);
+        }
+        IAppliable! fun = e.Fun;
+        string functionName = fun.FunctionName; // PR: convert to select1, select2, etc in case of a map?
+        // same as IndexedExpr:
+        int id = TreatFunction(functionName, zargs, undefined, errModel);
+        if (id != -1 && !exprToPrintableValue.ContainsKey(expr)) {
+          exprToPrintableValue.Add(expr, ValueFromZID(errModel, id));
+        }
+        return id;
+      } 
+      else if (expr is Bpl.OldExpr) {
+        //Bpl.OldExpr e = (Bpl.OldExpr)expr;
+        // We do not know which heap is the old heap and what the latest state change was,
+        // therefore we cannot return anything useful here!
+        return -1;
+      } 
+      else if (expr is Bpl.QuantifierExpr) {
+        Bpl.QuantifierExpr q = (Bpl.QuantifierExpr)expr;
+        for (int i = 0; i < q.Dummies.Length; i++) {
+          Bpl.Variable v = q.Dummies[i];
+          if (v != null) {
+            // add to the incarnation map a connection between the bound variable v
+            // of the quantifier and its skolemized incarnation, if available,
+            // i.e., search through the list of identifiers in the model and look for
+            // v.sk.(q.SkolemId), only pick those that are directly associated to a value
+            // DISCLAIMER: of course it is very well possible that one of these incarnations 
+            // could be used without actually having a value, but it seems better to pick those
+            // with a value, that is they are more likely to contribute useful information to 
+            // the output
+            List<Bpl.IdentifierExpr!> quantVarIncarnationList = new List<Bpl.IdentifierExpr!>();
+            List<int> incarnationZidList = new List<int>();
+            int numberOfNonNullValueIncarnations = 0;
+            for (int j = 0; j < errModel.partitionToIdentifiers.Count; j++){
+              List<string!> pti = errModel.partitionToIdentifiers[j];
+              if (pti != null) {
+                for (int k = 0; k < pti.Count; k++) {
+                  // look for v.sk.(q.SkolemId)
+                  // if there is more than one look at if there is exactly one with a non-null value
+                  // associated, see above explanation
+                  if (pti[k].StartsWith(v + ".sk." + q.SkolemId) && 
+                      errModel.partitionToValue[errModel.identifierToPartition[pti[k]]] != null) {
+                    quantVarIncarnationList.Add(new Bpl.IdentifierExpr(Bpl.Token.NoToken, pti[k], new Bpl.UnresolvedTypeIdentifier(Token.NoToken, "TName")));
+                    incarnationZidList.Add(j);
+                    if (errModel.partitionToValue[errModel.identifierToPartition[pti[k]]] != null) {
+                      numberOfNonNullValueIncarnations++;
+                    }
+                  }
+                }
+              }
+            }
+            // only one such variable found, associate it with v
+            if (quantVarIncarnationList.Count == 1) {
+              incarnationMap[v] = quantVarIncarnationList[0];
+            } else if (quantVarIncarnationList.Count > 1 && numberOfNonNullValueIncarnations == 1) {
+              // if there are multiple candidate incarnations and exactly one of them has a value 
+              // we can pick that one; otherwise it is not clear how to pick one out of multiple 
+              // incarnations without a value or out of multiple incarnations with a value associated
+              for (int n = 0; n < incarnationZidList.Count; n++) {
+                if (errModel.partitionToValue[incarnationZidList[n]] != null) {
+                  // quantVarIncarnationList and incarnationZidList are indexed in lockstep, so if
+                  // for the associated zid the partitionToValue map is non-null then that is the one
+                  // thus distinguished incarnation we want to put into the incarnationMap
+                  incarnationMap[v] = quantVarIncarnationList[n];
+                  break;
+                }
+              }
+            }
+          }
+        }
+        // generate the value of the body but do not return that outside
+        GetValuesFromModel(q.Body, incarnationMap, errModel, exprToPrintableValue);
+        // the quantifier cannot contribute any one value to the rest of the 
+        // expression, thus just return -1
+        return -1;
+      } 
+      else if (expr is Bpl.ExtractExpr) {
+        Bpl.ExtractExpr ex = (Bpl.ExtractExpr) expr;
+        Bpl.Expr e0 = ex.Bitvector;
+        Bpl.Expr e1 = new LiteralExpr(Token.NoToken, BigNum.FromInt(ex.Start));
+        Bpl.Expr e2 = new LiteralExpr(Token.NoToken, BigNum.FromInt(ex.End));
+        string functionName = "$bv_extract";
+        List<int> zargs = new List<int>();
+        bool undefined = false;
+        
+        int zid = -1;
+        zid = GetValuesFromModel(e0, incarnationMap, errModel, exprToPrintableValue);
+        if (zid == -1) {
+          undefined = true;
+        }
+        zargs.Add(zid);
+        
+        zid = -1;
+        zid = GetValuesFromModel(e1, incarnationMap, errModel, exprToPrintableValue);
+        if (zid == -1) {
+          undefined = true;
+        }
+        zargs.Add(zid);
+        
+        zid = -1;
+        zid = GetValuesFromModel(e2, incarnationMap, errModel, exprToPrintableValue);
+        if (zid == -1) {
+          undefined = true;
+        }
+        zargs.Add(zid);
+        
+        //same as NAryExpr:
+        int id = TreatFunction(functionName, zargs, undefined, errModel);
+        if (id != -1 && !exprToPrintableValue.ContainsKey(expr)) {
+          exprToPrintableValue.Add(expr, ValueFromZID(errModel, id));
+        }
+        return id;
+      } 
+      else if (expr is Bpl.BvConcatExpr) {
+        // see comment above
+        Bpl.BvConcatExpr bvc = (Bpl.BvConcatExpr) expr;
+        string functionName = "$bv_concat";
+        List<int> zargs = new List<int>();
+        bool undefined = false;
+        
+        int zid = -1;
+        zid = GetValuesFromModel(bvc.E0, incarnationMap, errModel, exprToPrintableValue);
+        if (zid == -1) {
+          undefined = true;
+        }
+        zargs.Add(zid);
+        
+        zid = -1;
+        zid = GetValuesFromModel(bvc.E0, incarnationMap, errModel, exprToPrintableValue);
+        if (zid == -1) {
+          undefined = true;
+        }
+        zargs.Add(zid);
+      
+        //same as NAryExpr:
+        int id = TreatFunction(functionName, zargs, undefined, errModel);
+        if (id != -1 && !exprToPrintableValue.ContainsKey(expr)) {
+          exprToPrintableValue.Add(expr, ValueFromZID(errModel, id));
+        }
+        return id;
+      }
+      else {
+        assert false;  // unexpected Bpl.Expr
+      }
+      return -1;
+    }
+
+    static Counterexample! AssertCmdToCounterexample (AssertCmd! cmd, TransferCmd! transferCmd, BlockSeq! trace, ErrorModel errModel, Dictionary<Incarnation, Absy!>! incarnationOriginMap) {
+      List<string!>! relatedInformation = new List<string!>();
+      if (CommandLineOptions.Clo.EnhancedErrorMessages == 1) {
+        if (cmd.OrigExpr != null && cmd.IncarnationMap != null && errModel != null) {
+          
+          // get all possible information first
+          Dictionary<Expr!, object> exprToPrintableValue = new Dictionary<Expr!, object>();
+          GetValuesFromModel(cmd.OrigExpr, cmd.IncarnationMap, errModel, exprToPrintableValue);
+          // then apply the strategies
+          ApplyEnhancedErrorPrintingStrategy(cmd.OrigExpr, cmd.IncarnationMap, cmd.ErrorDataEnhanced, errModel, exprToPrintableValue, relatedInformation, true, incarnationOriginMap);
+        }
+      }
+      
+      // See if it is a special assert inserted in translation
+      if (cmd is AssertRequiresCmd)
+      {
+        AssertRequiresCmd! assertCmd = (AssertRequiresCmd)cmd;
+        CallCounterexample cc = new CallCounterexample(trace, assertCmd.Call, assertCmd.Requires);
+        cc.relatedInformation = relatedInformation;
+        return cc;
+      }
+      else if (cmd is AssertEnsuresCmd)
+      {
+        AssertEnsuresCmd! assertCmd = (AssertEnsuresCmd)cmd;
+        ReturnCounterexample rc = new ReturnCounterexample(trace, transferCmd, assertCmd.Ensures);
+        rc.relatedInformation = relatedInformation;
+        return rc;
+      }
+      else 
+      {
+        AssertCounterexample ac = new AssertCounterexample(trace, (AssertCmd)cmd);
+        ac.relatedInformation = relatedInformation;
+        return ac;
+      }
+    }
+    
+//    static void EmitImpl(Implementation! impl, bool printDesugarings) {
+//      int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+//      CommandLineOptions.Clo.PrintUnstructured = 2;  // print only the unstructured program
+//      bool oldPrintDesugaringSetting = CommandLineOptions.Clo.PrintDesugarings;
+//      CommandLineOptions.Clo.PrintDesugarings = printDesugarings;
+//      impl.Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
+//      CommandLineOptions.Clo.PrintDesugarings = oldPrintDesugaringSetting;
+//      CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+//    }
+
+    static VCExpr! LetVC(Block! startBlock,
+                         Hashtable/*<int, Absy!>*/! label2absy,
+                         ProverContext! proverCtxt)
+    {
+      Hashtable/*<Block, LetVariable!>*/! blockVariables = new Hashtable/*<Block, LetVariable!!>*/();
+      List<VCExprLetBinding!>! bindings = new List<VCExprLetBinding!>();
+      VCExpr startCorrect = LetVC(startBlock, label2absy, blockVariables, bindings, proverCtxt);
+      return proverCtxt.ExprGen.Let(bindings, startCorrect);
+    }
+
+    static VCExpr! LetVC(Block! block,
+                         Hashtable/*<int, Absy!>*/! label2absy,
+                         Hashtable/*<Block, VCExprVar!>*/! blockVariables,
+                         List<VCExprLetBinding!>! bindings,
+                         ProverContext! proverCtxt)
+    {
+      VCExpressionGenerator! gen = proverCtxt.ExprGen;
+      VCExprVar v = (VCExprVar)blockVariables[block];
+      if (v == null) {
+        /*
+         * For block A (= block), generate:
+         *   LET_binding A_correct = wp(A_body, (/\ S \in Successors(A) :: S_correct))
+         * with the side effect of adding the let bindings to "bindings" for any
+         * successor not yet visited.
+         */
+        VCExpr SuccCorrect;
+        GotoCmd gotocmd = block.TransferCmd as GotoCmd;
+        if (gotocmd == null) {
+          SuccCorrect = VCExpressionGenerator.True;
+        } else {
+          assert gotocmd.labelTargets != null;
+          List<VCExpr!> SuccCorrectVars = new List<VCExpr!>(gotocmd.labelTargets.Length);
+          foreach (Block! successor in gotocmd.labelTargets) {
+            VCExpr s = LetVC(successor, label2absy, blockVariables, bindings, proverCtxt);
+            SuccCorrectVars.Add(s);
+          }
+          SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
+        }
+
+        VCContext context = new VCContext(label2absy, proverCtxt);
+        VCExpr vc = Wlp.Block(block, SuccCorrect, context);
+        
+        v = gen.Variable(block.Label + "_correct", Bpl.Type.Bool);
+        bindings.Add(gen.LetBinding(v, vc));
+        blockVariables.Add(block, v);
+      }
+      return v;
+    }
+
+    static VCExpr! DagVC(Block! block,
+                         Hashtable/*<int, Absy!>*/! label2absy,
+                         Hashtable/*<Block, VCExpr!>*/! blockEquations,
+                         ProverContext! proverCtxt)
+    {
+      VCExpressionGenerator! gen = proverCtxt.ExprGen;
+      VCExpr vc = (VCExpr)blockEquations[block];
+      if (vc != null) {
+        return vc;
+      }
+
+      /* 
+       * For block A (= block), generate:
+       *   wp(A_body, (/\ S \in Successors(A) :: DagVC(S)))
+       */
+      VCExpr SuccCorrect = null;
+      GotoCmd gotocmd = block.TransferCmd as GotoCmd;
+      if (gotocmd != null)
+      {
+        foreach (Block! successor in (!)gotocmd.labelTargets) {
+          VCExpr c = DagVC(successor, label2absy, blockEquations, proverCtxt);
+          SuccCorrect = SuccCorrect == null ? c : gen.And(SuccCorrect, c);
+        }
+      }
+      if (SuccCorrect == null) {
+        SuccCorrect = VCExpressionGenerator.True;
+      }
+
+      VCContext context = new VCContext(label2absy, proverCtxt);
+      vc = Wlp.Block(block, SuccCorrect, context);
+      
+      //  gen.MarkAsSharedFormula(vc);  PR: don't know yet what to do with this guy
+
+      blockEquations.Add(block, vc);
+      return vc;
+    }
+
+    static VCExpr! FlatBlockVC(Implementation! impl,
+                              Hashtable/*<int, Absy!>*/! label2absy,
+                              bool local, bool reach, bool doomed,
+                              ProverContext! proverCtxt)
+      requires local ==> !reach;  // "reach" must be false for local
+    {
+      VCExpressionGenerator! gen = proverCtxt.ExprGen;
+      Hashtable/* Block --> VCExprVar */ BlkCorrect = BlockVariableMap(impl.Blocks, "_correct", gen);
+      Hashtable/* Block --> VCExprVar */ BlkReached = reach ? BlockVariableMap(impl.Blocks, "_reached", gen) : null;
+
+      List<Block!> blocks = impl.Blocks;
+  // block sorting is now done on the VCExpr
+  //    if (!local && ((!)CommandLineOptions.Clo.TheProverFactory).NeedsBlockSorting) {
+  //      blocks = SortBlocks(blocks);
+  //    }
+
+      VCExpr proofObligation;
+      if (!local) {
+        proofObligation = (VCExprVar!)BlkCorrect[impl.Blocks[0]];
+      } else {
+        List<VCExpr!> conjuncts = new List<VCExpr!>(blocks.Count);
+        foreach (Block! b in blocks) {
+          VCExpr v = (VCExprVar!)BlkCorrect[b];
+          conjuncts.Add(v);
+        }
+        proofObligation = gen.NAry(VCExpressionGenerator.AndOp, conjuncts);
+      }
+
+      VCContext! context = new VCContext(label2absy, proverCtxt);
+
+      List<VCExprLetBinding!> programSemantics = new List<VCExprLetBinding!>(blocks.Count);
+      foreach (Block! b in blocks) {
+        /* 
+         * In block mode,
+         * For a return block A, generate:
+         *   A_correct <== wp(A_body, true)  [post-condition has been translated into an assert]
+         * For all other blocks, generate:
+         *   A_correct <== wp(A_body, (/\ S \in Successors(A) :: S_correct))
+         * 
+         * In doomed mode, proceed as in block mode, except for a return block A, generate:
+         *   A_correct <== wp(A_body, false)  [post-condition has been translated into an assert]
+         *
+         * In block reach mode, the wp(A_body,...) in the equations above change to:
+         *   A_reached ==> wp(A_body,...)
+         * and the conjunction above changes to:
+         *   (/\ S \in Successors(A) :: S_correct \/ (\/ T \in Successors(A) && T != S :: T_reached))
+         *
+         * In local mode, generate:
+         *   A_correct <== wp(A_body, true)
+         */
+        VCExpr! SuccCorrect;
+        if (local) {
+          SuccCorrect = VCExpressionGenerator.True;
+        } else {
+          SuccCorrect = SuccessorsCorrect(b, BlkCorrect, BlkReached, doomed, gen);
+        }
+
+        VCExpr wlp = Wlp.Block(b, SuccCorrect, context);
+        if (BlkReached != null) {
+          wlp = gen.Implies((VCExprVar!)BlkReached[b], wlp);
+        }
+        
+        VCExprVar okVar = (VCExprVar!)BlkCorrect[b];
+        VCExprLetBinding binding = gen.LetBinding(okVar, wlp);
+        programSemantics.Add(binding);
+      }
+
+      return gen.Let(programSemantics, proofObligation);
+    }
+    
+    private static Hashtable/* Block --> VCExprVar */! BlockVariableMap(List<Block!>! blocks, string! suffix,
+                                                                        Microsoft.Boogie.VCExpressionGenerator! gen)
+    {
+      Hashtable/* Block --> VCExprVar */ map = new Hashtable/* Block --> (Let)Variable */();
+      foreach (Block! b in blocks)
+      {
+        VCExprVar! v = gen.Variable(b.Label+suffix, Bpl.Type.Bool);
+        map.Add(b, v);
+      }
+      return map;
+    }
+
+    private static VCExpr! SuccessorsCorrect(
+        Block! b,
+        Hashtable/* Block --> VCExprVar */! BlkCorrect,
+        Hashtable/* Block --> VCExprVar */ BlkReached,
+        bool doomed,
+        Microsoft.Boogie.VCExpressionGenerator! gen)
+    {
+        VCExpr SuccCorrect = null;
+        GotoCmd gotocmd = b.TransferCmd as GotoCmd;
+        if (gotocmd != null)
+        {
+            foreach (Block! successor in (!)gotocmd.labelTargets)
+            {
+                // c := S_correct
+                VCExpr c = (VCExprVar!)BlkCorrect[successor];
+                if (BlkReached != null)
+                {
+                    // c := S_correct \/ Sibling0_reached \/ Sibling1_reached \/ ...;
+                    foreach (Block! successorSibling in gotocmd.labelTargets)
+                    {
+                        if (successorSibling != successor)
+                        {
+                            c = gen.Or(c, (VCExprVar!)BlkReached[successorSibling]);
+                        }
+                    }
+                }
+                SuccCorrect = SuccCorrect == null ? c : gen.And(SuccCorrect, c);
+            }
+        }
+        if (SuccCorrect == null) {
+            return VCExpressionGenerator.True;
+        } else if (doomed) {
+            return VCExpressionGenerator.False;
+        } else {
+            return SuccCorrect;
+        }
+    }
+
+    static VCExpr! NestedBlockVC(Implementation! impl,
+                                Hashtable/*<int, Absy!>*/! label2absy,
+                                bool reach,
+                                ProverContext! proverCtxt)
+      requires impl.Blocks.Count != 0;
+    {
+      VCExpressionGenerator! gen = proverCtxt.ExprGen;
+      Graph<Block>! g = GraphFromImpl(impl);
+
+      Hashtable/* Block --> VCExprVar */ BlkCorrect = BlockVariableMap(impl.Blocks, "_correct", gen);
+      Hashtable/* Block --> VCExprVar */ BlkReached = reach ? BlockVariableMap(impl.Blocks, "_reached", gen) : null;
+
+      Block! startBlock = (!) impl.Blocks[0];
+      VCExpr proofObligation = (VCExprVar!)BlkCorrect[startBlock];
+
+      VCContext! context = new VCContext(label2absy, proverCtxt);
+      
+      Hashtable/*Block->int*/ totalOrder = new Hashtable/*Block->int*/();
+      {
+        List<Block!> blocks = impl.Blocks;
+     // block sorting is now done on the VCExpr
+     //   if (((!)CommandLineOptions.Clo.TheProverFactory).NeedsBlockSorting) {
+     //     blocks = SortBlocks(blocks);
+     //   }
+        int i = 0;
+        foreach (Block b in blocks) {
+          totalOrder[b] = i;
+          i++;
+        }
+      }
+      
+      VCExprLetBinding programSemantics = NestedBlockEquation((!)impl.Blocks[0], BlkCorrect, BlkReached, totalOrder, context, g, gen);
+      List<VCExprLetBinding!> ps = new List<VCExprLetBinding!>(1);
+      ps.Add(programSemantics);
+      
+      return gen.Let(ps, proofObligation);
+    }
+
+    private static VCExprLetBinding! NestedBlockEquation(Block! b,
+        Hashtable/*Block-->VCExprVar*/! BlkCorrect,
+        Hashtable/*Block-->VCExprVar*/ BlkReached,
+        Hashtable/*Block->int*/! totalOrder,
+        VCContext! context,
+        Graph<Block>! g,
+        Microsoft.Boogie.VCExpressionGenerator! gen)
+    {
+        /*
+        * For a block b, return:
+        *   LET_BINDING b_correct = wp(b_body, X)
+        * where X is:
+        *   LET (THOSE d \in DirectDominates(b) :: BlockEquation(d))
+        *   IN (/\ s \in Successors(b) :: s_correct)
+        * 
+        * When the VC-expression generator does not support LET expresions, this
+        * will eventually turn into:
+        *   b_correct <== wp(b_body, X)
+        * where X is:
+        *   (/\ s \in Successors(b) :: s_correct)
+        *   <==
+        *   (/\ d \in DirectDominatees(b) :: BlockEquation(d))
+        *
+        * In both cases above, if BlkReached is non-null, then the wp expression
+        * is instead:
+        *   b_reached ==> wp(b_body, X)
+        */
+
+        VCExpr! SuccCorrect = SuccessorsCorrect(b, BlkCorrect, null, false, gen);
+
+        List<VCExprLetBinding!> bindings = new List<VCExprLetBinding!>();
+        foreach (Block! dominee in GetSortedBlocksImmediatelyDominatedBy(g, b, totalOrder))
+        {
+            VCExprLetBinding c = NestedBlockEquation(dominee, BlkCorrect, BlkReached, totalOrder, context, g, gen);
+            bindings.Add(c);
+        }
+
+        VCExpr X = gen.Let(bindings, SuccCorrect);
+        VCExpr wlp = Wlp.Block(b, X, context);
+        if (BlkReached != null) {
+          wlp = gen.Implies((VCExprVar!)BlkReached[b], wlp);
+        }
+        VCExprVar okVar = (VCExprVar!)BlkCorrect[b];
+        return gen.LetBinding(okVar, wlp);
+    }
+
+    /// <summary>
+    /// Returns a list of g.ImmediatelyDominatedBy(b), but in a sorted order, hoping to steer around
+    /// the nondeterminism problems we've been seeing by using just this call.
+    /// </summary>
+    static List<Block!>! GetSortedBlocksImmediatelyDominatedBy(Graph<Block>! g, Block! b, Hashtable/*Block->int*/! totalOrder) {
+      List<Block!> list = new List<Block!>();
+      foreach (Block! dominee in g.ImmediatelyDominatedBy(b)) {
+        list.Add(dominee);
+      }
+      list.Sort(new Comparison<Block!>(delegate (Block! x, Block! y) {return (int)(!)totalOrder[x] - (int)(!)totalOrder[y];} ));
+      return list;
+    }
+    
+    static VCExpr! VCViaStructuredProgram
+                  (Implementation! impl, Hashtable/*<int, Absy!>*/! label2absy,
+                   ProverContext! proverCtxt)
+    {
+      #region Convert block structure back to a "regular expression"
+      RE! r = DAG2RE.Transform((!)impl.Blocks[0]);
+      #endregion
+
+      VCContext! ctxt = new VCContext(label2absy, proverCtxt);
+      #region Send wlp(program,true) to Simplify
+      return Wlp.RegExpr(r, VCExpressionGenerator.True, ctxt);
+      #endregion
+    }
+
+    /// <summary> 
+    /// Remove the empty blocks reachable from the block.
+    /// It changes the visiting state of the blocks, so that if you want to visit again the blocks, you have to reset them...
+    /// </summary>
+    static BlockSeq! RemoveEmptyBlocks(Block! b)
+    {
+      assert b.TraversingStatus == Block.VisitState.ToVisit;
+      BlockSeq! retVal = removeEmptyBlocksWorker(b);
+  
+      return retVal;
+    }
+
+    private static BlockSeq! removeEmptyBlocksWorker(Block! b)
+    {
+      BlockSeq bs = new BlockSeq();
+      GotoCmd gtc = b.TransferCmd as GotoCmd;
+
+      // b has no successors
+      if (gtc == null || gtc.labelTargets == null || gtc.labelTargets.Length == 0) 
+      {        
+        if (b.Cmds.Length != 0){ // only empty blocks are removed...
+          bs.Add(b);
+        }
+        return bs;
+      }
+      else if(b.TraversingStatus == Block.VisitState.ToVisit)  // if b has some successors and we have not seen it so far...
+      { 
+        b.TraversingStatus = Block.VisitState.BeingVisited;
+
+        // recursively call this method on each successor
+        // merge result into a *set* of blocks
+        Dictionary<Block,bool> mergedSuccessors = new Dictionary<Block,bool>();
+        foreach (Block! dest in gtc.labelTargets){
+          BlockSeq! ys = removeEmptyBlocksWorker(dest);
+          foreach (Block successor in ys){
+            if (!mergedSuccessors.ContainsKey(successor))
+              mergedSuccessors.Add(successor,true);
+          }
+        }
+        b.TraversingStatus = Block.VisitState.AlreadyVisited;
+
+        BlockSeq setOfSuccessors = new BlockSeq();
+        if (mergedSuccessors.Keys != null)
+        {
+          foreach (Block d in mergedSuccessors.Keys)
+            setOfSuccessors.Add(d);
+        }
+        if (b.Cmds.Length == 0)
+          return setOfSuccessors;
+        // otherwise, update the list of successors of b to be the blocks in setOfSuccessors
+        gtc.labelTargets = setOfSuccessors;
+        gtc.labelNames = new StringSeq();
+        foreach (Block! d in setOfSuccessors)
+          gtc.labelNames.Add(d.Label);
+        return new BlockSeq(b);
+      }
+      else // b has some successors, but we are already visiting it, or we have already visited it...
+      {
+        return new BlockSeq(b);
+      }
+    }
+
+    static Graph<Block>! GraphFromImpl(Implementation! impl) {
+      Graph<Block>! g = new Graph<Block>();
+      g.AddSource((!)impl.Blocks[0]); // there is always at least one node in the graph
+      foreach (Block! b in impl.Blocks)
+      {
+        GotoCmd gtc = b.TransferCmd as GotoCmd;
+        if (gtc != null)
+        {
+          foreach (Block! dest in (!)gtc.labelTargets)
+          {
+            g.AddEdge(b,dest);
+          }
+        }
+      }
+      return g;
+    }
+
+
+    static void DumpMap(Hashtable /*Variable->Expr*/! map) {
+      foreach (DictionaryEntry de in map) {
+        Variable! v = (Variable!)de.Key;
+        Expr! e = (Expr!)de.Value;
+        Console.Write("  ");
+        v.Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
+        Console.Write("  --> ");
+        e.Emit(new TokenTextWriter("<console>", Console.Out, false));
+        Console.WriteLine();
+      }
+    }
+  }
+}

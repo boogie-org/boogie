@@ -1,0 +1,23 @@
+-------------------- LoopUnroll.bpl /loopUnroll:1 --------------------
+LoopUnroll.bpl(56,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LoopUnroll.bpl(52,5): anon0#1
+    LoopUnroll.bpl(53,3): anon2_LoopHead#1
+    LoopUnroll.bpl(55,5): anon2_LoopBody#1
+
+Boogie program verifier finished with 2 verified, 1 error
+-------------------- LoopUnroll.bpl /loopUnroll:2 --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+-------------------- LoopUnroll.bpl /loopUnroll:3 --------------------
+LoopUnroll.bpl(74,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LoopUnroll.bpl(68,5): anon0#3
+    LoopUnroll.bpl(69,3): anon2_LoopHead#3
+    LoopUnroll.bpl(71,5): anon2_LoopBody#3
+    LoopUnroll.bpl(69,3): anon2_LoopHead#2
+    LoopUnroll.bpl(71,5): anon2_LoopBody#2
+    LoopUnroll.bpl(69,3): anon2_LoopHead#1
+    LoopUnroll.bpl(71,5): anon2_LoopBody#1
+
+Boogie program verifier finished with 0 verified, 1 error

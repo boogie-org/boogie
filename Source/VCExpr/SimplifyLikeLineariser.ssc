@@ -1,0 +1,795 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+using System;
+using System.Text;
+using System.IO;
+using System.Collections;
+using System.Collections.Generic;
+using Microsoft.Contracts;
+using Microsoft.Basetypes;
+using Microsoft.Boogie.VCExprAST;
+
+// a naive method to turn VCExprs into strings that can be fed into Simplify
+
+namespace Microsoft.Boogie.VCExprAST
+{
+
+  // Options for the linearisation. Here one can choose, for instance,
+  // whether Simplify or Z3 output is to be produced
+  public abstract class LineariserOptions {
+
+    public readonly bool AsTerm;
+    public abstract LineariserOptions! SetAsTerm(bool newVal);
+
+    public abstract bool QuantifierIds { get; }
+
+    public virtual bool UseWeights { get { return false; } }
+
+    public virtual bool InverseImplies { get { return false; } }
+
+    // whether to include type specifications in quantifiers
+    public abstract bool UseTypes { get; }
+
+    public virtual CommandLineOptions.BvHandling Bitvectors { get {
+      return CommandLineOptions.BvHandling.None;
+    } }
+
+    // variables representing formulas in let-bindings have to be
+    // printed in a different way than other variables
+    public virtual List<VCExprVar!>! LetVariables { get {
+      return EmptyList;
+    } }
+
+    public virtual LineariserOptions! AddLetVariable(VCExprVar! furtherVar) {
+      return this;
+    }
+
+    private static readonly List<VCExprVar!>! EmptyList = new List<VCExprVar!>();
+
+    public bool NativeBv { get {
+      return Bitvectors == CommandLineOptions.BvHandling.Z3Native;
+    } }
+
+    public bool IntBv { get {
+      return Bitvectors == CommandLineOptions.BvHandling.ToInt;
+    } }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    protected LineariserOptions(bool asTerm) {
+      this.AsTerm = asTerm;
+    }
+
+    public static readonly LineariserOptions! SimplifyDefault = new SimplifyOptions (false);
+    internal static readonly LineariserOptions! SimplifyDefaultTerm = new SimplifyOptions (true);
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    private class SimplifyOptions : LineariserOptions {
+      internal SimplifyOptions(bool asTerm) {
+        base(asTerm);
+      }
+      public override bool QuantifierIds { get {
+        return false;
+      } }
+      public override bool UseTypes { get {
+        return false;
+      } }
+      public override LineariserOptions! SetAsTerm(bool newVal) {
+        if (newVal)
+          return SimplifyDefaultTerm;
+        else
+          return SimplifyDefault;
+      }
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////
+
+  // Lineariser for expressions. The result (bool) is currently not used for anything
+  public class SimplifyLikeExprLineariser : IVCExprVisitor<bool, LineariserOptions!> {
+
+    public static string! ToSimplifyString(VCExpr! e, UniqueNamer! namer) {
+      StringWriter sw = new StringWriter();
+      SimplifyLikeExprLineariser! lin = new SimplifyLikeExprLineariser (sw, namer);
+      lin.Linearise(e, LineariserOptions.SimplifyDefault);
+      return (!)sw.ToString();
+    }
+
+    public static string! ToString(VCExpr! e, LineariserOptions! options,
+                                   UniqueNamer! namer) {
+      StringWriter sw = new StringWriter();
+      SimplifyLikeExprLineariser! lin = new SimplifyLikeExprLineariser (sw, namer);
+      lin.Linearise(e, options);
+      return (!)sw.ToString();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    private readonly TextWriter! wr;
+    private SimplifyLikeOpLineariser OpLinObject = null;
+    private IVCExprOpVisitor<bool, LineariserOptions!>! OpLineariser { get {
+      if (OpLinObject == null)
+        OpLinObject = new SimplifyLikeOpLineariser (this, wr);
+      return OpLinObject;
+    } }
+
+    internal readonly UniqueNamer! Namer;
+
+    public SimplifyLikeExprLineariser(TextWriter! wr, UniqueNamer! namer) {
+      this.wr = wr;
+      this.Namer = namer;
+    }
+
+    public void Linearise(VCExpr! expr, LineariserOptions! options) {
+      expr.Accept<bool, LineariserOptions!>(this, options);
+    }
+
+    public void LineariseAsTerm(VCExpr! expr, LineariserOptions! options) {
+      Linearise(expr, options.SetAsTerm(true));
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////
+
+    public static string! MakeIdPrintable(string! s) {
+      // make sure that no keywords are used as identifiers
+      switch(s) {
+      case andName:
+      case orName:
+      case notName:
+      case impliesName:
+      case iffName:
+      case eqName:
+      case neqName:
+      case distinctName:
+      case TRUEName:
+      case FALSEName:
+        s = "nonkeyword_" + s;
+        break;
+      }
+
+      if (CommandLineOptions.Clo.BracketIdsInVC == 0) {
+        // In this form, we go with any identifier, so we don't ever bother about brackets.
+        // Except: @true and @false are always written with brackets
+        return s;
+      }
+      bool looksLikeOperator = true;
+      bool looksLikeSimpleId = true;
+      bool useBrackets = false;
+      foreach (char ch in s) {
+        switch (ch) {
+          case '=':
+          case '<':
+          case '>':
+          case '+':
+          case '-':
+          case '*':
+          case '/':
+          case '%':
+          case ':':
+            // looks like operator, not simple id
+            looksLikeSimpleId = false;
+            break;
+          default:
+            if (Char.IsLetterOrDigit(ch)) {
+              // looks like simple id, not operator
+              looksLikeOperator = false;
+            } else {
+              // looks like neither operator nor simple id
+              looksLikeOperator = false;
+              looksLikeSimpleId = false;
+            }
+            break;
+        }
+        if (!looksLikeOperator && !looksLikeSimpleId) {
+          useBrackets = true;
+          break;
+        }
+      }
+      if (useBrackets) {
+        return "|" + s + "|";
+      } else {
+        return s;
+      }
+    }
+
+    public static string! TypeToString(Type! t) {
+      if (t.IsBool)
+        return "$bool";
+      else if (t.IsInt)
+        return "$int";
+      else if (t.IsBv)
+        return "$bv" + t.BvBits;
+      else {
+        // at this point, only the types U, T, and bitvector types should be left
+        if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+          return "U";
+        else {
+          System.IO.StringWriter buffer = new System.IO.StringWriter();
+          using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
+            t.Emit(stream);
+          }
+          return buffer.ToString();
+        }
+      }
+    }
+
+    public static string! BvConcatOpName(VCExprNAry! node)
+      requires node.Op.Equals(VCExpressionGenerator.BvConcatOp); {
+      int bits1 = node[0].Type.BvBits;
+      int bits2 = node[1].Type.BvBits;
+      return "$bv" + (bits1 + bits2) + "_concat[" + bits1 + "." + bits2 + "]";
+    }
+
+    public static string! BvExtractOpName(VCExprNAry! node)
+      requires node.Op is VCExprBvExtractOp; {
+      VCExprBvExtractOp! op = (VCExprBvExtractOp)node.Op;
+      return "$bv" + node.Type.BvBits + "_extract[" + op.Start + ":" + op.End + "]";
+    }
+
+    internal void WriteId(string! s) {
+      wr.Write(MakeIdPrintable(s));
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////
+
+    /// <summary>
+    /// The name for logical conjunction in Simplify
+    /// </summary>
+    internal const string! andName = "AND"; // conjunction
+    internal const string! orName = "OR"; // disjunction
+    internal const string! notName = "NOT"; // negation
+    internal const string! impliesName = "IMPLIES"; // implication
+    internal const string! iffName = "IFF"; // logical equivalence
+    internal const string! eqName = "EQ"; // equality
+    internal const string! neqName = "NEQ"; // inequality
+    internal const string! lessName = "<";
+    internal const string! greaterName = ">"; 
+    internal const string! atmostName = "<=";
+    internal const string! atleastName = ">=";
+    internal const string! TRUEName = "TRUE"; // nullary predicate that is always true
+    internal const string! FALSEName = "FALSE"; // nullary predicate that is always false
+    internal const string! subtypeName = "<:";
+    internal const string! subtypeArgsName = "<::";
+
+    internal const string! distinctName = "DISTINCT";
+    /// <summary>
+    /// name of the main inclusion relation
+    /// </summary>
+    internal const string! boolTrueName = "|@true|";
+    internal const string! boolFalseName = "|@false|";
+    internal const string! boolAndName = "boolAnd";
+    internal const string! boolOrName = "boolOr";
+    internal const string! boolNotName = "boolNot";
+    internal const string! termEqName = "anyEqual";
+    internal const string! termNeqName = "anyNeq";
+    internal const string! termLessName = "intLess";
+    internal const string! termGreaterName = "intGreater";
+    internal const string! termAtmostName = "intAtMost";
+    internal const string! termAtleastName = "intAtLeast";
+    internal const string! intAddName = "+";
+    internal const string! intAddNameReflect = "Reflect$Add";
+    internal const string! intSubName = "-";
+    internal const string! intMulName = "*";
+    internal const string! intDivName = "/";
+    internal const string! intModName = "%";
+
+    internal void AssertAsTerm(string! x, LineariserOptions! options) {
+      if (!options.AsTerm)
+        System.Diagnostics.Debug.Fail("One should never write " + x + " as a formula!");
+    }
+
+    internal void AssertAsFormula(string! x, LineariserOptions! options) {
+      if (options.AsTerm)
+        System.Diagnostics.Debug.Fail("One should never write " + x + " as a term!");
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////
+
+    public bool Visit(VCExprLiteral! node, LineariserOptions! options) {
+      if (options.AsTerm) {
+
+        if (node == VCExpressionGenerator.True)
+          wr.Write(options.UseTypes ? TRUEName : boolTrueName);
+        else if (node == VCExpressionGenerator.False)
+          wr.Write(options.UseTypes ? FALSEName : boolFalseName);
+        else if (node is VCExprIntLit) {
+          wr.Write(((VCExprIntLit)node).Val);
+        } else
+          assert false;
+
+      } else {
+
+        if (node == VCExpressionGenerator.True)
+          wr.Write(TRUEName);
+        else if (node == VCExpressionGenerator.False)
+          wr.Write(FALSEName);
+        else if (node is VCExprIntLit) {
+          System.Diagnostics.Debug.Fail("One should never write IntLit as a predicate!");
+        } else
+          assert false;
+
+      }
+
+      return true;
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////
+
+    public bool Visit(VCExprNAry! node, LineariserOptions! options) {
+      VCExprOp! op = node.Op;
+
+      if (!options.AsTerm &&
+          (op.Equals(VCExpressionGenerator.AndOp) ||
+           op.Equals(VCExpressionGenerator.OrOp))) {
+        // handle these operators without recursion
+
+        wr.Write("({0}",
+                 op.Equals(VCExpressionGenerator.AndOp) ? andName : orName);
+        IEnumerator! enumerator = new VCExprNAryUniformOpEnumerator (node);
+        while (enumerator.MoveNext()) {
+          VCExprNAry naryExpr = enumerator.Current as VCExprNAry;
+          if (naryExpr == null || !naryExpr.Op.Equals(op)) {
+            wr.Write(" ");
+            Linearise((VCExpr!)enumerator.Current, options);
+          }
+        }
+
+        wr.Write(")");
+
+        return true;
+      }
+
+      return node.Accept<bool, LineariserOptions!>(OpLineariser, options);
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////
+
+    public bool Visit(VCExprVar! node, LineariserOptions! options) {
+      string! printedName = Namer.GetName(node, node.Name);
+
+      if (options.AsTerm ||
+          // variables for formulas bound in a let-binding are never
+          // written as an equation
+          options.LetVariables.Contains(node) ||
+          // if variables are properly typed, they cannot be written as
+          // equation either
+          options.UseTypes) {
+        WriteId(printedName);
+      } else {
+        wr.Write("({0} ", eqName);
+        WriteId(printedName);
+        wr.Write(" {0})", boolTrueName);        
+      }
+
+      return true;
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////
+
+    public bool Visit(VCExprQuantifier! node, LineariserOptions! options) {
+      AssertAsFormula(node.Quan.ToString(), options);
+      assert node.TypeParameters.Count == 0;
+
+      Namer.PushScope(); try {
+
+      string! kind = node.Quan == Quantifier.ALL ? "FORALL" : "EXISTS";
+      wr.Write("({0} (", kind);
+
+      for (int i = 0; i < node.BoundVars.Count; i++) 
+        {
+          VCExprVar! var = node.BoundVars[i];
+          string! printedName = Namer.GetLocalName(var, var.Name);
+          if (i != 0)
+            wr.Write(" ");
+          WriteId(printedName);
+          if (options.UseTypes)
+            wr.Write(" :TYPE {0}", TypeToString(var.Type));
+        }
+      wr.Write(") ");
+        
+      WriteTriggers(node.Triggers, options);
+        
+      if (options.QuantifierIds) {
+        // only needed for Z3
+        VCQuantifierInfos! infos = node.Infos;
+        if (infos.qid != null) {
+          wr.Write("(QID ");
+          wr.Write(infos.qid);
+          wr.Write(") ");
+        }
+        if (0 <= infos.uniqueId) {
+          wr.Write("(SKOLEMID ");
+          wr.Write(infos.uniqueId);
+          wr.Write(") ");
+        }
+     }
+
+     if (options.UseWeights) {
+        int weight = QKeyValue.FindIntAttribute(node.Infos.attributes, "weight", 1);
+        if (weight != 1) {
+          wr.Write("(WEIGHT ");
+          wr.Write(weight);
+          wr.Write(") ");
+        }
+      }
+
+      Linearise(node.Body, options);
+      wr.Write(")");
+
+      return true;
+
+      } finally {
+        Namer.PopScope();
+      }
+    }
+
+    private void WriteTriggers(List<VCTrigger!>! triggers, LineariserOptions! options) {
+      // first, count how many neg/pos triggers there are
+      int negTriggers = 0;
+      int posTriggers = 0;
+      foreach (VCTrigger! vcTrig in triggers) {
+        if (vcTrig.Pos) {
+          posTriggers++;
+        } else {
+          negTriggers++;
+        }
+      }
+
+      if (posTriggers > 0) {
+        wr.Write("(PATS");
+        foreach (VCTrigger! vcTrig in triggers) {
+          if (vcTrig.Pos) {
+            if (vcTrig.Exprs.Count > 1) {
+              wr.Write(" (MPAT");
+            }
+            foreach (VCExpr! e in vcTrig.Exprs) {
+              wr.Write(" ");
+              LineariseAsTerm(e, options);
+            }
+            if (vcTrig.Exprs.Count > 1) {
+              wr.Write(")");
+            }
+          }
+        }
+        wr.Write(") ");
+      } else if (negTriggers > 0) {
+        // if also positive triggers are given, the SMT solver (at least Z3)
+        // will ignore the negative patterns and output a warning. Therefore
+        // we never specify both negative and positive triggers
+        wr.Write("(NOPATS");
+        foreach (VCTrigger! vcTrig in triggers) {
+          if (!vcTrig.Pos) {
+            wr.Write(" ");
+            assert vcTrig.Exprs.Count == 1;
+            LineariseAsTerm(vcTrig.Exprs[0], options);
+          }
+        }
+        wr.Write(") ");
+      }
+
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////
+
+    public bool Visit(VCExprLet! node, LineariserOptions! options) {
+      Namer.PushScope(); try {
+
+      wr.Write("(LET (");
+
+      LineariserOptions! optionsWithVars = options;
+      foreach (VCExprVar! var in node.BoundVars)
+        optionsWithVars = optionsWithVars.AddLetVariable(var);
+
+      string s = "(";
+      foreach (VCExprLetBinding! b in node) {
+        wr.Write(s);
+        string! printedName = Namer.GetLocalName(b.V, b.V.Name);
+
+        bool formula = b.V.Type.IsBool;
+        if (formula)
+          wr.Write("FORMULA ");
+        else
+          wr.Write("TERM ");
+        WriteId(printedName);
+        wr.Write(" ");
+        Linearise(b.E, optionsWithVars.SetAsTerm(!formula));
+        wr.Write(")");
+        s = " (";
+      }
+      wr.Write(") ");
+      Linearise(node.Body, optionsWithVars);
+      wr.Write(")");
+
+      return true;
+
+      } finally {
+        Namer.PopScope();
+      }
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////
+
+    // Lineariser for operator terms. The result (bool) is currently not used for anything
+    internal class SimplifyLikeOpLineariser : IVCExprOpVisitor<bool, LineariserOptions!> {
+      private readonly SimplifyLikeExprLineariser! ExprLineariser;
+      private readonly TextWriter! wr;
+
+      public SimplifyLikeOpLineariser(SimplifyLikeExprLineariser! ExprLineariser, TextWriter! wr) {
+        this.ExprLineariser = ExprLineariser;
+        this.wr = wr;
+      }
+
+      ///////////////////////////////////////////////////////////////////////////////////
+
+      private void WriteApplication(string! op, IEnumerable<VCExpr!>! args,
+                                    LineariserOptions! options,
+                                    bool argsAsTerms) {
+        WriteApplication(op, op, args, options, argsAsTerms);
+      }
+
+      private void WriteApplication(string! op, IEnumerable<VCExpr!>! args,
+                                    LineariserOptions! options) {
+        WriteApplication(op, op, args, options, options.AsTerm);
+      }
+
+      private void WriteTermApplication(string! op, IEnumerable<VCExpr!>! args,
+                                        LineariserOptions! options) {
+        ExprLineariser.AssertAsTerm(op, options);
+        WriteApplication(op, op, args, options, options.AsTerm);
+      }
+
+      private void WriteApplication(string! termOp, string! predOp,
+                                    IEnumerable<VCExpr!>! args, LineariserOptions! options) {
+        WriteApplication(termOp, predOp, args, options, options.AsTerm);
+      }
+
+      private void WriteApplication(string! termOp, string! predOp,
+                                    IEnumerable<VCExpr!>! args, LineariserOptions! options,
+                                    // change the AsTerm option for the arguments?
+                                    bool argsAsTerms) {
+        wr.Write("({0}", options.AsTerm ? termOp : predOp);
+
+        LineariserOptions! newOptions = options.SetAsTerm(argsAsTerms);
+        foreach (VCExpr! e in args) {
+          wr.Write(" ");
+          ExprLineariser.Linearise(e, newOptions);
+        }
+        
+        wr.Write(")");
+      }
+
+      // write an application that can only be a term.
+      // if the expression is supposed to be printed as a formula,
+      // it is turned into an equation (EQ (f args) |@true|)
+      private void WriteApplicationTermOnly(string! termOp,
+                                            IEnumerable<VCExpr!>! args, LineariserOptions! options) {
+        if (!options.AsTerm)
+          // Write: (EQ (f args) |@true|)
+          // where "args" are written as terms
+          wr.Write("({0} ", eqName);
+
+        WriteApplication(termOp, args, options, true);
+
+        if (!options.AsTerm)
+          wr.Write(" {0})", boolTrueName);
+      }
+
+      ///////////////////////////////////////////////////////////////////////////////////
+      
+      public bool VisitNotOp      (VCExprNAry! node, LineariserOptions! options) {
+        WriteApplication(boolNotName, notName, node, options);      // arguments can be both terms and formulas
+        return true;
+      }
+
+      public bool VisitEqOp       (VCExprNAry! node, LineariserOptions! options) {
+        if (options.AsTerm) {
+          // use equality on terms, also if the arguments have type bool
+          WriteApplication(termEqName, node, options);
+        } else {
+          if (node[0].Type.IsBool) {
+            assert node[1].Type.IsBool;
+            // use equivalence
+            WriteApplication(iffName, node, options);
+          } else {
+            assert !node[1].Type.IsBool;
+            // use equality and write the arguments as terms
+            WriteApplication(eqName, node, options, true);
+          }
+        }
+
+        return true;
+      }
+
+      public bool VisitNeqOp      (VCExprNAry! node, LineariserOptions! options) {
+        if (options.AsTerm) {
+          // use equality on terms, also if the arguments have type bool
+          WriteApplication(termNeqName, node, options);
+        } else {
+          if (node[0].Type.IsBool) {
+            assert node[1].Type.IsBool;
+            // use equivalence and negate the whole thing
+            wr.Write("({0} ", notName);
+            WriteApplication(iffName, node, options);
+            wr.Write(")");
+          } else {
+            // use equality and write the arguments as terms
+            WriteApplication(neqName, node, options, true);
+          }
+        }
+        
+        return true;
+      }
+
+      public bool VisitAndOp      (VCExprNAry! node, LineariserOptions! options) {
+        assert options.AsTerm;
+        WriteApplication(boolAndName, andName, node, options);        // arguments can be both terms and formulas
+        return true;
+      }
+
+      public bool VisitOrOp       (VCExprNAry! node, LineariserOptions! options) {
+        assert options.AsTerm;
+        WriteApplication(boolOrName, orName, node, options);        // arguments can be both terms and formulas
+        return true;
+      }
+
+      public bool VisitImpliesOp  (VCExprNAry! node, LineariserOptions! options) {
+        if (options.AsTerm) {
+          wr.Write("({0} ({1} ", boolOrName, boolNotName);
+          ExprLineariser.Linearise(node[0], options);
+          wr.Write(") ");
+          ExprLineariser.Linearise(node[1], options);
+          wr.Write(")");
+        } else if (options.InverseImplies) {
+          wr.Write("({0} ", orName);
+          ExprLineariser.Linearise(node[1], options);
+          wr.Write(" ({0} ", notName);
+          ExprLineariser.Linearise(node[0], options);
+          wr.Write("))");
+        } else {
+          WriteApplication(impliesName, node, options);          
+        }
+        return true;
+      }
+
+      public bool VisitDistinctOp (VCExprNAry! node, LineariserOptions! options) {
+        ExprLineariser.AssertAsFormula(distinctName, options);
+        
+        if (node.Length < 2) {
+          ExprLineariser.Linearise(VCExpressionGenerator.True, options);
+        } else {
+          wr.Write("({0}", distinctName);
+          foreach (VCExpr! e in node) {
+            wr.Write(" ");
+            ExprLineariser.LineariseAsTerm(e, options);
+          }
+          wr.Write(")");
+        }
+
+        return true;
+      }
+
+      public bool VisitLabelOp    (VCExprNAry! node, LineariserOptions! options) {
+        VCExprLabelOp! op = (VCExprLabelOp)node.Op;
+        wr.Write(String.Format("({0} |{1}| ", op.pos ? "LBLPOS" : "LBLNEG", op.label));
+        ExprLineariser.Linearise(node[0], options); wr.Write(")");
+        return true;
+      }
+
+      public bool VisitSelectOp   (VCExprNAry! node, LineariserOptions! options) {
+        assert false;      // should not occur in the output
+      }
+
+      public bool VisitStoreOp    (VCExprNAry! node, LineariserOptions! options) {
+        assert false;       // should not occur in the output
+      }
+
+      public bool VisitBvOp       (VCExprNAry! node, LineariserOptions! options) {
+        WriteTermApplication("$make_bv" + node.Type.BvBits, node, options);
+        return true;
+      }
+
+      public bool VisitBvExtractOp(VCExprNAry! node, LineariserOptions! options) {
+        WriteTermApplication(BvExtractOpName(node), node, options);
+        return true;
+      }
+
+      public bool VisitBvConcatOp (VCExprNAry! node, LineariserOptions! options) {
+        WriteTermApplication(BvConcatOpName(node), node, options);
+        return true;
+      }
+
+      public bool VisitAddOp            (VCExprNAry! node, LineariserOptions! options) {
+        if (CommandLineOptions.Clo.ReflectAdd) {
+          WriteTermApplication(intAddNameReflect, node, options);
+        } else {
+          WriteTermApplication(intAddName, node, options);
+        }
+        return true;
+      }
+
+      public bool VisitSubOp            (VCExprNAry! node, LineariserOptions! options) {
+        WriteTermApplication(intSubName, node, options);
+        return true;
+      }
+
+      public bool VisitMulOp            (VCExprNAry! node, LineariserOptions! options) {
+        WriteTermApplication(intMulName, node, options);
+        return true;
+      }
+
+      public bool VisitDivOp            (VCExprNAry! node, LineariserOptions! options) {
+        WriteTermApplication(intDivName, node, options);
+        return true;
+      }
+
+      public bool VisitModOp            (VCExprNAry! node, LineariserOptions! options) {
+        WriteTermApplication(intModName, node, options);
+        return true;
+      }
+
+      public bool VisitLtOp             (VCExprNAry! node, LineariserOptions! options) {
+        WriteApplication(termLessName, lessName, node, options, true);  // arguments are always terms
+        return true;
+      }
+
+      public bool VisitLeOp             (VCExprNAry! node, LineariserOptions! options) {
+        WriteApplication(termAtmostName, atmostName, node, options, true);  // arguments are always terms
+        return true;
+      }
+
+      public bool VisitGtOp             (VCExprNAry! node, LineariserOptions! options) {
+        WriteApplication(termGreaterName, greaterName, node, options, true);  // arguments are always terms
+        return true;
+      }
+
+      public bool VisitGeOp             (VCExprNAry! node, LineariserOptions! options) {
+        WriteApplication(termAtleastName, atleastName, node, options, true);  // arguments are always terms
+        return true;
+      }
+
+      public bool VisitSubtypeOp        (VCExprNAry! node, LineariserOptions! options) {
+        WriteApplication(subtypeName, node, options, true);               // arguments are always terms
+        return true;
+      }
+
+      public bool VisitSubtype3Op        (VCExprNAry! node, LineariserOptions! options) {
+        WriteApplication(subtypeArgsName, node, options, true);               // arguments are always terms
+        return true;
+      }
+
+      public bool VisitBoogieFunctionOp (VCExprNAry! node, LineariserOptions! options) {
+        VCExprBoogieFunctionOp! op = (VCExprBoogieFunctionOp)node.Op;
+        string! funcName = op.Func.Name;
+        string? bvzName = op.Func.FindStringAttribute("external");
+        string! printedName = ExprLineariser.Namer.GetName(op.Func, funcName);
+        if (bvzName != null) printedName = bvzName;
+
+        if (options.UseTypes) {
+          // we use term notation for arguments whose type is not bool, and
+          // formula notation for boolean arguments
+
+          wr.Write("(");
+          ExprLineariser.WriteId(printedName);
+
+          foreach (VCExpr! e in node) {
+            wr.Write(" ");
+            ExprLineariser.Linearise(e, options.SetAsTerm(!e.Type.IsBool));
+          }
+        
+          wr.Write(")");
+        } else {
+          // arguments are always terms
+          WriteApplicationTermOnly(SimplifyLikeExprLineariser.MakeIdPrintable(printedName),
+                                   node, options);
+        }
+        return true;
+      }
+      
+    }
+  }
+
+}

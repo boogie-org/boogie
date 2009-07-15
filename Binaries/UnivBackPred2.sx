@@ -1,0 +1,85 @@
+; -------------------------------------------------------------------------
+; Boogie 2 universal background predicate
+; Copyright (c) 2004-2008, Microsoft Corp.
+(DEFPRED (<: t u))          ; used for translation with type premisses
+(DEFPRED (<:: s t u))       ; used for translation with type arguments
+
+(BG_PUSH (AND
+
+  ; formula/term axioms
+
+  (FORALL (x y)
+    (IFF
+      (EQ (boolIff x y) |@true|)
+      (IFF (EQ x |@true|) (EQ y |@true|))))
+
+  (FORALL (x y)
+    (IFF
+      (EQ (boolImplies x y) |@true|)
+      (IMPLIES (EQ x |@true|) (EQ y |@true|))))
+
+  (FORALL (x y)
+    (IFF
+      (EQ (boolAnd x y) |@true|)
+      (AND (EQ x |@true|) (EQ y |@true|))))
+
+  (FORALL (x y)
+    (IFF
+      (EQ (boolOr x y) |@true|)
+      (OR (EQ x |@true|) (EQ y |@true|))))
+
+  (FORALL (x)
+    (PATS (boolNot x))
+    (IFF
+      (EQ (boolNot x) |@true|)
+      (NEQ x |@true|)))
+
+  (FORALL (x y)
+    (IFF
+      (EQ (anyEqual x y) |@true|)
+      (EQ x y)))
+
+  (FORALL (x y)
+    (PATS (anyNeq x y))
+    (IFF
+      (EQ (anyNeq x y) |@true|)
+      (NEQ x y)))
+
+  (FORALL (x y)
+    (IFF
+      (EQ (intLess x y) |@true|)
+      (< x y)))
+
+  (FORALL (x y)
+    (IFF
+      (EQ (intAtMost x y) |@true|)
+      (<= x y)))
+
+  (FORALL (x y)
+    (IFF
+      (EQ (intAtLeast x y) |@true|)
+      (>= x y)))
+
+  (FORALL (x y)
+    (IFF
+      (EQ (intGreater x y) |@true|)
+      (> x y)))
+
+  ; false is not true
+
+  (DISTINCT |@false| |@true|)
+
+  ;; The following axiom gives a way to typed produce verification conditions,
+  ;; that is, verification conditions where the terms are typable.  To use these,
+  ;; the VCExpressionGenerator.{CastTo,CastFrom} methods must be overridden.
+  ;; Look for USE_SORTED_LOGIC in VCGeneration/VCExpr.ssc.
+  ; (FORALL (val T U)
+  ;   (PATS (TypeConvert (TypeConvert val T U) U T))
+  ;   (EQ (TypeConvert (TypeConvert val T U) U T) val))
+
+  ; Reflect plus
+  (FORALL (a b) (PATS (Reflect$Add a b)) (EQ (Reflect$Add a b) (+ a b)))
+
+))  ;; AND, BG_PUSH
+; End Boogie universal background predicate
+; -------------------------------------------------------------------------

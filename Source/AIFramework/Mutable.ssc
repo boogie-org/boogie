@@ -1,0 +1,117 @@
+﻿//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+namespace Microsoft.AbstractInterpretationFramework.Collections
+{
+    using System.Collections;   
+    using Microsoft.Contracts;
+
+    /// <summary>
+    ///  Extend sets for using as a IWorkList.
+    /// </summary>
+    public class WorkSet : Microsoft.Boogie.Set, Microsoft.Boogie.IWorkList
+    {
+      
+        // See Bug #148 for an explanation of why this is here.
+        // Without it, the contract inheritance rules will complain since it
+        // has nowhere to attach the out-of-band contract it gets from
+        // ICollection.Count that it gets from IWorkList.
+        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        public override int Count { get { return base.Count; } }
+
+        [Pure][Reads(ReadsAttribute.Reads.Owned)] public bool IsEmpty()
+        {
+            return Count == 0;
+        }
+
+        /// <summary>
+        ///  Pull an element out of the workset.
+        /// </summary>
+        public object Pull()
+        {
+            IEnumerator iter = GetEnumerator();
+            iter.MoveNext();
+
+            object result = (!)iter.Current;
+            Remove(result);
+
+            return result;
+        }
+        
+        bool Microsoft.Boogie.IWorkList.Add(object o){
+          if (o == null) throw new System.ArgumentNullException();
+          this.Add(o);
+          return true;
+        }
+        bool Microsoft.Boogie.IWorkList.AddAll(IEnumerable objs){
+          if (objs == null) throw new System.ArgumentNullException();
+          return this.AddAll(objs);
+        }
+        
+        // ICollection members
+        public void CopyTo (System.Array! a, int i) { 
+          if (this.Count > a.Length - i) throw new System.ArgumentException();
+          int j = i; 
+          foreach(object o in this){
+            a.SetValue(o, j++);
+          }
+          return;
+        }
+        object! ICollection.SyncRoot { [Pure] get { return this; } }
+        public bool IsSynchronized { get { return false; } }
+          
+    }
+}
+
+namespace Microsoft.AbstractInterpretationFramework.Collections.Generic
+{
+    using System.Collections.Generic;
+
+    public class HashMultiset<T>
+    {
+        private readonly IDictionary<T,int>! dict;
+        
+        //invariant forall{KeyValuePair<T,int> entry in dict; entry.Value >= 1};
+        
+        public HashMultiset()
+        {
+            this.dict = new Dictionary<T,int>();
+            // base();
+        }
+        
+        public HashMultiset(int size)
+        {
+            this.dict = new Dictionary<T,int>(size);
+            // base();
+        }
+        
+        public void Add(T t)
+        { expose (this) {
+            if (dict.ContainsKey(t))
+            {
+                dict[t] = dict[t] + 1;
+            }
+            else
+            {
+                dict.Add(t,1);
+            }
+        }}
+        
+        public void Remove(T t)
+        {
+            if (dict.ContainsKey(t))
+            { expose (this) {
+                int count = dict[t];
+                if (count == 1) { dict.Remove(t); }
+                else { dict[t] = count - 1; }
+            }}
+        }
+        
+        public bool Contains(T t)
+        {
+            return dict.ContainsKey(t);
+        }
+    }
+}

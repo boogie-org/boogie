@@ -1,0 +1,375 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Threading;
+using System.IO;
+using System.Diagnostics;
+using Microsoft.Contracts;
+using Microsoft.Boogie.AbstractInterpretation;
+using Microsoft.Boogie.VCExprAST;
+
+namespace Microsoft.Boogie
+{
+  /// <summary>
+  /// Interface to the theorem prover specialized to Boogie.
+  ///
+  /// This class creates the appropriate background axioms.  There
+  /// should be one instance per BoogiePL program.
+  /// </summary>
+  public sealed class Checker 
+  {
+    private readonly VCExpressionGenerator! gen;
+    
+    private ProverInterface! thmProver;
+    private CommandLineOptions.BvHandling bitvectors;
+    private int timeout;
+
+    // state for the async interface
+    private volatile ProverInterface.Outcome outcome;
+    private volatile bool busy;
+    private volatile bool hasOutput;
+    private volatile UnexpectedProverOutputException outputExn;
+    private DateTime proverStart;
+    private TimeSpan proverRunTime;
+    private volatile ProverInterface.ErrorHandler handler;
+    private volatile bool closed;
+
+    public readonly AutoResetEvent! ProverDone = new AutoResetEvent(false);
+
+    private static CommandLineOptions.BvHandling BvHandlingForImpl(Implementation! impl)
+    {
+      bool force_int = false;
+      bool force_native = false;
+      ((!)impl.Proc).CheckBooleanAttribute("forceBvInt", ref force_int);
+      impl.Proc.CheckBooleanAttribute("forceBvZ3Native", ref force_native);
+      impl.CheckBooleanAttribute("forceBvInt", ref force_int);
+      impl.CheckBooleanAttribute("forceBvZ3Native", ref force_native);
+      if (force_native) return CommandLineOptions.BvHandling.Z3Native;
+      if (force_int) return CommandLineOptions.BvHandling.ToInt;
+      return CommandLineOptions.Clo.Bitvectors;
+    }
+
+    public bool WillingToHandle(Implementation! impl, int timeout)
+    {
+      return !closed && timeout == this.timeout && bitvectors == BvHandlingForImpl(impl);
+    }
+
+    public VCExpressionGenerator! VCExprGen
+    {
+      get { return this.gen; }
+    }
+    public ProverInterface! TheoremProver
+    {
+      get { return this.thmProver; }
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////
+    // We share context information for the same program between different Checkers
+
+    private struct ContextCacheKey {
+      public readonly Program! program;
+      public readonly CommandLineOptions.BvHandling bitvectors;
+
+      public ContextCacheKey(Program! prog,
+                             CommandLineOptions.BvHandling bitvectors) {
+        this.program = prog;
+        this.bitvectors = bitvectors;
+      }
+
+      [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+      public override bool Equals(object that) {
+        if (that is ContextCacheKey) {
+          ContextCacheKey thatKey = (ContextCacheKey)that;
+          return this.program.Equals(thatKey.program) &&
+                 this.bitvectors.Equals(thatKey.bitvectors);
+        }
+        return false;
+      }
+
+      [Pure]
+      public override int GetHashCode() {
+        return this.program.GetHashCode() + this.bitvectors.GetHashCode();
+      }
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////
+
+    /// <summary>
+    /// Constructor.  Initialize a the checker with the program and log file.
+    /// </summary>
+    public Checker(VC.ConditionGeneration! vcgen, Program! prog, string/*?*/ logFilePath, bool appendLogFile, Implementation! impl, int timeout)
+    {
+      this.bitvectors = BvHandlingForImpl(impl);
+      this.timeout = timeout;
+
+      ProverOptions! options = ((!)CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
+
+      if (logFilePath != null) {
+        options.LogFilename = logFilePath;
+        if (appendLogFile)
+          options.AppendLogFile = appendLogFile;
+      }
+
+      options.Parse(CommandLineOptions.Clo.ProverOptions);
+
+      if (timeout > 0) {
+        options.TimeLimit = timeout * 1000;
+      }
+      options.BitVectors = this.bitvectors;
+
+      ContextCacheKey key = new ContextCacheKey (prog, this.bitvectors);
+      ProverContext ctx;
+      ProverInterface prover;
+
+      if (vcgen.CheckerCommonState == null) {
+        vcgen.CheckerCommonState = new Dictionary<ContextCacheKey, ProverContext!> ();
+      }
+      IDictionary<ContextCacheKey, ProverContext!>! cachedContexts = (IDictionary<ContextCacheKey, ProverContext!>) vcgen.CheckerCommonState;
+
+      if (cachedContexts.TryGetValue(key, out ctx)) {
+        ctx = (ProverContext!)((!)ctx).Clone();
+        prover = (ProverInterface)
+          CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
+      } else {
+        ctx = (ProverContext!)CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
+
+        // set up the context
+        foreach (Declaration! decl in prog.TopLevelDeclarations) {
+          TypeCtorDecl t = decl as TypeCtorDecl;
+          if (t != null) {
+            ctx.DeclareType(t, null);
+          }
+        }
+        foreach (Declaration! decl in prog.TopLevelDeclarations) {
+          Constant c = decl as Constant;
+          if (c != null) {
+            ctx.DeclareConstant(c, c.Unique, null);
+          } else {
+            Function f = decl as Function;
+            if (f != null) {
+              ctx.DeclareFunction(f, null);
+            }
+          }
+        }
+        foreach (Declaration! decl in prog.TopLevelDeclarations) {
+          bool expand = false;
+          Axiom ax = decl as Axiom;
+          decl.CheckBooleanAttribute("inline", ref expand);
+          if (!expand && ax != null) {
+            ctx.AddAxiom(ax, null);
+          }
+        }
+        foreach (Declaration! decl in prog.TopLevelDeclarations) {
+          GlobalVariable v = decl as GlobalVariable;
+          if (v != null) {
+            ctx.DeclareGlobalVariable(v, null);
+          }
+        }
+
+        // we first generate the prover and then store a clone of the
+        // context in the cache, so that the prover can setup stuff in
+        // the context to be cached
+        prover = (ProverInterface)
+          CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
+        cachedContexts.Add(key, (ProverContext!)ctx.Clone());
+      }
+      
+      this.thmProver = prover;
+      this.gen = prover.VCExprGen;
+
+      // base();
+    }
+
+
+    /// <summary>
+    /// Clean-up.
+    /// </summary>
+    public void Close()
+    {
+      this.closed = true;
+      thmProver.Close();
+    }
+
+    /// <summary>
+    /// Push a Verification Condition as an Axiom 
+    /// (Required for Doomed Program Point detection)
+    /// </summary>
+    public void PushVCExpr(VCExpr! vc)
+    {
+      //thmProver.Context.AddAxiom(vc);      
+      thmProver.PushVCExpression(vc);
+    }
+
+    public bool IsBusy
+    {
+      get { return busy; }
+    }
+
+    public bool Closed
+    {
+      get { return closed; }
+    }
+
+    public bool HasOutput
+    {
+      get { return hasOutput; }
+    }
+
+    public TimeSpan ProverRunTime
+    {
+      get { return proverRunTime; }
+    }
+
+    private void WaitForOutput(object dummy)
+    {
+      try {
+        outcome = thmProver.CheckOutcome((!)handler);
+      } catch (UnexpectedProverOutputException e) {
+        outputExn = e;
+      }
+
+      switch (outcome) {
+        case ProverInterface.Outcome.Valid:
+          thmProver.LogComment("Valid");
+          break;
+        case ProverInterface.Outcome.Invalid:
+          thmProver.LogComment("Invalid");
+          break;
+        case ProverInterface.Outcome.TimeOut:
+          thmProver.LogComment("Timed out");
+          break;
+        case ProverInterface.Outcome.OutOfMemory:
+          thmProver.LogComment("Out of memory");
+          break;
+        case ProverInterface.Outcome.Undetermined:
+          thmProver.LogComment("Undetermined");
+          break;
+      }
+
+      assert busy;
+      hasOutput = true;
+      proverRunTime = DateTime.Now - proverStart;
+
+      ProverDone.Set();
+    }
+    
+    public void BeginCheck(string! descriptiveName, VCExpr! vc, ProverInterface.ErrorHandler! handler) 
+      requires !IsBusy;
+    {
+      assert !busy;
+      busy = true;
+      hasOutput = false;
+      outputExn = null;
+      this.handler = handler;
+
+      proverStart = DateTime.Now;
+      thmProver.BeginCheck(descriptiveName, vc, handler);
+      //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
+
+      ThreadPool.QueueUserWorkItem(WaitForOutput);
+    }
+
+    public ProverInterface.Outcome ReadOutcome()
+      throws UnexpectedProverOutputException;
+      requires IsBusy;
+      requires HasOutput;
+    {
+      hasOutput = false;
+      busy = false;
+
+      if (outputExn != null) {
+        throw outputExn;
+      }
+
+      return outcome;
+    }
+  }
+  
+  // -----------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
+
+  public class ErrorModel {
+    public Dictionary<string!, int>! identifierToPartition;
+    public List<List<string!>>! partitionToIdentifiers;
+    public List<Object>! partitionToValue;  
+    public Dictionary<object, int>! valueToPartition;
+    public Dictionary<string!, List<List<int>>!>! definedFunctions;
+
+    public ErrorModel(Dictionary<string!, int>! identifierToPartition, List<List<string!>>! partitionToIdentifiers, List<Object>! partitionToValue, Dictionary<object, int>! valueToPartition, Dictionary<string!, List<List<int>>!>! definedFunctions) {
+      this.identifierToPartition = identifierToPartition;
+      this.partitionToIdentifiers = partitionToIdentifiers;
+      this.partitionToValue = partitionToValue;
+      this.valueToPartition = valueToPartition;
+      this.definedFunctions = definedFunctions;
+    }
+
+    public virtual void Print(TextWriter! writer) { }
+  }
+
+  public abstract class ProverInterface
+  {
+    public enum Outcome { Valid, Invalid, TimeOut, OutOfMemory, Undetermined }
+
+    public class ErrorHandler
+    {
+      public virtual void OnModel(IList<string!>! labels, ErrorModel errModel)
+      {
+      }
+
+      public virtual void OnResourceExceeded(string! message)
+      {
+      }
+
+      public virtual Absy! Label2Absy(string! label)
+      {
+        throw new System.NotImplementedException();
+      }
+    }
+  
+    public abstract void BeginCheck(string! descriptiveName, VCExpr! vc, ErrorHandler! handler);
+    [NoDefaultContract]
+    public abstract Outcome CheckOutcome(ErrorHandler! handler);
+      throws UnexpectedProverOutputException;
+
+    public virtual void LogComment(string! comment) {
+    }
+
+    public virtual void Close() {
+    }
+    
+    /// <summary>
+    /// MSchaef: Allows to Push a VCExpression as Axiom on the prover stack (beta)
+    /// for now it is only implemented by ProcessTheoremProver and still requires some
+    /// testing
+    /// </summary>    
+    public virtual void PushVCExpression(VCExpr! vc) {}
+    
+    public abstract ProverContext! Context { get; }
+    public abstract VCExpressionGenerator! VCExprGen { get; }
+  }
+
+  public class ProverException : Exception 
+  {
+    public ProverException(string s) : base(s)
+    {            
+    }
+  }
+  public class UnexpectedProverOutputException : ProverException, ICheckedException
+  {
+    public UnexpectedProverOutputException(string s) : base(s)
+    {
+    }
+  }
+  public class ProverDiedException : UnexpectedProverOutputException
+  {
+    public ProverDiedException() : base("Prover died with no further output, perhaps it ran out of memory or was killed.")
+    {
+    }
+  }
+}

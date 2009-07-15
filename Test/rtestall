@@ -1,0 +1,32 @@
+#!/usr/bin/bash
+
+if [ "$1" == "short" ] ; then
+  shift
+  ALL_TESTS=`cat alltests.txt | grep -E "^[^[:space:]]+[[:space:]]+Use[[:space:]]" | awk '{print $1}'`
+elif [ "$1" == "long" ] ; then
+  shift
+  ALL_TESTS=`cat alltests.txt | grep -E "^[^[:space:]]+[[:space:]]+Long[[:space:]]" | awk '{print $1}'`
+else
+  ALL_TESTS=`cat alltests.txt | grep -E "^[^[:space:]]+[[:space:]]+(Use|Long)[[:space:]]" | awk '{print $1}'`
+fi
+
+if [ "$1" == "time" ] ; then
+  shift
+  TIME_CMD="time -p"
+else
+  TIME_CMD=""
+fi
+
+if [ "$1" == "reverse" ] || [ "$1" == "rev" ]; then
+  shift
+  ALL_TESTS=`echo ${ALL_TESTS} | sed -e 's/ /\n/g' | awk '{a[NR] = $0} END { for(i=NR; i; --i) print a[i]}'`
+fi
+
+for t in ${ALL_TESTS} ; do
+  # ${TIME_CMD} bash rtest $t "$@"
+  if [ "${TIME_CMD}" == "" ] ; then
+    ./runtest.bat $t "$@"
+  else
+    time -p ./runtest.bat $t "$@"
+  fi
+done

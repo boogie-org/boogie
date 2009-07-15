@@ -1,0 +1,633 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Threading;
+using System.IO;
+using System.Text;
+using System.Diagnostics;
+using Microsoft.Contracts;
+using Microsoft.Boogie.AbstractInterpretation;
+using Microsoft.Boogie.Simplify;
+using Microsoft.Boogie.VCExprAST;
+using Microsoft.Boogie.TypeErasure;
+
+namespace Microsoft.Boogie.Simplify
+{
+  public abstract class LogProverInterface : ProverInterface
+  {
+    [NotDelayed]
+    protected LogProverInterface(ProverOptions! options,
+        string! openComment, string! closeComment,
+        string! openActivity, string! closeActivity,
+        VCExpressionGenerator! gen)
+      ensures this.gen == gen;
+    {
+      if (options.SeparateLogFiles) {
+        this.commonPrefix = new List<string!> ();
+      } else {
+        this.logFileWriter = options.OpenLog(null);
+      }
+      this.openCommentString = openComment;
+      this.closeCommentString = closeComment;
+      this.openActivityString = openActivity;
+      this.closeActivityString = closeActivity;
+      this.gen = gen;
+      this.options = options;
+      base();
+
+      if (CommandLineOptions.Clo.ShowEnv != CommandLineOptions.ShowEnvironment.Never) {
+        // Emit version comment in the log
+        LogCommonComment(CommandLineOptions.Clo.Version);
+        LogCommonComment(CommandLineOptions.Clo.Environment);
+      }
+    }
+    
+    [StrictReadonly][Additive]
+    protected readonly VCExpressionGenerator! gen;
+
+    private TextWriter/*?*/ logFileWriter;
+    [Microsoft.Contracts.StrictReadonly]
+    private readonly string! openCommentString;
+    [Microsoft.Contracts.StrictReadonly]
+    private readonly string! closeCommentString;
+    [Microsoft.Contracts.StrictReadonly]
+    private readonly string! openActivityString;
+    [Microsoft.Contracts.StrictReadonly]
+    private readonly string! closeActivityString;
+    [Microsoft.Contracts.StrictReadonly]
+    protected readonly ProverOptions! options;
+    [Microsoft.Contracts.StrictReadonly]
+    private readonly List<string!>/*?*/ commonPrefix;
+
+    public void LogActivity(string! s) {
+      LogActivity(s, false);
+    }
+
+    public void LogCommon(string! s) {
+      LogActivity(s, true);
+    }
+
+    private void LogActivity(string! s, bool common) {
+      assume common || !options.SeparateLogFiles || logFileWriter != null;
+      if (logFileWriter != null) {
+        logFileWriter.Write(openActivityString);
+        logFileWriter.Write(s);
+        logFileWriter.WriteLine(closeActivityString);
+        logFileWriter.Flush();
+      }
+      if (common && commonPrefix != null) {
+        commonPrefix.Add(openActivityString + s + closeActivityString);
+      }
+    }
+
+    /// <summary>
+    /// Write "comment" to logfile, if any, formatted as a comment for the theorem prover at hand.
+    /// Assumes that "comment" does not contain any characters that would prematurely terminate
+    /// the comment (like, perhaps, a newline or "*/").
+    /// </summary>    
+    public override void LogComment(string! comment)
+    {
+      LogComment(comment, false);
+    }
+
+    public void LogCommonComment(string! comment)
+    {
+      LogComment(comment, true);
+    }
+
+    private void LogComment(string! comment, bool common)
+    {
+      assume common || !options.SeparateLogFiles || logFileWriter != null;
+      if (logFileWriter != null) {
+        logFileWriter.Write(openCommentString);
+        logFileWriter.Write(comment);
+        logFileWriter.WriteLine(closeCommentString);
+        logFileWriter.Flush();
+      }
+      if (common && commonPrefix != null) {
+        commonPrefix.Add(openCommentString + comment + closeCommentString);
+      }
+    }
+
+    public virtual void NewProblem(string! descName)
+    {
+      if (commonPrefix != null) {
+        if (logFileWriter != null) {
+          logFileWriter.Close();
+        }
+        logFileWriter = options.OpenLog(descName);
+        if (logFileWriter != null) {
+          foreach (string! s in commonPrefix)
+            logFileWriter.WriteLine(s);
+        }
+      }
+      LogComment("Proof obligation: " + descName);
+    }
+
+    public override void Close() {
+      if (logFileWriter != null) {
+        logFileWriter.Close();
+        logFileWriter = null;
+      }
+    }
+
+    public override VCExpressionGenerator! VCExprGen
+    {
+      get { return this.gen; }
+    }
+  }
+  
+  // -----------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
+
+  public abstract class ProcessTheoremProver : LogProverInterface
+  {
+    private static string! _proverPath;
+
+    protected AxiomVCExprTranslator! vcExprTranslator { get {
+      return (AxiomVCExprTranslator!)ctx.exprTranslator;
+    } }
+
+    protected abstract AxiomVCExprTranslator! SpawnVCExprTranslator();
+
+    protected void FeedNewAxiomsDecls2Prover() throws UnexpectedProverOutputException; {
+      if (thmProver == null)
+        return;
+      foreach (string! s in vcExprTranslator.NewTypeDecls) {
+        LogCommon(s);
+        thmProver.Feed(s, 0);
+      }
+      foreach (string! s in vcExprTranslator.NewAxioms) {
+        LogBgPush(s);
+        thmProver.AddAxioms(s);
+      }
+    }
+
+    protected static string! CodebaseString() {
+      return Path.GetDirectoryName((!)System.Reflection.Assembly.GetExecutingAssembly().Location);
+    }
+
+    private static IDictionary<string!, string!>! BackgroundPredicates =
+      new Dictionary<string!, string!> ();
+
+    protected static string! GetBackgroundPredicate(string! filename) {
+      string res;
+      if (!BackgroundPredicates.TryGetValue(filename, out res)) {
+        // do we have to lock/synchronise anything?
+        string univBackPredPath = Path.Combine(CodebaseString(), filename);
+        using (StreamReader reader = new System.IO.StreamReader(univBackPredPath))
+        {
+          res = reader.ReadToEnd();
+        }
+        BackgroundPredicates.Add(filename, res);
+      }
+      return (!)res;
+    }
+
+    static void InitializeGlobalInformation(string! proverExe)
+      ensures _proverPath != null;
+      //throws ProverException, System.IO.FileNotFoundException;
+    {
+      if (_proverPath == null) {
+        // Initialize '_proverPath'
+        _proverPath = Path.Combine(CodebaseString(), proverExe);
+        if (!File.Exists(_proverPath))
+        {
+          _proverPath = Path.Combine(@"c:\Program Files\Microsoft Research\Z3-2.0\bin", proverExe);
+        }
+        if (!File.Exists(_proverPath))
+        {
+          throw new ProverException("Cannot find executable: " + _proverPath);
+        }
+      }
+    }
+
+    [Rep] protected internal ProverProcess thmProver;
+    bool currentProverHasBeenABadBoy = false;
+    // invariant currentProverHasBeenABadBoy ==> thmProver != null;
+    protected int restarts = 0;
+    protected DeclFreeProverContext! ctx;
+    protected string! BackgroundPredFilename;
+    protected ConsoleCancelEventHandler? cancelEvent;
+    
+    [NotDelayed]
+    public ProcessTheoremProver(ProverOptions! options, VCExpressionGenerator! gen, DeclFreeProverContext! ctx,
+                                string! proverExe, string! backgroundPred)
+      throws UnexpectedProverOutputException;
+    {
+      BackgroundPredFilename = backgroundPred;
+      InitializeGlobalInformation(proverExe);
+      this.ctx = ctx;
+      base(options, "; ", "", "", "", gen);
+      
+      // ensure that a VCExprTranslator is available
+      // if none exists so far, we have to create a new one
+      // from scratch and feed the axioms to it
+      if (ctx.exprTranslator == null) {
+        AxiomVCExprTranslator tl = SpawnVCExprTranslator();
+        ctx.exprTranslator = tl;
+        tl.AddAxiom(tl.translate(ctx.Axioms, -1));
+        // we clear the lists with new axioms and declarations;
+        // they are not needed at this point
+        List<string!> x = tl.NewAxioms;
+        x = x;  // make the compiler happy: somebody uses the value of x
+        x = tl.NewTypeDecls;
+      }
+    }
+
+    /// <summary>
+    /// MSchaef: Allows to Push a VCExpression as Axiom on the prover stack (beta)
+    /// </summary>
+    public override void PushVCExpression(VCExpr! vc) 
+    {
+      vcExprTranslator.AddAxiom( vcExprTranslator.translate(vc,1) ); 
+    }
+
+    [NoDefaultContract]  // important, since we have no idea what state the object might be in when this handler is invoked
+    void ControlCHandler(object o, ConsoleCancelEventArgs a)
+    {
+      if (thmProver != null) {
+        thmProver.Kill();
+      }
+    }
+
+    public override void Close() {
+      if (cancelEvent != null) {
+        Console.CancelKeyPress -= cancelEvent;
+        cancelEvent = null;
+      }
+      if (thmProver != null) {
+        expose (this) {
+          thmProver.Close();
+          thmProver = null;
+          currentProverHasBeenABadBoy = false;
+        }
+      }
+      base.Close();
+    }
+
+    private UnexpectedProverOutputException proverException;
+
+    public override void BeginCheck(string! descriptiveName, VCExpr! vc, ErrorHandler! handler)
+    {
+      this.NewProblem(descriptiveName);
+      this.proverException = null;
+
+      try {
+        this.ResurrectProver();
+        
+        string vcString = vcExprTranslator.translate(vc, 1);
+
+        Helpers.ExtraTraceInformation("Sending data to theorem prover");
+
+        FeedNewAxiomsDecls2Prover();
+        string! prelude = ctx.GetProverCommands(false);
+        vcString = prelude + vcString;
+        LogActivity(vcString);
+
+        assert thmProver != null;
+        thmProver.BeginCheck(descriptiveName, vcString);
+
+        if (CommandLineOptions.Clo.RestartProverPerVC) {
+          LogComment("Will restart the prover due to /restartProver option");
+          currentProverHasBeenABadBoy = true;
+        }
+      } catch (UnexpectedProverOutputException e) {
+        proverException = e;
+      }
+    }
+
+    public override Outcome CheckOutcome(ErrorHandler! handler)
+      throws UnexpectedProverOutputException;
+    {
+      if (this.thmProver == null) {
+        return Outcome.Undetermined;
+      }
+
+      if (proverException == null) {
+        try {
+          ProverProcess.ProverOutcome result = thmProver.CheckOutcome(handler);
+
+          if (options.ForceLogStatus) {
+            switch (result) {
+            case ProverProcess.ProverOutcome.Valid:
+              LogActivity("DBG_WAS_VALID");
+              break;
+            case ProverProcess.ProverOutcome.NotValid:
+              LogActivity("DBG_WAS_INVALID");
+              break;
+            }
+          }
+
+          switch (result) {
+          case ProverProcess.ProverOutcome.Valid:
+            return Outcome.Valid;
+          case ProverProcess.ProverOutcome.TimeOut:
+            return Outcome.TimeOut;
+          case ProverProcess.ProverOutcome.OutOfMemory:
+            return Outcome.OutOfMemory;
+          case ProverProcess.ProverOutcome.Inconclusive:
+            return Outcome.Undetermined;
+          case ProverProcess.ProverOutcome.NotValid:
+            return Outcome.Invalid;
+          }
+        } catch (UnexpectedProverOutputException e) {
+          proverException = e;
+        }
+      }
+
+      assume proverException != null;
+      LogComment("***** Unexpected prover output");
+      expose (this) {
+        currentProverHasBeenABadBoy = true;  // this will cause the next resurrect to restart the prover
+      }
+      throw proverException;
+    }
+
+    protected virtual void ResurrectProver()
+      throws UnexpectedProverOutputException;
+    {
+      expose (this) {
+        if (thmProver != null) {
+          if (thmProver.HasExited) {
+            DateTime now = DateTime.Now;
+            LogComment("***** Prover Crashed at or before " + now.ToString("G"));
+            
+          } else if (CommandLineOptions.Clo.MaxProverMemory > 0 &&
+              thmProver.NumFormulasChecked > CommandLineOptions.Clo.MinNumOfProverCalls &&
+              thmProver.PeakVirtualMemorySize > CommandLineOptions.Clo.MaxProverMemory)
+          {
+            LogComment("***** Exceeded memory limit.  Peak memory usage so far: " +
+                thmProver.PeakVirtualMemorySize / CommandLineOptions.Megabyte + "MB");
+                
+          } else if (!currentProverHasBeenABadBoy) {
+            // prover is ready to go
+            return;
+          }
+          
+          thmProver.Close();
+          thmProver = null;
+          currentProverHasBeenABadBoy = false;
+          restarts++;
+        }
+        FireUpNewProver();
+      }
+    }
+    
+    protected abstract ProverProcess! CreateProverProcess(string! proverPath);
+    
+    public void LogBgPush(string! s) {
+      LogCommon("(BG_PUSH ");
+      LogCommon(s);
+      LogCommon(")");
+    }
+
+    [NoDefaultContract]
+    private void FireUpNewProver()
+      requires IsExposed;
+      requires thmProver == null;
+      throws UnexpectedProverOutputException;
+    {
+      if (cancelEvent == null && CommandLineOptions.Clo.RunningBoogieFromCommandLine) {
+        cancelEvent = new ConsoleCancelEventHandler(ControlCHandler);
+        Console.CancelKeyPress += cancelEvent;
+      }
+      thmProver = CreateProverProcess(_proverPath);
+      if (restarts == 0) {
+        foreach (string! s in thmProver.OptionComments().Split('\n')) {
+          LogCommonComment(s);
+        }
+        foreach (string! parmsetting in thmProver.ParameterSettings) {
+          LogCommon(parmsetting);
+        }
+      }
+      foreach (string! parmsetting in thmProver.ParameterSettings) {
+        thmProver.Feed(parmsetting, 0);
+      }
+      thmProver.Feed(GetBackgroundPredicate(BackgroundPredFilename), 3);
+      string! incProverCommands = ctx.GetProverCommands(false);
+      string! proverCommands = ctx.GetProverCommands(true);
+      string! prelude = ctx.GetProverCommands(false);
+
+      if (restarts == 0) {
+        // log the stuff before feeding it into the prover, so when it dies
+        // and takes Boogie with it, we know what happened
+        LogCommon(GetBackgroundPredicate(BackgroundPredFilename));
+        LogCommon(prelude);
+        LogCommon(proverCommands);
+
+        foreach (string! s in vcExprTranslator.AllTypeDecls)
+          LogCommon(s);
+        foreach (string! s in vcExprTranslator.AllAxioms)
+          LogBgPush(s);
+
+        LogCommonComment("Initialized all axioms.");
+      } else {
+        LogCommon(incProverCommands);
+      }
+
+      thmProver.Feed(prelude, 0);
+      thmProver.Feed(proverCommands, 0);
+
+      foreach (string! s in vcExprTranslator.AllTypeDecls)
+        thmProver.Feed(s, 0);
+      foreach (string! s in vcExprTranslator.AllAxioms)
+        thmProver.AddAxioms(s);
+
+      // we have sent everything to the prover and can clear the lists with
+      // new axioms and declarations
+      List<string!> x = vcExprTranslator.NewAxioms;
+      x = x;  // make the compiler happy: somebody uses the value of x
+      x = vcExprTranslator.NewTypeDecls;
+    }
+
+    public override ProverContext! Context
+    {
+      get { return this.ctx; }
+    }
+  }
+  
+  public class SimplifyTheoremProver : ProcessTheoremProver
+  {
+    [NotDelayed]
+    public SimplifyTheoremProver(ProverOptions! options, VCExpressionGenerator! gen, DeclFreeProverContext! ctx)
+      throws UnexpectedProverOutputException;
+    {
+      base(options, gen, ctx, "simplify.exe", "UnivBackPred2.sx");
+    }
+    
+    protected override ProverProcess! CreateProverProcess(string! proverPath) {
+      return new SimplifyProverProcess(proverPath);
+    }
+
+    protected override AxiomVCExprTranslator! SpawnVCExprTranslator() {
+      return new SimplifyVCExprTranslator(gen);
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
+
+  public abstract class AxiomVCExprTranslator : VCExprTranslator {
+    protected AxiomVCExprTranslator() {
+      AllAxioms = new List<string!> ();
+      NewAxiomsAttr = new List<string!> ();
+      AllTypeDecls = new List<string!> ();
+      NewTypeDeclsAttr = new List<string!> ();
+    }
+
+    protected AxiomVCExprTranslator(AxiomVCExprTranslator! tl) {
+      AllAxioms = new List<string!> (tl.AllAxioms);
+      NewAxiomsAttr = new List<string!> (tl.NewAxiomsAttr);
+      AllTypeDecls = new List<string!> (tl.AllTypeDecls);
+      NewTypeDeclsAttr = new List<string!> (tl.NewTypeDeclsAttr);
+    }
+
+    // we store all typing-related axioms that have been sent to the prover
+    // so that the prover can be re-initialised in case it dies
+    public readonly List<string!>! AllAxioms;
+    private List<string!>! NewAxiomsAttr;
+
+    public List<string!>! NewAxioms { get {
+      List<string!>! res = NewAxiomsAttr;
+      NewAxiomsAttr = new List<string!> ();
+      return res;
+    } }
+
+    // similarly, a list of declarations that have been sent to the prover
+    public readonly List<string!>! AllTypeDecls;
+    private List<string!>! NewTypeDeclsAttr;
+
+    public List<string!>! NewTypeDecls { get {
+      List<string!>! res = NewTypeDeclsAttr;
+      NewTypeDeclsAttr = new List<string!> ();
+      return res;
+    } }
+
+    public void AddAxiom(string! axiom) {
+      AllAxioms.Add(axiom);
+      NewAxiomsAttr.Add(axiom);
+    }
+
+    public void AddTypeDecl(string! typeDecl) {
+      AllTypeDecls.Add(typeDecl);
+      NewTypeDeclsAttr.Add(typeDecl);
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
+
+  public class SimplifyVCExprTranslator : AxiomVCExprTranslator {
+    public SimplifyVCExprTranslator(VCExpressionGenerator! gen) {
+      Gen = gen;
+      TypeAxiomBuilder! axBuilder;
+      switch (CommandLineOptions.Clo.TypeEncodingMethod) {
+        case CommandLineOptions.TypeEncoding.Arguments:
+          axBuilder = new TypeAxiomBuilderArguments (gen);
+          break;
+        default:
+          axBuilder = new TypeAxiomBuilderPremisses (gen);
+          break;
+      }
+      axBuilder.Setup();
+      AxBuilder = axBuilder;
+      Namer = new UniqueNamer ();
+      LitAbstracter = new BigLiteralAbstracter (gen);
+    }
+
+    private SimplifyVCExprTranslator(SimplifyVCExprTranslator! tl) {
+      base(tl);
+      Gen = tl.Gen;
+      AxBuilder = (TypeAxiomBuilder)tl.AxBuilder.Clone();
+      Namer = (UniqueNamer)tl.Namer.Clone();
+      LitAbstracter = (BigLiteralAbstracter)tl.LitAbstracter.Clone();
+    }
+
+    public override Object! Clone() {
+      return new SimplifyVCExprTranslator(this);
+    }
+
+    private readonly VCExpressionGenerator! Gen;
+    private readonly TypeAxiomBuilder! AxBuilder;
+    private readonly UniqueNamer! Namer;
+    private readonly BigLiteralAbstracter! LitAbstracter;
+
+    public override string! translate(VCExpr! expr, int polarity) {
+      Let2ImpliesMutator! letImplier = new Let2ImpliesMutator (Gen);
+
+      // handle the types in the VCExpr
+      TypeEraser! eraser;
+      switch (CommandLineOptions.Clo.TypeEncodingMethod) {
+        case CommandLineOptions.TypeEncoding.Arguments:
+          eraser = new TypeEraserArguments((TypeAxiomBuilderArguments)AxBuilder, Gen);
+          break;
+        default:
+          eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses)AxBuilder, Gen);
+          break;
+      }
+      VCExpr! exprWithoutTypes = eraser.Erase(expr, polarity);
+
+      TermFormulaFlattener! flattener = new TermFormulaFlattener (Gen);
+      VCExpr! exprWithLet = flattener.Flatten(exprWithoutTypes);
+      VCExpr! exprWithoutLet = letImplier.Mutate(exprWithLet);
+
+      // big integer literals
+      VCExpr! exprWithoutBigLits = LitAbstracter.Abstract(exprWithoutLet);
+      AddAxiom(SimplifyLikeExprLineariser.ToSimplifyString(LitAbstracter.GetNewAxioms(),
+                                                           Namer));
+
+      // type axioms
+      VCExpr! axiomsWithLet = flattener.Flatten(AxBuilder.GetNewAxioms());
+      VCExpr! axiomsWithoutLet = letImplier.Mutate(axiomsWithLet);
+
+      AddAxiom(SimplifyLikeExprLineariser.ToSimplifyString(axiomsWithoutLet, Namer));
+      return SimplifyLikeExprLineariser.ToSimplifyString(exprWithoutBigLits, Namer);
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
+
+  public class Factory : ProverFactory
+  {
+    public override object! SpawnProver(ProverOptions! options, object! ctxt)
+    {
+      return new SimplifyTheoremProver(options,
+                                       ((DeclFreeProverContext!)ctxt).ExprGen,
+                                       (DeclFreeProverContext!)ctxt);
+    }
+
+    public override object! NewProverContext(ProverOptions! options) {
+      if (CommandLineOptions.Clo.BracketIdsInVC < 0) {
+        CommandLineOptions.Clo.BracketIdsInVC = 1;
+      }
+      VCExpressionGenerator! gen = new VCExpressionGenerator();
+      List<string!>! proverCommands = new List<string!> ();
+      proverCommands.Add("all");
+      proverCommands.Add("simplify");
+      proverCommands.Add("simplifyLike");
+      return new DeclFreeProverContext(gen, new VCGenerationOptions(proverCommands));
+    }
+
+    public override CommandLineOptions.VCVariety DefaultVCVariety
+    {
+      get { return CommandLineOptions.VCVariety.BlockNested; }
+    }
+
+    // needed to make test7 pass
+    public override bool SupportsDags
+    {
+      get { return true; }
+    }
+  }
+}

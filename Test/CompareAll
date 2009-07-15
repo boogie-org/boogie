@@ -1,0 +1,22 @@
+#!/usr/bin/bash
+
+# ALL_TESTS=`cat alltests.txt | grep -E "^[[:alnum:]-]+\W+Use\W" | awk '{print $1}'`
+ALL_TESTS=`cat alltests.txt | grep -E "^[^[:space:]]+[[:space:]]+(Use|Long)[[:space:]]" | awk '{print $1}'`
+
+echo ---------- All tests ---------- > Answer-all
+for t in ${ALL_TESTS} ; do
+  echo ====================================================================== >> Answer-all
+  echo ======================================== $t >> Answer-all
+  echo ====================================================================== >> Answer-all
+  cat $t/Answer >> Answer-all
+done
+
+echo ---------- All tests ---------- > Output-all
+for t in ${ALL_TESTS} ; do
+  echo ====================================================================== >> Output-all
+  echo ======================================== $t >> Output-all
+  echo ====================================================================== >> Output-all
+  cat $t/Output >> Output-all
+done
+
+echo All answers collected in Answer-all and all outputs in Output-all

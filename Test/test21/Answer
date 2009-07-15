@@ -1,0 +1,1677 @@
+--------------------- TypeEncoding n ----------------------------
+--------------------- File DisjointDomains.bpl ----------------------------
+
+Boogie program verifier finished with 3 verified, 0 errors
+--------------------- File DisjointDomains2.bpl ----------------------------
+DisjointDomains2.bpl(11,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(9,3): start
+DisjointDomains2.bpl(18,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(16,3): start
+
+Boogie program verifier finished with 4 verified, 2 errors
+--------------------- File FunAxioms.bpl ----------------------------
+FunAxioms.bpl(30,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    FunAxioms.bpl(18,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File FunAxioms2.bpl ----------------------------
+FunAxioms2.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    FunAxioms2.bpl(16,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File PolyList.bpl ----------------------------
+PolyList.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    PolyList.bpl(27,7): anon0
+PolyList.bpl(60,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    PolyList.bpl(49,7): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File Maps0.bpl ----------------------------
+Maps0.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(14,3): anon0
+Maps0.bpl(46,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(41,9): anon0
+Maps0.bpl(49,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(41,9): anon0
+Maps0.bpl(52,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(41,9): anon0
+Maps0.bpl(53,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(41,9): anon0
+
+Boogie program verifier finished with 1 verified, 5 errors
+--------------------- File Maps1.bpl ----------------------------
+Maps1.bpl(26,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps1.bpl(19,3): anon0
+Maps1.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps1.bpl(19,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File InterestingExamples0.bpl ----------------------------
+InterestingExamples0.bpl(7,1): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples0.bpl(5,6): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File InterestingExamples1.bpl ----------------------------
+InterestingExamples1.bpl(16,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples1.bpl(13,5): anon0
+InterestingExamples1.bpl(22,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples1.bpl(13,5): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File InterestingExamples2.bpl ----------------------------
+InterestingExamples2.bpl(9,1): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples2.bpl(8,6): anon0
+InterestingExamples2.bpl(10,1): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples2.bpl(8,6): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File InterestingExamples3.bpl ----------------------------
+InterestingExamples3.bpl(15,2): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples3.bpl(13,2): anon0
+
+Boogie program verifier finished with 2 verified, 1 error
+--------------------- File InterestingExamples4.bpl ----------------------------
+InterestingExamples4.bpl(36,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples4.bpl(36,3): anon0
+InterestingExamples4.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples4.bpl(36,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File InterestingExamples5.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Colors.bpl ----------------------------
+Colors.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Colors.bpl(12,3): anon0
+Colors.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Colors.bpl(19,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File HeapAbstraction.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File HeapAxiom.bpl ----------------------------
+HeapAxiom.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    HeapAxiom.bpl(13,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Triggers0.bpl ----------------------------
+Triggers0.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers0.bpl(39,3): anon0
+Triggers0.bpl(43,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers0.bpl(39,3): anon0
+
+Boogie program verifier finished with 1 verified, 2 errors
+--------------------- File Triggers1.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Keywords.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Casts.bpl ----------------------------
+Casts.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Casts.bpl(6,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File EmptyList.bpl ----------------------------
+EmptyList.bpl(46,9): Warning: type parameter a is ambiguous, instantiating to List int
+EmptyList.bpl(28,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptyList.bpl(26,5): anon0
+EmptyList.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptyList.bpl(26,5): anon0
+EmptyList.bpl(46,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptyList.bpl(46,3): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File Boxing.bpl ----------------------------
+Boxing.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Boxing.bpl(15,6): anon0
+Boxing.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Boxing.bpl(15,6): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File MapOutputTypeParams.bpl ----------------------------
+MapOutputTypeParams.bpl(29,3): Warning: type parameter a is ambiguous, instantiating to int
+MapOutputTypeParams.bpl(12,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(7,9): anon0
+MapOutputTypeParams.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(7,9): anon0
+MapOutputTypeParams.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(19,9): anon0
+MapOutputTypeParams.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(19,9): anon0
+MapOutputTypeParams.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(28,8): anon0
+MapOutputTypeParams.bpl(32,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(28,8): anon0
+
+Boogie program verifier finished with 0 verified, 6 errors
+--------------------- File ParallelAssignment.bpl ----------------------------
+ParallelAssignment.bpl(26,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(15,5): anon0
+ParallelAssignment.bpl(35,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(15,5): anon0
+ParallelAssignment.bpl(54,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(40,11): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File BooleanQuantification.bpl ----------------------------
+BooleanQuantification.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(10,3): anon0
+BooleanQuantification.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(18,3): anon0
+BooleanQuantification.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(18,3): anon0
+BooleanQuantification.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(29,3): anon0
+BooleanQuantification.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(29,3): anon0
+
+Boogie program verifier finished with 1 verified, 5 errors
+--------------------- File BooleanQuantification2.bpl ----------------------------
+BooleanQuantification2.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification2.bpl(10,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Flattening.bpl ----------------------------
+Flattening.bpl(12,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Flattening.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Orderings.bpl ----------------------------
+Orderings.bpl(14,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings.bpl(9,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File Orderings2.bpl ----------------------------
+Orderings2.bpl(17,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings2.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Orderings3.bpl ----------------------------
+Orderings3.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(15,3): anon0
+Orderings3.bpl(34,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(34,3): anon0
+Orderings3.bpl(36,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(34,3): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File Orderings4.bpl ----------------------------
+Orderings4.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings4.bpl(9,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File EmptySetBug.bpl ----------------------------
+EmptySetBug.bpl(27,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptySetBug.bpl(25,5): anon0
+EmptySetBug.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptySetBug.bpl(25,5): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File Coercions2.bpl ----------------------------
+Coercions2.bpl(12,23): Warning: type parameter a is ambiguous, instantiating to int
+Coercions2.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Coercions2.bpl(18,3): anon0
+Coercions2.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Coercions2.bpl(18,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File MapAxiomsConsistency.bpl ----------------------------
+MapAxiomsConsistency.bpl(94,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapAxiomsConsistency.bpl(79,13): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File LargeLiterals0.bpl ----------------------------
+LargeLiterals0.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LargeLiterals0.bpl(7,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File NameClash.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File LetSorting.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Keywords.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File LargeLiterals0.bpl ----------------------------
+LargeLiterals0.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LargeLiterals0.bpl(7,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- TypeEncoding p ----------------------------
+--------------------- File DisjointDomains.bpl ----------------------------
+DisjointDomains.bpl(14,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains.bpl(11,3): start
+DisjointDomains.bpl(21,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains.bpl(20,3): start
+DisjointDomains.bpl(27,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains.bpl(26,3): start
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File DisjointDomains2.bpl ----------------------------
+DisjointDomains2.bpl(11,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(9,3): start
+DisjointDomains2.bpl(18,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(16,3): start
+DisjointDomains2.bpl(32,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(30,3): start
+DisjointDomains2.bpl(39,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(37,3): start
+DisjointDomains2.bpl(49,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(45,3): start
+DisjointDomains2.bpl(63,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(58,3): start
+
+Boogie program verifier finished with 0 verified, 6 errors
+--------------------- File FunAxioms.bpl ----------------------------
+FunAxioms.bpl(30,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    FunAxioms.bpl(18,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File FunAxioms2.bpl ----------------------------
+FunAxioms2.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    FunAxioms2.bpl(16,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File PolyList.bpl ----------------------------
+PolyList.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    PolyList.bpl(27,7): anon0
+PolyList.bpl(60,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    PolyList.bpl(49,7): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File Maps0.bpl ----------------------------
+Maps0.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(14,3): anon0
+Maps0.bpl(32,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(32,3): anon0
+Maps0.bpl(53,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(41,9): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File Maps1.bpl ----------------------------
+Maps1.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps1.bpl(19,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File InterestingExamples0.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File InterestingExamples1.bpl ----------------------------
+InterestingExamples1.bpl(22,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples1.bpl(13,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File InterestingExamples2.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File InterestingExamples3.bpl ----------------------------
+InterestingExamples3.bpl(15,2): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples3.bpl(13,2): anon0
+
+Boogie program verifier finished with 2 verified, 1 error
+--------------------- File InterestingExamples4.bpl ----------------------------
+InterestingExamples4.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples4.bpl(36,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File InterestingExamples5.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Colors.bpl ----------------------------
+Colors.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Colors.bpl(12,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File HeapAbstraction.bpl ----------------------------
+HeapAbstraction.bpl(15,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    HeapAbstraction.bpl(14,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File HeapAxiom.bpl ----------------------------
+HeapAxiom.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    HeapAxiom.bpl(13,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Triggers0.bpl ----------------------------
+Triggers0.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers0.bpl(39,3): anon0
+Triggers0.bpl(43,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers0.bpl(39,3): anon0
+
+Boogie program verifier finished with 1 verified, 2 errors
+--------------------- File Triggers1.bpl ----------------------------
+Triggers1.bpl(16,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers1.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Keywords.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Casts.bpl ----------------------------
+Casts.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Casts.bpl(6,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File EmptyList.bpl ----------------------------
+EmptyList.bpl(46,9): Warning: type parameter a is ambiguous, instantiating to List int
+EmptyList.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptyList.bpl(26,5): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File Boxing.bpl ----------------------------
+Boxing.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Boxing.bpl(15,6): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File MapOutputTypeParams.bpl ----------------------------
+MapOutputTypeParams.bpl(29,3): Warning: type parameter a is ambiguous, instantiating to int
+MapOutputTypeParams.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(7,9): anon0
+MapOutputTypeParams.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(19,9): anon0
+MapOutputTypeParams.bpl(32,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(28,8): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File ParallelAssignment.bpl ----------------------------
+ParallelAssignment.bpl(26,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(15,5): anon0
+ParallelAssignment.bpl(35,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(15,5): anon0
+ParallelAssignment.bpl(54,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(40,11): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File BooleanQuantification.bpl ----------------------------
+BooleanQuantification.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(10,3): anon0
+BooleanQuantification.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(18,3): anon0
+BooleanQuantification.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(18,3): anon0
+BooleanQuantification.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(29,3): anon0
+BooleanQuantification.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(29,3): anon0
+
+Boogie program verifier finished with 1 verified, 5 errors
+--------------------- File BooleanQuantification2.bpl ----------------------------
+BooleanQuantification2.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification2.bpl(10,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Flattening.bpl ----------------------------
+Flattening.bpl(12,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Flattening.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Orderings.bpl ----------------------------
+Orderings.bpl(14,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings.bpl(9,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File Orderings2.bpl ----------------------------
+Orderings2.bpl(17,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings2.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Orderings3.bpl ----------------------------
+Orderings3.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(15,3): anon0
+Orderings3.bpl(34,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(34,3): anon0
+Orderings3.bpl(36,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(34,3): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File Orderings4.bpl ----------------------------
+Orderings4.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings4.bpl(9,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File EmptySetBug.bpl ----------------------------
+EmptySetBug.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptySetBug.bpl(25,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Coercions2.bpl ----------------------------
+Coercions2.bpl(12,23): Warning: type parameter a is ambiguous, instantiating to int
+Coercions2.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Coercions2.bpl(18,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File MapAxiomsConsistency.bpl ----------------------------
+MapAxiomsConsistency.bpl(94,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapAxiomsConsistency.bpl(79,13): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File LargeLiterals0.bpl ----------------------------
+LargeLiterals0.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LargeLiterals0.bpl(7,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File NameClash.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File LetSorting.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Keywords.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File LargeLiterals0.bpl ----------------------------
+LargeLiterals0.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LargeLiterals0.bpl(7,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- TypeEncoding a ----------------------------
+--------------------- File DisjointDomains.bpl ----------------------------
+DisjointDomains.bpl(14,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains.bpl(11,3): start
+DisjointDomains.bpl(21,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains.bpl(20,3): start
+DisjointDomains.bpl(27,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains.bpl(26,3): start
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File DisjointDomains2.bpl ----------------------------
+DisjointDomains2.bpl(11,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(9,3): start
+DisjointDomains2.bpl(18,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(16,3): start
+DisjointDomains2.bpl(32,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(30,3): start
+DisjointDomains2.bpl(39,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(37,3): start
+DisjointDomains2.bpl(49,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(45,3): start
+DisjointDomains2.bpl(63,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(58,3): start
+
+Boogie program verifier finished with 0 verified, 6 errors
+--------------------- File FunAxioms.bpl ----------------------------
+FunAxioms.bpl(30,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    FunAxioms.bpl(18,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File FunAxioms2.bpl ----------------------------
+FunAxioms2.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    FunAxioms2.bpl(16,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File PolyList.bpl ----------------------------
+PolyList.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    PolyList.bpl(27,7): anon0
+PolyList.bpl(60,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    PolyList.bpl(49,7): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File Maps0.bpl ----------------------------
+Maps0.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(14,3): anon0
+Maps0.bpl(32,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(32,3): anon0
+Maps0.bpl(53,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(41,9): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File Maps1.bpl ----------------------------
+Maps1.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps1.bpl(19,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File InterestingExamples0.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File InterestingExamples1.bpl ----------------------------
+InterestingExamples1.bpl(22,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples1.bpl(13,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File InterestingExamples2.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File InterestingExamples3.bpl ----------------------------
+InterestingExamples3.bpl(15,2): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples3.bpl(13,2): anon0
+
+Boogie program verifier finished with 2 verified, 1 error
+--------------------- File InterestingExamples4.bpl ----------------------------
+InterestingExamples4.bpl(36,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples4.bpl(36,3): anon0
+InterestingExamples4.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples4.bpl(36,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File InterestingExamples5.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Colors.bpl ----------------------------
+Colors.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Colors.bpl(12,3): anon0
+Colors.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Colors.bpl(19,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File HeapAbstraction.bpl ----------------------------
+HeapAbstraction.bpl(15,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    HeapAbstraction.bpl(14,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File HeapAxiom.bpl ----------------------------
+HeapAxiom.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    HeapAxiom.bpl(13,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Triggers0.bpl ----------------------------
+Triggers0.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers0.bpl(39,3): anon0
+Triggers0.bpl(43,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers0.bpl(39,3): anon0
+
+Boogie program verifier finished with 1 verified, 2 errors
+--------------------- File Triggers1.bpl ----------------------------
+Triggers1.bpl(16,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers1.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Keywords.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Casts.bpl ----------------------------
+Casts.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Casts.bpl(6,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File EmptyList.bpl ----------------------------
+EmptyList.bpl(46,9): Warning: type parameter a is ambiguous, instantiating to List int
+EmptyList.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptyList.bpl(26,5): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File Boxing.bpl ----------------------------
+Boxing.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Boxing.bpl(15,6): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File MapOutputTypeParams.bpl ----------------------------
+MapOutputTypeParams.bpl(29,3): Warning: type parameter a is ambiguous, instantiating to int
+MapOutputTypeParams.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(7,9): anon0
+MapOutputTypeParams.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(19,9): anon0
+MapOutputTypeParams.bpl(32,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(28,8): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File ParallelAssignment.bpl ----------------------------
+ParallelAssignment.bpl(26,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(15,5): anon0
+ParallelAssignment.bpl(35,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(15,5): anon0
+ParallelAssignment.bpl(54,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(40,11): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File BooleanQuantification.bpl ----------------------------
+BooleanQuantification.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(10,3): anon0
+BooleanQuantification.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(18,3): anon0
+BooleanQuantification.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(18,3): anon0
+BooleanQuantification.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(29,3): anon0
+BooleanQuantification.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(29,3): anon0
+
+Boogie program verifier finished with 1 verified, 5 errors
+--------------------- File BooleanQuantification2.bpl ----------------------------
+BooleanQuantification2.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification2.bpl(10,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Flattening.bpl ----------------------------
+Flattening.bpl(12,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Flattening.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Orderings.bpl ----------------------------
+Orderings.bpl(14,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings.bpl(9,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File Orderings2.bpl ----------------------------
+Orderings2.bpl(17,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings2.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Orderings3.bpl ----------------------------
+Orderings3.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(15,3): anon0
+Orderings3.bpl(34,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(34,3): anon0
+Orderings3.bpl(36,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(34,3): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File Orderings4.bpl ----------------------------
+Orderings4.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings4.bpl(9,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File EmptySetBug.bpl ----------------------------
+EmptySetBug.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptySetBug.bpl(25,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Coercions2.bpl ----------------------------
+Coercions2.bpl(12,23): Warning: type parameter a is ambiguous, instantiating to int
+Coercions2.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Coercions2.bpl(18,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File MapAxiomsConsistency.bpl ----------------------------
+MapAxiomsConsistency.bpl(94,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapAxiomsConsistency.bpl(79,13): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File LargeLiterals0.bpl ----------------------------
+LargeLiterals0.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LargeLiterals0.bpl(7,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File NameClash.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File LetSorting.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Keywords.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File LargeLiterals0.bpl ----------------------------
+LargeLiterals0.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LargeLiterals0.bpl(7,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- TypeEncoding n z3types ----------------------------
+--------------------- File DisjointDomains.bpl ----------------------------
+
+Boogie program verifier finished with 3 verified, 0 errors
+--------------------- File DisjointDomains2.bpl ----------------------------
+DisjointDomains2.bpl(11,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(9,3): start
+DisjointDomains2.bpl(18,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(16,3): start
+
+Boogie program verifier finished with 4 verified, 2 errors
+--------------------- File FunAxioms.bpl ----------------------------
+FunAxioms.bpl(30,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    FunAxioms.bpl(18,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File FunAxioms2.bpl ----------------------------
+FunAxioms2.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    FunAxioms2.bpl(16,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File PolyList.bpl ----------------------------
+PolyList.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    PolyList.bpl(27,7): anon0
+PolyList.bpl(60,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    PolyList.bpl(49,7): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File Maps0.bpl ----------------------------
+Maps0.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(14,3): anon0
+Maps0.bpl(46,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(41,9): anon0
+Maps0.bpl(49,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(41,9): anon0
+Maps0.bpl(52,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(41,9): anon0
+Maps0.bpl(53,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(41,9): anon0
+
+Boogie program verifier finished with 1 verified, 5 errors
+--------------------- File Maps1.bpl ----------------------------
+Maps1.bpl(26,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps1.bpl(19,3): anon0
+Maps1.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps1.bpl(19,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File InterestingExamples0.bpl ----------------------------
+InterestingExamples0.bpl(7,1): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples0.bpl(5,6): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File InterestingExamples1.bpl ----------------------------
+InterestingExamples1.bpl(16,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples1.bpl(13,5): anon0
+InterestingExamples1.bpl(22,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples1.bpl(13,5): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File InterestingExamples2.bpl ----------------------------
+InterestingExamples2.bpl(9,1): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples2.bpl(8,6): anon0
+InterestingExamples2.bpl(10,1): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples2.bpl(8,6): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File InterestingExamples3.bpl ----------------------------
+InterestingExamples3.bpl(15,2): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples3.bpl(13,2): anon0
+
+Boogie program verifier finished with 2 verified, 1 error
+--------------------- File InterestingExamples4.bpl ----------------------------
+InterestingExamples4.bpl(36,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples4.bpl(36,3): anon0
+InterestingExamples4.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples4.bpl(36,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File InterestingExamples5.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Colors.bpl ----------------------------
+Colors.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Colors.bpl(12,3): anon0
+Colors.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Colors.bpl(19,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File HeapAbstraction.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File HeapAxiom.bpl ----------------------------
+HeapAxiom.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    HeapAxiom.bpl(13,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Triggers0.bpl ----------------------------
+Triggers0.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers0.bpl(39,3): anon0
+Triggers0.bpl(43,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers0.bpl(39,3): anon0
+
+Boogie program verifier finished with 1 verified, 2 errors
+--------------------- File Triggers1.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Keywords.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Casts.bpl ----------------------------
+Casts.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Casts.bpl(6,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File BooleanQuantification.bpl ----------------------------
+BooleanQuantification.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(18,3): anon0
+BooleanQuantification.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(29,3): anon0
+
+Boogie program verifier finished with 2 verified, 2 errors
+--------------------- File EmptyList.bpl ----------------------------
+EmptyList.bpl(46,9): Warning: type parameter a is ambiguous, instantiating to List int
+EmptyList.bpl(28,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptyList.bpl(26,5): anon0
+EmptyList.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptyList.bpl(26,5): anon0
+EmptyList.bpl(46,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptyList.bpl(46,3): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File Boxing.bpl ----------------------------
+Boxing.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Boxing.bpl(15,6): anon0
+Boxing.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Boxing.bpl(15,6): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File MapOutputTypeParams.bpl ----------------------------
+MapOutputTypeParams.bpl(29,3): Warning: type parameter a is ambiguous, instantiating to int
+MapOutputTypeParams.bpl(12,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(7,9): anon0
+MapOutputTypeParams.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(7,9): anon0
+MapOutputTypeParams.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(19,9): anon0
+MapOutputTypeParams.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(19,9): anon0
+MapOutputTypeParams.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(28,8): anon0
+MapOutputTypeParams.bpl(32,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(28,8): anon0
+
+Boogie program verifier finished with 0 verified, 6 errors
+--------------------- File ParallelAssignment.bpl ----------------------------
+ParallelAssignment.bpl(26,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(15,5): anon0
+ParallelAssignment.bpl(35,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(15,5): anon0
+ParallelAssignment.bpl(54,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(40,11): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File BooleanQuantification2.bpl ----------------------------
+BooleanQuantification2.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification2.bpl(10,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Flattening.bpl ----------------------------
+Flattening.bpl(12,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Flattening.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Orderings.bpl ----------------------------
+Orderings.bpl(14,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings.bpl(9,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File Orderings2.bpl ----------------------------
+Orderings2.bpl(17,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings2.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Orderings3.bpl ----------------------------
+Orderings3.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(15,3): anon0
+Orderings3.bpl(34,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(34,3): anon0
+Orderings3.bpl(36,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(34,3): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File Orderings4.bpl ----------------------------
+Orderings4.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings4.bpl(9,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File EmptySetBug.bpl ----------------------------
+EmptySetBug.bpl(27,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptySetBug.bpl(25,5): anon0
+EmptySetBug.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptySetBug.bpl(25,5): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File Coercions2.bpl ----------------------------
+Coercions2.bpl(12,23): Warning: type parameter a is ambiguous, instantiating to int
+Coercions2.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Coercions2.bpl(18,3): anon0
+Coercions2.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Coercions2.bpl(18,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File MapAxiomsConsistency.bpl ----------------------------
+MapAxiomsConsistency.bpl(94,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapAxiomsConsistency.bpl(79,13): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File LargeLiterals0.bpl ----------------------------
+LargeLiterals0.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LargeLiterals0.bpl(7,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File LetSorting.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- TypeEncoding p z3types ----------------------------
+--------------------- File DisjointDomains.bpl ----------------------------
+DisjointDomains.bpl(14,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains.bpl(11,3): start
+DisjointDomains.bpl(21,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains.bpl(20,3): start
+DisjointDomains.bpl(27,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains.bpl(26,3): start
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File DisjointDomains2.bpl ----------------------------
+DisjointDomains2.bpl(11,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(9,3): start
+DisjointDomains2.bpl(18,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(16,3): start
+DisjointDomains2.bpl(32,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(30,3): start
+DisjointDomains2.bpl(39,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(37,3): start
+DisjointDomains2.bpl(49,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(45,3): start
+DisjointDomains2.bpl(63,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(58,3): start
+
+Boogie program verifier finished with 0 verified, 6 errors
+--------------------- File FunAxioms.bpl ----------------------------
+FunAxioms.bpl(30,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    FunAxioms.bpl(18,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File FunAxioms2.bpl ----------------------------
+FunAxioms2.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    FunAxioms2.bpl(16,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File PolyList.bpl ----------------------------
+PolyList.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    PolyList.bpl(27,7): anon0
+PolyList.bpl(60,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    PolyList.bpl(49,7): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File Maps0.bpl ----------------------------
+Maps0.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(14,3): anon0
+Maps0.bpl(32,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(32,3): anon0
+Maps0.bpl(53,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(41,9): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File Maps1.bpl ----------------------------
+Maps1.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps1.bpl(19,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File InterestingExamples0.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File InterestingExamples1.bpl ----------------------------
+InterestingExamples1.bpl(22,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples1.bpl(13,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File InterestingExamples2.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File InterestingExamples3.bpl ----------------------------
+InterestingExamples3.bpl(15,2): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples3.bpl(13,2): anon0
+
+Boogie program verifier finished with 2 verified, 1 error
+--------------------- File InterestingExamples4.bpl ----------------------------
+InterestingExamples4.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples4.bpl(36,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File InterestingExamples5.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Colors.bpl ----------------------------
+Colors.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Colors.bpl(12,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File HeapAbstraction.bpl ----------------------------
+HeapAbstraction.bpl(15,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    HeapAbstraction.bpl(14,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File HeapAxiom.bpl ----------------------------
+HeapAxiom.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    HeapAxiom.bpl(13,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Triggers0.bpl ----------------------------
+Triggers0.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers0.bpl(39,3): anon0
+Triggers0.bpl(43,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers0.bpl(39,3): anon0
+
+Boogie program verifier finished with 1 verified, 2 errors
+--------------------- File Triggers1.bpl ----------------------------
+Triggers1.bpl(16,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers1.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Keywords.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Casts.bpl ----------------------------
+Casts.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Casts.bpl(6,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File BooleanQuantification.bpl ----------------------------
+BooleanQuantification.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(18,3): anon0
+BooleanQuantification.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(29,3): anon0
+
+Boogie program verifier finished with 2 verified, 2 errors
+--------------------- File EmptyList.bpl ----------------------------
+EmptyList.bpl(46,9): Warning: type parameter a is ambiguous, instantiating to List int
+EmptyList.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptyList.bpl(26,5): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File Boxing.bpl ----------------------------
+Boxing.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Boxing.bpl(15,6): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File MapOutputTypeParams.bpl ----------------------------
+MapOutputTypeParams.bpl(29,3): Warning: type parameter a is ambiguous, instantiating to int
+MapOutputTypeParams.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(7,9): anon0
+MapOutputTypeParams.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(19,9): anon0
+MapOutputTypeParams.bpl(32,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(28,8): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File ParallelAssignment.bpl ----------------------------
+ParallelAssignment.bpl(26,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(15,5): anon0
+ParallelAssignment.bpl(35,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(15,5): anon0
+ParallelAssignment.bpl(54,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(40,11): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File BooleanQuantification2.bpl ----------------------------
+BooleanQuantification2.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification2.bpl(10,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Flattening.bpl ----------------------------
+Flattening.bpl(12,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Flattening.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Orderings.bpl ----------------------------
+Orderings.bpl(14,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings.bpl(9,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File Orderings2.bpl ----------------------------
+Orderings2.bpl(17,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings2.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Orderings3.bpl ----------------------------
+Orderings3.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(15,3): anon0
+Orderings3.bpl(34,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(34,3): anon0
+Orderings3.bpl(36,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(34,3): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File Orderings4.bpl ----------------------------
+Orderings4.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings4.bpl(9,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File EmptySetBug.bpl ----------------------------
+EmptySetBug.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptySetBug.bpl(25,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Coercions2.bpl ----------------------------
+Coercions2.bpl(12,23): Warning: type parameter a is ambiguous, instantiating to int
+Coercions2.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Coercions2.bpl(18,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File MapAxiomsConsistency.bpl ----------------------------
+MapAxiomsConsistency.bpl(94,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapAxiomsConsistency.bpl(79,13): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File LargeLiterals0.bpl ----------------------------
+LargeLiterals0.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LargeLiterals0.bpl(7,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File LetSorting.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- TypeEncoding a z3types ----------------------------
+--------------------- File DisjointDomains.bpl ----------------------------
+DisjointDomains.bpl(14,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains.bpl(11,3): start
+DisjointDomains.bpl(21,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains.bpl(20,3): start
+DisjointDomains.bpl(27,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains.bpl(26,3): start
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File DisjointDomains2.bpl ----------------------------
+DisjointDomains2.bpl(11,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(9,3): start
+DisjointDomains2.bpl(18,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(16,3): start
+DisjointDomains2.bpl(32,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(30,3): start
+DisjointDomains2.bpl(39,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(37,3): start
+DisjointDomains2.bpl(49,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(45,3): start
+DisjointDomains2.bpl(63,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(58,3): start
+
+Boogie program verifier finished with 0 verified, 6 errors
+--------------------- File FunAxioms.bpl ----------------------------
+FunAxioms.bpl(30,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    FunAxioms.bpl(18,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File FunAxioms2.bpl ----------------------------
+FunAxioms2.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    FunAxioms2.bpl(16,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File PolyList.bpl ----------------------------
+PolyList.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    PolyList.bpl(27,7): anon0
+PolyList.bpl(60,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    PolyList.bpl(49,7): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File Maps0.bpl ----------------------------
+Maps0.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(14,3): anon0
+Maps0.bpl(32,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(32,3): anon0
+Maps0.bpl(53,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps0.bpl(41,9): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File Maps1.bpl ----------------------------
+Maps1.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Maps1.bpl(19,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File InterestingExamples0.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File InterestingExamples1.bpl ----------------------------
+InterestingExamples1.bpl(22,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples1.bpl(13,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File InterestingExamples2.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File InterestingExamples3.bpl ----------------------------
+InterestingExamples3.bpl(15,2): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples3.bpl(13,2): anon0
+
+Boogie program verifier finished with 2 verified, 1 error
+--------------------- File InterestingExamples4.bpl ----------------------------
+InterestingExamples4.bpl(36,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples4.bpl(36,3): anon0
+InterestingExamples4.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples4.bpl(36,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File InterestingExamples5.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Colors.bpl ----------------------------
+Colors.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Colors.bpl(12,3): anon0
+Colors.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Colors.bpl(19,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+--------------------- File HeapAbstraction.bpl ----------------------------
+HeapAbstraction.bpl(15,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    HeapAbstraction.bpl(14,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File HeapAxiom.bpl ----------------------------
+HeapAxiom.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    HeapAxiom.bpl(13,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Triggers0.bpl ----------------------------
+Triggers0.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers0.bpl(39,3): anon0
+Triggers0.bpl(43,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers0.bpl(39,3): anon0
+
+Boogie program verifier finished with 1 verified, 2 errors
+--------------------- File Triggers1.bpl ----------------------------
+Triggers1.bpl(16,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers1.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Keywords.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+--------------------- File Casts.bpl ----------------------------
+Casts.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Casts.bpl(6,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File BooleanQuantification.bpl ----------------------------
+BooleanQuantification.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(18,3): anon0
+BooleanQuantification.bpl(31,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(29,3): anon0
+
+Boogie program verifier finished with 2 verified, 2 errors
+--------------------- File EmptyList.bpl ----------------------------
+EmptyList.bpl(46,9): Warning: type parameter a is ambiguous, instantiating to List int
+EmptyList.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptyList.bpl(26,5): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File Boxing.bpl ----------------------------
+Boxing.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Boxing.bpl(15,6): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File MapOutputTypeParams.bpl ----------------------------
+MapOutputTypeParams.bpl(29,3): Warning: type parameter a is ambiguous, instantiating to int
+MapOutputTypeParams.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(7,9): anon0
+MapOutputTypeParams.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(19,9): anon0
+MapOutputTypeParams.bpl(32,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapOutputTypeParams.bpl(28,8): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File ParallelAssignment.bpl ----------------------------
+ParallelAssignment.bpl(26,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(15,5): anon0
+ParallelAssignment.bpl(35,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(15,5): anon0
+ParallelAssignment.bpl(54,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ParallelAssignment.bpl(40,11): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File BooleanQuantification2.bpl ----------------------------
+BooleanQuantification2.bpl(13,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification2.bpl(10,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Flattening.bpl ----------------------------
+Flattening.bpl(12,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Flattening.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Orderings.bpl ----------------------------
+Orderings.bpl(14,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings.bpl(9,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+--------------------- File Orderings2.bpl ----------------------------
+Orderings2.bpl(17,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings2.bpl(12,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Orderings3.bpl ----------------------------
+Orderings3.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(15,3): anon0
+Orderings3.bpl(34,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(34,3): anon0
+Orderings3.bpl(36,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(34,3): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors
+--------------------- File Orderings4.bpl ----------------------------
+Orderings4.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings4.bpl(9,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File EmptySetBug.bpl ----------------------------
+EmptySetBug.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptySetBug.bpl(25,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Coercions2.bpl ----------------------------
+Coercions2.bpl(12,23): Warning: type parameter a is ambiguous, instantiating to int
+Coercions2.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Coercions2.bpl(18,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File MapAxiomsConsistency.bpl ----------------------------
+MapAxiomsConsistency.bpl(94,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapAxiomsConsistency.bpl(79,13): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File LargeLiterals0.bpl ----------------------------
+LargeLiterals0.bpl(18,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LargeLiterals0.bpl(7,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+--------------------- File LetSorting.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors

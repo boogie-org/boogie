@@ -1,0 +1,601 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+//XAHA: eXperimental Automated History Abstraction
+
+/* The top-level declarations of the initial file contain:
+Declaration of one constant totalPhases of type int.
+An axiom may be present saying what value (any natural number) does totalPhases have.
+Declarations of shared variables v1:tp1,...,vm:tpm.
+Functions 
+A(i:int,p:int,V1:[int]tp1,...,Vm:[int]tpm,V1':[int]tp1,...,Vm':[int]tpm)
+and 
+G(i:int,p:int,V1:[int]tp1,...,Vm:[int]tpm,V1':[int]tp1,...,Vm':[int]tpm).
+The order of the variables in the declarations of A and G should coincide with the order 
+in which the variables were declared. I.e. if the top-level declaration order is 
+a:A,c:C,d:D,b:B, then A should be declared as A(int,int, A,C,D,B, A,C,D,B).
+Probably axioms specifying A(i,p,...) as the rely predicate for thread number i (0<=i<n) and phase number p (0<=p<totalPhases).
+Probably axioms specifying G(i,p,v1,...,vm) as the guarantee predicate for thread number i (0<=i<n) and phase number p (0<=p<totalPhases).
+Function describing the initial condition on the shared variables.
+Init(tp1,...,tpm);
+Procedures T0(),...,T(n-1)() such that each modifies a subset of v1,...,vm.
+All procedures except T0, ...,T(n-1) should be inlined and there should be no procedure calls.
+
+The generated output is one large BoogiePL file, written to a standard output, 
+which is the intrumentation of the threads T0,...,T(n-1) with phase description checking code.
+*/
+
+
+  
+
+namespace Microsoft.Boogie.XAHA {
+  using System;
+  using Microsoft.Boogie;
+  using Microsoft.Basetypes;
+  using Microsoft.Contracts;
+  using System.Collections.Generic;
+  using PureCollections;
+  
+  //class which implements the history-based verification procedure
+  public class clXAHA {
+    const string! totalPhasesName="totalPhases";
+    const string! currentPhaseVarName="phase";
+    const string! threadNoVarName="threadNo";
+    Program! prg;
+
+    //initializes the internal data structures needed for processing
+    public clXAHA(Program! program) {
+      prg=program;
+    }
+
+    //Checks whether the described format has been met. If not, prints a 
+    //correspondent error message to the standard error stream. 
+    //Otherwise generates to the output_file (or standard output if null)
+    //another program whose correctness implies the correct specification and 
+    //the correctness of the original multithreaded program.
+    public bool CheckFormatAndGenerateInstrumentation(string output_file) {
+      Constant decl_totalPhases=FindTopLevelConstByName(totalPhasesName);
+      if(decl_totalPhases==null) {
+        Console.Error.WriteLine("The constant "+totalPhasesName+" was not found as a top-level declaration of the program.");
+        return false;
+      }
+      //Check whether we are doing a bounded verification and, if yes, how many
+      //phased do we have.
+      int phases_no;
+      bool phase_number_finite=
+      GetValueOfVarFromAxiom(totalPhasesName,out phases_no);
+      string! history_pre_prefix,history_post_prefix;
+      List<Variable!>! sharedVars=GetSharedVars(out history_pre_prefix,out history_post_prefix);
+      //find predicates A and G
+      Function A=GetTopLevelFunction("A");
+      if(A==null) { Console.Error.WriteLine("The rely predicate A was not found."); return false; };
+      if(!CheckFormat(A,sharedVars)) { Console.Error.WriteLine("The rely predicate A doesn't have the right format."); return false; };
+      Function G=GetTopLevelFunction("G");
+      if(G==null) { Console.Error.WriteLine("The guarantee predicate G was not found."); return false; };
+      if(!CheckFormat(G,sharedVars)) { Console.Error.WriteLine("The guarantee predicate G doesn't have the right format."); return false; };
+      //determine how many threads are there. All procedures should be inlined. 
+      //So any procedure other than T1,...,Tn is useless.
+      int n;
+      if(!CheckThreads(out n)) {
+        Console.Error.WriteLine("Error while checking procedure format.");
+        return false;
+      }
+      TokenTextWriter outstream=((output_file!=null) && (output_file.Trim()!=""))?
+                                (new TokenTextWriter(output_file)):
+                                (new TokenTextWriter("<console>", Console.Out));
+      if(outstream==null) { Console.Error.WriteLine("Out of memory"); return false; }
+      if(!InstrumentizeThreads(outstream,n,sharedVars,history_pre_prefix,history_post_prefix,phase_number_finite)) {
+        Console.Error.WriteLine("Thread instrumentation failed.");
+        return false;
+      }
+      if(!PrintInterleaving(outstream,n,sharedVars,history_pre_prefix,history_post_prefix,n,phase_number_finite,phases_no)) {
+        Console.Error.WriteLine("Interleaving printing failed.");
+        return false;
+      }
+      outstream.Close();
+      return true;
+    }
+
+    //In the program, find a top-level constant declaration named s and 
+    //returns it.
+    public Constant FindTopLevelConstByName(string s) {
+      foreach (Declaration d in prg.TopLevelDeclarations) {
+        if((d is Constant) && d!=null) {
+          Constant dd=(Constant)d;
+          if(dd.Name==s) return dd;
+        }
+      }
+      return null;
+    }
+
+    //In the program, find a top-level axiom speaking about a certain constant
+    //like "axiom c==digits". If such an axiom is found, returns true and fills the value
+    //by digits, otherwise returns false.
+    bool GetValueOfVarFromAxiom(string s,out int value) {
+      foreach (Declaration d in prg.TopLevelDeclarations) {
+        if((d is Axiom) && (d!=null)) {
+          Axiom a=(Axiom)d;
+          Expr e=a.Expr;
+          if((e is NAryExpr) && (e!=null)) {
+            NAryExpr ne=(NAryExpr)e;
+            IAppliable  f=ne.Fun;
+            if((f is BinaryOperator) && (f!=null)) {
+              BinaryOperator bo=(BinaryOperator)f;
+              if(bo.Op==BinaryOperator.Opcode.Eq) {
+                ExprSeq args=ne.Args;
+                Expr lhs=(Expr)(args.Head());
+                Expr rhs=(Expr)(args.Last());
+                //Console.Error.WriteLine(lhs.ToString());
+                if((lhs is IdentifierExpr) && (lhs!=null)) {
+                  IdentifierExpr! ie=(IdentifierExpr)lhs;
+                  if(ie.Name==s) {
+                    if((rhs is LiteralExpr)&&(rhs!=null)) {
+                      LiteralExpr! lrrhs=(LiteralExpr)rhs;
+                      if((lrrhs.Val is BigNum) && (lrrhs!=null)) {
+                        value=((BigNum)(lrrhs.Val)).ToIntSafe;
+                        return true;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      value=-1;
+      return false;
+    }
+
+  //returns the set of all possible variables of the program, whenever shared or local
+  //Set! GetAllVars() {
+  //    
+  //  }
+
+  //Returns the set of all shared variables (except the constants) of the program.
+  //In the pre_prefix, returns "H_", in the post_prefix, returns "HP_".
+  //TODO: In pre_prefix and post_prefix, return such strings p,p' such that for any shared
+  //variable x, px is neither a shared, nor a local variable and p'x is neither a shared nor
+  //a local variable.
+  List<Variable!>! GetSharedVars(out string! pre_prefix, out string! post_prefix) {
+    List<Variable!>! retval=new List<Variable!>();
+    foreach(Declaration d in prg.TopLevelDeclarations) {
+      if((d is Variable) && !(d is Constant) && (d!=null)) {
+        retval.Add((Variable)d);
+      }
+    }
+    pre_prefix="H_";
+    post_prefix="HP_";
+    return retval;
+  }
+  
+  //returns the first function which is declared on the top level and which is called fname.
+  Function GetTopLevelFunction(string fname) {
+    foreach(Declaration d in prg.TopLevelDeclarations) {
+      if((d is Function) && (d!=null)) {
+        Function! f=(Function)d;
+        if(f.Name==fname) return f;
+      }
+    }
+    return null;
+  }//end of GetTopLevelFunction
+  
+  
+  //returns true if f is declared as
+  //f(int,int,[int]tv1,...,[int]tvm,[int]tv1,...,[int]tvm) returns (bool);
+  //where m is the number of shared variables and 
+  //tv1,...,tvm are types of the m shared variables.
+  bool CheckFormat(Function! f,List<Variable!>! sharedVars) {
+    VariableSeq! inparams=f.InParams;
+    //first check the correct number
+    int m=sharedVars.Count;
+    if(inparams.Length!=(2+2*m)) {
+      Console.Error.WriteLine("Bad number of arguments in "+f.Name); return false;
+    }
+    //now check the types of the first portion
+    List<Variable!>.Enumerator sv_ptr=sharedVars.GetEnumerator(); sv_ptr.MoveNext();
+    SequenceEnumerator! pr_ptr=(SequenceEnumerator!)(inparams.GetEnumerator()); pr_ptr.MoveNext();
+    //check that the first two arguments are of type int, i.e. the thread and the phase numbers
+    Variable! pr_var=(Variable!)(pr_ptr.Current);
+    if(pr_var.TypedIdent.Type.ToString()!="int") {
+      Console.Error.WriteLine("Error in function "+f.Name+
+      ": the first argument denotes a thread number and should be of type int.");
+      return false;
+    }
+    pr_ptr.MoveNext();
+    pr_var=(Variable)(pr_ptr.Current);
+    if(pr_var.TypedIdent.Type.ToString()!="int") {
+      Console.Error.WriteLine("Error in function "+f.Name+
+      ": the second argument denotes a phase number and should be of type int.");
+      return false;
+    }
+    pr_ptr.MoveNext();
+    for(int i=0;i<m;i++) {
+      Variable! sh_var=sv_ptr.Current;
+      pr_var=(Variable)(pr_ptr.Current);
+      string sh_type=sh_var.TypedIdent.Type.ToString();
+      string pr_type=pr_var.TypedIdent.Type.ToString();
+      if(pr_type!=("[int]"+sh_type)) { 
+        Console.Error.WriteLine("In the declaration of "+f.Name+", the type "+pr_type+
+        " does not coincide with [int]"+sh_type);
+        return false;
+      }
+      sv_ptr.MoveNext();
+      pr_ptr.MoveNext();
+    }
+    //now check the types of the second portion
+    sv_ptr=sharedVars.GetEnumerator(); sv_ptr.MoveNext();
+    for(int i=0;i<m;i++) {
+      Variable! sh_var=sv_ptr.Current;
+      pr_var=(Variable)pr_ptr.Current;
+      string sh_type=sh_var.TypedIdent.Type.ToString();
+      string pr_type=pr_var.TypedIdent.Type.ToString();
+      if(pr_type!=("[int]"+sh_type)) { 
+        Console.Error.WriteLine("In the declaration of "+f.Name+", the type "+pr_type+
+        " does not coincide with [int]"+sh_type);
+        return false;
+      }
+      sv_ptr.MoveNext();
+      pr_ptr.MoveNext();
+    }
+    //check that the return value is (bool);
+    VariableSeq! outparams=f.OutParams;
+    if(outparams.Length!=1) {
+      Console.Error.WriteLine("The function "+f.Name+" should have exactly one out parameter.");
+      return false;
+    } 
+    Variable! rv=(Variable!)(outparams.Head());
+    string rv_type=rv.TypedIdent.Type.ToString();
+    if(rv_type != "bool") {
+      Console.Error.WriteLine("The function "+f.Name+" should return bool. Currently, it returns "+rv_type+".");
+      return false;
+    }
+    return true;
+  }//end of CheckFormat
+  
+  
+  //checks that all procedures are exactly T0,...,T(n-1) for some n in some order.
+  //Returns true, if it is so. In number_of_threads, returns the number of threads.
+  bool CheckThreads(out int number_of_threads) {
+    number_of_threads=0;
+    bool[] threads_specified=new bool[1] {false};
+    foreach(Declaration d in prg.TopLevelDeclarations) {
+      if((d is Procedure) && (d!=null)) {
+        Procedure! p=(Procedure)d;
+        if(p.Name[0]!='T') {
+          Console.Error.WriteLine("A procedure discovered which is not a thread.");
+          return false;
+        }
+        string probably_number=p.Name.Substring(1,p.Name.Length-1);
+        int no_of_procedure;
+        if(!Int32.TryParse(probably_number,out no_of_procedure)) {
+          Console.Error.WriteLine("The procedure "+p.Name+" has a bad name. After T a number should follow.");
+          return false;
+        }
+        VariableSeq! inparams=p.InParams;
+        if(inparams.Length>0) {
+          Console.Error.WriteLine("The thread "+p.Name+" has arguments. It should not.");
+          return false;
+        }
+        VariableSeq! outparams=p.OutParams;
+        if(outparams.Length>0) {
+          Console.Error.WriteLine("The thread "+p.Name+" returns some value. It should not.");
+          return false;
+        }
+        if(no_of_procedure>=number_of_threads) {
+          number_of_threads=no_of_procedure+1;
+          Array.Resize(ref threads_specified,number_of_threads);
+          if(threads_specified==null) {
+            Console.Error.WriteLine("Out of memory");
+            return false;
+          }
+          threads_specified[no_of_procedure]=true;
+        } else {
+          if(threads_specified[no_of_procedure]) {
+            Console.Error.WriteLine("Procedure "+p.Name+" was specified at least twice.");
+            return false;
+          } else threads_specified[no_of_procedure]=true;
+        }
+      }
+    }
+    //now check whether all threads were specified
+    for(int i=0;i<number_of_threads;i++)
+      if(!threads_specified[i]) {
+        Console.Error.WriteLine("Thread number "+i.ToString()+" was not specified.");
+        return false;
+      }
+    return true;
+  }//end CheckThreads
+  
+  //Copy the non-procedural code from the input to the output, insert the prelude, go 
+  //through the implementations, instrumentize them statement by statement.
+  bool InstrumentizeThreads(TokenTextWriter! outstream, int number_of_threads,List<Variable!>! sharedVars, 
+                            string! history_pre_prefix,string! history_post_prefix,bool phase_number_finite) {
+    outstream.SetToken(prg);
+    bool first = true;
+    bool implementation_seen=false;
+    foreach(Declaration d in prg.TopLevelDeclarations) {
+      if(d==null) {outstream.WriteLine(); continue;}
+      if(first) first=false; else outstream.WriteLine();
+      if(d is Implementation) { 
+        if(!implementation_seen) {
+          implementation_seen=true;
+          EmitPrelude(outstream,sharedVars,history_pre_prefix,history_post_prefix,phase_number_finite);
+        }
+        Implementation! ipl=(Implementation)d;
+        int thread_no=Convert.ToInt32(ipl.Name.Substring(1,ipl.Name.Length-1));
+        outstream.WriteLine("procedure "+ipl.Name+"()");
+        InstrumentizeStartSeq(outstream,1,sharedVars,history_pre_prefix,history_post_prefix,thread_no);
+        if(!InstrumentizeImplInternals(outstream,1,ipl,thread_no)) return false;
+      } else if(d is Procedure) continue; 
+      else d.Emit(outstream,0);  
+    }//foreach
+    return true;
+  }//end InstrumentizeThreads()
+  
+
+  //Print declarations of history variables, phase variable, instrumentation functions.
+  void EmitPrelude(TokenTextWriter! outstream, List<Variable!>! sharedVars, 
+                   string! history_pre_prefix, string! history_post_prefix,bool phase_number_finite) {
+    //write history variables
+    if(sharedVars.Count>0) {
+      outstream.Write("var ");
+      EmitVarList(outstream,sharedVars,history_pre_prefix,null,"[int]");
+      outstream.WriteLine(";");
+      outstream.Write("var ");
+      EmitVarList(outstream,sharedVars,history_post_prefix,null,"[int]");
+      outstream.WriteLine(";");
+    }
+    outstream.WriteLine("var "+currentPhaseVarName+":int;");
+    outstream.WriteLine();
+    //write the assume rely procedure
+    outstream.WriteLine("procedure{:inline 999} AssumeRely("+threadNoVarName+":int)");
+    outstream.Write("modifies ");
+    EmitVarList(outstream,sharedVars,null,null,null); outstream.Write(", ");
+    EmitVarList(outstream,sharedVars,history_pre_prefix,null,null); outstream.WriteLine(";");
+    outstream.WriteLine("{");
+    outstream.Write("  havoc ");
+    EmitVarList(outstream,sharedVars,null,null,null); outstream.WriteLine(";");
+    foreach(Variable! v in sharedVars)
+      outstream.WriteLine("  "+history_pre_prefix+v.Name+"["+currentPhaseVarName+"]:="+v.Name+";");
+    outstream.Write("  assume A("+threadNoVarName+","+currentPhaseVarName+",");
+    EmitVarList(outstream,sharedVars,history_pre_prefix,null,null);
+    outstream.Write(",");
+    EmitVarList(outstream,sharedVars,history_post_prefix,null,null);
+    outstream.WriteLine(");"); outstream.WriteLine("}");
+    outstream.WriteLine();
+    //write the CheckGuarantee procedure
+    outstream.WriteLine("procedure {:inline 999} CheckGuarantee("+threadNoVarName+":int)");
+    outstream.Write("modifies ");
+    EmitVarList(outstream,sharedVars,history_post_prefix,null,null);  outstream.WriteLine(";");
+    outstream.WriteLine("{");
+    foreach(Variable! v in sharedVars)
+      outstream.WriteLine("  "+history_post_prefix+v.Name+"["+currentPhaseVarName+"]:="+v.Name+";");
+    outstream.Write("  assert G("+threadNoVarName+","+currentPhaseVarName+", ");
+    EmitVarList(outstream,sharedVars,history_pre_prefix,null,null);
+    outstream.Write(",");
+    EmitVarList(outstream,sharedVars,history_post_prefix,null,null);
+    outstream.WriteLine(");"); outstream.WriteLine("}");
+    outstream.WriteLine();
+    //write the MayUpdateProcedure  
+    outstream.WriteLine("procedure {:inline 999} MayUpdate("+threadNoVarName+":int)");
+    outstream.Write("modifies "+currentPhaseVarName);
+    if(sharedVars.Count>0) { 
+      outstream.Write(", "); EmitVarList(outstream,sharedVars,history_pre_prefix,null,null); outstream.Write(", ");
+      EmitVarList(outstream,sharedVars,history_post_prefix,null,null);  outstream.Write(", ");
+      EmitVarList(outstream,sharedVars,null,null,null); 
+    }
+    outstream.WriteLine(";"); outstream.WriteLine("{");
+    outstream.WriteLine("  goto updating,not_updating;");
+    outstream.WriteLine("  updating:");
+    outstream.WriteLine("  call CheckGuarantee("+threadNoVarName+");");
+    outstream.WriteLine("  if(("+currentPhaseVarName+"+1)<"+totalPhasesName+") {");
+    outstream.WriteLine("    "+currentPhaseVarName+":="+currentPhaseVarName+"+1;");
+    outstream.WriteLine("    call AssumeRely("+threadNoVarName+");");
+    outstream.WriteLine("  }");
+    outstream.WriteLine("  not_updating:");
+    outstream.WriteLine("}");
+    outstream.WriteLine();
+    //write the instrumentation for the assume predicate
+    outstream.WriteLine("procedure {:inline 999} MayUpdateAssume("+threadNoVarName+":int,condition:bool)");
+    outstream.Write("modifies "+currentPhaseVarName);
+    if(sharedVars.Count>0) { 
+      outstream.Write(", "); EmitVarList(outstream,sharedVars,history_pre_prefix,null,null); outstream.Write(", ");
+      EmitVarList(outstream,sharedVars,history_post_prefix,null,null);  outstream.Write(", ");
+      EmitVarList(outstream,sharedVars,null,null,null); 
+    }
+    outstream.WriteLine(";"); outstream.WriteLine("{");
+    outstream.WriteLine("  if(condition) { call MayUpdate("+threadNoVarName+"); }");
+    outstream.WriteLine("  else { call CheckGuarantee("+threadNoVarName+"); assume false; }");
+    outstream.WriteLine("}");
+    outstream.WriteLine();
+  }//end EmitPrelude(...)
+  
+  
+  //Print a comma-separated variable list vars to outstream.
+  //Before each variable prints prefix, after each variable prints suffix if available.
+  //If type_prefix is not null, also output the types, prefixing them with type_prefix.
+  void EmitVarList(TokenTextWriter! outstream, List<Variable!>! vars, string var_prefix, 
+                   string var_suffix,string type_prefix) {
+    bool first=true;
+    foreach(Variable! v in vars) {
+      if(v.Name==null) continue;
+      if(first) first=false; else outstream.Write(", ");
+      outstream.Write(((var_prefix==null)?"":var_prefix)+v.Name+((var_suffix==null)?"":var_suffix));
+      if(type_prefix!=null) outstream.Write(":"+type_prefix+v.TypedIdent.Type.ToString());
+    }
+  }//end EmitVarList(...)
+ 
+  //prints the indented start sequence of the thread thread_no
+  void InstrumentizeStartSeq(TokenTextWriter! outstream,int level,List<Variable!>! sharedVars,
+                             string! history_pre_prefix, string! history_post_prefix, int thread_no) {
+    outstream.Write("modifies "+currentPhaseVarName);
+    if(sharedVars.Count>0) { 
+      outstream.Write(", "); EmitVarList(outstream,sharedVars,null,null,null); 
+      outstream.Write(", "); EmitVarList(outstream,sharedVars,history_pre_prefix,null,null); 
+      outstream.Write(", "); EmitVarList(outstream,sharedVars,history_post_prefix,null,null);
+    }
+    outstream.WriteLine(";");
+    outstream.WriteLine("{");
+    WriteIndent(outstream,level); outstream.WriteLine(currentPhaseVarName+":=0;");
+    WriteIndent(outstream,level); outstream.WriteLine("call AssumeRely("+thread_no.ToString()+");");
+  }//end InstrumentizeStartSeq(...)
+  
+  //prints 2+level whitespaces
+  void WriteIndent(TokenTextWriter! outstream,int level) {
+    for(int i=0;i<level;i++) outstream.Write("  ");
+  }//end WriteIndent
+  
+  //goes through the list of statements of procedure impl, instrumetizes them according to the history-algorithm
+  bool InstrumentizeImplInternals(TokenTextWriter! outstream,int level,Implementation! impl,int thread_no) {
+    foreach(Block! b in impl.Blocks) {
+      WriteIndent(outstream,level); outstream.WriteLine(b.Label+":");
+      if(!InstrumentizeCmdSeq(outstream,level,b.Cmds,thread_no,(b.TransferCmd==null || (b.TransferCmd is ReturnCmd)))) {
+        Console.Error.WriteLine("Error processing thread "+thread_no.ToString()+".");
+        return false;
+      }
+      if(b.TransferCmd!=null && !(b.TransferCmd is ReturnCmd))
+        if(!InstrumentizeTransferCmd(outstream,level,b.TransferCmd,thread_no)) return false;
+    }
+    outstream.WriteLine("}");
+    return true;
+  }//end InstrumentizeStmtSeq(...)
+  
+  //Instrumentizing a sequence of commands. If last_cmd_seq==true, then the last statement should be 
+  //instrumentized as a statement without successors
+  bool InstrumentizeCmdSeq(TokenTextWriter! outstream, int level, CmdSeq! cmds, 
+                           int thread_no, bool last_cmd_seq) {
+    SequenceEnumerator! curr_cmd=(SequenceEnumerator)(cmds.GetEnumerator()); curr_cmd.MoveNext();
+    Cmd cmd; int i=0;
+    for(;(i+1)<cmds.Length;i++) {
+      cmd=(Cmd)curr_cmd.Current;
+      if(cmd!=null) {
+        if(!InstrumentizeCmd(outstream,level,cmd,thread_no,false)) return false;
+      }
+      curr_cmd.MoveNext();
+    }
+    if(i<cmds.Length) {
+      cmd=(Cmd)(curr_cmd.Current);
+      if(cmd!=null)
+        if(!InstrumentizeCmd(outstream,level,cmd,thread_no,last_cmd_seq)) return false;    
+    }
+    return true;   
+  }//end InstrumentizeCmdSeq(...)
+  
+  //instrumentizes the goto statement
+  bool InstrumentizeTransferCmd(TokenTextWriter! outstream,int level,TransferCmd! cmd,int thread_no) {
+    if(cmd is GotoCmd) {
+      WriteIndent(outstream,level); outstream.WriteLine("call MayUpdate("+thread_no.ToString()+");");
+      cmd.Emit(outstream,level);
+    } else {
+      Console.Error.Write("Unknown command: ");
+      TokenTextWriter ttw=new TokenTextWriter("<console_error>",Console.Error);
+      if(ttw!=null) { cmd.Emit(ttw,0); ttw.Close(); }
+      else Console.Error.Write("Out of memory");
+      return false;
+    }
+    return true;
+  }//end InstrumentizeTransferCmd(...)
+  
+  //Instrumentize a single command. If last_cmd==true, this statement is the last in the thread.
+  bool InstrumentizeCmd(TokenTextWriter! outstream,int level,Cmd! cmd,int thread_no,bool last_cmd) {
+    if((cmd is AssertCmd) || (cmd is HavocCmd) || (cmd is SimpleAssignCmd)||(cmd is ArrayAssignCmd)) {
+      cmd.Emit(outstream,level);
+      WriteIndent(outstream,level);
+      if(last_cmd) outstream.WriteLine("call CheckGuarantee("+thread_no.ToString()+");");
+      else outstream.WriteLine("call MayUpdate("+thread_no.ToString()+");");
+    } else if(cmd is AssumeCmd) {
+      WriteIndent(outstream,level);
+      if(last_cmd) outstream.Write("call CheckGuarantee("+thread_no.ToString()+");");
+      else {
+        outstream.Write("call MayUpdateAssume(");
+        outstream.Write(thread_no.ToString()+",");
+        PredicateCmd! pcmd=(PredicateCmd)cmd;
+        pcmd.Expr.Emit(outstream);
+        outstream.WriteLine(");");
+      }
+    } else {
+      Console.Error.Write("Unknown command: ");
+      cmd.Emit(new TokenTextWriter("<console>",Console.Error),0);
+      return false;
+    }
+    return true;
+  }//end InstrumentizeCmd(...)
+  
+  //Prints the procedure which checks the correct interleaving of the specifications
+  bool PrintInterleaving(TokenTextWriter! outstream,int number_of_threads,List<Variable!>! sharedVars,
+                         string! history_pre_prefix,string! history_post_prefix,int n, bool phase_number_finite,
+                         int phases_no) {
+    outstream.WriteLine();
+    outstream.WriteLine("procedure Interleave()");
+    outstream.Write("modifies "); EmitVarList(outstream,sharedVars,null,null,null); outstream.Write(",");
+    EmitVarList(outstream,sharedVars,history_pre_prefix,null,null); outstream.Write(",");
+    EmitVarList(outstream,sharedVars,history_post_prefix,null,null); outstream.WriteLine(";");
+    outstream.WriteLine("{");
+    outstream.WriteLine("  var "+threadNoVarName+":int, "+currentPhaseVarName+":[int]int,");
+    EmitVarList(outstream,sharedVars,history_pre_prefix,null,"[int][int]"); outstream.Write(",");
+    EmitVarList(outstream,sharedVars,history_post_prefix,null,"[int][int]"); outstream.WriteLine(";");
+    outstream.Write("  assume Init(");  EmitVarList(outstream,sharedVars,null,null,null); outstream.WriteLine(");");
+    for(int i=0;i<n;i++) {
+      WriteIndent(outstream,1);
+      outstream.WriteLine(currentPhaseVarName+"["+i.ToString()+"]:=0;");
+    }
+    if(phase_number_finite)
+      for(int i=0;i<phases_no*n;i++) {
+        PrintSinglePhaseCode(outstream,1,sharedVars,history_pre_prefix,history_post_prefix,n,true);
+        outstream.WriteLine();
+      }
+    else {
+      outstream.WriteLine("  while(true) {");
+      PrintSinglePhaseCode(outstream,2,sharedVars,history_pre_prefix,history_post_prefix,n,false);
+      outstream.WriteLine("  }");
+    }
+    outstream.WriteLine("}");
+    return true;
+  }//end PrintInterleaving(...)
+  
+  //print a code which checks the relies for some thread for its one phase
+  void PrintSinglePhaseCode(TokenTextWriter! outstream, int level,List<Variable!>! sharedVars, 
+                            string! history_pre_prefix,string! history_post_prefix, int n, 
+                            bool phase_number_finite) {
+    WriteIndent(outstream,level); outstream.WriteLine("havoc "+threadNoVarName+";");
+    WriteIndent(outstream,level); outstream.Write("assume ");
+    for(int i=0;(i+1)<n;i++)
+      outstream.Write(threadNoVarName+"=="+i.ToString()+" || ");
+    outstream.WriteLine(threadNoVarName+"=="+(n-1).ToString()+";");
+    
+    if(phase_number_finite) {
+      WriteIndent(outstream,level); 
+      outstream.WriteLine("assume "+currentPhaseVarName+"["+threadNoVarName+"]<"+totalPhasesName+";");
+    }
+    foreach(Variable! v in sharedVars) {
+      WriteIndent(outstream,level); 
+      outstream.WriteLine(history_pre_prefix+v.Name+"["+threadNoVarName+"]:="+
+      history_pre_prefix+v.Name+"["+threadNoVarName+"]["+currentPhaseVarName+"["+threadNoVarName+"]:="+v.Name+"];");
+    }
+    
+    WriteIndent(outstream,level); 
+    outstream.Write("assert A("+threadNoVarName+","+currentPhaseVarName+"["+threadNoVarName+"],");
+    EmitVarList(outstream,sharedVars,history_pre_prefix,"["+threadNoVarName+"]",null); outstream.Write(",");
+    EmitVarList(outstream,sharedVars,history_post_prefix,"["+threadNoVarName+"]",null); outstream.WriteLine(");");
+
+    WriteIndent(outstream,level);
+    outstream.Write("assume G("+threadNoVarName+","+currentPhaseVarName+"["+threadNoVarName+"],");
+    EmitVarList(outstream,sharedVars,history_pre_prefix,"["+threadNoVarName+"]",null); outstream.Write(",");
+    EmitVarList(outstream,sharedVars,history_post_prefix,"["+threadNoVarName+"]",null); outstream.WriteLine(");");
+    
+    WriteIndent(outstream,level); outstream.Write("havoc ");
+    EmitVarList(outstream,sharedVars,null,null,null); outstream.WriteLine(";");
+    
+    foreach(Variable! v in sharedVars) {
+      WriteIndent(outstream,level); 
+      outstream.WriteLine("assume "+history_post_prefix+v.Name+"["+threadNoVarName+"]["+currentPhaseVarName+"["+threadNoVarName+"]]=="+v.Name+";");
+    }
+    WriteIndent(outstream,level);
+    outstream.WriteLine(currentPhaseVarName+"["+threadNoVarName+"]:="+currentPhaseVarName+"["+threadNoVarName+"]+1;");
+  }//end PrintSinglePhaseCode(...)
+          
+  }//end class
+}//end namespace

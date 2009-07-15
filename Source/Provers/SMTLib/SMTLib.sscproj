@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VisualStudioProject>
+  <XEN ProjectType="Local"
+     SchemaVersion="1.0"
+     Name="SMTLib"
+     ProjectGuid="13c3a68c-462a-4cda-a480-738046e37c5a"
+    >
+    <Build>
+      <Settings ApplicationIcon=""
+         AssemblyName="Provers.SMTLib"
+         OutputType="Library"
+         RootNamespace="Microsoft.Boogie.SMTLib"
+         StartupObject=""
+         StandardLibraryLocation=""
+         TargetPlatform="v2"
+         TargetPlatformLocation=""
+         ShadowedAssembly=""
+         NoStandardLibraries="False"
+        >
+        <Config Name="Debug"
+           AllowUnsafeBlocks="False"
+           BaseAddress="285212672"
+           CheckForOverflowUnderflow="False"
+           ConfigurationOverrideFile=""
+           DefineConstants="DEBUG;TRACE"
+           DocumentationFile=""
+           DebugSymbols="True"
+           FileAlignment="4096"
+           IncrementalBuild="True"
+           Optimize="False"
+           OutputPath="bin\debug"
+           RegisterForComInterop="False"
+           RemoveIntegerChecks="false"
+           TreatWarningsAsErrors="False"
+           WarningLevel="4"
+           CheckContractAdmissibility="True"
+           CheckPurity="False"
+           />
+        <Config Name="Release"
+           AllowUnsafeBlocks="false"
+           BaseAddress="285212672"
+           CheckForOverflowUnderflow="false"
+           ConfigurationOverrideFile=""
+           DefineConstants="TRACE"
+           DocumentationFile=""
+           DebugSymbols="false"
+           FileAlignment="4096"
+           IncrementalBuild="false"
+           Optimize="true"
+           OutputPath="bin\release"
+           RegisterForComInterop="false"
+           RemoveIntegerChecks="false"
+           TreatWarningsAsErrors="false"
+           WarningLevel="4"
+           CheckContractAdmissibility="True"
+           CheckPurity="False"
+           />
+      </Settings>
+      <References>
+        <Reference Name="System"
+             AssemblyName="System"
+             Private="false"
+             />
+        <Reference Name="System.Data"
+             AssemblyName="System.Data"
+             Private="false"
+             />
+        <Reference Name="System.Xml"
+             AssemblyName="System.Xml"
+             Private="false"
+             />
+        <Reference Name="Basetypes"
+             Project="{0C692837-77EC-415F-BF04-395E3ED06E9A}"
+             Private="true"
+             />
+        <Reference Name="Core"
+             Project="{47BC34F1-A173-40BE-84C2-9332B4418387}"
+             Private="true"
+             />
+        <Reference Name="VCExpr"
+             Project="{CF42B700-10AA-4DA9-8992-48A800251C11}"
+             Private="true"
+             />
+        <Reference Name="VCGeneration"
+             Project="{F65666DE-FB56-457C-8782-09BE243450FC}"
+             Private="true"
+             />
+        <Reference Name="Mscorlib.Contracts"
+             AssemblyName="Mscorlib.Contracts"
+             Private="false"
+             HintPath="../../../Binaries/Mscorlib.Contracts.dll"
+             />
+        <Reference Name="Simplify"
+             Project="{F75666DE-FB56-457C-8782-09BE243450FC}"
+             Private="true"
+             />
+      </References>
+    </Build>
+    <Files>
+      <Include>
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="ProverInterface.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="SMTLibLineariser.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="TypeDeclCollector.ssc"
+                 />
+      </Include>
+    </Files>
+  </XEN>
+</VisualStudioProject>
