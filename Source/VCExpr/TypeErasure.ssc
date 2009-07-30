@@ -456,8 +456,9 @@ namespace Microsoft.Boogie.TypeErasure
                                        out VCExprVar! var, out List<VCTrigger!>! triggers) {
       var = Gen.Variable("x", U);
 
-      VCExpr! lhs = Gen.Function(castToU, Gen.Function(castFromU, var));
-      triggers = HelperFuns.ToList(Gen.Trigger(true, HelperFuns.ToList(lhs)));
+      VCExpr inner = Gen.Function(castFromU, var);
+      VCExpr lhs = Gen.Function(castToU, inner);
+      triggers = HelperFuns.ToList(Gen.Trigger(true, HelperFuns.ToList(inner)));
 
       return Gen.Eq(lhs, var);
     }
