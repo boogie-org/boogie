@@ -3,9 +3,13 @@ echo start > Output
 
 set CHALICE=call scala -cp bin Chalice -nologo
 
-for %%f in (AssociationList cell counter dining-philosophers ForkJoin HandOverHand
+REM to do: AssociationList
+REM to do: GhostConst
+REM to do: Leaks -checkLeaks
+
+for %%f in (cell counter dining-philosophers ForkJoin HandOverHand
             iterator iterator2 producer-consumer
-            prog0 prog1 prog2 prog3 prog4 RockBand swap GhostConst OwickiGries) do (
+            prog0 prog1 prog2 prog3 prog4 RockBand swap OwickiGries) do (
   echo   Testing %%f.chalice ...
   echo ------ Running regression test %%f.chalice >> Output
   %CHALICE% %* examples\%%f.chalice >> Output 2>&1
@@ -18,10 +22,6 @@ echo ------ Running regression test cell-defaults.chalice >> Output
 echo   Testing RockBand-automagic.chalice ...
 echo ------ Running regression test RockBand-automagic.chalice >> Output
 %CHALICE% %* -defaults -autoMagic -checkLeaks -autoFold examples\RockBand-automagic.chalice >> Output 2>&1
-
-echo   Testing Leaks.chalice ...
-echo ------ Running regression test Leaks.chalice >> Output
-%CHALICE% %* -checkLeaks examples\Leaks.chalice >> Output 2>&1
 
 
 fc examples\Answer Output > nul

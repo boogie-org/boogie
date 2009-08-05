@@ -12,21 +12,25 @@ import scala.util.parsing.input.NoPosition
 
 class Parser extends StandardTokenParsers {
 
-  def parseFile(path: String): this.ParseResult[List[Class]] = {
+  def parseFile(path: String): this.ParseResult[List[TopLevelDecl]] = {
     val tokens = new lexical.Scanner(new PagedSeqReader(PagedSeq fromFile path));
     phrase(programUnit)(tokens)
   }
  
   case class PositionedString(v: String) extends Positional
 
-  lexical.reserved += ("class", "ghost", "var", "const", "method", "assert", "assume", "new", "this", "reorder",
+  lexical.reserved += ("class", "ghost", "var", "const", "method", "channel", "condition",
+                       "assert", "assume", "new", "this", "reorder",
                        "between", "and", "above", "below", "share", "unshare", "acquire", "release", "downgrade",
                        "lock", "fork", "join", "rd", "acc", "holds", "old", "assigned",
                        "call", "if", "else", "while", "invariant", "lockchange",
-                       "returns", "requires", "ensures", "int", "bool", "false", "true", "null", "maxlock", "lockbottom",
+                       "returns", "requires", "ensures", "where",
+                       "int", "bool", "false", "true", "null", "maxlock", "lockbottom",
                        "module", "external",
-                       "predicate", "function", "free", "ite", "fold", "unfold", "unfolding", "in", "forall", "exists", 
-                       "seq", "nil", "result", "eval", "token")
+                       "predicate", "function", "free", "send", "receive",
+                       "ite", "fold", "unfold", "unfolding", "in", "forall", "exists", 
+                       "seq", "nil", "result", "eval", "token",
+                       "wait", "signal")
   // todo: can we remove "nil"?
   lexical.delimiters += ("(", ")", "{", "}",
                          "<==>", "==>", "&&", "||",
@@ -34,7 +38,7 @@ class Parser extends StandardTokenParsers {
                          "+", "-", "*", "/", "%", "!", ".", "..",
                          ";", ":", ":=", ",", "?", "|", "@", "[", "]", "++")
 
-  def programUnit = classDecl*
+  def programUnit = (classDecl | channelDecl)*
 
   // class and members
 
@@ -45,7 +49,8 @@ class Parser extends StandardTokenParsers {
             ext match { case None => case Some(t) => cl.IsExternal = true }
             cl
         })
-  def memberDecl = positioned(fieldDecl | invariantDecl | methodDecl | predicateDecl | functionDecl)
+  def memberDecl = positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl |
+                   predicateDecl | functionDecl)
 
   def fieldDecl =
         ( "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id,t) }
@@ -75,6 +80,11 @@ class Parser extends StandardTokenParsers {
             outs match {
               case None => Method(id, ins, Nil, spec, body)
               case Some(outs) => Method(id, ins, outs, spec, body) }}
+  def channelDecl =
+    "channel" ~> ident ~ formalParameters(true) ~ ("where" ~> expression ?) <~ Semi ^^ {
+      case id ~ ins ~ None => Channel(id, ins, BoolLiteral(true))
+      case id ~ ins ~ Some(e) => Channel(id, ins, e)
+    }
   def predicateDecl: Parser[Predicate] = 
     ("predicate" ~> ident) ~ ("{" ~> expression <~ "}") ^^ { case id ~ definition => Predicate(id, definition) }
   def functionDecl = 
@@ -102,6 +112,10 @@ class Parser extends StandardTokenParsers {
     "{" ~> (statement*) <~ "}" ^^ {
       case x => currentLocalVariables = prev; x }
   }
+
+  def conditionDecl =
+    "condition" ~> ident ~ ("where" ~> expression ?) <~ Semi ^^ {
+      case id ~ optE => Condition(id, optE) }
 
   // statements
 
@@ -179,6 +193,11 @@ class Parser extends StandardTokenParsers {
         }, t => "fork statement cannot take more than 1 left-hand side")
     | (("join") ~> ( identList <~ ":=" ?)) ~ expression <~ Semi ^^ 
         { case results ~ token => JoinAsync(ExtractList(results), token) }
+    | "wait" ~> memberAccess <~ Semi ^^ {
+        case MemberAccess(obj, id) => Wait(obj, id) }
+    | "signal" ~> ("forall" ?) ~ memberAccess <~ Semi ^^ {
+        case None ~ MemberAccess(obj, id) => Signal(obj, id, false)
+        case _ ~ MemberAccess(obj, id) => Signal(obj, id, true) }
     )
   def localVarStmt(const: boolean, ghost: boolean) =
       idTypeOpt ~ (":=" ~> Rhs ?) <~ Semi ^^ {
@@ -226,6 +245,10 @@ class Parser extends StandardTokenParsers {
   def callTarget =  // returns a VariableExpr or a FieldSelect
       ( ident <~ "(" ^^ VariableExpr
       | selectExprFerSure <~ "("
+      )
+  def memberAccess =  // returns a MemberAccess
+      ( selectExprFerSure
+      | ident ^^ { case id => MemberAccess(ImplicitThisExpr(), id) }
       )
   def ExtractList[T](a: Option[List[T]]): List[T] = a match {
     case None => Nil

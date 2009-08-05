@@ -29,8 +29,10 @@ class Translator {
   var modules = Nil: List[String]
   var etran = new ExpressionTranslator(null);
 
-  def translateProgram(classes: List[Class]): List[Decl] = {
-    classes flatMap { translateClass(_) }
+  def translateProgram(decls: List[TopLevelDecl]): List[Decl] = {
+    decls flatMap {
+      case cl: Class => translateClass(cl)
+    }
   }
 
   def translateClass(cl: Class): List[Decl] = {
@@ -152,7 +154,7 @@ class Translator {
          wf(h, m) && CurrentModule == module#C ==> #C.f(h, m, this, x_1, ..., x_n) == tr(body))
     */
     val args = VarExpr("this") :: inArgs;
-    val applyF = f.apply(List(etran.Heap, etran.Mask) ::: args);
+    val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask) ::: args);
     Axiom(new Boogie.Forall(
       BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
       List(applyF),
@@ -172,7 +174,7 @@ class Translator {
     val frameFunctionName = "##" + f.FullName;
 
     val args = VarExpr("this") :: inArgs;
-    val applyF = f.apply(List(etran.Heap, etran.Mask) ::: args);
+    val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask) ::: args);
     val applyFrameFunction = FunctionApp(frameFunctionName, version :: args);
     Boogie.Function("##" + f.FullName, Boogie.BVar("state", theap) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new BVar("$myresult", f.out)) ::
     Axiom(new Boogie.Forall(
@@ -193,7 +195,7 @@ class Translator {
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
     val myresult = Boogie.BVar("result", Boogie.ClassType(f.out.typ));
     val args = VarExpr("this") :: inArgs;
-    val applyF = f.apply(List(Heap, Mask) ::: args)
+    val applyF = FunctionApp(functionName(f), List(Heap, Mask) ::: args)
     //postcondition axioms
     (Postconditions(f.spec) map { post : Expression =>
       Axiom(new Boogie.Forall(

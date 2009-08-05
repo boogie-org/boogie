@@ -10,7 +10,9 @@ trait ASTNode extends Positional
 
 // classes and types
 
-sealed case class Class(id: String, parameters: List[Class], module: String, members: List[Member]) extends ASTNode {
+case class TopLevelDecl(id: String) extends ASTNode
+
+sealed case class Class(classId: String, parameters: List[Class], module: String, members: List[Member]) extends TopLevelDecl(classId) {
   var mm = Map[String,Member]()
   def LookupMember(id: String): Option[Member] = {
     if (mm.keys exists { i => i.equals(id)})
@@ -42,6 +44,8 @@ sealed case class Class(id: String, parameters: List[Class], module: String, mem
   }
   def FullName: String = if(parameters.isEmpty) id else id + "<" + parameters.tail.foldLeft(parameters.head.FullName){(a, b) => a + ", " + b.FullName} + ">"
 }
+
+sealed case class Channel(channelId: String, parameters: List[Variable], where: Expression) extends TopLevelDecl(channelId)
 
 case class SeqClass(parameter: Class) extends Class("seq", List(parameter), "default", Nil) {
   override def IsRef = false;
@@ -128,6 +132,7 @@ case class Function(id: String, ins: List[Variable], out: Type, spec: List[Speci
     result
   }
 }
+case class Condition(id: String, where: Option[Expression]) extends NamedMember(id)
 class Variable(name: String, typ: Type) extends ASTNode {
   val id = name
   val t = typ
@@ -198,7 +203,12 @@ case class CallAsync(declaresLocal: boolean, lhs: VariableExpr, obj: Expression,
 case class JoinAsync(lhs: List[VariableExpr], token: Expression) extends Statement {
   var m: Method = null
 }
-
+case class Wait(obj: Expression, id: String) extends Statement {
+  var c: Condition = null
+}
+case class Signal(obj: Expression, id: String, all: boolean) extends Statement {
+  var c: Condition = null
+}
 case class Fold(pred: PermissionExpr) extends Statement
 case class Unfold(pred: PermissionExpr) extends Statement
 

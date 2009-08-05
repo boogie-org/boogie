@@ -5,9 +5,15 @@
 //-----------------------------------------------------------------------------
 class ChaliceToCSharp {
     
-  def convertProgram(classes: List[Class]): String = {
+  def convertProgram(decls: List[TopLevelDecl]): String = {
     "using Chalice;" + nl + nl +
-    rep(classes map convertClass)
+    rep(decls map convertTopLevelDecl)
+  }
+
+  def convertTopLevelDecl(decl: TopLevelDecl): String = {
+    decl match {
+      case cl: Class => convertClass(cl)
+    }
   }
   
   def convertClass(cl: Class): String = if (cl.IsExternal) "" else {

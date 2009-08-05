@@ -10,7 +10,7 @@ import java.io.FileWriter
 
 object Chalice {
   def main(args: Array[String]): unit = {
-    var boogiePath = "C:\\Boogie\\2\\Binaries\\Boogie.exe"
+    var boogiePath = "C:\\boogie\\Binaries\\Boogie.exe"
     // parse command-line arguments
     var inputName: String = null
     var printProgram = false

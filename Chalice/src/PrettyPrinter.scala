@@ -4,12 +4,15 @@
 //
 //-----------------------------------------------------------------------------
 object PrintProgram {
-  def P(prog: List[Class]) =
-    for (cl <- prog) {
-      if (cl.IsExternal) print("external ")
-      println("class " + cl.id + " module " + cl.module + " {")
-      cl.members foreach Member
-      println("}")
+  def P(prog: List[TopLevelDecl]) =
+    for (decl <- prog) decl match {
+      case cl: Class =>
+        if (cl.IsExternal) print("external ")
+        println("class " + cl.id + " module " + cl.module + " {")
+        cl.members foreach Member
+        println("}")
+      case ch: Channel =>
+        println("channel " + ch.id + " where " + Expr(ch.where) + Semi)
     }
   def Semi = ";"
   def Member(m: Member) = m match {
@@ -34,8 +37,15 @@ object PrintProgram {
         print("    "); Stmt(s, 4)
       }
       println("  }")
+    case Condition(id, optE) =>
+      print("  condition " + id)
+      optE match {
+        case None =>
+        case Some(e) => print(" where " + Expr(e))
+      }
+      println(Semi)
     case Predicate(id, definition) =>
-      print("  predicate " + id + "  { " + Expr(definition) + "}")
+      println("  predicate " + id + "  { " + Expr(definition) + "}")
     case Function(id, ins, out, specs, e) =>
       print("  function " + id + "(" + VarList(ins) + ")" + ": " + out.id);
       specs foreach {
@@ -130,6 +140,14 @@ object PrintProgram {
       Expr(obj); print("."); print(name); print("("); ExprList(args); print(")");
     case JoinAsync(lhs, token) =>
       print("join async "); ExprList(lhs); print(" := "); Expr(token);
+    case Wait(obj, id) =>
+      print("wait ")
+      MemberSelect(obj, id, 0, false)
+      println(Semi)
+    case Signal(obj, id, all) =>
+      print("signal "); if (all) { print(" forall") }
+      MemberSelect(obj, id, 0, false)
+      println(Semi)
   }
   def PrintBounds(lower: List[Expression], upper: List[Expression]) = {
     if (lower == Nil && upper == Nil) {

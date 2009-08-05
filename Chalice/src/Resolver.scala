@@ -14,8 +14,8 @@ object Resolver {
 
   var seqClasses = Map[String, SeqClass]();
 
-  class ProgramContext(classes: Map[String,Class], currentClass: Class) {
-    val Classes = classes
+  class ProgramContext(decls: Map[String,TopLevelDecl], currentClass: Class) {
+    val Decls = decls
     val CurrentClass = currentClass
     var currentMember = null: Member;
     def CurrentMember = currentMember: Member;  
@@ -29,7 +29,7 @@ object Resolver {
     def LookupVariable(id: String): Option[Variable] = None
     def IsVariablePresent(vr: Variable): boolean = false
 
-    private class LProgramContext(v: Variable, parent: ProgramContext) extends ProgramContext(parent.Classes, parent.CurrentClass) {
+    private class LProgramContext(v: Variable, parent: ProgramContext) extends ProgramContext(parent.Decls, parent.CurrentClass) {
       override def Error(pos: Position, msg: String) = parent.Error(pos, msg)
       override def LookupVariable(id: String): Option[Variable] = {
         if (id == v.id) Some(v) else parent.LookupVariable(id)
@@ -43,31 +43,35 @@ object Resolver {
     }
   }
 
-  def Resolve(prog: List[Class]): ResolverOutcome = {
-    // register the classes and their members
-    var classes = Map[String,Class]()
-    for (cl <- BoolClass :: IntClass :: RootClass :: NullClass :: MuClass :: prog) {
-      if (classes contains cl.id) {
-        return Error(cl.pos, "duplicate class name: " + cl.id)
+  def Resolve(prog: List[TopLevelDecl]): ResolverOutcome = {
+    // register the channels as well as the classes and their members
+    var decls = Map[String,TopLevelDecl]()
+    for (decl <- BoolClass :: IntClass :: RootClass :: NullClass :: MuClass :: prog) {
+      if (decls contains decl.id) {
+        return Error(decl.pos, "duplicate class/channel name: " + decl.id)
       } else {
-        for (m <- cl.members) m match {
-          case _:MonitorInvariant =>
-          case m: NamedMember =>
-            m.Parent = cl
-            if (cl.mm contains m.Id) {
-              return Error(m.pos, "duplicate member name " + m.Id + " in class " + cl.id)
-            } else {
-              cl.mm = cl.mm + (m.Id -> m)
+        decl match {
+          case cl: Class =>
+            for (m <- cl.members) m match {
+              case _:MonitorInvariant =>
+              case m: NamedMember =>
+                m.Parent = cl
+                if (cl.mm contains m.Id) {
+                  return Error(m.pos, "duplicate member name " + m.Id + " in class " + cl.id)
+                } else {
+                  cl.mm = cl.mm + (m.Id -> m)
+                }
             }
+          case _ =>
         }
-        classes = classes + (cl.id -> cl)
+        decls = decls + (decl.id -> decl)
       }
     }
     var errors = List[String]()
 
-    // resolve types of fields and methods
-    val contextNoCurrentClass = new ProgramContext(classes, null)
-    for (cl <- prog; m <- cl.members) m match {
+    // resolve types of members
+    val contextNoCurrentClass = new ProgramContext(decls, null)
+    for (decl <- prog; if decl.isInstanceOf[Class]; m <- decl.asInstanceOf[Class].members) m match {
       case _:MonitorInvariant =>
       case Field(id,t) =>
         ResolveType(t, contextNoCurrentClass)
@@ -75,7 +79,8 @@ object Resolver {
         for (v <- ins ++ outs) {
           ResolveType(v.t, contextNoCurrentClass)
         }
-      case Predicate(id, definition) => 
+      case _:Condition =>
+      case _:Predicate =>
       case Function(id, ins, out, specs, definition) => 
         for (v <- ins) {
           ResolveType(v.t, contextNoCurrentClass)
@@ -88,47 +93,53 @@ object Resolver {
     //  * Field types and Method formal-parameter types
     //  * Assign, FieldUpdate, and Call statements
     //  * VariableExpr and FieldSelect expressions
-    for (cl <- prog) {
-      val context = new ProgramContext(classes, cl)
-      for (m <- cl.members) {
-        context.currentMember = m;
-        m match {
-          case MonitorInvariant(e) =>
-            ResolveExpr(e, context, true, true)(true)
-            if (!e.typ.IsBool) context.Error(m.pos, "monitor invariant requires a boolean expression (found " + e.typ.FullName + ")")
-          case _:Field => // nothing more to do
-          case m@Method(id, ins, outs, spec, body) =>
-            var ctx = context
-            for (v <- ins ++ outs) {
-              ctx = ctx.AddVariable(v)
-            }
-            spec foreach {
-              case Precondition(e) => ResolveExpr(e, ctx, false, true)(false)
-              case Postcondition(e) => ResolveExpr(e, ctx, true, true)(false)
-              case lc@LockChange(ee) => 
-              if(m.id.equals("run")) context.Error(lc.pos, "lockchange not allowed on method run") 
-              ee foreach (e => ResolveExpr(e, ctx, true, false)(false))
-            }
-            ResolveStmt(BlockStmt(body), ctx)
-          case p@Predicate(id, e) =>
-            var ctx = context;
-            ResolveExpr(e, ctx, false, true)(true);
-            if(!e.typ.IsBool) context.Error(e.pos, "predicate requires a boolean expression (found " + e.typ.FullName + ")")
-          case f@Function(id, ins, out, spec, e) =>
-            var ctx = context
-            for (v <- ins) {
-              ctx = ctx.AddVariable(v)
-            }
-            spec foreach {
-              case Precondition(e) => ResolveExpr(e, ctx, false, true)(false)
-              case pc@Postcondition(e) => assert(ctx.CurrentMember != null); ResolveExpr(e, ctx, false, true)(false)
-              case lc@LockChange(ee) => context.Error(lc.pos, "lockchange not allowed on function") 
-            }
-            ResolveExpr(e, ctx, false, false)(false)
-            if(! canAssign(out.typ, e.typ)) context.Error(e.pos, "function body does not match declared type (expected: " + out.FullName + ", found: " + e.typ.FullName + ")")
+    for (decl <- prog) decl match {
+      case _: Channel =>
+      case cl: Class =>
+        val context = new ProgramContext(decls, cl)
+        for (m <- cl.members) {
+          context.currentMember = m;
+          m match {
+            case MonitorInvariant(e) =>
+              ResolveExpr(e, context, true, true)(true)
+              if (!e.typ.IsBool) context.Error(m.pos, "monitor invariant requires a boolean expression (found " + e.typ.FullName + ")")
+            case _:Field => // nothing more to do
+            case m@Method(id, ins, outs, spec, body) =>
+              var ctx = context
+              for (v <- ins ++ outs) {
+                ctx = ctx.AddVariable(v)
+              }
+              spec foreach {
+                case Precondition(e) => ResolveExpr(e, ctx, false, true)(false)
+                case Postcondition(e) => ResolveExpr(e, ctx, true, true)(false)
+                case lc@LockChange(ee) => 
+                if(m.id.equals("run")) context.Error(lc.pos, "lockchange not allowed on method run") 
+                ee foreach (e => ResolveExpr(e, ctx, true, false)(false))
+              }
+              ResolveStmt(BlockStmt(body), ctx)
+            case Condition(id, None) =>
+            case c@Condition(id, Some(e)) =>
+              ResolveExpr(e, context, false, true)(false)
+              if (!e.typ.IsBool) context.Error(c.pos, "where clause requires a boolean expression (found " + e.typ.FullName + ")")
+            case p@Predicate(id, e) =>
+              var ctx = context;
+              ResolveExpr(e, ctx, false, true)(true);
+              if(!e.typ.IsBool) context.Error(e.pos, "predicate requires a boolean expression (found " + e.typ.FullName + ")")
+            case f@Function(id, ins, out, spec, e) =>
+              var ctx = context
+              for (v <- ins) {
+                ctx = ctx.AddVariable(v)
+              }
+              spec foreach {
+                case Precondition(e) => ResolveExpr(e, ctx, false, true)(false)
+                case pc@Postcondition(e) => assert(ctx.CurrentMember != null); ResolveExpr(e, ctx, false, true)(false)
+                case lc@LockChange(ee) => context.Error(lc.pos, "lockchange not allowed on function") 
+              }
+              ResolveExpr(e, ctx, false, false)(false)
+              if(! canAssign(out.typ, e.typ)) context.Error(e.pos, "function body does not match declared type (expected: " + out.FullName + ", found: " + e.typ.FullName + ")")
+          }
         }
-      }
-      errors = errors ++ context.errors
+        errors = errors ++ context.errors
     }
 
     if (errors.length == 0) {
@@ -152,8 +163,13 @@ object Resolver {
         }
         return;
       }
-      if (context.Classes contains t.FullName) {
-        t.typ = context.Classes(t.FullName)
+      if (context.Decls contains t.FullName) {
+        context.Decls(t.FullName) match {
+          case cl: Class => t.typ = cl
+          case _ =>
+            context.Error(t.pos, "Invalid class: " + t.FullName + " does not denote a class")
+            t.typ = IntClass
+        }
       } else {
         if(seqClasses.contains(t.FullName)) {
           t.typ = seqClasses(t.FullName)
@@ -356,7 +372,7 @@ object Resolver {
       CheckNoGhost(e, context);
       if(!e.getMemberAccess.isPredicate) context.Error(ufld.pos, "Unfold can only be applied to predicates.")
     case c@CallAsync(declaresLocal, token, obj, id, args) => 
-      // resolve receiver      
+      // resolve receiver
       ResolveExpr(obj, context, false, false)(false)
       CheckNoGhost(obj, context)
       // resolve arguments
@@ -418,7 +434,31 @@ object Resolver {
           }
         }
       
-     }
+      }
+    case w@Wait(obj, id) =>
+      // resolve receiver
+      ResolveExpr(obj, context, false, false)(false)
+      CheckNoGhost(obj, context)
+      // lookup condition
+      obj.typ.LookupMember(id) match {
+        case None =>
+          context.Error(w.pos, "wait on undeclared member " + id + " in class " + obj.typ.FullName)
+        case Some(c: Condition) => w.c = c
+        case _ =>
+          context.Error(w.pos, "wait expression does not denote a condition: " + obj.typ.FullName + "." + id)
+      }
+    case s@Signal(obj, id, all) =>
+      // resolve receiver
+      ResolveExpr(obj, context, false, false)(false)
+      CheckNoGhost(obj, context)
+      // lookup condition
+      obj.typ.LookupMember(id) match {
+        case None =>
+          context.Error(s.pos, "signal on undeclared member " + id + " in class " + obj.typ.FullName)
+        case Some(c: Condition) => s.c = c
+        case _ =>
+          context.Error(s.pos, "signal expression does not denote a condition: " + obj.typ.FullName + "." + id)
+      }
   }
 
   def ComputeLoopTargets(s: Statement): Set[Variable] = s match {  // local variables
@@ -453,24 +493,27 @@ object Resolver {
   def ResolveExpr(e: RValue, context: ProgramContext,
                   twoStateContext: boolean, specContext: boolean)(implicit inPredicate: Boolean): unit = e match {
     case e @ NewRhs(id, initialization) =>
-      if (context.Classes contains id) {
-        e.typ = context.Classes(id)
-        var fieldNames = Set[String]()
-        for(ini@Init(f, init) <- initialization) {
-          if (fieldNames contains f) {
-            context.Error(ini.pos, "The field " + f + " occurs more than once in initializer.")
-          } else {
-            fieldNames = fieldNames + f
-            e.typ.LookupMember(f) match {
-              case Some(field@Field(name, tp)) =>
-                if(field.isInstanceOf[SpecialField]) context.Error(init.pos, "Initializer cannot assign to special field " + name + ".");
-                ResolveExpr(init, context, false, false);
-                if(! canAssign(tp.typ, init.typ)) context.Error(init.pos, "The field " + name + " cannot be initialized with an expression of type " + init.typ.id + ".");
-                ini.f = field;
-              case _ => 
-                context.Error(e.pos, "The type " + id + " does not declare a field " + f + ".");  
+      if (context.Decls contains id) {
+        context.Decls(id) match {
+          case cl: Class =>
+            e.typ = cl
+            var fieldNames = Set[String]()
+            for(ini@Init(f, init) <- initialization) {
+              if (fieldNames contains f) {
+                context.Error(ini.pos, "The field " + f + " occurs more than once in initializer.")
+              } else {
+                fieldNames = fieldNames + f
+                e.typ.LookupMember(f) match {
+                  case Some(field@Field(name, tp)) =>
+                    if(field.isInstanceOf[SpecialField]) context.Error(init.pos, "Initializer cannot assign to special field " + name + ".");
+                    ResolveExpr(init, context, false, false);
+                    if(! canAssign(tp.typ, init.typ)) context.Error(init.pos, "The field " + name + " cannot be initialized with an expression of type " + init.typ.id + ".");
+                    ini.f = field;
+                  case _ => 
+                    context.Error(e.pos, "The type " + id + " does not declare a field " + f + ".");  
+                }
+              }
             }
-          }
         }
       } else {
         context.Error(e.pos, "undefined class " + id + " used in new expression")
