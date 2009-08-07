@@ -3,6 +3,11 @@ setlocal
 
 set BGEXE=..\..\Binaries\Boogie.exe
 
+for %%f in (test0.bpl) do (
+  echo -------------------- %%f --------------------
+  %BGEXE% %* %%f
+)
+
 for %%f in (test1.bpl test2.bpl test3.bpl test4.bpl) do (
   echo -------------------- %%f --------------------
   %BGEXE% %* /inline:b /print:- /env:0 /printInlined /noinfer %%f
