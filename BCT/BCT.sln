@@ -1,0 +1,166 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BytecodeTranslator", "BytecodeTranslator\BytecodeTranslator.csproj", "{9C8E4D74-0251-479D-ADAC-A9A469977301}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeModel", "..\..\Felt\SourceObjectModel\CodeModel.csproj", "{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ILToCodeModel", "..\..\Felt\ILToCodeModel\ILToCodeModel.csproj", "{27F2A417-B6ED-43AD-A38E-A0B6142216F6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetadataHelper", "..\..\Felt\ObjectModelHelper\MetadataHelper.csproj", "{4A34A3C5-6176-49D7-A4C5-B2B671247F8F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetadataModel", "..\..\Felt\ObjectModel\MetadataModel.csproj", "{33CAB640-0D03-43DF-81BD-22CDC6C0A597}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MutableCodeModel", "..\..\Felt\MutableObjectModel\MutableCodeModel.csproj", "{319E150C-8F33-49E7-81CA-30F02F9BA90A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MutableMetadataModel", "..\..\Felt\MutableMetadataModel\MutableMetadataModel.csproj", "{319E151C-8F33-49E7-81C9-30F02F9BA90A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PdbReader", "..\..\Felt\PdbReader\PdbReader.csproj", "{A6A31B03-7C3D-4DE6-AA73-BE88116BC40A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PeReader", "..\..\Felt\ModuleReadWrite\ModuleReadWrite\PeReader.csproj", "{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SourceModel", "..\..\Felt\SourceModel\SourceModel.csproj", "{4B0054FD-124A-4037-9965-BDB55E6BF389}"
+EndProject
+Global
+	GlobalSection(TeamFoundationVersionControl) = preSolution
+		SccNumberOfProjects = 9
+		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccTeamFoundationServer = http://vstfdevdiv:8080/
+		SccProjectUniqueName0 = ..\\..\\Felt\\SourceObjectModel\\CodeModel.csproj
+		SccProjectName0 = $/FELT/SourceObjectModel
+		SccAuxPath0 = http://vstfdevdiv:8080
+		SccLocalPath0 = ..\\..\\Felt\\SourceObjectModel
+		SccProvider0 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccProjectUniqueName1 = ..\\..\\Felt\\ILToCodeModel\\ILToCodeModel.csproj
+		SccProjectName1 = $/FELT/ILToCodeModel
+		SccAuxPath1 = http://vstfdevdiv:8080
+		SccLocalPath1 = ..\\..\\Felt\\ILToCodeModel
+		SccProvider1 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccProjectUniqueName2 = ..\\..\\Felt\\ObjectModelHelper\\MetadataHelper.csproj
+		SccProjectName2 = $/FELT/ObjectModelHelper
+		SccAuxPath2 = http://vstfdevdiv:8080
+		SccLocalPath2 = ..\\..\\Felt\\ObjectModelHelper
+		SccProvider2 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccProjectUniqueName3 = ..\\..\\Felt\\ObjectModel\\MetadataModel.csproj
+		SccProjectName3 = $/FELT/ObjectModel
+		SccAuxPath3 = http://vstfdevdiv:8080
+		SccLocalPath3 = ..\\..\\Felt\\ObjectModel
+		SccProvider3 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccProjectUniqueName4 = ..\\..\\Felt\\MutableObjectModel\\MutableCodeModel.csproj
+		SccProjectName4 = $/FELT/MutableObjectModel
+		SccAuxPath4 = http://vstfdevdiv:8080
+		SccLocalPath4 = ..\\..\\Felt\\MutableObjectModel
+		SccProvider4 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccProjectUniqueName5 = ..\\..\\Felt\\MutableMetadataModel\\MutableMetadataModel.csproj
+		SccProjectName5 = $/FELT/MutableMetadataModel
+		SccAuxPath5 = http://vstfdevdiv:8080
+		SccLocalPath5 = ..\\..\\Felt\\MutableMetadataModel
+		SccProvider5 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccProjectUniqueName6 = ..\\..\\Felt\\PdbReader\\PdbReader.csproj
+		SccProjectName6 = $/FELT/PdbReader
+		SccAuxPath6 = http://vstfdevdiv:8080
+		SccLocalPath6 = ..\\..\\Felt\\PdbReader
+		SccProvider6 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccProjectUniqueName7 = ..\\..\\Felt\\ModuleReadWrite\\ModuleReadWrite\\PeReader.csproj
+		SccProjectName7 = $/FELT/ModuleReadWrite/ModuleReadWrite
+		SccAuxPath7 = http://vstfdevdiv:8080
+		SccLocalPath7 = ..\\..\\Felt\\ModuleReadWrite\\ModuleReadWrite
+		SccProvider7 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccProjectUniqueName8 = ..\\..\\Felt\\SourceModel\\SourceModel.csproj
+		SccProjectName8 = $/FELT/SourceModel
+		SccAuxPath8 = http://vstfdevdiv:8080
+		SccLocalPath8 = ..\\..\\Felt\\SourceModel
+		SccProvider8 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		NightlyDebug|Any CPU = NightlyDebug|Any CPU
+		NightlyRelease|Any CPU = NightlyRelease|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9C8E4D74-0251-479D-ADAC-A9A469977301}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C8E4D74-0251-479D-ADAC-A9A469977301}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9C8E4D74-0251-479D-ADAC-A9A469977301}.NightlyDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C8E4D74-0251-479D-ADAC-A9A469977301}.NightlyDebug|Any CPU.Build.0 = Debug|Any CPU
+		{9C8E4D74-0251-479D-ADAC-A9A469977301}.NightlyRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{9C8E4D74-0251-479D-ADAC-A9A469977301}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
+		{9C8E4D74-0251-479D-ADAC-A9A469977301}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9C8E4D74-0251-479D-ADAC-A9A469977301}.Release|Any CPU.Build.0 = Release|Any CPU
+		{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}.NightlyDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}.NightlyDebug|Any CPU.Build.0 = Debug|Any CPU
+		{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}.NightlyRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
+		{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27F2A417-B6ED-43AD-A38E-A0B6142216F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27F2A417-B6ED-43AD-A38E-A0B6142216F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27F2A417-B6ED-43AD-A38E-A0B6142216F6}.NightlyDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27F2A417-B6ED-43AD-A38E-A0B6142216F6}.NightlyDebug|Any CPU.Build.0 = Debug|Any CPU
+		{27F2A417-B6ED-43AD-A38E-A0B6142216F6}.NightlyRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{27F2A417-B6ED-43AD-A38E-A0B6142216F6}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
+		{27F2A417-B6ED-43AD-A38E-A0B6142216F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27F2A417-B6ED-43AD-A38E-A0B6142216F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A34A3C5-6176-49D7-A4C5-B2B671247F8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A34A3C5-6176-49D7-A4C5-B2B671247F8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A34A3C5-6176-49D7-A4C5-B2B671247F8F}.NightlyDebug|Any CPU.ActiveCfg = NightlyDebug|Any CPU
+		{4A34A3C5-6176-49D7-A4C5-B2B671247F8F}.NightlyDebug|Any CPU.Build.0 = NightlyDebug|Any CPU
+		{4A34A3C5-6176-49D7-A4C5-B2B671247F8F}.NightlyRelease|Any CPU.ActiveCfg = NightlyRelease|Any CPU
+		{4A34A3C5-6176-49D7-A4C5-B2B671247F8F}.NightlyRelease|Any CPU.Build.0 = NightlyRelease|Any CPU
+		{4A34A3C5-6176-49D7-A4C5-B2B671247F8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A34A3C5-6176-49D7-A4C5-B2B671247F8F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33CAB640-0D03-43DF-81BD-22CDC6C0A597}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33CAB640-0D03-43DF-81BD-22CDC6C0A597}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33CAB640-0D03-43DF-81BD-22CDC6C0A597}.NightlyDebug|Any CPU.ActiveCfg = NightlyDebug|Any CPU
+		{33CAB640-0D03-43DF-81BD-22CDC6C0A597}.NightlyDebug|Any CPU.Build.0 = NightlyDebug|Any CPU
+		{33CAB640-0D03-43DF-81BD-22CDC6C0A597}.NightlyRelease|Any CPU.ActiveCfg = NightlyRelease|Any CPU
+		{33CAB640-0D03-43DF-81BD-22CDC6C0A597}.NightlyRelease|Any CPU.Build.0 = NightlyRelease|Any CPU
+		{33CAB640-0D03-43DF-81BD-22CDC6C0A597}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33CAB640-0D03-43DF-81BD-22CDC6C0A597}.Release|Any CPU.Build.0 = Release|Any CPU
+		{319E150C-8F33-49E7-81CA-30F02F9BA90A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{319E150C-8F33-49E7-81CA-30F02F9BA90A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{319E150C-8F33-49E7-81CA-30F02F9BA90A}.NightlyDebug|Any CPU.ActiveCfg = NightlyDebug|Any CPU
+		{319E150C-8F33-49E7-81CA-30F02F9BA90A}.NightlyDebug|Any CPU.Build.0 = NightlyDebug|Any CPU
+		{319E150C-8F33-49E7-81CA-30F02F9BA90A}.NightlyRelease|Any CPU.ActiveCfg = NightlyRelease|Any CPU
+		{319E150C-8F33-49E7-81CA-30F02F9BA90A}.NightlyRelease|Any CPU.Build.0 = NightlyRelease|Any CPU
+		{319E150C-8F33-49E7-81CA-30F02F9BA90A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{319E150C-8F33-49E7-81CA-30F02F9BA90A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{319E151C-8F33-49E7-81C9-30F02F9BA90A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{319E151C-8F33-49E7-81C9-30F02F9BA90A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{319E151C-8F33-49E7-81C9-30F02F9BA90A}.NightlyDebug|Any CPU.ActiveCfg = NightlyDebug|Any CPU
+		{319E151C-8F33-49E7-81C9-30F02F9BA90A}.NightlyDebug|Any CPU.Build.0 = NightlyDebug|Any CPU
+		{319E151C-8F33-49E7-81C9-30F02F9BA90A}.NightlyRelease|Any CPU.ActiveCfg = NightlyRelease|Any CPU
+		{319E151C-8F33-49E7-81C9-30F02F9BA90A}.NightlyRelease|Any CPU.Build.0 = NightlyRelease|Any CPU
+		{319E151C-8F33-49E7-81C9-30F02F9BA90A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{319E151C-8F33-49E7-81C9-30F02F9BA90A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6A31B03-7C3D-4DE6-AA73-BE88116BC40A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6A31B03-7C3D-4DE6-AA73-BE88116BC40A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6A31B03-7C3D-4DE6-AA73-BE88116BC40A}.NightlyDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6A31B03-7C3D-4DE6-AA73-BE88116BC40A}.NightlyDebug|Any CPU.Build.0 = Debug|Any CPU
+		{A6A31B03-7C3D-4DE6-AA73-BE88116BC40A}.NightlyRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{A6A31B03-7C3D-4DE6-AA73-BE88116BC40A}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
+		{A6A31B03-7C3D-4DE6-AA73-BE88116BC40A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6A31B03-7C3D-4DE6-AA73-BE88116BC40A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}.NightlyDebug|Any CPU.ActiveCfg = NightlyDebug|Any CPU
+		{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}.NightlyDebug|Any CPU.Build.0 = NightlyDebug|Any CPU
+		{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}.NightlyRelease|Any CPU.ActiveCfg = NightlyRelease|Any CPU
+		{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}.NightlyRelease|Any CPU.Build.0 = NightlyRelease|Any CPU
+		{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B0054FD-124A-4037-9965-BDB55E6BF389}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B0054FD-124A-4037-9965-BDB55E6BF389}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B0054FD-124A-4037-9965-BDB55E6BF389}.NightlyDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B0054FD-124A-4037-9965-BDB55E6BF389}.NightlyDebug|Any CPU.Build.0 = Debug|Any CPU
+		{4B0054FD-124A-4037-9965-BDB55E6BF389}.NightlyRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{4B0054FD-124A-4037-9965-BDB55E6BF389}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
+		{4B0054FD-124A-4037-9965-BDB55E6BF389}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B0054FD-124A-4037-9965-BDB55E6BF389}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
