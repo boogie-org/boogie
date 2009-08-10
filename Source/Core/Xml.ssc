@@ -281,7 +281,6 @@ namespace Microsoft.Boogie
     }
     
     public void Dispose()
-      modifies this.*, sink.*;
     {
       if (sink != null) {
         assume sink.IsOpen;
