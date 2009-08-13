@@ -3127,12 +3127,11 @@ namespace VC
     static BlockSeq! RemoveEmptyBlocks(Block! b)
     {
       assert b.TraversingStatus == Block.VisitState.ToVisit;
-      BlockSeq! retVal = removeEmptyBlocksWorker(b);
-  
+      BlockSeq retVal = removeEmptyBlocksWorker(b, true);
       return retVal;
     }
 
-    private static BlockSeq! removeEmptyBlocksWorker(Block! b)
+    private static BlockSeq! removeEmptyBlocksWorker(Block! b, bool startNode)
     {
       BlockSeq bs = new BlockSeq();
       GotoCmd gtc = b.TransferCmd as GotoCmd;
@@ -3153,7 +3152,7 @@ namespace VC
         // merge result into a *set* of blocks
         Dictionary<Block,bool> mergedSuccessors = new Dictionary<Block,bool>();
         foreach (Block! dest in gtc.labelTargets){
-          BlockSeq! ys = removeEmptyBlocksWorker(dest);
+          BlockSeq! ys = removeEmptyBlocksWorker(dest, false);
           foreach (Block successor in ys){
             if (!mergedSuccessors.ContainsKey(successor))
               mergedSuccessors.Add(successor,true);
@@ -3162,12 +3161,9 @@ namespace VC
         b.TraversingStatus = Block.VisitState.AlreadyVisited;
 
         BlockSeq setOfSuccessors = new BlockSeq();
-        if (mergedSuccessors.Keys != null)
-        {
-          foreach (Block d in mergedSuccessors.Keys)
-            setOfSuccessors.Add(d);
-        }
-        if (b.Cmds.Length == 0)
+        foreach (Block d in mergedSuccessors.Keys)
+          setOfSuccessors.Add(d);
+        if (b.Cmds.Length == 0 && !startNode)
           return setOfSuccessors;
         // otherwise, update the list of successors of b to be the blocks in setOfSuccessors
         gtc.labelTargets = setOfSuccessors;
