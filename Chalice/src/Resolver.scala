@@ -62,7 +62,7 @@ object Resolver {
                   cl.mm = cl.mm + (m.Id -> m)
                 }
             }
-          case _ =>
+          case ch: Channel =>
         }
         decls = decls + (decl.id -> decl)
       }
@@ -71,21 +71,28 @@ object Resolver {
 
     // resolve types of members
     val contextNoCurrentClass = new ProgramContext(decls, null)
-    for (decl <- prog; if decl.isInstanceOf[Class]; m <- decl.asInstanceOf[Class].members) m match {
-      case _:MonitorInvariant =>
-      case Field(id,t) =>
-        ResolveType(t, contextNoCurrentClass)
-      case Method(id, ins, outs, spec, body) =>
-        for (v <- ins ++ outs) {
+    for (decl <- prog) decl match {
+      case ch: Channel =>
+        for (v <- ch.parameters) {
           ResolveType(v.t, contextNoCurrentClass)
+	}
+      case cl: Class =>
+        for (m <- cl.asInstanceOf[Class].members) m match {
+          case _:MonitorInvariant =>
+          case Field(id,t) =>
+            ResolveType(t, contextNoCurrentClass)
+          case Method(id, ins, outs, spec, body) =>
+            for (v <- ins ++ outs) {
+              ResolveType(v.t, contextNoCurrentClass)
+            }
+          case _:Condition =>
+          case _:Predicate =>
+          case Function(id, ins, out, specs, definition) => 
+            for (v <- ins) {
+              ResolveType(v.t, contextNoCurrentClass)
+            }
+            ResolveType(out, contextNoCurrentClass)
         }
-      case _:Condition =>
-      case _:Predicate =>
-      case Function(id, ins, out, specs, definition) => 
-        for (v <- ins) {
-          ResolveType(v.t, contextNoCurrentClass)
-        }
-        ResolveType(out, contextNoCurrentClass)
     }
     errors = errors ++ contextNoCurrentClass.errors;
 
@@ -94,7 +101,12 @@ object Resolver {
     //  * Assign, FieldUpdate, and Call statements
     //  * VariableExpr and FieldSelect expressions
     for (decl <- prog) decl match {
-      case _: Channel =>
+      case ch: Channel =>
+        var ctx = new ProgramContext(decls, ChannelClass(ch))
+        for (v <- ch.parameters) {
+          ctx = ctx.AddVariable(v)
+        }
+        ResolveExpr(ch.where, ctx, false, true)(false)
       case cl: Class =>
         val context = new ProgramContext(decls, cl)
         for (m <- cl.members) {
@@ -130,6 +142,7 @@ object Resolver {
               for (v <- ins) {
                 ctx = ctx.AddVariable(v)
               }
+	      // TODO: disallow credit(...) expressions in function specifications
               spec foreach {
                 case Precondition(e) => ResolveExpr(e, ctx, false, true)(false)
                 case pc@Postcondition(e) => assert(ctx.CurrentMember != null); ResolveExpr(e, ctx, false, true)(false)
@@ -166,6 +179,7 @@ object Resolver {
       if (context.Decls contains t.FullName) {
         context.Decls(t.FullName) match {
           case cl: Class => t.typ = cl
+          case ch: Channel => t.typ = ChannelClass(ch)
           case _ =>
             context.Error(t.pos, "Invalid class: " + t.FullName + " does not denote a class")
             t.typ = IntClass
@@ -311,25 +325,20 @@ object Resolver {
       }
     case Install(obj, lowerBounds, upperBounds) =>
       ResolveExpr(obj, context, false, false)(false)
-      if (!obj.typ.IsRef) context.Error(obj.pos, "object in install statement must be of a reference type (found " + obj.typ.FullName + ")")
-      for (b <- lowerBounds ++ upperBounds) {
-        ResolveExpr(b, context, true, false)(false)
-        if (!b.typ.IsRef && !b.typ.IsMu) context.Error(b.pos, "install bound must be of a reference type or Mu type" +
-                                                       " (found " + b.typ.FullName + ")")
-      }
+      if (!obj.typ.IsRef) context.Error(obj.pos, "object in reorder statement must be of a reference type (found " + obj.typ.FullName + ")")
+      if (obj.typ.IsChannel) context.Error(obj.pos, "object in reorder statement must not be a channel (found " + obj.typ.FullName + ")")
+      ResolveBounds(lowerBounds, upperBounds, context, "install")
     case Share(obj, lowerBounds, upperBounds) =>
       ResolveExpr(obj, context, false, false)(false)
       CheckNoGhost(obj, context)
       if (!obj.typ.IsRef) context.Error(obj.pos, "object in share statement must be of a reference type (found " + obj.typ.FullName + ")")
-      for (b <- lowerBounds ++ upperBounds) {
-        ResolveExpr(b, context, true, false)(false)
-        if (!b.typ.IsRef && !b.typ.IsMu) context.Error(b.pos, "share bound must be of a reference type or Mu type" +
-                                                       " (found " + b.typ.FullName + ")")
-      }
+      if (obj.typ.IsChannel) context.Error(obj.pos, "object in share statement must not be a channel (found " + obj.typ.FullName + ")")
+      ResolveBounds(lowerBounds, upperBounds, context, "share")
     case Unshare(obj) =>
       ResolveExpr(obj, context, false, false)(false)
       CheckNoGhost(obj, context)
       if (!obj.typ.IsRef) context.Error(obj.pos, "object in unshare statement must be of a reference type (found " + obj.typ.FullName + ")")
+      if (obj.typ.IsChannel) context.Error(obj.pos, "object in unshare statement must not be a channel (found " + obj.typ.FullName + ")")
     case Acquire(obj) =>
       ResolveExpr(obj, context, false, false)(false)
       CheckNoGhost(obj, context)
@@ -459,7 +468,63 @@ object Resolver {
         case _ =>
           context.Error(s.pos, "signal expression does not denote a condition: " + obj.typ.FullName + "." + id)
       }
+    case s@Send(ch, args) =>
+      ResolveExpr(ch, context, false, false)(false)
+      CheckNoGhost(ch, context)
+      args foreach { a => ResolveExpr(a, context, false, false)(false); CheckNoGhost(a, context) }
+      // match types of arguments
+      ch.typ match {
+        case ChannelClass(channel) =>
+          if (args.length != channel.parameters.length)
+            context.Error(s.pos, "wrong number of actual in-parameters in send for channel type " + ch.typ.FullName +
+                          " (" + args.length + " instead of " + channel.parameters.length + ")")
+          else {
+            for ((actual, formal) <- args zip channel.parameters) {
+              if (! canAssign(formal.t.typ, actual.typ))
+                context.Error(actual.pos, "the type of the actual argument is not assignable to the formal parameter (expected: " + formal.t.FullName + ", found: " + actual.typ.FullName + ")")
+            }
+          }
+        case _ => context.Error(s.pos, "send expression (which has type " + ch.typ.FullName + ") does not denote a channel")
+      }
+    case r@Receive(ch, outs) =>
+      ResolveExpr(ch, context, false, false)(false)
+      CheckNoGhost(ch, context)
+      outs foreach { a => ResolveExpr(a, context, false, false)(false); CheckNoGhost(a, context) }
+      // check the outs to be appropriate actually out parameters
+      var vars = Set[Variable]()
+      for (v <- outs) {
+        ResolveExpr(v, context, false, false)(false)
+        if (v.v != null) {
+          if (v.v.IsImmutable) context.Error(v.pos, "cannot use immutable variable " + v.id + " as actual out-parameter of receive")
+          if (vars contains v.v) {
+            context.Error(v.pos, "duplicate actual out-parameter: " + v.id)
+          } else {
+            vars = vars + v.v
+          }
+        }
+      }
+      // match types of arguments
+      ch.typ match {
+        case ChannelClass(channel) =>
+          if (outs.length != channel.parameters.length)
+            context.Error(r.pos, "wrong number of actual out-parameters in receive for channel type " + ch.typ.FullName +
+                          " (" + outs.length + " instead of " + channel.parameters.length + ")")
+          else {
+            for ((actual, formal) <- outs zip channel.parameters) {
+              if (! canAssign(actual.typ, formal.t.typ))
+                context.Error(actual.pos, "the type of the formal argument is not assignable to the actual parameter (expected: " + formal.t.FullName + ", found: " + actual.typ.FullName + ")")
+            }
+          }
+        case _ => context.Error(r.pos, "receive expression (which has type " + ch.typ.FullName + ") does not denote a channel")
+      }
   }
+
+  def ResolveBounds(lowerBounds: List[Expression], upperBounds: List[Expression], context: ProgramContext, descript: String) =
+    for (b <- lowerBounds ++ upperBounds) {
+      ResolveExpr(b, context, true, false)(false)
+      if (!b.typ.IsRef && !b.typ.IsMu)
+        context.Error(b.pos, descript + " bound must be of a reference type or Mu type (found " + b.typ.FullName + ")")
+    }
 
   def ComputeLoopTargets(s: Statement): Set[Variable] = s match {  // local variables
     case BlockStmt(ss) =>
@@ -492,31 +557,38 @@ object Resolver {
   // ResolveExpr resolves all parts of an RValue, if possible, and (always) sets the RValue's typ field
   def ResolveExpr(e: RValue, context: ProgramContext,
                   twoStateContext: boolean, specContext: boolean)(implicit inPredicate: Boolean): unit = e match {
-    case e @ NewRhs(id, initialization) =>
+    case e @ NewRhs(id, initialization, lower, upper) =>
       if (context.Decls contains id) {
         context.Decls(id) match {
+          case ch: Channel =>
+            e.typ = ChannelClass(ch)
           case cl: Class =>
             e.typ = cl
-            var fieldNames = Set[String]()
-            for(ini@Init(f, init) <- initialization) {
-              if (fieldNames contains f) {
-                context.Error(ini.pos, "The field " + f + " occurs more than once in initializer.")
-              } else {
-                fieldNames = fieldNames + f
-                e.typ.LookupMember(f) match {
-                  case Some(field@Field(name, tp)) =>
-                    if(field.isInstanceOf[SpecialField]) context.Error(init.pos, "Initializer cannot assign to special field " + name + ".");
-                    ResolveExpr(init, context, false, false);
-                    if(! canAssign(tp.typ, init.typ)) context.Error(init.pos, "The field " + name + " cannot be initialized with an expression of type " + init.typ.id + ".");
-                    ini.f = field;
-                  case _ => 
-                    context.Error(e.pos, "The type " + id + " does not declare a field " + f + ".");  
-                }
-              }
-            }
+            if (lower != Nil || upper != Nil)
+              context.Error(e.pos, "A new object of a class type is not allowed to have a wait-order bounds clause (use the share statement instead)")
         }
+        // initialize the fields
+        var fieldNames = Set[String]()
+        for(ini@Init(f, init) <- initialization) {
+          if (fieldNames contains f) {
+            context.Error(ini.pos, "The field " + f + " occurs more than once in initializer.")
+          } else {
+            fieldNames = fieldNames + f
+            e.typ.LookupMember(f) match {
+              case Some(field@Field(name, tp)) =>
+                if(field.isInstanceOf[SpecialField]) context.Error(init.pos, "Initializer cannot assign to special field " + name + ".");
+                ResolveExpr(init, context, false, false);
+                if(! canAssign(tp.typ, init.typ)) context.Error(init.pos, "The field " + name + " cannot be initialized with an expression of type " + init.typ.id + ".");
+                ini.f = field;
+              case _ => 
+                context.Error(e.pos, "The type " + id + " does not declare a field " + f + ".");  
+            }
+          }
+        }
+        // resolve the bounds
+        ResolveBounds(lower, upper, context, "new")
       } else {
-        context.Error(e.pos, "undefined class " + id + " used in new expression")
+        context.Error(e.pos, "undefined class or channel " + id + " used in new expression")
         e.typ = IntClass
       }
     case i:IntLiteral =>
@@ -587,6 +659,12 @@ object Resolver {
       perm match {
         case Some(Some(p)) => ResolveExpr(p, context, twoStateContext, false)
         case _ => }
+      expr.typ = BoolClass
+    case expr@ Credit(e,n) =>
+      if (!specContext) context.Error(expr.pos, "credit expression is allowed only in positive predicate contexts")
+      ResolveExpr(e, context, twoStateContext, false)
+      if(!e.typ.IsChannel) context.Error(expr.pos, "credit argument must denote a channel.")
+      ResolveExpr(expr.N, context, twoStateContext, false)
       expr.typ = BoolClass
     case expr@ Holds(e) =>
       if(inPredicate) context.Error(expr.pos, "holds cannot be mentioned in monitor invariants or predicates")
@@ -864,6 +942,9 @@ object Resolver {
     case RdAccessAll(obj, perm) =>
       CheckRunSpecification(obj, context, false)
       perm match { case Some(Some(p)) => CheckRunSpecification(p, context, false) case _ => }
+    case expr@ Credit(e, n) =>
+      CheckRunSpecification(e, context, false)
+      CheckRunSpecification(expr.N, context, false)
     case Holds(e) =>
       context.Error(e.pos, "holds is not allowed in specification of run method")
     case RdHolds(e) =>
@@ -930,6 +1011,8 @@ object Resolver {
         func(obj); perm match { case Some(p) => func(p); case _ => ; }
       case RdAccessAll(obj, perm) =>
         func(obj); perm match { case Some(Some(p)) => func(p); case _ => ; }
+      case Credit(e, n) =>
+        func(e); n match { case Some(n) => func(n); case _ => }
       case Holds(e) => func(e);
       case RdHolds(e) => func(e);
       case e: Assigned => e

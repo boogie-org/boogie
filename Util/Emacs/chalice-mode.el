@@ -32,14 +32,15 @@
    `(,(chalice-regexp-opt '(
         "class" "ghost" "var" "const" "external" "function" "method"
         "predicate" "returns" "requires" "ensures" "lockchange"
-        "invariant"
+        "invariant" "channel" "condition" "where"
         )) . font-lock-builtin-face)
    `(,(chalice-regexp-opt '(
         "above" "acc" "acquire" "and" "assert" "assigned" "assume"
-        "below" "between" "call"
+        "below" "between" "call" "credit"
         "downgrade" "else" "eval" "exists" "fold" "forall" "fork" "free" "havoc" "holds"
         "if" "in" "install" "ite" "join" "lock" "lockbottom" "maxlock" "module" "new" "nil"
-        "old" "rd" "release" "result" "share" "this" "unfold" "unfolding" "unshare" "while"
+        "old" "rd" "receive" "release" "result" "send" "share"
+        "this" "unfold" "unfolding" "unshare" "while"
         "false" "true" "null")) . font-lock-keyword-face)
    `(,(chalice-regexp-opt '("bool" "int" "seq" "token")) . font-lock-type-face)
    )

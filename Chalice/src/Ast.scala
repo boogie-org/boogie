@@ -30,6 +30,7 @@ sealed case class Class(classId: String, parameters: List[Class], module: String
   def IsMu: boolean = false
   def IsSeq: boolean = false
   def IsToken: boolean = false
+  def IsChannel: boolean = false
   def IsState: boolean = false
   def IsNormalClass = true;
   var IsExternal = false;  // says whether or not to compile the class (compilation ignores external classes)
@@ -81,6 +82,11 @@ case class TokenClass(c: Type, m: String) extends Class("token", Nil, "default",
   override def IsNormalClass = false;
   override def FullName: String = "token<" + c.FullName + "." + m + ">"
   mm = mm.+(("joinable", Fields(0)));
+}
+case class ChannelClass(ch: Channel) extends Class(ch.id, Nil, "default", Nil) {
+  override def IsRef = true;
+  override def IsChannel = true;
+  override def IsNormalClass = false;
 }
 
 object RootClass extends Class("$root", Nil, "default", List(
@@ -209,6 +215,10 @@ case class Wait(obj: Expression, id: String) extends Statement {
 case class Signal(obj: Expression, id: String, all: boolean) extends Statement {
   var c: Condition = null
 }
+case class Send(ch: Expression, args: List[Expression]) extends Statement {
+}
+case class Receive(ch: Expression, outs: List[VariableExpr]) extends Statement {
+}
 case class Fold(pred: PermissionExpr) extends Statement
 case class Unfold(pred: PermissionExpr) extends Statement
 
@@ -217,7 +227,7 @@ case class Unfold(pred: PermissionExpr) extends Statement
 sealed abstract class RValue extends ASTNode {
   var typ: Class = null
 }
-case class NewRhs(id: String, initialization: List[Init]) extends RValue
+case class NewRhs(id: String, initialization: List[Init], lowerBounds: List[Expression], upperBounds: List[Expression]) extends RValue
 case class Init(id: String, e: Expression) extends ASTNode {
   var f: Field = null;
 }
@@ -261,6 +271,10 @@ case class RdAccess(e: MemberAccess, perm: Option[Option[Expression]]) extends P
 
 case class AccessAll(obj: Expression, perm: Option[Expression]) extends Expression
 case class RdAccessAll(obj: Expression, perm: Option[Option[Expression]]) extends Expression
+
+case class Credit(e: Expression, n: Option[Expression]) extends Expression {
+  def N = n match { case None => IntLiteral(1) case Some(n) => n }
+}
 
 case class Holds(e: Expression) extends Expression
 case class RdHolds(e: Expression) extends Expression

@@ -148,6 +148,15 @@ object PrintProgram {
       print("signal "); if (all) { print(" forall") }
       MemberSelect(obj, id, 0, false)
       println(Semi)
+    case Send(ch, args) =>
+      print("send "); Expr(ch); print("("); ExprList(args); print(")"); println(Semi)
+    case Receive(ch, outs) =>
+      print("receive ")
+      outs match {
+        case Nil =>
+        case x :: xs => Expr(x); xs foreach { x => print(", "); Expr(x) }; print(" := ")
+      }
+      Expr(ch); println(Semi)
   }
   def PrintBounds(lower: List[Expression], upper: List[Expression]) = {
     if (lower == Nil && upper == Nil) {
@@ -177,11 +186,12 @@ object PrintProgram {
       rest foreach { e => print(", "); Expr(e) }
   }
   def Rhs(e: RValue) = e match {
-    case NewRhs(id, initialization) => 
+    case NewRhs(id, initialization, lower, upper) => 
       print("new " + id); 
       if(0 < initialization.length) { 
         print(" {"); print(initialization(0).id); print(":="); Expr(initialization(0).e); initialization.foreach({ init => print(", "); print(init.id); print(":="); Expr(init.e); }); print("}");
       }
+      PrintBounds(lower, upper)
     case e: Expression => Expr(e)
   }
   def Expr(e: Expression): Unit = Expr(e, 0, false)
@@ -217,6 +227,10 @@ object PrintProgram {
         case Some(None) =>    print(", *)")
         case Some(Some(e)) => print(", "); Expr(e); print(")")
       }
+    case Credit(e, n) =>
+      print("credit("); Expr(e)
+      n match { case None => case Some(n) => print(", "); Expr(n) }
+      print(")")
     case Holds(e) =>
           print("holds("); Expr(e); print(")")
     case RdHolds(e) =>

@@ -22,7 +22,7 @@ class Parser extends StandardTokenParsers {
   lexical.reserved += ("class", "ghost", "var", "const", "method", "channel", "condition",
                        "assert", "assume", "new", "this", "reorder",
                        "between", "and", "above", "below", "share", "unshare", "acquire", "release", "downgrade",
-                       "lock", "fork", "join", "rd", "acc", "holds", "old", "assigned",
+                       "lock", "fork", "join", "rd", "acc", "credit", "holds", "old", "assigned",
                        "call", "if", "else", "while", "invariant", "lockchange",
                        "returns", "requires", "ensures", "where",
                        "int", "bool", "false", "true", "null", "maxlock", "lockbottom",
@@ -69,6 +69,8 @@ class Parser extends StandardTokenParsers {
       | ("token" ~ "<") ~> (typeDecl <~ ".") ~ ident <~ ">" ^^ { case c ~ m => TokenType(c, m) }
       )
   def Semi = ";" ?
+
+  var currentLocalVariables = Set[String]()
 
   def invariantDecl = positioned("invariant" ~> expression <~ Semi ^^ MonitorInvariant)
 
@@ -178,17 +180,17 @@ class Parser extends StandardTokenParsers {
             case VariableExpr(id) => (new ImplicitThisExpr, id)
             case MemberAccess(obj, id) => (obj, id) 
           }
-          CallAsync(false, null, receiver, name, ExtractList(args))
+          CallAsync(false, null, receiver, name, args)
         case Some(List(tok)) ~ target ~ args => 
           val (receiver, name) = target match { 
             case VariableExpr(id) => (new ImplicitThisExpr, id)
             case MemberAccess(obj, id) => (obj, id) 
           }
           if (currentLocalVariables contains tok.id) {
-            CallAsync(false, tok, receiver, name, ExtractList(args))
+            CallAsync(false, tok, receiver, name, args)
           } else {
             currentLocalVariables = currentLocalVariables + tok.id;
-            CallAsync(true, tok, receiver, name, ExtractList(args))
+            CallAsync(true, tok, receiver, name, args)
           }
         }, t => "fork statement cannot take more than 1 left-hand side")
     | (("join") ~> ( identList <~ ":=" ?)) ~ expression <~ Semi ^^ 
@@ -198,6 +200,14 @@ class Parser extends StandardTokenParsers {
     | "signal" ~> ("forall" ?) ~ memberAccess <~ Semi ^^ {
         case None ~ MemberAccess(obj, id) => Signal(obj, id, false)
         case _ ~ MemberAccess(obj, id) => Signal(obj, id, true) }
+    | ("send" ~> suffixPlusExpr into { e => e match {
+        case FunctionApplication(obj, name, args) => Semi ^^^ Send(MemberAccess(obj,name), args)
+        case e => "(" ~> expressionList <~ ")" <~ Semi ^^ { case args => Send(e, args) }}})
+    | ("send" ~> atom into { e => e match {
+        case FunctionApplication(ImplicitThisExpr(), name, args) => Semi ^^^ Send(VariableExpr(name), args)
+        case e => "(" ~> expressionList <~ ")" <~ Semi ^^ { case args => Send(e, args) }}})
+    | "receive" ~> (identList <~ ":=" ?) ~ expression <~ Semi ^^ {
+        case outs ~ e => Receive(e, ExtractList(outs)) }
     )
   def localVarStmt(const: boolean, ghost: boolean) =
       idTypeOpt ~ (":=" ~> Rhs ?) <~ Semi ^^ {
@@ -209,7 +219,7 @@ class Parser extends StandardTokenParsers {
                      case None =>
                        // do a cheap (and hokey) type inference of the RHS
                        rhs match {
-                         case Some(NewRhs(tid, _)) => Type(tid, Nil)
+                         case Some(NewRhs(tid, _, _, _)) => Type(tid, Nil)
                          case Some(BoolLiteral(b)) => Type("bool", Nil)
                          case _ => Type("int", Nil)
                        }
@@ -237,11 +247,11 @@ class Parser extends StandardTokenParsers {
     )
   def callStmt =
     callSignature ^? ({
-      case outs ~ VariableExpr(id) ~ args => Call(ExtractList(outs), new ImplicitThisExpr, id, ExtractList(args))
-      case outs ~ MemberAccess(obj,id) ~ args => Call(ExtractList(outs), obj, id, ExtractList(args))
+      case outs ~ VariableExpr(id) ~ args => Call(ExtractList(outs), new ImplicitThisExpr, id, args)
+      case outs ~ MemberAccess(obj,id) ~ args => Call(ExtractList(outs), obj, id, args)
     }, t => "bad call statement")
   def callSignature =
-    (identList <~ ":=" ?) ~ callTarget ~ (expressionList?) <~ ")" <~ Semi
+    (identList <~ ":=" ?) ~ callTarget ~ expressionList <~ ")" <~ Semi
   def callTarget =  // returns a VariableExpr or a FieldSelect
       ( ident <~ "(" ^^ VariableExpr
       | selectExprFerSure <~ "("
@@ -257,21 +267,31 @@ class Parser extends StandardTokenParsers {
     ( Ident ^^ { case t => val v = VariableExpr(t.v); v.pos = t.pos; v }) ~
     (("," ~> Ident ^^ { case t => val v = VariableExpr(t.v); v.pos = t.pos; v }) *) ^^ { case e ~ ee => e::ee }
   def Rhs : Parser[RValue] =
-    positioned( "new" ~> ident ~ opt("{" ~> repsep(FieldInit, ",") <~ "}") ^^ { case id ~ None => NewRhs(id, Nil)
-                                                                                case id ~ Some(inits) => NewRhs(id, inits)
-                                                                              }
+    positioned(
+      "new" ~> ident ~ opt("{" ~> repsep(FieldInit, ",") <~ "}") ~ opt(installBounds) ^^ {
+        case id ~ None ~ None => NewRhs(id, Nil, Nil, Nil)
+        case id ~ Some(inits) ~ None => NewRhs(id, inits, Nil, Nil)
+        case id ~ None ~ Some(bounds) => NewRhs(id, Nil, bounds._1, bounds._2)
+        case id ~ Some(inits) ~ Some(bounds) => NewRhs(id, inits, bounds._1, bounds._2)
+      }
     | expression
     )
   def FieldInit: Parser[Init] =
     positioned( (ident <~ ":=") ~ expression ^^ { case id ~ e => Init(id, e) } )
   def installBounds: Parser[(List[Expression], List[Expression])] =
     ( "between" ~> expressionList ~ "and" ~ expressionList ^^ { case l ~ _ ~ u => (l,u) }
-    | "below" ~> expressionList ^^ { (Nil,_) }
-    | "above" ~> expressionList ^^ { (_,Nil) }
+    | "below" ~> expressionList ~ ("above" ~> expressionList ?) ^^ {
+        case u ~ None => (Nil,u)
+        case u ~ Some(l) => (l,u) }
+    | "above" ~> expressionList ~ ("below" ~> expressionList ?) ^^ {
+        case l ~ None => (l,Nil)
+        case l ~ Some(u) => (l,u) }
     )
   
   // expressions
 
+  def expressionList =
+    repsep(expression, ",")
   def expression = positioned(iteExpr)
 
   def iteExpr: Parser[Expression] =
@@ -293,7 +313,7 @@ class Parser extends StandardTokenParsers {
             case (a, "&&" ~ b) => And(a,b)
             case (a, "||" ~ b) => Or(a,b) }})
   def cmpExpr = 
-        positioned(seqExpr ~ ((CompareOp ~ seqExpr)?) ^^ {
+        positioned(concatExpr ~ ((CompareOp ~ concatExpr)?) ^^ {
           case e ~ None => e
           case e0 ~ Some("==" ~ e1) => Eq(e0,e1)
           case e0 ~ Some("!=" ~ e1) => Neq(e0,e1)
@@ -304,16 +324,10 @@ class Parser extends StandardTokenParsers {
           case e0 ~ Some("<<" ~ e1) => LockBelow(e0,e1)
         })
   def CompareOp = "==" | "!=" | "<" | "<=" | ">=" | ">" | "<<"
-  def seqExpr =
-    positioned(addExpr ~ (seqAccess *) ^^ { case e ~ as => as.foldLeft(e: Expression)({ (t, a) => val result = a(t); result.pos = t.pos; result }) })
-
-  def seqAccess : Parser[(Expression => SeqAccess)] =
-   ( ("[" ~> expression) <~ "]" ^^ { case e1 => { e0: Expression => At(e0, e1) }} 
-    | "[" ~> expression <~ (".." ~ "]") ^^ { case e1 => { e0: Expression => Drop(e0, e1)}} 
-    | ("[" ~ "..") ~> expression <~ "]" ^^ { case e1 => { e0: Expression => Take(e0, e1)}}
-    | "++" ~> expression ^^ { case e1 => { e0: Expression => Append(e0, e1) }}
-    | ("[" ~> expression  <~ "..") ~ (expression <~ "]") ^^ { case e1 ~ e2 => {e0: Expression => val tak = Take(e0, e2); tak.pos = e0.pos; Drop(tak, e1)} })
-
+  def concatExpr =
+    positioned(addExpr ~ ("++" ~> addExpr *) ^^ {
+          case e0 ~ rest => (rest foldLeft e0) {
+            case (a, b) => Append(a, b) }})
   def addExpr =
         positioned(multExpr ~ (AddOp ~ multExpr *) ^^ {
           case e0 ~ rest => (rest foldLeft e0) {
@@ -330,22 +344,41 @@ class Parser extends StandardTokenParsers {
   def unaryExpr: Parser[Expression] =
         ( "!" ~> unaryExpr ^^ Not
         | "-" ~> unaryExpr ^^ { Minus(IntLiteral(0),_) }
-        | functionApplication
-        | selectExpr
+        | suffixExpr
         )
-  def selectExpr: Parser[Expression] =
-      atom ~ ("." ~> identOrSpecial *) ^^ {
-        case e ~ fields => (fields foldLeft e) { case (e, f) => val result = MemberAccess(e, f); result.pos = e.pos; result }
-  }
+  def suffixExpr =
+    atom ~ (suffixThing *) ^^ {
+      case e ~ sfxs => sfxs.foldLeft(e) { (t, a) => val result = a(t); result.pos = t.pos; result } }
+  def suffixPlusExpr =
+    atom ~ (suffixThing +) ^^ {
+      case e ~ sfxs => sfxs.foldLeft(e) { (t, a) => val result = a(t); result.pos = t.pos; result } }
+  def suffixThing: Parser[(Expression => Expression)] =
+    ( "[" ~> expression <~ "]" ^^ { case e1 => { e0: Expression => At(e0, e1) }} 
+    | "[" ~> expression <~ (".." ~ "]") ^^ { case e1 => { e0: Expression => Drop(e0, e1)}} 
+    | "[" ~> ".." ~> expression <~ "]" ^^ { case e1 => { e0: Expression => Take(e0, e1)}}
+    | "[" ~> (expression <~ "..") ~ expression <~ "]" ^^ {
+        case e1 ~ e2 => {e0: Expression => val tak = Take(e0, e2); tak.pos = e0.pos; Drop(tak, e1)} }
+    | "." ~> ident ~ opt("(" ~> expressionList <~ ")") ^^ {
+        case name ~ None => { e0: Expression => MemberAccess(e0, name) }
+        case name ~ Some(es) => { e0: Expression => FunctionApplication(e0, name, es) } }
+    | "." ~> "acquire" ~> exprBody ^^ { case eb => { e0: Expression => Eval(AcquireState(e0), eb) }}
+    | "." ~> "release" ~> exprBody ^^ { case eb => { e0: Expression => Eval(ReleaseState(e0), eb) }}
+    | "." ~> "fork" ~> (callTarget ~ expressionList <~ ")") ~ exprBody ^^ {
+        case MemberAccess(obj,id) ~ args ~ eb => { e0: Expression => Eval(CallState(e0, obj, id, args), eb) }}
+    )
+  def exprBody =
+    "{" ~> expression <~ "}"
+
   def selectExprFerSure: Parser[MemberAccess] =
+    positioned(atom ~ "." ~ ident ~ ("." ~> ident *) ^^ {
+      case e ~ _ ~ field ~ moreFields =>
+        (moreFields foldLeft MemberAccess(e,field)) { (target, f) =>
+          val result = MemberAccess(target, f); result.pos = target.pos; result }})
+  def selectExprFerSureX: Parser[MemberAccess] =
     positioned(atom ~ "." ~ identOrSpecial ~ ("." ~> ident *) ^^ {
-      case e ~ _ ~ field ~ moreFields => (moreFields foldLeft MemberAccess(e,field)) { (target, f) => val result = MemberAccess(target, f); result.pos = target.pos; result }})
-  def functionApplication: Parser[Expression] =
-    atom ~ rep("." ~> identOrSpecial ~ opt("(" ~> repsep(expression, ",") <~ ")")) ^^ {
-      case target ~ members =>  
-      members.foldLeft(target)({ case (e, name ~ args) => val result = if(! args.isDefined) MemberAccess(e, name) else FunctionApplication(e, name, args.get); result.pos = e.pos; result })
-    }
-  
+      case e ~ _ ~ field ~ moreFields =>
+        (moreFields foldLeft MemberAccess(e,field)) { (target, f) =>
+          val result = MemberAccess(target, f); result.pos = target.pos; result }})
   def identOrSpecial: Parser[String] =
     (  ident ^^ { case s => s }
     | "acquire" ^^^ "acquire"
@@ -353,60 +386,62 @@ class Parser extends StandardTokenParsers {
     | "fork" ^^^ "fork"
     | "*" ^^^ "*")
 
-  var currentLocalVariables = Set[String]()
-
-  def expressionList =
-    expression ~ ("," ~> expression *) ^^ { case e ~ ee => e::ee }
-  
   def atom : Parser[Expression] =
-      positioned( numericLit ^^ { case n => IntLiteral(n.toInt) }
-      | "false" ^^^ BoolLiteral(false)
-      | "true" ^^^ BoolLiteral(true)
-      | "null" ^^^ NullLiteral()
-      | "maxlock" ^^^ MaxLockLiteral()
-      | "lockbottom" ^^^ LockBottomLiteral()
-      | "this" ^^^ ExplicitThisExpr()
-      | ("[" ~> expression) ~ (":" ~> expression <~ "]") ^^ { case from ~ to => Range(from, to) }
-      | "(" ~> expression <~ ")"
-      | ("eval" ~ "(") ~> (evalstate <~ ",") ~ (expression <~ ")") ^^ { case h ~ e => Eval(h, e) }
-      | ("ite(" ~> expression <~ ",") ~ (expression <~ ",") ~ (expression <~ ")") ^^ { case con ~ then ~ els => IfThenElse (con, then, els) }
-      | "rd" ~>
-        ( "holds" ~> "(" ~> expression <~ ")" ^^ RdHolds
-        | "(" ~>
-          ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result})) ~ rdPermArg <~ ")"
-          | selectExprFerSure                                   ~ rdPermArg <~ ")"
-          ) ^^ { case MemberAccess(obj, "*") ~ p => RdAccessAll(obj, p) case e ~ p => RdAccess(e,p) }
-        )
-      | "acc" ~> "(" ~>
-        ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result} )) ~ ("," ~> expression ?) <~ ")"
-        | selectExprFerSure                                   ~ ("," ~> expression ?) <~ ")"
-        ) ^^ { case MemberAccess(obj, "*") ~ perm => AccessAll(obj, perm) case e ~ perm => Access(e, perm) }
-      | "holds" ~> "(" ~> expression <~ ")" ^^ Holds
-      | "assigned" ~> "(" ~> ident <~ ")" ^^ Assigned
-      | "old" ~> "(" ~> expression <~ ")" ^^ Old
-      | positioned(Ident) ~ opt("(" ~> repsep(expression, ",") <~ ")") ^^ 
-         { case id ~ args => val result = 
-                       if(args.isDefined){
-                         val implicitThis = ImplicitThisExpr(); implicitThis.pos = id.pos;
-                         FunctionApplication(implicitThis, id.v, args.get)
-                       } else {
-                         if (currentLocalVariables contains id.v) 
-                           VariableExpr(id.v) 
-                         else {
-                           val implicitThis = ImplicitThisExpr(); implicitThis.pos = id.pos; MemberAccess(implicitThis, id.v)
-                         }
-                       }; result.pos = id.pos; result }
-      | ("unfolding" ~> expression <~ "in") ~ expression ^? { 
-          case (pred: MemberAccess) ~ e => val acc = Access(pred, None); acc.pos = pred.pos; Unfolding(acc, e)
-          case (perm: PermissionExpr) ~ e => Unfolding(perm, e) 
+    positioned(
+      numericLit ^^ { case n => IntLiteral(n.toInt) }
+    | "false" ^^^ BoolLiteral(false)
+    | "true" ^^^ BoolLiteral(true)
+    | "null" ^^^ NullLiteral()
+    | "maxlock" ^^^ MaxLockLiteral()
+    | "lockbottom" ^^^ LockBottomLiteral()
+    | "this" ^^^ ExplicitThisExpr()
+    | "result" ^^^ Result()
+    | positioned(Ident) ~ opt("(" ~> expressionList <~ ")") ^^ {
+        case id ~ None =>
+          val r =
+          if (currentLocalVariables contains id.v) {
+            VariableExpr(id.v)
+          } else {
+            val implicitThis = ImplicitThisExpr(); implicitThis.pos = id.pos
+            MemberAccess(implicitThis, id.v)
+          }
+          r.pos = id.pos; r
+        case id ~ Some(args) =>
+          val implicitThis = ImplicitThisExpr(); implicitThis.pos = id.pos
+          val r = FunctionApplication(implicitThis, id.v, args)
+          r.pos = id.pos; r
         }
-      | ("nil" ~> "<") ~> (typeDecl <~ ">") ^^ EmptySeq
-      | ("[" ~> repsep(expression, ",") <~ "]") ^^ { case es => ExplicitSeq(es) }
-      | "|" ~> expression <~ "|" ^^ Length
-      | forall
-      | "result" ^^^ Result()
+    | "rd" ~>
+      ( "holds" ~> "(" ~> expression <~ ")" ^^ RdHolds
+      | "(" ~>
+        ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result})) ~ rdPermArg <~ ")"
+        | selectExprFerSureX                                  ~ rdPermArg <~ ")"
+        ) ^^ { case MemberAccess(obj, "*") ~ p => RdAccessAll(obj, p) case e ~ p => RdAccess(e,p) }
       )
-  def forall: Parser[Forall] = 
+    | "acc" ~> "(" ~>
+      ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result} )) ~ ("," ~> expression ?) <~ ")"
+      | selectExprFerSureX                                  ~ ("," ~> expression ?) <~ ")"
+      ) ^^ { case MemberAccess(obj, "*") ~ perm => AccessAll(obj, perm) case e ~ perm => Access(e, perm) }
+    | "credit" ~> "(" ~> expression ~ ("," ~> expression ?) <~ ")" ^^ {
+        case ch ~ n => Credit(ch, n) }
+    | "holds" ~> "(" ~> expression <~ ")" ^^ Holds
+    | "assigned" ~> "(" ~> ident <~ ")" ^^ Assigned
+    | "old" ~> "(" ~> expression <~ ")" ^^ Old
+    | ("unfolding" ~> expression <~ "in") ~ expression ^? { 
+        case (pred: MemberAccess) ~ e => val acc = Access(pred, None); acc.pos = pred.pos; Unfolding(acc, e)
+        case (perm: PermissionExpr) ~ e => Unfolding(perm, e) 
+      }
+    | "|" ~> expression <~ "|" ^^ Length
+    | ("eval" ~ "(") ~> (evalstate <~ ",") ~ (expression <~ ")") ^^ { case h ~ e => Eval(h, e) }
+    | ("ite(" ~> expression <~ ",") ~ (expression <~ ",") ~ (expression <~ ")") ^^ {
+        case con ~ then ~ els => IfThenElse (con, then, els) }
+    | "(" ~> expression <~ ")"
+    | forall
+    | ("[" ~> expression) ~ (":" ~> expression <~ "]") ^^ { case from ~ to => Range(from, to) }
+    | ("nil" ~> "<") ~> (typeDecl <~ ">") ^^ EmptySeq
+    | ("[" ~> expressionList <~ "]") ^^ { case es => ExplicitSeq(es) }
+    )
+  def forall: Parser[Forall] =
     (("forall" ~ "{") ~> repsep(ident, ",") <~ "in") into { is => (expression <~ ";") ~ (exprWithLocals(is) <~ "}") ^^ 
       { case seq ~ e => val result = Forall(is, seq, e); currentLocalVariables = currentLocalVariables -- is; result } }
   def exprWithLocals(i: List[String]) : Parser[Expression] = {
@@ -416,13 +451,13 @@ class Parser extends StandardTokenParsers {
     result
   }
 
-  def evalstate: Parser[EvalState] = {
-    functionApplication ~ opt(callTarget ~ (repsep(expression, ",") <~ ")")) ^? 
-                           { case MemberAccess(e, "acquire") ~ None => AcquireState(e)
-                             case MemberAccess(e, "release") ~ None => ReleaseState(e)
-                             case MemberAccess(e, "fork") ~ Some((MemberAccess(obj, id) ~ args)) => CallState(e, obj, id, args)
-                           }
-  }
+  def evalstate: Parser[EvalState] =
+    (suffixExpr <~ ".") into { e =>
+      ( "acquire" ^^^ AcquireState(e)
+      | "release" ^^^ ReleaseState(e)
+      | "fork" ~> callTarget ~ expressionList <~ ")" ^^ {
+          case MemberAccess(obj,id) ~ args => CallState(e, obj, id, args) }
+      )}
 
   def rdPermArg : Parser[Option[Option[Expression]]] =
       (("," ~> ( "*" ^^^ None

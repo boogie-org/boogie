@@ -131,7 +131,7 @@ class ChaliceToCSharp {
       case th: ThisExpr => "this"
       case VariableExpr(id) => id
       case MemberAccess(target, f) => convertExpression(target) + "." + f
-      case newrhs@NewRhs(c, initialization) => 
+      case newrhs@NewRhs(c, initialization, lower, upper) => 
         if(initialization.length == 0) { "new " + c + "()" } else {
           val init = repsep(newrhs.typ.Fields map { f => (initialization.find { i => i.f == f}) match {
               case None => defaultValue(f.typ)

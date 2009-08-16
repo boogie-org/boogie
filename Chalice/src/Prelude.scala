@@ -10,6 +10,7 @@ object TranslatorPrelude {
 type Field a;
 type HeapType = <a>[ref,Field a]a;
 type MaskType = <a>[ref,Field a][PermissionComponent]int;
+type CreditsType = [ref]int;
 type ref;
 const null: ref;
 
@@ -48,6 +49,8 @@ function {:expand true} IsGoodMask(m: MaskType) returns (bool)
       (m[o,f][perm$N] < 0 ==> 0 < m[o,f][perm$R]))
 }
 
+var Credits: CreditsType;
+
 function IsGoodState<T>(T) returns (bool);
 function combine<T,U>(T, U) returns (T);
 const nostate: HeapType;
@@ -77,10 +80,12 @@ axiom (forall m, n: Mu :: MuBelow(m, n) ==> n != $LockBottom);
 const unique held: Field int;
 function Acquire$Heap(int) returns (HeapType);
 function Acquire$Mask(int) returns (MaskType);
+function Acquire$Credits(int) returns (CreditsType);
 axiom NonPredicateField(held);
 
 function LastSeen$Heap(Mu, int) returns (HeapType);
 function LastSeen$Mask(Mu, int) returns (MaskType);
+function LastSeen$Credits(Mu, int) returns (CreditsType);
 
 const unique rdheld: Field bool;
 axiom NonPredicateField(rdheld);
@@ -230,11 +235,17 @@ const unique token#t: TypeName;
 
 function Call$Heap(int) returns (HeapType);
 function Call$Mask(int) returns (MaskType);
+function Call$Credits(int) returns (CreditsType);
 function Call$Args(int) returns (ArgSeq);
 type ArgSeq = <T>[int]T;
 
 function EmptyMask(m: MaskType) returns (bool);
 axiom (forall m: MaskType :: {EmptyMask(m)} EmptyMask(m) <==> (forall<T> o: ref, f: Field T :: NonPredicateField(f) ==> m[o, f][perm$R]<=0 && m[o, f][perm$N]<=0));
+
+const ZeroCredits: CreditsType;
+axiom (forall o: ref :: ZeroCredits[o] == 0);
+function EmptyCredits(c: CreditsType) returns (bool);
+axiom (forall c: CreditsType :: {EmptyCredits(c)} EmptyCredits(c) <==> (forall o: ref :: o != null ==> c[o] == 0));
 
 function NonPredicateField<T>(f: Field T) returns (bool);
 function PredicateField<T>(f: Field T) returns (bool);
