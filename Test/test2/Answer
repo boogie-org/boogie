@@ -34,7 +34,6 @@ Execution trace:
 Passification.bpl(165,3): Error BP5001: This assertion might not hold.
 Execution trace:
     Passification.bpl(158,1): L0
-    Passification.bpl(161,1): L1
     Passification.bpl(164,1): L2
 
 Boogie program verifier finished with 7 verified, 4 errors
@@ -215,7 +214,6 @@ Structured.bpl(252,14): Error BP5003: A postcondition might not hold at this ret
 Structured.bpl(243,3): Related location: This is the postcondition that might not hold.
 Execution trace:
     Structured.bpl(245,3): anon0
-    Structured.bpl(245,3): anon6_LoopHead
     Structured.bpl(246,5): anon6_LoopBody
     Structured.bpl(247,7): anon7_LoopBody
     Structured.bpl(252,5): anon4
@@ -223,7 +221,6 @@ Execution trace:
 Structured.bpl(303,3): Error BP5001: This assertion might not hold.
 Execution trace:
     Structured.bpl(299,5): anon0
-    Structured.bpl(300,3): anon3_Else
     Structured.bpl(303,3): anon2
 Structured.bpl(311,7): Error BP5001: This assertion might not hold.
 Execution trace:

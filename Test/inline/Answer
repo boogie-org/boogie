@@ -844,7 +844,6 @@ implementation find(A: [int]int, size: int, x: int) returns (ret: int, found: bo
 <console>(78,2): Related location: This is the postcondition that might not hold.
 Execution trace:
     <console>(19,0): anon0
-    <console>(22,0): inline$find$0$Entry
     <console>(28,0): inline$find$0$anon0
     <console>(38,0): inline$find$0$anon4_LoopBody
     <console>(42,0): inline$check$0$Entry
@@ -854,7 +853,6 @@ Execution trace:
 <console>(100,4): Error BP5001: This assertion might not hold.
 Execution trace:
     <console>(19,0): anon0
-    <console>(22,0): inline$find$0$Entry
     <console>(28,0): inline$find$0$anon0
     <console>(38,0): inline$find$0$anon4_LoopBody
     <console>(42,0): inline$check$0$Entry
