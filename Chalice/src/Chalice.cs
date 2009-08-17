@@ -5,6 +5,7 @@
 //-----------------------------------------------------------------------------
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace Chalice
 {
@@ -64,6 +65,28 @@ namespace Chalice
             return l;
         }
     }
+    
+  public class ChannelBuffer<E> {
+    private LinkedList<E> contents = new LinkedList<E>();
+    
+    public void Add(E e) {
+      lock(this) {
+        contents.AddFirst(e);
+        Monitor.Pulse(this);
+      }
+    }
+    
+    public E Remove() {
+      lock(this) {
+        while(contents.Count == 0){
+          Monitor.Wait(this);
+        }
+        E e = contents.Last.Value; 
+        contents.RemoveLast();
+        return e;
+      }
+    }
+  }
 
   public class ChalicePrint {
     public void Int(int x) {

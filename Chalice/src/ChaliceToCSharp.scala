@@ -13,7 +13,33 @@ class ChaliceToCSharp {
   def convertTopLevelDecl(decl: TopLevelDecl): String = {
     decl match {
       case cl: Class => convertClass(cl)
+      case ch: Channel => convertChannel(ch)
     }
+  }
+  
+  def convertChannel(ch: Channel): String = {
+    "public class " + ch.channelId + " {" + nl +
+    indentMore {
+      indent + "class " + ch.channelId + "_args " + "{" + nl + 
+      indentMore {
+        repsep(ch.parameters map { variable => indent + "internal " + convertType(variable.t) + " " + variable.id + ";"}, nl)
+      } + nl + indent + "}" + nl +
+      indent + "ChannelBuffer<" + ch.channelId + "_args" + ">" + " buffer = new ChannelBuffer<" + ch.channelId + "_args" + ">();" + nl +
+      indent + "public void Send(" + repsep(ch.parameters map { variable => convertType(variable.t) + " " + variable.id }, ", ") + ") {" + nl +
+      indentMore {
+        indent + ch.channelId + "_args " + "entry = new " + ch.channelId + "_args" + "();" + nl + 
+        indent + repsep(ch.parameters map { p => "entry." + p.id + " = " + p.id + ";"}, nl) + nl +
+        indent + "buffer.Add(entry);" + nl
+      } + 
+      indent + "}" + nl + 
+      indent + "public void Receive(" + repsep(ch.parameters map { variable => "out " + convertType(variable.t) + " " + variable.id }, ", ") + ") {" + nl +
+      indentMore {
+        indent + ch.channelId + "_args " + "entry = buffer.Remove();" + nl +
+        indent + repsep(ch.parameters map { p => p.id + " = entry." + p.id + ";"}, nl) + nl
+      } +
+      indent + "}" + nl
+    } +
+    "}" + nl + nl
   }
   
   def convertClass(cl: Class): String = if (cl.IsExternal) "" else {
@@ -120,6 +146,10 @@ class ChaliceToCSharp {
         indent + convertExpression(token) + "." + "del.EndInvoke(" + 
         repsep(lhs map { x => "out " + x.id}, ", ") +
         (if(lhs.length > 0) ", " else "") + convertExpression(token) + "." + "async" + ");" + nl
+      case s@Send(ch, args) =>
+        indent + convertExpression(ch) + ".Send(" + repsep(args map convertExpression, ", ") + ")" + ";" + nl
+      case r@Receive(ch, outs) =>
+        indent + convertExpression(ch) + ".Receive(" + repsep(outs map { out => "out " + convertExpression(out)}, ", ") + ")" + ";" + nl
     }
   }
   
