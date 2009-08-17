@@ -28,14 +28,14 @@ class ChaliceToCSharp {
       indent + "public void Send(" + repsep(ch.parameters map { variable => convertType(variable.t) + " " + variable.id }, ", ") + ") {" + nl +
       indentMore {
         indent + ch.channelId + "_args " + "entry = new " + ch.channelId + "_args" + "();" + nl + 
-        indent + repsep(ch.parameters map { p => "entry." + p.id + " = " + p.id + ";"}, nl) + nl +
+        repsep(ch.parameters map { p => indent + "entry." + p.id + " = " + p.id + ";"}, nl) + nl +
         indent + "buffer.Add(entry);" + nl
       } + 
       indent + "}" + nl + 
       indent + "public void Receive(" + repsep(ch.parameters map { variable => "out " + convertType(variable.t) + " " + variable.id }, ", ") + ") {" + nl +
       indentMore {
         indent + ch.channelId + "_args " + "entry = buffer.Remove();" + nl +
-        indent + repsep(ch.parameters map { p => p.id + " = entry." + p.id + ";"}, nl) + nl
+        repsep(ch.parameters map { p => indent + p.id + " = entry." + p.id + ";"}, nl) + nl
       } +
       indent + "}" + nl
     } +
