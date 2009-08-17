@@ -136,6 +136,10 @@
                  SubType="Code"
                  RelPath="VCDoomed.ssc"
                  />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AssemblyInfo.ssc"
+                 />
       </Include>
     </Files>
   </XEN>

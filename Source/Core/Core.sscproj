@@ -206,6 +206,10 @@
                  SubType="Code"
                  RelPath="TypeAmbiguitySeeker.ssc"
                  />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AssemblyInfo.ssc"
+                 />
       </Include>
     </Files>
   </XEN>

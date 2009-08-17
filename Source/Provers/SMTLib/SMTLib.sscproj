@@ -110,6 +110,10 @@
                  SubType="Code"
                  RelPath="TypeDeclCollector.ssc"
                  />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AssemblyInfo.ssc"
+                 />
       </Include>
     </Files>
   </XEN>

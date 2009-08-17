@@ -151,6 +151,10 @@
                  SubType="Code"
                  RelPath="VariableMap\ConstantExpressions.ssc"
                  />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AssemblyInfo.ssc"
+                 />
       </Include>
     </Files>
   </XEN>

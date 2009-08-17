@@ -126,6 +126,10 @@
                  SubType="Code"
                  RelPath="Let2ImpliesVisitor.ssc"
                  />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AssemblyInfo.ssc"
+                 />
       </Include>
     </Files>
     <Target Name="AfterBuild"
