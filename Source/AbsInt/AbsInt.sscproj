@@ -114,6 +114,10 @@
                  SubType="Code"
                  RelPath="LoopInvariantsOnDemand.ssc"
                  />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AssemblyInfo.ssc"
+                 />
       </Include>
     </Files>
   </XEN>
