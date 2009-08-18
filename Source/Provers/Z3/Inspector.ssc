@@ -82,7 +82,6 @@ namespace Microsoft.Boogie.Z3
         Block blk = absy as Block;
         string val = tok.val; // might require computation, so cache it
         if (val == "foo" || tok.filename == null) continue; // no token
-        if (!val.Contains(" ")) val = null;
 
         toInspector.Write("TOKEN ");
         toInspector.Write(lab);
@@ -102,16 +101,23 @@ namespace Microsoft.Boogie.Z3
         } else {
           assume false;
         }
-        if (val == null) { val = ""; }
+        if (val == null || val == "assert" || val == "ensures") { val = ""; }
 
         if (absy is LoopInitAssertCmd) {
           val += " (loop entry)";
         } else if (absy is LoopInvMaintainedAssertCmd) {
           val += " (loop body)";
-        } else if (absy is AssertRequiresCmd && val == "") {
+        } else if (val.IndexOf("#VCCERR") >= 0) { 
+          // skip further transformations
+        } else if (absy is AssertRequiresCmd) {
           AssertRequiresCmd req = (AssertRequiresCmd)absy;
           IToken t2 = req.Requires.tok;
-          val = string.Format("precondition {0}({1},{2})", t2.filename, t2.line, t2.col);
+          string tval = t2.val;
+          if (tval == "requires")
+            tval = string.Format("{0}({1},{2}))", t2.filename, t2.line, t2.col);
+          string call = "";
+          if (val != "call") call = " in call to " + val;
+          val = string.Format("precondition {0}{1}", tval, call);
         }
 
         val = val.Replace("\r", "").Replace("\n", " ");
