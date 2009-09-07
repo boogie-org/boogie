@@ -564,7 +564,7 @@ namespace VC
           System.Console.WriteLine(" --- smoke #{0}, after passify", id);
           Emit();
         }
-        ch.BeginCheck((!) impl.Name + "_smoke" + id++, vc, new ErrorHandler(label2Absy));
+        ch.BeginCheck((!) impl.Name + "_smoke" + id++, vc, new ErrorHandler(label2Absy, this.callback));
         ch.ProverDone.WaitOne();
         ProverInterface.Outcome outcome = ch.ReadOutcome();
         parent.current_impl = null;
@@ -662,14 +662,20 @@ namespace VC
       
       class ErrorHandler : ProverInterface.ErrorHandler {
         Hashtable! label2Absy;
+        VerifierCallback! callback;
         
-        public ErrorHandler(Hashtable! label2Absy) {
+        public ErrorHandler(Hashtable! label2Absy, VerifierCallback! callback) {
           this.label2Absy = label2Absy;
+          this.callback = callback;
         }
         
         public override Absy! Label2Absy(string! label) {
           int id = int.Parse(label);
           return (Absy!) label2Absy[id];
+        }
+        
+        public override void OnProverWarning(string! msg) {
+          this.callback.OnWarning(msg);
         }
       }
     }
