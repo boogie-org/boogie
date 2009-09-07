@@ -326,6 +326,24 @@ namespace Microsoft.Boogie
       {
       }
 
+      public virtual void OnProverWarning(string! message)
+          modifies Console.Out.*, Console.Error.*;
+      {
+        switch (CommandLineOptions.Clo.PrintProverWarnings) {
+          case CommandLineOptions.ProverWarnings.None:
+            break;
+          case CommandLineOptions.ProverWarnings.Stdout:
+            Console.WriteLine("Prover warning: " + message);
+            break;
+          case CommandLineOptions.ProverWarnings.Stderr:
+            Console.Error.WriteLine("Prover warning: " + message);
+            break;
+          default:
+            assume false;  // unexpected case
+        }
+      }
+
+
       public virtual Absy! Label2Absy(string! label)
       {
         throw new System.NotImplementedException();

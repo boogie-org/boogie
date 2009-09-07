@@ -247,7 +247,7 @@ namespace Microsoft.Boogie.Z3
 
         if (line.StartsWith("WARNING: ")) {
           string w = line.Substring(9);
-          ReportWarning(w);
+          handler.OnProverWarning(w);
           continue;
         }
 

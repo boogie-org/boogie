@@ -110,23 +110,6 @@ namespace Microsoft.Boogie.Simplify
         catch (System.ComponentModel.Win32Exception) { /* already exiting */ }
     }
 
-    public static void ReportWarning(string! w)
-      modifies Console.Out.*, Console.Error.*;
-    {
-      switch (CommandLineOptions.Clo.PrintProverWarnings) {
-        case CommandLineOptions.ProverWarnings.None:
-          break;
-        case CommandLineOptions.ProverWarnings.Stdout:
-          Console.WriteLine("Prover warning: " + w);
-          break;
-        case CommandLineOptions.ProverWarnings.Stderr:
-          Console.Error.WriteLine("Prover warning: " + w);
-          break;
-        default:
-          assume false;  // unexpected case
-      }
-    }
-    
     public virtual void AddAxioms(string! s) 
       modifies this.*;
       modifies Console.Out.*, Console.Error.*;
@@ -440,7 +423,7 @@ namespace Microsoft.Boogie.Simplify
       } while (Char.IsWhiteSpace((char)ch));
       
       while (ch == 'W') {
-        ch = ConsumeWarnings(ch);
+        ch = ConsumeWarnings(ch, null);
       }
       
       Expect(ch, ">\t");
@@ -496,7 +479,7 @@ namespace Microsoft.Boogie.Simplify
       int ch = FromReadChar();
       while (ch == 'W') 
       {
-        ch = ConsumeWarnings(ch);
+        ch = ConsumeWarnings(ch, handler);
       }
       if (ch == 'E')
       {
@@ -574,7 +557,7 @@ namespace Microsoft.Boogie.Simplify
       return theLabels;
     }
     
-    int ConsumeWarnings(int ch)
+    int ConsumeWarnings(int ch, Microsoft.Boogie.ProverInterface.ErrorHandler handler)
       requires ch == 'W';
       modifies this.*;
       modifies Console.Out.*, Console.Error.*;
@@ -590,7 +573,9 @@ namespace Microsoft.Boogie.Simplify
         FromReadLine();  // blank line
         FromReadLine();  // expression (entire quantifier)
       }
-      ReportWarning(w);
+      
+      if (handler != null) handler.OnProverWarning(w);
+      
       ch = FromReadChar();
       if (ch == '\n') 
       {

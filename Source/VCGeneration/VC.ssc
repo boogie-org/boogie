@@ -1704,6 +1704,11 @@ namespace VC
       {
         resourceExceededMessage = msg;
       }
+      
+      public override void OnProverWarning(string! msg)
+      {
+        callback.OnWarning(msg);
+      }
     }
     
     public class ErrorReporterLocal : ErrorReporter {
