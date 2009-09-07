@@ -416,13 +416,13 @@ namespace Microsoft.Boogie.VCExprAST
 
     ///////////////////////////////////////////////////////////////////////////////////
 
-    public override ExtractExpr! VisitExtractExpr(ExtractExpr! node)
+    public override BvExtractExpr! VisitBvExtractExpr(BvExtractExpr! node)
     {
-      Push(TranslateExtractExpr(node));
+      Push(TranslateBvExtractExpr(node));
       return node;
     }
 
-    private VCExpr! TranslateExtractExpr(ExtractExpr! node)
+    private VCExpr! TranslateBvExtractExpr(BvExtractExpr! node)
       requires node.Start <= node.End; {
       VCExpr! bv = Translate(node.Bitvector);
       return Gen.BvExtract(bv, ((!)node.Bitvector.Type).BvBits, node.Start, node.End);

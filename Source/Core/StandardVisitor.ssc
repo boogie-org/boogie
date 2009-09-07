@@ -211,7 +211,7 @@ namespace Microsoft.Boogie
       node = (ExistsExpr) this.VisitQuantifierExpr(node);
       return node; 
     }
-    public virtual ExtractExpr! VisitExtractExpr(ExtractExpr! node)
+    public virtual BvExtractExpr! VisitBvExtractExpr(BvExtractExpr! node)
     {
       node.Bitvector = this.VisitExpr(node.Bitvector);
       return node; 

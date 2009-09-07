@@ -266,7 +266,7 @@ namespace Microsoft.Boogie
       }
       public static string! PrettyPrintBplExpr (Expr! e) {
         // anything that is unknown will just be printed via ToString
-        // OldExpr and QuantifierExpr, ExtractExpr, BvConcatExpr are ignored for now
+        // OldExpr and QuantifierExpr, BvExtractExpr, BvConcatExpr are ignored for now
         // LiteralExpr is printed as itself by ToString
         if (e is IdentifierExpr) {
           string s = e.ToString();

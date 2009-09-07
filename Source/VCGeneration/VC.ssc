@@ -2686,8 +2686,8 @@ namespace VC
         // expression, thus just return -1
         return -1;
       } 
-      else if (expr is Bpl.ExtractExpr) {
-        Bpl.ExtractExpr ex = (Bpl.ExtractExpr) expr;
+      else if (expr is Bpl.BvExtractExpr) {
+        Bpl.BvExtractExpr ex = (Bpl.BvExtractExpr) expr;
         Bpl.Expr e0 = ex.Bitvector;
         Bpl.Expr e1 = new LiteralExpr(Token.NoToken, BigNum.FromInt(ex.Start));
         Bpl.Expr e2 = new LiteralExpr(Token.NoToken, BigNum.FromInt(ex.End));

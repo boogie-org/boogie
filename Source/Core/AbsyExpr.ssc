@@ -2990,12 +2990,12 @@ namespace Microsoft.Boogie
 
 
 
-  public class ExtractExpr : Expr, AI.IFunApp
+  public class BvExtractExpr : Expr, AI.IFunApp
   {
     public /*readonly--except in StandardVisitor*/ Expr! Bitvector;
     public readonly int Start, End;
     
-    public ExtractExpr(IToken! tok, Expr! bv, int end, int start)
+    public BvExtractExpr(IToken! tok, Expr! bv, int end, int start)
       : base(tok)
     {
       Bitvector = bv;
@@ -3008,9 +3008,9 @@ namespace Microsoft.Boogie
     public override bool Equals(object obj)
     {
       if (obj == null) return false;
-      if (!(obj is ExtractExpr)) return false;
+      if (!(obj is BvExtractExpr)) return false;
 
-      ExtractExpr other = (ExtractExpr)obj;
+      BvExtractExpr other = (BvExtractExpr)obj;
       return object.Equals(this.Bitvector, other.Bitvector) &&
         this.Start.Equals(other.Start) && this.End.Equals(other.End);
     }
@@ -3100,10 +3100,10 @@ namespace Microsoft.Boogie
     
       if(args.Count == 3)
       {      
-        retFun = new ExtractExpr(this.tok,
-                               BoogieFactory.IExpr2Expr((AI.IExpr!)args[0]),
-                               ((LiteralExpr!)args[1]).asBigNum.ToIntSafe,
-                               ((LiteralExpr!)args[2]).asBigNum.ToIntSafe);
+        retFun = new BvExtractExpr(this.tok,
+                                 BoogieFactory.IExpr2Expr((AI.IExpr!)args[0]),
+                                 ((LiteralExpr!)args[1]).asBigNum.ToIntSafe,
+                                 ((LiteralExpr!)args[2]).asBigNum.ToIntSafe);
       } 
       else
       {
@@ -3120,7 +3120,7 @@ namespace Microsoft.Boogie
 
     public override Absy! StdDispatch(StandardVisitor! visitor)
     {
-      return visitor.VisitExtractExpr(this);
+      return visitor.VisitBvExtractExpr(this);
     }
   }
 

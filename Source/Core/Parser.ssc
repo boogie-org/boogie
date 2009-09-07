@@ -1617,9 +1617,9 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			if (store)
 			 e = new NAryExpr(x, new MapStore(x, allArgs.Length - 2), allArgs);
 			else if (bvExtract)
-			  e = new ExtractExpr(x, e,
-			                      ((BvBounds)index0).Upper.ToIntSafe,
-			                      ((BvBounds)index0).Lower.ToIntSafe);
+			  e = new BvExtractExpr(x, e,
+			                        ((BvBounds)index0).Upper.ToIntSafe,
+			                        ((BvBounds)index0).Lower.ToIntSafe);
 			else
 			  e = new NAryExpr(x, new MapSelect(x, allArgs.Length - 1), allArgs); 
 			
