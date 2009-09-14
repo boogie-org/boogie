@@ -1824,10 +1824,7 @@ namespace VC
           PredicateCmd a = header.Cmds[i] as PredicateCmd;
           if (a != null)
           {
-            if (a is AssumeCmd) {
-              prefixOfPredicateCmdsInit.Add(a);
-              prefixOfPredicateCmdsMaintained.Add(a);
-            } else {
+            if (a is AssertCmd) {
               Bpl.AssertCmd c = (AssertCmd) a;
               Bpl.AssertCmd b = new Bpl.LoopInitAssertCmd(c.tok, c.Expr);
               b.ErrorData = c.ErrorData;
@@ -1836,6 +1833,15 @@ namespace VC
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsMaintained.Add(b);
               header.Cmds[i] = new AssumeCmd(c.tok,c.Expr);
+            } else {
+              assert a is AssumeCmd;
+              if (Bpl.CommandLineOptions.Clo.AlwaysAssumeFreeLoopInvariants) {
+                // Usually, "free" stuff, like free loop invariants (and the assume statements
+                // that stand for such loop invariants) are ignored on the checking side.  This
+                // command-line option changes that behavior to always assume the conditions.
+                prefixOfPredicateCmdsInit.Add(a);
+                prefixOfPredicateCmdsMaintained.Add(a);
+              }
             }
           }
           else if ( header.Cmds[i] is CommentCmd )

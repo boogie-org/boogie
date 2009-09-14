@@ -112,7 +112,8 @@ namespace Microsoft.Boogie
     public enum SubsumptionOption { Never, NotForQuantifiers, Always }
     public SubsumptionOption UseSubsumption = SubsumptionOption.Always;
 
-    public bool ShowTrace = false;
+    public bool AlwaysAssumeFreeLoopInvariants = false;
+
     public enum ShowEnvironment { Never, DuringPrint, Always }
     public ShowEnvironment ShowEnv = ShowEnvironment.DuringPrint;
     public bool DontShowLogo = false;
@@ -1106,6 +1107,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("noRemoveEmptyBlocks", ref RemoveEmptyBlocks, false) ||
               ps.CheckBooleanFlag("traceverify", ref TraceVerify) ||
               ps.CheckBooleanFlag("noConsistencyChecks", ref NoConsistencyChecks, true) ||
+              ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", ref AlwaysAssumeFreeLoopInvariants, true) ||
               ps.CheckBooleanFlag("nologo", ref DontShowLogo) ||
               ps.CheckBooleanFlag("noVerifyByDefault", ref NoVerifyByDefault) ||
               ps.CheckBooleanFlag("useUncheckedContracts", ref UseUncheckedContracts) ||
@@ -1799,6 +1801,10 @@ namespace Microsoft.Boogie
   /traceverify   : print debug output during verification condition generation
   /subsumption:<c> : apply subsumption to asserted conditions:
                     0 - never, 1 - not for quantifiers, 2 (default) - always
+  /alwaysAssumeFreeLoopInvariants : usually, a free loop invariant (or assume
+                   statement in that position) is ignored in checking contexts
+                   (like other free things); this option includes these free
+                   loop invariants as assumes in both contexts
   /bv:<bv>       : bitvector handling
                    n = none
                    z = native Z3 bitvectors (default)
