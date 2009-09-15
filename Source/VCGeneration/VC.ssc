@@ -1635,9 +1635,9 @@ namespace VC
       protected Dictionary<Incarnation, Absy!>! incarnationOriginMap;
       protected VerifierCallback! callback;
       internal string? resourceExceededMessage;
-      static private System.IO.TextWriter? modelWriter;
+      static System.IO.TextWriter? modelWriter;
       
-      static protected TextWriter! ModelWriter {
+      public static TextWriter! ModelWriter {
         get {
           if (ErrorReporter.modelWriter == null)
             ErrorReporter.modelWriter = CommandLineOptions.Clo.PrintErrorModelFile == null ? Console.Out : new StreamWriter(CommandLineOptions.Clo.PrintErrorModelFile, false);

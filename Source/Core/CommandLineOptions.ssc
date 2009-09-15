@@ -143,6 +143,7 @@ namespace Microsoft.Boogie
     public int PrintErrorModel = 0;
     public string PrintErrorModelFile = null;
     invariant (0 <= PrintErrorModel && PrintErrorModel <= 2) || PrintErrorModel == 4;
+    public bool CEVPrint = false;
     public int EnhancedErrorMessages = 0;
     invariant 0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
@@ -654,7 +655,7 @@ namespace Microsoft.Boogie
           case "/localModifiesChecks":
             {
               int localChecks = 0;
-              ps.GetNumericArgument(ref localChecks, 7);
+              ps.GetNumericArgument(ref localChecks, 2);
               LocalModifiesChecks = (localChecks != 0);
             }
             break;
@@ -730,6 +731,15 @@ namespace Microsoft.Boogie
             break;
 
           
+          case "-cev":
+          case "/cev":
+            if (ps.ConfirmArgumentCount(1))
+            {
+              PrintErrorModelFile = args[ps.i];
+            }
+            CEVPrint = true;
+            break;            
+
           case "-printModelToFile":
           case "/printModelToFile":
             if (ps.ConfirmArgumentCount(1))
@@ -1191,12 +1201,16 @@ namespace Microsoft.Boogie
       }
 
       if (LoopFrameConditions == -1) {
-        // /modifiesOnLoop not specified.  Set its default depending on /level
-        if (CheckingLevel == 2) {
-          LoopFrameConditions = 2;
-        } else {
+        // /modifiesOnLoop not specified.  Set its default depending on /localModifiesChecks
+        if (LocalModifiesChecks) {
           LoopFrameConditions = 1;
+        } else {
+          LoopFrameConditions = 2;
         }
+      }
+      
+      if (CEVPrint && PrintErrorModel == 0) {
+        PrintErrorModel = 1;
       }
       
       switch (InductiveMinMax) {
@@ -1649,7 +1663,7 @@ namespace Microsoft.Boogie
   ---- Spec# options ---------------------------------------------------------
 
   If any of the following switches is included, only those methods specified
-  by some switch are translated into BoogiePL.  Furthermore, a method is
+  by some switch are translated into Boogie.  Furthermore, a method is
   not translated if a [Verify(false)] attribute applies to it or if the
   flag /trExclude applies (see below).
   /translate:<str> : include method if its full name contains substring <str>
@@ -1685,12 +1699,13 @@ namespace Microsoft.Boogie
                        occurring at the top-level of modifies clause as
                        p.f, p.*, p.**, p[i], p[*], or p.0
                    6 - (5) but for every parameter p
-  /modifiesOnLoop:<n> : 0 - never, 1 - assume only (usual default),
-                        2 - assume and check (default with /level:2)
+  /modifiesOnLoop:<n> : 0 - never, 1 - assume only (default),
+                        2 - assume and check (default with
+                            /localModifiesChecks:0)
   /localModifiesChecks: 0 - check modifies-clause as post-condition of a
                             procedure
                         1 - check violations of modifies-clause at each
-                            assignment and procedure call (default)
+                            assignment and method call (default)
   /loopUnroll:<n>  : unroll loops, following up to n back edges (and then some)
   /noVerifyByDefault : change the default to [Verify(false)]
   /orderStrength:<n> : 0 (default) - only few properties of subtyping
@@ -1716,10 +1731,11 @@ namespace Microsoft.Boogie
                               e = experimental
                               t = trivial (implied by /methodology:vs)
   /printModel:<n> : 0 (default) - do not print Z3's error model
-                    1 - print Z3's error model
+                    1 - print Z3's error model (default with /cev)
                     2 - print Z3's error model plus reverse mappings         
                     4 - print Z3's error model in a more human readable way
   /printModelToFile:<file> : print model to <file> instead of console
+  /cev:<file>       Print Z3's error model to <file> and include error message
   /enhancedErrorMessages:<n> : 0 (default) - no enhanced error messages
                                1 - Z3 error model enhanced error messages
 
@@ -1740,7 +1756,7 @@ namespace Microsoft.Boogie
   /noResolve     : parse only
   /noTypecheck   : parse and resolve only
 
-  /print:<file>  : print BoogiePL program after parsing it
+  /print:<file>  : print Boogie program after parsing it
                    (use - as <file> to print to console)
   /printWithUniqueIds : print augmented information that uniquely
                    identifies variables
@@ -1774,7 +1790,7 @@ namespace Microsoft.Boogie
   /interprocInfer : perform interprocedural inference
   /contractInfer : perform procedure contract inference
   /logInfer      : print debug output during inference
-  /printInstrumented : print BoogiePL program after it has been
+  /printInstrumented : print Boogie program after it has been
                    instrumented with invariants
   /Houdini[:<flags>] : perform procedure Houdini
                      c = continue when an error found
