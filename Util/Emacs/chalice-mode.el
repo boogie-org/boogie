@@ -38,8 +38,8 @@
         "above" "acc" "acquire" "and" "assert" "assigned" "assume"
         "below" "between" "call" "credit"
         "downgrade" "else" "eval" "exists" "fold" "forall" "fork" "free" "havoc" "holds"
-        "if" "in" "install" "ite" "join" "lock" "lockbottom" "maxlock" "module" "new" "nil"
-        "old" "rd" "receive" "release" "result" "send" "share"
+        "if" "in" "ite" "join" "lock" "lockbottom" "maxlock" "module" "new" "nil"
+        "old" "rd" "receive" "release" "reorder" "result" "send" "share"
         "this" "unfold" "unfolding" "unshare" "while"
         "false" "true" "null")) . font-lock-keyword-face)
    `(,(chalice-regexp-opt '("bool" "int" "seq" "token")) . font-lock-type-face)
