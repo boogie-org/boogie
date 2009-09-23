@@ -89,10 +89,12 @@ namespace Microsoft.Boogie.Z3
       } else {
         z3args += " " + OptionChar() + "mam:" + CommandLineOptions.Clo.Z3mam;
       }
-
+      
+      if (CommandLineOptions.Clo.z3AtFlag) {
+		z3args += " " + OptionChar() + "@ ";
+	  }
       if (0 <= CommandLineOptions.Clo.ProverCCLimit) {
-        z3args += " " + OptionChar() + "@ " +
-                        OptionChar() + "cex:" + CommandLineOptions.Clo.ProverCCLimit;
+        z3args += " " + OptionChar() + "cex:" + CommandLineOptions.Clo.ProverCCLimit;
       }
       if (0 <= opts.Timeout) {
         z3args += " " + OptionChar() + "t:" + opts.Timeout;

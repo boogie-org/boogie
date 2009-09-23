@@ -171,6 +171,7 @@ namespace Microsoft.Boogie
     public int ProverKillTime = -1;  // -1 means not specified
     public int SmokeTimeout = 10; // default to 10s
     public int ProverCCLimit = 5;
+    public bool z3AtFlag = true;
     public bool RestartProverPerVC = false; 
 
     public double VcsMaxCost = 1.0;
@@ -1018,6 +1019,11 @@ namespace Microsoft.Boogie
           case "-errorLimit":
           case "/errorLimit":
             ps.GetNumericArgument(ref ProverCCLimit);
+            break;
+            
+          case "-z3multipleErrors":
+          case "/z3multipleErrors":
+            z3AtFlag = false;
             break;
             
           case "-z3mam":
@@ -1944,6 +1950,7 @@ namespace Microsoft.Boogie
   /z3opt:<arg>   : specify additional Z3 options
   /z3DebugTrace:<arg>   : z3 command line options so that Z3 generates debug
                    tracing
+  /z3multipleErrors : report multiple counterexamples for each error
 
   SMT-Lib specific options:
   /smtOutput:<file>     : Path and basename to which the prover output is
