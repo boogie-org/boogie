@@ -136,28 +136,30 @@ namespace Microsoft.Boogie.TypeErasure
                                 List<TypeVariable!>! typeParams, List<VCExprVar!>! oldBoundVars,
                                 // VariableBindings to which the translation
                                 // TypeVariable -> VCExprVar is added
-                                VariableBindings! bindings) {
+                                VariableBindings! bindings,
+                                bool addTypeVarsToBindings) {
       // type variables are replaced with ordinary variables that are bound using a
       // let-expression
-      foreach (TypeVariable! tvar in typeParams)
-        bindings.TypeVariableBindings.Add(tvar, Gen.Variable(tvar.Name, T));
+      if (addTypeVarsToBindings) {
+        foreach (TypeVariable! tvar in typeParams)
+          bindings.TypeVariableBindings.Add(tvar, Gen.Variable(tvar.Name, T));
+      }
 
       // extract the values of type variables from the term variables
       List<VCExprVar!>! UtypedVars = new List<VCExprVar!> (oldBoundVars.Count);
       List<Type!>! originalTypes = new List<Type!> (oldBoundVars.Count);
-      for (int i = 0; i < oldBoundVars.Count; ++i) {
-        VCExprVar! newVar = bindings.VCExprVarBindings[oldBoundVars[i]];
+      foreach (VCExprVar var in oldBoundVars) {
+        VCExprVar! newVar = bindings.VCExprVarBindings[var];
         if (newVar.Type.Equals(U)) {
           UtypedVars.Add(newVar);
-          originalTypes.Add(oldBoundVars[i].Type);
+          originalTypes.Add(var.Type);
         }
       }
       
       UtypedVars.TrimExcess();
       originalTypes.TrimExcess();
 
-      return BestTypeVarExtractors(typeParams, originalTypes, UtypedVars,
-                                   bindings);
+      return BestTypeVarExtractors(typeParams, originalTypes, UtypedVars, bindings);
     }
 
 
@@ -335,10 +337,8 @@ namespace Microsoft.Boogie.TypeErasure
                                       List<TypeVariable!>! explicitTypeParams,
                                       List<Type!>! originalInTypes,
                                       Type! originalResultType)
-      requires originalInTypes.Count +
-               explicitTypeParams.Count ==
-               fun.InParams.Length; {
-
+      requires originalInTypes.Count + explicitTypeParams.Count == fun.InParams.Length;
+    {
       if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.None) {
         return VCExpressionGenerator.True;
       }                
@@ -361,7 +361,6 @@ namespace Microsoft.Boogie.TypeErasure
         bindings.TypeVariableBindings.Add(var, newVar);
       }
 
-
       // bound term variables are replaced with bound term variables typed in
       // a simpler way
       foreach (VCExprVar! var in typedInputVars) {
@@ -371,8 +370,8 @@ namespace Microsoft.Boogie.TypeErasure
         bindings.VCExprVarBindings.Add(var, newVar);
       }
 
-      List<VCExprLetBinding!>! typeVarBindings =
-        GenTypeParamBindings(implicitTypeParams, typedInputVars, bindings);
+      List<VCExprLetBinding!> typeVarBindings =
+        GenTypeParamBindings(implicitTypeParams, typedInputVars, bindings, true);
 
       VCExpr! funApp = Gen.Function(fun, HelperFuns.ToVCExprList(boundVars));
       VCExpr! conclusion = Gen.Eq(TypeOf(funApp),
@@ -384,15 +383,13 @@ namespace Microsoft.Boogie.TypeErasure
         Gen.Let(typeVarBindings, conclusion);
 
       if (boundVars.Count > 0) {
-        List<VCTrigger!>! triggers =
-          HelperFuns.ToList(Gen.Trigger(true, HelperFuns.ToList(funApp)));
-        return Gen.Forall(boundVars, triggers,
-                          "funType:" + fun.Name, conclusionWithPremisses);
+        List<VCTrigger!> triggers = HelperFuns.ToList(Gen.Trigger(true, HelperFuns.ToList(funApp)));
+        return Gen.Forall(boundVars, triggers, "funType:" + fun.Name, conclusionWithPremisses);
       } else {
         return conclusionWithPremisses;
       }
     }
-
+    
     ////////////////////////////////////////////////////////////////////////////
 
     protected override void AddVarTypeAxiom(VCExprVar! var, Type! originalType) {
@@ -472,25 +469,26 @@ namespace Microsoft.Boogie.TypeErasure
                          out typeParams, out originalInTypes);
 
       // select
-      List<TypeVariable!>! explicitSelectParams;
+      List<TypeVariable!>! explicitSelectParams, implicitSelectParams;
       select = CreateAccessFun(typeParams, originalInTypes,
                                abstractedType.Result, synonym.Name + "Select",
-                               out explicitSelectParams);
+                               out implicitSelectParams, out explicitSelectParams);
 
       // store, which gets one further argument: the assigned rhs
       originalInTypes.Add(abstractedType.Result);
 
-      List<TypeVariable!>! explicitStoreParams;
+      List<TypeVariable!>! explicitStoreParams, implicitStoreParams;
       store = CreateAccessFun(typeParams, originalInTypes,
                               mapTypeSynonym, synonym.Name + "Store",
-                              out explicitStoreParams);
+                              out implicitStoreParams, out explicitStoreParams);
 
       // the store function does not have any explicit type parameters
       assert explicitStoreParams.Count == 0;
 
       AxBuilder.AddTypeAxiom(GenMapAxiom0(select, store,
                                           abstractedType.Result,
-                                          explicitSelectParams));
+                                          implicitSelectParams, explicitSelectParams,
+                                          originalInTypes));
       AxBuilder.AddTypeAxiom(GenMapAxiom1(select, store, 
                                           abstractedType.Result,
                                           explicitSelectParams));
@@ -518,14 +516,13 @@ namespace Microsoft.Boogie.TypeErasure
                                       List<Type!>! originalInTypes,
                                       Type! originalResult,
                                       string! name,
-                                      out List<TypeVariable!>! explicitTypeParams) {
+                                      out List<TypeVariable!>! implicitTypeParams, out List<TypeVariable!>! explicitTypeParams) {
       // select and store are basically handled like normal functions: the type
       // parameters are split into the implicit parameters, and into the parameters
       // that have to be given explicitly
-      List<TypeVariable!>! implicitParams;
       TypeAxiomBuilderPremisses.SeparateTypeParams(originalInTypes,
                                                    HelperFuns.ToSeq(originalTypeParams),
-                                                   out implicitParams,
+                                                   out implicitTypeParams,
                                                    out explicitTypeParams);
       Type[]! ioTypes = new Type [explicitTypeParams.Count + originalInTypes.Count + 1];
       int i = 0;
@@ -534,23 +531,23 @@ namespace Microsoft.Boogie.TypeErasure
       foreach (Type! type in originalInTypes)
       {
         if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(type))
-			ioTypes[i] = type;
-		else
-			ioTypes[i] = AxBuilder.U;
-		i++;
+            ioTypes[i] = type;
+        else
+            ioTypes[i] = AxBuilder.U;
+        i++;
       }
       if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(originalResult))
-		ioTypes[i] = originalResult;
-	  else
-		ioTypes[i] = AxBuilder.U;
-		
+        ioTypes[i] = originalResult;
+      else
+        ioTypes[i] = AxBuilder.U;
+        
       Function! res = HelperFuns.BoogieFunction(name, ioTypes);
 
       if (AxBuilder.U.Equals(ioTypes[i]))
       {
-		AxBuilder.AddTypeAxiom(
-			AxBuilderPremisses.GenFunctionAxiom(res,
-                                            implicitParams, explicitTypeParams,
+        AxBuilder.AddTypeAxiom(
+            AxBuilderPremisses.GenFunctionAxiom(res,
+                                            implicitTypeParams, explicitTypeParams,
                                             originalInTypes, originalResult));
       }
       return res;
@@ -585,47 +582,95 @@ namespace Microsoft.Boogie.TypeErasure
       return Gen.Function(store, storeArgs);
     }
 
+    /// <summary>
+    /// Generate:
+    ///   (forall m, indexes, val ::
+    ///     type(val) == T ==>
+    ///     select(store(m, indexes, val), indexes) == val)
+    /// where the quantifier body is also enclosed in a let that defines portions of T, if needed.
+    /// </summary>
     private VCExpr! GenMapAxiom0(Function! select, Function! store,
                                  Type! mapResult,
-                                 List<TypeVariable!>! explicitSelectParams) {
+                                 List<TypeVariable!>! implicitTypeParamsSelect, List<TypeVariable!>! explicitTypeParamsSelect,
+                                 List<Type!>! originalInTypes)
+    {
       int arity = store.InParams.Length - 2;
-      VCExprVar! typedVal = Gen.Variable("val", mapResult);
-      VCExprVar! val = Gen.Variable("val", ((!)select.OutParams[0]).TypedIdent.Type);
+      List<VCExprVar!> inParams = new List<VCExprVar!>();
+      List<VCExprVar!> quantifiedVars = new List<VCExprVar!>(store.InParams.Length);
+      VariableBindings bindings = new VariableBindings();
 
-      VariableBindings! bindings = new VariableBindings ();
+      // bound variable:  m
+      VCExprVar typedM = Gen.Variable("m", originalInTypes[0]);
+      VCExprVar m = Gen.Variable("m", AxBuilder.U);
+      inParams.Add(typedM);
+      quantifiedVars.Add(m);
+      bindings.VCExprVarBindings.Add(typedM, m);
+
+      // bound variables:  indexes
+      List<Type!> origIndexTypes = new List<Type!>(arity);
+      List<Type!> indexTypes = new List<Type!>(arity);
+      for (int i = 1; i < store.InParams.Length-1; i++) {
+        origIndexTypes.Add(originalInTypes[i]);
+        indexTypes.Add(((!)store.InParams[i]).TypedIdent.Type);
+      }
+      assert arity == indexTypes.Count;
+      List<VCExprVar!> typedArgs = HelperFuns.VarVector("arg", origIndexTypes, Gen);
+      List<VCExprVar!> indexes = HelperFuns.VarVector("x", indexTypes, Gen);
+      assert typedArgs.Count == indexes.Count;
+      inParams.AddRange(typedArgs);
+      quantifiedVars.AddRange(indexes);
+      for (int i = 0; i < arity; i++) {
+        bindings.VCExprVarBindings.Add(typedArgs[i], indexes[i]);
+      }
+
+      // bound variable:  val
+      VCExprVar typedVal = Gen.Variable("val", mapResult);
+      VCExprVar val = Gen.Variable("val", ((!)select.OutParams[0]).TypedIdent.Type);
+      quantifiedVars.Add(val);
       bindings.VCExprVarBindings.Add(typedVal, val);
 
-      // explicit type parameters are handled using a let-binder
-      List<VCExprLetBinding!>! letBindings =
-        AxBuilderPremisses.GenTypeParamBindings(explicitSelectParams,
-                                                HelperFuns.ToList(typedVal),
-                                                bindings);
-      List<VCExpr!>! typeParams = new List<VCExpr!> (explicitSelectParams.Count);
-      foreach (TypeVariable! var in explicitSelectParams)
-        typeParams.Add(bindings.TypeVariableBindings[var]);
-
-      List<Type!> indexTypes = new List<Type!>();
-      for (int i = 1; i < store.InParams.Length-1; i++)
-      {
-		indexTypes.Add(((!)store.InParams[i]).TypedIdent.Type);
-	  }
-	  assert arity == indexTypes.Count;
-	  
-      List<VCExprVar!> indexes = HelperFuns.VarVector("x", indexTypes, Gen);
-      VCExprVar! m = Gen.Variable("m", AxBuilder.U);
+      // add all type parameters into bindings
+      foreach (TypeVariable tp in implicitTypeParamsSelect) {
+        VCExprVar tVar = Gen.Variable(tp.Name, AxBuilderPremisses.T);
+        bindings.TypeVariableBindings.Add(tp, tVar);
+      }
+      List<VCExpr!> typeParams = new List<VCExpr!>(explicitTypeParamsSelect.Count);
+      foreach (TypeVariable tp in explicitTypeParamsSelect) {
+        VCExprVar tVar = Gen.Variable(tp.Name, AxBuilderPremisses.T);
+        bindings.TypeVariableBindings.Add(tp, tVar);
+        // ... and record these explicit type-parameter arguments in typeParams
+        typeParams.Add(tVar);
+      }
 
       VCExpr! storeExpr = Store(store, m, indexes, val);
       VCExpr! selectExpr = Select(select, typeParams, storeExpr, indexes);
 
-      List<VCExprVar!>! quantifiedVars = new List<VCExprVar!> (indexes.Count + 2);
-      quantifiedVars.Add(val);
-      quantifiedVars.Add(m);
-      quantifiedVars.AddRange(indexes);
+      // Create let-binding definitions for all type parameters.
+      // The implicit ones can be phrased in terms of the types of the ordinary in-parameters, and
+      // we want to make sure that they don't get phrased in terms of the out-parameter, so we pass
+      // in inParams here.
+      List<VCExprLetBinding!> letBindings_Implicit =
+        AxBuilderPremisses.GenTypeParamBindings(implicitTypeParamsSelect, inParams, bindings, false);
+      // The explicit ones, by definition, can only be phrased in terms of the result, so we pass
+      // in List(typedVal) here.
+      List<VCExprLetBinding!> letBindings_Explicit =
+        AxBuilderPremisses.GenTypeParamBindings(explicitTypeParamsSelect, HelperFuns.ToList(typedVal), bindings, false);
 
+      // generate:  select(store(m, indices, val)) == val
       VCExpr! eq = Gen.Eq(selectExpr, val);
-      VCExpr! letEq = Gen.Let(letBindings, eq);
-      return Gen.Forall(quantifiedVars, new List<VCTrigger!> (),
-                        "mapAx0:" + select.Name, letEq);
+      // generate:  type(val) == T, where T is the type of val
+      VCExpr! ante = Gen.Eq(
+        AxBuilderPremisses.TypeOf(val),
+        AxBuilderPremisses.Type2Term(mapResult, bindings.TypeVariableBindings));
+      VCExpr body;
+      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.None ||
+          !AxBuilder.U.Equals(mapResult))
+      {
+        body = Gen.Let(letBindings_Explicit, eq);
+      } else {
+        body = Gen.Let(letBindings_Implicit, Gen.Let(letBindings_Explicit, Gen.ImpliesSimp(ante, eq)));
+      }
+      return Gen.Forall(quantifiedVars, new List<VCTrigger!>(), "mapAx0:" + select.Name, body);
     }
 
     private VCExpr! GenMapAxiom1(Function! select, Function! store,
@@ -633,13 +678,13 @@ namespace Microsoft.Boogie.TypeErasure
                                  List<TypeVariable!>! explicitSelectParams) {
       int arity = store.InParams.Length - 2;
 
-	  List<Type!> indexTypes = new List<Type!>();
+      List<Type!> indexTypes = new List<Type!>();
       for (int i = 1; i < store.InParams.Length-1; i++)
       {
-		indexTypes.Add(((!)store.InParams[i]).TypedIdent.Type);
-	  }
-	  assert indexTypes.Count == arity;
-	  
+        indexTypes.Add(((!)store.InParams[i]).TypedIdent.Type);
+      }
+      assert indexTypes.Count == arity;
+      
       List<VCExprVar!>! indexes0 = HelperFuns.VarVector("x", indexTypes, Gen);
       List<VCExprVar!>! indexes1 = HelperFuns.VarVector("y", indexTypes, Gen);
       VCExprVar! m = Gen.Variable("m", AxBuilder.U);
@@ -653,7 +698,7 @@ namespace Microsoft.Boogie.TypeErasure
       List<VCExprLetBinding!>! letBindings =
         AxBuilderPremisses.GenTypeParamBindings(explicitSelectParams,
                                                 HelperFuns.ToList(typedVal),
-                                                bindings);
+                                                bindings, true);
 
       // ... and quantify the introduced term variables for type
       // parameters universally
@@ -831,8 +876,7 @@ namespace Microsoft.Boogie.TypeErasure
                                      List<VCExprVar!>! newBoundVars,
                                      VariableBindings! bindings) {
       List<VCExprLetBinding!>! typeVarBindings =
-        AxBuilderPremisses.GenTypeParamBindings(node.TypeParameters,
-                                                occurringVars, bindings);
+        AxBuilderPremisses.GenTypeParamBindings(node.TypeParameters, occurringVars, bindings, true);
 
       // Check whether some of the type parameters could not be
       // determined from the bound variable types. In this case, we

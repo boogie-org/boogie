@@ -166,36 +166,30 @@ namespace Microsoft.Boogie.TypeErasure
       // Fill in the index types
       foreach (Type! type in abstractedType.Arguments)
       {
-        if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(type))
-        {
-			selectTypes[i] = type;
-			storeTypes[i] = type;
-		}
-		else
-		{
-			selectTypes[i] = AxBuilder.U;
-			storeTypes[i] = AxBuilder.U;
-		}
-		i++;
-	  }
-	  // Fill in the output type for select function which also happens 
-	  // to be the type of the last argument to the store function
-	  if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(abstractedType.Result))
-	  {
-		selectTypes[i] = abstractedType.Result;
-		storeTypes[i] = abstractedType.Result;
-	  }
-	  else
-	  {
-		selectTypes[i] = AxBuilder.U;
-		storeTypes[i] = AxBuilder.U;
-	  }
-	  i++;
-	  // Fill in the map type which is the output of the store function
+        if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(type)) {
+          selectTypes[i] = type;
+          storeTypes[i] = type;
+        } else {
+          selectTypes[i] = AxBuilder.U;
+          storeTypes[i] = AxBuilder.U;
+        }
+        i++;
+      }
+      // Fill in the output type for select function which also happens 
+      // to be the type of the last argument to the store function
+      if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(abstractedType.Result)) {
+        selectTypes[i] = abstractedType.Result;
+        storeTypes[i] = abstractedType.Result;
+      } else {
+        selectTypes[i] = AxBuilder.U;
+        storeTypes[i] = AxBuilder.U;
+      }
+      i++;
+      // Fill in the map type which is the output of the store function
       storeTypes[i] = AxBuilder.U;
-	  NonNullType.AssertInitialized(selectTypes);
-	  NonNullType.AssertInitialized(storeTypes);
-	  
+      NonNullType.AssertInitialized(selectTypes);
+      NonNullType.AssertInitialized(storeTypes);
+      
       select = HelperFuns.BoogieFunction(baseName + "Select", selectTypes);
       store = HelperFuns.BoogieFunction(baseName + "Store", storeTypes);
 
@@ -241,8 +235,8 @@ namespace Microsoft.Boogie.TypeErasure
       List<Type!> indexTypes = new List<Type!>();
       for (int i = mapTypeParamNum + mapAbstractionVarNum + 1; i < select.InParams.Length; i++)
       {
-		indexTypes.Add(((!)select.InParams[i]).TypedIdent.Type);
-	  }
+        indexTypes.Add(((!)select.InParams[i]).TypedIdent.Type);
+      }
       assert arity == indexTypes.Count;
       
       List<VCExprVar!>! indexes = HelperFuns.VarVector("x", indexTypes, Gen);
@@ -289,8 +283,8 @@ namespace Microsoft.Boogie.TypeErasure
       List<Type!> indexTypes = new List<Type!>();
       for (int i = mapTypeParamNum + mapAbstractionVarNum + 1; i < select.InParams.Length; i++)
       {
-		indexTypes.Add(((!)select.InParams[i]).TypedIdent.Type);
-	  }
+        indexTypes.Add(((!)select.InParams[i]).TypedIdent.Type);
+      }
       assert arity == indexTypes.Count;
       
       List<VCExprVar!>! indexes0 = HelperFuns.VarVector("x", indexTypes, Gen);
