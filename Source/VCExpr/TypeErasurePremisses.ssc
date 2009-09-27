@@ -664,7 +664,7 @@ namespace Microsoft.Boogie.TypeErasure
         AxBuilderPremisses.Type2Term(mapResult, bindings.TypeVariableBindings));
       VCExpr body;
       if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.None ||
-          !AxBuilder.U.Equals(mapResult))
+          !AxBuilder.U.Equals(((!)select.OutParams[0]).TypedIdent.Type))
       {
         body = Gen.Let(letBindings_Explicit, eq);
       } else {
