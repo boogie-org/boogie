@@ -218,7 +218,7 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     public static string! BvConcatOpName(VCExprNAry! node)
-      requires node.Op.Equals(VCExpressionGenerator.BvConcatOp); {
+      requires node.Op is VCExprBvConcatOp; {
       int bits1 = node[0].Type.BvBits;
       int bits2 = node[1].Type.BvBits;
       return "$bv" + (bits1 + bits2) + "_concat[" + bits1 + "." + bits2 + "]";
@@ -227,7 +227,7 @@ namespace Microsoft.Boogie.VCExprAST
     public static string! BvExtractOpName(VCExprNAry! node)
       requires node.Op is VCExprBvExtractOp; {
       VCExprBvExtractOp! op = (VCExprBvExtractOp)node.Op;
-      return "$bv" + node.Type.BvBits + "_extract[" + op.Start + ":" + op.End + "]";
+      return "$bv" + node.Type.BvBits + "_extract" + op.Total + "[" + op.Start + ":" + op.End + "]";
     }
 
     internal void WriteId(string! s) {

@@ -60,3 +60,6 @@ Execution trace:
     bv6.bpl(5,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
+-------------------- bv8.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors

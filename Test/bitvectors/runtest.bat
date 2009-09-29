@@ -14,8 +14,7 @@ echo -------------------- vcc0.bpl - toInt --------------------
 echo -------------------- bv4.bpl - /bv:n --------------------
 %BGEXE% /bv:n %* /logPrefix:-1 bv4.bpl
 
-echo -------------------- bv5.bpl --------------------
-%BGEXE% /bv:z %* /logPrefix:-1 bv5.bpl
-
-echo -------------------- bv6.bpl --------------------
-%BGEXE% /bv:z %* /logPrefix:-1 bv6.bpl
+for %%f in (bv5.bpl bv6.bpl bv8.bpl) do (
+  echo -------------------- %%f --------------------
+  %BGEXE% %* %%f
+)

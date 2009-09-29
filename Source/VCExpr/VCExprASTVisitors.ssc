@@ -81,7 +81,7 @@ namespace Microsoft.Boogie.VCExprAST
         VCExprOp! op = node.Op;
         
         IEnumerator enumerator = new VCExprNAryUniformOpEnumerator(node);
-        enumerator.MoveNext();
+        enumerator.MoveNext();  // skip the node itself
 
         while (enumerator.MoveNext()) {
           VCExpr! expr = (VCExpr!)enumerator.Current;

@@ -202,12 +202,11 @@ namespace Microsoft.Boogie
     }
 
     public VCExpr! BvExtract(VCExpr! bv, int bits, int start, int end) {
-      return Function(new VCExprBvExtractOp (start, end), bv);
+      return Function(new VCExprBvExtractOp(start, end, bits), bv);
     }
 
-    public static readonly VCExprBvConcatOp! BvConcatOp = new VCExprBvConcatOp();
     public VCExpr! BvConcat(VCExpr! bv1, VCExpr! bv2) {
-      return Function(BvConcatOp, bv1, bv2);
+      return Function(new VCExprBvConcatOp(bv1.Type.BvBits, bv2.Type.BvBits), bv1, bv2);
     }
 
     public VCExpr! AtMost(VCExpr! smaller, VCExpr! greater) {
@@ -244,7 +243,6 @@ namespace Microsoft.Boogie
       SingletonOpDict.Add(GeOp,      SingletonOp.GeOp);
       SingletonOpDict.Add(SubtypeOp, SingletonOp.SubtypeOp);
       SingletonOpDict.Add(Subtype3Op,SingletonOp.Subtype3Op);
-      SingletonOpDict.Add(BvConcatOp,SingletonOp.BvConcatOp);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -995,6 +993,7 @@ namespace Microsoft.Boogie.VCExprAST
   public class VCExprBvExtractOp : VCExprOp {
     public readonly int Start;
     public readonly int End;
+    public readonly int Total;  // the number of bits from which the End-Start bits are extracted
 
     public override int Arity { get { return 1; } }
     public override int TypeParamArity { get { return 0; } }
@@ -1008,18 +1007,21 @@ namespace Microsoft.Boogie.VCExprAST
         return true;
       if (that is VCExprBvExtractOp) {
         VCExprBvExtractOp! thatExtract = (VCExprBvExtractOp)that;
-        return this.Start == thatExtract.Start && this.End == thatExtract.End;
+        return this.Start == thatExtract.Start && this.End == thatExtract.End && this.Total == thatExtract.Total;
       }
       return false;
     }
     [Pure]
     public override int GetHashCode() {
-      return Start * 81912 + End * 978132;
+      return Start * 81912 + End * 978132 + Total * 571289;
     }
 
-    internal VCExprBvExtractOp(int start, int end) {
+    internal VCExprBvExtractOp(int start, int end, int total)
+      requires 0 <= start && start <= end && end <= total;
+    {
       this.Start = start;
       this.End = end;
+      this.Total = total;
     }
     public override Result Accept<Result, Arg>
            (VCExprNAry! expr, IVCExprOpVisitor<Result, Arg>! visitor, Arg arg) {
@@ -1027,14 +1029,41 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
 
-  // singleton class
   public class VCExprBvConcatOp : VCExprOp {
+    public readonly int LeftSize;
+    public readonly int RightSize;
+    
     public override int Arity { get { return 2; } }
     public override int TypeParamArity { get { return 0; } }
     public override Type! InferType(List<VCExpr!>! args, List<Type!>! typeArgs) {
       return Type.GetBvType(args[0].Type.BvBits + args[1].Type.BvBits);
     }
-    internal VCExprBvConcatOp() {}
+
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object that) {
+      if (Object.ReferenceEquals(this, that))
+        return true;
+      if (that is VCExprBvConcatOp) {
+        VCExprBvConcatOp thatConcat = (VCExprBvConcatOp)that;
+        return this.LeftSize == thatConcat.LeftSize && this.RightSize == thatConcat.RightSize;
+      }
+      return false;
+    }
+    [Pure]
+    public override int GetHashCode() {
+      return LeftSize * 81912 + RightSize * 978132;
+    }
+
+    internal VCExprBvConcatOp(int leftSize, int rightSize)
+      requires 0 <= leftSize && 0 <= rightSize;
+    {
+      this.LeftSize = leftSize;
+      this.RightSize = rightSize;
+    }
+    public override Result Accept<Result, Arg>
+           (VCExprNAry! expr, IVCExprOpVisitor<Result, Arg>! visitor, Arg arg) {
+      return visitor.VisitBvConcatOp(expr, arg);
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////

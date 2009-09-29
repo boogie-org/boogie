@@ -117,7 +117,7 @@ namespace Microsoft.Boogie.Z3
       // there are a couple of cases where operators have to be
       // registered by generating appropriate Z3 statements
 
-      if (node.Op.Equals(VCExpressionGenerator.BvConcatOp)) {
+      if (node.Op is VCExprBvConcatOp) {
         //
         if (NativeBv) {
           RegisterType(node[0].Type);
