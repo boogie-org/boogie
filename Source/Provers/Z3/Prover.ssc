@@ -282,6 +282,11 @@ namespace Microsoft.Boogie.Z3
             return ProverOutcome.Inconclusive;
           }
 
+          if (status.StartsWith("Memout")) {
+            handler.OnResourceExceeded("memory");
+            return ProverOutcome.OutOfMemory;
+          }
+
           if (status.StartsWith("Invalid")) {
             isInvalid = true;
             continue;
