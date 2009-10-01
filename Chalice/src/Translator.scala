@@ -19,6 +19,7 @@ object TranslationOptions {
   var autoFold = false: Boolean;
   var checkLeaks = false: Boolean;
   var autoMagic = false: Boolean;
+  var skipDeadlockChecks = false: Boolean;
 }
 
 class Translator {
@@ -713,8 +714,12 @@ class Translator {
     val (lastAcquireVar, lastAcquire) = Boogie.NewBVar("lastAcquire", Boogie.ClassType(IntClass), true)
     val (lastSeenHeldV, lastSeenHeld) = Boogie.NewBVar("lastSeenHeld", tint, true)
     val (lastSeenMuV, lastSeenMu) = Boogie.NewBVar("lastSeenMu", tmu, true)
-    bassert(CanRead(o, "mu"), s.pos, "The mu field of the target of the acquire statement might not be readable.") ::
-    bassert(etran.MaxLockIsBelowX(etran.Heap.select(o,"mu")), s.pos, "The mu field of the target of the acquire statement might not be above maxlock.") ::
+    (if (skipDeadlockChecks)
+       bassume(CanRead(o, "mu")) ::
+       bassume(etran.MaxLockIsBelowX(etran.Heap.select(o,"mu")))
+     else
+       bassert(CanRead(o, "mu"), s.pos, "The mu field of the target of the acquire statement might not be readable.") ::
+       bassert(etran.MaxLockIsBelowX(etran.Heap.select(o,"mu")), s.pos, "The mu field of the target of the acquire statement might not be above maxlock.")) :::
     bassume(etran.Heap.select(o,"mu") !=@ bLockBottom) ::  // this isn't strictly necessary, it seems; but we might as well include it
     // remember the state right before releasing
     BLocal(lastSeenMuV) :: (lastSeenMu := etran.Heap.select(o, "mu")) ::

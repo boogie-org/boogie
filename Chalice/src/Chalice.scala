@@ -24,6 +24,7 @@ object Chalice {
     var defaults = 0
     var autoFold = false
     var autoMagic = false
+    var skipDeadlockChecks = false
     var boogieArgs = " ";
     var gen = false;
 
@@ -32,6 +33,7 @@ object Chalice {
       else if (a == "-noTranslate") doTranslate = false
       else if (a == "-noTypecheck") doTypecheck = false
       else if (a == "-checkLeaks") checkLeaks = true
+      else if (a == "-noDeadlockChecks") skipDeadlockChecks = true
       else if (a.startsWith("-boogie:")) boogiePath = a.substring(8)
       else if (a == "-defaults") defaults = 3
       else if (a.startsWith("-defaults:")) { try { defaults = Integer.parseInt(a.substring(10)); if(3<=defaults) { autoMagic = true; } } catch { case _ => CommandLineError("-defaults takes integer argument"); } }
@@ -83,6 +85,7 @@ object Chalice {
                 TranslationOptions.defaults = defaults;
                 TranslationOptions.autoFold = autoFold;
                 TranslationOptions.autoMagic = autoMagic;
+                TranslationOptions.skipDeadlockChecks = skipDeadlockChecks;
                 val bplProg = translator.translateProgram(prog);
                 // write to out.bpl
                 val bplText = TranslatorPrelude.P + (bplProg map Boogie.Print).foldLeft(""){ (a, b) => a + b };
@@ -110,6 +113,6 @@ object Chalice {
 
   def CommandLineError(msg: String) = {
     Console.err.println("Error: " + msg)
-    Console.err.println("syntax: chalice [-print] [-noTypecheck] [-noTranslate] [-boogie:path] [-defaults] [-autoFold] [-checkLeaks] inputFile")
+    Console.err.println("syntax: chalice [-print] [-noTypecheck] [-noTranslate] [-boogie:path] [-defaults] [-autoFold] [-checkLeaks] [-noDeadlockChecks] inputFile")
   }
 }
