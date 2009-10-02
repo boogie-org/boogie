@@ -75,7 +75,7 @@ object Resolver {
       case ch: Channel =>
         for (v <- ch.parameters) {
           ResolveType(v.t, contextNoCurrentClass)
-	}
+	    }
       case cl: Class =>
         for (m <- cl.asInstanceOf[Class].members) m match {
           case _:MonitorInvariant =>
@@ -102,11 +102,13 @@ object Resolver {
     //  * VariableExpr and FieldSelect expressions
     for (decl <- prog) decl match {
       case ch: Channel =>
-        var ctx = new ProgramContext(decls, ChannelClass(ch))
+	    val context = new ProgramContext(decls, ChannelClass(ch))
+        var ctx = context
         for (v <- ch.parameters) {
           ctx = ctx.AddVariable(v)
         }
         ResolveExpr(ch.where, ctx, false, true)(false)
+		errors = errors ++ context.errors
       case cl: Class =>
         val context = new ProgramContext(decls, cl)
         for (m <- cl.members) {

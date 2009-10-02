@@ -853,6 +853,7 @@ class Translator {
     (loopEtran.oldEtran.Credits := loopEtran.Credits) ::  // is oldCredits?
     // check invariant on entry to the loop
     Exhale(invs map { inv => (inv, ErrorMessage(inv.pos, "The loop invariant might not hold on entry to the loop."))}, "loop invariant, initially") :::
+	List(bassert(DebtCheck, w.pos, "Loop invariant must consume all debt on entry to the loop.")) :::
     // save values of local-variable loop targets
     (for (sv <- saveLocalsV) yield BLocal(Variable2BVarWhere(sv))) :::
     (for ((v,sv) <- w.LoopTargetsList zip saveLocalsV) yield
