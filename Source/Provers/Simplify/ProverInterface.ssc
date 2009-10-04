@@ -562,21 +562,24 @@ namespace Microsoft.Boogie.Simplify
     private readonly BigLiteralAbstracter! LitAbstracter;
 
     public override string! translate(VCExpr! expr, int polarity) {
-      Let2ImpliesMutator! letImplier = new Let2ImpliesMutator (Gen);
+      Let2ImpliesMutator! letImplier = new Let2ImpliesMutator(Gen);
 
       // handle the types in the VCExpr
-      TypeEraser! eraser;
+      TypeEraser eraser;
       switch (CommandLineOptions.Clo.TypeEncodingMethod) {
         case CommandLineOptions.TypeEncoding.Arguments:
           eraser = new TypeEraserArguments((TypeAxiomBuilderArguments)AxBuilder, Gen);
+          break;
+        case CommandLineOptions.TypeEncoding.Monomorphic:
+          eraser = null;
           break;
         default:
           eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses)AxBuilder, Gen);
           break;
       }
-      VCExpr! exprWithoutTypes = eraser.Erase(expr, polarity);
+      VCExpr! exprWithoutTypes = eraser != null ? eraser.Erase(expr, polarity) : expr;
 
-      TermFormulaFlattener! flattener = new TermFormulaFlattener (Gen);
+      TermFormulaFlattener! flattener = new TermFormulaFlattener(Gen);
       VCExpr! exprWithLet = flattener.Flatten(exprWithoutTypes);
       VCExpr! exprWithoutLet = letImplier.Mutate(exprWithLet);
 

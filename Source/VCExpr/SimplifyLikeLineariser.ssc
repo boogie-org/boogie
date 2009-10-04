@@ -93,18 +93,15 @@ namespace Microsoft.Boogie.VCExprAST
   public class SimplifyLikeExprLineariser : IVCExprVisitor<bool, LineariserOptions!> {
 
     public static string! ToSimplifyString(VCExpr! e, UniqueNamer! namer) {
-      StringWriter sw = new StringWriter();
-      SimplifyLikeExprLineariser! lin = new SimplifyLikeExprLineariser (sw, namer);
-      lin.Linearise(e, LineariserOptions.SimplifyDefault);
-      return (!)sw.ToString();
+      return ToString(e, LineariserOptions.SimplifyDefault, namer);
     }
 
     public static string! ToString(VCExpr! e, LineariserOptions! options,
                                    UniqueNamer! namer) {
       StringWriter sw = new StringWriter();
-      SimplifyLikeExprLineariser! lin = new SimplifyLikeExprLineariser (sw, namer);
+      SimplifyLikeExprLineariser lin = new SimplifyLikeExprLineariser (sw, namer);
       lin.Linearise(e, options);
-      return (!)sw.ToString();
+      return sw.ToString();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////

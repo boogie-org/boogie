@@ -197,6 +197,8 @@ namespace Microsoft.Boogie
     public int Z3mam = 0;
     [Peer] public List<string!>! Z3Options = new List<string!>();
     public bool Z3types = false;
+    public int Z3lets = 3;  // 0 - none, 1 - only LET TERM, 2 - only LET FORMULA, 3 - (default) any
+    invariant 0 <= Z3lets && Z3lets < 4;
 
     // Maximum amount of virtual memory (in bytes) for the prover to use
     //
@@ -219,8 +221,8 @@ namespace Microsoft.Boogie
     public enum TypeEncoding { None, Predicates, Arguments, Monomorphic };
     public TypeEncoding TypeEncodingMethod = TypeEncoding.Predicates;
 
-	public bool Monomorphize = false;
-	
+    public bool Monomorphize = false;
+    
     public bool ReflectAdd = false;
 
     // Static constructor
@@ -421,8 +423,8 @@ namespace Microsoft.Boogie
             
             case "-launch":
             case "/launch":
-			  System.Diagnostics.Debugger.Launch();
-			  break;
+              System.Diagnostics.Debugger.Launch();
+              break;
             
           case "-proc":
           case "/proc":
@@ -550,8 +552,8 @@ namespace Microsoft.Boogie
           
           case "-proverShutdownLimit":
           case "/proverShutdownLimit":
-			ps.GetNumericArgument(ref ProverShutdownLimit);
-			break;
+            ps.GetNumericArgument(ref ProverShutdownLimit);
+            break;
           
           case "-smtOutput":
           case "/smtOutput":
@@ -931,11 +933,6 @@ namespace Microsoft.Boogie
             }
             break;
             
-          case "-monomorphize":
-          case "/monomorphize":
-			Monomorphize = true;
-			break;
-		  
           case "-vcBrackets":
           case "/vcBrackets":
             ps.GetNumericArgument(ref BracketIdsInVC, 2);
@@ -1021,11 +1018,6 @@ namespace Microsoft.Boogie
             ps.GetNumericArgument(ref ProverCCLimit);
             break;
             
-          case "-z3multipleErrors":
-          case "/z3multipleErrors":
-            z3AtFlag = false;
-            break;
-            
           case "-z3mam":
           case "/z3mam":
           {
@@ -1047,11 +1039,11 @@ namespace Microsoft.Boogie
             }
             break;
 
-          case "-z3types":
-          case "/z3types":
-            Z3types = true;
+          case "-z3lets":
+          case "/z3lets":
+            ps.GetNumericArgument(ref Z3lets, 4);
             break;
-            
+
           case "-platform":
           case "/platform":
             if (ps.ConfirmArgumentCount(1))
@@ -1137,7 +1129,10 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("vcsDumpSplits", ref VcsDumpSplits) ||
               ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||
               ps.CheckBooleanFlag("causalImplies", ref CausalImplies) ||
-              ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd)
+              ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
+              ps.CheckBooleanFlag("z3types", ref Z3types) ||
+              ps.CheckBooleanFlag("z3multipleErrors", ref z3AtFlag, false) ||
+              ps.CheckBooleanFlag("monomorphize", ref Monomorphize)
               )
             {
               // one of the boolean flags matched
@@ -1958,6 +1953,8 @@ namespace Microsoft.Boogie
                           macros as in /proverLog can be used.
   
   /z3types       : generate multi-sorted VC that make use of Z3 types
+  /z3lets:<n>    : 0 - no LETs, 1 - only LET TERM, 2 - only LET FORMULA,
+                   3 - (default) any
 ");
     }
   }

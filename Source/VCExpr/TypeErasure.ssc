@@ -708,9 +708,9 @@ namespace Microsoft.Boogie.TypeErasure
                               // "AbstractionVariable(int)" delivers variables
                               TypeSeq! instantiations) {
 
-	  if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(rawType))
-		return rawType;
-		
+      if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(rawType))
+        return rawType;
+
       if (forall{TypeVariable! var in rawType.FreeVariables;
           !boundTypeParams.Has(var)}) {
         // Bingo!

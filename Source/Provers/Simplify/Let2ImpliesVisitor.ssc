@@ -22,8 +22,16 @@ namespace Microsoft.Boogie.Simplify
   public class Let2ImpliesMutator : SubstitutingVCExprVisitor {
 
     public Let2ImpliesMutator(VCExpressionGenerator! gen) {
-      base(gen);
+      this(gen, false, false);
     }
+    public Let2ImpliesMutator(VCExpressionGenerator! gen, bool keepLetTerm, bool keepLetFormula) {
+      base(gen);
+      this.keepLetTerm = keepLetTerm;
+      this.keepLetFormula = keepLetFormula;
+    }
+    
+    readonly bool keepLetTerm;
+    readonly bool keepLetFormula;
 
     public VCExpr! Mutate(VCExpr! expr) {
       return Mutate(expr, new VCExprSubstitution ());
@@ -138,7 +146,8 @@ namespace Microsoft.Boogie.Simplify
       substitution.PushScope(); try {
 
       // the bindings that remain and that are later handled using an implication
-      List<VCExprLetBinding!>! bindings = new List<VCExprLetBinding!> ();
+      List<VCExprLetBinding!> bindings = new List<VCExprLetBinding!> ();
+      List<VCExprLetBinding!> keepBindings = new List<VCExprLetBinding!> ();
 
       foreach (VCExprLetBinding! binding in node) {
         // in all cases we apply the substitution up to this point
@@ -149,18 +158,30 @@ namespace Microsoft.Boogie.Simplify
           // a bound formula is handled using an implication; we introduce
           // a fresh variable to avoid clashes
           assert polarity > 0;
+          
+          if (keepLetFormula) {
+            keepBindings.Add(Gen.LetBinding(binding.V, newE));
+            
+          } else {
+            VCExprVar! newVar = Gen.Variable(binding.V.Name, Type.Bool);
+            substitution[binding.V] = newVar;
 
-          VCExprVar! newVar = Gen.Variable(binding.V.Name, Type.Bool);
-          substitution[binding.V] = newVar;
-
-          bindings.Add(Gen.LetBinding(newVar, newE));
+            bindings.Add(Gen.LetBinding(newVar, newE));
+          }
         } else {
-          // a bound term is substituted
-          substitution[binding.V] = newE;
+          if (keepLetTerm) {
+            keepBindings.Add(Gen.LetBinding(binding.V, newE));
+          } else {
+            // a bound term is substituted
+            substitution[binding.V] = newE;
+          }
         }
       }
 
       VCExpr! newBody = Mutate(node.Body, substitution);
+      if (keepBindings.Count > 0) {
+        newBody = Gen.Let(keepBindings, newBody);
+      }
 
       // Depending on the places where the variable occurs, we would
       // have to introduce implications or equations to define the
@@ -172,7 +193,7 @@ namespace Microsoft.Boogie.Simplify
           assert occ == OccurrenceTypes.None || occ == OccurrenceTypes.Pos;
       }
 
-      return Gen.Implies(Gen.AsImplications(bindings), newBody);
+      return Gen.ImpliesSimp(Gen.AsImplications(bindings), newBody);
 
       } finally {
         substitution.PopScope();

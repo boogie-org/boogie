@@ -75,6 +75,13 @@ namespace Microsoft.Boogie.Z3
         return CommandLineOptions.Clo.Z3types || BitVectors == CommandLineOptions.BvHandling.Z3Native; 
       } 
     }
+    public int Lets {
+      get
+        ensures 0 <= result && result < 4;
+      {
+        return CommandLineOptions.Clo.Z3lets;
+      }
+    }
     public bool V1 = false;
     public bool V2 = false; // default set in PostParse
     public bool DistZ3 = false;
@@ -107,8 +114,8 @@ namespace Microsoft.Boogie.Z3
         ExeName = "z3-v1.3.exe";
       }
       if (DistZ3) {
-		ExeName = "z3-dist.exe";
-		CommandLineOptions.Clo.RestartProverPerVC = true;
+        ExeName = "z3-dist.exe";
+        CommandLineOptions.Clo.RestartProverPerVC = true;
       }
       
     }
@@ -227,7 +234,6 @@ namespace Microsoft.Boogie.Z3
           eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses)AxBuilder, Gen);
           break;
       }
-      
       VCExpr! exprWithoutTypes = eraser != null ? eraser.Erase(expr, polarity) : expr;
       
       LetBindingSorter! letSorter = new LetBindingSorter(Gen);
@@ -242,6 +248,12 @@ namespace Microsoft.Boogie.Z3
         TermFormulaFlattener! flattener = new TermFormulaFlattener (Gen);
         sortedExpr = flattener.Flatten(sortedExpr);
         sortedAxioms = flattener.Flatten(sortedAxioms);
+      }
+      if (Opts.Lets != 3) {
+        // replace let expressions with implies
+        Let2ImpliesMutator letImplier = new Let2ImpliesMutator(Gen, Opts.Lets == 1, Opts.Lets == 2);
+        sortedExpr = letImplier.Mutate(sortedExpr);
+        sortedAxioms = letImplier.Mutate(sortedAxioms);
       }
 
       //////////////////////////////////////////////////////////////////////////
