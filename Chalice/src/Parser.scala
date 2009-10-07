@@ -204,7 +204,7 @@ class Parser extends StandardTokenParsers {
         case FunctionApplication(obj, name, args) => Semi ^^^ Send(MemberAccess(obj,name), args)
         case e => "(" ~> expressionList <~ ")" <~ Semi ^^ { case args => Send(e, args) }}})
     | ("send" ~> atom into { e => e match {
-        case FunctionApplication(ImplicitThisExpr(), name, args) => Semi ^^^ Send(VariableExpr(name), args)
+        case fa@FunctionApplication(ImplicitThisExpr(), name, args) => Semi ^^^ {val va = VariableExpr(name); va.pos = fa.pos; Send(va, args)}
         case e => "(" ~> expressionList <~ ")" <~ Semi ^^ { case args => Send(e, args) }}})
     | "receive" ~> (identList <~ ":=" ?) ~ expression <~ Semi ^^ {
         case outs ~ e => Receive(e, ExtractList(outs)) }

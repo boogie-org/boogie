@@ -4,7 +4,8 @@
 // channel is freed by Getter when it completes
 // ack works, but an assume is needed and negative credits are sent over channels! 
 
-// Conjecture: it is ok to send debit for yourself over yourself if we check that neither positive nor negative credits are leaked.
+// Conjecture: it is ok to send debit for yourself over yourself.
+// Why: Suppose a channel that allows self-debt is involved in a deadlock. The either that channel is empty, which means there's no difference between the situation with or with self-debt. Or the channel is non-empty. This means that we can make progress by receiving the message stored in the channel! Does this make any sense?
 
 channel C(msg: int, n: Node) where 
   (msg == 0 ==> credit(this, -1)) && // ack
@@ -41,7 +42,7 @@ class Program {
       send e(1, x);
       x := t;
       var ack;
-      assume maxlock << e.mu;
+      assume maxlock << e.mu; // Chalice should be able to figure this out itself
       receive ack, t := e;
       if(ack != 2) { assume false; /* abort */ }
     }
