@@ -207,6 +207,12 @@ namespace Microsoft.Boogie.Z3
 
       return base.Visit(node, arg);
     }
+    
+    public override bool Visit(VCExprQuantifier! node, bool arg) {
+      foreach (VCExprVar! v in node.BoundVars)
+        RegisterType(v.Type);
+        
+      return base.Visit(node, arg);
+    } 
   }
-
 }
