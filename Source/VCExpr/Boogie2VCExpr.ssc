@@ -405,8 +405,13 @@ namespace Microsoft.Boogie.VCExprAST
         if (filename == null) filename = "unknown";
         for (int i = 0; i < filename.Length; ++i) {
           if (filename[i] == '/' || filename[i] == '\\') buf.Length = 0;
-          if (buf.Length < max && char.IsLetterOrDigit(filename[i]))
+          if (buf.Length < max && char.IsLetterOrDigit(filename[i])) {
+            if (buf.Length == 0 && char.IsDigit(filename[i])) {
+              // Z3 does not like QID's to start with a digit, so we prepend another character
+              buf.Append('_');
+            }
             buf.Append(filename[i]);
+          }
         }
         buf.Append('.').Append(v.Line).Append(':').Append(v.Col);
         qid = buf.ToString();
