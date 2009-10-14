@@ -881,8 +881,19 @@ Execution trace:
 
 Boogie program verifier finished with 0 verified, 4 errors
 -------------------- test5.bpl --------------------
+test5.bpl(37,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    test5.bpl(34,10): anon0
+    test5.bpl(25,23): inline$P$0$Entry
+    test5.bpl(28,10): inline$P$0$anon0
+    test5.bpl(25,23): inline$P$0$Return
+    test5.bpl(34,10): anon0$1
+    test5.bpl(25,23): inline$P$1$Entry
+    test5.bpl(28,10): inline$P$1$anon0
+    test5.bpl(25,23): inline$P$1$Return
+    test5.bpl(34,10): anon0$2
 
-Boogie program verifier finished with 1 verified, 0 errors
+Boogie program verifier finished with 3 verified, 1 error
 -------------------- test6.bpl --------------------
 test6.bpl(1,22): Error: the inlined procedure is recursive, call stack: foo -> foo
 test6.bpl(15,22): Error: the inlined procedure is recursive, call stack: foo2 -> foo3 -> foo1 -> foo2

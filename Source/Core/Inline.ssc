@@ -386,19 +386,19 @@ namespace Microsoft.Boogie {
       }
       
       codeCopier.Subst = Substituter.SubstitutionFromHashtable(substMap);     
-      codeCopier.SubstForOld = Substituter.SubstitutionFromHashtable(substMapOld);      
+      codeCopier.OldSubst = Substituter.SubstitutionFromHashtable(substMapOld);      
     }
     
     protected void EndInline() {
       codeCopier.Subst = null;
-      codeCopier.SubstForOld = null;
+      codeCopier.OldSubst = null;
     }
     
    
     // result[0] is the entry block
     protected List<Block!>! CreateInlinedBlocks(CallCmd! callCmd, Procedure! proc, Implementation! impl, string! nextBlockLabel)
       requires (codeCopier.Subst != null);
-      requires (codeCopier.SubstForOld != null);
+      requires (codeCopier.OldSubst != null);
     {
       
       List<Block!>! implBlocks = (!)impl.OriginalBlocks;
@@ -461,7 +461,7 @@ namespace Microsoft.Boogie {
       foreach (IdentifierExpr! mie in proc.Modifies)
       {
         Variable! mvar = (!) mie.Decl;
-        AssignCmd assign = Cmd.SimpleAssign(impl.tok, (IdentifierExpr) (!) codeCopier.SubstForOld(mvar), mie);
+        AssignCmd assign = Cmd.SimpleAssign(impl.tok, (IdentifierExpr) (!) codeCopier.OldSubst(mvar), mie);
         inCmds.Add(assign);
       }
       
@@ -562,176 +562,29 @@ namespace Microsoft.Boogie {
   
   public class CodeCopier
   {
-  
-    private DefaultDuplicator! dupl;
-    
-    private sealed class DefaultDuplicator : Duplicator
-    {
-      public Substitution subst;
-      public Substitution oldSubst;
-      private bool insideOldExpr = false; 
-      public DefaultDuplicator(Substitution subst, Substitution oldSubst) {
-      this.subst = subst;
-      this.oldSubst = oldSubst; 
-      base();
-      }
-      public override Cmd! VisitAssumeCmd(AssumeCmd! node)
-      {
-        return new AssumeCmd(node.tok, VisitExpr(node.Expr));
-      }
-      public override Cmd! VisitAssertCmd(AssertCmd! node)
-      {
-        return new AssertCmd(node.tok, VisitExpr(node.Expr));
-      }     
-      public override Cmd! VisitAssertRequiresCmd(AssertRequiresCmd! node)
-      {
-       return new AssertRequiresCmd((CallCmd)VisitCallCmd(node.Call), VisitRequires(node.Requires));
-      }
-      public override Cmd! VisitAssertEnsuresCmd(AssertEnsuresCmd! node)
-      {
-        return new AssertEnsuresCmd(VisitEnsures(node.Ensures));
-      } 
-      
-      public override Cmd! VisitCallCmd(CallCmd! node)
-      {
-        List<Expr>! newIns = new List<Expr> ();
-        List<IdentifierExpr>! newOuts = new List<IdentifierExpr> ();
-        foreach (Expr e in node.Ins)
-          newIns.Add(e == null ? null : this.VisitExpr(e));
-        foreach (IdentifierExpr e in node.Outs)
-          newOuts.Add(e == null ? null : (IdentifierExpr)this.VisitIdentifierExpr(e));
+    public Substitution Subst;
+    public Substitution OldSubst;
 
-        CallCmd! newCmd = new CallCmd(node.tok, ((!)node.Proc).Name, newIns, newOuts); 
-        newCmd.Proc = node.Proc;
-        return newCmd;
-      }     
-      public override Expr! VisitIdentifierExpr(IdentifierExpr! node)
-      {
-        Expr e = null;
-        if(insideOldExpr && oldSubst != null) {
-          e = oldSubst((!)node.Decl);
-        } 
-        if(e == null) {
-          if(subst != null) {     
-            e = subst((!)node.Decl);
-            return e == null ? base.VisitIdentifierExpr(node) : e;
-          } else {
-            return base.VisitIdentifierExpr(node);
-          }
-        }
-        return e;
-      }
-      public override Expr! VisitOldExpr(OldExpr! node)
-      {
-      if(this.oldSubst != null) {
-        bool previouslyInOld = insideOldExpr;
-        insideOldExpr = true;
-        Expr! e = (Expr!)this.Visit(node.Expr);
-        insideOldExpr = previouslyInOld;
-        return e;
-      } else {
-        return base.VisitOldExpr(node);
-      }
-      }     
-    }
-  
     public CodeCopier(Hashtable! substMap) {
-      this.dupl = new DefaultDuplicator(Substituter.SubstitutionFromHashtable(substMap), null);
+      Subst = Substituter.SubstitutionFromHashtable(substMap);
     }
     
     public CodeCopier(Hashtable! substMap, Hashtable! oldSubstMap) {
-      this.dupl = new DefaultDuplicator(Substituter.SubstitutionFromHashtable(substMap), Substituter.SubstitutionFromHashtable(oldSubstMap));
+      Subst = Substituter.SubstitutionFromHashtable(substMap);
+      OldSubst = Substituter.SubstitutionFromHashtable(oldSubstMap);
     }
     
     public CodeCopier() {
-      this.dupl = new DefaultDuplicator(null, null);
     }
     
-    public Substitution Subst {
-      set {
-        this.dupl.subst = value;
-      }
-      get {
-        return this.dupl.subst;
-      }
-    }
-    
-    public Substitution SubstForOld {
-      set {
-        this.dupl.oldSubst = value;
-      }
-      get {
-        return this.dupl.oldSubst;
-      }
-    }
-    
-    public Duplicator! Dupl {
-      get {
-        return this.dupl;
-      }
-    }
-    
-    public List<Block!>! CopyBlocks(List<Block!>! blocks) {
-    
-      List<Block!>!  newBlocks = new List<Block!>();
-      
-      foreach(Block block in blocks) {
-        Block newBlock = CopyBlock(block);
-        newBlocks.Add(newBlock);
-      }
-      
-      return newBlocks;
-    }
-    
-    public List<Block!>! CopyBlocks(List<Block!>! blocks, string! prefix) {
-    
-      List<Block!>!  newBlocks = new List<Block!>();
-      
-      foreach(Block block in blocks) {
-        Block newBlock = CopyBlock(block, prefix);
-        newBlocks.Add(newBlock);
-      }
-      
-      return newBlocks;
-    }
-    
-    
-    #region CopyBlock
-    public Block! CopyBlock(Block! block) {
-      
-      assert(block.TransferCmd != null);
-      Block newBlock = new Block(block.tok, block.Label, CopyCmdSeq(block.Cmds), CopyTransferCmd(block.TransferCmd));
-      
-      return newBlock;
-      
-    }
-    
-    public Block! CopyBlock(Block! block, string! prefix) {
-      
-      assert(block.TransferCmd != null);
-      Block newBlock = new Block(block.tok, prefix + "$" + block.Label, CopyCmdSeq(block.Cmds), CopyTransferCmd(block.TransferCmd));
-      
-      return newBlock;
-      
-    }
-    #endregion
-    
-    #region CopyCmdSeq
     public CmdSeq! CopyCmdSeq(CmdSeq! cmds) {
-      
       CmdSeq newCmds = new CmdSeq();
-      
-      for (int i = 0; i < cmds.Length; ++i) {
-        newCmds.Add(CopyCmd(cmds[i]));
+      foreach (Cmd! cmd in cmds) {
+        newCmds.Add(CopyCmd(cmd));
       }
-      
       return newCmds;
-      
     }
-    #endregion
     
-    
-    #region CopyTransferCmd
     public TransferCmd! CopyTransferCmd(TransferCmd! cmd) {
       TransferCmd transferCmd;
       GotoCmd gotocmd = cmd as GotoCmd;
@@ -746,39 +599,25 @@ namespace Microsoft.Boogie {
       return transferCmd;
     }
     
-    public TransferCmd! CopyTransferCmd(TransferCmd! cmd, string! prefix) {
-      TransferCmd transferCmd;
-      GotoCmd gotocmd = cmd as GotoCmd;
-      if(gotocmd != null) {
-        assert(gotocmd.labelNames != null);
-        StringSeq labels = new StringSeq();
-        foreach(string label in gotocmd.labelNames) {
-          labels.Add(prefix + "$" + label);
-        }
-        transferCmd = new GotoCmd(cmd.tok, labels);
-      } else {
-        transferCmd = new ReturnCmd(cmd.tok);
-      }
-      return transferCmd;
-    }
-    #endregion
-    
-    
-    
-    #region CopyCmd
     public Cmd! CopyCmd(Cmd! cmd) {
-      Cmd newCmd = (Cmd) Dupl.Visit(cmd);
-      return newCmd;
+      if (Subst == null) {
+        return cmd;
+      } else if (OldSubst == null) {
+        return Substituter.Apply(Subst, cmd);
+      } else {
+        return Substituter.ApplyReplacingOldExprs(Subst, OldSubst, cmd);
+      }
     }
-    #endregion
     
-    #region CopyExpr
     public Expr! CopyExpr(Expr! expr) {
-      Expr newExpr = (Expr) Dupl.Visit(expr);
-      return newExpr;
+      if (Subst == null) {
+        return expr;
+      } else if (OldSubst == null) {
+        return Substituter.Apply(Subst, expr);
+      } else {
+        return Substituter.ApplyReplacingOldExprs(Subst, OldSubst, expr);
+      }
     }
-    #endregion
-    
   } // end class CodeCopier
 
 

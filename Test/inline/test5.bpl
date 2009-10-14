@@ -18,3 +18,39 @@ procedure  bar()
   assert x == 5;
 }
 
+// -------------------------------------------------
+
+var Mem : [int]int;
+
+procedure {:inline 1} P(x:int)
+  modifies Mem;
+{
+  Mem[x] := 1;
+}
+
+procedure mainA()
+  modifies Mem;
+{
+  Mem[1] := 0;
+  call P(0);
+  call P(1);
+  assert Mem[1] == 0;  // error
+}
+
+procedure mainB()
+  modifies Mem;
+{
+  Mem[1] := 0;
+  call P(0);
+  call P(1);
+  assert Mem[1] == 1;  // good
+}
+
+procedure mainC()
+  modifies Mem;
+{
+  Mem[1] := 0;
+  call P(0);
+  call P(1);
+  assert Mem[1] == 1;  // good
+}

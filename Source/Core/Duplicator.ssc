@@ -29,7 +29,7 @@ namespace Microsoft.Boogie
       AssignCmd clone = (AssignCmd)node.Clone();
       clone.Lhss = new List<AssignLhs!>(clone.Lhss);
       clone.Rhss = new List<Expr!>(clone.Rhss);
-      return base.VisitAssignCmd (clone);
+      return base.VisitAssignCmd(clone);
     }
     public override Cmd! VisitAssumeCmd(AssumeCmd! node)
     {
@@ -67,10 +67,16 @@ namespace Microsoft.Boogie
     }
     public override Cmd! VisitCallCmd(CallCmd! node)
     {
-      CallCmd! newNode = (CallCmd)node.Clone();
-      newNode.Ins = new List<Expr> (node.Ins);
-      newNode.Outs = new List<IdentifierExpr> (node.Outs);
-      return base.VisitCallCmd (node);
+      CallCmd! clone = (CallCmd)node.Clone();
+      clone.Ins = new List<Expr>(clone.Ins);
+      clone.Outs = new List<IdentifierExpr>(clone.Outs);
+      return base.VisitCallCmd(clone);
+    }
+    public override Cmd! VisitCallForallCmd(CallForallCmd! node)
+    {
+      CallForallCmd! clone = (CallForallCmd)node.Clone();
+      clone.Ins = new List<Expr>(clone.Ins);
+      return base.VisitCallForallCmd(clone);
     }
     public override Choice! VisitChoice(Choice! node)
     {
@@ -159,7 +165,9 @@ namespace Microsoft.Boogie
     }
     public override AssignLhs! VisitMapAssignLhs(MapAssignLhs! node)
     {
-      return base.VisitMapAssignLhs ((MapAssignLhs)node.Clone());
+      MapAssignLhs clone = (MapAssignLhs)node.Clone();
+      clone.Indexes = new List<Expr!>(clone.Indexes);
+      return base.VisitMapAssignLhs(clone);
     }
     public override MapType! VisitMapType(MapType! node)
     {
@@ -285,6 +293,16 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
+    /// Apply a substitution to a command.  Any variables not in domain(subst)
+    /// is not changed.  The substitutions applies within the "old", but the "old"
+    /// expression remains.
+    /// </summary>
+    public static Cmd! Apply(Substitution! subst, Cmd! cmd)
+    {
+      return (Cmd) new NormalSubstituter(subst).Visit(cmd);
+    }
+
+    /// <summary>
     /// Apply a substitution to an expression replacing "old" expressions.
     /// Outside "old" expressions, the substitution "always" is applied; any variable not in
     /// domain(always) is not changed.  Inside "old" expressions, apply map "oldExpr" to
@@ -294,6 +312,18 @@ namespace Microsoft.Boogie
     public static Expr! ApplyReplacingOldExprs(Substitution! always, Substitution! forold, Expr! expr)
     {
       return (Expr) new ReplacingOldSubstituter(always, forold).Visit(expr);
+    }
+  
+    /// <summary>
+    /// Apply a substitution to a command replacing "old" expressions.
+    /// Outside "old" expressions, the substitution "always" is applied; any variable not in
+    /// domain(always) is not changed.  Inside "old" expressions, apply map "oldExpr" to
+    /// variables in domain(oldExpr), apply map "always" to variables in
+    /// domain(always)-domain(oldExpr), and leave variable unchanged otherwise.
+    /// </summary>    
+    public static Cmd! ApplyReplacingOldExprs(Substitution! always, Substitution! forold, Cmd! cmd)
+    {
+      return (Cmd) new ReplacingOldSubstituter(always, forold).Visit(cmd);
     }
   
     private sealed class NormalSubstituter : Duplicator
