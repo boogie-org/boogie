@@ -136,12 +136,7 @@ namespace Microsoft.Boogie.Z3
       cmdLineArgs = z3args;
       parameterSettings = parms;
       
-      string exePath = opts.ExeName;
-      if (!File.Exists(exePath)){
-        exePath = @"c:\Program Files\Microsoft Research\Z3-2.0\bin";
-      }
-      
-      ProcessStartInfo! psi = new ProcessStartInfo(exePath, z3args);
+      ProcessStartInfo! psi = new ProcessStartInfo(opts.ExeName, z3args);
       psi.CreateNoWindow = true;
       psi.UseShellExecute = false;
       psi.RedirectStandardInput = true;
