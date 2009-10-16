@@ -94,7 +94,7 @@ class ChaliceToCSharp {
       case Predicate(_, _) => indent + "//predicate" + nl
     }
   }
-  
+
   def convertStatement(statement: Statement): String = {
     statement match {
       case Assert(e) => indent + "// assert" + nl
@@ -112,7 +112,8 @@ class ChaliceToCSharp {
         indent + x + " = " + convertExpression(rhs) + ";" + nl
       case WhileStmt(guard, _, _, body) =>
         indent + "while (" + convertExpression(guard) + ")" + nl + convertStatement(body) + nl
-      case Call(lhs, target, id, args) =>
+      case c@Call(_, lhs, target, id, args) =>
+        declareLocals(c.locals) +
         indent + convertExpression(target) + "." + id + "(" + 
           repsep(args map convertExpression, ", ") + 
           (if(args.length > 0 && lhs.length > 0) ", " else "") +
@@ -148,11 +149,19 @@ class ChaliceToCSharp {
         (if(lhs.length > 0) ", " else "") + convertExpression(token) + "." + "async" + ");" + nl
       case s@Send(ch, args) =>
         indent + convertExpression(ch) + ".Send(" + repsep(args map convertExpression, ", ") + ")" + ";" + nl
-      case r@Receive(ch, outs) =>
+      case r@Receive(_, ch, outs) =>
+        declareLocals(r.locals) +
         indent + convertExpression(ch) + ".Receive(" + repsep(outs map { out => "out " + convertExpression(out)}, ", ") + ")" + ";" + nl
     }
   }
   
+  def declareLocals(locals: List[Variable]) = {
+    var s = ""
+    for (v <- locals)
+      s = s + indent + convertType(v.t) + " " + v.id + ";" + nl
+    s
+  }
+
   def convertExpression(expression: RValue): String = {
     expression match {
       case IntLiteral(n) => "" + n

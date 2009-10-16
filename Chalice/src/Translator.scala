@@ -656,7 +656,7 @@ class Translator {
           (SubstThisAndVars(channel.where, formalThis, channel.parameters, formalParams),
            ErrorMessage(s.pos, "The where clause at " + channel.where.pos + " might not hold."))),
           "channel where clause")
-      case r@Receive(ch, outs) =>
+      case r@Receive(_, ch, outs) =>
         val channel = ch.typ.asInstanceOf[ChannelClass].ch
         val formalThisV = new Variable("this", new Type(ch.typ))
         val formalThis = new VariableExpr(formalThisV)
@@ -678,6 +678,8 @@ class Translator {
         (for (v <- formalParams) yield Havoc(v)) :::
         // inhale where clause
         Inhale(List(SubstThisAndVars(channel.where, formalThis, channel.parameters, formalParams)), "channel where clause") :::
+        // declare any new local variables among the actual outs
+        (for (v <- r.locals) yield BLocal(Variable2BVarWhere(v))) :::
         // assign formal outs to actual outs
         (for ((v,e) <- outs zip formalParams) yield (v := e)) :::
         // decrease credits
@@ -822,6 +824,8 @@ class Translator {
     // inhale postconditions (using the state before the call as the "old" state)
     postEtran.Inhale(Postconditions(c.m.spec) map
                      (p => SubstThisAndVars(p, formalThis, c.m.ins ++ c.m.outs, formalIns ++ formalOuts)) , "postcondition", false) :::
+    // declare any new local variables among the actual outs
+    (for (v <- c.locals) yield BLocal(Variable2BVarWhere(v))) :::
     // assign formal outs to actual outs
     (for ((v,e) <- lhs zip formalOuts) yield (v :=e))
   }

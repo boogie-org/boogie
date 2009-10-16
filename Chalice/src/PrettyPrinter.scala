@@ -90,7 +90,7 @@ object PrintProgram {
       print(id + ": " + t.id)
       rhs match { case None => case Some(rhs) => print(" := "); Rhs(rhs) }
       println(Semi)
-    case Call(outs, obj, id, args) =>
+    case Call(_, outs, obj, id, args) =>
       print("call ")
       outs match {
         case Nil =>
@@ -150,7 +150,7 @@ object PrintProgram {
       println(Semi)
     case Send(ch, args) =>
       print("send "); Expr(ch); print("("); ExprList(args); print(")"); println(Semi)
-    case Receive(ch, outs) =>
+    case Receive(_, ch, outs) =>
       print("receive ")
       outs match {
         case Nil =>

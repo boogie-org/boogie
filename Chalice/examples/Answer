@@ -1,7 +1,4 @@
 start 
------- Running regression test AssociationList.chalice 
-
-Boogie program verifier finished with 12 verified, 0 errors
 ------ Running regression test cell.chalice 
   142.5: Assertion might not hold. Insufficient fraction at 142.12 for Cell.valid.
 
@@ -152,9 +149,6 @@ The program did not typecheck.
 31.5: wrong number of actual in-parameters in call to C.m (3 instead of 0)
 32.5: wrong number of actual in-parameters in call to C.m (3 instead of 0)
 33.19: undeclared member o in class C
-33.10: undefined local variable a
-33.12: undefined local variable b
-33.14: undefined local variable c
 33.5: call of undeclared member m in class int
 34.5: wrong number of actual in-parameters in call to C.m (1 instead of 0)
 34.5: wrong number of actual out-parameters in call to C.m (1 instead of 0)
@@ -163,8 +157,24 @@ The program did not typecheck.
 58.17: undeclared member sqrt2 in class C
 58.25: undeclared member sqrt2 in class C
 62.17: undeclared member s in class C
-62.10: undefined local variable v
 62.5: call of undeclared member M in class int
+82.5: call of undeclared member MyMethodX in class ImplicitC
+83.12: undefined local variable a
+83.16: undefined local variable b
+83.16: undeclared member k in class int
+88.13: the type of the formal argument is not assignable to the actual parameter (expected: ImplicitC, found: int)
+88.13: duplicate actual out-parameter: a
+89.16: undeclared member b in class ImplicitC
+89.16: undeclared member k in class int
+96.21: undeclared member chX in class ImplicitC
+96.5: receive expression (which has type int) does not denote a channel
+97.12: undefined local variable a
+97.16: undefined local variable b
+97.16: undeclared member k in class int
+104.16: the type of the formal argument is not assignable to the actual parameter (expected: ImplicitC, found: int)
+104.16: duplicate actual out-parameter: a
+105.16: undeclared member b in class ImplicitC
+105.16: undeclared member k in class int
 ------ Running regression test prog1.chalice 
   9.10: Location might not be readable.
   25.5: Location might not be writable
@@ -195,6 +205,9 @@ Boogie program verifier finished with 51 verified, 4 errors
   27.7: The held field of the target of the release statement might not be writable.
 
 Boogie program verifier finished with 6 verified, 3 errors
+------ Running regression test ImplicitLocals.chalice 
+
+Boogie program verifier finished with 8 verified, 0 errors
 ------ Running regression test RockBand.chalice 
   27.3: The postcondition at 29.13 might not hold. Insufficient fraction at 29.13 for RockBand.Valid.
   41.10: Location might not be readable.
@@ -207,12 +220,6 @@ Boogie program verifier finished with 29 verified, 6 errors
 ------ Running regression test swap.chalice 
 
 Boogie program verifier finished with 5 verified, 0 errors
------- Running regression test GhostConst.chalice 
-The program did not typecheck.
-7.27: undeclared member c in class C
-13.10: ghost variable not allowed here
-21.10: ghost variable not allowed here
-29.10: ghost fields not allowed here
 ------ Running regression test OwickiGries.chalice 
 
 Boogie program verifier finished with 5 verified, 0 errors
@@ -232,11 +239,3 @@ Boogie program verifier finished with 29 verified, 3 errors
 ------ Running regression test RockBand-automagic.chalice 
 
 Boogie program verifier finished with 35 verified, 0 errors
------- Running regression test Leaks.chalice 
-  6.3: Monitor invariant is not allowed to hold write permission to this.mu
-  11.3: Monitor invariant can hold permission of other o.mu field only this.mu if this.mu<<o.mu
-  16.3: Monitor invariant can hold permission of other o.mu field only this.mu if this.mu<<o.mu
-  29.3: Monitor invariant can hold permission of other o.mu field only this.mu if this.mu<<o.mu
-  62.3: Monitor invariant is not allowed to hold write permission to this.mu
-
-Boogie program verifier finished with 7 verified, 5 errors

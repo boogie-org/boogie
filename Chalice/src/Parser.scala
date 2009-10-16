@@ -207,7 +207,9 @@ class Parser extends StandardTokenParsers {
         case fa@FunctionApplication(ImplicitThisExpr(), name, args) => Semi ^^^ {val va = VariableExpr(name); va.pos = fa.pos; Send(va, args)}
         case e => "(" ~> expressionList <~ ")" <~ Semi ^^ { case args => Send(e, args) }}})
     | "receive" ~> (identList <~ ":=" ?) ~ expression <~ Semi ^^ {
-        case outs ~ e => Receive(e, ExtractList(outs)) }
+        case outs ~ e =>
+          val lhs = ExtractList(outs)
+          Receive(declareImplicitLocals(lhs), e, lhs) }
     )
   def localVarStmt(const: boolean, ghost: boolean) =
       idTypeOpt ~ (":=" ~> Rhs ?) <~ Semi ^^ {
@@ -245,10 +247,22 @@ class Parser extends StandardTokenParsers {
     ( "invariant" ~> expression <~ Semi ^^ { case e => (e,Nil) }
     | "lockchange" ~> expressionList <~ Semi ^^ { case ee => (null,ee) }
     )
+  def declareImplicitLocals(lhs: List[VariableExpr]) =
+    for (v <- lhs) yield
+      if (currentLocalVariables contains v.id)
+        false
+      else {
+        currentLocalVariables = currentLocalVariables + v.id
+        true
+      }
   def callStmt =
     callSignature ^? ({
-      case outs ~ VariableExpr(id) ~ args => Call(ExtractList(outs), new ImplicitThisExpr, id, args)
-      case outs ~ MemberAccess(obj,id) ~ args => Call(ExtractList(outs), obj, id, args)
+      case outs ~ VariableExpr(id) ~ args =>
+        val lhs = ExtractList(outs)
+        Call(declareImplicitLocals(lhs), lhs, new ImplicitThisExpr, id, args)
+      case outs ~ MemberAccess(obj,id) ~ args =>
+        val lhs = ExtractList(outs)
+        Call(declareImplicitLocals(lhs), lhs, obj, id, args)
     }, t => "bad call statement")
   def callSignature =
     (identList <~ ":=" ?) ~ callTarget ~ expressionList <~ ")" <~ Semi

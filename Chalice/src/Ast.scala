@@ -189,7 +189,8 @@ case class LocalVar(id: String, t: Type, const: boolean, ghost: boolean, rhs: Op
     else
       new Variable(id, t){override val IsGhost = ghost}
 }
-case class Call(lhs: List[VariableExpr], obj: Expression, id: String, args: List[Expression]) extends Statement {
+case class Call(declaresLocal: List[boolean], lhs: List[VariableExpr], obj: Expression, id: String, args: List[Expression]) extends Statement {
+  var locals = List[Variable]()
   var m: Method = null
 }
 case class Install(obj: Expression, lowerBounds: List[Expression], upperBounds: List[Expression]) extends Statement
@@ -217,7 +218,8 @@ case class Signal(obj: Expression, id: String, all: boolean) extends Statement {
 }
 case class Send(ch: Expression, args: List[Expression]) extends Statement {
 }
-case class Receive(ch: Expression, outs: List[VariableExpr]) extends Statement {
+case class Receive(declaresLocal: List[boolean], ch: Expression, outs: List[VariableExpr]) extends Statement {
+  var locals = List[Variable]()
 }
 case class Fold(pred: PermissionExpr) extends Statement
 case class Unfold(pred: PermissionExpr) extends Statement
@@ -241,6 +243,7 @@ case class LockBottomLiteral extends Literal
 case class VariableExpr(id: String) extends Expression {
   var v: Variable = null
   def this(vr: Variable) = { this(vr.id); v = vr; typ = vr.t.typ }
+  def Resolve(vr: Variable) = { v = vr; typ = vr.t.typ }
 }
 case class Result extends Expression
 sealed abstract class ThisExpr extends Expression {

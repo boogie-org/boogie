@@ -63,3 +63,47 @@ class C {
   }
 }
 class D { }
+
+// ----- tests specifically of implicit locals in CALL and RECEIVE statements
+
+class ImplicitC {
+  var k: int;
+
+  method MyMethod() returns (x: int, y: ImplicitC)
+    requires acc(k)
+    ensures acc(y.k) && x < y.k
+  {
+    x := k - 15;
+    y := this;
+  }
+
+  method B0() {
+    var c := new ImplicitC;
+    call a, b := c.MyMethodX();  // error: method not found (so what is done with a,b?)
+    assert a < b.k;
+  }
+
+  method B1() {
+    var c := new ImplicitC;
+    call a, a := c.MyMethod();  // error: a occurs twice
+    assert a < b.k;
+  }
+
+  method D0() {
+    var ch := new Ch;
+    var c := new ImplicitC;
+    send ch(c.k - 15, c);  // give ourselves some credit
+    receive a, b := chX;  // error: channel not found (so what is done with a,b?)
+    assert a < b.k;
+  }
+
+  method D1() {
+    var ch := new Ch;
+    var c := new ImplicitC;
+    send ch(c.k - 15, c);  // give ourselves some credit
+    receive a, a := ch;  // error: a occurs twice
+    assert a < b.k;
+  }
+}
+
+channel Ch(x: int, y: ImplicitC) where acc(y.k) && x < y.k;

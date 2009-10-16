@@ -233,14 +233,17 @@ object Resolver {
               ResolveExpr(lhs, ctx, false, false)(false)
               ResolveAssign(lhs, rhs, oldCtx)
           }
-        case c@CallAsync(declaresLocal, token, obj, id, args) =>
+        case c: CallAsync =>
           ResolveStmt(c, ctx)
-          if (declaresLocal) {
-            c.local = new Variable(token.id, TokenType(new Type(obj.typ), id))
-            ResolveType(c.local.t, ctx)
+          if (c.local != null) {
             ctx = ctx.AddVariable(c.local)
-            ResolveExpr(token, ctx, false, false)(false)
           }
+        case c: Call =>
+          ResolveStmt(c, ctx)
+          for (v <- c.locals) { ctx = ctx.AddVariable(v) } 
+        case r: Receive =>
+          ResolveStmt(r, ctx)
+          for (v <- r.locals) { ctx = ctx.AddVariable(v) } 
         case s =>
           ResolveStmt(s, ctx)
       }
@@ -281,22 +284,10 @@ object Resolver {
       if (! lhs.isPredicate && !canAssign(lhs.typ, rhs.typ)) context.Error(fu.pos, "type mismatch in assignment, lhs=" + lhs.typ.FullName + " rhs=" + rhs.typ.FullName)
       if (! lhs.isPredicate && lhs.f != null && !lhs.f.IsGhost) CheckNoGhost(rhs, context)
     case lv:LocalVar => throw new Exception("unexpected LocalVar; should have been handled in BlockStmt above")
-    case c @ Call(lhs, obj, id, args) =>
+    case c @ Call(declaresLocal, lhs, obj, id, args) =>
       ResolveExpr(obj, context, false, false)(false)
       CheckNoGhost(obj, context)
       args foreach { a => ResolveExpr(a, context, false, false)(false); CheckNoGhost(a, context) }
-      var vars = Set[Variable]()
-      for (v <- lhs) {
-        ResolveExpr(v, context, false, false)(false)
-        if (v.v != null) {
-          if (v.v.IsImmutable) context.Error(v.pos, "cannot use immutable variable " + v.id + " as actual out-parameter")
-          if (vars contains v.v) {
-            context.Error(v.pos, "duplicate actual out-parameter: " + v.id)
-          } else {
-            vars = vars + v.v
-          }
-        }
-      }
       // lookup method
       var typ: Class = IntClass
       obj.typ.LookupMember(id) match {
@@ -316,13 +307,8 @@ object Resolver {
           if (lhs.length != m.outs.length)
             context.Error(c.pos, "wrong number of actual out-parameters in call to " + obj.typ.FullName + "." + id +
                           " (" + lhs.length + " instead of " + m.outs.length + ")")
-          else {
-            for((out, l) <- m.outs zip lhs){
-              if(! canAssign(l.typ, out.t.typ))
-                context.Error(l.pos, "the out parameter cannot be assigned to the lhs (expected: " + l.typ.FullName + ", found: " + out.t.FullName + ")")
-            }
-          }
-
+          else
+            c.locals = ResolveLHS(declaresLocal, lhs, m.outs, context)
         case _ => context.Error(c.pos, "call expression does not denote a method: " + obj.typ.FullName + "." + id)
       }
     case Install(obj, lowerBounds, upperBounds) =>
@@ -408,7 +394,9 @@ object Resolver {
       }
       // resolve the token
       if (declaresLocal) {
-        // this is taken care of in the caller that handles the enclosing block statement
+        c.local = new Variable(token.id, TokenType(new Type(obj.typ), id))
+        ResolveType(c.local.t, context)
+        token.Resolve(c.local)
       } else if (token != null) {
         ResolveExpr(token, context, false, false)(false)
         if(! canAssign(token.typ, TokenClass(new Type(obj.typ), id)))
@@ -488,37 +476,49 @@ object Resolver {
           }
         case _ => context.Error(s.pos, "send expression (which has type " + ch.typ.FullName + ") does not denote a channel")
       }
-    case r@Receive(ch, outs) =>
+    case r@Receive(declaresLocal, ch, outs) =>
       ResolveExpr(ch, context, false, false)(false)
       CheckNoGhost(ch, context)
-      outs foreach { a => ResolveExpr(a, context, false, false)(false); CheckNoGhost(a, context) }
-      // check the outs to be appropriate actually out parameters
-      var vars = Set[Variable]()
-      for (v <- outs) {
-        ResolveExpr(v, context, false, false)(false)
-        if (v.v != null) {
-          if (v.v.IsImmutable) context.Error(v.pos, "cannot use immutable variable " + v.id + " as actual out-parameter of receive")
-          if (vars contains v.v) {
-            context.Error(v.pos, "duplicate actual out-parameter: " + v.id)
-          } else {
-            vars = vars + v.v
-          }
-        }
-      }
       // match types of arguments
       ch.typ match {
         case ChannelClass(channel) =>
           if (outs.length != channel.parameters.length)
             context.Error(r.pos, "wrong number of actual out-parameters in receive for channel type " + ch.typ.FullName +
                           " (" + outs.length + " instead of " + channel.parameters.length + ")")
-          else {
-            for ((actual, formal) <- outs zip channel.parameters) {
-              if (! canAssign(actual.typ, formal.t.typ))
-                context.Error(actual.pos, "the type of the formal argument is not assignable to the actual parameter (expected: " + formal.t.FullName + ", found: " + actual.typ.FullName + ")")
-            }
-          }
+          else
+            r.locals = ResolveLHS(declaresLocal, outs, channel.parameters, context)
         case _ => context.Error(r.pos, "receive expression (which has type " + ch.typ.FullName + ") does not denote a channel")
       }
+  }
+
+  def ResolveLHS(declaresLocal: List[boolean], actuals: List[VariableExpr], formals: List[Variable], context: ProgramContext): List[Variable] = {
+    var locals = List[Variable]()
+    var vars = Set[Variable]()
+    var ctx = context
+    for (((declareLocal, actual), formal) <- declaresLocal zip actuals zip formals) {
+      if (declareLocal) {
+        val local = new Variable(actual.id, new Type(formal.t.typ))
+        locals = locals + local
+        ResolveType(local.t, ctx)
+        actual.Resolve(local)
+        vars = vars + actual.v
+        ctx = ctx.AddVariable(local)
+      } else {
+        ResolveExpr(actual, ctx, false, false)(false)
+        CheckNoGhost(actual, ctx)
+        if (actual.v != null) {
+          if (! canAssign(actual.typ, formal.t.typ))
+            ctx.Error(actual.pos, "the type of the formal argument is not assignable to the actual parameter (expected: " +
+                          formal.t.FullName + ", found: " + actual.typ.FullName + ")")
+          if (vars contains actual.v)
+            ctx.Error(actual.pos, "duplicate actual out-parameter: " + actual.id)
+          else if (actual.v.IsImmutable)
+            ctx.Error(actual.pos, "cannot use immutable variable " + actual.id + " as actual out-parameter")
+          vars = vars + actual.v
+        }
+      }
+    }
+    locals
   }
 
   def ResolveBounds(lowerBounds: List[Expression], upperBounds: List[Expression], context: ProgramContext, descript: String) =
@@ -541,7 +541,7 @@ object Resolver {
       if (lhs.v != null) Set(lhs.v) else Set()  // don't assume resolution was successful
     case lv: LocalVar =>
       lv.rhs match { case None => Set() case Some(_) => Set(lv.v) }
-    case Call(lhs, obj, id, args) =>
+    case Call(_, lhs, obj, id, args) =>
       (lhs :\ Set[Variable]()) { (ve,vars) => if (ve.v != null) vars + ve.v else vars }
     case _ => Set()
   }
@@ -614,7 +614,7 @@ object Resolver {
     case ve @ VariableExpr(id) =>
       context.LookupVariable(id) match {
         case None => context.Error(ve.pos, "undefined local variable " + id); ve.typ = IntClass
-        case Some(v) => ve.v = v; ve.typ = v.t.typ }
+        case Some(v) => ve.Resolve(v) }
     case v:ThisExpr => v.typ = context.CurrentClass
     case sel @ MemberAccess(e, id) =>
       ResolveExpr(e, context, twoStateContext, false)

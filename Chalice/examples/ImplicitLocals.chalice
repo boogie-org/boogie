@@ -1,0 +1,27 @@
+class C {
+  var k: int;
+
+  method MyMethod() returns (x: int, y: C)
+    requires acc(k)
+    ensures acc(y.k) && x < y.k
+  {
+    x := k - 15;
+    y := this;
+  }
+
+  method B() {
+    var c := new C;
+    call a, b := c.MyMethod();
+    assert a < b.k;
+  }
+
+  method D() {
+    var ch := new Ch;
+    var c := new C;
+    send ch(c.k - 15, c);  // give ourselves some credit
+    receive a, b := ch;
+    assert a < b.k;
+  }
+}
+
+channel Ch(x: int, y: C) where acc(y.k) && x < y.k;
