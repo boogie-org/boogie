@@ -183,6 +183,7 @@ class ChaliceToCSharp {
       case Append(s1, s2) => convertExpression(s1) + ".Append(" + convertExpression(s2) + ")" 
       case Take(s, i) => convertExpression(s) + ".Take(" + convertExpression(i) + ")"
       case Drop(s, i) => convertExpression(s) + ".Drop(" + convertExpression(i) + ")" 
+      case LockBelow(_, _) => "true"
       case bin: BinaryExpr => "(" + convertExpression(bin.E0) + " " + bin.OpName + " " + convertExpression(bin.E1) + ")"// todo: <==> and ==>
       case Unfolding(p, e) => convertExpression(e)
       case FunctionApplication(target, id, args) => convertExpression(target) + "." + id + "(" + repsep(args map convertExpression, ", ") + ")"

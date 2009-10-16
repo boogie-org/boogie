@@ -37,7 +37,7 @@ object Chalice {
       else if (a.startsWith("-boogie:")) boogiePath = a.substring(8)
       else if (a == "-defaults") defaults = 3
       else if (a.startsWith("-defaults:")) { try { defaults = Integer.parseInt(a.substring(10)); if(3<=defaults) { autoMagic = true; } } catch { case _ => CommandLineError("-defaults takes integer argument"); } }
-      else if (a == "-gen") { gen = true; doTranslate = false }
+      else if (a == "-gen") { gen = true; }
       else if (a == "-autoFold") autoFold = true
       else if (a == "-autoMagic") autoMagic = true
       else if (a.startsWith("-") || a.startsWith("/")) boogieArgs += (a + " ") // arguments starting with "-" or "/" are sent to Boogie.exe
@@ -67,11 +67,6 @@ object Chalice {
               Console.err.println("The program did not typecheck."); 
               msgs foreach { msg => Console.err.println(msg) }
             case Resolver.Success() =>
-              if(gen) {
-                val converter = new ChaliceToCSharp(); 
-                val cs = converter.convertProgram(prog);
-                writeFile("out.cs", cs);
-              }
               if (doTranslate) {
                 // checking if Boogie.exe exists
                 val boogieFile = new File(boogiePath);
@@ -94,9 +89,16 @@ object Chalice {
                 val boogie = Runtime.getRuntime().exec(boogiePath + " /errorTrace:0 " + boogieArgs + "out.bpl"); 
                 val input = new BufferedReader(new InputStreamReader(boogie.getInputStream()));
                 var line = input.readLine();
+                var previous_line = null: String;
                 while(line!=null){
                   println(line);
+                  previous_line = line;
                   line = input.readLine();
+                }
+                if(gen && (previous_line != null) && previous_line.endsWith(" 0 errors")) { // hack
+                  val converter = new ChaliceToCSharp(); 
+                  println("Code generated in out.cs.");
+                  writeFile("out.cs", converter.convertProgram(prog));
                 }
               }
             }
