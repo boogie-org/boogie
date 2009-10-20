@@ -105,13 +105,4 @@ namespace Chalice
       System.Console.WriteLine(x);
     }
   }
-
-  public class ChaliceSystem
-  {
-    public void Done()
-    {
-      ChannelBuffer<int> buffer = new ChannelBuffer<int>();
-      buffer.Remove();
-    }
-  }
 }

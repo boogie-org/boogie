@@ -1,48 +1,50 @@
-channel NumberStream(x: int) where 2 <= x && credit(this);
+channel NumberStream(x: int) where 2 <= x ==> credit(this);
 
 class Sieve {
-  method Counter(n: NumberStream)  // sends the plurals along n
-    requires rd(n.mu) && credit(n,-1);
+  method Counter(n: NumberStream, to: int)  // sends the plurals along n
+    requires rd(n.mu) && credit(n,-1) && 0 <= to;
   {
     var i := 2;
-    while (true)
+    while (i < to)
       invariant rd(n.mu);
       invariant 2 <= i;
+      invariant credit(n, -1)
     {
       send n(i);
       i := i + 1;
-      if (i == 120) {
-        var done := new ChaliceSystem; call done.Done();
-      }
     }
+    send n(-1);
   }
 
   method Filter(prime: int, r: NumberStream, s: NumberStream)
     requires 2 <= prime;
     requires rd(r.mu) && maxlock << r.mu;
-    requires rd(s.mu) && s.mu << r.mu && credit(s,-1);
+    requires rd(s.mu) && s.mu << r.mu && credit(r) && credit(s, -1);
   {
-    while (true)
-      invariant rd(r.mu) && maxlock << r.mu;
-      invariant credit(r);
-      invariant rd(s.mu);
+    receive x := r;
+    while (2 <= x)
+      invariant rd(r.mu) && rd(s.mu) && s << r && maxlock << r.mu;
+      invariant 2<= x ==> credit(r);
+      invariant credit(s, -1);
     {
-      var x: int;
-      receive x := r;
       if (x % prime != 0) {  // suppress multiples of prime
         send s(x);
       }
+      receive x := r;
+      
     }
+    send s(-1);
   }
 
   method Start()
   {
     var ch := new NumberStream;
-    fork Counter(ch);
+    fork Counter(ch, 101);
     var p: int;
     receive p := ch;
-    while (p < 100)
-      invariant 2 <= p;
+    while (2 <= p)
+      invariant ch != null;
+      invariant 2 <= p ==> credit(ch, 1);
       invariant rd(ch.mu) && maxlock << ch.mu;
     {
       // print p--it's a prime!
@@ -58,7 +60,4 @@ class Sieve {
 
 external class ChalicePrint {
   method Int(x: int) { }
-}
-external class ChaliceSystem {
-  method Done() { }
 }
