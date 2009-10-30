@@ -9,17 +9,16 @@ using System.Text;
 
 namespace Microsoft.Basetypes {
   using Microsoft.Contracts;
-  using BIM = Microsoft.FSharp.Math.BigInt;
+  using BIM = System.Numerics.BigInteger;
   
   /// <summary>
-  /// A thin wrapper around Microsoft.FSharp.Math.BigInt
+  /// A thin wrapper around System.Numerics.BigInteger
   /// (to be able to define equality, etc. properly)
   /// </summary>
   public struct BigNum {
     
     // the internal representation
-    [Rep] internal readonly Microsoft.FSharp.Math.BigInt val;
-    
+    [Rep] internal readonly System.Numerics.BigInteger val;
     public static readonly BigNum ZERO = new BigNum (BIM.Zero);
     public static readonly BigNum ONE  = new BigNum (BIM.One);
     public static readonly BigNum MINUS_ONE = new BigNum (-BIM.One);
@@ -40,7 +39,7 @@ namespace Microsoft.Basetypes {
     }
 
     [Pure]
-    public static BigNum FromBigInt(Microsoft.FSharp.Math.BigInt v) {
+    public static BigNum FromBigInt(System.Numerics.BigInteger v) {
       return new BigNum(v);
     }
 
@@ -89,7 +88,7 @@ namespace Microsoft.Basetypes {
       }
 	}
 
-    internal BigNum(Microsoft.FSharp.Math.BigInt val) {
+    internal BigNum(System.Numerics.BigInteger val) {
       this.val = val;
     }
     
@@ -141,12 +140,12 @@ namespace Microsoft.Basetypes {
         }
 	}
 
-    private static readonly Microsoft.FSharp.Math.BigInt BI_2_TO_24 = new BIM(0x1000000);    
+    private static readonly System.Numerics.BigInteger BI_2_TO_24 = new BIM(0x1000000);    
 
     [Pure]
     private string! toHex(string! format) {
 	    string! res = "";
-        Microsoft.FSharp.Math.BigInt rem = this.Abs.val;
+        System.Numerics.BigInteger rem = this.Abs.val;
 
         while (rem > BIM.Zero) {
           res = BIM.ToInt32(rem %BI_2_TO_24).ToString(format) + res;
@@ -327,9 +326,9 @@ namespace Microsoft.Basetypes {
     }
 
     
-    private static readonly Microsoft.FSharp.Math.BigInt MaxInt32 =
+    private static readonly System.Numerics.BigInteger MaxInt32 =
       new BIM(Int32.MaxValue);
-    private static readonly Microsoft.FSharp.Math.BigInt MinInt32 =
+    private static readonly System.Numerics.BigInteger MinInt32 =
       new BIM(Int32.MinValue);
  
     public bool InInt32 {
