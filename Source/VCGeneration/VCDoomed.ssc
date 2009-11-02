@@ -37,29 +37,46 @@ namespace VC
 
     private class DummyErrorHandler : ProverInterface.ErrorHandler
     {
+        Hashtable! label2Absy;
+        VerifierCallback! callback;
+        
+        public DummyErrorHandler(Hashtable! label2Absy, VerifierCallback! callback) {
+          this.label2Absy = label2Absy;
+          this.callback = callback;
+        }
+        
+        public override Absy! Label2Absy(string! label) {
+          int id = int.Parse(label);
+          return (Absy!) label2Absy[id];
+        }
+        
+        public override void OnProverWarning(string! msg) {
+          this.callback.OnWarning(msg);
+        }
+   
       public override void OnModel(IList<string!>! labels, ErrorModel errModel)
       {}
       public override void OnResourceExceeded(string! message)
       {}
-      public override Absy! Label2Absy(string! label)
-      {
-        Absy! a = new Block();
-        return a;
-      }
     }
 
     /// <summary>
-    /// MSchaef: Todo: Write a good Comment
+    /// MSchaef: 
+    /// - remove loops and add reach variables
+    /// - make it a passive program
+    /// - compute the wlp for each block
+    /// - check if |= (reach=false) => wlp.S.false holds for each reach
+    ///
     /// </summary>
     public override Outcome VerifyImplementation(Implementation! impl, Program! program, VerifierCallback! callback)
       throws UnexpectedProverOutputException;
     {
-    
-      Console.WriteLine(">>> Checking Function {0} for Doomed Points.", impl.Name);
-    
-      // MSchaef: Just a Hack, errh is not used in this context, but required by the checker
-      DummyErrorHandler errh = new DummyErrorHandler();      
-      callback.OnProgress("Whatever this stands for",0,0,0);
+      if (CommandLineOptions.Clo.TraceVerify) { 
+        Console.WriteLine(">>> Checking function {0} for doomed points.", impl.Name);
+      }
+      // MSchaef: The error handler errh can only be used to emmit warnings
+      
+      callback.OnProgress("doomdetector",0,0,0);
       #region Transform the Program into loop-free passive form
       variable2SequenceNumber = new Hashtable/*Variable -> int*/();
       incarnationOriginMap = new Dictionary<Incarnation, Absy!>();      
@@ -72,30 +89,33 @@ namespace VC
       PassifyProgram(impl, program);
       #endregion
       
+      int totalblocks = impl.Blocks.Count;
+      
       Checker! checker = FindCheckerFor(impl, 1000);     
-//      Checker! checker = new Checker(this, program, logFilePath, false, impl, 1000);
 
       Hashtable label2absy;
-      //Console.WriteLine(">>> Pushing the VC ");
+
       VCExpr! vc = GenerateEVC(impl, out label2absy, checker);
-      
+      assert label2absy!=null;
+      DummyErrorHandler errh = new DummyErrorHandler(label2absy, callback );      
       checker.PushVCExpr(vc);
       checkimplsanity(impl.Blocks[0]);
-      //Console.WriteLine(">>> Compute Inclusion Order ");
+
       InclusionOrder incorder = new InclusionOrder(impl);
       incorder.ToString();
       int totalchecks=0;
       
-      //Console.WriteLine(">>> Check if Blocks are doomed ");
+
       
       Block b=null;      
       while ( incorder.GetNextBlock(out b) )
       {
 
         assert b!=null;
-        totalchecks++;
-        //Console.WriteLine("Checking Block {0}", b.Label);  
-
+        if (CommandLineOptions.Clo.TraceVerify) {
+            totalchecks++;
+            Console.WriteLine("Checking Block {0}", b.Label);  
+        }
         Variable v = null;
         m_BlockReachabilityMap.TryGetValue(b, out v);
         assert v!=null;
@@ -107,10 +127,9 @@ namespace VC
         {
           case ProverInterface.Outcome.Valid:
           {
-            incorder.SetCurrentResult(true);
-//            Console.WriteLine("\n In Function {0}", impl.Name);
-//            Console.WriteLine("\t Block {0} has a guaranteed error!\n", b.Label);
-                         
+            
+            incorder.SetCurrentResult(true, callback, impl);                       
+             
             // TODO: remove this return and make sure that the CE generation does not change the program
           checker.Close();
           return Outcome.Errors;
@@ -119,18 +138,24 @@ namespace VC
           case ProverInterface.Outcome.Invalid:
           {
             // Todo: Try to use the counter example to minimize the number of checks needed
-            incorder.SetCurrentResult(false);
+            incorder.SetCurrentResult(false, callback, null);
             break;
           }
           default:
           {
-            incorder.SetCurrentResult(false);
-            Console.WriteLine("I'm confused about Block {0}.", b.Label);
+            incorder.SetCurrentResult(false, callback, null);
+            if (CommandLineOptions.Clo.TraceVerify) {
+                Console.WriteLine("I'm confused about Block {0}.", b.Label);
+            }
             break;
           }
         }                        
-      }      
-      Console.WriteLine("We had to ask {0} Blocks.\n \n", totalchecks);
+      }
+      if (CommandLineOptions.Clo.TraceVerify) {
+        Console.WriteLine("total doomed points: {0}", incorder.DetectedBlock.Count );      
+        Console.WriteLine("We had to ask {0} blocks out of {1}.\n \n", totalchecks, totalblocks );
+      }
+      
       checker.Close();
 
       //Todo: Implement dead code detection -> see smoke tester
@@ -816,7 +841,7 @@ namespace VC
             
             public List<Block!>! DetectedBlock = new List<Block!>(); 
                         
-            public void SetCurrentResult(bool isDoomed) {                
+            public void SetCurrentResult(bool isDoomed, VerifierCallback! cb, Implementation? impl) {                
                 if (!isDoomed) { 
                     if (currentNode != null) {
                         currentNode.IsDoomed = false;
@@ -825,23 +850,32 @@ namespace VC
                         currentNode = FindNextNode(currentNode);
                     }
                 } else {
-                    if (currentNode != null) {                        
-                        Console.Write(">> The Following Blocks are Doomed: ");
+                    if (currentNode != null) {    
+                        string dblocks = "Doomed Blocks: ";
+                        // WARNING THIS IS A HACK:
+                        assert impl!=null;
+                        impl.Blocks.Clear();
+                        
                         foreach (Block! b in currentNode.EquivBlock) {
-                            Console.Write("{0}, ", b.Label);
+                            impl.Blocks.Add(b);
+                            dblocks += String.Format("{0}, ", b.Label);
                         }
+                        cb.OnWarning("Doomed program points found!");
+                        cb.OnWarning(dblocks);
+                        cb.OnUnreachableCode(impl);
+                        
                         
                         if (currentNode.EquivBlock.Count>0) {
                             DetectedBlock.Add(currentNode.EquivBlock[0]);
                             // Todo: Remove all doomed blocks that are found
                             // in children.
                             // Maybe on should remove them only if all children
-                            // are doomed, but this does not affect soundness
+                            // are doomed, but this does not affect soundness                            
                         } else {
                             Console.WriteLine("An empty equivalence class has been detected");
                             assert false;
                         }
-                        Console.WriteLine();
+                        
                         currentNode.IsDoomed = true;
                         currentNode.HasBeenChecked = true;
                         MarkDoomedChildren(currentNode);
