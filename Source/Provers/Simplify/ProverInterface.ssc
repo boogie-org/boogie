@@ -206,6 +206,10 @@ namespace Microsoft.Boogie.Simplify
             throw new ProverException("Cannot find executable: " + firstTry);
           }
           _proverPath = Path.Combine(@"c:\Program Files\Microsoft Research\Z3-2." + minorVersion + "\\bin", proverExe);
+          if (File.Exists(_proverPath)) {
+            return;  // all seems good
+          }
+          _proverPath = Path.Combine(@"c:\Program Files (x86)\Microsoft Research\Z3-2." + minorVersion + "\\bin", proverExe);
         }
       }
     }
