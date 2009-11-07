@@ -513,7 +513,8 @@ namespace VC
       Hashtable/*Variable!->Expr!*/ oldFrameMap = new Hashtable();
       assume impl.Proc != null;
       foreach (IdentifierExpr! ie in impl.Proc.Modifies) {
-        oldFrameMap.Add((!)ie.Decl, ie);
+        if (!oldFrameMap.Contains((!)ie.Decl))
+          oldFrameMap.Add(ie.Decl, ie);
       }
       Substitution oldFrameSubst = Substituter.SubstitutionFromHashtable(oldFrameMap);
     
