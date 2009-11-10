@@ -99,41 +99,41 @@
     <Content Include="Readme.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Felt\ILToCodeModel\ILToCodeModel.csproj">
-      <Project>{27F2A417-B6ED-43AD-A38E-A0B6142216F6}</Project>
-      <Name>ILToCodeModel</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\Felt\ModuleReadWrite\ModuleReadWrite\PeReader.csproj">
-      <Project>{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}</Project>
-      <Name>PeReader</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\Felt\MutableMetadataModel\MutableMetadataModel.csproj">
-      <Project>{319E151C-8F33-49E7-81C9-30F02F9BA90A}</Project>
-      <Name>MutableMetadataModel</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\Felt\MutableObjectModel\MutableCodeModel.csproj">
-      <Project>{319E150C-8F33-49E7-81CA-30F02F9BA90A}</Project>
-      <Name>MutableCodeModel</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\Felt\ObjectModelHelper\MetadataHelper.csproj">
+    <ProjectReference Include="..\..\..\CCICodePlex\Ast\Metadata\Sources\MetadataHelper\MetadataHelper.csproj">
       <Project>{4A34A3C5-6176-49D7-A4C5-B2B671247F8F}</Project>
       <Name>MetadataHelper</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\Felt\ObjectModel\MetadataModel.csproj">
+    <ProjectReference Include="..\..\..\CCICodePlex\Ast\Metadata\Sources\MetadataModel\MetadataModel.csproj">
       <Project>{33CAB640-0D03-43DF-81BD-22CDC6C0A597}</Project>
       <Name>MetadataModel</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\Felt\PdbReader\PdbReader.csproj">
+    <ProjectReference Include="..\..\..\CCICodePlex\Ast\Metadata\Sources\MutableMetadataModel\MutableMetadataModel.csproj">
+      <Project>{319E151C-8F33-49E7-81C9-30F02F9BA90A}</Project>
+      <Name>MutableMetadataModel</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\CCICodePlex\Ast\Metadata\Sources\PdbReader\PdbReader.csproj">
       <Project>{A6A31B03-7C3D-4DE6-AA73-BE88116BC40A}</Project>
       <Name>PdbReader</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\Felt\SourceModel\SourceModel.csproj">
+    <ProjectReference Include="..\..\..\CCICodePlex\Ast\Metadata\Sources\PeReader\PeReader.csproj">
+      <Project>{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}</Project>
+      <Name>PeReader</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\CCICodePlex\Ast\Metadata\Sources\SourceModel\SourceModel.csproj">
       <Project>{4B0054FD-124A-4037-9965-BDB55E6BF389}</Project>
       <Name>SourceModel</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\Felt\SourceObjectModel\CodeModel.csproj">
+    <ProjectReference Include="..\..\..\CCICodePlex\Ast\Sources\CodeModel\CodeModel.csproj">
       <Project>{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}</Project>
       <Name>CodeModel</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\CCICodePlex\Ast\Sources\ILToCodeModel\ILToCodeModel.csproj">
+      <Project>{27F2A417-B6ED-43AD-A38E-A0B6142216F6}</Project>
+      <Name>ILToCodeModel</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\CCICodePlex\Ast\Sources\MutableCodeModel\MutableCodeModel.csproj">
+      <Project>{319E150C-8F33-49E7-81CA-30F02F9BA90A}</Project>
+      <Name>MutableCodeModel</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
