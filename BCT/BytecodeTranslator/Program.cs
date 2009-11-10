@@ -28,7 +28,7 @@ namespace BytecodeTranslator {
       try {
         result = DoRealWork(args[0]);
       } catch (Exception e) { // swallow everything and just return an error code
-        Console.WriteLine("Foxtrot failed with uncaught exception: {0}", e.Message);
+        Console.WriteLine("The byte-code translator failed with uncaught exception: {0}", e.Message);
         Console.WriteLine("Stack trace: {0}", e.StackTrace);
         return -1;
       }
@@ -37,7 +37,8 @@ namespace BytecodeTranslator {
 
     static int DoRealWork(string assemblyName) {
 
-      HostEnvironment host = new HostEnvironment();
+      var host = new PeReader.DefaultHost();
+
       IModule/*?*/ module = host.LoadUnitFrom(assemblyName) as IModule;
       if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
         Console.WriteLine(assemblyName + " is not a PE file containing a CLR module or assembly, or an error occurred when loading it.");
@@ -116,7 +117,7 @@ namespace BytecodeTranslator {
       else
         translator.Visit(module);
       #endregion Pass 3: Translate the code model to BPL
-      Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter("\\lala.txt");
+      Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(module.Name + ".bpl");
       translator.TranslatedProgram.Emit(writer);
       writer.WriteLine(";ENDE");
       writer.Close();
@@ -174,75 +175,6 @@ namespace BytecodeTranslator {
       #endregion Just run the code and contract mutator which extracts all contracts to their containing methods
 
       return module;
-    }
-
-  }
-
-  internal class HostEnvironment : MetadataReaderHost {
-    PeReader peReader;
-    internal HostEnvironment()
-      : base(new NameTable(), 4) {
-      this.peReader = new PeReader(this);
-    }
-
-    public override IUnit LoadUnitFrom(string location) {
-      IUnit result = this.peReader.OpenModule(BinaryDocument.GetBinaryDocumentForFile(location, this));
-      this.RegisterAsLatest(result);
-      return result;
-    }
-
-    //public override void ResolvingAssemblyReference(IUnit referringUnit, AssemblyIdentity referencedAssembly) {
-    //  if (referencedAssembly != CoreAssemblySymbolicIdentity) {
-    //    this.LoadAssembly(referencedAssembly);
-    //  }
-    //}
-    private AssemblyIdentity Probe(string probeDir, AssemblyIdentity referencedAssembly) {
-      string path = Path.Combine(probeDir, referencedAssembly.Name.Value + ".dll");
-      if (File.Exists(path)) return new AssemblyIdentity(referencedAssembly, path);
-      return null;
-    }
-    public override AssemblyIdentity ProbeAssemblyReference(IUnit referringUnit, AssemblyIdentity referencedAssembly) {
-      if (string.IsNullOrEmpty(referencedAssembly.Location)) {
-        // probe for in the same directory as the referring unit
-        string probeDir = Path.GetDirectoryName(Path.GetFullPath(referringUnit.Location));
-        AssemblyIdentity result = Probe(probeDir, referencedAssembly);
-        if (result != null) return result;
-        //// Probe in the libPaths directories
-        //foreach (string prefix in this.libPaths) {
-        //  result = Probe(prefix, referencedAssembly);
-        //  if (result != null) return result;
-        //}
-        // Check platform location
-        probeDir = Path.GetDirectoryName(Path.GetFullPath(typeof(object).Assembly.Location));
-        result = Probe(probeDir, referencedAssembly);
-        if (result != null) return result;
-      }
-      return base.ProbeAssemblyReference(referringUnit, referencedAssembly);
-    }
-
-    public override void ResolvingAssemblyReference(IUnit referringUnit, AssemblyIdentity referencedAssembly) {
-      if (string.IsNullOrEmpty(referencedAssembly.Location)) {
-        //base.ResolvingAssemblyReference(referringUnit, referencedAssembly);
-        AssemblyIdentity ai = this.ProbeAssemblyReference(referringUnit, referencedAssembly);
-        if (ai != null && !String.IsNullOrEmpty(ai.Location)) {
-          this.LoadUnit(ai);
-        } else {
-          base.ResolvingAssemblyReference(referringUnit, referencedAssembly);
-        }
-      } else {
-        // REVIEW: Why wasn't LoadUnit called here instead?
-        var location = referencedAssembly.Location;
-        string s = location;
-        if (location.StartsWith("file://")) { // then it is a uri
-          try {
-            Uri u = new Uri(location, UriKind.RelativeOrAbsolute); // construct a URI to normalize it
-            s = u.LocalPath;
-          } catch (UriFormatException) {
-          }
-        }
-        IUnit result = this.peReader.OpenModule(BinaryDocument.GetBinaryDocumentForFile(s, this));
-        this.RegisterAsLatest(result);
-      }
     }
 
   }
