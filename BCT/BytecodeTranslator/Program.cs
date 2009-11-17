@@ -88,7 +88,7 @@ namespace BytecodeTranslator {
       }
 
       ContractProvider contractProvider = new ContractProvider(new ContractMethods(host), module);
-      module = ConvertMetadataModelToCodeModel(host, module, pdbReader, contractProvider);
+      module = Decompiler.GetCodeAndContractModelFromMetadataModel(host, module, pdbReader, contractProvider);
 
       //SourceToILConverterProvider sourceToILProvider =
       //  delegate(IMetadataHost host2, ISourceLocationProvider/*?*/ sourceLocationProvider, IContractProvider/*?*/ contractProvider2)
@@ -132,50 +132,6 @@ namespace BytecodeTranslator {
         return name.Substring(0, i);
     }
 
-    /// <summary>
-    /// Takes a module which is presumably a metadata model (either immutable or mutable) and returns
-    /// the "same" module which is now a code model module.
-    /// 
-    /// Currently there is no way to lazily convert a module from the metadata model to the code model.
-    /// Therefore, this method works eagerly by visiting the entire <paramref name="module"/>.
-    /// </summary>
-    /// <param name="host">
-    /// The host that was used to load the module.
-    /// </param>
-    /// <param name="module">
-    /// The module which is to be converted.
-    /// </param>
-    /// <param name="pdbReader">
-    /// A PDB reader that is used by ILToCodeModel during the conversion.
-    /// </param>
-    /// <param name="contractProvider">
-    /// A contract provider that is used by ILToCodeModel during the conversion. As part of the conversion, the
-    /// contract provider will become populated with any contracts found during decompilation.
-    /// </param>
-    /// <returns>
-    /// A module that is at the code model level.
-    /// </returns>
-    public static IModule ConvertMetadataModelToCodeModel(IMetadataHost host, IModule module, PdbReader/*?*/ pdbReader, ContractProvider contractProvider) {
-
-      SourceMethodBodyProvider ilToSourceProvider =
-        delegate(IMethodBody methodBody) {
-          return new Microsoft.Cci.ILToCodeModel.SourceMethodBody(methodBody, host, contractProvider, pdbReader);
-        };
-
-      IAssembly/*?*/ assembly;
-
-      #region Just run the code and contract mutator which extracts all contracts to their containing methods
-      CodeAndContractMutator ccm = new CodeAndContractMutator(host, true, ilToSourceProvider, null, pdbReader, contractProvider);
-
-      assembly = module as IAssembly;
-      if (assembly != null)
-        module = ccm.Visit(ccm.GetMutableCopy(assembly));
-      else
-        module = ccm.Visit(ccm.GetMutableCopy(module));
-      #endregion Just run the code and contract mutator which extracts all contracts to their containing methods
-
-      return module;
-    }
 
   }
 

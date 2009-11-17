@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeModel", "..\..\CCICodeP
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MutableCodeModel", "..\..\CCICodePlex\Ast\Sources\MutableCodeModel\MutableCodeModel.csproj", "{319E150C-8F33-49E7-81CA-30F02F9BA90A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeModelToIL", "..\..\CCICodePlex\Ast\Sources\CodeModelToIL\CodeModelToIL.csproj", "{CEB76EA1-A168-49B0-A410-2C4195FEE86F}"
+EndProject
 Global
 	GlobalSection(TeamFoundationVersionControl) = preSolution
 		SccNumberOfProjects = 9
@@ -180,6 +182,16 @@ Global
 		{319E150C-8F33-49E7-81CA-30F02F9BA90A}.NightlyRelease|Any CPU.Build.0 = NightlyRelease|Any CPU
 		{319E150C-8F33-49E7-81CA-30F02F9BA90A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{319E150C-8F33-49E7-81CA-30F02F9BA90A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.CompilerOnly|Any CPU.ActiveCfg = CompilerOnly|Any CPU
+		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.CompilerOnly|Any CPU.Build.0 = CompilerOnly|Any CPU
+		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.NightlyDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.NightlyDebug|Any CPU.Build.0 = Debug|Any CPU
+		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.NightlyRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
+		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
