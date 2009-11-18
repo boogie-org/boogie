@@ -1,0 +1,46 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
+using System.IO;
+using Microsoft.Boogie;
+using Graphing;
+using AI = Microsoft.AbstractInterpretationFramework;
+using Microsoft.Contracts;
+using Microsoft.Basetypes;
+using Microsoft.Boogie.VCExprAST;
+
+namespace VC
+{
+    internal class DoomErrorHandler : ProverInterface.ErrorHandler {
+
+        protected Hashtable! label2Absy;
+        protected VerifierCallback! callback;
+        
+        public Variable m_Reachvar;
+        public List<Block!> m_DoomedBlocks, m_TraceBlocks;
+        
+        
+        public DoomErrorHandler(Hashtable! label2Absy, VerifierCallback! callback) {
+          this.label2Absy = label2Absy;
+          this.callback = callback;
+        }
+        
+        public override Absy! Label2Absy(string! label) {
+          int id = int.Parse(label);
+          return (Absy!) label2Absy[id];
+        }
+        
+        public override void OnProverWarning(string! msg) {
+          this.callback.OnWarning(msg);
+        }
+   
+        public void OnDoom(Variable! reachvar, List<Block!>! doomedblocks, List<Block!>! traceblocks) {
+            m_Reachvar = reachvar;
+            m_DoomedBlocks = doomedblocks;
+            m_TraceBlocks = traceblocks;
+        }
+    }
+    
+}

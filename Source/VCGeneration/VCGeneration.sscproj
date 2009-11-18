@@ -140,6 +140,14 @@
                  SubType="Code"
                  RelPath="AssemblyInfo.ssc"
                  />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="DoomErrorHandler.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="DoomCheck.ssc"
+                 />
       </Include>
     </Files>
   </XEN>

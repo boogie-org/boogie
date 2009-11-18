@@ -20,10 +20,11 @@ namespace VC
 {
   public class DCGen : ConditionGeneration
   {
-  
+    #region Attributes
     private Dictionary<Block, Variable!>! m_BlockReachabilityMap;
-    
-    
+    Dictionary<Block!, Block!>! m_copiedBlocks = new Dictionary<Block!, Block!>();
+    const string reachvarsuffix = "__ivebeenthere";
+    #endregion
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
@@ -33,31 +34,6 @@ namespace VC
       this.appendLogFile = appendLogFile;
       this.logFilePath = logFilePath;
       m_BlockReachabilityMap = new Dictionary<Block, Variable!>();
-    }
-
-    private class DummyErrorHandler : ProverInterface.ErrorHandler
-    {
-        Hashtable! label2Absy;
-        VerifierCallback! callback;
-        
-        public DummyErrorHandler(Hashtable! label2Absy, VerifierCallback! callback) {
-          this.label2Absy = label2Absy;
-          this.callback = callback;
-        }
-        
-        public override Absy! Label2Absy(string! label) {
-          int id = int.Parse(label);
-          return (Absy!) label2Absy[id];
-        }
-        
-        public override void OnProverWarning(string! msg) {
-          this.callback.OnWarning(msg);
-        }
-   
-      public override void OnModel(IList<string!>! labels, ErrorModel errModel)
-      {}
-      public override void OnResourceExceeded(string! message)
-      {}
     }
 
     /// <summary>
@@ -74,138 +50,261 @@ namespace VC
       if (CommandLineOptions.Clo.TraceVerify) { 
         Console.WriteLine(">>> Checking function {0} for doomed points.", impl.Name);
       }
-      // MSchaef: The error handler errh can only be used to emmit warnings
-      
+      Console.WriteLine(">>> Checking function {0} for doomed points.", impl.Name);
       callback.OnProgress("doomdetector",0,0,0);
+
       #region Transform the Program into loop-free passive form
       variable2SequenceNumber = new Hashtable/*Variable -> int*/();
       incarnationOriginMap = new Dictionary<Incarnation, Absy!>();      
       List<Block!>! cblocks = new List<Block!>();
-  
-      impl.Blocks = DCProgramTransformer.Convert2Dag(impl, program, cblocks);     
+      
+      //List<Block!>! orig_blocks = new List<Block!>(impl.Blocks);
+      
+      Dictionary<Block!, Block!> copiedblocks;
+      impl.Blocks = DCProgramTransformer.Convert2Dag(impl, program, cblocks, out copiedblocks);
+      assert copiedblocks!=null;
       ComputePredecessors(impl.Blocks);
        
       m_BlockReachabilityMap = new Dictionary<Block, Variable!>();
       PassifyProgram(impl, program);
       #endregion
-      
-      int totalblocks = impl.Blocks.Count;
+      //EmitImpl(impl,false);
       
       Checker! checker = FindCheckerFor(impl, 1000);     
-
-      Hashtable label2absy;
-
-      VCExpr! vc = GenerateEVC(impl, out label2absy, checker);
-      assert label2absy!=null;
-      DummyErrorHandler errh = new DummyErrorHandler(label2absy, callback );      
-      checker.PushVCExpr(vc);
-      checkimplsanity(impl.Blocks[0]);
-
-      InclusionOrder incorder = new InclusionOrder(impl);
-      incorder.ToString();
-      int totalchecks=0;
       
-
+      DoomCheck dc = new DoomCheck(impl, checker);
       
-      Block b=null;      
-      while ( incorder.GetNextBlock(out b) )
-      {
-
+      Block b = null;
+      ProverInterface.Outcome outcome;
+      dc.ErrorHandler = new DoomErrorHandler(dc.Label2Absy, callback);
+      bool doomfound = false;
+      while (dc.GetNextBlock(out b) && !doomfound) {
         assert b!=null;
-        if (CommandLineOptions.Clo.TraceVerify) {
-            totalchecks++;
-            Console.WriteLine("Checking Block {0}", b.Label);  
-        }
+        outcome = ProverInterface.Outcome.Undetermined;
+        
         Variable v = null;
         m_BlockReachabilityMap.TryGetValue(b, out v);
         assert v!=null;
-
-        VCExpr! currentlabel = checker.TheoremProver.Context.BoogieExprTranslator.LookupVariable(v);
-        ProverInterface.Outcome o = AskProver(b.Label, checker, currentlabel, errh);
         
-        switch (o)
-        {
-          case ProverInterface.Outcome.Valid:
-          {
-            
-            incorder.SetCurrentResult(true, callback, impl);                       
-             
-            // TODO: remove this return and make sure that the CE generation does not change the program
-          checker.Close();
-          return Outcome.Errors;
-            break;
-          }
-          case ProverInterface.Outcome.Invalid:
-          {
-            // Todo: Try to use the counter example to minimize the number of checks needed
-            incorder.SetCurrentResult(false, callback, null);
-            break;
-          }
-          default:
-          {
-            incorder.SetCurrentResult(false, callback, null);
-            if (CommandLineOptions.Clo.TraceVerify) {
-                Console.WriteLine("I'm confused about Block {0}.", b.Label);
+        if (!dc.CheckLabel(v, out outcome) ) {
+            return Outcome.Inconclusive;
+        }
+        
+        switch (outcome) {
+            case ProverInterface.Outcome.Valid: {
+                Console.WriteLine("[x] {0} is doomed", v.Name);
+                doomfound=true;
+                break;
             }
-            break;
-          }
-        }                        
+            case ProverInterface.Outcome.Invalid: {
+            
+                break;
+            }
+            default: {
+            
+                break;
+            }
+        }
+        
       }
-      if (CommandLineOptions.Clo.TraceVerify) {
-        Console.WriteLine("total doomed points: {0}", incorder.DetectedBlock.Count );      
-        Console.WriteLine("We had to ask {0} blocks out of {1}.\n \n", totalchecks, totalblocks );
-      }
-      
       checker.Close();
-
-      //Todo: Implement dead code detection -> see smoke tester
-      //Console.WriteLine(">>> Starting Dead Code Detection ");
-
+      
+      if (dc.DoomedSequences.Count>0 ) {
+        SearchCounterexample(impl, dc.ErrorHandler, callback);
+      }
+      Console.WriteLine();
       return Outcome.Correct;
     }
-
-    private void checkimplsanity(Block! b) {
-        GotoCmd gc = b.TransferCmd as GotoCmd;
-        if (gc!=null) {
-            assert gc.labelTargets != null;
-            foreach (Block! b0 in gc.labelTargets) {
-                bool sane=false;
-                foreach (Block! b1 in b0.Predecessors) {
-                    if (b1==b) {
-                        sane=true; 
-                        break;
-                    }
-                }
-                if (!sane)
-                Console.WriteLine("{{{{{{{{{{{{ {0} is not marked as pred of {1}", b.Label, b0.Label );                    
-                
-                checkimplsanity(b0);
-            }
+    
+    private void SearchCounterexample(Implementation! impl, DoomErrorHandler! errh, VerifierCallback! callback) {        
+        if (errh.m_Reachvar==null) {
+            assert false;
+            return;
         }
-    }
-
-    private ProverInterface.Outcome AskProver(string! label, Checker! checker, VCExpr! vc, ProverInterface.ErrorHandler! errh) {
-        checker.BeginCheck(label, vc, errh);
-        WaitHandle[] wh = new WaitHandle[1];        
-        ProverInterface.Outcome o = ProverInterface.Outcome.Undetermined;               
+        Console.WriteLine("{0} is doomed due to the following statements:", errh.m_Reachvar.Name );
         
-        wh[0] = checker.ProverDone;
-        WaitHandle.WaitAny(wh);
-        try {
-          o = checker.ReadOutcome();
-        } catch (UnexpectedProverOutputException e)
-        {
-          Console.WriteLine(e.ToString());
+        // modify the impl
+        
+        assert errh.m_TraceBlocks != null;
+        assert errh.m_DoomedBlocks !=null;
+        List<Block!>! nondoomed = new List<Block!>();
+        foreach (Block! b in errh.m_DoomedBlocks) {
+            if (!errh.m_TraceBlocks.Contains(b) ) {
+                nondoomed.Add(b);
+            }
+        }   
+        
+        Dictionary<Block!, CmdSeq!>! cmdbackup = new Dictionary<Block!, CmdSeq!>();
+        
+        BruteForceCESearch(errh.m_Reachvar, impl, callback, cmdbackup, 0, impl.Blocks.Count/2-1);
+        BruteForceCESearch(errh.m_Reachvar, impl, callback, cmdbackup, impl.Blocks.Count/2,impl.Blocks.Count-1);
+                
+        
+        #region Undo all modifications        
+        foreach (KeyValuePair<Block!, CmdSeq!> kvp in cmdbackup) {
+            kvp.Key.Cmds = kvp.Value;
+        }    
+        #endregion   
+    }
+    
+    bool BruteForceCESearch(Variable! reachvar, Implementation! impl, VerifierCallback! callback,
+                        Dictionary<Block!, CmdSeq!>! cmdbackup, int startidx, int endidx) {
+        #region Modify implementation
+        for (int i=startidx; i<=endidx; i++) {
+            CmdSeq! cs = new CmdSeq();            
+            cmdbackup.Add(impl.Blocks[i],impl.Blocks[i].Cmds);
+            foreach (Cmd! c in impl.Blocks[i].Cmds) {
+                if (ContainsReachVariable(c)) {
+                    cs.Add(c);
+                    continue;
+                }
+                AssertCmd ac = c as AssertCmd;
+                AssumeCmd uc = c as AssumeCmd;
+                if (ac!=null) {
+                    cs.Add(new AssertCmd(ac.tok, Expr.True) );
+                } else if (uc!=null) {
+                    cs.Add(new AssertCmd(uc.tok, Expr.True) );
+                } else {
+                    cs.Add(c);
+                }
+            }
+            impl.Blocks[i].Cmds = cs;
         }
-        return o;    
+        #endregion   
+            
+        ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
+        if (!ReCheckImpl(reachvar, impl, callback, out outcome) ) {
+            UndoBlockModifications(impl, cmdbackup, startidx, endidx);
+            return false;
+        }
+        if (outcome == ProverInterface.Outcome.Valid) {
+            return true;                                                        
+        } else  if (outcome == ProverInterface.Outcome.Invalid) {
+            UndoBlockModifications(impl, cmdbackup, startidx, endidx);
+            int mid = startidx + (endidx-startidx)/2;
+            if (startidx>=endidx) {
+                // Now we found an interesting Block and we have to
+                // search for the interesting statements.
+                int cmdcount = impl.Blocks[endidx].Cmds.Length-1;
+                BruteForceCmd(impl.Blocks[endidx],0,cmdcount/2 -1,reachvar, impl, callback);
+                BruteForceCmd(impl.Blocks[endidx],cmdcount/2,cmdcount,reachvar, impl, callback);
+                return true; 
+            } else {                
+                BruteForceCESearch(reachvar,impl, callback, cmdbackup, startidx, mid);
+                //if (startidx+mid+1>=endidx) mid--; //Hack
+                BruteForceCESearch(reachvar,impl, callback, cmdbackup, mid+1, endidx);                       
+                return true;
+            }
+        }  else {
+            UndoBlockModifications(impl, cmdbackup, startidx, endidx);
+            return false;
+        }                      
+    }
+    
+    bool BruteForceCmd(Block! b, int startidx, int endidx, Variable! reachvar, 
+                       Implementation! impl, VerifierCallback! callback) {
+        #region Modify Cmds
+        CmdSeq! backup = b.Cmds;
+        CmdSeq! cs = new CmdSeq();
+        for (int i=0;i<startidx;i++) {
+            cs.Add(b.Cmds[i]);
+        }
+        for (int i=startidx; i<=endidx; i++) {
+            Cmd! c = b.Cmds[i];
+            if (ContainsReachVariable(c)) {
+                cs.Add(c);
+                continue;
+            }
+            cs.Add(new AssertCmd(c.tok, Expr.True));
+        }         
+        for (int i=endidx+1; i<b.Cmds.Length;i++) {
+            cs.Add(b.Cmds[i]);
+        }
+
+        b.Cmds = cs;       
+        #endregion
+        
+        #region Recheck
+        ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
+        if (!ReCheckImpl(reachvar, impl, callback, out outcome) ) {
+            b.Cmds = backup;
+            return false;
+        }
+        #endregion
+
+        if (outcome == ProverInterface.Outcome.Valid) {
+            return true;                                                        
+        } else if (outcome == ProverInterface.Outcome.Invalid) {
+            b.Cmds = backup;
+            if (startidx>=endidx) {
+                if (!ContainsReachVariable(b.Cmds[endidx])) {
+                    Console.Write("Candidate L{0}: ", b.Cmds[endidx].tok.line );
+                    b.Cmds[endidx].Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                int mid = startidx + (endidx-startidx)/2;
+                BruteForceCmd(b, startidx, mid, reachvar, impl, callback); 
+                BruteForceCmd(b, mid+1, endidx, reachvar, impl, callback);
+                return false; // This is pure random
+            }
+        } else {
+            b.Cmds = backup;
+            return false;
+        }
+                      
+        return false;
+    }
+    
+    void UndoBlockModifications(Implementation! impl, Dictionary<Block!, CmdSeq!>! cmdbackup, 
+                                int startidx, int endidx) {
+        for (int i=startidx; i<=endidx; i++) {
+            CmdSeq cs = null;
+            if (cmdbackup.TryGetValue(impl.Blocks[i], out cs) ) {
+                assert cs!=null;
+                impl.Blocks[i].Cmds = cs;
+                cmdbackup.Remove(impl.Blocks[i]);
+            }
+        }                                        
+    }
+    
+    bool ReCheckImpl(Variable! reachvar, Implementation! impl, VerifierCallback! callback,
+                     out ProverInterface.Outcome outcome) {
+        Checker! checker = FindCheckerFor(impl, 1000);
+        DoomCheck dc = new DoomCheck(impl, checker);
+        dc.ErrorHandler = new DoomErrorHandler(dc.Label2Absy, callback);                        
+        outcome = ProverInterface.Outcome.Undetermined;        
+        if (!dc.CheckLabel(reachvar, out outcome)) {
+            checker.Close();
+            return false;
+        }
+        checker.Close();
+        return true;
     }
 
-
-
-    protected Hashtable/*TransferCmd->ReturnCmd*/! PassifyImpl(Implementation! impl, Program! program)
-    {
-      return new Hashtable();
+    
+        
+    bool ContainsReachVariable(Cmd! c) {
+        AssertCmd artc = c as AssertCmd;
+        AssumeCmd amec = c as AssumeCmd;
+        Expr e;
+        if (artc!=null) {
+            e = artc.Expr;
+        } else if (amec!=null) {
+            e = amec.Expr;
+        } else {             
+            return false;
+        }
+        Set! freevars = new Set();
+        e.ComputeFreeVariables(freevars);
+        foreach (Variable! v in freevars) {
+            if (v.Name.Contains(reachvarsuffix)) return true;
+        }
+        return false;
     }
+    
     
     #region Loop Removal
     /// <summary>
@@ -216,24 +315,25 @@ namespace VC
     /// </summary>
     private class DCProgramTransformer
     {
-      public static List<Block!>! Convert2Dag(Implementation! impl, Program! program, List<Block!>! checkableBlocks)
+      private List<Block!>! Blocks;
+      private List<Block!>! m_checkableBlocks;
+      private Dictionary<Block!, Block!>! m_copyMap = new Dictionary<Block!, Block!>();
+
+      public static List<Block!>! Convert2Dag(Implementation! impl, Program! program, List<Block!>! checkableBlocks,
+            out Dictionary<Block!, Block!> copiedblocks)
       {
-			  Block! start = impl.Blocks[0];
-			  Dictionary<Block,GraphNode!> gd = new Dictionary<Block,GraphNode!>();
-			  Set/*Block*/! beingVisited = new Set/*Block*/();
-			  GraphNode gStart = GraphNode.ComputeGraphInfo(null, start, gd, beingVisited);
+        Block! start = impl.Blocks[0];
+		Dictionary<Block,GraphNode!> gd = new Dictionary<Block,GraphNode!>();
+		Set/*Block*/! beingVisited = new Set/*Block*/();
+		GraphNode gStart = GraphNode.ComputeGraphInfo(null, start, gd, beingVisited);
       
         DCProgramTransformer pt = new DCProgramTransformer(checkableBlocks);
-  			pt.LoopUnrolling(gStart, new Dictionary<GraphNode, Block!>(), true, "");	
-	  		pt.Blocks.Reverse();
-        
+  		pt.LoopUnrolling(gStart, new Dictionary<GraphNode, Block!>(), true, "");	
+	  	pt.Blocks.Reverse();
+        copiedblocks = pt.m_copyMap;
         return pt.Blocks;
       }
-      
-      List<Block!>! Blocks;
-      
-      private List<Block!>! m_checkableBlocks;
-
+     
       
       DCProgramTransformer(List<Block!>! checkableBlocks)
       {
@@ -242,7 +342,7 @@ namespace VC
       }
     
 
-    #region Loop Unrolling Methods
+#region Loop Unrolling Methods
     
 		private Block! LoopUnrolling(GraphNode! node, Dictionary<GraphNode, Block!>! visited, bool unrollable, String! prefix)
 		{
@@ -278,7 +378,16 @@ namespace VC
 					{
 						newSuccs.Add( LoopUnrolling(g,visited,unrollable,prefix) );
 					}
-					newb = new Block(node.Block.tok, node.Block.Label + prefix , node.Body, node.Block.TransferCmd);  
+					newb = new Block(node.Block.tok, node.Block.Label + prefix , node.Body, node.Block.TransferCmd);
+                    Block b;
+			        if (m_copyMap.TryGetValue(node.Block, out b) ) {
+			            assert b!=null;
+			            m_copyMap.Add(newb, b);
+			        } else {
+			            m_copyMap.Add(newb, node.Block);
+			        }
+					
+					
 					assert newb!=null; assert newb.TransferCmd!=null;					
 					if (newSuccs.Length == 0) 
 						newb.TransferCmd = new ReturnCmd(newb.TransferCmd.tok);
@@ -312,8 +421,8 @@ namespace VC
 				Block! last = UnrollOnce(cutPoint, loopend,visited1,false, prefix+"#Last");
 				AddHavocCmd(last,loopNodes);				
 				
-									
-				Block! arb = UnrollOnce(cutPoint, last,visited2,true, prefix+"#Arb");
+				// You might use true for the unrollable flag as well. 					
+				Block! arb = UnrollOnce(cutPoint, last,visited2,false, prefix+"#Arb");
 				AddHavocCmd(arb,loopNodes);
 				
 						
@@ -323,6 +432,17 @@ namespace VC
 				Block! tmp = new Block(arb.tok, arb.Label + prefix+"#Dummy" , new CmdSeq(), new GotoCmd(arb.TransferCmd.tok, succ));
 				Blocks.Add(tmp);
 				m_checkableBlocks.Add(tmp);
+
+                // check if arb is already a copy of something else
+                // if not then write to m_copyMap that tmp is a copy
+                // of arb
+				Block b = null;
+				if (m_copyMap.TryGetValue(arb,out b) ) {
+				    assert b!=null;
+				    m_copyMap.Add(tmp, b);
+				} else {
+				    m_copyMap.Add(tmp, arb);
+				}
 
 				Block! first = UnrollOnce(cutPoint, tmp,visited3,false, prefix+"#First");
 				
@@ -341,13 +461,20 @@ namespace VC
 		private Block! UnrollOnce(GraphNode! node, Block! nextIter, Dictionary<GraphNode, Block!>! visited, bool unrollable, String! prefix)
 		{
 			visited.Add(node, nextIter);
-			Block newb;
+			Block newb,b;
 			BlockSeq! newSuccs = new BlockSeq();
 			foreach(GraphNode! g in node.Succecessors)
 			{
 				newSuccs.Add( LoopUnrolling(g,visited,unrollable,prefix) );
 			}
-			newb = new Block(node.Block.tok, node.Block.Label + prefix , node.Body, node.Block.TransferCmd);  
+			newb = new Block(node.Block.tok, node.Block.Label + prefix , node.Body, node.Block.TransferCmd); 
+			if (m_copyMap.TryGetValue(node.Block, out b) ) {
+			    assert b!=null;
+			    m_copyMap.Add(newb, b);
+			} else {
+			    m_copyMap.Add(newb, node.Block);
+			}
+			 
 			assert newb!=null; assert newb.TransferCmd!=null;					
 			if (newSuccs.Length == 0) 
 				newb.TransferCmd = new ReturnCmd(newb.TransferCmd.tok);
@@ -365,7 +492,7 @@ namespace VC
 			foreach (Cmd! c in node.Body)
 			{
 				if (c is PredicateCmd || c is CommentCmd)
-					body.Add(c);
+					body.Add(c );
 				else
 					break;
 			}
@@ -373,6 +500,14 @@ namespace VC
 			TransferCmd! tcmd = new ReturnCmd(node.Block.tok);
 			Block! b = new Block(node.Block.tok, node.Block.Label + prefix, body, tcmd);
 			Blocks.Add(b);
+            Block tmp; 
+			if (m_copyMap.TryGetValue(node.Block, out tmp) ) {
+			    assert tmp!=null;
+			    m_copyMap.Add(b, tmp);
+			} else {
+			    m_copyMap.Add(b, node.Block);
+			}
+			
 			return b;
 		}
 
@@ -577,16 +712,57 @@ namespace VC
     #endregion		
 
     #endregion 
- 
-    
+     
     #region Program Passification
     
-		private Hashtable/*TransferCmd->ReturnCmd*/! PassifyProgram(Implementation! impl, 
+      private Hashtable/*TransferCmd->ReturnCmd*/! PassifyProgram(Implementation! impl, 
 			                  Program! program)
 	  {
 	    Hashtable gotoCmdOrigins = new Hashtable();
 	    Block! exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
 	    AddBlocksBetween(impl);
+	    
+        #region Insert pre- and post-conditions and where clauses as assume and assert statements
+        {
+        CmdSeq cc = new CmdSeq();
+        // where clauses of global variables
+        foreach (Declaration d in program.TopLevelDeclarations) {
+          GlobalVariable gvar = d as GlobalVariable;
+          if (gvar != null && gvar.TypedIdent.WhereExpr != null) {
+            Cmd c = new AssumeCmd(gvar.tok, gvar.TypedIdent.WhereExpr);
+            cc.Add(c);
+          }
+        }
+        // where clauses of in- and out-parameters
+        cc.AddRange( GetParamWhereClauses(impl));
+        // where clauses of local variables
+        foreach (Variable! lvar in impl.LocVars) {
+          if (lvar.TypedIdent.WhereExpr != null) {
+            Cmd c = new AssumeCmd(lvar.tok, lvar.TypedIdent.WhereExpr);
+            cc.Add(c);
+          }
+        }
+
+        InjectPreconditions(impl);
+        //cc.AddRange(GetPre(impl));
+
+        Block! entryBlock = (!) impl.Blocks[0];
+        cc.AddRange(entryBlock.Cmds);
+        entryBlock.Cmds = cc;
+          
+        InjectPostConditions(impl,exitBlock,gotoCmdOrigins);
+        //CmdSeq! post = GetPost(impl);
+        //exitBlock.Cmds.AddRange(post);
+        }
+        // Check If a new Unified Exit has been generated
+        GotoCmd gc = exitBlock.TransferCmd as GotoCmd;
+        if (gc!=null) {
+            assert gc.labelTargets !=null;
+            assert gc.labelTargets.Length==1;
+            assert gc.labelTargets[0]!=null;
+            exitBlock = (!)gc.labelTargets[0];
+        }
+        #endregion	    
 	    GenerateReachabilityPredicates(impl, exitBlock);
 	    	    	    
 	    current_impl = impl;
@@ -610,7 +786,7 @@ namespace VC
 				//if (b.Cmds.Length == 0 ) continue;
 
 				Variable v_ = new LocalVariable(Token.NoToken, 
-										new TypedIdent(b.tok, b.Label+"__ivebeenthere",new BasicType(SimpleType.Bool) ) );
+										new TypedIdent(b.tok, b.Label+reachvarsuffix,new BasicType(SimpleType.Bool) ) );
 				
 				impl.LocVars.Add(v_);
 				
@@ -676,476 +852,5 @@ namespace VC
     
     #endregion
    
-    #region Error Verification Condition Generation
-    
-    VCExpr! GenerateEVC(Implementation! impl, out Hashtable label2absy, Checker! ch)
-    {
-			TypecheckingContext tc = new TypecheckingContext(null);
-			impl.Typecheck(tc);
-			label2absy = new Hashtable/*<int, Absy!>*/();
-			VCExpr! vc;
-			switch (CommandLineOptions.Clo.vcVariety) {
-				case CommandLineOptions.VCVariety.Doomed:
-					vc = LetVC((!)impl.Blocks[0], label2absy, ch.TheoremProver.Context);
-					break;
-				default:
-					assert false;  // unexpected enumeration value
-			}
-			return vc;      
-    }
-
-    private Hashtable/* Block --> VCExprVar */! BlockVariableMap(List<Block!>! blocks, string! suffix,
-                                                                        Microsoft.Boogie.VCExpressionGenerator! gen)
-    {
-      Hashtable/* Block --> VCExprVar */ map = new Hashtable/* Block --> (Let)Variable */();
-      foreach (Block! b in blocks)
-      {
-        VCExprVar! v = gen.Variable(b.Label+suffix, Microsoft.Boogie.Type.Bool);
-        map.Add(b, v);
-      }
-      return map;
-    }
-
-
-    VCExpr! LetVC(Block! startBlock,
-                         Hashtable/*<int, Absy!>*/! label2absy,
-                         ProverContext! proverCtxt)
-    {
-      Hashtable/*<Block, LetVariable!>*/! blockVariables = new Hashtable/*<Block, LetVariable!!>*/();
-      List<VCExprLetBinding!>! bindings = new List<VCExprLetBinding!>();
-      VCExpr startCorrect = LetVC(startBlock, label2absy, blockVariables, bindings, proverCtxt);
-      if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-        return proverCtxt.ExprGen.Let(bindings, proverCtxt.ExprGen.Not(startCorrect) );
-      } else {
-        return proverCtxt.ExprGen.Let(bindings, startCorrect );
-      }
-    }
-
-    VCExpr! LetVC(Block! block,
-                         Hashtable/*<int, Absy!>*/! label2absy,
-                         Hashtable/*<Block, VCExprVar!>*/! blockVariables,
-                         List<VCExprLetBinding!>! bindings,
-                         ProverContext! proverCtxt)
-    {
-      VCExpressionGenerator! gen = proverCtxt.ExprGen;
-      VCExprVar v = (VCExprVar)blockVariables[block];
-      if (v == null) {
-        /*
-         * For block A (= block), generate:
-         *   LET_binding A_correct = wp(A_body, (/\ S \in Successors(A) :: S_correct))
-         * with the side effect of adding the let bindings to "bindings" for any
-         * successor not yet visited.
-         */
-        VCExpr SuccCorrect;
-        GotoCmd gotocmd = block.TransferCmd as GotoCmd;
-        if (gotocmd == null) {
-            if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-                SuccCorrect = VCExpressionGenerator.False;
-            } else {
-                SuccCorrect = VCExpressionGenerator.True;
-            }
-        } else {
-          assert gotocmd.labelTargets != null;
-          List<VCExpr!> SuccCorrectVars = new List<VCExpr!>(gotocmd.labelTargets.Length);
-          foreach (Block! successor in gotocmd.labelTargets) {
-            VCExpr s = LetVC(successor, label2absy, blockVariables, bindings, proverCtxt);
-            SuccCorrectVars.Add(s);
-          }
-          SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
-        }
-
-        VCContext context = new VCContext(label2absy, proverCtxt);
-//        m_Context = context;
-        VCExpr vc = Wlp.Block(block, SuccCorrect, context);
-        
-        v = gen.Variable(block.Label + "_correct", Microsoft.Boogie.Type.Bool);
-        bindings.Add(gen.LetBinding(v, vc));
-        blockVariables.Add(block, v);
-      }
-      return v;
-    }
-
-    
-    #endregion 
-    
-    #region Build Inclusion Order to minimize the number of checks
-    
-        class InclusionOrder 
-        {
-            [NotDelayed]
-            public InclusionOrder(Implementation! impl) {
-                /*
-                    We now compute for each block the set of blocks that
-                    are reached on every execution reaching this block.
-                    We first compute it form the start block to the current
-                    block and second from the Term block to the current one.
-                    Finally we build the union.
-                */
-                                               
-                
-                Dictionary<Block!,TraceNode!>! map2 = new Dictionary<Block!,TraceNode!>();
-                Dictionary<Block!,TraceNode!>! map = new Dictionary<Block!,TraceNode!>();
-                
-                Dictionary<Block!, List<Block!>!>! unavoidablemap = new Dictionary<Block!, List<Block!>!>();
-
-                Block! exitblock = BreadthFirst(impl.Blocks[0], map2);
-                BreadthFirstBwd(exitblock, map);               
-
-                foreach (KeyValuePair<Block!, TraceNode!> kvp in map) {
-                    List<Block!>! blist = new List<Block!>();
-                    foreach (TraceNode tn in kvp.Value.Unavoidables ) {
-                        blist.Add(tn.block);
-                    }
-                    unavoidablemap.Add(kvp.Key, blist);
-                }
-                foreach (KeyValuePair<Block!, List<Block!>!> kvp in unavoidablemap) {
-                    TraceNode tn = null;
-                    if (map2.TryGetValue(kvp.Key, out tn) ) {
-                        assert tn!=null;
-                        foreach (TraceNode! t0 in tn.Unavoidables) {
-                            if (!kvp.Value.Contains(t0.block))
-                                kvp.Value.Add(t0.block);
-                        }
-                    } else {
-                        assert false;
-                    }
-                }
-                                                               
-                foreach (KeyValuePair<Block!, List<Block!>!> kvp in unavoidablemap) {
-                    Insert2Tree(RootNode,kvp);
-                }
-                InitCurrentNode(RootNode);
-                //printtree(RootNode, "",0);                
-            }
-                      
-            InclusionTree! RootNode = new InclusionTree(null); 
-            
-            InclusionTree currentNode = null;
-            
-            void InitCurrentNode(InclusionTree! n) {
-                if (n.Children.Count>0) {
-                    InitCurrentNode(n.Children[0]);
-                } else {
-                    currentNode = n;
-                }
-            }
-            
-            public bool GetNextBlock(out Block b) {
-                if (currentNode!=null) {
-                    b = currentNode.EquivBlock[0];
-                    return true;
-                }   
-                b = null;
-                return false;
-            }
-            
-            public List<Block!>! DetectedBlock = new List<Block!>(); 
-                        
-            public void SetCurrentResult(bool isDoomed, VerifierCallback! cb, Implementation? impl) {                
-                if (!isDoomed) { 
-                    if (currentNode != null) {
-                        currentNode.IsDoomed = false;
-                        currentNode.HasBeenChecked = true;
-                        MarkUndoomedParents(currentNode);                        
-                        currentNode = FindNextNode(currentNode);
-                    }
-                } else {
-                    if (currentNode != null) {    
-                        string dblocks = "Doomed Blocks: ";
-                        // WARNING THIS IS A HACK:
-                        assert impl!=null;
-                        impl.Blocks.Clear();
-                        
-                        foreach (Block! b in currentNode.EquivBlock) {
-                            impl.Blocks.Add(b);
-                            dblocks += String.Format("{0}, ", b.Label);
-                        }
-                        cb.OnWarning("Doomed program points found!");
-                        cb.OnWarning(dblocks);
-                        cb.OnUnreachableCode(impl);
-                        
-                        
-                        if (currentNode.EquivBlock.Count>0) {
-                            DetectedBlock.Add(currentNode.EquivBlock[0]);
-                            // Todo: Remove all doomed blocks that are found
-                            // in children.
-                            // Maybe on should remove them only if all children
-                            // are doomed, but this does not affect soundness                            
-                        } else {
-                            Console.WriteLine("An empty equivalence class has been detected");
-                            assert false;
-                        }
-                        
-                        currentNode.IsDoomed = true;
-                        currentNode.HasBeenChecked = true;
-                        MarkDoomedChildren(currentNode);
-                        currentNode = currentNode.Parent;
-                    }                        
-                }
-            }                        
-                        
-            InclusionTree FindNextNode(InclusionTree! n) {
-                assert n!=n.Parent;
-                InclusionTree next = n.Parent;                
-                if (next!=null) {
-                    foreach (InclusionTree! n0 in next.Children) {
-                        if (!n0.HasBeenChecked) {
-                            return n0;
-                        }
-                    }
-                    return FindNextNode(next);                    
-                }                
-                return next;
-            }
-            
-            void MarkUndoomedParents(InclusionTree! n) {
-                if (n.Parent != null) {
-                    n.Parent.HasBeenChecked = true;
-                    n.Parent.IsDoomed = false;
-                    MarkUndoomedParents(n.Parent);
-                }
-            }
-            
-            void MarkDoomedChildren(InclusionTree! n) {
-                foreach (InclusionTree! t in n.Children) {
-                    t.IsDoomed = true;
-                    t.HasBeenChecked = true;
-                    MarkDoomedChildren(t);
-                }
-            }
-            
-            
-            void printtree(InclusionTree! n, string indent, int level) {
-                Console.Write("{0}Level {1}: Blocks ", indent, level);
-                foreach (Block! b in n.EquivBlock) {
-                    Console.Write("{0}, ", b.Label);
-                }
-                Console.WriteLine();
-                
-                foreach (InclusionTree! t in n.Children) {
-                    printtree(t, indent+"  ", level+1);
-                }
-            }
-            
-            bool Insert2Tree(InclusionTree! node, KeyValuePair<Block!, List<Block!>!> kvp) {
-                if (IsSubset(node.PathBlocks, kvp.Value) ) {
-                    if (IsSubset(kvp.Value, node.PathBlocks) ) {
-                        // The set of unavoidable blocks is equal, so 
-                        // we can put the block in the same node.
-                        node.EquivBlock.Add(kvp.Key);
-                        return true;
-                    } else {
-                        foreach (InclusionTree! n in node.Children) {
-                            if (Insert2Tree(n,kvp) ) {
-                                return true;
-                            }
-                        }
-                        // we have not been able to add the block to one of
-                        // the children, so we have to create a new child.
-                        InclusionTree! it = new InclusionTree(node);
-                        it.EquivBlock.Add(kvp.Key);
-                        it.PathBlocks.AddRange(kvp.Value);
-                        node.Children.Add(it);
-                        return true;
-                    }
-                    // If we reached this point, we have to add a new node since
-                    // our current set of pathnodes is not a subset of anything else
-                } else {
-                    // seems, that we have reached a new leaf.
-                }                
-                return false;
-            }
-            
-            
-            bool IsSubset(List<Block!>! sub, List<Block!>! super ) {
-                foreach (Block! b in sub) {
-                    if (!super.Contains(b) ) return false;                    
-                }
-                return true;
-            }
-            
-            
-            private class InclusionTree {
-                public InclusionTree(InclusionTree p) {
-                    Parent = p;
-                    HasBeenChecked=false;  
-                    IsDoomed = false;
-                }
-                
-                public bool HasBeenChecked;
-                public bool IsDoomed;
-                public InclusionTree Parent;
-                public List<Block!>! EquivBlock = new List<Block!>();
-                public List<Block!>! PathBlocks = new List<Block!>();
-                public List<InclusionTree!>! Children = new List<InclusionTree!>();
-            }
-            
-     #region Collect Unavoidable Blocks
-            private Block! BreadthFirst(Block! start, Dictionary<Block!, TraceNode!>! blockmap) {
-                List<Block!>! JobList = new List<Block!>();
-                List<Block!>! DoneList = new List<Block!>();
-                Block exitblock=null;
-                JobList.Add(start);
-                Block! currentBlock = JobList[0];
-                // Travers the Graph Breadth First and collect all 
-                // predecessors of each node that are reached on any
-                // path to this node
-                while (JobList.Count>0)
-                {                    
-                    currentBlock = JobList[0];
-                    TraceNode! tn = new TraceNode(currentBlock);
-                    
-                    if (currentBlock.Predecessors.Length>0 ) {                    
-                        TraceNode t0 =null;
-                        Block firstpred = currentBlock.Predecessors[0];
-                        
-                        assert firstpred!=null;
-                        if (blockmap.TryGetValue(firstpred, out t0)) {
-                            assert t0 !=null;
-                            tn.Unavoidables.AddRange(t0.Unavoidables);                                
-                        }
-                    }   
-                                         
-                    foreach (Block! b0 in currentBlock.Predecessors) {
-                        TraceNode t = null;
-                        if (blockmap.TryGetValue(b0, out t)) {
-                            assert t!=null;
-                            tn.Predecessors.Add(t);                            
-                            IntersectUnavoidables(t,tn);                            
-                            if (!t.Successors.Contains(tn)) t.Successors.Add(tn);
-                            blockmap[b0]=t;
-                        }
-                    }
-                    if (!tn.Unavoidables.Contains(tn)) {
-                        tn.Unavoidables.Add(tn);
-                    } else
-                    {
-                        assert false;
-                    }          
-                    
-                                        
-                    blockmap.Add(currentBlock, tn);
-                    
-                    GotoCmd gc = currentBlock.TransferCmd as GotoCmd;
-                    if (gc!=null) {
-                        assert gc.labelTargets!=null;
-                        foreach (Block! b0 in gc.labelTargets) {
-                            if (!JobList.Contains(b0) && !DoneList.Contains(b0)) {
-                                
-                                JobList.Add(b0);
-                            }
-                        }
-                    } else {
-                        exitblock=currentBlock;
-                    }
-                    DoneList.Add(currentBlock);
-                    JobList.RemoveAt(0);
-                }
-                assert exitblock!=null;
-                return exitblock;
-            }
-       
-            // WARNING: It is only for testing reasons that
-            // BreadthFirstBwd and BreadthFirst and separat functions
-            // it should be implemented using one function later on.
-            private void BreadthFirstBwd(Block! start, Dictionary<Block!, TraceNode!>! blockmap) {
-                List<Block!>! JobList = new List<Block!>();                
-                List<Block!>! DoneList = new List<Block!>();
-                JobList.Add(start);
-                Block! currentBlock = JobList[0];
-                // Travers the Graph Breadth First and collect all 
-                // predecessors of each node that are reached on any
-                // path to this node
-                while (JobList.Count>0)
-                {                    
-                    currentBlock = JobList[0];
-                    TraceNode! tn = new TraceNode(currentBlock);
-                    
-                    GotoCmd gc = currentBlock.TransferCmd as GotoCmd;
-                    BlockSeq preds = null;
-                    if (gc!=null) {
-                        preds = gc.labelTargets;
-                    }
-                    
-                    if (preds != null ) {
-                    
-                        TraceNode t0 =null;
-                        Block firstpred = preds[0];
-                        
-                        assert firstpred!=null;
-                        if (blockmap.TryGetValue(firstpred, out t0)) {
-                            assert t0 !=null;
-                            tn.Unavoidables.AddRange(t0.Unavoidables);                                
-                        }
-                      
-                                         
-                        foreach (Block! b0 in preds) {
-                            TraceNode t = null;
-                            if (blockmap.TryGetValue(b0, out t)) {
-                                assert t!=null;
-                                tn.Successors.Add(t);                            
-                                IntersectUnavoidables(t,tn);                            
-                                if (!t.Predecessors.Contains(tn)) t.Predecessors.Add(tn);
-                                blockmap[b0]=t;
-                            }
-                        }
-                    } 
-                    if (!tn.Unavoidables.Contains(tn)) {
-                        tn.Unavoidables.Add(tn);
-                    } else
-                    {
-                        assert false;
-                    }
-                    blockmap.Add(currentBlock, tn);
-                                        
-                    if (currentBlock.Predecessors.Length>0) {                        
-                        foreach (Block! b0 in currentBlock.Predecessors) {
-                            if (!JobList.Contains(b0) && !DoneList.Contains(b0) ) 
-                                JobList.Add(b0);
-                        }
-                    }
-                    DoneList.Add(currentBlock);
-                    JobList.RemoveAt(0);
-                }
-            }
-       
-            
-            private void IntersectUnavoidables(TraceNode! parent, TraceNode! child) {
-                List<TraceNode!>! ret = new List<TraceNode!>();
-                List<TraceNode!>! tmp = new List<TraceNode!>();
-                tmp.AddRange(parent.Unavoidables);
-                tmp.AddRange(child.Unavoidables);
-                
-                foreach (TraceNode! tn in tmp) {                        
-                    if (parent.Unavoidables.Contains(tn) && child.Unavoidables.Contains(tn) 
-                        && !ret.Contains(tn) ) {
-                        ret.Add(tn);
-                    }
-                }
-                assert ret.Count <= parent.Unavoidables.Count && ret.Count <= child.Unavoidables.Count;
-                child.Unavoidables = ret;
-                
-             }
-            
-            #region TraceNode Class  
-            // We assume that the program is already loopfree, otherwise we will
-            // not terminate      
-            private class TraceNode  {
-                public List<TraceNode!>! Predecessors = new List<TraceNode!>();
-                public List<TraceNode!>! Successors = new List<TraceNode!>();
-                public List<TraceNode!>! Unavoidables = new List<TraceNode!>();
-                public Block! block;
-            
-               
-                public TraceNode(Block! b) {                    
-                    block=b;                          
-                }
-                
-            }
-            #endregion
-         #endregion
-        }
-    #endregion
-     
   }
 }

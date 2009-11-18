@@ -195,6 +195,305 @@ namespace VC
 
 /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
 
+#region Methods for injecting pre- and postconditions
+    private static void
+      ThreadInBlockExpr(Implementation! impl,
+                        Block! targetBlock,
+                        BlockExpr! blockExpr,
+                        bool replaceWithAssert,
+                        TokenTextWriter debugWriter){
+      // Go through blockExpr and for all blocks that have a "return e"
+      // as their transfer command:
+      //   Replace all "return e" with "assert/assume e"
+      //   Change the transfer command to "goto targetBlock"
+      // Then add all of the blocks in blockExpr to the implementation (at the end)
+      foreach (Block! b in blockExpr.Blocks){
+        ReturnExprCmd rec = b.TransferCmd as ReturnExprCmd;
+        if (rec != null){ // otherwise it is a goto command
+          if (replaceWithAssert){
+            Ensures! ens = new Ensures(rec.tok, false, rec.Expr, null);
+            Cmd! c = new AssertEnsuresCmd(ens);
+            b.Cmds.Add(c);
+          }else{
+            b.Cmds.Add(new AssumeCmd(rec.tok, rec.Expr));
+          }
+          b.TransferCmd = new GotoCmd(Token.NoToken,
+            new StringSeq(targetBlock.Label),
+            new BlockSeq(targetBlock));
+          targetBlock.Predecessors.Add(b);
+        }
+        impl.Blocks.Add(b);
+      }
+      if (debugWriter != null){
+        blockExpr.Emit(debugWriter, 1,false);
+      }
+      return;
+    }
+    
+    private static void AddAsPrefix(Block! b, CmdSeq! cs){
+      CmdSeq newCommands = new CmdSeq();
+      newCommands.AddRange(cs);
+      newCommands.AddRange(b.Cmds);
+      b.Cmds = newCommands;
+    }
+      
+
+    /// <summary>
+    /// Modifies an implementation by inserting all preconditions
+    /// as assume statements at the beginning of the implementation
+    /// </summary>
+    /// <param name="impl"></param>
+    protected static void InjectPreconditions(Implementation! impl)
+      requires impl.Proc != null;
+    {
+      TokenTextWriter debugWriter = null;
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
+        debugWriter = new TokenTextWriter("<console>", Console.Out, false);
+        debugWriter.WriteLine("Effective precondition:");
+      }
+    
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      
+      Block! originalEntryPoint = (!) impl.Blocks[0];
+      Block! currentEntryPoint = (!) impl.Blocks[0];
+      CmdSeq! currentClump = new CmdSeq(); // to hold onto contiguous "regular" preconditions
+
+      // (free and checked) requires clauses
+      for (int i = impl.Proc.Requires.Length-1; 0 <= i; i--){
+        
+        // need to process the preconditions from bottom up, because
+        // for any that are BlockExprs, we need to thread them on
+        // to the top of the implementation
+
+        Requires req = impl.Proc.Requires[i];
+        Expr! e = Substituter.Apply(formalProcImplSubst, req.Condition);
+        BlockExpr be = req.Condition as BlockExpr;
+        if (be != null){
+          if (currentClump.Length > 0){
+            AddAsPrefix(currentEntryPoint, currentClump);
+            currentClump = new CmdSeq();
+          }
+          ThreadInBlockExpr(impl,currentEntryPoint, be,false,debugWriter);
+          currentEntryPoint = (!)be.Blocks[0];
+        }else{
+          Cmd! c = new AssumeCmd(req.tok, e);
+          currentClump.Add(c);
+          if (debugWriter != null) { c.Emit(debugWriter, 1); }
+        }
+        
+      }
+      
+      if (currentClump.Length > 0){
+        AddAsPrefix(currentEntryPoint, currentClump);
+      }
+      
+      if (currentEntryPoint != originalEntryPoint){
+        string EntryLabel = "PreconditionGeneratedEntry";
+        Block! newEntry = new Block(new Token(-17, -4),EntryLabel,new CmdSeq(),
+                  new GotoCmd(Token.NoToken,
+              new StringSeq(currentEntryPoint.Label),
+              new BlockSeq(currentEntryPoint)));
+        currentEntryPoint.Predecessors.Add(newEntry);
+        List<Block!> newBody = new List<Block!>();
+        newBody.Add(newEntry);
+        newBody.AddRange(impl.Blocks);
+        impl.Blocks = newBody;
+      }
+
+      if (debugWriter != null) { debugWriter.WriteLine(); }
+      
+      return;
+    }
+    /// <summary>
+    /// Modifies an implementation by inserting all postconditions
+    /// as assert statements at the end of the implementation
+    /// </summary>
+    /// <param name="impl"></param>
+    /// <param name="unifiedExitblock">The unified exit block that has
+    /// already been constructed for the implementation (and so
+    /// is already an element of impl.Blocks)
+    /// </param>
+    protected static void InjectPostConditions(Implementation! impl, Block! unifiedExitBlock, Hashtable/*TransferCmd->ReturnCmd*/! gotoCmdOrigins)
+      requires impl.Proc != null;
+    {
+      TokenTextWriter debugWriter = null;
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
+        debugWriter = new TokenTextWriter("<console>", Console.Out, false);
+        debugWriter.WriteLine("Effective postcondition:");
+      }
+      
+      string ExitLabel = "ReallyLastGeneratedExit";
+      Block! newExit = new Block(new Token(-17, -4),ExitLabel,new CmdSeq(),new ReturnCmd(Token.NoToken));
+      impl.Blocks.Add(newExit);
+      Block! currentEntryPoint = newExit;
+      CmdSeq! currentClump = new CmdSeq(); // to hold onto contiguous "regular" postconditions
+
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+
+      // (free and checked) ensures clauses
+      for (int i = impl.Proc.Ensures.Length-1; 0 <= i; i--){
+        
+        // need to process the postconditions from bottom up, because
+        // for any that are BlockExprs, we need to thread them on
+        // to the top of the implementation
+
+        Ensures ens = (impl.Proc).Ensures[i];
+        if (!ens.Free) { // free ensures aren't needed for verifying the implementation
+          Expr! e = Substituter.Apply(formalProcImplSubst, ens.Condition);
+          BlockExpr be = ens.Condition as BlockExpr;
+          if (be != null){
+            if (currentClump.Length > 0){
+              AddAsPrefix(currentEntryPoint, currentClump);
+              currentClump = new CmdSeq();
+            }
+            ThreadInBlockExpr(impl,currentEntryPoint,be,true,debugWriter);
+            currentEntryPoint = (!)be.Blocks[0];
+          }else{
+            Ensures! ensCopy = (Ensures!) ens.Clone();
+            ensCopy.Condition = e;
+            Cmd! c = new AssertEnsuresCmd(ensCopy);
+            ((AssertEnsuresCmd) c).ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
+            currentClump.Add(c);
+            if (debugWriter != null) { c.Emit(debugWriter, 1); }
+          }
+        }
+          
+      }
+      
+      if (currentClump.Length > 0){
+        AddAsPrefix(currentEntryPoint, currentClump);
+      }
+      
+      GotoCmd gtc = new GotoCmd(Token.NoToken,
+            new StringSeq(currentEntryPoint.Label),
+            new BlockSeq(currentEntryPoint));
+      gotoCmdOrigins[gtc] = unifiedExitBlock.TransferCmd;
+      unifiedExitBlock.TransferCmd = gtc;
+      currentEntryPoint.Predecessors.Add(unifiedExitBlock);
+      
+      if (debugWriter != null) { debugWriter.WriteLine(); }
+      
+      return;
+    }
+
+
+    /// <summary>
+    /// Get the pre-condition of an implementation, including the where clauses from the in-parameters.
+    /// </summary>
+    /// <param name="impl"></param>
+    protected static CmdSeq! GetPre(Implementation! impl)
+      requires impl.Proc != null;
+    {
+      TokenTextWriter debugWriter = null;
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
+        debugWriter = new TokenTextWriter("<console>", Console.Out, false);
+        debugWriter.WriteLine("Effective precondition:");
+      }
+    
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      CmdSeq! pre = new CmdSeq();
+
+      // (free and checked) requires clauses
+      foreach (Requires! req in impl.Proc.Requires)
+      {
+        Expr! e = Substituter.Apply(formalProcImplSubst, req.Condition);
+        Cmd! c = new AssumeCmd(req.tok, e);
+        pre.Add(c);
+
+        if (debugWriter != null) { c.Emit(debugWriter, 1); }
+      }
+      
+      if (debugWriter != null) { debugWriter.WriteLine(); }
+      
+      return pre;
+    }
+
+    /// <summary>
+    /// Get the post-condition of an implementation.
+    /// </summary>
+    /// <param name="impl"></param>
+    protected static CmdSeq! GetPost(Implementation! impl)
+      requires impl.Proc != null;
+    {
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) { Console.WriteLine("Effective postcondition:"); }
+      
+      // Construct an Expr for the post-condition
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap()); 
+      CmdSeq! post = new CmdSeq();
+      foreach (Ensures! ens in impl.Proc.Ensures)
+      {
+        if (!ens.Free) {
+          Expr! e = Substituter.Apply(formalProcImplSubst, ens.Condition);
+          Ensures! ensCopy = (Ensures!) ens.Clone();
+          ensCopy.Condition = e;
+          Cmd! c = new AssertEnsuresCmd(ensCopy);
+          ((AssertEnsuresCmd) c).ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
+          post.Add(c);
+        
+          if (CommandLineOptions.Clo.PrintWithUniqueASTIds) { c.Emit(new TokenTextWriter("<console>", Console.Out, false), 1); }
+        }
+      }
+
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) { Console.WriteLine(); }
+      
+      return post;
+    }
+    
+    /// <summary>
+    /// Get the where clauses from the in- and out-parameters as
+    /// a sequence of assume commands.
+    /// As a side effect, this method adds these where clauses to the out parameters.
+    /// </summary>
+    /// <param name="impl"></param>
+    protected static CmdSeq! GetParamWhereClauses(Implementation! impl)
+      requires impl.Proc != null;
+    {
+      TokenTextWriter debugWriter = null;
+      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
+        debugWriter = new TokenTextWriter("<console>", Console.Out, false);
+        debugWriter.WriteLine("Effective precondition from where-clauses:");
+      }
+    
+      Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      CmdSeq! whereClauses = new CmdSeq();
+
+      // where clauses of in-parameters
+      foreach (Formal! f in impl.Proc.InParams)
+      {
+        if (f.TypedIdent.WhereExpr != null) {
+          Expr e = Substituter.Apply(formalProcImplSubst, f.TypedIdent.WhereExpr);
+          Cmd c = new AssumeCmd(f.tok, e);
+          whereClauses.Add(c);
+        
+          if (debugWriter != null) { c.Emit(debugWriter, 1); }
+        }
+      }
+
+      // where clauses of out-parameters
+      assert impl.OutParams.Length == impl.Proc.OutParams.Length;
+      for (int i = 0; i < impl.OutParams.Length; i++) {
+        Variable f = (!)impl.Proc.OutParams[i];
+        if (f.TypedIdent.WhereExpr != null) {
+          Expr e = Substituter.Apply(formalProcImplSubst, f.TypedIdent.WhereExpr);
+          Cmd c = new AssumeCmd(f.tok, e);
+          whereClauses.Add(c);
+          
+          Variable fi = (!)impl.OutParams[i];
+          assume fi.TypedIdent.WhereExpr == null;
+          fi.TypedIdent.WhereExpr = e;
+        
+          if (debugWriter != null) { c.Emit(debugWriter, 1); }
+        }
+      }
+
+      if (debugWriter != null) { debugWriter.WriteLine(); }
+      
+      return whereClauses;
+    }
+
+#endregion
+
+    
     protected Checker! FindCheckerFor(Implementation! impl, int timeout)
     {
       int i = 0;

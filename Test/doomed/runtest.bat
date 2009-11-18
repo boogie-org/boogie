@@ -4,7 +4,12 @@ setlocal
 set BOOGIEDIR=..\..\Binaries
 set BGEXE=%BOOGIEDIR%\Boogie.exe
 
-for %%f in (smoke0.bpl) do (
+for %%f in (doomed.bpl) do (
+  echo -------------------- %%f --------------------
+  %BGEXE% /vc:doomed %* %%f
+)
+
+for %%f in (notdoomed.bpl) do (
   echo -------------------- %%f --------------------
   %BGEXE% /vc:doomed %* %%f
 )
