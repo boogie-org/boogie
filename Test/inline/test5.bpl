@@ -54,3 +54,26 @@ procedure mainC()
   call P(1);
   assert Mem[1] == 1;  // good
 }
+
+// -------------------------------------------------
+
+type ref;
+var xyz: ref;
+
+procedure xyzA();
+  modifies xyz;
+  ensures old(xyz) == xyz;
+
+procedure {:inline 1} xyzB()
+  modifies xyz;
+{
+  call xyzA();
+}
+
+procedure xyzMain()
+  modifies xyz;
+{
+  call xyzA();
+  assert old(xyz) == xyz;
+  call xyzB();
+}

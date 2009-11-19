@@ -893,7 +893,7 @@ Execution trace:
     test5.bpl(25,23): inline$P$1$Return
     test5.bpl(34,10): anon0$2
 
-Boogie program verifier finished with 3 verified, 1 error
+Boogie program verifier finished with 4 verified, 1 error
 -------------------- test6.bpl --------------------
 test6.bpl(1,22): Error: the inlined procedure is recursive, call stack: foo -> foo
 test6.bpl(15,22): Error: the inlined procedure is recursive, call stack: foo2 -> foo3 -> foo1 -> foo2

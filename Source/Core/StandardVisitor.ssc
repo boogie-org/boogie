@@ -148,7 +148,6 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.Outs.Count; ++i)
         if (node.Outs[i] != null)
           node.Outs[i] = (IdentifierExpr)this.VisitIdentifierExpr((!)node.Outs[i]);
-      node.Proc = this.VisitProcedure((!)node.Proc);
       return node; 
     }
     public virtual Cmd! VisitCallForallCmd(CallForallCmd! node)
@@ -349,7 +348,6 @@ namespace Microsoft.Boogie
     public virtual Expr! VisitNAryExpr(NAryExpr! node)
     {
       node.Args = this.VisitExprSeq(node.Args);
-//      if (node.Type != null) { node.Type = this.VisitType(node.Type); } // BUGBUG? Do this even though it 
       return node; 
     }
     public virtual Expr! VisitOldExpr(OldExpr! node)
