@@ -309,8 +309,13 @@ namespace VC
 
                         // Check if there is an assert false in this node or in one of its parents
                         // if so do not report anything
-                        if (ECContainsAssertFalse(currentNode.EquivBlock)) {                        
+                        if (ECContainsAssertFalse(currentNode.EquivBlock)) {  
+                        
+                            ConsoleColor col = Console.ForegroundColor;
+                            Console.ForegroundColor = ConsoleColor.Blue; 
                             Console.WriteLine("Assert false was detected, but ignored");
+                            Console.ForegroundColor = col;                                              
+
                             currentNode.HasBeenChecked = true;  
                             currentNode.IsDoomed = false;                          
                             currentNode = currentNode.Parent; 
@@ -324,7 +329,7 @@ namespace VC
                         
 //                        cb.OnWarning("Doomed program points found!");
                         if (cb != null) {
-                            cb.OnDoom(reachvar, currentNode.EquivBlock, traceblocks);
+                            cb.OnDoom(reachvar, currentNode.EquivBlock, traceblocks);                            
                         }
                                                 
                         if (currentNode.EquivBlock.Count>0) {

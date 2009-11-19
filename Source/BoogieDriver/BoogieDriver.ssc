@@ -272,7 +272,11 @@ namespace Microsoft.Boogie
       requires 0 <= errors && 0 <= inconclusives && 0 <= timeOuts && 0 <= outOfMemories;
     {
       Console.WriteLine();
-      Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.ToolName, verified, errors, errors == 1 ? "" : "s");
+      if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
+      Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.ToolName, verified, errors, errors == 1 ? "" : "s");
+      } else {
+      Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.ToolName, verified, errors, errors == 1 ? "" : "s");      
+      }
       if (inconclusives != 0) {
         Console.Write(", {0} inconclusive{1}", inconclusives, inconclusives == 1 ? "" : "s");
       }
@@ -517,8 +521,8 @@ namespace Microsoft.Boogie
               assert false;  // unexpected outcome
             case VCGen.Outcome.Correct:
               if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-                Inform(String.Format("{0}doomed", timeIndication));
-                errorCount++;
+                Inform(String.Format("{0}credible", timeIndication));
+                verified++;
               } else {
                 Inform(String.Format("{0}verified", timeIndication));
                 verified++;
@@ -538,9 +542,9 @@ namespace Microsoft.Boogie
               break;
             case VCGen.Outcome.Errors:
               if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-                Inform(String.Format("{0}credible", timeIndication));
-                verified++;
-              } else {
+                Inform(String.Format("{0}doomed", timeIndication));
+                errorCount++;                
+              } //else {
                 assert errors != null;  // guaranteed by postcondition of VerifyImplementation
                 if (errorReporter != null)
                 {
@@ -637,7 +641,7 @@ namespace Microsoft.Boogie
                     }
                     errorCount++;
                     }
-                }
+                //}
                 Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
               }
               break;

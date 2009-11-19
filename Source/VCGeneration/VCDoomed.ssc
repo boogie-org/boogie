@@ -24,6 +24,7 @@ namespace VC
     private Dictionary<Block, Variable!>! m_BlockReachabilityMap;
     Dictionary<Block!, Block!>! m_copiedBlocks = new Dictionary<Block!, Block!>();
     const string reachvarsuffix = "__ivebeenthere";
+    List<Cmd!>! m_doomedCmds = new List<Cmd!>();
     #endregion
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
@@ -50,7 +51,7 @@ namespace VC
       if (CommandLineOptions.Clo.TraceVerify) { 
         Console.WriteLine(">>> Checking function {0} for doomed points.", impl.Name);
       }
-      Console.WriteLine(">>> Checking function {0} for doomed points.", impl.Name);
+      Console.WriteLine("Checking function {0} for doomed points:", impl.Name);
       callback.OnProgress("doomdetector",0,0,0);
 
       #region Transform the Program into loop-free passive form
@@ -91,8 +92,7 @@ namespace VC
         }
         
         switch (outcome) {
-            case ProverInterface.Outcome.Valid: {
-                Console.WriteLine("[x] {0} is doomed", v.Name);
+            case ProverInterface.Outcome.Valid: {                
                 doomfound=true;
                 break;
             }
@@ -108,11 +108,22 @@ namespace VC
         
       }
       checker.Close();
-      
+      #region Try to produce a counter example (brute force)
       if (dc.DoomedSequences.Count>0 ) {
+
+        ConsoleColor col = Console.ForegroundColor;
+        Console.ForegroundColor = ConsoleColor.Red;              
+        Console.WriteLine("  {0} is DOOMED!", impl.Name);
+        Console.ForegroundColor = col;
+        
         SearchCounterexample(impl, dc.ErrorHandler, callback);
+        Console.WriteLine("------------------------------ \n\n");
+        return Outcome.Errors;
       }
-      Console.WriteLine();
+      #endregion
+      
+      Console.WriteLine("------------------------------ \n\n");
+      
       return Outcome.Correct;
     }
     
@@ -121,10 +132,8 @@ namespace VC
             assert false;
             return;
         }
-        Console.WriteLine("{0} is doomed due to the following statements:", errh.m_Reachvar.Name );
-        
-        // modify the impl
-        
+        m_doomedCmds.Clear();
+                
         assert errh.m_TraceBlocks != null;
         assert errh.m_DoomedBlocks !=null;
         List<Block!>! nondoomed = new List<Block!>();
@@ -138,8 +147,24 @@ namespace VC
         
         BruteForceCESearch(errh.m_Reachvar, impl, callback, cmdbackup, 0, impl.Blocks.Count/2-1);
         BruteForceCESearch(errh.m_Reachvar, impl, callback, cmdbackup, impl.Blocks.Count/2,impl.Blocks.Count-1);
-                
         
+        BlockSeq! trace = new BlockSeq();
+        foreach (Block! b in cmdbackup.Keys ) {
+            trace.Add(b);
+        }
+        AssertCmd asrt = null;
+        foreach (Cmd! c in m_doomedCmds) {
+            AssertCmd ac = c as AssertCmd;
+            if (ac!=null) {
+                asrt=ac;
+            }
+        }
+        if (asrt==null) {
+            //callback.OnWarning("Sorry, cannot create counterexample");
+        } else {
+            //AssertCounterexample! ace = new AssertCounterexample(trace, asrt);
+            //callback.OnCounterexample(ace, "Todo: Build a reason");        
+        }        
         #region Undo all modifications        
         foreach (KeyValuePair<Block!, CmdSeq!> kvp in cmdbackup) {
             kvp.Key.Cmds = kvp.Value;
@@ -237,9 +262,19 @@ namespace VC
         } else if (outcome == ProverInterface.Outcome.Invalid) {
             b.Cmds = backup;
             if (startidx>=endidx) {
-                if (!ContainsReachVariable(b.Cmds[endidx])) {
-                    Console.Write("Candidate L{0}: ", b.Cmds[endidx].tok.line );
-                    b.Cmds[endidx].Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
+                if (!ContainsReachVariable(b.Cmds[endidx])) {                                
+                    Console.Write("   Witness (");
+                    
+                    ConsoleColor col = Console.ForegroundColor;
+                    Console.ForegroundColor = ConsoleColor.White; 
+                    Console.Write("{0};{1}", b.Cmds[endidx].tok.line, b.Cmds[endidx].tok.col );                    
+                    Console.ForegroundColor = col;
+                    Console.Write("):   ");                    
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    b.Cmds[endidx].Emit(new TokenTextWriter("<console>", Console.Out, false), 0);                                        
+                    Console.ForegroundColor = col;
+
+                    m_doomedCmds.Add(b.Cmds[endidx]);
                     return true;
                 } else {
                     return false;

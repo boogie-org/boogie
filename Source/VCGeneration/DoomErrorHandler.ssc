@@ -39,7 +39,7 @@ namespace VC
         public void OnDoom(Variable! reachvar, List<Block!>! doomedblocks, List<Block!>! traceblocks) {
             m_Reachvar = reachvar;
             m_DoomedBlocks = doomedblocks;
-            m_TraceBlocks = traceblocks;
+            m_TraceBlocks = traceblocks;            
         }
     }
     
