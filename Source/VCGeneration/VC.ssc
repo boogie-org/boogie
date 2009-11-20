@@ -242,7 +242,13 @@ namespace VC
 
       bool CheckUnreachable(Block! cur, CmdSeq! seq)
         throws UnexpectedProverOutputException;
-       {
+      {
+        foreach (Cmd cmd in seq) {
+          AssertCmd assrt = cmd as AssertCmd;
+          if (assrt != null && QKeyValue.FindBoolAttribute(assrt.Attributes, "PossiblyUnreachable"))
+            return false;
+        }
+
         DateTime start = DateTime.Now;
         if (CommandLineOptions.Clo.Trace) {
           System.Console.Write("    soundness smoke test #{0} ... ", id);
