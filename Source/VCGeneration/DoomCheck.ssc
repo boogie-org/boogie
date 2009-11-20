@@ -313,7 +313,7 @@ namespace VC
                         
                             ConsoleColor col = Console.ForegroundColor;
                             Console.ForegroundColor = ConsoleColor.Blue; 
-                            Console.WriteLine("Assert false was detected, but ignored");
+                            Console.WriteLine("Assert false or PossiblyUnreachable was detected, but ignored");
                             Console.ForegroundColor = col;                                              
 
                             currentNode.HasBeenChecked = true;  
@@ -365,12 +365,12 @@ namespace VC
                 }
                 return false;
             }
-            
+
             private bool BlockContainsAssertFalse(Block! b) {
                 foreach (Cmd! c in b.Cmds) {
                     AssertCmd ac = c as AssertCmd;
                     if (ac!=null) {
-                        if (IsFalse(ac.Expr) ) {
+                        if (IsFalse(ac.Expr) || QKeyValue.FindBoolAttribute(ac.Attributes, "PossiblyUnreachable") ) {
                             return true;
                         }
                     }
