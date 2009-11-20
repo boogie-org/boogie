@@ -868,11 +868,11 @@ namespace Microsoft.Boogie
     }
     public override void Emit(TokenTextWriter! stream, int level)
     {
-	  if (this.Comment.Contains("\n")) {
-		stream.WriteLine(this, level, "/* {0} */", this.Comment);
-	  } else {
-		stream.WriteLine(this, level, "// {0}", this.Comment);
-	  }
+      if (this.Comment.Contains("\n")) {
+        stream.WriteLine(this, level, "/* {0} */", this.Comment);
+      } else {
+        stream.WriteLine(this, level, "// {0}", this.Comment);
+      }
     }
     public override void Resolve(ResolutionContext! rc) { }
     public override void AddAssignedVariables(VariableSeq! vars) { }
@@ -1320,18 +1320,18 @@ namespace Microsoft.Boogie
     {
       stream.Write(this, level, "call ");
       string sep = "";
-	  if (Outs.Count > 0) {
-		  foreach (Expr arg in Outs) {
-			stream.Write(sep);
-			sep = ", ";
-			if (arg == null) {
-			  stream.Write("*");
-			} else {
-			  arg.Emit(stream);
-			}
-		  }	
-		  stream.Write(" := ");
-	  }
+      if (Outs.Count > 0) {
+          foreach (Expr arg in Outs) {
+            stream.Write(sep);
+            sep = ", ";
+            if (arg == null) {
+              stream.Write("*");
+            } else {
+              arg.Emit(stream);
+            }
+          }    
+          stream.Write(" := ");
+      }
       stream.Write(TokenTextWriter.SanitizeIdentifier(callee));
       stream.Write("(");
       sep = "";
@@ -1572,46 +1572,46 @@ namespace Microsoft.Boogie
         Requires! req = (!) this.Proc.Requires[i];
         if (!req.Free) {
           if (hasWildcard) {
-			  Expr pre = Substituter.Apply(s, req.Condition);
-			  if (preConjunction == null) {
-				preConjunction = pre;
-			  } else {
-				preConjunction = Expr.And(preConjunction, pre);
-			  }
+              Expr pre = Substituter.Apply(s, req.Condition);
+              if (preConjunction == null) {
+                preConjunction = pre;
+              } else {
+                preConjunction = Expr.And(preConjunction, pre);
+              }
           } else {
-			  Requires! reqCopy = (Requires!) req.Clone();
-			  reqCopy.Condition = Substituter.Apply(s, req.Condition);
-			  AssertCmd! a = new AssertRequiresCmd(this, reqCopy);
-			  a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
-			  newBlockBody.Add(a);
+              Requires! reqCopy = (Requires!) req.Clone();
+              reqCopy.Condition = Substituter.Apply(s, req.Condition);
+              AssertCmd! a = new AssertRequiresCmd(this, reqCopy);
+              a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
+              newBlockBody.Add(a);
           }
         }
       }
       if (hasWildcard) {
-	      if (preConjunction == null) {
-		    preConjunction = Expr.True;
-	      }
-	      Expr! expr = new ExistsExpr(tok, wildcardVars, preConjunction);
+          if (preConjunction == null) {
+            preConjunction = Expr.True;
+          }
+          Expr! expr = new ExistsExpr(tok, wildcardVars, preConjunction);
           AssertCmd! a = new AssertCmd(tok, expr);
-		  a.ErrorDataEnhanced = AssertCmd.GenerateBoundVarMiningStrategy(expr);
-	      newBlockBody.Add(a);
+          a.ErrorDataEnhanced = AssertCmd.GenerateBoundVarMiningStrategy(expr);
+          newBlockBody.Add(a);
       }
       #endregion
 
       #region assume Pre[ins := cins] with formal paramters
       if (hasWildcard) {
-		  s = Substituter.SubstitutionFromHashtable(substMap);
-		  for (int i = 0; i < this.Proc.Requires.Length; i++)
-		  {
-			Requires! req = (!) this.Proc.Requires[i];
-			if (!req.Free) {
-			  Requires! reqCopy = (Requires!) req.Clone();
-			  reqCopy.Condition = Substituter.Apply(s, req.Condition);
-			  AssumeCmd! a = new AssumeCmd(tok, reqCopy.Condition);
-			  newBlockBody.Add(a);
-			}
-		  }
-	  }
+          s = Substituter.SubstitutionFromHashtable(substMap);
+          for (int i = 0; i < this.Proc.Requires.Length; i++)
+          {
+            Requires! req = (!) this.Proc.Requires[i];
+            if (!req.Free) {
+              Requires! reqCopy = (Requires!) req.Clone();
+              reqCopy.Condition = Substituter.Apply(s, req.Condition);
+              AssumeCmd! a = new AssumeCmd(tok, reqCopy.Condition);
+              newBlockBody.Add(a);
+            }
+          }
+      }
       #endregion
 
       #region cframe := frame (to hold onto frame values in case they are referred to in the postcondition)
@@ -1922,8 +1922,8 @@ namespace Microsoft.Boogie
       #region assume (forall wildcardVars :: Pre ==> Post);
       Expr body = postConjunction;
       if (couts.Length > 0) {
-		 body = new ExistsExpr(tok, couts, body);
-	  }
+         body = new ExistsExpr(tok, couts, body);
+      }
       body = Expr.Imp(preConjunction, body);
       if (wildcardVars.Length != 0) {
         TypeVariableSeq! typeParams = Type.FreeVariablesIn((!)InstantiatedTypes);
