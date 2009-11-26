@@ -123,6 +123,18 @@ namespace Microsoft.Boogie
     
     public virtual void OnWarning(string! msg) 
     {
+      switch (CommandLineOptions.Clo.PrintProverWarnings) {
+        case CommandLineOptions.ProverWarnings.None:
+          break;
+        case CommandLineOptions.ProverWarnings.Stdout:
+          Console.WriteLine("Prover warning: " + msg);
+          break;
+        case CommandLineOptions.ProverWarnings.Stderr:
+          Console.Error.WriteLine("Prover warning: " + msg);
+          break;
+        default:
+          assume false;  // unexpected case
+      }
     }
   }
 }
