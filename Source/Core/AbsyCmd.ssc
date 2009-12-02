@@ -2022,6 +2022,8 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter! stream, int level)
     {
       stream.Write(this, level, "assert ");
+      if (this.Attributes != null)
+        this.Attributes.Emit(stream);
       this.Expr.Emit(stream);
       stream.WriteLine(";");
     }
