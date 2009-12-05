@@ -2022,10 +2022,16 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter! stream, int level)
     {
       stream.Write(this, level, "assert ");
-      if (this.Attributes != null)
-        this.Attributes.Emit(stream);
+      EmitAttributes(stream);
       this.Expr.Emit(stream);
       stream.WriteLine(";");
+    }
+    protected void EmitAttributes(TokenTextWriter! stream)
+    {
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next) {
+        kv.Emit(stream);
+        stream.Write(" ");
+      }
     }
     public override void Typecheck(TypecheckingContext! tc)
     {

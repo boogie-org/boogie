@@ -70,7 +70,8 @@ namespace Microsoft.Boogie.Z3
         AddOption(parms, "NNF_SK_HACK", "true");
 
         // More or less like MAM=0.
-        AddOption(parms, "QI_EAGER_THRESHOLD", "100");
+        AddOption(parms, "QI_EAGER_THRESHOLD", "5");
+        AddOption(parms, "QI_LAZY_THRESHOLD", "5");
 
         // Make the integer model more diverse by default, speeds up some benchmarks a lot.
         AddOption(parms, "ARITH_RANDOM_INITIAL_VALUE", "true");

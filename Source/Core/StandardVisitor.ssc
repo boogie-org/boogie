@@ -269,6 +269,11 @@ namespace Microsoft.Boogie
       node = (GlobalVariable) this.VisitVariable(node);
       return node; 
     }
+    public virtual SimpleVariable! VisitSimpleVariable(SimpleVariable! node)
+    {
+      node = (SimpleVariable) this.VisitSimpleVariable(node);
+      return node;
+    }
     public virtual GotoCmd! VisitGotoCmd(GotoCmd! node)
     {
       node.labelTargets = this.VisitBlockSeq((!)node.labelTargets);
