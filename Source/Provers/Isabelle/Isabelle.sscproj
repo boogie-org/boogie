@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VisualStudioProject>
+  <XEN ProjectType="Local"
+     SchemaVersion="1.0"
+     Name="Isabelle"
+     ProjectGuid="c3c3bc4f-6aeb-41ab-a649-4a085dc6fb36"
+    >
+    <Build>
+      <Settings ApplicationIcon=""
+         AssemblyName="Provers.Isabelle"
+         OutputType="Library"
+         RootNamespace="Microsoft.Boogie.Isabelle"
+         StartupObject=""
+         StandardLibraryLocation=""
+         TargetPlatform="v2"
+         TargetPlatformLocation=""
+         ShadowedAssembly=""
+         NoStandardLibraries="False"
+        >
+        <Config Name="Debug"
+           AllowUnsafeBlocks="False"
+           BaseAddress="285212672"
+           CheckForOverflowUnderflow="False"
+           ConfigurationOverrideFile=""
+           DefineConstants="DEBUG;TRACE"
+           DocumentationFile=""
+           DebugSymbols="True"
+           FileAlignment="4096"
+           IncrementalBuild="True"
+           Optimize="False"
+           OutputPath="bin\debug"
+           RegisterForComInterop="False"
+           RemoveIntegerChecks="false"
+           TreatWarningsAsErrors="False"
+           WarningLevel="4"
+           CheckContractAdmissibility="True"
+           CheckPurity="False"
+           />
+        <Config Name="Release"
+           AllowUnsafeBlocks="false"
+           BaseAddress="285212672"
+           CheckForOverflowUnderflow="false"
+           ConfigurationOverrideFile=""
+           DefineConstants="TRACE"
+           DocumentationFile=""
+           DebugSymbols="false"
+           FileAlignment="4096"
+           IncrementalBuild="false"
+           Optimize="true"
+           OutputPath="bin\release"
+           RegisterForComInterop="false"
+           RemoveIntegerChecks="false"
+           TreatWarningsAsErrors="false"
+           WarningLevel="4"
+           CheckContractAdmissibility="True"
+           CheckPurity="False"
+           />
+      </Settings>
+      <References>
+        <Reference Name="System"
+             AssemblyName="System"
+             Private="true"
+             />
+        <Reference Name="System.Data"
+             AssemblyName="System.Data"
+             Private="true"
+             />
+        <Reference Name="System.Xml"
+             AssemblyName="System.Xml"
+             Private="true"
+             />
+        <Reference Name="Core"
+             Project="{47BC34F1-A173-40BE-84C2-9332B4418387}"
+             Private="true"
+             />
+        <Reference Name="VCExpr"
+             Project="{CF42B700-10AA-4DA9-8992-48A800251C11}"
+             Private="true"
+             />
+        <Reference Name="VCGeneration"
+             Project="{F65666DE-FB56-457C-8782-09BE243450FC}"
+             Private="true"
+             />
+      </References>
+    </Build>
+    <Files>
+      <Include>
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AssemblyInfo.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="Prover.ssc"
+                 />
+      </Include>
+    </Files>
+  </XEN>
+</VisualStudioProject>
