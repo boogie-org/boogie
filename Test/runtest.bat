@@ -8,11 +8,11 @@ if not exist runtest.bat goto noRunTest
 call runtest.bat -nologo -logPrefix:%1 %2 %3 %4 %5 %6 %7 %8 %9 > Output
 fc /W Answer Output > nul
 if not errorlevel 1 goto passTest
-echo FAILED
+echo %1 FAILED
 goto errorEnd
 
 :passTest
-echo Succeeded
+echo %1 Succeeded
 goto end
 
 :noDirSpecified
