@@ -28,20 +28,6 @@ Boogie program verifier finished with 1 verified, 0 errors
 bv7.bpl(4,14): Error: arguments of extract need to be integer literals
 bv7.bpl(5,15): Error: parentheses around bitvector bounds are not allowed
 2 parse errors detected in bv7.bpl
--------------------- vcc0.bpl --------------------
-vcc0.bpl(553,22): syntax error: [ expected
-vcc0.bpl(553,28): syntax error: ] expected
-vcc0.bpl(555,29): syntax error: [ expected
-vcc0.bpl(557,28): syntax error: [ expected
-vcc0.bpl(557,37): syntax error: ] expected
-5 parse errors detected in vcc0.bpl
--------------------- vcc0.bpl - toInt --------------------
-vcc0.bpl(553,22): syntax error: [ expected
-vcc0.bpl(553,28): syntax error: ] expected
-vcc0.bpl(555,29): syntax error: [ expected
-vcc0.bpl(557,28): syntax error: [ expected
-vcc0.bpl(557,37): syntax error: ] expected
-5 parse errors detected in vcc0.bpl
 -------------------- bv4.bpl - /bv:n --------------------
 bv4.bpl(3,6): Error: no bitvector handling specified, please use /bv:i or /bv:z flag
 bv4.bpl(3,13): Error: no bitvector handling specified, please use /bv:i or /bv:z flag
