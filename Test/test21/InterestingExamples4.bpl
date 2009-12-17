@@ -14,7 +14,7 @@ axiom (forall<a,b> x:a, y:b :: sameType(x,y) == (exists z:a :: y==z));
 // b = C^n(a)
 function rel<a,b>(x:a, y:b) returns (bool);
 
-function relHelp<a,b>(x:a, y:b, int) returns (bool);
+function relHelp<a,b>(x:a, y:b, z:int) returns (bool);
 
 axiom (forall<a, b> x:a, y:b :: relHelp(x, y, 0) == sameType(x, y));
 axiom (forall<a, b> n:int, x:a, y:b ::

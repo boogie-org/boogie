@@ -26,6 +26,10 @@ public class Parser {
 		errDist = 0;
 	}
 
+	public static void SemErr(IToken! tok, string! msg) {
+		Errors.SemErr(tok.filename, tok.line, tok.col, msg);
+	}
+
 	static void Get() {
 		for (;;) {
 			token = t;

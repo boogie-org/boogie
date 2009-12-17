@@ -1126,14 +1126,20 @@ namespace Microsoft.Boogie
       // base(that.tok, (!) that.Name);
     }
 
-    protected void EmitSignature (TokenTextWriter! stream)
+    protected void EmitSignature (TokenTextWriter! stream, bool shortRet)
     {
       Type.EmitOptionalTypeParams(stream, TypeParameters);
       stream.Write("(");
       InParams.Emit(stream);
       stream.Write(")");
 
-      if (OutParams.Length > 0)
+      if (shortRet) 
+      {
+        assert OutParams.Length == 1;
+        stream.Write(" : ");
+        ((!)OutParams[0]).TypedIdent.Type.Emit(stream);
+      } 
+      else if (OutParams.Length > 0)
       {
         stream.Write(" returns (");
         OutParams.Emit(stream);
@@ -1262,7 +1268,7 @@ namespace Microsoft.Boogie
       } else {
         stream.Write("{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
       }
-      EmitSignature(stream);
+      EmitSignature(stream, true);
       if (Body != null) {
         stream.WriteLine();
         stream.WriteLine("{");
@@ -1539,7 +1545,7 @@ namespace Microsoft.Boogie
       stream.Write(this, level, "procedure ");
       EmitAttributes(stream);
       stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
-      EmitSignature(stream);
+      EmitSignature(stream, false);
       stream.WriteLine(";");
 
       level++;
@@ -1751,7 +1757,7 @@ namespace Microsoft.Boogie
       stream.Write(this, level, "implementation ");
       EmitAttributes(stream);
       stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
-      EmitSignature(stream);
+      EmitSignature(stream, false);
       stream.WriteLine();
 
       stream.WriteLine(level, "{0}", '{');

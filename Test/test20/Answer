@@ -87,7 +87,7 @@ type C _ _;
 
 type C2 b a = C a b;
 
-function f(C int bool) returns (int);
+function f(C int bool) : int;
 
 const x: C2 bool int;
 
@@ -108,7 +108,7 @@ type ref;
 
 type Set a = [a]bool;
 
-function union<a>(x: Set a, y: Set a) returns (Set a);
+function union<a>(x: Set a, y: Set a) : Set a;
 
 axiom (forall<a> x: Set a, y: Set a, z: a :: (x[z] || y[z]) == union(x, y)[z]);
 
@@ -133,7 +133,7 @@ implementation P()
 
 type Set a = [a]bool;
 
-function union<a>(x: Set a, y: Set a) returns (Set a);
+function union<a>(x: Set a, y: Set a) : Set a;
 
 axiom (forall<a> x: Set a, y: Set a, z: a :: x[z] || y[z] <==> union(x, y)[z]);
 

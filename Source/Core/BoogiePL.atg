@@ -380,6 +380,8 @@ Function<out DeclarationSeq! ds>
      TypeVariableSeq! typeParams = new TypeVariableSeq();
      VariableSeq arguments = new VariableSeq();
      TypedIdent! tyd;
+     TypedIdent retTyd = null;
+     Type! retTy;
      QKeyValue kv = null;
      Expr definition = null;
      Expr! tmp;
@@ -390,12 +392,51 @@ Function<out DeclarationSeq! ds>
   [ VarOrType<out tyd>      (. arguments.Add(new Formal(tyd.tok, tyd, true)); .)
   { "," VarOrType<out tyd>  (. arguments.Add(new Formal(tyd.tok, tyd, true)); .)
   } ] ")"
-  "returns" "(" VarOrType<out tyd> ")"
+  ( 
+    "returns" "(" VarOrType<out tyd> ")" (. retTyd = tyd; .)
+    | 
+    ":" Type<out retTy>   (. retTyd = new TypedIdent(retTy.tok, "", retTy); .) 
+  )
   ( "{" Expression<out tmp> (. definition = tmp; .) "}" | ";" )
   (.
+    if (retTyd == null) {
+      // construct a dummy type for the case of syntax error
+      tyd = new TypedIdent(token, "", new BasicType(token, SimpleType.Int));
+    } else {
+      tyd = retTyd;
+    }
     Function! func = new Function(z, z.val, typeParams, arguments,
                            new Formal(tyd.tok, tyd, false), null, kv);
     ds.Add(func);
+    bool allUnnamed = true;
+    foreach (Formal! f in arguments) {
+      if (f.TypedIdent.Name != "") {
+        allUnnamed = false;
+	break;
+      }
+    }
+    if (!allUnnamed) {
+      Type prevType = null;
+      for (int i = arguments.Length - 1; i >= 0; i--) {
+        TypedIdent! curr = ((!)arguments[i]).TypedIdent;
+        if (curr.Name == "") {
+	  if (prevType == null) {
+	    SemErr(curr.tok, "the type of the last parameter is unspecified");
+	    break;
+	  }
+	  Type ty = curr.Type;
+          if (ty is UnresolvedTypeIdentifier &&
+              ((!)(ty as UnresolvedTypeIdentifier)).Arguments.Length == 0) {
+	    curr.Name = ((!)(ty as UnresolvedTypeIdentifier)).Name;
+	    curr.Type = prevType;
+	  } else {
+	    SemErr(curr.tok, "expecting an identifier as parameter name");
+	  }
+	} else {
+	  prevType = curr.Type;
+	}
+      }
+    }
     if (definition != null) {
       // generate either an axiom or a function body
       if (QKeyValue.FindBoolAttribute(kv, "inline")) {
@@ -1199,9 +1240,9 @@ ArrayExpression<out Expr! e>
     (. if (store)
          e = new NAryExpr(x, new MapStore(x, allArgs.Length - 2), allArgs);
        else if (bvExtract)
-         e = new ExtractExpr(x, e,
-                             ((BvBounds)index0).Upper.ToIntSafe,
-                             ((BvBounds)index0).Lower.ToIntSafe);
+         e = new BvExtractExpr(x, e,
+                               ((BvBounds)index0).Upper.ToIntSafe,
+                               ((BvBounds)index0).Lower.ToIntSafe);
        else
          e = new NAryExpr(x, new MapSelect(x, allArgs.Length - 1), allArgs); 
     .)

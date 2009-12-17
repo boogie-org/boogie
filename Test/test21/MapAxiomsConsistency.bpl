@@ -26,8 +26,8 @@ function Seq#Index<T>(Seq T, int) returns (T);
 function Seq#Contains<T>(Seq T, T) returns (bool);
 function Seq#Equal<T>(Seq T, Seq T) returns (bool);
 function Seq#SameUntil<T>(Seq T, Seq T, int) returns (bool);
-function Seq#Take<T>(Seq T, howMany: int) returns (Seq T);
-function Seq#Drop<T>(Seq T, howMany: int) returns (Seq T);
+function Seq#Take<T>(s:Seq T, howMany: int) returns (Seq T);
+function Seq#Drop<T>(s:Seq T, howMany: int) returns (Seq T);
 
 type Field _;
 type HeapType = <alpha>[ref,Field alpha]alpha;

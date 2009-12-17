@@ -76,7 +76,7 @@ axiom P || Q || Q || R;
 
 axiom P && Q && Q && R;
 
-function f(int) returns (int);
+function f(int) : int;
 
 axiom (forall x: int :: {:xname "hello"} {:weight 5} {:ValueFunc f(x + 1)} { f(x + x) } { f(x) * f(x) } {:nopats f(x + x + x) } f(f(x)) < 200);
 
@@ -87,10 +87,12 @@ Arrays1.bpl(11,11): Error: command assigns to a global variable that is not in t
 Arrays1.bpl(14,15): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: Q
 2 type checking errors detected in Arrays1.bpl
 Types0.bpl(6,18): Error: expected identifier before ':'
-1 parse errors detected in Types0.bpl
+Types0.bpl(6,12): Error: expecting an identifier as parameter name
+2 parse errors detected in Types0.bpl
 Types1.bpl(6,11): Error: undeclared type: x
-Types1.bpl(7,18): Error: undeclared type: x
-2 name resolution errors detected in Types1.bpl
+Types1.bpl(7,11): Error: undeclared type: x
+Types1.bpl(7,14): Error: undeclared type: x
+3 name resolution errors detected in Types1.bpl
 WhereParsing.bpl(14,37): Error: where clause not allowed here
 WhereParsing.bpl(15,33): Error: where clause not allowed here
 2 parse errors detected in WhereParsing.bpl
@@ -153,7 +155,7 @@ AttributeParsingErr.bpl(20,26): Error: only attributes, not triggers, allowed he
 
 type {:sourcefile "test.ssc"} T;
 
-function {:source "test.scc"} f(int) returns (int);
+function {:source "test.scc"} f(int) : int;
 
 const {:description "The largest integer value"} unique MAXINT: int;
 
@@ -201,7 +203,7 @@ AttributeResolution.bpl(9,18): Error: undeclared identifier: mux
 AttributeResolution.bpl(11,29): Error: undeclared identifier: fux
 9 name resolution errors detected in AttributeResolution.bpl
 
-function \true() returns (bool);
+function \true() : bool;
 
 type \procedure;
 

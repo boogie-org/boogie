@@ -41,19 +41,19 @@ function $RefArraySet(elements, int, ref) returns (elements);
 
 function $IntArrayGet(elements, int) returns (value: int);
 
-function $IntArraySet(elements, int, value: int) returns (elements);
+function $IntArraySet(elements, int, int) returns (elements);
 
 function $RealArrayGet(elements, int) returns (value: real);
 
-function $RealArraySet(elements, int, value: real) returns (elements);
+function $RealArraySet(elements, int, real) returns (elements);
 
 function $BoolArrayGet(elements, int) returns (value: bool);
 
-function $BoolArraySet(elements, int, value: bool) returns (elements);
+function $BoolArraySet(elements, int, bool) returns (elements);
 
 function $ArrayArrayGet(elements, int) returns (value: elements);
 
-function $ArrayArraySet(elements, int, value: elements) returns (elements);
+function $ArrayArraySet(elements, int, elements) returns (elements);
 
 axiom (forall A: elements, i: int, x: ref :: $RefArrayGet($RefArraySet(A, i, x), i) == x);
 
