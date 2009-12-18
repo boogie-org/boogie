@@ -35,5 +35,23 @@ procedure c(x:int)
   }
 }
 
+procedure useCE(x:int)
+{
+  var y : int;
+
+  if(x<0) {
+    y := 1;
+  } else {
+    y := 2;
+  }
+  if(x<7) {    
+    y := 5;
+  } else {	
+    y := 6;
+  }
+
+}
+
+
 
 

@@ -41,6 +41,53 @@ namespace VC
             m_DoomedBlocks = doomedblocks;
             m_TraceBlocks = traceblocks;            
         }
+        
+        private List<Block!>! m_CurrentTrace = new List<Block!>();
+        
+        public List<Block!>! TraceNodes 
+        {
+            get
+            {
+                return m_CurrentTrace;
+            }
+        }
+        
+        public override void OnModel(IList<string!>! labels, ErrorModel errModel) {
+        m_CurrentTrace.Clear();
+        //Console.Write("Used Blocks: ");
+        List<Block!> traceNodes = new List<Block!>();
+        List<AssertCmd!> assertNodes = new List<AssertCmd!>();
+        foreach (string! s in labels) {
+          Absy node = Label2Absy(s);
+          if (node is Block) {
+            Block b = (Block)node;
+            traceNodes.Add(b);
+            //Console.Write("{0}, ", b.Label);
+          } else {
+            AssertCmd a = (AssertCmd)node;
+            assertNodes.Add(a);            
+          }
+        }
+        m_CurrentTrace.AddRange(traceNodes);
+        //Console.WriteLine();
+//        assert assertNodes.Count > 0;
+//        assert traceNodes.Count == assertNodes.Count;
+//
+//        foreach (AssertCmd a in assertNodes) {
+//          // find the corresponding Block (assertNodes.Count is likely to be 1, or small in any case, so just do a linear search here)
+//          foreach (Block b in traceNodes) {
+//            if (b.Cmds.Has(a)) {
+//              BlockSeq trace = new BlockSeq();
+//              trace.Add(b);
+//              goto NEXT_ASSERT;
+//            }
+//          }
+//          assert false;  // there was no block that contains the assert
+//          NEXT_ASSERT: {}
+//        }
+      
+        }
+        
     }
     
 }

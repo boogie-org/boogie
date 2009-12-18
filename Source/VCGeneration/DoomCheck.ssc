@@ -233,7 +233,7 @@ namespace VC
             public InclusionOrder(Implementation! impl) {
                 /*
                     We now compute for each block the set of blocks that
-                    are reached on every execution reaching this block.
+                    are reached on every execution reaching this block (dominator).
                     We first compute it form the start block to the current
                     block and second from the Term block to the current one.
                     Finally we build the union.
@@ -292,16 +292,49 @@ namespace VC
                 return false;
             }
             
+            
+            /*
+                Warning: this is a very slow implementation. There should be
+                a map from Block to InclusionTree to prevent running through
+                the tree over and over again.
+            */
+            private void MarkUndoomedFromCE(Block! b, InclusionTree! node)
+            {
+                if (node.EquivBlock.Contains(b) ) {
+                    //Console.WriteLine("Block {0} does not need to be checked - appears in CE", b.Label);
+                    node.HasBeenChecked = true;
+                    node.IsDoomed = false;
+                    MarkUndoomedParents(node);
+                    return;
+                } else
+                {
+                    foreach (InclusionTree! c in node.Children)
+                    {
+                        MarkUndoomedFromCE(b, c);
+                    }
+                }
+            }
+            
             // Takes the outcome for the current reachvar and marks all blocks
             // the do not need any further checking because they share the same
             // desteny
-            // returns false if an explicite assert false was found.            
+            // returns false if an explicite assert false was found.
+            // Warning: Still slow; we do not need to do this while constructing the error report!            
             public bool SetCurrentResult(Variable! reachvar, ProverInterface.Outcome outcome, DoomErrorHandler cb) {                
                 if (outcome!=ProverInterface.Outcome.Valid) { 
                     if (currentNode != null) {
                         currentNode.IsDoomed = false;
                         currentNode.HasBeenChecked = true;
-                        MarkUndoomedParents(currentNode);                        
+                        MarkUndoomedParents(currentNode); 
+                        if (cb != null) {
+                            foreach (Block! b in cb.TraceNodes)
+                            {
+                                MarkUndoomedFromCE(b, RootNode);
+                            }
+                        } else {
+                            Console.WriteLine("ErrorHandler is not valid! ------ (DoomCheck)");
+                        }
+                                                                       
                         currentNode = FindNextNode(currentNode);
                     }
                 } else {

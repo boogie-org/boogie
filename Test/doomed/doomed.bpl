@@ -21,7 +21,9 @@ procedure evilbranch(x:int)
   } else {
     y := 2;
   }
-  assert y!=2;
+  assume y!=2;
+  
+  assert x<0; 
 }
 
 

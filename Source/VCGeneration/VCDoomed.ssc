@@ -74,7 +74,7 @@ namespace VC
       Checker! checker = FindCheckerFor(impl, 1000);     
       
       DoomCheck dc = new DoomCheck(impl, checker);
-      
+      int _totalchecks = 0;
       Block b = null;
       ProverInterface.Outcome outcome;
       dc.ErrorHandler = new DoomErrorHandler(dc.Label2Absy, callback);
@@ -82,11 +82,11 @@ namespace VC
       while (dc.GetNextBlock(out b) && !doomfound) {
         assert b!=null;
         outcome = ProverInterface.Outcome.Undetermined;
-        
+        //Console.WriteLine("Checking block {0} ...",b.Label);
         Variable v = null;
         m_BlockReachabilityMap.TryGetValue(b, out v);
         assert v!=null;
-        
+        _totalchecks++;
         if (!dc.CheckLabel(v, out outcome) ) {
             return Outcome.Inconclusive;
         }
@@ -108,6 +108,9 @@ namespace VC
         
       }
       checker.Close();
+      
+      Console.WriteLine("Number of Checked Blocks: {0}", _totalchecks);
+      
       #region Try to produce a counter example (brute force)
       if (dc.DoomedSequences.Count>0 ) {
 
