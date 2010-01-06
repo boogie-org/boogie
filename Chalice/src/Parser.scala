@@ -447,7 +447,7 @@ class Parser extends StandardTokenParsers {
       }
     | "|" ~> expression <~ "|" ^^ Length
     | ("eval" ~ "(") ~> (evalstate <~ ",") ~ (expression <~ ")") ^^ { case h ~ e => Eval(h, e) }
-    | ("ite(" ~> expression <~ ",") ~ (expression <~ ",") ~ (expression <~ ")") ^^ {
+    | ("ite" ~> "(" ~> expression <~ ",") ~ (expression <~ ",") ~ (expression <~ ")") ^^ {
         case con ~ then ~ els => IfThenElse (con, then, els) }
     | "(" ~> expression <~ ")"
     | forall
