@@ -9,8 +9,7 @@ import scala.util.parsing.input.Positional
 object Resolver {
   sealed abstract class ResolverOutcome
   case class Success extends ResolverOutcome
-  case class Error(pos: Position, s: String) extends ResolverOutcome
-  case class Errors(ss: List[String]) extends ResolverOutcome
+  case class Errors(ss: List[(Position,String)]) extends ResolverOutcome
 
   var seqClasses = Map[String, SeqClass]();
 
@@ -19,9 +18,9 @@ object Resolver {
     val CurrentClass = currentClass
     var currentMember = null: Member;
     def CurrentMember = currentMember: Member;  
-    var errors: List[String] = Nil
+    var errors: List[(Position,String)] = Nil
     def Error(pos: Position, msg: String) {
-      errors = errors + (pos + ": " + msg)
+      errors = errors + (pos, msg)
     }
     def AddVariable(v: Variable): ProgramContext = {
       new LProgramContext(v, this);
@@ -48,7 +47,7 @@ object Resolver {
     var decls = Map[String,TopLevelDecl]()
     for (decl <- BoolClass :: IntClass :: RootClass :: NullClass :: MuClass :: prog) {
       if (decls contains decl.id) {
-        return Error(decl.pos, "duplicate class/channel name: " + decl.id)
+        return Errors(List((decl.pos, "duplicate class/channel name: " + decl.id)))
       } else {
         decl match {
           case cl: Class =>
@@ -57,7 +56,7 @@ object Resolver {
               case m: NamedMember =>
                 m.Parent = cl
                 if (cl.mm contains m.Id) {
-                  return Error(m.pos, "duplicate member name " + m.Id + " in class " + cl.id)
+                  return Errors(List((m.pos, "duplicate member name " + m.Id + " in class " + cl.id)))
                 } else {
                   cl.mm = cl.mm + (m.Id -> m)
                 }
@@ -67,7 +66,7 @@ object Resolver {
         decls = decls + (decl.id -> decl)
       }
     }
-    var errors = List[String]()
+    var errors = List[(Position,String)]()
 
     // resolve types of members
     val contextNoCurrentClass = new ProgramContext(decls, null)

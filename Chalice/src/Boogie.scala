@@ -133,7 +133,9 @@ object Boogie {
     (v,e)
   }
 
- // def out(s: String) = Console.out.print(s)
+  var vsMode = false;  // global variable settable from outside the class (non-ideal design)
+
+  // def out(s: String) = Console.out.print(s)
   var indentLevel = 1
   def indent: String = {
     def doIndent(i: int): String = {
@@ -194,7 +196,15 @@ object Boogie {
   }
   def PrintStmt(s: Stmt): String = s match {
     case Comment(msg) => indent +  "// " +  msg + nl
-    case assert@Assert(e) => indent +  "assert " + "{:msg \"  " + assert.pos + ": " + assert.message + "\"}" + " " + PrintExpr(e) + ";" + nl
+    case assert@Assert(e) =>
+      val pos = if (vsMode) {
+        val r = assert.pos.line - 1;
+        val c = assert.pos.column - 1;
+        r + "," + c + "," + r + "," + (c+5) + ":"
+      } else {
+        "  " + assert.pos + ": "
+      }
+      indent +  "assert " + "{:msg \"" + pos + assert.message + "\"}" + " " + PrintExpr(e) + ";" + nl
     case Assume(e) => indent + "assume " + PrintExpr(e) +  ";" + nl
     case If(guard, thn, els) =>
       indent + "if (" +
