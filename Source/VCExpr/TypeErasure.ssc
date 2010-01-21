@@ -23,7 +23,7 @@ namespace Microsoft.Boogie.TypeErasure
   // really be provided by the Spec# container classes; maybe one
   // could integrate the functions in a nicer way?)
   public class HelperFuns {
-
+    
     public static Function! BoogieFunction(string! name, List<TypeVariable!>! typeParams,
                                            params Type[]! types)
       requires types.Length > 0;
@@ -542,7 +542,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     [Pure]
     public override bool UnchangedType(Type! type) {
-      return type.IsInt || type.IsBool || type.IsBv;
+      return type.IsInt || type.IsBool || type.IsBv || (type.IsMap && CommandLineOptions.Clo.UseArrayTheory);
     }    
 
     public VCExpr! Cast(VCExpr! expr, Type! toType)

@@ -473,7 +473,7 @@ namespace Microsoft.Boogie.TypeErasure
       select = CreateAccessFun(typeParams, originalInTypes,
                                abstractedType.Result, synonym.Name + "Select",
                                out implicitSelectParams, out explicitSelectParams);
-
+      
       // store, which gets one further argument: the assigned rhs
       originalInTypes.Add(abstractedType.Result);
 
@@ -482,16 +482,21 @@ namespace Microsoft.Boogie.TypeErasure
                               mapTypeSynonym, synonym.Name + "Store",
                               out implicitStoreParams, out explicitStoreParams);
 
-      // the store function does not have any explicit type parameters
+	  // the store function does not have any explicit type parameters
       assert explicitStoreParams.Count == 0;
-
-      AxBuilder.AddTypeAxiom(GenMapAxiom0(select, store,
-                                          abstractedType.Result,
-                                          implicitSelectParams, explicitSelectParams,
-                                          originalInTypes));
-      AxBuilder.AddTypeAxiom(GenMapAxiom1(select, store, 
-                                          abstractedType.Result,
-                                          explicitSelectParams));
+      
+      if (CommandLineOptions.Clo.UseArrayTheory) {
+        select.AddAttribute("builtin", "select");
+        store.AddAttribute("builtin", "store");
+      } else {                       
+        AxBuilder.AddTypeAxiom(GenMapAxiom0(select, store,
+                                            abstractedType.Result,
+                                            implicitSelectParams, explicitSelectParams,
+                                            originalInTypes));
+        AxBuilder.AddTypeAxiom(GenMapAxiom1(select, store, 
+                                            abstractedType.Result,
+                                            explicitSelectParams));
+      }
     }
 
     protected void GenTypeAxiomParams(MapType! abstractedType, TypeCtorDecl! synonymDecl,
@@ -506,7 +511,12 @@ namespace Microsoft.Boogie.TypeErasure
       TypeSeq! mapTypeParams = new TypeSeq ();
       foreach (TypeVariable! var in abstractedType.FreeVariables)
         mapTypeParams.Add(var);
-      mapTypeSynonym = new CtorType (Token.NoToken, synonymDecl, mapTypeParams);
+      
+      if (CommandLineOptions.Clo.UseArrayTheory)
+        mapTypeSynonym = abstractedType;
+      else 
+        mapTypeSynonym = new CtorType (Token.NoToken, synonymDecl, mapTypeParams);
+        
       originalIndexTypes.Add(mapTypeSynonym);
       originalIndexTypes.AddRange(abstractedType.Arguments.ToList());
     }
@@ -524,6 +534,7 @@ namespace Microsoft.Boogie.TypeErasure
                                                    HelperFuns.ToSeq(originalTypeParams),
                                                    out implicitTypeParams,
                                                    out explicitTypeParams);
+      
       Type[]! ioTypes = new Type [explicitTypeParams.Count + originalInTypes.Count + 1];
       int i = 0;
       for (; i < explicitTypeParams.Count; ++i)

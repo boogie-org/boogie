@@ -95,9 +95,25 @@ namespace Microsoft.Boogie.Z3
 
     private void RegisterType(Type! type)
     {
-      if (!type.IsBv || !NativeBv) return;
-
-      if (!KnownTypes.ContainsKey(type)) {
+      if (KnownTypes.ContainsKey(type)) return;
+      
+      if (type.IsMap && CommandLineOptions.Clo.UseArrayTheory) {
+        string declString = "";
+        MapType! mapType = type.AsMap;
+        
+        declString += "(DEFTYPE " +  TypeToString(type) + " :BUILTIN Array ";
+		foreach (Type! t in mapType.Arguments) {
+		  declString += TypeToString(t);
+		  declString += " ";
+		}
+		declString += TypeToString(mapType.Result);
+		declString += ")";
+		AddDeclaration(declString);
+		KnownTypes.Add(type, true);
+		return;
+      }
+      
+      if (type.IsBv && NativeBv) {
         int bits = type.BvBits;
         string name = TypeToString(type);
 
@@ -114,7 +130,7 @@ namespace Microsoft.Boogie.Z3
     }
 
     public override bool Visit(VCExprNAry! node, bool arg) {
-      // there are a couple of cases where operators have to be
+      // there are a couple cases where operators have to be
       // registered by generating appropriate Z3 statements
 
       if (node.Op is VCExprBvConcatOp) {
@@ -187,11 +203,14 @@ namespace Microsoft.Boogie.Z3
     }
 
     private string? ExtractBuiltin(Function! f) {
+      string? retVal = null; 
       if (NativeBv) {
-        return f.FindStringAttribute("bvbuiltin");
-      } else {
-        return null;
+        retVal = f.FindStringAttribute("bvbuiltin");
+      } 
+      if (retVal == null) {
+        retVal = f.FindStringAttribute("builtin");
       }
+      return retVal;
     }
 
     public override bool Visit(VCExprVar! node, bool arg) {

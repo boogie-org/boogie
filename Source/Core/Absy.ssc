@@ -429,6 +429,20 @@ namespace Microsoft.Boogie
       return true;
     }
 
+    public void AddAttribute(string! name, object! val)
+    {
+      QKeyValue kv;
+      for (kv = this.Attributes; kv != null; kv = kv.Next) {
+        if (kv.Key == name) {
+          kv.Params.Add(val);
+          break;
+        }
+      }
+      if (kv == null) {
+        Attributes = new QKeyValue(tok, name, new List<object!>(new object![] { val }), Attributes);
+      }
+    }                                   
+    
     public abstract void Emit(TokenTextWriter! stream, int level);
     public abstract void Register(ResolutionContext! rc);
 

@@ -151,6 +151,8 @@ namespace Microsoft.Boogie
     public enum BvHandling { None, Z3Native, ToInt }
     public BvHandling Bitvectors = BvHandling.Z3Native;
     
+    public bool UseArrayTheory = false;
+    
     public bool UseAbstractInterpretation = true;          // true iff the user want to use abstract interpretation
     public int  /*0..9*/StepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
     invariant 0 <= StepsBeforeWidening && StepsBeforeWidening <= 9;
@@ -788,7 +790,7 @@ namespace Microsoft.Boogie
               }
             }
             break;
-
+              
           case "-contractInfer":
           case "/contractInfer":
             ContractInfer = true;
@@ -1132,7 +1134,8 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
               ps.CheckBooleanFlag("z3types", ref Z3types) ||
               ps.CheckBooleanFlag("z3multipleErrors", ref z3AtFlag, false) ||
-              ps.CheckBooleanFlag("monomorphize", ref Monomorphize)
+              ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
+              ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory)
               )
             {
               // one of the boolean flags matched
