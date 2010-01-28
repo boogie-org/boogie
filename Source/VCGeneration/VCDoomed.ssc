@@ -181,7 +181,7 @@ namespace VC
         impl.Blocks.Add(newfirst);
         impl.Blocks.AddRange(blist);
                 
-        Impl2Dot(impl, String.Format("c:/dot/{0}_copied.dot", impl.Name) );
+        //Impl2Dot(impl, String.Format("c:/dot/{0}_copied.dot", impl.Name) );
         #endregion
       }
     } 
