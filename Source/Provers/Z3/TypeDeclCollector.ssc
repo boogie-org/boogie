@@ -98,18 +98,20 @@ namespace Microsoft.Boogie.Z3
       if (KnownTypes.ContainsKey(type)) return;
       
       if (type.IsMap && CommandLineOptions.Clo.UseArrayTheory) {
+        KnownTypes.Add(type, true);
         string declString = "";
         MapType! mapType = type.AsMap;
         
         declString += "(DEFTYPE " +  TypeToString(type) + " :BUILTIN Array ";
 		foreach (Type! t in mapType.Arguments) {
+		  RegisterType(t);
 		  declString += TypeToString(t);
 		  declString += " ";
 		}
+		RegisterType(mapType.Result);
 		declString += TypeToString(mapType.Result);
 		declString += ")";
-		AddDeclaration(declString);
-		KnownTypes.Add(type, true);
+		AddDeclaration(declString);		
 		return;
       }
       
