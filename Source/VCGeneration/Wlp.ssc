@@ -85,6 +85,7 @@ namespace VC {
         return gen.Implies(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N);
 
       } else {
+      Console.WriteLine(cmd.ToString());
         assert false;  // unexpected command
       }
     }

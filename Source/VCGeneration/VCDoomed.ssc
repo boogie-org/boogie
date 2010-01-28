@@ -37,6 +37,213 @@ namespace VC
       m_BlockReachabilityMap = new Dictionary<Block, Variable!>();
     }
 
+
+    private void Impl2Dot(Implementation! impl, string! filename) {
+        List<string!>! nodes = new List<string!>();
+        List<string!>! edges = new List<string!>();
+        
+        string nodestyle = "[shape=box];" ;
+        
+        foreach (Block! b in impl.Blocks) {
+            nodes.Add(string.Format("\"{0}\" {1}", b.Label, nodestyle) );
+            GotoCmd gc = b.TransferCmd as GotoCmd;
+            if (gc!=null) {
+                assert gc.labelTargets!=null;
+                foreach (Block! b_ in gc.labelTargets) {
+                    edges.Add(String.Format("\"{0}\" -> \"{1}\";", b.Label, b_.Label ) );
+                }
+            }
+        }
+        
+        using (StreamWriter sw = new StreamWriter(filename)) 
+        {
+            sw.WriteLine(String.Format("digraph {0} {{", impl.Name));
+//            foreach (string! s in nodes) {
+//                sw.WriteLine(s);
+//            }
+            foreach (string! s in edges) {
+                sw.WriteLine(s);
+            }
+            sw.WriteLine("}}");
+            sw.Close();
+        }
+    }
+    
+    private const string _copyPrefix = "Yeah";
+    
+    private Block! CopyImplBlocks(Block! b, ref List<Block!>! blocklist, Block! targetBlock, ref Dictionary<Block!, Block!>! alreadySeen) {
+        Block seen;
+        if (alreadySeen.TryGetValue(b, out seen) ) {
+            assert seen!=null;
+            return seen;
+        }
+    
+        GotoCmd gc = b.TransferCmd as GotoCmd;
+        TransferCmd tcmd = null;
+        if (gc!=null) {
+            BlockSeq! bseq = new BlockSeq();
+            assert gc.labelTargets!=null;
+            foreach (Block! c in gc.labelTargets) {
+                bseq.Add(CopyImplBlocks(c, ref blocklist, targetBlock, ref alreadySeen));
+            }
+            tcmd = new GotoCmd(gc.tok, bseq);
+        } else {
+//            BlockSeq! bseq_ = new BlockSeq();
+//            bseq_.Add(targetBlock);
+            assert b.TransferCmd != null;
+//            tcmd = new GotoCmd(b.TransferCmd.tok, bseq_);
+            tcmd = new ReturnCmd(b.TransferCmd.tok);
+        }
+        
+        CodeCopier codeCopier = new CodeCopier();
+        CmdSeq! cl = new CmdSeq();
+        foreach (Cmd! _c in b.Cmds) {
+            if (!ContainsReachVariable(_c))
+                cl.Add( codeCopier.CopyCmd(_c));
+         }
+       
+        Block! b_ = new Block(b.tok, b.Label+_copyPrefix, cl, tcmd);
+        blocklist.Add(b_);
+        
+        alreadySeen[b] = b_;
+        
+        return b_;
+    }
+    
+    /*
+        After adding a copy of the implementation in front of our code
+        we remove all the edges leading from the copy to the original code
+    */
+    private void RemoveArtificialGoto(Block! b, Block! target) {
+        GotoCmd gc = b.TransferCmd as GotoCmd;
+
+        if (gc!=null) {
+            assert gc.labelTargets!=null;
+            foreach (Block! gt in gc.labelTargets) {
+                if (gt==target) {
+                    assert gc.labelTargets.Length==1;
+                    assert gc.labelTargets[0]!=null;
+                    b.TransferCmd = new ReturnCmd(gc.tok);
+                    return;
+                } else {
+                    RemoveArtificialGoto(gt, target);
+                }                
+            }        
+        
+        }
+    }
+    
+    static public bool UseItAsDebugger = false; 
+           
+//    public static Implementation _tmpImpl = null; // (MsSchaef) HACK!
+    
+    public static Block firstNonDebugBlock = null;
+    public static Block firstDebugBlock = null;
+    
+    private void ModifyImplForDebugging(Implementation! impl)
+    {
+      //List<Block!> backup_blocks=null;
+      
+                   
+      if (UseItAsDebugger) {  
+        #region Copy the Implementation /////////////////////   
+        
+        ConsoleColor col = Console.ForegroundColor;
+        Console.ForegroundColor = ConsoleColor.Magenta; 
+        Console.WriteLine("Warning you are using the Infinite Improbability Drive!");
+        Console.ForegroundColor = col;           
+                       
+        List<Block!>! blist = new List<Block!>();
+        Dictionary<Block!, Block!>! tmpdict = new Dictionary<Block!, Block!>();
+        CopyImplBlocks(impl.Blocks[0], ref blist, impl.Blocks[0], ref tmpdict);        
+        blist.Reverse();
+        //_tmpImpl = new Implementation(impl.tok, impl.Name, impl.TypeParameters, impl.InParams, impl.OutParams, impl.LocVars, blist);              
+        
+        #endregion ////////////////////////////////////
+        
+        #region Add implementation copy in front of implementation
+        // memorize where the original code starts
+        firstNonDebugBlock = impl.Blocks[0];
+        firstDebugBlock = blist[0];
+        // now add the copied program in front of the original one
+        blist.AddRange(impl.Blocks);
+        //backup_blocks = new List<Block!>(impl.Blocks);
+        
+        BlockSeq! newbseq = new BlockSeq();
+        newbseq.Add(firstNonDebugBlock);
+        newbseq.Add(firstDebugBlock);
+        
+        GotoCmd! newtcmd = new GotoCmd(Token.NoToken, newbseq);
+        Block! newfirst = new Block(Token.NoToken, "MySuperFirstBlock", new CmdSeq(), newtcmd);
+        
+                
+        impl.Blocks = new List<Block!>();
+        impl.Blocks.Add(newfirst);
+        impl.Blocks.AddRange(blist);
+                
+        Impl2Dot(impl, String.Format("c:/dot/{0}_copied.dot", impl.Name) );
+        #endregion
+      }
+    } 
+    
+    void RemoveReachVars(Block! b) {
+        GotoCmd gc = b.TransferCmd as GotoCmd;
+        if (gc!=null) {
+            assert gc.labelTargets!=null;
+            
+            CmdSeq! cs = new CmdSeq();
+            foreach (Cmd! c in b.Cmds) {
+                if (!ContainsReachVariable(c)) cs.Add(c);
+            }
+            b.Cmds = cs;
+            
+            foreach (Block! c in gc.labelTargets) {
+                if (c.Label != "GeneratedUnifiedExit") {
+                    RemoveReachVars(c);
+                }
+            }
+        }
+    }
+    
+    void RemoveLastBlock(Block! b) 
+    {
+        GotoCmd gc = b.TransferCmd as GotoCmd;
+        if (gc==null) {
+            //Console.WriteLine("WARNING: Check Node {0}", b.Label);
+            return;
+        }
+        assert gc!=null;
+        assert gc.labelTargets !=null;
+        BlockSeq! tmp = new BlockSeq();
+        foreach (Block! c in gc.labelTargets) {
+            // Warning, we should not search by name!
+            if (c.Label != "GeneratedUnifiedExit" ) {            
+                tmp.Add(c);
+                RemoveLastBlock(c);                
+            } else {
+                c.Predecessors.Remove(b);
+            }
+        }
+        if (tmp.Length==0) {
+            b.TransferCmd = new ReturnCmd(gc.tok);
+        } else {
+            b.TransferCmd = new GotoCmd(gc.tok, tmp);
+        }
+    }
+    
+    void FindCopiedBlocks(Block! b) {
+        _copiedBlock.Add(b);
+        GotoCmd gc = b.TransferCmd as GotoCmd;
+        if (gc!=null) {
+            assert gc.labelTargets!=null;
+            foreach (Block! c in gc.labelTargets) {
+                FindCopiedBlocks(c);
+            }
+        }      
+    }
+    
+    private List<Block!>! _copiedBlock = new List<Block!>();
+    
     /// <summary>
     /// MSchaef: 
     /// - remove loops and add reach variables
@@ -47,13 +254,24 @@ namespace VC
     /// </summary>
     public override Outcome VerifyImplementation(Implementation! impl, Program! program, VerifierCallback! callback)
       throws UnexpectedProverOutputException;
-    {
+    {   
+    
+    UseItAsDebugger = CommandLineOptions.Clo.useDoomDebug;
+        Stopwatch watch = new Stopwatch();
+        
+      //Impl2Dot(impl, String.Format("c:/dot/{0}_raw.dot", impl.Name) );               
+
       if (CommandLineOptions.Clo.TraceVerify) { 
         Console.WriteLine(">>> Checking function {0} for doomed points.", impl.Name);
       }
       Console.WriteLine("Checking function {0} for doomed points:", impl.Name);
       callback.OnProgress("doomdetector",0,0,0);
 
+        watch.Reset();
+        watch.Start();
+
+      
+        
       #region Transform the Program into loop-free passive form
       variable2SequenceNumber = new Hashtable/*Variable -> int*/();
       incarnationOriginMap = new Dictionary<Incarnation, Absy!>();      
@@ -64,21 +282,63 @@ namespace VC
       Dictionary<Block!, Block!> copiedblocks;
       impl.Blocks = DCProgramTransformer.Convert2Dag(impl, program, cblocks, out copiedblocks);
       assert copiedblocks!=null;
+
+//      List<Block!>! blist = new List<Block!>();
+//      blist.AddRange(impl.Blocks);
+
+      if (UseItAsDebugger) ModifyImplForDebugging(impl);
+
       ComputePredecessors(impl.Blocks);
-       
+
       m_BlockReachabilityMap = new Dictionary<Block, Variable!>();
-      PassifyProgram(impl, program);
+      GenerateReachVars(impl);
+
+      if (UseItAsDebugger) RemoveReachVars((!)firstDebugBlock);
+                          
+      PassifyProgram(impl);
+      
+      
       #endregion
-      //EmitImpl(impl,false);
+      //EmitImpl(impl,false);    
+
+    
+        //Impl2Dot(impl, String.Format("c:/dot/{0}_passive.dot", impl.Name) );   
+
+// ---------------------------------------------------------------------------
+      if (UseItAsDebugger) {  
+        assert firstNonDebugBlock != null && firstDebugBlock != null;
+        firstNonDebugBlock.Predecessors.Remove(impl.Blocks[0]);   
+        firstDebugBlock.Predecessors.Remove(impl.Blocks[0]);
+//        impl.Blocks.Remove(impl.Blocks[0]); // remove the artificial first block
+        RemoveLastBlock(firstDebugBlock); // remove the goto to the unified exit  
+        _copiedBlock.Clear();
+        FindCopiedBlocks(firstDebugBlock);
+      }
+// ---------------------------------------------------------------------------      
+      
+// EmitImpl(impl,false);    
+      
+      //Impl2Dot(impl, String.Format("c:/dot/{0}_final.dot", impl.Name) );               
+            
+      
+      watch.Stop();
+      Console.WriteLine("Transformations takes: {0}", watch.Elapsed.ToString() );
+      watch.Reset();
       
       Checker! checker = FindCheckerFor(impl, 1000);     
       
       DoomCheck dc = new DoomCheck(impl, checker);
+      
       int _totalchecks = 0;
       Block b = null;
       ProverInterface.Outcome outcome;
       dc.ErrorHandler = new DoomErrorHandler(dc.Label2Absy, callback);
       bool doomfound = false;
+      
+      bool __debug = true;
+      
+      System.TimeSpan ts = watch.Elapsed;    
+      
       while (dc.GetNextBlock(out b) && !doomfound) {
         assert b!=null;
         outcome = ProverInterface.Outcome.Undetermined;
@@ -87,9 +347,19 @@ namespace VC
         m_BlockReachabilityMap.TryGetValue(b, out v);
         assert v!=null;
         _totalchecks++;
+        
+        if (__debug) Console.WriteLine("Checking Block {0}", v.Name);
+        
+        
+        watch.Start();
         if (!dc.CheckLabel(v, out outcome) ) {
             return Outcome.Inconclusive;
         }
+        watch.Stop();
+        ts+=watch.Elapsed;
+        Console.WriteLine(" --- {0} elapsed", watch.Elapsed.ToString());
+        watch.Reset();
+        
         
         switch (outcome) {
             case ProverInterface.Outcome.Valid: {                
@@ -117,7 +387,7 @@ namespace VC
         ConsoleColor col = Console.ForegroundColor;
         Console.ForegroundColor = ConsoleColor.Red;              
         Console.WriteLine("  {0} is DOOMED!", impl.Name);
-        Console.ForegroundColor = col;
+        Console.ForegroundColor = col;        
         
         SearchCounterexample(impl, dc.ErrorHandler, callback);
         Console.WriteLine("------------------------------ \n\n");
@@ -129,6 +399,8 @@ namespace VC
       
       return Outcome.Correct;
     }
+    
+    
     
     private void SearchCounterexample(Implementation! impl, DoomErrorHandler! errh, VerifierCallback! callback) {        
         if (errh.m_Reachvar==null) {
@@ -179,6 +451,7 @@ namespace VC
                         Dictionary<Block!, CmdSeq!>! cmdbackup, int startidx, int endidx) {
         #region Modify implementation
         for (int i=startidx; i<=endidx; i++) {
+            if (_copiedBlock.Contains(impl.Blocks[i])) continue;
             CmdSeq! cs = new CmdSeq();            
             cmdbackup.Add(impl.Blocks[i],impl.Blocks[i].Cmds);
             foreach (Cmd! c in impl.Blocks[i].Cmds) {
@@ -752,10 +1025,8 @@ namespace VC
     #endregion 
      
     #region Program Passification
-    
-      private Hashtable/*TransferCmd->ReturnCmd*/! PassifyProgram(Implementation! impl, 
-			                  Program! program)
-	  {
+      private void GenerateReachVars(Implementation! impl)
+      {
 	    Hashtable gotoCmdOrigins = new Hashtable();
 	    Block! exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
 	    AddBlocksBetween(impl);
@@ -801,8 +1072,12 @@ namespace VC
             exitBlock = (!)gc.labelTargets[0];
         }
         #endregion	    
-	    GenerateReachabilityPredicates(impl, exitBlock);
-	    	    	    
+	    GenerateReachabilityPredicates(impl, exitBlock);      
+      }
+    
+    
+      private Hashtable/*TransferCmd->ReturnCmd*/! PassifyProgram(Implementation! impl)
+	  {	    	    	    
 	    current_impl = impl;
 	    Convert2PassiveCmd(impl);
 	    impl = current_impl;

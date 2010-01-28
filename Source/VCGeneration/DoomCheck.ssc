@@ -82,18 +82,20 @@ namespace VC
             }
         }
         
-        private DoomErrorHandler m_ErrHandler;              
-        private Implementation! m_PassiveImpl;
+        private DoomErrorHandler m_ErrHandler;                      
         private Checker! m_Check;        
         private InclusionOrder! m_Order; 
         private Evc! m_Evc;       
         #endregion
         
         [NotDelayed]
-        public DoomCheck (Implementation! passive_impl, Checker! check) {
-            m_PassiveImpl = passive_impl;
-            m_Check = check;            
-            m_Order = new InclusionOrder(passive_impl);
+        public DoomCheck (Implementation! passive_impl, Checker! check) {            
+            m_Check = check;          
+            if (!VC.DCGen.UseItAsDebugger ) {  
+                m_Order = new InclusionOrder(passive_impl.Blocks[0]);
+            } else {
+                m_Order = new InclusionOrder((!)VC.DCGen.firstNonDebugBlock );
+            }
             Label2Absy = new Hashtable(); // This is only a dummy
             m_Evc = new Evc(check);
             base();
@@ -101,6 +103,7 @@ namespace VC
             VCExpr! vce = this.GenerateEVC(passive_impl, out l2a, check);
             assert l2a!=null;
             Label2Absy = l2a;
+//            vce = check.VCExprGen.Implies(vce, vce);
             m_Evc.Initialize(vce);            
         }
 
@@ -138,7 +141,17 @@ namespace VC
 
 
         #region Error Verification Condition Generation
-        
+       /*
+                   #region _TESTING_NEW_STUFF_
+            CommandLineOptions.Clo.vcVariety = CommandLineOptions.VCVariety.Block;
+            //VCExpr wp = Wlp.Block(block, SuccCorrect, context); // Computes wp.S.true
+            
+            CommandLineOptions.Clo.vcVariety = CommandLineOptions.VCVariety.Doomed;
+            #endregion
+
+       */ 
+        private bool _tmpUseFreshBVars;
+       
         VCExpr! GenerateEVC(Implementation! impl, out Hashtable label2absy, Checker! ch)
         {
 			    TypecheckingContext tc = new TypecheckingContext(null);
@@ -147,15 +160,48 @@ namespace VC
 			    VCExpr! vc;
 			    switch (CommandLineOptions.Clo.vcVariety) {
 				    case CommandLineOptions.VCVariety.Doomed:
-					    vc = LetVC((!)impl.Blocks[0], label2absy, ch.TheoremProver.Context);
+
+                        if (!VC.DCGen.UseItAsDebugger ) {
+                            vc = LetVC((!)impl.Blocks[0], label2absy, ch.TheoremProver.Context);
+                        }
+                        #region _TESTING_NEW_STUFF_
+                        else  {
+                        
+                                                                        
+                        CommandLineOptions.Clo.vcVariety = CommandLineOptions.VCVariety.Block;				        
+				        assert VC.DCGen.firstDebugBlock != null;
+				        VCExpr! a = LetVC(VC.DCGen.firstDebugBlock, label2absy, ch.TheoremProver.Context);				        				        				        
+				        CommandLineOptions.Clo.vcVariety = CommandLineOptions.VCVariety.Doomed;			
+
+                        				        
+                        VCExpr! b = LetVC((!)VC.DCGen.firstNonDebugBlock, label2absy, ch.TheoremProver.Context);
+
+					    //_tmpUseFreshBVars=false;
+					    //vc = ch.VCExprGen.Not(ch.VCExprGen.Implies( wp, ch.VCExprGen.Not(vc)));
+					    
+					    vc = ch.VCExprGen.Not(ch.VCExprGen.Implies(ch.VCExprGen.Not(a), ch.VCExprGen.Not(b)));
+					    
+					    
+					    /*
+                            ConsoleColor col = Console.ForegroundColor;
+                            Console.ForegroundColor = ConsoleColor.Green; 					    
+					        Console.WriteLine(vc.ToString());
+                            Console.ForegroundColor = col;   
+                            Console.WriteLine(" ... was asked.");   
+                        */
+                                                                 
+					    }
+					    #endregion
+					    					    
 					    break;
+					    
 				    default:
 					    assert false;  // unexpected enumeration value
 			    }
 			    return vc;      
         }
 
-        VCExpr! LetVC(Block! startBlock,
+        public VCExpr! LetVC(Block! startBlock,
                              Hashtable/*<int, Absy!>*/! label2absy,
                              ProverContext! proverCtxt)
         {
@@ -204,9 +250,11 @@ namespace VC
 
             VCContext context = new VCContext(label2absy, proverCtxt);
     //        m_Context = context;
+
             VCExpr vc = Wlp.Block(block, SuccCorrect, context);
+
+            v = gen.Variable(block.Label + "_correct", Microsoft.Boogie.Type.Bool);            
             
-            v = gen.Variable(block.Label + "_correct", Microsoft.Boogie.Type.Bool);
             bindings.Add(gen.LetBinding(v, vc));
             blockVariables.Add(block, v);
           }
@@ -223,14 +271,14 @@ namespace VC
 
             #region Attributes
             public List<List<Block!>!>! DetectedBlock = new List<List<Block!>!>(); 
-            Implementation! m_Impl;
+            
             InclusionTree! RootNode = new InclusionTree(null);             
             InclusionTree currentNode = null;
             
             #endregion
         
             [NotDelayed]
-            public InclusionOrder(Implementation! impl) {
+            public InclusionOrder(Block! rootblock) {
                 /*
                     We now compute for each block the set of blocks that
                     are reached on every execution reaching this block (dominator).
@@ -238,14 +286,14 @@ namespace VC
                     block and second from the Term block to the current one.
                     Finally we build the union.
                 */
-                m_Impl = impl;                               
+                
                 base();
                 Dictionary<Block!,TraceNode!>! map2 = new Dictionary<Block!,TraceNode!>();
                 Dictionary<Block!,TraceNode!>! map = new Dictionary<Block!,TraceNode!>();
                 
                 Dictionary<Block!, List<Block!>!>! unavoidablemap = new Dictionary<Block!, List<Block!>!>();
 
-                Block! exitblock = BreadthFirst(impl.Blocks[0], map2);
+                Block! exitblock = BreadthFirst(rootblock, map2);
                 BreadthFirstBwd(exitblock, map);               
 
                 foreach (KeyValuePair<Block!, TraceNode!> kvp in map) {
@@ -264,7 +312,7 @@ namespace VC
                                 kvp.Value.Add(t0.block);
                         }
                     } else {
-                        assert false;
+                        //assert false;
                     }
                 }
                                                                
@@ -327,10 +375,13 @@ namespace VC
                         currentNode.HasBeenChecked = true;
                         MarkUndoomedParents(currentNode); 
                         if (cb != null) {
+                            //Console.WriteLine("CE contains: ");
                             foreach (Block! b in cb.TraceNodes)
                             {
+                                //Console.Write("{0}, ", b.Label);                                
                                 MarkUndoomedFromCE(b, RootNode);
                             }
+                            //Console.WriteLine();
                         } else {
                             Console.WriteLine("ErrorHandler is not valid! ------ (DoomCheck)");
                         }
