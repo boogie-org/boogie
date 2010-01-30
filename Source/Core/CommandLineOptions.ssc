@@ -217,8 +217,8 @@ namespace Microsoft.Boogie
     public string StandardLibraryLocation;
     
     // whether procedure inlining is enabled at call sites.
-    public enum Inlining { None, MacroLike, Bounded };
-    public Inlining ProcedureInlining = Inlining.MacroLike;
+    public enum Inlining { None, Assert, Assume, Spec };
+    public Inlining ProcedureInlining = Inlining.Assume;
     public bool PrintInlined = false;
 
     public enum TypeEncoding { None, Predicates, Arguments, Monomorphic };
@@ -894,17 +894,17 @@ namespace Microsoft.Boogie
             if (ps.ConfirmArgumentCount(1)) {
               switch (args[ps.i])
               {
-                case "m":
-                case "macrolike":
-                  ProcedureInlining = Inlining.MacroLike;
-                  break;
-                case "n":
                 case "none":
                   ProcedureInlining = Inlining.None;
                   break;
-                case "b":
-                case "bounded":
-                  ProcedureInlining = Inlining.Bounded;
+                case "assert":
+                  ProcedureInlining = Inlining.Assert;
+                  break;
+                case "assume":
+                  ProcedureInlining = Inlining.Assume;
+                  break;
+                case "spec":
+                  ProcedureInlining = Inlining.Spec;
                   break;
                 default:
                   ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
@@ -1591,12 +1591,12 @@ namespace Microsoft.Boogie
 
      {:inline N}
        Inline given procedure (can be also used on implementation). 
-       With /inline:b, N is the maximal number of inlinings per calling
-       procedure (not depth).
-       With /inline:m (default), N is ignored, and recursive calls to
-       inlined procedure will result in an error.
-       With /inline:n the entire attribute is ignored. 
-       With /inline:m methods with /inline are not verified at all.
+       N should be a non-negative number and represents the inlining depth. 
+       With /inline:assume call is replaced with ""assume false"" once inlining depth is reached.
+       With /inline:assert call is replaced with ""assert false"" once inlining depth is reached.
+       With /inline:spec call is left as is once inlining depth is reached.
+       With the above three options, methods with the attribute {:inline N} are not verified.
+       With /inline:none the entire attribute is ignored. 
        
      {:verify false}
        Skip verification of an implementation.
@@ -1838,9 +1838,10 @@ namespace Microsoft.Boogie
                    i = unsoundly translate bitvectors to integers
   /inline:<i>    : use inlining strategy <i> for procedures with the :inline 
                    attribute, see /attrHelp for details:
-                   n = none
-                   m = macrolike (default)
-                   b = bounded
+                   none
+                   assume (default)
+                   assert
+                   spec
   /printInlined  : print the implementation after inlining calls to 
                    procedures with the :inline attribute (works with /inline)
   /smoke         : Soundness Smoke Test: try to stick assert false; in some 

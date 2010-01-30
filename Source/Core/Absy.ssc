@@ -1710,7 +1710,8 @@ namespace Microsoft.Boogie
           return true;
         }
 
-        if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.MacroLike) {
+        if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assert ||
+            CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assume) {
           Expr? inl = this.FindExprAttribute("inline");
           if (inl == null) inl = this.Proc.FindExprAttribute("inline");
           if (inl != null && inl is LiteralExpr && ((LiteralExpr)inl).isBigNum && ((LiteralExpr)inl).asBigNum.Signum > 0) {

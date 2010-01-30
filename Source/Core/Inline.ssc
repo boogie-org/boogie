@@ -21,12 +21,6 @@ namespace Microsoft.Boogie {
     private InlineCallback inlineCallback;
     private TypecheckingContext! checkingCtx;
   
-    // Maximum number of unrolling per procedure.
-    // This is now given as a commnd line option.
-    // While typically this number will be given with the :inline attribute in the source code
-    // we set this bound in case the programmer does not provide the number along with the :inline attribute.
-    public static int MaxUnrollPerProcedure = 3;
-    
     protected CodeCopier! codeCopier;
     
     protected Dictionary<string!,int>! /* Procedure.Name -> int */ recursiveProcUnrollMap;
@@ -142,21 +136,14 @@ namespace Microsoft.Boogie {
     
     // returns true if it is ok to further unroll the procedure
     // otherwise, the procedure is not inlined at the call site
-    protected bool CheckInline(Implementation! impl) {
+    protected int GetInlineCount(Implementation! impl) {
       string! procName = impl.Name;
-      int c;
+      int c = -1;
       if (recursiveProcUnrollMap.TryGetValue(procName, out c)) {
-        if(c > 0) {
-          if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Bounded) {
-            recursiveProcUnrollMap[procName] = c - 1;
-          }
-          return true;
-        }
-        recursiveProcUnrollMap[procName] = 0;
-        return false;   
+        return c;
       }
       
-      bool doinline = false;      
+      bool findattr = false;      
       
       QKeyValue kv = null;
       // try proc attributes
@@ -164,64 +151,57 @@ namespace Microsoft.Boogie {
         kv = impl.Proc.Attributes;
         while(kv != null) {
           if(kv.Key.Equals("inline")) {
-            doinline = true;
+            findattr = true;
             break;
           }
           kv = kv.Next;     
         }
       }     
       // try impl attributes
-      if(!doinline) {
+      if(!findattr) {
         kv = impl.Attributes;
         while(kv != null) {
           if(kv.Key.Equals("inline")) {
-            doinline = true;  
+            findattr = true;  
             break;
           }
           kv = kv.Next;     
         }
       }
       
-      // try impl attributes
-      if(doinline) {
+      if (findattr) {
         assert(kv != null && kv.Key.Equals("inline"));
-        // check the recursion
-        if (!recursiveProcUnrollMap.TryGetValue(procName, out c)) {
-          c = MaxUnrollPerProcedure;
-          if (kv.Params.Count == 1) {
-            LiteralExpr lit = kv.Params[0] as LiteralExpr;
-            if (lit != null && lit.isBigNum) {
-              c = lit.asBigNum.ToIntSafe;
-            }
-          }
-          recursiveProcUnrollMap.Add(procName, c);
+        if (kv.Params.Count == 1) {
+          LiteralExpr lit = kv.Params[0] as LiteralExpr;
+          if (lit != null && lit.isBigNum)
+            c = lit.asBigNum.ToIntSafe;
         }
-        
-        if(c > 0) {
-          if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Bounded) {
-            recursiveProcUnrollMap[procName] = c - 1;
-          }
-          return true;
-        }
-        recursiveProcUnrollMap[procName] = 0;
-        return false;   
       }
       
-      // if not inlined, then record its inline count as 0
-      recursiveProcUnrollMap[procName] = 0;
-      return false;
+      recursiveProcUnrollMap[procName] = c;
+      return c;
     }
     
+    void CheckRecursion(Implementation! impl, Stack<Procedure!>! callStack) {
+      foreach (Procedure! p in callStack) {
+        if (p == impl.Proc) {
+          string msg = "";
+          foreach (Procedure! p in callStack) {
+            msg = p.Name + " -> " + msg;
+          }
+          msg += p.Name;
+          checkingCtx.Error(impl, "inlined procedure is recursive, call stack: {0}", msg);
+        }
+      }
+    }
     
     private List<Block!>! DoInlineBlocks(Stack<Procedure!>! callStack, List<Block!>! blocks, Program! program, 
                                          VariableSeq! newLocalVars, IdentifierExprSeq! newModifies, ref bool inlinedSomething)
     {
       List<Block!>! newBlocks = new List<Block!>();
 
-      foreach(Block block in blocks) {
-      
+      foreach(Block block in blocks) {      
         TransferCmd! transferCmd = (!) block.TransferCmd;         
-        
         CmdSeq cmds = block.Cmds;
         CmdSeq newCmds = new CmdSeq();
         Block newBlock;
@@ -229,54 +209,36 @@ namespace Microsoft.Boogie {
         int lblCount = 0;
         
         for(int i = 0; i < cmds.Length; ++i) {
-          Cmd cmd = cmds[i];
-          
+          Cmd cmd = cmds[i];          
           CallCmd callCmd = cmd as CallCmd;
           
           if(callCmd == null) {
             // if not call command, leave it as is
-            newCmds.Add(codeCopier.CopyCmd(cmd));
-            
+            newCmds.Add(codeCopier.CopyCmd(cmd));            
           } else {
             assert(callCmd.Proc != null);
             Procedure proc = null;
             Implementation impl = null;
             string calleeName = callCmd.Proc.Name;
             
-            bool inline = false;
+            int inline = -1;
 
             // *** now we do not allow constructors to be inlined
-            if(! calleeName.Contains("..ctor")) {
+            if (!calleeName.Contains("..ctor")) {
               // FIXME why on earth are we searching by name?!
               bool implExists = FindProcImpl(program, calleeName, out proc, out impl);
               assume(!implExists || (proc != null && impl != null));
-              if(implExists) {
-                if(CheckInline((!)impl)) {
-                  inline = true;
-                  inlinedSomething = true;
-                }
+              if (implExists) {
+                inline = GetInlineCount((!)impl);
               }
-            }
+            }            
 
-            if (impl != null && CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.MacroLike) {
-              foreach (Procedure! p in callStack) {
-                if (p == impl.Proc) {
-                  inline = false;
-                  string msg = "";
-                  foreach (Procedure! p in callStack) {
-                    msg = p.Name + " -> " + msg;
-                  }
-                  msg += p.Name;
-                  checkingCtx.Error(impl, "the inlined procedure is recursive, call stack: {0}", msg);
-                }
-              }
-            }
-
-            assert(!inline || (impl != null));
+            assert(inline == -1  || impl != null);
             
-            if(inline) { // at least one block should exist
+            if (inline > 0) { // at least one block should exist
               assume(impl != null && proc != null);
               assert(((!)impl.OriginalBlocks).Count > 0);
+              inlinedSomething = true;
               
               // do inline now
               int nextlblCount = lblCount + 1;
@@ -296,9 +258,11 @@ namespace Microsoft.Boogie {
               
               EndInline();
 
+			  recursiveProcUnrollMap[impl.Name] = recursiveProcUnrollMap[impl.Name] - 1;
               callStack.Push((!)impl.Proc);
               inlinedBlocks = DoInlineBlocks(callStack, inlinedBlocks, program, newLocalVars, newModifies, ref inlinedSomething);
               callStack.Pop();
+              recursiveProcUnrollMap[impl.Name] = recursiveProcUnrollMap[impl.Name] + 1;
               
               Block! startBlock = inlinedBlocks[0];
 
@@ -309,11 +273,21 @@ namespace Microsoft.Boogie {
               newBlocks.AddRange(inlinedBlocks);
               
               lblCount = nextlblCount;
-              newCmds = new CmdSeq();
-              
+              newCmds = new CmdSeq();              
+            } else if (inline == 0) {
+              inlinedSomething = true;
+              if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assert) {
+                // add assert
+                newCmds.Add(new AssertCmd(callCmd.tok, Expr.False));
+              } else if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assume) {
+                // add assume
+                newCmds.Add(new AssumeCmd(callCmd.tok, Expr.False));
+              } else {
+                // add call
+                newCmds.Add(codeCopier.CopyCmd(callCmd));
+              }
             } else {
-              // if this call will not be inlined, so leave it as is
-              newCmds.Add(codeCopier.CopyCmd(callCmd));
+                newCmds.Add(codeCopier.CopyCmd(callCmd));
             }         
           }
         }
