@@ -122,6 +122,10 @@
              Project="{F65666DE-FB56-457C-8782-09BE243450FC}"
              Private="true"
              />
+        <Reference Name="Isabelle"
+             Project="{C3C3BC4F-6AEB-41AB-A649-4A085DC6FB36}"
+             Private="true"
+             />
       </References>
     </Build>
     <Files>

@@ -3,15 +3,11 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-[assembly: AssemblyVersion("4.0.0.0")]
-[assembly: AssemblyFileVersion("4.0.0.0")]
+[assembly: AssemblyKeyFile("..\\..\\InterimKey.snk")]
 
 [assembly: AssemblyTitle("Boogie back-end for Isabelle")]
 [assembly: AssemblyDescription("Boogie back-end for the interactive"
   + " theorem prover Isabelle")]
-[assembly: AssemblyConfiguration("Release")]
 [assembly: AssemblyCompany("TU München")]
 [assembly: AssemblyProduct("HOL-Boogie")]
 [assembly: AssemblyCopyright("Copyright © TU München 2009")]
-[assembly: AssemblyTrademark("")]
-[assembly: AssemblyCulture("")]

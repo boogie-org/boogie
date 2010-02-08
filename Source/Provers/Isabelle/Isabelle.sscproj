@@ -93,6 +93,10 @@
                  SubType="Code"
                  RelPath="Prover.ssc"
                  />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="..\..\version.ssc"
+                 />
       </Include>
     </Files>
   </XEN>
