@@ -16,11 +16,11 @@ namespace Microsoft.Boogie
 {
   public class CommandLineOptions
   {
-    public const string VersionNumber = "2.00";
+    public static string! VersionNumber { get { return (!)((!)System.Diagnostics.FileVersionInfo.GetVersionInfo(System.Reflection.Assembly.GetExecutingAssembly().Location)).FileVersion; } }
     public const string ToolNameBoogie = "Boogie program verifier";
     public const string ToolNameSpecSharp = "Spec# program verifier";
     public const string ToolNameDafny = "Dafny program verifier";
-    public const string VersionSuffix = " version " + VersionNumber + ", Copyright (c) 2003-2009, Microsoft.";
+    public static string! VersionSuffix { get { return " version " + VersionNumber + ", Copyright (c) 2003-2010, Microsoft."; } }
     public string! InputFileExtension {
       set
         modifies _toolname, _version;
