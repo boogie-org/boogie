@@ -138,44 +138,16 @@ namespace Microsoft.Boogie {
     // otherwise, the procedure is not inlined at the call site
     protected int GetInlineCount(Implementation! impl) {
       string! procName = impl.Name;
-      int c = -1;
+      int c;
       if (recursiveProcUnrollMap.TryGetValue(procName, out c)) {
         return c;
       }
-      
-      bool findattr = false;      
-      
-      QKeyValue kv = null;
-      // try proc attributes
-      if(impl.Proc != null) {
-        kv = impl.Proc.Attributes;
-        while(kv != null) {
-          if(kv.Key.Equals("inline")) {
-            findattr = true;
-            break;
-          }
-          kv = kv.Next;     
-        }
-      }     
-      // try impl attributes
-      if(!findattr) {
-        kv = impl.Attributes;
-        while(kv != null) {
-          if(kv.Key.Equals("inline")) {
-            findattr = true;  
-            break;
-          }
-          kv = kv.Next;     
-        }
-      }
-      
-      if (findattr) {
-        assert(kv != null && kv.Key.Equals("inline"));
-        if (kv.Params.Count == 1) {
-          LiteralExpr lit = kv.Params[0] as LiteralExpr;
-          if (lit != null && lit.isBigNum)
-            c = lit.asBigNum.ToIntSafe;
-        }
+
+      c = -1; // TryGetValue above always overwrites c
+      impl.CheckIntAttribute("inline", ref c);
+      // procedure attribute overrides implementation
+      if (impl.Proc != null) {
+        impl.Proc.CheckIntAttribute("inline", ref c);
       }
       
       recursiveProcUnrollMap[procName] = c;
