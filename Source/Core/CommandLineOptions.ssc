@@ -1234,6 +1234,10 @@ namespace Microsoft.Boogie
       if (MethodologySelection == Methodology.VisibleState) {
         OwnershipModelEncoding = OwnershipModelOption.Trivial;
       }
+      
+      if (UseArrayTheory) {
+        Monomorphize = true;
+      }
     }
 
 
@@ -1853,6 +1857,9 @@ namespace Microsoft.Boogie
                    n = none (unsound)
                    p = predicates (default)
                    a = arguments
+  /monomorphize    Do not abstract map types in the encoding (this is an
+                   experimental feature that will not do the right thing if
+                   the program uses polymorphism)
   /reflectAdd      In the VC, generate an auxiliary symbol, elsewhere defined
                    to be +, instead of +.
 
@@ -1957,6 +1964,8 @@ namespace Microsoft.Boogie
   /z3DebugTrace:<arg>   : z3 command line options so that Z3 generates debug
                    tracing
   /z3multipleErrors : report multiple counterexamples for each error
+  /useArrayTheory : use Z3's native theory (as opposed to axioms).  Currently
+                    implies /monomorphize.
 
   SMT-Lib specific options:
   /smtOutput:<file>     : Path and basename to which the prover output is
