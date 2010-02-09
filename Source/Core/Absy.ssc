@@ -260,28 +260,6 @@ namespace Microsoft.Boogie
 
       AxiomExpander expander = new AxiomExpander(this, tc);
       expander.CollectExpansions();
-
-      if (CommandLineOptions.Clo.ProcedureInlining != CommandLineOptions.Inlining.None) {
-        bool inline = false;
-        foreach (Declaration d in TopLevelDeclarations) {
-          if (d.FindExprAttribute("inline") != null) inline = true;
-        }
-        if (inline) {
-          foreach (Declaration d in TopLevelDeclarations) {
-            Implementation impl = d as Implementation;
-            if (impl != null) {
-              impl.OriginalBlocks = impl.Blocks;
-              impl.OriginalLocVars = impl.LocVars;
-            }
-          }
-          foreach (Declaration d in TopLevelDeclarations) {
-            Implementation impl = d as Implementation;
-            if (impl != null) {
-              Inliner.ProcessImplementation(tc, this, impl);
-            }
-          }
-        }
-      }
     }
 
     public void ComputeStronglyConnectedComponents()

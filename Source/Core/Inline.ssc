@@ -19,7 +19,6 @@ namespace Microsoft.Boogie {
   public class Inliner
   {   
     private InlineCallback inlineCallback;
-    private TypecheckingContext! checkingCtx;
   
     protected CodeCopier! codeCopier;
     
@@ -50,18 +49,17 @@ namespace Microsoft.Boogie {
       return prefix + "$" + formalName;
     }   
     
-    protected Inliner(TypecheckingContext! ctx, InlineCallback cb) {        
+    protected Inliner(InlineCallback cb) {        
       inlinedProcLblMap = new Dictionary<string!,int>();
       recursiveProcUnrollMap = new Dictionary<string!,int>();
       codeCopier = new CodeCopier();
       inlineCallback = cb;
-      checkingCtx = ctx;
     }
     
-    public static void ProcessImplementation(TypecheckingContext! ctx, Program! program, Implementation! impl, InlineCallback cb)
+    public static void ProcessImplementation(Program! program, Implementation! impl, InlineCallback cb)
       requires impl.Proc != null;
     {
-      Inliner inliner = new Inliner(ctx, cb);
+      Inliner inliner = new Inliner(cb);
       
       VariableSeq! newInParams = new VariableSeq(impl.InParams);
       VariableSeq! newOutParams = new VariableSeq(impl.OutParams);
@@ -91,11 +89,10 @@ namespace Microsoft.Boogie {
     }
     
     
-    public static void ProcessImplementation(TypecheckingContext! ctx, Program! program, Implementation! impl)
+    public static void ProcessImplementation(Program! program, Implementation! impl)
       requires impl.Proc != null;
     {
-      
-      ProcessImplementation(ctx, program, impl, null);
+      ProcessImplementation(program, impl, null);
     }
     
     protected void EmitImpl(Implementation! impl)
@@ -162,7 +159,7 @@ namespace Microsoft.Boogie {
             msg = p.Name + " -> " + msg;
           }
           msg += p.Name;
-          checkingCtx.Error(impl, "inlined procedure is recursive, call stack: {0}", msg);
+          //checkingCtx.Error(impl, "inlined procedure is recursive, call stack: {0}", msg);
         }
       }
     }

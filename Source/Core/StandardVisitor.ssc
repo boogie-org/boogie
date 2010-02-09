@@ -196,7 +196,7 @@ namespace Microsoft.Boogie
     public virtual List<Declaration!>! VisitDeclarationList(List<Declaration!>! declarationList)
     {
       for (int i = 0, n = declarationList.Count; i < n; i++)
-        declarationList[i] = this.VisitDeclaration(declarationList[i]);
+        declarationList[i] = (Declaration!) this.Visit(declarationList[i]);
       return declarationList; 
     }
     public virtual DeclWithFormals! VisitDeclWithFormals(DeclWithFormals! node)

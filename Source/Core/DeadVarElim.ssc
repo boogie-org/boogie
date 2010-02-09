@@ -1,0 +1,41 @@
+﻿using System;
+using System.Collections.Generic;
+  
+namespace Microsoft.Boogie
+{
+  public class DeadVarEliminator : StandardVisitor {
+    public static void Eliminate(Program! program) {
+      DeadVarEliminator elim = new DeadVarEliminator();
+      elim.Visit(program);
+    }
+    
+    private System.Collections.Generic.Set<Variable!>! usedVars;
+  
+    private DeadVarEliminator() {
+      usedVars = new System.Collections.Generic.Set<Variable!>();
+    }
+      
+	public override Implementation! VisitImplementation(Implementation! node) {
+	  //Console.WriteLine("Procedure {0}", node.Name);
+	  Implementation! impl = base.VisitImplementation(node);
+	  //Console.WriteLine("Old number of local variables = {0}", impl.LocVars.Length);
+	  Microsoft.Boogie.VariableSeq! vars = new Microsoft.Boogie.VariableSeq();
+	  foreach (Variable! var in impl.LocVars) {
+	    if (usedVars.Contains(var))
+	      vars.Add(var);
+	  }
+	  impl.LocVars = vars;
+	  //Console.WriteLine("New number of local variables = {0}", impl.LocVars.Length);
+	  //Console.WriteLine("---------------------------------");
+	  usedVars.Clear();
+	  return impl;
+	}
+	
+	public override Expr! VisitIdentifierExpr(IdentifierExpr! node)
+    {
+      if (node.Decl != null)
+        usedVars.Add(node.Decl);
+      return node;
+    }
+  }
+}

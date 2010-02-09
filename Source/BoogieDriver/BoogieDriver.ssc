@@ -216,6 +216,10 @@ namespace Microsoft.Boogie
         PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count-1]);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked) return;
         BoogiePL.Errors.count = 0;
+        
+        oc = EliminateDeadVariablesAndInline(program);
+        BoogiePL.Errors.count = 0;
+        
         int errorCount, verified, inconclusives, timeOuts, outOfMemories;
         oc = InferAndVerify(program, null, out errorCount, out verified, out inconclusives, out timeOuts, out outOfMemories);
         switch (oc) {
@@ -410,6 +414,36 @@ namespace Microsoft.Boogie
       }
 
       return PipelineOutcome.ResolvedAndTypeChecked;
+    }
+    
+    static PipelineOutcome EliminateDeadVariablesAndInline(Program! program) {
+      // Eliminate dead variables
+      Microsoft.Boogie.DeadVarEliminator.Eliminate(program);
+      
+      // Inline
+      List<Declaration!>! TopLevelDeclarations = program.TopLevelDeclarations;
+      if (CommandLineOptions.Clo.ProcedureInlining != CommandLineOptions.Inlining.None) {
+        bool inline = false;
+        foreach (Declaration d in TopLevelDeclarations) {
+          if (d.FindExprAttribute("inline") != null) inline = true;
+        }
+        if (inline) {
+          foreach (Declaration d in TopLevelDeclarations) {
+            Implementation impl = d as Implementation;
+            if (impl != null) {
+              impl.OriginalBlocks = impl.Blocks;
+              impl.OriginalLocVars = impl.LocVars;
+            }
+          }
+          foreach (Declaration d in TopLevelDeclarations) {
+            Implementation impl = d as Implementation;
+            if (impl != null && !impl.SkipVerification) {
+              Inliner.ProcessImplementation(program, impl);
+            }
+          }
+        }
+      }
+      return PipelineOutcome.Done;
     }
     
     /// <summary>
