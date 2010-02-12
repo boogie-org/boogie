@@ -3,7 +3,6 @@ found unreachable code:
 implementation b(x: int)
 {
   var y: int;
-  var y@0: int;
 
 
   anon0:

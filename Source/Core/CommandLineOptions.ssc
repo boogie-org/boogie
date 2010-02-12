@@ -228,6 +228,8 @@ namespace Microsoft.Boogie
     
     public bool ReflectAdd = false;
 
+    public bool LiveVariableAnalysis = true;
+    
     // Static constructor
     static CommandLineOptions()
     {
@@ -821,6 +823,25 @@ namespace Microsoft.Boogie
             }
             break;
           
+          case "-liveVariableAnalysis":
+          case "/liveVariableAnalysis":
+            if (ps.ConfirmArgumentCount(1))
+            {
+              switch (args[ps.i])
+              {
+                case "0": 
+                  LiveVariableAnalysis = false;
+                  break;
+                case "1":
+                  LiveVariableAnalysis = true;
+                  break;
+                default:
+                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                  break;
+              }
+            }
+            break;
+            
           case "/DoomDebug":
             vcVariety = VCVariety.Doomed;
             useDoomDebug = true;
@@ -1141,7 +1162,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("z3types", ref Z3types) ||
               ps.CheckBooleanFlag("z3multipleErrors", ref z3AtFlag, false) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
-              ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory)
+              ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) 
               )
             {
               // one of the boolean flags matched
@@ -1820,7 +1841,9 @@ namespace Microsoft.Boogie
   /break[:method] : break into debugger
 
   ---- Verification-condition generation options -----------------------------
-
+  
+  /liveVariableAnalysis:<c> : 0 = do not perform live variable analysis 
+                              1 = perform live variable analysis (default)
   /noVerify      : skip VC generation and invocation of the theorem prover
   /noRemoveEmptyBlocks : do not remove empty blocks during VC generation
   /vc:<variety>  : n = nested block (default for non-/prover:z3),

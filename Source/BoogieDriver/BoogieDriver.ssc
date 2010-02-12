@@ -70,7 +70,7 @@ namespace Microsoft.Boogie
 
       SelectPlatform(CommandLineOptions.Clo);
 
-      Helpers.ExtraTraceInformation("Becoming sentinent");
+      Helpers.ExtraTraceInformation("Becoming sentient");
 
       // Make sure the Spec# runtime is initialized.
       // This happens when the static constructor for the Runtime type is executed.
@@ -418,7 +418,7 @@ namespace Microsoft.Boogie
     
     static PipelineOutcome EliminateDeadVariablesAndInline(Program! program) {
       // Eliminate dead variables
-      Microsoft.Boogie.DeadVarEliminator.Eliminate(program);
+      Microsoft.Boogie.UnusedVarEliminator.Eliminate(program);
       
       // Inline
       List<Declaration!>! TopLevelDeclarations = program.TopLevelDeclarations;

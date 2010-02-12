@@ -1753,6 +1753,10 @@ namespace VC
       }
       #endregion
     
+      if (CommandLineOptions.Clo.LiveVariableAnalysis) {
+	    Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(program, impl);
+	  }
+	  
       Convert2PassiveCmd(impl);
       
       #region Peep-hole optimizations

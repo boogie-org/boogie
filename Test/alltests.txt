@@ -21,3 +21,4 @@ houdini          Postponed    Test for Houdini decision procedure
 dafny0           Use    Dafny programs
 havoc0           Use    HAVOC-generated bpl files
 VSI-Benchmarks   Use    Solutions to Verified Software Initiative verification challenges
+livevars	 Use	STORM benchmarks for testing correctness of live variable analysis

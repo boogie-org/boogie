@@ -718,7 +718,7 @@ namespace VC
         {
           if (!incarnationMap.Contains(v))
           {
-            // v was not in the domain of the precessors seen so far, so it needs to be fixed up
+            // v was not in the domain of the predecessors seen so far, so it needs to be fixed up
             fixUps.Add(v);
           }
           else
@@ -735,8 +735,9 @@ namespace VC
       }
 
       #region Second, for all variables in the fixups list, introduce a new incarnation and push it back into the preds.
-      foreach (Variable! v in fixUps )
+      foreach (Variable! v in fixUps)
       {
+        if (!b.IsLive(v)) continue;
         Variable v_prime = CreateIncarnation(v, b);
         IdentifierExpr ie = new IdentifierExpr(v_prime.tok, v_prime);
         assert incarnationMap != null;

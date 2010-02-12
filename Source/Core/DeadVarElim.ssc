@@ -1,18 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-  
+using Graphing;
+
 namespace Microsoft.Boogie
 {
-  public class DeadVarEliminator : StandardVisitor {
+  public class UnusedVarEliminator : VariableCollector {
     public static void Eliminate(Program! program) {
-      DeadVarEliminator elim = new DeadVarEliminator();
+      UnusedVarEliminator elim = new UnusedVarEliminator();
       elim.Visit(program);
     }
-    
-    private System.Collections.Generic.Set<Variable!>! usedVars;
   
-    private DeadVarEliminator() {
-      usedVars = new System.Collections.Generic.Set<Variable!>();
+    private UnusedVarEliminator() {
+      base();
     }
       
 	public override Implementation! VisitImplementation(Implementation! node) {
@@ -30,12 +29,141 @@ namespace Microsoft.Boogie
 	  usedVars.Clear();
 	  return impl;
 	}
+  }
+  
+  public class VariableCollector : StandardVisitor {
+	public System.Collections.Generic.Set<Variable!>! usedVars;
+	public VariableCollector() {
+	  usedVars = new System.Collections.Generic.Set<Variable!>();
+	}
 	
-	public override Expr! VisitIdentifierExpr(IdentifierExpr! node)
-    {
-      if (node.Decl != null)
+    public override Expr! VisitIdentifierExpr(IdentifierExpr! node) {
+      if (node.Decl != null) {
         usedVars.Add(node.Decl);
+      }
       return node;
     }
+  } 
+  
+  public class LiveVariableAnalysis {
+	public static void ComputeLiveVariables(Program! program, Implementation! impl) {
+	  Microsoft.Boogie.Helpers.ExtraTraceInformation("Starting live variable analysis");
+	  Graphing.Graph<Block> dag = new Graph<Block>();
+      dag.AddSource((!)impl.Blocks[0]); // there is always at least one node in the graph
+      foreach (Block b in impl.Blocks)
+      {
+        GotoCmd gtc = b.TransferCmd as GotoCmd;
+        if (gtc != null)
+        {
+          assume gtc.labelTargets != null;
+          foreach (Block! dest in gtc.labelTargets)
+          {
+            dag.AddEdge(dest, b);
+          }
+        }
+      }
+      
+      IEnumerable<Block> sortedNodes = dag.TopologicalSort();
+	  foreach (Block! block in sortedNodes) {
+	    Set! liveVarsAfter = new Set();
+	    if (block.TransferCmd is GotoCmd) {
+	      GotoCmd gotoCmd = (GotoCmd) block.TransferCmd;
+	      if (gotoCmd.labelTargets != null) {
+	        foreach (Block! succ in gotoCmd.labelTargets) {
+	          assert succ.liveVarsBefore != null;
+	          liveVarsAfter.AddAll(succ.liveVarsBefore);
+	        }
+	      }
+	    }
+	    
+        CmdSeq cmds = block.Cmds;
+	    int len = cmds.Length;
+	    for (int i = len - 1; i >= 0; i--) {
+	      Propagate(cmds[i], liveVarsAfter);
+	    }
+	    
+	    block.liveVarsBefore = liveVarsAfter;
+	  }
+	}
+	
+	// perform in place update of liveSet
+	private static void Propagate(Cmd! cmd, Set! liveSet) {
+	  if (cmd is AssignCmd) {
+	    AssignCmd! assignCmd = (AssignCmd) cmd;
+	    // I must first iterate over all the targets and remove the live ones.
+	    // After the removals are done, I must add the variables referred on 
+	    // the right side of the removed targets
+	    Set<int> indexSet = new Set<int>();
+	    int index = 0;
+	    foreach (AssignLhs! lhs in assignCmd.Lhss) {
+	      Variable var = lhs.DeepAssignedVariable;
+	      if (var != null && liveSet.Contains(var)) {
+	        indexSet.Add(index);
+	        if (lhs is SimpleAssignLhs) {
+	          // we should only remove non-map target variables because there is an implicit
+	          // read of a map variable in an assignment to it
+			  liveSet.Remove(var);
+			}
+	      }
+	      index++;
+	    }
+	    index = 0;
+	    foreach (Expr! expr in assignCmd.Rhss) {
+	      if (indexSet.Contains(index)) {
+	        VariableCollector! collector = new VariableCollector();
+	        collector.Visit(expr);
+	        liveSet.AddAll(collector.usedVars);
+	        AssignLhs lhs = assignCmd.Lhss[index];
+	        if (lhs is MapAssignLhs) {
+	          // If the target is a map, then all indices are also read
+	          MapAssignLhs malhs = (MapAssignLhs) lhs;
+	          foreach (Expr e in malhs.Indexes) {
+	            VariableCollector! c = new VariableCollector();
+	            c.Visit(e);
+	            liveSet.AddAll(c.usedVars);
+	          }
+	        }
+	      }
+	      index++;
+	    }
+	  } else if (cmd is HavocCmd) {
+	    HavocCmd! havocCmd = (HavocCmd) cmd;
+	    foreach (IdentifierExpr! expr in havocCmd.Vars) {
+	      if (expr.Decl != null) {
+	        liveSet.Remove(expr.Decl);
+	      }
+	    }
+	  } else if (cmd is PredicateCmd) {
+	    assert (cmd is AssertCmd || cmd is AssumeCmd);
+	    PredicateCmd! predicateCmd = (PredicateCmd) cmd;
+	    if (predicateCmd.Expr is LiteralExpr) {
+	      LiteralExpr le = (LiteralExpr) predicateCmd.Expr;
+	      if (le.IsFalse) {
+	        liveSet.Clear();
+	      }
+	    } else {
+	      VariableCollector! collector = new VariableCollector();
+	      collector.Visit(predicateCmd.Expr);
+	      liveSet.AddAll(collector.usedVars);
+	    }
+	  } else if (cmd is CommentCmd) {
+        // comments are just for debugging and don't affect verification
+      } else if (cmd is SugaredCmd) {
+        SugaredCmd! sugCmd = (SugaredCmd) cmd;
+        Propagate(sugCmd.Desugaring, liveSet);
+      } else if (cmd is StateCmd) {
+        StateCmd! stCmd = (StateCmd) cmd;
+        CmdSeq! cmds = stCmd.Cmds;
+        int len = cmds.Length;
+        for (int i = len - 1; i >= 0; i--) {
+          Propagate(cmds[i], liveSet);
+        }
+        foreach (Variable! v in stCmd.Locals) {
+          liveSet.Remove(v);
+        }
+      } else {
+        assert false;
+      }
+	}
   }
 }

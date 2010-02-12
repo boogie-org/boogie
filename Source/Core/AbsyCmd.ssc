@@ -696,6 +696,12 @@ namespace Microsoft.Boogie
     // VC generation and SCC computation
     public BlockSeq! Predecessors;
 
+    public Set liveVarsBefore;
+    public bool IsLive(Variable! v) {
+      if (liveVarsBefore == null) return true;
+      return liveVarsBefore.Contains(v);
+    }
+    
     public Block() { this(Token.NoToken, "", new CmdSeq(), new ReturnCmd(Token.NoToken));}
 
     public Block (IToken! tok, string! label, CmdSeq! cmds, TransferCmd transferCmd)
@@ -707,6 +713,7 @@ namespace Microsoft.Boogie
       this.PreInvariant = null;
       this.PostInvariant = null;
       this.Predecessors = new BlockSeq();
+      this.liveVarsBefore = null;
       this.TraversingStatus = VisitState.ToVisit;
       this.iterations = 0;
       // base(tok);
