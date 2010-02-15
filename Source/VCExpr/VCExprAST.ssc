@@ -137,7 +137,7 @@ namespace Microsoft.Boogie
 
     ///////////////////////////////////////////////////////////////////////////
     // Versions of the propositional operators that automatically simplify in
-    // certain cases (if one of the operators is True or False)
+    // certain cases (for example, if one of the operators is True or False)
 
     public VCExpr! NotSimp(VCExpr! e0) {
       if (e0.Equals(True))
@@ -171,7 +171,38 @@ namespace Microsoft.Boogie
         return NotSimp(e0);
       if (e0.Equals(False) || e1.Equals(True))
         return True;
+      // attempt to save on the depth of expressions (to reduce chances of stack overflows)
+      while (e1 is VCExprBinary) {
+        VCExprBinary n = (VCExprBinary)e1;
+        if (n.Op == ImpliesOp) {
+          if (AndSize(n[0]) <= AndSize(e0)) {
+            // combine the antecedents
+            e0 = And(e0, n[0]);
+            e1 = n[1];
+            continue; 
+          }
+        }
+        break;
+      }
       return Implies(e0, e1);
+    }
+    
+    ///<summary>
+    /// Returns some measure of the number of conjuncts in e.  This could be the total number of conjuncts in all
+    /// top-most layers of the expression, or it can simply be the length of the left-prong of this and-tree.  The
+    /// important thing is that: AndSize(e0) >= AndSize(31) ==> AndSize(And(e0,e1)) > AndSize(e0).
+    ///</summary>
+    int AndSize(VCExpr! e) {
+      int n = 1;
+      while (true) {
+        VCExprNAry nary = e as VCExprNAry;
+        if (nary != null && nary.Op == AndOp && 2 <= nary.Arity) {
+          e = nary[0];
+          n++;
+        } else {
+          return n;
+        }
+      }
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -363,6 +394,9 @@ namespace Microsoft.Boogie
     }
 
     public VCExpr! LabelNeg(string! label, VCExpr! e) {
+      if (e.Equals(True)) {
+        return e;  // don't bother putting negative labels around True (which will expose the True to further peephole optimizations)
+      }
       return Function(LabelOp(false, label), e);
     }
     public VCExpr! LabelPos(string! label, VCExpr! e) {

@@ -77,12 +77,12 @@ namespace VC {
 // need to test it
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) return gen.Implies(C, N);
       
-          return gen.And(gen.LabelNeg((!)id.ToString(), C), N);
+          return gen.AndSimp(gen.LabelNeg((!)id.ToString(), C), N);
         }
 
       } else if (cmd is AssumeCmd) {
         AssumeCmd ac = (AssumeCmd)cmd;
-        return gen.Implies(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N);
+        return gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N);
 
       } else {
       Console.WriteLine(cmd.ToString());
