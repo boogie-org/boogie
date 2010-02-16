@@ -356,9 +356,6 @@ implementation recursivetest()
 
   inline$recursive$0$anon3_Else:
     assume inline$recursive$0$x != 0;
-    goto inline$recursive$0$anon2;
-
-  inline$recursive$0$anon2:
     goto inline$recursive$1$Entry;
 
   inline$recursive$1$Entry:
@@ -375,9 +372,6 @@ implementation recursivetest()
 
   inline$recursive$1$anon3_Else:
     assume inline$recursive$1$x != 0;
-    goto inline$recursive$1$anon2;
-
-  inline$recursive$1$anon2:
     goto inline$recursive$2$Entry;
 
   inline$recursive$2$Entry:
@@ -394,26 +388,23 @@ implementation recursivetest()
 
   inline$recursive$2$anon3_Else:
     assume inline$recursive$2$x != 0;
-    goto inline$recursive$2$anon2;
-
-  inline$recursive$2$anon2:
     call inline$recursive$2$k := recursive(inline$recursive$2$x - 1);
     inline$recursive$2$y := inline$recursive$2$y + inline$recursive$2$k;
     goto inline$recursive$2$Return;
 
   inline$recursive$2$Return:
     inline$recursive$1$k := inline$recursive$2$y;
-    goto inline$recursive$1$anon2$1;
+    goto inline$recursive$1$anon3_Else$1;
 
-  inline$recursive$1$anon2$1:
+  inline$recursive$1$anon3_Else$1:
     inline$recursive$1$y := inline$recursive$1$y + inline$recursive$1$k;
     goto inline$recursive$1$Return;
 
   inline$recursive$1$Return:
     inline$recursive$0$k := inline$recursive$1$y;
-    goto inline$recursive$0$anon2$1;
+    goto inline$recursive$0$anon3_Else$1;
 
-  inline$recursive$0$anon2$1:
+  inline$recursive$0$anon3_Else$1:
     inline$recursive$0$y := inline$recursive$0$y + inline$recursive$0$k;
     goto inline$recursive$0$Return;
 
@@ -453,9 +444,6 @@ implementation recursive(x: int) returns (y: int)
 
   anon3_Else:
     assume x != 0;
-    goto anon2;
-
-  anon2:
     goto inline$recursive$0$Entry;
 
   inline$recursive$0$Entry:
@@ -472,9 +460,6 @@ implementation recursive(x: int) returns (y: int)
 
   inline$recursive$0$anon3_Else:
     assume inline$recursive$0$x != 0;
-    goto inline$recursive$0$anon2;
-
-  inline$recursive$0$anon2:
     goto inline$recursive$1$Entry;
 
   inline$recursive$1$Entry:
@@ -491,9 +476,6 @@ implementation recursive(x: int) returns (y: int)
 
   inline$recursive$1$anon3_Else:
     assume inline$recursive$1$x != 0;
-    goto inline$recursive$1$anon2;
-
-  inline$recursive$1$anon2:
     goto inline$recursive$2$Entry;
 
   inline$recursive$2$Entry:
@@ -510,34 +492,31 @@ implementation recursive(x: int) returns (y: int)
 
   inline$recursive$2$anon3_Else:
     assume inline$recursive$2$x != 0;
-    goto inline$recursive$2$anon2;
-
-  inline$recursive$2$anon2:
     call inline$recursive$2$k := recursive(inline$recursive$2$x - 1);
     inline$recursive$2$y := inline$recursive$2$y + inline$recursive$2$k;
     goto inline$recursive$2$Return;
 
   inline$recursive$2$Return:
     inline$recursive$1$k := inline$recursive$2$y;
-    goto inline$recursive$1$anon2$1;
+    goto inline$recursive$1$anon3_Else$1;
 
-  inline$recursive$1$anon2$1:
+  inline$recursive$1$anon3_Else$1:
     inline$recursive$1$y := inline$recursive$1$y + inline$recursive$1$k;
     goto inline$recursive$1$Return;
 
   inline$recursive$1$Return:
     inline$recursive$0$k := inline$recursive$1$y;
-    goto inline$recursive$0$anon2$1;
+    goto inline$recursive$0$anon3_Else$1;
 
-  inline$recursive$0$anon2$1:
+  inline$recursive$0$anon3_Else$1:
     inline$recursive$0$y := inline$recursive$0$y + inline$recursive$0$k;
     goto inline$recursive$0$Return;
 
   inline$recursive$0$Return:
     k := inline$recursive$0$y;
-    goto anon2$1;
+    goto anon3_Else$1;
 
-  anon2$1:
+  anon3_Else$1:
     y := y + k;
     return;
 }

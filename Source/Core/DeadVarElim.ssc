@@ -45,8 +45,84 @@ namespace Microsoft.Boogie
     }
   } 
   
+  public class BlockCoalescer : StandardVisitor { 
+    public static void CoalesceBlocks(Program! program) {
+      BlockCoalescer blockCoalescer = new BlockCoalescer();
+      blockCoalescer.Visit(program);
+    }
+    
+    private static Set<Block!>! ComputeMultiPredecessorBlocks(Implementation !impl) {
+      Set<Block!> visitedBlocks = new Set<Block!>();
+      Set<Block!> multiPredBlocks = new Set<Block!>();
+      Stack<Block!> dfsStack = new Stack<Block!>();
+      dfsStack.Push(impl.Blocks[0]);
+      while (dfsStack.Count > 0) {
+        Block! b = dfsStack.Pop();
+        if (visitedBlocks.Contains(b)) {
+          multiPredBlocks.Add(b);
+          continue;
+        }
+        visitedBlocks.Add(b);
+        if (b.TransferCmd == null) continue;
+        if (b.TransferCmd is ReturnCmd) continue;
+        assert b.TransferCmd is GotoCmd;
+        GotoCmd gotoCmd = (GotoCmd) b.TransferCmd;
+        if (gotoCmd.labelTargets == null) continue;
+        foreach (Block! succ in gotoCmd.labelTargets) {
+          dfsStack.Push(succ);
+        }
+      }
+      return multiPredBlocks;
+    }
+    
+    public override Implementation! VisitImplementation(Implementation! impl) {
+      Set<Block!> multiPredBlocks = ComputeMultiPredecessorBlocks(impl);
+      Set<Block!> visitedBlocks = new Set<Block!>();
+      Set<Block!> removedBlocks = new Set<Block!>();
+      Stack<Block!> dfsStack = new Stack<Block!>();
+      dfsStack.Push(impl.Blocks[0]);
+      while (dfsStack.Count > 0) {
+        Block! b = dfsStack.Pop();
+        if (visitedBlocks.Contains(b)) continue;
+        visitedBlocks.Add(b);
+        if (b.TransferCmd == null) continue;
+        if (b.TransferCmd is ReturnCmd) continue;
+        assert b.TransferCmd is GotoCmd;
+        GotoCmd gotoCmd = (GotoCmd) b.TransferCmd;
+        if (gotoCmd.labelTargets == null) continue;
+        if (gotoCmd.labelTargets.Length == 1) {
+          Block! succ = (!)gotoCmd.labelTargets[0];
+          if (!multiPredBlocks.Contains(succ)) {
+            foreach (Cmd! cmd in succ.Cmds) {
+              b.Cmds.Add(cmd);
+            }
+            b.TransferCmd = succ.TransferCmd;
+            if (!b.tok.IsValid && succ.tok.IsValid)
+              b.tok = succ.tok;
+            removedBlocks.Add(succ);
+            dfsStack.Push(b);
+            visitedBlocks.Remove(b);
+            continue;
+          }
+        } 
+        foreach (Block! succ in gotoCmd.labelTargets) {
+          dfsStack.Push(succ);
+        }
+      }
+      
+      List<Block!> newBlocks = new List<Block!>();
+      foreach (Block! b in impl.Blocks) {
+        if (!removedBlocks.Contains(b)) {
+          newBlocks.Add(b);
+        }
+      }
+      impl.Blocks = newBlocks;
+      return impl;
+    }
+  }
+  
   public class LiveVariableAnalysis {
-	public static void ComputeLiveVariables(Program! program, Implementation! impl) {
+	public static void ComputeLiveVariables(Implementation! impl) {
 	  Microsoft.Boogie.Helpers.ExtraTraceInformation("Starting live variable analysis");
 	  Graphing.Graph<Block> dag = new Graph<Block>();
       dag.AddSource((!)impl.Blocks[0]); // there is always at least one node in the graph

@@ -14,13 +14,11 @@ Execution trace:
     TestIntervals.bpl(5,5): anon0
     TestIntervals.bpl(6,3): anon9_LoopHead
     TestIntervals.bpl(6,3): anon9_LoopDone
-    TestIntervals.bpl(11,5): anon2
     TestIntervals.bpl(12,14): anon10_Then
     TestIntervals.bpl(13,3): anon4
     TestIntervals.bpl(13,14): anon11_Then
     TestIntervals.bpl(14,3): anon6
     TestIntervals.bpl(14,14): anon12_Then
     TestIntervals.bpl(17,5): anon8
-    TestIntervals.bpl(21,3): Next
 
 Boogie program verifier finished with 0 verified, 1 error

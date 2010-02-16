@@ -1754,7 +1754,7 @@ namespace VC
       #endregion
     
       if (CommandLineOptions.Clo.LiveVariableAnalysis) {
-	    Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(program, impl);
+	    Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(impl);
 	  }
 	  
       Convert2PassiveCmd(impl);

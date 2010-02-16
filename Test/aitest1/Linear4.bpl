@@ -8,8 +8,10 @@ procedure p()
 {
   A:
     assume x < y;
-    goto B;
+    goto B, C;
   B:
     x := x*x;
+    return;
+  C:
     return;
 }
