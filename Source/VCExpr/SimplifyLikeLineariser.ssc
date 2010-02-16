@@ -47,6 +47,10 @@ namespace Microsoft.Boogie.VCExprAST
       return this;
     }
 
+	public virtual LineariserOptions! AddLetVariables(List<VCExprVar!>! furtherVars) {
+      return this;
+    }
+    
     private static readonly List<VCExprVar!>! EmptyList = new List<VCExprVar!>();
 
     public bool NativeBv { get {
@@ -477,10 +481,8 @@ namespace Microsoft.Boogie.VCExprAST
 
       wr.Write("(LET (");
 
-      LineariserOptions! optionsWithVars = options;
-      foreach (VCExprVar! var in node.BoundVars)
-        optionsWithVars = optionsWithVars.AddLetVariable(var);
-
+      LineariserOptions! optionsWithVars = options.AddLetVariables(node.BoundVars);
+	  
       string s = "(";
       foreach (VCExprLetBinding! b in node) {
         wr.Write(s);

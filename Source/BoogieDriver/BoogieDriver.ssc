@@ -446,6 +446,13 @@ namespace Microsoft.Boogie
               Inliner.ProcessImplementation(program, impl);
             }
           }
+          foreach (Declaration d in TopLevelDeclarations) {
+            Implementation impl = d as Implementation;
+            if (impl != null) {
+              impl.OriginalBlocks = null;
+              impl.OriginalLocVars = null;
+            }
+          }
         }
       }
       return PipelineOutcome.Done;

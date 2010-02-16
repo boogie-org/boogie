@@ -76,6 +76,9 @@ namespace Microsoft.Boogie
     }
     
     public override Implementation! VisitImplementation(Implementation! impl) {
+      //Console.WriteLine("Procedure {0}", impl.Name);
+      //Console.WriteLine("Initial number of blocks = {0}", impl.Blocks.Count);
+      
       Set<Block!> multiPredBlocks = ComputeMultiPredecessorBlocks(impl);
       Set<Block!> visitedBlocks = new Set<Block!>();
       Set<Block!> removedBlocks = new Set<Block!>();
@@ -117,11 +120,19 @@ namespace Microsoft.Boogie
         }
       }
       impl.Blocks = newBlocks;
+      
+      //Console.WriteLine("Final number of blocks = {0}", impl.Blocks.Count);
       return impl;
     }
   }
   
   public class LiveVariableAnalysis {
+    public static void ClearLiveVariables(Implementation! impl) {
+      foreach (Block! block in impl.Blocks) {
+        block.liveVarsBefore = null;
+      }
+    }
+    
 	public static void ComputeLiveVariables(Implementation! impl) {
 	  Microsoft.Boogie.Helpers.ExtraTraceInformation("Starting live variable analysis");
 	  Graphing.Graph<Block> dag = new Graph<Block>();

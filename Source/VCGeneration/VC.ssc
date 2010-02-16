@@ -1759,6 +1759,10 @@ namespace VC
 	  
       Convert2PassiveCmd(impl);
       
+      if (CommandLineOptions.Clo.LiveVariableAnalysis) {
+	    Microsoft.Boogie.LiveVariableAnalysis.ClearLiveVariables(impl);
+	  }
+	  
       #region Peep-hole optimizations
       if (CommandLineOptions.Clo.RemoveEmptyBlocks){
         #region Get rid of empty blocks

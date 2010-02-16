@@ -169,6 +169,13 @@ namespace Microsoft.Boogie.Z3
       allVars.Add(furtherVar);
       return new Z3LineariserOptions(AsTerm, opts, allVars);
     }
+    
+    public override LineariserOptions! AddLetVariables(List<VCExprVar!>! furtherVars) {
+      List<VCExprVar!>! allVars = new List<VCExprVar!> ();
+      allVars.AddRange(LetVariables);
+      allVars.AddRange(furtherVars);
+      return new Z3LineariserOptions(AsTerm, opts, allVars);
+    }
   }
 
   // -----------------------------------------------------------------------------------------------
