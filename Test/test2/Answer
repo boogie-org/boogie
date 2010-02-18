@@ -323,6 +323,16 @@ Execution trace:
     Implies.bpl(11,3): anon0
 
 Boogie program verifier finished with 0 verified, 2 errors
+
+-------------------- IfThenElse1.bpl --------------------
+IfThenElse1.bpl(26,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    IfThenElse1.bpl(26,3): anon0
+IfThenElse1.bpl(33,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    IfThenElse1.bpl(33,3): anon0
+
+Boogie program verifier finished with 2 verified, 2 errors
 -------------------- sk_hack.bpl --------------------
 
 Boogie program verifier finished with 1 verified, 0 errors

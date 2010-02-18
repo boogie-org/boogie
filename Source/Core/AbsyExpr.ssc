@@ -843,6 +843,8 @@ namespace Microsoft.Boogie
     T Visit(MapStore! mapStore);
     
     T Visit(TypeCoercion! typeCoercion);
+
+    T Visit(IfThenElse! ifThenElse);
   }
 
   public interface IAppliable
@@ -2895,6 +2897,97 @@ namespace Microsoft.Boogie
     }
   }
 
+
+
+  public class IfThenElse : IAppliable, AI.IFunctionSymbol {
+
+    public IToken! tok;
+
+    public IfThenElse(IToken! tok) {
+      this.tok = tok;
+    }
+
+    public string! FunctionName { get {
+      return "if-then-else";
+    } }
+
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object obj)
+    {
+      if (!(obj is IfThenElse)) return false;
+      return true;
+    }
+
+    [Pure] 
+    public override int GetHashCode()
+    {
+      return 1;
+    }
+
+    public void Emit(ExprSeq! args, TokenTextWriter! stream, int contextBindingStrength, bool fragileContext) 
+    {
+      stream.SetToken(ref this.tok);
+      assert args.Length == 3;
+      stream.Write("(if ");
+      ((!)args[0]).Emit(stream, 0x00, false);
+      stream.Write(" then ");
+      ((!)args[1]).Emit(stream, 0x00, false);
+      stream.Write(" else ");
+      ((!)args[2]).Emit(stream, 0x00, false);
+      stream.Write(")");
+    }
+
+    public void Resolve(ResolutionContext! rc, Expr! subjectForErrorReporting) {
+      // PR: nothing?
+    }
+
+    public int ArgumentCount { get {
+      return 3;
+    } }
+
+    public Type Typecheck(ref ExprSeq! args, out TypeParamInstantiation! tpInstantiation, TypecheckingContext! tc) 
+    {
+      assert args.Length == 3;
+      // the default; the only binary operator with a type parameter is equality, but right
+      // we don't store this parameter because it does not appear necessary
+      tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+      Expr arg0 = (!)args[0];
+      Expr arg1 = (!)args[1];
+      Expr arg2 = (!)args[2];
+
+      if (!((!)arg0.Type).Unify(Type.Bool)) {
+        tc.Error(this.tok, "the first argument to if-then-else should be bool, not {0}", arg0.Type);
+      } else if (!((!)arg1.Type).Unify((!)arg2.Type)) {
+        tc.Error(this.tok, "branches of if-then-else have incompatible types {0} and {1}", arg1.Type, arg2.Type);
+      } else {
+        return arg1.Type;
+      }
+
+      return null;
+    }
+
+    /// <summary>
+    /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
+    /// </summary>
+    public Type! ShallowType(ExprSeq! args) {
+      return ((!)args[1]).ShallowType;
+    }
+
+    public AI.IFunctionSymbol! AIFunctionSymbol { get { return this; } }
+    
+    public AI.AIType! AIType {
+      [Rep][ResultNotNewlyAllocated]
+      get {
+        return AI.Value.FunctionType(3);
+    } }
+    
+    public T Dispatch<T>(IAppliableVisitor<T>! visitor) {
+      return visitor.Visit(this);
+    }
+  }
+  
+
+
   public class BlockExpr : Expr
   {
     public VariableSeq! LocVars;
@@ -3254,3 +3347,4 @@ namespace Microsoft.Boogie
     }
   }
 }
+

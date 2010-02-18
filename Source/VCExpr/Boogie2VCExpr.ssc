@@ -738,6 +738,10 @@ namespace Microsoft.Boogie.VCExprAST
       return this.args[0];
     }
 
+    public VCExpr! Visit(IfThenElse! ite) {
+      return Gen.Function(VCExpressionGenerator.IfThenElseOp, this.args);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
 
     private VCExpr! TranslateBinaryOperator(BinaryOperator! app, List<VCExpr!>! args) {

@@ -1291,6 +1291,7 @@ AtomExpression<out Expr! e>
                                                  e = new ExistsExpr(x, typeParams, ds, kv, trig, e); .)
         )
     ")"
+  | IfThenElseExpression<out e>
   )
   .
 
@@ -1351,6 +1352,15 @@ AttributeParameter<out object! o>
   | Expression<out e>     (. o = e; .)
   )
   .
+
+IfThenElseExpression<out Expr! e>
+= (. IToken! tok;
+     Expr! e0, e1, e2; 
+     e = dummyExpr; .)
+  "if" (. tok = token; .) Expression<out e0> "then" Expression<out e1> "else" Expression<out e2>
+  (. e = new NAryExpr(tok, new IfThenElse(tok), new ExprSeq(e0, e1, e2)); .)
+  .
+
 
 QuantifierBody<IToken! q, out TypeVariableSeq! typeParams, out VariableSeq! ds,
                out QKeyValue kv, out Trigger trig, out Expr! body>

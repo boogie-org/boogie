@@ -140,6 +140,7 @@ namespace Microsoft.Boogie.SMTLib
     internal const string! orName = "or"; // disjunction
     internal const string! notName = "not"; // negation
     internal const string! impliesName = "implies"; // implication
+    internal const string! iteName = "ite"; // if-then-else
     internal const string! iffName = "iff"; // logical equivalence
     internal const string! eqName = "="; // equality
     internal const string! lessName = "<";
@@ -160,6 +161,7 @@ namespace Microsoft.Boogie.SMTLib
     internal const string! boolNotName = "boolNot";
     internal const string! boolIffName = "boolIff";
     internal const string! boolImpliesName = "boolImplies";
+    internal const string! boolIteName = "ite";
     internal const string! termUEqual = "UEqual";
     internal const string! termTEqual = "TEqual";
     internal const string! termIntEqual = "IntEqual";
@@ -516,6 +518,11 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitImpliesOp  (VCExprNAry! node, LineariserOptions! options) {
         WriteApplication(boolImpliesName, impliesName, node, options);
+        return true;
+      }
+
+      public bool VisitIfThenElseOp  (VCExprNAry! node, LineariserOptions! options) {
+        WriteApplication(boolIteName, iteName, node, options);
         return true;
       }
 

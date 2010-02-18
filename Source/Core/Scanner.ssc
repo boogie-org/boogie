@@ -1,8 +1,3 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
 using System;
 using System.IO;
 using System.Collections;
@@ -350,7 +345,7 @@ public class Scanner {
 		start[8804] = 45;
 		start[8805] = 46;
 	}
-	const int noSym = 85;
+	const int noSym = 86;
 	static short[] start = new short[16385];
 
 
@@ -524,7 +519,8 @@ public class Scanner {
 			case "false": t.kind = 77; break;
 			case "true": t.kind = 78; break;
 			case "old": t.kind = 79; break;
-			case "exists": t.kind = 81; break;
+			case "then": t.kind = 80; break;
+			case "exists": t.kind = 82; break;
 			default: break;
 
     }
@@ -672,13 +668,13 @@ public class Scanner {
 			case 52:
 				{t.kind = 76; goto done;}
 			case 53:
-				{t.kind = 80; goto done;}
+				{t.kind = 81; goto done;}
 			case 54:
-				{t.kind = 82; goto done;}
-			case 55:
 				{t.kind = 83; goto done;}
-			case 56:
+			case 55:
 				{t.kind = 84; goto done;}
+			case 56:
+				{t.kind = 85; goto done;}
 			case 57: {t.kind = 0; goto done;}
     }
     done:

@@ -701,6 +701,19 @@ namespace Microsoft.Boogie.VCExprAST
         return true;
       }
 
+      public bool VisitIfThenElseOp (VCExprNAry! node, LineariserOptions! options) {
+        
+        wr.Write("(ITE ");
+        ExprLineariser.Linearise(node[0], options.SetAsTerm(false));
+        wr.Write(" ");
+        ExprLineariser.Linearise(node[1], options);
+        wr.Write(" ");
+        ExprLineariser.Linearise(node[2], options);
+        wr.Write(")");
+
+        return true;
+      }
+
       public bool VisitAddOp            (VCExprNAry! node, LineariserOptions! options) {
         if (CommandLineOptions.Clo.ReflectAdd) {
           WriteTermApplication(intAddNameReflect, node, options);

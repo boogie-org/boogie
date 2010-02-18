@@ -193,6 +193,9 @@ namespace Microsoft.Boogie.VCExprAST
     public bool VisitBvConcatOp (VCExprNAry! node, TextWriter! wr) {
       return PrintNAry("BvConcat", node, wr);
     }
+    public bool VisitIfThenElseOp(VCExprNAry! node, TextWriter! wr) {
+      return PrintNAry("if-then-else", node, wr);
+    }
     public bool VisitAddOp            (VCExprNAry! node, TextWriter! wr) {
       if (CommandLineOptions.Clo.ReflectAdd) {
         return PrintNAry("Reflect$Add", node, wr);

@@ -756,6 +756,12 @@ namespace Microsoft.Boogie.Isabelle
       b2i.Write(child2);
       return true;
     }
+
+    public bool VisitIfThenElseOp(VCExprNAry! node, B2I! b2i)
+    {
+      throw new System.NotImplementedException(); // TODO
+    }
+
     
     public bool VisitHeapSuccessionOp(VCExprNAry! node, B2I! b2i)
     {

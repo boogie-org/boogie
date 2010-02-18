@@ -1016,6 +1016,17 @@ namespace Microsoft.Boogie.TypeErasure
       // (at least for Simplify ... should this be ensured at a later point?)
       return CastArguments(node, Type.Bool, bindings, Eraser.Polarity);
     }
+    public override VCExpr! VisitIfThenElseOp  (VCExprNAry! node, VariableBindings! bindings) {
+      List<VCExpr!>! newArgs = MutateSeq(node, bindings, 0);
+      newArgs[0] = AxBuilder.Cast(newArgs[0], Type.Bool);
+      Type t = node.Type;
+      if (!AxBuilder.UnchangedType(t)) {
+        t = AxBuilder.U;
+      }
+      newArgs[1] = AxBuilder.Cast(newArgs[1], t);
+      newArgs[2] = AxBuilder.Cast(newArgs[2], t);
+      return Gen.Function(node.Op, newArgs);
+    }
     public override VCExpr! VisitAddOp            (VCExprNAry! node, VariableBindings! bindings) {
       return CastArguments(node, Type.Int, bindings, 0);
     }

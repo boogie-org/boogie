@@ -221,6 +221,7 @@ namespace Microsoft.Boogie
     // ternary version of the subtype operator, the first argument of which gives
     // the type of the compared terms
     public static readonly VCExprOp! Subtype3Op       = new VCExprNAryOp (3, Type.Bool);
+    public static readonly VCExprOp! IfThenElseOp     = new VCExprIfThenElseOp();
 
     public VCExprOp! BoogieFunctionOp(Function! func) {
       return new VCExprBoogieFunctionOp(func);
@@ -987,6 +988,34 @@ namespace Microsoft.Boogie.VCExprAST
     public override Result Accept<Result, Arg>
            (VCExprNAry! expr, IVCExprOpVisitor<Result, Arg>! visitor, Arg arg) {
       return visitor.VisitStoreOp(expr, arg);
+    }
+  }
+
+  public class VCExprIfThenElseOp : VCExprOp {
+    public override int Arity { get { return 3; } }
+    public override int TypeParamArity { get { return 0; } }
+    public override Type! InferType(List<VCExpr!>! args, List<Type!>! typeArgs) {
+      return args[1].Type;
+    }
+
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object that) {
+      if (Object.ReferenceEquals(this, that))
+        return true;
+      if (that is VCExprIfThenElseOp)
+        return true;
+      return false;
+    }
+    [Pure]
+    public override int GetHashCode() {
+      return 1;
+    }
+
+    internal VCExprIfThenElseOp() {
+    }
+    public override Result Accept<Result, Arg>
+           (VCExprNAry! expr, IVCExprOpVisitor<Result, Arg>! visitor, Arg arg) {
+      return visitor.VisitIfThenElseOp(expr, arg);
     }
   }
 

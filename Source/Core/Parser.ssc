@@ -1,8 +1,3 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//-----------------------------------------------------------------------------
 using PureCollections;
 using System.Collections;
 using System.Collections.Generic;
@@ -16,7 +11,7 @@ using Microsoft.Contracts;
 namespace BoogiePL {
 
 public class Parser {
-	const int maxT = 85;
+	const int maxT = 86;
 
 	const bool T = true;
 	const bool x = false;
@@ -299,7 +294,7 @@ private class BvBounds : Expr {
 			Get();
 			Type(out retTy);
 			retTyd = new TypedIdent(retTy.tok, "", retTy); 
-		} else Error(86);
+		} else Error(87);
 		if (t.kind == 25) {
 			Get();
 			Expression(out tmp);
@@ -307,7 +302,7 @@ private class BvBounds : Expr {
 			Expect(26);
 		} else if (t.kind == 7) {
 			Get();
-		} else Error(87);
+		} else Error(88);
 		if (retTyd == null) {
 		 // construct a dummy type for the case of syntax error
 		 tyd = new TypedIdent(token, "", new BasicType(token, SimpleType.Int));
@@ -451,7 +446,7 @@ private class BvBounds : Expr {
 			impl = new Implementation(x, x.val, typeParams,
 			                          Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, null); 
 			
-		} else Error(88);
+		} else Error(89);
 		proc = new Procedure(x, x.val, typeParams, ins, outs, pre, mods, post, kv); 
 	}
 
@@ -555,7 +550,7 @@ private class BvBounds : Expr {
 			ty = new UnresolvedTypeIdentifier (tok, tok.val, args); 
 		} else if (t.kind == 15 || t.kind == 17) {
 			MapType(out ty);
-		} else Error(89);
+		} else Error(90);
 	}
 
 	static void IdsTypeWhere(bool allowWhereClauses, TypedIdentSeq! tyds) {
@@ -602,7 +597,7 @@ private class BvBounds : Expr {
 			Get();
 			Type(out ty);
 			Expect(9);
-		} else Error(90);
+		} else Error(91);
 	}
 
 	static void Ident(out IToken! x) {
@@ -631,7 +626,7 @@ private class BvBounds : Expr {
 		} else if (t.kind == 15 || t.kind == 17) {
 			MapType(out ty);
 			ts.Add(ty); 
-		} else Error(91);
+		} else Error(92);
 	}
 
 	static void MapType(out Bpl.Type! ty) {
@@ -803,7 +798,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			SpecPrePost(true, pre, post);
 		} else if (t.kind == 34 || t.kind == 35) {
 			SpecPrePost(false, pre, post);
-		} else Error(92);
+		} else Error(93);
 	}
 
 	static void ImplBody(out VariableSeq! locals, out StmtList! stmtList) {
@@ -831,7 +826,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 				SpecBody(out locals, out blocks);
 				Expect(7);
 				pre.Add(new Requires(tok, free, new BlockExpr(locals, blocks), null, kv)); 
-			} else Error(93);
+			} else Error(94);
 		} else if (t.kind == 35) {
 			Get();
 			tok = token; 
@@ -846,8 +841,8 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 				SpecBody(out locals, out blocks);
 				Expect(7);
 				post.Add(new Ensures(tok, free, new BlockExpr(locals, blocks), null, kv)); 
-			} else Error(94);
-		} else Error(95);
+			} else Error(95);
+		} else Error(96);
 	}
 
 	static void SpecBody(out VariableSeq! locals, out BlockSeq! blocks) {
@@ -898,7 +893,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			Get();
 			Expression(out e);
 			b = new Block(x,x.val,cs,new ReturnExprCmd(token,e)); 
-		} else Error(96);
+		} else Error(97);
 		Expect(7);
 	}
 
@@ -942,7 +937,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			CallCmd(out cn);
 			Expect(7);
 			c = cn; 
-		} else Error(97);
+		} else Error(98);
 	}
 
 	static void StmtList(out StmtList! stmtList) {
@@ -1026,7 +1021,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		} else if (t.kind == 45) {
 			BreakCmd(out bcmd);
 			ec = bcmd; 
-		} else Error(98);
+		} else Error(99);
 	}
 
 	static void TransferCmd(out TransferCmd! tc) {
@@ -1044,7 +1039,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		} else if (t.kind == 39) {
 			Get();
 			tc = new ReturnCmd(token); 
-		} else Error(99);
+		} else Error(100);
 		Expect(7);
 	}
 
@@ -1069,7 +1064,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 				Get();
 				StmtList(out els);
 				elseOption = els; 
-			} else Error(100);
+			} else Error(101);
 		}
 		ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption); 
 	}
@@ -1128,7 +1123,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		} else if (StartOf(5)) {
 			Expression(out ee);
 			e = ee; 
-		} else Error(101);
+		} else Error(102);
 		Expect(9);
 	}
 
@@ -1166,7 +1161,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			}
 			Expect(7);
 			c = new AssignCmd(x, lhss, rhss); 
-		} else Error(102);
+		} else Error(103);
 	}
 
 	static void CallCmd(out Cmd! c) {
@@ -1229,7 +1224,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 				}
 				Expect(9);
 				c = new CallCmd(x, first.val, es, ids); 
-			} else Error(103);
+			} else Error(104);
 		} else if (t.kind == 51) {
 			Get();
 			Ident(out first);
@@ -1283,7 +1278,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			}
 			Expect(9);
 			c = new CallCmd(x, first.val, es, ids); 
-		} else Error(104);
+		} else Error(105);
 	}
 
 	static void MapAssignIndexes(IToken! assignedVariable, out AssignLhs! lhs) {
@@ -1323,7 +1318,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		} else if (StartOf(5)) {
 			Expression(out e);
 			exprOptional = e; 
-		} else Error(105);
+		} else Error(106);
 	}
 
 	static void CallOutIdent(out IToken id) {
@@ -1335,7 +1330,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		} else if (t.kind == 1) {
 			Ident(out p);
 			id = p; 
-		} else Error(106);
+		} else Error(107);
 	}
 
 	static void Expressions(out ExprSeq! es) {
@@ -1380,7 +1375,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			Get();
 		} else if (t.kind == 53) {
 			Get();
-		} else Error(107);
+		} else Error(108);
 	}
 
 	static void LogicalExpression(out Expr! e0) {
@@ -1418,7 +1413,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			Get();
 		} else if (t.kind == 55) {
 			Get();
-		} else Error(108);
+		} else Error(109);
 	}
 
 	static void ExpliesOp() {
@@ -1426,7 +1421,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			Get();
 		} else if (t.kind == 57) {
 			Get();
-		} else Error(109);
+		} else Error(110);
 	}
 
 	static void RelationalExpression(out Expr! e0) {
@@ -1444,7 +1439,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			Get();
 		} else if (t.kind == 59) {
 			Get();
-		} else Error(110);
+		} else Error(111);
 	}
 
 	static void OrOp() {
@@ -1452,7 +1447,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			Get();
 		} else if (t.kind == 61) {
 			Get();
-		} else Error(111);
+		} else Error(112);
 	}
 
 	static void BvTerm(out Expr! e0) {
@@ -1519,7 +1514,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			x = token; op=BinaryOperator.Opcode.Ge; 
 			break;
 		}
-		default: Error(112); break;
+		default: Error(113); break;
 		}
 	}
 
@@ -1551,7 +1546,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		} else if (t.kind == 72) {
 			Get();
 			x = token; op=BinaryOperator.Opcode.Sub; 
-		} else Error(113);
+		} else Error(114);
 	}
 
 	static void UnaryExpression(out Expr! e) {
@@ -1570,7 +1565,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			e = Expr.Unary(x, UnaryOperator.Opcode.Not, e); 
 		} else if (StartOf(12)) {
 			CoercionExpression(out e);
-		} else Error(114);
+		} else Error(115);
 	}
 
 	static void MulOp(out IToken! x, out BinaryOperator.Opcode op) {
@@ -1584,7 +1579,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		} else if (t.kind == 74) {
 			Get();
 			x = token; op=BinaryOperator.Opcode.Mod; 
-		} else Error(115);
+		} else Error(116);
 	}
 
 	static void NegOp() {
@@ -1592,7 +1587,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			Get();
 		} else if (t.kind == 76) {
 			Get();
-		} else Error(116);
+		} else Error(117);
 	}
 
 	static void CoercionExpression(out Expr! e) {
@@ -1616,7 +1611,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 				  e = new BvBounds(x, bn, ((LiteralExpr)e).asBigNum);
 				}
 				
-			} else Error(117);
+			} else Error(118);
 		}
 	}
 
@@ -1726,7 +1721,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 					e = new NAryExpr(x, new FunctionCall(id), es); 
 				} else if (t.kind == 9) {
 					e = new NAryExpr(x, new FunctionCall(id), new ExprSeq()); 
-				} else Error(118);
+				} else Error(119);
 				Expect(9);
 			}
 			break;
@@ -1747,23 +1742,27 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 				if (e is BvBounds)
 				 SemErr("parentheses around bitvector bounds " +
 				        "are not allowed"); 
-			} else if (t.kind == 51 || t.kind == 80) {
+			} else if (t.kind == 51 || t.kind == 81) {
 				Forall();
 				x = token; 
 				QuantifierBody(x, out typeParams, out ds, out kv, out trig, out e);
 				if (typeParams.Length + ds.Length > 0)
 				 e = new ForallExpr(x, typeParams, ds, kv, trig, e); 
-			} else if (t.kind == 81 || t.kind == 82) {
+			} else if (t.kind == 82 || t.kind == 83) {
 				Exists();
 				x = token; 
 				QuantifierBody(x, out typeParams, out ds, out kv, out trig, out e);
 				if (typeParams.Length + ds.Length > 0)
 				 e = new ExistsExpr(x, typeParams, ds, kv, trig, e); 
-			} else Error(119);
+			} else Error(120);
 			Expect(9);
 			break;
 		}
-		default: Error(120); break;
+		case 40: {
+			IfThenElseExpression(out e);
+			break;
+		}
+		default: Error(121); break;
 		}
 	}
 
@@ -1786,9 +1785,9 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 	static void Forall() {
 		if (t.kind == 51) {
 			Get();
-		} else if (t.kind == 80) {
+		} else if (t.kind == 81) {
 			Get();
-		} else Error(121);
+		} else Error(122);
 	}
 
 	static void QuantifierBody(IToken! q, out TypeVariableSeq! typeParams, out VariableSeq! ds,
@@ -1805,7 +1804,7 @@ out QKeyValue kv, out Trigger trig, out Expr! body) {
 			}
 		} else if (t.kind == 1) {
 			BoundVars(q, out ds);
-		} else Error(122);
+		} else Error(123);
 		QSep();
 		while (t.kind == 25) {
 			AttributeOrTrigger(ref kv, ref trig);
@@ -1814,11 +1813,25 @@ out QKeyValue kv, out Trigger trig, out Expr! body) {
 	}
 
 	static void Exists() {
-		if (t.kind == 81) {
+		if (t.kind == 82) {
 			Get();
-		} else if (t.kind == 82) {
+		} else if (t.kind == 83) {
 			Get();
-		} else Error(123);
+		} else Error(124);
+	}
+
+	static void IfThenElseExpression(out Expr! e) {
+		IToken! tok;
+		Expr! e0, e1, e2; 
+		e = dummyExpr; 
+		Expect(40);
+		tok = token; 
+		Expression(out e0);
+		Expect(80);
+		Expression(out e1);
+		Expect(41);
+		Expression(out e2);
+		e = new NAryExpr(tok, new IfThenElse(tok), new ExprSeq(e0, e1, e2)); 
 	}
 
 	static void AttributeOrTrigger(ref QKeyValue kv, ref Trigger trig) {
@@ -1874,7 +1887,7 @@ out QKeyValue kv, out Trigger trig, out Expr! body) {
 			  trig.AddLast(new Trigger(tok, true, es, null));
 			}
 			
-		} else Error(124);
+		} else Error(125);
 		Expect(26);
 	}
 
@@ -1888,15 +1901,15 @@ out QKeyValue kv, out Trigger trig, out Expr! body) {
 		} else if (StartOf(5)) {
 			Expression(out e);
 			o = e; 
-		} else Error(125);
+		} else Error(126);
 	}
 
 	static void QSep() {
-		if (t.kind == 83) {
+		if (t.kind == 84) {
 			Get();
-		} else if (t.kind == 84) {
+		} else if (t.kind == 85) {
 			Get();
-		} else Error(126);
+		} else Error(127);
 	}
 
 
@@ -1995,53 +2008,54 @@ out QKeyValue kv, out Trigger trig, out Expr! body) {
 			case 77: s = "false expected"; break;
 			case 78: s = "true expected"; break;
 			case 79: s = "old expected"; break;
-			case 80: s = "\\u2200 expected"; break;
-			case 81: s = "exists expected"; break;
-			case 82: s = "\\u2203 expected"; break;
-			case 83: s = ":: expected"; break;
-			case 84: s = "\\u2022 expected"; break;
-			case 85: s = "??? expected"; break;
-			case 86: s = "invalid Function"; break;
+			case 80: s = "then expected"; break;
+			case 81: s = "\\u2200 expected"; break;
+			case 82: s = "exists expected"; break;
+			case 83: s = "\\u2203 expected"; break;
+			case 84: s = ":: expected"; break;
+			case 85: s = "\\u2022 expected"; break;
+			case 86: s = "??? expected"; break;
 			case 87: s = "invalid Function"; break;
-			case 88: s = "invalid Procedure"; break;
-			case 89: s = "invalid Type"; break;
-			case 90: s = "invalid TypeAtom"; break;
-			case 91: s = "invalid TypeArgs"; break;
-			case 92: s = "invalid Spec"; break;
-			case 93: s = "invalid SpecPrePost"; break;
+			case 88: s = "invalid Function"; break;
+			case 89: s = "invalid Procedure"; break;
+			case 90: s = "invalid Type"; break;
+			case 91: s = "invalid TypeAtom"; break;
+			case 92: s = "invalid TypeArgs"; break;
+			case 93: s = "invalid Spec"; break;
 			case 94: s = "invalid SpecPrePost"; break;
 			case 95: s = "invalid SpecPrePost"; break;
-			case 96: s = "invalid SpecBlock"; break;
-			case 97: s = "invalid LabelOrCmd"; break;
-			case 98: s = "invalid StructuredCmd"; break;
-			case 99: s = "invalid TransferCmd"; break;
-			case 100: s = "invalid IfCmd"; break;
-			case 101: s = "invalid Guard"; break;
-			case 102: s = "invalid LabelOrAssign"; break;
-			case 103: s = "invalid CallCmd"; break;
+			case 96: s = "invalid SpecPrePost"; break;
+			case 97: s = "invalid SpecBlock"; break;
+			case 98: s = "invalid LabelOrCmd"; break;
+			case 99: s = "invalid StructuredCmd"; break;
+			case 100: s = "invalid TransferCmd"; break;
+			case 101: s = "invalid IfCmd"; break;
+			case 102: s = "invalid Guard"; break;
+			case 103: s = "invalid LabelOrAssign"; break;
 			case 104: s = "invalid CallCmd"; break;
-			case 105: s = "invalid CallForallArg"; break;
-			case 106: s = "invalid CallOutIdent"; break;
-			case 107: s = "invalid EquivOp"; break;
-			case 108: s = "invalid ImpliesOp"; break;
-			case 109: s = "invalid ExpliesOp"; break;
-			case 110: s = "invalid AndOp"; break;
-			case 111: s = "invalid OrOp"; break;
-			case 112: s = "invalid RelOp"; break;
-			case 113: s = "invalid AddOp"; break;
-			case 114: s = "invalid UnaryExpression"; break;
-			case 115: s = "invalid MulOp"; break;
-			case 116: s = "invalid NegOp"; break;
-			case 117: s = "invalid CoercionExpression"; break;
-			case 118: s = "invalid AtomExpression"; break;
+			case 105: s = "invalid CallCmd"; break;
+			case 106: s = "invalid CallForallArg"; break;
+			case 107: s = "invalid CallOutIdent"; break;
+			case 108: s = "invalid EquivOp"; break;
+			case 109: s = "invalid ImpliesOp"; break;
+			case 110: s = "invalid ExpliesOp"; break;
+			case 111: s = "invalid AndOp"; break;
+			case 112: s = "invalid OrOp"; break;
+			case 113: s = "invalid RelOp"; break;
+			case 114: s = "invalid AddOp"; break;
+			case 115: s = "invalid UnaryExpression"; break;
+			case 116: s = "invalid MulOp"; break;
+			case 117: s = "invalid NegOp"; break;
+			case 118: s = "invalid CoercionExpression"; break;
 			case 119: s = "invalid AtomExpression"; break;
 			case 120: s = "invalid AtomExpression"; break;
-			case 121: s = "invalid Forall"; break;
-			case 122: s = "invalid QuantifierBody"; break;
-			case 123: s = "invalid Exists"; break;
-			case 124: s = "invalid AttributeOrTrigger"; break;
-			case 125: s = "invalid AttributeParameter"; break;
-			case 126: s = "invalid QSep"; break;
+			case 121: s = "invalid AtomExpression"; break;
+			case 122: s = "invalid Forall"; break;
+			case 123: s = "invalid QuantifierBody"; break;
+			case 124: s = "invalid Exists"; break;
+			case 125: s = "invalid AttributeOrTrigger"; break;
+			case 126: s = "invalid AttributeParameter"; break;
+			case 127: s = "invalid QSep"; break;
 
 			default: s = "error " + n; break;
 		}
@@ -2049,21 +2063,21 @@ out QKeyValue kv, out Trigger trig, out Expr! body) {
 	}
 
 	static bool[,]! set = {
-	{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-	{x,x,x,x, x,x,T,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,T, x,x,x,T, T,x,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-	{x,T,x,x, x,x,x,x, T,x,x,x, x,T,T,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-	{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-	{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-	{x,T,T,T, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,T, T,T,T,T, x,x,x,x, x,x,x},
-	{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,x,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-	{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,x,T,x, x,T,T,T, T,x,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-	{x,T,T,T, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,T, T,T,T,T, x,x,x,x, x,x,x},
-	{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-	{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-	{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,T,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-	{x,T,T,T, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,T,T, x,x,x,x, x,x,x},
-	{x,T,T,T, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,T, T,T,T,T, x,x,x,x, x,x,x},
-	{x,T,T,T, T,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,T, T,T,T,T, x,x,x,x, x,x,x}
+	{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+	{x,x,x,x, x,x,T,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,T, x,x,x,T, T,x,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+	{x,T,x,x, x,x,x,x, T,x,x,x, x,T,T,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+	{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+	{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+	{x,T,T,T, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,T, T,T,T,T, x,x,x,x, x,x,x,x},
+	{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,x,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+	{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,x,T,x, x,T,T,T, T,x,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+	{x,T,T,T, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,T, T,T,T,T, x,x,x,x, x,x,x,x},
+	{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+	{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+	{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,T,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+	{x,T,T,T, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,T,T, x,x,x,x, x,x,x,x},
+	{x,T,T,T, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,T, T,T,T,T, x,x,x,x, x,x,x,x},
+	{x,T,T,T, T,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,T, T,T,T,T, x,x,x,x, x,x,x,x}
 
 	};
 

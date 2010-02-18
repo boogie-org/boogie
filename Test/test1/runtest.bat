@@ -17,3 +17,4 @@ rem set BGEXE=mono ..\..\Binaries\Boogie.exe
 %BGEXE% %* /noVerify Orderings.bpl
 %BGEXE% %* /noVerify EmptyCallArgs.bpl
 %BGEXE% %* /noVerify FunBody.bpl
+%BGEXE% %* /noVerify IfThenElse0.bpl

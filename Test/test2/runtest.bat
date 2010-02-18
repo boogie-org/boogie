@@ -10,7 +10,8 @@ for %%f in (FormulaTerm.bpl FormulaTerm2.bpl Passification.bpl B.bpl
             CutBackEdge.bpl False.bpl LoopInvAssume.bpl
             strings-no-where.bpl strings-where.bpl
             Structured.bpl Where.bpl UpdateExpr.bpl
-            NeverPattern.bpl NullaryMaps.bpl Implies.bpl) do (
+            NeverPattern.bpl NullaryMaps.bpl Implies.bpl
+	    IfThenElse1.bpl) do (
   echo.
   echo -------------------- %%f --------------------
   %BGEXE% %* /noinfer %%f
