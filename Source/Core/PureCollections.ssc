@@ -80,7 +80,7 @@ namespace PureCollections {
     [Pure][Reads(ReadsAttribute.Reads.Nothing)]  // ugh, is this right?  --KRML
     public static bool operator != (Tuple s, Tuple t) { return ! (t == s); }
 
-    [Pure][Reads(ReadsAttribute.Reads.Owned)] 
+    [Pure]
     public override int GetHashCode (){
       int h =0;
       assume this.elems != null;
@@ -120,7 +120,7 @@ namespace PureCollections {
     }
     
     //ToString - - - -  - - - - - - - - - - - - - - - - - - - - - - - -
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public override string! ToString() {
       assert this.elems != null; 
       if (elems.Length==0)
@@ -165,7 +165,7 @@ namespace PureCollections {
       } while (index < map.elems.Length && map.elems[index] == null);
       return index < map.elems.Length;
     }
-    public object Current{ [Pure][Reads(ReadsAttribute.Reads.Owned)] get {assert map.elems != null; return new Pair(map.elems[index],map.vals[index]); }}
+    public object Current{ get { assert map.elems != null; return new Pair(map.elems[index],map.vals[index]); }}
     public void Reset() {index = -1; }
   }
   
@@ -281,7 +281,7 @@ namespace PureCollections {
     }
 
     //ToString - - - - - - - - - - - - - - - - - - - - - - - - -
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public override string! ToString() {
       if (card ==0)
         return "{|->}";
@@ -351,7 +351,7 @@ namespace PureCollections {
     public static bool operator != (Map s, Map t){ 
       return ! (t == s); 
     }
-    [Pure][Reads(ReadsAttribute.Reads.Owned)] 
+    [Pure]
     public override int GetHashCode (){
       int h =0;
       assert this.elems != null;
@@ -368,7 +368,7 @@ namespace PureCollections {
  
     //Ordinary map operations- - - - - - - - - - - - - - - - - - - - - - - - 
    
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public bool Has(Object x) {      
       if (x == null) 
         throw new MissingCase();      
@@ -427,7 +427,7 @@ namespace PureCollections {
       //while (index < seq.elems.Length); // Sequences allow nils ... && seq.elems[index] == null);
       return index < seq.Length;
     }
-    public object Current{ [Pure][Reads(ReadsAttribute.Reads.Owned)] get {assert seq.elems != null; return seq.elems[index]; }}
+    public object Current{ get { assert seq.elems != null; return seq.elems[index]; }}
     public void Reset() {index = -1; }
   }
   
@@ -546,7 +546,7 @@ namespace PureCollections {
     }
 
     //ToString - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public override string! ToString() {
       string s ="";
       assert this.elems != null; 
@@ -596,7 +596,7 @@ namespace PureCollections {
     public static bool operator != (Sequence s, Sequence t){ 
       return !(s == t); 
     }
-    [Pure][Reads(ReadsAttribute.Reads.Owned)] 
+    [Pure]
     public override int GetHashCode (){
       int h = 0;
       for(int i = 0; i < card; i++)
@@ -645,7 +645,7 @@ namespace PureCollections {
     public static bool operator >= (Sequence s, Sequence t){ return t <= s;}
 
     //pure---------------------------------------------------------------
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public bool Has(object x) {         // WS translate to tailrecursion 
       if (x == null)
         throw new MissingCase();
@@ -658,7 +658,7 @@ namespace PureCollections {
 
     // the index of the first occurrence of x in this sequence,
     // or -1 if x does not occur
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public int IndexOf(object x) {
       if (x == null)
         throw new MissingCase();
@@ -671,7 +671,7 @@ namespace PureCollections {
 
     // the index of the last occurrence of x in this sequence,
     // or -1 if x does not occur
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public int LastIndexOf(object x) {
       if (x == null)
         throw new MissingCase();

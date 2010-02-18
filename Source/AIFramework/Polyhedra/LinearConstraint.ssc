@@ -36,7 +36,7 @@ namespace Microsoft.AbstractInterpretationFramework
             Relation = rel;
         }
 
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public override string! ToString() 
         {
             string s = null;
@@ -501,7 +501,7 @@ namespace Microsoft.AbstractInterpretationFramework
             terms.Add(dimension, value);
         }
 
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public override string! ToString() 
         {
             string s = null;

@@ -15,17 +15,19 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
   public class CallSite
   {
-    public Implementation! Impl;
-    public Block! Block;
-    public int Statement; // invariant: Block[Statement] is CallCmd
-    public AI.Lattice.Element! KnownBeforeCall;
+    public readonly Implementation! Impl;
+    public readonly Block! Block;
+    public readonly int Statement; // invariant: Block[Statement] is CallCmd
+    public readonly AI.Lattice.Element! KnownBeforeCall;
+    public readonly ProcedureSummaryEntry! SummaryEntry;
 
-    public CallSite (Implementation! impl, Block! b, int stmt, AI.Lattice.Element! e)
+    public CallSite (Implementation! impl, Block! b, int stmt, AI.Lattice.Element! e, ProcedureSummaryEntry! summaryEntry)
     {
       this.Impl = impl;
       this.Block = b;
       this.Statement = stmt;
       this.KnownBeforeCall = e;
+      this.SummaryEntry = summaryEntry;
     }
   }
 
@@ -532,7 +534,7 @@ namespace Microsoft.Boogie
       this.name = name;
       // base(tok);
     }
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public override string! ToString()
     {
       return (!) Name;
@@ -775,7 +777,7 @@ namespace Microsoft.Boogie
       TypecheckAttributes(tc);
       this.TypedIdent.Typecheck(tc);
     }
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public object DoVisit(AI.ExprVisitor! visitor)
     {
       return visitor.VisitVariable(this);
@@ -1496,8 +1498,6 @@ namespace Microsoft.Boogie
     [Rep]
     public readonly ProcedureSummary! Summary;
 
-    public static bool ShowSummaries = false;
-
     public Procedure (
       IToken! tok, 
       string! name, 
@@ -1559,9 +1559,9 @@ namespace Microsoft.Boogie
         e.Emit(stream, level);
       }
 
-      if (ShowSummaries)
+      if (!CommandLineOptions.Clo.IntraproceduralInfer)
       {
-        for (int s=0; s<this.Summary.Count; s++)
+        for (int s=0; s < this.Summary.Count; s++)
         {
           ProcedureSummaryEntry! entry = (!) this.Summary[s];
           stream.Write(level + 1, "// ");

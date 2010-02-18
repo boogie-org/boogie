@@ -91,7 +91,7 @@ internal class DomRelation<Node>{
     return false;
   }
   private Dictionary<Node,List<Node>>? domMap = null;
-  [Pure][Reads(ReadsAttribute.Reads.Owned)]
+  [Pure]
   public override string ToString(){
     assume this.doms != null;
     int[] localDoms = this.doms;
@@ -269,7 +269,7 @@ public class Graph<Node> {
     Node! myHeader;
     internal PreHeader(Node! h) { myHeader = h; }
 
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]  
+    [Pure]
     public override string! ToString() { return "#" + myHeader.ToString(); }
   }
 
@@ -295,7 +295,7 @@ public class Graph<Node> {
   { es = new Set<Pair<Node!,Node!>>(); ns = new Set<Node>(); } 
 
   // BUGBUG: Set<T>.ToString() should return a non-null string
-  [Pure][Reads(ReadsAttribute.Reads.Owned)]
+  [Pure]
   public override string! ToString() { return "" + es.ToString(); }
 
   public void AddSource(Node! x)

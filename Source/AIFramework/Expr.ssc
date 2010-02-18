@@ -35,7 +35,7 @@ namespace Microsoft.AbstractInterpretationFramework
         /// </summary>
         /// <param name="visitor">The expression visitor.</param>
         /// <returns>The result of the visit.</returns>
-        [Pure][Reads(ReadsAttribute.Reads.Owned)] object DoVisit(ExprVisitor! visitor);
+        [Pure] object DoVisit(ExprVisitor! visitor);
 
         // TODO: Type checking of the expressions.
     }
@@ -57,10 +57,10 @@ namespace Microsoft.AbstractInterpretationFramework
     /// </summary>
     public interface IFunApp : IExpr
     {
-        IFunctionSymbol! FunctionSymbol { [Pure][Reads(ReadsAttribute.Reads.Owned)] get; }
+        IFunctionSymbol! FunctionSymbol { get; }
         IList/*<IExpr!>*/! Arguments
         {
-            [Pure][Reads(ReadsAttribute.Reads.Owned)][Rep] get
+            [Pure][Rep] get
             ensures result.IsReadOnly;
             ;
         }
@@ -82,9 +82,9 @@ namespace Microsoft.AbstractInterpretationFramework
     /// </summary>
     public interface IFunction : IExpr
     {
-        IVariable! Param { [Pure][Reads(ReadsAttribute.Reads.Owned)] get; }
-        AIType! ParamType { [Pure][Reads(ReadsAttribute.Reads.Owned)] get; }
-        IExpr! Body { [Pure][Reads(ReadsAttribute.Reads.Owned)] get; }
+        IVariable! Param { get; }
+        AIType! ParamType { get; }
+        IExpr! Body { get; }
 
         IFunction! CloneWithBody(IExpr! body);
     }
@@ -307,7 +307,7 @@ namespace Microsoft.AbstractInterpretationFramework
     /// </summary>
     public interface IFunctionSymbol
     {
-        AIType! AIType { [Pure][Reads(ReadsAttribute.Reads.Owned)][Rep][ResultNotNewlyAllocated]
+        AIType! AIType { [Rep][ResultNotNewlyAllocated]
                          get; }
     }
 
@@ -354,7 +354,7 @@ namespace Microsoft.AbstractInterpretationFramework
 
         public IList/*<AIType!>*/! Arguments
         {
-            [Pure][Reads(ReadsAttribute.Reads.Owned)][Rep]
+            [Pure][Rep]
             get 
               ensures result.IsReadOnly;
             {
@@ -364,12 +364,12 @@ namespace Microsoft.AbstractInterpretationFramework
 
         public int Arity
         {
-            [Pure][Reads(ReadsAttribute.Reads.Owned)] get { return argTypes.Count; }
+            get { return argTypes.Count; }
         }
 
         public AIType! ReturnType
         {
-            [Pure][Reads(ReadsAttribute.Reads.Owned)] get { return retType; }
+            get { return retType; }
         }
 
         /* TODO Do we have the invariant that two functions are equal iff they're the same object.

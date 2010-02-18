@@ -34,7 +34,7 @@ namespace Boogie.Util {
       b.Flush();
     }
 
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public override string! ToString() {
       return "<TeeWriter: " + a.ToString() + ", " + b.ToString() + ">";
     }

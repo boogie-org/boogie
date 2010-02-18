@@ -18,10 +18,9 @@ namespace Microsoft.AbstractInterpretationFramework.Collections
         // Without it, the contract inheritance rules will complain since it
         // has nowhere to attach the out-of-band contract it gets from
         // ICollection.Count that it gets from IWorkList.
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
         public override int Count { get { return base.Count; } }
 
-        [Pure][Reads(ReadsAttribute.Reads.Owned)] public bool IsEmpty()
+        [Pure] public bool IsEmpty()
         {
             return Count == 0;
         }

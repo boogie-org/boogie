@@ -33,7 +33,7 @@ namespace Microsoft.Boogie
     public bool IsReadOnly { get { return nodesMap.IsReadOnly; } }
     public void Add(Node item) { nodesMap.Add(item,null); }
     public void Clear() { nodesMap.Clear(); }
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public bool Contains(Node item) { return nodesMap.ContainsKey(item); }
     public void CopyTo(Node[]! array, int arrayIndex) { nodes.CopyTo(array, arrayIndex); }
     public bool Remove(Node item) { return nodesMap.Remove(item); }
@@ -148,7 +148,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public override string! ToString()
     {
       string outStr = "";

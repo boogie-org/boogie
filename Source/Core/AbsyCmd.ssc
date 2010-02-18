@@ -775,7 +775,7 @@ namespace Microsoft.Boogie
       this.PostInvariant = null;
     }
 
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public override string! ToString()
     {
       return this.Label + (this.widenBlock? "[w]" : "");

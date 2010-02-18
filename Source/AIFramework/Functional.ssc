@@ -28,7 +28,7 @@ namespace Microsoft.AbstractInterpretationFramework.Collections
         /// <returns>true if the <see cref="T:Microsoft.AbstractInterpretationFramework.Collections.IFunctionalMap" /> contains an element with the key; otherwise, false.</returns>
         /// <param name="key">The key to locate in the <see cref="T:Microsoft.AbstractInterpretationFramework.Collections.IFunctionalMap" />. </param>
         /// <filterpriority>2</filterpriority>
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         bool Contains(object! key);
 
         /// <summary>Returns an <see cref="T:System.Collections.IDictionaryEnumerator" /> for the <see cref="T:Microsoft.AbstractInterpretationFramework.Collections.IFunctionalMap" />.</summary>
@@ -106,7 +106,7 @@ namespace Microsoft.AbstractInterpretationFramework.Collections
             return new FunctionalHashtable(r);
         }
 
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public bool Contains(object! key)
         {
             return h.Contains(key);

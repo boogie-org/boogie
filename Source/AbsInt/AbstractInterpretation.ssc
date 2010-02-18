@@ -55,7 +55,6 @@ namespace Microsoft.Boogie.AbstractInterpretation
       this.lattice = lattice; 
       this.procWorkItems = new Queue<ProcedureWorkItem!>();
       this.callReturnWorkItems = new Queue();
-      //      base();
     }
 
     private Cci.IGraphNavigator ComputeCallGraph (Program! program)
@@ -198,17 +197,17 @@ namespace Microsoft.Boogie.AbstractInterpretation
       // where the notation i' means a variable with the same (string) name as i, 
       // but a different identity.
 
-      AI.Lattice.Element! releventToCall = knownAtCallSite;
+      AI.Lattice.Element! relevantToCall = knownAtCallSite;
       for (int i=0; i<proc.InParams.Length; i++)
       {
         // "Assign" the actual expressions to the corresponding formal variables.
         assume proc.InParams[i] != null;  //PM: this can be fixed once VariableSeq is replaced by List<Variable!>;
         assume call.Ins[i] != null;       //PM: this can be fixed once VariableSeq is replaced by List<Variable!>;
         Expr equality = Expr.Eq(Expr.Ident( (!) proc.InParams[i]), (!) call.Ins[i]);
-        releventToCall = lattice.Constrain(releventToCall, equality.IExpr);
+        relevantToCall = lattice.Constrain(relevantToCall, equality.IExpr);
       }
       foreach (Variable! var in caller.LocVars) {
-          releventToCall = this.lattice.Eliminate(releventToCall, var);
+          relevantToCall = this.lattice.Eliminate(relevantToCall, var);
       }
 
       ProcedureSummary! summary = proc.Summary;
@@ -218,7 +217,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       {
         ProcedureSummaryEntry! current = (!) summary[i];
 
-        if (lattice.Equivalent(current.OnEntry, releventToCall))
+        if (lattice.Equivalent(current.OnEntry, relevantToCall))
         {
           applicableEntry = current;
           break;
@@ -228,7 +227,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       // Not found in current map, so add new entry.
       if (applicableEntry == null)
       {
-        ProcedureWorkItem! newWorkItem = new ProcedureWorkItem(proc, releventToCall, lattice);
+        ProcedureWorkItem! newWorkItem = new ProcedureWorkItem(proc, relevantToCall, lattice);
         this.procWorkItems.Enqueue(newWorkItem);
         applicableEntry = (!)  proc.Summary[newWorkItem.Index];
       }
@@ -351,48 +350,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
             {
               // process each procedure implementation by recursively processing the first (entry) block...
               ((!)impl.Blocks[0]).Lattice = lattice;
-              ComputeBlockInvariants(impl, (!) impl.Blocks[0], summaryEntry.OnEntry);
-
-              if (!CommandLineOptions.Clo.IntraproceduralInfer)
-              {
-                // compute the procedure invariant by joining all terminal block invariants...
-                AI.Lattice.Element post = lattice.Bottom;
-                foreach (Block block in impl.Blocks) 
-                {
-                  if (block.TransferCmd is ReturnCmd) 
-                  {                 
-                    // note: if program control cannot reach this block, then postValue will be null
-                    if (block.PostInvariant != null) 
-                    {
-                      post = (AI.Lattice.Element) lattice.Join(post, block.PostInvariant);
-                    }
-                  }
-                }
-
-                AI.Lattice.Element atReturn = post;
-                foreach (Variable! var in impl.LocVars) 
-                {
-                    atReturn = this.lattice.Eliminate(atReturn, var);
-                }
-                foreach (Variable! var in impl.InParams) 
-                {
-                    atReturn = this.lattice.Eliminate(atReturn, var);
-                }
-
-                if ( ! this.lattice.LowerThan(atReturn, summaryEntry.OnExit))
-                {
-                  // If the results of this analysis are strictly worse than
-                  // what we previous knew for the same input assumptions,
-                  // update the summary and re-do the call sites.
-
-                  summaryEntry.OnExit = this.lattice.Join(summaryEntry.OnExit, atReturn);
-
-                  foreach (CallSite callSite in summaryEntry.ReturnPoints)
-                  {
-                    this.callReturnWorkItems.Enqueue(callSite);
-                  }
-                }
-              }
+              ComputeBlockInvariants(impl, (!) impl.Blocks[0], summaryEntry.OnEntry, summaryEntry);
+              AdjustProcedureSummary(impl, summaryEntry);
             }
           }
         }
@@ -402,12 +361,57 @@ namespace Microsoft.Boogie.AbstractInterpretation
         {
           CallSite callSite = (CallSite!) this.callReturnWorkItems.Dequeue();
 
-          PropagateStartingAtStatement( callSite.Impl, callSite.Block, callSite.Statement, callSite.KnownBeforeCall);
+          PropagateStartingAtStatement(callSite.Impl, callSite.Block, callSite.Statement, callSite.KnownBeforeCall, callSite.SummaryEntry);
+          AdjustProcedureSummary(callSite.Impl, callSite.SummaryEntry);
         }
-
 
       } // both queues
 
+    }
+    
+    void AdjustProcedureSummary(Implementation! impl, ProcedureSummaryEntry! summaryEntry)
+    {
+      if (CommandLineOptions.Clo.IntraproceduralInfer) {
+        return;  // no summary to adjust
+      }
+
+      // compute the procedure invariant by joining all terminal block invariants...
+      AI.Lattice.Element post = lattice.Bottom;
+      foreach (Block block in impl.Blocks) 
+      {
+        if (block.TransferCmd is ReturnCmd) 
+        {                 
+          // note: if program control cannot reach this block, then postValue will be null
+          if (block.PostInvariant != null) 
+          {
+            post = (AI.Lattice.Element) lattice.Join(post, block.PostInvariant);
+          }
+        }
+      }
+
+      AI.Lattice.Element atReturn = post;
+      foreach (Variable! var in impl.LocVars) 
+      {
+          atReturn = this.lattice.Eliminate(atReturn, var);
+      }
+      foreach (Variable! var in impl.InParams) 
+      {
+          atReturn = this.lattice.Eliminate(atReturn, var);
+      }
+
+      if ( ! this.lattice.LowerThan(atReturn, summaryEntry.OnExit))
+      {
+        // If the results of this analysis are strictly worse than
+        // what we previous knew for the same input assumptions,
+        // update the summary and re-do the call sites.
+
+        summaryEntry.OnExit = this.lattice.Join(summaryEntry.OnExit, atReturn);
+
+        foreach (CallSite! callSite in summaryEntry.ReturnPoints)
+        {
+          this.callReturnWorkItems.Enqueue(callSite);
+        }
+      }
     }
 
     private static int freshVarId = 0;
@@ -427,7 +431,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// <param name="statementIndex">  </param> 
     /// <param name="currentValue"> The initial value </param>
     /// </summary>
-    private void PropagateStartingAtStatement (Implementation! impl, Block! block,  int statementIndex, AI.Lattice.Element! currentValue)
+    private void PropagateStartingAtStatement (Implementation! impl, Block! block, int statementIndex, AI.Lattice.Element! currentValue,
+                                               ProcedureSummaryEntry! summaryEntry)
     {
       assume log.IsPeerConsistent;
       log.DbgMsg(string.Format("{0}:", block.Label)); log.DbgMsgIndent();
@@ -439,7 +444,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
         currentValue = Step(cmd, currentValue, impl,      // Apply the transition function
                             delegate (AI.Lattice.Element! currentValue) 
                             {
-                              return new CallSite(impl, block, cmdIndex, currentValue);
+                              return new CallSite(impl, block, cmdIndex, currentValue, summaryEntry);
                             }
                            );
       }
@@ -464,7 +469,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
           {
             succ.Lattice = block.Lattice;         // The lattice is the same
                                                 // Propagate the post-abstract state of this block to the successor
-            ComputeBlockInvariants(impl, succ, block.PostInvariant);
+            ComputeBlockInvariants(impl, succ, block.PostInvariant, summaryEntry);
           }
         }
       }
@@ -680,8 +685,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// <param name="block">  The block for which we compute the invariants </param>
     /// <param name="incomingValue">  The "init" abstract state for the block </param>
     /// </summary>
-    private void ComputeBlockInvariants (Implementation! impl, Block! block, AI.Lattice.Element! incomingValue) 
-    {      
+    private void ComputeBlockInvariants (Implementation! impl, Block! block, AI.Lattice.Element! incomingValue, ProcedureSummaryEntry! summaryEntry)
+    {
       if (block.PreInvariant == null) // block has not yet been processed
       {
         assert block.PostInvariant == null;
@@ -709,7 +714,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
         return;
       }
 #if DEBUG_PRINT
- // Compute the free variables in incoming and block.PreInvariant
+      // Compute the free variables in incoming and block.PreInvariant
       FreeVariablesVisitor freeVarsVisitorForA = new FreeVariablesVisitor();
       FreeVariablesVisitor freeVarsVisitorForB = new FreeVariablesVisitor();
 
@@ -766,47 +771,22 @@ namespace Microsoft.Boogie.AbstractInterpretation
 #endif
       #endregion
       #region Propagate the entry abstract state through the method
-        PropagateStartingAtStatement(impl, block, 0, (!) block.PreInvariant.Clone());
+        PropagateStartingAtStatement(impl, block, 0, (!) block.PreInvariant.Clone(), summaryEntry);
       #endregion
     }
 
 #if DEBUG_PRINT
-private string! ToString(List<AI.IVariable!>! vars) 
-{
-  string s = "";
-    
-  foreach(AI.IVariable! v in vars) 
-  {
-    s += v.Name +" ";
-  }
-  return s;
-}
-
-#endif
-   
-
-    /// <summary>
-    /// Analyze the given set of blocks.
-    /// <param name="blocks"> The set of blocks to analyze </param>
-    /// <param name="entryPoint"> The initial block (from where we start the analysis </param>
-    /// <param name="initialState"> The initial abstract state </param>
-    /// </summary>
-    public void AnalyzeBlocks(ICollection<Block!>! blocks, Block! entryPoint, AI.MathematicalLattice.Element! initialState)      
-      requires blocks.Contains(entryPoint);
+    private string! ToString(List<AI.IVariable!>! vars) 
     {
-      TypeVariableSeq! dummyVarSeq = new TypeVariableSeq();
-      VariableSeq! dummySeq = new VariableSeq();
-      List<Block!> blockSequence = new List<Block!>(); 
-    
-      foreach(Block! block in blocks) {
-        blockSequence.Add(block);
+      string s = "";
+        
+      foreach(AI.IVariable! v in vars) 
+      {
+        s += v.Name +" ";
       }
-
-      Implementation dummyImplementation =
-        new Implementation(Token.NoToken, "dummyImplementation", dummyVarSeq, dummySeq, dummySeq, dummySeq, blockSequence);
-          
-      ComputeBlockInvariants(dummyImplementation, entryPoint, initialState);
+      return s;
     }
+#endif
 
   } // class
 
@@ -1004,58 +984,50 @@ private string! ToString(List<AI.IVariable!>! vars)
 public class AbstractInterpretation
 {
 	/// <summary>
-    /// Run the abstract interpretation.
-    /// It has two entry points. One is the RunBoogie method. The other is the CCI PlugIn
-    /// </summary>
-    public static void RunAbstractInterpretation(Program! program) 
+  /// Run the abstract interpretation.
+  /// It has two entry points. One is the RunBoogie method. The other is the CCI PlugIn
+  /// </summary>
+  public static void RunAbstractInterpretation(Program! program) 
+  {
+    Helpers.ExtraTraceInformation("Starting abstract interpretation");
+
+    if(CommandLineOptions.Clo.UseAbstractInterpretation)    
     {
-      Helpers.ExtraTraceInformation("Starting abstract interpretation");
+      DateTime start = new DateTime();  // to please compiler's definite assignment rules
+      if (CommandLineOptions.Clo.Trace) {
+        Console.WriteLine();
+        Console.WriteLine("Running abstract interpretation...");
+        start = DateTime.Now;
+      }
 
-      if(CommandLineOptions.Clo.UseAbstractInterpretation)    
-      {
-        DateTime start = new DateTime();  // to please compiler's definite assignment rules
-        if (CommandLineOptions.Clo.Trace) {
-          Console.WriteLine();
-          Console.WriteLine("Running abstract interpretation...");
-          start = DateTime.Now;
-        }
-
-        WidenPoints.Compute(program);
-        
-        if (CommandLineOptions.Clo.Ai.AnySet) // if there is some user defined domain we override the default (= intervals)
-        {             
-          AI.Lattice! lattice;
-          
-          lattice = AbstractDomainBuilder.BuildAbstractDomain().Lattice;
-
-          ApplyAbstractInterpretation(program, lattice);
-
-          if (CommandLineOptions.Clo.Ai.DebugStatistics) 
-          {
-            Console.Error.WriteLine(lattice);
-          }
-
-          if (!CommandLineOptions.Clo.IntraproceduralInfer)
-          {
-            Procedure.ShowSummaries = true;
-          }
-        }
-        else    // Otherwise the default is the use of the abstract domain of intervals (useful for simple for loops)
-        {
-          AI.Lattice! lattice = AbstractDomainBuilder.BuildIntervalsAbstractDomain().Lattice;
-          ApplyAbstractInterpretation(program, lattice);
-        }  
+      WidenPoints.Compute(program);
       
-        program.InstrumentWithInvariants();
+      if (CommandLineOptions.Clo.Ai.AnySet) // if there is some user defined domain we override the default (= intervals)
+      {             
+        AI.Lattice lattice = AbstractDomainBuilder.BuildAbstractDomain().Lattice;
+        ApplyAbstractInterpretation(program, lattice);
 
-        if (CommandLineOptions.Clo.Trace) {
-          DateTime end = DateTime.Now;
-          TimeSpan elapsed = end - start;
-          Console.WriteLine("  [{0} s]", elapsed.TotalSeconds);
-          Console.Out.Flush();
+        if (CommandLineOptions.Clo.Ai.DebugStatistics) 
+        {
+          Console.Error.WriteLine(lattice);
         }
       }
+      else    // Otherwise the default is the use of the abstract domain of intervals (useful for simple for loops)
+      {
+        AI.Lattice! lattice = AbstractDomainBuilder.BuildIntervalsAbstractDomain().Lattice;
+        ApplyAbstractInterpretation(program, lattice);
+      }  
+    
+      program.InstrumentWithInvariants();
+
+      if (CommandLineOptions.Clo.Trace) {
+        DateTime end = DateTime.Now;
+        TimeSpan elapsed = end - start;
+        Console.WriteLine("  [{0} s]", elapsed.TotalSeconds);
+        Console.Out.Flush();
+      }
     }
+  }
 
 	static void ApplyAbstractInterpretation (Program! program, AI.Lattice! lattice) 
     {

@@ -163,7 +163,6 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     public object Current {
-      [Pure][Reads(ReadsAttribute.Reads.Owned)]
       get {
         return (!)CurrentExpr;
     } }

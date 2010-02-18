@@ -576,7 +576,7 @@ namespace Microsoft.AbstractInterpretationFramework
             return lattice.ToString(e);
         }
 
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public override string! ToString()
         {
             return string.Format(

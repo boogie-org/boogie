@@ -114,7 +114,7 @@ namespace Microsoft.AbstractInterpretationFramework
                 }
             }
 
-            [Pure][Reads(ReadsAttribute.Reads.Owned)]            
+            [Pure]
             public override System.Collections.Generic.ICollection<IVariable!>! FreeVariables()
             {
                 return (!) (new System.Collections.Generic.List<IVariable!>()).AsReadOnly();

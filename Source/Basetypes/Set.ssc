@@ -189,7 +189,7 @@ namespace Microsoft.Boogie
 
         public virtual int Count 
         {
-            [Pure][Reads(ReadsAttribute.Reads.Owned)] get 
+            get 
             {
                 return ht.Count;
             }
@@ -201,7 +201,7 @@ namespace Microsoft.Boogie
             return ht.Keys.GetEnumerator();
         }
 
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public override string! ToString() 
         {
             string s = null;

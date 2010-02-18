@@ -31,7 +31,7 @@ namespace Microsoft.AbstractInterpretationFramework
 
             public BigNum Constant { get { return this.constantValue; } } // only when IsConstant
 
-            [Pure][Reads(ReadsAttribute.Reads.Owned)]            
+            [Pure]
             public override System.Collections.Generic.ICollection<IVariable!>! FreeVariables()
             {
                 return (!) (new System.Collections.Generic.List<IVariable!>()).AsReadOnly();

@@ -1842,7 +1842,8 @@ namespace Microsoft.Boogie
                    switch on its left
   /checkInfer    : instrument inferred invariants as asserts to be checked by
                    theorem prover
-  /interprocInfer : perform interprocedural inference
+  /interprocInfer : perform interprocedural inference (deprecated, not
+                    supported)
   /contractInfer : perform procedure contract inference
   /logInfer      : print debug output during inference
   /printInstrumented : print Boogie program after it has been

@@ -466,13 +466,13 @@ namespace Microsoft.AbstractInterpretationFramework
           */
         }
 
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public override System.Collections.Generic.ICollection<IVariable!>! FreeVariables()
         {
           return (!) (new System.Collections.Generic.List<IVariable!>()).AsReadOnly();
         }
 
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public override string! ToString() 
         {
           return "[" + this.inf + ", " + this.sup + "]";
@@ -704,7 +704,7 @@ namespace Microsoft.AbstractInterpretationFramework
       this.val = i;
     }
 
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public override string! ToString()
     {
       return this.Value.ToString();
@@ -746,7 +746,7 @@ namespace Microsoft.AbstractInterpretationFramework
 
   class PlusInfinity : InfinitaryInt
   {
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public override string! ToString()
     {
       return "+oo";
@@ -768,7 +768,7 @@ namespace Microsoft.AbstractInterpretationFramework
 
   class MinusInfinity : InfinitaryInt
   {
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public override string! ToString()
     {
       return "-oo";

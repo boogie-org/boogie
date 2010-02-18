@@ -30,11 +30,10 @@ namespace Microsoft.AbstractInterpretationFramework
             //            base();
         }
 
-//        public AIType! AIType { [Pure][Reads(ReadsAttribute.Reads.Owned)] get { return typ; } }
-        public AIType! AIType { [Pure][Reads(ReadsAttribute.Reads.Owned)] get { return typ; } }
+        public AIType! AIType { get { return typ; } }
 
         [NoDefaultContract]
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public override string! ToString()
         {
             return display;
@@ -65,7 +64,7 @@ namespace Microsoft.AbstractInterpretationFramework
             return isym != null && isym.Value.Equals(this.Value);
         }
         
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public override int GetHashCode()
         {
             return Value.GetHashCode();
@@ -97,7 +96,7 @@ namespace Microsoft.AbstractInterpretationFramework
             return isym != null && isym.Value == this.Value && isym.Bits == this.Bits;
         }
         
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public override int GetHashCode()
         {
             unchecked {
@@ -126,7 +125,7 @@ namespace Microsoft.AbstractInterpretationFramework
             return dsym != null && dsym.Value == this.Value;
         }
 
-        [Pure][Reads(ReadsAttribute.Reads.Owned)] 
+        [Pure]
         public override int GetHashCode()
         {
             return Value.GetHashCode();
@@ -155,7 +154,7 @@ namespace Microsoft.AbstractInterpretationFramework
         }
 
         [NoDefaultContract]
-        [Pure][Reads(ReadsAttribute.Reads.Owned)] 
+        [Pure]
         public override int GetHashCode()
         {
             return Value.GetHashCode();
@@ -898,19 +897,19 @@ namespace Microsoft.AbstractInterpretationFramework
         /// <summary>
         /// Returns true iff "t" denotes a type constant.
         /// </summary>
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         bool IsTypeConstant(IExpr! t);
 
         /// <summary>
         /// Returns true iff t0 and t1 are types such that t0 and t1 are equal.
         /// </summary>
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         bool IsTypeEqual(IExpr! t0, IExpr! t1);
 
         /// <summary>
         /// Returns true iff t0 and t1 are types such that t0 is a subtype of t1.
         /// </summary>
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         bool IsSubType(IExpr! t0, IExpr! t1);
 
         /// <summary>

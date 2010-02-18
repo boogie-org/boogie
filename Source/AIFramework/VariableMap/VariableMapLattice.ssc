@@ -51,6 +51,22 @@ namespace Microsoft.AbstractInterpretationFramework
             {
                 return new Elt(this.constraints);
             }
+            
+            [Pure]
+            public override string! ToString()
+            {
+              if (constraints == null) {
+                return "<bottom>";
+              }
+              string s = "[";
+              string sep = "";
+              foreach (IVariable! v in (!)constraints.Keys) {
+                Element m = (Element)constraints[v];
+                s += sep + v.Name + " -> " + m;
+                sep = ", ";
+              }
+              return s + "]";
+            }
 
             public static Elt! Top = new Elt(true);
             public static Elt! Bottom = new Elt(false);
@@ -61,7 +77,6 @@ namespace Microsoft.AbstractInterpretationFramework
             }
 
             public bool IsBottom { 
-                 [Pure][Reads(ReadsAttribute.Reads.Owned)]
                  get { 
                    return this.constraints == null; 
                  } 
@@ -158,7 +173,7 @@ namespace Microsoft.AbstractInterpretationFramework
                 return new Elt(newMap);
             }
 
-            [Pure][Reads(ReadsAttribute.Reads.Owned)]
+            [Pure]
             public override ICollection<IVariable!>! FreeVariables()
             {
                 throw new System.NotImplementedException();

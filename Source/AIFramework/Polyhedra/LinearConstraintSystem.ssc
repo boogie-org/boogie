@@ -172,7 +172,7 @@ namespace Microsoft.AbstractInterpretationFramework
       return Constraints != null && Constraints.Count == 0;
     }
 
-    [Pure][Reads(ReadsAttribute.Reads.Owned)]
+    [Pure]
     public override string! ToString() 
     {
       if (Constraints == null) 
@@ -1055,12 +1055,12 @@ namespace Microsoft.AbstractInterpretationFramework
         id = count;
         count++;
       }
-      [Pure][Reads(ReadsAttribute.Reads.Owned)]
+      [Pure]
       public override string! ToString() 
       {
         return "lambda" + id;
       }
-      [Pure][Reads(ReadsAttribute.Reads.Owned)]
+      [Pure]
       public object DoVisit(ExprVisitor! visitor)
       {
         return visitor.VisitVariable(this);
@@ -1697,7 +1697,7 @@ namespace Microsoft.AbstractInterpretationFramework
             public TestVariable(string! name) {
                 this.name = name;
             }
-            [Pure][Reads(ReadsAttribute.Reads.Owned)]
+            [Pure]
             public object DoVisit(ExprVisitor! visitor) {
                 return visitor.VisitVariable(this);
             }

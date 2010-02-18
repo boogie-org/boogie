@@ -166,7 +166,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
         /// <summary>
         /// Returns true iff "t" denotes a type constant.
         /// </summary>
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public bool IsTypeConstant(AI.IExpr! t) 
           ensures result == (t is Constant);  
         {
@@ -176,7 +176,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
         /// <summary>
         /// Returns true iff t0 and t1 are types such that t0 and t1 are equal.
         /// </summary>
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public bool IsTypeEqual(AI.IExpr! t0, AI.IExpr! t1) {
             Constant c0 = t0 as Constant;
             Constant c1 = t1 as Constant;
@@ -186,10 +186,9 @@ namespace Microsoft.Boogie.AbstractInterpretation {
         /// <summary>
         /// Returns true iff t0 and t1 are types such that t0 is a subtype of t1.
         /// </summary>
-        [Pure][Reads(ReadsAttribute.Reads.Owned)]
+        [Pure]
         public bool IsSubType(AI.IExpr! t0, AI.IExpr! t1) {
             assert false;  // BUGBUG: TODO
-            return false;
         }
 
         /// <summary>
@@ -198,7 +197,6 @@ namespace Microsoft.Boogie.AbstractInterpretation {
         /// </summary>
         public AI.IExpr! JoinTypes(AI.IExpr! t0, AI.IExpr! t1) {
             assert false;  // BUGBUG: TODO
-            throw new System.NotImplementedException();
         }
 
         public AI.IFunApp! IsExactlyA(AI.IExpr! e, AI.IExpr! type) {

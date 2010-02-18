@@ -48,7 +48,7 @@ namespace Microsoft.AbstractInterpretationFramework
                 return new Elt(this);
             }
 
-            [Pure][Reads(ReadsAttribute.Reads.Owned)]
+            [Pure]
             public override string! ToString()
             {
 //                string s = "MultiLattice+Elt{";
@@ -83,7 +83,7 @@ namespace Microsoft.AbstractInterpretationFramework
                 }
             }
             
-            [Pure][Reads(ReadsAttribute.Reads.Owned)]
+            [Pure]
             public override ICollection<IVariable!>! FreeVariables()
             {
                 List<IVariable!>! list = new List<IVariable!>();
@@ -522,7 +522,6 @@ namespace Microsoft.AbstractInterpretationFramework
 
                 public object Current
                 {
-                    [Pure][Reads(ReadsAttribute.Reads.Owned)]
                     get
                     {
                         return this.Entry;

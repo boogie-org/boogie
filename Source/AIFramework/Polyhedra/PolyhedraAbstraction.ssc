@@ -43,7 +43,7 @@ namespace Microsoft.AbstractInterpretationFramework
         }
       }
 
-      [Pure][Reads(ReadsAttribute.Reads.Owned)]
+      [Pure]
       public override string! ToString()
       {
         return lcs.ToString();
@@ -54,7 +54,7 @@ namespace Microsoft.AbstractInterpretationFramework
         lcs.Dump();
       }
 
-      [Pure][Reads(ReadsAttribute.Reads.Owned)]
+      [Pure]
       public override ICollection<IVariable!>! FreeVariables()
       {
         return lcs.FreeVariables();
@@ -258,14 +258,14 @@ namespace Microsoft.AbstractInterpretationFramework
         // base();
       }
       
-      [Pure][Reads(ReadsAttribute.Reads.Owned)] public object DoVisit(ExprVisitor! visitor) {
+      [Pure] public object DoVisit(ExprVisitor! visitor) {
         return visitor.VisitFunApp(this);
       }
       
-      public IFunctionSymbol! FunctionSymbol { [Pure][Reads(ReadsAttribute.Reads.Owned)] get { return Prop.Not; } }
+      public IFunctionSymbol! FunctionSymbol { get { return Prop.Not; } }
 
       public IList/*<IExpr!>*/! Arguments {
-        [Pure][Reads(ReadsAttribute.Reads.Owned)] get {
+        get {
           IExpr[] args = new IExpr[] { arg };
          return ArrayList.ReadOnly(args);
         }
