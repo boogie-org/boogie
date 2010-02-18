@@ -8,7 +8,7 @@ using Microsoft.Contracts;
 
 namespace Microsoft.Basetypes
 {
-  using BNM = Microsoft.FSharp.Math.BigNum;
+  using BNM = Microsoft.FSharp.Math.BigRational;
 
   /// <summary>
   /// The representation of a rational number.
@@ -19,9 +19,9 @@ namespace Microsoft.Basetypes
     public static readonly Rational ONE  = new Rational ((!)BNM.One);
     public static readonly Rational MINUS_ONE = new Rational ((!)(-BNM.One));
 
-    private readonly Microsoft.FSharp.Math.BigNum _val;
+    private readonly Microsoft.FSharp.Math.BigRational _val;
 
-    private Microsoft.FSharp.Math.BigNum! val {
+    private Microsoft.FSharp.Math.BigRational! val {
       get {
         if (_val == null)
           return (!)BNM.Zero;
@@ -48,7 +48,7 @@ namespace Microsoft.Basetypes
       return new Rational(x);
     }
 
-    private Rational(Microsoft.FSharp.Math.BigNum! val) {
+    private Rational(Microsoft.FSharp.Math.BigRational! val) {
       this._val = val;
     }
 

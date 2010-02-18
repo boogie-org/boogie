@@ -70,7 +70,7 @@ namespace Microsoft.Basetypes {
     // Convert to int, without checking whether overflows occur
     public int ToInt {
       get {
-        return BIM.ToInt32(val);
+        return (int)val;
       }
     }
 
@@ -148,7 +148,7 @@ namespace Microsoft.Basetypes {
         System.Numerics.BigInteger rem = this.Abs.val;
 
         while (rem > BIM.Zero) {
-          res = BIM.ToInt32(rem %BI_2_TO_24).ToString(format) + res;
+          res = ((int)(rem %BI_2_TO_24)).ToString(format) + res;
           rem = rem / BI_2_TO_24;
         }
 
