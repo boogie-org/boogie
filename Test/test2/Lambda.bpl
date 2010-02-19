@@ -38,4 +38,20 @@ procedure fail()
   assert m[1,t] == 2;
 }
 
+type set = [int]bool;
+function union(a:set, b:set) : set;
+axiom (forall a,b:set :: union(a,b) == (lambda x:int :: a[x] || b[x]));
 
+function diff(a:set, b:set) : set {(lambda x:int :: a[x] && !b[x]) }
+
+procedure a()
+{
+  var a:set, b:set;
+  assume a[1];
+  assume b[2];
+  assert union(a,b)[1];
+  assert union(a,b)[2];
+  assume !b[1];
+  assert diff(a,b)[1];
+  assert !diff(a,b)[2];
+}

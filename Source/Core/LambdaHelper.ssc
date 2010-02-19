@@ -101,7 +101,9 @@ namespace Microsoft.Boogie {
           lambdaFunctions.Add(fn);
           lambdaAxioms.Add(body);
 
-          Expr call = new NAryExpr(tok, fcall, callArgs);
+          NAryExpr call = new NAryExpr(tok, fcall, callArgs);
+          call.Type = res.TypedIdent.Type;
+          call.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
 
           return call;
         }

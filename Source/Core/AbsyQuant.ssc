@@ -811,8 +811,6 @@ namespace Microsoft.Boogie
       }
       this.Type = new MapType(this.tok, this.TypeParameters, argTypes, Body.Type);
 
-      this.Type = this.ShallowType;
-
       // Check that type parameters occur in the types of the
       // dummies, or otherwise in the triggers. This can only be
       // done after typechecking

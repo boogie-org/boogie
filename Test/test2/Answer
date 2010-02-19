@@ -342,7 +342,11 @@ Lambda.bpl(38,3): Error BP5001: This assertion might not hold.
 Execution trace:
     Lambda.bpl(36,5): anon0
 
-Boogie program verifier finished with 3 verified, 2 errors
+Boogie program verifier finished with 4 verified, 2 errors
+
+-------------------- LambdaPoly.bpl --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
 -------------------- sk_hack.bpl --------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
