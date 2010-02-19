@@ -1289,6 +1289,12 @@ AtomExpression<out Expr! e>
           QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e> 
                                             (. if (typeParams.Length + ds.Length > 0)
                                                  e = new ExistsExpr(x, typeParams, ds, kv, trig, e); .)
+        | Lambda                            (. x = token; .)
+          QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e> 
+                                            (. if (trig != null)
+                                                 SemErr("triggers not allowed in lambda expressions");
+                                               if (typeParams.Length + ds.Length > 0)
+                                                 e = new LambdaExpr(x, typeParams, ds, kv, e); .)
         )
     ")"
   | IfThenElseExpression<out e>
@@ -1382,6 +1388,7 @@ QuantifierBody<IToken! q, out TypeVariableSeq! typeParams, out VariableSeq! ds,
 
 Forall = "forall" | '\u2200'.
 Exists = "exists" | '\u2203'.
+Lambda = "lambda" | '\u03bb'.
 QSep = "::" | '\u2022'.
 
 /*------------------------------------------------------------------------*/

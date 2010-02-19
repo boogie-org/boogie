@@ -188,11 +188,19 @@
                  />
         <File BuildAction="Compile"
                  SubType="Code"
+                 RelPath="AbsyQuant.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
                  RelPath="Xml.ssc"
                  />
         <File BuildAction="Compile"
                  SubType="Code"
                  RelPath="Inline.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="LambdaHelper.ssc"
                  />
         <File BuildAction="Compile"
                  SubType="Code"

@@ -253,6 +253,11 @@ namespace Microsoft.Boogie
       node = (ForallExpr) this.VisitQuantifierExpr(node);
       return node; 
     }
+    public virtual LambdaExpr! VisitLambdaExpr(LambdaExpr! node)
+    {
+      node = (LambdaExpr) this.VisitBinderExpr(node);
+      return node; 
+    }
     public virtual Formal! VisitFormal(Formal! node)
     {
       return node; 
@@ -374,14 +379,19 @@ namespace Microsoft.Boogie
       node.TopLevelDeclarations = this.VisitDeclarationList(node.TopLevelDeclarations);
       return node; 
     }
-    public virtual QuantifierExpr! VisitQuantifierExpr(QuantifierExpr! node)
+    public virtual BinderExpr! VisitBinderExpr(BinderExpr! node)
     {
-      if (node.Triggers != null) {
-        node.Triggers = this.VisitTrigger(node.Triggers);
-      }
       node.Body = this.VisitExpr(node.Body);
       node.Dummies = this.VisitVariableSeq(node.Dummies);
       //node.Type = this.VisitType(node.Type);
+      return node; 
+    }
+    public virtual QuantifierExpr! VisitQuantifierExpr(QuantifierExpr! node)
+    {
+      node = (QuantifierExpr!) this.VisitBinderExpr(node);
+      if (node.Triggers != null) {
+        node.Triggers = this.VisitTrigger(node.Triggers);
+      }
       return node; 
     }
     public virtual Cmd! VisitRE(RE! node)

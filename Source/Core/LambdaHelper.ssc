@@ -1,0 +1,115 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+namespace Microsoft.Boogie {
+  
+  using System;
+  using System.IO;
+  using System.Collections;
+  using System.Collections.Generic;
+  using System.Diagnostics;
+
+  public static class LambdaHelper
+  {   
+    public static Absy! Desugar(Absy! node, out List<Expr!>! axioms, out List<Function!>! functions)
+    {
+      LambdaVisitor v = new LambdaVisitor();
+      node = v.Visit(node);
+      axioms = v.lambdaAxioms;
+      functions = v.lambdaFunctions;
+      return node;
+    }
+
+    public static void ExpandLambdas(Program! prog)
+    {
+      List<Expr!>! axioms;
+      List<Function!>! functions;
+      Desugar(prog, out axioms, out functions);
+      foreach (var f in functions) {
+        prog.TopLevelDeclarations.Add(f);
+      }
+      foreach (var a in axioms) {
+        prog.TopLevelDeclarations.Add(new Axiom(a.tok, a));
+      }
+    }
+
+    private class LambdaVisitor : StandardVisitor
+    {   
+      internal List<Expr!>! lambdaAxioms = new List<Expr!>();
+      internal List<Function!>! lambdaFunctions = new List<Function!>();
+      static int lambdaid = 0;
+
+      public override Absy! Visit(Absy! node)
+      {
+        node = base.Visit(node);
+
+        LambdaExpr lambda = node as LambdaExpr;
+        if (lambda != null) {
+          IToken! tok = lambda.tok;
+
+          Set freeVars = new Set();
+          lambda.ComputeFreeVariables(freeVars);
+          // this is ugly, the output will depend on hashing order
+          Hashtable subst = new Hashtable();
+          VariableSeq formals = new VariableSeq();
+          ExprSeq callArgs = new ExprSeq();
+          ExprSeq axCallArgs = new ExprSeq();
+          VariableSeq dummies = new VariableSeq(lambda.Dummies);
+
+          foreach (object o in freeVars) {
+            Variable v = o as Variable;
+            if (v != null) {
+              Formal f = new Formal(v.tok, v.TypedIdent, true);
+              formals.Add(f);
+              BoundVariable b = new BoundVariable(v.tok, v.TypedIdent);
+              dummies.Add(b);
+              callArgs.Add(new IdentifierExpr(v.tok, v));
+              Expr! id = new IdentifierExpr(f.tok, b);
+              subst.Add(v, id);
+              axCallArgs.Add(id);
+            }
+            // TODO: do something about type variables
+          }
+
+          Formal res = new Formal(tok, new TypedIdent(tok, "", (!)lambda.Type), false);
+          Function fn = new Function(tok, "lambda@" + lambdaid++, new TypeVariableSeq(), formals, res, "auto-generated lambda function", lambda.Attributes);
+          IdentifierExpr callId = new IdentifierExpr(tok, fn.Name);
+          FunctionCall fcall = new FunctionCall(callId);
+          fcall.Func = fn;
+
+          List<Expr!> selectArgs = new List<Expr!>();
+          foreach (Variable! v in lambda.Dummies) {
+            selectArgs.Add(new IdentifierExpr(v.tok, v));
+          }
+          NAryExpr axcall = new NAryExpr(tok, fcall, axCallArgs);
+          axcall.Type = res.TypedIdent.Type;
+          axcall.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+          NAryExpr select = Expr.Select(axcall, selectArgs);
+          select.Type = lambda.Body.Type;
+          select.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+
+          Expr body = Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), lambda.Body);
+          body = Expr.Eq(select, body);
+          body.Type = Type.Bool;
+          ((NAryExpr)body).TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+          Trigger trig = new Trigger(select.tok, true, new ExprSeq(select));
+
+          body = new ForallExpr(tok, lambda.TypeParameters, dummies, lambda.Attributes, trig, body);
+
+          lambdaFunctions.Add(fn);
+          lambdaAxioms.Add(body);
+
+          Expr call = new NAryExpr(tok, fcall, callArgs);
+
+          return call;
+        }
+
+        return node;
+      }
+    }
+  }
+  
+} // end namespace
+

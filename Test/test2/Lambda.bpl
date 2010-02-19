@@ -1,0 +1,41 @@
+procedure foo()
+{
+  var a: [int]int;
+  var c:int,b:bool;
+  a := (lambda y:int :: if b then y + c else 7);
+  assume b;
+  assert a[3] == c+3;
+}
+
+procedure bar()
+{
+  assert (lambda x:int :: x > 0)[10];
+  
+}
+
+type t1;
+
+procedure baz()
+{
+  var m:[int,t1]int;
+  var t:t1, t2:t1;
+
+  m := (lambda i:int, tt:t1 :: if tt == t then i else 12);
+  assert m[1,t] == 1;
+  assert t == t2 || m[1,t2] == 12;
+  assert  m[12,t2] == 12;
+  
+}
+
+
+procedure fail()
+{
+  var m:[int,t1]int;
+  var t:t1, t2:t1;
+
+  m := (lambda i:int, tt:t1 :: if tt == t then i else 12);
+  assert m[1,t2] == 12;
+  assert m[1,t] == 2;
+}
+
+

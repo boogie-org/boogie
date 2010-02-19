@@ -333,6 +333,16 @@ Execution trace:
     IfThenElse1.bpl(33,3): anon0
 
 Boogie program verifier finished with 2 verified, 2 errors
+
+-------------------- Lambda.bpl --------------------
+Lambda.bpl(37,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Lambda.bpl(36,5): anon0
+Lambda.bpl(38,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Lambda.bpl(36,5): anon0
+
+Boogie program verifier finished with 3 verified, 2 errors
 -------------------- sk_hack.bpl --------------------
 
 Boogie program verifier finished with 1 verified, 0 errors

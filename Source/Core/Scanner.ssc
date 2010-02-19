@@ -238,7 +238,7 @@ public class Scanner {
   const char LF  = '\n';
   [Microsoft.Contracts.Verify(false)]
 	static Scanner() {
-		start[0] = 57;
+		start[0] = 58;
 		start[33] = 41;
 		start[34] = 6;
 		start[35] = 2;
@@ -333,7 +333,8 @@ public class Scanner {
 		start[125] = 20;
 		start[126] = 2;
 		start[172] = 52;
-		start[8226] = 56;
+		start[955] = 55;
+		start[8226] = 57;
 		start[8656] = 33;
 		start[8658] = 32;
 		start[8660] = 29;
@@ -345,7 +346,7 @@ public class Scanner {
 		start[8804] = 45;
 		start[8805] = 46;
 	}
-	const int noSym = 86;
+	const int noSym = 88;
 	static short[] start = new short[16385];
 
 
@@ -521,6 +522,7 @@ public class Scanner {
 			case "old": t.kind = 79; break;
 			case "then": t.kind = 80; break;
 			case "exists": t.kind = 82; break;
+			case "lambda": t.kind = 84; break;
 			default: break;
 
     }
@@ -574,7 +576,7 @@ public class Scanner {
 				{t.kind = 9; goto done;}
 			case 13:
 				if (ch == '=') {buf.Append(ch); NextCh(); goto case 25;}
-				else if (ch == ':') {buf.Append(ch); NextCh(); goto case 55;}
+				else if (ch == ':') {buf.Append(ch); NextCh(); goto case 56;}
 				else {t.kind = 10; goto done;}
 			case 14:
 				{t.kind = 11; goto done;}
@@ -672,10 +674,12 @@ public class Scanner {
 			case 54:
 				{t.kind = 83; goto done;}
 			case 55:
-				{t.kind = 84; goto done;}
-			case 56:
 				{t.kind = 85; goto done;}
-			case 57: {t.kind = 0; goto done;}
+			case 56:
+				{t.kind = 86; goto done;}
+			case 57:
+				{t.kind = 87; goto done;}
+			case 58: {t.kind = 0; goto done;}
     }
     done:
     t.val = buf.ToString();

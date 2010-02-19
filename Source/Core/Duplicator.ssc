@@ -190,9 +190,9 @@ namespace Microsoft.Boogie
     {
       return base.VisitProgram ((Program) node.Clone());
     }
-    public override QuantifierExpr! VisitQuantifierExpr(QuantifierExpr! node)
+    public override BinderExpr! VisitBinderExpr(BinderExpr! node)
     {
-      return base.VisitQuantifierExpr ((QuantifierExpr) node.Clone());
+      return base.VisitBinderExpr ((BinderExpr) node.Clone());
     }
     public override Cmd! VisitRE(RE! node)
     {
