@@ -420,6 +420,11 @@ namespace Microsoft.Boogie
       // Eliminate dead variables
       Microsoft.Boogie.UnusedVarEliminator.Eliminate(program);
       
+      // Collect mod sets
+      if (CommandLineOptions.Clo.DoModSetAnalysis) {
+        Microsoft.Boogie.ModSetCollector.DoModSetAnalysis(program);
+      }
+      
       // Coalesce blocks
       if (CommandLineOptions.Clo.CoalesceBlocks) {
         Microsoft.Boogie.BlockCoalescer.CoalesceBlocks(program);

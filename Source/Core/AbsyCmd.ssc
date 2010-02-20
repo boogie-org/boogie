@@ -696,7 +696,7 @@ namespace Microsoft.Boogie
     // VC generation and SCC computation
     public BlockSeq! Predecessors;
 
-    public Set liveVarsBefore;
+    public Set<Variable!> liveVarsBefore;
     public bool IsLive(Variable! v) {
       if (liveVarsBefore == null) return true;
       return liveVarsBefore.Contains(v);
