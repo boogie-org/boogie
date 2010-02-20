@@ -241,7 +241,7 @@ procedure RunOffEnd2() returns (x: int)
 
 procedure RunOffEnd3() returns (x: int)
   ensures x == 9;
-{
+{ x := 9;
   while (true) {
     while (true) {
       if (*) {

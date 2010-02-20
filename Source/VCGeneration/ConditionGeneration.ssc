@@ -251,11 +251,13 @@ namespace VC
       
 
     /// <summary>
-    /// Modifies an implementation by inserting all preconditions
-    /// as assume statements at the beginning of the implementation
+    /// Modifies an implementation by prepending it with startCmds and then, as assume
+    /// statements, all preconditions.  Insert new blocks as needed, and adjust impl.Blocks[0]
+    /// accordingly to make it the new implementation entry block.
     /// </summary>
     /// <param name="impl"></param>
-    protected static void InjectPreconditions(Implementation! impl)
+    /// <param name="startCmds"></param>
+    protected static void InjectPreconditions(Implementation! impl, [Captured] CmdSeq! startCmds)
       requires impl.Proc != null;
     {
       TokenTextWriter debugWriter = null;
@@ -265,68 +267,65 @@ namespace VC
       }
     
       Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      string LabelPrefix = "PreconditionGeneratedEntry";
+      int k = 0;
       
-      Block! originalEntryPoint = (!) impl.Blocks[0];
-      Block! currentEntryPoint = (!) impl.Blocks[0];
-      CmdSeq! currentClump = new CmdSeq(); // to hold onto contiguous "regular" preconditions
+      Block origStartBlock = impl.Blocks[0];
+      Block insertionPoint = new Block(
+        new Token(-17, -4), LabelPrefix + k, startCmds,
+        new GotoCmd(Token.NoToken, new StringSeq(origStartBlock.Label), new BlockSeq(origStartBlock)));
+      k++;
+      impl.Blocks[0] = insertionPoint;  // make insertionPoint the start block
+      impl.Blocks.Add(origStartBlock);  // and put the previous start block at the end of the list
 
       // (free and checked) requires clauses
-      for (int i = impl.Proc.Requires.Length-1; 0 <= i; i--){
-        
-        // need to process the preconditions from bottom up, because
-        // for any that are BlockExprs, we need to thread them on
-        // to the top of the implementation
-
-        Requires req = impl.Proc.Requires[i];
-        Expr! e = Substituter.Apply(formalProcImplSubst, req.Condition);
-        BlockExpr be = req.Condition as BlockExpr;
-        if (be != null){
-          if (currentClump.Length > 0){
-            AddAsPrefix(currentEntryPoint, currentClump);
-            currentClump = new CmdSeq();
-          }
-          ThreadInBlockExpr(impl,currentEntryPoint, be,false,debugWriter);
-          currentEntryPoint = (!)be.Blocks[0];
-        }else{
-          Cmd! c = new AssumeCmd(req.tok, e);
-          currentClump.Add(c);
+      foreach (Requires! req in impl.Proc.Requires)
+        // invariant:  insertionPoint.TransferCmd is "goto origStartBlock;", but origStartBlock.Predecessors has not yet been updated
+      {
+        Expr e = Substituter.Apply(formalProcImplSubst, req.Condition);
+        BlockExpr be = e as BlockExpr;
+        if (be == null) {
+          // This is the normal case, where the precondition is an ordinary expression
+          Cmd c = new AssumeCmd(req.tok, e);
+          insertionPoint.Cmds.Add(c);
           if (debugWriter != null) { c.Emit(debugWriter, 1); }
+        } else {
+          // This is a BlockExpr, so append all of its blocks (changing return expressions
+          // to assume statements), make the insertion-point block goto the head block of the
+          // BlockExpr, and create a new empty block as the current insertion point.
+          // Here goes:  First, create the new block, which will become the new insertion
+          // point and which will serve as a target for the BlockExpr.  Move the goto's from
+          // the current insertion point to this new block.
+          Block nextIP = new Block(new Token(-17, -4), LabelPrefix + k, new CmdSeq(), insertionPoint.TransferCmd);
+          k++;
+          // Second, append the BlockExpr blocks to the implementation's blocks
+          ThreadInBlockExpr(impl, nextIP, be, false, debugWriter);
+          // Third, make the old insertion-point block goto the entry block of the BlockExpr
+          Block beEntry = (!)be.Blocks[0];
+          insertionPoint.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq(beEntry.Label), new BlockSeq(beEntry));
+          beEntry.Predecessors.Add(insertionPoint);
+          // Fourth, update the insertion point
+          insertionPoint = nextIP;
         }
-        
       }
+      origStartBlock.Predecessors.Add(insertionPoint);
       
-      if (currentClump.Length > 0){
-        AddAsPrefix(currentEntryPoint, currentClump);
-      }
-      
-      if (currentEntryPoint != originalEntryPoint){
-        string EntryLabel = "PreconditionGeneratedEntry";
-        Block! newEntry = new Block(new Token(-17, -4),EntryLabel,new CmdSeq(),
-                  new GotoCmd(Token.NoToken,
-              new StringSeq(currentEntryPoint.Label),
-              new BlockSeq(currentEntryPoint)));
-        currentEntryPoint.Predecessors.Add(newEntry);
-        List<Block!> newBody = new List<Block!>();
-        newBody.Add(newEntry);
-        newBody.AddRange(impl.Blocks);
-        impl.Blocks = newBody;
-      }
-
       if (debugWriter != null) { debugWriter.WriteLine(); }
-      
-      return;
     }
     /// <summary>
     /// Modifies an implementation by inserting all postconditions
     /// as assert statements at the end of the implementation
+    /// Returns the possibly-new unified exit block of the implementation
     /// </summary>
     /// <param name="impl"></param>
     /// <param name="unifiedExitblock">The unified exit block that has
     /// already been constructed for the implementation (and so
     /// is already an element of impl.Blocks)
     /// </param>
-    protected static void InjectPostConditions(Implementation! impl, Block! unifiedExitBlock, Hashtable/*TransferCmd->ReturnCmd*/! gotoCmdOrigins)
+    protected static Block! InjectPostConditions(Implementation! impl, Block! unifiedExitBlock, Hashtable/*TransferCmd->ReturnCmd*/! gotoCmdOrigins)
       requires impl.Proc != null;
+      requires unifiedExitBlock.TransferCmd is ReturnCmd;
+      ensures result.TransferCmd is ReturnCmd;
     {
       TokenTextWriter debugWriter = null;
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
@@ -334,58 +333,49 @@ namespace VC
         debugWriter.WriteLine("Effective postcondition:");
       }
       
-      string ExitLabel = "ReallyLastGeneratedExit";
-      Block! newExit = new Block(new Token(-17, -4),ExitLabel,new CmdSeq(),new ReturnCmd(Token.NoToken));
-      impl.Blocks.Add(newExit);
-      Block! currentEntryPoint = newExit;
-      CmdSeq! currentClump = new CmdSeq(); // to hold onto contiguous "regular" postconditions
-
       Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
+      Block insertionPoint = unifiedExitBlock;
+      string LabelPrefix = "ReallyLastGeneratedExit";
+      int k = 0;
 
       // (free and checked) ensures clauses
-      for (int i = impl.Proc.Ensures.Length-1; 0 <= i; i--){
-        
-        // need to process the postconditions from bottom up, because
-        // for any that are BlockExprs, we need to thread them on
-        // to the top of the implementation
-
-        Ensures ens = (impl.Proc).Ensures[i];
-        if (!ens.Free) { // free ensures aren't needed for verifying the implementation
-          Expr! e = Substituter.Apply(formalProcImplSubst, ens.Condition);
+      foreach (Ensures! ens in impl.Proc.Ensures)
+        invariant insertionPoint.TransferCmd is ReturnCmd;
+      {
+        if (!ens.Free) { // skip free ensures clauses
+          Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
           BlockExpr be = ens.Condition as BlockExpr;
-          if (be != null){
-            if (currentClump.Length > 0){
-              AddAsPrefix(currentEntryPoint, currentClump);
-              currentClump = new CmdSeq();
-            }
-            ThreadInBlockExpr(impl,currentEntryPoint,be,true,debugWriter);
-            currentEntryPoint = (!)be.Blocks[0];
-          }else{
-            Ensures! ensCopy = (Ensures!) ens.Clone();
+          if (be == null) {
+            // This is the normal case, where the postcondition is an ordinary expression
+            Ensures ensCopy = (Ensures!) ens.Clone();
             ensCopy.Condition = e;
-            Cmd! c = new AssertEnsuresCmd(ensCopy);
-            ((AssertEnsuresCmd) c).ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
-            currentClump.Add(c);
+            AssertEnsuresCmd c = new AssertEnsuresCmd(ensCopy);
+            c.ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
+            insertionPoint.Cmds.Add(c);
             if (debugWriter != null) { c.Emit(debugWriter, 1); }
+          } else {
+            // This is a BlockExpr, so append all of its blocks (changing return expressions
+            // to assert statements), insert a goto to its head block from the current insertion
+            // point, and create a new empty block as the current insertion point.
+            // Here goes:  First, create the new block, which will become the new insertion
+            // point and which will serve as a target for the BlockExpr.  Steal the TransferCmd
+            // from insertionPoint, since insertionPoint's TransferCmd will soon be replaced anyhow.
+            Block nextIP = new Block(new Token(-17, -4), LabelPrefix + k, new CmdSeq(), insertionPoint.TransferCmd);
+            k++;
+            // Second, append the BlockExpr blocks to the implementation's blocks
+            ThreadInBlockExpr(impl, nextIP, be, true, debugWriter);
+            // Third, make the old insertion-point block goto the entry block of the BlockExpr
+            Block beEntry = (!)be.Blocks[0];
+            insertionPoint.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq(beEntry.Label), new BlockSeq(beEntry));
+            beEntry.Predecessors.Add(insertionPoint);
+            // Fourth, update the insertion point
+            insertionPoint = nextIP;
           }
         }
-          
       }
-      
-      if (currentClump.Length > 0){
-        AddAsPrefix(currentEntryPoint, currentClump);
-      }
-      
-      GotoCmd gtc = new GotoCmd(Token.NoToken,
-            new StringSeq(currentEntryPoint.Label),
-            new BlockSeq(currentEntryPoint));
-      gotoCmdOrigins[gtc] = unifiedExitBlock.TransferCmd;
-      unifiedExitBlock.TransferCmd = gtc;
-      currentEntryPoint.Predecessors.Add(unifiedExitBlock);
       
       if (debugWriter != null) { debugWriter.WriteLine(); }
-      
-      return;
+      return insertionPoint;
     }
 
 
@@ -558,6 +548,7 @@ namespace VC
 
 
     protected Block! GenerateUnifiedExit(Implementation! impl, Hashtable! gotoCmdOrigins)
+      ensures result.TransferCmd is ReturnCmd;
     {
       Block/*?*/ exitBlock = null;
       #region Create a unified exit block, if there's more than one
@@ -659,7 +650,7 @@ namespace VC
         -1;
       Variable v = new Incarnation(x,currentIncarnationNumber + 1);
       variable2SequenceNumber[x] = currentIncarnationNumber + 1;
-      Debug.Assert(current_impl != null, "The field current_impl wasn't set.");
+      assert current_impl != null;  // otherwise, the field current_impl wasn't set
       current_impl.LocVars.Add(v);
       incarnationOriginMap.Add((Incarnation) v, a);
       return v;
@@ -691,7 +682,7 @@ namespace VC
       Set /*Variable*/ fixUps = new Set /*Variable*/ ();
       foreach (Block! pred in b.Predecessors)
       {
-        Debug.Assert(block2Incarnation.Contains(pred), "Passive Transformation found a block whose predecessors have not been processed yet.");
+        assert block2Incarnation.Contains(pred);  // otherwise, Passive Transformation found a block whose predecessors have not been processed yet
         Hashtable /*Variable -> Expr*/ predMap = (Hashtable! /*Variable -> Expr*/) block2Incarnation[pred];
         if (incarnationMap == null)
         {
@@ -818,7 +809,7 @@ namespace VC
         }
       }
       IEnumerable! sortedNodes = dag.TopologicalSort();
-      //Debug.Assert( sortedNodes != null, "Topological Sort returned null." );
+      // assume sortedNodes != null;
       #endregion
       
       // Create substitution for old expressions
@@ -835,7 +826,7 @@ namespace VC
       Hashtable /*Block -> IncarnationMap*/ block2Incarnation = new Hashtable/*Block -> IncarnationMap*/();
       foreach (Block! b in sortedNodes )
       {
-        Debug.Assert( !block2Incarnation.Contains(b) );
+        assert !block2Incarnation.Contains(b);
         Hashtable /*Variable -> Expr*/ incarnationMap = ComputeIncarnationMap(b, block2Incarnation);
         
         #region Each block's map needs to be available to successor blocks
@@ -869,17 +860,10 @@ namespace VC
         #region assert/assume P |--> assert/assume P[x := in(x)], out := in
         if ( c is PredicateCmd )
         {          
-          Debug.Assert( c is AssertCmd || c is AssumeCmd, "Internal Error: Found a PredicateCmd h is not an assert or an assume." );
+          assert c is AssertCmd || c is AssumeCmd;  // otherwise, unexpected PredicateCmd type
            
           PredicateCmd! pc = (PredicateCmd) c.Clone();
               
-          if(pc is AssumeCmd && pc.Expr is LoopPredicate   // Check if the PredicateCmd is in the form of "assume J", with J loop invariant predicate
-              && this.preHavocIncarnationMap != null)      // Furthermore, the command just before was a (list of) havoc statements 
-          {
-            LoopPredicate! lp = (LoopPredicate!) pc.Expr;
-            lp.SetPreAndPostHavocIncarnationMaps(this.preHavocIncarnationMap, (Hashtable /*Variable -> Expr*/!) incarnationMap.Clone());
-          }
-    
           Expr! copy = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, pc.Expr);
           if (pc is AssertCmd) {
             ((AssertCmd) pc).OrigExpr = pc.Expr;
@@ -1086,16 +1070,21 @@ namespace VC
      
     protected void AddBlocksBetween(Implementation! impl)
     {
-      #region Introduce empty blocks before all blocks with more than one predecessor
+      #region Introduce empty blocks between join points and their multi-successor predecessors
       List<Block!> tweens = new List<Block!>();
       foreach ( Block b in impl.Blocks )
       {
         int nPreds = b.Predecessors.Length;
         if ( nPreds > 1 ) 
         {
+          // b is a join point (i.e., it has more than one predecessor)
           for (int i = 0; i < nPreds; i++ ) 
           {
-            tweens.Add(CreateBlockBetween(i, b));
+            GotoCmd gotocmd = (GotoCmd!)((!)b.Predecessors[i]).TransferCmd;
+            if (gotocmd.labelNames != null && gotocmd.labelNames.Length > 1)
+            {
+              tweens.Add(CreateBlockBetween(i, b));
+            }
           }
         }
       }

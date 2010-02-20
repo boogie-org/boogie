@@ -51,6 +51,7 @@ Execution trace:
     bla1.bpl(1654,3): inline$storm_IoCompleteRequest$0$anon4_Else#1
     bla1.bpl(1662,3): inline$storm_IoCompleteRequest$0$anon5_Then#1
     bla1.bpl(1672,3): inline$storm_IoCompleteRequest$0$anon2#1
+    bla1.bpl(1676,3): inline$storm_IoCompleteRequest$0$label_1#1
     bla1.bpl(1734,3): anon14_Then#1
     bla1.bpl(1739,3): anon7#1
     bla1.bpl(1796,3): inline$storm_IoCancelIrp$0$anon12_Then#1
@@ -144,6 +145,7 @@ Execution trace:
     daytona_bug2_ioctl_example_2.bpl(1872,3): inline$storm_KeAcquireSpinLock$0$anon7#2
     daytona_bug2_ioctl_example_2.bpl(1883,3): inline$storm_KeAcquireSpinLock$0$anon14_Then#2
     daytona_bug2_ioctl_example_2.bpl(1888,3): inline$storm_KeAcquireSpinLock$0$anon9#2
+    daytona_bug2_ioctl_example_2.bpl(1892,3): inline$storm_KeAcquireSpinLock$0$label_1#2
     daytona_bug2_ioctl_example_2.bpl(1903,3): inline$storm_KeAcquireSpinLock$0$Return#2
     daytona_bug2_ioctl_example_2.bpl(1909,3): inline$I8xKeyboardGetSysButtonEvent$0$anon36_Else#2
     daytona_bug2_ioctl_example_2.bpl(1920,3): inline$I8xKeyboardGetSysButtonEvent$0$label_56_false#2
@@ -155,6 +157,7 @@ Execution trace:
     daytona_bug2_ioctl_example_2.bpl(2039,3): inline$storm_IoSetCancelRoutine$0$anon8#2
     daytona_bug2_ioctl_example_2.bpl(2050,3): inline$storm_IoSetCancelRoutine$0$anon16_Then#2
     daytona_bug2_ioctl_example_2.bpl(2055,3): inline$storm_IoSetCancelRoutine$0$anon10#2
+    daytona_bug2_ioctl_example_2.bpl(2062,3): inline$storm_IoSetCancelRoutine$0$label_1#2
     daytona_bug2_ioctl_example_2.bpl(2069,3): inline$storm_IoSetCancelRoutine$0$Return#2
     daytona_bug2_ioctl_example_2.bpl(2075,3): inline$I8xKeyboardGetSysButtonEvent$0$anon44_Else#2
     daytona_bug2_ioctl_example_2.bpl(2200,3): inline$I8xKeyboardGetSysButtonEvent$0$anon45_Else#2
@@ -170,6 +173,7 @@ Execution trace:
     daytona_bug2_ioctl_example_2.bpl(2337,3): inline$storm_IoSetCancelRoutine$1$anon8#2
     daytona_bug2_ioctl_example_2.bpl(2348,3): inline$storm_IoSetCancelRoutine$1$anon16_Then#2
     daytona_bug2_ioctl_example_2.bpl(2353,3): inline$storm_IoSetCancelRoutine$1$anon10#2
+    daytona_bug2_ioctl_example_2.bpl(2361,3): inline$storm_IoSetCancelRoutine$1$label_1#2
     daytona_bug2_ioctl_example_2.bpl(2368,3): inline$storm_IoSetCancelRoutine$1$Return#2
     daytona_bug2_ioctl_example_2.bpl(2375,3): inline$I8xKeyboardGetSysButtonEvent$0$anon50_Else#2
     daytona_bug2_ioctl_example_2.bpl(2385,3): inline$I8xKeyboardGetSysButtonEvent$0$label_72_false#2
@@ -185,6 +189,7 @@ Execution trace:
     daytona_bug2_ioctl_example_2.bpl(2599,3): inline$storm_KeReleaseSpinLock$0$anon5#2
     daytona_bug2_ioctl_example_2.bpl(2610,3): inline$storm_KeReleaseSpinLock$0$anon11_Then#2
     daytona_bug2_ioctl_example_2.bpl(2615,3): inline$storm_KeReleaseSpinLock$0$anon7#2
+    daytona_bug2_ioctl_example_2.bpl(2619,3): inline$storm_KeReleaseSpinLock$0$label_1#2
     daytona_bug2_ioctl_example_2.bpl(2626,3): inline$storm_KeReleaseSpinLock$0$Return#2
     daytona_bug2_ioctl_example_2.bpl(2632,3): inline$I8xKeyboardGetSysButtonEvent$0$anon43_Else#2
     daytona_bug2_ioctl_example_2.bpl(2858,3): inline$I8xKeyboardGetSysButtonEvent$0$label_51#2
@@ -194,10 +199,12 @@ Execution trace:
     daytona_bug2_ioctl_example_2.bpl(2951,3): inline$storm_IoCompleteRequest$2$anon6_Else#2
     daytona_bug2_ioctl_example_2.bpl(2959,3): inline$storm_IoCompleteRequest$2$anon7_Then#2
     daytona_bug2_ioctl_example_2.bpl(2969,3): inline$storm_IoCompleteRequest$2$anon2#2
+    daytona_bug2_ioctl_example_2.bpl(2973,3): inline$storm_IoCompleteRequest$2$label_1#2
     daytona_bug2_ioctl_example_2.bpl(2980,3): inline$storm_IoCompleteRequest$2$Return#2
     daytona_bug2_ioctl_example_2.bpl(2986,3): inline$I8xCompleteSysButtonIrp$0$anon2_Else#2
     daytona_bug2_ioctl_example_2.bpl(3000,3): inline$I8xCompleteSysButtonIrp$0$Return#2
     daytona_bug2_ioctl_example_2.bpl(3006,3): inline$I8xKeyboardGetSysButtonEvent$0$anon42_Else#2
+    daytona_bug2_ioctl_example_2.bpl(3013,3): inline$I8xKeyboardGetSysButtonEvent$0$label_52#2
     daytona_bug2_ioctl_example_2.bpl(3157,3): inline$I8xKeyboardGetSysButtonEvent$0$label_1#2
     daytona_bug2_ioctl_example_2.bpl(3169,3): inline$I8xKeyboardGetSysButtonEvent$0$Return#2
     daytona_bug2_ioctl_example_2.bpl(3175,3): inline$I8xDeviceControl$0$anon18_Else#2
@@ -222,6 +229,7 @@ Execution trace:
     daytona_bug2_ioctl_example_2.bpl(3931,3): inline$storm_IoAcquireCancelSpinLock$0$anon5#2
     daytona_bug2_ioctl_example_2.bpl(3942,3): inline$storm_IoAcquireCancelSpinLock$0$anon11_Then#2
     daytona_bug2_ioctl_example_2.bpl(3947,3): inline$storm_IoAcquireCancelSpinLock$0$anon7#2
+    daytona_bug2_ioctl_example_2.bpl(3951,3): inline$storm_IoAcquireCancelSpinLock$0$label_1#2
     daytona_bug2_ioctl_example_2.bpl(3958,3): inline$storm_IoAcquireCancelSpinLock$0$Return#2
     daytona_bug2_ioctl_example_2.bpl(3964,3): inline$storm_IoCancelIrp$0$anon30_Else#2
     daytona_bug2_ioctl_example_2.bpl(3982,3): inline$storm_IoCancelIrp$0$label_16_true#2
@@ -293,6 +301,7 @@ Execution trace:
     stack_overflow.bpl(78167,3): inline$storm_IoSetCompletionRoutine$0$label_8#1
     stack_overflow.bpl(78198,3): inline$IoGetNextIrpStackLocation$2$label_3_true#1
     stack_overflow.bpl(78217,3): inline$storm_IoSetCompletionRoutine$0$anon5_Else#1
+    stack_overflow.bpl(78233,3): inline$storm_IoSetCompletionRoutine$0$label_1#1
     stack_overflow.bpl(78244,3): inline$storm_IoSetCompletionRoutine$0$Return#1
     stack_overflow.bpl(78250,3): inline$BDLCallLowerLevelDriverAndWait$0$anon18_Else#1
     stack_overflow.bpl(78290,3): inline$IoGetCurrentIrpStackLocation$4$label_3_true#1
@@ -330,11 +339,13 @@ Execution trace:
     stack_overflow.bpl(87627,3): inline$BDLDevicePowerIoCompletion$3$label_72_true#1
     stack_overflow.bpl(87671,3): inline$BDLDevicePowerIoCompletion$3$anon37_Else#1
     stack_overflow.bpl(87685,3): inline$BDLDevicePowerIoCompletion$3$label_82_true#1
+    stack_overflow.bpl(87692,3): inline$BDLDevicePowerIoCompletion$3$label_83#1
     stack_overflow.bpl(87698,3): inline$BDLDevicePowerIoCompletion$3$label_86#1
     stack_overflow.bpl(87702,3): inline$BDLDevicePowerIoCompletion$3$anon38_Else#1
     stack_overflow.bpl(87713,3): inline$BDLDevicePowerIoCompletion$3$anon39_Else#1
     stack_overflow.bpl(87738,3): inline$storm_IoCompleteRequest$7$label_6_false#1
     stack_overflow.bpl(87777,3): inline$storm_IoCompleteRequest$7$label_7#1
+    stack_overflow.bpl(87782,3): inline$storm_IoCompleteRequest$7$label_1#1
     stack_overflow.bpl(87789,3): inline$storm_IoCompleteRequest$7$Return#1
     stack_overflow.bpl(87795,3): inline$BDLDevicePowerIoCompletion$3$anon40_Else#1
     stack_overflow.bpl(87806,3): inline$BDLDevicePowerIoCompletion$3$anon41_Else#1
@@ -344,13 +355,16 @@ Execution trace:
     stack_overflow.bpl(87909,3): inline$BDLDevicePowerIoCompletion$3$label_111_true#1
     stack_overflow.bpl(87953,3): inline$BDLDevicePowerIoCompletion$3$anon44_Else#1
     stack_overflow.bpl(87967,3): inline$BDLDevicePowerIoCompletion$3$label_121_true#1
+    stack_overflow.bpl(87974,3): inline$BDLDevicePowerIoCompletion$3$label_122#1
     stack_overflow.bpl(88039,3): inline$BDLDevicePowerIoCompletion$3$Return#1
     stack_overflow.bpl(88046,3): inline$CallCompletionRoutine$3$anon13_Else#1
     stack_overflow.bpl(88146,3): inline$CallCompletionRoutine$3$label_20_icall_return#1
     stack_overflow.bpl(88160,3): inline$CallCompletionRoutine$3$label_24_true#1
+    stack_overflow.bpl(88169,3): inline$CallCompletionRoutine$3$label_1#1
     stack_overflow.bpl(88184,3): inline$CallCompletionRoutine$3$Return#1
     stack_overflow.bpl(88190,3): inline$storm_IoCallDriver$1$anon15_Else#1
     stack_overflow.bpl(88218,3): inline$storm_IoCallDriver$1$label_36#1
+    stack_overflow.bpl(88222,3): inline$storm_IoCallDriver$1$label_1#1
     stack_overflow.bpl(88237,3): inline$storm_IoCallDriver$1$Return#1
     stack_overflow.bpl(88244,3): inline$storm_PoCallDriver$0$anon2_Else#1
     stack_overflow.bpl(88262,3): inline$storm_PoCallDriver$0$Return#1
@@ -373,6 +387,7 @@ Execution trace:
     stack_overflow.bpl(89248,3): inline$BDLPnPStart$0$label_91_true#1
     stack_overflow.bpl(89292,3): inline$BDLPnPStart$0$anon46_Else#1
     stack_overflow.bpl(89306,3): inline$BDLPnPStart$0$label_101_true#1
+    stack_overflow.bpl(89313,3): inline$BDLPnPStart$0$label_102#1
     stack_overflow.bpl(89361,3): inline$BDLPnPStart$0$Return#1
     stack_overflow.bpl(89368,3): inline$BDLPnP$0$anon67_Else#1
     stack_overflow.bpl(94586,3): inline$BDLPnP$0$label_139#1

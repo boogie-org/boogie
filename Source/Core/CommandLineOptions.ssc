@@ -75,6 +75,8 @@ namespace Microsoft.Boogie
     public string! LogPrefix = "";
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
+    public enum InstrumentationPlaces { LoopHeaders, Everywhere }
+    public InstrumentationPlaces InstrumentInfer = InstrumentationPlaces.LoopHeaders;
     public bool PrintWithUniqueASTIds = false;
     private string XmlSinkFilename = null;
     [Peer] public XmlSink XmlSink = null;
@@ -604,48 +606,46 @@ namespace Microsoft.Boogie
             break;
   
           case "-proverWarnings":
-          case "/proverWarnings":
-            if (ps.ConfirmArgumentCount(1))
-            {
-              switch (args[ps.i])
-              {
-                case "0":
+          case "/proverWarnings": {
+            int pw = 0;
+            if (ps.GetNumericArgument(ref pw, 3)) {
+              switch (pw) {
+                case 0:
                   PrintProverWarnings = ProverWarnings.None;
                   break;
-                case "1":
+                case 1:
                   PrintProverWarnings = ProverWarnings.Stdout;
                   break;
-                case "2":
+                case 2:
                   PrintProverWarnings = ProverWarnings.Stderr;
                   break;
                 default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
+                  assert false;  // postcondition of GetNumericArgument guarantees that we don't get here
               }
             }
             break;
+          }
 
           case "-env":
-          case "/env":
-            if (ps.ConfirmArgumentCount(1))
-            {
-              switch (args[ps.i])
-              {
-                case "0":
+          case "/env": {
+            int e = 0;
+            if (ps.GetNumericArgument(ref e, 3)) {
+              switch (e) {
+                case 0:
                   ShowEnv = ShowEnvironment.Never;
                   break;
-                case "1":
+                case 1:
                   ShowEnv = ShowEnvironment.DuringPrint;
                   break;
-                case "2":
+                case 2:
                   ShowEnv = ShowEnvironment.Always;
                   break;
                 default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
+                  assert false;  // postcondition of GetNumericArgument guarantees that we don't get here
               }
             }
             break;
+          }
 
           case "-loopUnroll":
           case "/loopUnroll":
@@ -805,64 +805,52 @@ namespace Microsoft.Boogie
             break;
            
           case "-subsumption":
-          case "/subsumption":
-            if (ps.ConfirmArgumentCount(1))
-            {
-              switch (args[ps.i])
-              {
-                case "0":
+          case "/subsumption": {
+            int s = 0;
+            if (ps.GetNumericArgument(ref s, 3)) {
+              switch (s) {
+                case 0:
                   UseSubsumption = SubsumptionOption.Never;
                   break;
-                case "1":
+                case 1:
                   UseSubsumption = SubsumptionOption.NotForQuantifiers;
                   break;
-                case "2":
+                case 2:
                   UseSubsumption = SubsumptionOption.Always;
                   break;
                 default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
+                  assert false;  // postcondition of GetNumericArgument guarantees that we don't get here
               }
             }
             break;
+          }
           
           case "-liveVariableAnalysis":
-          case "/liveVariableAnalysis":
-            if (ps.ConfirmArgumentCount(1))
-            {
-              switch (args[ps.i])
-              {
-                case "0": 
-                  LiveVariableAnalysis = false;
-                  break;
-                case "1":
-                  LiveVariableAnalysis = true;
-                  break;
-                default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
-              }
+          case "/liveVariableAnalysis": {
+            int lva = 0;
+            if (ps.GetNumericArgument(ref lva, 2)) {
+              LiveVariableAnalysis = lva == 1;
             }
             break;
+          }
+            
+          case "-removeEmptyBlocks":
+          case "/removeEmptyBlocks": {
+            int reb = 0;
+            if (ps.GetNumericArgument(ref reb, 2)) {
+              RemoveEmptyBlocks = reb == 1;
+            }
+            break;
+          }
             
           case "-coalesceBlocks":
-          case "/coalesceBlocks":
-            if (ps.ConfirmArgumentCount(1))
-            {
-              switch (args[ps.i])
-              {
-                case "0": 
-                  CoalesceBlocks = false;
-                  break;
-                case "1":
-                  CoalesceBlocks = true;
-                  break;
-                default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
-              }
+          case "/coalesceBlocks": {
+            int cb = 0;
+            if (ps.GetNumericArgument(ref cb, 2)) {
+              CoalesceBlocks = cb == 1;
             }
             break;
+          }
 
           case "/DoomDebug":
             vcVariety = VCVariety.Doomed;
@@ -983,7 +971,25 @@ namespace Microsoft.Boogie
               }
             }
             break;
-            
+
+          case "-instrumentInfer":
+          case "/instrumentInfer":
+            if (ps.ConfirmArgumentCount(1)) {
+              switch (args[ps.i])
+              {
+                case "e":
+                  InstrumentInfer = InstrumentationPlaces.Everywhere;
+                  break;
+                case "h":
+                  InstrumentInfer = InstrumentationPlaces.LoopHeaders;
+                  break;
+                default:
+                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                  break;
+              }
+            }
+            break;
+
           case "-vcBrackets":
           case "/vcBrackets":
             ps.GetNumericArgument(ref BracketIdsInVC, 2);
@@ -1163,7 +1169,6 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("noTypecheck", ref NoTypecheck) ||
               ps.CheckBooleanFlag("overlookTypeErrors", ref OverlookBoogieTypeErrors) ||
               ps.CheckBooleanFlag("noVerify", ref Verify, false) ||
-              ps.CheckBooleanFlag("noRemoveEmptyBlocks", ref RemoveEmptyBlocks, false) ||
               ps.CheckBooleanFlag("traceverify", ref TraceVerify) ||
               ps.CheckBooleanFlag("noConsistencyChecks", ref NoConsistencyChecks, true) ||
               ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", ref AlwaysAssumeFreeLoopInvariants, true) ||
@@ -1840,7 +1845,6 @@ namespace Microsoft.Boogie
                    p = polyhedra for linear inequalities
                    s = debug statistics
                 0..9 = number of iterations before applying a widen (default=0)
-  /loopInvOnDemand : Infer loop invariants on demand      
   /noinfer       : turn off the default inference, and overrides the /infer
                    switch on its left
   /checkInfer    : instrument inferred invariants as asserts to be checked by
@@ -1849,6 +1853,10 @@ namespace Microsoft.Boogie
                     supported)
   /contractInfer : perform procedure contract inference
   /logInfer      : print debug output during inference
+  /instrumentInfer : h - instrument inferred invariants only at beginning of
+                         loop headers (default)
+                     e - instrument inferred invariants at beginning and end
+                         of every block
   /printInstrumented : print Boogie program after it has been
                    instrumented with invariants
   /Houdini[:<flags>] : perform procedure Houdini
@@ -1869,7 +1877,8 @@ namespace Microsoft.Boogie
   /liveVariableAnalysis:<c> : 0 = do not perform live variable analysis 
                               1 = perform live variable analysis (default)
   /noVerify      : skip VC generation and invocation of the theorem prover
-  /noRemoveEmptyBlocks : do not remove empty blocks during VC generation
+  /removeEmptyBlocks:<c> : 0 - do not remove empty blocks during VC generation
+                           1 - remove empty blocks (default)
   /coalesceBlocks:<c> : 0 = do not coalesce blocks
                         1 = coalesce blocks (default)
   /vc:<variety>  : n = nested block (default for non-/prover:z3),

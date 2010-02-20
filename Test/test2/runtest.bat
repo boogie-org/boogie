@@ -20,7 +20,7 @@ for %%f in (FormulaTerm.bpl FormulaTerm2.bpl Passification.bpl B.bpl
 echo -------------------- sk_hack.bpl --------------------
 %BGEXE% %* /noinfer /bv:z sk_hack.bpl 
 
-for %%f in (CallForall.bpl) do (
+for %%f in (CallForall.bpl ContractEvaluationOrder.bpl) do (
   echo.
   echo -------------------- %%f --------------------
   %BGEXE% %* %%f

@@ -1575,10 +1575,10 @@ namespace VC
         {
           Block! pred = (!)header.Predecessors[predIndex];
           
-          // Create a block between header and pred for the predicate commands if header has more than one successor 
-          // or if pred is a back edge node
-          GotoCmd gotocmd = pred.TransferCmd as GotoCmd;
-          if ((backEdgeNodes.ContainsKey(pred)) || (gotocmd != null && gotocmd.labelNames != null && gotocmd.labelNames.Length > 1))
+          // Create a block between header and pred for the predicate commands if pred has more than one successor 
+          GotoCmd gotocmd = (GotoCmd!)pred.TransferCmd;
+          assert gotocmd.labelNames != null;  // if "pred" is really a predecessor, it may be a GotoCmd with at least one label
+          if (gotocmd.labelNames.Length > 1)
           {
             Block! newBlock = CreateBlockBetween(predIndex, header);
             impl.Blocks.Add(newBlock);
@@ -1691,7 +1691,7 @@ namespace VC
     protected Hashtable/*TransferCmd->ReturnCmd*/! PassifyImpl(Implementation! impl, Program! program)
     {
       Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = new Hashtable/*TransferCmd->ReturnCmd*/();
-      Block/*?*/ exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
+      Block exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
       
       #region Debug Tracing
       if (CommandLineOptions.Clo.TraceVerify) 
@@ -1722,16 +1722,11 @@ namespace VC
           }
         }
 
-        InjectPreconditions(impl);
-        //cc.AddRange(GetPre(impl));
+        // add cc and the preconditions to new blocks preceding impl.Blocks[0]
+        InjectPreconditions(impl, cc);
 
-        Block! entryBlock = (!) impl.Blocks[0];
-        cc.AddRange(entryBlock.Cmds);
-        entryBlock.Cmds = cc;
-          
-        InjectPostConditions(impl,exitBlock,gotoCmdOrigins);
-        //CmdSeq! post = GetPost(impl);
-        //exitBlock.Cmds.AddRange(post);
+        // append postconditions, starting in exitBlock and continuing into other blocks, if needed
+        exitBlock = InjectPostConditions(impl, exitBlock, gotoCmdOrigins);
       }
       #endregion
       
@@ -1748,21 +1743,21 @@ namespace VC
       #region Debug Tracing
       if (CommandLineOptions.Clo.TraceVerify) 
       {
-        Console.WriteLine("after adding empty blocks before all blocks with more than one predecessor");
+        Console.WriteLine("after adding empty blocks as needed to catch join assumptions");
         EmitImpl(impl, true);
       }
       #endregion
     
       if (CommandLineOptions.Clo.LiveVariableAnalysis) {
-	    Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(impl);
-	  }
-	  
+        Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(impl);
+      }
+      
       Convert2PassiveCmd(impl);
       
       if (CommandLineOptions.Clo.LiveVariableAnalysis) {
-	    Microsoft.Boogie.LiveVariableAnalysis.ClearLiveVariables(impl);
-	  }
-	  
+        Microsoft.Boogie.LiveVariableAnalysis.ClearLiveVariables(impl);
+      }
+      
       #region Peep-hole optimizations
       if (CommandLineOptions.Clo.RemoveEmptyBlocks){
         #region Get rid of empty blocks
@@ -2867,49 +2862,110 @@ namespace VC
     static BlockSeq! RemoveEmptyBlocks(Block! b)
     {
       assert b.TraversingStatus == Block.VisitState.ToVisit;
-      BlockSeq retVal = removeEmptyBlocksWorker(b, true);
+      Block renameInfo;
+      BlockSeq retVal = removeEmptyBlocksWorker(b, true, out renameInfo);
+      if (renameInfo != null && !b.tok.IsValid) {
+        bool onlyAssumes = true;
+        foreach (Cmd c in b.Cmds) {
+          if (!(c is AssumeCmd)) {
+            onlyAssumes = false;
+            break;
+          }
+        }
+        if (onlyAssumes) {
+          b.tok = renameInfo.tok;
+          b.Label = renameInfo.Label;
+        }
+      }
       return retVal;
     }
 
-    private static BlockSeq! removeEmptyBlocksWorker(Block! b, bool startNode)
+    /// <summary>
+    /// For every not-yet-visited block n reachable from b, change n's successors to skip empty nodes.
+    /// Return the *set* of blocks reachable from b without passing through a nonempty block.
+    /// The target of any backedge is counted as a nonempty block.
+    /// If renameInfoForStartBlock is non-null, it denotes an empty block with location information, and that
+    /// information would be appropriate to display
+    /// </summary>
+    private static BlockSeq! removeEmptyBlocksWorker(Block! b, bool startNode, out Block renameInfoForStartBlock)
+      ensures renameInfoForStartBlock != null ==> renameInfoForStartBlock.tok.IsValid;
+      // ensures: b in result ==> renameInfoForStartBlock == null;
     {
+      renameInfoForStartBlock = null;
       BlockSeq bs = new BlockSeq();
       GotoCmd gtc = b.TransferCmd as GotoCmd;
 
       // b has no successors
       if (gtc == null || gtc.labelTargets == null || gtc.labelTargets.Length == 0) 
-      {        
+      {
         if (b.Cmds.Length != 0){ // only empty blocks are removed...
           bs.Add(b);
+        } else if (b.tok.IsValid) {
+          renameInfoForStartBlock = b;
         }
         return bs;
       }
-      else if(b.TraversingStatus == Block.VisitState.ToVisit)  // if b has some successors and we have not seen it so far...
+      else if (b.TraversingStatus == Block.VisitState.ToVisit)  // if b has some successors and we have not seen it so far...
       { 
         b.TraversingStatus = Block.VisitState.BeingVisited;
+
+        // Before recursing down to successors, make a sobering observation:
+        // If b has no commands and is not the start node, then it will see
+        // extinction (because it will not be included in the "return setOfSuccessors"
+        // statement below).  In that case, if b has a location, then the location
+        // information would be lost.  Hence, make an attempt to save the location
+        // by pushing the location onto b's successor.  This can be done if (0) b has
+        // exactly one successor, (1) that successor has no location of its own, and
+        // (2) that successor has no other predecessors.
+        if (b.Cmds.Length == 0 && !startNode) {
+          // b is about to become extinct; try to save its name and location, if possible
+          if (b.tok.IsValid && gtc.labelTargets.Length == 1) {
+            Block succ = (!)gtc.labelTargets[0];
+            if (!succ.tok.IsValid && succ.Predecessors.Length == 1) {
+              succ.tok = b.tok;
+              succ.Label = b.Label;
+            }
+          }
+        }
 
         // recursively call this method on each successor
         // merge result into a *set* of blocks
         Dictionary<Block,bool> mergedSuccessors = new Dictionary<Block,bool>();
+        int m = 0;  // in the following loop, set renameInfoForStartBlock to the value that all recursive calls agree on, if possible; otherwise, null
         foreach (Block! dest in gtc.labelTargets){
-          BlockSeq! ys = removeEmptyBlocksWorker(dest, false);
+          Block renameInfo;
+          BlockSeq! ys = removeEmptyBlocksWorker(dest, false, out renameInfo);
+          if (m == 0) {
+            renameInfoForStartBlock = renameInfo;
+          } else if (renameInfoForStartBlock != renameInfo) {
+            renameInfoForStartBlock = null;
+          }
           foreach (Block successor in ys){
             if (!mergedSuccessors.ContainsKey(successor))
               mergedSuccessors.Add(successor,true);
           }
+          m++;
         }
         b.TraversingStatus = Block.VisitState.AlreadyVisited;
 
         BlockSeq setOfSuccessors = new BlockSeq();
         foreach (Block d in mergedSuccessors.Keys)
           setOfSuccessors.Add(d);
-        if (b.Cmds.Length == 0 && !startNode)
+        if (b.Cmds.Length == 0 && !startNode) {
+          // b is about to become extinct
+          if (b.tok.IsValid) {
+            renameInfoForStartBlock = b;
+          }
           return setOfSuccessors;
+        }
         // otherwise, update the list of successors of b to be the blocks in setOfSuccessors
         gtc.labelTargets = setOfSuccessors;
         gtc.labelNames = new StringSeq();
         foreach (Block! d in setOfSuccessors)
           gtc.labelNames.Add(d.Label);
+        if (!startNode) {
+          renameInfoForStartBlock = null;
+        }
         return new BlockSeq(b);
       }
       else // b has some successors, but we are already visiting it, or we have already visited it...

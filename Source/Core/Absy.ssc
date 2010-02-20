@@ -279,16 +279,6 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Instrument the "widen" blocks with a statement in the form of "assume J", where J is a loop predicate "variable"
-    /// </summary>
-    public void InstrumentWithLoopInvariantPredicates()
-    {
-      foreach (Declaration d in this.TopLevelDeclarations) {
-        d.InstrumentWithLoopInvariantPredicates();
-      }
-    }
-
-    /// <summary>
     /// Reset the abstract stated computed before
     /// </summary>
     public void ResetAbstractInterpretationState()
@@ -438,11 +428,6 @@ namespace Microsoft.Boogie
     /// each block.
     /// </summary>
     public virtual void InstrumentWithInvariants () {}
-
-    /// <summary>
-    /// Insert a statement "assume J", for an opportune J - loop invariant predicate - in the "widen" blocks
-    /// </summary>
-    public virtual void InstrumentWithLoopInvariantPredicates() { /* by default it does nothing */ }
 
     /// <summary>
     /// Reset the abstract stated computed before
@@ -1993,56 +1978,39 @@ namespace Microsoft.Boogie
       {
         if (b.Lattice != null)
         {
-          CmdSeq newCommands = new CmdSeq();
-
           assert b.PreInvariant != null;      /* If the pre-abstract state is null, then something is wrong */
-
-          Expr inv = (Expr) b.Lattice.ToPredicate(b.PreInvariant); /*b.PreInvariantBuckets.GetDisjunction(b.Lattice);*/
-          PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken,inv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv);
-          newCommands.Add(cmd);
-          newCommands.AddRange(b.Cmds);
-
           assert b.PostInvariant != null;      /* If the post-state is null, then something is wrong */
 
- //         if(b.Cmds.Length > 0)               // If it is not an empty block
- //         {
-            inv = (Expr) b.Lattice.ToPredicate(b.PostInvariant);
-            cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken,inv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv);
-            newCommands.Add(cmd);
- //         }
-
-          b.Cmds = newCommands;
-        }
-      }
-    }
-
-    /// <summary>
-    /// Insert a statement "assume J", for an opportune J - loop invariant predicate - in the "widen" blocks
-    /// </summary>
-    override public void InstrumentWithLoopInvariantPredicates()
-    {
-      foreach(Block b in this.Blocks)
-      {
-        if(b.widenBlock) {  // if it is the head of a loop
-          CmdSeq newCommands = new CmdSeq();
-
-          Block! entryBlock = b;
-
-          ICollection<Block!> connectedComponents = this.GetConnectedComponents(b);       // Get the connected components from this block
-
-          // Duplicate the connected components.
-          // Note that as we duplicate all the nodes, in particular we have also to keep track of the *copy* of the entry node.
-          // This is the reason why we pass entryBlockByReference
-          ICollection<Block!> dupConnectedComponents = duplicate((!) connectedComponents, ref entryBlock);
-
-          Expr loopInvariantPredicate = new LoopPredicate(entryBlock, dupConnectedComponents);        // Create a new predicate J_{b.Label}
-
-          PredicateCmd cmd = new AssumeCmd(Token.NoToken, loopInvariantPredicate);
-
-          newCommands.Add(cmd);
-          newCommands.AddRange(b.Cmds);
-
-          b.Cmds = newCommands;
+          bool instrumentEntry;
+          bool instrumentExit;
+          switch (CommandLineOptions.Clo.InstrumentInfer) {
+            case CommandLineOptions.InstrumentationPlaces.Everywhere:
+              instrumentEntry = true;
+              instrumentExit = true;
+              break;
+            case CommandLineOptions.InstrumentationPlaces.LoopHeaders:
+              instrumentEntry = b.widenBlock;
+              instrumentExit = false;
+              break;
+            default:
+              assert false;  // unexpected InstrumentationPlaces value
+          }
+          
+          if (instrumentEntry || instrumentExit) {
+            CmdSeq newCommands = new CmdSeq();
+            if (instrumentEntry) {
+              Expr inv = (Expr) b.Lattice.ToPredicate(b.PreInvariant); /*b.PreInvariantBuckets.GetDisjunction(b.Lattice);*/
+              PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken,inv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv);
+              newCommands.Add(cmd);
+            }
+            newCommands.AddRange(b.Cmds);
+            if (instrumentExit) {
+              Expr inv = (Expr) b.Lattice.ToPredicate(b.PostInvariant);
+              PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken,inv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv);
+              newCommands.Add(cmd);
+            }
+            b.Cmds = newCommands;
+          }
         }
       }
     }
@@ -2074,8 +2042,6 @@ namespace Microsoft.Boogie
       }
 
       assert false;   // if we are here, it means that the block is not in one of the components. This is an error.
-
-      return null;    // unreachable code, just to please the compiler
     }
 
     /// <summary>
@@ -2162,57 +2128,6 @@ namespace Microsoft.Boogie
         }
       }
       this.BlockPredecessorsComputed = true;
-    }
-
-    /// <summary>
-    /// Make a deep copy of the set of blocks in the input.
-    /// The input must NOT contain two copies of the same block
-    /// </summary>
-    private ICollection<Block!>! duplicate(ICollection<Block!>! blocks, ref Block! head)
-    {
-      Dictionary<Block!, Block!> transMap = new Dictionary<Block!, Block!>();     // A map from the old block to a fresh one
-
-      foreach(Block! block in blocks)                                             // Create fresh copies for the blocks
-      {
-        Block! freshBlock = new Block(block.tok, block.Label, block.Cmds, block.TransferCmd);       // Construct a copy of the block
-        freshBlock.widenBlock = block.widenBlock;
-        freshBlock.Predecessors = new BlockSeq();
-        transMap.Add(block, freshBlock);                                                            // Add a link block -> freshblock
-      }
-
-      foreach(Block! block in blocks)                                             // Update the references
-      {
-        Block! freshBlock = transMap[block];
-
-        GotoCmd gotoCmd = freshBlock.TransferCmd as GotoCmd;
-        if(gotoCmd != null)
-        {
-          StringSeq! targetNames = new StringSeq();
-          BlockSeq! targetBlocks = new BlockSeq();
-
-          foreach(Block! next in (!) gotoCmd.labelTargets)
-          {
-            if(blocks.Contains(next))
-            {
-              assert transMap[next] != null;
-              targetNames.Add(next.Label);
-              targetBlocks.Add(transMap[next]);
-            }
-          }
-
-          GotoCmd freshGotoCmd = new GotoCmd(gotoCmd.tok, targetNames, targetBlocks);
-          freshBlock.TransferCmd = freshGotoCmd;
-        }
-        else
-        {
-          assert freshBlock.TransferCmd is ReturnCmd; // Do nothing as we do not need to update a returnCmd.
-                                                      // However, as we want to make the code robust, we check that it is a ReturnCmd
-        }
-      }
-
-      head = transMap[head];
-
-      return transMap.Values;
     }
 
     public void PruneUnreachableBlocks() {

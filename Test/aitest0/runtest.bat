@@ -3,4 +3,4 @@ setlocal
 
 set BGEXE=..\..\Binaries\Boogie.exe
 
-%BGEXE% %* -infer:c -printInstrumented -noVerify constants.bpl
+%BGEXE% %* -infer:c -instrumentInfer:e -printInstrumented -noVerify constants.bpl

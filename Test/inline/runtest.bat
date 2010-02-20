@@ -18,6 +18,13 @@ for %%f in (test5.bpl expansion.bpl expansion3.bpl Elevator.bpl) do (
   %BGEXE% %* %%f
 )
 
+REM Peephole optimizations are so good that Elevator seems worthwhile
+REM to include twice among these inline tests
+for %%f in (Elevator.bpl) do (
+  echo -------------------- %%f with empty blocks --------------------
+  %BGEXE% /removeEmptyBlocks:0 %* %%f
+)
+
 echo -------------------- expansion2.bpl --------------------
 %BGEXE% %* /proverLog:expansion2.sx expansion2.bpl
 %SystemRoot%\system32\find.exe /C "xxgz" expansion2.sx

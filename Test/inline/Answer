@@ -1443,13 +1443,8 @@ Boogie program verifier finished with 5 verified, 0 errors
 test5.bpl(37,3): Error BP5001: This assertion might not hold.
 Execution trace:
     test5.bpl(34,10): anon0
-    test5.bpl(25,23): inline$P$0$Entry
     test5.bpl(28,10): inline$P$0$anon0
-    test5.bpl(25,23): inline$P$0$Return
-    test5.bpl(34,10): anon0$1
-    test5.bpl(25,23): inline$P$1$Entry
     test5.bpl(28,10): inline$P$1$anon0
-    test5.bpl(25,23): inline$P$1$Return
     test5.bpl(34,10): anon0$2
 
 Boogie program verifier finished with 4 verified, 1 error
@@ -1474,6 +1469,17 @@ Execution trace:
 
 Boogie program verifier finished with 1 verified, 1 error
 -------------------- Elevator.bpl --------------------
+Elevator.bpl(17,5): Error BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    Elevator.bpl(15,3): anon0
+    Elevator.bpl(15,3): anon0$1
+    Elevator.bpl(16,3): anon10_LoopHead
+    Elevator.bpl(19,5): anon10_LoopBody
+    Elevator.bpl(99,3): inline$MoveDown_Error$0$anon0
+    Elevator.bpl(24,7): anon13_Then$1
+
+Boogie program verifier finished with 1 verified, 1 error
+-------------------- Elevator.bpl with empty blocks --------------------
 Elevator.bpl(17,5): Error BP5005: This loop invariant might not be maintained by the loop.
 Execution trace:
     Elevator.bpl(15,3): anon0

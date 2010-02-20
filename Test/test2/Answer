@@ -34,6 +34,7 @@ Execution trace:
 Passification.bpl(165,3): Error BP5001: This assertion might not hold.
 Execution trace:
     Passification.bpl(158,1): L0
+    Passification.bpl(161,1): L1
     Passification.bpl(164,1): L2
 
 Boogie program verifier finished with 7 verified, 4 errors
@@ -213,14 +214,16 @@ strings-where.bpl(990,36): Error: invalid argument types (any and name) to binar
 Structured.bpl(252,14): Error BP5003: A postcondition might not hold at this return statement.
 Structured.bpl(243,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Structured.bpl(245,3): anon0
+    Structured.bpl(244,5): anon0
     Structured.bpl(246,5): anon6_LoopBody
     Structured.bpl(247,7): anon7_LoopBody
+    Structured.bpl(248,11): anon8_Then
     Structured.bpl(252,5): anon4
     Structured.bpl(252,14): anon9_Then
 Structured.bpl(303,3): Error BP5001: This assertion might not hold.
 Execution trace:
     Structured.bpl(299,5): anon0
+    Structured.bpl(300,3): anon3_Else
     Structured.bpl(303,3): anon2
 Structured.bpl(311,7): Error BP5001: This assertion might not hold.
 Execution trace:
@@ -378,3 +381,18 @@ Execution trace:
     CallForall.bpl(124,3): anon0
 
 Boogie program verifier finished with 10 verified, 8 errors
+
+-------------------- ContractEvaluationOrder.bpl --------------------
+ContractEvaluationOrder.bpl(8,1): Error BP5003: A postcondition might not hold at this return statement.
+ContractEvaluationOrder.bpl(3,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    ContractEvaluationOrder.bpl(7,5): anon0
+ContractEvaluationOrder.bpl(15,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ContractEvaluationOrder.bpl(12,5): anon0
+ContractEvaluationOrder.bpl(24,3): Error BP5002: A precondition for this call might not hold.
+ContractEvaluationOrder.bpl(30,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    ContractEvaluationOrder.bpl(23,5): anon0
+
+Boogie program verifier finished with 1 verified, 3 errors

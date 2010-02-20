@@ -319,14 +319,6 @@ namespace Microsoft.Boogie
       return node; 
     }
 
-    /// <summary>
-    /// Just invoke VisitNAryExpr
-    /// </summary>
-    public virtual Expr! VisitLoopPredicate(LoopPredicate! node) 
-    {
-      return this.VisitNAryExpr(node);            
-    }
-
     public virtual AssignLhs! VisitMapAssignLhs(MapAssignLhs! node)
     {
       node.Map = (AssignLhs!)this.Visit(node.Map);

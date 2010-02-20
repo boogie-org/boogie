@@ -288,11 +288,6 @@ namespace Microsoft.Boogie.VCExprAST
       return node;
     }
 
-    public override Expr! VisitLoopPredicate(LoopPredicate! node) 
-    {
-      return this.VisitNAryExpr(node);
-    }
-
     private VCExpr! TranslateNAryExpr(NAryExpr! node) {
       int n = node.Args.Length;
       List<VCExpr!>! vcs = new List<VCExpr!> (n);
@@ -719,10 +714,6 @@ namespace Microsoft.Boogie.VCExprAST
     
     public VCExpr! Visit(FunctionCall! functionCall) {
       return TranslateFunctionCall(functionCall, this.args, this.typeArgs);
-    }
-    
-    public VCExpr! Visit(LoopPredicateName! loopPredicateName) {
-	    return Gen.Variable(loopPredicateName.Name, Type.Bool); // We generate a variable. Intuition: it is a second order variable
     }
     
     public VCExpr! Visit(MapSelect! mapSelect) {

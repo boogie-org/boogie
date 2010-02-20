@@ -672,7 +672,7 @@ namespace Microsoft.Boogie
   // Block
   public sealed class Block : Absy
   {
-    public readonly string! Label;
+    public string! Label;  // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
     [Rep] [ElementsPeer] public CmdSeq! Cmds;
     [Rep]  //PM: needed to verify Traverse.Visit
     public TransferCmd TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
