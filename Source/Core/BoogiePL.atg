@@ -909,17 +909,19 @@ CallCmd<out Cmd! c>
 = (. IToken! x; IToken! first; IToken p;
      List<IdentifierExpr>! ids = new List<IdentifierExpr>();
      List<Expr>! es = new List<Expr>();
+     QKeyValue kv = null;
      Expr en;  List<Expr> args;
      c = dummyCmd;
   .)
   "call"                          (. x = token; .)
+  { Attribute<ref kv> }
   ( Ident<out first>
     ( "("
       [ CallForallArg<out en>       (. es.Add(en); .)
         { "," CallForallArg<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids); .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); .)
     |
                                   (. ids.Add(new IdentifierExpr(first, first.val)); .)
       [ "," CallOutIdent<out p>  (.
@@ -943,7 +945,7 @@ CallCmd<out Cmd! c>
         { "," CallForallArg<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids); .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); .)
     )
   | "forall"
     Ident<out first> "("              (. args = new List<Expr>(); .)
@@ -975,7 +977,7 @@ CallCmd<out Cmd! c>
         { "," CallForallArg<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids); .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); .)
   )
   .
 

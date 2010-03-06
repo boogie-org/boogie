@@ -1168,11 +1168,15 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		IToken! x; IToken! first; IToken p;
 		List<IdentifierExpr>! ids = new List<IdentifierExpr>();
 		List<Expr>! es = new List<Expr>();
+		QKeyValue kv = null;
 		Expr en;  List<Expr> args;
 		c = dummyCmd;
 		
 		Expect(50);
 		x = token; 
+		while (t.kind == 25) {
+			Attribute(ref kv);
+		}
 		if (t.kind == 1) {
 			Ident(out first);
 			if (t.kind == 8) {
@@ -1187,7 +1191,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 					}
 				}
 				Expect(9);
-				c = new CallCmd(x, first.val, es, ids); 
+				c = new CallCmd(x, first.val, es, ids, kv); 
 			} else if (t.kind == 11 || t.kind == 49) {
 				ids.Add(new IdentifierExpr(first, first.val)); 
 				if (t.kind == 11) {
@@ -1223,7 +1227,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 					}
 				}
 				Expect(9);
-				c = new CallCmd(x, first.val, es, ids); 
+				c = new CallCmd(x, first.val, es, ids, kv); 
 			} else Error(106);
 		} else if (t.kind == 51) {
 			Get();
@@ -1277,7 +1281,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 				}
 			}
 			Expect(9);
-			c = new CallCmd(x, first.val, es, ids); 
+			c = new CallCmd(x, first.val, es, ids, kv); 
 		} else Error(107);
 	}
 

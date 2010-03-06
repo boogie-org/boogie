@@ -1297,6 +1297,8 @@ namespace Microsoft.Boogie
     // type checking
     public TypeParamInstantiation TypeParameters = null;
 
+    public QKeyValue Attributes;
+    
     // TODO: convert to use generics
     private object errorData;
     public object ErrorData {
@@ -1323,6 +1325,16 @@ namespace Microsoft.Boogie
       this.Outs = outs;
       // base(tok);
     }
+    public CallCmd(IToken! tok, string! callee, List<Expr>! ins, List<IdentifierExpr>! outs, QKeyValue kv)
+      : base(tok)
+    {
+      this.callee = callee;
+      this.Ins = ins;
+      this.Outs = outs;
+      this.Attributes = kv;
+      // base(tok);
+    }
+    
     public override void Emit(TokenTextWriter! stream, int level)
     {
       stream.Write(this, level, "call ");
@@ -1405,6 +1417,12 @@ namespace Microsoft.Boogie
                  callee, Outs.Count);
         return;
       }
+      if (QKeyValue.FindBoolAttribute(this.Attributes, "async")) {
+        if (Proc.OutParams.Length > 1) {
+          rc.Error(this.tok, "a procedure called asynchronously can have at most one output parameter");
+          return;
+        }
+      } 
       
       // Check that type parameters can be determined using the given
       // actual i/o arguments. This is done already during resolution
@@ -1467,15 +1485,28 @@ namespace Microsoft.Boogie
       ExprSeq! actualIns = new ExprSeq();
       IdentifierExprSeq! actualOuts = new IdentifierExprSeq();
       for (int i = 0; i < Ins.Count; ++i)
+      {
         if (Ins[i] != null) {
           formalInTypes.Add(((!)Proc.InParams[i]).TypedIdent.Type);
           actualIns.Add(Ins[i]);
         }
+      } 
       for (int i = 0; i < Outs.Count; ++i)
+      {
         if (Outs[i] != null) {
           formalOutTypes.Add(((!)Proc.OutParams[i]).TypedIdent.Type);
           actualOuts.Add(Outs[i]);
         }
+      }
+          
+      if (QKeyValue.FindBoolAttribute(this.Attributes, "async") && Outs.Count > 0) {
+        Type returnType = ((!)Outs[0]).ShallowType;
+        if (!returnType.Equals(Type.Int))
+        {
+          tc.Error(this.tok, "the return from an asynchronous call should be an integer");
+          return;
+        }
+      }
       
       // match actuals with formals
       List<Type!>! actualTypeParams;
