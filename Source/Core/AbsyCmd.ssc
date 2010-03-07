@@ -1755,11 +1755,20 @@ namespace Microsoft.Boogie
     // actual non-wildcard arguments
     public TypeSeq InstantiatedTypes;
 
+    public QKeyValue Attributes;
+	
     public CallForallCmd(IToken! tok, string! callee, List<Expr>! ins)
       : base(tok)
     {
       this.callee = callee;
       this.Ins = ins;
+    }
+    public CallForallCmd(IToken! tok, string! callee, List<Expr>! ins, QKeyValue kv)
+      : base(tok)
+    {
+      this.callee = callee;
+      this.Ins = ins;
+      this.Attributes = kv;
     }
     public override void Emit(TokenTextWriter! stream, int level)
     {

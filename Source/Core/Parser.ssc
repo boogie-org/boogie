@@ -1244,7 +1244,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 				}
 			}
 			Expect(9);
-			c = new CallForallCmd(x, first.val, args); 
+			c = new CallForallCmd(x, first.val, args, kv); 
 		} else if (t.kind == 44) {
 			Get();
 			ids.Add(null); 

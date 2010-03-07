@@ -953,7 +953,7 @@ CallCmd<out Cmd! c>
       { "," CallForallArg<out en> (. args.Add(en); .)
       }
     ]
-    ")"                           (. c = new CallForallCmd(x, first.val, args); .)
+    ")"                           (. c = new CallForallCmd(x, first.val, args, kv); .)
   | "*"
                                   (. ids.Add(null); .)
       [ "," CallOutIdent<out p>  (.
