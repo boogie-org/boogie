@@ -1338,6 +1338,7 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter! stream, int level)
     {
       stream.Write(this, level, "call ");
+      if (this.Attributes != null) this.Attributes.Emit(stream);
       string sep = "";
       if (Outs.Count > 0) {
           foreach (Expr arg in Outs) {
@@ -1772,7 +1773,9 @@ namespace Microsoft.Boogie
     }
     public override void Emit(TokenTextWriter! stream, int level)
     {
-      stream.Write(this, level, "call forall ");
+      stream.Write(this, level, "call ");
+      if (this.Attributes != null) this.Attributes.Emit(stream);
+      stream.Write("forall ");
       stream.Write(TokenTextWriter.SanitizeIdentifier(callee));
       stream.Write("(");
       string sep = "";
