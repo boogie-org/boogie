@@ -862,6 +862,29 @@ namespace Microsoft.Boogie
       return new AssignCmd(tok, lhss, rhss);
     }
 
+    /// <summary>
+    /// This is a helper routine for printing a linked list of attributes.  Each attribute
+    /// is terminated by a space.
+    /// </summary>
+    public static void EmitAttributes(TokenTextWriter! stream, QKeyValue attributes)
+    {
+      for (QKeyValue kv = attributes; kv != null; kv = kv.Next) {
+        kv.Emit(stream);
+        stream.Write(" ");
+      }
+    }
+    public static void ResolveAttributes(QKeyValue attributes, ResolutionContext! rc)
+    {
+      for (QKeyValue kv = attributes; kv != null; kv = kv.Next) {
+        kv.Resolve(rc);
+      }
+    }
+    public static void TypecheckAttributes(QKeyValue attributes, TypecheckingContext! tc)
+    {
+      for (QKeyValue kv = attributes; kv != null; kv = kv.Next) {
+        kv.Typecheck(tc);
+      }
+    }
   }
 
   public class CommentCmd : Cmd // just a convenience for debugging
@@ -1247,8 +1270,11 @@ namespace Microsoft.Boogie
 
   public abstract class CallCommonality : SugaredCmd
   {
-    protected CallCommonality(IToken! tok) {
+    public QKeyValue Attributes;
+      
+    protected CallCommonality(IToken! tok, QKeyValue kv) {
       base(tok);
+      Attributes = kv;
     }
 
     protected enum TempVarKind { Formal, Old, Bound }
@@ -1297,8 +1323,6 @@ namespace Microsoft.Boogie
     // type checking
     public TypeParamInstantiation TypeParameters = null;
 
-    public QKeyValue Attributes;
-    
     // TODO: convert to use generics
     private object errorData;
     public object ErrorData {
@@ -1318,27 +1342,24 @@ namespace Microsoft.Boogie
       this(tok, callee, insList, outsList);
     }
     public CallCmd(IToken! tok, string! callee, List<Expr>! ins, List<IdentifierExpr>! outs)
-      : base(tok)
     {
+      base(tok, null);
       this.callee = callee;
       this.Ins = ins;
       this.Outs = outs;
-      // base(tok);
     }
     public CallCmd(IToken! tok, string! callee, List<Expr>! ins, List<IdentifierExpr>! outs, QKeyValue kv)
-      : base(tok)
     {
+      base(tok, kv);
       this.callee = callee;
       this.Ins = ins;
       this.Outs = outs;
-      this.Attributes = kv;
-      // base(tok);
     }
     
     public override void Emit(TokenTextWriter! stream, int level)
     {
       stream.Write(this, level, "call ");
-      if (this.Attributes != null) this.Attributes.Emit(stream);
+      EmitAttributes(stream, Attributes);
       string sep = "";
       if (Outs.Count > 0) {
           foreach (Expr arg in Outs) {
@@ -1374,6 +1395,7 @@ namespace Microsoft.Boogie
         // already resolved
         return;
       }
+      ResolveAttributes(Attributes, rc);
       Proc = rc.LookUpProcedure(callee) as Procedure;
       if (Proc == null) {
         rc.Error(this, "call to undeclared procedure: {0}", callee);
@@ -1471,6 +1493,8 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext! tc)
     {
       assume this.Proc != null;  // we assume the CallCmd has been successfully resolved before calling this Typecheck method
+
+      TypecheckAttributes(Attributes, tc);
 
       // typecheck in-parameters
       foreach (Expr e in Ins)
@@ -1756,25 +1780,22 @@ namespace Microsoft.Boogie
     // actual non-wildcard arguments
     public TypeSeq InstantiatedTypes;
 
-    public QKeyValue Attributes;
-	
     public CallForallCmd(IToken! tok, string! callee, List<Expr>! ins)
-      : base(tok)
     {
+      base(tok, null);
       this.callee = callee;
       this.Ins = ins;
     }
     public CallForallCmd(IToken! tok, string! callee, List<Expr>! ins, QKeyValue kv)
-      : base(tok)
     {
+      base(tok, kv);
       this.callee = callee;
       this.Ins = ins;
-      this.Attributes = kv;
     }
     public override void Emit(TokenTextWriter! stream, int level)
     {
       stream.Write(this, level, "call ");
-      if (this.Attributes != null) this.Attributes.Emit(stream);
+      EmitAttributes(stream, Attributes);
       stream.Write("forall ");
       stream.Write(TokenTextWriter.SanitizeIdentifier(callee));
       stream.Write("(");
@@ -1797,6 +1818,7 @@ namespace Microsoft.Boogie
         // already resolved
         return;
       }
+      ResolveAttributes(Attributes, rc);
       Proc = rc.LookUpProcedure(callee) as Procedure;
       if (Proc == null) {
         rc.Error(this, "call to undeclared procedure: {0}", callee);
@@ -1810,6 +1832,7 @@ namespace Microsoft.Boogie
     public override void AddAssignedVariables(VariableSeq! vars) { }
     public override void Typecheck(TypecheckingContext! tc)
     {
+      TypecheckAttributes(Attributes, tc);
       // typecheck in-parameters
       foreach (Expr e in Ins) {
         if (e != null) {
@@ -2072,19 +2095,19 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter! stream, int level)
     {
       stream.Write(this, level, "assert ");
-      EmitAttributes(stream);
+      EmitAttributes(stream, Attributes);
       this.Expr.Emit(stream);
       stream.WriteLine(";");
     }
-    protected void EmitAttributes(TokenTextWriter! stream)
+    public override void Resolve(ResolutionContext! rc)
     {
-      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next) {
-        kv.Emit(stream);
-        stream.Write(" ");
-      }
+      ResolveAttributes(Attributes, rc);
+      base.Resolve(rc);
     }
+
     public override void Typecheck(TypecheckingContext! tc)
     {
+      TypecheckAttributes(Attributes, tc);
       Expr.Typecheck(tc);
       assert Expr.Type != null;  // follows from Expr.Typecheck postcondition
       if (!Expr.Type.Unify(Type.Bool)) 
