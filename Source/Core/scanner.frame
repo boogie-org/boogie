@@ -83,7 +83,7 @@ public class Buffer {
   static int pos;
   public const int eof = '\uffff';
   
-  public static void Fill(StreamReader! reader) {
+  public static void Fill(TextReader! reader) {
     List<string!> defines = new List<string!>();
     Fill(reader, defines);
   }
@@ -97,7 +97,7 @@ public class Buffer {
     }
   }
   
-  public static void Fill(StreamReader! reader, List<string!>! defines) {
+  public static void Fill(TextReader! reader, List<string!>! defines) {
     StringBuilder sb = new StringBuilder();
     List<ReadState>! readState = new List<ReadState>();  // readState.Count is the current nesting level of #if's
     int ignoreCutoff = -1;  // -1 means we're not ignoring; for 0<=n, n means we're ignoring because of something at nesting level n
