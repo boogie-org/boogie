@@ -1778,6 +1778,26 @@ namespace VC
       }
       #endregion Peep-hole optimizations
 
+      if (CommandLineOptions.Clo.ExpandLambdas)
+      {
+        List<Expr!>! axioms;
+        List<Function!>! functions;
+        LambdaHelper.Desugar(impl, out axioms, out functions);
+        // TODO: do something with functions (Z3 currently doesn't need them)
+
+        if (axioms.Count > 0) {
+          CmdSeq cmds = new CmdSeq();
+          foreach (Expr! ax in axioms) {
+            cmds.Add(new AssumeCmd(ax.tok, ax));
+          }
+          Block! entryBlock = (!) impl.Blocks[0];
+          cmds.AddRange(entryBlock.Cmds);
+          entryBlock.Cmds = cmds;
+        }
+      }
+
+
+
 //      #region Constant Folding
 //      #endregion
 //      #region Debug Tracing

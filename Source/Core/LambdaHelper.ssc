@@ -41,6 +41,23 @@ namespace Microsoft.Boogie {
       internal List<Function!>! lambdaFunctions = new List<Function!>();
       static int lambdaid = 0;
 
+      public override Program! VisitProgram(Program! prog)
+      {
+        foreach (Declaration! decl in prog.TopLevelDeclarations) {
+          if (decl is Axiom) {
+            this.Visit(decl);
+          }
+        }
+
+        return prog;
+      }
+      
+      public override Procedure! VisitProcedure(Procedure! node)
+      {
+        // do not visit requires/ensures when calling this on Implementation
+        return node;
+      }  
+
       public override Absy! Visit(Absy! node)
       {
         node = base.Visit(node);
