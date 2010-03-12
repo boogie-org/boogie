@@ -61,9 +61,10 @@ namespace Microsoft.Boogie {
           foreach (object o in freeVars) {
             Variable v = o as Variable;
             if (v != null) {
-              Formal f = new Formal(v.tok, v.TypedIdent, true);
+              TypedIdent ti = new TypedIdent(v.TypedIdent.tok, v.TypedIdent.Name, v.TypedIdent.Type);
+              Formal f = new Formal(v.tok, ti, true);
               formals.Add(f);
-              BoundVariable b = new BoundVariable(v.tok, v.TypedIdent);
+              BoundVariable b = new BoundVariable(v.tok, ti);
               dummies.Add(b);
               callArgs.Add(new IdentifierExpr(v.tok, v));
               Expr! id = new IdentifierExpr(f.tok, b);
@@ -73,7 +74,7 @@ namespace Microsoft.Boogie {
             // TODO: do something about type variables
           }
 
-          Formal res = new Formal(tok, new TypedIdent(tok, "", (!)lambda.Type), false);
+          Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, (!)lambda.Type), false);
           Function fn = new Function(tok, "lambda@" + lambdaid++, new TypeVariableSeq(), formals, res, "auto-generated lambda function", lambda.Attributes);
           IdentifierExpr callId = new IdentifierExpr(tok, fn.Name);
           FunctionCall fcall = new FunctionCall(callId);
