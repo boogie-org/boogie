@@ -1,3 +1,7 @@
+# All variables can be overwritten by name=value pairs as arguments to nmake,
+# e.g. by running
+# 	?> nmake SPECSHARPROOT=c:\checkout\SpecSharp
+
 SPECSHARPROOT = d:\SpecSharpCodePlex\SpecSharp
 # Use the first one if you want to build Boogie using the LKG build of Spec#.
 # Use the second one if you want to build Boogie using a freshly built version of Spec#.
