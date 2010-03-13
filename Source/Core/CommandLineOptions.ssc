@@ -1693,6 +1693,11 @@ namespace Microsoft.Boogie
        whether there exists a Boolean assignment to the existentials
        that makes all verification conditions valid.  Without option
        /contractInfer the attribute is ignored.
+
+  ---- On assert statements --------------------------------------------------
+
+     {:subsumption n}
+       Overrides the /subsumption command-line setting for this assertion.
        
   ---- The end ---------------------------------------------------------------
 ");

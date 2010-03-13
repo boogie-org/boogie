@@ -40,7 +40,7 @@ namespace VC
     {
       Expr! expr = assrt.Expr;
 
-      switch (CommandLineOptions.Clo.UseSubsumption) {
+      switch (Wlp.Subsumption(assrt)) {
         case CommandLineOptions.SubsumptionOption.Never:
           expr = Expr.True;
           break;

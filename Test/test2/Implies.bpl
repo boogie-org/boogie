@@ -14,3 +14,23 @@ procedure P() {
   assert f(23);
   assert f(-5);                                    // error
 }
+
+procedure Q0(x: int) {
+  assert x == 2;  // error
+  assert x == 2;  // nothing reported for this line, since control cannot reach here
+}
+
+procedure Q1(x: int) {
+  assert {:subsumption 0} x == 2;  // error
+  assert x == 2;  // error (because the subsumption attribute above makes the execution 'forget' the condition)
+}
+
+procedure Q2(x: int) {
+  assert x == 2;  // error
+  assert {:subsumption 0} x == 2;  // nothing reported for this line, since control cannot reach here
+}
+
+procedure Q3(x: int) {
+  assert {:subsumption 0} x == 2;  // error
+  assert {:subsumption 0} x == 2;  // error (because the subsumption attribute above makes the execution 'forget' the condition)
+}

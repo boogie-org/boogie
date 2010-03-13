@@ -324,8 +324,26 @@ Execution trace:
 Implies.bpl(15,3): Error BP5001: This assertion might not hold.
 Execution trace:
     Implies.bpl(11,3): anon0
+Implies.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Implies.bpl(19,3): anon0
+Implies.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Implies.bpl(24,3): anon0
+Implies.bpl(25,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Implies.bpl(24,3): anon0
+Implies.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Implies.bpl(29,3): anon0
+Implies.bpl(34,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Implies.bpl(34,3): anon0
+Implies.bpl(35,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Implies.bpl(34,3): anon0
 
-Boogie program verifier finished with 0 verified, 2 errors
+Boogie program verifier finished with 0 verified, 8 errors
 
 -------------------- IfThenElse1.bpl --------------------
 IfThenElse1.bpl(26,3): Error BP5001: This assertion might not hold.

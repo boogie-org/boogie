@@ -59,7 +59,7 @@ namespace VC {
         } else {
           int id = ac.UniqueId;
           ctxt.Label2absy[id] = ac;
-          switch (CommandLineOptions.Clo.UseSubsumption) {
+          switch (Subsumption(ac)) {
             case CommandLineOptions.SubsumptionOption.Never:
               break;
             case CommandLineOptions.SubsumptionOption.Always:
@@ -87,6 +87,16 @@ namespace VC {
       } else {
       Console.WriteLine(cmd.ToString());
         assert false;  // unexpected command
+      }
+    }
+    
+    public static CommandLineOptions.SubsumptionOption Subsumption(AssertCmd! ac) {
+      int n = QKeyValue.FindIntAttribute(ac.Attributes, "subsumption", -1);
+      switch (n) {
+        case 0:  return CommandLineOptions.SubsumptionOption.Never;
+        case 1:  return CommandLineOptions.SubsumptionOption.NotForQuantifiers;
+        case 2:  return CommandLineOptions.SubsumptionOption.Always;
+        default:  return CommandLineOptions.Clo.UseSubsumption;
       }
     }
 
