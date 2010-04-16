@@ -37,46 +37,13 @@ namespace BytecodeTranslator {
 
     static int DoRealWork(string assemblyName) {
 
-      var host = new PeReader.DefaultHost();
+      var host = new Microsoft.Cci.ILToCodeModel.CodeContractAwareHostEnvironment();
 
       IModule/*?*/ module = host.LoadUnitFrom(assemblyName) as IModule;
       if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
         Console.WriteLine(assemblyName + " is not a PE file containing a CLR module or assembly, or an error occurred when loading it.");
         return 1;
       }
-
-      #region Load any reference assemblies
-      var fileSpec = module.Location;
-      string directory;
-      if (Path.IsPathRooted(fileSpec))
-        directory = Path.GetDirectoryName(fileSpec);
-      else
-        directory = Directory.GetCurrentDirectory();
-      string[] files;
-      Dictionary<string, List<IAssembly>>/*?*/ referenceAssemblies = new Dictionary<string, List<IAssembly>>();
-      #region Look for reference assembly dlls
-      // TODO: Search a user-specified set of paths/directories, not just the one the input came from.
-      files = Directory.GetFiles(directory, "*.Contracts*.dll", SearchOption.TopDirectoryOnly);
-      if (files != null) {
-        foreach (var file in files) {
-          IAssembly/*?*/ refAssem = host.LoadUnitFrom(file) as IAssembly;
-          if (refAssem == null || refAssem == Dummy.Assembly) {
-            Console.WriteLine("Could not load '" + file + "' as a reference assembly.");
-            continue;
-          }
-          var fileName = Path.GetFileNameWithoutExtension(file);
-          var baseName = BCT.NameUpToFirstPeriod(fileName);
-          if (referenceAssemblies.ContainsKey(baseName)) {
-            referenceAssemblies[baseName].Add(refAssem);
-          } else {
-            List<IAssembly> a = new List<IAssembly>();
-            a.Add(refAssem);
-            referenceAssemblies.Add(baseName, a);
-          }
-        }
-      }
-      #endregion Look for reference assembly dlls
-      #endregion Load any reference assemblies
 
       IAssembly/*?*/ assembly = null;
 
@@ -87,30 +54,11 @@ namespace BytecodeTranslator {
         pdbReader = new PdbReader(pdbStream, host);
       }
 
-      ContractProvider contractProvider = new ContractProvider(new ContractMethods(host), module);
-      module = Decompiler.GetCodeAndContractModelFromMetadataModel(host, module, pdbReader, contractProvider);
-
-      //SourceToILConverterProvider sourceToILProvider =
-      //  delegate(IMetadataHost host2, ISourceLocationProvider/*?*/ sourceLocationProvider, IContractProvider/*?*/ contractProvider2)
-      //  {
-      //      return new CodeModelToILConverter(host2, sourceLocationProvider, contractProvider2);
-      //  };
-
-
-      List<IAssembly> oobUnits;
-      List<KeyValuePair<IContractProvider, IMetadataHost>> oobProvidersAndHosts = new List<KeyValuePair<IContractProvider, IMetadataHost>>();
-      if (referenceAssemblies.TryGetValue(module.Name.Value, out oobUnits)) {
-        foreach (var oob in oobUnits) {
-          LazyContractProvider ocp = new LazyContractProvider(host, oob, contractProvider.ContractMethods);
-          oobProvidersAndHosts.Add(new KeyValuePair<IContractProvider, IMetadataHost>(ocp, host));
-        }
-      }
-
-      AggregatingContractProvider acp = new AggregatingContractProvider(host, contractProvider, oobProvidersAndHosts);
+      module = Decompiler.GetCodeAndContractModelFromMetadataModel(host, module, pdbReader);
 
       #region Pass 3: Translate the code model to BPL
       //tmp_BPLGenerator translator = new tmp_BPLGenerator(host, acp);
-      ToplevelTraverser translator = new ToplevelTraverser(acp);
+      ToplevelTraverser translator = new ToplevelTraverser(host.GetContractExtractor(module.ModuleIdentity));
       assembly = module as IAssembly;
       if (assembly != null)
         translator.Visit(assembly);
