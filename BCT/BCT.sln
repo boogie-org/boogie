@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BytecodeTranslator", "BytecodeTranslator\BytecodeTranslator.csproj", "{9C8E4D74-0251-479D-ADAC-A9A469977301}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetadataModel", "..\..\CCICodePlex\Ast\Metadata\Sources\MetadataModel\MetadataModel.csproj", "{33CAB640-0D03-43DF-81BD-22CDC6C0A597}"
@@ -22,6 +22,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MutableCodeModel", "..\..\CCICodePlex\Ast\Sources\MutableCodeModel\MutableCodeModel.csproj", "{319E150C-8F33-49E7-81CA-30F02F9BA90A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeModelToIL", "..\..\CCICodePlex\Ast\Sources\CodeModelToIL\CodeModelToIL.csproj", "{CEB76EA1-A168-49B0-A410-2C4195FEE86F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ILGenerator", "..\..\CCICodePlex\Ast\Metadata\Sources\ILGenerator\ILGenerator.csproj", "{08156C78-403A-4112-AD81-8646AC51CD2F}"
 EndProject
 Global
 	GlobalSection(TeamFoundationVersionControl) = preSolution
@@ -192,6 +194,16 @@ Global
 		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
 		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CEB76EA1-A168-49B0-A410-2C4195FEE86F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08156C78-403A-4112-AD81-8646AC51CD2F}.CompilerOnly|Any CPU.ActiveCfg = CompilerOnly|Any CPU
+		{08156C78-403A-4112-AD81-8646AC51CD2F}.CompilerOnly|Any CPU.Build.0 = CompilerOnly|Any CPU
+		{08156C78-403A-4112-AD81-8646AC51CD2F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08156C78-403A-4112-AD81-8646AC51CD2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08156C78-403A-4112-AD81-8646AC51CD2F}.NightlyDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08156C78-403A-4112-AD81-8646AC51CD2F}.NightlyDebug|Any CPU.Build.0 = Debug|Any CPU
+		{08156C78-403A-4112-AD81-8646AC51CD2F}.NightlyRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{08156C78-403A-4112-AD81-8646AC51CD2F}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
+		{08156C78-403A-4112-AD81-8646AC51CD2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08156C78-403A-4112-AD81-8646AC51CD2F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
