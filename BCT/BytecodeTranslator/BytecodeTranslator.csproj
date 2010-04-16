@@ -79,19 +79,19 @@
   <ItemGroup>
     <Reference Include="AbsInt, Version=1.0.21125.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Imported\Boogie\AbsInt.dll</HintPath>
+      <HintPath>..\..\Binaries\AbsInt.dll</HintPath>
     </Reference>
     <Reference Include="AIFramework, Version=1.0.21125.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Imported\Boogie\AIFramework.dll</HintPath>
+      <HintPath>..\..\Binaries\AIFramework.dll</HintPath>
     </Reference>
     <Reference Include="Basetypes, Version=1.0.21125.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Imported\Boogie\Basetypes.dll</HintPath>
+      <HintPath>..\..\Binaries\Basetypes.dll</HintPath>
     </Reference>
     <Reference Include="Core, Version=1.0.21125.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Imported\Boogie\Core.dll</HintPath>
+      <HintPath>..\..\Binaries\Core.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
