@@ -27,12 +27,18 @@ namespace VC
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
+    [NotDelayed]
     public VCGen(Program! program, string/*?*/ logFilePath, bool appendLogFile)
       // throws ProverException
     {
-      base(program);
       this.appendLogFile = appendLogFile;
       this.logFilePath = logFilePath;
+      implName2LazyInliningInfo = new Dictionary<string!, LazyInliningInfo!>();
+      base(program);
+      if (CommandLineOptions.Clo.LazyInlining)
+      {
+        this.GenerateVCsForLazyInlining(program);
+      }
       // base();
     }
 
@@ -58,10 +64,195 @@ namespace VC
       return new AssumeCmd(assrt.tok, expr);
     }
     
-
-
-   
-
+    #region LazyInlining
+    public class LazyInliningInfo {
+      public Implementation! impl;
+      public int uniqueId;
+      public Function! function;
+      public Variable! controlFlowVariable;
+      public VCExpr vcexpr;
+      public Dictionary<Incarnation, Absy!> incarnationOriginMap;
+      public Hashtable /*Variable->Expr*/ exitIncarnationMap;
+      public Hashtable /*GotoCmd->returnCmd*/ gotoCmdOrigins;
+      public Hashtable/*<int, Absy!>*/ label2absy;
+      
+      public LazyInliningInfo(Implementation! impl, Program! program, int uniqueId)
+      {
+        this.impl = impl;
+        this.uniqueId = uniqueId;
+        this.controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "cfc", Microsoft.Boogie.Type.Int));
+        
+        Procedure! proc = (!)impl.Proc;
+        VariableSeq! interfaceVars = new VariableSeq();
+        foreach (Variable! v in program.GlobalVariables())
+        {
+          interfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
+        }
+        foreach (Variable! v in proc.InParams)
+        {
+          interfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
+        }
+        foreach (Variable! v in proc.OutParams)
+        {
+          interfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
+        }
+        foreach (IdentifierExpr! e in proc.Modifies)
+        {
+          if (e.Decl == null) continue;
+          Variable! v = e.Decl;
+          interfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
+        }
+        TypedIdent! ti = new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Bool);
+        Formal! returnVar = new Formal(Token.NoToken, ti, false);
+        this.function = new Function(Token.NoToken, proc.Name, interfaceVars, returnVar);
+      }
+    }
+    
+    private Dictionary<string!, LazyInliningInfo!>! implName2LazyInliningInfo;
+    
+    public void GenerateVCsForLazyInlining(Program! program)
+    {
+      Checker! checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);
+      foreach (Declaration! decl in program.TopLevelDeclarations)
+      {
+        Implementation impl = decl as Implementation;
+        if (impl == null) continue;
+        Procedure! proc = (!)impl.Proc;
+        if (proc.FindExprAttribute("inline") != null) {
+          LazyInliningInfo info = new LazyInliningInfo(impl, program, implName2LazyInliningInfo.Count);
+          implName2LazyInliningInfo[impl.Name] = info;
+          impl.LocVars.Add(info.controlFlowVariable);
+          ExprSeq! exprs = new ExprSeq();
+          foreach (Variable! v in program.GlobalVariables())
+          {
+            exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
+          }
+          foreach (Variable! v in proc.InParams)
+          {
+            exprs.Add(new IdentifierExpr(Token.NoToken, v));
+          }
+          foreach (Variable! v in proc.OutParams)
+          {
+            exprs.Add(new IdentifierExpr(Token.NoToken, v));
+          }
+          foreach (IdentifierExpr! ie in proc.Modifies)
+          {
+            exprs.Add(ie);
+          }
+          Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(info.function), exprs);
+          proc.Ensures.Add(new Ensures(true, freePostExpr));
+        }
+      }
+      
+      bool oldOptionLiveVariableAnalysis = CommandLineOptions.Clo.LiveVariableAnalysis;
+      CommandLineOptions.Clo.LiveVariableAnalysis = false;
+      foreach (LazyInliningInfo! info in implName2LazyInliningInfo.Values)
+      {
+        GenerateVCForLazyInlining(program, info, checker);
+      }
+      CommandLineOptions.Clo.LiveVariableAnalysis = oldOptionLiveVariableAnalysis;
+    }
+    
+    private void GenerateVCForLazyInlining(Program! program, LazyInliningInfo! info, Checker! checker)
+    requires info.impl != null;
+    requires info.impl.Proc != null;
+    {
+      Implementation! impl = info.impl;
+      ConvertCFG2DAG(impl, program);
+      info.gotoCmdOrigins = PassifyImpl(impl, program);
+      assert info.exitIncarnationMap != null;
+      Hashtable/*<int, Absy!>*/! label2absy;
+      VCExpressionGenerator! gen = checker.VCExprGen;
+      VCExpr! vcexpr = gen.Not(GenerateVC(impl, info.controlFlowVariable, out label2absy, checker));
+      info.label2absy = label2absy;
+      
+      Boogie2VCExprTranslator! translator = checker.TheoremProver.Context.BoogieExprTranslator; 
+      List<VCExprVar!> interfaceExprVars = new List<VCExprVar!>();
+      foreach (Variable! v in program.GlobalVariables())
+      {
+        interfaceExprVars.Add(translator.LookupVariable(v));
+      }
+      
+      foreach (Variable! v in impl.InParams)
+      {
+        interfaceExprVars.Add(translator.LookupVariable(v));
+      }
+      
+      VCExpr! allAssumeExpr = VCExpressionGenerator.True;
+      foreach (Variable! v in impl.OutParams)
+      {
+        VCExprVar! vcvar = gen.Variable(v.Name, v.TypedIdent.Type);
+        interfaceExprVars.Add(vcvar);
+        VCExpr assumeExpr = null;
+        if (info.exitIncarnationMap.ContainsKey(v))
+        {
+          Expr! ie = (Expr!) info.exitIncarnationMap[v];
+          assumeExpr = gen.Eq(vcvar, translator.Translate(ie));
+        }
+        else
+        {
+          assumeExpr = gen.Eq(vcvar, translator.LookupVariable(v));
+        }
+        allAssumeExpr = gen.And(allAssumeExpr, assumeExpr);
+      }
+      foreach (IdentifierExpr! e in impl.Proc.Modifies)
+      {
+        if (e.Decl == null) continue;
+        Variable! v = e.Decl;
+        VCExprVar! vcvar = gen.Variable(v.Name, v.TypedIdent.Type);
+        interfaceExprVars.Add(vcvar);
+        VCExpr assumeExpr = null;
+        if (info.exitIncarnationMap.ContainsKey(v))
+        {
+          Expr! ie = (Expr!) info.exitIncarnationMap[v];
+          assumeExpr = gen.Eq(vcvar, translator.Translate(ie));
+        }
+        else
+        {
+          assumeExpr = gen.Eq(vcvar, translator.LookupVariable(v));
+        }
+        allAssumeExpr = gen.And(allAssumeExpr, assumeExpr);
+      }
+      vcexpr = gen.And(vcexpr, allAssumeExpr);
+      
+      List<VCExprVar!> privateVars = new List<VCExprVar!>();
+      foreach (Variable! v in impl.LocVars)
+      {
+        privateVars.Add(translator.LookupVariable(v));
+      }
+      foreach (Variable! v in impl.OutParams)
+      {
+        privateVars.Add(translator.LookupVariable(v));
+      }
+      if (privateVars.Count > 0)
+      {
+        vcexpr = gen.Exists(new List<TypeVariable!>(), privateVars, new List<VCTrigger!>(), new VCQuantifierInfos(impl.Name, info.uniqueId, false, null), vcexpr);
+      }
+      
+      List<VCExpr!> interfaceExprs = new List<VCExpr!>();
+      foreach (VCExprVar! ev in interfaceExprVars)
+      {
+        interfaceExprs.Add(ev);
+      }
+      Function! function = (!)info.function;
+      VCExpr! expr = gen.Function(function, interfaceExprs);
+      
+      vcexpr = gen.Implies(expr, vcexpr);
+      
+      List<VCExpr!> exprs = new List<VCExpr!>();
+      exprs.Add(expr);
+      VCTrigger! trigger = new VCTrigger(true, exprs);
+      List<VCTrigger!> triggers = new List<VCTrigger!>();
+      triggers.Add(trigger);
+      
+      interfaceExprVars.Reverse();
+      vcexpr = gen.Forall(interfaceExprVars, triggers, vcexpr);
+      checker.TheoremProver.PushVCExpression(vcexpr);
+      
+      info.vcexpr = vcexpr;
+    }
+    #endregion
+    
     #region Soundness smoke tester
     class SmokeTester
     {
@@ -272,7 +463,7 @@ namespace VC
         parent.PassifyImpl(impl, program);
         Hashtable! label2Absy;
         Checker! ch = parent.FindCheckerFor(impl, CommandLineOptions.Clo.SmokeTimeout);
-        VCExpr! vc = parent.GenerateVC(impl, out label2Absy, ch);
+        VCExpr! vc = parent.GenerateVC(impl, null, out label2Absy, ch);
         impl.Blocks = backup;
 
         if (CommandLineOptions.Clo.TraceVerify) {
@@ -1066,12 +1257,12 @@ namespace VC
         checker = parent.FindCheckerFor(impl, timeout);
 
         Hashtable/*<int, Absy!>*/! label2absy;
-        VCExpr! vc = parent.GenerateVC(impl, out label2absy, checker);
+        VCExpr! vc = parent.GenerateVC(impl, null, out label2absy, checker);
         
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
-          reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback);
+          reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, parent.implName2LazyInliningInfo, (DeclFreeProverContext!) this.Checker.TheoremProver.Context, parent.program);
         } else {
-          reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback);
+          reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, parent.implName2LazyInliningInfo, (DeclFreeProverContext!) this.Checker.TheoremProver.Context, parent.program);
         }
         
         if (CommandLineOptions.Clo.TraceVerify && no >= 0) 
@@ -1084,7 +1275,6 @@ namespace VC
         if (no >= 0)
           desc += "_split" + no;
         checker.BeginCheck(desc, vc, reporter);
-
       }
 
       private void SoundnessCheck(Dictionary<PureCollections.Tuple!, bool>! cache, Block! orig, List<Block!>! copies)
@@ -1134,7 +1324,7 @@ namespace VC
     #endregion
 
 
-    protected VCExpr! GenerateVC(Implementation! impl, out Hashtable/*<int, Absy!>*/! label2absy, Checker! ch)
+    protected VCExpr! GenerateVC(Implementation! impl, Variable controlFlowVariable, out Hashtable/*<int, Absy!>*/! label2absy, Checker! ch)
     {
       TypecheckingContext tc = new TypecheckingContext(null);
       impl.Typecheck(tc);
@@ -1164,7 +1354,7 @@ namespace VC
         if (((!)CommandLineOptions.Clo.TheProverFactory).SupportsDags) {
           vc = DagVC((!)impl.Blocks[0], label2absy, new Hashtable/*<Block, VCExpr!>*/(), ch.TheoremProver.Context);
         } else {
-          vc = LetVC((!)impl.Blocks[0], label2absy, ch.TheoremProver.Context);
+          vc = LetVC((!)impl.Blocks[0], controlFlowVariable, label2absy, ch.TheoremProver.Context);
         }
         break;
       case CommandLineOptions.VCVariety.Doomed:
@@ -1182,7 +1372,6 @@ namespace VC
         Console.WriteLine("ignoring ill-formed {:{0} ...} attribute on {1}, parameter should be an int", name, impl.Name);
       }
     }
-
     
     public override Outcome VerifyImplementation(Implementation! impl, Program! program, VerifierCallback! callback)
       throws UnexpectedProverOutputException;
@@ -1360,20 +1549,31 @@ namespace VC
         }
       } 
       
+      Dictionary<string!, LazyInliningInfo!>! implName2LazyInliningInfo;
+      DeclFreeProverContext! context;
+      Program! program;
+      
       public ErrorReporter(Hashtable/*TransferCmd->ReturnCmd*/! gotoCmdOrigins,
           Hashtable/*<int, Absy!>*/! label2absy,
           List<Block!>! blocks,
           Dictionary<Incarnation, Absy!>! incarnationOriginMap,
-          VerifierCallback! callback)
+          VerifierCallback! callback,
+          Dictionary<string!, LazyInliningInfo!>! implName2LazyInliningInfo,
+          DeclFreeProverContext! context,
+          Program! program)
       {
         this.gotoCmdOrigins = gotoCmdOrigins;
         this.label2absy = label2absy;
         this.blocks = blocks;
         this.incarnationOriginMap = incarnationOriginMap;
         this.callback = callback;
+        
+        this.implName2LazyInliningInfo = implName2LazyInliningInfo;
+        this.context = context;
+        this.program = program;
         // base();
       }
-      
+
       public override void OnModel(IList<string!>! labels, ErrorModel errModel) {
         if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
             errModel.Print(ErrorReporter.ModelWriter);
@@ -1381,7 +1581,7 @@ namespace VC
         }
         Hashtable traceNodes = new Hashtable();
         foreach (string! s in labels) {
-          Absy! absy =Label2Absy(s); 
+          Absy! absy = Label2Absy(s); 
           if (traceNodes.ContainsKey(absy))
             System.Console.WriteLine("Warning: duplicate label: " + s + " read while tracing nodes");
           else
@@ -1393,7 +1593,7 @@ namespace VC
         assert traceNodes.Contains(entryBlock);
         trace.Add(entryBlock);
 
-        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel, incarnationOriginMap);
+        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel, incarnationOriginMap, implName2LazyInliningInfo, context, program);
 
         if (newCounterexample == null) return;
         
@@ -1437,9 +1637,12 @@ namespace VC
           Hashtable/*<int, Absy!>*/! label2absy,
           List<Block!>! blocks,
           Dictionary<Incarnation, Absy!>! incarnationOriginMap,
-          VerifierCallback! callback)
+          VerifierCallback! callback,
+          Dictionary<string!, LazyInliningInfo!>! implName2LazyInliningInfo,
+          DeclFreeProverContext! context,
+          Program! program)
       {
-        base(gotoCmdOrigins, label2absy, blocks, incarnationOriginMap, callback); // here for aesthetic purposes
+        base(gotoCmdOrigins, label2absy, blocks, incarnationOriginMap, callback, implName2LazyInliningInfo, context, program); // here for aesthetic purposes
       }
 
       public override void OnModel(IList<string!>! labels, ErrorModel errModel) {
@@ -1730,6 +1933,13 @@ namespace VC
       }
       #endregion
       
+      #region Support for lazy inlining
+      if (implName2LazyInliningInfo != null && implName2LazyInliningInfo.ContainsKey(impl.Name))
+      {
+        exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, Expr.False));
+      }
+      #endregion
+      
       #region Debug Tracing
       if (CommandLineOptions.Clo.TraceVerify) 
       {
@@ -1752,7 +1962,13 @@ namespace VC
         Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(impl);
       }
       
-      Convert2PassiveCmd(impl);
+      Hashtable exitIncarnationMap = Convert2PassiveCmd(impl);
+      if (implName2LazyInliningInfo != null && implName2LazyInliningInfo.ContainsKey(impl.Name))
+      {
+        LazyInliningInfo! info = implName2LazyInliningInfo[impl.Name];
+        info.exitIncarnationMap = exitIncarnationMap;
+        info.incarnationOriginMap = this.incarnationOriginMap;
+      }
       
       if (CommandLineOptions.Clo.LiveVariableAnalysis) {
         Microsoft.Boogie.LiveVariableAnalysis.ClearLiveVariables(impl);
@@ -1811,20 +2027,167 @@ namespace VC
       return gotoCmdOrigins;
     }
 
-    static Counterexample TraceCounterexample(Block! b, Hashtable! traceNodes, BlockSeq! trace, ErrorModel errModel, Dictionary<Incarnation, Absy!>! incarnationOriginMap)
+    private static Counterexample! LazyCounterexample(
+                                       ErrorModel! errModel, 
+                                       Dictionary<string!, LazyInliningInfo!>! implName2LazyInliningInfo, 
+                                       DeclFreeProverContext! context, 
+                                       Program! program,
+                                       string! implName, List<int>! values)
+    { 
+      VCExprTranslator! vcExprTranslator = (!)context.exprTranslator;
+      Boogie2VCExprTranslator! boogieExprTranslator = context.BoogieExprTranslator;
+      LazyInliningInfo! info = implName2LazyInliningInfo[implName];
+      BlockSeq! trace = new BlockSeq();
+      Block! b = ((!) info.impl).Blocks[0];
+      trace.Add(b);
+      VCExprVar! cfcVar = boogieExprTranslator.LookupVariable(info.controlFlowVariable);
+      string! cfcName = vcExprTranslator.Lookup(cfcVar);
+      int cfcPartition = errModel.LookupSkolemFunctionAt(cfcName + "!" + info.uniqueId, values);
+      int cfcValue = errModel.LookupPartitionValue(cfcPartition);
+      
+      Dictionary<Absy!, Counterexample!> calleeCounterexamples = new Dictionary<Absy!,Counterexample!>();
+      while (true) {
+        CmdSeq! cmds = b.Cmds;
+        TransferCmd! transferCmd = (!)b.TransferCmd;
+        for (int i = 0; i < cmds.Length; i++)
+        {
+          Cmd! cmd = (!) cmds[i];
+          AssertCmd assertCmd = cmd as AssertCmd;  
+          if (assertCmd != null && errModel.LookupControlFlowFunctionAt(cfcValue, assertCmd.UniqueId) == 0)
+          {
+            Counterexample newCounterexample;
+            newCounterexample = AssertCmdToCounterexample(assertCmd, transferCmd, trace, errModel, (!)info.incarnationOriginMap);
+            newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
+            return newCounterexample;
+          }
+            
+          AssumeCmd assumeCmd = cmd as AssumeCmd;
+          if (assumeCmd == null) continue;
+          NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
+          if (naryExpr == null) continue;
+          string! calleeName = naryExpr.Fun.FunctionName;
+          if (!implName2LazyInliningInfo.ContainsKey(calleeName)) continue;
+      
+          List<int>! args = new List<int>();
+          foreach (Expr! expr in naryExpr.Args)
+          {
+            LiteralExpr litExpr = expr as LiteralExpr;
+            if (litExpr != null) 
+            {
+              args.Add(errModel.valueToPartition[litExpr.Val]);
+              continue;
+            }
+          
+            IdentifierExpr idExpr = expr as IdentifierExpr;
+            assert idExpr != null;
+            Variable! var = (!)idExpr.Decl;
+            
+            int index = 0;
+            List<GlobalVariable!> globalVars = program.GlobalVariables();
+            foreach (Variable! global in globalVars)
+            {
+              if (global == var) break;
+              index++;
+            }
+            if (index < globalVars.Count)
+            {
+              args.Add(values[index]);
+              continue;
+            }
+            
+            foreach (Variable! input in info.impl.InParams)
+            {
+              if (input == var) break;
+              index++;
+            }
+            if (index < globalVars.Count + info.impl.InParams.Length)
+            {
+              args.Add(values[index]);
+              continue;
+            }
+              
+            foreach (Variable! output in info.impl.OutParams)
+            {
+              if (output == var) break;
+              index++;
+            }
+            if (index < globalVars.Count + info.impl.InParams.Length + info.impl.OutParams.Length)
+            {
+              args.Add(values[index]);
+              continue;
+            }
+            
+            VCExprVar! exprVar = boogieExprTranslator.LookupVariable(var);
+            string! name = vcExprTranslator.Lookup(exprVar);
+            int partition = errModel.LookupSkolemFunctionAt(name + "!" + info.uniqueId, values);
+            args.Add(partition);
+          }
+          calleeCounterexamples[assumeCmd] = LazyCounterexample(errModel, implName2LazyInliningInfo, context, program, calleeName, args);
+        }
+          
+        GotoCmd gotoCmd = transferCmd as GotoCmd;
+        if (gotoCmd == null) break;
+        int nextBlockId = errModel.LookupControlFlowFunctionAt(cfcValue, b.UniqueId);
+        b = (Block!) ((!)info.label2absy)[nextBlockId];
+        trace.Add(b);
+      }
+      assert false;
+    }
+        
+    static Counterexample TraceCounterexample(Block! b, BlockSeq! trace, ErrorModel errModel, Dictionary<Incarnation, Absy!>! incarnationOriginMap)
     {
+      // After translation, all potential errors come from asserts.
+      
+      return null;
+    }
+    
+    static Counterexample TraceCounterexample(Block! b, Hashtable! traceNodes, BlockSeq! trace, ErrorModel errModel, Dictionary<Incarnation, Absy!>! incarnationOriginMap, Dictionary<string!, LazyInliningInfo!>! implName2LazyInliningInfo, DeclFreeProverContext! context, Program! program)
+    {
+      Dictionary<Absy!, Counterexample!> calleeCounterexamples = new Dictionary<Absy!, Counterexample!>();
       // After translation, all potential errors come from asserts.
       CmdSeq! cmds = b.Cmds;
       TransferCmd! transferCmd = (!)b.TransferCmd;
       for (int i = 0; i < cmds.Length; i++)
       {
         Cmd! cmd = (!) cmds[i];
-        
+            
         // Skip if 'cmd' not contained in the trace or not an assert
-        if (!(cmd is AssertCmd) || !traceNodes.Contains(cmd))
-          continue;
-
-        return AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, incarnationOriginMap);
+        if (cmd is AssertCmd && traceNodes.Contains(cmd))
+        {
+          Counterexample! newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, incarnationOriginMap);
+          newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
+          return newCounterexample;
+        }
+        
+        #region Counterexample generation for lazily inlined procedures
+        if (errModel == null) continue;
+        AssumeCmd assumeCmd = cmd as AssumeCmd;
+        if (assumeCmd == null) continue;
+        NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
+        if (naryExpr == null) continue;
+        string! calleeName = naryExpr.Fun.FunctionName;
+        if (!implName2LazyInliningInfo.ContainsKey(calleeName)) continue;
+        VCExprTranslator! vcExprTranslator = (!)context.exprTranslator;
+        Boogie2VCExprTranslator! boogieExprTranslator = context.BoogieExprTranslator;  
+        List<int>! args = new List<int>();
+        foreach (Expr! expr in naryExpr.Args)
+        {
+          LiteralExpr litExpr = expr as LiteralExpr;
+          if (litExpr != null) 
+          {
+            args.Add(errModel.valueToPartition[litExpr.Val]);
+            continue;
+          }
+          
+          IdentifierExpr idExpr = expr as IdentifierExpr;
+          assert idExpr != null;
+          assert idExpr.Decl != null;
+          VCExprVar! var = boogieExprTranslator.LookupVariable(idExpr.Decl);
+          string! name = vcExprTranslator.Lookup(var);
+          args.Add(errModel.identifierToPartition[name]);
+        }
+        calleeCounterexamples[assumeCmd] = LazyCounterexample(errModel, implName2LazyInliningInfo, context, program, calleeName, args);
+        #endregion
       }
       
       GotoCmd gotoCmd = transferCmd as GotoCmd;
@@ -1834,7 +2197,7 @@ namespace VC
         {
           if (traceNodes.Contains(bb)){
             trace.Add(bb);
-            return TraceCounterexample(bb, traceNodes, trace, errModel, incarnationOriginMap);
+            return TraceCounterexample(bb, traceNodes, trace, errModel, incarnationOriginMap, implName2LazyInliningInfo, context, program);
           }
         }
       }
@@ -2559,16 +2922,18 @@ namespace VC
 //    }
 
     static VCExpr! LetVC(Block! startBlock,
+                         Variable controlFlowVariable,
                          Hashtable/*<int, Absy!>*/! label2absy,
                          ProverContext! proverCtxt)
     {
       Hashtable/*<Block, LetVariable!>*/! blockVariables = new Hashtable/*<Block, LetVariable!!>*/();
       List<VCExprLetBinding!>! bindings = new List<VCExprLetBinding!>();
-      VCExpr startCorrect = LetVC(startBlock, label2absy, blockVariables, bindings, proverCtxt);
+      VCExpr startCorrect = LetVC(startBlock, controlFlowVariable, label2absy, blockVariables, bindings, proverCtxt);
       return proverCtxt.ExprGen.Let(bindings, startCorrect);
     }
 
     static VCExpr! LetVC(Block! block,
+                         Variable controlFlowVariable,
                          Hashtable/*<int, Absy!>*/! label2absy,
                          Hashtable/*<Block, VCExprVar!>*/! blockVariables,
                          List<VCExprLetBinding!>! bindings,
@@ -2591,13 +2956,20 @@ namespace VC
           assert gotocmd.labelTargets != null;
           List<VCExpr!> SuccCorrectVars = new List<VCExpr!>(gotocmd.labelTargets.Length);
           foreach (Block! successor in gotocmd.labelTargets) {
-            VCExpr s = LetVC(successor, label2absy, blockVariables, bindings, proverCtxt);
+            VCExpr s = LetVC(successor, controlFlowVariable, label2absy, blockVariables, bindings, proverCtxt);
+            if (controlFlowVariable != null) 
+            {
+              VCExprVar controlFlowVariableExpr = proverCtxt.BoogieExprTranslator.LookupVariable(controlFlowVariable);
+              VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(block.UniqueId)));
+              VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(successor.UniqueId)));
+              s = gen.Implies(controlTransferExpr, s);
+            }  
             SuccCorrectVars.Add(s);
           }
           SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
         }
 
-        VCContext context = new VCContext(label2absy, proverCtxt);
+        VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariable);
         VCExpr vc = Wlp.Block(block, SuccCorrect, context);
         
         v = gen.Variable(block.Label + "_correct", Bpl.Type.Bool);

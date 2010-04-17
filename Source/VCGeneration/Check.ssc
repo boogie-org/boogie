@@ -12,6 +12,7 @@ using System.Diagnostics;
 using Microsoft.Contracts;
 using Microsoft.Boogie.AbstractInterpretation;
 using Microsoft.Boogie.VCExprAST;
+using Microsoft.Basetypes;
 
 namespace Microsoft.Boogie
 {
@@ -41,8 +42,9 @@ namespace Microsoft.Boogie
 
     public readonly AutoResetEvent! ProverDone = new AutoResetEvent(false);
 
-    private static CommandLineOptions.BvHandling BvHandlingForImpl(Implementation! impl)
+    private static CommandLineOptions.BvHandling BvHandlingForImpl(Implementation impl)
     {
+      if (impl == null) return CommandLineOptions.Clo.Bitvectors;
       bool force_int = false;
       bool force_native = false;
       ((!)impl.Proc).CheckBooleanAttribute("forceBvInt", ref force_int);
@@ -54,7 +56,7 @@ namespace Microsoft.Boogie
       return CommandLineOptions.Clo.Bitvectors;
     }
 
-    public bool WillingToHandle(Implementation! impl, int timeout)
+    public bool WillingToHandle(Implementation impl, int timeout)
     {
       return !closed && timeout == this.timeout && bitvectors == BvHandlingForImpl(impl);
     }
@@ -100,9 +102,9 @@ namespace Microsoft.Boogie
     /////////////////////////////////////////////////////////////////////////////////
 
     /// <summary>
-    /// Constructor.  Initialize a the checker with the program and log file.
+    /// Constructor.  Initialize a checker with the program and log file.
     /// </summary>
-    public Checker(VC.ConditionGeneration! vcgen, Program! prog, string/*?*/ logFilePath, bool appendLogFile, Implementation! impl, int timeout)
+    public Checker(VC.ConditionGeneration! vcgen, Program! prog, string/*?*/ logFilePath, bool appendLogFile, Implementation impl, int timeout)
     {
       this.bitvectors = BvHandlingForImpl(impl);
       this.timeout = timeout;
@@ -310,6 +312,60 @@ namespace Microsoft.Boogie
     }
 
     public virtual void Print(TextWriter! writer) { }
+    
+    public int LookupPartitionValue(int partition)
+    {
+      BigNum bignum = (BigNum) (!)partitionToValue[partition];
+      return bignum.ToInt;
+    }
+        
+    public int LookupControlFlowFunctionAt(int cfc, int id)
+    {
+      List<List<int>>! tuples = this.definedFunctions["ControlFlow"];
+      foreach (List<int> tuple in tuples)
+      {
+        if (tuple == null) continue;
+        if (tuple.Count != 3) continue;
+        if (LookupPartitionValue(tuple[0]) == cfc && LookupPartitionValue(tuple[1]) == id)
+          return LookupPartitionValue(tuple[2]);
+      }
+      assert false;
+      return 0;
+    }
+    
+    private string! LookupSkolemFunction(string! name) {
+      foreach (string! functionName in definedFunctions.Keys)
+      {
+        int index = functionName.LastIndexOf("!");
+        if (index == -1) continue;
+        string! newFunctionName = (!)functionName.Remove(index);
+        if (newFunctionName.Equals(name))
+          return functionName;
+      }
+      assert false;
+      return "";
+    }
+    public int LookupSkolemFunctionAt(string! functionName, List<int>! values)
+    {
+      List<List<int>>! tuples = this.definedFunctions[LookupSkolemFunction(functionName)];
+      assert tuples.Count > 0;
+      // the last tuple is a dummy tuple
+      for (int n = 0; n < tuples.Count - 1; n++)
+      {
+        List<int>! tuple = (!)tuples[n];
+        assert tuple.Count - 1 <= values.Count;
+        for (int i = 0, j = 0; i < values.Count; i++)
+        {
+          if (values[i] == tuple[j]) {
+            // succeeded in matching tuple[j]
+            j++; 
+            if (j == tuple.Count-1) return tuple[tuple.Count - 1];
+          }
+        }
+      }
+      assert false;
+      return 0;
+    }
   }
 
   public abstract class ProverInterface

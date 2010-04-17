@@ -223,6 +223,11 @@ namespace Microsoft.Boogie.Z3
     private readonly UniqueNamer! Namer;
     private readonly TypeDeclCollector! DeclCollector;
 
+    public override string! Lookup(VCExprVar! var)
+    {
+      return Namer.Lookup(var);
+    }
+    
     public override string! translate(VCExpr! expr, int polarity) {
       DateTime start = DateTime.Now;
       if (CommandLineOptions.Clo.Trace)

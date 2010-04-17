@@ -24,6 +24,24 @@ namespace Microsoft.Boogie
     public static readonly VCExpr! False = new VCExprLiteral (Type.Bool);
     public static readonly VCExpr! True  = new VCExprLiteral (Type.Bool);
 
+    private Function ControlFlowFunction = null;
+    public VCExpr! ControlFlowFunctionApplication(VCExpr! e1, VCExpr! e2)
+    {
+      if (ControlFlowFunction == null) {
+        Formal! first = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Int), true);
+        Formal! second = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Int), true);
+        VariableSeq! inputs = new VariableSeq();
+        inputs.Add(first);
+        inputs.Add(second);
+        Formal! returnVar = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Int), false);
+        ControlFlowFunction = new Function(Token.NoToken, "ControlFlow", inputs, returnVar);
+      }
+      List<VCExpr!> args = new List<VCExpr!>();
+      args.Add(e1);
+      args.Add(e2);
+      return Function(BoogieFunctionOp(ControlFlowFunction), args);
+    }
+    
     public VCExpr! Integer(BigNum x) {
       return new VCExprIntLit(x);
     }

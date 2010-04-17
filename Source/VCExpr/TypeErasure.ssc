@@ -805,7 +805,7 @@ namespace Microsoft.Boogie.TypeErasure
     public VCExpr! Erase(VCExpr! expr, int polarity)
       requires polarity >= -1 && polarity <= 1; {
       this.Polarity = polarity;
-      return Mutate(expr, new VariableBindings ());
+      return Mutate(expr, new VariableBindings());
     }
 
     internal int Polarity = 1;  // 1 for positive, -1 for negative, 0 for both

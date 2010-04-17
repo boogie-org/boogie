@@ -309,6 +309,18 @@ namespace Microsoft.Boogie
     {
       return visitor.VisitProgram(this);
     }
+    
+    private List<GlobalVariable!> globals = null;
+    public List<GlobalVariable!>! GlobalVariables()
+    {
+      if (globals != null) return globals;
+      globals = new List<GlobalVariable!>();
+      foreach (Declaration d in TopLevelDeclarations) {
+        GlobalVariable gvar = d as GlobalVariable;
+        if (gvar != null) globals.Add(gvar);
+      }
+      return globals;
+    }
   }
 
   //---------------------------------------------------------------------
@@ -1516,7 +1528,7 @@ namespace Microsoft.Boogie
       this.Summary = new ProcedureSummary();
       this.Attributes = kv;
     }
-
+    
     public override void Emit(TokenTextWriter! stream, int level)
     {
       stream.Write(this, level, "procedure ");

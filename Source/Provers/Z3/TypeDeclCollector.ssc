@@ -35,6 +35,9 @@ namespace Microsoft.Boogie.Z3
       KnownVariables = new Dictionary<VCExprVar!, bool> ();
       KnownTypes = new Dictionary<Type!, bool> ();
       KnownBvOps = new Dictionary<string!, bool> ();
+      
+      KnownStoreFunctions = new Dictionary<string!, bool> ();
+      KnownSelectFunctions = new Dictionary<string!, bool> ();
     }
 
     internal TypeDeclCollector(UniqueNamer! namer, TypeDeclCollector! coll) {
@@ -46,6 +49,9 @@ namespace Microsoft.Boogie.Z3
       KnownVariables = new Dictionary<VCExprVar!, bool> (coll.KnownVariables);
       KnownTypes = new Dictionary<Type!, bool> (coll.KnownTypes);
       KnownBvOps = new Dictionary<string!, bool> (coll.KnownBvOps);
+      
+      KnownStoreFunctions = new Dictionary<string!, bool> (coll.KnownStoreFunctions);
+      KnownSelectFunctions = new Dictionary<string!, bool> (coll.KnownSelectFunctions);
     }
 
     // not used
@@ -64,6 +70,9 @@ namespace Microsoft.Boogie.Z3
 
     // the names of registered BvConcatOps and BvExtractOps
     private readonly IDictionary<string!, bool>! KnownBvOps;
+
+    private readonly IDictionary<string!, bool>! KnownStoreFunctions;
+    private readonly IDictionary<string!, bool>! KnownSelectFunctions;
 
     public List<string!>! AllDeclarations { get {
       List<string!>! res = new List<string!> ();
@@ -169,6 +178,31 @@ namespace Microsoft.Boogie.Z3
                            (op.End - 1) + " " + op.Start + ")");
             KnownBvOps.Add(name, true);
           }
+        }
+        //
+      } else if (node.Op is VCExprStoreOp) {
+        //
+        string name = SimplifyLikeExprLineariser.StoreOpName(node);
+        if (!KnownStoreFunctions.ContainsKey(name)) {
+          AddDeclaration("(DEFOP " + name + 
+                         " " + TypeToString(node[0].Type) + 
+                         " " + TypeToString(node[1].Type) +
+                         " " + TypeToString(node[2].Type) + 
+                         " " + TypeToString(node.Type) + 
+                         " :BUILTIN store)");
+          KnownStoreFunctions.Add(name, true);
+        }
+        //
+      } else if (node.Op is VCExprSelectOp) {
+        //
+        string name = SimplifyLikeExprLineariser.SelectOpName(node);
+        if (!KnownSelectFunctions.ContainsKey(name)) {
+          AddDeclaration("(DEFOP " + name + 
+                         " " + TypeToString(node[0].Type) + 
+                         " " + TypeToString(node[1].Type) +
+                         " " + TypeToString(node.Type) + 
+                         " :BUILTIN select)");
+          KnownSelectFunctions.Add(name, true);
         }
         //
       } else {

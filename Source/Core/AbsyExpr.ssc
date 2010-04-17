@@ -1394,6 +1394,7 @@ namespace Microsoft.Boogie
     private IdentifierExpr! name;
     public Function Func;
     public FunctionCall(IdentifierExpr! name) { this.name = name; }
+    public FunctionCall(Function! f) { this.Func = f; this.name = new IdentifierExpr(Token.NoToken, f.Name); }
     public string! FunctionName { get { return this.name.Name; } }
 
     public AI.IFunctionSymbol! AIFunctionSymbol {

@@ -435,9 +435,11 @@ namespace Microsoft.Boogie
       if (CommandLineOptions.Clo.ProcedureInlining != CommandLineOptions.Inlining.None) {
         bool inline = false;
         foreach (Declaration d in TopLevelDeclarations) {
-          if (d.FindExprAttribute("inline") != null) inline = true;
+          if (d.FindExprAttribute("inline") != null) {
+            inline = true;
+          }
         }
-        if (inline) {
+        if (inline && !CommandLineOptions.Clo.LazyInlining) {
           foreach (Declaration d in TopLevelDeclarations) {
             Implementation impl = d as Implementation;
             if (impl != null) {
@@ -517,7 +519,7 @@ namespace Microsoft.Boogie
           vcgen = new DCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
         } else
         {
-          vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);        
+          vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
         }
       }
       catch (ProverException e)
@@ -682,18 +684,7 @@ namespace Microsoft.Boogie
                     }
                     if (CommandLineOptions.Clo.ErrorTrace > 0) {
                       Console.WriteLine("Execution trace:");
-                      foreach (Block! b in error.Trace) {
-                        if (b.tok == null) {
-                          Console.WriteLine("    <intermediate block>");
-                        } else {
-                          // for ErrorTrace == 1 restrict the output; 
-                          // do not print tokens with -17:-4 as their location because they have been 
-                          // introduced in the translation and do not give any useful feedback to the user
-                          if (!(CommandLineOptions.Clo.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4)) {
-                            Console.WriteLine("    {0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label);
-                          }
-                        }
-                      }
+                      error.Print(4);
                     }
                     errorCount++;
                     }

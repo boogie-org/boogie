@@ -27,6 +27,7 @@ namespace Microsoft.Boogie.VCExprAST {
                                          as IDictionary<Object!, string!>);
       UsedNames = new Dictionary<string!, bool> ();
       CurrentCounters = new Dictionary<string!, int> ();
+      GlobalPlusLocalNames = new Dictionary<Object!, string!> ();
     }
 
     private UniqueNamer(UniqueNamer! namer) {
@@ -41,6 +42,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
       UsedNames = new Dictionary<string!, bool> (namer.UsedNames);
       CurrentCounters = new Dictionary<string!, int> (namer.CurrentCounters);
+      GlobalPlusLocalNames = new Dictionary<Object!, string!>(namer.GlobalPlusLocalNames);
     }
 
     public Object! Clone() {
@@ -56,6 +58,7 @@ namespace Microsoft.Boogie.VCExprAST {
     // (locally or globally)
     private readonly IDictionary<string!, bool>! UsedNames;
     private readonly IDictionary<string!, int>! CurrentCounters;
+    private readonly IDictionary<Object!, string!>! GlobalPlusLocalNames;
 
     ////////////////////////////////////////////////////////////////////////////
 
@@ -69,7 +72,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
     ////////////////////////////////////////////////////////////////////////////
 
-    private string! NextFreeName(string! baseName) {
+    private string! NextFreeName(Object! thingie, string! baseName) {
       string! candidate;
       int counter;
 
@@ -89,6 +92,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
       UsedNames.Add(candidate, true);
       CurrentCounters[baseName] = counter;
+      GlobalPlusLocalNames[thingie] = candidate;
       return candidate;
     }
 
@@ -102,7 +106,7 @@ namespace Microsoft.Boogie.VCExprAST {
         return res;
 
       // if the object is not yet registered, create a name for it
-      res = NextFreeName(inherentName);
+      res = NextFreeName(thingie, inherentName);
       GlobalNames.Add(thingie, res);
 
       return res;
@@ -121,9 +125,13 @@ namespace Microsoft.Boogie.VCExprAST {
     } }
 
     public string! GetLocalName(Object! thingie, string! inherentName) {
-      string! res = NextFreeName(inherentName);
+      string! res = NextFreeName(thingie, inherentName);
       LocalNames[LocalNames.Count - 1][thingie] = res;
       return res;
+    }
+    
+    public string! Lookup(Object! thingie) {
+      return GlobalPlusLocalNames[thingie];
     }
   }
 }

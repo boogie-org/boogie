@@ -8,18 +8,28 @@ using System.Collections;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Contracts;
+using System.Collections.Generic;
+using Microsoft.Basetypes;
 
 namespace VC {
   public class VCContext 
   {
     [Rep] public readonly Hashtable/*<int, Absy!>*/! Label2absy;
     [Rep] public readonly ProverContext! Ctxt;
+    public readonly Variable ControlFlowVariable;
     
     public VCContext(Hashtable/*<int, Absy!>*/! label2absy, ProverContext! ctxt)
     {
       this.Label2absy = label2absy;
       this.Ctxt = ctxt;
       // base();
+    }
+    
+    public VCContext(Hashtable/*<int, Absy!>*/! label2absy, ProverContext! ctxt, Variable controlFlowVariable)
+    {
+      this.Label2absy = label2absy;
+      this.Ctxt = ctxt;
+      this.ControlFlowVariable = controlFlowVariable;
     }
   }
 
@@ -41,7 +51,10 @@ namespace VC {
       int id = b.UniqueId;
       expose (ctxt) {
         ctxt.Label2absy[id] = b;
-        return gen.Implies(gen.LabelPos((!)id.ToString(), VCExpressionGenerator.True), res);
+        if (ctxt.ControlFlowVariable != null)
+          return res;
+        else 
+          return gen.Implies(gen.LabelPos((!)id.ToString(), VCExpressionGenerator.True), res);
       }
     }
 
@@ -73,11 +86,26 @@ namespace VC {
             default:
               assert false;  // unexpected case
           }
-// (MSchaef) Hack: This line might be useless, but at least it is not harmfull
-// need to test it
-        if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) return gen.Implies(C, N);
-      
-          return gen.AndSimp(gen.LabelNeg((!)id.ToString(), C), N);
+          
+          // (MSchaef) Hack: This line might be useless, but at least it is not harmfull
+          // need to test it
+          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) 
+            return gen.Implies(C, N);
+          
+          if (ctxt.ControlFlowVariable != null)
+          {
+            VCExpr! controlFlowVariableExpr = 
+              ctxt.Ctxt.BoogieExprTranslator.LookupVariable(ctxt.ControlFlowVariable);
+            VCExpr! controlFlowFunctionAppl1 = 
+              gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(id)));
+            VCExpr! controlFlowFunctionAppl2 = 
+              gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(id)));
+            VCExpr! assertFailure = gen.Eq(controlFlowFunctionAppl1, gen.Integer(BigNum.FromInt(0)));
+            VCExpr! assertSuccess = gen.Neq(controlFlowFunctionAppl2, gen.Integer(BigNum.FromInt(0)));
+            return gen.And(gen.Implies(assertFailure, C), gen.Implies(assertSuccess, N));
+          }
+          else
+            return gen.AndSimp(gen.LabelNeg((!)id.ToString(), C), N);
         }
 
       } else if (cmd is AssumeCmd) {

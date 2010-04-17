@@ -23,11 +23,55 @@ namespace Microsoft.Boogie
     [Peer] public BlockSeq! Trace;
     [Peer] public List<string!>! relatedInformation;
     
+    public Dictionary<Absy!, Counterexample!>! calleeCounterexamples;
+    
     internal Counterexample(BlockSeq! trace)
     {
       this.Trace = trace;
       this.relatedInformation = new List<string!>();
+      this.calleeCounterexamples = new Dictionary<Absy!, Counterexample!>();
       // base();
+    }
+    
+    public void AddCalleeCounterexample(Absy! absy, Counterexample! cex)
+    {
+      calleeCounterexamples[absy] = cex;
+    }
+    
+    public void AddCalleeCounterexample(Dictionary<Absy!, Counterexample!>! cs)
+    {
+      foreach (Absy! absy in cs.Keys)
+      {
+        AddCalleeCounterexample(absy, cs[absy]);
+      }
+    }
+    
+    public void Print(int spaces)
+    {
+      foreach (Block! b in Trace) {
+        if (b.tok == null) {
+           Console.WriteLine("    <intermediate block>");
+        } else {
+          // for ErrorTrace == 1 restrict the output; 
+          // do not print tokens with -17:-4 as their location because they have been 
+          // introduced in the translation and do not give any useful feedback to the user
+          if (!(CommandLineOptions.Clo.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4)) {
+            for (int i = 0; i < spaces+4; i++) Console.Write(" ");
+            Console.WriteLine("{0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label);
+            foreach (Cmd! cmd in b.Cmds) {
+              if (calleeCounterexamples.ContainsKey(cmd)) {
+                AssumeCmd! assumeCmd = (AssumeCmd!) cmd;
+                NAryExpr! naryExpr = (NAryExpr!) assumeCmd.Expr;
+                for (int i = 0; i < spaces+4; i++) Console.Write(" ");
+                Console.WriteLine("Inlined call to procedure {0} begins", naryExpr.Fun.FunctionName);
+                calleeCounterexamples[cmd].Print(spaces+4);
+                for (int i = 0; i < spaces+4; i++) Console.Write(" ");
+                Console.WriteLine("Inlined call to procedure {0} ends", naryExpr.Fun.FunctionName);
+              }
+            }
+          }
+        }
+      }
     }
     
     public abstract int GetLocation();
@@ -41,7 +85,7 @@ namespace Microsoft.Boogie
       return -1;
     }
   }
-    
+  
   public class AssertCounterexample : Counterexample
   {
     [Peer] public AssertCmd! FailingAssert;
@@ -158,16 +202,15 @@ namespace VC
 
     public enum Outcome { Correct, Errors, TimedOut, OutOfMemory, Inconclusive }
  
-    protected readonly List<Checker!>! provers = new List<Checker!>();
+    protected readonly List<Checker!>! checkers = new List<Checker!>();
     protected Implementation current_impl = null;
-
 
     // shared across each implementation; created anew for each implementation
     protected Hashtable /*Variable -> int*/ variable2SequenceNumber;
     public Dictionary<Incarnation, Absy!>! incarnationOriginMap = new Dictionary<Incarnation, Absy!>();
 
     // used only by FindCheckerFor
-    protected Program! program;
+    public Program! program;
     protected string/*?*/ logFilePath;
     protected bool appendLogFile;
     
@@ -496,28 +539,28 @@ namespace VC
 #endregion
 
     
-    protected Checker! FindCheckerFor(Implementation! impl, int timeout)
+    protected Checker! FindCheckerFor(Implementation impl, int timeout)
     {
       int i = 0;
-      while (i < provers.Count) {
-        if (provers[i].Closed) {
-          provers.RemoveAt(i);
+      while (i < checkers.Count) {
+        if (checkers[i].Closed) {
+          checkers.RemoveAt(i);
           continue;
         } else {
-          if (!provers[i].IsBusy && provers[i].WillingToHandle(impl, timeout)) return provers[i];
+          if (!checkers[i].IsBusy && checkers[i].WillingToHandle(impl, timeout)) return checkers[i];
         }
         ++i;
       }
       string? log = logFilePath;
-      if (log != null && !log.Contains("@PROC@") && provers.Count > 0)
-        log = log + "." + provers.Count;
+      if (log != null && !log.Contains("@PROC@") && checkers.Count > 0)
+        log = log + "." + checkers.Count;
       Checker! ch = new Checker(this, program, log, appendLogFile, impl, timeout); 
-      provers.Add(ch);
+      checkers.Add(ch);
       return ch;
     }
     
 
-    public void Close() { foreach (Checker! prover in provers) prover.Close(); }
+    public void Close() { foreach (Checker! checker in checkers) checker.Close(); }
 
 
     protected class CounterexampleCollector : VerifierCallback
@@ -636,7 +679,6 @@ namespace VC
       return new List<Block!>();
     }
 
-
     protected Variable! CreateIncarnation(Variable! x, Absy a)
       requires this.variable2SequenceNumber != null;
       requires this.current_impl != null;
@@ -675,7 +717,7 @@ namespace VC
     {
       if (b.Predecessors.Length == 0)
       {
-        return new Hashtable /*Variable -> Expr*/ ();
+        return new Hashtable();
       }
 
       Hashtable /*Variable -> Expr*/ incarnationMap = null;
@@ -788,8 +830,7 @@ namespace VC
       #endregion
     }
 
-
-    protected void Convert2PassiveCmd(Implementation! impl)
+    protected Hashtable /*Variable -> Expr*/ Convert2PassiveCmd(Implementation! impl)
     {
       #region Convert to Passive Commands
 
@@ -824,6 +865,7 @@ namespace VC
       // Now we can process the nodes in an order so that we're guaranteed to have
       // processed all of a node's predecessors before we process the node.
       Hashtable /*Block -> IncarnationMap*/ block2Incarnation = new Hashtable/*Block -> IncarnationMap*/();
+      Block exitBlock = null;
       foreach (Block! b in sortedNodes )
       {
         assert !block2Incarnation.Contains(b);
@@ -834,7 +876,12 @@ namespace VC
         #endregion Each block's map needs to be available to successor blocks
 
         TurnIntoPassiveBlock(b, incarnationMap, oldFrameSubst);
+        exitBlock = b;
       }
+      
+      // Verify that exitBlock is indeed the unique exit block
+      assert exitBlock != null;
+      assert exitBlock.TransferCmd is ReturnCmd;
       
       // We no longer need the where clauses on the out parameters, so we remove them to restore the situation from before VC generation
       foreach (Formal! f in impl.OutParams) {
@@ -849,6 +896,8 @@ namespace VC
         EmitImpl(impl, true);
       }
       #endregion    
+      
+      return (Hashtable) block2Incarnation[exitBlock];
     }
         
     /// <summary> 
@@ -879,7 +928,7 @@ namespace VC
         {
           AssignCmd! assign = ((AssignCmd)c).AsSimpleAssignCmd; // first remove map assignments
           #region Substitute all variables in E with the current map
-          List<Expr!>! copies = new List<Expr!> ();
+          List<Expr!> copies = new List<Expr!> ();
           foreach (Expr! e in assign.Rhss)
             copies.Add(Substituter.ApplyReplacingOldExprs(incarnationSubst,
                                                           oldFrameSubst,

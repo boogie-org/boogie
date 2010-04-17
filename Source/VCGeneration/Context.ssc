@@ -28,7 +28,7 @@ namespace Microsoft.Boogie
     public virtual void AddAxiom(Axiom! a, string attributes) { ProcessDeclaration(a); }
     public abstract void AddAxiom(VCExpr! vc);
     public virtual void DeclareGlobalVariable(GlobalVariable! v, string attributes) { ProcessDeclaration(v); }
-
+    
     public abstract VCExpressionGenerator! ExprGen { get; }
     public abstract Boogie2VCExprTranslator! BoogieExprTranslator { get; }
     public abstract VCGenerationOptions! VCGenOptions { get; }
@@ -194,6 +194,7 @@ namespace Microsoft.Boogie
   // by the various provers
   public abstract class VCExprTranslator : ICloneable {
     public abstract string! translate(VCExpr! expr, int polarity);
+    public abstract string! Lookup(VCExprVar! var);
     public abstract Object! Clone();    
   }
 }

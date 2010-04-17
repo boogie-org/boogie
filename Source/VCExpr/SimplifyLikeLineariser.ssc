@@ -197,6 +197,13 @@ namespace Microsoft.Boogie.VCExprAST
       }
     }
 
+    private static string! TypeToStringHelper(Type! t) {
+      System.IO.StringWriter buffer = new System.IO.StringWriter();
+      using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
+        t.Emit(stream);
+      }
+      return buffer.ToString();
+    }
     public static string! TypeToString(Type! t) {
       if (t.IsBool)
         return "$bool";
@@ -204,17 +211,14 @@ namespace Microsoft.Boogie.VCExprAST
         return "$int";
       else if (t.IsBv)
         return "$bv" + t.BvBits;
+      else if (t.IsMap)
+        return TypeToStringHelper(t);
       else {
         // at this point, only the types U, T, and bitvector types should be left
         if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
           return "U";
-        else {
-          System.IO.StringWriter buffer = new System.IO.StringWriter();
-          using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
-            t.Emit(stream);
-          }
-          return buffer.ToString();
-        }
+        else
+          return TypeToStringHelper(t);
       }
     }
 
@@ -231,6 +235,16 @@ namespace Microsoft.Boogie.VCExprAST
       return "$bv" + node.Type.BvBits + "_extract" + op.Total + "[" + op.Start + ":" + op.End + "]";
     }
 
+    public static string! StoreOpName(VCExprNAry! node)
+      requires node.Op is VCExprStoreOp; {
+      return "Store_" + TypeToString(node[0].Type);
+    }
+
+    public static string! SelectOpName(VCExprNAry! node)
+      requires node.Op is VCExprSelectOp; {
+      return "Select_" + TypeToString(node[0].Type);
+    }
+    
     internal void WriteId(string! s) {
       wr.Write(MakeIdPrintable(s));
     }
@@ -679,11 +693,23 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       public bool VisitSelectOp   (VCExprNAry! node, LineariserOptions! options) {
-        assert false;      // should not occur in the output
+        wr.Write("(" + SelectOpName(node) + " ");
+        ExprLineariser.Linearise(node[0], options);
+        wr.Write(" ");
+        ExprLineariser.Linearise(node[1], options);
+        wr.Write(")");
+        return true;
       }
 
       public bool VisitStoreOp    (VCExprNAry! node, LineariserOptions! options) {
-        assert false;       // should not occur in the output
+        wr.Write("(" + StoreOpName(node) + " ");
+        ExprLineariser.Linearise(node[0], options);
+        wr.Write(" ");
+        ExprLineariser.Linearise(node[1], options);
+        wr.Write(" ");
+        ExprLineariser.Linearise(node[2], options);
+        wr.Write(")");
+        return true;
       }
 
       public bool VisitBvOp       (VCExprNAry! node, LineariserOptions! options) {

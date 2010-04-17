@@ -441,6 +441,34 @@ namespace Microsoft.Boogie.Z3
       } else if (s[j] == 'v') {
         // -> val!..., i.e. no value
         partitionToValue.Add(null);
+      } else if (s[j] == '{') {
+        // array
+        List<List<int>!> arrayModel = new List<List<int>!>();
+        string array = s.Substring(j);
+        int index1, index2;
+        string from, to;
+        List<int> tuple = new List<int>();
+        while (0 <= array.IndexOf(';')) {
+          index1 = array.IndexOf('*') + 1;
+          index2 = array.IndexOf(' ');
+          from = array.Substring(index1, index2-index1);
+          tuple.Add(int.Parse(from));
+          array = array.Substring(index2);
+          index1 = array.IndexOf('*') + 1;
+          index2 = array.IndexOf(';');
+          to = array.Substring(index1, index2-index1);
+          array = array.Substring(index2+2);
+          tuple.Add(int.Parse(to));
+          arrayModel.Add(tuple);
+          tuple = new List<int>();
+        }
+        assert array.StartsWith("else ->");
+        index1 = array.IndexOf('*') + 1;
+        index2 = array.IndexOf('}');
+        to = array.Substring(index1, index2-index1);
+        tuple.Add(int.Parse(to));
+        arrayModel.Add(tuple);
+        partitionToValue.Add(arrayModel);
       } else {
         string numberOrBv = s.Substring(j);
         // make number an int, then store it:
@@ -494,8 +522,10 @@ namespace Microsoft.Boogie.Z3
       ensures 0 <= result && result <= s.Length;
     {
       List<string!> identifiers = new List<string!>();
+      int arrowIndex = s.IndexOf('>');
+      assert 0 < arrowIndex;
       int j = s.IndexOf('{', 0) + 1;  // skip the '{', if present, and set j to 0 otherwise
-      if (1 <= j) {
+      if (1 <= j && j < arrowIndex) {
         // There is a list of ID's.
         assume j < s.Length;  // there should be more characters; the ending '}', for one
         //ID*
@@ -516,6 +546,8 @@ namespace Microsoft.Boogie.Z3
           }
           assume j < s.Length;  // there should be more characters; the ending '}', for one
         }//end ID*
+      } else {
+        j = 0;
       }
       Owner.AssignSame(identifiers, Owner.ElementProxy(partitionToIdentifiers));
       partitionToIdentifiers.Add(identifiers);
