@@ -1,2 +1,1 @@
-BCTStmtTest		 Use    Translation of Statements
-BCTClassTest	 Use    Classes, Inheritance and so on
+test0		 Use    Translation of Statements
