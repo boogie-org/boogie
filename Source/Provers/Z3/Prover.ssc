@@ -444,7 +444,7 @@ namespace Microsoft.Boogie.Z3
       } else if (s[j] == '{') {
         // array
         List<List<int>!> arrayModel = new List<List<int>!>();
-        string array = s.Substring(j);
+        string array = s.Substring(j+1);
         int index1, index2;
         string from, to;
         List<int> tuple = new List<int>();
@@ -851,6 +851,18 @@ namespace Microsoft.Boogie.Z3
             writer.Write(" -> " + "false" + "");
           } else if (tempPTVI is BigNum) {
             writer.Write(" -> " + tempPTVI + ":int");
+          } else if (tempPTVI is List<List<int>!>) {
+            List<List<int>!> array = tempPTVI as List<List<int>!>;
+            assume array != null;
+            writer.Write(" -> {");
+            foreach(List<int> l in array) {
+              if (l.Count == 2) {
+                writer.Write("*"+l[0] + " -> " + "*"+l[1] + "; ");
+              } else {
+                assert (l.Count == 1);
+                writer.Write("else -> *"+l[0]+"}");
+              } 
+            }
           } else {
             writer.Write(" -> " + tempPTVI + "");
           }

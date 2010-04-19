@@ -1306,6 +1306,7 @@ namespace Microsoft.Boogie
         PrintErrorModel = 1;
         TypeEncodingMethod = TypeEncoding.Monomorphic;
         UseArrayTheory = true;
+        UseAbstractInterpretation = false;
       }
     }
 
