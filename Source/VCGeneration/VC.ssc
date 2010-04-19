@@ -1593,7 +1593,7 @@ namespace VC
         assert traceNodes.Contains(entryBlock);
         trace.Add(entryBlock);
 
-        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel, incarnationOriginMap, implName2LazyInliningInfo, context, program);
+        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel, incarnationOriginMap, implName2LazyInliningInfo, context, program, new Dictionary<Absy!, Counterexample!>());
 
         if (newCounterexample == null) return;
         
@@ -2141,9 +2141,8 @@ namespace VC
       return null;
     }
     
-    static Counterexample TraceCounterexample(Block! b, Hashtable! traceNodes, BlockSeq! trace, ErrorModel errModel, Dictionary<Incarnation, Absy!>! incarnationOriginMap, Dictionary<string!, LazyInliningInfo!>! implName2LazyInliningInfo, DeclFreeProverContext! context, Program! program)
+    static Counterexample TraceCounterexample(Block! b, Hashtable! traceNodes, BlockSeq! trace, ErrorModel errModel, Dictionary<Incarnation, Absy!>! incarnationOriginMap, Dictionary<string!, LazyInliningInfo!>! implName2LazyInliningInfo, DeclFreeProverContext! context, Program! program, Dictionary<Absy!, Counterexample!>! calleeCounterexamples)
     {
-      Dictionary<Absy!, Counterexample!> calleeCounterexamples = new Dictionary<Absy!, Counterexample!>();
       // After translation, all potential errors come from asserts.
       CmdSeq! cmds = b.Cmds;
       TransferCmd! transferCmd = (!)b.TransferCmd;
@@ -2197,7 +2196,7 @@ namespace VC
         {
           if (traceNodes.Contains(bb)){
             trace.Add(bb);
-            return TraceCounterexample(bb, traceNodes, trace, errModel, incarnationOriginMap, implName2LazyInliningInfo, context, program);
+            return TraceCounterexample(bb, traceNodes, trace, errModel, incarnationOriginMap, implName2LazyInliningInfo, context, program, calleeCounterexamples);
           }
         }
       }
