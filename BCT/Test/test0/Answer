@@ -1,0 +1,99 @@
+const unique BCTStmtTest.Program.i: int;
+
+procedure BCTStmtTest.Program.BCTAssignments$System.Void($inst: int, j$in: int);
+
+
+
+implementation BCTStmtTest.Program.BCTAssignments$System.Void($inst: int, j$in: int)
+{
+  var local_0: int;
+  var j: int;
+
+    j := j$in;
+    $heap[$this, BCTStmtTest.Program.i] := 7;
+    $heap[$this, BCTStmtTest.Program.i] := local_0 / j;
+    return;
+}
+
+
+
+procedure BCTStmtTest.Program.BCTConditional$System.Int32($inst: int, k$in: int) returns ($result: int);
+
+
+
+implementation BCTStmtTest.Program.BCTConditional$System.Int32($inst: int, k$in: int) returns ($result: int)
+{
+  var local_1: int;
+  var local_0: int;
+  var k: int;
+
+    k := k$in;
+    if (k > 5)
+    {
+        local_1 := 7;
+        goto IL_0055;
+    }
+    else
+    {
+    }
+
+    local_0 := k / 2;
+    if (local_0 < k)
+    {
+        local_0 := 2;
+    }
+    else
+    {
+    }
+
+    if (k > 5)
+    {
+        local_1 := 7;
+        goto IL_0055;
+    }
+    else
+    {
+    }
+
+    if (k < 5)
+    {
+        local_0 := k / 2;
+    }
+    else
+    {
+        local_1 := 100;
+        goto IL_0055;
+    }
+
+  IL_0055:
+    $result := local_1;
+    return;
+}
+
+
+
+procedure BCTStmtTest.Program.Main$System.Void($inst: int, args$in: int);
+
+
+
+implementation BCTStmtTest.Program.Main$System.Void($inst: int, args$in: int)
+{
+  var args: int;
+
+    args := args$in;
+    return;
+}
+
+
+
+procedure BCTStmtTest.Program..ctor$System.Void($inst: int);
+
+
+
+implementation BCTStmtTest.Program..ctor$System.Void($inst: int)
+{
+    return;
+}
+
+
+;ENDE
