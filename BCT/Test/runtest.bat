@@ -1,4 +1,4 @@
-rem @echo off
+@echo off
 rem Usage: runtest.bat <dir>
 if "%1" == "" goto noDirSpecified
 if not exist %1\nul goto noDirExists
