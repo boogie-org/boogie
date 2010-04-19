@@ -182,6 +182,10 @@ namespace Microsoft.Boogie.Z3
         //
       } else if (node.Op is VCExprStoreOp) {
         //
+        RegisterType(node[0].Type);
+        RegisterType(node[1].Type);
+        RegisterType(node[2].Type);
+        RegisterType(node.Type);
         string name = SimplifyLikeExprLineariser.StoreOpName(node);
         if (!KnownStoreFunctions.ContainsKey(name)) {
           AddDeclaration("(DEFOP " + name + 
@@ -195,6 +199,9 @@ namespace Microsoft.Boogie.Z3
         //
       } else if (node.Op is VCExprSelectOp) {
         //
+        RegisterType(node[0].Type);
+        RegisterType(node[1].Type);
+        RegisterType(node.Type);
         string name = SimplifyLikeExprLineariser.SelectOpName(node);
         if (!KnownSelectFunctions.ContainsKey(name)) {
           AddDeclaration("(DEFOP " + name + 
