@@ -693,21 +693,21 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       public bool VisitSelectOp   (VCExprNAry! node, LineariserOptions! options) {
-        wr.Write("(" + SelectOpName(node) + " ");
-        ExprLineariser.Linearise(node[0], options);
-        wr.Write(" ");
-        ExprLineariser.Linearise(node[1], options);
+        wr.Write("(" + SelectOpName(node));
+        foreach (VCExpr! e in node) {
+          wr.Write(" ");
+          ExprLineariser.Linearise(e, options.SetAsTerm(!e.Type.IsBool));
+        }
         wr.Write(")");
         return true;
       }
 
       public bool VisitStoreOp    (VCExprNAry! node, LineariserOptions! options) {
-        wr.Write("(" + StoreOpName(node) + " ");
-        ExprLineariser.Linearise(node[0], options);
-        wr.Write(" ");
-        ExprLineariser.Linearise(node[1], options);
-        wr.Write(" ");
-        ExprLineariser.Linearise(node[2], options);
+        wr.Write("(" + StoreOpName(node));
+        foreach (VCExpr! e in node) {
+          wr.Write(" ");
+          ExprLineariser.Linearise(e, options.SetAsTerm(!e.Type.IsBool));
+        }
         wr.Write(")");
         return true;
       }
