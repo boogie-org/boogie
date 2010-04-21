@@ -18,27 +18,37 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie
 {
+  public class CalleeCounterexampleInfo {
+    public Counterexample! counterexample;
+    public List<object!>! args;
+    
+    public CalleeCounterexampleInfo(Counterexample! cex, List<object!>! x) {
+      counterexample = cex;
+      args = x;
+    }  
+  }
+    
   public abstract class Counterexample 
   {
     [Peer] public BlockSeq! Trace;
     [Peer] public List<string!>! relatedInformation;
     
-    public Dictionary<Absy!, Counterexample!>! calleeCounterexamples;
+    public Dictionary<Absy!, CalleeCounterexampleInfo!>! calleeCounterexamples;
     
     internal Counterexample(BlockSeq! trace)
     {
       this.Trace = trace;
       this.relatedInformation = new List<string!>();
-      this.calleeCounterexamples = new Dictionary<Absy!, Counterexample!>();
+      this.calleeCounterexamples = new Dictionary<Absy!, CalleeCounterexampleInfo!>();
       // base();
     }
     
-    public void AddCalleeCounterexample(Absy! absy, Counterexample! cex)
+    public void AddCalleeCounterexample(Absy! absy, CalleeCounterexampleInfo! cex)
     {
       calleeCounterexamples[absy] = cex;
     }
     
-    public void AddCalleeCounterexample(Dictionary<Absy!, Counterexample!>! cs)
+    public void AddCalleeCounterexample(Dictionary<Absy!, CalleeCounterexampleInfo!>! cs)
     {
       foreach (Absy! absy in cs.Keys)
       {
@@ -64,7 +74,7 @@ namespace Microsoft.Boogie
                 NAryExpr! naryExpr = (NAryExpr!) assumeCmd.Expr;
                 for (int i = 0; i < spaces+4; i++) Console.Write(" ");
                 Console.WriteLine("Inlined call to procedure {0} begins", naryExpr.Fun.FunctionName);
-                calleeCounterexamples[cmd].Print(spaces+4);
+                calleeCounterexamples[cmd].counterexample.Print(spaces+4);
                 for (int i = 0; i < spaces+4; i++) Console.Write(" ");
                 Console.WriteLine("Inlined call to procedure {0} ends", naryExpr.Fun.FunctionName);
               }

@@ -366,6 +366,34 @@ namespace Microsoft.Boogie
       assert false;
       return 0;
     }
+    
+    public List<object!>! PartitionsToValues(List<int>! args)
+    {
+      List<object!>! vals = new List<object!>();
+      foreach(int i in args)
+      {
+        object! o = (!)partitionToValue[i];
+        if (o is bool) {
+          vals.Add(o);
+        } else if (o is BigNum) {
+          vals.Add(o);
+        } else if (o is List<List<int>!>) {
+          List<List<int>!> array = (List<List<int>!>) o;
+          List<List<object!>!> arrayVal = new List<List<object!>!>();
+          foreach (List<int>! tuple in array) {
+            List<object!> tupleVal = new List<object!>();
+            foreach (int i in tuple) {
+              tupleVal.Add((!)partitionToValue[i]);
+            }
+            arrayVal.Add(tupleVal);
+          }
+          vals.Add(arrayVal);
+        } else {
+          assert false;
+        }
+      }
+      return vals;
+    }
   }
 
   public abstract class ProverInterface

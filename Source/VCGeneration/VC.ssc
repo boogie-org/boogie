@@ -1593,7 +1593,7 @@ namespace VC
         assert traceNodes.Contains(entryBlock);
         trace.Add(entryBlock);
 
-        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel, incarnationOriginMap, implName2LazyInliningInfo, context, program, new Dictionary<Absy!, Counterexample!>());
+        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel, incarnationOriginMap, implName2LazyInliningInfo, context, program, new Dictionary<Absy!, CalleeCounterexampleInfo!>());
 
         if (newCounterexample == null) return;
         
@@ -2045,7 +2045,7 @@ namespace VC
       int cfcPartition = errModel.LookupSkolemFunctionAt(cfcName + "!" + info.uniqueId, values);
       int cfcValue = errModel.LookupPartitionValue(cfcPartition);
       
-      Dictionary<Absy!, Counterexample!> calleeCounterexamples = new Dictionary<Absy!,Counterexample!>();
+      Dictionary<Absy!, CalleeCounterexampleInfo!> calleeCounterexamples = new Dictionary<Absy!, CalleeCounterexampleInfo!>();
       while (true) {
         CmdSeq! cmds = b.Cmds;
         TransferCmd! transferCmd = (!)b.TransferCmd;
@@ -2122,7 +2122,10 @@ namespace VC
             int partition = errModel.LookupSkolemFunctionAt(name + "!" + info.uniqueId, values);
             args.Add(partition);
           }
-          calleeCounterexamples[assumeCmd] = LazyCounterexample(errModel, implName2LazyInliningInfo, context, program, calleeName, args);
+          calleeCounterexamples[assumeCmd] = 
+            new CalleeCounterexampleInfo(
+              LazyCounterexample(errModel, implName2LazyInliningInfo, context, program, calleeName, args),
+              errModel.PartitionsToValues(args));
         }
           
         GotoCmd gotoCmd = transferCmd as GotoCmd;
@@ -2141,7 +2144,12 @@ namespace VC
       return null;
     }
     
-    static Counterexample TraceCounterexample(Block! b, Hashtable! traceNodes, BlockSeq! trace, ErrorModel errModel, Dictionary<Incarnation, Absy!>! incarnationOriginMap, Dictionary<string!, LazyInliningInfo!>! implName2LazyInliningInfo, DeclFreeProverContext! context, Program! program, Dictionary<Absy!, Counterexample!>! calleeCounterexamples)
+    static Counterexample TraceCounterexample(
+                          Block! b, Hashtable! traceNodes, BlockSeq! trace, ErrorModel errModel, 
+                          Dictionary<Incarnation, Absy!>! incarnationOriginMap, 
+                          Dictionary<string!, LazyInliningInfo!>! implName2LazyInliningInfo, 
+                          DeclFreeProverContext! context, Program! program, 
+                          Dictionary<Absy!, CalleeCounterexampleInfo!>! calleeCounterexamples)
     {
       // After translation, all potential errors come from asserts.
       CmdSeq! cmds = b.Cmds;
@@ -2185,7 +2193,10 @@ namespace VC
           string! name = vcExprTranslator.Lookup(var);
           args.Add(errModel.identifierToPartition[name]);
         }
-        calleeCounterexamples[assumeCmd] = LazyCounterexample(errModel, implName2LazyInliningInfo, context, program, calleeName, args);
+        calleeCounterexamples[assumeCmd] = 
+            new CalleeCounterexampleInfo(
+                LazyCounterexample(errModel, implName2LazyInliningInfo, context, program, calleeName, args),
+                errModel.PartitionsToValues(args));
         #endregion
       }
       
