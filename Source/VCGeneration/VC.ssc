@@ -119,7 +119,7 @@ namespace VC
         if (impl == null) continue;
         Procedure! proc = (!)impl.Proc;
         if (proc.FindExprAttribute("inline") != null) {
-          LazyInliningInfo info = new LazyInliningInfo(impl, program, implName2LazyInliningInfo.Count);
+          LazyInliningInfo info = new LazyInliningInfo(impl, program, QuantifierExpr.GetNextSkolemId());
           implName2LazyInliningInfo[impl.Name] = info;
           impl.LocVars.Add(info.controlFlowVariable);
           ExprSeq! exprs = new ExprSeq();
@@ -226,7 +226,8 @@ namespace VC
       }
       if (privateVars.Count > 0)
       {
-        vcexpr = gen.Exists(new List<TypeVariable!>(), privateVars, new List<VCTrigger!>(), new VCQuantifierInfos(impl.Name, info.uniqueId, false, null), vcexpr);
+        vcexpr = gen.Exists(new List<TypeVariable!>(), privateVars, new List<VCTrigger!>(), 
+                            new VCQuantifierInfos(impl.Name, info.uniqueId, false, null), vcexpr);
       }
       
       List<VCExpr!> interfaceExprs = new List<VCExpr!>();
@@ -246,7 +247,10 @@ namespace VC
       triggers.Add(trigger);
       
       interfaceExprVars.Reverse();
-      vcexpr = gen.Forall(interfaceExprVars, triggers, vcexpr);
+      Expr e = new LiteralExpr(Token.NoToken, BigNum.FromInt(1));
+      QKeyValue q = new QKeyValue(Token.NoToken, "weight", new List<object!>(new object![] { e }), null);
+      vcexpr = gen.Forall(new List<TypeVariable!>(), interfaceExprVars, triggers, 
+                          new VCQuantifierInfos(impl.Name, QuantifierExpr.GetNextSkolemId(), false, q), vcexpr);
       checker.TheoremProver.PushVCExpression(vcexpr);
       
       info.vcexpr = vcexpr;
@@ -2071,6 +2075,8 @@ namespace VC
           List<int>! args = new List<int>();
           foreach (Expr! expr in naryExpr.Args)
           {
+            VCExprVar exprVar;
+            string name;
             LiteralExpr litExpr = expr as LiteralExpr;
             if (litExpr != null) 
             {
@@ -2081,6 +2087,14 @@ namespace VC
             IdentifierExpr idExpr = expr as IdentifierExpr;
             assert idExpr != null;
             Variable! var = (!)idExpr.Decl;
+            
+            if (var is Constant) 
+            {
+              exprVar = boogieExprTranslator.LookupVariable(var);
+              name = vcExprTranslator.Lookup(exprVar);
+              args.Add(errModel.identifierToPartition[name]);
+              continue;
+            }
             
             int index = 0;
             List<GlobalVariable!> globalVars = program.GlobalVariables();
@@ -2117,10 +2131,9 @@ namespace VC
               continue;
             }
             
-            VCExprVar! exprVar = boogieExprTranslator.LookupVariable(var);
-            string! name = vcExprTranslator.Lookup(exprVar);
-            int partition = errModel.LookupSkolemFunctionAt(name + "!" + info.uniqueId, values);
-            args.Add(partition);
+            exprVar = boogieExprTranslator.LookupVariable(var);
+            name = vcExprTranslator.Lookup(exprVar);
+            args.Add(errModel.LookupSkolemFunctionAt(name + "!" + info.uniqueId, values));
           }
           calleeCounterexamples[assumeCmd] = 
             new CalleeCounterexampleInfo(

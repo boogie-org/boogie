@@ -610,6 +610,12 @@ namespace Microsoft.Boogie
     public Trigger Triggers;
 
     static int SkolemIds = 0;
+    public static int GetNextSkolemId()
+    {
+      SkolemIds++;
+      return SkolemIds;
+    }
+    
     public readonly int SkolemId;
     
     public QuantifierExpr(IToken! tok, TypeVariableSeq! typeParameters,

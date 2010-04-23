@@ -333,6 +333,17 @@ namespace Microsoft.Boogie
       return 0;
     }
     
+    private string! LookupSkolemConstant(string! name) {
+      foreach (string! functionName in identifierToPartition.Keys)
+      {
+        int index = functionName.LastIndexOf("!");
+        if (index == -1) continue;
+        string! newFunctionName = (!)functionName.Remove(index);
+        if (newFunctionName.Equals(name))
+          return functionName;
+      }
+      return "";
+    }
     private string! LookupSkolemFunction(string! name) {
       foreach (string! functionName in definedFunctions.Keys)
       {
@@ -342,12 +353,19 @@ namespace Microsoft.Boogie
         if (newFunctionName.Equals(name))
           return functionName;
       }
-      assert false;
       return "";
     }
     public int LookupSkolemFunctionAt(string! functionName, List<int>! values)
     {
-      List<List<int>>! tuples = this.definedFunctions[LookupSkolemFunction(functionName)];
+      string! actualFunctionName = LookupSkolemFunction(functionName);
+      if (actualFunctionName.Equals(""))
+      {
+        // The skolem function is actually a skolem constant
+        actualFunctionName = LookupSkolemConstant(functionName);
+        assert !actualFunctionName.Equals("");
+        return identifierToPartition[actualFunctionName];
+      }
+      List<List<int>>! tuples = this.definedFunctions[actualFunctionName];
       assert tuples.Count > 0;
       // the last tuple is a dummy tuple
       for (int n = 0; n < tuples.Count - 1; n++)
