@@ -1303,7 +1303,6 @@ namespace Microsoft.Boogie
       }
       
       if (LazyInlining) {
-        PrintErrorModel = 1;
         TypeEncodingMethod = TypeEncoding.Monomorphic;
         UseArrayTheory = true;
         UseAbstractInterpretation = false;

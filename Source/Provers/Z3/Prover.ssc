@@ -110,7 +110,10 @@ namespace Microsoft.Boogie.Z3
           }
         }
       }
-      if (CommandLineOptions.Clo.PrintErrorModel >= 1 || CommandLineOptions.Clo.EnhancedErrorMessages == 1 || CommandLineOptions.Clo.ContractInfer) {
+      if (CommandLineOptions.Clo.PrintErrorModel >= 1 || 
+          CommandLineOptions.Clo.EnhancedErrorMessages == 1 || 
+          CommandLineOptions.Clo.ContractInfer ||
+          CommandLineOptions.Clo.LazyInlining) {
         z3args += " " + OptionChar() + "m";
         expectingModel = true;
       }

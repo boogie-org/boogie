@@ -70,6 +70,8 @@ namespace VC
       public int uniqueId;
       public Function! function;
       public Variable! controlFlowVariable;
+      public List<Variable!>! interfaceVars;
+      public Expr! assertExpr;
       public VCExpr vcexpr;
       public Dictionary<Incarnation, Absy!> incarnationOriginMap;
       public Hashtable /*Variable->Expr*/ exitIncarnationMap;
@@ -83,28 +85,46 @@ namespace VC
         this.controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "cfc", Microsoft.Boogie.Type.Int));
         
         Procedure! proc = (!)impl.Proc;
-        VariableSeq! interfaceVars = new VariableSeq();
+        List<Variable!>! interfaceVars = new List<Variable!>();
+        Expr! assertExpr = new LiteralExpr(Token.NoToken, true);
         foreach (Variable! v in program.GlobalVariables())
         {
-          interfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
+          interfaceVars.Add(v);
         }
-        foreach (Variable! v in proc.InParams)
+        // InParams must be obtained from impl and not proc
+        foreach (Variable! v in impl.InParams)
         {
-          interfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
+          interfaceVars.Add(v);
         }
-        foreach (Variable! v in proc.OutParams)
+        // OutParams must be obtained from impl and not proc
+        foreach (Variable! v in impl.OutParams)
         {
-          interfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
+          Constant c = new Constant(Token.NoToken, 
+                                    new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
+          interfaceVars.Add(c);
+          Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));                                      
+          assertExpr = Expr.And(assertExpr, eqExpr);
         }
         foreach (IdentifierExpr! e in proc.Modifies)
         {
           if (e.Decl == null) continue;
           Variable! v = e.Decl;
-          interfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
+          Constant c = new Constant(Token.NoToken, 
+                                    new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
+          interfaceVars.Add(c);
+          Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));                                      
+          assertExpr = Expr.And(assertExpr, eqExpr);
+        }
+        this.interfaceVars = interfaceVars;
+        this.assertExpr = Expr.Not(assertExpr);
+        VariableSeq! functionInterfaceVars = new VariableSeq();
+        foreach (Variable! v in interfaceVars)
+        {
+          functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
         }
         TypedIdent! ti = new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Bool);
         Formal! returnVar = new Formal(Token.NoToken, ti, false);
-        this.function = new Function(Token.NoToken, proc.Name, interfaceVars, returnVar);
+        this.function = new Function(Token.NoToken, proc.Name, functionInterfaceVars, returnVar);
       }
     }
     
@@ -133,10 +153,11 @@ namespace VC
           }
           foreach (Variable! v in proc.OutParams)
           {
-            exprs.Add(new IdentifierExpr(Token.NoToken, v));
+            exprs.Add(new IdentifierExpr(Token.NoToken, v)); 
           }
           foreach (IdentifierExpr! ie in proc.Modifies)
           {
+            if (ie.Decl == null) continue;
             exprs.Add(ie);
           }
           Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(info.function), exprs);
@@ -144,13 +165,10 @@ namespace VC
         }
       }
       
-      bool oldOptionLiveVariableAnalysis = CommandLineOptions.Clo.LiveVariableAnalysis;
-      CommandLineOptions.Clo.LiveVariableAnalysis = false;
       foreach (LazyInliningInfo! info in implName2LazyInliningInfo.Values)
       {
         GenerateVCForLazyInlining(program, info, checker);
       }
-      CommandLineOptions.Clo.LiveVariableAnalysis = oldOptionLiveVariableAnalysis;
     }
     
     private void GenerateVCForLazyInlining(Program! program, LazyInliningInfo! info, Checker! checker)
@@ -167,54 +185,6 @@ namespace VC
       info.label2absy = label2absy;
       
       Boogie2VCExprTranslator! translator = checker.TheoremProver.Context.BoogieExprTranslator; 
-      List<VCExprVar!> interfaceExprVars = new List<VCExprVar!>();
-      foreach (Variable! v in program.GlobalVariables())
-      {
-        interfaceExprVars.Add(translator.LookupVariable(v));
-      }
-      
-      foreach (Variable! v in impl.InParams)
-      {
-        interfaceExprVars.Add(translator.LookupVariable(v));
-      }
-      
-      VCExpr! allAssumeExpr = VCExpressionGenerator.True;
-      foreach (Variable! v in impl.OutParams)
-      {
-        VCExprVar! vcvar = gen.Variable(v.Name, v.TypedIdent.Type);
-        interfaceExprVars.Add(vcvar);
-        VCExpr assumeExpr = null;
-        if (info.exitIncarnationMap.ContainsKey(v))
-        {
-          Expr! ie = (Expr!) info.exitIncarnationMap[v];
-          assumeExpr = gen.Eq(vcvar, translator.Translate(ie));
-        }
-        else
-        {
-          assumeExpr = gen.Eq(vcvar, translator.LookupVariable(v));
-        }
-        allAssumeExpr = gen.And(allAssumeExpr, assumeExpr);
-      }
-      foreach (IdentifierExpr! e in impl.Proc.Modifies)
-      {
-        if (e.Decl == null) continue;
-        Variable! v = e.Decl;
-        VCExprVar! vcvar = gen.Variable(v.Name, v.TypedIdent.Type);
-        interfaceExprVars.Add(vcvar);
-        VCExpr assumeExpr = null;
-        if (info.exitIncarnationMap.ContainsKey(v))
-        {
-          Expr! ie = (Expr!) info.exitIncarnationMap[v];
-          assumeExpr = gen.Eq(vcvar, translator.Translate(ie));
-        }
-        else
-        {
-          assumeExpr = gen.Eq(vcvar, translator.LookupVariable(v));
-        }
-        allAssumeExpr = gen.And(allAssumeExpr, assumeExpr);
-      }
-      vcexpr = gen.And(vcexpr, allAssumeExpr);
-      
       List<VCExprVar!> privateVars = new List<VCExprVar!>();
       foreach (Variable! v in impl.LocVars)
       {
@@ -230,14 +200,17 @@ namespace VC
                             new VCQuantifierInfos(impl.Name, info.uniqueId, false, null), vcexpr);
       }
       
+      List<VCExprVar!> interfaceExprVars = new List<VCExprVar!>();
       List<VCExpr!> interfaceExprs = new List<VCExpr!>();
-      foreach (VCExprVar! ev in interfaceExprVars)
+      foreach (Variable! v in info.interfaceVars)
       {
+        VCExprVar! ev = translator.LookupVariable(v);
+        interfaceExprVars.Add(ev);
         interfaceExprs.Add(ev);
       }
+      
       Function! function = (!)info.function;
       VCExpr! expr = gen.Function(function, interfaceExprs);
-      
       vcexpr = gen.Implies(expr, vcexpr);
       
       List<VCExpr!> exprs = new List<VCExpr!>();
@@ -1940,7 +1913,8 @@ namespace VC
       #region Support for lazy inlining
       if (implName2LazyInliningInfo != null && implName2LazyInliningInfo.ContainsKey(impl.Name))
       {
-        exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, Expr.False));
+        Expr! assertExpr = implName2LazyInliningInfo[impl.Name].assertExpr;
+        exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
       }
       #endregion
       
