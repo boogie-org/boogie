@@ -198,7 +198,7 @@ namespace Microsoft.Boogie.Simplify
         // Initialize '_proverPath'
         _proverPath = Path.Combine(CodebaseString(), proverExe);
         string firstTry = _proverPath;
-        for (int minorVersion = 5; true; minorVersion--) {
+        for (int minorVersion = 6; true; minorVersion--) {
           if (File.Exists(_proverPath)) {
             return;  // all seems good
           }
