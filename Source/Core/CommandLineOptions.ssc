@@ -225,7 +225,7 @@ namespace Microsoft.Boogie
     public enum Inlining { None, Assert, Assume, Spec };
     public Inlining ProcedureInlining = Inlining.Assume;
     public bool PrintInlined = false;
-    public bool LazyInlining = false;
+    public int LazyInlining = 0;
     
     public enum TypeEncoding { None, Predicates, Arguments, Monomorphic };
     public TypeEncoding TypeEncodingMethod = TypeEncoding.Predicates;
@@ -950,10 +950,16 @@ namespace Microsoft.Boogie
               switch (args[ps.i]) 
               {
                 case "0":
-                  LazyInlining = false;  
+                  LazyInlining = 0;  
                   break;
                 case "1":
-                  LazyInlining = true;  
+                  LazyInlining = 1;  
+                  break;
+                case "2":
+                  LazyInlining = 2;
+                  break;
+                default:
+                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                   break;
               }
             }
@@ -1302,7 +1308,7 @@ namespace Microsoft.Boogie
         Monomorphize = true;
       }
       
-      if (LazyInlining) {
+      if (LazyInlining > 0) {
         TypeEncodingMethod = TypeEncoding.Monomorphic;
         UseArrayTheory = true;
         UseAbstractInterpretation = false;

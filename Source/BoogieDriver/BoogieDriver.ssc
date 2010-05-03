@@ -439,7 +439,7 @@ namespace Microsoft.Boogie
             inline = true;
           }
         }
-        if (inline && !CommandLineOptions.Clo.LazyInlining) {
+        if (inline && CommandLineOptions.Clo.LazyInlining == 0) {
           foreach (Declaration d in TopLevelDeclarations) {
             Implementation impl = d as Implementation;
             if (impl != null) {

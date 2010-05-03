@@ -35,7 +35,7 @@ namespace VC
       this.logFilePath = logFilePath;
       implName2LazyInliningInfo = new Dictionary<string!, LazyInliningInfo!>();
       base(program);
-      if (CommandLineOptions.Clo.LazyInlining)
+      if (CommandLineOptions.Clo.LazyInlining > 0)
       {
         this.GenerateVCsForLazyInlining(program);
       }
@@ -211,22 +211,27 @@ namespace VC
       
       Function! function = (!)info.function;
       VCExpr! expr = gen.Function(function, interfaceExprs);
-      vcexpr = gen.Implies(expr, vcexpr);
+      if (CommandLineOptions.Clo.LazyInlining == 1) {
+        vcexpr = gen.Implies(expr, vcexpr);
+      } else {
+        assert CommandLineOptions.Clo.LazyInlining == 2;
+        vcexpr = gen.Eq(expr, vcexpr);
+      }
       
+      List<VCTrigger!> triggers = new List<VCTrigger!>();
       List<VCExpr!> exprs = new List<VCExpr!>();
       exprs.Add(expr);
       VCTrigger! trigger = new VCTrigger(true, exprs);
-      List<VCTrigger!> triggers = new List<VCTrigger!>();
       triggers.Add(trigger);
-      
-      interfaceExprVars.Reverse();
+        
       Expr e = new LiteralExpr(Token.NoToken, BigNum.FromInt(1));
       QKeyValue q = new QKeyValue(Token.NoToken, "weight", new List<object!>(new object![] { e }), null);
+      interfaceExprVars.Reverse();
       vcexpr = gen.Forall(new List<TypeVariable!>(), interfaceExprVars, triggers, 
                           new VCQuantifierInfos(impl.Name, QuantifierExpr.GetNextSkolemId(), false, q), vcexpr);
-      checker.TheoremProver.PushVCExpression(vcexpr);
       
-      info.vcexpr = vcexpr;
+      info.vcexpr = vcexpr;     
+      checker.TheoremProver.PushVCExpression(vcexpr);
     }
     #endregion
     
