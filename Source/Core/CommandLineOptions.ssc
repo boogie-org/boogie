@@ -1850,9 +1850,9 @@ namespace Microsoft.Boogie
 
   /dprint:<file> : print Dafny program after parsing it
                    (use - as <file> to print to console)
-  /compile:<n>   : 0 (default) - do not compile Dafny program
-                   1 - upon successful verification of the Dafny program,
-                       compile Dafny program to C# program out.cs
+  /compile:<n>   : 0 - do not compile Dafny program
+                   1 (default) - upon successful verification of the Dafny
+                       program, compile Dafny program to C# program out.cs
 
   ---- Boogie options --------------------------------------------------------
 
