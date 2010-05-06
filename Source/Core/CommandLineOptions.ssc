@@ -106,6 +106,7 @@ namespace Microsoft.Boogie
     }
 
     public string DafnyPrintFile = null;
+    public bool Compile = true;
     
     public enum ProverWarnings { None, Stdout, Stderr }
     public ProverWarnings PrintProverWarnings = ProverWarnings.None;
@@ -534,6 +535,15 @@ namespace Microsoft.Boogie
             }
             break;
             
+          case "-compile":
+          case "/compile": {
+            int compile = 0;
+            if (ps.GetNumericArgument(ref compile, 2)) {
+              Compile = compile == 1;
+            }
+            break;
+          }
+
           case "-contracts":
           case "/contracts":
           case "-c":
@@ -1840,6 +1850,9 @@ namespace Microsoft.Boogie
 
   /dprint:<file> : print Dafny program after parsing it
                    (use - as <file> to print to console)
+  /compile:<n>   : 0 (default) - do not compile Dafny program
+                   1 - upon successful verification of the Dafny program,
+                       compile Dafny program to C# program out.cs
 
   ---- Boogie options --------------------------------------------------------
 
