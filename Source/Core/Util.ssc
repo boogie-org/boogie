@@ -200,6 +200,21 @@ namespace Microsoft.Boogie
             this.col = 0;
         }
         
+        public void WriteText(string! text) {
+          int processed = 0;
+          while (true) {
+            int n = text.IndexOf('\n', processed);
+            if (n == -1) {
+              this.writer.Write(text);
+              this.col += text.Length - processed;
+              return;
+            }
+            processed = n + 1;
+            this.line++;
+            this.col = 0;
+          }
+        }
+        
         public void WriteLine(string! text, params object[] args)
         {
             this.WriteLine(string.Format(text, args));

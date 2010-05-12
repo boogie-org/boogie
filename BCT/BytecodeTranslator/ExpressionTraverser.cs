@@ -330,7 +330,7 @@ namespace BytecodeTranslator {
 
       Bpl.ExprSeq inexpr = new Bpl.ExprSeq();
 
-      #region Create the $this argument for the function call
+      #region Create the 'this' argument for the function call
       ExpressionTraverser thistraverser = new ExpressionTraverser(StmtTraverser);
       thistraverser.Visit(methodCall.ThisArgument);
       inexpr.Add(thistraverser.TranslatedExpressions.Pop());

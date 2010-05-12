@@ -164,12 +164,12 @@ namespace BytecodeTranslator {
 
         #endregion
 
-        #region Create $this parameter
+        #region Create 'this' parameter
         in_count++;
         Bpl.Type selftype = Bpl.Type.Int;
         Bpl.Formal self = new Bpl.Formal(TranslationHelper.CciLocationToBoogieToken(method.Locations),
             new Bpl.TypedIdent(TranslationHelper.CciLocationToBoogieToken(method.Type.Locations),
-                "$inst", selftype), true);
+                "this", selftype), true);
 
         #endregion
 
@@ -179,7 +179,7 @@ namespace BytecodeTranslator {
         int i = 0;
         int j = 0;
 
-        #region Add $this parameter as first in parameter
+        #region Add 'this' parameter as first in parameter
         invars[i++] = self;
         #endregion
 

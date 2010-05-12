@@ -107,6 +107,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Prelude.cs" />
     <Compile Include="ExpressionTraverser.cs" />
     <Compile Include="ClassTraverser.cs" />
     <Compile Include="MethodTraverser.cs" />

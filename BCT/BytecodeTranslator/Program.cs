@@ -66,8 +66,8 @@ namespace BytecodeTranslator {
         translator.Visit(module);
       #endregion Pass 3: Translate the code model to BPL
       Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(module.Name + ".bpl");
+      Prelude.Emit(writer);
       translator.TranslatedProgram.Emit(writer);
-      writer.WriteLine(";ENDE");
       writer.Close();
       return 0; // success
     }

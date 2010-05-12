@@ -50,11 +50,11 @@ namespace BytecodeTranslator {
     }
 
     public static Bpl.Variable TempHeapVar() {
-      return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$heap", Bpl.Type.Int)); 
+      return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$Heap", Bpl.Type.Int)); 
     }
 
     public static Bpl.Variable TempThisVar() {
-      return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$this", Bpl.Type.Int));
+      return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "this", Bpl.Type.Int));
     }
 
     #endregion
