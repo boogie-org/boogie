@@ -19,6 +19,17 @@ namespace Microsoft.Boogie {
       node = v.Visit(node);
       axioms = v.lambdaAxioms;
       functions = v.lambdaFunctions;
+      if (CommandLineOptions.Clo.TraceVerify) {
+        Console.WriteLine("Desugaring of lambda expressions produced {0} functions and {1} axioms:", functions.Count, axioms.Count);
+        TokenTextWriter wr = new TokenTextWriter("<console>", Console.Out);
+        foreach (Function f in functions) {
+          f.Emit(wr, 0);
+        }
+        foreach (Expr ax in axioms) {
+          ax.Emit(wr);
+          Console.WriteLine();
+        }
+      }
       return node;
     }
 
@@ -74,9 +85,16 @@ namespace Microsoft.Boogie {
           ExprSeq callArgs = new ExprSeq();
           ExprSeq axCallArgs = new ExprSeq();
           VariableSeq dummies = new VariableSeq(lambda.Dummies);
-
+          TypeVariableSeq freeTypeVars = new TypeVariableSeq();
+          List<Type!> fnTypeVarActuals = new List<Type!>();
+          TypeVariableSeq freshTypeVars = new TypeVariableSeq();  // these are only used in the lambda@n function's definition
           foreach (object o in freeVars) {
-            Variable v = o as Variable;
+            // 'o' is either a Variable or a TypeVariable.  Since the lambda desugaring happens only
+            // at the outermost level of a program (where there are no mutable variables) and, for
+            // procedure bodies, after the statements have been passified (when mutable variables have
+            // been replaced by immutable incarnations), we are interested only in BoundVar's and
+            // TypeVariable's.
+            BoundVariable v = o as BoundVariable;
             if (v != null) {
               TypedIdent ti = new TypedIdent(v.TypedIdent.tok, v.TypedIdent.Name, v.TypedIdent.Type);
               Formal f = new Formal(v.tok, ti, true);
@@ -87,15 +105,20 @@ namespace Microsoft.Boogie {
               Expr! id = new IdentifierExpr(f.tok, b);
               subst.Add(v, id);
               axCallArgs.Add(id);
+            } else if (o is TypeVariable) {
+              TypeVariable tv = (TypeVariable)o;
+              freeTypeVars.Add(tv);
+              fnTypeVarActuals.Add(tv);
+              freshTypeVars.Add(new TypeVariable(tv.tok, tv.Name));
             }
-            // TODO: do something about type variables
           }
-
+          
           Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, (!)lambda.Type), false);
-          Function fn = new Function(tok, "lambda@" + lambdaid++, new TypeVariableSeq(), formals, res, "auto-generated lambda function", lambda.Attributes);
-          IdentifierExpr callId = new IdentifierExpr(tok, fn.Name);
-          FunctionCall fcall = new FunctionCall(callId);
-          fcall.Func = fn;
+          Function fn = new Function(tok, "lambda@" + lambdaid++, freshTypeVars, formals, res, "auto-generated lambda function", lambda.Attributes);
+          lambdaFunctions.Add(fn);
+
+          FunctionCall fcall = new FunctionCall(new IdentifierExpr(tok, fn.Name));
+          fcall.Func = fn;  // resolve here
 
           List<Expr!> selectArgs = new List<Expr!>();
           foreach (Variable! v in lambda.Dummies) {
@@ -103,25 +126,28 @@ namespace Microsoft.Boogie {
           }
           NAryExpr axcall = new NAryExpr(tok, fcall, axCallArgs);
           axcall.Type = res.TypedIdent.Type;
-          axcall.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+          axcall.TypeParameters = SimpleTypeParamInstantiation.From(freeTypeVars, fnTypeVarActuals);
           NAryExpr select = Expr.Select(axcall, selectArgs);
           select.Type = lambda.Body.Type;
-          select.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+          List<Type!> selectTypeParamActuals = new List<Type!>();
+          TypeVariableSeq forallTypeVariables = new TypeVariableSeq();
+          foreach (TypeVariable! tp in lambda.TypeParameters) {
+            selectTypeParamActuals.Add(tp);
+            forallTypeVariables.Add(tp);
+          }
+          forallTypeVariables.AddRange(freeTypeVars);
+          select.TypeParameters = SimpleTypeParamInstantiation.From(lambda.TypeParameters, selectTypeParamActuals);
 
-          Expr body = Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), lambda.Body);
-          body = Expr.Eq(select, body);
+          Expr bb = Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), lambda.Body);
+          NAryExpr body = Expr.Eq(select, bb);
           body.Type = Type.Bool;
-          ((NAryExpr)body).TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+          body.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
           Trigger trig = new Trigger(select.tok, true, new ExprSeq(select));
-
-          body = new ForallExpr(tok, lambda.TypeParameters, dummies, lambda.Attributes, trig, body);
-
-          lambdaFunctions.Add(fn);
-          lambdaAxioms.Add(body);
+          lambdaAxioms.Add(new ForallExpr(tok, forallTypeVariables, dummies, lambda.Attributes, trig, body));
 
           NAryExpr call = new NAryExpr(tok, fcall, callArgs);
           call.Type = res.TypedIdent.Type;
-          call.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+          call.TypeParameters = SimpleTypeParamInstantiation.From(freeTypeVars, fnTypeVarActuals);
 
           return call;
         }

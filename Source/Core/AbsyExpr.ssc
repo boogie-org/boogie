@@ -565,7 +565,7 @@ namespace Microsoft.Boogie
   
   public class IdentifierExpr : Expr
   {
-    public string! Name;     // identifier symbol
+    public string! Name;    // identifier symbol
     public Variable Decl;   // identifier declaration
 
     /// <summary>
@@ -643,10 +643,10 @@ namespace Microsoft.Boogie
         return;
       }
       Decl = rc.LookUpVariable(Name);
-      if (rc.StateMode == ResolutionContext.State.StateLess && Decl is GlobalVariable) {
-        rc.Error(this, "cannot refer to a global variable in this context: {0}", Name);
-      } else if (Decl == null) {
+      if (Decl == null) {
         rc.Error(this, "undeclared identifier: {0}", Name);
+      } else if (rc.StateMode == ResolutionContext.State.StateLess && Decl is GlobalVariable) {
+        rc.Error(this, "cannot refer to a global variable in this context: {0}", Name);
       }
       if (Type != null) {
         Type = Type.ResolveType(rc);

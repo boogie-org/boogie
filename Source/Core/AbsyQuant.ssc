@@ -770,8 +770,7 @@ namespace Microsoft.Boogie
             foreach (TypeVariable! v in unmentionedParameters) {
               if (!freeVars[v])
                 tc.Error(tr,
-                         "trigger does not mention {0}, which does not " +
-                         "occur in variables types either",
+                         "trigger does not mention {0}, which does not occur in variables types either",
                          v);
             }
           }
@@ -845,7 +844,7 @@ namespace Microsoft.Boogie
     public override AI.IFunctionSymbol! FunctionSymbol
     {
       get {
-        return AI.Prop.Exists;
+        return AI.Prop.Lambda;
       }
     }
 

@@ -16,3 +16,25 @@ procedure a()
   assert !diff(a,b)[2];
 }
 
+// -----------------------
+
+procedure Polly<Cracker>(c,d: Cracker)
+{
+  var e: Cracker;
+  e := c;
+
+  if (*) {
+    assert (forall<T> t: T :: (lambda<beta> b: beta, s: T :: b==c && s==t)[c,t]);
+    assert (forall<U> u: U :: (lambda<beta> b: beta, s: U :: b==c && s==u)[u,u]);  // error
+  } else if (*) {
+    assert (lambda<V> v: V :: (lambda<beta> b: beta, s: V :: b==c && s==v)[v,v])[e];
+    assert (lambda<W> w: W :: (lambda<beta> b: beta, s: W :: b==c && s==w)[w,w])[d];  // error
+    e := d;
+  } else {
+    assume TriggerHappy(c);
+    assert (exists k: Cracker :: { TriggerHappy(k) } (lambda<beta> b: beta, m: Cracker :: b==k && m==c)[c,c]);
+    assert (forall k: Cracker :: (lambda<beta> b: beta, m: Cracker :: b==k && m==c)[c,c]);  // error
+  }
+}
+
+function TriggerHappy<T>(T): bool;

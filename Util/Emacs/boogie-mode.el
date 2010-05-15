@@ -35,7 +35,7 @@
         "invariant" "extends" "complete"
         )) . font-lock-builtin-face)
    `(,(boogie-regexp-opt '(
-        "assert" "assume" "break" "call" "else" "havoc" "if" "goto" "return" "while"
+        "assert" "assume" "break" "call" "then" "else" "havoc" "if" "goto" "return" "while"
         "old" "forall" "exists" "lambda" "cast"
         "false" "true")) . font-lock-keyword-face)
    `(,(boogie-regexp-opt '("bool" "int"

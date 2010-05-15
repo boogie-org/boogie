@@ -124,14 +124,18 @@ namespace Microsoft.Boogie
         // user-defined types, which can be either TypeCtorDecl or TypeSynonymDecl
         Hashtable /*string->NamedDeclaration*/! types = new Hashtable /*string->NamedDeclaration*/ ();
 
-        private void CheckBvNameClashes(Absy! absy, string! name) {
+        /// <summary>
+        /// Checks if name coincides with the name of a bitvector type.  If so, reports an error and
+        /// returns true; otherwise, returns false.
+        /// </summary>
+        private bool CheckBvNameClashes(Absy! absy, string! name) {
             if (name.StartsWith("bv") && name.Length > 2) {
-                bool isBv = true;
                 for (int i = 2; i < name.Length; ++i)
-                    if (!char.IsDigit(name[i])) isBv = false;
-                if (isBv)
-                    Error(absy, "type name: {0} is registered for bitvectors", name);
+                    if (!char.IsDigit(name[i])) return false;
+                Error(absy, "type name: {0} is registered for bitvectors", name);
+                return true;
             }
+            return false;
         }
 
         public void AddType(NamedDeclaration! td) 
@@ -139,7 +143,8 @@ namespace Microsoft.Boogie
             assert (td is TypeCtorDecl) || (td is TypeSynonymDecl);
 
             string! name = (!)td.Name;
-            CheckBvNameClashes(td, name);
+            if (CheckBvNameClashes(td, name))
+                return;  // error has already been reported
 
             if (types[name] != null) 
             {
@@ -174,10 +179,12 @@ namespace Microsoft.Boogie
         List<TypeVariable!>! typeBinders = new List<TypeVariable!>(5);
         
         public void AddTypeBinder(TypeVariable! td) {
-          CheckBvNameClashes(td, td.Name);
+          if (CheckBvNameClashes(td, td.Name)) {
+            return;
+          }
           if (types.ContainsKey(td.Name)) {
-              Error(td, "name is already reserved for type constructor: {0}", td.Name);
-              return;
+            Error(td, "name is already reserved for type constructor: {0}", td.Name);
+            return;
           }
           for (int i = 0; i < typeBinders.Count; i++) {
             if (typeBinders[i].Name == td.Name) {

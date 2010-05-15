@@ -1071,28 +1071,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  // A generic variable. It is used for the LoopInvariantsOnDemand
-  public class SimpleVariable : Variable
-  {
-    public SimpleVariable(IToken! tok, TypedIdent! typedIdent)
-    {
-      base(tok, typedIdent);  // here for aesthetic reasons
-    }
-
-    public override bool IsMutable
-    {
-      get
-      {
-        return false;
-      }
-    }
-
-    public override void Register(ResolutionContext! rc)
-    {
-      rc.AddVariable(this, false);
-    }
-  }
-
   public abstract class DeclWithFormals : NamedDeclaration
   {
     public TypeVariableSeq! TypeParameters;
@@ -2228,7 +2206,6 @@ namespace Microsoft.Boogie
     }
     public override void Resolve(ResolutionContext! rc)
     {
-//      this.Type.Resolve(rc);
       // NOTE: WhereExpr needs to be resolved by the caller, because the caller must provide a modified ResolutionContext
       this.Type = this.Type.ResolveType(rc);
     }

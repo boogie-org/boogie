@@ -614,6 +614,7 @@ namespace Microsoft.AbstractInterpretationFramework
         private static readonly FunctionSymbol! _implies = new FunctionSymbol("==>", binproptype);
         private static readonly FunctionSymbol! _exists = new FunctionSymbol("Exists", quantifiertype);
         private static readonly FunctionSymbol! _forall = new FunctionSymbol("Forall", quantifiertype);
+        private static readonly FunctionSymbol! _lambda = new FunctionSymbol("Lambda", quantifiertype);
 
 
         [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! False { get { return _false; } }
@@ -624,6 +625,7 @@ namespace Microsoft.AbstractInterpretationFramework
         [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Implies { get { return _implies; } }
         [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Exists { get { return _exists; } }
         [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Forall { get { return _forall; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Lambda { get { return _lambda; } }
 
 
         /// <summary>
