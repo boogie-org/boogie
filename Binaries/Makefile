@@ -33,3 +33,6 @@ all:
 	copy /y "$(SPECSHARPROOT)\$(SPECSHARPBINDIR)\Microsoft.VisualStudio.Package.pdb"
 	copy /y "$(SPECSHARPROOT)\$(SPECSHARPBINDIR)\ssc.exe"
 	copy /y "$(SPECSHARPROOT)\$(SPECSHARPBINDIR)\ssc.pdb"
+
+zip:
+	.\PrepareBoogieZip.bat
