@@ -18,10 +18,35 @@ namespace Microsoft.Boogie
       Cci.HashSet/*Block*/! beingVisited = new Cci.HashSet/*Block*/();
       GraphNode gStart = GraphNode.ComputeGraphInfo(null, start, gd, beingVisited);
       
-      LoopUnroll lu = new LoopUnroll(gd, unrollMaxDepth, null);
+      // Compute SCCs
+      StronglyConnectedComponents<GraphNode!> sccs = 
+        new StronglyConnectedComponents<GraphNode!>(gd.Values, Preds, Succs);
+      sccs.Compute();
+      Dictionary<GraphNode!, SCC<GraphNode!>> containingSCC = new Dictionary<GraphNode!, SCC<GraphNode!>>();
+      foreach (SCC<GraphNode!> scc in sccs)
+      {
+        foreach (GraphNode! n in scc)
+        {
+          containingSCC[n] = scc;
+        }
+      }
+      
+      LoopUnroll lu = new LoopUnroll(unrollMaxDepth, containingSCC, new List<Block!>());
       lu.Visit(gStart);
       lu.newBlockSeqGlobal.Reverse();
       return lu.newBlockSeqGlobal;
+    }
+    
+    private static System.Collections.IEnumerable/*<GraphNode!>*/! Succs(GraphNode! n)
+    {
+      List<GraphNode!>! AllEdges = new List<GraphNode!>();
+      AllEdges.AddRange(n.ForwardEdges);
+      AllEdges.AddRange(n.BackEdges);
+      return AllEdges;
+    }
+    private static System.Collections.IEnumerable/*<GraphNode!>*/! Preds(GraphNode! n)
+    {
+      return n.Predecessors;
     }
     
     class GraphNode {
@@ -31,6 +56,7 @@ namespace Microsoft.Boogie
       public bool IsCutPoint { get { return isCutPoint; } }
       [Rep] public readonly List<GraphNode!>! ForwardEdges = new List<GraphNode!>();
       [Rep] public readonly List<GraphNode!>! BackEdges = new List<GraphNode!>();
+      [Rep] public readonly List<GraphNode!>! Predecessors = new List<GraphNode!>();
       invariant isCutPoint <==> BackEdges.Count != 0;
       
       GraphNode(Block! b, CmdSeq! body) {
@@ -64,8 +90,10 @@ namespace Microsoft.Boogie
             // it's a cut point
             g.isCutPoint = true;
             from.BackEdges.Add(g);
+            g.Predecessors.Add(from);
           } else {
             from.ForwardEdges.Add(g);
+            g.Predecessors.Add(from);
           }
           
         } else {
@@ -74,6 +102,7 @@ namespace Microsoft.Boogie
           gd.Add(b, g);
           if (from != null) {
             from.ForwardEdges.Add(g);
+            g.Predecessors.Add(from);
           }
           
           if (body != b.Cmds) {
@@ -96,22 +125,36 @@ namespace Microsoft.Boogie
       }
     }
     
-    List<Block!>! newBlockSeqGlobal;
+    readonly List<Block!>! newBlockSeqGlobal;
+    readonly Dictionary<GraphNode!, SCC<GraphNode!>>! containingSCC;
     readonly int c;
     readonly LoopUnroll next;
-    Dictionary<Block,int>! visitsRemaining = new Dictionary</*cut-point-*/Block,int>();
+    readonly LoopUnroll! head;
     Dictionary<Block,Block!>! newBlocks = new Dictionary<Block,Block!>();
     
-    private LoopUnroll(Dictionary<Block,GraphNode!>! gd, int unrollMaxDepth, List<Block!> newBlockSeqGlobal)
+    [NotDelayed]
+    private LoopUnroll(int unrollMaxDepth, Dictionary<GraphNode!, SCC<GraphNode!>>! scc, List<Block!>! newBlockSeqGlobal)
       requires 0 <= unrollMaxDepth;
     {
-      if (newBlockSeqGlobal == null) {
-        newBlockSeqGlobal = new List<Block!>();
-      }
       this.newBlockSeqGlobal = newBlockSeqGlobal;
       this.c = unrollMaxDepth;
+      this.containingSCC = scc;
+      this.head = this;
       if (unrollMaxDepth != 0) {
-        next = new LoopUnroll(gd, unrollMaxDepth - 1, newBlockSeqGlobal);
+        next = new LoopUnroll(unrollMaxDepth - 1, scc, newBlockSeqGlobal, this);
+      }
+    }
+    
+    [NotDelayed]
+    private LoopUnroll(int unrollMaxDepth, Dictionary<GraphNode!, SCC<GraphNode!>>! scc, List<Block!>! newBlockSeqGlobal, LoopUnroll! head)
+      requires 0 <= unrollMaxDepth;
+    {
+      this.newBlockSeqGlobal = newBlockSeqGlobal;
+      this.c = unrollMaxDepth;
+      this.containingSCC = scc;
+      this.head = head;
+      if (unrollMaxDepth != 0) {
+        next = new LoopUnroll(unrollMaxDepth - 1, scc, newBlockSeqGlobal, head);
       }
     }
     
@@ -145,7 +188,11 @@ namespace Microsoft.Boogie
           BlockSeq newSuccs = new BlockSeq();
         
           foreach (GraphNode succ in node.ForwardEdges) {
-            Block s = Visit(succ);
+            Block s;
+            if (containingSCC[node] == containingSCC[succ])
+              s = Visit(succ);
+            else
+              s = head.Visit(succ);
             newSuccs.Add(s);
           }
           
