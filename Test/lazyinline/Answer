@@ -1,0 +1,64 @@
+----- Running regression test bar1.bpl
+bar1.bpl(25,1): Error BP5003: A postcondition might not hold at this return statement.
+bar1.bpl(21,1): Related location: This is the postcondition that might not hold.
+Execution trace:
+        bar1.bpl(24,3): anon0
+        Inlined call to procedure foo begins
+            bar1.bpl(13,5): anon0
+            Inlined call to procedure bar begins
+                bar1.bpl(7,5): anon0
+            Inlined call to procedure bar ends
+            Inlined call to procedure bar begins
+                bar1.bpl(7,5): anon0
+            Inlined call to procedure bar ends
+        Inlined call to procedure foo ends
+
+Boogie program verifier finished with 0 verified, 1 error
+-----
+----- Running regression test bar2.bpl
+bar2.bpl(21,3): Error BP5001: This assertion might not hold.
+Execution trace:
+        bar2.bpl(19,3): anon0
+        Inlined call to procedure foo begins
+            bar2.bpl(5,3): anon0
+            bar2.bpl(6,7): anon3_Then
+        Inlined call to procedure foo ends
+        Inlined call to procedure foo begins
+            bar2.bpl(5,3): anon0
+            bar2.bpl(9,7): anon3_Else
+        Inlined call to procedure foo ends
+
+Boogie program verifier finished with 0 verified, 1 error
+-----
+----- Running regression test bar3.bpl
+bar3.bpl(41,1): Error BP5003: A postcondition might not hold at this return statement.
+bar3.bpl(34,1): Related location: This is the postcondition that might not hold.
+Execution trace:
+        bar3.bpl(38,3): anon0
+        Inlined call to procedure foo begins
+            bar3.bpl(18,3): anon0
+            bar3.bpl(19,7): anon3_Then
+            Inlined call to procedure bar begins
+                bar3.bpl(7,3): anon0
+                bar3.bpl(8,7): anon3_Then
+            Inlined call to procedure bar ends
+            Inlined call to procedure bar begins
+                bar3.bpl(7,3): anon0
+                bar3.bpl(8,7): anon3_Then
+            Inlined call to procedure bar ends
+        Inlined call to procedure foo ends
+        Inlined call to procedure bar begins
+            bar3.bpl(7,3): anon0
+            bar3.bpl(10,7): anon3_Else
+        Inlined call to procedure bar ends
+
+Boogie program verifier finished with 0 verified, 1 error
+-----
+----- Running regression test bar4.bpl
+
+Boogie program verifier finished with 1 verified, 0 errors
+-----
+----- Running regression test bar6.bpl
+
+Boogie program verifier finished with 1 verified, 0 errors
+-----
