@@ -45,7 +45,7 @@ namespace BytecodeTranslator {
 
     #region Temp Stuff that must be replaced as soon as there is real code to deal with this
 
-    public static Bpl.Type CciTypeToBoogie(ITypeDefinition type) {
+    public static Bpl.Type CciTypeToBoogie(ITypeReference type) {
       return Bpl.Type.Int;
     }
 

@@ -457,6 +457,10 @@ namespace BytecodeTranslator {
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Div, lexp, rexp));
+
+      var tok = TranslationHelper.CciLocationToBoogieToken(division.Locations);
+      var a = new Bpl.AssertCmd(tok, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, rexp, Bpl.Expr.Literal(0)));
+      this.StmtTraverser.StmtBuilder.Add(a);
     }
 
     public override void Visit(ISubtraction subtraction) {
@@ -522,7 +526,40 @@ namespace BytecodeTranslator {
       TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, lexp, rexp));
     }
 
-    // TODO: (mschaef) AND and OR are not yet implemented
+    /// <summary>
+    /// There aren't any logical-and expressions or logical-or expressions in CCI.
+    /// Instead they are encoded as "x ? y : 0" for "x && y" and "x ? 1 : y"
+    /// for "x || y".
+    /// TODO:
+    /// If it isn't either of these short forms then emit the proper expression!
+    /// </summary>
+    public override void Visit(IConditional conditional) {
+      CompileTimeConstant ctc = conditional.ResultIfFalse as CompileTimeConstant;
+      if (ctc != null && ctc.Type == BCT.Host.PlatformType.SystemInt32) {
+        int v = (int)ctc.Value;
+        if (v == 0) {
+          Visit(conditional.Condition);
+          Bpl.Expr x = TranslatedExpressions.Pop();
+          Visit(conditional.ResultIfTrue);
+          Bpl.Expr y = TranslatedExpressions.Pop();
+          TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.And, x, y));
+          return;
+        }
+      }
+      ctc = conditional.ResultIfTrue as CompileTimeConstant;
+      if (ctc != null && ctc.Type == BCT.Host.PlatformType.SystemInt32) {
+        int v = (int)ctc.Value;
+        if (v == 1) {
+          Visit(conditional.Condition);
+          Bpl.Expr x = TranslatedExpressions.Pop();
+          Visit(conditional.ResultIfFalse);
+          Bpl.Expr y = TranslatedExpressions.Pop();
+          TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or, x, y));
+          return;
+        }
+      }
+      base.Visit(conditional);
+    }
 
     #endregion
 

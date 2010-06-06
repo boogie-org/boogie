@@ -6,7 +6,7 @@ using System.Text;
 namespace BytecodeTranslator {
   class Prelude {
     public static void Emit(Microsoft.Boogie.TokenTextWriter wr) {
-      wr.WriteText(@"// Copyright (c) 2010, Microsoft Corp.
+      wr.Write(@"// Copyright (c) 2010, Microsoft Corp.
 // Bytecode Translator prelude
 
 type Ref;

@@ -15,6 +15,7 @@ using Microsoft.Cci.Contracts;
 using Microsoft.Cci.ILToCodeModel;
 
 using Bpl = Microsoft.Boogie;
+using System.Diagnostics.Contracts;
 
 
 namespace BytecodeTranslator
@@ -38,24 +39,53 @@ namespace BytecodeTranslator
     }
     #endregion
 
-    public override void Visit(IBlockStatement block) {
-      BasicBlock b = (BasicBlock)block;
-      this.Visit(b);
+    #region Helper Methods
+
+    Bpl.IToken TokenFor(IStatement statement) {
+      return TranslationHelper.CciLocationToBoogieToken(statement.Locations);
     }
 
-    #region Basic Statements
-    /// <summary>
-    /// Visit all statements in a single block
-    /// </summary>
-    /// <param name="b"></param>
-    private void Visit(BasicBlock b) {
+    Bpl.Expr ExpressionFor(IExpression expression) {
+      ExpressionTraverser etrav = new ExpressionTraverser(this);
+      etrav.Visit(expression);
+      Contract.Assert(etrav.TranslatedExpressions.Count == 1);
+      return etrav.TranslatedExpressions.Pop();
+    }
+
+    #endregion
+
+    public override void Visit(IBlockStatement block) {
       Bpl.StmtListBuilder slb = new Bpl.StmtListBuilder();
 
-      foreach (IStatement st in b.Statements) {
+      foreach (IStatement st in block.Statements) {
         this.Visit(st);
       }
     }
 
+    #region Basic Statements
+
+    public override void Visit(IAssertStatement assertStatement) {
+
+      StmtBuilder.Add(
+        new Bpl.AssertCmd(TokenFor(assertStatement), ExpressionFor(assertStatement.Condition))
+        );
+
+      //ExpressionTraverser etrav = new ExpressionTraverser(this);
+      //etrav.Visit(assertStatement.Condition);
+      //Contract.Assert(etrav.TranslatedExpressions.Count == 1);
+      //var tok = TranslationHelper.CciLocationToBoogieToken(assertStatement.Locations);
+      //var a = new Bpl.AssertCmd(tok, etrav.TranslatedExpressions.Pop());
+      //StmtBuilder.Add(a);
+    }
+
+    public override void Visit(IAssumeStatement assumeStatement) {
+      ExpressionTraverser etrav = new ExpressionTraverser(this);
+      etrav.Visit(assumeStatement.Condition);
+      Contract.Assert(etrav.TranslatedExpressions.Count == 1);
+      var tok = TranslationHelper.CciLocationToBoogieToken(assumeStatement.Locations);
+      var a = new Bpl.AssumeCmd(tok, etrav.TranslatedExpressions.Pop());
+      StmtBuilder.Add(a);
+    }
 
     /// <summary>
     /// 
@@ -100,6 +130,29 @@ namespace BytecodeTranslator
     /// <param name="breakStatement"></param>
     public override void Visit(IBreakStatement breakStatement) {
       StmtBuilder.Add(new Bpl.BreakCmd(TranslationHelper.CciLocationToBoogieToken(breakStatement.Locations), "I dont know"));
+    }
+
+    /// <summary>
+    /// If the local declaration has an initial value, then generate the
+    /// statement "loc := e" from it. Otherwise ignore it.
+    /// </summary>
+    public override void Visit(ILocalDeclarationStatement localDeclarationStatement) {
+      if (localDeclarationStatement.InitialValue == null) return;
+      var loc = this.MethodTraverser.FindOrCreateLocalVariable(localDeclarationStatement.LocalVariable);
+      var tok = TokenFor(localDeclarationStatement);
+      var e = ExpressionFor(localDeclarationStatement.InitialValue);
+      StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, new Bpl.IdentifierExpr(tok, loc), e));
+      return;
+
+      //if (localDeclarationStatement.InitialValue == null) return;
+      //ExpressionTraverser etrav = new ExpressionTraverser(this);
+      //etrav.Visit(localDeclarationStatement.InitialValue);
+      //Bpl.IToken tok = TranslationHelper.CciLocationToBoogieToken(localDeclarationStatement.Locations);
+      //Contract.Assert(etrav.TranslatedExpressions.Count == 1);
+      //var loc = this.MethodTraverser.FindOrCreateLocalVariable(localDeclarationStatement.LocalVariable);
+      //var e = etrav.TranslatedExpressions.Pop();
+      //StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, new Bpl.IdentifierExpr(tok, loc), e));
+      //return;
     }
 
     /// <summary>

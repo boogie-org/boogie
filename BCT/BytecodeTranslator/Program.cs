@@ -14,7 +14,9 @@ using Microsoft.Cci.Contracts;
 using Microsoft.Cci.ILToCodeModel;
 
 namespace BytecodeTranslator {
-  class BCT {
+  public class BCT {
+
+    public static IMetadataHost Host;
 
     static int Main(string[] args) {
 
@@ -38,6 +40,7 @@ namespace BytecodeTranslator {
     static int DoRealWork(string assemblyName) {
 
       var host = new Microsoft.Cci.ILToCodeModel.CodeContractAwareHostEnvironment();
+      Host = host;
 
       IModule/*?*/ module = host.LoadUnitFrom(assemblyName) as IModule;
       if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
