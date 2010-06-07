@@ -65,26 +65,15 @@ namespace BytecodeTranslator
     #region Basic Statements
 
     public override void Visit(IAssertStatement assertStatement) {
-
       StmtBuilder.Add(
         new Bpl.AssertCmd(TokenFor(assertStatement), ExpressionFor(assertStatement.Condition))
         );
-
-      //ExpressionTraverser etrav = new ExpressionTraverser(this);
-      //etrav.Visit(assertStatement.Condition);
-      //Contract.Assert(etrav.TranslatedExpressions.Count == 1);
-      //var tok = TranslationHelper.CciLocationToBoogieToken(assertStatement.Locations);
-      //var a = new Bpl.AssertCmd(tok, etrav.TranslatedExpressions.Pop());
-      //StmtBuilder.Add(a);
     }
 
     public override void Visit(IAssumeStatement assumeStatement) {
-      ExpressionTraverser etrav = new ExpressionTraverser(this);
-      etrav.Visit(assumeStatement.Condition);
-      Contract.Assert(etrav.TranslatedExpressions.Count == 1);
-      var tok = TranslationHelper.CciLocationToBoogieToken(assumeStatement.Locations);
-      var a = new Bpl.AssumeCmd(tok, etrav.TranslatedExpressions.Pop());
-      StmtBuilder.Add(a);
+      StmtBuilder.Add(
+        new Bpl.AssertCmd(TokenFor(assumeStatement), ExpressionFor(assumeStatement.Condition))
+        );
     }
 
     /// <summary>
@@ -101,11 +90,11 @@ namespace BytecodeTranslator
       thenTraverser.Visit(conditionalStatement.TrueBranch);
       elseTraverser.Visit(conditionalStatement.FalseBranch);
 
-      Bpl.IfCmd ifcmd = new Bpl.IfCmd(TranslationHelper.CciLocationToBoogieToken(conditionalStatement.Locations),
+      Bpl.IfCmd ifcmd = new Bpl.IfCmd(TokenFor(conditionalStatement),
           condTraverser.TranslatedExpressions.Pop(),
-          thenTraverser.StmtBuilder.Collect(TranslationHelper.CciLocationToBoogieToken(conditionalStatement.TrueBranch.Locations)),
+          thenTraverser.StmtBuilder.Collect(TokenFor(conditionalStatement.TrueBranch)),
           null,
-          elseTraverser.StmtBuilder.Collect(TranslationHelper.CciLocationToBoogieToken(conditionalStatement.FalseBranch.Locations))
+          elseTraverser.StmtBuilder.Collect(TokenFor(conditionalStatement.FalseBranch))
           );
 
       StmtBuilder.Add(ifcmd);
@@ -129,7 +118,7 @@ namespace BytecodeTranslator
     /// <remarks>(mschaef) Not Implemented</remarks>
     /// <param name="breakStatement"></param>
     public override void Visit(IBreakStatement breakStatement) {
-      StmtBuilder.Add(new Bpl.BreakCmd(TranslationHelper.CciLocationToBoogieToken(breakStatement.Locations), "I dont know"));
+      StmtBuilder.Add(new Bpl.BreakCmd(TokenFor(breakStatement), "I dont know"));
     }
 
     /// <summary>
@@ -143,16 +132,6 @@ namespace BytecodeTranslator
       var e = ExpressionFor(localDeclarationStatement.InitialValue);
       StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, new Bpl.IdentifierExpr(tok, loc), e));
       return;
-
-      //if (localDeclarationStatement.InitialValue == null) return;
-      //ExpressionTraverser etrav = new ExpressionTraverser(this);
-      //etrav.Visit(localDeclarationStatement.InitialValue);
-      //Bpl.IToken tok = TranslationHelper.CciLocationToBoogieToken(localDeclarationStatement.Locations);
-      //Contract.Assert(etrav.TranslatedExpressions.Count == 1);
-      //var loc = this.MethodTraverser.FindOrCreateLocalVariable(localDeclarationStatement.LocalVariable);
-      //var e = etrav.TranslatedExpressions.Pop();
-      //StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, new Bpl.IdentifierExpr(tok, loc), e));
-      //return;
     }
 
     /// <summary>
@@ -161,7 +140,7 @@ namespace BytecodeTranslator
     /// <remarks>(mschaef) not implemented</remarks>
     /// <param name="returnStatement"></param>
     public override void Visit(IReturnStatement returnStatement) {
-      Bpl.IToken tok = TranslationHelper.CciLocationToBoogieToken(returnStatement.Locations);
+      Bpl.IToken tok = TokenFor(returnStatement);
 
       #region Copy values of all out parameters to outvariables
       foreach (MethodTraverser.MethodParameter mp in MethodTraverser.OutVars) {
@@ -181,7 +160,7 @@ namespace BytecodeTranslator
         StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
             new Bpl.IdentifierExpr(tok, this.MethodTraverser.RetVariable), etrav.TranslatedExpressions.Pop()));
       }
-      StmtBuilder.Add(new Bpl.ReturnCmd(TranslationHelper.CciLocationToBoogieToken(returnStatement.Locations)));
+      StmtBuilder.Add(new Bpl.ReturnCmd(TokenFor(returnStatement)));
     }
     #endregion
 
@@ -193,11 +172,9 @@ namespace BytecodeTranslator
     /// <remarks> STUB </remarks>
     /// <param name="gotoStatement"></param>
     public override void Visit(IGotoStatement gotoStatement) {
-      String[] target = new String[1];
-      target[0] = gotoStatement.TargetStatement.Label.Value;
+      String[] target = new String[1] { gotoStatement.TargetStatement.Label.Value };
 
-      Bpl.GotoCmd gotocmd = new Microsoft.Boogie.GotoCmd(TranslationHelper.CciLocationToBoogieToken(gotoStatement.Locations),
-          new Bpl.StringSeq(target));
+      Bpl.GotoCmd gotocmd = new Microsoft.Boogie.GotoCmd(TokenFor(gotoStatement), new Bpl.StringSeq(target));
 
       StmtBuilder.Add(gotocmd);
     }
