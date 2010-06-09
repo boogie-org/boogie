@@ -1792,10 +1792,10 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       val g = (new Boogie.MapSelect(Mask, obj, field, "perm$N") !=@ Boogie.VarExpr("Permission$MinusInfinity"))
       Boogie.If(g, MapUpdate3(Mask, obj, field, "perm$N", Boogie.VarExpr("Permission$PlusInfinity")), Nil)
     }
-
   def DecPermission(obj: Boogie.Expr, field: String, howMuch: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position) = {
-    val xyz: Boogie.Expr = new Boogie.MapSelect(mask, obj, field, "perm$R")
-    bassert(howMuch <= xyz, error.pos, error.message + " Insufficient fraction at " + pos + " for " + field + ".") ::
+    val fP: Boogie.Expr = new Boogie.MapSelect(mask, obj, field, "perm$R")
+    val fC: Boogie.Expr = new Boogie.MapSelect(mask, obj, field, "perm$N")
+    bassert(howMuch <= fP && (howMuch ==@ fP ==> 0 <= fC), error.pos, error.message + " Insufficient fraction at " + pos + " for " + field + ".") ::
     MapUpdate3(mask, obj, field, "perm$R", new Boogie.MapSelect(mask, obj, field, "perm$R") - howMuch)
   }
   def DecPermissionEpsilon(obj: Boogie.Expr, field: String, epsilons: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position) =
