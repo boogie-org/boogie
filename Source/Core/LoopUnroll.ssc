@@ -129,7 +129,8 @@ namespace Microsoft.Boogie
     readonly Dictionary<GraphNode!, SCC<GraphNode!>>! containingSCC;
     readonly int c;
     readonly LoopUnroll next;
-    readonly LoopUnroll! head;
+    readonly LoopUnroll head;
+    invariant head != null;
     Dictionary<Block,Block!>! newBlocks = new Dictionary<Block,Block!>();
     
     [NotDelayed]
@@ -139,13 +140,13 @@ namespace Microsoft.Boogie
       this.newBlockSeqGlobal = newBlockSeqGlobal;
       this.c = unrollMaxDepth;
       this.containingSCC = scc;
+      base();
       this.head = this;
       if (unrollMaxDepth != 0) {
         next = new LoopUnroll(unrollMaxDepth - 1, scc, newBlockSeqGlobal, this);
       }
     }
     
-    [NotDelayed]
     private LoopUnroll(int unrollMaxDepth, Dictionary<GraphNode!, SCC<GraphNode!>>! scc, List<Block!>! newBlockSeqGlobal, LoopUnroll! head)
       requires 0 <= unrollMaxDepth;
     {
@@ -189,10 +190,12 @@ namespace Microsoft.Boogie
         
           foreach (GraphNode succ in node.ForwardEdges) {
             Block s;
-            if (containingSCC[node] == containingSCC[succ])
+            if (containingSCC[node] == containingSCC[succ]) {
               s = Visit(succ);
-            else
+            } else {
+              assert head != null; // follows from object invariant
               s = head.Visit(succ);
+            }
             newSuccs.Add(s);
           }
           
