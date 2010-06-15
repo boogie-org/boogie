@@ -320,9 +320,10 @@ namespace VC
       
       //Impl2Dot(impl, String.Format("c:/dot/{0}_final.dot", impl.Name) );               
             
+      bool __debug = false;
       
       watch.Stop();
-      Console.WriteLine("Transformations takes: {0}", watch.Elapsed.ToString() );
+      if (__debug) Console.WriteLine("Transformation takes: {0}", watch.Elapsed.ToString() );
       watch.Reset();
       
       Checker! checker = FindCheckerFor(impl, 1000);     
@@ -332,14 +333,11 @@ namespace VC
       int _totalchecks = 0;
       Block b = null;
       ProverInterface.Outcome outcome;
-      dc.ErrorHandler = new DoomErrorHandler(dc.Label2Absy, callback);
-      bool doomfound = false;
-      
-      bool __debug = true;
+      dc.ErrorHandler = new DoomErrorHandler(dc.Label2Absy, callback);                 
       
       System.TimeSpan ts = watch.Elapsed;    
       
-      while (dc.GetNextBlock(out b) && !doomfound) {
+      while (dc.GetNextBlock(out b) ) {
         assert b!=null;
         outcome = ProverInterface.Outcome.Undetermined;
         //Console.WriteLine("Checking block {0} ...",b.Label);
@@ -347,9 +345,7 @@ namespace VC
         m_BlockReachabilityMap.TryGetValue(b, out v);
         assert v!=null;
         _totalchecks++;
-        
-        if (__debug) Console.WriteLine("Checking Block {0}", v.Name);
-        
+               
         
         watch.Start();
         if (!dc.CheckLabel(v, out outcome) ) {
@@ -357,13 +353,12 @@ namespace VC
         }
         watch.Stop();
         ts+=watch.Elapsed;
-        Console.WriteLine(" --- {0} elapsed", watch.Elapsed.ToString());
+        if (__debug) Console.WriteLine(" Time for Block {0}: {1} elapsed",b.Label, watch.Elapsed.ToString());
         watch.Reset();
         
         
         switch (outcome) {
             case ProverInterface.Outcome.Valid: {                
-                doomfound=true;
                 break;
             }
             case ProverInterface.Outcome.Invalid: {
@@ -379,17 +374,34 @@ namespace VC
       }
       checker.Close();
       
-      Console.WriteLine("Number of Checked Blocks: {0}", _totalchecks);
+      if (__debug) Console.WriteLine("Number of Checked Blocks: {0} of {1}", _totalchecks, impl.Blocks.Count );
+      if (__debug) Console.WriteLine("Total time for this method: {0}", ts.ToString());
       
       #region Try to produce a counter example (brute force)
       if (dc.DoomedSequences.Count>0 ) {
-
         ConsoleColor col = Console.ForegroundColor;
-        Console.ForegroundColor = ConsoleColor.Red;              
-        Console.WriteLine("  {0} is DOOMED!", impl.Name);
+//        Console.ForegroundColor = ConsoleColor.Red;              
+//        Console.WriteLine("  {0} is DOOMED!", impl.Name);
+//        foreach (List<Block!> bl in dc.DoomedSequences) {
+//            Console.Write("Doomed Blocks: ");
+//            foreach (Block! b_ in bl) {
+//                Console.Write("{0}, ", b_.Label);
+//                }
+//                Console.WriteLine();
+//        }        
         Console.ForegroundColor = col;        
         
-        SearchCounterexample(impl, dc.ErrorHandler, callback);
+        int counter=1;
+        foreach (List<Block!>! bl in dc.DoomedSequences) {
+        Console.WriteLine("Doomed program point {0} of {1}", counter++, dc.DoomedSequences.Count);
+            dc.ErrorHandler.m_DoomedBlocks = bl;
+            foreach (Block! b_ in bl) {
+                if (m_BlockReachabilityMap.TryGetValue(b_, out dc.ErrorHandler.m_Reachvar) )break;
+            }
+            SearchCounterexample(impl, dc.ErrorHandler, callback);
+        }
+        
+        //SearchCounterexample(impl, dc.ErrorHandler, callback);
         Console.WriteLine("------------------------------ \n\n");
         return Outcome.Errors;
       }
@@ -405,47 +417,138 @@ namespace VC
     private void SearchCounterexample(Implementation! impl, DoomErrorHandler! errh, VerifierCallback! callback) {        
         if (errh.m_Reachvar==null) {
             assert false;
-            return;
         }
         m_doomedCmds.Clear();
-                
-        assert errh.m_TraceBlocks != null;
-        assert errh.m_DoomedBlocks !=null;
-        List<Block!>! nondoomed = new List<Block!>();
-        foreach (Block! b in errh.m_DoomedBlocks) {
-            if (!errh.m_TraceBlocks.Contains(b) ) {
-                nondoomed.Add(b);
-            }
-        }   
-        
+                        
         Dictionary<Block!, CmdSeq!>! cmdbackup = new Dictionary<Block!, CmdSeq!>();
         
         BruteForceCESearch(errh.m_Reachvar, impl, callback, cmdbackup, 0, impl.Blocks.Count/2-1);
         BruteForceCESearch(errh.m_Reachvar, impl, callback, cmdbackup, impl.Blocks.Count/2,impl.Blocks.Count-1);
+                
+        List<Cmd!>! causals = CollectCausalStatements(impl.Blocks[0]);
+        foreach (Cmd! c in causals ) {            
+            GenerateErrorMessage(c, causals);            
+        }
         
-        BlockSeq! trace = new BlockSeq();
-        foreach (Block! b in cmdbackup.Keys ) {
-            trace.Add(b);
-        }
-        AssertCmd asrt = null;
-        foreach (Cmd! c in m_doomedCmds) {
-            AssertCmd ac = c as AssertCmd;
-            if (ac!=null) {
-                asrt=ac;
-            }
-        }
-        if (asrt==null) {
-            //callback.OnWarning("Sorry, cannot create counterexample");
-        } else {
-            //AssertCounterexample! ace = new AssertCounterexample(trace, asrt);
-            //callback.OnCounterexample(ace, "Todo: Build a reason");        
-        }        
         #region Undo all modifications        
         foreach (KeyValuePair<Block!, CmdSeq!> kvp in cmdbackup) {
             kvp.Key.Cmds = kvp.Value;
         }    
         #endregion   
     }
+    
+#region Causal Statement Tree    
+
+    private void GenerateErrorMessage(Cmd! causalStatement, List<Cmd!>! causals) 
+    {
+        AssumeCmd uc = causalStatement as AssumeCmd;
+        AssertCmd ac = causalStatement as AssertCmd;
+        ConsoleColor col = Console.ForegroundColor;                              
+        
+        // Trivial case. Must be either assume or assert false
+        if (m_doomedCmds.Count==1) {
+            Console.WriteLine("Found a trivial error:" );
+            if (uc!=null) {
+                Console.Write("Trivial false assumption: " );
+                Console.Write("({0};{1}):", uc.tok.line, uc.tok.col );                
+            }
+            if (ac!=null) {
+                Console.Write("Trivial false assertion: " );
+                Console.Write("({0};{1}):", ac.tok.line, ac.tok.col );                
+            }            
+            causalStatement.Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
+        } else {
+            // Safety error
+            if (ac!=null) {
+                Console.ForegroundColor = ConsoleColor.Red; 
+                Console.WriteLine("Safety error:");
+                Console.ForegroundColor = col; 
+                Console.Write("This assertion is violated: ");
+                Console.Write("({0};{1}):", ac.tok.line, ac.tok.col );                
+                ac.Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
+            }
+            if (uc!=null) {
+                bool containsAssert = false;
+                foreach (Cmd! c in m_doomedCmds) {
+                    if (causals.Contains(c) ) {
+                        continue;
+                    }
+                    AssertCmd asrt = c as AssertCmd;
+                    if (asrt!=null) {
+                        containsAssert=true;
+                        break;
+                    }
+                }
+                // Plausibility error
+                if (containsAssert) {
+                    Console.ForegroundColor = ConsoleColor.Yellow ; 
+                    Console.WriteLine("Plausibility error:");
+                    Console.ForegroundColor = col; 
+                    Console.Write("There is no legal exeuction passing: ");
+                    Console.Write("({0};{1})", uc.tok.line, uc.tok.col );
+                    uc.Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
+                } else { // Reachability error
+                    Console.ForegroundColor = ConsoleColor.DarkRed ; 
+                    Console.WriteLine("Reachability error:");
+                    Console.ForegroundColor = col; 
+                    Console.Write("No execution can reach: ");
+                    Console.Write("({0};{1})", uc.tok.line, uc.tok.col );                
+                    uc.Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
+                }
+                
+            }  
+            
+            Console.ForegroundColor = ConsoleColor.White; 
+            Console.WriteLine("...on any execution passing through:");
+            foreach (Cmd! c in m_doomedCmds) {
+                if (causals.Contains(c) ) {
+                    continue;
+                }
+                Console.ForegroundColor = col; 
+                Console.Write("In ({0};{1}): ", c.tok.line, c.tok.col );
+                Console.ForegroundColor = ConsoleColor.DarkYellow ;
+                c.Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
+            }            
+            Console.ForegroundColor = col;
+            Console.WriteLine("--");
+              
+        }
+    }
+
+    private List<Cmd!>! CollectCausalStatements(Block! b) {
+        Cmd lastCausal=null;
+        foreach (Cmd! c in b.Cmds) {
+            AssertCmd ac = c as AssertCmd;
+            AssumeCmd uc = c as AssumeCmd;
+            if (ac!=null && !ContainsReachVariable(ac)) {
+                if (ac.Expr!=Expr.True) {
+                    lastCausal = c;
+                }
+            } else if (uc!=null && !ContainsReachVariable(uc)) {
+                lastCausal = c;
+            }            
+        }
+        
+        List<Cmd!> causals = new List<Cmd!>();
+        GotoCmd gc = b.TransferCmd as GotoCmd;
+        if (gc!=null && gc.labelTargets!=null) {            
+            List<Cmd!> tmp;
+            //bool allcausal = true;
+            foreach (Block! b_ in gc.labelTargets) {
+                tmp = CollectCausalStatements(b_);
+
+                foreach (Cmd cau in tmp) {
+                    if (!causals.Contains(cau)) causals.Add(cau);
+                }
+            }
+            //if (allcausal) 
+            if (causals.Count>0) return causals;
+        }
+        if (lastCausal!=null) causals.Add( lastCausal);
+        return causals;
+    }
+    
+#endregion
     
     bool BruteForceCESearch(Variable! reachvar, Implementation! impl, VerifierCallback! callback,
                         Dictionary<Block!, CmdSeq!>! cmdbackup, int startidx, int endidx) {
@@ -486,13 +589,12 @@ namespace VC
             if (startidx>=endidx) {
                 // Now we found an interesting Block and we have to
                 // search for the interesting statements.
-                int cmdcount = impl.Blocks[endidx].Cmds.Length-1;
+                int cmdcount = impl.Blocks[endidx].Cmds.Length;
                 BruteForceCmd(impl.Blocks[endidx],0,cmdcount/2 -1,reachvar, impl, callback);
-                BruteForceCmd(impl.Blocks[endidx],cmdcount/2,cmdcount,reachvar, impl, callback);
+                BruteForceCmd(impl.Blocks[endidx],cmdcount/2,cmdcount-1,reachvar, impl, callback);
                 return true; 
             } else {                
                 BruteForceCESearch(reachvar,impl, callback, cmdbackup, startidx, mid);
-                //if (startidx+mid+1>=endidx) mid--; //Hack
                 BruteForceCESearch(reachvar,impl, callback, cmdbackup, mid+1, endidx);                       
                 return true;
             }
@@ -539,16 +641,16 @@ namespace VC
             b.Cmds = backup;
             if (startidx>=endidx) {
                 if (!ContainsReachVariable(b.Cmds[endidx])) {                                
-                    Console.Write("   Witness (");
-                    
-                    ConsoleColor col = Console.ForegroundColor;
-                    Console.ForegroundColor = ConsoleColor.White; 
-                    Console.Write("{0};{1}", b.Cmds[endidx].tok.line, b.Cmds[endidx].tok.col );                    
-                    Console.ForegroundColor = col;
-                    Console.Write("):   ");                    
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    b.Cmds[endidx].Emit(new TokenTextWriter("<console>", Console.Out, false), 0);                                        
-                    Console.ForegroundColor = col;
+//                    Console.Write("   Witness (");
+//                    
+//                    ConsoleColor col = Console.ForegroundColor;
+//                    Console.ForegroundColor = ConsoleColor.White; 
+//                    Console.Write("{0};{1}", b.Cmds[endidx].tok.line, b.Cmds[endidx].tok.col );                    
+//                    Console.ForegroundColor = col;
+//                    Console.Write("):   ");                    
+//                    Console.ForegroundColor = ConsoleColor.Yellow;
+//                    b.Cmds[endidx].Emit(new TokenTextWriter("<console>", Console.Out, false), 0);                                        
+//                    Console.ForegroundColor = col;
 
                     m_doomedCmds.Add(b.Cmds[endidx]);
                     return true;
@@ -634,13 +736,13 @@ namespace VC
             out Dictionary<Block!, Block!> copiedblocks)
       {
         Block! start = impl.Blocks[0];
-        Dictionary<Block,GraphNode!> gd = new Dictionary<Block,GraphNode!>();
-        Set/*Block*/! beingVisited = new Set/*Block*/();
-        GraphNode gStart = GraphNode.ComputeGraphInfo(null, start, gd, beingVisited);
+		Dictionary<Block,GraphNode!> gd = new Dictionary<Block,GraphNode!>();
+		Set/*Block*/! beingVisited = new Set/*Block*/();
+		GraphNode gStart = GraphNode.ComputeGraphInfo(null, start, gd, beingVisited);
       
         DCProgramTransformer pt = new DCProgramTransformer(checkableBlocks);
-          pt.LoopUnrolling(gStart, new Dictionary<GraphNode, Block!>(), true, "");    
-          pt.Blocks.Reverse();
+  		pt.LoopUnrolling(gStart, new Dictionary<GraphNode, Block!>(), true, "");	
+	  	pt.Blocks.Reverse();
         copiedblocks = pt.m_copyMap;
         return pt.Blocks;
       }
@@ -655,262 +757,262 @@ namespace VC
 
 #region Loop Unrolling Methods
     
-        private Block! LoopUnrolling(GraphNode! node, Dictionary<GraphNode, Block!>! visited, bool unrollable, String! prefix)
-        {
-            Block newb;
-            if (visited.TryGetValue(node, out newb)) 
-            {
-                assert newb!=null;
-                return newb;
-            } else 
-            {
-                if (node.IsCutPoint)
-                {
-                    // compute the loop body and the blocks leaving the loop
-                    
-                    List<GraphNode!>! loopNodes = new List<GraphNode!>();
-                    GatherLoopBodyNodes(node, node, loopNodes);
+		private Block! LoopUnrolling(GraphNode! node, Dictionary<GraphNode, Block!>! visited, bool unrollable, String! prefix)
+		{
+			Block newb;
+			if (visited.TryGetValue(node, out newb)) 
+			{
+				assert newb!=null;
+				return newb;
+			} else 
+			{
+				if (node.IsCutPoint)
+				{
+					// compute the loop body and the blocks leaving the loop
+					
+					List<GraphNode!>! loopNodes = new List<GraphNode!>();
+					GatherLoopBodyNodes(node, node, loopNodes);
 
-                    List<GraphNode!>! exitNodes = GatherLoopExitNodes(loopNodes);
-                    
-                    // Continue Unrolling after the current loop
-                    Dictionary<GraphNode, Block!>! _visited = new Dictionary<GraphNode, Block!>();
-                    foreach (GraphNode! g in exitNodes)
-                    {                    
-                        Block b = LoopUnrolling(g, visited, unrollable, prefix);
-                        _visited.Add(g,b);
-                    }
-                    newb = UnrollCurrentLoop(node, _visited, loopNodes,unrollable, prefix);
-                    visited.Add(node,newb);
-                } else
-                {
-                    BlockSeq! newSuccs = new BlockSeq();
-                    foreach(GraphNode! g in node.Succecessors)
-                    {
-                        newSuccs.Add( LoopUnrolling(g,visited,unrollable,prefix) );
-                    }
-                    newb = new Block(node.Block.tok, node.Block.Label + prefix , node.Body, node.Block.TransferCmd);
+					List<GraphNode!>! exitNodes = GatherLoopExitNodes(loopNodes);
+					
+					// Continue Unrolling after the current loop
+					Dictionary<GraphNode, Block!>! _visited = new Dictionary<GraphNode, Block!>();
+					foreach (GraphNode! g in exitNodes)
+					{					
+						Block b = LoopUnrolling(g, visited, unrollable, prefix);
+						_visited.Add(g,b);
+					}
+					newb = UnrollCurrentLoop(node, _visited, loopNodes,unrollable, prefix);
+					visited.Add(node,newb);
+				} else
+				{
+					BlockSeq! newSuccs = new BlockSeq();
+					foreach(GraphNode! g in node.Succecessors)
+					{
+						newSuccs.Add( LoopUnrolling(g,visited,unrollable,prefix) );
+					}
+					newb = new Block(node.Block.tok, node.Block.Label + prefix , node.Body, node.Block.TransferCmd);
                     Block b;
-                    if (m_copyMap.TryGetValue(node.Block, out b) ) {
-                        assert b!=null;
-                        m_copyMap.Add(newb, b);
-                    } else {
-                        m_copyMap.Add(newb, node.Block);
-                    }
-                    
-                    
-                    assert newb!=null; assert newb.TransferCmd!=null;                    
-                    if (newSuccs.Length == 0) 
-                        newb.TransferCmd = new ReturnCmd(newb.TransferCmd.tok);
-                    else 
-                        newb.TransferCmd = new GotoCmd(newb.TransferCmd.tok, newSuccs);
-                                        
-                    visited.Add(node, newb);
-                    Blocks.Add(newb);
-                    if (unrollable) 
-                    {                      
-                      m_checkableBlocks.Add(newb);
-                    }
-                }    
-            }
-            assert newb!=null;
-            //newb.checkable = unrollable;
-            return newb;                
-        }
+			        if (m_copyMap.TryGetValue(node.Block, out b) ) {
+			            assert b!=null;
+			            m_copyMap.Add(newb, b);
+			        } else {
+			            m_copyMap.Add(newb, node.Block);
+			        }
+					
+					
+					assert newb!=null; assert newb.TransferCmd!=null;					
+					if (newSuccs.Length == 0) 
+						newb.TransferCmd = new ReturnCmd(newb.TransferCmd.tok);
+					else 
+						newb.TransferCmd = new GotoCmd(newb.TransferCmd.tok, newSuccs);
+										
+					visited.Add(node, newb);
+					Blocks.Add(newb);
+					if (unrollable) 
+					{					  
+					  m_checkableBlocks.Add(newb);
+					}
+				}	
+			}
+			assert newb!=null;
+			//newb.checkable = unrollable;
+			return newb;				
+		}
 
-        private Block! UnrollCurrentLoop(GraphNode! cutPoint, Dictionary<GraphNode, Block!>! visited, 
-                                List<GraphNode!>! loopNodes, bool unrollable, String! prefix)
-        {
-            if (unrollable)
-            {
-                Dictionary<GraphNode, Block!>! visited1 = new Dictionary<GraphNode, Block!>(visited);
-                Dictionary<GraphNode, Block!>! visited2 = new Dictionary<GraphNode, Block!>(visited);
-                Dictionary<GraphNode, Block!>! visited3 = new Dictionary<GraphNode, Block!>(visited);
+		private Block! UnrollCurrentLoop(GraphNode! cutPoint, Dictionary<GraphNode, Block!>! visited, 
+								List<GraphNode!>! loopNodes, bool unrollable, String! prefix)
+		{
+			if (unrollable)
+			{
+				Dictionary<GraphNode, Block!>! visited1 = new Dictionary<GraphNode, Block!>(visited);
+				Dictionary<GraphNode, Block!>! visited2 = new Dictionary<GraphNode, Block!>(visited);
+				Dictionary<GraphNode, Block!>! visited3 = new Dictionary<GraphNode, Block!>(visited);
 
-                Block! loopend = ConstructLoopExitBlock(cutPoint, loopNodes, visited, prefix+"#Last");
-            
-                Block! last = UnrollOnce(cutPoint, loopend,visited1,false, prefix+"#Last");
-                AddHavocCmd(last,loopNodes);                
-                
-                // You might use true for the unrollable flag as well.                     
-                Block! arb = UnrollOnce(cutPoint, last,visited2,false, prefix+"#Arb");
-                AddHavocCmd(arb,loopNodes);
-                
-                        
-                BlockSeq! succ = new BlockSeq();
-                succ.Add(last); succ.Add(arb);
-                assert arb.TransferCmd!=null;
-                Block! tmp = new Block(arb.tok, arb.Label + prefix+"#Dummy" , new CmdSeq(), new GotoCmd(arb.TransferCmd.tok, succ));
-                Blocks.Add(tmp);
-                m_checkableBlocks.Add(tmp);
+				Block! loopend = ConstructLoopExitBlock(cutPoint, loopNodes, visited, prefix+"#Last");
+			
+				Block! last = UnrollOnce(cutPoint, loopend,visited1,false, prefix+"#Last");
+				AddHavocCmd(last,loopNodes);				
+				
+				// You might use true for the unrollable flag as well. 					
+				Block! arb = UnrollOnce(cutPoint, last,visited2,false, prefix+"#Arb");
+				AddHavocCmd(arb,loopNodes);
+				
+						
+				BlockSeq! succ = new BlockSeq();
+				succ.Add(last); succ.Add(arb);
+				assert arb.TransferCmd!=null;
+				Block! tmp = new Block(arb.tok, arb.Label + prefix+"#Dummy" , new CmdSeq(), new GotoCmd(arb.TransferCmd.tok, succ));
+				Blocks.Add(tmp);
+				m_checkableBlocks.Add(tmp);
 
                 // check if arb is already a copy of something else
                 // if not then write to m_copyMap that tmp is a copy
                 // of arb
-                Block b = null;
-                if (m_copyMap.TryGetValue(arb,out b) ) {
-                    assert b!=null;
-                    m_copyMap.Add(tmp, b);
-                } else {
-                    m_copyMap.Add(tmp, arb);
-                }
+				Block b = null;
+				if (m_copyMap.TryGetValue(arb,out b) ) {
+				    assert b!=null;
+				    m_copyMap.Add(tmp, b);
+				} else {
+				    m_copyMap.Add(tmp, arb);
+				}
 
-                Block! first = UnrollOnce(cutPoint, tmp,visited3,false, prefix+"#First");
-                
-                return first;
+				Block! first = UnrollOnce(cutPoint, tmp,visited3,false, prefix+"#First");
+				
+				return first;
 
-            } else
-            {
-                Dictionary<GraphNode, Block!>! visited_ = new Dictionary<GraphNode, Block!>(visited);
-                Block! loopend = AbstractIteration(cutPoint, prefix+"#UR");                
-                Block! ret = UnrollOnce(cutPoint, loopend,visited_,false, prefix);
-                AddHavocCmd(ret, loopNodes);
-                return ret;            
-            }
-        }
-        
-        private Block! UnrollOnce(GraphNode! node, Block! nextIter, Dictionary<GraphNode, Block!>! visited, bool unrollable, String! prefix)
-        {
-            visited.Add(node, nextIter);
-            Block newb,b;
-            BlockSeq! newSuccs = new BlockSeq();
-            foreach(GraphNode! g in node.Succecessors)
-            {
-                newSuccs.Add( LoopUnrolling(g,visited,unrollable,prefix) );
-            }
-            newb = new Block(node.Block.tok, node.Block.Label + prefix , node.Body, node.Block.TransferCmd); 
-            if (m_copyMap.TryGetValue(node.Block, out b) ) {
-                assert b!=null;
-                m_copyMap.Add(newb, b);
-            } else {
-                m_copyMap.Add(newb, node.Block);
-            }
-             
-            assert newb!=null; assert newb.TransferCmd!=null;                    
-            if (newSuccs.Length == 0) 
-                newb.TransferCmd = new ReturnCmd(newb.TransferCmd.tok);
-            else 
-                newb.TransferCmd = new GotoCmd(newb.TransferCmd.tok, newSuccs);
-                                            
-            Blocks.Add(newb);
-            if (unrollable) m_checkableBlocks.Add(newb);
-            return newb;
-        }
+			} else
+			{
+				Dictionary<GraphNode, Block!>! visited_ = new Dictionary<GraphNode, Block!>(visited);
+				Block! loopend = AbstractIteration(cutPoint, prefix+"#UR");				
+				Block! ret = UnrollOnce(cutPoint, loopend,visited_,false, prefix);
+				AddHavocCmd(ret, loopNodes);
+				return ret;			
+			}
+		}
+		
+		private Block! UnrollOnce(GraphNode! node, Block! nextIter, Dictionary<GraphNode, Block!>! visited, bool unrollable, String! prefix)
+		{
+			visited.Add(node, nextIter);
+			Block newb,b;
+			BlockSeq! newSuccs = new BlockSeq();
+			foreach(GraphNode! g in node.Succecessors)
+			{
+				newSuccs.Add( LoopUnrolling(g,visited,unrollable,prefix) );
+			}
+			newb = new Block(node.Block.tok, node.Block.Label + prefix , node.Body, node.Block.TransferCmd); 
+			if (m_copyMap.TryGetValue(node.Block, out b) ) {
+			    assert b!=null;
+			    m_copyMap.Add(newb, b);
+			} else {
+			    m_copyMap.Add(newb, node.Block);
+			}
+			 
+			assert newb!=null; assert newb.TransferCmd!=null;					
+			if (newSuccs.Length == 0) 
+				newb.TransferCmd = new ReturnCmd(newb.TransferCmd.tok);
+			else 
+				newb.TransferCmd = new GotoCmd(newb.TransferCmd.tok, newSuccs);
+											
+			Blocks.Add(newb);
+			if (unrollable) m_checkableBlocks.Add(newb);
+			return newb;
+		}
 
-        private Block! AbstractIteration(GraphNode! node, String! prefix)
-        {
-            CmdSeq body = new CmdSeq();
-            foreach (Cmd! c in node.Body)
-            {
-                if (c is PredicateCmd || c is CommentCmd)
-                    body.Add(c );
-                else
-                    break;
-            }
-            body.Add(new AssumeCmd(node.Block.tok, Expr.False) );
-            TransferCmd! tcmd = new ReturnCmd(node.Block.tok);
-            Block! b = new Block(node.Block.tok, node.Block.Label + prefix, body, tcmd);
-            Blocks.Add(b);
+		private Block! AbstractIteration(GraphNode! node, String! prefix)
+		{
+			CmdSeq body = new CmdSeq();
+			foreach (Cmd! c in node.Body)
+			{
+				if (c is PredicateCmd || c is CommentCmd)
+					body.Add(c );
+				else
+					break;
+			}
+			body.Add(new AssumeCmd(node.Block.tok, Expr.False) );
+			TransferCmd! tcmd = new ReturnCmd(node.Block.tok);
+			Block! b = new Block(node.Block.tok, node.Block.Label + prefix, body, tcmd);
+			Blocks.Add(b);
             Block tmp; 
-            if (m_copyMap.TryGetValue(node.Block, out tmp) ) {
-                assert tmp!=null;
-                m_copyMap.Add(b, tmp);
-            } else {
-                m_copyMap.Add(b, node.Block);
-            }
-            
-            return b;
-        }
+			if (m_copyMap.TryGetValue(node.Block, out tmp) ) {
+			    assert tmp!=null;
+			    m_copyMap.Add(b, tmp);
+			} else {
+			    m_copyMap.Add(b, node.Block);
+			}
+			
+			return b;
+		}
 
-        private Block! ConstructLoopExitBlock(GraphNode! cutPoint, List<GraphNode!>! loopNodes, 
-                                                Dictionary<GraphNode, Block!>! visited, String! prefix)
-        {
-            BlockSeq! newSucc = new BlockSeq();
-            Block! orig = cutPoint.Block;
-            
-            // detect the block after the loop
-            // FixMe: What happens when using break commands?
-            foreach (GraphNode! g in cutPoint.Succecessors)
-            {
-                if (!loopNodes.Contains(g)) 
-                {
-                    Block b;
-                    if (visited.TryGetValue(g,out b) )
-                        newSucc.Add(b);
-                }
-            }
-            TransferCmd tcmd;
-            assert orig.TransferCmd!=null;
-            if (newSucc.Length==0)
-                tcmd = new ReturnCmd(orig.TransferCmd.tok);
-            else
-                tcmd = new GotoCmd(orig.TransferCmd.tok, newSucc);
-            // FixMe: Genertate IToken for counterexample creation
-            Block! newb = new Block(orig.tok, orig.Label+prefix+"#Leave", orig.Cmds, tcmd);
-            Blocks.Add(newb);
-            m_checkableBlocks.Add(newb); 
-            return newb;
-        }
+		private Block! ConstructLoopExitBlock(GraphNode! cutPoint, List<GraphNode!>! loopNodes, 
+												Dictionary<GraphNode, Block!>! visited, String! prefix)
+		{
+			BlockSeq! newSucc = new BlockSeq();
+			Block! orig = cutPoint.Block;
+			
+			// detect the block after the loop
+			// FixMe: What happens when using break commands?
+			foreach (GraphNode! g in cutPoint.Succecessors)
+			{
+				if (!loopNodes.Contains(g)) 
+				{
+					Block b;
+					if (visited.TryGetValue(g,out b) )
+						newSucc.Add(b);
+				}
+			}
+			TransferCmd tcmd;
+			assert orig.TransferCmd!=null;
+			if (newSucc.Length==0)
+				tcmd = new ReturnCmd(orig.TransferCmd.tok);
+			else
+				tcmd = new GotoCmd(orig.TransferCmd.tok, newSucc);
+			// FixMe: Genertate IToken for counterexample creation
+			Block! newb = new Block(orig.tok, orig.Label+prefix+"#Leave", orig.Cmds, tcmd);
+			Blocks.Add(newb);
+			m_checkableBlocks.Add(newb); 
+			return newb;
+		}
 
 
-        private void GatherLoopBodyNodes(GraphNode! current, GraphNode! cutPoint, List<GraphNode!>! loopNodes)
-        {
-            loopNodes.Add(current);
-            if (false) System.Diagnostics.Debugger.Break();
-            foreach (GraphNode! g in current.Predecessors)
-            {
-                if (cutPoint.firstPredecessor == g || g == cutPoint || loopNodes.Contains(g) ) continue;
-                GatherLoopBodyNodes(g, cutPoint, loopNodes);
-            }        
-        }
-        
-        private List<GraphNode!>! GatherLoopExitNodes(List<GraphNode!>! loopNodes)
-        {
-            List<GraphNode!>! exitnodes = new List<GraphNode!>();
-            
-            foreach (GraphNode! g in loopNodes)
-            {
-                foreach (GraphNode! s in g.Succecessors)
-                {
-                    if (!loopNodes.Contains(s) /*&& !exitnodes.Contains(s)*/ ) exitnodes.Add(s);
-                }
-            }            
-            return exitnodes;
-        }
-        
-        private void AddHavocCmd(Block! b, List<GraphNode!>! loopNodes)
-        {
-            List<Block!>! loopBlocks = new List<Block!>();
-            foreach (GraphNode! g in loopNodes) loopBlocks.Add(g.Block);
-            HavocCmd! hcmd = HavocLoopTargets(loopBlocks,b.tok);
-            CmdSeq! body = new CmdSeq();
-            body.Add(hcmd);
-            body.AddRange(b.Cmds);
-            b.Cmds = body;
-        }
+		private void GatherLoopBodyNodes(GraphNode! current, GraphNode! cutPoint, List<GraphNode!>! loopNodes)
+		{
+			loopNodes.Add(current);
+			if (false) System.Diagnostics.Debugger.Break();
+			foreach (GraphNode! g in current.Predecessors)
+			{
+				if (cutPoint.firstPredecessor == g || g == cutPoint || loopNodes.Contains(g) ) continue;
+				GatherLoopBodyNodes(g, cutPoint, loopNodes);
+			}		
+		}
+		
+		private List<GraphNode!>! GatherLoopExitNodes(List<GraphNode!>! loopNodes)
+		{
+			List<GraphNode!>! exitnodes = new List<GraphNode!>();
+			
+			foreach (GraphNode! g in loopNodes)
+			{
+				foreach (GraphNode! s in g.Succecessors)
+				{
+					if (!loopNodes.Contains(s) /*&& !exitnodes.Contains(s)*/ ) exitnodes.Add(s);
+				}
+			}			
+			return exitnodes;
+		}
+		
+		private void AddHavocCmd(Block! b, List<GraphNode!>! loopNodes)
+		{
+			List<Block!>! loopBlocks = new List<Block!>();
+			foreach (GraphNode! g in loopNodes) loopBlocks.Add(g.Block);
+			HavocCmd! hcmd = HavocLoopTargets(loopBlocks,b.tok);
+			CmdSeq! body = new CmdSeq();
+			body.Add(hcmd);
+			body.AddRange(b.Cmds);
+			b.Cmds = body;
+		}
 
-        private HavocCmd! HavocLoopTargets(List<Block!>! bl, IToken! tok)
-        {
-            VariableSeq varsToHavoc = new VariableSeq();
-            foreach ( Block! b in bl )
-            {
-                foreach ( Cmd! c in b.Cmds )
-                {
-                    c.AddAssignedVariables(varsToHavoc);
-                }
-            }
-            IdentifierExprSeq havocExprs = new IdentifierExprSeq();
-            foreach ( Variable! v in varsToHavoc )
-            {
-                IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-                if(!havocExprs.Has(ie))
-                    havocExprs.Add(ie);
-            }
-            // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
-            // the source location for this later on
-            return new HavocCmd(tok,havocExprs);            
-        }    
-                
+		private HavocCmd! HavocLoopTargets(List<Block!>! bl, IToken! tok)
+		{
+			VariableSeq varsToHavoc = new VariableSeq();
+			foreach ( Block! b in bl )
+			{
+				foreach ( Cmd! c in b.Cmds )
+				{
+					c.AddAssignedVariables(varsToHavoc);
+				}
+			}
+			IdentifierExprSeq havocExprs = new IdentifierExprSeq();
+			foreach ( Variable! v in varsToHavoc )
+			{
+				IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
+				if(!havocExprs.Has(ie))
+					havocExprs.Add(ie);
+			}
+			// pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
+			// the source location for this later on
+			return new HavocCmd(tok,havocExprs);			
+		}    
+				
     #endregion
 
       
@@ -1009,7 +1111,7 @@ namespace VC
                 assume gcmd.labelTargets != null;
                 foreach (Block! succ in gcmd.labelTargets) 
                 {
-                    g.Succecessors.Add( ComputeGraphInfo(g, succ, gd, beingVisited) );
+	                g.Succecessors.Add( ComputeGraphInfo(g, succ, gd, beingVisited) );
                 }
               }
               beingVisited.Remove(b);
@@ -1020,17 +1122,17 @@ namespace VC
       }
       
     }
-    #endregion        
+    #endregion		
 
     #endregion 
      
     #region Program Passification
       private void GenerateReachVars(Implementation! impl)
       {
-        Hashtable gotoCmdOrigins = new Hashtable();
-        Block! exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
-        AddBlocksBetween(impl);
-        
+	    Hashtable gotoCmdOrigins = new Hashtable();
+	    Block! exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
+	    AddBlocksBetween(impl);
+	    
         #region Insert pre- and post-conditions and where clauses as assume and assert statements
         {
           CmdSeq cc = new CmdSeq();

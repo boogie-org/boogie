@@ -44,6 +44,7 @@ namespace VC
         public void Initialize(VCExpr! evc) {
             m_Checker.PushVCExpr(evc);
         }
+        
     
         public bool CheckReachvar(Variable! reachvar, out ProverInterface.Outcome outcome) {
             VCExpr! vc = m_Checker.TheoremProver.Context.BoogieExprTranslator.LookupVariable(reachvar);
@@ -393,18 +394,18 @@ namespace VC
 
                         // Check if there is an assert false in this node or in one of its parents
                         // if so do not report anything
-                        if (ECContainsAssertFalse(currentNode.EquivBlock)) {  
-                        
-                            ConsoleColor col = Console.ForegroundColor;
-                            Console.ForegroundColor = ConsoleColor.Blue; 
-                            Console.WriteLine("Assert false or PossiblyUnreachable was detected, but ignored");
-                            Console.ForegroundColor = col;                                              
-
-                            currentNode.HasBeenChecked = true;  
-                            currentNode.IsDoomed = false;                          
-                            currentNode = currentNode.Parent; 
-                            return false;                       
-                        }
+//                        if (ECContainsAssertFalse(currentNode.EquivBlock)) {  
+//                        
+//                            ConsoleColor col = Console.ForegroundColor;
+//                            Console.ForegroundColor = ConsoleColor.Blue; 
+//                            Console.WriteLine("Assert false or PossiblyUnreachable was detected, but ignored");
+//                            Console.ForegroundColor = col;                                              
+//
+//                            currentNode.HasBeenChecked = true;  
+//                            currentNode.IsDoomed = false;                          
+//                            currentNode = currentNode.Parent; 
+//                            return false;                       
+//                        }
                         
                         List<Block!>! traceblocks = new List<Block!>();
                                                 
@@ -425,10 +426,7 @@ namespace VC
                             }
                             
                             DetectedBlock.Add(currentNode.EquivBlock);
-                            // Todo: Remove all doomed blocks that are found
-                            // in children.
-                            // Maybe one should remove them only if all children
-                            // are doomed, but this does not affect soundness                            
+
                         } else {
                             Console.WriteLine("An empty equivalence class has been detected");
                             assert false;
@@ -438,10 +436,28 @@ namespace VC
                         currentNode.HasBeenChecked = true;
                         MarkDoomedChildren(currentNode);
                         currentNode = currentNode.Parent;
+                        if (currentNode!=null) {
+                            foreach (InclusionTree! it in currentNode.Children) {
+                                if (!it.HasBeenChecked) {
+                                    currentNode = DescendToDeepestUnchecked(it);
+                                    break;
+                                }
+                            }
+                        }
                     }                        
                 }
                 return true;
-            }                        
+            }      
+            
+            private InclusionTree! DescendToDeepestUnchecked(InclusionTree! node) 
+            {
+                foreach (InclusionTree! it in node.Children) {
+                    if (!it.HasBeenChecked) {
+                        return DescendToDeepestUnchecked(it);
+                    }
+                }
+                return node;
+            }                
             
             private bool ECContainsAssertFalse(List<Block!>! equiv) {
                 foreach (Block! b in equiv) {
