@@ -61,7 +61,8 @@ namespace BytecodeTranslator {
 
       #region Pass 3: Translate the code model to BPL
       //tmp_BPLGenerator translator = new tmp_BPLGenerator(host, acp);
-      ToplevelTraverser translator = new ToplevelTraverser(host.GetContractExtractor(module.ModuleIdentity));
+      var factory = new CLRSemantics();
+      ToplevelTraverser translator = new ToplevelTraverser(factory, host.GetContractExtractor(module.ModuleIdentity));
       assembly = module as IAssembly;
       if (assembly != null)
         translator.Visit(assembly);

@@ -21,7 +21,9 @@ namespace BytecodeTranslator {
     /// <summary>
     /// 
     /// </summary>
-  internal class ToplevelTraverser : BaseCodeAndContractTraverser {
+  public class ToplevelTraverser : BaseCodeAndContractTraverser {
+
+    public readonly TraverserFactory factory;
 
     public readonly IContractProvider ContractProvider;
 
@@ -29,8 +31,9 @@ namespace BytecodeTranslator {
 
     private Dictionary<ITypeDefinition, ClassTraverser> classMap = new Dictionary<ITypeDefinition, ClassTraverser>();
 
-    public ToplevelTraverser(IContractProvider cp)
+    public ToplevelTraverser(TraverserFactory factory, IContractProvider cp)
       : base(cp) {
+      this.factory = factory;
       ContractProvider = cp;
       TranslatedProgram = new Bpl.Program();
     }
@@ -38,7 +41,7 @@ namespace BytecodeTranslator {
     public Bpl.Variable FindOrCreateClassField(ITypeDefinition classtype, IFieldDefinition field) {
       ClassTraverser ct;
       if (!classMap.TryGetValue(classtype, out ct)) {
-        ct = new ClassTraverser(this.ContractProvider, this);
+        ct = this.factory.MakeClassTraverser(this, this.contractProvider);
         classMap.Add(classtype, ct);
         return ct.FindOrCreateFieldVariable(field);
       } else {
@@ -55,8 +58,8 @@ namespace BytecodeTranslator {
       if (typeDefinition.IsClass) {
 
         ClassTraverser ct;
-        if (!classMap.TryGetValue(typeDefinition, out ct)) { 
-          ct = new ClassTraverser(this.contractProvider, this);
+        if (!classMap.TryGetValue(typeDefinition, out ct)) {
+          ct = this.factory.MakeClassTraverser(this, this.contractProvider);
           classMap.Add(typeDefinition, ct);
         }
         ct.Visit(typeDefinition);
@@ -75,4 +78,5 @@ namespace BytecodeTranslator {
     }
 
   }
+
 }

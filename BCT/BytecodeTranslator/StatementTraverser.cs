@@ -20,7 +20,10 @@ using System.Diagnostics.Contracts;
 
 namespace BytecodeTranslator
 {
-  internal class StatementTraverser : BaseCodeTraverser {
+  public class StatementTraverser : BaseCodeTraverser {
+
+    public readonly TraverserFactory factory;
+
     public readonly MethodTraverser MethodTraverser;
 
     public readonly Bpl.Variable HeapVariable;
@@ -28,12 +31,11 @@ namespace BytecodeTranslator
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
 
     #region Constructors
-    public StatementTraverser(MethodTraverser mt) {
-      HeapVariable = mt.HeapVariable;
-      MethodTraverser = mt;
-    }
+    public StatementTraverser(TraverserFactory factory, MethodTraverser mt) :
+      this(factory, mt, mt.HeapVariable) { }
 
-    public StatementTraverser(MethodTraverser mt, Bpl.Variable heapvar) {
+    public StatementTraverser(TraverserFactory factory, MethodTraverser mt, Bpl.Variable heapvar) {
+      this.factory = factory;
       HeapVariable = heapvar;
       MethodTraverser = mt;
     }
@@ -46,7 +48,7 @@ namespace BytecodeTranslator
     }
 
     Bpl.Expr ExpressionFor(IExpression expression) {
-      ExpressionTraverser etrav = new ExpressionTraverser(this);
+      ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this, this.HeapVariable);
       etrav.Visit(expression);
       Contract.Assert(etrav.TranslatedExpressions.Count == 1);
       return etrav.TranslatedExpressions.Pop();
@@ -82,10 +84,10 @@ namespace BytecodeTranslator
     /// <remarks>(mschaef) Works, but still a stub</remarks>
     /// <param name="conditionalStatement"></param>
     public override void Visit(IConditionalStatement conditionalStatement) {
-      StatementTraverser thenTraverser = new StatementTraverser(this.MethodTraverser);
-      StatementTraverser elseTraverser = new StatementTraverser(this.MethodTraverser);
+      StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.MethodTraverser, this.HeapVariable);
+      StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.MethodTraverser, this.HeapVariable);
 
-      ExpressionTraverser condTraverser = new ExpressionTraverser(this);
+      ExpressionTraverser condTraverser = this.factory.MakeExpressionTraverser(this, this.HeapVariable);
       condTraverser.Visit(conditionalStatement.Condition);
       thenTraverser.Visit(conditionalStatement.TrueBranch);
       elseTraverser.Visit(conditionalStatement.FalseBranch);
@@ -108,7 +110,7 @@ namespace BytecodeTranslator
     /// <remarks> TODO: might be wrong for the general case</remarks>
     public override void Visit(IExpressionStatement expressionStatement) {
 
-      ExpressionTraverser etrav = new ExpressionTraverser(this);
+      ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this, this.HeapVariable);
       etrav.Visit(expressionStatement.Expression);
     }
 
@@ -150,7 +152,7 @@ namespace BytecodeTranslator
       #endregion
 
       if (returnStatement.Expression != null) {
-        ExpressionTraverser etrav = new ExpressionTraverser(this);
+        ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this, this.HeapVariable);
         etrav.Visit(returnStatement.Expression);
 
         if (this.MethodTraverser.RetVariable == null || etrav.TranslatedExpressions.Count < 1) {
@@ -202,4 +204,5 @@ namespace BytecodeTranslator
     #endregion
 
   }
+
 }

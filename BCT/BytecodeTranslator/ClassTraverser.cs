@@ -20,7 +20,10 @@ namespace BytecodeTranslator {
   /// <summary>
   /// 
   /// </summary>
-  internal class ClassTraverser : BaseCodeAndContractTraverser {
+  public class ClassTraverser : BaseCodeAndContractTraverser {
+
+    public readonly TraverserFactory factory;
+
     public readonly ToplevelTraverser ToplevelTraverser;
 
     private Dictionary<IFieldDefinition, Bpl.GlobalVariable> fieldVarMap = new Dictionary<IFieldDefinition, Microsoft.Boogie.GlobalVariable>();
@@ -32,8 +35,9 @@ namespace BytecodeTranslator {
 
     public readonly Bpl.Variable HeapVariable = TranslationHelper.TempHeapVar();
 
-    public ClassTraverser(IContractProvider cp, ToplevelTraverser tlTraverser)
+    public ClassTraverser(TraverserFactory factory, IContractProvider cp, ToplevelTraverser tlTraverser)
       : base(cp) {
+      this.factory = factory;
       ToplevelTraverser = tlTraverser;
     }
 
@@ -61,7 +65,8 @@ namespace BytecodeTranslator {
       // check if it's static and so on
       MethodTraverser mt;
       if (!methodMap.TryGetValue(method, out mt)) {
-        mt = new MethodTraverser(this.contractProvider, this);
+        mt = this.factory.MakeMethodTraverser(this, this.contractProvider);
+        this.methodMap.Add(method, mt);
       }
       mt.Visit(method);
     }
@@ -76,4 +81,5 @@ namespace BytecodeTranslator {
     }
 
   }
+
 }

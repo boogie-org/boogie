@@ -1,0 +1,50 @@
+// Copyright (c) 2010, Microsoft Corp.
+// Bytecode Translator prelude
+
+type Ref;
+const null: Ref;
+
+type Field alpha;
+
+type HeapType = <alpha>[Ref, Field alpha]alpha;
+function IsGoodHeap(HeapType): bool;
+
+var $Heap: HeapType where IsGoodHeap($Heap);
+
+procedure RegressionTestInput.Class0.M$System.Void(this: int, x$in: int);
+
+
+
+implementation RegressionTestInput.Class0.M$System.Void(this: int, x$in: int)
+{
+  var __temp_1: int;
+  var $tmp0: int;
+  var __temp_2: int;
+  var __temp_3: int;
+  var local_0: int;
+  var x: int;
+
+    x := x$in;
+    $tmp0 := x;
+    assert $tmp0 != 0;
+    __temp_1 := 5 / $tmp0;
+    __temp_2 := 3;
+    __temp_3 := __temp_2;
+    x := __temp_3;
+    local_0 := __temp_1 + __temp_2;
+    assert x == 3 && local_0 <= 8;
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0..ctor$System.Void(this: int);
+
+
+
+implementation RegressionTestInput.Class0..ctor$System.Void(this: int)
+{
+    return;
+}
+
+

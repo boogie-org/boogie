@@ -17,7 +17,10 @@ using Microsoft.Cci.ILToCodeModel;
 using Bpl = Microsoft.Boogie;
 
 namespace BytecodeTranslator {
-  class MethodTraverser : BaseCodeAndContractTraverser {
+  public class MethodTraverser : BaseCodeAndContractTraverser {
+
+    public readonly TraverserFactory factory;
+
     public readonly ClassTraverser ClassTraverser;
 
     private Bpl.Procedure procedure;
@@ -30,7 +33,7 @@ namespace BytecodeTranslator {
 
     private Dictionary<ILocalDefinition, Bpl.LocalVariable> localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
 
-    internal class MethodParameter {
+    public class MethodParameter {
       public MethodParameter() {
         localParameter = null;
         inParameterCopy = null;
@@ -65,11 +68,11 @@ namespace BytecodeTranslator {
     /// Creates a fresh local var of the given Type and adds it to the
     /// Bpl Implementation
     /// </summary>
-    /// <param name="typedef"> The type of the new variable </param>
+    /// <param name="typeReference"> The type of the new variable </param>
     /// <returns> A fresh Variable with automatic generated name and location </returns>
-    public Bpl.Variable CreateFreshLocal(ITypeDefinition typedef) {
+    public Bpl.Variable CreateFreshLocal(ITypeReference typeReference) {
       Bpl.IToken loc = Bpl.Token.NoToken; // Helper Variables do not have a location
-      Bpl.Type t = TranslationHelper.CciTypeToBoogie(typedef);
+      Bpl.Type t = TranslationHelper.CciTypeToBoogie(typeReference);
       Bpl.LocalVariable v = new Bpl.LocalVariable(loc, new Bpl.TypedIdent(loc, TranslationHelper.GenerateTempVarName(), t));
       ILocalDefinition dummy = new LocalDefinition(); // Creates a dummy entry for the Dict, since only locals in the dict are translated to boogie
       localVarMap.Add(dummy, v);
@@ -122,12 +125,15 @@ namespace BytecodeTranslator {
     }
     #endregion
 
-    public MethodTraverser(IContractProvider cp, ClassTraverser cTraverser)
+    public MethodTraverser(TraverserFactory factory, IContractProvider cp, ClassTraverser cTraverser)
       : base(cp) {
+      this.factory = factory;
       HeapVariable = cTraverser.HeapVariable;
       procedure = null;
       ClassTraverser = cTraverser;
     }
+
+    #region Overrides
 
     /// <summary>
     /// 
@@ -209,7 +215,7 @@ namespace BytecodeTranslator {
         if (contract != null) {
           try {
             foreach (IPrecondition pre in contract.Preconditions) {
-              ExpressionTraverser exptravers = new ExpressionTraverser(this);
+              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(null, this.HeapVariable);
               exptravers.Visit(pre.Condition); // TODO
               // Todo: Deal with Descriptions
 
@@ -221,7 +227,7 @@ namespace BytecodeTranslator {
             }
 
             foreach (IPostcondition post in contract.Postconditions) {
-              ExpressionTraverser exptravers = new ExpressionTraverser(this);
+              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(null, this.HeapVariable);
 
               exptravers.Visit(post.Condition);
               // Todo: Deal with Descriptions
@@ -233,7 +239,7 @@ namespace BytecodeTranslator {
             }
 
             foreach (IAddressableExpression mod in contract.ModifiedVariables) {
-              ExpressionTraverser exptravers = new ExpressionTraverser(this);
+              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(null, this.HeapVariable);
               exptravers.Visit(mod);
 
               Bpl.IdentifierExpr idexp = exptravers.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
@@ -271,7 +277,7 @@ namespace BytecodeTranslator {
           throw new NotImplementedException("abstract methods are not yet implemented");
         }
 
-        StatementTraverser stmtTraverser = new StatementTraverser(this);
+        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this, this.HeapVariable);
 
         #region Add assignements from In-Params to local-Params
 
@@ -289,7 +295,7 @@ namespace BytecodeTranslator {
         try {
           method.ResolvedMethod.Body.Dispatch(stmtTraverser);
         } catch (TranslationException te) {
-          throw new NotImplementedException("No Errorhandling in Mehtodvisitor / " + te.ToString());
+          throw new NotImplementedException("No Errorhandling in Methodvisitor / " + te.ToString());
         } catch {
           throw;
         }
@@ -328,5 +334,8 @@ namespace BytecodeTranslator {
       }
     }
 
+    #endregion
+
   }
+
 }

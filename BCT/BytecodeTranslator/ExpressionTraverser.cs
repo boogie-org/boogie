@@ -19,7 +19,7 @@ using Bpl = Microsoft.Boogie;
 
 
 namespace BytecodeTranslator {
-  class ExpressionTraverser : BaseCodeTraverser {
+  public class ExpressionTraverser : BaseCodeTraverser {
 
     // warning! this has to be replaced by a HeapVariable from outside
     public readonly Bpl.Variable HeapVariable;        
@@ -30,24 +30,9 @@ namespace BytecodeTranslator {
 
     #region Constructors
 
-    public ExpressionTraverser(StatementTraverser stmtTraverser) {
-      HeapVariable = stmtTraverser.HeapVariable;
-      StmtTraverser = stmtTraverser;
-      TranslatedExpressions = new Stack<Bpl.Expr>();
-    }
-
-    public ExpressionTraverser(ClassTraverser classTraverser) {
-      // TODO
-      //StmtTraverser = new StatementTraverser(classTraverser);
-      HeapVariable = classTraverser.HeapVariable;
-      TranslatedExpressions = new Stack<Bpl.Expr>();
-    }
-
-    public ExpressionTraverser(MethodTraverser methodTraverser) {
-      HeapVariable = methodTraverser.HeapVariable;
-      StmtTraverser = new StatementTraverser(methodTraverser);
-      TranslatedExpressions = new Stack<Bpl.Expr>();
-    }
+    public ExpressionTraverser(StatementTraverser stmtTraverser) 
+      : this(stmtTraverser, stmtTraverser.HeapVariable)
+    { }
 
     public ExpressionTraverser(StatementTraverser stmtTraverser, Bpl.Variable heapvar) {
       HeapVariable = heapvar;
@@ -55,18 +40,6 @@ namespace BytecodeTranslator {
       TranslatedExpressions = new Stack<Bpl.Expr>();
     }
 
-    public ExpressionTraverser(ClassTraverser classTraverser, Bpl.Variable heapvar) {
-      HeapVariable = heapvar;
-      // TODO
-      //StmtTraverser = new StatementTraverser(classTraverser);
-      TranslatedExpressions = new Stack<Bpl.Expr>();
-    }
-
-    public ExpressionTraverser(MethodTraverser methodTraverser, Bpl.Variable heapvar) {
-      HeapVariable = heapvar;
-      StmtTraverser = new StatementTraverser(methodTraverser);
-      TranslatedExpressions = new Stack<Bpl.Expr>();
-    }
     #endregion
 
     #region Translate Variable Access
@@ -279,10 +252,7 @@ namespace BytecodeTranslator {
         field.ContainingType.ResolvedType, 
         field.ResolvedField) ) );
 
-      ExpressionTraverser etrav = new ExpressionTraverser(StmtTraverser);
-      etrav.Visit(instance);
-
-      TranslatedExpressions.Push(etrav.TranslatedExpressions.Pop());
+      this.Visit(instance);
 
       // if the field access is not a targetexpression we build a select expression
       // otherwise the assignment visitor will build a mapassignment later on
@@ -331,9 +301,8 @@ namespace BytecodeTranslator {
       Bpl.ExprSeq inexpr = new Bpl.ExprSeq();
 
       #region Create the 'this' argument for the function call
-      ExpressionTraverser thistraverser = new ExpressionTraverser(StmtTraverser);
-      thistraverser.Visit(methodCall.ThisArgument);
-      inexpr.Add(thistraverser.TranslatedExpressions.Pop());
+      this.Visit(methodCall.ThisArgument);
+      inexpr.Add(this.TranslatedExpressions.Pop());
       #endregion
 
       Dictionary<IParameterDefinition, Bpl.Expr> p2eMap = new Dictionary<IParameterDefinition, Bpl.Expr>();
@@ -343,9 +312,9 @@ namespace BytecodeTranslator {
         if (penum.Current == null) {
           throw new TranslationException("More Arguments than Parameters in functioncall");
         }
-        ExpressionTraverser etrav = new ExpressionTraverser(this.StmtTraverser);
-        etrav.Visit(exp);
-        Bpl.Expr e = etrav.TranslatedExpressions.Pop();
+        this.Visit(exp);
+        Bpl.Expr e = this.TranslatedExpressions.Pop();
+
         p2eMap.Add(penum.Current, e);
         if (!penum.Current.IsOut) {
           inexpr.Add(e);
@@ -396,47 +365,23 @@ namespace BytecodeTranslator {
     /// <remarks>(mschaef) Works, but still a stub </remarks>
     /// <param name="assignment"></param>
     public override void Visit(IAssignment assignment) {
-      ExpressionTraverser sourcetrav = new ExpressionTraverser(this.StmtTraverser);
-      ExpressionTraverser targettrav = new ExpressionTraverser(this.StmtTraverser);
 
       #region Transform Right Hand Side ...
-      sourcetrav.Visit(assignment.Source);
-      Bpl.Expr sourceexp = sourcetrav.TranslatedExpressions.Pop();
+      this.Visit(assignment.Source);
+      Bpl.Expr sourceexp = this.TranslatedExpressions.Pop();
       #endregion
 
-      #region ... and now Left Hand Side and build the bpl statement
+      this.Visit(assignment.Target);
 
-      targettrav.Visit(assignment.Target);
-
-      if (targettrav.TranslatedExpressions.Count == 1) {
-
-        Bpl.Expr targetexp = targettrav.TranslatedExpressions.Pop();
-        Bpl.IdentifierExpr idexp = targetexp as Bpl.IdentifierExpr;
-        if (idexp != null) {
-          StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(TranslationHelper.CciLocationToBoogieToken(assignment.Locations),
-              idexp, sourceexp));
-          return;
-        } else {
-          throw new TranslationException("Trying to create a SimpleAssign with complex/illegal lefthand side");
-        }
-
-      } else if (targettrav.TranslatedExpressions.Count > 1) {
-
-        Bpl.ExprSeq eseq = new Bpl.ExprSeq();
-
-        while (targettrav.TranslatedExpressions.Count > 0) {
-          eseq.Add(targettrav.TranslatedExpressions.Pop());
-        }
-
-        StmtTraverser.StmtBuilder.Add(Bpl.Cmd.MapAssign(TranslationHelper.CciLocationToBoogieToken(assignment.Locations),
-          new Bpl.IdentifierExpr(TranslationHelper.CciLocationToBoogieToken(assignment.Target.Locations),
-            HeapVariable), eseq, sourceexp));
+      Bpl.Expr targetexp = this.TranslatedExpressions.Pop();
+      Bpl.IdentifierExpr idexp = targetexp as Bpl.IdentifierExpr;
+      if (idexp != null) {
+        StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(TranslationHelper.CciLocationToBoogieToken(assignment.Locations),
+          idexp, sourceexp));
         return;
       } else {
-        throw new TranslationException("Trying to create an Assignment but lefthand side cannot be created");
+        throw new TranslationException("Trying to create a SimpleAssign with complex/illegal lefthand side");
       }
-
-      #endregion
 
     }
 
@@ -457,10 +402,6 @@ namespace BytecodeTranslator {
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Div, lexp, rexp));
-
-      var tok = TranslationHelper.CciLocationToBoogieToken(division.Locations);
-      var a = new Bpl.AssertCmd(tok, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, rexp, Bpl.Expr.Literal(0)));
-      this.StmtTraverser.StmtBuilder.Add(a);
     }
 
     public override void Visit(ISubtraction subtraction) {
@@ -599,4 +540,5 @@ namespace BytecodeTranslator {
     }
     #endregion
   }
+
 }

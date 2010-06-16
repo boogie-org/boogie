@@ -25,6 +25,19 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeModelToIL", "..\..\CCIC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ILGenerator", "..\..\CCICodePlex\Ast\Metadata\Sources\ILGenerator\ILGenerator.csproj", "{08156C78-403A-4112-AD81-8646AC51CD2F}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "RegressionTests", "RegressionTests", "{AA77A7CB-972F-4A5C-A16C-3810B448F6EA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RegressionTestInput", "RegressionTests\RegressionTestInput\RegressionTestInput.csproj", "{3D13D2CC-6387-46FA-BDC2-4BEEFC460118}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TranslationTest", "RegressionTests\TranslationTest\TranslationTest.csproj", "{A112AFBA-D6F6-44A4-A683-C3D458A68D84}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{45E691A6-BFA4-4545-93AC-EA7290A6B565}"
+	ProjectSection(SolutionItems) = preProject
+		BCT.vsmdi = BCT.vsmdi
+		Local.testsettings = Local.testsettings
+		TraceAndTestImpact.testsettings = TraceAndTestImpact.testsettings
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(TeamFoundationVersionControl) = preSolution
 		SccNumberOfProjects = 9
@@ -75,6 +88,9 @@ Global
 		SccAuxPath8 = http://vstfdevdiv:8080
 		SccLocalPath8 = ..\\..\\Felt\\SourceModel
 		SccProvider8 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+	EndGlobalSection
+	GlobalSection(TestCaseManagementSettings) = postSolution
+		CategoryFile = BCT.vsmdi
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		CompilerOnly|Any CPU = CompilerOnly|Any CPU
@@ -204,8 +220,33 @@ Global
 		{08156C78-403A-4112-AD81-8646AC51CD2F}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
 		{08156C78-403A-4112-AD81-8646AC51CD2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{08156C78-403A-4112-AD81-8646AC51CD2F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D13D2CC-6387-46FA-BDC2-4BEEFC460118}.CompilerOnly|Any CPU.ActiveCfg = Release|Any CPU
+		{3D13D2CC-6387-46FA-BDC2-4BEEFC460118}.CompilerOnly|Any CPU.Build.0 = Release|Any CPU
+		{3D13D2CC-6387-46FA-BDC2-4BEEFC460118}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D13D2CC-6387-46FA-BDC2-4BEEFC460118}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D13D2CC-6387-46FA-BDC2-4BEEFC460118}.NightlyDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D13D2CC-6387-46FA-BDC2-4BEEFC460118}.NightlyDebug|Any CPU.Build.0 = Debug|Any CPU
+		{3D13D2CC-6387-46FA-BDC2-4BEEFC460118}.NightlyRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{3D13D2CC-6387-46FA-BDC2-4BEEFC460118}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
+		{3D13D2CC-6387-46FA-BDC2-4BEEFC460118}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D13D2CC-6387-46FA-BDC2-4BEEFC460118}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A112AFBA-D6F6-44A4-A683-C3D458A68D84}.CompilerOnly|Any CPU.ActiveCfg = Release|Any CPU
+		{A112AFBA-D6F6-44A4-A683-C3D458A68D84}.CompilerOnly|Any CPU.Build.0 = Release|Any CPU
+		{A112AFBA-D6F6-44A4-A683-C3D458A68D84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A112AFBA-D6F6-44A4-A683-C3D458A68D84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A112AFBA-D6F6-44A4-A683-C3D458A68D84}.NightlyDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A112AFBA-D6F6-44A4-A683-C3D458A68D84}.NightlyDebug|Any CPU.Build.0 = Debug|Any CPU
+		{A112AFBA-D6F6-44A4-A683-C3D458A68D84}.NightlyRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{A112AFBA-D6F6-44A4-A683-C3D458A68D84}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
+		{A112AFBA-D6F6-44A4-A683-C3D458A68D84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A112AFBA-D6F6-44A4-A683-C3D458A68D84}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3D13D2CC-6387-46FA-BDC2-4BEEFC460118} = {AA77A7CB-972F-4A5C-A16C-3810B448F6EA}
+		{A112AFBA-D6F6-44A4-A683-C3D458A68D84} = {AA77A7CB-972F-4A5C-A16C-3810B448F6EA}
+		{45E691A6-BFA4-4545-93AC-EA7290A6B565} = {AA77A7CB-972F-4A5C-A16C-3810B448F6EA}
 	EndGlobalSection
 EndGlobal

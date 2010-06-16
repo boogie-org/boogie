@@ -108,6 +108,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CLRSemantics.cs" />
     <Compile Include="Prelude.cs" />
     <Compile Include="ExpressionTraverser.cs" />
     <Compile Include="ClassTraverser.cs" />
@@ -117,6 +118,7 @@
     <Compile Include="ToplevelTraverser.cs" />
     <Compile Include="TranslationException.cs" />
     <Compile Include="TranslationHelper.cs" />
+    <Compile Include="TraverserFactory.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Readme.txt" />
