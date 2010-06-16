@@ -145,11 +145,8 @@ namespace Microsoft.Boogie.Isabelle
   }
 
 
-  public class IsabelleContext : ProverContext
+  public class IsabelleContext : DeclFreeProverContext
   {
-    private VCExpressionGenerator! gen;
-    private Boogie2VCExprTranslator! trans;
-    private VCGenerationOptions! options;
     private List<string!>! declaredFunctions = new List<string!>();
     public readonly string! OutputFilename;
     public bool IsFunctionDeclared(string! name)
@@ -159,31 +156,12 @@ namespace Microsoft.Boogie.Isabelle
     public readonly bool AllTypes;
     
     public IsabelleContext(string! outputFilename, bool allTypes)
+     : base(new VCExpressionGenerator(), new VCGenerationOptions(new List<string!>(new string![] { "bvInt", "bvDefSem", "bvint", "bvz", "external"})))
     {
-      List<string!>! solverAttributes = new List<string!>();
-      solverAttributes.Add("bvInt");
-      solverAttributes.Add("bvDefSem");
-      solverAttributes.Add("bvint");
-      solverAttributes.Add("bvz");
-      solverAttributes.Add("external");
-        // add more solver attributes, if needed
-      VCGenerationOptions! opts = new VCGenerationOptions(solverAttributes);
-      VCExpressionGenerator! gen = new VCExpressionGenerator();
-      trans = new Boogie2VCExprTranslator(gen, opts);
-      this.gen = gen;
-      this.options = opts;
       this.OutputFilename = outputFilename;
       this.AllTypes = allTypes;
     }
-    public override VCExpressionGenerator! ExprGen { get { return gen; } }
-    public override Boogie2VCExprTranslator! BoogieExprTranslator
-    {
-      get { return trans; }
-    }
-    public override VCGenerationOptions! VCGenOptions
-    {
-      get { return options; }
-    }
+    
     public override object! Clone() { return this; }
   
     public override void DeclareType(TypeCtorDecl! t, string atts)
