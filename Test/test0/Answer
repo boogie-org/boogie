@@ -99,9 +99,9 @@ WhereParsing.bpl(15,33): Error: where clause not allowed here
 WhereParsing0.bpl(17,38): Error: where clause not allowed here
 WhereParsing0.bpl(18,38): Error: where clause not allowed here
 2 parse errors detected in WhereParsing0.bpl
-WhereParsing1.bpl(14,27): syntax error: ) expected
+WhereParsing1.bpl(14,27): syntax error: ")" expected
 1 parse errors detected in WhereParsing1.bpl
-WhereParsing2.bpl(1,14): syntax error: ; expected
+WhereParsing2.bpl(1,14): syntax error: ";" expected
 1 parse errors detected in WhereParsing2.bpl
 WhereResolution.bpl(28,38): Error: undeclared identifier: alpha
 WhereResolution.bpl(32,30): Error: old expressions allowed only in two-state contexts

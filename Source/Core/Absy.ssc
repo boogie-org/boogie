@@ -1680,17 +1680,26 @@ namespace Microsoft.Boogie
                           VariableSeq! inParams, VariableSeq! outParams,
                           VariableSeq! localVariables, [Captured] StmtList! structuredStmts)
     {
-      this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null);
+      this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, new Errors());
     }
 
     public Implementation(IToken! tok, string! name, TypeVariableSeq! typeParams,
                           VariableSeq! inParams, VariableSeq! outParams,
-                          VariableSeq! localVariables, [Captured] StmtList! structuredStmts, QKeyValue kv)
+                          VariableSeq! localVariables, [Captured] StmtList! structuredStmts,
+                          Errors! errorHandler)
+    {
+      this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, errorHandler);
+    }
+
+    public Implementation(IToken! tok, string! name, TypeVariableSeq! typeParams,
+                          VariableSeq! inParams, VariableSeq! outParams,
+                          VariableSeq! localVariables, [Captured] StmtList! structuredStmts, QKeyValue kv,
+                          Errors! errorHandler)
       : base(tok, name, typeParams, inParams, outParams)
     {
       LocVars = localVariables;
       StructuredStmts = structuredStmts;
-      BigBlocksResolutionContext ctx = new BigBlocksResolutionContext(structuredStmts);
+      BigBlocksResolutionContext ctx = new BigBlocksResolutionContext(structuredStmts, errorHandler);
       Blocks = ctx.Blocks;
       BlockPredecessorsComputed = false;
       scc = null;

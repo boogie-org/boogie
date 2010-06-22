@@ -21,6 +21,7 @@ namespace Microsoft.Boogie
   using VC;
   using Cci = System.Compiler;
   using AI = Microsoft.AbstractInterpretationFramework;
+  using BoogiePL = Microsoft.Boogie;
 
 /* 
   The following assemblies are referenced because they are needed at runtime, not at compile time:
@@ -206,7 +207,7 @@ namespace Microsoft.Boogie
     static void ProcessFiles (List<string!>! fileNames)
     {
       using (XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count-1])) {
-        BoogiePL.Errors.count = 0;
+        //BoogiePL.Errors.count = 0;
         Program program = ParseBoogieProgram(fileNames, false);
         if (program == null) return;
         if (CommandLineOptions.Clo.PrintFile != null) {
@@ -215,10 +216,10 @@ namespace Microsoft.Boogie
 
         PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count-1]);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked) return;
-        BoogiePL.Errors.count = 0;
+        //BoogiePL.Errors.count = 0;
         
         oc = EliminateDeadVariablesAndInline(program);
-        BoogiePL.Errors.count = 0;
+        //BoogiePL.Errors.count = 0;
         
         int errorCount, verified, inconclusives, timeOuts, outOfMemories;
         oc = InferAndVerify(program, null, out errorCount, out verified, out inconclusives, out timeOuts, out outOfMemories);
@@ -332,7 +333,7 @@ namespace Microsoft.Boogie
     /// </summary>
     static Program ParseBoogieProgram(List<string!>! fileNames, bool suppressTraceOutput)
     {
-      BoogiePL.Errors.count = 0;
+      //BoogiePL.Errors.count = 0;
       Program program = null;
       bool okay = true;
       foreach (string bplFileName in fileNames) {
@@ -350,7 +351,7 @@ namespace Microsoft.Boogie
         try {
           errorCount = BoogiePL.Parser.Parse(bplFileName, out programSnippet);
           if (programSnippet == null || errorCount != 0) {
-            Console.WriteLine("{0} parse errors detected in {1}", BoogiePL.Errors.count, bplFileName);
+            Console.WriteLine("{0} parse errors detected in {1}", errorCount, bplFileName);
             okay = false;
             continue;
           }

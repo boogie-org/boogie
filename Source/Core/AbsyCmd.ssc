@@ -202,9 +202,11 @@ namespace Microsoft.Boogie
     string! prefix = "anon";
     int anon = 0;
     Set<string!> allLabels = new Set<string!>();
+    Errors! errorHandler;
 
-    public BigBlocksResolutionContext(StmtList! stmtList) {
+    public BigBlocksResolutionContext(StmtList! stmtList, Errors! errorHandler) {
       this.stmtList = stmtList;
+      this.errorHandler = errorHandler;
     }
 
     public List<Block!>! Blocks {
@@ -212,7 +214,7 @@ namespace Microsoft.Boogie
         if (blocks == null) {
           blocks = new List<Block!>();
 
-          int startErrorCount = BoogiePL.Errors.count;
+          int startErrorCount = this.errorHandler.count;
           // Check that there are no goto's into the middle of a block, and no break statement to a non-enclosing loop.
           // Also, determine a good value for "prefix".
           CheckLegalLabels(stmtList, null, null);
@@ -223,7 +225,7 @@ namespace Microsoft.Boogie
           // determine successor blocks
           RecordSuccessors(stmtList, null);
 
-          if (BoogiePL.Errors.count == startErrorCount) {
+          if (this.errorHandler.count == startErrorCount) {
             // generate blocks from the big blocks
             CreateBlocks(stmtList, null);
           }
@@ -270,7 +272,7 @@ namespace Microsoft.Boogie
               }
             }
             if (!found) {
-              BoogiePL.Errors.SemErr(g.tok, "Error: goto label '" + lbl + "' is undefined or out of reach");
+              this.errorHandler.SemErr(g.tok, "Error: goto label '" + lbl + "' is undefined or out of reach");
             }
           }
         }
@@ -299,7 +301,7 @@ namespace Microsoft.Boogie
                 bcmd.BreakEnclosure = bb;
               } else {
                 // the label of bb refers to the first statement of bb, which in which case is a simple statement, not an if/while statement
-                BoogiePL.Errors.SemErr(bcmd.tok, "Error: break label '" + bcmd.Label + "' must designate an enclosing statement");
+                this.errorHandler.SemErr(bcmd.tok, "Error: break label '" + bcmd.Label + "' must designate an enclosing statement");
               }
               found = true;  // don't look any further, since we've found a matching label
               break;
@@ -307,9 +309,9 @@ namespace Microsoft.Boogie
           }
           if (!found) {
             if (bcmd.Label == null) {
-              BoogiePL.Errors.SemErr(bcmd.tok, "Error: break statement is not inside a loop");
+              this.errorHandler.SemErr(bcmd.tok, "Error: break statement is not inside a loop");
             } else {
-              BoogiePL.Errors.SemErr(bcmd.tok, "Error: break label '" + bcmd.Label + "' must designate an enclosing statement");
+              this.errorHandler.SemErr(bcmd.tok, "Error: break label '" + bcmd.Label + "' must designate an enclosing statement");
             }
           }
         }

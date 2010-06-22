@@ -172,6 +172,10 @@
                  />
         <File BuildAction="Compile"
                  SubType="Code"
+                 RelPath="ParserHelper.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
                  RelPath="GraphAlgorithms.ssc"
                  />
         <File BuildAction="Compile"

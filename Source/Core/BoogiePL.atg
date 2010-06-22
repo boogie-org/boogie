@@ -7,6 +7,8 @@
 using PureCollections;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using Microsoft.Boogie;
 using Microsoft.Basetypes;
 using Bpl = Microsoft.Boogie;
@@ -33,22 +35,24 @@ static StructuredCmd! dummyStructuredCmd = new BreakCmd(Token.NoToken, null);
 ///the parsed program.
 ///</summary>
 public static int Parse (string! filename, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
-  using (System.IO.StreamReader reader = new System.IO.StreamReader(filename)) {
-    Buffer.Fill(reader);
-    Scanner.Init(filename);
-    return Parse(out program);
-  }
-}
 
-///<summary>
-///Returns the number of parsing errors encountered.  If 0, "program" returns as
-///the parsed program.
-///Note: first initialize the Scanner.
-///</summary>
-public static int Parse (out /*maybe null*/ Program program) {
+
+  FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+//  Scanner scanner = new Scanner(stream);
+  
+  string s = ParserHelper.Fill(stream,new List<string!>());
+  byte[]! buffer = (!) UTF8Encoding.Default.GetBytes(s);
+  MemoryStream ms = new MemoryStream(buffer,false);
+  Errors errors = new Errors();
+  Scanner scanner = new Scanner(ms, errors, filename);
+
+/*  
+  Scanner scanner = new Scanner(filename);
+*/
+  Parser parser = new Parser(scanner, errors);
   Pgm = new Program(); // reset the global variable
-    Parse();
-    if (Errors.count == 0)
+    parser.Parse();
+    if (parser.errors.count == 0)
     {
       program = Pgm;
       return 0;
@@ -56,22 +60,50 @@ public static int Parse (out /*maybe null*/ Program program) {
     else
     {
       program = null;
-      return Errors.count;
+      return parser.errors.count;
     }
+/*
+  using (System.IO.StreamReader reader = new System.IO.StreamReader(filename)) {
+    Buffer.Fill(reader);
+    Scanner.Init(filename);
+    return Parse(out program);
+  }
+*/
 }
 
+///<summary>
+///Returns the number of parsing errors encountered.  If 0, "program" returns as
+///the parsed program.
+///Note: first initialize the Scanner.
+///</summary>
+//public static int Parse (out /*maybe null*/ Program program) {
+//  Pgm = new Program(); // reset the global variable
+//    Parse();
+//    if (Errors.count == 0)
+//    {
+//      program = Pgm;
+//      return 0;
+//    }
+//    else
+//    {
+//      program = null;
+//      return Errors.count;
+//    }
+//}
 
+/*
 public static int ParseProposition (string! text, out Expr! expression)
 {
   Buffer.Fill(text);
   Scanner.Init(string.Format("\"{0}\"", text));
 
   Errors.SynErr = new ErrorProc(SynErr);
-  t = new Token();
+  la = new Token();
   Get();
   Proposition(out expression);
   return Errors.count;
 }
+*/
 
 // Class to represent the bounds of a bitvector expression t[a:b].
 // Objects of this class only exist during parsing and are directly
@@ -228,7 +260,7 @@ IdsTypeWhere<bool allowWhereClauses, TypedIdentSeq! tyds>
   [ "where" Expression<out nne>  (. if (allowWhereClauses) {
                                       wh = nne;
                                     } else {
-                                      SemErr("where clause not allowed here");
+                                      this.SemErr("where clause not allowed here");
                                     }
                                  .)
   ]
@@ -267,8 +299,8 @@ TypeArgs<TypeSeq! ts>
 
 TypeAtom<out Bpl.Type! ty>
 = (. ty = dummyType; .)
-  ( "int"              (. ty = new BasicType(token, SimpleType.Int); .)
-  | "bool"             (. ty = new BasicType(token, SimpleType.Bool); .)
+  ( "int"              (. ty = new BasicType(t, SimpleType.Int); .)
+  | "bool"             (. ty = new BasicType(t, SimpleType.Bool); .)
   /* note: bitvectors are handled in UnresolvedTypeIdentifier */
   |
   "("
@@ -285,7 +317,7 @@ MapType<out Bpl.Type! ty>
      TypeVariableSeq! typeParameters = new TypeVariableSeq();
    .)
   [ TypeParams<out nnTok, out typeParameters> (. tok = nnTok; .) ]
-  "["                                         (.  if (tok == null) tok = token;  .)
+  "["                                         (.  if (tok == null) tok = t;  .)
     [ Types<arguments> ]
   "]"
   Type<out result>
@@ -296,7 +328,7 @@ MapType<out Bpl.Type! ty>
 
 TypeParams<out IToken! tok, out Bpl.TypeVariableSeq! typeParams>
 = (. TokenSeq! typeParamToks; .)
-  "<"    (.  tok = token;  .)
+  "<"    (.  tok = t;  .)
     Idents<out typeParamToks>
   ">"
   (.
@@ -321,7 +353,7 @@ Consts<out VariableSeq! ds>
      bool u = false; QKeyValue kv = null;
      bool ChildrenComplete = false;
      List<ConstantParent!> Parents = null; .)
-  "const"                 (. y = token; .)
+  "const"                 (. y = t; .)
   { Attribute<ref kv> }
   [ "unique"              (. u = true;  .)
   ]
@@ -349,7 +381,7 @@ Consts<out VariableSeq! ds>
   ";"
   .
 
-OrderSpec<out bool ChildrenComplete, out List<ConstantParent!\> Parents>
+OrderSpec<.out bool ChildrenComplete, out List<ConstantParent!> Parents.>
 = (. ChildrenComplete = false;
      Parents = null;
      bool u;
@@ -401,7 +433,7 @@ Function<out DeclarationSeq! ds>
   (.
     if (retTyd == null) {
       // construct a dummy type for the case of syntax error
-      tyd = new TypedIdent(token, "", new BasicType(token, SimpleType.Int));
+      tyd = new TypedIdent(t, "", new BasicType(t, SimpleType.Int));
     } else {
       tyd = retTyd;
     }
@@ -421,7 +453,7 @@ Function<out DeclarationSeq! ds>
         TypedIdent! curr = ((!)arguments[i]).TypedIdent;
         if (curr.Name == "") {
 	  if (prevType == null) {
-	    SemErr(curr.tok, "the type of the last parameter is unspecified");
+	    this.errors.SemErr(curr.tok, "the type of the last parameter is unspecified");
 	    break;
 	  }
 	  Type ty = curr.Type;
@@ -430,7 +462,7 @@ Function<out DeclarationSeq! ds>
 	    curr.Name = ((!)(ty as UnresolvedTypeIdentifier)).Name;
 	    curr.Type = prevType;
 	  } else {
-	    SemErr(curr.tok, "expecting an identifier as parameter name");
+	    this.errors.SemErr(curr.tok, "expecting an identifier as parameter name");
 	  }
 	} else {
 	  prevType = curr.Type;
@@ -479,7 +511,7 @@ VarOrType<out TypedIdent! tyd>
                          ((!)(ty as UnresolvedTypeIdentifier)).Arguments.Length == 0) {
                        varName = ((!)(ty as UnresolvedTypeIdentifier)).Name;
                      } else {
-                       SemErr("expected identifier before ':'");
+                       this.SemErr("expected identifier before ':'");
                      }
                   .)
     Type<out ty>
@@ -492,12 +524,12 @@ Axiom<out Axiom! m>
 = (. Expr! e; QKeyValue kv = null; .)
   "axiom"
    { Attribute<ref kv> }
-   (. IToken! x = token; .)
+   (. IToken! x = t; .)
   Proposition<out e> ";"  (. m = new Axiom(x,e, null, kv); .)
   .
 
 /*------------------------------------------------------------------------*/
-UserDefinedTypes<out List<Declaration!\>! ts>
+UserDefinedTypes<.out List<Declaration!>! ts.>
 = (. Declaration! decl; QKeyValue kv = null; ts = new List<Declaration!> (); .)
   "type"
   { Attribute<ref kv> }
@@ -552,7 +584,7 @@ Procedure<out Procedure! proc, out /*maybe null*/ Implementation impl>
     (.
       // here we attach kv only to the Procedure, not its implementation
       impl = new Implementation(x, x.val, typeParams,
-                                Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, null); 
+                                Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, null, this.errors); 
     .)
   )
   (. proc = new Procedure(x, x.val, typeParams, ins, outs, pre, mods, post, kv); .)
@@ -571,7 +603,7 @@ Implementation<out Implementation! impl>
   "implementation"
   ProcSignature<false, out x, out typeParams, out ins, out outs, out kv>
   ImplBody<out locals, out stmtList>
-    (. impl = new Implementation(x, x.val, typeParams, ins, outs, locals, stmtList, kv); .)
+    (. impl = new Implementation(x, x.val, typeParams, ins, outs, locals, stmtList, kv, this.errors); .)
   .
 
 
@@ -602,14 +634,14 @@ Spec<RequiresSeq! pre, IdentifierExprSeq! mods, EnsuresSeq! post>
 
 SpecPrePost<bool free, RequiresSeq! pre, EnsuresSeq! post>
 = (. Expr! e; VariableSeq! locals; BlockSeq! blocks; Token tok = null; QKeyValue kv = null; .)
-  ( "requires"              (. tok = token; .)
+  ( "requires"              (. tok = t; .)
     { Attribute<ref kv> }
     (Proposition<out e> ";"  (. pre.Add(new Requires(tok, free, e, null, kv)); .)
     |
      SpecBody<out locals, out blocks> ";"
                             (. pre.Add(new Requires(tok, free, new BlockExpr(locals, blocks), null, kv)); .)
     )
-  | "ensures"               (. tok = token; .)
+  | "ensures"               (. tok = t; .)
     { Attribute<ref kv> }
     (Proposition<out e> ";"  (. post.Add(new Ensures(tok, free, e, null, kv)); .)
     |
@@ -645,16 +677,16 @@ SpecBlock<out Block! b>
                             cs.Add(c);
                           } else {
                             assert label != null;
-                            SemErr("SpecBlock's can only have one label");
+                            this.SemErr("SpecBlock's can only have one label");
                           }
                        .)
   }
-  ( "goto"             (. y = token; .)
+  ( "goto"             (. y = t; .)
     Idents<out xs>     (. foreach (IToken! s in xs) { ss.Add(s.val); }
                           b = new Block(x,x.val,cs,new GotoCmd(y,ss));
                        .)
   | "return" Expression<out e>
-                       (. b = new Block(x,x.val,cs,new ReturnExprCmd(token,e)); .)
+                       (. b = new Block(x,x.val,cs,new ReturnExprCmd(t,e)); .)
   ) ";"
   .
 
@@ -724,9 +756,9 @@ StmtList<out StmtList! stmtList>
   )
   }
   "}"
-  (. IToken! endCurly = token;
+  (. IToken! endCurly = t;
      if (startToken == null && bigblocks.Count == 0) {
-       startToken = token;  cs = new CmdSeq();
+       startToken = t;  cs = new CmdSeq();
      }
      if (startToken != null) {
        assert cs != null;
@@ -743,11 +775,11 @@ TransferCmd<out TransferCmd! tc>
      Token y;  TokenSeq! xs;
      StringSeq ss = new StringSeq();
   .)
-  ( "goto"             (. y = token; .)
+  ( "goto"             (. y = t; .)
     Idents<out xs>     (. foreach (IToken! s in xs) { ss.Add(s.val); }
                           tc = new GotoCmd(y, ss);
                        .)
-  | "return"           (. tc = new ReturnCmd(token); .)
+  | "return"           (. tc = new ReturnCmd(t); .)
   ) ";"
   .
 
@@ -768,7 +800,7 @@ IfCmd<out IfCmd! ifcmd>
      IfCmd! elseIf;  IfCmd elseIfOption = null;
      StmtList! els;  StmtList elseOption = null;
   .)
-  "if"                       (. x = token; .)
+  "if"                       (. x = t; .)
   Guard<out guard>
   "{" StmtList<out thn>
   [ "else"
@@ -786,9 +818,9 @@ WhileCmd<out WhileCmd! wcmd>
      List<PredicateCmd!> invariants = new List<PredicateCmd!>();
      StmtList! body;
   .)
-  "while"             (. x = token; .)
+  "while"             (. x = t; .)
   Guard<out guard>    (. assume guard == null || Owner.None(guard); .)
-  {                   (. isFree = false; z = t/*lookahead token*/; .)
+  {                   (. isFree = false; z = la/*lookahead token*/; .)
     [ "free"          (. isFree = true;  .)
     ]
     "invariant"
@@ -817,7 +849,7 @@ BreakCmd<out BreakCmd! bcmd>
 = (. IToken! x;  IToken! y;
      string breakLabel = null;
   .)
-  "break"             (. x = token; .)
+  "break"             (. x = t; .)
   [ Ident<out y>      (. breakLabel = y.val; .)
   ] ";"               (. bcmd = new BreakCmd(x, breakLabel); .)
   .
@@ -834,14 +866,14 @@ LabelOrCmd<out Cmd c, out IToken label>
      QKeyValue kv = null;
   .)
   ( LabelOrAssign<out c, out label>
-  | "assert"              (. x = token; .)
+  | "assert"              (. x = t; .)
     { Attribute<ref kv> }
     Proposition<out e>    (. c = new AssertCmd(x,e, kv); .)
     ";"
-  | "assume"              (. x = token; .)
+  | "assume"              (. x = t; .)
     Proposition<out e>    (. c = new AssumeCmd(x,e); .)
     ";"
-  | "havoc"               (. x = token; .)
+  | "havoc"               (. x = t; .)
     Idents<out xs> ";"    (. ids = new IdentifierExprSeq();
                              foreach (IToken! y in xs) {
                                ids.Add(new IdentifierExpr(y, y.val));
@@ -862,7 +894,7 @@ LabelOrAssign<out Cmd c, out IToken label>
      List<AssignLhs!>! lhss;
      List<Expr!>! rhss;
   .)
-  Ident<out id>              (. x = token; .)
+  Ident<out id>              (. x = t; .)
   ( ":"                      (. c = null;  label = x; .)
   | 
     MapAssignIndexes<id, out lhs>    (. lhss = new List<AssignLhs!> ();
@@ -871,7 +903,7 @@ LabelOrAssign<out Cmd c, out IToken label>
       Ident<out id>
       MapAssignIndexes<id, out lhs>  (. lhss.Add(lhs); .)
     }
-    ":="                     (. x = token; /* use location of := */ .)
+    ":="                     (. x = t; /* use location of := */ .)
     Expression<out e0>       (. rhss = new List<Expr!> ();
                                 rhss.Add(e0); .)
     { ","
@@ -890,7 +922,7 @@ MapAssignIndexes<IToken! assignedVariable, out AssignLhs! lhs>
      Expr! e0;
   .)
   {
-    "["                        (. x = token;
+    "["                        (. x = t;
                                   indexes = new List<Expr!> (); .)
       [
         Expression<out e0>     (. indexes.Add(e0); .)
@@ -913,7 +945,7 @@ CallCmd<out Cmd! c>
      Expr en;  List<Expr> args;
      c = dummyCmd;
   .)
-  "call"                          (. x = token; .)
+  "call"                          (. x = t; .)
   { Attribute<ref kv> }
   ( Ident<out first>
     ( "("
@@ -1033,7 +1065,7 @@ Expressions<out ExprSeq! es>
 Expression<out Expr! e0>
 = (. IToken! x; Expr! e1; .)
   ImpliesExpression<false, out e0>
-  { EquivOp        (. x = token; .)
+  { EquivOp        (. x = t; .)
     ImpliesExpression<false, out e1>
                    (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Iff, e0, e1); .)
   }
@@ -1046,19 +1078,19 @@ ImpliesExpression<bool noExplies, out Expr! e0>
 = (. IToken! x; Expr! e1; .)
   LogicalExpression<out e0>
   [
-    ImpliesOp      (. x = token; .)
+    ImpliesOp      (. x = t; .)
     /* recurse because implication is right-associative */
     ImpliesExpression<true, out e1>
                    (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e0, e1); .)
   |
     ExpliesOp      (. if (noExplies)
-                        SemErr("illegal mixture of ==> and <==, use parentheses to disambiguate");
-                      x = token; .)
+                        this.SemErr("illegal mixture of ==> and <==, use parentheses to disambiguate");
+                      x = t; .)
     LogicalExpression<out e1> 
                    (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e1, e0); .)
     /* loop because explies is left-associative */
     {
-      ExpliesOp    (. x = token; .)
+      ExpliesOp    (. x = t; .)
       LogicalExpression<out e1> 
                    (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e1, e0); .)
     }
@@ -1072,17 +1104,17 @@ ExpliesOp = "<==" | '\u21d0'.
 LogicalExpression<out Expr! e0>
 = (. IToken! x; Expr! e1; BinaryOperator.Opcode op; .)
   RelationalExpression<out e0>
-  [ AndOp          (. x = token; .)
+  [ AndOp          (. x = t; .)
     RelationalExpression<out e1>
     (. e0 = Expr.Binary(x, BinaryOperator.Opcode.And, e0, e1); .)
-    { AndOp        (. x = token; .)
+    { AndOp        (. x = t; .)
       RelationalExpression<out e1>
       (. e0 = Expr.Binary(x, BinaryOperator.Opcode.And, e0, e1); .)
     }
-  | OrOp           (. x = token; .)
+  | OrOp           (. x = t; .)
     RelationalExpression<out e1>
     (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Or, e0, e1); .)
-    { OrOp         (. x = token; .)
+    { OrOp         (. x = t; .)
       RelationalExpression<out e1>
       (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Or, e0, e1); .)
     }
@@ -1103,16 +1135,16 @@ RelationalExpression<out Expr! e0>
 
 RelOp<out IToken! x, out BinaryOperator.Opcode op>
 =                  (. x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
-  ( "=="           (. x = token; op=BinaryOperator.Opcode.Eq; .)
-  | "<"            (. x = token; op=BinaryOperator.Opcode.Lt; .)
-  | ">"            (. x = token; op=BinaryOperator.Opcode.Gt; .)
-  | "<="           (. x = token; op=BinaryOperator.Opcode.Le; .)
-  | ">="           (. x = token; op=BinaryOperator.Opcode.Ge; .)
-  | "!="           (. x = token; op=BinaryOperator.Opcode.Neq; .)
-  | "<:"           (. x = token; op=BinaryOperator.Opcode.Subtype; .)
-  | '\u2260'       (. x = token; op=BinaryOperator.Opcode.Neq; .)
-  | '\u2264'       (. x = token; op=BinaryOperator.Opcode.Le; .)
-  | '\u2265'       (. x = token; op=BinaryOperator.Opcode.Ge; .)
+  ( "=="           (. x = t; op=BinaryOperator.Opcode.Eq; .)
+  | "<"            (. x = t; op=BinaryOperator.Opcode.Lt; .)
+  | ">"            (. x = t; op=BinaryOperator.Opcode.Gt; .)
+  | "<="           (. x = t; op=BinaryOperator.Opcode.Le; .)
+  | ">="           (. x = t; op=BinaryOperator.Opcode.Ge; .)
+  | "!="           (. x = t; op=BinaryOperator.Opcode.Neq; .)
+  | "<:"           (. x = t; op=BinaryOperator.Opcode.Subtype; .)
+  | '\u2260'       (. x = t; op=BinaryOperator.Opcode.Neq; .)
+  | '\u2264'       (. x = t; op=BinaryOperator.Opcode.Le; .)
+  | '\u2265'       (. x = t; op=BinaryOperator.Opcode.Ge; .)
   )
   .
 
@@ -1120,7 +1152,7 @@ RelOp<out IToken! x, out BinaryOperator.Opcode op>
 BvTerm<out Expr! e0>
 = (. IToken! x; Expr! e1; .)
   Term<out e0>
-  { "++"                  (. x = token; .)
+  { "++"                  (. x = t; .)
     Term<out e1>          (. e0 = new BvConcatExpr(x, e0, e1); .)
   }
   .
@@ -1137,8 +1169,8 @@ Term<out Expr! e0>
 
 AddOp<out IToken! x, out BinaryOperator.Opcode op>
 =                  (. x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
-  ( "+"            (. x = token; op=BinaryOperator.Opcode.Add; .)
-  | "-"            (. x = token; op=BinaryOperator.Opcode.Sub; .)
+  ( "+"            (. x = t; op=BinaryOperator.Opcode.Add; .)
+  | "-"            (. x = t; op=BinaryOperator.Opcode.Sub; .)
   )
   .
 
@@ -1153,9 +1185,9 @@ Factor<out Expr! e0>
 
 MulOp<out IToken! x, out BinaryOperator.Opcode op>
 =                  (. x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
-  ( "*"            (. x = token; op=BinaryOperator.Opcode.Mul; .)
-  | "/"            (. x = token; op=BinaryOperator.Opcode.Div; .)
-  | "%"            (. x = token; op=BinaryOperator.Opcode.Mod; .)
+  ( "*"            (. x = t; op=BinaryOperator.Opcode.Mul; .)
+  | "/"            (. x = t; op=BinaryOperator.Opcode.Div; .)
+  | "%"            (. x = t; op=BinaryOperator.Opcode.Mod; .)
   )
   .
 
@@ -1164,9 +1196,9 @@ UnaryExpression<out Expr! e>
 = (. IToken! x;
      e = dummyExpr;
   .)
-  ( "-"                        (. x = token; .)
+  ( "-"                        (. x = t; .)
     UnaryExpression<out e>     (. e = Expr.Binary(x, BinaryOperator.Opcode.Sub, new LiteralExpr(x, BigNum.ZERO), e); .)
-  | NegOp                      (. x = token; .)
+  | NegOp                      (. x = t; .)
     UnaryExpression<out e>     (. e = Expr.Unary(x, UnaryOperator.Opcode.Not, e); .)
   | CoercionExpression<out e>
   )
@@ -1189,14 +1221,14 @@ CoercionExpression<out Expr! e>
      BigNum bn;
     .)
   ArrayExpression<out e>
-  { ":"                     (. x = token; .)
+  { ":"                     (. x = t; .)
     (
       Type<out coercedTo>   (. e = Expr.CoerceType(x, e, coercedTo); .)
     |
       Nat<out bn>           /* This means that we really look at a bitvector
                                expression t[a:b] */
                             (. if (!(e is LiteralExpr) || !((LiteralExpr)e).isBigNum) {
-                                 SemErr("arguments of extract need to be integer literals");
+                                 this.SemErr("arguments of extract need to be integer literals");
                                  e = new BvBounds(x, bn, BigNum.ZERO);
                                } else {
                                  e = new BvBounds(x, bn, ((LiteralExpr)e).asBigNum);
@@ -1214,7 +1246,7 @@ ArrayExpression<out Expr! e>
      ExprSeq! allArgs = dummyExprSeq;
   .)
   AtomExpression<out e>
-  { "["        (. x = token; allArgs = new ExprSeq ();
+  { "["        (. x = t; allArgs = new ExprSeq ();
                   allArgs.Add(e);
                   store = false; bvExtract = false; .)
       [
@@ -1226,13 +1258,13 @@ ArrayExpression<out Expr! e>
                .)
         { "," Expression<out e1> 
                (. if (bvExtract || e1 is BvBounds)
-                    SemErr("bitvectors only have one dimension");
+                    this.SemErr("bitvectors only have one dimension");
                   allArgs.Add(e1);
                .)
         }
         [ ":=" Expression<out e1> 
                (. if (bvExtract || e1 is BvBounds)
-                    SemErr("assignment to bitvectors is not possible");
+                    this.SemErr("assignment to bitvectors is not possible");
                   allArgs.Add(e1); store = true;
                .)
         ]
@@ -1262,10 +1294,10 @@ AtomExpression<out Expr! e>
      QKeyValue kv;
      e = dummyExpr;
   .)
-  ( "false"           (. e = new LiteralExpr(token, false); .)
-  | "true"            (. e = new LiteralExpr(token, true); .)
-  | Nat<out bn>            (. e = new LiteralExpr(token, bn); .)
-  | BvLit<out bn, out n> (. e = new LiteralExpr(token, bn, n); .)
+  ( "false"           (. e = new LiteralExpr(t, false); .)
+  | "true"            (. e = new LiteralExpr(t, true); .)
+  | Nat<out bn>            (. e = new LiteralExpr(t, bn); .)
+  | BvLit<out bn, out n> (. e = new LiteralExpr(t, bn, n); .)
 
   | Ident<out x>            (. id = new IdentifierExpr(x, x.val);  e = id; .)
     [ "("
@@ -1275,23 +1307,23 @@ AtomExpression<out Expr! e>
       ")"
     ]
 
-  | "old"                   (. x = token; .)
+  | "old"                   (. x = t; .)
     "("
     Expression<out e>
     ")"                     (. e = new OldExpr(x, e); .)
 
   | "(" ( Expression<out e>                 (. if (e is BvBounds)
-                                                 SemErr("parentheses around bitvector bounds " +
+                                                 this.SemErr("parentheses around bitvector bounds " +
                                                         "are not allowed"); .)
-        | Forall                            (. x = token; .)
+        | Forall                            (. x = t; .)
           QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e>
                                             (. if (typeParams.Length + ds.Length > 0)
                                                  e = new ForallExpr(x, typeParams, ds, kv, trig, e); .)
-        | Exists                            (. x = token; .)
+        | Exists                            (. x = t; .)
           QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e> 
                                             (. if (typeParams.Length + ds.Length > 0)
                                                  e = new ExistsExpr(x, typeParams, ds, kv, trig, e); .)
-        | Lambda                            (. x = token; .)
+        | Lambda                            (. x = t; .)
           QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e> 
                                             (. if (trig != null)
                                                  SemErr("triggers not allowed in lambda expressions");
@@ -1305,7 +1337,7 @@ AtomExpression<out Expr! e>
 
 Attribute<ref QKeyValue kv>
 = (. Trigger trig = null; .)
-  AttributeOrTrigger<ref kv, ref trig> (.  if (trig != null) SemErr("only attributes, not triggers, allowed here"); .)
+  AttributeOrTrigger<ref kv, ref trig> (.  if (trig != null) this.SemErr("only attributes, not triggers, allowed here"); .)
 .
 
 AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
@@ -1313,9 +1345,9 @@ AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
      string key;  string value;
      List<object!> parameters;  object! param;
   .)
-  "{"                                         (. tok = token; .)
+  "{"                                         (. tok = t; .)
      (
-       ":" ident                              (. key = token.val;  parameters = new List<object!>(); .)
+       ":" ident                              (. key = t.val;  parameters = new List<object!>(); .)
        [ AttributeParameter<out param>        (. parameters.Add(param); .)
          { "," AttributeParameter<out param>  (. parameters.Add(param); .)
          }
@@ -1329,7 +1361,7 @@ AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
                 trig.AddLast(new Trigger(tok, false, new ExprSeq(e), null));
               }
             } else {
-              SemErr("the 'nopats' quantifier attribute expects a string-literal parameter");
+              this.SemErr("the 'nopats' quantifier attribute expects a string-literal parameter");
             }
           } else {
             if (kv==null) {
@@ -1356,7 +1388,7 @@ AttributeParameter<out object! o>
 = (. o = "error";
      Expr! e;
   .)
-  ( string                (. o = token.val.Substring(1, token.val.Length-2); .)
+  ( string                (. o = t.val.Substring(1, t.val.Length-2); .)
   | Expression<out e>     (. o = e; .)
   )
   .
@@ -1365,7 +1397,7 @@ IfThenElseExpression<out Expr! e>
 = (. IToken! tok;
      Expr! e0, e1, e2; 
      e = dummyExpr; .)
-  "if" (. tok = token; .) Expression<out e0> "then" Expression<out e1> "else" Expression<out e2>
+  "if" (. tok = t; .) Expression<out e0> "then" Expression<out e1> "else" Expression<out e2>
   (. e = new NAryExpr(tok, new IfThenElse(tok), new ExprSeq(e0, e1, e2)); .)
   .
 
@@ -1396,7 +1428,7 @@ QSep = "::" | '\u2022'.
 /*------------------------------------------------------------------------*/
 Ident<out IToken! x>
 =
-  ident            (.  x = token;
+  ident            (.  x = t;
                        if (x.val.StartsWith("\\"))
                          x.val = x.val.Substring(1);
                     .)
@@ -1407,9 +1439,9 @@ Nat<out BigNum n>
 =
   digits
   (. try {
-       n = BigNum.FromString(token.val);
+       n = BigNum.FromString(t.val);
      } catch (FormatException) {
-       SemErr("incorrectly formatted number");
+       this.SemErr("incorrectly formatted number");
        n = BigNum.ZERO;
      }
   .)
@@ -1420,14 +1452,14 @@ BvLit<out BigNum n, out int m>
 =
   bvlit
   (.
-     int pos = token.val.IndexOf("bv");
-     string a = token.val.Substring(0, pos);
-     string b = token.val.Substring(pos + 2);
+     int pos = t.val.IndexOf("bv");
+     string a = t.val.Substring(0, pos);
+     string b = t.val.Substring(pos + 2);
      try {
        n = BigNum.FromString(a);
        m = Convert.ToInt32(b);
      } catch (FormatException) {
-       SemErr("incorrectly formatted bitvector");
+       this.SemErr("incorrectly formatted bitvector");
        n = BigNum.ZERO;
        m = 0;
      }
