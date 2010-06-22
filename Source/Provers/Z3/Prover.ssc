@@ -72,6 +72,9 @@ namespace Microsoft.Boogie.Z3
         // More or less like MAM=0.
         AddOption(parms, "QI_EAGER_THRESHOLD", "100");
         // Complex proof attempts in VCC (and likely elsewhere) require matching depth of 20 or more.
+        
+        // the following will make the :weight option more usable
+        AddOption(parms, "QI_COST", "|\"(+ weight generation)\"|");
 
         // Make the integer model more diverse by default, speeds up some benchmarks a lot.
         AddOption(parms, "ARITH_RANDOM_INITIAL_VALUE", "true");
