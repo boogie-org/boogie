@@ -57,7 +57,7 @@ class Interval module Library2 {
     requires 0<=l && l <= r;
     requires acc(left) && acc(right);
     ensures valid;
-    ensures getLeft()==l
+    ensures getLeft()==l;
     ensures getRight()==r;
   {
     left := new Cell;
@@ -143,10 +143,10 @@ class Program module Main {
   }
 
   method main3() returns (rt: Cell)
-    ensures rt!=null && rt.valid && rt.get() == 0
+    ensures rt!=null && rt.valid && rt.get() == 0;
   {
     rt := new Cell;
-    call rt.init(0)
+    call rt.init(0);
   }
 
   method main4() {

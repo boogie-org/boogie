@@ -34,13 +34,13 @@ class Producer module Producer {
   }
 
   method run()
-    requires valid && rd(getBuffer().mu) && maxlock << getBuffer().mu;
+    requires valid && rd(getBuffer().mu) && waitlevel << getBuffer().mu;
     ensures rd(old(getBuffer()).mu);
   {
     var tmp: int;
 
     while(true)
-      invariant valid && rd(getBuffer().mu) && maxlock << getBuffer().mu;
+      invariant valid && rd(getBuffer().mu) && waitlevel << getBuffer().mu;
     {
       unfold valid;
       acquire buffer;
@@ -75,11 +75,11 @@ class Consumer module Consumer {
   }
 
   method run()
-    requires valid && rd(getBuffer().mu) && maxlock << getBuffer().mu;
+    requires valid && rd(getBuffer().mu) && waitlevel << getBuffer().mu;
     ensures rd(old(getBuffer()).mu);
   {
     while(true)
-      invariant valid && rd(getBuffer().mu) && maxlock << getBuffer().mu;
+      invariant valid && rd(getBuffer().mu) && waitlevel << getBuffer().mu;
     {
       unfold valid;
       acquire buffer;

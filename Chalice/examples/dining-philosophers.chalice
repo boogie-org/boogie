@@ -17,12 +17,12 @@ class Philosopher module Philosophers {
     requires valid;
     requires acc(getLeft().mu, 10);
     requires acc(getRight().mu, 10);
-    requires maxlock << getLeft().mu;
-    requires maxlock << getRight().mu;
+    requires waitlevel << getLeft().mu;
+    requires waitlevel << getRight().mu;
     requires getLeft().mu << getRight().mu;
   {
     while(true)
-      invariant valid && acc(getLeft().mu, 10) && acc(getRight().mu, 10) && maxlock << getLeft().mu && maxlock << getRight().mu && getLeft().mu << getRight().mu;
+      invariant valid && acc(getLeft().mu, 10) && acc(getRight().mu, 10) && waitlevel << getLeft().mu && waitlevel << getRight().mu && getLeft().mu << getRight().mu;
     {
       unfold valid;
       acquire left;

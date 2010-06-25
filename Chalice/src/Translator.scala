@@ -34,7 +34,7 @@ class Translator {
     decls flatMap {
       case cl: Class => translateClass(cl)
       case ch: Channel => translateClass(ChannelClass(ch)) /* TODO: admissibility check of where clause */
-        /* TODO: maxlock not allowed in postcondition of things forked (or, rather, joined) */
+        /* TODO: waitlevel not allowed in postcondition of things forked (or, rather, joined) */
     }
   }
 
@@ -156,7 +156,7 @@ class Translator {
     val version = Version(Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) }), etran);
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
     val frameFunctionName = "##" + f.FullName;
-    
+
     /* axiom (forall h: HeapType, m: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
          wf(h, m) && CurrentModule == module#C ==> #C.f(h, m, this, x_1, ..., x_n) == tr(body))
     */
@@ -537,7 +537,7 @@ class Translator {
         val formalThis = new VariableExpr(formalThisV)
         val formalInsV = for (p <- c.m.ins) yield new Variable(p.id, p.t)
         val formalIns = for (v <- formalInsV) yield new VariableExpr(v)
-        
+
         val (tokenV,tokenId) = NewBVar("token", tref, true)
         val (asyncStateV,asyncState) = NewBVar("asyncstate", tint, true)
         val (preCallHeapV, preCallHeap) = NewBVar("preCallHeap", theap, true)
@@ -668,9 +668,9 @@ class Translator {
         bassert(nonNull(ch), ch.pos, "The channel might be null.") ::
         // check that credits are positive
         bassert(0 < new Boogie.MapSelect(etran.Credits, TrExpr(ch)), r.pos, "receive operation requires a credit") ::
-        // ...and check: maxlock << ch.mu
+        // ...and check: waitlevel << ch.mu
         bassert(CanRead(ch, "mu"), r.pos, "The mu field of the channel in the receive statement might not be readable.") ::
-        bassert(etran.MaxLockIsBelowX(etran.Heap.select(ch, "mu")), r.pos, "The channel must lie above maxlock in the wait order") ::
+        bassert(etran.MaxLockIsBelowX(etran.Heap.select(ch, "mu")), r.pos, "The channel must lie above waitlevel in the wait order") ::
         // introduce locals for the parameters
         (for (v <- formalThisV :: formalParamsV) yield BLocal(Variable2BVarWhere(v))) :::
         // initialize the parameters; that is, set "this" to the channel and havoc the other formal parameters
@@ -686,7 +686,7 @@ class Translator {
         new Boogie.MapUpdate(etran.Credits, TrExpr(ch), new Boogie.MapSelect(etran.Credits, TrExpr(ch)) - 1)
     }
   }
-  
+
   def translateAllocation(cl: Class, initialization: List[Init], lowerBounds: List[Expression], upperBounds: List[Expression], pos: Position): (Boogie.BVar, List[Boogie.Stmt]) = {
     val (nw, nwe) = NewBVar("nw", Boogie.ClassType(cl), true)
     val (ttV,tt) = Boogie.NewTVar("T")
@@ -721,7 +721,7 @@ class Translator {
        bassume(etran.MaxLockIsBelowX(etran.Heap.select(o,"mu")))
      else
        bassert(CanRead(o, "mu"), s.pos, "The mu field of the target of the acquire statement might not be readable.") ::
-       bassert(etran.MaxLockIsBelowX(etran.Heap.select(o,"mu")), s.pos, "The mu field of the target of the acquire statement might not be above maxlock.")) :::
+       bassert(etran.MaxLockIsBelowX(etran.Heap.select(o,"mu")), s.pos, "The mu field of the target of the acquire statement might not be above waitlevel.")) :::
     bassume(etran.Heap.select(o,"mu") !=@ bLockBottom) ::  // this isn't strictly necessary, it seems; but we might as well include it
     // remember the state right before releasing
     BLocal(lastSeenMuV) :: (lastSeenMu := etran.Heap.select(o, "mu")) ::
@@ -770,7 +770,7 @@ class Translator {
     val (heldV, held) = Boogie.NewBVar("held", tint, true)
     val o = TrExpr(nonNullObj)
     bassert(CanRead(o, "mu"), s.pos, "The mu field of the target of the read-acquire statement might not be readable.") ::
-    bassert(etran.MaxLockIsBelowX(etran.Heap.select(o, "mu")), s.pos, "The mu field of the target of the read-acquire statement might not be above maxlock.") ::
+    bassert(etran.MaxLockIsBelowX(etran.Heap.select(o, "mu")), s.pos, "The mu field of the target of the read-acquire statement might not be above waitlevel.") ::
     bassume(etran.Heap.select(o,"mu") !=@ bLockBottom) ::  // this isn't strictly necessary, it seems; but we might as well include it
     bassume(! isHeld(o) && ! isRdHeld(o)) ::
     BLocal(heldV) :: Havoc(held) :: bassume(held <= 0) ::
@@ -857,7 +857,7 @@ class Translator {
     (loopEtran.oldEtran.Credits := loopEtran.Credits) ::  // is oldCredits?
     // check invariant on entry to the loop
     Exhale(invs map { inv => (inv, ErrorMessage(inv.pos, "The loop invariant might not hold on entry to the loop."))}, "loop invariant, initially") :::
-	List(bassert(DebtCheck, w.pos, "Loop invariant must consume all debt on entry to the loop.")) :::
+     List(bassert(DebtCheck, w.pos, "Loop invariant must consume all debt on entry to the loop.")) :::
     // save values of local-variable loop targets
     (for (sv <- saveLocalsV) yield BLocal(Variable2BVarWhere(sv))) :::
     (for ((v,sv) <- w.LoopTargetsList zip saveLocalsV) yield
@@ -948,9 +948,9 @@ class Translator {
                   Below(MuValue(lb), MuValue(ub)) }, lb.pos, "The lower bound at " + lb.pos + " might not be smaller than the upper bound at " + ub.pos + ".")) :::
     // havoc mu
     BLocal(muV) :: Havoc(mu) :: bassume(mu !=@ bLockBottom) ::
-    // assume that mu is between the given bounds (or above maxlock if no bounds are given)
+    // assume that mu is between the given bounds (or above waitlevel if no bounds are given)
     (if (lowerBounds == Nil && upperBounds == Nil) {
-      // assume maxlock << mu
+      // assume waitlevel << mu
       List(bassume(etran.MaxLockIsBelowX(mu)))
     } else {
       (for (lb <- lowerBounds) yield
@@ -1129,7 +1129,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   /**********************************************************************
   *****************              TR/DF                  *****************
   **********************************************************************/
- 
+
   def isDefined(e: Expression)(implicit assumption: Expr): List[Boogie.Stmt] = {
     def prove(goal: Expr, pos: Position, msg: String)(implicit assumption: Expr): Boogie.Assert = {
       bassert(assumption ==> goal, pos, msg)
@@ -1302,7 +1302,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     case IntLiteral(n) => n
     case BoolLiteral(b) => b
     case NullLiteral() => bnull
-    case MaxLockLiteral() => throw new Exception("maxlock case should be handled in << and == and !=")
+    case MaxLockLiteral() => throw new Exception("waitlevel case should be handled in << and == and !=")
     case LockBottomLiteral() => bLockBottom
     case _:ThisExpr => VarExpr("this")
     case _:Result => VarExpr("result")
@@ -1425,7 +1425,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalCredits), currentClass);
       evalEtran.Tr(e)
   }
- 
+
   def translateForall(is: List[Variable], min: Expression, max: Expression, e: Expression): Expr = {
     var assumption = true: Expr;
     for(i <- is) {
@@ -1745,7 +1745,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
          isDefined(obj)(true), true)
       case CallState(token, obj, id, args) =>
         val argsSeq = CallArgs(Heap.select(Tr(token), "joinable"));
-        
+
         var i : int = 0;
         (CallHeap(Heap.select(Tr(token), "joinable")), 
          CallMask(Heap.select(Tr(token), "joinable")),
@@ -1760,7 +1760,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         )
     }
   }
- 
+
   // permissions
 
   def CanRead(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanRead", Mask, obj, field)
@@ -1829,14 +1829,14 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   def IncPerm(m: Expr, e: Expr, f: Expr, i: Expr) = FunctionApp("IncPerm", List(m, e, f, i))
   def IncEpsilons(m: Expr, e: Expr, f: Expr, i: Expr) = FunctionApp("IncEpsilons", List(m, e, f, i))
 
-  
-  def MaxLockIsBelowX(x: Boogie.Expr) = {  // maxlock << x
+
+  def MaxLockIsBelowX(x: Boogie.Expr) = {  // waitlevel << x
     val (oV, o) = Boogie.NewBVar("o", tref, false)
     new Boogie.Forall(oV,
                       (contributesToWaitLevel(o, Heap, Credits)) ==>
                       new Boogie.FunctionApp("MuBelow", Boogie.MapSelect(Heap, o, "mu"), x))
   }
-  def MaxLockIsAboveX(x: Boogie.Expr) = {  // x << maxlock
+  def MaxLockIsAboveX(x: Boogie.Expr) = {  // x << waitlevel
     val (oV, o) = Boogie.NewBVar("o", tref, false)
     new Boogie.Exists(oV,
                       (contributesToWaitLevel(o, Heap, Credits)) &&
@@ -1850,7 +1850,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
                         (new Boogie.FunctionApp("MuBelow", MapSelect(Heap, r, "mu"), x) ||
                         (Boogie.MapSelect(Heap, r, "mu") ==@ x)))
   }
-  def MaxLockPreserved = {  // old(maxlock) == maxlock
+  def MaxLockPreserved = {  // old(waitlevel) == waitlevel
     // I don't know what the best encoding of this conding is, so I'll try a disjunction.
     // Disjunct b0 is easier to prove, but it is stronger than b1.
 
@@ -1881,7 +1881,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
                   (Boogie.MapSelect(oldEtran.Heap, o, "mu") ==@ Boogie.MapSelect(Heap, p, "mu")))
     b0 || b1
   }
-  def TemporalMaxLockComparison(e0: ExpressionTranslator, e1: ExpressionTranslator) = {  // e0(maxlock) << e1(maxlock)
+  def TemporalMaxLockComparison(e0: ExpressionTranslator, e1: ExpressionTranslator) = {  // e0(waitlevel) << e1(waitlevel)
     // (exists o ::
     //     e1(o.held) &&
     //     (forall r :: e0(r.held) ==> e0(r.mu) << e1(o.mu)))
@@ -2063,7 +2063,7 @@ object TranslationHelper {
       true
     }
   }
-  
+
   def Version(expr: Expression, etran: ExpressionTranslator): Boogie.Expr =  
   { 
     expr match{
@@ -2318,7 +2318,7 @@ object TranslationHelper {
     }
     replaceThis(expr)
   }
-  
+
   def manipulate(expr: Expression, func: Expression => Expression): Expression = {
     val result = expr match {
       case e: Literal => expr

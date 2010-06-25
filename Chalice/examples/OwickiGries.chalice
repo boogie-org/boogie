@@ -17,7 +17,7 @@ class OwickiGries {
   }
 
   method Worker(b: bool)
-    requires rd(mu) && maxlock << mu
+    requires rd(mu) && waitlevel << mu
     requires (!b ==> acc(c0,50)) && (b ==> acc(c1,50))
     ensures rd(mu)
     ensures !b ==> acc(c0,50) && c0 == old(c0) + 1

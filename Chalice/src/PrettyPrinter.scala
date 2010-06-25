@@ -199,7 +199,7 @@ object PrintProgram {
     case IntLiteral(n) => print(n)
     case BoolLiteral(b) => print(b)
     case NullLiteral() => print("null")
-    case MaxLockLiteral() => print("maxlock")
+    case MaxLockLiteral() => print("waitlevel")
     case LockBottomLiteral() => print("lockbottom")
     case _:ThisExpr => print("this")
     case _:Result => print("result")

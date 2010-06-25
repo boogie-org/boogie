@@ -34,7 +34,7 @@ class Program {
   }
 
   method bar(c: Counter)
-    requires c!=null && acc(c.mu) && maxlock << c.mu;
+    requires c!=null && acc(c.mu) && waitlevel << c.mu;
     requires eval(c.release, acc(c.value) && 0<=c.value);
   {
     lock (c) {
@@ -81,7 +81,7 @@ class Program {
   }
 
   method foo(c: Counter)
-    requires c!=null && acc(c.mu) && maxlock << c.mu && eval(c.release, acc(c.value) && 10<=c.value);
+    requires c!=null && acc(c.mu) && waitlevel << c.mu && eval(c.release, acc(c.value) && 10<=c.value);
     ensures c!=null && holds(c) && acc(c.mu) && acc(c.value);
     lockchange c;
   {
@@ -93,7 +93,7 @@ class Program {
   }
 
   method nestedGood0(c: Counter)
-    requires c != null && acc(c.mu) && maxlock << c.mu;
+    requires c != null && acc(c.mu) && waitlevel << c.mu;
   {
     lock (c) {
       release c
@@ -102,7 +102,7 @@ class Program {
   }
 
   method nestedGood1(c: Counter)
-    requires c != null && acc(c.mu) && maxlock << c.mu;
+    requires c != null && acc(c.mu) && waitlevel << c.mu;
   {
     var t: Counter := c
     lock (t) {
@@ -114,7 +114,7 @@ class Program {
   }
 
   method nestedBad0(c: Counter)
-    requires c != null && acc(c.mu) && maxlock << c.mu;
+    requires c != null && acc(c.mu) && waitlevel << c.mu;
   {
     lock (c) {
       release c
@@ -122,7 +122,7 @@ class Program {
   }
 
   method nestedBad1(c: Counter)
-    requires c != null && acc(c.mu) && maxlock << c.mu;
+    requires c != null && acc(c.mu) && waitlevel << c.mu;
   {
     lock (c) {
       acquire c  // error: already holds c
@@ -130,7 +130,7 @@ class Program {
   }
 
   method nestedBad2(c: Counter)
-    requires c != null && acc(c.mu) && maxlock << c.mu;
+    requires c != null && acc(c.mu) && waitlevel << c.mu;
   {
     lock (c) {
       lock (c) {  // error: already holds c
@@ -139,7 +139,7 @@ class Program {
   }
 
   method nestedBad3(c: Counter)
-    requires c != null && acc(c.mu) && maxlock << c.mu;
+    requires c != null && acc(c.mu) && waitlevel << c.mu;
   {
     var t: Counter := c
     lock (t) {

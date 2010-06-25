@@ -18,17 +18,17 @@ class AssociationList {
 
   method Init()
     requires acc(head) && acc(mu) && mu == lockbottom
-    ensures acc(mu) && maxlock << this
+    ensures acc(mu) && waitlevel << this
   {
     head := new Node
     head.next := null
     share head
-    share this between maxlock and head
+    share this between waitlevel and head
   }
 
   method Add(key: int, value: Data)
     requires value != null
-    requires rd(mu) && maxlock << this
+    requires rd(mu) && waitlevel << this
     ensures rd(mu)
   {
     acquire this
@@ -46,7 +46,7 @@ class AssociationList {
   }
 
   method Get(key: int) returns (d: Data)
-    requires rd(mu) && maxlock << this
+    requires rd(mu) && waitlevel << this
     ensures rd(mu)
   {
     d := null
@@ -68,8 +68,8 @@ class AssociationList {
           invariant rd(p.next.key) && rd(p.next.value) && acc(p.next.next)
           invariant p.next.next != null ==>
               acc(p.next.next.mu,50) && p.next << p.next.next
-          invariant holds(p) && holds(p.next) && maxlock == p.next.mu
-          invariant p.next.next != null ==> maxlock << p.next.next
+          invariant holds(p) && holds(p.next) && waitlevel == p.next.mu
+          invariant p.next.next != null ==> waitlevel << p.next.next
           lockchange p, p.next.next
         {
           if (p.next.next == null) {

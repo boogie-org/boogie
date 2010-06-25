@@ -38,7 +38,7 @@
         "above" "acc" "acquire" "and" "assert" "assigned" "assume"
         "below" "between" "call" "credit"
         "downgrade" "else" "eval" "exists" "fold" "forall" "fork" "free" "havoc" "holds"
-        "if" "in" "ite" "join" "lock" "lockbottom" "maxlock" "module" "new" "nil"
+        "if" "in" "ite" "join" "lock" "lockbottom" "waitlevel" "module" "new" "nil"
         "old" "rd" "receive" "release" "reorder" "result" "send" "share"
         "this" "unfold" "unfolding" "unshare" "while"
         "false" "true" "null")) . font-lock-keyword-face)

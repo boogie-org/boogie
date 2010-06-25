@@ -18,12 +18,12 @@ class Sieve {
 
   method Filter(prime: int, r: NumberStream, s: NumberStream)
     requires 2 <= prime;
-    requires rd(r.mu) && maxlock << r.mu;
+    requires rd(r.mu) && waitlevel << r.mu;
     requires rd(s.mu) && s.mu << r.mu && credit(r) && credit(s, -1);
   {
     receive x := r;
     while (2 <= x)
-      invariant rd(r.mu) && rd(s.mu) && s << r && maxlock << r.mu;
+      invariant rd(r.mu) && rd(s.mu) && s << r && waitlevel << r.mu;
       invariant 2<= x ==> credit(r);
       invariant credit(s, -1);
     {
@@ -45,12 +45,12 @@ class Sieve {
     while (2 <= p)
       invariant ch != null;
       invariant 2 <= p ==> credit(ch, 1);
-      invariant rd(ch.mu) && maxlock << ch.mu;
+      invariant rd(ch.mu) && waitlevel << ch.mu;
     {
       // print p--it's a prime!
       var cp := new ChalicePrint;  call cp.Int(p);
 
-      var n := new NumberStream between maxlock and ch;
+      var n := new NumberStream between waitlevel and ch;
       fork Filter(p, ch, n);
       ch := n;
       receive p := ch;

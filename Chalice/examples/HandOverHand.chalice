@@ -18,7 +18,7 @@ class List {
 
   method Init()
     requires acc(mu) && mu == lockbottom && acc(head) && acc(sum)
-    ensures rd(mu,*) && maxlock << this
+    ensures rd(mu,*) && waitlevel << this
     ensures acc(sum,80) && sum == 0
   {
     var t := new Node
@@ -28,17 +28,17 @@ class List {
     share t
     head := t
     sum := 0
-    share this between maxlock and t
+    share this between waitlevel and t
   }
 
   method Insert(x: int)
-    requires rd(mu) && maxlock << this
+    requires rd(mu) && waitlevel << this
     requires acc(sum,80) && 0 <= x
     ensures rd(mu)
     ensures acc(sum,80) && sum == old(sum) + x
   {
     acquire this
-    assert maxlock == this.mu;
+    assert waitlevel == this.mu;
     sum := sum + x
     var p: Node := head
     acquire p
@@ -47,7 +47,7 @@ class List {
 
     while (p.next != null && p.next.val < x)
       invariant p != null && acc(p.next) && rd(p.val) && acc(p.mu,50)
-      invariant holds(p) && maxlock == p.mu
+      invariant holds(p) && waitlevel == p.mu
       invariant p.next != null ==> acc(p.next.mu,50) && p << p.next
       invariant p.next != null ==> rd(p.next.val) && p.val <= p.next.val
       invariant acc(p.sum, 50)
@@ -72,7 +72,7 @@ class List {
   }
 
   method Delete(x: int) returns (wasPresent: bool)
-    requires rd(mu) && maxlock << this
+    requires rd(mu) && waitlevel << this
     requires acc(sum,80) && 0 <= x
     ensures acc(sum,80) && (wasPresent ==> sum == old(sum) - x) && (!wasPresent ==> sum == old(sum))
   {
@@ -87,7 +87,7 @@ class List {
 
     while (p.next != null && p.next.val < x)
       invariant p != null && acc(p.next) && rd(p.val) && acc(p.mu,50)
-      invariant holds(p) && maxlock == p.mu && !assigned(c)
+      invariant holds(p) && waitlevel == p.mu && !assigned(c)
       invariant p.next != null ==> acc(p.next.mu,50) && p << p.next
       invariant p.next != null ==> rd(p.next.val) && p.val <= p.next.val
       invariant acc(p.sum, 50)

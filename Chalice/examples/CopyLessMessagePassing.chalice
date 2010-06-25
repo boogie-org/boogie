@@ -43,12 +43,12 @@ class Program {
   }  
   
   method Getter(f: C) 
-    requires f!= null && credit(f, 1) && acc(f.mu, 50) && maxlock << f.mu;
+    requires f!= null && credit(f, 1) && acc(f.mu, 50) && waitlevel << f.mu;
   {
     var x: Node := null;
     var msg := 1;
     while(msg != 0)
-      invariant acc(f.mu, 50) && maxlock << f.mu && (msg == 1 ==> credit(f, 1)) && (msg == 0 ==> acc(f.mu, 50));
+      invariant acc(f.mu, 50) && waitlevel << f.mu && (msg == 1 ==> credit(f, 1)) && (msg == 0 ==> acc(f.mu, 50));
     {
       receive msg, x := f;
       if(msg == 1) {

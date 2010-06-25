@@ -7,9 +7,9 @@ class Main {
     share d;
 
     var t0: T := new T;  t0.d := d;
-    share t0 between maxlock and d
+    share t0 between waitlevel and d
     var t1: T := new T;  t1.d := d;
-    share t1 between maxlock and d
+    share t1 between waitlevel and d
     
     var t0Token: token<T.run>;
     fork t0Token := t0.run();
@@ -33,15 +33,15 @@ class Main {
     fork uToken := u.run();
 
     acquire u;  // a little unusual to acquire after a fork, but allowed
-    assert maxlock == u.mu;
+    assert waitlevel == u.mu;
 
     var v := new U;
-    share v;  acquire v;  // this line has the effect of increasing maxlock
+    share v;  acquire v;  // this line has the effect of increasing waitlevel
 
-    assert maxlock == v.mu;
-    assert maxlock != u.mu;
+    assert waitlevel == v.mu;
+    assert waitlevel != u.mu;
     assert u << v;
-    assert u << maxlock;
+    assert u << waitlevel;
 
     join uToken;  // material for the smoke check
     release u;
@@ -49,7 +49,7 @@ class Main {
   }
   
   method C()
-    ensures maxlock == old(maxlock);
+    ensures waitlevel == old(waitlevel);
   {
     var u := new U;
     share u;
@@ -65,23 +65,23 @@ class Main {
   {
   }
   method MxCaller0()
-    ensures maxlock == old(maxlock);
+    ensures waitlevel == old(waitlevel);
   {
   }
   method MxCaller1()
-    ensures maxlock == old(maxlock);
+    ensures waitlevel == old(waitlevel);
   {
     call Mx0();
   }
   method MxCaller2()
-    ensures maxlock == old(maxlock); // error
+    ensures waitlevel == old(waitlevel); // error
   {
     call Mx1();
   }  // error: missing lockchange
 
   method D(u: U)
-    requires u != null && rd(u.mu) && maxlock << u;
-    ensures maxlock == old(maxlock);
+    requires u != null && rd(u.mu) && waitlevel << u;
+    ensures waitlevel == old(waitlevel);
   {
     acquire u;
     release u;
@@ -103,7 +103,7 @@ class T {
   var d: Data;
   invariant rd(d) && d != null && rd(d.mu) && rd(this.mu) && this << d;
   method run()
-    requires rd(mu) && maxlock << this;
+    requires rd(mu) && waitlevel << this;
     ensures rd(mu);
   {
     acquire this;
@@ -117,7 +117,7 @@ class T {
 
 class U {
   method run()
-    requires rd(mu) && maxlock << this;
+    requires rd(mu) && waitlevel << this;
     ensures rd(mu);
   {
   }

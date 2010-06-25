@@ -29,7 +29,7 @@ class Node {
 
 class Program {
   method Putter(e: C, x0: Node) 
-    requires e!= null && acc(e.mu, 50) && e.mu == maxlock && (x0 != null ==> x0.list) && (x0 != null ==> credit(e, - 1));
+    requires e!= null && acc(e.mu, 50) && e.mu == waitlevel && (x0 != null ==> x0.list) && (x0 != null ==> credit(e, - 1));
   {
     var x: Node := x0;
     var t: Node;
@@ -42,7 +42,7 @@ class Program {
       send e(1, x);
       x := t;
       var ack;
-      assume maxlock << e.mu; // Chalice should be able to figure this out itself
+      assume waitlevel << e.mu; // Chalice should be able to figure this out itself
       receive ack, t := e;
       if(ack != 2) { assume false; /* abort */ }
     }
@@ -50,12 +50,12 @@ class Program {
   }  
   
   method Getter(f: C) 
-    requires f!= null && credit(f, 1) && acc(f.mu, 50) && maxlock << f.mu;
+    requires f!= null && credit(f, 1) && acc(f.mu, 50) && waitlevel << f.mu;
   {
     var x: Node := null;
     var msg := 1;
     while(msg != 0)
-      invariant acc(f.mu, 50) && maxlock << f.mu && (msg == 1 ==> credit(f, 1)) && (msg == 0 ==> acc(f.mu, 50));
+      invariant acc(f.mu, 50) && waitlevel << f.mu && (msg == 1 ==> credit(f, 1)) && (msg == 0 ==> acc(f.mu, 50));
     {
       receive msg, x := f;
       if(msg == 0) {

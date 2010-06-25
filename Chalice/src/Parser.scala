@@ -13,7 +13,11 @@ import scala.util.parsing.input.NoPosition
 class Parser extends StandardTokenParsers {
 
   def parseFile(path: String): this.ParseResult[List[TopLevelDecl]] = {
-    val tokens = new lexical.Scanner(new PagedSeqReader(PagedSeq fromFile path));
+    val tokens = if (path == "<stdin>") {
+        new lexical.Scanner(new PagedSeqReader(PagedSeq fromReader Console.in))
+      } else {
+        new lexical.Scanner(new PagedSeqReader(PagedSeq fromFile path));
+      }
     phrase(programUnit)(tokens)
   }
  
@@ -25,7 +29,7 @@ class Parser extends StandardTokenParsers {
                        "lock", "fork", "join", "rd", "acc", "credit", "holds", "old", "assigned",
                        "call", "if", "else", "while", "invariant", "lockchange",
                        "returns", "requires", "ensures", "where",
-                       "int", "bool", "false", "true", "null", "maxlock", "lockbottom",
+                       "int", "bool", "false", "true", "null", "waitlevel", "lockbottom",
                        "module", "external",
                        "predicate", "function", "free", "send", "receive",
                        "ite", "fold", "unfold", "unfolding", "in", "forall", "exists", 
@@ -406,7 +410,7 @@ class Parser extends StandardTokenParsers {
     | "false" ^^^ BoolLiteral(false)
     | "true" ^^^ BoolLiteral(true)
     | "null" ^^^ NullLiteral()
-    | "maxlock" ^^^ MaxLockLiteral()
+    | "waitlevel" ^^^ MaxLockLiteral()
     | "lockbottom" ^^^ LockBottomLiteral()
     | "this" ^^^ ExplicitThisExpr()
     | "result" ^^^ Result()

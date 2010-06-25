@@ -22,7 +22,7 @@ class LoopTargets {
     acquire t
     var s := true
     while (s)
-      invariant acc(t.mu) && maxlock == t.mu
+      invariant acc(t.mu) && waitlevel == t.mu
     {
       release t  // error: loop invariant does not say holds(t) (414)
       acquire t
@@ -37,7 +37,7 @@ class LoopTargets {
     var s := true
     while (s)
       invariant rd(t.mu)
-      invariant holds(t) && maxlock == t.mu
+      invariant holds(t) && waitlevel == t.mu
     {
       release t
       acquire t
