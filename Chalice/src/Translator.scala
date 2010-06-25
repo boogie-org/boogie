@@ -301,7 +301,7 @@ class Translator {
         val tmpHeap = Boogie.NewBVar(HeapName, theap, true);
         val tmpMask = Boogie.NewBVar(MaskName, tmask, true); 
         val tmpCredits = Boogie.NewBVar(CreditsName, tcredits, true); 
-        val tmpTranslator = new ExpressionTranslator(List(tmpHeap._1.id, tmpMask._1.id, tmpCredits._1.id), currentClass);
+        val tmpTranslator = new ExpressionTranslator(List(tmpHeap._1.id, tmpMask._1.id, tmpCredits._1.id), List(etran.ChooseEtran(true).Heap, etran.ChooseEtran(true).Mask, etran.ChooseEtran(true).Credits), currentClass);        
         Comment("assert") ::
         // exhale e in a copy of the heap/mask/credits
         BLocal(tmpHeap._1) :: (tmpHeap._2 := VarExpr(HeapName)) ::
