@@ -109,13 +109,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CLRSemantics.cs" />
+    <Compile Include="MetadataTraverser.cs" />
     <Compile Include="Prelude.cs" />
     <Compile Include="ExpressionTraverser.cs" />
-    <Compile Include="ClassTraverser.cs" />
-    <Compile Include="MethodTraverser.cs" />
     <Compile Include="StatementTraverser.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="ToplevelTraverser.cs" />
     <Compile Include="TranslationException.cs" />
     <Compile Include="TranslationHelper.cs" />
     <Compile Include="TraverserFactory.cs" />

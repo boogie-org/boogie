@@ -84,7 +84,7 @@ namespace TranslationTest {
 
       #region Pass 3: Translate the code model to BPL
       var factory = new CLRSemantics();
-      ToplevelTraverser translator = new ToplevelTraverser(factory, host.GetContractExtractor(module.ModuleIdentity));
+      MetadataTraverser translator = new MetadataTraverser(factory, host.GetContractExtractor(module.ModuleIdentity));
       assembly = module as IAssembly;
       if (assembly != null)
         translator.Visit(assembly);

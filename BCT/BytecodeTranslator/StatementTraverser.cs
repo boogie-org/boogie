@@ -24,20 +24,20 @@ namespace BytecodeTranslator
 
     public readonly TraverserFactory factory;
 
-    public readonly MethodTraverser MethodTraverser;
+    public readonly MetadataTraverser MetadataTraverser;
 
     public readonly Bpl.Variable HeapVariable;
 
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
 
     #region Constructors
-    public StatementTraverser(TraverserFactory factory, MethodTraverser mt) :
+    public StatementTraverser(TraverserFactory factory, MetadataTraverser mt) :
       this(factory, mt, mt.HeapVariable) { }
 
-    public StatementTraverser(TraverserFactory factory, MethodTraverser mt, Bpl.Variable heapvar) {
+    public StatementTraverser(TraverserFactory factory, MetadataTraverser mt, Bpl.Variable heapvar) {
       this.factory = factory;
       HeapVariable = heapvar;
-      MethodTraverser = mt;
+      MetadataTraverser = mt;
     }
     #endregion
 
@@ -84,8 +84,8 @@ namespace BytecodeTranslator
     /// <remarks>(mschaef) Works, but still a stub</remarks>
     /// <param name="conditionalStatement"></param>
     public override void Visit(IConditionalStatement conditionalStatement) {
-      StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.MethodTraverser, this.HeapVariable);
-      StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.MethodTraverser, this.HeapVariable);
+      StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.MetadataTraverser, this.HeapVariable);
+      StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.MetadataTraverser, this.HeapVariable);
 
       ExpressionTraverser condTraverser = this.factory.MakeExpressionTraverser(this, this.HeapVariable);
       condTraverser.Visit(conditionalStatement.Condition);
@@ -129,7 +129,7 @@ namespace BytecodeTranslator
     /// </summary>
     public override void Visit(ILocalDeclarationStatement localDeclarationStatement) {
       if (localDeclarationStatement.InitialValue == null) return;
-      var loc = this.MethodTraverser.FindOrCreateLocalVariable(localDeclarationStatement.LocalVariable);
+      var loc = this.MetadataTraverser.FindOrCreateLocalVariable(localDeclarationStatement.LocalVariable);
       var tok = TokenFor(localDeclarationStatement);
       var e = ExpressionFor(localDeclarationStatement.InitialValue);
       StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, new Bpl.IdentifierExpr(tok, loc), e));
@@ -145,7 +145,7 @@ namespace BytecodeTranslator
       Bpl.IToken tok = TokenFor(returnStatement);
 
       #region Copy values of all out parameters to outvariables
-      foreach (MethodTraverser.MethodParameter mp in MethodTraverser.OutVars) {
+      foreach (MetadataTraverser.MethodParameter mp in this.MetadataTraverser.OutVars) {
         StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
           new Bpl.IdentifierExpr(tok, mp.outParameterCopy), new Bpl.IdentifierExpr(tok, mp.localParameter)));
       }
@@ -155,12 +155,12 @@ namespace BytecodeTranslator
         ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this, this.HeapVariable);
         etrav.Visit(returnStatement.Expression);
 
-        if (this.MethodTraverser.RetVariable == null || etrav.TranslatedExpressions.Count < 1) {
+        if (this.MetadataTraverser.RetVariable == null || etrav.TranslatedExpressions.Count < 1) {
           throw new TranslationException(String.Format("{0} returns a value that is not supported by the function", returnStatement.ToString()));
         }
 
         StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
-            new Bpl.IdentifierExpr(tok, this.MethodTraverser.RetVariable), etrav.TranslatedExpressions.Pop()));
+            new Bpl.IdentifierExpr(tok, this.MetadataTraverser.RetVariable), etrav.TranslatedExpressions.Pop()));
       }
       StmtBuilder.Add(new Bpl.ReturnCmd(TokenFor(returnStatement)));
     }

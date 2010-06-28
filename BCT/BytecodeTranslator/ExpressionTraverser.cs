@@ -52,12 +52,12 @@ namespace BytecodeTranslator {
     public override void Visit(IAddressableExpression addressableExpression) {
       ILocalDefinition/*?*/ local = addressableExpression.Definition as ILocalDefinition;
       if (local != null) {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MethodTraverser.FindOrCreateLocalVariable(local)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MetadataTraverser.FindOrCreateLocalVariable(local)));
         return;
       }
       IParameterDefinition/*?*/ param = addressableExpression.Definition as IParameterDefinition;
       if (param != null) {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MethodTraverser.FindParameterVariable(param)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MetadataTraverser.FindParameterVariable(param)));
         return;
       }
       IFieldReference/*?*/ field = addressableExpression.Definition as IFieldReference;
@@ -125,7 +125,7 @@ namespace BytecodeTranslator {
       #region LocalDefinition
       ILocalDefinition/*?*/ local = targetExpression.Definition as ILocalDefinition;
       if (local != null) {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MethodTraverser.FindOrCreateLocalVariable(local)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MetadataTraverser.FindOrCreateLocalVariable(local)));
         return;
       }
       #endregion
@@ -133,7 +133,7 @@ namespace BytecodeTranslator {
       #region ParameterDefenition
       IParameterDefinition param = targetExpression.Definition as IParameterDefinition;
       if (param != null) {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MethodTraverser.FindParameterVariable(param)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MetadataTraverser.FindParameterVariable(param)));
         return;
       }
       #endregion
@@ -156,7 +156,7 @@ namespace BytecodeTranslator {
     
     public override void Visit(IThisReference thisReference) {
       TranslatedExpressions.Push(new Bpl.IdentifierExpr(TranslationHelper.CciLocationToBoogieToken(thisReference.Locations),
-        this.StmtTraverser.MethodTraverser.ClassTraverser.ThisVariable));
+        this.StmtTraverser.MetadataTraverser.ThisVariable));
     }
 
     public override void Visit(IBoundExpression boundExpression) {
@@ -168,7 +168,7 @@ namespace BytecodeTranslator {
       #region LocalDefinition
       ILocalDefinition local = boundExpression.Definition as ILocalDefinition;
       if (local != null) {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MethodTraverser.FindOrCreateLocalVariable(local)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MetadataTraverser.FindOrCreateLocalVariable(local)));
         return;
       }
       #endregion
@@ -176,7 +176,7 @@ namespace BytecodeTranslator {
       #region ParameterDefiniton
       IParameterDefinition param = boundExpression.Definition as IParameterDefinition;
       if (param != null) {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MethodTraverser.FindParameterVariable(param)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MetadataTraverser.FindParameterVariable(param)));
         return;
       }
       #endregion
@@ -248,9 +248,7 @@ namespace BytecodeTranslator {
 
       //TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MethodTraverser.ClassTraverser.FindOrCreateFieldVariable(field.ResolvedField))
       TranslatedExpressions.Push( Bpl.Expr.Ident( 
-        this.StmtTraverser.MethodTraverser.ClassTraverser.ToplevelTraverser.FindOrCreateClassField(
-        field.ContainingType.ResolvedType, 
-        field.ResolvedField) ) );
+        this.StmtTraverser.MetadataTraverser.FindOrCreateFieldVariable(field.ResolvedField) ) );
 
       this.Visit(instance);
 
@@ -347,7 +345,7 @@ namespace BytecodeTranslator {
         #endregion
 
         if (methodCall.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
-          Bpl.Variable v = this.StmtTraverser.MethodTraverser.CreateFreshLocal(methodCall.Type.ResolvedType);
+          Bpl.Variable v = this.StmtTraverser.MetadataTraverser.CreateFreshLocal(methodCall.Type.ResolvedType);
           outvars.Add(new Bpl.IdentifierExpr(cloc, v));
           TranslatedExpressions.Push(new Bpl.IdentifierExpr(cloc, v));
         }
@@ -531,11 +529,11 @@ namespace BytecodeTranslator {
     }
     
     public override void Visit(IReturnValue returnValue) {
-      if (this.StmtTraverser.MethodTraverser.RetVariable == null) {
+      if (this.StmtTraverser.MetadataTraverser.RetVariable == null) {
         throw new TranslationException(String.Format("Don't know what to do with return value {0}", returnValue.ToString()));
       }
       TranslatedExpressions.Push(new Bpl.IdentifierExpr(TranslationHelper.CciLocationToBoogieToken(returnValue.Locations),
-        this.StmtTraverser.MethodTraverser.RetVariable));
+        this.StmtTraverser.MetadataTraverser.RetVariable));
 
     }
     #endregion

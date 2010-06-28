@@ -37,7 +37,7 @@ namespace BytecodeTranslator {
 
         var tok = TranslationHelper.CciLocationToBoogieToken(division.Locations);
 
-        var loc = this.StmtTraverser.MethodTraverser.CreateFreshLocal(division.RightOperand.Type);
+        var loc = this.StmtTraverser.MetadataTraverser.CreateFreshLocal(division.RightOperand.Type);
         var locExpr = Bpl.Expr.Ident(loc);
         var storeLocal = Bpl.Cmd.SimpleAssign(tok, locExpr, rexp);
         this.StmtTraverser.StmtBuilder.Add(storeLocal);
