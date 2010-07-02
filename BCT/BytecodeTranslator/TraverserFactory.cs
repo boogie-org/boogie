@@ -18,8 +18,8 @@ using Bpl = Microsoft.Boogie;
 
 namespace BytecodeTranslator {
   public abstract class TraverserFactory {
-    public virtual MetadataTraverser MakeMetadataTraverser(IContractProvider contractProvider) { return new MetadataTraverser(this, contractProvider); }
-    public virtual StatementTraverser MakeStatementTraverser(MetadataTraverser parent, Bpl.Variable heapVariable) { return new StatementTraverser(this, parent, heapVariable); }
-    public virtual ExpressionTraverser MakeExpressionTraverser(StatementTraverser parent, Bpl.Variable heapVariable) { return new ExpressionTraverser(parent, heapVariable); }
+    public virtual MetadataTraverser MakeMetadataTraverser(IContractProvider contractProvider) { return new MetadataTraverser(new Sink(this), contractProvider); }
+    public virtual StatementTraverser MakeStatementTraverser(Sink sink) { return new StatementTraverser(sink); }
+    public virtual ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser) { return new ExpressionTraverser(sink, statementTraverser); }
   }
 }

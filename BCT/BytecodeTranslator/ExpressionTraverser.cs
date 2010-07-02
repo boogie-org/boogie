@@ -24,19 +24,30 @@ namespace BytecodeTranslator {
     // warning! this has to be replaced by a HeapVariable from outside
     public readonly Bpl.Variable HeapVariable;        
 
-    public readonly StatementTraverser StmtTraverser;
-
     public readonly Stack<Bpl.Expr> TranslatedExpressions;
+
+    protected readonly Sink sink;
+
+    protected readonly StatementTraverser StmtTraverser;
 
     #region Constructors
 
-    public ExpressionTraverser(StatementTraverser stmtTraverser) 
-      : this(stmtTraverser, stmtTraverser.HeapVariable)
+    /// <summary>
+    /// Use this constructor for translating expressions that do *not* occur
+    /// within the context of the statements in a method body.
+    /// </summary>
+    public ExpressionTraverser(Sink sink)
+      : this(sink, null)
     { }
 
-    public ExpressionTraverser(StatementTraverser stmtTraverser, Bpl.Variable heapvar) {
-      HeapVariable = heapvar;
-      StmtTraverser = stmtTraverser;
+    /// <summary>
+    /// Use this constructor for translating expressions that do occur within
+    /// the context of the statements in a method body.
+    /// </summary>
+    public ExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser) {
+      this.sink = sink;
+      HeapVariable = sink.HeapVariable;
+      this.StmtTraverser = statementTraverser;
       TranslatedExpressions = new Stack<Bpl.Expr>();
     }
 
@@ -52,12 +63,12 @@ namespace BytecodeTranslator {
     public override void Visit(IAddressableExpression addressableExpression) {
       ILocalDefinition/*?*/ local = addressableExpression.Definition as ILocalDefinition;
       if (local != null) {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MetadataTraverser.FindOrCreateLocalVariable(local)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindOrCreateLocalVariable(local)));
         return;
       }
       IParameterDefinition/*?*/ param = addressableExpression.Definition as IParameterDefinition;
       if (param != null) {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MetadataTraverser.FindParameterVariable(param)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindParameterVariable(param)));
         return;
       }
       IFieldReference/*?*/ field = addressableExpression.Definition as IFieldReference;
@@ -125,7 +136,7 @@ namespace BytecodeTranslator {
       #region LocalDefinition
       ILocalDefinition/*?*/ local = targetExpression.Definition as ILocalDefinition;
       if (local != null) {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MetadataTraverser.FindOrCreateLocalVariable(local)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindOrCreateLocalVariable(local)));
         return;
       }
       #endregion
@@ -133,7 +144,7 @@ namespace BytecodeTranslator {
       #region ParameterDefenition
       IParameterDefinition param = targetExpression.Definition as IParameterDefinition;
       if (param != null) {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MetadataTraverser.FindParameterVariable(param)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindParameterVariable(param)));
         return;
       }
       #endregion
@@ -156,7 +167,7 @@ namespace BytecodeTranslator {
     
     public override void Visit(IThisReference thisReference) {
       TranslatedExpressions.Push(new Bpl.IdentifierExpr(TranslationHelper.CciLocationToBoogieToken(thisReference.Locations),
-        this.StmtTraverser.MetadataTraverser.ThisVariable));
+        this.sink.ThisVariable));
     }
 
     public override void Visit(IBoundExpression boundExpression) {
@@ -168,7 +179,7 @@ namespace BytecodeTranslator {
       #region LocalDefinition
       ILocalDefinition local = boundExpression.Definition as ILocalDefinition;
       if (local != null) {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MetadataTraverser.FindOrCreateLocalVariable(local)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindOrCreateLocalVariable(local)));
         return;
       }
       #endregion
@@ -176,7 +187,7 @@ namespace BytecodeTranslator {
       #region ParameterDefiniton
       IParameterDefinition param = boundExpression.Definition as IParameterDefinition;
       if (param != null) {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MetadataTraverser.FindParameterVariable(param)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindParameterVariable(param)));
         return;
       }
       #endregion
@@ -248,7 +259,7 @@ namespace BytecodeTranslator {
 
       //TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MethodTraverser.ClassTraverser.FindOrCreateFieldVariable(field.ResolvedField))
       TranslatedExpressions.Push( Bpl.Expr.Ident( 
-        this.StmtTraverser.MetadataTraverser.FindOrCreateFieldVariable(field.ResolvedField) ) );
+        this.sink.FindOrCreateFieldVariable(field.ResolvedField) ) );
 
       this.Visit(instance);
 
@@ -345,7 +356,7 @@ namespace BytecodeTranslator {
         #endregion
 
         if (methodCall.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
-          Bpl.Variable v = this.StmtTraverser.MetadataTraverser.CreateFreshLocal(methodCall.Type.ResolvedType);
+          Bpl.Variable v = this.sink.CreateFreshLocal(methodCall.Type.ResolvedType);
           outvars.Add(new Bpl.IdentifierExpr(cloc, v));
           TranslatedExpressions.Push(new Bpl.IdentifierExpr(cloc, v));
         }
@@ -529,11 +540,11 @@ namespace BytecodeTranslator {
     }
     
     public override void Visit(IReturnValue returnValue) {
-      if (this.StmtTraverser.MetadataTraverser.RetVariable == null) {
+      if (this.sink.RetVariable == null) {
         throw new TranslationException(String.Format("Don't know what to do with return value {0}", returnValue.ToString()));
       }
       TranslatedExpressions.Push(new Bpl.IdentifierExpr(TranslationHelper.CciLocationToBoogieToken(returnValue.Locations),
-        this.StmtTraverser.MetadataTraverser.RetVariable));
+        this.sink.RetVariable));
 
     }
     #endregion

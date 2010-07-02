@@ -20,14 +20,14 @@ namespace BytecodeTranslator {
 
   public class CLRSemantics : TraverserFactory {
 
-    public override ExpressionTraverser MakeExpressionTraverser(StatementTraverser parent, Bpl.Variable heapVariable) {
-      return new CLRExpressionSemantics(parent, heapVariable);
+    public override ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser) {
+      return new CLRExpressionSemantics(sink, statementTraverser);
     }
 
     public class CLRExpressionSemantics : ExpressionTraverser {
 
-      public CLRExpressionSemantics(StatementTraverser stmtTraverser, Bpl.Variable heapvar)
-        : base(stmtTraverser, heapvar) { }
+      public CLRExpressionSemantics(Sink sink, StatementTraverser/*?*/ statementTraverser)
+        : base(sink, statementTraverser) { }
 
       public override void Visit(IDivision division) {
         this.Visit(division.LeftOperand);
@@ -37,7 +37,7 @@ namespace BytecodeTranslator {
 
         var tok = TranslationHelper.CciLocationToBoogieToken(division.Locations);
 
-        var loc = this.StmtTraverser.MetadataTraverser.CreateFreshLocal(division.RightOperand.Type);
+        var loc = this.sink.CreateFreshLocal(division.RightOperand.Type);
         var locExpr = Bpl.Expr.Ident(loc);
         var storeLocal = Bpl.Cmd.SimpleAssign(tok, locExpr, rexp);
         this.StmtTraverser.StmtBuilder.Add(storeLocal);

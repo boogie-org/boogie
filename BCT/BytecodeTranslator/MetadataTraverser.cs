@@ -25,82 +25,28 @@ namespace BytecodeTranslator {
   /// </summary>
   public class MetadataTraverser : BaseMetadataTraverser {
 
+    readonly Sink sink;
+
     public readonly TraverserFactory factory;
 
     public readonly IContractProvider ContractProvider;
 
-    public readonly Bpl.Program TranslatedProgram;
-
     public Bpl.Variable HeapVariable;
     
-    private Dictionary<IFieldDefinition, Bpl.GlobalVariable> fieldVarMap = null;
 
-    public MetadataTraverser(TraverserFactory factory, IContractProvider cp)
+    public MetadataTraverser(Sink sink, IContractProvider cp)
       : base() {
-      this.factory = factory;
+      this.sink = sink;
+      this.factory = sink.Factory;
       ContractProvider = cp;
-      TranslatedProgram = new Bpl.Program();
     }
 
-    public Bpl.Variable FindOrCreateFieldVariable(IFieldDefinition field) {
-      Bpl.GlobalVariable v;
-      if (!fieldVarMap.TryGetValue(field, out v)) {
-        string fieldname = field.ContainingTypeDefinition.ToString() + "." + field.Name.Value;
-        Bpl.IToken tok = TranslationHelper.CciLocationToBoogieToken(field.Locations);
-        Bpl.Type t = TranslationHelper.CciTypeToBoogie(field.Type.ResolvedType);
-        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
 
-        v = new Bpl.GlobalVariable(tok, tident);
-        fieldVarMap.Add(field, v);
-        this.TranslatedProgram.TopLevelDeclarations.Add(new Bpl.Constant(tok, tident, true));
-      }
-      return v;
-    }
-
-    public class MethodParameter {
-      public MethodParameter() {
-        localParameter = null;
-        inParameterCopy = null;
-        outParameterCopy = null;
-      }
-
-      public Bpl.Formal localParameter;
-      public Bpl.Formal inParameterCopy;
-      public Bpl.Formal outParameterCopy;
+    public Bpl.Program TranslatedProgram {
+      get { return this.sink.TranslatedProgram; }
     }
 
     #region Method Helpers
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="local"></param>
-    /// <returns></returns>
-    public Bpl.Variable FindOrCreateLocalVariable(ILocalDefinition local) {
-      Bpl.LocalVariable v;
-      Bpl.IToken tok = TranslationHelper.CciLocationToBoogieToken(local.Locations);
-      Bpl.Type t = TranslationHelper.CciTypeToBoogie(local.Type.ResolvedType);
-      if (!localVarMap.TryGetValue(local, out v)) {
-        v = new Bpl.LocalVariable(tok, new Bpl.TypedIdent(tok, local.Name.Value, t));
-        localVarMap.Add(local, v);
-      }
-      return v;
-    }
-
-    /// <summary>
-    /// Creates a fresh local var of the given Type and adds it to the
-    /// Bpl Implementation
-    /// </summary>
-    /// <param name="typeReference"> The type of the new variable </param>
-    /// <returns> A fresh Variable with automatic generated name and location </returns>
-    public Bpl.Variable CreateFreshLocal(ITypeReference typeReference) {
-      Bpl.IToken loc = Bpl.Token.NoToken; // Helper Variables do not have a location
-      Bpl.Type t = TranslationHelper.CciTypeToBoogie(typeReference);
-      Bpl.LocalVariable v = new Bpl.LocalVariable(loc, new Bpl.TypedIdent(loc, TranslationHelper.GenerateTempVarName(), t));
-      ILocalDefinition dummy = new LocalDefinition(); // Creates a dummy entry for the Dict, since only locals in the dict are translated to boogie
-      localVarMap.Add(dummy, v);
-      return v;
-    }
-
     /// <summary>
     /// 
     /// </summary>
@@ -134,17 +80,6 @@ namespace BytecodeTranslator {
       return mparam;
     }
 
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="param"></param>
-    /// <remarks>STUB</remarks>
-    /// <returns></returns>
-    public Bpl.Variable FindParameterVariable(IParameterDefinition param) {
-      MethodParameter mp;
-      formalMap.TryGetValue(param, out mp);
-      return mp.localParameter;
-    }
     #endregion Method Helpers
 
     #region Overrides
@@ -162,20 +97,12 @@ namespace BytecodeTranslator {
     /// </summary>
     /// 
 
-    #region Local state for each type
-    // TODO: (mschaef) just a stub
-    public readonly Bpl.Variable ThisVariable = TranslationHelper.TempThisVar();
-    #endregion
 
     public override void Visit(ITypeDefinition typeDefinition) {
-
-      var savedFieldVarMap = this.fieldVarMap;
-      this.fieldVarMap = new Dictionary<IFieldDefinition, Microsoft.Boogie.GlobalVariable>(); 
 
       if (typeDefinition.IsClass) {
 
         base.Visit(typeDefinition);
-        this.fieldVarMap = savedFieldVarMap;
 
       } else {
         Console.WriteLine("Non-Class {0} was found", typeDefinition);
@@ -185,11 +112,6 @@ namespace BytecodeTranslator {
 
     #region Local state for each method
 
-    private Dictionary<IParameterDefinition, MethodParameter> formalMap = null;
-    internal Bpl.Variable RetVariable;
-    internal List<MethodParameter> OutVars = new List<MethodParameter>();
-    private Dictionary<ILocalDefinition, Bpl.LocalVariable> localVarMap = null;
-
     #endregion
 
     /// <summary>
@@ -197,8 +119,8 @@ namespace BytecodeTranslator {
     /// </summary>
     public override void Visit(IMethodDefinition method) {
 
-      formalMap = new Dictionary<IParameterDefinition, MethodParameter>();
-      localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
+      Dictionary<IParameterDefinition, MethodParameter> formalMap = new Dictionary<IParameterDefinition, MethodParameter>();
+      this.sink.BeginMethod();
 
       try {
         #region Create in- and out-parameters
@@ -213,6 +135,7 @@ namespace BytecodeTranslator {
           if (mp.outParameterCopy != null) out_count++;
           formalMap.Add(formal, mp);
         }
+        this.sink.FormalMap = formalMap;
 
         #region Look for Returnvalue
 
@@ -220,11 +143,11 @@ namespace BytecodeTranslator {
         if (method.Type.TypeCode != PrimitiveTypeCode.Void) {
           Bpl.Type rettype = Bpl.Type.Int;
           out_count++;
-          RetVariable = new Bpl.Formal(TranslationHelper.CciLocationToBoogieToken(method.Locations),
+          this.sink.RetVariable = new Bpl.Formal(TranslationHelper.CciLocationToBoogieToken(method.Locations),
               new Bpl.TypedIdent(TranslationHelper.CciLocationToBoogieToken(method.Type.Locations),
                   "$result", rettype), false);
         } else {
-          RetVariable = null;
+          this.sink.RetVariable = null;
         }
 
         #endregion
@@ -254,12 +177,12 @@ namespace BytecodeTranslator {
           }
           if (mparam.outParameterCopy != null) {
             outvars[j++] = mparam.outParameterCopy;
-            OutVars.Add(mparam);
+            this.sink.OutVars.Add(mparam);
           }
         }
 
         #region add the returnvalue to out if there is one
-        if (RetVariable != null) outvars[j] = RetVariable;
+        if (this.sink.RetVariable != null) outvars[j] = this.sink.RetVariable;
         #endregion
 
         #endregion
@@ -274,7 +197,7 @@ namespace BytecodeTranslator {
         if (contract != null) {
           try {
             foreach (IPrecondition pre in contract.Preconditions) {
-              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(null, this.HeapVariable);
+              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this.sink, null);
               exptravers.Visit(pre.Condition); // TODO
               // Todo: Deal with Descriptions
 
@@ -286,7 +209,7 @@ namespace BytecodeTranslator {
             }
 
             foreach (IPostcondition post in contract.Postconditions) {
-              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(null, this.HeapVariable);
+              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this.sink, null);
 
               exptravers.Visit(post.Condition);
               // Todo: Deal with Descriptions
@@ -298,7 +221,7 @@ namespace BytecodeTranslator {
             }
 
             foreach (IAddressableExpression mod in contract.ModifiedVariables) {
-              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(null, this.HeapVariable);
+              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this.sink, null);
               exptravers.Visit(mod);
 
               Bpl.IdentifierExpr idexp = exptravers.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
@@ -328,13 +251,13 @@ namespace BytecodeTranslator {
             boogieModifies,
             boogiePostcondition);
 
-        this.TranslatedProgram.TopLevelDeclarations.Add(proc);
+        this.sink.TranslatedProgram.TopLevelDeclarations.Add(proc);
 
         if (method.IsAbstract) {
           throw new NotImplementedException("abstract methods are not yet implemented");
         }
 
-        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this, this.HeapVariable);
+        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink);
 
         #region Add assignements from In-Params to local-Params
 
@@ -359,9 +282,9 @@ namespace BytecodeTranslator {
 
         #region Create Local Vars For Implementation
         //Todo: (mschaef) hack, there must be a better way to copy this
-        Bpl.Variable[] vars = new Bpl.Variable[localVarMap.Values.Count + formalMap.Values.Count];
+        Bpl.Variable[] vars = new Bpl.Variable[this.sink.LocalVarMap.Values.Count + formalMap.Values.Count];
         i = 0;
-        foreach (Bpl.Variable v in localVarMap.Values) {
+        foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
           vars[i++] = v;
         }
         foreach (MethodParameter mparam in formalMap.Values) {
@@ -381,7 +304,7 @@ namespace BytecodeTranslator {
                 stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken));
 
         impl.Proc = proc;
-        this.TranslatedProgram.TopLevelDeclarations.Add(impl);
+        this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
       } catch (TranslationException te) {
         throw new NotImplementedException(te.ToString());
       } catch {
@@ -392,7 +315,7 @@ namespace BytecodeTranslator {
     }
 
     public override void Visit(IFieldDefinition fieldDefinition) {
-      this.FindOrCreateFieldVariable(fieldDefinition);
+      this.sink.FindOrCreateFieldVariable(fieldDefinition);
     }
 
     #endregion

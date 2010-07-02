@@ -18,6 +18,19 @@ using Bpl = Microsoft.Boogie;
 
 
 namespace BytecodeTranslator {
+
+  public class MethodParameter {
+    public MethodParameter() {
+      localParameter = null;
+      inParameterCopy = null;
+      outParameterCopy = null;
+    }
+
+    public Bpl.Formal localParameter;
+    public Bpl.Formal inParameterCopy;
+    public Bpl.Formal outParameterCopy;
+  }
+
     /// <summary>
     /// Class containing several static helper functions to convert
     /// from Cci to Boogie Methodology

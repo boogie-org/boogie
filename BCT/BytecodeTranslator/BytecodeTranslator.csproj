@@ -112,6 +112,7 @@
     <Compile Include="MetadataTraverser.cs" />
     <Compile Include="Prelude.cs" />
     <Compile Include="ExpressionTraverser.cs" />
+    <Compile Include="Sink.cs" />
     <Compile Include="StatementTraverser.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="TranslationException.cs" />
