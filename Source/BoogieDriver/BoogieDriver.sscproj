@@ -130,7 +130,7 @@
     </Build>
     <Files>
       <Include>
-        <File RelPath="BoogieDriver.cs"
+        <File RelPath="BoogieDriver.ssc"
                  SubType="Code"
                  BuildAction="Compile"
                  />
@@ -140,7 +140,7 @@
                  />
         <File BuildAction="Compile"
                  SubType="Code"
-                 RelPath="AssemblyInfo.cs"
+                 RelPath="AssemblyInfo.ssc"
                  />
       </Include>
     </Files>
