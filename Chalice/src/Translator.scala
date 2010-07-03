@@ -1966,7 +1966,7 @@ object TranslationHelper {
   def IsGoodMask(m: Expr) = FunctionApp("IsGoodMask", List(m))
   def IsGoodInhaleState(a: Expr, b: Expr, c: Expr) = FunctionApp("IsGoodInhaleState", List(a, b, c))
   def contributesToWaitLevel(e: Expr, h: Expr, c: Expr) =
-    (0 < h.select(e, "held")) || (new Boogie.MapSelect(c, e) < 0)
+    (0 < h.select(e, "held")) || h.select(e, "rdheld")  || (new Boogie.MapSelect(c, e) < 0)
   def NonEmptyMask(m: Expr) = ! FunctionApp("EmptyMask", List(m))
   def NonPredicateField(f: String) = FunctionApp("NonPredicateField", List(VarExpr(f)))
   def PredicateField(f: String) = FunctionApp("PredicateField", List(VarExpr(f)))
