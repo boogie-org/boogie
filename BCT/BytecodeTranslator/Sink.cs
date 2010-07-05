@@ -66,7 +66,7 @@ namespace BytecodeTranslator {
     /// <returns></returns>
     public Bpl.Variable FindOrCreateLocalVariable(ILocalDefinition local) {
       Bpl.LocalVariable v;
-      Bpl.IToken tok = TranslationHelper.CciLocationToBoogieToken(local.Locations);
+      Bpl.IToken tok = local.Token();
       Bpl.Type t = TranslationHelper.CciTypeToBoogie(local.Type.ResolvedType);
       if (!localVarMap.TryGetValue(local, out v)) {
         v = new Bpl.LocalVariable(tok, new Bpl.TypedIdent(tok, local.Name.Value, t));
@@ -94,7 +94,7 @@ namespace BytecodeTranslator {
       Bpl.GlobalVariable v;
       if (!fieldVarMap.TryGetValue(field, out v)) {
         string fieldname = field.ContainingTypeDefinition.ToString() + "." + field.Name.Value;
-        Bpl.IToken tok = TranslationHelper.CciLocationToBoogieToken(field.Locations);
+        Bpl.IToken tok = field.Token();
         Bpl.Type t = TranslationHelper.CciTypeToBoogie(field.Type.ResolvedType);
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
 

@@ -40,10 +40,6 @@ namespace BytecodeTranslator
 
     #region Helper Methods
 
-    Bpl.IToken TokenFor(IStatement statement) {
-      return TranslationHelper.CciLocationToBoogieToken(statement.Locations);
-    }
-
     Bpl.Expr ExpressionFor(IExpression expression) {
       ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this);
       etrav.Visit(expression);
@@ -65,13 +61,13 @@ namespace BytecodeTranslator
 
     public override void Visit(IAssertStatement assertStatement) {
       StmtBuilder.Add(
-        new Bpl.AssertCmd(TokenFor(assertStatement), ExpressionFor(assertStatement.Condition))
+        new Bpl.AssertCmd(assertStatement.Token(), ExpressionFor(assertStatement.Condition))
         );
     }
 
     public override void Visit(IAssumeStatement assumeStatement) {
       StmtBuilder.Add(
-        new Bpl.AssertCmd(TokenFor(assumeStatement), ExpressionFor(assumeStatement.Condition))
+        new Bpl.AssertCmd(assumeStatement.Token(), ExpressionFor(assumeStatement.Condition))
         );
     }
 
@@ -89,11 +85,11 @@ namespace BytecodeTranslator
       thenTraverser.Visit(conditionalStatement.TrueBranch);
       elseTraverser.Visit(conditionalStatement.FalseBranch);
 
-      Bpl.IfCmd ifcmd = new Bpl.IfCmd(TokenFor(conditionalStatement),
+      Bpl.IfCmd ifcmd = new Bpl.IfCmd(conditionalStatement.Token(),
           condTraverser.TranslatedExpressions.Pop(),
-          thenTraverser.StmtBuilder.Collect(TokenFor(conditionalStatement.TrueBranch)),
+          thenTraverser.StmtBuilder.Collect(conditionalStatement.TrueBranch.Token()),
           null,
-          elseTraverser.StmtBuilder.Collect(TokenFor(conditionalStatement.FalseBranch))
+          elseTraverser.StmtBuilder.Collect(conditionalStatement.FalseBranch.Token())
           );
 
       StmtBuilder.Add(ifcmd);
@@ -117,7 +113,7 @@ namespace BytecodeTranslator
     /// <remarks>(mschaef) Not Implemented</remarks>
     /// <param name="breakStatement"></param>
     public override void Visit(IBreakStatement breakStatement) {
-      StmtBuilder.Add(new Bpl.BreakCmd(TokenFor(breakStatement), "I dont know"));
+      StmtBuilder.Add(new Bpl.BreakCmd(breakStatement.Token(), "I dont know"));
     }
 
     /// <summary>
@@ -127,7 +123,7 @@ namespace BytecodeTranslator
     public override void Visit(ILocalDeclarationStatement localDeclarationStatement) {
       if (localDeclarationStatement.InitialValue == null) return;
       var loc = this.sink.FindOrCreateLocalVariable(localDeclarationStatement.LocalVariable);
-      var tok = TokenFor(localDeclarationStatement);
+      var tok = localDeclarationStatement.Token();
       var e = ExpressionFor(localDeclarationStatement.InitialValue);
       StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, new Bpl.IdentifierExpr(tok, loc), e));
       return;
@@ -139,7 +135,7 @@ namespace BytecodeTranslator
     /// <remarks>(mschaef) not implemented</remarks>
     /// <param name="returnStatement"></param>
     public override void Visit(IReturnStatement returnStatement) {
-      Bpl.IToken tok = TokenFor(returnStatement);
+      Bpl.IToken tok = returnStatement.Token();
 
       if (returnStatement.Expression != null) {
         ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this);
@@ -152,7 +148,7 @@ namespace BytecodeTranslator
         StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
             new Bpl.IdentifierExpr(tok, this.sink.RetVariable), etrav.TranslatedExpressions.Pop()));
       }
-      StmtBuilder.Add(new Bpl.ReturnCmd(TokenFor(returnStatement)));
+      StmtBuilder.Add(new Bpl.ReturnCmd(returnStatement.Token()));
     }
     #endregion
 
@@ -166,7 +162,7 @@ namespace BytecodeTranslator
     public override void Visit(IGotoStatement gotoStatement) {
       String[] target = new String[1] { gotoStatement.TargetStatement.Label.Value };
 
-      Bpl.GotoCmd gotocmd = new Microsoft.Boogie.GotoCmd(TokenFor(gotoStatement), new Bpl.StringSeq(target));
+      Bpl.GotoCmd gotocmd = new Microsoft.Boogie.GotoCmd(gotoStatement.Token(), new Bpl.StringSeq(target));
 
       StmtBuilder.Add(gotocmd);
     }

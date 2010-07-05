@@ -35,7 +35,7 @@ namespace BytecodeTranslator {
         Bpl.Expr rexp = TranslatedExpressions.Pop();
         Bpl.Expr lexp = TranslatedExpressions.Pop();
 
-        var tok = TranslationHelper.CciLocationToBoogieToken(division.Locations);
+        var tok = division.Token();
 
         var loc = this.sink.CreateFreshLocal(division.RightOperand.Type);
         var locExpr = Bpl.Expr.Ident(loc);

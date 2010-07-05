@@ -23,7 +23,7 @@ namespace BytecodeTranslator {
     
     /// <summary>
     /// All parameters of the method get an associated in parameter
-    /// in the Boogie procedure.
+    /// in the Boogie procedure except for out parameters.
     /// </summary>
     public Bpl.Formal/*?*/ inParameterCopy;
     
@@ -42,8 +42,8 @@ namespace BytecodeTranslator {
 
       Bpl.Type ptype = Bpl.Type.Int;
 
-      var parameterToken = TranslationHelper.CciLocationToBoogieToken(parameterDefinition.Locations);
-      var typeToken = TranslationHelper.CciLocationToBoogieToken(parameterDefinition.Type.Locations);
+      var parameterToken = parameterDefinition.Token();
+      var typeToken = parameterDefinition.Type.Token();
       var parameterName = parameterDefinition.Name.Value;
 
       if (!parameterDefinition.IsOut) {
@@ -64,16 +64,12 @@ namespace BytecodeTranslator {
 
     /// <summary>
     /// Class containing several static helper functions to convert
-    /// from Cci to Boogie Methodology
+    /// from Cci to Boogie
     /// </summary>
-  class TranslationHelper {
+  static class TranslationHelper {
 
-    public static Bpl.IToken CciLocationToBoogieToken(IEnumerable<ILocation> locations) {
-      Bpl.IToken tok = Bpl.Token.NoToken;
-      return tok;
-    }
-
-    public static Bpl.IToken CciLocationToBoogieToken(ILocation location) {
+    public static Bpl.IToken Token(this IObjectWithLocations objectWithLocations) {
+      //TODO: use objectWithLocations.Locations!
       Bpl.IToken tok = Bpl.Token.NoToken;
       return tok;
     }

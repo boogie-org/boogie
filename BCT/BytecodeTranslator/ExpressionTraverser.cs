@@ -187,7 +187,7 @@ namespace BytecodeTranslator {
     }
     
     public override void Visit(IThisReference thisReference) {
-      TranslatedExpressions.Push(new Bpl.IdentifierExpr(TranslationHelper.CciLocationToBoogieToken(thisReference.Locations),
+      TranslatedExpressions.Push(new Bpl.IdentifierExpr(thisReference.Token(),
         this.sink.ThisVariable));
     }
 
@@ -292,7 +292,7 @@ namespace BytecodeTranslator {
         while (TranslatedExpressions.Count > 0) {
           elist.Add(TranslatedExpressions.Pop());
         }
-        TranslatedExpressions.Push(Bpl.Expr.Select(new Bpl.IdentifierExpr(TranslationHelper.CciLocationToBoogieToken(field.Locations), HeapVariable), elist));
+        TranslatedExpressions.Push(Bpl.Expr.Select(new Bpl.IdentifierExpr(field.Token(), HeapVariable), elist));
       }
     }
 
@@ -354,7 +354,7 @@ namespace BytecodeTranslator {
       }
       #endregion
 
-      Bpl.IToken cloc = TranslationHelper.CciLocationToBoogieToken(methodCall.Locations);
+      Bpl.IToken cloc = methodCall.Token();
 
       // meeting a constructor is always something special
       if (methodCall.MethodToCall.ResolvedMethod.IsConstructor) {
@@ -406,7 +406,7 @@ namespace BytecodeTranslator {
       Bpl.Expr targetexp = this.TranslatedExpressions.Pop();
       Bpl.IdentifierExpr idexp = targetexp as Bpl.IdentifierExpr;
       if (idexp != null) {
-        StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(TranslationHelper.CciLocationToBoogieToken(assignment.Locations),
+        StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(assignment.Token(),
           idexp, sourceexp));
         return;
       } else {
@@ -547,7 +547,7 @@ namespace BytecodeTranslator {
       base.Visit(logicalNot);
       Bpl.Expr exp = TranslatedExpressions.Pop();
       TranslatedExpressions.Push(Bpl.Expr.Unary(
-          TranslationHelper.CciLocationToBoogieToken(logicalNot.Locations),
+          logicalNot.Token(),
           Bpl.UnaryOperator.Opcode.Not, exp));
 
     }
@@ -556,7 +556,7 @@ namespace BytecodeTranslator {
     #region CodeContract Expressions
     public override void Visit(IOldValue oldValue) {
       base.Visit(oldValue);
-      TranslatedExpressions.Push(new Bpl.OldExpr(TranslationHelper.CciLocationToBoogieToken(oldValue.Locations),
+      TranslatedExpressions.Push(new Bpl.OldExpr(oldValue.Token(),
         TranslatedExpressions.Pop()));
     }
     
@@ -564,7 +564,7 @@ namespace BytecodeTranslator {
       if (this.sink.RetVariable == null) {
         throw new TranslationException(String.Format("Don't know what to do with return value {0}", returnValue.ToString()));
       }
-      TranslatedExpressions.Push(new Bpl.IdentifierExpr(TranslationHelper.CciLocationToBoogieToken(returnValue.Locations),
+      TranslatedExpressions.Push(new Bpl.IdentifierExpr(returnValue.Token(),
         this.sink.RetVariable));
 
     }

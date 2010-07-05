@@ -107,8 +107,8 @@ namespace BytecodeTranslator {
         if (method.Type.TypeCode != PrimitiveTypeCode.Void) {
           Bpl.Type rettype = Bpl.Type.Int;
           out_count++;
-          this.sink.RetVariable = new Bpl.Formal(TranslationHelper.CciLocationToBoogieToken(method.Locations),
-              new Bpl.TypedIdent(TranslationHelper.CciLocationToBoogieToken(method.Type.Locations),
+          this.sink.RetVariable = new Bpl.Formal(method.Token(),
+              new Bpl.TypedIdent(method.Type.Token(),
                   "$result", rettype), false);
         } else {
           this.sink.RetVariable = null;
@@ -119,8 +119,8 @@ namespace BytecodeTranslator {
         #region Create 'this' parameter
         in_count++;
         Bpl.Type selftype = Bpl.Type.Int;
-        Bpl.Formal self = new Bpl.Formal(TranslationHelper.CciLocationToBoogieToken(method.Locations),
-            new Bpl.TypedIdent(TranslationHelper.CciLocationToBoogieToken(method.Type.Locations),
+        Bpl.Formal self = new Bpl.Formal(method.Token(),
+            new Bpl.TypedIdent(method.Type.Token(),
                 "this", selftype), true);
 
         #endregion
@@ -167,7 +167,7 @@ namespace BytecodeTranslator {
 
 
               Bpl.Requires req
-                  = new Bpl.Requires(TranslationHelper.CciLocationToBoogieToken(pre.Locations),
+                  = new Bpl.Requires(pre.Token(),
                       true, exptravers.TranslatedExpressions.Pop(), "");
               boogiePrecondition.Add(req);
             }
@@ -179,7 +179,7 @@ namespace BytecodeTranslator {
               // Todo: Deal with Descriptions
 
               Bpl.Ensures ens =
-                  new Bpl.Ensures(TranslationHelper.CciLocationToBoogieToken(post.Locations),
+                  new Bpl.Ensures(post.Token(),
                       true, exptravers.TranslatedExpressions.Pop(), "");
               boogiePostcondition.Add(ens);
             }
@@ -206,7 +206,7 @@ namespace BytecodeTranslator {
 
         string MethodName = TranslationHelper.CreateUniqueMethodName(method);
 
-        Bpl.Procedure proc = new Bpl.Procedure(TranslationHelper.CciLocationToBoogieToken(method.Locations),
+        Bpl.Procedure proc = new Bpl.Procedure(method.Token(),
             MethodName, // make it unique!
             new Bpl.TypeVariableSeq(),
             new Bpl.VariableSeq(invars), // in
@@ -227,7 +227,7 @@ namespace BytecodeTranslator {
 
         foreach (MethodParameter mparam in formalMap.Values) {
           if (mparam.inParameterCopy != null) {
-            Bpl.IToken tok = TranslationHelper.CciLocationToBoogieToken(method.Locations);
+            Bpl.IToken tok = method.Token();
             stmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
               new Bpl.IdentifierExpr(tok, mparam.outParameterCopy),
               new Bpl.IdentifierExpr(tok, mparam.inParameterCopy)));
@@ -258,7 +258,7 @@ namespace BytecodeTranslator {
         #endregion
 
         Bpl.Implementation impl =
-            new Bpl.Implementation(TranslationHelper.CciLocationToBoogieToken(method.Locations),
+            new Bpl.Implementation(method.Token(),
                 MethodName, // make unique
                 new Microsoft.Boogie.TypeVariableSeq(),
                 new Microsoft.Boogie.VariableSeq(invars),
