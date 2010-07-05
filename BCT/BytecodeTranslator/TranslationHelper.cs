@@ -29,6 +29,12 @@ namespace BytecodeTranslator {
     public Bpl.Formal localParameter;
     public Bpl.Formal inParameterCopy;
     public Bpl.Formal outParameterCopy;
+
+    public override string ToString() {
+      if (this.inParameterCopy != null)
+        return this.inParameterCopy.Name;
+      return base.ToString();
+    }
   }
 
     /// <summary>
