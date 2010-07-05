@@ -38,7 +38,6 @@ namespace BytecodeTranslator {
     public Bpl.Variable ThisVariable = TranslationHelper.TempThisVar();
     public Bpl.Variable RetVariable;
     public readonly Bpl.Program TranslatedProgram = new Bpl.Program();
-    internal List<MethodParameter> OutVars = new List<MethodParameter>();
 
     /// <summary>
     /// Creates a fresh local var of the given Type and adds it to the
@@ -85,7 +84,7 @@ namespace BytecodeTranslator {
     public Bpl.Variable FindParameterVariable(IParameterDefinition param) {
       MethodParameter mp;
       this.FormalMap.TryGetValue(param, out mp);
-      return mp.localParameter;
+      return mp.outParameterCopy;
     }
     public Dictionary<IParameterDefinition, MethodParameter> FormalMap = null;
 

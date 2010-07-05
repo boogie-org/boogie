@@ -11,5 +11,24 @@ namespace RegressionTestInput {
       Contract.Assert(x == 3 && y <= 8);
     }
 
+    int NonVoid() {
+      return 3;
+    }
+
+    int OutParam(out int x) {
+      x = 3;
+      return x;
+    }
+
+    int RefParam(ref int x) {
+      x = x + 1;
+      return x;
+    }
+
+    int AssignToInParam(int x) {
+      x = x + 1;
+      return x;
+    }
+
   }
 }

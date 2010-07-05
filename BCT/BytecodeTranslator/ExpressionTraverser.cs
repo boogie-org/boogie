@@ -96,6 +96,15 @@ namespace BytecodeTranslator {
     }
 
     public override void Visit(IAddressDereference addressDereference) {
+      IBoundExpression be = addressDereference.Address as IBoundExpression;
+      if (be != null) {
+        IParameterDefinition pd = be.Definition as IParameterDefinition;
+        if (pd != null) {
+          var pv = this.sink.FindParameterVariable(pd);
+          TranslatedExpressions.Push(Bpl.Expr.Ident(pv));
+          return;
+        }
+      }
       this.Visit(addressDereference.Address);
       throw new NotImplementedException();
     }
@@ -122,6 +131,18 @@ namespace BytecodeTranslator {
         if (addressOf != null) {
           this.Visit(addressOf.Expression);
           return;
+        }
+        IConversion/*?*/ conversion = deref.Address as IConversion;
+        if (conversion != null) {
+          IBoundExpression be = conversion.ValueToConvert as IBoundExpression;
+          if (be != null) {
+            IParameterDefinition pd = be.Definition as IParameterDefinition;
+            if (pd != null) {
+              var pv = this.sink.FindParameterVariable(pd);
+              TranslatedExpressions.Push(Bpl.Expr.Ident(pv));
+              return;
+            }
+          }
         }
         if (targetExpression.Instance != null) {
           // TODO

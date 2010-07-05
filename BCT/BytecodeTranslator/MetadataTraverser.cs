@@ -41,46 +41,9 @@ namespace BytecodeTranslator {
       ContractProvider = cp;
     }
 
-
     public Bpl.Program TranslatedProgram {
       get { return this.sink.TranslatedProgram; }
     }
-
-    #region Method Helpers
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="param"></param>
-    /// <remarks> (mschaef) only a stub </remarks>
-    private MethodParameter CreateBoogieParameter(IParameterDefinition param) {
-      MethodParameter mparam = new MethodParameter();
-
-      Bpl.Type ptype = Bpl.Type.Int;
-
-      Bpl.Formal v = new Bpl.Formal(TranslationHelper.CciLocationToBoogieToken(param.Locations),
-          new Bpl.TypedIdent(TranslationHelper.CciLocationToBoogieToken(param.Type.Locations),
-              param.Name.Value, ptype), false);
-
-      Bpl.Formal v_in = null;
-      if (!param.IsOut) {
-        v_in = new Bpl.Formal(TranslationHelper.CciLocationToBoogieToken(param.Locations),
-            new Bpl.TypedIdent(TranslationHelper.CciLocationToBoogieToken(param.Type.Locations),
-                param.Name.Value + "$in", ptype), true);
-      }
-      Bpl.Formal v_out = null;
-      if (param.IsByReference || param.IsOut) {
-        v_out = new Bpl.Formal(TranslationHelper.CciLocationToBoogieToken(param.Locations),
-            new Bpl.TypedIdent(TranslationHelper.CciLocationToBoogieToken(param.Type.Locations),
-                param.Name.Value + "$out", ptype), false);
-      }
-      mparam.localParameter = v;
-      mparam.inParameterCopy = v_in;
-      mparam.outParameterCopy = v_out;
-
-      return mparam;
-    }
-
-    #endregion Method Helpers
 
     #region Overrides
 
@@ -130,9 +93,10 @@ namespace BytecodeTranslator {
         MethodParameter mp;
         foreach (IParameterDefinition formal in method.ResolvedMethod.Parameters) {
 
-          mp = CreateBoogieParameter(formal);
+          mp = new MethodParameter(formal);
           if (mp.inParameterCopy != null) in_count++;
-          if (mp.outParameterCopy != null) out_count++;
+          if (mp.outParameterCopy != null && (formal.IsByReference || formal.IsOut))
+            out_count++;
           formalMap.Add(formal, mp);
         }
         this.sink.FormalMap = formalMap;
@@ -176,8 +140,8 @@ namespace BytecodeTranslator {
             invars[i++] = mparam.inParameterCopy;
           }
           if (mparam.outParameterCopy != null) {
-            outvars[j++] = mparam.outParameterCopy;
-            this.sink.OutVars.Add(mparam);
+            if (mparam.underlyingParameter.IsByReference || mparam.underlyingParameter.IsOut)
+              outvars[j++] = mparam.outParameterCopy;
           }
         }
 
@@ -265,7 +229,7 @@ namespace BytecodeTranslator {
           if (mparam.inParameterCopy != null) {
             Bpl.IToken tok = TranslationHelper.CciLocationToBoogieToken(method.Locations);
             stmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
-              new Bpl.IdentifierExpr(tok, mparam.localParameter),
+              new Bpl.IdentifierExpr(tok, mparam.outParameterCopy),
               new Bpl.IdentifierExpr(tok, mparam.inParameterCopy)));
           }
         }
@@ -281,17 +245,16 @@ namespace BytecodeTranslator {
         }
 
         #region Create Local Vars For Implementation
-        //Todo: (mschaef) hack, there must be a better way to copy this
-        Bpl.Variable[] vars = new Bpl.Variable[this.sink.LocalVarMap.Values.Count + formalMap.Values.Count];
-        i = 0;
-        foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
-          vars[i++] = v;
-        }
+        List<Bpl.Variable> vars = new List<Bpl.Variable>();
         foreach (MethodParameter mparam in formalMap.Values) {
-          vars[i++] = mparam.localParameter;
+          if (!(mparam.underlyingParameter.IsByReference || mparam.underlyingParameter.IsOut))
+            vars.Add(mparam.outParameterCopy);
+        }
+        foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
+          vars.Add(v);
         }
 
-        Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars);
+        Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
         #endregion
 
         Bpl.Implementation impl =

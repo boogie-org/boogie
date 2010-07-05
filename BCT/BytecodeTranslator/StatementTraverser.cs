@@ -141,13 +141,6 @@ namespace BytecodeTranslator
     public override void Visit(IReturnStatement returnStatement) {
       Bpl.IToken tok = TokenFor(returnStatement);
 
-      #region Copy values of all out parameters to outvariables
-      foreach (MethodParameter mp in this.sink.OutVars) {
-        StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
-          new Bpl.IdentifierExpr(tok, mp.outParameterCopy), new Bpl.IdentifierExpr(tok, mp.localParameter)));
-      }
-      #endregion
-
       if (returnStatement.Expression != null) {
         ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this);
         etrav.Visit(returnStatement.Expression);

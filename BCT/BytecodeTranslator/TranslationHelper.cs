@@ -20,20 +20,45 @@ using Bpl = Microsoft.Boogie;
 namespace BytecodeTranslator {
 
   public class MethodParameter {
-    public MethodParameter() {
-      localParameter = null;
-      inParameterCopy = null;
-      outParameterCopy = null;
+    
+    /// <summary>
+    /// All parameters of the method get an associated in parameter
+    /// in the Boogie procedure.
+    /// </summary>
+    public Bpl.Formal/*?*/ inParameterCopy;
+    
+    /// <summary>
+    /// A local variable when the underlyingParameter is an in parameter
+    /// and a formal (out) parameter when the underlyingParameter is
+    /// a ref or out parameter.
+    /// </summary>
+    public Bpl.Variable outParameterCopy;
+
+    public IParameterDefinition underlyingParameter;
+
+    public MethodParameter(IParameterDefinition parameterDefinition) {
+
+      this.underlyingParameter = parameterDefinition;
+
+      Bpl.Type ptype = Bpl.Type.Int;
+
+      var parameterToken = TranslationHelper.CciLocationToBoogieToken(parameterDefinition.Locations);
+      var typeToken = TranslationHelper.CciLocationToBoogieToken(parameterDefinition.Type.Locations);
+      var parameterName = parameterDefinition.Name.Value;
+
+      if (!parameterDefinition.IsOut) {
+        this.inParameterCopy = new Bpl.Formal(parameterToken, new Bpl.TypedIdent(typeToken, parameterName + "$in", ptype), true);
+      }
+      if (parameterDefinition.IsByReference || parameterDefinition.IsOut) {
+        this.outParameterCopy = new Bpl.Formal(parameterToken, new Bpl.TypedIdent(typeToken, parameterName + "$out", ptype), false);
+      } else {
+        this.outParameterCopy = new Bpl.LocalVariable(parameterToken, new Bpl.TypedIdent(typeToken, parameterName, ptype));
+      }
+      
     }
 
-    public Bpl.Formal localParameter;
-    public Bpl.Formal inParameterCopy;
-    public Bpl.Formal outParameterCopy;
-
     public override string ToString() {
-      if (this.inParameterCopy != null)
-        return this.inParameterCopy.Name;
-      return base.ToString();
+      return this.underlyingParameter.Name.Value;
     }
   }
 
