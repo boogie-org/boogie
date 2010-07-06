@@ -34,13 +34,16 @@ static StructuredCmd! dummyStructuredCmd = new BreakCmd(Token.NoToken, null);
 ///Returns the number of parsing errors encountered.  If 0, "program" returns as
 ///the parsed program.
 ///</summary>
-public static int Parse (string! filename, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
+public static int Parse (string! filename, /*maybe null*/ List<string!> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
 
 
   FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
 //  Scanner scanner = new Scanner(stream);
   
-  string s = ParserHelper.Fill(stream,new List<string!>());
+  if (defines == null) {
+    defines = new List<string!>();
+  }
+  string s = ParserHelper.Fill(stream, defines);
   byte[]! buffer = (!) UTF8Encoding.Default.GetBytes(s);
   MemoryStream ms = new MemoryStream(buffer,false);
   Errors errors = new Errors();

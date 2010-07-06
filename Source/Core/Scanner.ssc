@@ -7,8 +7,9 @@ using System.Text;
 using Microsoft.Contracts;
 using Microsoft.Boogie;
 using BoogiePL;
-namespace Microsoft.Boogie {
 
+
+namespace Microsoft.Boogie {
 
 //-----------------------------------------------------------------------------------
 // Buffer

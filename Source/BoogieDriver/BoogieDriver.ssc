@@ -349,7 +349,7 @@ namespace Microsoft.Boogie
         Program programSnippet;
         int errorCount;
         try {
-          errorCount = BoogiePL.Parser.Parse(bplFileName, out programSnippet);
+          errorCount = BoogiePL.Parser.Parse(bplFileName, null, out programSnippet);
           if (programSnippet == null || errorCount != 0) {
             Console.WriteLine("{0} parse errors detected in {1}", errorCount, bplFileName);
             okay = false;
