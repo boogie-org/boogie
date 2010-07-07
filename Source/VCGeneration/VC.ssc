@@ -2061,7 +2061,7 @@ namespace VC
            int id = Int32.Parse(lop.label.Substring(prefix.Length + 1));
            Hashtable! label2absy = getLabel2absy();
            Absy cmd = label2absy[id] as Absy;
-           label2absy.Remove(id);
+           //label2absy.Remove(id);
            
            assert cmd != null;
            AssumeCmd acmd = cmd as AssumeCmd;
