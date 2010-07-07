@@ -432,7 +432,7 @@ namespace Microsoft.Boogie
       }
       
       // Inline
-      List<Declaration!>! TopLevelDeclarations = program.TopLevelDeclarations;
+      List<Declaration!> TopLevelDeclarations = program.TopLevelDeclarations;
       if (CommandLineOptions.Clo.ProcedureInlining != CommandLineOptions.Inlining.None) {
         bool inline = false;
         foreach (Declaration d in TopLevelDeclarations) {
@@ -565,7 +565,7 @@ namespace Microsoft.Boogie
             outcome = VCGen.Outcome.Inconclusive;
           }
 
-          string! timeIndication = "";
+          string timeIndication = "";
           DateTime end = DateTime.Now;
           TimeSpan elapsed = end - start;
           if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.XmlSink != null) {
@@ -626,7 +626,7 @@ namespace Microsoft.Boogie
                   {
                     if (error is CallCounterexample)
                     {
-                      CallCounterexample! err = (CallCounterexample) error;
+                      CallCounterexample err = (CallCounterexample) error;
                       if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingRequires.ErrorMessage != null) {
                         ReportBplError(err.FailingRequires, err.FailingRequires.ErrorMessage, true, false);
                       } else {
@@ -639,7 +639,7 @@ namespace Microsoft.Boogie
                     }
                     else if (error is ReturnCounterexample)
                     {
-                      ReturnCounterexample! err = (ReturnCounterexample) error;
+                      ReturnCounterexample err = (ReturnCounterexample) error;
                       if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingEnsures.ErrorMessage != null) { 
                         ReportBplError(err.FailingEnsures, err.FailingEnsures.ErrorMessage, true, false);
                       } else {
@@ -652,7 +652,7 @@ namespace Microsoft.Boogie
                     }
                     else // error is AssertCounterexample
                     {
-                      AssertCounterexample! err = (AssertCounterexample) error;
+                      AssertCounterexample err = (AssertCounterexample) error;
                       if (err.FailingAssert is LoopInitAssertCmd) {
                         ReportBplError(err.FailingAssert, "Error BP5004: This loop invariant might not hold on entry.", true, true);
                         if (CommandLineOptions.Clo.XmlSink != null) {
