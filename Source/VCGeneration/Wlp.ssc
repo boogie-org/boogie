@@ -31,6 +31,7 @@ namespace VC {
       this.Ctxt = ctxt;
       this.ControlFlowVariable = controlFlowVariable;
     }
+    
   }
 
   #region A class to compute wlp of a passive command program
@@ -110,6 +111,19 @@ namespace VC {
 
       } else if (cmd is AssumeCmd) {
         AssumeCmd ac = (AssumeCmd)cmd;
+
+        if(CommandLineOptions.Clo.StratifiedInlining > 0) {
+          // Label the assume if it is a procedure call
+          NAryExpr naryExpr = ac.Expr as NAryExpr;
+          if (naryExpr != null) {
+            if (naryExpr.Fun is FunctionCall) {
+              int id = ac.UniqueId;
+              ctxt.Label2absy[id] = ac;
+              return gen.ImpliesSimp(gen.LabelPos((!)"si_fcall_" + id.ToString(), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N);
+            }
+          }
+        }
+        
         return gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N);
 
       } else {

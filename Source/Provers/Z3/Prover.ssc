@@ -116,7 +116,8 @@ namespace Microsoft.Boogie.Z3
       if (CommandLineOptions.Clo.PrintErrorModel >= 1 || 
           CommandLineOptions.Clo.EnhancedErrorMessages == 1 || 
           CommandLineOptions.Clo.ContractInfer ||
-          CommandLineOptions.Clo.LazyInlining > 0) {
+          CommandLineOptions.Clo.LazyInlining > 0 ||
+          CommandLineOptions.Clo.StratifiedInlining > 0) {
         z3args += " " + OptionChar() + "m";
         expectingModel = true;
       }

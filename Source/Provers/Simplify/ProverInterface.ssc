@@ -156,9 +156,11 @@ namespace Microsoft.Boogie.Simplify
 
     protected abstract AxiomVCExprTranslator! SpawnVCExprTranslator();
 
-    protected void FeedNewAxiomsDecls2Prover() throws UnexpectedProverOutputException; {
+    // Return the number of axioms pushed to the theorem prover
+    protected int FeedNewAxiomsDecls2Prover() throws UnexpectedProverOutputException; {
       if (thmProver == null)
-        return;
+        return 0;
+      int ret = 0;
       foreach (string! s in vcExprTranslator.NewTypeDecls) {
         LogCommon(s);
         thmProver.Feed(s, 0);
@@ -166,7 +168,9 @@ namespace Microsoft.Boogie.Simplify
       foreach (string! s in vcExprTranslator.NewAxioms) {
         LogBgPush(s);
         thmProver.AddAxioms(s);
+        ret ++;
       }
+      return ret;
     }
 
     protected static string! CodebaseString() {
@@ -278,6 +282,32 @@ namespace Microsoft.Boogie.Simplify
     {
       vcExprTranslator.AddAxiom( vcExprTranslator.translate(vc,1) ); 
     }
+    
+    public override string! VCExpressionToString(VCExpr! vc)
+    {
+      return vcExprTranslator.translate(vc, 1);
+    }
+    
+    // Number of axioms pushed since the last call to Check
+    public override int NumAxiomsPushed() 
+    {
+       return vcExprTranslator.NewAxiomsCount;
+    }
+    
+    // Feed the axioms pushed since the last call to Check to the theorem prover
+    public override int FlushAxiomsToTheoremProver() 
+      throws UnexpectedProverOutputException;
+    {
+       return FeedNewAxiomsDecls2Prover();
+    }
+
+    public override void Pop() 
+      throws UnexpectedProverOutputException;
+    {
+       assert thmProver != null;
+       LogCommon("(BG_POP)");
+       thmProver.PopAxioms();
+    }
 
     [NoDefaultContract]  // important, since we have no idea what state the object might be in when this handler is invoked
     void ControlCHandler(object o, ConsoleCancelEventArgs a)
@@ -316,13 +346,24 @@ namespace Microsoft.Boogie.Simplify
 
         Helpers.ExtraTraceInformation("Sending data to theorem prover");
 
-        FeedNewAxiomsDecls2Prover();
+        int num_axioms_pushed = 
+           FeedNewAxiomsDecls2Prover();
+        
         string! prelude = ctx.GetProverCommands(false);
         vcString = prelude + vcString;
         LogActivity(vcString);
 
         assert thmProver != null;
         thmProver.BeginCheck(descriptiveName, vcString);
+        
+        if(CommandLineOptions.Clo.StratifiedInlining > 0) {
+			// Pop all the axioms that were pushed by FeedNewAxiomsDecls2Prover
+			for(int i = 0; i < num_axioms_pushed; i++) 
+			{
+			   LogBgPop();
+			   thmProver.PopAxioms();
+			}
+        }
 
         if (CommandLineOptions.Clo.RestartProverPerVC) {
           LogComment("Will restart the prover due to /restartProver option");
@@ -418,6 +459,10 @@ namespace Microsoft.Boogie.Simplify
       LogCommon(")");
     }
 
+    public void LogBgPop() {
+      LogCommon("(BG_POP)");
+    }
+    
     [NoDefaultContract]
     private void FireUpNewProver()
       requires IsExposed;
@@ -524,6 +569,11 @@ namespace Microsoft.Boogie.Simplify
     // so that the prover can be re-initialised in case it dies
     public readonly List<string!>! AllAxioms;
     private List<string!>! NewAxiomsAttr;
+
+    // The length of the list NewAxiomsAttr
+    public int NewAxiomsCount { get {
+      return NewAxiomsAttr.Count;
+    } }
 
     public List<string!>! NewAxioms { get {
       List<string!>! res = NewAxiomsAttr;

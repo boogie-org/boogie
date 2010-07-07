@@ -469,7 +469,17 @@ namespace Microsoft.Boogie
     /// testing
     /// </summary>    
     public virtual void PushVCExpression(VCExpr! vc) {}
+    public virtual string! VCExpressionToString(VCExpr! vc) { return ""; }
+    public virtual void Pop() 
+      throws UnexpectedProverOutputException;
+    {}
+    public virtual int NumAxiomsPushed() 
+    { return 0; }
+    public virtual int FlushAxiomsToTheoremProver() 
+      throws UnexpectedProverOutputException;
+    { return 0; }
     
+        
     public abstract ProverContext! Context { get; }
     public abstract VCExpressionGenerator! VCExprGen { get; }
   }

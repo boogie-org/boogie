@@ -227,6 +227,7 @@ namespace Microsoft.Boogie
     public Inlining ProcedureInlining = Inlining.Assume;
     public bool PrintInlined = false;
     public int LazyInlining = 0;
+    public int StratifiedInlining = 0;
     
     public enum TypeEncoding { None, Predicates, Arguments, Monomorphic };
     public TypeEncoding TypeEncodingMethod = TypeEncoding.Predicates;
@@ -974,6 +975,23 @@ namespace Microsoft.Boogie
               }
             }
             break;
+          case "-stratifiedInline":
+          case "/stratifiedInline":
+            if (ps.ConfirmArgumentCount(1)) {
+              switch (args[ps.i]) 
+              {
+                case "0":
+                  StratifiedInlining = 0;  
+                  break;
+                case "1":
+                  StratifiedInlining = 1;  
+                  break;
+                default:
+                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                  break;
+              }
+            }
+            break;            
           case "-typeEncoding":
           case "/typeEncoding":
             if (ps.ConfirmArgumentCount(1)) {
@@ -1319,6 +1337,12 @@ namespace Microsoft.Boogie
       }
       
       if (LazyInlining > 0) {
+        TypeEncodingMethod = TypeEncoding.Monomorphic;
+        UseArrayTheory = true;
+        UseAbstractInterpretation = false;
+      }
+      
+      if (StratifiedInlining > 0) {
         TypeEncodingMethod = TypeEncoding.Monomorphic;
         UseArrayTheory = true;
         UseAbstractInterpretation = false;

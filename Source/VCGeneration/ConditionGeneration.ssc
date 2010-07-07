@@ -253,10 +253,33 @@ namespace VC
       Helpers.ExtraTraceInformation("Finished implementation verification");
       return outcome;
     }
-  
+
+    public Outcome StratifiedVerifyImplementation(Implementation! impl, Program! program, out List<Counterexample!>? errors)
+      ensures result == Outcome.Errors ==> errors != null;
+      throws UnexpectedProverOutputException;
+    {
+      Helpers.ExtraTraceInformation("Starting implementation verification");
+
+      CounterexampleCollector collector = new CounterexampleCollector();
+      Outcome outcome = StratifiedVerifyImplementation(impl, program, collector);
+      if (outcome == Outcome.Errors) {
+        errors = collector.examples;
+      } else {
+        errors = null;
+      }
+
+      Helpers.ExtraTraceInformation("Finished implementation verification");
+      return outcome;
+    }
+      
     public abstract Outcome VerifyImplementation(Implementation! impl, Program! program, VerifierCallback! callback)
         throws UnexpectedProverOutputException;
-        
+    
+    public virtual Outcome StratifiedVerifyImplementation(Implementation! impl, Program! program, VerifierCallback! callback)
+        throws UnexpectedProverOutputException;
+    {
+       return VerifyImplementation(impl, program, callback);
+    }    
 
 /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
 
