@@ -1,8 +1,7 @@
-# Aste started: 2010-07-08 01:00:03
+# Aste started: 2010-07-10 07:00:07
 # Host id: Boogiebox
-# [2010-07-08 01:00:08] SpecSharp revision: 54390
-# [2010-07-08 01:00:24] Boogie revision: 54890
-# [2010-07-08 01:00:30] SscBoogie revision: 54839
-[2010-07-08 01:25:52] 1 out of 25 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-['stratifiedinline']
-# [2010-07-08 01:27:38] Released nightly of Boogie
+# [2010-07-10 07:00:12] SpecSharp revision: 54390
+# [2010-07-10 07:00:16] Boogie revision: 54984
+# [2010-07-10 07:00:19] SscBoogie revision: 54839
+[2010-07-10 07:26:41] 0 out of 25 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2010-07-10 07:28:22] Released nightly of Boogie
