@@ -1680,9 +1680,8 @@ namespace VC
        int expansionCount = 0;
        int total_axioms_pushed = 0;
        
-       /*
        // Do eager inlining
-       while(calls.currCandidates.Count != 0) 
+       for(int i = 1; i < CommandLineOptions.Clo.StratifiedInlining && calls.currCandidates.Count > 0; i ++) 
        {
           List<int>! toExpand = new List<int>();
           foreach(int id in calls.currCandidates) {
@@ -1692,7 +1691,6 @@ namespace VC
           total_axioms_pushed +=
             DoExpansion(toExpand, calls, checker);
        }
-       */
        
        int cnt = 0;
        while(cnt < 500) {
@@ -1792,6 +1790,7 @@ namespace VC
       throws UnexpectedProverOutputException;
     {       
        int old_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+       VCExpr! exprToPush = VCExpressionGenerator.True;
 	   foreach(int id in candidates) {
 	      VCExprNAry! expr = calls.id2Candidate[id];
 		  string procName = ((!)(expr.Op as VCExprBoogieFunctionOp)).Func.Name;
@@ -1839,9 +1838,12 @@ namespace VC
 		  expansion = calls.Mutate(expansion, true);
 		  
 		  expansion = checker.VCExprGen.Eq(expr, expansion);
-		  checker.TheoremProver.PushVCExpression(expansion);
+		  exprToPush = checker.VCExprGen.And(exprToPush, expansion);
+		  //checker.TheoremProver.PushVCExpression(expansion);
 		  
 	    }
+	    checker.TheoremProver.PushVCExpression(exprToPush);
+	    
 	    int axioms_pushed = checker.TheoremProver.NumAxiomsPushed() - old_axioms_pushed;
 	    checker.TheoremProver.FlushAxiomsToTheoremProver();
 	    return axioms_pushed;
@@ -1878,8 +1880,12 @@ namespace VC
        checker.TheoremProver.FlushAxiomsToTheoremProver();
        checker.BeginCheck(implName, vc, reporter);
        checker.ProverDone.WaitOne();
-
+       
        ProverInterface.Outcome outcome = (checker).ReadOutcome();
+       
+       //checker.BeginCheck(implName, vc, reporter);
+       //checker.ProverDone.WaitOne();
+       //outcome = (checker).ReadOutcome();
        
        switch (outcome) {
          case ProverInterface.Outcome.Valid:
