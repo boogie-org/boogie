@@ -6,10 +6,10 @@ Boogie program verifier finished with 31 verified, 1 error
 ------ Running regression test counter.chalice 
   69.5: Monitor invariant might hot hold. The expression at 4.27 might not evaluate to true.
   80.5: Assertion might not hold. The expression at 80.12 might not evaluate to true.
-  119.5: The held field of the target of the release statement might not be writable.
+  119.5: The target of the release statement might be not be locked by the current thread.
   128.7: The mu field of the target of the acquire statement might not be above waitlevel.
   136.7: The mu field of the target of the acquire statement might not be above waitlevel.
-  145.5: The held field of the target of the release statement might not be writable.
+  145.5: The target of the release statement might be not be locked by the current thread.
 
 Boogie program verifier finished with 24 verified, 6 errors
 ------ Running regression test dining-philosophers.chalice 
@@ -181,8 +181,8 @@ The program did not typecheck.
   33.14: Location might not be readable.
   42.5: Monitor invariant might hot hold. The expression at 5.23 might not evaluate to true.
   60.5: Location might not be writable
-  76.5: The held field of the target of the unshare statement might not be writable.
-  84.5: The held field of the target of the unshare statement might not be writable.
+  76.5: The target of the unshare statement might not be shared.
+  84.5: The target of the unshare statement might not be shared.
 
 Boogie program verifier finished with 16 verified, 7 errors
 ------ Running regression test prog2.chalice 
@@ -201,10 +201,12 @@ Boogie program verifier finished with 24 verified, 4 errors
 Boogie program verifier finished with 51 verified, 4 errors
 ------ Running regression test prog4.chalice 
   5.5: Assertion might not hold. The expression at 5.12 might not evaluate to true.
-  15.7: The held field of the target of the release statement might not be writable.
-  27.7: The held field of the target of the release statement might not be writable.
+  15.7: The target of the release statement might be not be locked by the current thread.
+  15.7: Release might fail because the current thread might hold the read lock.
+  27.7: The target of the release statement might be not be locked by the current thread.
+  27.7: Release might fail because the current thread might hold the read lock.
 
-Boogie program verifier finished with 6 verified, 3 errors
+Boogie program verifier finished with 6 verified, 5 errors
 ------ Running regression test ImplicitLocals.chalice 
 
 Boogie program verifier finished with 8 verified, 0 errors

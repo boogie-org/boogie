@@ -392,8 +392,6 @@ class Translator {
         bassert(nonNull(obj), s.pos, "The target of the share statement might be null.") ::
         UpdateMu(obj, true, false, lowerBounds, upperBounds, ErrorMessage(s.pos, "Share might fail.")) :::
         bassume(!isHeld(obj) && ! isRdHeld(obj)) :: // follows from o.mu==lockbottom
-        // no permission to o.held
-        etran.SetNoPermission(etran.Tr(obj), "held", etran.Mask) ::
         // exhale the monitor invariant (using the current state as the old state)
         ExhaleInvariants(obj, false, ErrorMessage(s.pos, "Monitor invariant might not hold."), etran.UseCurrentAsOld()) :::
         // assume a seen state is the one right before the share
@@ -407,15 +405,12 @@ class Translator {
         isDefined(obj) :::
         bassert(nonNull(o), s.pos, "The target of the unshare statement might be null.") ::
         bassert(CanWrite(o, "mu"), s.pos, "The mu field of the target of the unshare statement might not be writable.") ::
-        bassert(CanWrite(o, "held"), s.pos, "The held field of the target of the unshare statement might not be writable.") ::
         bassert(isShared(o), s.pos, "The target of the unshare statement might not be shared.") ::
         bassert(isHeld(o), s.pos, "The target of the unshare statement might not be locked by the current thread.") :: // locked or read-locked
         etran.Heap.store(o, "mu", bLockBottom) ::
         // havoc o.held where 0<=o.held 
         BLocal(heldV) :: Boogie.Havoc(held) :: bassume(held <= 0) ::
         etran.Heap.store(o, "held", held) ::
-        // set the permission of o.held to 0
-        etran.SetNoPermission(o, "held", etran.Mask) ::
         // set o.rdheld to false
         etran.Heap.store(o, "rdheld", false)
       case Acquire(obj) =>
@@ -729,7 +724,6 @@ class Translator {
     bassume(! isHeld(o) && ! isRdHeld(o)) :: // this assume follows from the previous assert
     // update the thread's locking state
     BLocal(lastAcquireVar) :: Havoc(lastAcquire) :: bassume(0 < lastAcquire) ::
-    etran.SetFullPermission(o, "held") ::
     etran.Heap.store(o, "held", lastAcquire) ::
     InhaleInvariants(nonNullObj, false, etran.WhereOldIs(
       LastSeenHeap(lastSeenMu, lastSeenHeld),
@@ -750,7 +744,6 @@ class Translator {
     BLocal(preReleaseHeapV) :: (preReleaseHeap := etran.Heap) ::
     BLocal(preReleaseMaskV) :: (preReleaseMask := etran.Mask) ::
     BLocal(preReleaseCreditsV) :: (preReleaseCredits := etran.Credits) ::
-    bassert(CanWrite(o, "held"), s.pos, "The held field of the target of the release statement might not be writable.") ::
     bassert(isHeld(o), s.pos, "The target of the release statement might be not be locked by the current thread.") ::
     bassert(!isRdHeld(o), s.pos, "Release might fail because the current thread might hold the read lock.") ::
     ExhaleInvariants(nonNullObj, false, ErrorMessage(s.pos, "Monitor invariant might hot hold."), etran.WhereOldIs(
@@ -760,7 +753,6 @@ class Translator {
     // havoc o.held where 0<=o.held 
     BLocal(heldV) :: Havoc(held) :: bassume(held <= 0) ::
     etran.Heap.store(o, "held", held) ::
-    etran.SetNoPermission(o, "held", etran.Mask) ::
     // assume a seen state is the one right before the share
     bassume(LastSeenHeap(etran.Heap.select(o, "mu"), held) ==@ preReleaseHeap) ::
     bassume(LastSeenMask(etran.Heap.select(o, "mu"), held) ==@ preReleaseMask) ::
@@ -1563,7 +1555,6 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
          isDefined(e)(true) :::
          bassert(nonNull(trE), holds.pos, "The target of the holds predicate might be null.")
        else Nil) :::
-      IncPermission(trE, "held", 100) :::
       bassume(IsGoodMask(Mask)) ::
       bassume(IsGoodState(Boogie.MapSelect(ih, trE, "held"))) ::
       bassume(wf(Heap, Mask)) ::
@@ -1709,10 +1700,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     case holds@Holds(e) => 
       (if(check) isDefined(e)(true) :::
       bassert(nonNull(Tr(e)), error.pos, error.message + " The target of the holds predicate at " + holds.pos + " might be null.") :: Nil else Nil) :::
-      bassert(HasFullPermission(Tr(e), "held", em), error.pos, error.message + " The current thread might not have full permission to the held field at " + holds.pos + ".") ::
       bassert(0 < Boogie.MapSelect(Heap, Tr(e), "held"), error.pos, error.message + " The current thread might not hold lock at " + holds.pos + ".") ::
       bassert(! Boogie.MapSelect(Heap, Tr(e), "rdheld"), error.pos, error.message + " The current thread might hold the read lock at " + holds.pos + ".") ::
-      SetNoPermission(Tr(e), "held", em) ::
       bassume(IsGoodMask(Mask)) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(Heap, em))
