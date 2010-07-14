@@ -3,8 +3,6 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-[assembly: AssemblyKeyFile("..\\..\\InterimKey.snk")]
-
 [assembly: AssemblyTitle("Boogie back-end for Isabelle")]
 [assembly: AssemblyDescription("Boogie back-end for the interactive"
   + " theorem prover Isabelle")]
