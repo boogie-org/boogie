@@ -41,7 +41,7 @@
     </Reference>
     <Reference Include="Core, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\Binaries\Core.dll</HintPath>
+      <HintPath>..\..\Core\bin\Debug\Core.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -52,11 +52,11 @@
     <Reference Include="System.Xml" />
     <Reference Include="VCExpr, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\Binaries\VCExpr.dll</HintPath>
+      <HintPath>..\..\VCExpr\bin\debug\VCExpr.dll</HintPath>
     </Reference>
     <Reference Include="VCGeneration, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\Binaries\VCGeneration.dll</HintPath>
+      <HintPath>..\..\VCGeneration\bin\debug\VCGeneration.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
