@@ -74,14 +74,14 @@ namespace Microsoft.Boogie.Isabelle {
     private static int index = 0;
 
     public override ProverOptions BlankProverOptions() {
-      Contract.Ensures(Contract.Result<ProverOptions>() != null);
+      Contract.Ensures(Contract.Result<ProverOptions>() != null);//POSTCORE
 
       return new IsabelleProverOptions();
     }
 
     public override object NewProverContext(ProverOptions options) {
       Contract.Requires(options != null);
-      Contract.Ensures(Contract.Result<object>() != null);
+      Contract.Ensures(Contract.Result<object>() != null);//POSTCORE
 
       IsabelleProverOptions opts = (IsabelleProverOptions)options;
       string filename = opts.Filename;
@@ -101,7 +101,7 @@ namespace Microsoft.Boogie.Isabelle {
     public override object SpawnProver(ProverOptions options, object ctxt) {
       Contract.Requires(options != null);
       Contract.Requires(ctxt != null);
-      Contract.Ensures(Contract.Result<object>() != null);
+      Contract.Ensures(Contract.Result<object>() != null);//POSTCORE
 
       return new IsabelleInterface(cce.NonNull((ProverContext)ctxt));
     }
@@ -141,13 +141,13 @@ namespace Microsoft.Boogie.Isabelle {
     }
     public override ProverContext Context {
       get {
-        Contract.Ensures(Contract.Result<ProverContext>() != null);
+        Contract.Ensures(Contract.Result<ProverContext>() != null);//POSTCORE
         return ctxt;
       }
     }
     public override VCExpressionGenerator VCExprGen {
       get {
-        Contract.Ensures(Contract.Result<VCExpressionGenerator>() != null);
+        Contract.Ensures(Contract.Result<VCExpressionGenerator>() != null);//POSTCORE
         return cce.NonNull(ctxt.ExprGen);
       }
     }
@@ -200,7 +200,7 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public override object Clone() {
-      Contract.Ensures(Contract.Result<object>() != null);
+      Contract.Ensures(Contract.Result<object>() != null);//POSTCORE
       return this;
     }
 
