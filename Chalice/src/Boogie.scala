@@ -162,7 +162,9 @@ object Boogie {
    case nt@ NamedType(s) =>
      s
    case ClassType(cl) =>
-     if (cl.IsRef) "ref" else cl.id
+     if (cl.IsRef) "ref"
+     else if (cl.IsSeq) "Seq " + cl.parameters(0).id
+     else cl.id
    case IndexedType(id,t) =>
      id + " (" + PrintType(t) + ")"
  }
