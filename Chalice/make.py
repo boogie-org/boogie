@@ -1,15 +1,11 @@
-#! /bin/python
-
 import os
 import glob
 import sys
 import datetime
 
 bindir = "bin"
-if not os.path.exists(bindir):
-    os.makedirs(bindir)
     
-srcspecs = ["src/*.scala"]
+srcspecs = ["src\\*.scala"]
 srcfiles = [file for spec in srcspecs for file in glob.glob(spec)]
 
 buildstamp = "makestamp"
@@ -28,7 +24,7 @@ def printtime():
     print datetime.datetime.now().strftime("%H:%M:%S")
 
 printtime()
-cmd = "scalac -d bin -unchecked -deprecation " + " ".join(changedfiles) + " 2>&1"
+cmd = "scalac -d bin -unchecked -deprecation " + " ".join(changedfiles) + " & if errorlevel 1 exit 1"
 print cmd
 result = os.system(cmd)
 printtime()
