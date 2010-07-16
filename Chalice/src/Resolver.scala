@@ -669,9 +669,6 @@ object Resolver {
      expr.typ = BoolClass
    case expr@ Holds(e) =>
      if(inPredicate) context.Error(expr.pos, "holds cannot be mentioned in monitor invariants or predicates")
-     if(! specContext)
-       context.Error(expr.pos, "holds is allowed only in positive predicate contexts"); 
-     //todo: check that we are not in a monitor invariant
      ResolveExpr(e, context, twoStateContext, false)
      expr.typ = BoolClass
    case expr@ RdHolds(e) =>
