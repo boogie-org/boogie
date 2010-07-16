@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VisualStudioProject>
+  <XEN ProjectType="Local"
+     SchemaVersion="1.0"
+     Name="AbsInt"
+     ProjectGuid="11d06232-2039-4bca-853b-c596e2a4edb0"
+    >
+    <Build>
+      <Settings ApplicationIcon=""
+         AssemblyName="AbsInt"
+         OutputType="Library"
+         RootNamespace="AbsInt"
+         StartupObject=""
+         TargetPlatform="v2"
+         TargetPlatformLocation=""
+         ShadowedAssembly=""
+         StandardLibraryLocation=""
+        >
+        <Config Name="Debug"
+           AllowUnsafeBlocks="False"
+           BaseAddress="285212672"
+           CheckForOverflowUnderflow="False"
+           ConfigurationOverrideFile=""
+           DefineConstants="DEBUG;TRACE"
+           DocumentationFile=""
+           DebugSymbols="True"
+           FileAlignment="4096"
+           IncrementalBuild="True"
+           Optimize="False"
+           OutputPath="bin\Debug"
+           RegisterForComInterop="False"
+           RemoveIntegerChecks="false"
+           TreatWarningsAsErrors="False"
+           WarningLevel="4"
+           RunProgramVerifier="False"
+           ProgramVerifierCommandLineOptions=""
+           ReferenceTypesAreNonNullByDefault="False"
+           RunProgramVerifierWhileEditing="False"
+           AllowPointersToManagedStructures="False"
+           CheckContractAdmissibility="True"
+           CheckPurity="False"
+           />
+        <Config Name="Release"
+           AllowUnsafeBlocks="false"
+           BaseAddress="285212672"
+           CheckForOverflowUnderflow="false"
+           ConfigurationOverrideFile=""
+           DefineConstants="TRACE"
+           DocumentationFile=""
+           DebugSymbols="false"
+           FileAlignment="4096"
+           IncrementalBuild="false"
+           Optimize="true"
+           OutputPath="bin\release"
+           RegisterForComInterop="false"
+           RemoveIntegerChecks="false"
+           TreatWarningsAsErrors="True"
+           WarningLevel="4"
+           />
+      </Settings>
+      <References>
+        <Reference Name="Mscorlib.Contracts"
+             AssemblyName="Mscorlib.Contracts"
+             Private="false"
+             HintPath="../../Binaries/Mscorlib.Contracts.dll"
+             />
+        <Reference Name="System"
+             AssemblyName="System"
+             Private="false"
+             />
+        <Reference Name="System.Compiler"
+             AssemblyName="System.Compiler"
+             Private="false"
+             HintPath="../../Binaries/System.Compiler.dll"
+             />
+        <Reference Name="System.Compiler.Framework"
+             AssemblyName="System.Compiler.Framework"
+             Private="false"
+             HintPath="../../Binaries/System.Compiler.Framework.dll"
+             />
+        <Reference Name="AIFramework"
+             Project="{24B55172-AD8B-47D1-8952-5A95CFDB9B31}"
+             Private="true"
+             />
+        <Reference Name="Core"
+             Project="{47BC34F1-A173-40BE-84C2-9332B4418387}"
+             Private="true"
+             />
+        <Reference Name="Basetypes"
+             Project="{0C692837-77EC-415F-BF04-395E3ED06E9A}"
+             Private="true"
+             />
+      </References>
+    </Build>
+    <Files>
+      <Include>
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="Traverse.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AbstractInterpretation.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="ExprFactories.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="..\version.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="LoopInvariantsOnDemand.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AssemblyInfo.ssc"
+                 />
+      </Include>
+    </Files>
+  </XEN>
+</VisualStudioProject>
