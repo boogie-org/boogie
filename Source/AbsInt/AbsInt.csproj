@@ -1,124 +1,119 @@
-<?xml version="1.0" encoding="utf-8"?>
-<VisualStudioProject>
-  <XEN ProjectType="Local"
-     SchemaVersion="1.0"
-     Name="AbsInt"
-     ProjectGuid="11d06232-2039-4bca-853b-c596e2a4edb0"
-    >
-    <Build>
-      <Settings ApplicationIcon=""
-         AssemblyName="AbsInt"
-         OutputType="Library"
-         RootNamespace="AbsInt"
-         StartupObject=""
-         TargetPlatform="v2"
-         TargetPlatformLocation=""
-         ShadowedAssembly=""
-         StandardLibraryLocation=""
-        >
-        <Config Name="Debug"
-           AllowUnsafeBlocks="False"
-           BaseAddress="285212672"
-           CheckForOverflowUnderflow="False"
-           ConfigurationOverrideFile=""
-           DefineConstants="DEBUG;TRACE"
-           DocumentationFile=""
-           DebugSymbols="True"
-           FileAlignment="4096"
-           IncrementalBuild="True"
-           Optimize="False"
-           OutputPath="bin\Debug"
-           RegisterForComInterop="False"
-           RemoveIntegerChecks="false"
-           TreatWarningsAsErrors="False"
-           WarningLevel="4"
-           RunProgramVerifier="False"
-           ProgramVerifierCommandLineOptions=""
-           ReferenceTypesAreNonNullByDefault="False"
-           RunProgramVerifierWhileEditing="False"
-           AllowPointersToManagedStructures="False"
-           CheckContractAdmissibility="True"
-           CheckPurity="False"
-           />
-        <Config Name="Release"
-           AllowUnsafeBlocks="false"
-           BaseAddress="285212672"
-           CheckForOverflowUnderflow="false"
-           ConfigurationOverrideFile=""
-           DefineConstants="TRACE"
-           DocumentationFile=""
-           DebugSymbols="false"
-           FileAlignment="4096"
-           IncrementalBuild="false"
-           Optimize="true"
-           OutputPath="bin\release"
-           RegisterForComInterop="false"
-           RemoveIntegerChecks="false"
-           TreatWarningsAsErrors="True"
-           WarningLevel="4"
-           />
-      </Settings>
-      <References>
-        <Reference Name="Mscorlib.Contracts"
-             AssemblyName="Mscorlib.Contracts"
-             Private="false"
-             HintPath="../../Binaries/Mscorlib.Contracts.dll"
-             />
-        <Reference Name="System"
-             AssemblyName="System"
-             Private="false"
-             />
-        <Reference Name="System.Compiler"
-             AssemblyName="System.Compiler"
-             Private="false"
-             HintPath="../../Binaries/System.Compiler.dll"
-             />
-        <Reference Name="System.Compiler.Framework"
-             AssemblyName="System.Compiler.Framework"
-             Private="false"
-             HintPath="../../Binaries/System.Compiler.Framework.dll"
-             />
-        <Reference Name="AIFramework"
-             Project="{24B55172-AD8B-47D1-8952-5A95CFDB9B31}"
-             Private="true"
-             />
-        <Reference Name="Core"
-             Project="{47BC34F1-A173-40BE-84C2-9332B4418387}"
-             Private="true"
-             />
-        <Reference Name="Basetypes"
-             Project="{0C692837-77EC-415F-BF04-395E3ED06E9A}"
-             Private="true"
-             />
-      </References>
-    </Build>
-    <Files>
-      <Include>
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="Traverse.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="AbstractInterpretation.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="ExprFactories.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="..\version.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="LoopInvariantsOnDemand.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="AssemblyInfo.ssc"
-                 />
-      </Include>
-    </Files>
-  </XEN>
-</VisualStudioProject>
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{0EFA3E43-690B-48DC-A72C-384A3EA7F31F}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>AbsInt</RootNamespace>
+    <AssemblyName>AbsInt</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <CodeContractsAssemblyMode>0</CodeContractsAssemblyMode>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>InterimKey.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <CodeContractsEnableRuntimeChecking>True</CodeContractsEnableRuntimeChecking>
+    <CodeContractsRuntimeOnlyPublicSurface>False</CodeContractsRuntimeOnlyPublicSurface>
+    <CodeContractsRuntimeThrowOnFailure>True</CodeContractsRuntimeThrowOnFailure>
+    <CodeContractsRuntimeCallSiteRequires>False</CodeContractsRuntimeCallSiteRequires>
+    <CodeContractsRunCodeAnalysis>False</CodeContractsRunCodeAnalysis>
+    <CodeContractsNonNullObligations>False</CodeContractsNonNullObligations>
+    <CodeContractsBoundsObligations>False</CodeContractsBoundsObligations>
+    <CodeContractsArithmeticObligations>False</CodeContractsArithmeticObligations>
+    <CodeContractsPointerObligations>False</CodeContractsPointerObligations>
+    <CodeContractsContainerAnalysis>False</CodeContractsContainerAnalysis>
+    <CodeContractsRedundantAssumptions>False</CodeContractsRedundantAssumptions>
+    <CodeContractsRunInBackground>True</CodeContractsRunInBackground>
+    <CodeContractsShowSquigglies>False</CodeContractsShowSquigglies>
+    <CodeContractsUseBaseLine>False</CodeContractsUseBaseLine>
+    <CodeContractsEmitXMLDocs>False</CodeContractsEmitXMLDocs>
+    <CodeContractsCustomRewriterAssembly>
+    </CodeContractsCustomRewriterAssembly>
+    <CodeContractsCustomRewriterClass>
+    </CodeContractsCustomRewriterClass>
+    <CodeContractsLibPaths>
+    </CodeContractsLibPaths>
+    <CodeContractsExtraRewriteOptions>
+    </CodeContractsExtraRewriteOptions>
+    <CodeContractsExtraAnalysisOptions>
+    </CodeContractsExtraAnalysisOptions>
+    <CodeContractsBaseLineFile>
+    </CodeContractsBaseLineFile>
+    <CodeContractsRuntimeCheckingLevel>Full</CodeContractsRuntimeCheckingLevel>
+    <CodeContractsReferenceAssembly>%28none%29</CodeContractsReferenceAssembly>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="AIFramework, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Binaries\AIFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="Basetypes, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Binaries\Basetypes.dll</HintPath>
+    </Reference>
+    <Reference Include="Core, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Binaries\Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Binaries\Microsoft.Contracts.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Compiler, Version=1.0.21125.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Binaries\System.Compiler.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Compiler.Framework, Version=1.0.21125.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Binaries\System.Compiler.Framework.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AbstractInterpretation.cs" />
+    <Compile Include="cce.cs" />
+    <Compile Include="ExprFactories.cs" />
+    <Compile Include="LoopInvariantsOnDemand.cs" />
+    <Compile Include="Traverse.cs" />
+    <Compile Include="version.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="InterimKey.snk" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -3,40 +3,53 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
-using Microsoft.Contracts;
 
-namespace Microsoft.Boogie.AbstractInterpretation
-{
+namespace Microsoft.Boogie.AbstractInterpretation {
   using System;
   using System.Collections;
-  using System.Collections.Generic;  
+  using System.Collections.Generic;
   using System.Diagnostics;
+  using System.Diagnostics.Contracts;
   using Microsoft.Boogie;
   using Cci = System.Compiler;
   using AI = Microsoft.AbstractInterpretationFramework;
-  using Microsoft.Contracts;
+
 
   /// <summary>
   /// Defines invariant propagation methods over ASTs for an abstract interpretation policy.
   /// </summary>
-  public class AbstractionEngine 
-  {
-    private AI.Lattice! lattice;
-    private Queue<ProcedureWorkItem!>! procWorkItems;  //PM: changed to generic queue
-    private Queue/*<CallSite>*/! callReturnWorkItems;
+  public class AbstractionEngine {
+    private AI.Lattice lattice;
+    private Queue<ProcedureWorkItem> procWorkItems;  //PM: changed to generic queue
+    private Queue/*<CallSite>*/ callReturnWorkItems;
     private Cci.IRelation/*<Procedure,Implementation>*/ procedureImplementations;
-           
-    private class ProcedureWorkItem
-    {
-      [Rep]  // KRML: this doesn't seem like the right designation to me; but I'm not sure what is
-      public Procedure! Proc;
-      public int Index; // pre state is Impl.Summary[Index]
-   
-      invariant 0 <= Index && Index < Proc.Summary.Count;
 
-      public ProcedureWorkItem ([Captured] Procedure! p, AI.Lattice.Element! v, AI.Lattice! lattice)
-        ensures p == Proc; 
-      {
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(lattice != null);
+      Contract.Invariant(procWorkItems != null);
+      Contract.Invariant(callReturnWorkItems != null);
+    }
+
+
+    private class ProcedureWorkItem {
+      [Rep]  // KRML: this doesn't seem like the right designation to me; but I'm not sure what is
+      public Procedure Proc;
+
+      public int Index; // pre state is Impl.Summary[Index]
+      [ContractInvariantMethod]
+      void ObjectInvariant() {
+        Contract.Invariant(Proc != null);
+        Contract.Invariant(0 <= Index && Index < Proc.Summary.Count);
+        Contract.Invariant(log != null);
+      }
+
+      public ProcedureWorkItem([Captured] Procedure p, AI.Lattice.Element v, AI.Lattice lattice) {
+        Contract.Requires(p != null);
+        Contract.Requires(v != null);
+        Contract.Requires(lattice != null);
+
+        Contract.Ensures(p == Proc);
         this.Proc = p;
         p.Summary.Add(new ProcedureSummaryEntry(lattice, v));
         this.Index = p.Summary.Count - 1;
@@ -44,22 +57,23 @@ namespace Microsoft.Boogie.AbstractInterpretation
       }
     }
 
-    private readonly static AI.Logger! log = new AI.Logger("Engine");
+    private readonly static AI.Logger log = new AI.Logger("Engine");
 
-    public AbstractionEngine (AI.Lattice! lattice) 
-    {
-      assume log.IsExposable;  //PM: One would need static class invariants to prove this property
-      expose(log) { 
-        log.Enabled = AI.Lattice.LogSwitch;
-      }
-      this.lattice = lattice; 
-      this.procWorkItems = new Queue<ProcedureWorkItem!>();
+
+    public AbstractionEngine(AI.Lattice lattice) {
+      Contract.Requires(lattice != null);
+      Contract.Assume(cce.IsExposable(log)); //TODO: use the extension method syntax  //PM: One would need static class invariants to prove this property
+      cce.BeginExpose(log);
+      log.Enabled = AI.Lattice.LogSwitch;
+      cce.EndExpose();
+      this.lattice = lattice;
+      this.procWorkItems = new Queue<ProcedureWorkItem>();
       this.callReturnWorkItems = new Queue();
     }
 
-    private Cci.IGraphNavigator ComputeCallGraph (Program! program)
-      ensures this.procedureImplementations != null;
-    {
+    private Cci.IGraphNavigator ComputeCallGraph(Program program) {
+      Contract.Requires(program != null);
+      Contract.Ensures(this.procedureImplementations != null);
       // Since implementations call procedures (impl. signatures) 
       // rather than directly calling other implementations, we first
       // need to compute which implementations implement which
@@ -69,53 +83,45 @@ namespace Microsoft.Boogie.AbstractInterpretation
       Cci.IMutableRelation/*<Implementation,Procedure>*/ callsProcedure = new Cci.Relation();
       Cci.IMutableRelation/*<Procedure,Implementation>*/ implementsProcedure = new Cci.Relation();
       this.procedureImplementations = implementsProcedure;
-      
-//      ArrayList publics = new ArrayList();
-//      publicImpls = publics;
 
-      foreach (Declaration member in program.TopLevelDeclarations)
-      {
+      //      ArrayList publics = new ArrayList();
+      //      publicImpls = publics;
+
+      foreach (Declaration member in program.TopLevelDeclarations) {
         Implementation impl = member as Implementation;
-        if (impl != null) 
-        {
+        if (impl != null) {
           implementsProcedure.Add(impl.Proc, impl);
- //         if (impl.IsPublic) { publics.Add(impl); }          // PR: what does "IsPublic" stand for?
+          //         if (impl.IsPublic) { publics.Add(impl); }          // PR: what does "IsPublic" stand for?
 
-          foreach (Block block in impl.Blocks)
-          {
-            foreach (Cmd cmd in block.Cmds)
-            {
+          foreach (Block block in impl.Blocks) {
+            foreach (Cmd cmd in block.Cmds) {
               CallCmd call = cmd as CallCmd;
-              if (call != null)
-              {
+              if (call != null) {
                 callsProcedure.Add(impl, call.Proc);
               }
             }
           }
         }
       }
-      
+
       // Now compute a graph from implementations to implementations.
 
       Cci.GraphBuilder callGraph = new Cci.GraphBuilder();
 
       IEnumerable callerImpls = callsProcedure.GetKeys();
-      assume callerImpls != null;  // because of non-generic collection
-      foreach (Implementation caller in callerImpls)
-      {
+      Contract.Assume(callerImpls != null);  // because of non-generic collection
+      foreach (Implementation caller in callerImpls) {
         IEnumerable callerProcs = callsProcedure.GetValues(caller);
-        assume callerProcs != null;  // because of non-generic collection
-        foreach (Procedure callee in callerProcs)
-        {
+        Contract.Assume(callerProcs != null);  // because of non-generic collection
+        foreach (Procedure callee in callerProcs) {
           IEnumerable calleeImpls = implementsProcedure.GetValues(callee);
-          assume calleeImpls != null;  // because of non-generic collection
-          foreach (Implementation calleeImpl in calleeImpls)
-          {
+          Contract.Assume(calleeImpls != null);  // because of non-generic collection
+          foreach (Implementation calleeImpl in calleeImpls) {
             callGraph.AddEdge(caller, calleeImpl);
           }
         }
       }
-      
+
       return callGraph;
     }
 
@@ -180,10 +186,15 @@ namespace Microsoft.Boogie.AbstractInterpretation
     }
 #endif
 
-    public AI.Lattice.Element! ApplyProcedureSummary (CallCmd! call, Implementation! caller, AI.Lattice.Element! knownAtCallSite, CallSite! callSite)
-      requires call.Proc != null; 
-    {
-      Procedure! proc = call.Proc;
+    public AI.Lattice.Element ApplyProcedureSummary(CallCmd call, Implementation caller, AI.Lattice.Element knownAtCallSite, CallSite callSite) {
+      Contract.Requires(call.Proc != null);
+      Contract.Requires(call != null);
+      Contract.Requires(caller != null);
+      Contract.Requires(knownAtCallSite != null);
+      Contract.Requires(callSite != null);
+
+      Contract.Ensures(Contract.Result<AI.Lattice.Element>() != null);
+      Procedure proc = call.Proc;//Precondition required that call.Proc !=null, therefore no assert necessarry.
 
       // NOTE: Here, we count on the fact that an implementation's variables
       // are distinct from an implementation's procedure's variables. So, even for
@@ -197,73 +208,75 @@ namespace Microsoft.Boogie.AbstractInterpretation
       // where the notation i' means a variable with the same (string) name as i, 
       // but a different identity.
 
-      AI.Lattice.Element! relevantToCall = knownAtCallSite;
-      for (int i=0; i<proc.InParams.Length; i++)
-      {
+      AI.Lattice.Element relevantToCall = knownAtCallSite; //Precondition of the method implies that this can never be null, therefore no need for an assert.
+      for (int i = 0; i < proc.InParams.Length; i++) {
         // "Assign" the actual expressions to the corresponding formal variables.
-        assume proc.InParams[i] != null;  //PM: this can be fixed once VariableSeq is replaced by List<Variable!>;
-        assume call.Ins[i] != null;       //PM: this can be fixed once VariableSeq is replaced by List<Variable!>;
-        Expr equality = Expr.Eq(Expr.Ident( (!) proc.InParams[i]), (!) call.Ins[i]);
+        Contract.Assume(proc.InParams[i] != null);  //PM: this can be fixed once VariableSeq is replaced by List<Variable!>;
+        Contract.Assume(call.Ins[i] != null);       //PM: this can be fixed once VariableSeq is replaced by List<Variable!>;
+        Expr equality = Expr.Eq(Expr.Ident(cce.NonNull(proc.InParams[i])), cce.NonNull(call.Ins[i]));
         relevantToCall = lattice.Constrain(relevantToCall, equality.IExpr);
       }
-      foreach (Variable! var in caller.LocVars) {
-          relevantToCall = this.lattice.Eliminate(relevantToCall, var);
+      foreach (Variable var in caller.LocVars) {
+        Contract.Assert(var != null);
+        relevantToCall = this.lattice.Eliminate(relevantToCall, var);
       }
 
-      ProcedureSummary! summary = proc.Summary;
+      ProcedureSummary summary = proc.Summary;
+      Contract.Assert(summary != null);
       ProcedureSummaryEntry applicableEntry = null;
 
-      for (int i=0; i<summary.Count; i++)
-      {
-        ProcedureSummaryEntry! current = (!) summary[i];
+      for (int i = 0; i < summary.Count; i++) {
+        ProcedureSummaryEntry current = cce.NonNull(summary[i]);
 
-        if (lattice.Equivalent(current.OnEntry, relevantToCall))
-        {
+        if (lattice.Equivalent(current.OnEntry, relevantToCall)) {
           applicableEntry = current;
           break;
         }
       }
 
       // Not found in current map, so add new entry.
-      if (applicableEntry == null)
-      {
-        ProcedureWorkItem! newWorkItem = new ProcedureWorkItem(proc, relevantToCall, lattice);
+      if (applicableEntry == null) {
+        ProcedureWorkItem newWorkItem = new ProcedureWorkItem(proc, relevantToCall, lattice);
+        Contract.Assert(newWorkItem != null);
         this.procWorkItems.Enqueue(newWorkItem);
-        applicableEntry = (!)  proc.Summary[newWorkItem.Index];
+        applicableEntry = cce.NonNull(proc.Summary[newWorkItem.Index]);
       }
       applicableEntry.ReturnPoints.Add(callSite);
-      
+
 
       AI.Lattice.Element atReturn = applicableEntry.OnExit;
 
-      for (int i=0; i<call.Outs.Count; i++)
-      {
-        atReturn = this.lattice.Rename(atReturn, (!) call.Proc.OutParams[i], (!)((!) call.Outs[i]).Decl);
-        knownAtCallSite = this.lattice.Eliminate(knownAtCallSite, (!)((!) call.Outs[i]).Decl);
+      for (int i = 0; i < call.Outs.Count; i++) {
+        atReturn = this.lattice.Rename(atReturn, cce.NonNull(call.Proc.OutParams[i]), cce.NonNull(cce.NonNull(call.Outs[i]).Decl));
+        knownAtCallSite = this.lattice.Eliminate(knownAtCallSite, cce.NonNull(cce.NonNull(call.Outs[i]).Decl));
       }
 
       return this.lattice.Meet(atReturn, knownAtCallSite);
     }
 
     private Cci.IGraphNavigator callGraph;
-    public Cci.IGraphNavigator CallGraph { 
-      get { return this.callGraph; } 
-    } 
-     
+    public Cci.IGraphNavigator CallGraph {
+      get {
+        return this.callGraph;
+      }
+    }
+
     /// <summary>
     /// Compute the invariants for the program using the underlying abstract domain
     /// </summary>
-    public void ComputeProgramInvariants (Program! program) 
-    {        
-      
+    public void ComputeProgramInvariants(Program program) {
+      Contract.Requires(program != null);
+
 #if NOT_YET
       Cci.IGraphNavigator callGraph = 
 #endif
 
       callGraph = this.ComputeCallGraph(program);
-      assert this.procedureImplementations != null;
-      Cci.IRelation! procedureImplementations = this.procedureImplementations;
-
+      Contract.Assert(this.procedureImplementations != null);
+      Cci.IRelation procedureImplementations = this.procedureImplementations;//Non-nullability was already asserted in
+      //the line above, ergo there is no need for
+      //an assert after this statement to maintain
+      //the non-null type.
 #if NOT_YET
       IEnumerable/*<IStronglyConnectedComponent>*/ sccs = 
           StronglyConnectedComponent.ConstructSCCs(publicImpls, callGraph);
@@ -277,89 +290,75 @@ namespace Microsoft.Boogie.AbstractInterpretation
         this.ComputeSccInvariants(scc.Nodes);
       }
 #endif
-      AI.Lattice.Element! initialElement = this.lattice.Top;
+      AI.Lattice.Element initialElement = this.lattice.Top;
+      Contract.Assert(initialElement != null);
       // Gather all the axioms to create the initial lattice element
       // Differently stated, it is the \alpha from axioms (i.e. first order formulae) to the underlyng abstract domain
 
-      foreach (Declaration decl in program.TopLevelDeclarations)
-      {
+      foreach (Declaration decl in program.TopLevelDeclarations) {
         Axiom ax = decl as Axiom;
-        if (ax != null)
-        {
+        if (ax != null) {
           initialElement = this.lattice.Constrain(initialElement, ax.Expr.IExpr);
         }
       }
 
       // propagate over all procedures...
-      foreach (Declaration decl in program.TopLevelDeclarations)
-      {
+      foreach (Declaration decl in program.TopLevelDeclarations) {
         Procedure proc = decl as Procedure;
-        if (proc != null) 
-        {
+        if (proc != null) {
           this.procWorkItems.Enqueue(new ProcedureWorkItem(proc, initialElement, this.lattice));
         }
       }
 
       // analyze all the procedures...
-      while (this.procWorkItems.Count + this.callReturnWorkItems.Count > 0)
-      {
-        while (this.procWorkItems.Count > 0)
-        {
+      while (this.procWorkItems.Count + this.callReturnWorkItems.Count > 0) {
+        while (this.procWorkItems.Count > 0) {
           ProcedureWorkItem workItem = this.procWorkItems.Dequeue();
 
-          ProcedureSummaryEntry summaryEntry = (!) workItem.Proc.Summary[workItem.Index];
+          ProcedureSummaryEntry summaryEntry = cce.NonNull(workItem.Proc.Summary[workItem.Index]);
 
-          if (((!) procedureImplementations.GetValues(workItem.Proc)).Count == 0)
-          {
+          if (cce.NonNull(procedureImplementations.GetValues(workItem.Proc)).Count == 0) {
             // This procedure has no given implementations.  We therefore treat the procedure
             // according to its specification only.
 
-            if (!CommandLineOptions.Clo.IntraproceduralInfer)
-            {
+            if (!CommandLineOptions.Clo.IntraproceduralInfer) {
               AI.Lattice.Element post = summaryEntry.OnEntry;
               // BUGBUG.  Here, we should process "post" according to the requires, modifies, ensures
               // specification of the procedure, including any OLD expressions in the postcondition.
               AI.Lattice.Element atReturn = post;
 
-              if ( ! this.lattice.LowerThan(atReturn, summaryEntry.OnExit))
-              {
+              if (!this.lattice.LowerThan(atReturn, summaryEntry.OnExit)) {
                 // If the results of this analysis are strictly worse than
                 // what we previous knew for the same input assumptions,
                 // update the summary and re-do the call sites.
 
                 summaryEntry.OnExit = this.lattice.Join(summaryEntry.OnExit, atReturn);
 
-                foreach (CallSite callSite in summaryEntry.ReturnPoints)
-                {
+                foreach (CallSite callSite in summaryEntry.ReturnPoints) {
                   this.callReturnWorkItems.Enqueue(callSite);
                 }
               }
             }
-          }
-          else
-          {
+          } else {
             // There are implementations, so do inference based on those implementations
 
-            if (!CommandLineOptions.Clo.IntraproceduralInfer)
-            {
+            if (!CommandLineOptions.Clo.IntraproceduralInfer) {
               summaryEntry.OnExit = lattice.Bottom;
             }
 
             // For each implementation in the procedure...
-            foreach (Implementation! impl in (!) procedureImplementations.GetValues(workItem.Proc))
-            {
+            foreach (Implementation impl in cce.NonNull(procedureImplementations.GetValues(workItem.Proc))) {
               // process each procedure implementation by recursively processing the first (entry) block...
-              ((!)impl.Blocks[0]).Lattice = lattice;
-              ComputeBlockInvariants(impl, (!) impl.Blocks[0], summaryEntry.OnEntry, summaryEntry);
+              cce.NonNull(impl.Blocks[0]).Lattice = lattice;
+              ComputeBlockInvariants(impl, cce.NonNull(impl.Blocks[0]), summaryEntry.OnEntry, summaryEntry);
               AdjustProcedureSummary(impl, summaryEntry);
             }
           }
         }
 
 
-        while (this.callReturnWorkItems.Count > 0)
-        {
-          CallSite callSite = (CallSite!) this.callReturnWorkItems.Dequeue();
+        while (this.callReturnWorkItems.Count > 0) {
+          CallSite callSite = cce.NonNull((CallSite)this.callReturnWorkItems.Dequeue());
 
           PropagateStartingAtStatement(callSite.Impl, callSite.Block, callSite.Statement, callSite.KnownBeforeCall, callSite.SummaryEntry);
           AdjustProcedureSummary(callSite.Impl, callSite.SummaryEntry);
@@ -368,62 +367,61 @@ namespace Microsoft.Boogie.AbstractInterpretation
       } // both queues
 
     }
-    
-    void AdjustProcedureSummary(Implementation! impl, ProcedureSummaryEntry! summaryEntry)
-    {
+
+    void AdjustProcedureSummary(Implementation impl, ProcedureSummaryEntry summaryEntry) {
+      Contract.Requires(impl != null);
+      Contract.Requires(summaryEntry != null);
       if (CommandLineOptions.Clo.IntraproceduralInfer) {
         return;  // no summary to adjust
       }
 
       // compute the procedure invariant by joining all terminal block invariants...
       AI.Lattice.Element post = lattice.Bottom;
-      foreach (Block block in impl.Blocks) 
-      {
-        if (block.TransferCmd is ReturnCmd) 
-        {                 
+      foreach (Block block in impl.Blocks) {
+        if (block.TransferCmd is ReturnCmd) {
           // note: if program control cannot reach this block, then postValue will be null
-          if (block.PostInvariant != null) 
-          {
-            post = (AI.Lattice.Element) lattice.Join(post, block.PostInvariant);
+          if (block.PostInvariant != null) {
+            post = (AI.Lattice.Element)lattice.Join(post, block.PostInvariant);
           }
         }
       }
 
       AI.Lattice.Element atReturn = post;
-      foreach (Variable! var in impl.LocVars) 
-      {
-          atReturn = this.lattice.Eliminate(atReturn, var);
+      foreach (Variable var in impl.LocVars) {
+        Contract.Assert(var != null);
+        atReturn = this.lattice.Eliminate(atReturn, var);
       }
-      foreach (Variable! var in impl.InParams) 
-      {
-          atReturn = this.lattice.Eliminate(atReturn, var);
+      foreach (Variable var in impl.InParams) {
+        Contract.Assert(var != null);
+        atReturn = this.lattice.Eliminate(atReturn, var);
       }
 
-      if ( ! this.lattice.LowerThan(atReturn, summaryEntry.OnExit))
-      {
+      if (!this.lattice.LowerThan(atReturn, summaryEntry.OnExit)) {
         // If the results of this analysis are strictly worse than
         // what we previous knew for the same input assumptions,
         // update the summary and re-do the call sites.
 
         summaryEntry.OnExit = this.lattice.Join(summaryEntry.OnExit, atReturn);
 
-        foreach (CallSite! callSite in summaryEntry.ReturnPoints)
-        {
+        foreach (CallSite callSite in summaryEntry.ReturnPoints) {
+          Contract.Assert(callSite != null);
           this.callReturnWorkItems.Enqueue(callSite);
         }
       }
     }
 
     private static int freshVarId = 0;
-    private static Variable! FreshVar(Boogie.Type! ty)
-    {
+    private static Variable FreshVar(Boogie.Type ty) {
+      Contract.Requires(ty != null);
+      Contract.Ensures(Contract.Result<Variable>() != null);
+
       Variable fresh = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "fresh" + freshVarId, ty));
       freshVarId++;
       return fresh;
     }
-    
-    private delegate CallSite! MarkCallSite(AI.Lattice.Element! currentValue);
-    
+
+    private delegate CallSite/*!*/ MarkCallSite(AI.Lattice.Element/*!*/ currentValue);//TODO: Think this is an invariant, but not sure how2 deal with it
+
     /// <summary>
     /// Given a basic block, it propagates the abstract state at the entry point through the exit point of the block
     /// <param name="impl"> The implementation that owns the block </param>
@@ -431,44 +429,45 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// <param name="statementIndex">  </param> 
     /// <param name="currentValue"> The initial value </param>
     /// </summary>
-    private void PropagateStartingAtStatement (Implementation! impl, Block! block, int statementIndex, AI.Lattice.Element! currentValue,
-                                               ProcedureSummaryEntry! summaryEntry)
-    {
-      assume log.IsPeerConsistent;
-      log.DbgMsg(string.Format("{0}:", block.Label)); log.DbgMsgIndent();
+    private void PropagateStartingAtStatement(Implementation/*!*/ impl, Block/*!*/ block, int statementIndex, AI.Lattice.Element/*!*/ currentValue,
+                                               ProcedureSummaryEntry/*!*/ summaryEntry) {
+      Contract.Requires(impl != null);
+      Contract.Requires(block != null);
+      Contract.Requires(currentValue != null);
+      Contract.Requires(summaryEntry != null);
+      Contract.Assume(cce.IsPeerConsistent(log));
+      log.DbgMsg(string.Format("{0}:", block.Label));
+      log.DbgMsgIndent();
 
       #region Apply the abstract transition relation to the statements in the block
-      for (int cmdIndex = statementIndex; cmdIndex < block.Cmds.Length; cmdIndex++) 
-      {
-        Cmd! cmd = (!) block.Cmds[cmdIndex];              // Fetch the command
+      for (int cmdIndex = statementIndex; cmdIndex < block.Cmds.Length; cmdIndex++) {
+        Cmd cmd = cce.NonNull(block.Cmds[cmdIndex]);              // Fetch the command
         currentValue = Step(cmd, currentValue, impl,      // Apply the transition function
-                            delegate (AI.Lattice.Element! currentValue) 
-                            {
-                              return new CallSite(impl, block, cmdIndex, currentValue, summaryEntry);
+                            delegate(AI.Lattice.Element cv) {
+                              Contract.Requires(cv != null);
+                              return new CallSite(impl, block, cmdIndex, cv, summaryEntry);
                             }
                            );
       }
-      
+
       block.PostInvariant = currentValue;      // The invariant at the exit point of the block is that of the last statement
-           
-      log.DbgMsg(string.Format("pre   {0}", ((!)block.PreInvariant).ToString()));
+
+      log.DbgMsg(string.Format("pre   {0}", cce.NonNull(block.PreInvariant).ToString()));
       log.DbgMsg(string.Format("post  {0}", (block.PostInvariant).ToString()));
       log.DbgMsgUnindent();
-      #endregion    
+      #endregion
       #region Propagate the post-condition to the successor nodes
       GotoCmd @goto = block.TransferCmd as GotoCmd;
-      if (@goto != null) 
-      {
+      if (@goto != null) {
         // labelTargets is non-null after calling Resolve in a prior phase.
-        assume @goto.labelTargets != null;
+        Contract.Assume(@goto.labelTargets != null);
 
         // For all the successors of this block, propagate the abstract state
-        foreach (Block! succ in @goto.labelTargets) 
-        { 
-          if(impl.Blocks.Contains(succ))
-          {
+        foreach (Block succ in @goto.labelTargets) {
+          Contract.Assert(succ != null);
+          if (impl.Blocks.Contains(succ)) {
             succ.Lattice = block.Lattice;         // The lattice is the same
-                                                // Propagate the post-abstract state of this block to the successor
+            // Propagate the post-abstract state of this block to the successor
             ComputeBlockInvariants(impl, succ, block.PostInvariant, summaryEntry);
           }
         }
@@ -479,38 +478,46 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// <summary>
     /// The abstract transition relation.
     /// </summary>
-    private AI.Lattice.Element! Step(Cmd! cmd, AI.Lattice.Element! pre, Implementation! impl, MarkCallSite/*?*/ callSiteMarker)
-    {
-      assume log.IsPeerConsistent;
-      log.DbgMsg(string.Format("{0}", cmd)); log.DbgMsgIndent();
-      
-      AI.Lattice.Element! currentValue = pre;
-      
+    private AI.Lattice.Element Step(Cmd cmd, AI.Lattice.Element pre, Implementation impl, MarkCallSite/*?*/ callSiteMarker) {
+      Contract.Requires(cmd != null);
+      Contract.Requires(pre != null);
+      Contract.Requires(impl != null);
+      Contract.Ensures(Contract.Result<AI.Lattice.Element>() != null);
+
+      Contract.Assume(cce.IsPeerConsistent(log));
+      log.DbgMsg(string.Format("{0}", cmd));
+      log.DbgMsgIndent();
+
+      AI.Lattice.Element currentValue = pre;//Nonnullability was a precondition
+
       // Case split...
       #region AssignCmd
       if (cmd is AssignCmd) { // parallel assignment
         // we first eliminate map assignments
-        AssignCmd! assmt = ((AssignCmd)cmd).AsSimpleAssignCmd;
+        AssignCmd assmt = cce.NonNull((AssignCmd)cmd).AsSimpleAssignCmd;
         //PM: Assume variables have been resolved
-        assume forall {AssignLhs! lhs in assmt.Lhss;
-                       lhs.DeepAssignedVariable != null};
+        Contract.Assume(Contract.ForAll<AssignLhs>(assmt.Lhss, lhs => lhs.DeepAssignedVariable != null));//TODO: Check my work, please, Mike.
 
-        List<IdentifierExpr!>! freshLhs = new List<IdentifierExpr!> ();
-        foreach (AssignLhs! lhs in assmt.Lhss)
-          freshLhs.Add(Expr.Ident(FreshVar(((!)lhs.DeepAssignedVariable)
+        List<IdentifierExpr/*!>!*/> freshLhs = new List<IdentifierExpr/*!*/>();
+        foreach (AssignLhs lhs in assmt.Lhss) {
+          Contract.Assert(lhs != null);
+          freshLhs.Add(Expr.Ident(FreshVar(cce.NonNull(lhs.DeepAssignedVariable)
                                            .TypedIdent.Type)));
+        }
 
         for (int i = 0; i < freshLhs.Count; ++i)
           currentValue =
             this.lattice.Constrain(currentValue,
                                    Expr.Eq(freshLhs[i], assmt.Rhss[i]).IExpr);
-        foreach (AssignLhs! lhs in assmt.Lhss)
+        foreach (AssignLhs lhs in assmt.Lhss) {
+          Contract.Assert(lhs != null);
           currentValue =
-            this.lattice.Eliminate(currentValue, (!)lhs.DeepAssignedVariable);
+            this.lattice.Eliminate(currentValue, cce.NonNull(lhs.DeepAssignedVariable));
+        }
         for (int i = 0; i < freshLhs.Count; ++i)
           currentValue =
-            this.lattice.Rename(currentValue, (!)freshLhs[i].Decl,
-                                (!)assmt.Lhss[i].DeepAssignedVariable);
+            this.lattice.Rename(currentValue, cce.NonNull(freshLhs[i].Decl),
+                                cce.NonNull(assmt.Lhss[i].DeepAssignedVariable));
       }
 
       /*
@@ -570,23 +577,23 @@ namespace Microsoft.Boogie.AbstractInterpretation
         } */
       #endregion
       #region Havoc
-      else if (cmd is HavocCmd)
-      {
+      else if (cmd is HavocCmd) {
         HavocCmd havoc = (HavocCmd)cmd;
-        foreach (IdentifierExpr! id in havoc.Vars)
-        {
-          currentValue = this.lattice.Eliminate(currentValue, (!)id.Decl);
+        foreach (IdentifierExpr id in havoc.Vars) {
+          Contract.Assert(id != null);
+          currentValue = this.lattice.Eliminate(currentValue, cce.NonNull(id.Decl));
         }
       }
       #endregion
       #region PredicateCmd
-      else if (cmd is PredicateCmd)
-      {
+ else if (cmd is PredicateCmd) {
         //System.Console.WriteLine("Abstract State BEFORE " + ((PredicateCmd) cmd).Expr + " : " +this.lattice.ToPredicate(currentValue));
 
-        Expr! embeddedExpr = (!)((PredicateCmd)cmd).Expr;
-        List<Expr!>! conjuncts = flatConjunction(embeddedExpr);           // Handle "assume P && Q" as if it was "assume P; assume Q"
-        foreach(Expr! c in conjuncts) {
+        Expr embeddedExpr = cce.NonNull((PredicateCmd)cmd).Expr;
+        List<Expr/*!>!*/> conjuncts = flatConjunction(embeddedExpr);           // Handle "assume P && Q" as if it was "assume P; assume Q"
+        Contract.Assert(conjuncts != null);
+        foreach (Expr c in conjuncts) {
+          Contract.Assert(c != null);
           currentValue = this.lattice.Constrain(currentValue, c.IExpr);
         }
 
@@ -594,86 +601,91 @@ namespace Microsoft.Boogie.AbstractInterpretation
       }
       #endregion
       #region CallCmd
-      else if (cmd is CallCmd)
-      {
+ else if (cmd is CallCmd) {
         CallCmd call = (CallCmd)cmd;
-        
-        if (!CommandLineOptions.Clo.IntraproceduralInfer)
-        {
+
+        if (!CommandLineOptions.Clo.IntraproceduralInfer) {
           // Interprocedural analysis
-          
-          if (callSiteMarker == null)
-          {
+
+          if (callSiteMarker == null) {
             throw new System.InvalidOperationException("INTERNAL ERROR: Context does not allow CallCmd.");
           }
-          
+
           CallSite here = callSiteMarker(currentValue);
           currentValue = ApplyProcedureSummary(call, impl, currentValue, here);
-        }
-        else
-        {
+        } else {
           // Intraprocedural analysis
-          
+
           StateCmd statecmd = call.Desugaring as StateCmd;
-          if (statecmd != null)
-          {
+          if (statecmd != null) {
             // Iterate the abstract transition on all the commands in the desugaring of the call
-            foreach (Cmd! callDesug in statecmd.Cmds) { currentValue = Step(callDesug, currentValue, impl, null); }
-            
+            foreach (Cmd callDesug in statecmd.Cmds) {
+              Contract.Assert(callDesug != null);
+              currentValue = Step(callDesug, currentValue, impl, null);
+            }
+
             // Now, project out the local variables
-            foreach (Variable! local in statecmd.Locals) { currentValue = this.lattice.Eliminate(currentValue, local); }
-          }
-          else throw new System.InvalidOperationException("INTERNAL ERROR: CallCmd does not desugar to StateCmd.");
+            foreach (Variable local in statecmd.Locals) {
+              Contract.Assert(local != null);
+              currentValue = this.lattice.Eliminate(currentValue, local);
+            }
+          } else
+            throw new System.InvalidOperationException("INTERNAL ERROR: CallCmd does not desugar to StateCmd.");
         }
       }
       #endregion
       #region CommentCmd
-      else if (cmd is CommentCmd)
-      {
+ else if (cmd is CommentCmd) {
         // skip
       }
-      #endregion      
-      else if (cmd is SugaredCmd)
-      {
+      #endregion
+ else if (cmd is SugaredCmd) {
         // other sugared commands are treated like their desugaring
         SugaredCmd sugar = (SugaredCmd)cmd;
         Cmd desugaring = sugar.Desugaring;
         if (desugaring is StateCmd) {
           StateCmd statecmd = (StateCmd)desugaring;
           // Iterate the abstract transition on all the commands in the desugaring of the call
-          foreach (Cmd! callDesug in statecmd.Cmds) { currentValue = Step(callDesug, currentValue, impl, null); }
+          foreach (Cmd callDesug in statecmd.Cmds) {
+            Contract.Assert(callDesug != null);
+            currentValue = Step(callDesug, currentValue, impl, null);
+          }
           // Now, project out the local variables
-          foreach (Variable! local in statecmd.Locals) { currentValue = this.lattice.Eliminate(currentValue, local); }
+          foreach (Variable local in statecmd.Locals) {
+            Contract.Assert(local != null);
+            currentValue = this.lattice.Eliminate(currentValue, local);
+          }
         } else {
           currentValue = Step(desugaring, currentValue, impl, null);
         }
+      } else {
+        Contract.Assert(false);  // unknown command
+        throw new cce.UnreachableException();
       }
-      else
-      {
-          assert false;  // unknown command
-      }
-      
+
       log.DbgMsgUnindent();
-      
+
       return currentValue;
     }
- 
+
     /// <summary>
     /// Flat an expresion in the form P AND Q ... AND R into a list [P, Q, ..., R]
     /// </summary>
-    private List<Expr!>! flatConjunction(Expr! embeddedExpr) 
-    {
-      List<Expr!>! retValue = new List<Expr!>();
+    private List<Expr/*!>!*/> flatConjunction(Expr embeddedExpr) {
+      Contract.Requires(embeddedExpr != null);
+      Contract.Ensures(cce.NonNullElements(Contract.Result<List<Expr>>()));
+
+
+      List<Expr/*!>!*/> retValue = new List<Expr/*!*/>();//No asserts necessarry.  It is the return value, and thus will be subject to the postcondition
       NAryExpr e = embeddedExpr as NAryExpr;
-      if(e != null && e.Fun.FunctionName.CompareTo("&&") == 0) {    // if it is a conjunction
-        foreach(Expr! arg in e.Args) 
-        {
-          List<Expr!>! newConjuncts = flatConjunction(arg);
+      if (e != null && e.Fun.FunctionName.CompareTo("&&") == 0) {    // if it is a conjunction
+        foreach (Expr arg in e.Args) {
+          Contract.Assert(arg != null);
+          List<Expr/*!*/>/*!*/  newConjuncts = flatConjunction(arg);
+          Contract.Assert(cce.NonNullElements(newConjuncts));
           retValue.AddRange(newConjuncts);
-        }          
-      }
-      else 
-      {     
+        }
+      } else {
         retValue.Add(embeddedExpr);
       }
       return retValue;
@@ -685,24 +697,26 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// <param name="block">  The block for which we compute the invariants </param>
     /// <param name="incomingValue">  The "init" abstract state for the block </param>
     /// </summary>
-    private void ComputeBlockInvariants (Implementation! impl, Block! block, AI.Lattice.Element! incomingValue, ProcedureSummaryEntry! summaryEntry)
-    {
+    private void ComputeBlockInvariants(Implementation impl, Block block, AI.Lattice.Element incomingValue, ProcedureSummaryEntry summaryEntry) {
+      Contract.Requires(impl != null);
+      Contract.Requires(block != null);
+      Contract.Requires(incomingValue != null);
+      Contract.Requires(summaryEntry != null);
       if (block.PreInvariant == null) // block has not yet been processed
       {
-        assert block.PostInvariant == null;
-        
+        Contract.Assert(block.PostInvariant == null);
+
         // To a first approximation the block is unreachable
         block.PreInvariant = this.lattice.Bottom;
         block.PostInvariant = this.lattice.Bottom;
       }
 
-      assert block.PreInvariant != null;
-      assert block.PostInvariant != null;
+      Contract.Assert(block.PreInvariant != null);
+      Contract.Assert(block.PostInvariant != null);
 
       #region Check if we have reached a postfixpoint
 
-      if (lattice.LowerThan(incomingValue, block.PreInvariant))
-      {
+      if (lattice.LowerThan(incomingValue, block.PreInvariant)) {
         // We have reached a post-fixpoint, so we are done...
 #if DEBUG_PRINT
         System.Console.WriteLine("@@ Compared for block {0}:", block.Label);
@@ -733,37 +747,32 @@ namespace Microsoft.Boogie.AbstractInterpretation
       System.Console.WriteLine("@@ end Compare");
       string operation = "";
 #endif
-      #endregion       
+      #endregion
       #region If it is not the case, then join or widen the incoming abstract state with the previous one
       if (block.widenBlock)     // If the considered block is the entry point of a loop
       {
-        if( block.iterations <= CommandLineOptions.Clo.StepsBeforeWidening+1)
-        {        
+        if (block.iterations <= CommandLineOptions.Clo.StepsBeforeWidening + 1) {
 #if DEBUG_PRINT 
     operation = "join";
 #endif
-          block.PreInvariant = (AI.Lattice.Element) lattice.Join( block.PreInvariant, incomingValue);
-        }        
-        else
-        {
+          block.PreInvariant = (AI.Lattice.Element)lattice.Join(block.PreInvariant, incomingValue);
+        } else {
 #if DEBUG_PRINT
       operation = "widening";
-#endif 
+#endif
 
-            // The default is to have have a widening that perform a (approximation of) the closure of the operands, so to improve the precision
-        //    block.PreInvariant =  WideningWithClosure.MorePreciseWiden(lattice, (!) block.PreInvariant, incomingValue);            
-         block.PreInvariant = (AI.Lattice.Element) lattice.Widen( block.PreInvariant, incomingValue);
+          // The default is to have have a widening that perform a (approximation of) the closure of the operands, so to improve the precision
+          //    block.PreInvariant =  WideningWithClosure.MorePreciseWiden(lattice, (!) block.PreInvariant, incomingValue);            
+          block.PreInvariant = (AI.Lattice.Element)lattice.Widen(block.PreInvariant, incomingValue);
         }
         block.iterations++;
-      } 
-      else 
-      {
+      } else {
 #if DEBUG_PRINT
   operation = "join";
 #endif
-        block.PreInvariant = (AI.Lattice.Element) lattice.Join( block.PreInvariant, incomingValue);
+        block.PreInvariant = (AI.Lattice.Element)lattice.Join(block.PreInvariant, incomingValue);
       }
-      
+
 #if DEBUG_PRINT
       System.Console.WriteLine("@@ {0} for block {1}:", operation, block.Label);
       System.Console.WriteLine("@@ {0}", lattice.ToPredicate(block.PreInvariant));
@@ -771,7 +780,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 #endif
       #endregion
       #region Propagate the entry abstract state through the method
-        PropagateStartingAtStatement(impl, block, 0, (!) block.PreInvariant.Clone(), summaryEntry);
+      PropagateStartingAtStatement(impl, block, 0, cce.NonNull(block.PreInvariant.Clone()), summaryEntry);
       #endregion
     }
 
@@ -794,26 +803,26 @@ namespace Microsoft.Boogie.AbstractInterpretation
   /// <summary>
   /// Defines a class for building the abstract domain according to the parameters switch
   /// </summary>
-  public class AbstractDomainBuilder
-  {
+  public class AbstractDomainBuilder {
 
-    private AbstractDomainBuilder()
-    { /* do nothing */ }
-  
+    private AbstractDomainBuilder() { /* do nothing */
+    }
+
     /// <summary>
     /// Return a fresh instance of the abstract domain of intervals
     /// </summary>
-    static public AbstractAlgebra! BuildIntervalsAbstractDomain() 
-    { 
+    static public AbstractAlgebra BuildIntervalsAbstractDomain() {
+      Contract.Ensures(Contract.Result<AbstractAlgebra>() != null);
+
       AI.IQuantPropExprFactory propfactory = new BoogiePropFactory();
-      AI.ILinearExprFactory linearfactory = new BoogieLinearFactory();     
+      AI.ILinearExprFactory linearfactory = new BoogieLinearFactory();
       AI.IValueExprFactory valuefactory = new BoogieValueFactory();
       IComparer variableComparer = new VariableComparer();
 
-      AbstractAlgebra! retAlgebra;
-      AI.Lattice! intervals = new AI.VariableMapLattice(propfactory, valuefactory, new AI.IntervalLattice(linearfactory), variableComparer);
-
-      retAlgebra = new AbstractAlgebra(intervals, propfactory, linearfactory, null, valuefactory, null, variableComparer);    
+      AbstractAlgebra retAlgebra;
+      AI.Lattice intervals = new AI.VariableMapLattice(propfactory, valuefactory, new AI.IntervalLattice(linearfactory), variableComparer);
+      Contract.Assert(intervals != null);
+      retAlgebra = new AbstractAlgebra(intervals, propfactory, linearfactory, null, valuefactory, null, variableComparer);
 
       return retAlgebra;
     }
@@ -821,154 +830,154 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// <summary>
     /// Return a fresh abstract domain, according to the parameters specified by the command line
     /// </summary>
-    static public AbstractAlgebra! BuildAbstractDomain()
-    {
-        AbstractAlgebra! retAlgebra;
-      
-        AI.Lattice! returnLattice;
+    static public AbstractAlgebra BuildAbstractDomain() {
+      Contract.Ensures(Contract.Result<AbstractAlgebra>() != null);
 
-        AI.IQuantPropExprFactory propfactory = new BoogiePropFactory();
-        AI.ILinearExprFactory linearfactory = new BoogieLinearFactory();
-        AI.IIntExprFactory intfactory = new BoogieIntFactory();
-        AI.IValueExprFactory valuefactory = new BoogieValueFactory();
-        AI.INullnessFactory nullfactory = new BoogieNullnessFactory();
-        IComparer variableComparer = new VariableComparer();
+      AbstractAlgebra retAlgebra;
 
-        AI.MultiLattice multilattice = new AI.MultiLattice(propfactory, valuefactory);
+      AI.Lattice returnLattice;
 
-        if (CommandLineOptions.Clo.Ai.Intervals)        // Intervals
+      AI.IQuantPropExprFactory propfactory = new BoogiePropFactory();
+      AI.ILinearExprFactory linearfactory = new BoogieLinearFactory();
+      AI.IIntExprFactory intfactory = new BoogieIntFactory();
+      AI.IValueExprFactory valuefactory = new BoogieValueFactory();
+      AI.INullnessFactory nullfactory = new BoogieNullnessFactory();
+      IComparer variableComparer = new VariableComparer();
+
+      AI.MultiLattice multilattice = new AI.MultiLattice(propfactory, valuefactory);
+
+      if (CommandLineOptions.Clo.Ai.Intervals)        // Intervals
         {
-          multilattice.AddLattice(new AI.VariableMapLattice(propfactory, valuefactory,
-                                  new AI.IntervalLattice(linearfactory),
-                                  variableComparer));
-        }
-        if (CommandLineOptions.Clo.Ai.Constant)         // Constant propagation
+        multilattice.AddLattice(new AI.VariableMapLattice(propfactory, valuefactory,
+                                new AI.IntervalLattice(linearfactory),
+                                variableComparer));
+      }
+      if (CommandLineOptions.Clo.Ai.Constant)         // Constant propagation
 
         {
-          multilattice.AddLattice(new AI.VariableMapLattice(propfactory, valuefactory,
-                                  new AI.ConstantLattice(intfactory),
-                                  variableComparer));
-        }
-        if (CommandLineOptions.Clo.Ai.DynamicType)      // Class types
+        multilattice.AddLattice(new AI.VariableMapLattice(propfactory, valuefactory,
+                                new AI.ConstantLattice(intfactory),
+                                variableComparer));
+      }
+      if (CommandLineOptions.Clo.Ai.DynamicType)      // Class types
         {
-          BoogieTypeFactory typeFactory = new BoogieTypeFactory();
-          multilattice.AddLattice(new AI.VariableMapLattice(propfactory, valuefactory,
-                                                    new AI.DynamicTypeLattice(typeFactory, propfactory),
-                                                    variableComparer));
-        }
-        if (CommandLineOptions.Clo.Ai.Nullness)       // Nullness
+        BoogieTypeFactory typeFactory = new BoogieTypeFactory();
+        multilattice.AddLattice(new AI.VariableMapLattice(propfactory, valuefactory,
+                                                  new AI.DynamicTypeLattice(typeFactory, propfactory),
+                                                  variableComparer));
+      }
+      if (CommandLineOptions.Clo.Ai.Nullness)       // Nullness
         {
-          multilattice.AddLattice(new AI.VariableMapLattice(propfactory, valuefactory,
-                                                    new AI.NullnessLattice(nullfactory),
-                                                    variableComparer));
-        }
-        if (CommandLineOptions.Clo.Ai.Polyhedra)    // Polyhedra
+        multilattice.AddLattice(new AI.VariableMapLattice(propfactory, valuefactory,
+                                                  new AI.NullnessLattice(nullfactory),
+                                                  variableComparer));
+      }
+      if (CommandLineOptions.Clo.Ai.Polyhedra)    // Polyhedra
         {
-          multilattice.AddLattice(new AI.PolyhedraLattice(linearfactory, propfactory));
-        }
-        
-                
-        returnLattice = multilattice;
-        if (CommandLineOptions.Clo.Ai.DebugStatistics) 
-        {
-          returnLattice = new AI.StatisticsLattice(returnLattice);
-        }
+        multilattice.AddLattice(new AI.PolyhedraLattice(linearfactory, propfactory));
+      }
 
-        returnLattice.Validate();
 
-        retAlgebra = new AbstractAlgebra(returnLattice, propfactory, linearfactory, intfactory, valuefactory, nullfactory, 
-                                                        variableComparer);
+      returnLattice = multilattice;
+      if (CommandLineOptions.Clo.Ai.DebugStatistics) {
+        returnLattice = new AI.StatisticsLattice(returnLattice);
+      }
 
-        return retAlgebra;
+      returnLattice.Validate();
+
+      retAlgebra = new AbstractAlgebra(returnLattice, propfactory, linearfactory, intfactory, valuefactory, nullfactory,
+                                                      variableComparer);
+
+      return retAlgebra;
 
     }
-  } 
-  
+  }
+
   /// <summary>
   /// An Abstract Algebra is a tuple made of a Lattice and several factories
   /// </summary>
-  public class AbstractAlgebra
-  {
-    [Peer] private AI.Lattice! lattice;
-    [Peer] private AI.IQuantPropExprFactory propFactory;
-    [Peer] private AI.ILinearExprFactory linearFactory;
-    [Peer] private AI.IIntExprFactory intFactory;
-    [Peer] private AI.IValueExprFactory valueFactory;
-    [Peer] private AI.INullnessFactory nullFactory;
-    [Peer] private IComparer variableComparer;
+  public class AbstractAlgebra {
+    [Peer]
+    private AI.Lattice lattice;
+    [Peer]
+    private AI.IQuantPropExprFactory propFactory;
+    [Peer]
+    private AI.ILinearExprFactory linearFactory;
+    [Peer]
+    private AI.IIntExprFactory intFactory;
+    [Peer]
+    private AI.IValueExprFactory valueFactory;
+    [Peer]
+    private AI.INullnessFactory nullFactory;
+    [Peer]
+    private IComparer variableComparer;
 
-    public AI.Lattice! Lattice
-    {
-      get
-      {
-        return lattice; 
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(lattice != null);
+    }
+
+    public AI.Lattice Lattice {
+      get {
+        Contract.Ensures(Contract.Result<AI.Lattice>() != null);
+
+        return lattice;
       }
-    }      
+    }
 
-    public AI.IQuantPropExprFactory PropositionFactory
-    {
-      get
-      {
+    public AI.IQuantPropExprFactory PropositionFactory {
+      get {
         return this.propFactory;
       }
     }
 
-    public AI.ILinearExprFactory LinearExprFactory
-    {
-      get
-      {
+    public AI.ILinearExprFactory LinearExprFactory {
+      get {
         return this.linearFactory;
       }
     }
 
-    public AI.IIntExprFactory IntExprFactory
-    {
-      get
-      {
+    public AI.IIntExprFactory IntExprFactory {
+      get {
         return this.intFactory;
       }
     }
 
-    public AI.IValueExprFactory ValueFactory
-    {
-      get
-      {
+    public AI.IValueExprFactory ValueFactory {
+      get {
         return this.valueFactory;
       }
     }
-    
-    public AI.INullnessFactory NullFactory
-    {
-      get
-      {
+
+    public AI.INullnessFactory NullFactory {
+      get {
         return this.nullFactory;
       }
     }
 
-    public IComparer VariableComparer
-    {
-      get
-      {
+    public IComparer VariableComparer {
+      get {
         return this.variableComparer;
       }
     }
 
     [Captured]
-    public AbstractAlgebra(AI.Lattice! lattice, 
-                          AI.IQuantPropExprFactory propFactory, 
+    public AbstractAlgebra(AI.Lattice lattice,
+                          AI.IQuantPropExprFactory propFactory,
                           AI.ILinearExprFactory linearFactory,
                           AI.IIntExprFactory intFactory,
                           AI.IValueExprFactory valueFactory,
                           AI.INullnessFactory nullFactory,
-                          IComparer variableComparer)
-      requires propFactory != null ==> Owner.Same(lattice, propFactory);
-      requires linearFactory != null ==> Owner.Same(lattice, linearFactory);
-      requires intFactory != null ==> Owner.Same(lattice, intFactory);
-      requires valueFactory != null ==> Owner.Same(lattice, valueFactory);
-      requires nullFactory != null ==> Owner.Same(lattice, nullFactory);
-      requires variableComparer != null ==> Owner.Same(lattice, variableComparer);
+                          IComparer variableComparer) {
+      Contract.Requires(propFactory == null || cce.Owner.Same(lattice, propFactory));//TODO: Owner is Microsoft.Contracts (mscorlib.Contracts).Owner
+      Contract.Requires(linearFactory == null || cce.Owner.Same(lattice, linearFactory));
+      Contract.Requires(intFactory == null || cce.Owner.Same(lattice, intFactory));
+      Contract.Requires(valueFactory == null || cce.Owner.Same(lattice, valueFactory));
+      Contract.Requires(nullFactory == null || cce.Owner.Same(lattice, nullFactory));
+      Contract.Requires(variableComparer == null || cce.Owner.Same(lattice, variableComparer));
       // ensures Owner.Same(this, lattice);  // KRML: 
-    {
+
+      Contract.Requires(lattice != null);
       this.lattice = lattice;
 
       this.propFactory = propFactory;
@@ -978,69 +987,69 @@ namespace Microsoft.Boogie.AbstractInterpretation
       this.nullFactory = nullFactory;
       this.variableComparer = variableComparer;
     }
-    
+
   }
 
-public class AbstractInterpretation
-{
-	/// <summary>
-  /// Run the abstract interpretation.
-  /// It has two entry points. One is the RunBoogie method. The other is the CCI PlugIn
-  /// </summary>
-  public static void RunAbstractInterpretation(Program! program) 
-  {
-    Helpers.ExtraTraceInformation("Starting abstract interpretation");
+  public class AbstractInterpretation {
+    /// <summary>
+    /// Run the abstract interpretation.
+    /// It has two entry points. One is the RunBoogie method. The other is the CCI PlugIn
+    /// </summary>
+    public static void RunAbstractInterpretation(Program program) {
+      Contract.Requires(program != null);
+      Helpers.ExtraTraceInformation("Starting abstract interpretation");
 
-    if(CommandLineOptions.Clo.UseAbstractInterpretation)    
-    {
-      DateTime start = new DateTime();  // to please compiler's definite assignment rules
-      if (CommandLineOptions.Clo.Trace) {
-        Console.WriteLine();
-        Console.WriteLine("Running abstract interpretation...");
-        start = DateTime.Now;
-      }
+      if (CommandLineOptions.Clo.UseAbstractInterpretation) {
+        DateTime start = new DateTime();  // to please compiler's definite assignment rules
+        if (CommandLineOptions.Clo.Trace) {
+          Console.WriteLine();
+          Console.WriteLine("Running abstract interpretation...");
+          start = DateTime.Now;
+        }
 
-      WidenPoints.Compute(program);
-      
-      if (CommandLineOptions.Clo.Ai.AnySet) // if there is some user defined domain we override the default (= intervals)
-      {             
-        AI.Lattice lattice = AbstractDomainBuilder.BuildAbstractDomain().Lattice;
-        ApplyAbstractInterpretation(program, lattice);
+        WidenPoints.Compute(program);
 
-        if (CommandLineOptions.Clo.Ai.DebugStatistics) 
-        {
-          Console.Error.WriteLine(lattice);
+        if (CommandLineOptions.Clo.Ai.AnySet) // if there is some user defined domain we override the default (= intervals)
+      {
+          AI.Lattice lattice = AbstractDomainBuilder.BuildAbstractDomain().Lattice;
+          ApplyAbstractInterpretation(program, lattice);
+
+          if (CommandLineOptions.Clo.Ai.DebugStatistics) {
+            Console.Error.WriteLine(lattice);
+          }
+        } else    // Otherwise the default is the use of the abstract domain of intervals (useful for simple for loops)
+      {
+          AI.Lattice lattice = AbstractDomainBuilder.BuildIntervalsAbstractDomain().Lattice;
+          Contract.Assert(lattice != null);
+          ApplyAbstractInterpretation(program, lattice);
+        }
+
+        program.InstrumentWithInvariants();
+
+        if (CommandLineOptions.Clo.Trace) {
+          DateTime end = DateTime.Now;
+          TimeSpan elapsed = end - start;
+          Console.WriteLine("  [{0} s]", elapsed.TotalSeconds);
+          Console.Out.Flush();
         }
       }
-      else    // Otherwise the default is the use of the abstract domain of intervals (useful for simple for loops)
-      {
-        AI.Lattice! lattice = AbstractDomainBuilder.BuildIntervalsAbstractDomain().Lattice;
-        ApplyAbstractInterpretation(program, lattice);
-      }  
-    
-      program.InstrumentWithInvariants();
-
-      if (CommandLineOptions.Clo.Trace) {
-        DateTime end = DateTime.Now;
-        TimeSpan elapsed = end - start;
-        Console.WriteLine("  [{0} s]", elapsed.TotalSeconds);
-        Console.Out.Flush();
-      }
     }
-  }
 
-	static void ApplyAbstractInterpretation (Program! program, AI.Lattice! lattice) 
-    {
+    static void ApplyAbstractInterpretation(Program program, AI.Lattice lattice) {
+      Contract.Requires(program != null);
+      Contract.Requires(lattice != null);
       AbstractionEngine engine = new AbstractionEngine(lattice);
       engine.ComputeProgramInvariants(program);
       callGraph = engine.CallGraph;
     }
     private static Cci.IGraphNavigator callGraph;
     public static Cci.IGraphNavigator CallGraph {
-      get { return callGraph; } 
+      get {
+        return callGraph;
+      }
     }
-    
-    
-}
-	 
+
+
+  }
+
 } // namespace
