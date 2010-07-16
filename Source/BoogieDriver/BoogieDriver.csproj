@@ -90,6 +90,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BoogieDriver.cs" />
+    <Compile Include="version.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AIFramework\AIFramework.sscproj">
