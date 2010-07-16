@@ -63,6 +63,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="AbsInt, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\AbsInt\bin\Debug\AbsInt.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL" />
     <Reference Include="Microsoft.SpecSharp, Version=1.0.21125.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -88,10 +92,6 @@
     <Compile Include="BoogieDriver.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AbsInt\AbsInt.sscproj">
-      <Project>{11D06232-2039-4BCA-853B-C596E2A4EDB0}</Project>
-      <Name>AbsInt</Name>
-    </ProjectReference>
     <ProjectReference Include="..\AIFramework\AIFramework.sscproj">
       <Project>{24B55172-AD8B-47D1-8952-5A95CFDB9B31}</Project>
       <Name>AIFramework</Name>
