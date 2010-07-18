@@ -11,7 +11,9 @@ class LoopTargets {
     share t
     acquire t
     var s := true
-    while (s) {
+    while (s) 
+      lockchange t 
+    {
       release t  // error: loop invariant does not say holds(t) (252)
       s := false
     }
@@ -21,8 +23,9 @@ class LoopTargets {
     share t
     acquire t
     var s := true
-    while (s)
+    while (s) 
       invariant acc(t.mu) && waitlevel == t.mu
+      lockchange t
     {
       release t  // error: loop invariant does not say holds(t) (414)
       acquire t
@@ -35,9 +38,10 @@ class LoopTargets {
     share t
     acquire t
     var s := true
-    while (s)
+    while (s) 
       invariant rd(t.mu)
       invariant holds(t) && waitlevel == t.mu
+      lockchange t
     {
       release t
       acquire t

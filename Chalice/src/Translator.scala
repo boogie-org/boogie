@@ -744,7 +744,7 @@ class Translator {
     BLocal(preReleaseHeapV) :: (preReleaseHeap := etran.Heap) ::
     BLocal(preReleaseMaskV) :: (preReleaseMask := etran.Mask) ::
     BLocal(preReleaseCreditsV) :: (preReleaseCredits := etran.Credits) ::
-    bassert(isHeld(o), s.pos, "The target of the release statement might be not be locked by the current thread.") ::
+    bassert(isHeld(o), s.pos, "The target of the release statement might not be locked by the current thread.") ::
     bassert(!isRdHeld(o), s.pos, "Release might fail because the current thread might hold the read lock.") ::
     ExhaleInvariants(nonNullObj, false, ErrorMessage(s.pos, "Monitor invariant might hot hold."), etran.WhereOldIs(
       AcquireHeap(etran.Heap.select(o, "held")),
@@ -850,6 +850,9 @@ class Translator {
     // check invariant on entry to the loop
     Exhale(invs map { inv => (inv, ErrorMessage(inv.pos, "The loop invariant might not hold on entry to the loop."))}, "loop invariant, initially") :::
      List(bassert(DebtCheck, w.pos, "Loop invariant must consume all debt on entry to the loop.")) :::
+    // check lockchange on entry to the loop
+    Comment("check lockchange on entry to the loop") ::
+    (bassert(LockFrame(lkch, etran), w.pos, "Method execution before loop might lock/unlock more than allowed by lockchange clause of loop.")) ::
     // save values of local-variable loop targets
     (for (sv <- saveLocalsV) yield BLocal(Variable2BVarWhere(sv))) :::
     (for ((v,sv) <- w.LoopTargetsList zip saveLocalsV) yield
@@ -871,6 +874,9 @@ class Translator {
       // at {old(local),local}.{held,rdheld}
       Havoc(etran.Heap) :: (etran.Mask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
       Inhale(invs, "loop invariant, body") :::
+      // assume lockchange at the beginning of the loop iteration
+      Comment("assume lockchange at the beginning of the loop iteration") ::
+      (bassume(LockFrame(lkch, etran))) ::
       // this is the state at the beginning of the loop iteration; save these values
       (for (v <- iterStartGlobals) yield BLocal(v)) :::
       (iterStartEtran.oldEtran.Heap := iterStartEtran.Heap) ::
@@ -885,14 +891,17 @@ class Translator {
       // check invariant
       Exhale(invs map { inv => (inv, ErrorMessage(w.pos, "The loop invariant at " + inv.pos + " might not be preserved by the loop."))}, "loop invariant, maintained") :::
       isLeaking(w.pos, "The loop might leak refereces.") :::
-      // enforce lockchange
-      (NumberOfLocksHeldIsInvariant(iterStartLocks, newLocks, iterStartEtran) map { e: Boogie.Expr => bassert(e, w.pos, "The loop might lock/unlock more than the changelock clause allows.") }) :::
+      // check lockchange after loop iteration
+      Comment("check lockchange after loop iteration") ::
+        (bassert(LockFrame(lkch, etran), w.pos, "The loop might lock/unlock more than the lockchange clause allows.")) ::
       // perform debt check
       bassert(DebtCheck, w.pos, "Loop body is not allowed to leave any debt.") :::
       bassume(false),
    // 3. AFTER LOOP
      LockHavoc(oldLocks ++ newLocks, loopEtran) :::
-     (NumberOfLocksHeldIsInvariant(oldLocks, newLocks, loopEtran) map bassume) :::
+     // assume lockchange after the loop
+     Comment("assume lockchange after the loop") ::
+     (bassume(LockFrame(lkch, etran))) ::
      Inhale(invs, "loop invariant, after loop") :::
      bassume(!guard)))
   }
@@ -995,6 +1004,9 @@ class Translator {
                     (0 < Boogie.MapSelect(etran.oldEtran.Heap, lk, "held"))) &&
                    (Boogie.MapSelect(etran.Heap, lk, "rdheld") ==@
                     Boogie.MapSelect(etran.oldEtran.Heap, lk, "rdheld"))) ||
+          // It seems we should exclude newly-allocated objects from lockchange. Since Chalice does not have an "alloc" field,
+          // we could use the "mu" field as an approximation, but that breaks the HandOverHand example. So we leave it for now.
+          // (Boogie.MapSelect(etran.oldEtran.Heap, lk, "mu") ==@ bLockBottom) || 
                   ((exceptions :\ b) ((e,ll) => ll || (lk ==@ e))))
   }
   def LockHavoc(locks: List[Boogie.Expr], etran: ExpressionTranslator) = {

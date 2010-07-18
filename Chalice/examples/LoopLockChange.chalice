@@ -1,0 +1,142 @@
+class LoopLockChange {
+
+  method Test0()
+    requires rd(mu) && waitlevel << mu
+    lockchange this;
+  {
+    acquire this;
+
+    var b := true;
+    while(b)  // error: lockchange clause of loop must include all lock changes that happened before the loop
+    {
+      b := false;
+    }
+  }
+
+  method Test1()
+    requires rd(mu) && waitlevel << mu
+    lockchange this;
+  {
+    acquire this;
+
+    var b := true;
+    while(b)
+      lockchange this;  
+    {
+      b := false;
+    }
+  }
+
+  method Test2()
+    requires rd(mu) && waitlevel << mu
+    lockchange this;
+  {
+    var b := true;
+    while(b)  // error: insufficient lockchange clause
+      invariant rd(mu);
+      invariant b ==> waitlevel << mu
+    {
+      acquire this;
+      b := false;
+    }
+  }
+
+  method Test3()
+    requires rd(mu) && waitlevel << mu
+    lockchange this;
+  {
+    var b := true;
+    while(b)
+      invariant rd(mu);
+      invariant b ==> waitlevel << mu
+      lockchange this;
+    {
+      acquire this;
+      b := false;
+    }
+  }
+
+  method Test4(p: LoopLockChange)
+    requires rd(p.mu) && waitlevel << p.mu
+    requires rd(mu) && waitlevel << mu
+  {
+    var current: LoopLockChange := this;
+    var b := true;
+    while(b)
+      invariant rd(current.mu)
+      invariant b ==> rd(p.mu);
+      invariant b ==> waitlevel << current.mu
+      lockchange current;  // error: after the loop body, current does no longer point to the object whose lock was acquired
+    {
+      acquire current;
+      current := p;
+      b := false;
+    }
+    assume false;  // to prevent complaint about method's lockchange clause
+  }
+
+
+  method Test5(p: LoopLockChange)
+    requires rd(p.mu) && waitlevel << p.mu
+    requires rd(mu) && waitlevel << mu
+    lockchange this;
+  {
+    var current: LoopLockChange := this;
+    var b := true;
+    while(b)
+      invariant rd(current.mu)
+      invariant b ==> rd(p.mu);
+      invariant b ==> current == this;
+      invariant b ==> waitlevel << current.mu
+      lockchange this;
+    {
+      acquire current;
+      current := p;
+      b := false;
+    }
+  }
+
+
+  method Test6()
+    requires rd(mu) && waitlevel << mu
+  {
+    var b := true;
+    while(b)
+      invariant rd(mu);
+      invariant b ==> waitlevel << mu
+      invariant b ==> !(rd holds(this))
+      invariant !b ==> holds(this)
+      lockchange this;
+    {
+      acquire this;
+      b := false;
+    }
+    release this;
+  }
+
+
+  method Test7()
+    requires rd(mu) && waitlevel << mu
+  {
+    acquire this;
+    release this;
+  }
+
+
+// The following test requires a better treatment of allocation, which we don't have yet 
+/*  method Test8()
+  {
+    var tmp : LoopLockChange := this;
+    var b := false;
+    while(b)
+    {
+      tmp := new LoopLockChange;
+      share tmp;
+      acquire tmp;
+      b := false;
+    }
+    assert !holds(tmp);
+  }
+*/
+}
+

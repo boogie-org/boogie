@@ -6,10 +6,10 @@ Boogie program verifier finished with 31 verified, 1 error
 ------ Running regression test counter.chalice 
   69.5: Monitor invariant might hot hold. The expression at 4.27 might not evaluate to true.
   80.5: Assertion might not hold. The expression at 80.12 might not evaluate to true.
-  119.5: The target of the release statement might be not be locked by the current thread.
+  119.5: The target of the release statement might not be locked by the current thread.
   128.7: The mu field of the target of the acquire statement might not be above waitlevel.
   136.7: The mu field of the target of the acquire statement might not be above waitlevel.
-  145.5: The target of the release statement might be not be locked by the current thread.
+  145.5: The target of the release statement might not be locked by the current thread.
 
 Boogie program verifier finished with 24 verified, 6 errors
 ------ Running regression test dining-philosophers.chalice 
@@ -201,12 +201,14 @@ Boogie program verifier finished with 24 verified, 4 errors
 Boogie program verifier finished with 51 verified, 4 errors
 ------ Running regression test prog4.chalice 
   5.5: Assertion might not hold. The expression at 5.12 might not evaluate to true.
-  15.7: The target of the release statement might be not be locked by the current thread.
-  15.7: Release might fail because the current thread might hold the read lock.
-  27.7: The target of the release statement might be not be locked by the current thread.
-  27.7: Release might fail because the current thread might hold the read lock.
+  17.7: The target of the release statement might not be locked by the current thread.
+  17.7: Release might fail because the current thread might hold the read lock.
+  30.7: The target of the release statement might not be locked by the current thread.
+  30.7: Release might fail because the current thread might hold the read lock.
+  34.5: The target of the release statement might not be locked by the current thread.
+  34.5: Release might fail because the current thread might hold the read lock.
 
-Boogie program verifier finished with 6 verified, 5 errors
+Boogie program verifier finished with 6 verified, 7 errors
 ------ Running regression test ImplicitLocals.chalice 
 
 Boogie program verifier finished with 8 verified, 0 errors
@@ -232,6 +234,12 @@ Boogie program verifier finished with 5 verified, 0 errors
   123.7: Assertion might not hold. The expression at 123.14 might not evaluate to true.
 
 Boogie program verifier finished with 19 verified, 4 errors
+------ Running regression test LoopLockChange.chalice 
+  10.5: Method execution before loop might lock/unlock more than allowed by lockchange clause of loop.
+  35.5: The loop might lock/unlock more than the lockchange clause allows.
+  65.5: The loop might lock/unlock more than the lockchange clause allows.
+
+Boogie program verifier finished with 14 verified, 3 errors
 ------ Running regression test cell-defaults.chalice 
   96.5: The heap of the callee might not be strictly smaller than the heap of the caller.
   102.5: The heap of the callee might not be strictly smaller than the heap of the caller.

@@ -48,6 +48,7 @@ class List {
     while (p.next != null && p.next.val < x)
       invariant p != null && acc(p.next) && rd(p.val) && acc(p.mu,50)
       invariant holds(p) && waitlevel == p.mu
+      invariant !old(holds(p)) && !old(rd holds(p))
       invariant p.next != null ==> acc(p.next.mu,50) && p << p.next
       invariant p.next != null ==> rd(p.next.val) && p.val <= p.next.val
       invariant acc(p.sum, 50)
@@ -88,6 +89,7 @@ class List {
     while (p.next != null && p.next.val < x)
       invariant p != null && acc(p.next) && rd(p.val) && acc(p.mu,50)
       invariant holds(p) && waitlevel == p.mu && !assigned(c)
+      invariant !old(holds(p)) && !old(rd holds(p))
       invariant p.next != null ==> acc(p.next.mu,50) && p << p.next
       invariant p.next != null ==> rd(p.next.val) && p.val <= p.next.val
       invariant acc(p.sum, 50)
