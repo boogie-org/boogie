@@ -128,7 +128,7 @@ namespace Microsoft.Boogie.Z3
       return opts.BitVectors;
     } }
  
-    internal Z3LineariserOptions(bool asTerm, Z3InstanceOptions !opts, List<VCExprVar!>! letVariables) {
+    internal Z3LineariserOptions(bool asTerm, Z3InstanceOptions! opts, List<VCExprVar!>! letVariables) {
       base(asTerm);
       this.opts = opts;
       this.LetVariablesAttr = letVariables;
