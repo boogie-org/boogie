@@ -37,7 +37,7 @@ namespace Demo
     // This attribute will make your language service accessible by other packages installed.
     [ProvideService(typeof(IronyLanguageService))]
     // This attribute(s) associates file extensions with your language service.
-    [ProvideLanguageExtension(typeof(IronyLanguageService), ".dfy")]
+    [ProvideLanguageExtension(typeof(IronyLanguageService), ".bpl")]
 
     // This attributes informs Visual Studio that this package provides a langauge service and 
     // which features are implemented.

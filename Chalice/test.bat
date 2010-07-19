@@ -1,7 +1,7 @@
 @echo off
 echo start > Output
 
-set CHALICE=call C:\Users\pmueller.D\Documents\bin\scala\bin\scala -cp bin Chalice -nologo
+set CHALICE=call scala -cp bin Chalice -nologo
 
 REM to do: AssociationList
 REM to do: GhostConst
