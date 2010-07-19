@@ -262,12 +262,12 @@ object PrintProgram {
     case e:Div => BinExpr(e, e.OpName, 0x60, false, true, contextBindingPower, fragileContext)
     case e:Mod => BinExpr(e, e.OpName, 0x60, false, true, contextBindingPower, fragileContext)
     case q:Quantification => 
-      print(q.Quantor + "{"); 
+      print("(" + q.Quantor + " "); 
       q.Is match {
         case Nil =>
         case i :: rest => print(i); rest foreach { v => print(", " + v) }
       }
-      print(" in "); Expr(q.Seq); print("; "); Expr(q.E); print("}");
+      print(" in "); Expr(q.Seq); print(" :: "); Expr(q.E); print(")");
     case EmptySeq(t) =>
       print("nil<"); print(t.FullName); print(">");
     case ExplicitSeq(es) =>
@@ -276,8 +276,8 @@ object PrintProgram {
       print("("); Expr(min); print(":"); Expr(max); print(")");
     case Length(e)=>
       print("|"); Expr(e); print("|");
-    case e:At =>
-      BinExpr(e, e.OpName, 0x45, true, true, contextBindingPower, fragileContext)
+    case At(s, n) =>
+      Expr(s); print("["); Expr(n); print("]");
     case e:Append =>
       BinExpr(e, e.OpName, 0x45, true, true, contextBindingPower, fragileContext)
     case Drop(s, n) =>

@@ -371,6 +371,9 @@ sealed abstract class Quantification(is: List[String], seq: Expression, e: Expre
 case class Forall(is: List[String], seq: Expression, e: Expression) extends Quantification(is, seq, e) {
   override def Quantor = "forall"
 }
+case class Exists(is: List[String], seq: Expression, e: Expression) extends Quantification(is, seq, e) {
+  override def Quantor = "exists"
+}
 
 // sequences
 
@@ -380,10 +383,10 @@ case class Range(min: Expression, max: Expression /* non-inclusive*/) extends Ex
 case class Append(s0: Expression, s1: Expression) extends SeqAccess(s0, s1) {
   override val OpName = "++"
 }
- sealed abstract case class SeqAccess(e0: Expression, e1: Expression) extends BinaryExpr(e0, e1)
+sealed abstract case class SeqAccess(e0: Expression, e1: Expression) extends BinaryExpr(e0, e1)
 case class Length(e: Expression) extends Expression
 case class At(s: Expression, n: Expression) extends SeqAccess(s, n) {
-  override val OpName = "@"
+  override val OpName = ""
 }
 case class Drop(s: Expression, n: Expression) extends SeqAccess(s, n) {
   override val OpName = ""

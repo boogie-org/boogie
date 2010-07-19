@@ -1254,14 +1254,15 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       case e: ArithmeticExpr =>
         isDefined(e.E0) ::: isDefined(e.E1)
       case q@Forall(i, Range(min, max), e) =>
-        // optimize for range
-        isDefinedForall(q.variables, min, max, e)
+        isDefinedQuantification(q.variables, min, max, e)
+      case q@Exists(i, Range(min, max), e) =>
+        isDefinedQuantification(q.variables, min, max, e)
       case q@Forall(i, seq, e) =>
-      var newVars = Nil : List[Variable];
-        for(i <- q.variables) {
-          newVars = newVars + new Variable(i.UniqueName, new Type(IntClass))
-        }
-        isDefinedForall(newVars, IntLiteral(0), Length(seq), SubstVars(e, q.variables, newVars map {newVar => At(seq, new VariableExpr(newVar)) }))
+        var newVars = q.variables map (v => new Variable(v.UniqueName, new Type(IntClass)))
+        isDefinedQuantification(newVars, IntLiteral(0), Length(seq), SubstVars(e, q.variables, newVars map {v => At(seq, new VariableExpr(v)) }))
+      case q@Exists(i, seq, e) =>
+        var newVars = q.variables map (v => new Variable(v.UniqueName, new Type(IntClass)))
+        isDefinedQuantification(newVars, IntLiteral(0), Length(seq), SubstVars(e, q.variables, newVars map {v => At(seq, new VariableExpr(v)) }))
       case EmptySeq(t) => Nil
       case ExplicitSeq(es) =>
         es flatMap { e => isDefined(e) }
@@ -1284,7 +1285,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     }
   }
 
-  def isDefinedForall(is: List[Variable], min: Expression, max: Expression, e: Expression)(implicit assumption: Expr): List[Stmt] = {
+  def isDefinedQuantification(is: List[Variable], min: Expression, max: Expression, e: Expression)(implicit assumption: Expr): List[Stmt] = {
     var iTmps = Nil: List[Variable];
     var assumption2 = assumption;
     for(i <- is) { 
@@ -1296,9 +1297,9 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     isDefined(min) ::: isDefined(max) :::
     // introduce a new local iTmp with an arbitrary value
     (iTmps map { iTmp =>
-      BLocal(Boogie.BVar(iTmp.UniqueName, Boogie.NamedType("int")))
+      BLocal(Boogie.BVar(iTmp.UniqueName, tint))
     }) :::
-    // prove that the body is well-defined for iTmp, provided iTmp lies betweeen min and max 
+    // prove that the body is well-defined for iTmp, provided iTmp lies between min and max
     isDefined(SubstVars(e, is, iTmps map { iTmp => new VariableExpr(iTmp)}))(assumption2)
   }
 
@@ -1395,15 +1396,10 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       Tr(e0) / Tr(e1)
     case Mod(e0,e1) =>
       Tr(e0) % Tr(e1)
-    case q@Forall(is, Range(min, max), e) =>
-      // optimize translation for range expressions
-      translateForall(q.variables, min, max, e)
-    case q@Forall(is, seq, e) =>
-      var newVars = Nil : List[Variable];
-      for(i <- q.variables) {
-        newVars = newVars + new Variable(i.UniqueName, new Type(IntClass))
-      }
-      translateForall(newVars, IntLiteral(0), Length(seq), SubstVars(e, q.variables, newVars map {newVar => At(seq, new VariableExpr(newVar)) }))
+    case q: Forall =>
+      translateQuantification(q)
+    case q: Exists =>
+      translateQuantification(q)
     case EmptySeq(t) =>
       createEmptySeq
     case ExplicitSeq(es) =>
@@ -1430,12 +1426,28 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       evalEtran.Tr(e)
   }
 
-  def translateForall(is: List[Variable], min: Expression, max: Expression, e: Expression): Expr = {
+  def translateQuantification(q: Quantification): Expr = {
+    // generate index variables
+    var (is, min, max, e) = q match {
+      case Forall(_, Range(min, max), e) => (q.variables, min, max, e);
+      case Exists(_, Range(min, max), e) => (q.variables, min, max, e);
+      case Forall(_, seq, eo) =>
+        var is = q.variables map (v => new Variable(v.UniqueName, new Type(IntClass)));
+        var e = SubstVars(eo, q.variables, is map {v => At(seq, new VariableExpr(v))});
+        (is, IntLiteral(0), Length(seq), e);
+      case Exists(_, seq, eo) =>
+        var is = q.variables map (v => new Variable(v.UniqueName, new Type(IntClass)));
+        var e = SubstVars(eo, q.variables, is map {v => At(seq, new VariableExpr(v))});
+        (is, IntLiteral(0), Length(seq), e);
+    }
     var assumption = true: Expr;
     for(i <- is) {
       assumption = assumption && (Tr(min) <= VarExpr(i.UniqueName) && VarExpr(i.UniqueName) < Tr(max));
     }
-    new Boogie.Forall(is map { i=> Variable2BVar(i)}, Nil, assumption ==> Tr(e))
+    q match {
+      case _: Forall => new Boogie.Forall(is map { i => Variable2BVar(i)}, Nil, assumption ==> Tr(e));
+      case _: Exists => new Boogie.Exists(is map { i => Variable2BVar(i)}, Nil, assumption && Tr(e));
+    }
   }
 
   def ShaveOffOld(e: Expression): (Expression, boolean) = e match {
@@ -1906,11 +1918,11 @@ object S_ExpressionTranslator {
   }
 }
 
+  // implicit
 
-  // implicit 
-  implicit def string2VarExpr(s: String) = VarExpr(s)
-  implicit def expression2Expr(e: Expression) = etran.Tr(e)
-  implicit def field2Expr(f: Field) = VarExpr(f.FullName)
+  implicit def string2VarExpr(s: String) = VarExpr(s);
+  implicit def expression2Expr(e: Expression) = etran.Tr(e);
+  implicit def field2Expr(f: Field) = VarExpr(f.FullName);
 
   // prelude
 

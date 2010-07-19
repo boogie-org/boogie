@@ -14,7 +14,7 @@ class List module Collections {
   method add(x: int) 
     requires valid;
     ensures valid && size() == old(size()+1) && get(size()-1) == x; // I don't know why this happens.
-    ensures forall { i in [0:size()-1]; get(i) == old(get(i)) };
+    ensures forall i in [0:size()-1] :: get(i) == old(get(i));
   {
     unfold valid;
     contents := contents ++ [x];

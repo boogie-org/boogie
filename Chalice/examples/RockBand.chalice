@@ -19,7 +19,7 @@ class RockBand module M {
     acc(gigs) && 0 <= gigs &&
     acc(gt) && gt != null && gt.Valid &&
     acc(gt.mu) &&  // to enable an eventual free
-    acc(doowops) && //forall{d: Vocalist in doowops; d != null && d.Valid} &&
+    acc(doowops) && //forall d: Vocalist in doowops :: d != null && d.Valid} &&
     acc(b3) && b3 != null && b3.Valid &&
     acc(b3.mu)  // to enable an eventual free
   }

@@ -12,7 +12,7 @@ class List module Collections {
   method add(x: int) 
     requires valid;
     ensures valid && size(100) == old(size(100)+1) && get(size(100)-1, 100) == x;
-    ensures forall { i in [0:size(100)-1]; get(i, 100) == old(get(i, 100)) };
+    ensures forall i in [0:size(100)-1] :: get(i, 100) == old(get(i, 100));
   {
     unfold valid;
     contents := contents ++ [x];
@@ -21,7 +21,7 @@ class List module Collections {
 
   function get(index: int, f: int): int 
     requires 0<f && f<=100 && acc(valid, f) && (0<=index && index<size(f));
-    ensures forall { i in [1:f]; get(index, f) == get(index, i)};
+    ensures forall i in [1:f] :: get(index, f) == get(index, i);
   {
     unfolding acc(valid, f) in contents[index]
   }
@@ -29,7 +29,7 @@ class List module Collections {
   function size(f: int): int 
     requires 0<f && f<=100 && acc(valid, f);
     ensures 0<=result;
-    ensures forall { i in [1:f]; size(f) == size(i)};
+    ensures forall i in [1:f] :: size(f) == size(i);
   {
     unfolding acc(valid, f) in |contents|
   }

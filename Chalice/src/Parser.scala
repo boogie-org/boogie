@@ -40,7 +40,7 @@ class Parser extends StandardTokenParsers {
                          "<==>", "==>", "&&", "||",
                          "==", "!=", "<", "<=", ">=", ">", "<<",
                          "+", "-", "*", "/", "%", "!", ".", "..",
-                         ";", ":", ":=", ",", "?", "|", "@", "[", "]", "++")
+                         ";", ":", ":=", ",", "?", "|", "[", "]", "++", "::")
 
   def programUnit = (classDecl | channelDecl)*
 
@@ -459,11 +459,18 @@ class Parser extends StandardTokenParsers {
     | ("nil" ~> "<") ~> (typeDecl <~ ">") ^^ EmptySeq
     | ("[" ~> expressionList <~ "]") ^^ { case es => ExplicitSeq(es) }
     )
-  def forall: Parser[Forall] =
-    (("forall" ~ "{") ~> repsep(ident, ",") <~ "in") into { is => (expression <~ ";") ~ (exprWithLocals(is) <~ "}") ^^ 
-      { case seq ~ e => val result = Forall(is, seq, e); currentLocalVariables = currentLocalVariables -- is; result } }
+  def forall: Parser[Quantification] =
+    (("forall" | "exists") ~ repsep(ident, ",") <~ "in") into {case quant ~ is => quantifierBody(quant, is)}
+
+  def quantifierBody(quant: String, is: List[String]) : Parser[Quantification] =
+    ((expression <~ "::") ~ (exprWithLocals(is))) ^^
+      { case seq ~ e =>
+        val result = quant match {case "forall" => Forall(is, seq, e); case "exists" => Exists(is, seq, e);};
+        currentLocalVariables = currentLocalVariables -- is;
+        result
+      }  
+
   def exprWithLocals(i: List[String]) : Parser[Expression] = {
-    val savedCurrentLocals = currentLocalVariables;
     currentLocalVariables = currentLocalVariables ++ i;
     val result = ((expression) ^^ { case e => e});
     result
