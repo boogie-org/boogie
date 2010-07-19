@@ -5,7 +5,7 @@ using Irony.Parsing;
 
 namespace Demo
 {
-    [Language("My C", "1.0", "My C Programming Language")]
+    [Language("Chalice", "1.0", "Chalice Programming Language")]
     public class Grammar : Irony.Parsing.Grammar
     {
       public Grammar() {
@@ -74,10 +74,12 @@ namespace Demo
         NonTerminal NewStmt = new NonTerminal("NewStmt");
         NonTerminal NewArrStmt = new NonTerminal("NewArrStmt");
         NonTerminal QualifiedName = new NonTerminal("QualifiedName");
+        NonTerminal AccessQualName = new NonTerminal("AccessQualName");
         NonTerminal GenericsPostfix = new NonTerminal("GenericsPostfix");
         NonTerminal ArrayExpression = new NonTerminal("ArrayExpression");
         NonTerminal FunctionExpression = new NonTerminal("FunctionExpression");
         NonTerminal selectExpr = new NonTerminal("selectExpr");
+        NonTerminal accessExpr = new NonTerminal("accessExpr");
         #endregion
 
         #region 2.3 Statement
@@ -125,6 +127,7 @@ namespace Demo
 
         #region 3.1 Expressions
         selectExpr.Rule = (ToTerm("this") + ".").Q() + QualifiedName;
+        accessExpr.Rule = (ToTerm("this") + ".").Q() + AccessQualName;
         evalstate.Rule =
           ident + ToTerm(".") +
           (ToTerm("acquire")
@@ -159,7 +162,7 @@ namespace Demo
                     | LMb + declaration.Star() + RMb
                     | LParen + expression + RParen
                     | ToTerm("unfolding") + expression + "in" + expression
-                    | ToTerm("acc") + "(" + selectExpr  + (("," + expression) | Empty) + ")"
+                    | ToTerm("acc") + "(" + accessExpr  + (("," + expression) | Empty) + ")"
                     | ToTerm("old") + "(" + expression + ")"
                     | ToTerm("eval") + "(" + evalstate + "," + expression + ")"
                     | ToTerm("credit") + "(" + expression + "," + expression + ")"
@@ -167,7 +170,7 @@ namespace Demo
                     | expression + PreferShiftHere() + "?" + expression + ":" + expression
                     | ToTerm("rd") +
                       (ToTerm("holds") + "(" + expression + ")"
-                      | "(" + selectExpr + rdPermArg.Q() + ")"
+                      | "(" + accessExpr + rdPermArg.Q() + ")"
                       )
 
                     ;
@@ -196,6 +199,7 @@ namespace Demo
         FunctionExpression.Rule = QualifiedName + LParen + expressionList.Q() + RParen;
 
         QualifiedName.Rule = ident | QualifiedName + dot + ident;
+        AccessQualName.Rule = ident | "*" | QualifiedName + dot + (ident | "*");
 
 
         GenericsPostfix.Rule = less + QualifiedName + greater;
@@ -256,6 +260,8 @@ namespace Demo
                         | "assert" + expression + Semi
                         | "assume" + expression + Semi
                         | "unshare" + expression + Semi
+                        | "lock" + Condition + Statement
+                        | "[[" + Statements + "]]"
                         | "acquire" + expression + Semi
                         | "release" + expression + Semi
                         | "downgrade" + expression + Semi

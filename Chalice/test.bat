@@ -10,7 +10,8 @@ REM to do: Leaks -checkLeaks
 for %%f in (cell counter dining-philosophers ForkJoin HandOverHand
             iterator iterator2 producer-consumer
             prog0 prog1 prog2 prog3 prog4 ImplicitLocals
-            RockBand swap OwickiGries ProdConsChannel LoopLockChange) do (
+            RockBand swap OwickiGries ProdConsChannel LoopLockChange
+            PetersonsAlgorithm) do (
   echo   Testing %%f.chalice ...
   echo ------ Running regression test %%f.chalice >> Output
   %CHALICE% %* examples\%%f.chalice >> Output 2>&1

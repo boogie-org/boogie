@@ -1,0 +1,79 @@
+class Peterson {
+  var x0: bool;
+  var x1: bool;
+  var turn: bool;
+  ghost var cs0: bool;
+  ghost var cs1: bool;
+  ghost var b0: bool;
+  ghost var b1: bool;
+
+  invariant acc(x0,50) && acc(x1,50) && acc(turn);
+  invariant acc(cs0,50) && acc(cs1,50) && acc(b0,50) && acc(b1,50);
+  invariant cs0 ==> x0 && !b0 && (!x1 || !turn || b1);
+  invariant cs1 ==> x1 && !b1 && (!x0 || turn || b0);
+
+  method Main() {
+    var p := new Peterson{ x0 := false, x1 := false,
+                           cs0 := false, cs1 := false, b0 := false, b1 := false };
+    share p;
+    fork p.Process0();
+    fork p.Process1();
+    // The purpose of the following loop is simply to prove mutual exclusion, that is,
+    // to prove that !(cs0 && cs1) follows from the monitor invariant.
+    while (true)
+      invariant rd(p.mu) && waitlevel << p.mu;
+    {
+      lock (p) { assert !(p.cs0 && p.cs1); }
+    }
+  }
+
+  method Process0()
+    requires rd(mu) && waitlevel << mu;
+    requires acc(x0,50) && acc(cs0,50) && acc(b0,50) && !x0 && !cs0 && !b0;
+  {
+    while (true)
+      invariant rd(mu) && waitlevel << mu;
+      invariant acc(x0,50) && acc(cs0,50) && acc(b0,50) && !x0 && !cs0 && !b0;
+    {
+      [[ x0 := true; b0 := true; ]]
+      [[ turn := true; b0 := false; ]]
+      // await (!x1 || !turn)
+      var waiting := true;
+      while (waiting)
+        invariant rd(mu) && waitlevel << mu && acc(cs0,50);
+        invariant acc(x0,50) && acc(b0,50) && x0 && !b0;
+        invariant !waiting ==> cs0;
+      {
+        [[ if (!x1) { waiting := false; cs0 := true; } ]]
+        [[ if (!turn) { waiting := false; cs0 := true; } ]]
+      }
+      // critical section...
+      [[ cs0 := false; x0 := false; ]]
+    }
+  }
+
+  method Process1()
+    requires rd(mu) && waitlevel << mu;
+    requires acc(x1,50) && acc(cs1,50) && acc(b1,50) && !x1 && !cs1 && !b1;
+  {
+    while (true)
+      invariant rd(mu) && waitlevel << mu;
+      invariant acc(x1,50) && acc(cs1,50) && acc(b1,50) && !x1 && !cs1 && !b1;
+    {
+      [[ x1 := true; b1 := true; ]]
+      [[ turn := false; b1 := false; ]]
+      // await (!x0 || turn)
+      var waiting := true;
+      while (waiting)
+        invariant rd(mu) && waitlevel << mu && acc(cs1,50);
+        invariant acc(x1,50) && acc(b1,50) && x1 && !b1;
+        invariant !waiting ==> cs1;
+      {
+        [[ if (!x0) { waiting := false; cs1 := true; } ]]
+        [[ if (turn) { waiting := false; cs1 := true; } ]]
+      }
+      // critical section...
+      [[ cs1 := false; x1 := false; ]]
+    }
+  }
+}

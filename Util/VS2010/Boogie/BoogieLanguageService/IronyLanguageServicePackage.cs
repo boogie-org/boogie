@@ -37,8 +37,7 @@ namespace Demo
     // This attribute will make your language service accessible by other packages installed.
     [ProvideService(typeof(IronyLanguageService))]
     // This attribute(s) associates file extensions with your language service.
-//    [ProvideLanguageExtension(typeof(IronyLanguageService), ".myc")]
-    [ProvideLanguageExtension(typeof(IronyLanguageService), ".chalice")]
+    [ProvideLanguageExtension(typeof(IronyLanguageService), ".dfy")]
 
     // This attributes informs Visual Studio that this package provides a langauge service and 
     // which features are implemented.
@@ -53,9 +52,9 @@ namespace Demo
     // package needs to have a valid load key (it can be requested at 
     // http://msdn.microsoft.com/vstudio/extend/). This attributes tells the shell that this 
     // package has a load key embedded in its resources.
-    [ProvideLoadKey("Standard", "1.0", "Chalice", "Demo", 104)]
+    [ProvideLoadKey("Standard", "1.0", "Boogie", "Demo", 104)]
     [Guid(GuidList.guidIronyLanguageServicePkgString)]
-    public sealed class MyCLanguageService : IronyPackage
+    public sealed class BoogieLanguageService : IronyPackage
     {
         /// <summary>
         /// Default constructor of the package.
@@ -64,7 +63,7 @@ namespace Demo
         /// not sited yet inside Visual Studio environment. The place to do all the other 
         /// initialization is the Initialize method.
         /// </summary>
-        public MyCLanguageService()
+        public BoogieLanguageService()
         {
             Trace.WriteLine(string.Format(CultureInfo.CurrentCulture, "Entering constructor for: {0}", this.ToString()));
         }

@@ -121,9 +121,9 @@
     <value>Paste PLK Here</value>
   </data>
   <data name="110" xml:space="preserve">
-    <value>Chalice</value>
+    <value>Boogie</value>
   </data>
   <data name="112" xml:space="preserve">
-    <value>Chalice Programming Language</value>
+    <value>Microsoft Research Boogie, intermediate verification language</value>
   </data>
 </root>

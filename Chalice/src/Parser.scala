@@ -36,7 +36,7 @@ class Parser extends StandardTokenParsers {
                        "seq", "nil", "result", "eval", "token",
                        "wait", "signal")
   // todo: can we remove "nil"?
-  lexical.delimiters += ("(", ")", "{", "}",
+  lexical.delimiters += ("(", ")", "{", "}", "[[", "]]",
                          "<==>", "==>", "&&", "||",
                          "==", "!=", "<", "<=", ">=", ">", "<<",
                          "+", "-", "*", "/", "%", "!", ".", "..",
@@ -114,8 +114,11 @@ class Parser extends StandardTokenParsers {
     | "lockchange" ~> expressionList <~ Semi ^^ LockChange
     )
   def blockStatement: Parser[List[Statement]] = {
+    "{" ~> blockStatementBody <~ "}"
+  }
+  def blockStatementBody: Parser[List[Statement]] = {
     val prev = currentLocalVariables
-    "{" ~> (statement*) <~ "}" ^^ {
+    (statement*) ^^ {
       case x => currentLocalVariables = prev; x }
   }
 
@@ -125,7 +128,7 @@ class Parser extends StandardTokenParsers {
 
   // statements
 
-  def statement =
+  def statement: Parser[Statement] =
     positioned( "assert" ~> expression <~ Semi ^^ Assert
     | "assume" ~> expression <~ Semi ^^ Assume
     | blockStatement ^^ BlockStmt
@@ -148,6 +151,8 @@ class Parser extends StandardTokenParsers {
     | "release" ~> expression <~ Semi ^^ Release
     | "lock" ~> "(" ~> expression ~ ")" ~ blockStatement ^^ {
         case e ~ _ ~ b => Lock(e, BlockStmt(b), false) }
+    | "[[" ~> blockStatementBody <~ "]]" ^^ {
+        case b => Lock(ExplicitThisExpr(), BlockStmt(b), false) }
     | "rd" ~>
         ( "lock" ~> "(" ~> expression ~ ")" ~ blockStatement ^^ {
             case e ~ _ ~ b => Lock(e, BlockStmt(b), true) }

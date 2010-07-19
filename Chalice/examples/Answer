@@ -240,6 +240,9 @@ Boogie program verifier finished with 19 verified, 4 errors
   65.5: The loop might lock/unlock more than the lockchange clause allows.
 
 Boogie program verifier finished with 14 verified, 3 errors
+------ Running regression test PetersonsAlgorithm.chalice 
+
+Boogie program verifier finished with 7 verified, 0 errors
 ------ Running regression test cell-defaults.chalice 
   96.5: The heap of the callee might not be strictly smaller than the heap of the caller.
   102.5: The heap of the callee might not be strictly smaller than the heap of the caller.

@@ -5,7 +5,7 @@ using Irony.Parsing;
 
 namespace Demo
 {
-    [Language("Dafny", "1.0", "Dafny Programming Language")]
+    [Language("Boogie", "1.0", "Microsoft Research Boogie, intermediate verification language")]
     public class Grammar : Irony.Parsing.Grammar
     {
       public Grammar() {
@@ -14,18 +14,29 @@ namespace Demo
 
         IdentifierTerminal ident = new IdentifierTerminal("Identifier");
         this.MarkReservedWords(
-          "class", "ghost", "static", "var", "method", "datatype",
-          "assert", "assume", "new", "this", "object", "refines", "replaces", "by",
-          "unlimited", "module", "imports",
-          "call", "if", "then", "else", "while", "invariant",
-          "break", "label", "return", "foreach", "havoc", "print", "use",
-          "returns", "requires", "ensures", "modifies", "reads", "decreases",
-          "int", "bool", "false", "true", "null",
-          "function", "free",
-          "in", "forall", "exists",
-          "seq", "set", "array",
-          "match", "case",
-          "fresh", "old"
+          "assert", "assume", "axiom",
+          "bool", "break",
+          "bv0", "bv1", "bv2", "bv3", "bv4", "bv5", "bv6", "bv7", "bv8", "bv9",
+          "bv10", "bv11", "bv12", "bv13", "bv14", "bv15", "bv16", "bv17", "bv18", "bv19",
+          "bv20", "bv21", "bv22", "bv23", "bv24", "bv25", "bv26", "bv27", "bv28", "bv29",
+          "bv30", "bv31", "bv32",
+          "bv64",
+          "call", "complete",
+          "else", "ensures", "exists", "extends",
+          "false", "forall", "free", "function",
+          "goto",
+          "havoc",
+          "if", "implementation", "int", "invariant",
+          "lambda",
+          "modifies",
+          "old",
+          "procedure",
+          "requires",
+          "return", "returns",
+          "then", "true", "type",
+          "unique",
+          "var",
+          "where", "while"
           );
 
         StringLiteral s = new StringLiteral("String", "'", StringFlags.AllowsDoubledQuote);
@@ -33,18 +44,21 @@ namespace Demo
         Terminal dot = ToTerm(".", "dot");
         Terminal less = ToTerm("<");
         Terminal greater = ToTerm(">");
-        Terminal arrow = ToTerm("=>");
+        Terminal iff = ToTerm("<==>");
+        Terminal implication = ToTerm("==>");
+        Terminal explication = ToTerm("<==");
         Terminal LBracket = ToTerm("[");
         Terminal RBracket = ToTerm("]");
         Terminal LParen = ToTerm("(");
         Terminal RParen = ToTerm(")");
         Terminal RCurly = ToTerm("}");
         Terminal LCurly = ToTerm("{");
-        Terminal LMb = ToTerm("<[");
-        Terminal RMb = ToTerm("]>");
+        Terminal LDoubleCurly = ToTerm("{{");
+        Terminal RDoubleCurly = ToTerm("}}");
         Terminal comma = ToTerm(",");
         Terminal semicolon = ToTerm(";");
         Terminal colon = ToTerm(":");
+        Terminal doubleColon = ToTerm("::");
 
         #endregion
 
@@ -56,8 +70,6 @@ namespace Demo
         NonTerminal RUnOp = new NonTerminal("RUnOp");
 
         NonTerminal ArrayConstructor = new NonTerminal("ArrayConstructor");
-        NonTerminal MObjectConstructor = new NonTerminal("MObjectConstructor");
-        NonTerminal MObjectList = new NonTerminal("MObjectList");
         #endregion
 
         #region 2.2 QualifiedName
@@ -147,11 +159,9 @@ namespace Demo
                     | ArrayExpression
                     | FunctionExpression
                     | ArrayConstructor
-                    | MObjectConstructor
                     | expression + BinOp + expression
                     | LUnOp + expression
                     | expression + RUnOp
-                    | LMb + declaration.Star() + RMb
                     | LParen + expression + RParen
                     | ToTerm("unfolding") + expression + "in" + expression
                     | ToTerm("acc") + "(" + selectExpr  + (("," + expression) | Empty) + ")"
@@ -182,8 +192,6 @@ namespace Demo
         RUnOp.Rule = ToTerm("++") | "--";
 
         ArrayConstructor.Rule = LBracket + expressionList + RBracket;
-        MObjectConstructor.Rule = LBracket + ident + arrow + expression + MObjectList.Star() + RBracket;
-        MObjectList.Rule = comma + ident + arrow + expression;
         #endregion
 
         #region 3.2 QualifiedName
@@ -244,6 +252,7 @@ namespace Demo
                         | QualifiedName + ":=" + Rhs
 
                         | "var" + localVarStmt
+                        | "const" + localVarStmt
 
                         | "call" + identList + ":=" + FunctionExpression + Semi
                         | "call" + FunctionExpression + Semi
@@ -283,6 +292,7 @@ namespace Demo
           | "ghost"
           | "static"
           | "var"
+          | "const"
           | "method"
           | "datatype"
           | "assert"

@@ -7,8 +7,8 @@ namespace Demo
 {
     public static partial class Configuration
     {
-        public const string Name = "Chalice";
-        public const string FormatList = "Chalice File (*.chalice)\n*.chalice";
+        public const string Name = "Boogie";
+        public const string FormatList = "Boogie File (*.bpl)\n*.bpl";
 
         static Configuration()
         {
