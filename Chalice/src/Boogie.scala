@@ -9,7 +9,7 @@ import scala.util.parsing.input.NoPosition
 object Boogie {
  
  sealed abstract class Decl
- case class Const(id: String, unique: boolean, t: BType) extends Decl
+ case class Const(id: String, unique: Boolean, t: BType) extends Decl
  case class Proc(id: String, ins: List[BVar], outs: List[BVar],
                  mod: List[String], PrePost: List[String],
                  body: List[Stmt]) extends Decl
@@ -69,7 +69,7 @@ object Boogie {
    def store(e: Expr, f: Expr, rhs: Expr) = MapUpdate(this, e, PrintExpr(f), rhs)
  }
  case class IntLiteral(n: int) extends Expr
- case class BoolLiteral(b: boolean) extends Expr
+ case class BoolLiteral(b: Boolean) extends Expr
  case class Null extends Expr
  case class VarExpr(id: String) extends Expr {
    def this(v: BVar) = this(v.id)
@@ -99,7 +99,7 @@ object Boogie {
  case class Ite(con: Expr, then: Expr, els: Expr) extends Expr
 
  case class BVar(id: String, t: BType) {
-   def this(id: String, t: BType, uniquifyName: boolean) =
+   def this(id: String, t: BType, uniquifyName: Boolean) =
      this(if (uniquifyName) {
             val n = S_BVar.VariableCount
             S_BVar.VariableCount = S_BVar.VariableCount + 1
@@ -110,13 +110,13 @@ object Boogie {
    val where: Expr = null
  }
  object S_BVar { var VariableCount = 0 }
- def NewBVar(id: String, t: BType, uniquifyName: boolean) = {
+ def NewBVar(id: String, t: BType, uniquifyName: Boolean) = {
    val v = new Boogie.BVar(id, t, uniquifyName)
    val e = new Boogie.VarExpr(v)
    (v,e)
  }
  case class TVar(id: String) {
-   def this(id: String, uniquifyName: boolean) =
+   def this(id: String, uniquifyName: Boolean) =
      this(if (uniquifyName) {
             val n = S_TVar.VariableCount
             S_TVar.VariableCount = S_TVar.VariableCount + 1
@@ -233,7 +233,7 @@ object Boogie {
  def PrintExpr(e: Expr): String = {
    PrintExpr(e, false)
  }
- def PrintExpr(e: Expr, useParens: boolean): String = e match {
+ def PrintExpr(e: Expr, useParens: Boolean): String = e match {
    case IntLiteral(n) => n.toString
    case BoolLiteral(b) => b.toString
    case Null() => "null"

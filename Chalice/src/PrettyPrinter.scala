@@ -195,7 +195,7 @@ object PrintProgram {
     case e: Expression => Expr(e)
   }
   def Expr(e: Expression): Unit = Expr(e, 0, false)
-  def Expr(e: Expression, contextBindingPower: int, fragileContext: boolean): Unit = e match {
+  def Expr(e: Expression, contextBindingPower: int, fragileContext: Boolean): Unit = e match {
     case IntLiteral(n) => print(n)
     case BoolLiteral(b) => print(b)
     case NullLiteral() => print("null")
@@ -284,6 +284,7 @@ object PrintProgram {
       Expr(s); print("["); Expr(n); print(" ..]");
     case Take(s, n) =>
       Expr(s); print("[.. "); Expr(n); print("]");
+    case e:Contains => BinExpr(e, e.OpName, 0x40, true, true, contextBindingPower, fragileContext)      
     case Eval(h, e) =>
       print("eval("); (h match 
         { 
@@ -292,17 +293,17 @@ object PrintProgram {
           case CallState(token, obj, id, args) => Expr(token); print(".joinable"); print(", "); Expr(obj); print("." + id + "("); ExprList(args); print(")"); 
         }); print(", "); Expr(e); print(")"); 
   }
-  def MemberSelect(e: Expression, f: String, contextBindingPower: int, fragileContext: boolean) = e match {
+  def MemberSelect(e: Expression, f: String, contextBindingPower: int, fragileContext: Boolean) = e match {
     case e:ImplicitThisExpr => print(f)
     case _ =>
       ParenExpr(0x90, contextBindingPower, fragileContext, { Expr(e,0x90,false); print("." + f) })
   }
-  def BinExpr(bin: BinaryExpr, op: String, power: int, fragileLeft: boolean, fragileRight: boolean,
-              context: int, fragileContext: boolean) = {
+  def BinExpr(bin: BinaryExpr, op: String, power: int, fragileLeft: Boolean, fragileRight: Boolean,
+              context: int, fragileContext: Boolean) = {
     ParenExpr(power, context, fragileContext,
           { Expr(bin.E0, power, fragileLeft); print(" " + op + " "); Expr(bin.E1, power, fragileRight) })
   }
-  def ParenExpr(power: int, context: int, fragileContext: boolean, pe: =>Unit) {
+  def ParenExpr(power: int, context: int, fragileContext: Boolean, pe: =>Unit) {
     val ap = power & 0xF0;
     val cp = context & 0xF0;
     val parensNeeded = ap < cp || (ap == cp && (power != context || fragileContext));

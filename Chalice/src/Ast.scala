@@ -23,15 +23,15 @@ sealed case class Class(classId: String, parameters: List[Class], module: String
     } else
       None
   }
-  def IsInt: boolean = false
-  def IsBool: boolean = false
-  def IsRef: boolean = true
-  def IsNull: boolean = false
-  def IsMu: boolean = false
-  def IsSeq: boolean = false
-  def IsToken: boolean = false
-  def IsChannel: boolean = false
-  def IsState: boolean = false
+  def IsInt: Boolean = false
+  def IsBool: Boolean = false
+  def IsRef: Boolean = true
+  def IsNull: Boolean = false
+  def IsMu: Boolean = false
+  def IsSeq: Boolean = false
+  def IsToken: Boolean = false
+  def IsChannel: Boolean = false
+  def IsState: Boolean = false
   def IsNormalClass = true;
   var IsExternal = false;  // says whether or not to compile the class (compilation ignores external classes)
 
@@ -115,7 +115,7 @@ sealed case class TokenType(C: Type, m: String) extends Type("token", Nil) {  //
 // members
 
 sealed abstract class Member extends ASTNode {
-  val Hidden: boolean = false  // hidden means not mentionable in source
+  val Hidden: Boolean = false  // hidden means not mentionable in source
 }
 case class MonitorInvariant(e: Expression) extends Member
 sealed abstract class NamedMember(id: String) extends Member {
@@ -124,7 +124,7 @@ sealed abstract class NamedMember(id: String) extends Member {
   def FullName = Parent.id + "." + Id
 }
 case class Field(id: String, typ: Type) extends NamedMember(id) {
-  val IsGhost: boolean = false
+  val IsGhost: Boolean = false
 }
 case class SpecialField(name: String, tp: Type) extends Field(name, tp) {  // direct assignments are not allowed to a SpecialField
   override def FullName = id
@@ -142,8 +142,8 @@ case class Condition(id: String, where: Option[Expression]) extends NamedMember(
 class Variable(name: String, typ: Type) extends ASTNode {
   val id = name
   val t = typ
-  val IsGhost: boolean = false
-  val IsImmutable: boolean = false
+  val IsGhost: Boolean = false
+  val IsImmutable: Boolean = false
   val UniqueName = {
     val n = S_Variable.VariableCount
     S_Variable.VariableCount = S_Variable.VariableCount + 1
@@ -152,7 +152,7 @@ class Variable(name: String, typ: Type) extends ASTNode {
 }
 object S_Variable { var VariableCount = 0 }
 class ImmutableVariable(id: String, t: Type) extends Variable(id, t) {
-  override val IsImmutable: boolean = true
+  override val IsImmutable: Boolean = true
 }
 class SpecialVariable(name: String, typ: Type) extends Variable(name, typ) {
   override val UniqueName = name
@@ -182,14 +182,14 @@ case class WhileStmt(guard: Expression,
 }
 case class Assign(lhs: VariableExpr, rhs: RValue) extends Statement
 case class FieldUpdate(lhs: MemberAccess, rhs: RValue) extends Statement
-case class LocalVar(id: String, t: Type, const: boolean, ghost: boolean, rhs: Option[RValue]) extends Statement {
+case class LocalVar(id: String, t: Type, const: Boolean, ghost: Boolean, rhs: Option[RValue]) extends Statement {
   val v =
     if (const)
       new ImmutableVariable(id, t){override val IsGhost = ghost}
     else
       new Variable(id, t){override val IsGhost = ghost}
 }
-case class Call(declaresLocal: List[boolean], lhs: List[VariableExpr], obj: Expression, id: String, args: List[Expression]) extends Statement {
+case class Call(declaresLocal: List[Boolean], lhs: List[VariableExpr], obj: Expression, id: String, args: List[Expression]) extends Statement {
   var locals = List[Variable]()
   var m: Method = null
 }
@@ -201,9 +201,9 @@ case class Release(obj: Expression) extends Statement
 case class RdAcquire(obj: Expression) extends Statement
 case class RdRelease(obj: Expression) extends Statement
 case class Downgrade(obj: Expression) extends Statement
-case class Lock(obj: Expression, b: BlockStmt, rdLock: boolean) extends Statement
+case class Lock(obj: Expression, b: BlockStmt, rdLock: Boolean) extends Statement
 case class Free(obj: Expression) extends Statement
-case class CallAsync(declaresLocal: boolean, lhs: VariableExpr, obj: Expression, id: String, args: List[Expression]) extends Statement {
+case class CallAsync(declaresLocal: Boolean, lhs: VariableExpr, obj: Expression, id: String, args: List[Expression]) extends Statement {
   var local: Variable = null
   var m: Method = null
 }
@@ -213,12 +213,12 @@ case class JoinAsync(lhs: List[VariableExpr], token: Expression) extends Stateme
 case class Wait(obj: Expression, id: String) extends Statement {
   var c: Condition = null
 }
-case class Signal(obj: Expression, id: String, all: boolean) extends Statement {
+case class Signal(obj: Expression, id: String, all: Boolean) extends Statement {
   var c: Condition = null
 }
 case class Send(ch: Expression, args: List[Expression]) extends Statement {
 }
-case class Receive(declaresLocal: List[boolean], ch: Expression, outs: List[VariableExpr]) extends Statement {
+case class Receive(declaresLocal: List[Boolean], ch: Expression, outs: List[VariableExpr]) extends Statement {
   var locals = List[Variable]()
 }
 case class Fold(pred: PermissionExpr) extends Statement
@@ -235,25 +235,25 @@ case class Init(id: String, e: Expression) extends ASTNode {
 }
 sealed abstract class Expression extends RValue
 sealed abstract class Literal extends Expression
-case class IntLiteral(n: int) extends Literal
-case class BoolLiteral(b: boolean) extends Literal
-case class NullLiteral extends Literal
-case class MaxLockLiteral extends Literal
-case class LockBottomLiteral extends Literal
+case class IntLiteral(n: Int) extends Literal
+case class BoolLiteral(b: Boolean) extends Literal
+case class NullLiteral() extends Literal
+case class MaxLockLiteral() extends Literal
+case class LockBottomLiteral() extends Literal
 case class VariableExpr(id: String) extends Expression {
   var v: Variable = null
   def this(vr: Variable) = { this(vr.id); v = vr; typ = vr.t.typ }
   def Resolve(vr: Variable) = { v = vr; typ = vr.t.typ }
 }
-case class Result extends Expression
+case class Result() extends Expression
 sealed abstract class ThisExpr extends Expression {
   override def equals(other: Any): Boolean = {
     // needed in autoMagic, which checks for syntactic equality using equals
     other.isInstanceOf[ThisExpr]
   }
 }
-case class ExplicitThisExpr extends ThisExpr
-case class ImplicitThisExpr extends ThisExpr
+case class ExplicitThisExpr() extends ThisExpr
+case class ImplicitThisExpr() extends ThisExpr
 case class MemberAccess(e: Expression, id: String) extends Expression {
   var isPredicate: Boolean = false;
   var f: Field = null
@@ -393,6 +393,9 @@ case class Drop(s: Expression, n: Expression) extends SeqAccess(s, n) {
 }
 case class Take(s: Expression, n: Expression) extends SeqAccess(s, n) {
   override val OpName = ""
+}
+case class Contains(s: Expression, n: Expression) extends SeqAccess(s, n) {
+  override val OpName = "in"
 }
 
 

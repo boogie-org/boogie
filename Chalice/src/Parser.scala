@@ -32,13 +32,13 @@ class Parser extends StandardTokenParsers {
                        "int", "bool", "false", "true", "null", "waitlevel", "lockbottom",
                        "module", "external",
                        "predicate", "function", "free", "send", "receive",
-                       "ite", "fold", "unfold", "unfolding", "in", "forall", "exists", 
+                       "ite", "fold", "unfold", "unfolding", "in", "forall", "exists",
                        "seq", "nil", "result", "eval", "token",
                        "wait", "signal")
   // todo: can we remove "nil"?
   lexical.delimiters += ("(", ")", "{", "}", "[[", "]]",
                          "<==>", "==>", "&&", "||",
-                         "==", "!=", "<", "<=", ">=", ">", "<<",
+                         "==", "!=", "<", "<=", ">=", ">", "<<", "in", "!in",
                          "+", "-", "*", "/", "%", "!", ".", "..",
                          ";", ":", ":=", ",", "?", "|", "[", "]", "++", "::")
 
@@ -95,11 +95,11 @@ class Parser extends StandardTokenParsers {
     ("predicate" ~> ident) ~ ("{" ~> expression <~ "}") ^^ { case id ~ definition => Predicate(id, definition) }
   def functionDecl = 
     ("function" ~> ident) ~ formalParameters(true) ~ (":" ~> typeDecl) ~ (methodSpec*) ~ ("{" ~> expression <~ "}") ^^ { case id ~ ins ~ out ~ specs ~ body => Function(id, ins, out, specs, body) }
-  def formalParameters(immutable: boolean) =
+  def formalParameters(immutable: Boolean) =
     "(" ~> (formalList(immutable) ?) <~ ")" ^^ {
       case None => Nil
       case Some(ids) => ids }
-  def formalList(immutable: boolean) = {
+  def formalList(immutable: Boolean) = {
     def MVar(id: String, t: Type) = {
       currentLocalVariables = currentLocalVariables + id
       if (immutable) new ImmutableVariable(id,t) else new Variable(id,t)
@@ -220,7 +220,7 @@ class Parser extends StandardTokenParsers {
           val lhs = ExtractList(outs)
           Receive(declareImplicitLocals(lhs), e, lhs) }
     )
-  def localVarStmt(const: boolean, ghost: boolean) =
+  def localVarStmt(const: Boolean, ghost: Boolean) =
       idTypeOpt ~ (":=" ~> Rhs ?) <~ Semi ^^ {
         case (id,optT) ~ rhs =>
           currentLocalVariables = currentLocalVariables + id
@@ -345,8 +345,10 @@ class Parser extends StandardTokenParsers {
           case e0 ~ Some(">=" ~ e1) => AtLeast(e0,e1)
           case e0 ~ Some(">" ~ e1) => Greater(e0,e1)
           case e0 ~ Some("<<" ~ e1) => LockBelow(e0,e1)
+          case e0 ~ Some("in" ~ e1) => Contains(e0, e1)
+          case e0 ~ Some("!in" ~ e1) => Not(Contains(e0, e1))
         })
-  def CompareOp = "==" | "!=" | "<" | "<=" | ">=" | ">" | "<<"
+  def CompareOp = "==" | "!=" | "<" | "<=" | ">=" | ">" | "<<" | "in" | "!in"
   def concatExpr =
     positioned(addExpr ~ ("++" ~> addExpr *) ^^ {
           case e0 ~ rest => (rest foldLeft e0) {
@@ -450,7 +452,7 @@ class Parser extends StandardTokenParsers {
     | "holds" ~> "(" ~> expression <~ ")" ^^ Holds
     | "assigned" ~> "(" ~> ident <~ ")" ^^ Assigned
     | "old" ~> "(" ~> expression <~ ")" ^^ Old
-    | ("unfolding" ~> expression <~ "in") ~ expression ^? { 
+    | ("unfolding" ~> suffixExpr <~ "in") ~ expression ^? { 
         case (pred: MemberAccess) ~ e => val acc = Access(pred, None); acc.pos = pred.pos; Unfolding(acc, e)
         case (perm: PermissionExpr) ~ e => Unfolding(perm, e) 
       }

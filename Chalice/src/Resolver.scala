@@ -8,7 +8,7 @@ import scala.util.parsing.input.Positional
 
 object Resolver {
  sealed abstract class ResolverOutcome
- case class Success extends ResolverOutcome
+ case class Success() extends ResolverOutcome
  case class Errors(ss: List[(Position,String)]) extends ResolverOutcome
 
  var seqClasses = Map[String, SeqClass]();
@@ -26,14 +26,14 @@ object Resolver {
      new LProgramContext(v, this);
    }
    def LookupVariable(id: String): Option[Variable] = None
-   def IsVariablePresent(vr: Variable): boolean = false
+   def IsVariablePresent(vr: Variable): Boolean = false
 
    private class LProgramContext(v: Variable, parent: ProgramContext) extends ProgramContext(parent.Decls, parent.CurrentClass) {
      override def Error(pos: Position, msg: String) = parent.Error(pos, msg)
      override def LookupVariable(id: String): Option[Variable] = {
        if (id == v.id) Some(v) else parent.LookupVariable(id)
      }
-     override def IsVariablePresent(vr: Variable): boolean = {
+     override def IsVariablePresent(vr: Variable): Boolean = {
        if (vr == v) true else parent.IsVariablePresent(vr)
      }
      override def CurrentMember() = {
@@ -163,7 +163,7 @@ object Resolver {
    }
  }
 
- def ResolveType(t: Type, context: ProgramContext): unit = {
+ def ResolveType(t: Type, context: ProgramContext): Unit = {
      for(p <- t.params){
        ResolveType(p, context);
      }
@@ -209,7 +209,7 @@ object Resolver {
    }
  }
 
- def ResolveStmt(s: Statement, context: ProgramContext): unit = s match {
+ def ResolveStmt(s: Statement, context: ProgramContext): Unit = s match {
    case Assert(e) =>
      ResolveExpr(e, context, true, true)(false)
      if (!e.typ.IsBool) context.Error(e.pos, "assert statement requires a boolean expression (found " + e.typ.FullName + ")")
@@ -490,7 +490,7 @@ object Resolver {
      }
  }
 
- def ResolveLHS(declaresLocal: List[boolean], actuals: List[VariableExpr], formals: List[Variable], context: ProgramContext): List[Variable] = {
+ def ResolveLHS(declaresLocal: List[Boolean], actuals: List[VariableExpr], formals: List[Variable], context: ProgramContext): List[Variable] = {
    var locals = List[Variable]()
    var vars = Set[Variable]()
    var ctx = context
@@ -557,7 +557,7 @@ object Resolver {
 
  // ResolveExpr resolves all parts of an RValue, if possible, and (always) sets the RValue's typ field
  def ResolveExpr(e: RValue, context: ProgramContext,
-                 twoStateContext: boolean, specContext: boolean)(implicit inPredicate: Boolean): unit = e match {
+                 twoStateContext: Boolean, specContext: Boolean)(implicit inPredicate: Boolean): Unit = e match {
    case e @ NewRhs(id, initialization, lower, upper) =>
      if (context.Decls contains id) {
        context.Decls(id) match {
@@ -766,6 +766,12 @@ object Resolver {
      if(! e0.typ.IsSeq) context.Error(take.pos, "LHS operand of take must be sequence. (found: " + e0.typ.FullName + ").");
      if(! e1.typ.IsInt) context.Error(take.pos, "RHS operand of take must be an integer (found: " + e1.typ.FullName + ").");
      take.typ = e0.typ;
+   case contains@Contains(e0, e1) =>
+     ResolveExpr(e0, context, twoStateContext, false);
+     ResolveExpr(e1, context, twoStateContext, false);
+     if(! e1.typ.IsSeq) context.Error(contains.pos, "RHS operand of 'in' must be sequence. (found: " + e1.typ.FullName + ").");
+     if(e0.typ ne e1.typ.parameters(0)) context.Error(contains.pos, "LHS operand's type must be element type of sequence. (found: " + e0.typ.FullName + ", expected: " + e1.typ.parameters(0).FullName + ").");
+     contains.typ = BoolClass;
    case bin: BinaryExpr =>
      ResolveExpr(bin.E0, context, twoStateContext, specContext && bin.isInstanceOf[And])
      ResolveExpr(bin.E1, context, twoStateContext, specContext && (bin.isInstanceOf[And] || bin.isInstanceOf[Implies]))
@@ -919,7 +925,7 @@ object Resolver {
    specOk(expr)
  }
 
- def CheckRunSpecification(e: Expression, context: ProgramContext, allowMaxLock: boolean): unit = e match {
+ def CheckRunSpecification(e: Expression, context: ProgramContext, allowMaxLock: Boolean): Unit = e match {
    case _:MaxLockLiteral =>
      if (!allowMaxLock) context.Error(e.pos, "specification of run method is not allowed to mention waitlevel here")
    case _:Literal =>

@@ -906,7 +906,7 @@ class Translator {
      bassume(!guard)))
   }
 
-  def UpdateMu(o: Expr, allowOnlyFromBottom: boolean, justAssumeValue: boolean,
+  def UpdateMu(o: Expr, allowOnlyFromBottom: Boolean, justAssumeValue: Boolean,
                lowerBounds: List[Expression], upperBounds: List[Expression], error: ErrorMessage): List[Stmt] = {
     def BoundIsNullObject(b: Expression): Boogie.Expr = {
       if (b.typ.IsMu) false else b ==@ bnull
@@ -1045,7 +1045,7 @@ class Translator {
   def isDefined(e: Expression) = etran.isDefined(e)(true)
   def TrExpr(e: Expression) = etran.Tr(e)
 
-  def InhaleInvariants(obj: Expression, readonly: boolean, tran: ExpressionTranslator) = {
+  def InhaleInvariants(obj: Expression, readonly: Boolean, tran: ExpressionTranslator) = {
     val shV = new Variable("sh", new Type(obj.typ))
     val sh = new VariableExpr(shV)
     BLocal(Variable2BVar(shV)) :: Boogie.Assign(TrExpr(sh), TrExpr(obj)) ::
@@ -1053,7 +1053,7 @@ class Translator {
            (inv => SubstThis(inv.e, sh)) map
            (inv => (if (readonly) SubstRd(inv) else inv)), "monitor invariant", false)
   }
-  def ExhaleInvariants(obj: Expression, readonly: boolean, msg: ErrorMessage, tran: ExpressionTranslator) = {
+  def ExhaleInvariants(obj: Expression, readonly: Boolean, msg: ErrorMessage, tran: ExpressionTranslator) = {
     val shV = new Variable("sh", new Type(obj.typ))
     val sh = new VariableExpr(shV)
     BLocal(Variable2BVar(shV)) :: Boogie.Assign(TrExpr(sh), TrExpr(obj)) ::
@@ -1061,7 +1061,7 @@ class Translator {
            (inv => SubstThis(inv.e, sh)) map
            (inv => (if (readonly) SubstRd(inv) else inv, msg)), "monitor invariant", false)
   }
-  def InhaleInvariants(obj: Expression, readonly: boolean) = {
+  def InhaleInvariants(obj: Expression, readonly: Boolean) = {
     val shV = new Variable("sh", new Type(obj.typ))
     val sh = new VariableExpr(shV)
     BLocal(Variable2BVar(shV)) :: Boogie.Assign(TrExpr(sh), TrExpr(obj)) ::
@@ -1069,7 +1069,7 @@ class Translator {
            (inv => SubstThis(inv.e, sh)) map
            (inv => (if (readonly) SubstRd(inv) else inv)), "monitor invariant")
   }
-  def ExhaleInvariants(obj: Expression, readonly: boolean, msg: ErrorMessage) = {
+  def ExhaleInvariants(obj: Expression, readonly: Boolean, msg: ErrorMessage) = {
     val shV = new Variable("sh", new Type(obj.typ))
     val sh = new VariableExpr(shV)
     BLocal(Variable2BVar(shV)) :: Boogie.Assign(TrExpr(sh), TrExpr(obj)) ::
@@ -1105,7 +1105,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   def this(cl: Class) = this(for ((id,t) <- S_ExpressionTranslator.Globals) yield Boogie.VarExpr(id), cl)
 
   def Globals = List(Heap, Mask, Credits)
-  def ChooseEtran(chooseOld: boolean) = if (chooseOld) oldEtran else this
+  def ChooseEtran(chooseOld: Boolean) = if (chooseOld) oldEtran else this
   // Create a list of fresh global variables
   def FreshGlobals(prefix: String) = {
     new Boogie.BVar(prefix + HeapName, theap, true) ::
@@ -1271,13 +1271,21 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       case Append(e0, e1) =>
         isDefined(e0) ::: isDefined(e1)
       case at@At(e0, e1) =>
-        isDefined(e0) ::: isDefined(e1) ::: List(prove(0 <= Tr(e1), at.pos, "Sequence index might be negative."), prove(Tr(e1) < Boogie.FunctionApp("Seq#Length", List(Tr(e0))), at.pos, "Sequence index might be larger than or equal to the length of the sequence."))
+        isDefined(e0) ::: isDefined(e1) :::
+        prove(0 <= Tr(e1), at.pos, "Sequence index might be negative.") ::
+        prove(Tr(e1) < Boogie.FunctionApp("Seq#Length", List(Tr(e0))), at.pos, "Sequence index might be larger than or equal to the length of the sequence.")
       case Drop(e0, e1) => 
-        isDefined(e0) ::: isDefined(e1) ::: List(prove(0 <= Tr(e1), e.pos, "Cannot drop less than zero elements."), prove(Tr(e1) <= Boogie.FunctionApp("Seq#Length", List(Tr(e0))), e.pos, "Cannot drop more than elements than the length of the sequence."))
+        isDefined(e0) ::: isDefined(e1) :::
+        prove(0 <= Tr(e1), e.pos, "Cannot drop less than zero elements.") ::
+        prove(Tr(e1) <= Boogie.FunctionApp("Seq#Length", List(Tr(e0))), e.pos, "Cannot drop more than elements than the length of the sequence.")
       case Take(e0, e1) => 
-        isDefined(e0) ::: isDefined(e1) ::: List(prove(0 <= Tr(e1), e.pos, "Cannot take less than zero elements."), prove(Tr(e1) <= Boogie.FunctionApp("Seq#Length", List(Tr(e0))), e.pos, "Cannot take more than elements than the length of the sequence."))
+        isDefined(e0) ::: isDefined(e1) :::
+        prove(0 <= Tr(e1), e.pos, "Cannot take less than zero elements.") ::
+        prove(Tr(e1) <= Boogie.FunctionApp("Seq#Length", List(Tr(e0))), e.pos, "Cannot take more than elements than the length of the sequence.")
       case Length(e) =>
         isDefined(e)
+      case Contains(e0, e1) =>
+        isDefined(e0) ::: isDefined(e1)
       case Eval(h, e) =>
         val (evalHeap, evalMask, evalCredits, checks, assumptions) = fromEvalState(h);
         val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalCredits), currentClass);
@@ -1396,9 +1404,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       Tr(e0) / Tr(e1)
     case Mod(e0,e1) =>
       Tr(e0) % Tr(e1)
-    case q: Forall =>
-      translateQuantification(q)
-    case q: Exists =>
+    case q: Quantification =>
       translateQuantification(q)
     case EmptySeq(t) =>
       createEmptySeq
@@ -1420,6 +1426,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       Boogie.FunctionApp("Seq#Take", List(Tr(e0), Tr(e1)))
     case Length(e) =>
       Boogie.FunctionApp("Seq#Length", List(Tr(e)))
+    case Contains(e0, e1) =>
+      Boogie.FunctionApp("Seq#Contains", List(Tr(e1), Tr(e0)))
     case Eval(h, e) =>
       val (evalHeap, evalMask, evalCredits, checks, assumptions) = fromEvalState(h);
       val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalCredits), currentClass);
@@ -1450,7 +1458,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     }
   }
 
-  def ShaveOffOld(e: Expression): (Expression, boolean) = e match {
+  def ShaveOffOld(e: Expression): (Expression, Boolean) = e match {
     case Old(e) =>
       val (f,o) = ShaveOffOld(e)
       (f,true)
