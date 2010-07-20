@@ -48,7 +48,7 @@ class Translator {
       modules = cl.module :: modules;
     }
     // add class name
-    declarations = Const(cl.id + "#t", true, TypeName) :: declarations;
+    declarations = Const(className(cl).id, true, TypeName) :: declarations;
     // translate monitor invariant
     declarations = declarations ::: translateMonitorInvariant(cl.Invariants, cl.pos);
     // translate each member
@@ -1153,10 +1153,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         isDefined(e) ::: 
         prove(nonNull(Tr(e)), e.pos, "Receiver might be null.") ::
         prove(CanRead(Tr(e), fs.f.FullName), fs.pos, "Location might not be readable.")
-      case _:Access => throw new Exception("acc expression unexpected here")
-      case _:RdAccess => throw new Exception("rd expression unexpected here")
-      case _:AccessAll => throw new Exception("acc expression unexpected here")
-      case _:RdAccessAll => throw new Exception("rd expression unexpected here")
+      case _:PermissionExpr => throw new Exception("permission expression unexpected here: " + e.pos)
       case c@Credit(e, n) =>
         isDefined(e);
         isDefined(c.N)
@@ -1328,10 +1325,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         r !=@ 0 // joinable is encoded as an integer
       else
         r
-    case _:Access => throw new Exception("acc expression unexpected here")
-    case _:RdAccess => throw new Exception("rd expression unexpected here")
-    case _:AccessAll => throw new Exception("acc expression unexpected here")
-    case _:RdAccessAll => throw new Exception("rd expression unexpected here")
+    case _:PermissionExpr => throw new Exception("permission expression unexpected here: " + e.pos)
     case _:Credit => throw new Exception("credit expression unexpected here")
     case Holds(e) =>
       (0 < Heap.select(Tr(e), "held")) &&
@@ -2356,13 +2350,19 @@ object TranslationHelper {
              perm match { case None => perm case Some(perm) => Some(func(perm)) })
       case RdAccess(e, perm) =>
         RdAccess(func(e).asInstanceOf[MemberAccess],
-               perm match { case Some(Some(p)) => Some(Some(func(p))) case _ => perm })
+             perm match { case Some(Some(p)) => Some(Some(func(p))) case _ => perm })
       case AccessAll(obj, perm) =>
         AccessAll(func(obj),
              perm match { case None => perm case Some(perm) => Some(func(perm)) })
       case RdAccessAll(obj, perm) =>
         RdAccessAll(func(obj),
-               perm match { case Some(Some(p)) => Some(Some(func(p))) case _ => perm })
+             perm match { case Some(Some(p)) => Some(Some(func(p))) case _ => perm })
+      case AccessSeq(s, f, perm) =>
+        AccessSeq(func(s), f,
+             perm match { case None => perm case Some(perm) => Some(func(perm)) })
+      case RdAccessSeq(s, f, perm) =>
+        RdAccessSeq(func(s), f,
+             perm match { case Some(Some(p)) => Some(Some(func(p))) case _ => perm })
       case Credit(e, None) => Credit(func(e), None)
       case Credit(e, Some(n)) => Credit(func(e), Some(func(n)))
       case Holds(e) => Holds(func(e))

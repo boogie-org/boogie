@@ -196,7 +196,8 @@ class ChaliceToCSharp {
         ")"
       case Range(min, max) => "Chalice.ImmutableList.Range(" + convertExpression(min) + ", " + convertExpression(max) + ")"
       case Length(s) => convertExpression(s) + ".Length"
-      case IfThenElse(c, thn, els) => "(" + convertExpression(c) + " ? " + convertExpression(thn) + " : " + convertExpression(els) + ")" 
+      case IfThenElse(c, thn, els) => "(" + convertExpression(c) + " ? " + convertExpression(thn) + " : " + convertExpression(els) + ")"
+      case _ => throw new Exception("Expression not supported yet!");
     }
   }
   
@@ -224,7 +225,7 @@ class ChaliceToCSharp {
   
   // utility methods below
   
-  var uniqueInt: int = 0;
+  var uniqueInt: Int = 0;
   val nl = System.getProperty("line.separator");
   var indentLevel = 0
   
@@ -241,7 +242,7 @@ class ChaliceToCSharp {
   }
   
   def indent: String = {
-    def doIndent(i: int): String = {
+    def doIndent(i: Int): String = {
       if(i==0) { "" } else { "  " + doIndent(i-1) }
     }
     doIndent(indentLevel);

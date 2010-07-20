@@ -221,7 +221,20 @@ object PrintProgram {
       perm match { case None => case Some(perm) => print(", "); Expr(perm) }
       print(")")
     case RdAccessAll(obj, p) =>
-     print("rd("); Expr(e); print(".*");
+      print("rd("); Expr(e); print(".*");
+      p match {
+        case None =>          print(")")
+        case Some(None) =>    print(", *)")
+        case Some(Some(e)) => print(", "); Expr(e); print(")")
+      }
+    case AccessSeq(s, f, perm) =>
+      print("acc("); Expr(s); print("[*].");
+      f match { case None => print("*"); case Some(x) => print(x)}
+      perm match { case None => case Some(perm) => print(", "); Expr(perm) }
+      print(")")
+    case RdAccessSeq(s, f, p) =>
+      print("rd("); Expr(s); print("[*].*");
+      f match { case None => print("*"); case Some(x) => print(x)}
       p match {
         case None =>          print(")")
         case Some(None) =>    print(", *)")

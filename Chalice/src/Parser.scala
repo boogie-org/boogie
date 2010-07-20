@@ -394,22 +394,25 @@ class Parser extends StandardTokenParsers {
   def exprBody =
     "{" ~> expression <~ "}"
 
+  // what is "FerSure"?
   def selectExprFerSure: Parser[MemberAccess] =
     positioned(atom ~ "." ~ ident ~ ("." ~> ident *) ^^ {
       case e ~ _ ~ field ~ moreFields =>
         (moreFields foldLeft MemberAccess(e,field)) { (target, f) =>
           val result = MemberAccess(target, f); result.pos = target.pos; result }})
   def selectExprFerSureX: Parser[MemberAccess] =
-    positioned(atom ~ "." ~ identOrSpecial ~ ("." ~> ident *) ^^ {
-      case e ~ _ ~ field ~ moreFields =>
+    positioned(atom ~ identOrSpecial ~ ("." ~> ident *) ^^ {
+      case e ~ field ~ moreFields =>
         (moreFields foldLeft MemberAccess(e,field)) { (target, f) =>
           val result = MemberAccess(target, f); result.pos = target.pos; result }})
   def identOrSpecial: Parser[String] =
-    (  ident ^^ { case s => s }
-    | "acquire" ^^^ "acquire"
-    | "release" ^^^ "release"
-    | "fork" ^^^ "fork"
-    | "*" ^^^ "*"
+    ( "." ~> ident ^^ { case s => s }
+    | "." ~> "acquire" ^^^ "acquire"
+    | "." ~> "release" ^^^ "release"
+    | "." ~> "fork" ^^^ "fork"
+    | "." ~> "*" ^^^ "*"
+    | "["~"*"~"]"~"."~"*" ^^^ "[*].*"
+    | "["~"*"~"]" ^^^ "[*]"
     )
 
   def atom : Parser[Expression] =
@@ -442,14 +445,18 @@ class Parser extends StandardTokenParsers {
       | selectExprFerSureX ~ rdPermArg <~ ")"
       ) ^^ {
         case MemberAccess(obj, "*") ~ p => RdAccessAll(obj, p);
+        case MemberAccess(obj, "[*].*") ~ p => RdAccessSeq(obj, None, p);
+        case MemberAccess(MemberAccess(obj, "[*]"), f) ~ p => RdAccessSeq(obj, Some(f), p);
         case e ~ p => RdAccess(e,p)
       }
     | "acc" ~> "(" ~>
       ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result} )) ~ ("," ~> expression ?) <~ ")"
       | selectExprFerSureX ~ ("," ~> expression ?) <~ ")"
       ) ^^ {
-        case MemberAccess(obj, "*") ~ perm => AccessAll(obj, perm);
-        case e ~ perm => Access(e, perm)
+        case MemberAccess(obj, "*") ~ p => AccessAll(obj, p);
+        case MemberAccess(obj, "[*].*") ~ p => AccessSeq(obj, None, p);
+        case MemberAccess(MemberAccess(obj, "[*]"), f) ~ p => AccessSeq(obj, Some(f), p);
+        case e ~ p => Access(e, p)
       }
     | "credit" ~> "(" ~> expression ~ ("," ~> expression ?) <~ ")" ^^ {
         case ch ~ n => Credit(ch, n) }

@@ -271,13 +271,17 @@ sealed abstract class WildCardPermission extends PermissionExpr
 case class Access(e: MemberAccess, perm: Option[Expression]) extends MemberPermission {
   def getMemberAccess = e : MemberAccess;
 }
-// Some(None) is the epsilon
+// perm == Some(None) is the epsilon
 case class RdAccess(e: MemberAccess, perm: Option[Option[Expression]]) extends MemberPermission {
   def getMemberAccess = e : MemberAccess;
 }
 
 case class AccessAll(obj: Expression, perm: Option[Expression]) extends WildCardPermission
 case class RdAccessAll(obj: Expression, perm: Option[Option[Expression]]) extends WildCardPermission
+
+// f == Nil is all fields
+case class AccessSeq(s: Expression, f: Option[String], perm: Option[Expression]) extends WildCardPermission
+case class RdAccessSeq(s: Expression, f: Option[String], perm: Option[Option[Expression]]) extends WildCardPermission
 
 case class Credit(e: Expression, n: Option[Expression]) extends Expression {
   def N = n match { case None => IntLiteral(1) case Some(n) => n }

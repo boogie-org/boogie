@@ -10,7 +10,7 @@ import java.io.FileWriter
 import scala.util.parsing.input.Position
 
 object Chalice {
- def main(args: Array[String]): unit = {
+ def main(args: Array[String]): Unit = {
    var boogiePath = "C:\\boogie\\Binaries\\Boogie.exe"
    // parse command-line arguments
    var inputName: String = null

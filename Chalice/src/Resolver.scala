@@ -661,6 +661,28 @@ object Resolver {
        case Some(Some(p)) => ResolveExpr(p, context, twoStateContext, false)
        case _ => }
      expr.typ = BoolClass
+   case expr @ AccessSeq(s, f, perm) =>
+     if (!specContext) context.Error(expr.pos, "acc expression is allowed only in positive predicate contexts")
+     ResolveExpr(s, context, twoStateContext, false)
+     if(!s.typ.IsSeq) context.Error(expr.pos, "Target of [*] must be sequence")
+     perm match {
+       case None =>
+       case Some(perm) => ResolveExpr(perm, context, twoStateContext, false) }
+     f match {
+       case Some(x) => var ma = MemberAccess(At(s, IntLiteral(0)), x); ma.pos = expr.pos; ResolveExpr(ma, context, twoStateContext, true);
+       case _ => }
+     expr.typ = BoolClass
+   case expr @ RdAccessSeq(s, f, perm) =>
+     if (!specContext) context.Error(expr.pos, "rd expression is allowed only in positive predicate contexts")
+     ResolveExpr(s, context, twoStateContext, false)
+     if(!s.typ.IsSeq) context.Error(expr.pos, "Target of [*] must be object reference.")
+     perm match {
+       case Some(Some(p)) => ResolveExpr(p, context, twoStateContext, false)
+       case _ => }
+     f match {
+       case Some(x) => var ma = MemberAccess(At(s, IntLiteral(0)), x); ma.pos = expr.pos; ResolveExpr(ma, context, twoStateContext, true);
+       case _ => }
+     expr.typ = BoolClass
    case expr@ Credit(e,n) =>
      if (!specContext) context.Error(expr.pos, "credit expression is allowed only in positive predicate contexts")
      ResolveExpr(e, context, twoStateContext, false)
@@ -946,6 +968,12 @@ object Resolver {
    case RdAccessAll(obj, perm) =>
      CheckRunSpecification(obj, context, false)
      perm match { case Some(Some(p)) => CheckRunSpecification(p, context, false) case _ => }
+   case AccessSeq(s, f, perm) =>
+     CheckRunSpecification(s, context, false)
+     perm match { case None => case Some(perm) => CheckRunSpecification(perm, context, false) }
+   case RdAccessSeq(s, f, perm) =>
+     CheckRunSpecification(s, context, false)
+     perm match { case Some(Some(p)) => CheckRunSpecification(p, context, false) case _ => }
    case expr@ Credit(e, n) =>
      CheckRunSpecification(e, context, false)
      CheckRunSpecification(expr.N, context, false)
@@ -1015,6 +1043,10 @@ object Resolver {
        func(obj); perm match { case Some(p) => func(p); case _ => ; }
      case RdAccessAll(obj, perm) =>
        func(obj); perm match { case Some(Some(p)) => func(p); case _ => ; }
+     case AccessSeq(s, f, perm) =>
+       func(s); perm match { case Some(p) => func(p); case _ => ; }
+     case RdAccessSeq(s, f, perm) =>
+       func(s); perm match { case Some(Some(p)) => func(p); case _ => ; }
      case Credit(e, n) =>
        func(e); n match { case Some(n) => func(n); case _ => }
      case Holds(e) => func(e);
@@ -1044,6 +1076,7 @@ object Resolver {
      case Div(e0,e1) => func(e0); func(e1);
      case Mod(e0,e1) => func(e0); func(e1);
      case Forall(i, seq, e) => func(seq); func(e);
+     case Exists(i, seq, e) => func(seq); func(e);
      case ExplicitSeq(es) =>
        es foreach { e => func(e) }
      case Range(min, max) =>
@@ -1058,6 +1091,7 @@ object Resolver {
        func(e0); func(e1);
      case Length(e) =>
        func(e)
+     case Contains(s, n) => func(s); func(n);
      case Eval(h, e) =>
        h match {
          case AcquireState(obj) => func(obj);
