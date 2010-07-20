@@ -222,8 +222,8 @@ case class Send(ch: Expression, args: List[Expression]) extends Statement {
 case class Receive(declaresLocal: List[Boolean], ch: Expression, outs: List[VariableExpr]) extends Statement {
   var locals = List[Variable]()
 }
-case class Fold(pred: PermissionExpr) extends Statement
-case class Unfold(pred: PermissionExpr) extends Statement
+case class Fold(pred: MemberPermission) extends Statement
+case class Unfold(pred: MemberPermission) extends Statement
 
 // expressions
 
@@ -262,19 +262,22 @@ case class MemberAccess(e: Expression, id: String) extends Expression {
 }
 case class IfThenElse(con: Expression, then: Expression, els: Expression) extends Expression
 
-sealed abstract class PermissionExpr extends Expression {
+sealed abstract class PermissionExpr extends Expression
+sealed abstract class MemberPermission extends PermissionExpr {
   def getMemberAccess : MemberAccess
 }
+sealed abstract class WildCardPermission extends PermissionExpr
 
-case class Access(e: MemberAccess, perm: Option[Expression]) extends PermissionExpr {
+case class Access(e: MemberAccess, perm: Option[Expression]) extends MemberPermission {
   def getMemberAccess = e : MemberAccess;
 }
-case class RdAccess(e: MemberAccess, perm: Option[Option[Expression]]) extends PermissionExpr {
+// Some(None) is the epsilon
+case class RdAccess(e: MemberAccess, perm: Option[Option[Expression]]) extends MemberPermission {
   def getMemberAccess = e : MemberAccess;
 }
 
-case class AccessAll(obj: Expression, perm: Option[Expression]) extends Expression
-case class RdAccessAll(obj: Expression, perm: Option[Option[Expression]]) extends Expression
+case class AccessAll(obj: Expression, perm: Option[Expression]) extends WildCardPermission
+case class RdAccessAll(obj: Expression, perm: Option[Option[Expression]]) extends WildCardPermission
 
 case class Credit(e: Expression, n: Option[Expression]) extends Expression {
   def N = n match { case None => IntLiteral(1) case Some(n) => n }
@@ -290,7 +293,7 @@ case class Not(e: Expression) extends Expression
 case class FunctionApplication(obj: Expression, id: String, args: List[Expression]) extends Expression {
   var f: Function = null
 }
-case class Unfolding(pred: PermissionExpr, in: Expression) extends Expression
+case class Unfolding(pred: MemberPermission, in: Expression) extends Expression
 sealed abstract class BinaryExpr(e0: Expression, e1: Expression) extends Expression {
   def E0 = e0
   def E1 = e1

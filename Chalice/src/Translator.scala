@@ -690,7 +690,7 @@ class Translator {
     (nw,
       Comment("new") ::
       BLocal(nw) :: Havoc(nwe) ::
-      bassume(nonNull(nwe) && (dtype(nwe) ==@ TrType(cl))) ::
+      bassume(nonNull(nwe) && (dtype(nwe) ==@ className(cl))) ::
       bassume(new Boogie.Forall(ttV, f, etran.HasNoPermission(nwe, f.id))) ::
       // initial values of fields:
       (if (cl.IsChannel)
@@ -1836,7 +1836,6 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
                     (new Boogie.MapSelect(mask, obj, field, "perm$N") ==@ Boogie.VarExpr("Permission$PlusInfinity")),  error.pos, error.message + " Insufficient epsilons at " + pos + " for " + field + ".") ::
       Boogie.If(g, MapUpdate3(mask, obj, field, "perm$N", Boogie.VarExpr("Permission$MinusInfinity")), Nil)
     }
-  var uniqueInt = 0;
 
   def MapUpdate3(m: Boogie.Expr, arg0: Boogie.Expr, arg1: String, arg2: String, rhs: Boogie.Expr) = {
     // m[a,b,c] := rhs
@@ -1918,6 +1917,16 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     bassert(Tr(expr) <= 100, expr.pos, "Fraction might exceed 100.")
   }
 }
+
+  // implicit (uses etran)
+
+  implicit def expression2Expr(e: Expression) = etran.Tr(e);
+
+  // prelude (uses etran)
+  def isHeld(e: Expr): Expr = (0 < etran.Heap.select(e, "held"))
+  def isRdHeld(e: Expr): Expr = etran.Heap.select(e, "rdheld")
+  def isShared(e: Expr): Expr = etran.Heap.select(e, "mu") !=@ bLockBottom
+
 object S_ExpressionTranslator {
   val Globals = {
     ("Heap", theap) ::
@@ -1927,13 +1936,39 @@ object S_ExpressionTranslator {
   }
 }
 
-  // implicit
+object TranslationHelper {
+  // implicit conversions
 
   implicit def string2VarExpr(s: String) = VarExpr(s);
-  implicit def expression2Expr(e: Expression) = etran.Tr(e);
   implicit def field2Expr(f: Field) = VarExpr(f.FullName);
+  implicit def bool2Bool(b: Boolean): Boogie.BoolLiteral = Boogie.BoolLiteral(b)
+  implicit def int2Int(n: Int): Boogie.IntLiteral = Boogie.IntLiteral(n)
+  implicit def lift(s: Boogie.Stmt): List[Boogie.Stmt] = List(s)
+  implicit def type2BType(cl: Class): BType = {
+    if(cl.IsRef) {
+      tref
+    } else if(cl.IsBool) {
+      tbool
+    } else if(cl.IsMu) {
+      tmu
+    } else if(cl.IsInt) {
+      tint
+    } else if(cl.IsSeq) {
+      tseq(type2BType(cl.asInstanceOf[SeqClass].parameter))
+    } else {
+      assert(false, "unexpectected type: " + cl.FullName); null
+    }
+  }
+  implicit def decl2DeclList(decl: Decl): List[Decl] = List(decl)
+  implicit def function2RichFunction(f: Function) = RichFunction(f);
 
-  // prelude
+  case class RichFunction(f: Function) {
+    def apply(args: List[Expr]) = {
+      FunctionApp(functionName(f), args)
+    }
+  }
+  
+  // prelude definitions
 
   def ModuleType = NamedType("ModuleName");
   def ModuleName(cl: Class) = "module#" + cl.module.id;
@@ -1965,12 +2000,10 @@ object S_ExpressionTranslator {
   def IsGoodState(e: Expr) = FunctionApp("IsGoodState", List(e));
   def dtype(e: Expr) = FunctionApp("dtype", List(e))
   def functionName(f: Function) = "#" + f.FullName;
+  def className(cl: Class) = Boogie.VarExpr(cl.id + "#t")
   def bnull = Boogie.Null();
   def bLockBottom = VarExpr("$LockBottom")
   def nonNull(e: Expr): Expr = e !=@ bnull
-  def isHeld(e: Expr): Expr = (0 < etran.Heap.select(e, "held"))
-  def isRdHeld(e: Expr): Expr = etran.Heap.select(e, "rdheld")
-  def isShared(e: Expr): Expr = etran.Heap.select(e, "mu") !=@ bLockBottom
   def LastSeenHeap(sharedBit: Expr, heldBit: Expr) = FunctionApp("LastSeen$Heap", List(sharedBit, heldBit))
   def LastSeenMask(sharedBit: Expr, heldBit: Expr) = FunctionApp("LastSeen$Mask", List(sharedBit, heldBit))
   def LastSeenCredits(sharedBit: Expr, heldBit: Expr) = FunctionApp("LastSeen$Credits", List(sharedBit, heldBit))
@@ -1983,7 +2016,6 @@ object S_ExpressionTranslator {
   def CallArgs(joinableBit: Expr) = FunctionApp("Call$Args", List(joinableBit))
   def submask(m0: Expr, m1: Expr) = FunctionApp("submask", List(m0, m1))
 
-object TranslationHelper {
   def wf(h: Expr, m: Expr) = FunctionApp("wf", List(h, m));
   def IsGoodMask(m: Expr) = FunctionApp("IsGoodMask", List(m))
   def IsGoodInhaleState(a: Expr, b: Expr, c: Expr) = FunctionApp("IsGoodInhaleState", List(a, b, c))
@@ -1997,34 +2029,6 @@ object TranslationHelper {
   def createAppendSeq(a: Expr, b: Expr) = FunctionApp("Seq#Append", List(a, b)) 
   def createRange(min: Expr, max: Expr) = FunctionApp("Seq#Range", List(min, max))
   def cast(a: Expr, b: Expr) = FunctionApp("cast", List(a, b))
-
-  // implicit conversions
-  implicit def bool2Bool(b: Boolean): Boogie.BoolLiteral = Boogie.BoolLiteral(b)
-  implicit def int2Int(n: Int): Boogie.IntLiteral = Boogie.IntLiteral(n)
-  implicit def lift(s: Boogie.Stmt): List[Boogie.Stmt] = List(s)
-  implicit def type2BType(cl: Class): BType = {
-    if(cl.IsRef) {
-      tref
-    } else if(cl.IsBool) {
-      tbool
-    } else if(cl.IsMu) {
-      tmu
-    } else if(cl.IsInt) {
-      tint
-    } else if(cl.IsSeq) {
-      tseq(type2BType(cl.asInstanceOf[SeqClass].parameter))
-    } else {
-      assert(false, "unexpectected type: " + cl.FullName); null
-    }
-  }
-  implicit def decl2DeclList(decl: Decl): List[Decl] = List(decl)
-  implicit def function2RichFunction(f: Function) = RichFunction(f);
-
-  case class RichFunction(f: Function) {
-    def apply(args: List[Expr]) = {
-      FunctionApp(functionName(f), args)
-    }
-  }
 
   def Variable2BVar(v: Variable) = new Boogie.BVar(v.UniqueName, v.t.typ)
   def Variable2BVarWhere(v: Variable) = NewBVarWhere(v.UniqueName, v.t)
@@ -2075,11 +2079,9 @@ object TranslationHelper {
     }
   }
 
-  def TrType(cl: Class) = Boogie.VarExpr(cl.id + "#t")
-
   def TypeInformation(e: Boogie.Expr, cl: Class): Boogie.Expr = {
     if (cl.IsRef) {
-      (e ==@ Boogie.Null()) || (new Boogie.FunctionApp("dtype", e) ==@ TrType(cl))
+      (e ==@ Boogie.Null()) || (dtype(e) ==@ className(cl))
     } else if (cl.IsSeq && cl.parameters(0).IsRef) {
       val (v,ve) = Boogie.NewBVar("$i", tint, true);
       new Boogie.Forall(List(v), Nil,
@@ -2090,8 +2092,8 @@ object TranslationHelper {
     }
   }
 
-  def Version(expr: Expression, etran: ExpressionTranslator): Boogie.Expr =  
-  { 
+  def Version(expr: Expression, etran: ExpressionTranslator): Boogie.Expr =
+  {
     expr match{
       case pred@MemberAccess(e, p) if pred.isPredicate =>
         Version(Access(pred, None), etran)
@@ -2110,7 +2112,7 @@ object TranslationHelper {
       case e => Boogie.VarExpr("nostate")
     }
   }
-  /* Unused code that would fail for a nontrivial class  
+  /* Unused code that would fail for a nontrivial class
   def FieldTp(f: Field): String = {
     f match {
       case SpecialField("mu", _) => "Mu"
@@ -2264,8 +2266,7 @@ object TranslationHelper {
     case And(e0,e1) =>
       val r = And(SubstRd(e0), SubstRd(e1)); r.typ = BoolClass; r
     case e => e
-   }
- }
+  }
 
   def UnfoldPredicatesWithReceiverThis(expr: Expression): Expression = {
     def unfoldPred(e: Expression): Expression = {
@@ -2301,7 +2302,7 @@ object TranslationHelper {
             case None => e;
           }
         case e: VariableExpr =>
-          // TODO: this will update the value of x many times
+          // TODO: this will update the value of x's position many times
           for ((v,x) <- sub if v == e.v) { x.pos = v.pos; return x }
           e
         case q : Quantification =>
@@ -2373,7 +2374,7 @@ object TranslationHelper {
       case funapp@FunctionApplication(obj, id, args) =>
         val appl = FunctionApplication(func(obj), id, args map { arg => func(arg)}); appl.f = funapp.f; appl
       case Unfolding(pred, e) =>
-        Unfolding(func(pred).asInstanceOf[PermissionExpr], func(e))
+        Unfolding(func(pred).asInstanceOf[MemberPermission], func(e))
       case Iff(e0,e1) => Iff(func(e0), func(e1))
       case Implies(e0,e1) => Implies(func(e0), func(e1))
       case And(e0,e1) => And(func(e0), func(e1))
@@ -2421,5 +2422,5 @@ object TranslationHelper {
     result.pos = expr.pos
     result
   }
-
+}
 }

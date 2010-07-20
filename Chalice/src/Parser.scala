@@ -177,11 +177,11 @@ class Parser extends StandardTokenParsers {
         case lhs ~ _ ~ rhs => FieldUpdate(lhs, rhs) }
     | ("fold" ~> expression <~ Semi) ^? { 
         case pred: MemberAccess => Fold(Access(pred, None))
-        case perm: PermissionExpr => Fold(perm) 
+        case perm: MemberPermission => Fold(perm)
       }
     | ("unfold" ~> expression <~ Semi) ^? { 
         case pred: MemberAccess => Unfold(Access(pred, None))
-        case perm: PermissionExpr => Unfold(perm) 
+        case perm: MemberPermission => Unfold(perm) 
       }
     | ("fork") ~> callSignature ^? ({
         case None ~ target ~ args =>
@@ -459,7 +459,7 @@ class Parser extends StandardTokenParsers {
     | "old" ~> "(" ~> expression <~ ")" ^^ Old
     | ("unfolding" ~> suffixExpr <~ "in") ~ expression ^? { 
         case (pred: MemberAccess) ~ e => val acc = Access(pred, None); acc.pos = pred.pos; Unfolding(acc, e)
-        case (perm: PermissionExpr) ~ e => Unfolding(perm, e) 
+        case (perm: MemberPermission) ~ e => Unfolding(perm, e) 
       }
     | "|" ~> expression <~ "|" ^^ Length
     | ("eval" ~ "(") ~> (evalstate <~ ",") ~ (expression <~ ")") ^^ { case h ~ e => Eval(h, e) }
