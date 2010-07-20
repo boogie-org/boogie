@@ -8,9 +8,9 @@ using System.IO;
 using System.Diagnostics;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Text;
-using util;
-using Microsoft.Contracts;
+//using util;
 using Microsoft.Boogie;
 using Microsoft.Boogie.Simplify;
 using Microsoft.Basetypes;
@@ -19,44 +19,67 @@ using Microsoft.Basetypes;
 namespace Microsoft.Boogie.Z3
 {
   internal class Z3ProverProcess : ProverProcess {
-    [Peer] private Z3InstanceOptions! opts;
-    [Peer] private readonly Inspector? inspector;
+    [Peer] private Z3InstanceOptions opts;
+    [Peer] private readonly Inspector/*?*/ inspector;
     private readonly bool expectingModel = false;
 
-    private string! cmdLineArgs = "";
-    class OptionValue {
-      public readonly string! Option;
-      public readonly string! Value;
-      public OptionValue(string! option, string! value) { Option = option; Value = value; }
-    }
-    static void AddOption(List<OptionValue!>! parms, string! option, string! value)
-      modifies parms.*;
+    private string cmdLineArgs = "";
+
+    [ContractInvariantMethod]
+    void ObjectInvariant() 
     {
+      Contract.Invariant(cmdLineArgs!=null);
+      Contract.Invariant(opts != null);
+      Contract.Invariant(cce.NonNullElements(parameterSettings));
+    }
+
+
+    class OptionValue {
+      public readonly string Option;
+      public readonly string Value;
+      [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(Option!=null);
+        Contract.Invariant(Value != null);
+}
+
+      public OptionValue(string option, string value) {Contract.Requires(option != null);Contract.Requires(value != null); Option = option; Value = value; }
+    }
+    static void AddOption(List<OptionValue> parms, string option, string value)
+      //modifies parms.*; TODO:
+    {
+    Contract.Requires(option != null);
+    Contract.Requires(value != null);
+      Contract.Requires(cce.NonNullElements(parms));
       OptionValue ov = new OptionValue(option, value);
-      Owner.AssignSame(ov, Owner.ElementProxy(parms));
+      cce.Owner.AssignSame(ov, cce.Owner.ElementProxy(parms));
       parms.Add(ov);
     }
-    private List<OptionValue!>! parameterSettings;
 
-    // [NotDelayed]
+    private List<OptionValue/*!>!*/> parameterSettings;
+
+    //[NotDelayed]
     [Captured]
-    public Z3ProverProcess(Z3InstanceOptions! opts, Inspector? inspector)
-      requires inspector != null ==> Owner.Same(opts, inspector);
+    public Z3ProverProcess(Z3InstanceOptions opts, Inspector inspector)
+      : base(ComputeProcessStartInfo(opts), opts.ExeName)
     { // throws ProverException
-      string! z3args = OptionChar() + "si";
-      List<OptionValue!> parms = new List<OptionValue!>();
+      Contract.Requires(opts != null);
+    Contract.Requires(inspector == null || cce.Owner.Same(opts, inspector));
+    string z3args = OptionChar() + "si";
+    List<OptionValue/*!*/> parms = new List<OptionValue/*!*/>();
 
-      if (opts.V2) {
-        AddOption(parms, "MODEL_PARTIAL", "true");
-        AddOption(parms, "MODEL_VALUE_COMPLETION", "false");
-        AddOption(parms, "MODEL_HIDE_UNUSED_PARTITIONS", "false");
-        AddOption(parms, "MODEL_V1", "true");
-        AddOption(parms, "ASYNC_COMMANDS", "false");
-      } else {
-        AddOption(parms, "PARTIAL_MODELS", "true");
-        AddOption(parms, "MODEL_VALUE_COMPLETION", "false");
-        AddOption(parms, "HIDE_UNUSED_PARTITIONS", "false");
-      }
+    if (opts.V2) {
+      AddOption(parms, "MODEL_PARTIAL", "true");
+      AddOption(parms, "MODEL_VALUE_COMPLETION", "false");
+      AddOption(parms, "MODEL_HIDE_UNUSED_PARTITIONS", "false");
+      AddOption(parms, "MODEL_V1", "true");
+      AddOption(parms, "ASYNC_COMMANDS", "false");
+    } else {
+      AddOption(parms, "PARTIAL_MODELS", "true");
+      AddOption(parms, "MODEL_VALUE_COMPLETION", "false");
+      AddOption(parms, "HIDE_UNUSED_PARTITIONS", "false");
+    }
 
       if (opts.V2) {
         // Phase selection means to always try the negative literal polarity first, seems to be good for Boogie.
@@ -93,10 +116,10 @@ namespace Microsoft.Boogie.Z3
       } else {
         z3args += " " + OptionChar() + "mam:" + CommandLineOptions.Clo.Z3mam;
       }
-      
+
       if (CommandLineOptions.Clo.z3AtFlag) {
-		z3args += " " + OptionChar() + "@ ";
-	  }
+        z3args += " " + OptionChar() + "@ ";
+      }
       if (0 <= CommandLineOptions.Clo.ProverCCLimit) {
         z3args += " " + OptionChar() + "cex:" + CommandLineOptions.Clo.ProverCCLimit;
       }
@@ -113,8 +136,8 @@ namespace Microsoft.Boogie.Z3
           }
         }
       }
-      if (CommandLineOptions.Clo.PrintErrorModel >= 1 || 
-          CommandLineOptions.Clo.EnhancedErrorMessages == 1 || 
+      if (CommandLineOptions.Clo.PrintErrorModel >= 1 ||
+          CommandLineOptions.Clo.EnhancedErrorMessages == 1 ||
           CommandLineOptions.Clo.ContractInfer ||
           CommandLineOptions.Clo.LazyInlining > 0 ||
           CommandLineOptions.Clo.StratifiedInlining > 0) {
@@ -125,15 +148,16 @@ namespace Microsoft.Boogie.Z3
         z3args += " " + OptionChar() + "nw";
         AddOption(parms, "MACRO_EXPANSION", "true");
       }
-      
+
       // Z3 version 1.3 does not support SETPARAMETER in the input, so we tack on the OPTION=value pairs to z3args
       if (opts.V1) {
         foreach (OptionValue opt in parms) {
           z3args += string.Format(" \"{0}={1}\"", opt.Option, opt.Value);
         }
       }
-      
-      foreach (string! opt in CommandLineOptions.Clo.Z3Options) {
+
+      foreach (string opt in CommandLineOptions.Clo.Z3Options) {
+        Contract.Assert(opt != null);
         int eq = opt.IndexOf("=");
         // we add them both to command line and the input file:
         //    - allow for overriding default options
@@ -145,40 +169,165 @@ namespace Microsoft.Boogie.Z3
         z3args += " \"" + opt + "\"";
       }
 
-      
+
       cmdLineArgs = z3args;
       parameterSettings = parms;
       
-      ProcessStartInfo! psi = new ProcessStartInfo(opts.ExeName, z3args);
+    //  ProcessStartInfo psi = new ProcessStartInfo(opts.ExeName, z3args);
+    //  Contract.Assert(psi!=null);
+    //  psi.CreateNoWindow = true;
+    //  psi.UseShellExecute = false;
+    //  psi.RedirectStandardInput = true;
+    //  psi.RedirectStandardOutput = true;
+    //  psi.RedirectStandardError = true;
+      
+      //base(psi, opts.ExeName);
+
+      cce.Owner.AssignSame(this, opts);
+      this.opts = opts;
+      this.inspector = inspector;
+    }
+
+    private static ProcessStartInfo ComputeProcessStartInfo(Z3InstanceOptions opts) {
+      string z3args = OptionChar() + "si";
+      List<OptionValue/*!*/> parms = new List<OptionValue/*!*/>();
+
+      if (opts.V2) {
+        AddOption(parms, "MODEL_PARTIAL", "true");
+        AddOption(parms, "MODEL_VALUE_COMPLETION", "false");
+        AddOption(parms, "MODEL_HIDE_UNUSED_PARTITIONS", "false");
+        AddOption(parms, "MODEL_V1", "true");
+        AddOption(parms, "ASYNC_COMMANDS", "false");
+      } else {
+        AddOption(parms, "PARTIAL_MODELS", "true");
+        AddOption(parms, "MODEL_VALUE_COMPLETION", "false");
+        AddOption(parms, "HIDE_UNUSED_PARTITIONS", "false");
+      }
+
+      if (opts.V2) {
+        // Phase selection means to always try the negative literal polarity first, seems to be good for Boogie.
+        // The restart parameters change the restart behavior to match Z3 v1, which also seems to be good.
+        AddOption(parms, "PHASE_SELECTION", "0");
+        AddOption(parms, "RESTART_STRATEGY", "0");
+        AddOption(parms, "RESTART_FACTOR", "|1.5|");
+
+        // This is used by VCC, but could be also useful for others, if sk_hack(foo(x)) is included as trigger,
+        // the foo(x0) will be activated for e-matching when x is skolemized to x0.
+        AddOption(parms, "NNF_SK_HACK", "true");
+
+        // More or less like MAM=0.
+        AddOption(parms, "QI_EAGER_THRESHOLD", "100");
+        // Complex proof attempts in VCC (and likely elsewhere) require matching depth of 20 or more.
+
+        // the following will make the :weight option more usable
+        AddOption(parms, "QI_COST", "|\"(+ weight generation)\"|");
+
+        // Make the integer model more diverse by default, speeds up some benchmarks a lot.
+        AddOption(parms, "ARITH_RANDOM_INITIAL_VALUE", "true");
+
+        // The left-to-right structural case-splitting strategy.
+        AddOption(parms, "SORT_AND_OR", "false");
+        AddOption(parms, "CASE_SPLIT", "3");
+
+        // In addition delay adding unit conflicts.
+        AddOption(parms, "DELAY_UNITS", "true");
+        AddOption(parms, "DELAY_UNITS_THRESHOLD", "16");
+
+        if (opts.Inspector != null) {
+          AddOption(parms, "PROGRESS_SAMPLING_FREQ", "100");
+        }
+      } else {
+        z3args += " " + OptionChar() + "mam:" + CommandLineOptions.Clo.Z3mam;
+      }
+
+      if (CommandLineOptions.Clo.z3AtFlag) {
+        z3args += " " + OptionChar() + "@ ";
+      }
+      if (0 <= CommandLineOptions.Clo.ProverCCLimit) {
+        z3args += " " + OptionChar() + "cex:" + CommandLineOptions.Clo.ProverCCLimit;
+      }
+      if (0 <= opts.Timeout) {
+        z3args += " " + OptionChar() + "t:" + opts.Timeout;
+      }
+      if (opts.Typed) {
+        AddOption(parms, "TYPE_CHECK", "true");
+        if (opts.BitVectors == CommandLineOptions.BvHandling.Z3Native) {
+          if (opts.V2) {
+            AddOption(parms, "BV_REFLECT", "true");
+          } else {
+            AddOption(parms, "REFLECT_BV_OPS", "true");
+          }
+        }
+      }
+      if (CommandLineOptions.Clo.PrintErrorModel >= 1 ||
+          CommandLineOptions.Clo.EnhancedErrorMessages == 1 ||
+          CommandLineOptions.Clo.ContractInfer ||
+          CommandLineOptions.Clo.LazyInlining > 0 ||
+          CommandLineOptions.Clo.StratifiedInlining > 0) {
+        z3args += " " + OptionChar() + "m";
+        //expectingModel = true;
+      }
+      if (CommandLineOptions.Clo.LazyInlining == 2) {
+        z3args += " " + OptionChar() + "nw";
+        AddOption(parms, "MACRO_EXPANSION", "true");
+      }
+
+      // Z3 version 1.3 does not support SETPARAMETER in the input, so we tack on the OPTION=value pairs to z3args
+      if (opts.V1) {
+        foreach (OptionValue opt in parms) {
+          z3args += string.Format(" \"{0}={1}\"", opt.Option, opt.Value);
+        }
+      }
+
+      foreach (string opt in CommandLineOptions.Clo.Z3Options) {
+        Contract.Assert(opt != null);
+        int eq = opt.IndexOf("=");
+        // we add them both to command line and the input file:
+        //    - allow for overriding default options
+        //    - some options (like TRACE) work only from command line
+        // Also options with spaces do not work with (SETPARAMETER ...)
+        if (eq > 0 && opt.IndexOf(" ") < 0 && 'A' <= opt[0] && opt[0] <= 'Z') {
+          AddOption(parms, opt.Substring(0, eq), opt.Substring(eq + 1));
+        }
+        z3args += " \"" + opt + "\"";
+      }
+
+
+      //cmdLineArgs = z3args;
+      //parameterSettings = parms;
+
+      ProcessStartInfo psi = new ProcessStartInfo(opts.ExeName, z3args);
+      Contract.Assert(psi != null);
       psi.CreateNoWindow = true;
       psi.UseShellExecute = false;
       psi.RedirectStandardInput = true;
       psi.RedirectStandardOutput = true;
       psi.RedirectStandardError = true;
-      
-      base(psi, opts.ExeName);
 
-      Owner.AssignSame(this, opts);
-      this.opts = opts;
-      this.inspector = inspector;
+      return psi;
     }
     
-    public override string! OptionComments()
+    public override string OptionComments()
     {
+      Contract.Ensures(Contract.Result<string>() != null);
+
       StringBuilder sb = new StringBuilder();
       sb.AppendFormat("Z3 command line: {0} {1}\nUser supplied Z3 options:",
                       opts.ExeName, cmdLineArgs);
-      assume CommandLineOptions.Clo.IsPeerConsistent;
-      foreach (string! opt in CommandLineOptions.Clo.Z3Options) {
+      Contract.Assume( cce.IsPeerConsistent(CommandLineOptions.Clo));
+      foreach (string opt in CommandLineOptions.Clo.Z3Options) {
+        Contract.Assert(opt!=null);
         sb.Append(" ").Append(opt);
       }
       sb.AppendFormat("\nProver options: {0}\n", opts.ToString());
       return sb.ToString();
     }
 
-    [Pure(false)]
-    public override IEnumerable<string!>! ParameterSettings {
+    //[Pure(false)]
+    public override IEnumerable<string/*!>!*/> ParameterSettings {
       get {
+        Contract.Ensures(cce.NonNullElements( Contract.Result<IEnumerable<string>>()));
+
         if (opts.V2) {
           foreach (OptionValue opt in parameterSettings) {
             yield return "(SETPARAMETER " + opt.Option + " " + opt.Value + ")";
@@ -188,8 +337,10 @@ namespace Microsoft.Boogie.Z3
     }
 
     // z3 uses different magic characters for options on linux/unix and on windows
-    private static string! OptionChar() {
-      assume Environment.OSVersion != null;
+    private static string OptionChar() {
+      Contract.Ensures(Contract.Result<string>() != null);
+
+      Contract.Assume( Environment.OSVersion != null);
       switch (Environment.OSVersion.Platform) {
         case PlatformID.Unix:
           return "-";
@@ -198,8 +349,10 @@ namespace Microsoft.Boogie.Z3
       }
     }
 
-    protected override void DoBeginCheck(string! descriptiveName, string! formula)
+    protected override void DoBeginCheck(string descriptiveName, string formula)
     {
+      Contract.Requires(descriptiveName != null);
+      Contract.Requires(formula != null);
       ToWriteLine(formula);
       ToWriteLine(String.Format(";   END OF FORMULA {0} - {1}", NumFormulasChecked.ToString(), descriptiveName));
       ToFlush();
@@ -213,15 +366,17 @@ namespace Microsoft.Boogie.Z3
         return FromReadChar();
     }
 
-    private void Trace(string! msg)
+    private void Trace(string msg)
     { 
+      Contract.Requires(msg != null);
       Console.WriteLine("Z3: " + msg);
     }
 
-    public override ProverOutcome CheckOutcome(Microsoft.Boogie.ProverInterface.ErrorHandler! handler) 
-      throws UnexpectedProverOutputException;
+    public override ProverOutcome CheckOutcome(Microsoft.Boogie.ProverInterface.ErrorHandler handler)
     {
-      ProverOutcome outcome;
+    Contract.Requires(handler != null);
+    Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+      //ProverOutcome outcome;
       bool isInvalid = false;
 
       if (this.simplify == null) {
@@ -269,8 +424,8 @@ namespace Microsoft.Boogie.Z3
 
         int beg = 0;
         while (beg < line.Length && '0' <= line[beg] && line[beg] <= '9')
-          invariant beg <= line.Length;
         {
+          cce.LoopInvariant(beg <= line.Length);
           beg++;
         }
 
@@ -306,7 +461,8 @@ namespace Microsoft.Boogie.Z3
         }
 
         if (isInvalid && line.StartsWith("labels: (")) {
-          List<string!>! l = ParseLabels(line);
+          List<string/*!*/>/*!*/ l = ParseLabels(line);
+          Contract.Assert(cce.NonNullElements(l));
           Z3ErrorModel errModel = null;
           if (expectingModel) {
             if (opts.Verbosity > 2) {
@@ -319,7 +475,7 @@ namespace Microsoft.Boogie.Z3
                 Trace("model parsed, final line " + line);
               }
               // Z3 always ends the model with END_OF_MODEL, not with labels: or .
-              assume line == "END_OF_MODEL";
+              Contract.Assume( line == "END_OF_MODEL");
             } else {
               throw new UnexpectedProverOutputException(string.Format("evil input from z3 (expecting partitions): '{0}'", line));
             }
@@ -356,23 +512,25 @@ namespace Microsoft.Boogie.Z3
     MAPLET  ::= ZID* "->" ZID
 
     -----------------------------------------------------------------------------*/
-    private string! ParseModel(out Z3ErrorModel errModel) 
-      modifies this.*;
-      ensures result == "." || result.StartsWith("labels: (") || result == "END_OF_MODEL";
-      throws UnexpectedProverOutputException;
+    private string ParseModel(out Z3ErrorModel errModel)
+      //TODO: modifies this.*;
+      //throws UnexpectedProverOutputException;
     {
+    Contract.Ensures(Contract.Result<string>() == "." || Contract.Result<string>().StartsWith("labels: (") || Contract.Result<string>() == "END_OF_MODEL");
+    Contract.Ensures(Contract.Result<string>() != null);
+
       //Format in the grammar:
       // ZID ["{" ID+"}"] ["->" "(" (number | false | true) ")"]
       // storing the model:
       // map each ID (a string) to the corresping ZID (an integer) in a dictionary:
-      Dictionary<string!, int> identifierToPartition = new Dictionary<string!, int>();
+      Dictionary<string/*!*/, int> identifierToPartition = new Dictionary<string/*!*/, int>();
       // map each ZID to the set (in list form) of IDs belonging to it (possibly empty):
-      List<List<string!>> partitionToIdentifiers = new List<List<string!>>();
+      List<List<string/*!*/>> partitionToIdentifiers = new List<List<string/*!*/>>();
       // map each ZID to the number or boolean given, if any:
       List<Object> partitionToValue = new List<Object>();
       // map each value (number or boolean) to the ZID, reverse map of partitionToValue
       Dictionary<Object, int> valueToPartition = new Dictionary<Object, int>();
-      Owner.AssignSame(Owner.ElementProxy(partitionToValue), Owner.ElementProxy(valueToPartition));
+      cce.Owner.AssignSame(cce.Owner.ElementProxy(partitionToValue), cce.Owner.ElementProxy(valueToPartition));
 
       int ch;
 
@@ -387,8 +545,8 @@ namespace Microsoft.Boogie.Z3
       }// end MAPPING
 
       // add the fake partition for the 'else -> #undefined' clause
-      List<string!> emptyList = new List<string!>();
-      Owner.AssignSame(emptyList, Owner.ElementProxy(partitionToIdentifiers));
+      List<string/*!*/> emptyList = new List<string/*!*/>();
+      cce.Owner.AssignSame(emptyList, cce.Owner.ElementProxy(partitionToIdentifiers));
       partitionToIdentifiers.Add(emptyList);
       partitionToValue.Add(null);
 
@@ -397,13 +555,17 @@ namespace Microsoft.Boogie.Z3
     }
 
     private void ParseModelMapping(int zID,
-        Dictionary<string!, int>! identifierToPartition,
-        List<List<string!>>! partitionToIdentifiers,
-        List<Object>! partitionToValue,
-        Dictionary<Object, int>! valueToPartition)
-      requires Owner.Same(Owner.ElementProxy(partitionToValue), Owner.ElementProxy(valueToPartition));
-      modifies this.*, identifierToPartition.*, partitionToIdentifiers.*, partitionToValue.*, valueToPartition.*;
+        Dictionary<string/*!*/, int>/*!*/ identifierToPartition,
+        List<List<string/*!*/>>/*!*/ partitionToIdentifiers,
+        List<Object>/*!*/ partitionToValue,
+        Dictionary<Object, int>/*!*/ valueToPartition)
+        //TODO: modifies this.*, identifierToPartition.*, partitionToIdentifiers.*, partitionToValue.*, valueToPartition.*;
     {
+    Contract.Requires(partitionToValue != null);
+      Contract.Requires(valueToPartition != null);
+      Contract.Requires(cce.NonNullElements(identifierToPartition));
+      Contract.Requires(cce.NonNullElements(partitionToIdentifiers));
+    Contract.Requires(cce.Owner.Same(cce.Owner.ElementProxy(partitionToValue), cce.Owner.ElementProxy(valueToPartition)));
       string s = FromReadLine();
       {
         // sanity check
@@ -415,7 +577,7 @@ namespace Microsoft.Boogie.Z3
         }
         if (! (int.TryParse(n, out k) && zID == k)) {
           System.Console.WriteLine("mismatch: {0}!={1} '{2}'", zID, k, s);
-          assume false;
+          Contract.Assume( false);
         }
       }
       
@@ -425,13 +587,13 @@ namespace Microsoft.Boogie.Z3
       if (0 <= j) {
         j += 4;
       }
-      assume j == -1 || j < s.Length;  // if ' -> ' is present, then more should remain of the line
+      Contract.Assume( j == -1 || j < s.Length);  // if ' -> ' is present, then more should remain of the line
       if (j == -1) {
         // no "-> " found, end of this line, store that there is no value:
         partitionToValue.Add(null);
         int idForNull;
         if (identifierToPartition.TryGetValue("nullObject", out idForNull) && idForNull == zID) {
-          assume !valueToPartition.ContainsKey("nullObject");  // a RHS value should occur only once in the Z3 output
+          Contract.Assume( !valueToPartition.ContainsKey("nullObject"));  // a RHS value should occur only once in the Z3 output
           valueToPartition.Add("nullObject", zID);
           // In this case partitionToValue (as the reverse of valueToPartition) should include
           // a map from zID -> "nullObject", but doing that breaks printing out the model as 
@@ -442,20 +604,21 @@ namespace Microsoft.Boogie.Z3
       } else if (s[j] == 't'/*rue*/) {
         partitionToValue.Add(true);
         object boxedTrue = true;
-        assume !valueToPartition.ContainsKey(boxedTrue);  // a RHS value should occur only once in the Z3 output
+        Contract.Assume( !valueToPartition.ContainsKey(boxedTrue));  // a RHS value should occur only once in the Z3 output
         valueToPartition.Add(boxedTrue, zID);
       } else if (s[j] == 'f'/*alse*/) {
         object boxedFalse = false;
-        Owner.AssignSame(boxedFalse, Owner.ElementProxy(partitionToValue));
+        cce.Owner.AssignSame(boxedFalse, cce.Owner.ElementProxy(partitionToValue));
         partitionToValue.Add(boxedFalse);
-        assume !valueToPartition.ContainsKey(boxedFalse);  // a RHS value should occur only once in the Z3 output
+        Contract.Assume( !valueToPartition.ContainsKey(boxedFalse));  // a RHS value should occur only once in the Z3 output
         valueToPartition.Add(boxedFalse, zID);
       } else if (s[j] == 'v') {
         // -> val!..., i.e. no value
         partitionToValue.Add(null);
       } else if (s[j] == '{') {
         // array
-        List<List<int>!> arrayModel = new List<List<int>!>();
+        List<List<int>/*!*/> arrayModel = new List<List<int>/*!*/>();
+        Contract.Assert(Contract.ForAll(arrayModel,a=>cce.NonNullElements(a)));
         string array = s.Substring(j+1);
         int index1, index2;
         string from, to;
@@ -474,7 +637,7 @@ namespace Microsoft.Boogie.Z3
           arrayModel.Add(tuple);
           tuple = new List<int>();
         }
-        assert array.StartsWith("else ->");
+       Contract.Assert(array.StartsWith("else ->"));
         index1 = array.IndexOf('*') + 1;
         index2 = array.IndexOf('}');
         to = array.Substring(index1, index2-index1);
@@ -508,80 +671,90 @@ namespace Microsoft.Boogie.Z3
 
         if (type == "int") {
           object boxedN = BigNum.FromString(number);
-          assume Owner.None(boxedN);
-          Owner.AssignSame(boxedN, Owner.ElementProxy(partitionToValue));
+          Contract.Assume( cce.Owner.None(boxedN));
+          cce.Owner.AssignSame(boxedN, cce.Owner.ElementProxy(partitionToValue));
           partitionToValue.Add(boxedN);
-          assume !valueToPartition.ContainsKey(boxedN);  // a RHS value should occur only once in the Z3 output
+          Contract.Assume( !valueToPartition.ContainsKey(boxedN));  // a RHS value should occur only once in the Z3 output
           valueToPartition.Add(boxedN, zID); 
         } else if (type.StartsWith("bv") && BigNum.TryParse(number, out bvVal) && int.TryParse(type.Substring(2), out bvSize)) {
           BvConst bitV = new BvConst(bvVal, bvSize);
-          Owner.AssignSame(bitV, Owner.ElementProxy(partitionToValue));
+          cce.Owner.AssignSame(bitV, cce.Owner.ElementProxy(partitionToValue));
           partitionToValue.Add(bitV);
-          assume !valueToPartition.ContainsKey(bitV);  // a RHS value should occur only once in the Z3 output
+          Contract.Assume( !valueToPartition.ContainsKey(bitV));  // a RHS value should occur only once in the Z3 output
           valueToPartition.Add(bitV, zID);
         } else {
           System.Console.WriteLine("cannot parse type: '{0}':'{1}'", number, type);
-          assume false;
+          Contract.Assume( false);
         }
 
       }
     }
 
-    private static int ParseModelZidAndIdentifiers(int zID, string! s,
-        Dictionary<string!, int>! identifierToPartition,
-        List<List<string!>>! partitionToIdentifiers)
-      modifies identifierToPartition.*, partitionToIdentifiers.*;
-      ensures 0 <= result && result <= s.Length;
+    private static int ParseModelZidAndIdentifiers(int zID, string s,
+        Dictionary<string/*!*/, int>/*!*/ identifierToPartition,
+        List<List<string/*!*/>>/*!*/ partitionToIdentifiers)
+      //TODO: modifies identifierToPartition.*, partitionToIdentifiers.*;
+      //TODO: Find all modifies statements
     {
-      List<string!> identifiers = new List<string!>();
+      Contract.Requires(identifierToPartition!=null&&cce.NonNullElements(identifierToPartition.Keys));
+      Contract.Requires(partitionToIdentifiers!=null&& Contract.ForAll(partitionToIdentifiers,  identifier=>cce.NonNullElements(identifier)));
+    Contract.Requires(s != null);
+    Contract.Ensures(0 <= Contract.Result<int>() && Contract.Result<int>() <= s.Length);
+      
+      List<string/*!*/> identifiers = new List<string/*!*/>();
       int arrowIndex = s.IndexOf('>');
-      assert 0 < arrowIndex;
+     Contract.Assert(0 < arrowIndex);
       int j = s.IndexOf('{', 0) + 1;  // skip the '{', if present, and set j to 0 otherwise
       if (1 <= j && j < arrowIndex) {
         // There is a list of ID's.
-        assume j < s.Length;  // there should be more characters; the ending '}', for one
+        Contract.Assume( j < s.Length);  // there should be more characters; the ending '}', for one
         //ID*
         while (true) 
-          invariant identifiers.IsPeerConsistent && identifierToPartition.IsPeerConsistent && partitionToIdentifiers.IsPeerConsistent;
-          invariant 0 <= j && j < s.Length;
-        {
+        {Contract.Invariant(cce.IsPeerConsistent( identifiers) && cce.IsPeerConsistent(identifierToPartition) && cce.IsPeerConsistent(partitionToIdentifiers));
+          Contract.Invariant(0 <= j && j < s.Length);
           int k = s.IndexOfAny(new char[]{' ', '}'}, j);
-          assume j <= k;
+          Contract.Assume( j <= k);
           string id = s.Substring(j, k-j);
           j = k+1;
-          assume !identifierToPartition.ContainsKey(id);  // an ID is listed only once in this list, and an ID can only belong to one ZID equivalence class
+          Contract.Assume( !identifierToPartition.ContainsKey(id));  // an ID is listed only once in this list, and an ID can only belong to one ZID equivalence class
           identifierToPartition.Add(id, zID);
           identifiers.Add(id);
           if (s[k] == '}') {
             // end of reading ID*
             break;
           }
-          assume j < s.Length;  // there should be more characters; the ending '}', for one
+          Contract.Assume( j < s.Length);  // there should be more characters; the ending '}', for one
         }//end ID*
       } else {
         j = 0;
       }
-      Owner.AssignSame(identifiers, Owner.ElementProxy(partitionToIdentifiers));
+      cce.Owner.AssignSame(identifiers, cce.Owner.ElementProxy(partitionToIdentifiers));
       partitionToIdentifiers.Add(identifiers);
       return j;
     }
                   
-    private string! ParseModelFunctions(int ch, out Z3ErrorModel errModel,
-      Dictionary<string!, int>! identifierToPartition,
-      List<List<string!>>! partitionToIdentifiers,
-      List<Object>! partitionToValue,
-      Dictionary<Object, int>! valueToPartition
+    private string ParseModelFunctions(int ch, out Z3ErrorModel errModel,
+      Dictionary<string/*!*/, int>/*!*/ identifierToPartition,
+      List<List<string/*!*/>>/*!*/ partitionToIdentifiers,
+      List<Object>/*!*/ partitionToValue,
+      Dictionary<Object, int>/*!*/ valueToPartition
     ) 
-      modifies this.*;
-      ensures result == "." || result.StartsWith("labels: (") || result == "END_OF_MODEL";
-      throws UnexpectedProverOutputException;
+      //TODO:  modifies this.*;
+      
     {
+    Contract.Requires(identifierToPartition!=null&&cce.NonNullElements(identifierToPartition.Keys));
+      Contract.Requires(partitionToIdentifiers!=null&& Contract.ForAll(partitionToIdentifiers,  identifier=>cce.NonNullElements(identifier)));
+    Contract.Requires(partitionToValue!=null);
+    Contract.Requires(valueToPartition!=null);
+    Contract.Ensures(Contract.Result<string>() != null);
+    Contract.Ensures(Contract.Result<string>() == "." || Contract.Result<string>().StartsWith("labels: (") || Contract.Result<string>() == "END_OF_MODEL");
+    Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       // read the function F
       Expect(ch, "function interpretations:");
       FromReadLine();
       
       // mapping of function names to function definitions
-      Dictionary<string!, List<List<int>>!> definedFunctions = new Dictionary<string!, List<List<int>>!>();
+      Dictionary<string/*!*/, List<List<int>>/*!*/> definedFunctions = new Dictionary<string/*!*/, List<List<int>>/*!*/>();
       // function definition given as list of 'pointwise definitions' in the form of the arguments and result
       // the last element here will always be a list with just one entry which corresponds to the else case
       List<List<int>> functionDefinition = new List<List<int>>();
@@ -601,7 +774,7 @@ namespace Microsoft.Boogie.Z3
           return s;
         }
         int j = s.IndexOf(' ', 0);
-        assume 0 <= j;
+        Contract.Assume( 0 <= j);
         string id = s.Substring(0, j);
         // id is stored into definedFunctions once the function definition for it has 
         // been completely parsed. 
@@ -635,11 +808,11 @@ namespace Microsoft.Boogie.Z3
           
           //ZID*
           while(true) 
-            invariant 0 <= j && j <= s.Length;
-          {
+           {Contract.Invariant( 0 <= j && j <= s.Length);
+          
             j = s.IndexOfAny(new Char[]{'*', '-'}, j);
             // true because this always ends with a "->":
-            assume 0 <= j;
+            Contract.Assume( 0 <= j);
             
             // reading -> means end of ZID*
             if (s[j] == '-'/*>*/) break;
@@ -647,10 +820,10 @@ namespace Microsoft.Boogie.Z3
             // start reading the ZID* with the number, not the *
             j = j + 1;
             // by input string format:
-            assume j < s.Length;
+            Contract.Assume( j < s.Length);
             int k = s.IndexOf(' ', j);
             // by input string format:
-            assume j <= k;
+            Contract.Assume( j <= k);
             zIDstring = s.Substring(j, k-j);
             // add the arguments
             argumentsAndResult.Add(int.Parse(zIDstring));
@@ -660,7 +833,7 @@ namespace Microsoft.Boogie.Z3
           // j is the beginning of "-> *", we want the first character after this
           j = j + 4;
           // by input string format:
-          assume j <= s.Length;
+          Contract.Assume( j <= s.Length);
           zIDstring = s.Substring(j);
           // add the result
           argumentsAndResult.Add(int.Parse(zIDstring));
@@ -670,12 +843,12 @@ namespace Microsoft.Boogie.Z3
 
         // this is the 'else -> #unspecified' case
         // by input string format:
-        assume s.IndexOf("#unspec") >= 0;
+        Contract.Assume( s.IndexOf("#unspec") >= 0);
         // this stores the else line as another argumentsAndResult list
         argumentsAndResult = new List<int>();
         argumentsAndResult.Add(partitionToIdentifiers.Count - 1); // use the fake partition we have created before
         // which is then added to the function definition, which is now complete
-        Owner.AssignSame(argumentsAndResult, Owner.ElementProxy(functionDefinition));
+        cce.Owner.AssignSame(argumentsAndResult, cce.Owner.ElementProxy(functionDefinition));
         functionDefinition.Add(argumentsAndResult);
 
     /*
@@ -692,7 +865,7 @@ namespace Microsoft.Boogie.Z3
 
         // and therefore added to the map of defined functions, together with the name 'id'
         // which had been extracted before
-        assume !definedFunctions.ContainsKey(id);  // each function name in the model is listed only once
+        Contract.Assume( !definedFunctions.ContainsKey(id));  // each function name in the model is listed only once
         definedFunctions.Add(id, functionDefinition);
         
         // read the line with "}"
@@ -707,29 +880,48 @@ namespace Microsoft.Boogie.Z3
 
   public class Z3ErrorModel : ErrorModel 
   {
-    public Z3ErrorModel(Dictionary<string!, int>! identifierToPartition, List<List<string!>>! partitionToIdentifiers, List<Object>! partitionToValue, Dictionary<object, int>! valueToPartition, Dictionary<string!, List<List<int>>!>! definedFunctions)
+    public Z3ErrorModel(Dictionary<string/*!*/, int>/*!*/ identifierToPartition,
+      List<List<string/*!*/>>/*!*/ partitionToIdentifiers,
+    List<Object>/*!*/ partitionToValue,
+    Dictionary<object, int>/*!*/ valueToPartition,
+    Dictionary<string/*!*/, List<List<int>>/*!*/>/*!*/ definedFunctions)
       : base(identifierToPartition, partitionToIdentifiers, partitionToValue, valueToPartition, definedFunctions)
     {
-      this.partitionNames = new string?[partitionToIdentifiers.Count];
-      this.prevPartitionNames = new string?[partitionToIdentifiers.Count];
+      Contract.Requires(identifierToPartition!=null&&cce.NonNullElements(identifierToPartition.Keys));
+      Contract.Requires(partitionToIdentifiers!=null&&Contract.ForAll(partitionToIdentifiers,x=>cce.NonNullElements(x)));
+      Contract.Requires(partitionToValue != null);
+      Contract.Requires(valueToPartition!=null);
+      Contract.Requires(definedFunctions!=null&&cce.NonNullElements(definedFunctions.Keys)&&cce.NonNullElements(definedFunctions.Values));
+
+      this.partitionNames = new string/*?*/[partitionToIdentifiers.Count];
+      this.prevPartitionNames = new string/*?*/[partitionToIdentifiers.Count];
     }
 
-    private string?[]! partitionNames;
-    private string?[]! prevPartitionNames;
+    private string/*?*/[]/*!*/ partitionNames;
+    private string/*?*/[]/*!*/ prevPartitionNames;
+
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(partitionNames!=null);
+      Contract.Invariant(prevPartitionNames!=null);
+}
+
 
     private void SetNames()
     {
       int len = partitionToIdentifiers.Count;
       for (int i = 0; i < 3; ++i) { // let the names stabilize a bit
         prevPartitionNames = partitionNames;
-        partitionNames = new string?[len];
+        partitionNames = new string[len];
         for (int pos = 0; pos < len; ++pos)
           GetPartitionName(pos);
       }
     }
 
-    private int NameBadness(string! name)
+    private int NameBadness(string name)
     {
+      Contract.Requires(name!=null);
       int badness = name.Length;
       if (name.StartsWith("call") && name.IndexOf("formal@") > 0)
         badness += 1000;
@@ -738,8 +930,10 @@ namespace Microsoft.Boogie.Z3
       return badness;
     }
 
-    private string! GetPartitionName(int pos)
+    private string GetPartitionName(int pos)
     {
+      Contract.Ensures(Contract.Result<string>() != null);
+
       string name = partitionNames[pos];
       if (name != null) {
         return name;
@@ -749,8 +943,9 @@ namespace Microsoft.Boogie.Z3
       if (tmp != null) {
         partitionNames[pos] = tmp is BvConst ?  ((BvConst)tmp).ToReadableString() : tmp.ToString();
       } else {
-        List<string!>! possible_names = new List<string!>();
-        List<string!> pti = partitionToIdentifiers[pos];
+        List<string/*!*/>/*!*/ possible_names = new List<string/*!*/>();
+        List<string/*!*/> pti = partitionToIdentifiers[pos];
+        Contract.Assert(cce.NonNullElements(pti));
 
         // make sure we're not called recursively
         string prevName = prevPartitionNames[pos];
@@ -759,16 +954,20 @@ namespace Microsoft.Boogie.Z3
 
         if (pti != null && pti.Count > 0) {
           // add identifiers
-          foreach (string! name in pti)
-            possible_names.Add(name);
+          foreach (string n in pti)
+          {
+            Contract.Assert(n!=null);
+            possible_names.Add(n);}
         }
 
         // Then also look for functions,
         // and then collect possible functional definitions
-        foreach (KeyValuePair<string!, List<List<int>>!> kv in definedFunctions) {
-          foreach (List<int>! parms in kv.Value) {
+        foreach (KeyValuePair<string/*!*/, List<List<int>>/*!*/> kv in definedFunctions) {
+          Contract.Assert(kv.Key!=null);
+          Contract.Assert(kv.Value!=null);
+          foreach (List<int> parms in kv.Value) {
             if (parms.Count > 1 && parms[parms.Count - 1] == pos) {
-              string! s = kv.Key + "(";
+              string s = kv.Key + "(";
               for (int i = 0; i < parms.Count - 1; ++i) {
                 if (i != 0) s += ", ";
                 s += GetPartitionName(parms[i]);
@@ -781,25 +980,28 @@ namespace Microsoft.Boogie.Z3
 
         // choose the shortest possible name
         if (possible_names.Count > 0) {
-          string! best = possible_names[0];
-          foreach (string! s in possible_names)
-            if (NameBadness(s) < NameBadness(best)) best = s;
+          string best = possible_names[0];
+          foreach (string s in possible_names){
+            Contract.Assert(s!=null);
+            if (NameBadness(s) < NameBadness(best)) best = s;}
           if (best.Length < 120)
             partitionNames[pos] = best;
         }
       }
 
-      return (!)partitionNames[pos];
+      return cce.NonNull(partitionNames[pos]);
     }
     
-    private void PrintReadableModel (TextWriter! writer) {
+    private void PrintReadableModel (TextWriter writer) {
+      Contract.Requires(writer!=null);
       writer.WriteLine("Z3 error model: ");
       SetNames();
       writer.WriteLine("partitions:");
-      assert partitionToIdentifiers.Count == partitionToValue.Count;
+     Contract.Assert(partitionToIdentifiers.Count == partitionToValue.Count);
       for (int i = 0; i < partitionToIdentifiers.Count; i++){
         writer.Write("{0,5}: {1}  ", "*"+i, GetPartitionName(i));
-        List<string!> pti = partitionToIdentifiers[i];
+        List<string/*!*/> pti = partitionToIdentifiers[i];
+        Contract.Assert(cce.NonNullElements(pti));
         if (pti != null && (pti.Count > 1 || (pti.Count == 1 && partitionToValue[i] != null))) {
           writer.Write("{");
           for (int k = 0; k < pti.Count - 1; k ++) {
@@ -816,12 +1018,14 @@ namespace Microsoft.Boogie.Z3
 
       writer.WriteLine();
       writer.WriteLine("function interpretations:");
-      List<string!> funNames = new List<string!>(definedFunctions.Keys);
+      List<string> funNames = new List<string>(definedFunctions.Keys);
       funNames.Sort();
-      foreach (string! name in funNames) {
+      foreach (string name in funNames) {
+        Contract.Assert(name!=null);
         if (definedFunctions[name].Count == 1) continue; // skip functions with only the else-> clause
-        foreach (List<int>! parms in definedFunctions[name]) {
-          string! s = name + "(";
+        foreach (List<int> parms in definedFunctions[name]) {
+          Contract.Assert(parms!=null);
+          string s = name + "(";
           if (parms.Count == 1) {
             continue;
             // s += "*";
@@ -832,7 +1036,7 @@ namespace Microsoft.Boogie.Z3
             }
           }
           s += ")";
-          string! res = GetPartitionName(parms[parms.Count - 1]);
+          string res = GetPartitionName(parms[parms.Count - 1]);
           if (res == s)
             res = "*" + parms[parms.Count - 1] + " (SELF)";
           writer.WriteLine("{0} = {1}", s, res);
@@ -843,7 +1047,8 @@ namespace Microsoft.Boogie.Z3
       writer.WriteLine();
     }
 
-    public override void Print (TextWriter! writer) {
+    public override void Print (TextWriter writer) {
+      Contract.Requires(writer!=null);
       if (CommandLineOptions.Clo.PrintErrorModel == 4) {
         PrintReadableModel(writer);
         return;
@@ -852,10 +1057,10 @@ namespace Microsoft.Boogie.Z3
       writer.WriteLine("Z3 error model: ");
 
       writer.WriteLine("partitions:");
-      assert partitionToIdentifiers.Count == partitionToValue.Count;
+     Contract.Assert(partitionToIdentifiers.Count == partitionToValue.Count);
       for (int i = 0; i < partitionToIdentifiers.Count; i++){
         writer.Write("*"+i);
-        List<string!> pti = partitionToIdentifiers[i];
+        List<string> pti = partitionToIdentifiers[i];
         if (pti != null && pti.Count != 0) {
           writer.Write(" {");
           for (int k = 0; k < pti.Count - 1; k ++) {
@@ -876,15 +1081,15 @@ namespace Microsoft.Boogie.Z3
             writer.Write(" -> " + "false" + "");
           } else if (tempPTVI is BigNum) {
             writer.Write(" -> " + tempPTVI + ":int");
-          } else if (tempPTVI is List<List<int>!>) {
-            List<List<int>!> array = tempPTVI as List<List<int>!>;
-            assume array != null;
+          } else if (tempPTVI is List<List<int>>) {
+            List<List<int>> array = tempPTVI as List<List<int>>;
+            Contract.Assume( array != null);
             writer.Write(" -> {");
             foreach(List<int> l in array) {
               if (l.Count == 2) {
                 writer.Write("*"+l[0] + " -> " + "*"+l[1] + "; ");
               } else {
-                assert (l.Count == 1);
+               Contract.Assert((l.Count == 1));
                 writer.Write("else -> *"+l[0]+"}");
               } 
             }
@@ -898,7 +1103,8 @@ namespace Microsoft.Boogie.Z3
       }
 
       writer.WriteLine("function interpretations:");
-      foreach (KeyValuePair<string!, List<List<int>>!> kvp in definedFunctions) {
+      foreach (KeyValuePair<string, List<List<int>>> kvp in definedFunctions) {
+        Contract.Assert(kvp.Key!=null);
         writer.WriteLine(kvp.Key + " -> {");
         List<List<int>> kvpValue = kvp.Value;
         if (kvpValue != null) {
@@ -923,7 +1129,8 @@ namespace Microsoft.Boogie.Z3
       
       if (CommandLineOptions.Clo.PrintErrorModel >= 2) {
         writer.WriteLine("identifierToPartition:");
-        foreach (KeyValuePair<string!, int> kvp in identifierToPartition) {
+        foreach (KeyValuePair<string, int> kvp in identifierToPartition) {
+          Contract.Assert(kvp.Key!=null);
           writer.WriteLine(kvp.Key + " : " + "*" + kvp.Value);  
         }
         

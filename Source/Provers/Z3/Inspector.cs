@@ -8,8 +8,8 @@ using System.IO;
 using System.Diagnostics;
 using System.Collections;
 using System.Collections.Generic;
-using util;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
+//using util;
 using Microsoft.Boogie;
 using Microsoft.Boogie.Simplify;
 using Microsoft.Basetypes;
@@ -18,15 +18,25 @@ using Microsoft.Boogie.VCExprAST;
 namespace Microsoft.Boogie.Z3
 {
   internal class FindLabelsVisitor : TraversingVCExprVisitor<bool, bool> {
-    public Dictionary<string!,bool>! Labels = new Dictionary<string!,bool>();
+    public Dictionary<string/*!*/,bool>/*!*/ Labels = new Dictionary<string/*!*/,bool>();
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(Labels!=null&&cce.NonNullElements(Labels.Keys));
+}
 
-    public static Dictionary<string!,bool>! FindLabels(VCExpr! expr) {
-      FindLabelsVisitor! visitor = new FindLabelsVisitor();
+
+    public static Dictionary<string/*!*/,bool>/*!*/ FindLabels(VCExpr/*!*/ expr) {
+      Contract.Requires(expr != null);
+      Contract.Ensures(Contract.Result<Dictionary<string/*!*/,bool>/*!*/>() != null&&cce.NonNullElements(Contract.Result<Dictionary<string/*!*/,bool>/*!*/>().Keys));
+
+      FindLabelsVisitor visitor = new FindLabelsVisitor();
       visitor.Traverse(expr, true);
       return visitor.Labels;
     }
     
-    protected override bool StandardResult(VCExpr! node, bool arg) {
+    protected override bool StandardResult(VCExpr node, bool arg) {
+      Contract.Requires(node!=null);
       VCExprNAry nary = node as VCExprNAry;
       if (nary != null) {
         VCExprLabelOp lab = nary.Op as VCExprLabelOp;
@@ -39,13 +49,23 @@ namespace Microsoft.Boogie.Z3
   }
 
   internal class Inspector {
-    [Rep] protected readonly Process! inspector;
-    [Rep] readonly TextReader! fromInspector;
-    [Rep] readonly TextWriter! toInspector;
+    [Rep] protected readonly Process inspector;
+    [Rep] readonly TextReader fromInspector;
+    [Rep] readonly TextWriter toInspector;
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(inspector!=null);
+      Contract.Invariant(fromInspector!=null);
+      Contract.Invariant(toInspector != null);
+}
 
-    public Inspector(Z3InstanceOptions! opts)
+
+    public Inspector(Z3InstanceOptions opts)
     {
-      ProcessStartInfo! psi = new ProcessStartInfo(opts.Inspector);
+      Contract.Requires(opts != null);
+      ProcessStartInfo psi = new ProcessStartInfo(opts.Inspector);
+      Contract.Assert(psi!=null);
       psi.CreateNoWindow = true;
       psi.UseShellExecute = false;
       psi.RedirectStandardInput = true;
@@ -69,14 +89,20 @@ namespace Microsoft.Boogie.Z3
     {
     }
 
-    public void NewProblem(string! descriptiveName, VCExpr! vc, ProverInterface.ErrorHandler! handler)
+    public void NewProblem(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler)
     {
-      Dictionary<string!,bool>! labels = FindLabelsVisitor.FindLabels(vc);
+      Contract.Requires(descriptiveName != null);
+      Contract.Requires(vc != null);
+      Contract.Requires(handler != null);
+      Dictionary<string/*!*/,bool>/*!*/ labels = FindLabelsVisitor.FindLabels(vc);
+      Contract.Assert(labels!=null);
       toInspector.WriteLine("PROBLEM " + descriptiveName);
       toInspector.WriteLine("TOKEN BEGIN");
-      foreach (string! lab in labels.Keys) {
-        string! no = lab.Substring(1);
-        Absy! absy = handler.Label2Absy(no);
+      foreach (string lab in labels.Keys) {
+        Contract.Assert(lab!=null);
+        string no = lab.Substring(1);
+        Absy absy = handler.Label2Absy(no);
+        
         IToken tok = absy.tok;
         AssertCmd assrt = absy as AssertCmd;
         Block blk = absy as Block;
@@ -99,7 +125,7 @@ namespace Microsoft.Boogie.Z3
           toInspector.Write("BLOCK ");
           toInspector.Write(blk.Label);
         } else {
-          assume false;
+          Contract.Assume( false);
         }
         if (val == null || val == "assert" || val == "ensures") { val = ""; }
 
@@ -127,8 +153,9 @@ namespace Microsoft.Boogie.Z3
       toInspector.WriteLine("TOKEN END");
     }
 
-    public void StatsLine(string! line)
+    public void StatsLine(string line)
     {
+      Contract.Requires(line != null);
       toInspector.WriteLine(line);
       toInspector.Flush();
     }

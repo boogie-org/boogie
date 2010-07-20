@@ -7,7 +7,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.Z3
@@ -22,97 +22,126 @@ namespace Microsoft.Boogie.Z3
 
   public class TypeDeclCollector : BoundVarTraversingVCExprVisitor<bool, bool> {
 
-    private readonly UniqueNamer! Namer;
+    private readonly UniqueNamer Namer;
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(Namer!=null);
+      Contract.Invariant(AllDecls != null);
+      Contract.Invariant(IncDecls != null);
+      Contract.Invariant(cce.NonNullElements(KnownFunctions));
+      Contract.Invariant(cce.NonNullElements(KnownVariables));
+      Contract.Invariant(cce.NonNullElements(KnownTypes));
+      Contract.Invariant(cce.NonNullElements(KnownBvOps));
+      Contract.Invariant(cce.NonNullElements(KnownSelectFunctions));
+      Contract.Invariant(cce.NonNullElements(KnownStoreFunctions));
+}
+
 
     private readonly bool NativeBv;
 
-    public TypeDeclCollector(UniqueNamer! namer, bool nativeBv) {
+    public TypeDeclCollector(UniqueNamer namer, bool nativeBv) {
+      Contract.Requires(namer != null);
       this.Namer = namer;
       this.NativeBv = nativeBv;
-      AllDecls = new List<string!> ();
-      IncDecls = new List<string!> ();
-      KnownFunctions = new Dictionary<Function!, bool> ();
-      KnownVariables = new Dictionary<VCExprVar!, bool> ();
-      KnownTypes = new Dictionary<Type!, bool> ();
-      KnownBvOps = new Dictionary<string!, bool> ();
+      AllDecls = new List<string/*!*/> ();
+      IncDecls = new List<string/*!*/> ();
+      KnownFunctions = new Dictionary<Function/*!*/, bool> ();
+      KnownVariables = new Dictionary<VCExprVar/*!*/, bool> ();
+      KnownTypes = new Dictionary<Type/*!*/, bool> ();
+      KnownBvOps = new Dictionary<string/*!*/, bool> ();
       
-      KnownStoreFunctions = new Dictionary<string!, bool> ();
-      KnownSelectFunctions = new Dictionary<string!, bool> ();
+      KnownStoreFunctions = new Dictionary<string/*!*/, bool>();
+      KnownSelectFunctions = new Dictionary<string/*!*/, bool>();
     }
 
-    internal TypeDeclCollector(UniqueNamer! namer, TypeDeclCollector! coll) {
+    internal TypeDeclCollector(UniqueNamer namer, TypeDeclCollector coll) {
+      Contract.Requires(namer!=null);
+      Contract.Requires(coll!=null);
       this.Namer = namer;
       this.NativeBv = coll.NativeBv;
-      AllDecls = new List<string!> (coll.AllDecls);
-      IncDecls = new List<string!> (coll.IncDecls);
-      KnownFunctions = new Dictionary<Function!, bool> (coll.KnownFunctions);
-      KnownVariables = new Dictionary<VCExprVar!, bool> (coll.KnownVariables);
-      KnownTypes = new Dictionary<Type!, bool> (coll.KnownTypes);
-      KnownBvOps = new Dictionary<string!, bool> (coll.KnownBvOps);
+      AllDecls = new List<string/*!*/> (coll.AllDecls);
+      IncDecls = new List<string/*!*/> (coll.IncDecls);
+      KnownFunctions = new Dictionary<Function/*!*/, bool> (coll.KnownFunctions);
+      KnownVariables = new Dictionary<VCExprVar/*!*/, bool> (coll.KnownVariables);
+      KnownTypes = new Dictionary<Type/*!*/, bool> (coll.KnownTypes);
+      KnownBvOps = new Dictionary<string/*!*/, bool> (coll.KnownBvOps);
       
-      KnownStoreFunctions = new Dictionary<string!, bool> (coll.KnownStoreFunctions);
-      KnownSelectFunctions = new Dictionary<string!, bool> (coll.KnownSelectFunctions);
+      KnownStoreFunctions = new Dictionary<string/*!*/, bool> (coll.KnownStoreFunctions);
+      KnownSelectFunctions = new Dictionary<string/*!*/, bool> (coll.KnownSelectFunctions);
     }
 
     // not used
-    protected override bool StandardResult(VCExpr! node, bool arg) {
+    protected override bool StandardResult(VCExpr node, bool arg) {
+      Contract.Requires(node != null);
       return true;
     }
 
-    private readonly List<string!>! AllDecls;
-    private readonly List<string!>! IncDecls;
+    private readonly List<string/*!>!*/> AllDecls;
+    private readonly List<string/*!>!*/> IncDecls;
 
-    private readonly IDictionary<Function!, bool>! KnownFunctions;
-    private readonly IDictionary<VCExprVar!, bool>! KnownVariables;
+    private readonly IDictionary<Function/*!*/, bool>/*!*/ KnownFunctions;
+    private readonly IDictionary<VCExprVar/*!*/, bool>/*!*/ KnownVariables;
 
     // bitvector types have to be registered as well
-    private readonly IDictionary<Type!, bool>! KnownTypes;
+    private readonly IDictionary<Type/*!*/, bool>/*!*/ KnownTypes;
 
     // the names of registered BvConcatOps and BvExtractOps
-    private readonly IDictionary<string!, bool>! KnownBvOps;
+    private readonly IDictionary<string/*!*/, bool>/*!*/ KnownBvOps;
 
-    private readonly IDictionary<string!, bool>! KnownStoreFunctions;
-    private readonly IDictionary<string!, bool>! KnownSelectFunctions;
+    private readonly IDictionary<string/*!*/, bool>/*!*/ KnownStoreFunctions;
+    private readonly IDictionary<string/*!*/, bool>/*!*/ KnownSelectFunctions;
 
-    public List<string!>! AllDeclarations { get {
-      List<string!>! res = new List<string!> ();
+    public List<string/*!>!*/> AllDeclarations { get {
+      Contract.Ensures(cce.NonNullElements(Contract.Result<List<string>>()));
+
+      List<string/*!>!*/> res = new List<string/*!*/> ();
       res.AddRange(AllDecls);
       return res;
     } }
 
-    public List<string!>! GetNewDeclarations() {
-      List<string!>! res = new List<string!> ();
+    public List<string/*!>!*/> GetNewDeclarations() {
+      Contract.Ensures(cce.NonNullElements(Contract.Result<List<string>>()));
+      List<string/*!>!*/> res = new List<string/*!*/> ();
       res.AddRange(IncDecls);
       IncDecls.Clear();
       return res;
     }
 
-    private void AddDeclaration(string! decl) {
+    private void AddDeclaration(string decl) {
+      Contract.Requires(decl != null);
       AllDecls.Add(decl);
       IncDecls.Add(decl);
     }
 
-    public void Collect(VCExpr! expr) {
+    public void Collect(VCExpr expr) {
+      Contract.Requires(expr != null);
       Traverse(expr, true);
     }
 
     ///////////////////////////////////////////////////////////////////////////
 
-    private static string! TypeToString(Type! t) {
+    private static string TypeToString(Type t) {
+      Contract.Requires(t!= null);
+      Contract.Ensures(Contract.Result<string>() != null);
+
       return SimplifyLikeExprLineariser.TypeToString(t);
     }
 
-    private void RegisterType(Type! type)
+    private void RegisterType(Type type)
     {
+      Contract.Requires(type != null);
       if (KnownTypes.ContainsKey(type)) return;
       
       if (type.IsMap && CommandLineOptions.Clo.UseArrayTheory) {
         KnownTypes.Add(type, true);
         string declString = "";
-        MapType! mapType = type.AsMap;
+        MapType mapType = type.AsMap;
+        Contract.Assert(mapType!=null);
         
         declString += "(DEFTYPE " +  TypeToString(type) + " :BUILTIN Array ";
-		foreach (Type! t in mapType.Arguments) {
+		foreach (Type t in mapType.Arguments) {
+      Contract.Assert(t!=null);
 		  RegisterType(t);
 		  declString += TypeToString(t);
 		  declString += " ";
@@ -132,7 +161,7 @@ namespace Microsoft.Boogie.Z3
         // If we add the BUILTIN then the conversion axiom does not work
         AddDeclaration("(DEFOP " + name + "_to_int " + name + " $int)"); // :BUILTIN bv2int $int)");
         AddDeclaration("(DEFOP $make_bv" + bits + " $int " + name + " :BUILTIN int2bv " + bits + ")");
-        string! expr = "($make_bv" + bits + " (" + name + "_to_int  x))";
+        string expr = "($make_bv" + bits + " (" + name + "_to_int  x))";
         AddDeclaration("(BG_PUSH (FORALL (x :TYPE " + name + ") (PATS "
                        + expr + ") (QID bvconv" + bits + ") (EQ " + expr + " x)))");
 
@@ -140,7 +169,8 @@ namespace Microsoft.Boogie.Z3
       }
     }
 
-    public override bool Visit(VCExprNAry! node, bool arg) {
+    public override bool Visit(VCExprNAry node, bool arg) {
+      Contract.Requires(node != null);
       // there are a couple cases where operators have to be
       // registered by generating appropriate Z3 statements
 
@@ -168,7 +198,8 @@ namespace Microsoft.Boogie.Z3
           RegisterType(node[0].Type);
           RegisterType(node.Type);
 
-          VCExprBvExtractOp! op = (VCExprBvExtractOp)node.Op;
+          VCExprBvExtractOp op = (VCExprBvExtractOp)node.Op;
+          Contract.Assert(op!=null);
           string name = SimplifyLikeExprLineariser.BvExtractOpName(node);
           if (!KnownBvOps.ContainsKey(name)) {
             AddDeclaration("(DEFOP " + name +
@@ -216,21 +247,25 @@ namespace Microsoft.Boogie.Z3
         //
         VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
         if (op != null && !KnownFunctions.ContainsKey(op.Func)) {
-          Function! f = op.Func;
-          string! printedName = Namer.GetName(f, f.Name);
-          string! decl = "(DEFOP " + SimplifyLikeExprLineariser.MakeIdPrintable(printedName);
+          Function f = op.Func;
+          Contract.Assert(f!=null);
+          string printedName = Namer.GetName(f, f.Name);
+          Contract.Assert(printedName!=null);
+          string decl = "(DEFOP " + SimplifyLikeExprLineariser.MakeIdPrintable(printedName);
 
-          foreach (Variable! v in f.InParams) {
+          foreach (Variable v in f.InParams) {
+            Contract.Assert(v!=null);
             decl += " " + TypeToString(v.TypedIdent.Type);
             RegisterType(v.TypedIdent.Type);
           }
-          assert f.OutParams.Length == 1;
-          foreach (Variable! v in f.OutParams) {
+         Contract.Assert(f.OutParams.Length == 1);
+          foreach (Variable v in f.OutParams) {
+            Contract.Assert(v!=null);
             decl += " " + TypeToString(v.TypedIdent.Type);
             RegisterType(v.TypedIdent.Type);
           }
 
-          string? builtin = ExtractBuiltin(f);
+          string builtin = ExtractBuiltin(f);
           if (builtin != null)
             decl += " :BUILTIN " + builtin;
 
@@ -245,8 +280,9 @@ namespace Microsoft.Boogie.Z3
       return base.Visit(node, arg);
     }
 
-    private string? ExtractBuiltin(Function! f) {
-      string? retVal = null; 
+    private string ExtractBuiltin(Function f) {
+      Contract.Requires(f != null);
+      string retVal = null; 
       if (NativeBv) {
         retVal = f.FindStringAttribute("bvbuiltin");
       } 
@@ -256,11 +292,13 @@ namespace Microsoft.Boogie.Z3
       return retVal;
     }
 
-    public override bool Visit(VCExprVar! node, bool arg) {
+    public override bool Visit(VCExprVar node, bool arg) {
+      Contract.Requires(node != null);
       if (!BoundTermVars.Contains(node) && !KnownVariables.ContainsKey(node)) {
         RegisterType(node.Type);
-        string! printedName = Namer.GetName(node, node.Name);
-        string! decl =
+        string printedName = Namer.GetName(node, node.Name);
+        Contract.Assert(printedName!=null);
+        string decl =
           "(DEFOP " + SimplifyLikeExprLineariser.MakeIdPrintable(printedName)
           + " " + TypeToString(node.Type) + ")";
         AddDeclaration(decl);
@@ -270,9 +308,12 @@ namespace Microsoft.Boogie.Z3
       return base.Visit(node, arg);
     }
     
-    public override bool Visit(VCExprQuantifier! node, bool arg) {
-      foreach (VCExprVar! v in node.BoundVars)
+    public override bool Visit(VCExprQuantifier node, bool arg) {
+      Contract.Requires(node != null);
+      foreach (VCExprVar v in node.BoundVars) {
+        Contract.Assert(v != null);
         RegisterType(v.Type);
+      }
         
       return base.Visit(node, arg);
     } 

@@ -4,14 +4,14 @@
 //
 //-----------------------------------------------------------------------------
 using System;
-using System.Collections;
+//using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
-using System.IO;
+//using System.IO;
 using System.Text;
-using ExternalProver;
+//using ExternalProver;
 using System.Diagnostics;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 using Microsoft.Boogie.AbstractInterpretation;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
@@ -24,17 +24,25 @@ namespace Microsoft.Boogie.Z3
 {
   public class Z3ProcessTheoremProver : ProcessTheoremProver
   {
-    private Z3InstanceOptions! opts;
+    private Z3InstanceOptions opts;
     private Inspector inspector;
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(opts!=null);
+}
+
 
     [NotDelayed]
-    public Z3ProcessTheoremProver(VCExpressionGenerator! gen,
-                                  DeclFreeProverContext! ctx, Z3InstanceOptions! opts)
-      throws UnexpectedProverOutputException;
+    public Z3ProcessTheoremProver(VCExpressionGenerator gen,
+                                  DeclFreeProverContext ctx, Z3InstanceOptions opts):base(opts, gen, ctx, opts.ExeName,opts.Typed ? "TypedUnivBackPred2.sx" : "UnivBackPred2.sx")
     {
+      Contract.Requires(gen != null);
+      Contract.Requires(ctx != null);
+      Contract.Requires(opts != null);
+      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       this.opts = opts;
-      string! backPred = opts.Typed ? "TypedUnivBackPred2.sx" : "UnivBackPred2.sx";
-      base(opts, gen, ctx, opts.ExeName, backPred);
+      
     }
 
     private void FireUpInspector()
@@ -44,7 +52,11 @@ namespace Microsoft.Boogie.Z3
       }
     }
     
-    protected override Microsoft.Boogie.Simplify.ProverProcess! CreateProverProcess(string! proverPath) {
+    protected override Microsoft.Boogie.Simplify.ProverProcess CreateProverProcess(string proverPath) {
+    Contract.Requires(proverPath!= null);
+    Contract.Ensures(Contract.Result<Microsoft.Boogie.Simplify.ProverProcess>() != null);
+
+
       opts.ExeName = proverPath;
       FireUpInspector();
       if (inspector != null) {
@@ -53,12 +65,17 @@ namespace Microsoft.Boogie.Z3
       return new Z3ProverProcess(opts, inspector);
     }
 
-    protected override AxiomVCExprTranslator! SpawnVCExprTranslator() {
+    protected override AxiomVCExprTranslator SpawnVCExprTranslator() {
+      Contract.Ensures(Contract.Result<AxiomVCExprTranslator>() != null);
+
       return new Z3VCExprTranslator(gen, opts);
     }
 
-    public override void BeginCheck(string! descriptiveName, VCExpr! vc, ErrorHandler! handler)
+    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
+      Contract.Requires(descriptiveName != null);
+      Contract.Requires(vc != null);
+      Contract.Requires(handler != null);
       FireUpInspector();
       if (inspector != null) {
         inspector.NewProblem(descriptiveName, vc, handler);
@@ -77,20 +94,27 @@ namespace Microsoft.Boogie.Z3
     }
     public int Lets {
       get
-        ensures 0 <= result && result < 4;
-      {
+        {
+        Contract.Ensures(0 <= Contract.Result<int>() && Contract.Result<int>() < 4);
         return CommandLineOptions.Clo.Z3lets;
       }
     }
     public bool V1 = false;
     public bool V2 = false; // default set in PostParse
     public bool DistZ3 = false;
-    public string! ExeName = "z3.exe";
+    public string ExeName = "z3.exe";
     public bool InverseImplies = false;
-    public string? Inspector = null;
+    public string Inspector = null;
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(ExeName!=null);
+}
 
-    protected override bool Parse(string! opt)
+
+    protected override bool Parse(string opt)
     {
+      Contract.Requires(opt!=null);
       return ParseBool(opt, "V1", ref V1) ||
              ParseBool(opt, "V2", ref V2) ||
              ParseBool(opt, "REVERSE_IMPLIES", ref InverseImplies) ||
@@ -122,14 +146,23 @@ namespace Microsoft.Boogie.Z3
   }
 
   internal class Z3LineariserOptions : LineariserOptions {
-    private readonly Z3InstanceOptions! opts;
+    private readonly Z3InstanceOptions opts;
+
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(opts!=null);
+}
+
 
     public override CommandLineOptions.BvHandling Bitvectors { get {
       return opts.BitVectors;
     } }
  
-    internal Z3LineariserOptions(bool asTerm, Z3InstanceOptions! opts, List<VCExprVar!>! letVariables) {
-      base(asTerm);
+    internal Z3LineariserOptions(bool asTerm, Z3InstanceOptions opts, List<VCExprVar/*!>!*/> letVariables):base(asTerm) {
+    Contract.Requires(opts != null);
+      Contract.Requires(cce.NonNullElements(letVariables));
+    
       this.opts = opts;
       this.LetVariablesAttr = letVariables;
     }
@@ -150,7 +183,9 @@ namespace Microsoft.Boogie.Z3
       return opts.InverseImplies;
     } }
 
-    public override LineariserOptions! SetAsTerm(bool newVal) {
+    public override LineariserOptions SetAsTerm(bool newVal) {
+      Contract.Ensures(Contract.Result<LineariserOptions>() != null);
+
       if (newVal == AsTerm)
         return this;
       return new Z3LineariserOptions(newVal, opts, LetVariables);
@@ -158,20 +193,28 @@ namespace Microsoft.Boogie.Z3
 
     // variables representing formulas in let-bindings have to be
     // printed in a different way than other variables
-    private readonly List<VCExprVar!>! LetVariablesAttr;
-    public override List<VCExprVar!>! LetVariables { get {
+    private readonly List<VCExprVar/*!>!*/> LetVariablesAttr;
+    public override List<VCExprVar/*!>!*/> LetVariables { get {
+      Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
+
       return LetVariablesAttr;
     } }
 
-    public override LineariserOptions! AddLetVariable(VCExprVar! furtherVar) {
-      List<VCExprVar!>! allVars = new List<VCExprVar!> ();
+    public override LineariserOptions AddLetVariable(VCExprVar furtherVar) {
+      Contract.Requires(furtherVar != null);
+      Contract.Ensures(Contract.Result<LineariserOptions>() != null);
+
+      List<VCExprVar/*!>!*/> allVars = new List<VCExprVar/*!*/>();
       allVars.AddRange(LetVariables);
       allVars.Add(furtherVar);
       return new Z3LineariserOptions(AsTerm, opts, allVars);
     }
     
-    public override LineariserOptions! AddLetVariables(List<VCExprVar!>! furtherVars) {
-      List<VCExprVar!>! allVars = new List<VCExprVar!> ();
+    public override LineariserOptions AddLetVariables(List<VCExprVar/*!>!*/> furtherVars) {
+      Contract.Requires(furtherVars != null);
+    Contract.Ensures(Contract.Result<LineariserOptions>() != null);
+
+      List<VCExprVar/*!>!*/> allVars = new List<VCExprVar/*!*/> ();
       allVars.AddRange(LetVariables);
       allVars.AddRange(furtherVars);
       return new Z3LineariserOptions(AsTerm, opts, allVars);
@@ -183,10 +226,12 @@ namespace Microsoft.Boogie.Z3
   // -----------------------------------------------------------------------------------------------
 
   public class Z3VCExprTranslator : AxiomVCExprTranslator {
-    public Z3VCExprTranslator(VCExpressionGenerator! gen, Z3InstanceOptions! opts) {
+    public Z3VCExprTranslator(VCExpressionGenerator gen, Z3InstanceOptions opts) {
+      Contract.Requires(gen != null);
+      Contract.Requires(opts != null);
       Gen = gen;
       Opts = opts;
-      TypeAxiomBuilder! axBuilder;
+      TypeAxiomBuilder axBuilder;
       switch (CommandLineOptions.Clo.TypeEncodingMethod) {
         case CommandLineOptions.TypeEncoding.Arguments:
           axBuilder = new TypeAxiomBuilderArguments (gen);
@@ -203,8 +248,8 @@ namespace Microsoft.Boogie.Z3
         new TypeDeclCollector (namer, opts.BitVectors == CommandLineOptions.BvHandling.Z3Native);
     }
 
-    private Z3VCExprTranslator(Z3VCExprTranslator! tl) {
-      base(tl);
+    private Z3VCExprTranslator(Z3VCExprTranslator tl) :base(tl){
+      Contract.Requires(tl!=null);
       Gen = tl.Gen;
       Opts = tl.Opts; // we assume that the options have not changed
       AxBuilder = (TypeAxiomBuilder)tl.AxBuilder.Clone();
@@ -213,22 +258,40 @@ namespace Microsoft.Boogie.Z3
       DeclCollector = new TypeDeclCollector (namer, tl.DeclCollector);
     }
 
-    public override Object! Clone() {
+    public override Object Clone() {
+      Contract.Ensures(Contract.Result<Object>() != null);
+
       return new Z3VCExprTranslator(this);
     }
 
-    private readonly Z3InstanceOptions! Opts;
-    private readonly VCExpressionGenerator! Gen;
-    private readonly TypeAxiomBuilder! AxBuilder;
-    private readonly UniqueNamer! Namer;
-    private readonly TypeDeclCollector! DeclCollector;
+[ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(Opts!=null);
+    Contract.Invariant(Gen != null);
+  Contract.Invariant(AxBuilder != null);
+  Contract.Invariant(Namer != null);
+  Contract.Invariant(DeclCollector != null);
+}
 
-    public override string! Lookup(VCExprVar! var)
+    private readonly Z3InstanceOptions Opts;
+    private readonly VCExpressionGenerator Gen;
+    private readonly TypeAxiomBuilder AxBuilder;
+    private readonly UniqueNamer Namer;
+    private readonly TypeDeclCollector DeclCollector;
+
+    public override string Lookup(VCExprVar var)
     {
+      Contract.Requires(var != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+
       return Namer.Lookup(var);
     }
     
-    public override string! translate(VCExpr! expr, int polarity) {
+    public override string translate(VCExpr expr, int polarity) {
+      Contract.Requires(expr != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+
       DateTime start = DateTime.Now;
       if (CommandLineOptions.Clo.Trace)
         Console.Write("Linearising ... ");
@@ -246,18 +309,23 @@ namespace Microsoft.Boogie.Z3
           eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses)AxBuilder, Gen);
           break;
       }
-      VCExpr! exprWithoutTypes = eraser != null ? eraser.Erase(expr, polarity) : expr;
+      VCExpr exprWithoutTypes = eraser != null ? eraser.Erase(expr, polarity) : expr;
+      Contract.Assert(exprWithoutTypes!=null);
       
-      LetBindingSorter! letSorter = new LetBindingSorter(Gen);
-      VCExpr! sortedExpr = letSorter.Mutate(exprWithoutTypes, true);
-      VCExpr! sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
+      LetBindingSorter letSorter = new LetBindingSorter(Gen);
+      Contract.Assert(letSorter!=null);
+      VCExpr sortedExpr = letSorter.Mutate(exprWithoutTypes, true);
+      Contract.Assert(sortedExpr!=null);
+      VCExpr sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
+      Contract.Assert(sortedAxioms!=null);
 
       if (Opts.Typed) {
         DeclCollector.Collect(sortedAxioms);
         DeclCollector.Collect(sortedExpr);
         FeedTypeDeclsToProver();
       } else {
-        TermFormulaFlattener! flattener = new TermFormulaFlattener (Gen);
+        TermFormulaFlattener flattener = new TermFormulaFlattener (Gen);
+        Contract.Assert(flattener!=null);
         sortedExpr = flattener.Flatten(sortedExpr);
         sortedAxioms = flattener.Flatten(sortedAxioms);
       }
@@ -276,11 +344,12 @@ namespace Microsoft.Boogie.Z3
       //Console.WriteLine(coll);
       //////////////////////////////////////////////////////////////////////////
 
-      LineariserOptions linOptions = new Z3LineariserOptions(false, Opts, new List<VCExprVar!>());
+      LineariserOptions linOptions = new Z3LineariserOptions(false, Opts, new List<VCExprVar/*!*/>());
 
       AddAxiom(SimplifyLikeExprLineariser.ToString(sortedAxioms, linOptions, Namer));
 
-      string! res = SimplifyLikeExprLineariser.ToString(sortedExpr, linOptions, Namer);
+      string res = SimplifyLikeExprLineariser.ToString(sortedExpr, linOptions, Namer);
+      Contract.Assert(res!=null);
 
       if (CommandLineOptions.Clo.Trace) {
         TimeSpan elapsed = DateTime.Now - start;
@@ -290,8 +359,10 @@ namespace Microsoft.Boogie.Z3
     }
 
     private void FeedTypeDeclsToProver() {
-      foreach (string! s in DeclCollector.GetNewDeclarations())
+      foreach (string s in DeclCollector.GetNewDeclarations()) {
+        Contract.Assert(s != null);
         AddTypeDecl(s);
+      }
     }
   }
 
@@ -302,22 +373,29 @@ namespace Microsoft.Boogie.Z3
   public class Factory : ProverFactory
   {
 
-    public override object! SpawnProver(ProverOptions! popts, object! ctxt)
+    public override object SpawnProver(ProverOptions popts, object ctxt)
     {
-      Z3InstanceOptions opts = (Z3InstanceOptions!)popts;
-      return this.SpawnProver(((DeclFreeProverContext!)ctxt).ExprGen,
-                              (DeclFreeProverContext!)ctxt,
+      Contract.Requires(popts != null);
+      Contract.Requires(ctxt != null);
+      Contract.Ensures(Contract.Result<object>() != null);
+
+      Z3InstanceOptions opts = cce.NonNull((Z3InstanceOptions)popts);
+      return this.SpawnProver(cce.NonNull((DeclFreeProverContext)ctxt).ExprGen,
+                              cce.NonNull((DeclFreeProverContext)ctxt),
                               opts);
     }
 
-    public override object! NewProverContext(ProverOptions! options) {
+    public override object NewProverContext(ProverOptions options) {
+      Contract.Requires(options != null);
+      Contract.Ensures(Contract.Result<object>() != null);
+
       if (CommandLineOptions.Clo.BracketIdsInVC < 0) {
         CommandLineOptions.Clo.BracketIdsInVC = 0;
       }
 
-      Z3InstanceOptions opts = (Z3InstanceOptions!)options;
-      VCExpressionGenerator! gen = new VCExpressionGenerator ();
-      List<string!>! proverCommands = new List<string!> ();
+      Z3InstanceOptions opts = cce.NonNull((Z3InstanceOptions)options);
+      VCExpressionGenerator gen = new VCExpressionGenerator ();
+      List<string/*!>!*/> proverCommands = new List<string/*!*/> ();
       proverCommands.Add("all");
       proverCommands.Add("z3");
       proverCommands.Add("simplifyLike");
@@ -325,19 +403,26 @@ namespace Microsoft.Boogie.Z3
         proverCommands.Add("bvDefSem");
       if (opts.BitVectors == CommandLineOptions.BvHandling.ToInt)
         proverCommands.Add("bvInt");
-      VCGenerationOptions! genOptions = new VCGenerationOptions(proverCommands);
+      VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
+      
 
       return new DeclFreeProverContext(gen, genOptions);
     }
 
-    public override ProverOptions! BlankProverOptions()
+    public override ProverOptions BlankProverOptions()
     {
+      Contract.Ensures(Contract.Result<ProverOptions>() != null);
       return new Z3InstanceOptions();
     }
 
-    protected virtual Z3ProcessTheoremProver! SpawnProver(VCExpressionGenerator! gen,
-                                                          DeclFreeProverContext! ctx,
-                                                          Z3InstanceOptions! opts) {
+    protected virtual Z3ProcessTheoremProver SpawnProver(VCExpressionGenerator gen,
+                                                          DeclFreeProverContext ctx,
+                                                          Z3InstanceOptions opts) {
+      Contract.Requires(gen != null);
+      Contract.Requires(ctx != null);
+      Contract.Requires(opts != null);
+      Contract.Ensures(Contract.Result<Z3ProcessTheoremProver>() != null);
+
       return new Z3ProcessTheoremProver(gen, ctx, opts);
     }
   }
