@@ -119,6 +119,7 @@ class Translator {
   def translateField(f: Field): List[Decl] = {
     Const(f.FullName, true, FieldType(f.typ.typ)) ::
     Axiom(NonPredicateField(f.FullName))
+    // TODO: add typeinformation as an axiom
   }
 
   def translateFunction(f: Function): List[Decl] = {
@@ -1533,7 +1534,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       MapUpdate(Heap, trE, memberName, Boogie.MapSelect(ih, trE, memberName)) ::
       bassume(wf(Heap, Mask)) ::
       (if(e.isPredicate && e.predicate.Parent.module.equals(currentClass.module)) List(bassume(Boogie.MapSelect(ih, trE, memberName) ==@ Heap)) else Nil) :::
-      (if(e.isPredicate) Nil else List(bassume(TypeInformation(Boogie.MapSelect(Heap, trE, memberName), e.f.typ)))) :::
+      (if(e.isPredicate) Nil else List(bassume(TypeInformation(Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
       (perm match {
         case None => IncPermission(trE, memberName, 100)
         case Some(perm) => IncPermission(trE, memberName, Tr(perm))
@@ -1558,7 +1559,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
                        Boogie.MapSelect(ih, trE, memberName)) ::
       bassume(Boogie.FunctionApp("wf", List(Heap, Mask))) ::
       (if(e.isPredicate && e.predicate.Parent.module.equals(currentClass.module)) List(bassume(Boogie.MapSelect(ih, trE, memberName) ==@ Heap)) else Nil) :::
-      (if(e.isPredicate) Nil else List(bassume(TypeInformation(Boogie.MapSelect(Heap, trE, memberName), e.f.typ)))) :::
+      (if(e.isPredicate) Nil else List(bassume(TypeInformation(Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
       IncPermissionEpsilon(trE, memberName, p) ::
       bassume(IsGoodMask(Mask)) ::
       bassume(IsGoodState(Boogie.MapSelect(ih, trE, memberName))) ::
@@ -2029,7 +2030,7 @@ object TranslationHelper {
   def Variable2BVarWhere(v: Variable) = NewBVarWhere(v.UniqueName, v.t)
   def NewBVarWhere(id: String, tp: Type) = {
     new Boogie.BVar(id, tp.typ){
-      override val where = TypeInformation(new Boogie.VarExpr(id), tp) }
+      override val where = TypeInformation(new Boogie.VarExpr(id), tp.typ) }
   }
 
   // scale an expression by a fraction
@@ -2076,9 +2077,14 @@ object TranslationHelper {
 
   def TrType(cl: Class) = Boogie.VarExpr(cl.id + "#t")
 
-  def TypeInformation(e: Boogie.Expr, t: Type): Boogie.Expr = {
-    if (t.typ.IsRef) {
-      (e ==@ Boogie.Null()) || (new Boogie.FunctionApp("dtype", e) ==@ TrType(t.typ))
+  def TypeInformation(e: Boogie.Expr, cl: Class): Boogie.Expr = {
+    if (cl.IsRef) {
+      (e ==@ Boogie.Null()) || (new Boogie.FunctionApp("dtype", e) ==@ TrType(cl))
+    } else if (cl.IsSeq && cl.parameters(0).IsRef) {
+      val (v,ve) = Boogie.NewBVar("$i", tint, true);
+      new Boogie.Forall(List(v), Nil,
+        0 <= ve && ve < Boogie.FunctionApp("Seq#Length", List(e)) ==>
+        TypeInformation(Boogie.FunctionApp("Seq#Index", List(e,ve)), cl.parameters(0)));
     } else {
       true
     }
