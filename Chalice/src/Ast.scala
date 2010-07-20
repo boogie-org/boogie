@@ -12,6 +12,7 @@ trait ASTNode extends Positional
 
 case class TopLevelDecl(id: String) extends ASTNode
 
+// this is in fact root of type hierarchy (confusingly, called "class")
 sealed case class Class(classId: String, parameters: List[Class], module: String, members: List[Member]) extends TopLevelDecl(classId) {
   var mm = Map[String,Member]()
   def LookupMember(id: String): Option[Member] = {

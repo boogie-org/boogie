@@ -18,7 +18,6 @@ object Boogie {
 
  sealed abstract class BType
  case class NamedType(s: String) extends BType
- case class ClassType(cl: Class) extends BType
  case class IndexedType(id: String, t: BType) extends BType
 
  sealed abstract class Stmt {
@@ -68,9 +67,9 @@ object Boogie {
    def select(e: Expr, f: Expr) = new MapSelect(this, e, PrintExpr(f))
    def store(e: Expr, f: Expr, rhs: Expr) = MapUpdate(this, e, PrintExpr(f), rhs)
  }
- case class IntLiteral(n: int) extends Expr
+ case class IntLiteral(n: Int) extends Expr
  case class BoolLiteral(b: Boolean) extends Expr
- case class Null extends Expr
+ case class Null() extends Expr
  case class VarExpr(id: String) extends Expr {
    def this(v: BVar) = this(v.id)
  }
@@ -138,7 +137,7 @@ object Boogie {
  // def out(s: String) = Console.out.print(s)
  var indentLevel = 1
  def indent: String = {
-   def doIndent(i: int): String = {
+   def doIndent(i: Int): String = {
      if(i==0) { "" } else { "  " + doIndent(i-1) }
    }
    doIndent(indentLevel);
@@ -161,10 +160,6 @@ object Boogie {
  def PrintType(t: BType): String = t match {
    case nt@ NamedType(s) =>
      s
-   case ClassType(cl) =>
-     if (cl.IsRef) "ref"
-     else if (cl.IsSeq) "Seq " + cl.parameters(0).id
-     else cl.id
    case IndexedType(id,t) =>
      id + " (" + PrintType(t) + ")"
  }

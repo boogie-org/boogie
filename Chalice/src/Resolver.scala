@@ -18,9 +18,9 @@ object Resolver {
    val CurrentClass = currentClass
    var currentMember = null: Member;
    def CurrentMember = currentMember: Member;  
-   var errors: List[(Position,String)] = Nil
+   var errors: List[(Position,String)] = Nil;
    def Error(pos: Position, msg: String) {
-     errors = errors + (pos, msg)
+     errors = errors ::: List((pos, msg))
    }
    def AddVariable(v: Variable): ProgramContext = {
      new LProgramContext(v, this);
@@ -497,7 +497,7 @@ object Resolver {
    for (((declareLocal, actual), formal) <- declaresLocal zip actuals zip formals) {
      if (declareLocal) {
        val local = new Variable(actual.id, new Type(formal.t.typ))
-       locals = locals + local
+       locals = locals ::: List(local)
        ResolveType(local.t, ctx)
        actual.Resolve(local)
        vars = vars + actual.v
@@ -795,7 +795,7 @@ object Resolver {
        q.Is foreach { i =>
          val variable = new Variable(i, new Type(elementType));
          bodyContext = bodyContext.AddVariable(variable);
-         bvariables = bvariables + variable;
+         bvariables = bvariables ::: List(variable);
        }
        ResolveExpr(q.E, bodyContext, twoStateContext, true);
        if(! q.E.typ.IsBool) context.Error(q.E.pos, "Body of quantification must be a boolean. (found: " +  q.E.typ.FullName + ").");

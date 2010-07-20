@@ -409,7 +409,8 @@ class Parser extends StandardTokenParsers {
     | "acquire" ^^^ "acquire"
     | "release" ^^^ "release"
     | "fork" ^^^ "fork"
-    | "*" ^^^ "*")
+    | "*" ^^^ "*"
+    )
 
   def atom : Parser[Expression] =
     positioned(

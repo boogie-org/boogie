@@ -117,17 +117,17 @@ class Translator {
   }
 
   def translateField(f: Field): List[Decl] = {
-    Const(f.FullName, true, FieldType(f.typ)) ::
+    Const(f.FullName, true, FieldType(f.typ.typ)) ::
     Axiom(NonPredicateField(f.FullName))
   }
 
   def translateFunction(f: Function): List[Decl] = {
-    val myresult = BVar("result", Boogie.ClassType(f.out.typ));
+    val myresult = BVar("result", f.out.typ);
     etran.checkTermination = true;
     val checkBody = isDefined(f.definition);
     etran.checkTermination = false;
     // Boogie function that represents the Chalice function
-    Boogie.Function(functionName(f), BVar("heap", theap) :: Boogie.BVar("mask", tmask) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new Boogie.BVar("$myresult", Boogie.ClassType(f.out.typ))) ::
+    Boogie.Function(functionName(f), BVar("heap", theap) :: Boogie.BVar("mask", tmask) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new Boogie.BVar("$myresult", f.out.typ)) ::
     // check definedness of the function's precondition and body
     Proc(f.FullName + "$checkDefinedness", 
       NewBVarWhere("this", new Type(currentClass)) :: (f.ins map {i => Variable2BVarWhere(i)}),
@@ -183,7 +183,7 @@ class Translator {
     val args = VarExpr("this") :: inArgs;
     val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask) ::: args);
     val applyFrameFunction = FunctionApp(frameFunctionName, version :: args);
-    Boogie.Function("##" + f.FullName, Boogie.BVar("state", theap) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new BVar("$myresult", f.out)) ::
+    Boogie.Function("##" + f.FullName, Boogie.BVar("state", theap) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new BVar("$myresult", f.out.typ)) ::
     Axiom(new Boogie.Forall(
       BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
       List(applyF),
@@ -200,7 +200,7 @@ class Translator {
     */
     val version = Version(Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) }), etran);
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
-    val myresult = Boogie.BVar("result", Boogie.ClassType(f.out.typ));
+    val myresult = Boogie.BVar("result", f.out.typ);
     val args = VarExpr("this") :: inArgs;
     val applyF = FunctionApp(functionName(f), List(VarExpr(HeapName), VarExpr(MaskName)) ::: args)
     //postcondition axioms
@@ -361,7 +361,7 @@ class Translator {
         statements ::: etran.Heap.store(target, lhs.f, toStore) :: bassume(wf(VarExpr(HeapName), VarExpr(MaskName)))
       case lv @ LocalVar(id, t, const, ghost, rhs) =>
         val bv = Variable2BVarWhere(lv.v)
-        val isAssignedVar = if (const) new Boogie.BVar("assigned$" + bv.id, Boogie.ClassType(BoolClass)) else null
+        val isAssignedVar = if (const) new Boogie.BVar("assigned$" + bv.id, BoolClass) else null
         Comment("local " + (if (ghost) "ghost " else "") + (if (const) "const " else "var ") + id) ::
         BLocal(bv) :: 
         { if (const)
@@ -683,7 +683,7 @@ class Translator {
   }
 
   def translateAllocation(cl: Class, initialization: List[Init], lowerBounds: List[Expression], upperBounds: List[Expression], pos: Position): (Boogie.BVar, List[Boogie.Stmt]) = {
-    val (nw, nwe) = NewBVar("nw", Boogie.ClassType(cl), true)
+    val (nw, nwe) = NewBVar("nw", cl, true)
     val (ttV,tt) = Boogie.NewTVar("T")
     val f = new Boogie.BVar("f", FieldType(tt))
     (nw,
@@ -708,7 +708,7 @@ class Translator {
 
   def TrAcquire(s: Statement, nonNullObj: Expression) = {
     val o = TrExpr(nonNullObj);
-    val (lastAcquireVar, lastAcquire) = Boogie.NewBVar("lastAcquire", Boogie.ClassType(IntClass), true)
+    val (lastAcquireVar, lastAcquire) = Boogie.NewBVar("lastAcquire", IntClass, true)
     val (lastSeenHeldV, lastSeenHeld) = Boogie.NewBVar("lastSeenHeld", tint, true)
     val (lastSeenMuV, lastSeenMu) = Boogie.NewBVar("lastSeenMu", tmu, true)
     (if (skipDeadlockChecks)
@@ -1010,8 +1010,8 @@ class Translator {
                   ((exceptions :\ b) ((e,ll) => ll || (lk ==@ e))))
   }
   def LockHavoc(locks: List[Boogie.Expr], etran: ExpressionTranslator) = {
-    val (heldV, held) = NewBVar("isHeld", Boogie.ClassType(IntClass), true)
-    val (rdheldV, rdheld) = NewBVar("isRdHeld", Boogie.ClassType(BoolClass), true)
+    val (heldV, held) = NewBVar("isHeld", IntClass, true)
+    val (rdheldV, rdheld) = NewBVar("isRdHeld", BoolClass, true)
     BLocal(heldV) :: BLocal(rdheldV) ::
     List.flatten (for (o <- locks) yield {  // todo: somewhere we should worry about Df(l)
       Havoc(held) :: Havoc(rdheld) ::
@@ -2001,8 +2001,7 @@ object TranslationHelper {
   implicit def bool2Bool(b: Boolean): Boogie.BoolLiteral = Boogie.BoolLiteral(b)
   implicit def int2Int(n: Int): Boogie.IntLiteral = Boogie.IntLiteral(n)
   implicit def lift(s: Boogie.Stmt): List[Boogie.Stmt] = List(s)
-  implicit def type2BType(tp: Type): BType = {
-    val cl = tp.typ;
+  implicit def type2BType(cl: Class): BType = {
     if(cl.IsRef) {
       tref
     } else if(cl.IsBool) {
@@ -2012,9 +2011,9 @@ object TranslationHelper {
     } else if(cl.IsInt) {
       tint
     } else if(cl.IsSeq) {
-      tseq(type2BType(new Type(cl.asInstanceOf[SeqClass].parameter)))
+      tseq(type2BType(cl.asInstanceOf[SeqClass].parameter))
     } else {
-      assert(false); null
+      assert(false, "unexpectected type: " + cl.FullName); null
     }
   }
   implicit def decl2DeclList(decl: Decl): List[Decl] = List(decl)
@@ -2026,10 +2025,10 @@ object TranslationHelper {
     }
   }
 
-  def Variable2BVar(v: Variable) = new Boogie.BVar(v.UniqueName, Boogie.ClassType(v.t.typ))
+  def Variable2BVar(v: Variable) = new Boogie.BVar(v.UniqueName, v.t.typ)
   def Variable2BVarWhere(v: Variable) = NewBVarWhere(v.UniqueName, v.t)
   def NewBVarWhere(id: String, tp: Type) = {
-    new Boogie.BVar(id, Boogie.ClassType(tp.typ)){
+    new Boogie.BVar(id, tp.typ){
       override val where = TypeInformation(new Boogie.VarExpr(id), tp) }
   }
 
@@ -2105,6 +2104,7 @@ object TranslationHelper {
       case e => Boogie.VarExpr("nostate")
     }
   }
+  /* Unused code that would fail for a nontrivial class  
   def FieldTp(f: Field): String = {
     f match {
       case SpecialField("mu", _) => "Mu"
@@ -2123,6 +2123,7 @@ object TranslationHelper {
       case _ => if(tp.IsSeq) "seq" else "ref"
     }
   }
+ */
   def Preconditions(spec: List[Specification]): List[Expression] = {
     val result = spec flatMap ( s => s match {
       case Precondition(e) => List(e)
@@ -2293,8 +2294,9 @@ object TranslationHelper {
             case Some(e) => e;
             case None => e;
           }
-        case e: VariableExpr => 
-          for ((v,x) <- sub if v == e.v) { return x }
+        case e: VariableExpr =>
+          // TODO: this will update the value of x many times
+          for ((v,x) <- sub if v == e.v) { x.pos = v.pos; return x }
           e
         case q : Quantification =>
           // would be better if this is a part of manipulate method
