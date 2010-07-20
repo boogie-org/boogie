@@ -477,6 +477,7 @@ namespace Microsoft.Boogie.Isabelle {
       And,
       Or,
       Implies,
+      IfThenElse,
       Distinct,
       Eq,
       IntNumber,
@@ -562,6 +563,8 @@ namespace Microsoft.Boogie.Isabelle {
           return "or";
         case Kind.Implies:
           return "implies";
+        case Kind.IfThenElse:
+          return "ite";
         case Kind.Distinct:
           return "distinct";
         case Kind.Eq:
@@ -955,7 +958,7 @@ namespace Microsoft.Boogie.Isabelle {
     public bool VisitIfThenElseOp(VCExprNAry node, B2I b2i) {
       Contract.Requires(node != null);
       Contract.Requires(b2i != null);
-      throw new System.NotImplementedException(); // TODO
+      return Write(b2i, B2I.Kind.IfThenElse, node);
     }
 
 
