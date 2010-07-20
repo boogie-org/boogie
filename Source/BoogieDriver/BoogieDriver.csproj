@@ -87,6 +87,10 @@
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="Z3, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Provers\Z3\bin\Debug\Z3.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BoogieDriver.cs" />
@@ -120,10 +124,6 @@
     <ProjectReference Include="..\Provers\SMTLib\SMTLib.sscproj">
       <Project>{13C3A68C-462A-4CDA-A480-738046E37C5A}</Project>
       <Name>SMTLib</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Provers\Z3\Z3.sscproj">
-      <Project>{F75666DE-CD56-457C-8782-09BE243450FC}</Project>
-      <Name>Z3</Name>
     </ProjectReference>
     <ProjectReference Include="..\VCExpr\VCExpr.sscproj">
       <Project>{CF42B700-10AA-4DA9-8992-48A800251C11}</Project>
