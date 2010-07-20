@@ -1,65 +1,22 @@
-# Aste started: 2010-07-17 07:00:06
+# Aste started: 2010-07-20 07:00:07
 # Host id: Boogiebox
-# [2010-07-17 07:02:15] SpecSharp revision: 54390
-# [2010-07-17 07:03:09] Boogie revision: 55176
-# [2010-07-17 07:03:34] SscBoogie revision: 54839
-[2010-07-17 07:04:10] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-07-20 07:02:14] SpecSharp revision: 54390
+# [2010-07-20 07:03:11] Boogie revision: 55267
+# [2010-07-20 07:03:39] SscBoogie revision: 54839
+[2010-07-20 07:04:04] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-07-17 07:05:58] [Error] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-07-20 07:05:52] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
-    error CS1504: Source file 'D:\Temp\aste\Boogie\Source\Provers\Isabelle\version.cs' could not be opened ('Unspecified error ')
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "Core". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "Basetypes". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "AIFramework". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    D:\Temp\aste\Boogie\Source\AbsInt\LoopInvariantsOnDemand.cs(11,24): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(9,17): error CS0234: The type or namespace name 'Basetypes' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(13,36): error CS0246: The type or namespace name 'BoogieFactory' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(7,22): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(117,37): error CS0246: The type or namespace name 'BoogieFactory' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(133,40): error CS0246: The type or namespace name 'BoogieFactory' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(219,36): error CS0246: The type or namespace name 'BoogieFactory' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(95,20): error CS0246: The type or namespace name 'Variable' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(157,29): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(177,26): error CS0246: The type or namespace name 'Rational' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\cce.cs(22,38): error CS0246: The type or namespace name 'VariableSeq' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(15,24): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(37,14): error CS0246: The type or namespace name 'Procedure' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(47,43): error CS0246: The type or namespace name 'Procedure' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(423,22): error CS0246: The type or namespace name 'CallSite' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(74,50): error CS0246: The type or namespace name 'Program' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(189,53): error CS0246: The type or namespace name 'CallCmd' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(189,67): error CS0246: The type or namespace name 'Implementation' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(189,126): error CS0246: The type or namespace name 'CallSite' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(267,42): error CS0246: The type or namespace name 'Program' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(371,33): error CS0246: The type or namespace name 'Implementation' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(371,54): error CS0246: The type or namespace name 'ProcedureSummaryEntry' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(414,45): error CS0234: The type or namespace name 'Type' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(414,20): error CS0246: The type or namespace name 'Variable' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(432,47): error CS0246: The type or namespace name 'Implementation' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(432,73): error CS0246: The type or namespace name 'Block' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(433,48): error CS0246: The type or namespace name 'ProcedureSummaryEntry' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(481,37): error CS0246: The type or namespace name 'Cmd' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(481,70): error CS0246: The type or namespace name 'Implementation' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(674,47): error CS0246: The type or namespace name 'Expr' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(674,18): error CS0246: The type or namespace name 'Expr' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(700,41): error CS0246: The type or namespace name 'Implementation' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(700,62): error CS0246: The type or namespace name 'Block' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(700,109): error CS0246: The type or namespace name 'ProcedureSummaryEntry' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(998,50): error CS0246: The type or namespace name 'Program' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\AbstractInterpretation.cs(1038,45): error CS0246: The type or namespace name 'Program' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\Traverse.cs(23,32): error CS0246: The type or namespace name 'Program' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\Traverse.cs(51,23): error CS0246: The type or namespace name 'Block' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\Traverse.cs(98,20): error CS0246: The type or namespace name 'Block' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\Traverse.cs(105,51): error CS0246: The type or namespace name 'Block' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\Traverse.cs(105,24): error CS0246: The type or namespace name 'Block' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\Traverse.cs(133,36): error CS0246: The type or namespace name 'Block' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\Traverse.cs(133,54): error CS0246: The type or namespace name 'Block' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\AbsInt\Traverse.cs(133,72): error CS0246: The type or namespace name 'Block' could not be found (are you missing a using directive or an assembly reference?)
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "AbsInt". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Isabelle\bin\Debug\Provers.Isabelle.dll' could not be found
-    1 error
-    44 error
-    1 error
-    3 failed
+    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(308,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\AbsInt\LoopInvariantsOnDemand.cs(44,7): warning CC1032: Method 'Microsoft.Boogie.AbstractInterpretation.FreeVariablesVisitor.Default(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IExpr)' overrides 'Microsoft.AbstractInterpretationFramework.ExprVisitor.Default(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IExpr)', thus cannot add Requires.
+    D:\Temp\aste\Boogie\Source\AbsInt\LoopInvariantsOnDemand.cs(65,7): warning CC1032: Method 'Microsoft.Boogie.AbstractInterpretation.FreeVariablesVisitor.VisitFunApp(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunApp)' overrides 'Microsoft.AbstractInterpretationFramework.ExprVisitor.VisitFunApp(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunApp)', thus cannot add Requires.
+    D:\Temp\aste\Boogie\Source\AbsInt\LoopInvariantsOnDemand.cs(74,7): warning CC1032: Method 'Microsoft.Boogie.AbstractInterpretation.FreeVariablesVisitor.VisitFunction(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunction)' overrides 'Microsoft.AbstractInterpretationFramework.ExprVisitor.VisitFunction(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunction)', thus cannot add Requires.
+    warning CS0162
+    warning CS0162
+    warning CS0162
+[2010-07-20 07:30:11] 0 out of 25 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2010-07-20 07:31:54] Released nightly of Boogie
