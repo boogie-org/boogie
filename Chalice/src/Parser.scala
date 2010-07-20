@@ -350,7 +350,7 @@ class Parser extends StandardTokenParsers {
         })
   def CompareOp = "==" | "!=" | "<" | "<=" | ">=" | ">" | "<<" | "in" | "!in"
   def concatExpr =
-    positioned(addExpr ~ ("++" ~> addExpr *) ^^ {
+        positioned(addExpr ~ ("++" ~> addExpr *) ^^ {
           case e0 ~ rest => (rest foldLeft e0) {
             case (a, b) => Append(a, b) }})
   def addExpr =
@@ -436,20 +436,24 @@ class Parser extends StandardTokenParsers {
           val r = FunctionApplication(implicitThis, id.v, args)
           r.pos = id.pos; r
         }
-    | "rd" ~>
-      ( "holds" ~> "(" ~> expression <~ ")" ^^ RdHolds
-      | "(" ~>
-        ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result})) ~ rdPermArg <~ ")"
-        | selectExprFerSureX                                  ~ rdPermArg <~ ")"
-        ) ^^ { case MemberAccess(obj, "*") ~ p => RdAccessAll(obj, p) case e ~ p => RdAccess(e,p) }
-      )
+    | "rd" ~> "(" ~>
+      ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result})) ~ rdPermArg <~ ")"
+      | selectExprFerSureX ~ rdPermArg <~ ")"
+      ) ^^ {
+        case MemberAccess(obj, "*") ~ p => RdAccessAll(obj, p);
+        case e ~ p => RdAccess(e,p)
+      }
     | "acc" ~> "(" ~>
       ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result} )) ~ ("," ~> expression ?) <~ ")"
-      | selectExprFerSureX                                  ~ ("," ~> expression ?) <~ ")"
-      ) ^^ { case MemberAccess(obj, "*") ~ perm => AccessAll(obj, perm) case e ~ perm => Access(e, perm) }
+      | selectExprFerSureX ~ ("," ~> expression ?) <~ ")"
+      ) ^^ {
+        case MemberAccess(obj, "*") ~ perm => AccessAll(obj, perm);
+        case e ~ perm => Access(e, perm)
+      }
     | "credit" ~> "(" ~> expression ~ ("," ~> expression ?) <~ ")" ^^ {
         case ch ~ n => Credit(ch, n) }
     | "holds" ~> "(" ~> expression <~ ")" ^^ Holds
+    | "rd" ~> "holds" ~> "(" ~> expression <~ ")" ^^ RdHolds
     | "assigned" ~> "(" ~> ident <~ ")" ^^ Assigned
     | "old" ~> "(" ~> expression <~ ")" ^^ Old
     | ("unfolding" ~> suffixExpr <~ "in") ~ expression ^? { 
