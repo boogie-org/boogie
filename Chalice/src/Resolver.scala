@@ -664,23 +664,31 @@ object Resolver {
    case expr @ AccessSeq(s, f, perm) =>
      if (!specContext) context.Error(expr.pos, "acc expression is allowed only in positive predicate contexts")
      ResolveExpr(s, context, twoStateContext, false)
-     if(!s.typ.IsSeq) context.Error(expr.pos, "Target of [*] must be sequence")
+     if(!s.typ.IsSeq) context.Error(expr.pos, "Target of [*] must be sequence.")
      perm match {
        case None =>
        case Some(perm) => ResolveExpr(perm, context, twoStateContext, false) }
      f match {
-       case Some(x) => var ma = MemberAccess(At(s, IntLiteral(0)), x); ma.pos = expr.pos; ResolveExpr(ma, context, twoStateContext, true);
+       case Some(x) =>
+         var ma = MemberAccess(At(s, IntLiteral(0)), x);
+         ma.pos = expr.pos;
+         ResolveExpr(ma, context, twoStateContext, true);
+         expr.memberAccess = Some(ma);
        case _ => }
      expr.typ = BoolClass
    case expr @ RdAccessSeq(s, f, perm) =>
      if (!specContext) context.Error(expr.pos, "rd expression is allowed only in positive predicate contexts")
      ResolveExpr(s, context, twoStateContext, false)
-     if(!s.typ.IsSeq) context.Error(expr.pos, "Target of [*] must be object reference.")
+     if(!s.typ.IsSeq) context.Error(expr.pos, "Target of [*] must be sequence.")
      perm match {
        case Some(Some(p)) => ResolveExpr(p, context, twoStateContext, false)
        case _ => }
      f match {
-       case Some(x) => var ma = MemberAccess(At(s, IntLiteral(0)), x); ma.pos = expr.pos; ResolveExpr(ma, context, twoStateContext, true);
+       case Some(x) =>
+         var ma = MemberAccess(At(s, IntLiteral(0)), x);
+         ma.pos = expr.pos;
+         ResolveExpr(ma, context, twoStateContext, true);
+         expr.memberAccess = Some(ma);
        case _ => }
      expr.typ = BoolClass
    case expr@ Credit(e,n) =>

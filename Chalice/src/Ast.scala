@@ -262,6 +262,7 @@ case class MemberAccess(e: Expression, id: String) extends Expression {
 }
 case class IfThenElse(con: Expression, then: Expression, els: Expression) extends Expression
 
+// TODO: perm should really be a separate abstract case class with Write and Read cases; this can simplify resolving/translation
 sealed abstract class PermissionExpr extends Expression
 sealed abstract class MemberPermission extends PermissionExpr {
   def getMemberAccess : MemberAccess
@@ -280,8 +281,13 @@ case class AccessAll(obj: Expression, perm: Option[Expression]) extends WildCard
 case class RdAccessAll(obj: Expression, perm: Option[Option[Expression]]) extends WildCardPermission
 
 // f == Nil is all fields
-case class AccessSeq(s: Expression, f: Option[String], perm: Option[Expression]) extends WildCardPermission
-case class RdAccessSeq(s: Expression, f: Option[String], perm: Option[Option[Expression]]) extends WildCardPermission
+case class AccessSeq(s: Expression, f: Option[String], perm: Option[Expression]) extends WildCardPermission {
+  var memberAccess: Option[MemberAccess] = None; // resolved (for s[0] to make type checker happy)
+}
+case class RdAccessSeq(s: Expression, f: Option[String], perm: Option[Option[Expression]]) extends WildCardPermission {
+  var memberAccess: Option[MemberAccess] = None; // resolved (for s[0] to make type checker happy)
+}
+
 
 case class Credit(e: Expression, n: Option[Expression]) extends Expression {
   def N = n match { case None => IntLiteral(1) case Some(n) => n }

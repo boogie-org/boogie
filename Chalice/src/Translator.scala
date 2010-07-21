@@ -1511,6 +1511,16 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val inhalee = RdAccess(ma, perm);
         inhalee.pos = acc.pos;
         Inhale(inhalee, ih, check) }
+    case AccessSeq(s, None, perm) =>
+      s.typ.parameters(0).Fields flatMap { f =>
+        val ma = MemberAccess(At(s, IntLiteral(0)), f.id); ma.f = f; ma.pos = p.pos;
+        val inhalee = AccessSeq(s, Some(f.id), perm); inhalee.memberAccess = Some(ma); inhalee.pos = p.pos;
+        Inhale(inhalee, ih, check) }
+    case RdAccessSeq(s, None, perm) =>
+      s.typ.parameters(0).Fields flatMap { f =>
+        val ma = MemberAccess(At(s, IntLiteral(0)), f.id); ma.f = f; ma.pos = p.pos;
+        val inhalee = RdAccessSeq(s, Some(f.id), perm); inhalee.memberAccess = Some(ma); inhalee.pos = p.pos;
+        Inhale(inhalee, ih, check) }
     case acc@Access(e,perm) =>
       val trE = Tr(e.e)
       val module = currentClass.module;
@@ -1648,6 +1658,16 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         ma.pos = acc.pos;
         val exhalee = RdAccess(ma, perm);
         exhalee.pos = acc.pos;
+        Exhale(exhalee, em, eh, error, check) }
+    case AccessSeq(s, None, perm) =>
+      s.typ.parameters(0).Fields flatMap { f =>
+        val ma = MemberAccess(At(s, IntLiteral(0)), f.id); ma.f = f; ma.pos = p.pos;
+        val exhalee = AccessSeq(s, Some(f.id), perm); exhalee.memberAccess = Some(ma); exhalee.pos = p.pos;
+        Exhale(exhalee, em, eh, error, check) }
+    case RdAccessSeq(s, None, perm) =>
+      s.typ.parameters(0).Fields flatMap { f =>
+        val ma = MemberAccess(At(s, IntLiteral(0)), f.id); ma.f = f; ma.pos = p.pos;
+        val exhalee = RdAccessSeq(s, Some(f.id), perm); exhalee.memberAccess = Some(ma); exhalee.pos = p.pos;
         Exhale(exhalee, em, eh, error, check) }
     case acc@Access(e,perm) =>
       val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;

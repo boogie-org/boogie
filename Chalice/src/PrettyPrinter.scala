@@ -233,7 +233,7 @@ object PrintProgram {
       perm match { case None => case Some(perm) => print(", "); Expr(perm) }
       print(")")
     case RdAccessSeq(s, f, p) =>
-      print("rd("); Expr(s); print("[*].*");
+      print("rd("); Expr(s); print("[*].");
       f match { case None => print("*"); case Some(x) => print(x)}
       p match {
         case None =>          print(")")
