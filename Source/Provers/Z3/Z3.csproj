@@ -77,10 +77,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\Graph\bin\debug\Graph.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\Binaries\Microsoft.Contracts.dll</HintPath>
-    </Reference>
+    <Reference Include="Microsoft.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL" />
     <Reference Include="Provers.Simplify, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Simplify\bin\debug\Provers.Simplify.dll</HintPath>
