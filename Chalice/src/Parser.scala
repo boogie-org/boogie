@@ -176,12 +176,12 @@ class Parser extends StandardTokenParsers {
     | selectExprFerSure ~ ":=" ~ Rhs <~ Semi ^^ {
         case lhs ~ _ ~ rhs => FieldUpdate(lhs, rhs) }
     | ("fold" ~> expression <~ Semi) ^? { 
-        case pred: MemberAccess => Fold(Access(pred, None))
-        case perm: MemberPermission => Fold(perm)
+        case pred: MemberAccess => Fold(Access(pred, Full))
+        case perm: Access => Fold(perm)
       }
     | ("unfold" ~> expression <~ Semi) ^? { 
-        case pred: MemberAccess => Unfold(Access(pred, None))
-        case perm: MemberPermission => Unfold(perm) 
+        case pred: MemberAccess => Unfold(Access(pred, Full))
+        case perm: Access => Unfold(perm)
       }
     | ("fork") ~> callSignature ^? ({
         case None ~ target ~ args =>
@@ -444,14 +444,14 @@ class Parser extends StandardTokenParsers {
       ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result})) ~ rdPermArg <~ ")"
       | selectExprFerSureX ~ rdPermArg <~ ")"
       ) ^^ {
-        case MemberAccess(obj, "*") ~ p => RdAccessAll(obj, p);
-        case MemberAccess(obj, "[*].*") ~ p => RdAccessSeq(obj, None, p);
-        case MemberAccess(MemberAccess(obj, "[*]"), f) ~ p => RdAccessSeq(obj, Some(f), p);
-        case e ~ p => RdAccess(e,p)
+        case MemberAccess(obj, "*") ~ p => AccessAll(obj, p);
+        case MemberAccess(obj, "[*].*") ~ p => AccessSeq(obj, None, p);
+        case MemberAccess(MemberAccess(obj, "[*]"), f) ~ p => AccessSeq(obj, Some(f), p);
+        case e ~ p => Access(e, p)
       }
     | "acc" ~> "(" ~>
-      ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result} )) ~ ("," ~> expression ?) <~ ")"
-      | selectExprFerSureX ~ ("," ~> expression ?) <~ ")"
+      ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result} )) ~ accPermArg <~ ")"
+      | selectExprFerSureX ~ accPermArg <~ ")"
       ) ^^ {
         case MemberAccess(obj, "*") ~ p => AccessAll(obj, p);
         case MemberAccess(obj, "[*].*") ~ p => AccessSeq(obj, None, p);
@@ -465,8 +465,8 @@ class Parser extends StandardTokenParsers {
     | "assigned" ~> "(" ~> ident <~ ")" ^^ Assigned
     | "old" ~> "(" ~> expression <~ ")" ^^ Old
     | ("unfolding" ~> suffixExpr <~ "in") ~ expression ^? { 
-        case (pred: MemberAccess) ~ e => val acc = Access(pred, None); acc.pos = pred.pos; Unfolding(acc, e)
-        case (perm: MemberPermission) ~ e => Unfolding(perm, e) 
+        case (pred: MemberAccess) ~ e => val acc = Access(pred, Full); acc.pos = pred.pos; Unfolding(acc, e)
+        case (perm: Access) ~ e => Unfolding(perm, e)
       }
     | "|" ~> expression <~ "|" ^^ Length
     | ("eval" ~ "(") ~> (evalstate <~ ",") ~ (expression <~ ")") ^^ { case h ~ e => Eval(h, e) }
@@ -503,9 +503,10 @@ class Parser extends StandardTokenParsers {
           case MemberAccess(obj,id) ~ args => CallState(e, obj, id, args) }
       )}
 
-  def rdPermArg : Parser[Option[Option[Expression]]] =
-      (("," ~> ( "*" ^^^ None
-               | expression ^^ { case e => Some(e) }
-               )) ?
-      )
+  def rdPermArg : Parser[Read] =
+      opt( "," ~> "*" ^^^ Star
+      | "," ~> expression ^^ { case e => Epsilons(e) }) ^^ { case None => Epsilon; case Some(p) => p}
+
+  def accPermArg : Parser[Write] =
+      opt( "," ~> expression ^^ { case e => Frac(e) }) ^^ { case None => Full; case Some(p) => p}
 }

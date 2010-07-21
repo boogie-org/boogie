@@ -95,6 +95,8 @@ object Boogie {
  case class Exists(xs: List[BVar], triggers: List[Expr], body: Expr) extends Expr {
    def this(x: BVar, body: Expr) = this(List(x), List(), body)
  }
+ case class Lambda(ta: List[TVar], xs: List[BVar], body: Expr) extends Expr
+
  case class Ite(con: Expr, then: Expr, els: Expr) extends Expr
 
  case class BVar(id: String, t: BType) {
@@ -271,6 +273,13 @@ object Boogie {
      Print(xs, ", ", { x: BVar => x.id +  ": " + PrintType(x.t) }) +
      " :: " +
      Print(triggers , "", { s: Expr => "{" + PrintExpr(s) + "} " }) +
+     PrintExpr(body) +
+     ")"
+   case Lambda(ts, xs, body) =>
+     "(lambda" +
+     (if (ts.length == 0) " " else "<" + Print(ts, ", ", { x: TVar => x.id }) + "> ") +
+     Print(xs, ", ", { x: BVar => x.id +  ": " + PrintType(x.t) }) +
+     " :: " +
      PrintExpr(body) +
      ")"
  }

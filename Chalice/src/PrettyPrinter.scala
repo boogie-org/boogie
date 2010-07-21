@@ -205,41 +205,20 @@ object PrintProgram {
     case _:Result => print("result")
     case VariableExpr(id) => print(id)
     case MemberAccess(e,f) => MemberSelect(e,f,contextBindingPower,fragileContext)
-    case Access(e,perm) =>
-      print("acc("); Expr(e)
-      perm match { case None => case Some(perm) => print(", "); Expr(perm) }
-      print(")")
-    case RdAccess(e,p) =>
-      print("rd("); Expr(e)
-      p match {
-        case None =>          print(")")
-        case Some(None) =>    print(", *)")
-        case Some(Some(e)) => print(", "); Expr(e); print(")")
-      }
-    case AccessAll(obj, perm) =>
-      print("acc("); Expr(obj); print(".*");
-      perm match { case None => case Some(perm) => print(", "); Expr(perm) }
-      print(")")
-    case RdAccessAll(obj, p) =>
-      print("rd("); Expr(e); print(".*");
-      p match {
-        case None =>          print(")")
-        case Some(None) =>    print(", *)")
-        case Some(Some(e)) => print(", "); Expr(e); print(")")
-      }
-    case AccessSeq(s, f, perm) =>
-      print("acc("); Expr(s); print("[*].");
+    case Full | Epsilon =>
+    case Frac(e) => print(", "); Expr(e)
+    case Star => print(", *")
+    case Epsilons(e) => print(", "); Expr(e)
+    case Access(e, p:Write) =>  print("acc("); Expr(e); Expr(p); print(")")
+    case Access(e, p:Read) =>   print("rd("); Expr(e); Expr(p); print(")")
+    case AccessAll(obj, p:Write) =>   print("acc("); Expr(obj); print(".*"); Expr(p); print(")")
+    case AccessAll(obj, p:Read) =>    print("rd("); Expr(obj); print(".*"); Expr(p); print(")")
+    case AccessSeq(s, f, p:Write) =>  print("acc("); Expr(s); print("[*].");
       f match { case None => print("*"); case Some(x) => print(x)}
-      perm match { case None => case Some(perm) => print(", "); Expr(perm) }
-      print(")")
-    case RdAccessSeq(s, f, p) =>
-      print("rd("); Expr(s); print("[*].");
+      Expr(p); print(")")
+    case AccessSeq(s, f, p:Read) =>   print("rd("); Expr(s); print("[*].");
       f match { case None => print("*"); case Some(x) => print(x)}
-      p match {
-        case None =>          print(")")
-        case Some(None) =>    print(", *)")
-        case Some(Some(e)) => print(", "); Expr(e); print(")")
-      }
+      Expr(p); print(")")      
     case Credit(e, n) =>
       print("credit("); Expr(e)
       n match { case None => case Some(n) => print(", "); Expr(n) }

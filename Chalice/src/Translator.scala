@@ -475,26 +475,31 @@ class Translator {
         (for (f <- obj.typ.Fields ++ RootClass.MentionableFields) yield
           etran.SetNoPermission(o, f.FullName, etran.Mask))
         // probably need to havoc all the fields! Do we check enough?
-      case fold@Fold(acc@Access(pred@MemberAccess(e, f), fraction)) =>   
+      case fold@Fold(acc@Access(pred@MemberAccess(e, f), fraction:Write)) =>
         val o = TrExpr(e);
-        var definition = if(fraction.isDefined) FractionOf(SubstThis(DefinitionOf(pred.predicate), e), fraction.get) else SubstThis(DefinitionOf(pred.predicate), e);
+        var definition = fraction match {
+          case Frac(p) => FractionOf(SubstThis(DefinitionOf(pred.predicate), e), p);
+          case Full => SubstThis(DefinitionOf(pred.predicate), e);
+        }
         Comment("fold") ::
         isDefined(e) :::
         bassert(nonNull(o), s.pos, "The target of the fold statement might be null.") ::
-        (if(fraction.isDefined) isDefined(fraction.get) ::: 
-          bassert(0 <= etran.Tr(fraction.get), s.pos, "Fraction might be negative.") :: 
-          bassert(etran.Tr(fraction.get) <= 100, s.pos, "Fraction might be larger than 100.") :: Nil else Nil) :::
+        (fraction match {
+          case Frac(p) => isDefined(p) :::
+            bassert(0 <= etran.Tr(p), s.pos, "Fraction might be negative.") ::
+            bassert(etran.Tr(p) <= 100, s.pos, "Fraction might be larger than 100.") :: Nil;
+          case Full => Nil}) :::
         // remove the definition from the current state, and replace by predicate itself
         Exhale(List((definition, ErrorMessage(s.pos, "Fold might fail because the definition of " + pred.predicate.FullName + " does not hold."))), "fold") :::
         Inhale(List(acc), "fold") :::
         etran.Heap.store(o, pred.predicate.FullName, etran.Heap) :: // Is this necessary?      
         bassume(wf(etran.Heap, etran.Mask))
-      case fld@Fold(acc@RdAccess(pred@MemberAccess(e, f), nbEpsilons)) =>
+      case fld@Fold(acc@Access(pred@MemberAccess(e, f), nbEpsilons:Read)) =>
         val o = TrExpr(e);
         var (definition, checkEpsilons) = nbEpsilons match {
-          case None => (EpsilonsOf(SubstThis(pred.predicate.definition, e), IntLiteral(1)), Nil)
-          case Some(None) => throw new Exception("Not supported yet!");
-          case Some(Some(i)) => (EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), e), i), isDefined(i) ::: bassert(Boogie.IntLiteral(0) <= i, s.pos, "Number of epsilons might be negative.") :: Nil)
+          case Epsilon => (EpsilonsOf(SubstThis(pred.predicate.definition, e), IntLiteral(1)), Nil)
+          case Star => throw new Exception("Not supported yet!");
+          case Epsilons(i) => (EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), e), i), isDefined(i) ::: bassert(Boogie.IntLiteral(0) <= i, s.pos, "Number of epsilons might be negative.") :: Nil)
         }
         Comment("fold") ::
         isDefined(e) :::
@@ -504,23 +509,28 @@ class Translator {
         Inhale(List(acc), "fold") :::
         etran.Heap.store(e, pred.predicate.FullName, etran.Heap) ::
         bassume(wf(etran.Heap, etran.Mask))
-      case unfld@Unfold(acc@Access(pred@MemberAccess(e, f), fraction)) =>
+      case unfld@Unfold(acc@Access(pred@MemberAccess(e, f), fraction:Write)) =>
         val o = TrExpr(e);
-        var definition = if(fraction.isDefined) FractionOf(SubstThis(DefinitionOf(pred.predicate), e), fraction.get) else SubstThis(DefinitionOf(pred.predicate), e);
+        var definition = fraction match {
+          case Frac(p) => FractionOf(SubstThis(DefinitionOf(pred.predicate), e), p);
+          case Full => SubstThis(DefinitionOf(pred.predicate), e);
+        }
         Comment("unfold") ::
         isDefined(e) :::
         bassert(nonNull(o), s.pos, "The target of the fold statement might be null.") ::
-        (if(fraction.isDefined) isDefined(fraction.get) ::: 
-          bassert(Boogie.IntLiteral(0) <= fraction.get, s.pos, "Fraction might be negative.") :: 
-          bassert(fraction.get <= 100, s.pos, "Fraction might be larger than 100.") :: Nil else Nil) :::
+        (fraction match {
+          case Frac(p) => isDefined(p) :::
+            bassert(Boogie.IntLiteral(0) <= p, s.pos, "Fraction might be negative.") ::
+            bassert(p <= 100, s.pos, "Fraction might be larger than 100.") :: Nil
+          case Full => Nil}) :::
         Exhale(List((acc, ErrorMessage(s.pos, "unfold might fail because the predicate " + pred.predicate.FullName + " does not hold."))), "unfold") :::
         etran.InhaleFrom(List(definition), "unfold", false, etran.Heap.select(o, pred.predicate.FullName))
-      case unfld@Unfold(acc@RdAccess(pred@MemberAccess(e, f), nbEpsilons)) =>
+      case unfld@Unfold(acc@Access(pred@MemberAccess(e, f), nbEpsilons:Read)) =>
         val o = TrExpr(e);
         var (definition, checkEpsilons) = nbEpsilons match {
-          case None => (EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), e), IntLiteral(1)), Nil)
-          case Some(None) => throw new Exception("Not supported yet!");
-          case Some(Some(i)) => (EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), e), i), isDefined(i) ::: bassert(Boogie.IntLiteral(0) <= i, s.pos, "Number of epsilons might be negative.") :: Nil)
+          case Epsilon => (EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), e), IntLiteral(1)), Nil)
+          case Star => throw new Exception("Not supported yet!");
+          case Epsilons(i) => (EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), e), i), isDefined(i) ::: bassert(Boogie.IntLiteral(0) <= i, s.pos, "Number of epsilons might be negative.") :: Nil)
         }
         Comment("unfold") ::
         isDefined(e) :::
@@ -1153,6 +1163,10 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         isDefined(e) ::: 
         prove(nonNull(Tr(e)), e.pos, "Receiver might be null.") ::
         prove(CanRead(Tr(e), fs.f.FullName), fs.pos, "Location might not be readable.")
+      case Full | Epsilon | Star => Nil
+      case Frac(perm) => isDefined(perm) ::: bassert(Boogie.IntLiteral(0)<=Tr(perm), perm.pos, "Fraction might be negative.") ::
+        /*TODO: is this guard necessary? (if(! e.isPredicate) (e denotes the object that has the field) */ bassert(Tr(perm) <= Boogie.IntLiteral(100), perm.pos, "Fraction might exceed 100.") :: Nil
+      case Epsilons(p) => isDefined(p) ::: bassert(Boogie.IntLiteral(0)<=Tr(p), p.pos, "Number of epsilons might be negative.")
       case _:PermissionExpr => throw new Exception("permission expression unexpected here: " + e.pos)
       case c@Credit(e, n) =>
         isDefined(e);
@@ -1191,20 +1205,15 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         (if(checkTermination) { List(prove(NonEmptyMask(tmpMask), func.pos, "The heap of the callee might not be strictly smaller than the heap of the caller.")) } else Nil)
       case unfolding@Unfolding(access, e) =>
         val (checks, predicate, definition, from) = access match {
-          case acc@Access(pred@MemberAccess(obj, f), perm) => 
+          case acc@Access(pred@MemberAccess(obj, f), perm) =>
            val receiverOk = isDefined(obj) ::: prove(nonNull(Tr(obj)), obj.pos, "Receiver might be null.");
            val body = SubstThis(DefinitionOf(pred.predicate), obj);
             perm match {           
-              case None => (receiverOk, acc, body, Heap.select(Tr(obj), pred.predicate.FullName))
-              case Some(fraction) => (receiverOk ::: isDefined(fraction) ::: prove(0 <= Tr(fraction), fraction.pos, "Fraction might be negative") :: prove(Tr(fraction) <= 100, fraction.pos, "Fraction might exceed 100."), acc, FractionOf(body, fraction), Heap.select(Tr(obj), pred.predicate.FullName))
-            }
-          case acc@RdAccess(pred@MemberAccess(obj, f), perm) =>
-            val receiverOk = isDefined(obj) ::: prove(nonNull(Tr(obj)), obj.pos, "Receiver might be null.");
-            val body = SubstThis(DefinitionOf(pred.predicate), obj);
-            perm match {
-              case None => (receiverOk, acc, EpsilonsOf(body, IntLiteral(1)), Heap.select(Tr(obj), pred.predicate.FullName))
-              case Some(None) => assert(false); (null, null, null, Heap.select(Tr(obj), pred.predicate.FullName))
-              case Some(Some(epsilons)) => (receiverOk ::: isDefined(epsilons) ::: prove(0 <= Tr(epsilons), epsilons.pos, "Number of epsilons might be negative"), acc, EpsilonsOf(body, epsilons), Heap.select(Tr(obj), pred.predicate.FullName))
+              case Full => (receiverOk, acc, body, Heap.select(Tr(obj), pred.predicate.FullName))
+              case Frac(fraction) => (receiverOk ::: isDefined(fraction) ::: prove(0 <= Tr(fraction), fraction.pos, "Fraction might be negative") :: prove(Tr(fraction) <= 100, fraction.pos, "Fraction might exceed 100."), acc, FractionOf(body, fraction), Heap.select(Tr(obj), pred.predicate.FullName))
+              case Epsilon => (receiverOk, acc, EpsilonsOf(body, IntLiteral(1)), Heap.select(Tr(obj), pred.predicate.FullName))
+              case Star => assert(false); (null, null, null, Heap.select(Tr(obj), pred.predicate.FullName))
+              case Epsilons(epsilons) => (receiverOk ::: isDefined(epsilons) ::: prove(0 <= Tr(epsilons), epsilons.pos, "Number of epsilons might be negative"), acc, EpsilonsOf(body, epsilons), Heap.select(Tr(obj), pred.predicate.FullName))
             }
         }
         val newGlobals = FreshGlobals("checkPre");
@@ -1325,6 +1334,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         r !=@ 0 // joinable is encoded as an integer
       else
         r
+    case _:Permission => throw new Exception("permission unexpected here")
     case _:PermissionExpr => throw new Exception("permission expression unexpected here: " + e.pos)
     case _:Credit => throw new Exception("credit expression unexpected here")
     case Holds(e) =>
@@ -1492,7 +1502,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
 
   def Inhale(p: Expression, ih: Boogie.Expr, check: Boolean): List[Boogie.Stmt] = p match {
     case pred@MemberAccess(e, p) if pred.isPredicate => 
-      val tmp = Access(pred, None);
+      val tmp = Access(pred, Full);
       tmp.pos = pred.pos;
       Inhale(tmp, ih, check)
     case acc@AccessAll(obj, perm) =>
@@ -1503,72 +1513,34 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val inhalee = Access(ma, perm);
         inhalee.pos = acc.pos;
         Inhale(inhalee, ih, check) }
-    case acc@RdAccessAll(obj, perm) =>
-      obj.typ.Fields flatMap { f => 
-        val ma = MemberAccess(obj, f.id);
-        ma.f = f;
-        ma.pos = acc.pos;
-        val inhalee = RdAccess(ma, perm);
-        inhalee.pos = acc.pos;
-        Inhale(inhalee, ih, check) }
     case AccessSeq(s, None, perm) =>
       s.typ.parameters(0).Fields flatMap { f =>
         val ma = MemberAccess(At(s, IntLiteral(0)), f.id); ma.f = f; ma.pos = p.pos;
         val inhalee = AccessSeq(s, Some(f.id), perm); inhalee.memberAccess = Some(ma); inhalee.pos = p.pos;
         Inhale(inhalee, ih, check) }
-    case RdAccessSeq(s, None, perm) =>
-      s.typ.parameters(0).Fields flatMap { f =>
-        val ma = MemberAccess(At(s, IntLiteral(0)), f.id); ma.f = f; ma.pos = p.pos;
-        val inhalee = RdAccessSeq(s, Some(f.id), perm); inhalee.memberAccess = Some(ma); inhalee.pos = p.pos;
-        Inhale(inhalee, ih, check) }
     case acc@Access(e,perm) =>
       val trE = Tr(e.e)
       val module = currentClass.module;
       val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
-      (if(check) isDefined(e.e)(true)
-        // List(bassert(nonNull(trE), acc.pos, "The target of the acc predicate might be null."))
-       else Nil) :::
-      (perm match { 
-        case None => List() 
-        case Some(perm) =>
-          (if(check) isDefined(perm)(true) ::: bassert(Boogie.IntLiteral(0)<=Tr(perm), perm.pos, "Fraction might be negative.") ::  
-          (if(! e.isPredicate) bassert(Tr(perm) <= Boogie.IntLiteral(100), perm.pos, "Fraction might exceed 100.") :: Nil else Nil) else Nil)
-      }) :::
+
+      // List(bassert(nonNull(trE), acc.pos, "The target of the acc predicate might be null."))
+      (if(check) isDefined(e.e)(true) ::: isDefined(perm)(true) else Nil) :::        
       bassume(nonNull(trE)) ::
       MapUpdate(Heap, trE, memberName, Boogie.MapSelect(ih, trE, memberName)) ::
       bassume(wf(Heap, Mask)) ::
       (if(e.isPredicate && e.predicate.Parent.module.equals(currentClass.module)) List(bassume(Boogie.MapSelect(ih, trE, memberName) ==@ Heap)) else Nil) :::
       (if(e.isPredicate) Nil else List(bassume(TypeInformation(Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
       (perm match {
-        case None => IncPermission(trE, memberName, 100)
-        case Some(perm) => IncPermission(trE, memberName, Tr(perm))
+        case Full => IncPermission(trE, memberName, 100)
+        case Frac(perm) => IncPermission(trE, memberName, Tr(perm))
+        case Epsilon => IncPermissionEpsilon(trE, memberName, 1)
+        case Epsilons(p) => IncPermissionEpsilon(trE, memberName, Tr(p))
+        case Star => IncPermissionEpsilon(trE, memberName, null)
       }) ::
       bassume(IsGoodMask(Mask)) ::
       bassume(IsGoodState(Boogie.MapSelect(ih, trE, memberName))) ::
       bassume(wf(Heap, Mask)) ::
-      bassume(wf(ih, Mask))
-    case rdacc@RdAccess(e,perm) =>
-      val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
-      val trE = Tr(e.e)
-      val (dfP,p) = perm match {
-        case None => (List(), Boogie.IntLiteral(1))
-        case Some(None) => (List(), null)
-        case Some(Some(p)) => (isDefined(p)(true) ::: bassert(Boogie.IntLiteral(0)<=Tr(p), p.pos, "Number of epsilons might be negative."), Tr(p))
-      }
-      (if(check) { isDefined(e.e)(true) :::
-        // bassert(nonNull(trE), rdacc.pos, "The target of the rd predicate might be null.")
-        dfP } else Nil) :::
-      bassume(nonNull(trE)) ::
-      Boogie.MapUpdate(Heap, trE, memberName,
-                       Boogie.MapSelect(ih, trE, memberName)) ::
-      bassume(Boogie.FunctionApp("wf", List(Heap, Mask))) ::
-      (if(e.isPredicate && e.predicate.Parent.module.equals(currentClass.module)) List(bassume(Boogie.MapSelect(ih, trE, memberName) ==@ Heap)) else Nil) :::
-      (if(e.isPredicate) Nil else List(bassume(TypeInformation(Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
-      IncPermissionEpsilon(trE, memberName, p) ::
-      bassume(IsGoodMask(Mask)) ::
-      bassume(IsGoodState(Boogie.MapSelect(ih, trE, memberName))) ::
-      bassume(wf(Heap, Mask)) ::
-      bassume(wf(ih, Mask))
+      bassume(wf(ih, Mask))     
     case cr@Credit(ch, n) =>
       val trCh = Tr(ch)
       (if (check)
@@ -1640,7 +1612,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
 
   def Exhale(p: Expression, em: Boogie.Expr, eh: Boogie.Expr, error: ErrorMessage, check: Boolean): List[Boogie.Stmt] = p match {
     case pred@MemberAccess(e, p) if pred.isPredicate =>
-      val tmp = Access(pred, None);
+      val tmp = Access(pred, Full);
       tmp.pos = pred.pos;
       Exhale(tmp, em , eh, error, check)
     case acc@AccessAll(obj, perm) =>
@@ -1651,30 +1623,17 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val exhalee = Access(ma, perm);
         exhalee.pos = acc.pos;
         Exhale(exhalee, em, eh, error, check) }
-    case acc@RdAccessAll(obj, perm) =>
-      obj.typ.Fields flatMap { f => 
-        val ma = MemberAccess(obj, f.id);
-        ma.f = f;
-        ma.pos = acc.pos;
-        val exhalee = RdAccess(ma, perm);
-        exhalee.pos = acc.pos;
-        Exhale(exhalee, em, eh, error, check) }
     case AccessSeq(s, None, perm) =>
       s.typ.parameters(0).Fields flatMap { f =>
         val ma = MemberAccess(At(s, IntLiteral(0)), f.id); ma.f = f; ma.pos = p.pos;
         val exhalee = AccessSeq(s, Some(f.id), perm); exhalee.memberAccess = Some(ma); exhalee.pos = p.pos;
         Exhale(exhalee, em, eh, error, check) }
-    case RdAccessSeq(s, None, perm) =>
-      s.typ.parameters(0).Fields flatMap { f =>
-        val ma = MemberAccess(At(s, IntLiteral(0)), f.id); ma.f = f; ma.pos = p.pos;
-        val exhalee = RdAccessSeq(s, Some(f.id), perm); exhalee.memberAccess = Some(ma); exhalee.pos = p.pos;
-        Exhale(exhalee, em, eh, error, check) }
-    case acc@Access(e,perm) =>
+    case acc@Access(e,perm:Write) =>
       val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
       // look up the fraction
       val (fraction, checkFraction) = perm match {
-        case None => (IntLiteral(100), Nil)
-        case Some(fr) => (fr, bassert(0<=Tr(fr), fr.pos, "Fraction might be negative.") :: (if(! e.isPredicate) bassert(Tr(fr)<=100, fr.pos, "Fraction might exceed 100.") :: Nil else Nil) ::: Nil)
+        case Full => (IntLiteral(100), Nil)
+        case Frac(fr) => (fr, bassert(0<=Tr(fr), fr.pos, "Fraction might be negative.") :: (if(! e.isPredicate) bassert(Tr(fr)<=100, fr.pos, "Fraction might exceed 100.") :: Nil else Nil) ::: Nil)
       }
       val (fractionV, frac) = NewBVar("fraction", tint, true);
       // check definedness
@@ -1683,14 +1642,18 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
                  bassert(nonNull(Tr(e.e)), error.pos, error.message + " The target of the acc predicate at " + acc.pos + " might be null.") else Nil) :::
       BLocal(fractionV) :: (frac := Tr(fraction)) ::
       // if the mask does not contain sufficient permissions, try folding acc(e, fraction)
-      (if(e.isPredicate && autoFold && (!perm.isDefined || canTakeFractionOf(DefinitionOf(e.predicate)))) {
+      (if(e.isPredicate && autoFold && (perm == Full || canTakeFractionOf(DefinitionOf(e.predicate)))) {
          val inhaleTran = new ExpressionTranslator(List(Heap, em, Credits), currentClass);
          val sourceVar = new Variable("fraction", new Type(IntClass));
          val bplVar = Variable2BVar(sourceVar);
          BLocal(bplVar) :: (VarExpr(sourceVar.UniqueName) := frac) ::
          If(new MapSelect(em, Tr(e.e), memberName, "perm$R") < frac,
-           Exhale(if(perm.isDefined) FractionOf(SubstThis(DefinitionOf(e.predicate), e.e), new VariableExpr(sourceVar)) else SubstThis(DefinitionOf(e.predicate), e.e), em, eh, ErrorMessage(error.pos, error.message + " Automatic fold might fail."), false) :::
-           inhaleTran.Inhale(List(if(! perm.isDefined) Access(e, None) else Access(e, Some(new VariableExpr(sourceVar)))), "automatic fold", false)
+           Exhale(perm match {
+              case Frac(p) => FractionOf(SubstThis(DefinitionOf(e.predicate), e.e), new VariableExpr(sourceVar));
+              case Full => SubstThis(DefinitionOf(e.predicate), e.e)}, em, eh, ErrorMessage(error.pos, error.message + " Automatic fold might fail."), false) :::
+           inhaleTran.Inhale(List(perm match {
+              case Full => Access(e, Full);
+              case Frac(p) => Access(e, Frac(new VariableExpr(sourceVar)))}), "automatic fold", false)
          , Nil) :: Nil}
        else Nil) :::
       // check that the necessary permissions are there and remove them from the mask
@@ -1698,13 +1661,13 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       bassume(IsGoodMask(Mask)) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(Heap, em))
-    case rd@RdAccess(e,perm) =>
+    case rd@Access(e,perm:Read) =>
       val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
       val (epsilonsV, eps) = NewBVar("epsilons", tint, true);
       val (dfP, epsilons) = perm match {
-        case None => (List(), IntLiteral(1))
-        case Some(None) => (List(), null)
-        case Some(Some(p)) => (isDefined(p)(true) ::: List(bassert(0 <= Tr(p), error.pos, error.message + " The number of epsilons at " + rd.pos + " might be negative.")) , p)
+        case Epsilon => (List(), IntLiteral(1))
+        case Star => (List(), null)
+        case Epsilons(p) => (isDefined(p)(true) ::: List(bassert(0 <= Tr(p), error.pos, error.message + " The number of epsilons at " + rd.pos + " might be negative.")) , p)
       }
       // check definedness
       (if(check) isDefined(e.e)(true) :::
@@ -1719,7 +1682,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
           BLocal(bplVar) :: (VarExpr(sourceVar.UniqueName) := eps) ::
           If(new MapSelect(em, Tr(e.e), memberName, "perm$N") < eps,
             Exhale(EpsilonsOf(SubstThis(DefinitionOf(e.predicate), e.e), new VariableExpr(sourceVar)), em, eh, ErrorMessage(error.pos, error.message + " Automatic fold might fail."), false) :::
-            inhaleTran.Inhale(List(RdAccess(e, Some(Some(new VariableExpr(sourceVar))))), "automatic fold", false)
+            inhaleTran.Inhale(List(Access(e, Epsilons(new VariableExpr(sourceVar)))), "automatic fold", false)
           , Nil) :: Nil}
        else Nil) :::
       // check that the necessary permissions are there and remove them from the mask
@@ -2054,7 +2017,7 @@ object TranslationHelper {
   // scale an expression by a fraction
   def FractionOf(expr: Expression, fraction: Expression) : Expression = {
     val result = expr match {
-      case Access(e, None) => Access(e, Some(fraction))
+      case Access(e, Full) => Access(e, Frac(fraction))
       case And(lhs, rhs) => And(FractionOf(lhs, fraction), FractionOf(rhs, fraction))
       case _ if ! expr.isInstanceOf[PermissionExpr] => expr
       case _ => throw new Exception("  " + expr.pos + ": Scaling non-full permissions is not supported yet." + expr);
@@ -2065,7 +2028,7 @@ object TranslationHelper {
 
   def canTakeFractionOf(expr: Expression): Boolean = {
     expr match {
-      case Access(e, None) => true
+      case Access(e, Full) => true
       case And(lhs, rhs) => canTakeFractionOf(lhs) && canTakeFractionOf(rhs)
       case _ if ! expr.isInstanceOf[PermissionExpr] => true
       case _ => false
@@ -2075,7 +2038,7 @@ object TranslationHelper {
   // scale an expression by a number of epsilons
   def EpsilonsOf(expr: Expression, nbEpsilons: Expression) : Expression = {
     val result = expr match {
-      case Access(e, _) => RdAccess(e, Some(Some(nbEpsilons)))
+      case Access(e, _:Write) => Access(e, Epsilons(nbEpsilons))
       case And(lhs, rhs) => And(FractionOf(lhs, nbEpsilons), FractionOf(rhs, nbEpsilons))
       case _ if ! expr.isInstanceOf[PermissionExpr] => expr
       case _ => throw new Exception("  " + expr.pos + ": Scaling non-full permissions is not supported yet." + expr);
@@ -2086,7 +2049,7 @@ object TranslationHelper {
 
   def canTakeEpsilonsOf(expr: Expression): Boolean = {
     expr match {
-      case Access(e, _) => true
+      case Access(e, _:Write) => true
       case And(lhs, rhs) => canTakeEpsilonsOf(lhs) && canTakeEpsilonsOf(rhs)
       case _ if ! expr.isInstanceOf[PermissionExpr] => true
       case _ => false
@@ -2110,11 +2073,8 @@ object TranslationHelper {
   {
     expr match{
       case pred@MemberAccess(e, p) if pred.isPredicate =>
-        Version(Access(pred, None), etran)
+        Version(Access(pred, Full), etran)
       case acc@Access(e,perm) =>
-        val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
-        Boogie.MapSelect(etran.Heap, etran.Tr(e.e), memberName)
-      case rd@RdAccess(e,perm) =>
         val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
         Boogie.MapSelect(etran.Heap, etran.Tr(e.e), memberName)
       case Implies(e0,e1) =>
@@ -2180,25 +2140,17 @@ object TranslationHelper {
             (assumptions ::: Neq(obj, NullLiteral()) :: Nil, handled1 ::: List(ma))
           } else {
             // assumption: obj!=null && acc(obj, f)
-            (assumptions ::: Neq(obj, NullLiteral()) :: Access(ma, None) :: Nil, handled1 ::: List(ma))
+            (assumptions ::: Neq(obj, NullLiteral()) :: Access(ma, Full) :: Nil, handled1 ::: List(ma))
           }
         }
-      case Access(ma@MemberAccess(obj, f), perm) => 
+      case Access(ma@MemberAccess(obj, f), perm) =>
         val (assumptions, handled1) = automagic(obj, handled ::: List(ma));
         perm match {
-          case None => (assumptions, handled1);
-          case Some(fraction) => val result = automagic(fraction, handled1); (assumptions ::: result._1, result._2)
-        }
-      case RdAccess(ma@MemberAccess(obj, f), perm) =>
-        val (assumptions, handled1) = automagic(obj, handled ::: List(ma));
-        perm match {
-          case None => (assumptions, handled1);
-          case Some(None) => (assumptions, handled1);
-          case Some(Some(epsilon)) => val result = automagic(epsilon, handled1); (assumptions ::: result._1, result._2)
+          case Full | Epsilon | Star => (assumptions, handled1);
+          case Frac(fraction) => val result = automagic(fraction, handled1); (assumptions ::: result._1, result._2)
+          case Epsilons(epsilon) => val result = automagic(epsilon, handled1); (assumptions ::: result._1, result._2)
         }
       case AccessAll(obj, perm) => 
-        automagic(obj, handled)
-      case RdAccessAll(obj, perm) => 
         automagic(obj, handled)
       case Holds(e) =>
         automagic(e, handled)
@@ -2272,9 +2224,9 @@ object TranslationHelper {
   }
 
   def SubstRd(e: Expression): Expression = e match {
-    case Access(e,_) =>
-      val r = RdAccess(e,None); r.typ = BoolClass; r
-    case e: RdAccess => e
+    case Access(e, _:Write) =>
+      val r = Access(e,Epsilon); r.typ = BoolClass; r
+    case Access(_, _:Read) => e
     case Implies(e0,e1) =>
       val r = Implies(e0, SubstRd(e1)); r.typ = BoolClass; r
     case And(e0,e1) =>
@@ -2289,14 +2241,11 @@ object TranslationHelper {
           SubstThis(DefinitionOf(pred.predicate), o)
         case Access(pred@MemberAccess(o, f), p) if pred.isPredicate && o.isInstanceOf[ThisExpr] =>
           p match {
-            case None => SubstThis(DefinitionOf(pred.predicate), o)
-            case Some(p) => FractionOf(SubstThis(DefinitionOf(pred.predicate), o), p)
-          }
-        case RdAccess(pred@MemberAccess(o, f), p) if pred.isPredicate && o.isInstanceOf[ThisExpr] =>
-          p match {
-            case None => EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), o), IntLiteral(1))
-            case Some(None) => throw new Exception("not supported yet")
-            case Some(Some(p)) => EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), o), p)
+            case Full => SubstThis(DefinitionOf(pred.predicate), o)
+            case Frac(p) => FractionOf(SubstThis(DefinitionOf(pred.predicate), o), p)
+            case Epsilon => EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), o), IntLiteral(1))
+            case Star => throw new Exception("not supported yet")
+            case Epsilons(p) => EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), o), p)
           }
         case func@FunctionApplication(obj: ThisExpr, name, args) if 2<=TranslationOptions.defaults =>
           SubstVars(func.f.definition, Some(obj), func.f.ins, args) 
@@ -2316,7 +2265,7 @@ object TranslationHelper {
             case None => e;
           }
         case e: VariableExpr =>
-          // TODO: this will update the value of x's position many times
+          // TODO: this will update the value of x's position many times -- better than none
           for ((v,x) <- sub if v == e.v) { x.pos = v.pos; return x }
           e
         case q : Quantification =>
@@ -2365,24 +2314,12 @@ object TranslationHelper {
       case e:VariableExpr => expr
       case acc@MemberAccess(e,f) =>
         val g = MemberAccess(func(e), f); g.f = acc.f; g.predicate = acc.predicate; g.isPredicate = acc.isPredicate; g
-      case Access(e, perm) =>
-        Access(func(e).asInstanceOf[MemberAccess],
-             perm match { case None => perm case Some(perm) => Some(func(perm)) })
-      case RdAccess(e, perm) =>
-        RdAccess(func(e).asInstanceOf[MemberAccess],
-             perm match { case Some(Some(p)) => Some(Some(func(p))) case _ => perm })
-      case AccessAll(obj, perm) =>
-        AccessAll(func(obj),
-             perm match { case None => perm case Some(perm) => Some(func(perm)) })
-      case RdAccessAll(obj, perm) =>
-        RdAccessAll(func(obj),
-             perm match { case Some(Some(p)) => Some(Some(func(p))) case _ => perm })
-      case AccessSeq(s, f, perm) =>
-        AccessSeq(func(s), f,
-             perm match { case None => perm case Some(perm) => Some(func(perm)) })
-      case RdAccessSeq(s, f, perm) =>
-        RdAccessSeq(func(s), f,
-             perm match { case Some(Some(p)) => Some(Some(func(p))) case _ => perm })
+      case Full | Epsilon | Star => expr
+      case Frac(perm) => Frac(func(perm))
+      case Epsilons(perm) => Epsilons(func(perm))
+      case Access(e, perm) => Access(func(e).asInstanceOf[MemberAccess], manipulate(perm, func).asInstanceOf[Permission]);
+      case AccessAll(obj, perm) => AccessAll(func(obj), manipulate(perm, func).asInstanceOf[Permission]);
+      case AccessSeq(s, f, perm) => AccessSeq(func(s), f, manipulate(perm, func).asInstanceOf[Permission]);
       case Credit(e, None) => Credit(func(e), None)
       case Credit(e, Some(n)) => Credit(func(e), Some(func(n)))
       case Holds(e) => Holds(func(e))
@@ -2394,7 +2331,7 @@ object TranslationHelper {
       case funapp@FunctionApplication(obj, id, args) =>
         val appl = FunctionApplication(func(obj), id, args map { arg => func(arg)}); appl.f = funapp.f; appl
       case Unfolding(pred, e) =>
-        Unfolding(func(pred).asInstanceOf[MemberPermission], func(e))
+        Unfolding(func(pred).asInstanceOf[Access], func(e))
       case Iff(e0,e1) => Iff(func(e0), func(e1))
       case Implies(e0,e1) => Implies(func(e0), func(e1))
       case And(e0,e1) => And(func(e0), func(e1))
