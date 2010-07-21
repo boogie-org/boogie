@@ -1,13 +1,13 @@
-# Aste started: 2010-07-20 07:00:07
+# Aste started: 2010-07-21 07:00:06
 # Host id: Boogiebox
-# [2010-07-20 07:02:14] SpecSharp revision: 54390
-# [2010-07-20 07:03:11] Boogie revision: 55267
-# [2010-07-20 07:03:39] SscBoogie revision: 54839
-[2010-07-20 07:04:04] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-07-21 07:02:06] SpecSharp revision: 55320
+# [2010-07-21 07:02:59] Boogie revision: 55322
+# [2010-07-21 07:03:23] SscBoogie revision: 55325
+[2010-07-21 07:03:50] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-07-20 07:05:52] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-07-21 07:05:34] [Error] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
@@ -15,8 +15,10 @@
     D:\Temp\aste\Boogie\Source\AbsInt\LoopInvariantsOnDemand.cs(44,7): warning CC1032: Method 'Microsoft.Boogie.AbstractInterpretation.FreeVariablesVisitor.Default(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IExpr)' overrides 'Microsoft.AbstractInterpretationFramework.ExprVisitor.Default(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IExpr)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\AbsInt\LoopInvariantsOnDemand.cs(65,7): warning CC1032: Method 'Microsoft.Boogie.AbstractInterpretation.FreeVariablesVisitor.VisitFunApp(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunApp)' overrides 'Microsoft.AbstractInterpretationFramework.ExprVisitor.VisitFunApp(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunApp)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\AbsInt\LoopInvariantsOnDemand.cs(74,7): warning CC1032: Method 'Microsoft.Boogie.AbstractInterpretation.FreeVariablesVisitor.VisitFunction(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunction)' overrides 'Microsoft.AbstractInterpretationFramework.ExprVisitor.VisitFunction(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunction)', thus cannot add Requires.
+    error CS1504: Source file 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' could not be opened ('Unspecified error ')
+    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "Z3". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
     warning CS0162
     warning CS0162
     warning CS0162
-[2010-07-20 07:30:11] 0 out of 25 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2010-07-20 07:31:54] Released nightly of Boogie
+    1 error
+    1 failed
