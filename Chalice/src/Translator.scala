@@ -2343,7 +2343,7 @@ object TranslationHelper {
           }
         case e: VariableExpr =>
           // TODO: this will update the value of x's position many times -- better than none
-          for ((v,x) <- sub if v == e.v) { x.pos = v.pos; return x }
+          for ((v,x) <- sub if v == e.v) { x.pos = v.pos; x.typ = e.typ; return x }
           e
         case q : Quantification =>
           // would be better if this is a part of manipulate method
