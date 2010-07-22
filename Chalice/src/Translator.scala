@@ -1753,10 +1753,10 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val mn = em(ref, memberName)("perm$N");
 
         bassert((FunctionApp("Seq#Contains", List(e, ref)) ==>
-          perm match {
+          (perm match {
             case _: Read => mr ==@ 0 ==> n <= mn
             case _: Write => r <= mr && (r ==@ mr ==> 0 <= mn)
-          }).forall(refV), error.pos, error.message + " Insufficient permissions") ::
+          })).forall(refV), error.pos, error.message + " Insufficient permissions") ::
         (em := Lambda(List(aV), List(refV, fV),
           (FunctionApp("Seq#Contains", List(e, ref)) && f ==@ memberName).thenElse(
             Lambda(List(), List(pcV), (pc ==@ "perm$R").thenElse(mr - r, mn - n)),
