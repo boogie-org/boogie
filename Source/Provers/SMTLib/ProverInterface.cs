@@ -8,9 +8,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using System.IO;
-using ExternalProver;
+//using ExternalProver;
 using System.Diagnostics;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 using Microsoft.Boogie.AbstractInterpretation;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
@@ -22,17 +22,35 @@ namespace Microsoft.Boogie.SMTLib
 {
   public class SMTLibProcessTheoremProver : LogProverInterface
   {
-    private readonly DeclFreeProverContext! ctx;
+    private readonly DeclFreeProverContext ctx;
 
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(ctx!=null);
+      Contract.Invariant(AxBuilder != null);
+      Contract.Invariant(Namer != null);
+      Contract.Invariant(DeclCollector != null);
+      Contract.Invariant(BadBenchmarkWords != null);
+      Contract.Invariant(cce.NonNullElements(Axioms));
+      Contract.Invariant(cce.NonNullElements(TypeDecls));
+      Contract.Invariant(_backgroundPredicates != null);
+
+}
+
+    
     [NotDelayed]
-    public SMTLibProcessTheoremProver(ProverOptions! options, VCExpressionGenerator! gen,
-                                      DeclFreeProverContext! ctx)
+    public SMTLibProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
+                                      DeclFreeProverContext ctx):base(options, "", "", "", "", gen)
     {
+      Contract.Requires(options != null);
+      Contract.Requires(gen != null);
+      Contract.Requires(ctx != null);
       InitializeGlobalInformation("UnivBackPred2.smt");
 
       this.ctx = ctx;
 
-      TypeAxiomBuilder! axBuilder;
+      TypeAxiomBuilder axBuilder;
       switch (CommandLineOptions.Clo.TypeEncodingMethod) {
         case CommandLineOptions.TypeEncoding.Arguments:
           axBuilder = new TypeAxiomBuilderArguments (gen);
@@ -46,27 +64,36 @@ namespace Microsoft.Boogie.SMTLib
       UniqueNamer namer = new UniqueNamer ();
       Namer = namer;
       this.DeclCollector = new TypeDeclCollector (namer);
-      base(options, "", "", "", "", gen);
+      
     }
     
-    public override ProverContext! Context { get {
+    public override ProverContext Context { get {
+      Contract.Ensures(Contract.Result<ProverContext>() != null);
+
       return ctx;
     } }
 
-    private readonly TypeAxiomBuilder! AxBuilder;
-    private readonly UniqueNamer! Namer;
-    private readonly TypeDeclCollector! DeclCollector;
+    private readonly TypeAxiomBuilder AxBuilder;
+    private readonly UniqueNamer Namer;
+    private readonly TypeDeclCollector DeclCollector;
 
     private void FeedTypeDeclsToProver() {
-      foreach (string! s in DeclCollector.GetNewDeclarations())
+      foreach (string s in DeclCollector.GetNewDeclarations())
+      {
+        Contract.Assert(s!=null);
         AddTypeDecl(s);
-    }
+    }}
 
-    public override void BeginCheck(string! descriptiveName, VCExpr! vc, ErrorHandler! handler) {
-      TextWriter! output = OpenOutputFile(descriptiveName);
+    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler) {
+      Contract.Requires(descriptiveName != null);
+      Contract.Requires(vc != null);
+      Contract.Requires(handler != null);
+      TextWriter output = OpenOutputFile(descriptiveName);
+      Contract.Assert(output!=null);
 
-      string! name =
+      string name =
         MakeBenchmarkNameSafe(SMTLibExprLineariser.MakeIdPrintable(descriptiveName));
+      Contract.Assert(name!=null);
       WriteLineAndLog(output, "(benchmark " + name);
       WriteLineAndLog(output, _backgroundPredicates);
 
@@ -76,13 +103,16 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       string vcString = ":formula (not " + VCExpr2String(vc, 1) + ")";
-      string! prelude = ctx.GetProverCommands(true);
+      string prelude = ctx.GetProverCommands(true);
+      Contract.Assert(prelude!=null);
       WriteLineAndLog(output, prelude);
 
-      foreach (string! s in TypeDecls) {
+      foreach (string s in TypeDecls) {
+        Contract.Assert(s!=null);
         WriteLineAndLog(output, s);
       }
-      foreach (string! s in Axioms) {
+      foreach (string s in Axioms) {
+        Contract.Assert(s!=null);
         WriteLineAndLog(output, ":assumption");
         WriteLineAndLog(output, s);
       }
@@ -95,41 +125,53 @@ namespace Microsoft.Boogie.SMTLib
 
     // certain words that should not occur in the name of a benchmark
     // because some solvers don't like them
-    private readonly static List<string!>! BadBenchmarkWords = new List<string!> ();
+    private readonly static List<string/*!>!*/> BadBenchmarkWords = new List<string/*!*/> ();
     static SMTLibProcessTheoremProver() {
       BadBenchmarkWords.Add("Array"); BadBenchmarkWords.Add("Arrray");
     }
 
-    private string! MakeBenchmarkNameSafe(string! name) {
+    private string MakeBenchmarkNameSafe(string name) {
+      Contract.Requires(name != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+
       for (int i = 0; i < BadBenchmarkWords.Count; i = i + 2)
         name = name.Replace(BadBenchmarkWords[i], BadBenchmarkWords[i+1]);
       return name;
     }
 
-    private TextWriter! OpenOutputFile(string! descriptiveName) {
+    private TextWriter OpenOutputFile(string descriptiveName) {
+      Contract.Requires(descriptiveName != null);
+      Contract.Ensures(Contract.Result<TextWriter>() != null);
+
         string filename = CommandLineOptions.Clo.SMTLibOutputPath;
-        filename = Helpers.SubstituteAtPROC(descriptiveName, (!)filename);
+        filename = Helpers.SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
         return new StreamWriter(filename, false);
     }
 
-    private void WriteLineAndLog(TextWriter! output, string! msg) {
+    private void WriteLineAndLog(TextWriter output, string msg) {
+      Contract.Requires(output != null);
+      Contract.Requires(msg != null);
       LogActivity(msg);
       output.WriteLine(msg);
     }
 
     [NoDefaultContract]
-    public override Outcome CheckOutcome(ErrorHandler! handler)
-      throws UnexpectedProverOutputException; {
+    public override Outcome CheckOutcome(ErrorHandler handler)
+   {Contract.Requires(handler != null);
+      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       return Outcome.Undetermined;
     }
 
-    protected string! VCExpr2String(VCExpr! expr, int polarity) {
+    protected string VCExpr2String(VCExpr expr, int polarity) {
+      Contract.Requires(expr != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+
       DateTime start = DateTime.Now;
       if (CommandLineOptions.Clo.Trace)
         Console.Write("Linearising ... ");
 
       // handle the types in the VCExpr
-      TypeEraser! eraser;
+      TypeEraser eraser;
       switch (CommandLineOptions.Clo.TypeEncodingMethod) {
         case CommandLineOptions.TypeEncoding.Arguments:
           eraser = new TypeEraserArguments((TypeAxiomBuilderArguments)AxBuilder, gen);
@@ -138,18 +180,24 @@ namespace Microsoft.Boogie.SMTLib
           eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses)AxBuilder, gen);
           break;
       }
-      VCExpr! exprWithoutTypes = eraser.Erase(expr, polarity);
+      Contract.Assert(eraser!=null);
+      VCExpr exprWithoutTypes = eraser.Erase(expr, polarity);
+      Contract.Assert(exprWithoutTypes!=null);
 
-      LetBindingSorter! letSorter = new LetBindingSorter(gen);
-      VCExpr! sortedExpr = letSorter.Mutate(exprWithoutTypes, true);
-      VCExpr! sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
+      LetBindingSorter letSorter = new LetBindingSorter(gen);
+      Contract.Assert(letSorter!=null);
+      VCExpr sortedExpr = letSorter.Mutate(exprWithoutTypes, true);
+      Contract.Assert(sortedExpr!=null);
+      VCExpr sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
+      Contract.Assert(sortedAxioms!=null);
 
       DeclCollector.Collect(sortedAxioms);
       DeclCollector.Collect(sortedExpr);
       FeedTypeDeclsToProver();
 
       AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer));
-      string! res = SMTLibExprLineariser.ToString(sortedExpr, Namer);
+      string res = SMTLibExprLineariser.ToString(sortedExpr, Namer);
+      Contract.Assert(res!=null);
 
       if (CommandLineOptions.Clo.Trace) {
         DateTime end = DateTime.Now;
@@ -161,13 +209,17 @@ namespace Microsoft.Boogie.SMTLib
 
     // the list of all known axioms, where have to be included in each
     // verification condition
-    private readonly List<string!>! Axioms = new List<string!> ();
+    private readonly List<string/*!>!*/> Axioms = new List<string/*!*/> ();
     private bool AxiomsAreSetup = false;
+    
+
+
 
     // similarly, a list of function/predicate declarations
-    private readonly List<string!>! TypeDecls = new List<string!> ();
+    private readonly List<string/*!>!*/> TypeDecls = new List<string/*!*/> ();
 
-    protected void AddAxiom(string! axiom) {
+    protected void AddAxiom(string axiom) {
+      Contract.Requires(axiom != null);
       Axioms.Add(axiom);
 //      if (thmProver != null) {
 //        LogActivity(":assume " + axiom);
@@ -175,7 +227,8 @@ namespace Microsoft.Boogie.SMTLib
 //      }
     }
 
-    protected void AddTypeDecl(string! decl) {
+    protected void AddTypeDecl(string decl) {
+      Contract.Requires(decl != null);
       TypeDecls.Add(decl);
  //     if (thmProver != null) {
  //       LogActivity(decl);
@@ -185,15 +238,15 @@ namespace Microsoft.Boogie.SMTLib
 
     ////////////////////////////////////////////////////////////////////////////
 
-    private static string! _backgroundPredicates;
+    private static string _backgroundPredicates;
 
-    static void InitializeGlobalInformation(string! backgroundPred)
-      ensures _backgroundPredicates != null;
+    static void InitializeGlobalInformation(string backgroundPred)
+    {Contract.Requires(backgroundPred != null);
+     Contract.Ensures(_backgroundPredicates != null);
       //throws ProverException, System.IO.FileNotFoundException;
-    {
       if (_backgroundPredicates == null) {
-        string! codebaseString =
-          (!) Path.GetDirectoryName((!)System.Reflection.Assembly.GetExecutingAssembly().Location);
+        string codebaseString =
+          cce.NonNull(Path.GetDirectoryName(cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location)));
 
         // Initialize '_backgroundPredicates'
         string univBackPredPath = Path.Combine(codebaseString, backgroundPred);
@@ -208,32 +261,45 @@ namespace Microsoft.Boogie.SMTLib
   public class Factory : ProverFactory
   {
 
-    public override object! SpawnProver(ProverOptions! options, object! ctxt)
+    public override object SpawnProver(ProverOptions options, object ctxt)
     {
+    Contract.Requires(ctxt != null);
+    Contract.Requires(options != null);
+    Contract.Ensures(Contract.Result<object>() != null);
+
       return this.SpawnProver(options,
-                              ((DeclFreeProverContext!)ctxt).ExprGen,
-                              (DeclFreeProverContext!)ctxt);
+                              cce.NonNull((DeclFreeProverContext)ctxt).ExprGen,
+                              cce.NonNull((DeclFreeProverContext)ctxt));
     }
 
-    public override object! NewProverContext(ProverOptions! options) {
+    public override object NewProverContext(ProverOptions options) {
+      Contract.Requires(options != null);
+      Contract.Ensures(Contract.Result<object>() != null);
+
       if (CommandLineOptions.Clo.BracketIdsInVC < 0) {
         CommandLineOptions.Clo.BracketIdsInVC = 0;
       }
 
-      VCExpressionGenerator! gen = new VCExpressionGenerator ();
-      List<string!>! proverCommands = new List<string!> ();
+      VCExpressionGenerator gen = new VCExpressionGenerator ();
+      List<string>/*!>!*/ proverCommands = new List<string/*!*/> ();
 // TODO: what is supported?
 //      proverCommands.Add("all");
 //      proverCommands.Add("simplify");
 //      proverCommands.Add("simplifyLike");
-      VCGenerationOptions! genOptions = new VCGenerationOptions(proverCommands);
+      VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
+      Contract.Assert(genOptions!=null);
 
       return new DeclFreeProverContext(gen, genOptions);
     }
 
-    protected virtual SMTLibProcessTheoremProver! SpawnProver(ProverOptions! options,
-                                                              VCExpressionGenerator! gen,
-                                                              DeclFreeProverContext! ctx) {
+    protected virtual SMTLibProcessTheoremProver SpawnProver(ProverOptions options,
+                                                              VCExpressionGenerator gen,
+                                                              DeclFreeProverContext ctx) {
+      Contract.Requires(options != null);
+      Contract.Requires(gen != null);
+      Contract.Requires(ctx != null);
+      Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
+
       return new SMTLibProcessTheoremProver(options, gen, ctx);
     }
   }
