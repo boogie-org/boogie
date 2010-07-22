@@ -65,10 +65,11 @@ void ObjectInvariant()
       return new Z3ProverProcess(opts, inspector);
     }
 
-    protected override AxiomVCExprTranslator SpawnVCExprTranslator() {
+    protected override AxiomVCExprTranslator SpawnVCExprTranslator(ProverOptions opts) {
+      Contract.Requires(opts != null);
       Contract.Ensures(Contract.Result<AxiomVCExprTranslator>() != null);
 
-      return new Z3VCExprTranslator(gen, opts);
+      return new Z3VCExprTranslator(gen, (Z3InstanceOptions) opts);
     }
 
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)

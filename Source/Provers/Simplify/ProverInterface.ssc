@@ -154,7 +154,7 @@ namespace Microsoft.Boogie.Simplify
       return (AxiomVCExprTranslator!)ctx.exprTranslator;
     } }
 
-    protected abstract AxiomVCExprTranslator! SpawnVCExprTranslator();
+    protected abstract AxiomVCExprTranslator! SpawnVCExprTranslator(ProverOptions! p);
 
     // Return the number of axioms pushed to the theorem prover
     protected int FeedNewAxiomsDecls2Prover() throws UnexpectedProverOutputException; {
@@ -264,7 +264,7 @@ namespace Microsoft.Boogie.Simplify
       // if none exists so far, we have to create a new one
       // from scratch and feed the axioms to it
       if (ctx.exprTranslator == null) {
-        AxiomVCExprTranslator tl = SpawnVCExprTranslator();
+        AxiomVCExprTranslator tl = SpawnVCExprTranslator(options);
         ctx.exprTranslator = tl;
         tl.AddAxiom(tl.translate(ctx.Axioms, -1));
         // we clear the lists with new axioms and declarations;
@@ -541,7 +541,7 @@ namespace Microsoft.Boogie.Simplify
       return new SimplifyProverProcess(proverPath);
     }
 
-    protected override AxiomVCExprTranslator! SpawnVCExprTranslator() {
+    protected override AxiomVCExprTranslator! SpawnVCExprTranslator(ProverOptions! opts) {
       return new SimplifyVCExprTranslator(gen);
     }
   }
