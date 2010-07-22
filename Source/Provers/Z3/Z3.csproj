@@ -8,7 +8,7 @@
     <ProjectGuid>{BB49B90B-BE21-4BE8-85BA-359FDB55F4DF}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Provers.Z3</RootNamespace>
+    <RootNamespace>Microsoft.Boogie.Z3</RootNamespace>
     <AssemblyName>Provers.Z3</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
