@@ -33,8 +33,9 @@ object Boogie {
  case class Assign(lhs: Expr, rhs: Expr) extends Stmt
  case class AssignMap(lhs: Expr, index: Expr, rhs: Expr) extends Stmt
  case class Havoc(x: Expr) extends Stmt
- case class MapUpdate(map: Expr, arg0: Expr, arg1: String, rhs: Expr) extends Stmt {
-   def this(map: Expr, arg0: Expr, rhs: Expr) = this(map, arg0, null, rhs)
+ case class MapUpdate(map: Expr, arg0: Expr, arg1: Option[Expr], rhs: Expr) extends Stmt {
+   def this(map: Expr, arg0: Expr, rhs: Expr) = this(map, arg0, None, rhs)
+   def this(map: Expr, arg0: Expr, arg1: Expr, rhs: Expr) = this(map, arg0, Some(arg1), rhs)
  }
  case class If(guard: Expr, thn: List[Stmt], els: List[Stmt]) extends Stmt {
    override def Locals = (thn flatMap (_.Locals)) ::: (els flatMap (_.Locals))
@@ -64,8 +65,12 @@ object Boogie {
    def /(that: Expr) = BinaryExpr("/", this, that)
    def %(that: Expr) = BinaryExpr("%", this, that)
    def := (that: Expr) = Assign(this, that)
-   def select(e: Expr, f: Expr) = new MapSelect(this, e, PrintExpr(f))
-   def store(e: Expr, f: Expr, rhs: Expr) = MapUpdate(this, e, PrintExpr(f), rhs)
+   def apply(e: Expr, f: Expr) = new MapSelect(this, e, Some(f))
+   def apply(e: Expr) = new MapSelect(this, e, None)
+   def thenElse(thenE: Expr, elseE: Expr) = new Ite(this, thenE, elseE)
+   def select(e: Expr, s: String) = new MapSelect(this, e, s)
+   def forall(x: BVar) = new Forall(x, this)
+   def store(e: Expr, f: Expr, rhs: Expr) = MapUpdate(this, e, Some(f), rhs)
  }
  case class IntLiteral(n: Int) extends Expr
  case class BoolLiteral(b: Boolean) extends Expr
@@ -73,12 +78,13 @@ object Boogie {
  case class VarExpr(id: String) extends Expr {
    def this(v: BVar) = this(v.id)
  }
- case class MapSelect(map: Expr, arg0: Expr, arg1: String) extends Expr {
-   def this(map: Expr, arg0: Expr) = this(map, arg0, null) // for one-dimensional maps
+ case class MapSelect(map: Expr, arg0: Expr, arg1: Option[Expr]) extends Expr {
+   def this(map: Expr, arg0: Expr) = this(map, arg0, None) // for one-dimensional maps
+   def this(map: Expr, arg0: Expr, arg1: String) = this(map, arg0, Some(VarExpr(arg1)))
    def this(map: Expr, arg0: Expr, arg1: String, arg2: String) = // for 3-dimensional maps
-     this(MapSelect(map, arg0, arg1), VarExpr(arg2), null)
+     this(MapSelect(map, arg0, Some(VarExpr(arg1))), VarExpr(arg2), None)
  }
- case class MapStore(map: Expr, arg0: String, rhs: Expr) extends Expr
+ case class MapStore(map: Expr, arg0: Expr, rhs: Expr) extends Expr
  case class Old(e: Expr) extends Expr
  case class UnaryExpr(op: String, e: Expr) extends Expr
  case class BinaryExpr(op: String, e0: Expr, e1: Expr) extends Expr
@@ -222,7 +228,7 @@ object Boogie {
    case MapUpdate(map, a0, a1, rhs) =>
      indent + PrintExpr(map) + "[" +
      PrintExpr(a0) +
-     (if (a1 != null) { ", " + a1 } else { "" }) +
+     (a1 match { case Some(e) => { ", " + PrintExpr(e) }; case None => { "" }}) +
      "] := " + 
      PrintExpr(rhs) + ";" + nl
    case _:LocalVar => "" /* print nothing */
@@ -237,10 +243,10 @@ object Boogie {
    case VarExpr(id) => id
    case MapSelect(map, arg0, arg1) =>
      PrintExpr(map) + "[" + PrintExpr(arg0, false) + 
-     (if (arg1 != null) { ", " + arg1 } else { "" }) +
+     (arg1 match {case Some(e) => { ", " + PrintExpr(e) }; case None => { "" }}) +
      "]"
    case MapStore(map, arg0, rhs) =>
-     PrintExpr(map) + "[" + arg0 + " := " + PrintExpr(rhs, false) + "]"
+     PrintExpr(map) + "[" + PrintExpr(arg0) + " := " + PrintExpr(rhs, false) + "]"
    case Old(e) => "old(" + PrintExpr(e, false) + ")"
    case UnaryExpr(op, e) =>
      (if (useParens)  { "(" } else "") +

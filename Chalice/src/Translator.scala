@@ -8,7 +8,7 @@ import scala.util.parsing.input.Position
 import Boogie.Proc, Boogie.NamedType, Boogie.NewBVar, Boogie.Havoc, Boogie.Stmt, Boogie.Const,
        Boogie.Decl, Boogie.Expr, Boogie.FunctionApp, Boogie.Axiom, Boogie.BVar, Boogie.BType,
        Boogie.VarExpr, Boogie.IndexedType, Boogie.Comment, Boogie.MapUpdate, Boogie.MapSelect,
-       Boogie.If;
+       Boogie.If, Boogie.Lambda;
 
 case class ErrorMessage(pos: Position, message: String)
 
@@ -1011,13 +1011,13 @@ class Translator {
     val b: Boogie.Expr = false
     new Boogie.Forall(List(lkV),
                   List(etran.Heap.select(lk, "held"), etran.Heap.select(lk, "rdheld")),
-                  (((0 < Boogie.MapSelect(etran.Heap, lk, "held")) ==@
-                    (0 < Boogie.MapSelect(etran.oldEtran.Heap, lk, "held"))) &&
-                   (Boogie.MapSelect(etran.Heap, lk, "rdheld") ==@
-                    Boogie.MapSelect(etran.oldEtran.Heap, lk, "rdheld"))) ||
+                  (((0 < etran.Heap.select(lk, "held")) ==@
+                    (0 < etran.oldEtran.Heap.select(lk, "held"))) &&
+                   (new Boogie.MapSelect(etran.Heap, lk, "rdheld") ==@
+                    new Boogie.MapSelect(etran.oldEtran.Heap, lk, "rdheld"))) ||
           // It seems we should exclude newly-allocated objects from lockchange. Since Chalice does not have an "alloc" field,
           // we could use the "mu" field as an approximation, but that breaks the HandOverHand example. So we leave it for now.
-          // (Boogie.MapSelect(etran.oldEtran.Heap, lk, "mu") ==@ bLockBottom) || 
+          // (new Boogie.MapSelect(etran.oldEtran.Heap, lk, "mu") ==@ bLockBottom) ||
                   ((exceptions :\ b) ((e,ll) => ll || (lk ==@ e))))
   }
   def LockHavoc(locks: List[Boogie.Expr], etran: ExpressionTranslator) = {
@@ -1027,27 +1027,27 @@ class Translator {
     List.flatten (for (o <- locks) yield {  // todo: somewhere we should worry about Df(l)
       Havoc(held) :: Havoc(rdheld) ::
       bassume(rdheld ==> (0 < held)) ::
-      MapUpdate(etran.Heap, o, "held", held) ::
-      MapUpdate(etran.Heap, o, "rdheld", rdheld) })
+      new MapUpdate(etran.Heap, o, VarExpr("held"), held) ::
+      new MapUpdate(etran.Heap, o, VarExpr("rdheld"), rdheld) })
   }
   def NumberOfLocksHeldIsInvariant(oldLocks: List[Boogie.Expr], newLocks: List[Boogie.Expr],
                                    etran: ExpressionTranslator) = {
     List.flatten (for ((o,n) <- oldLocks zip newLocks) yield {
       // oo.held == nn.held && oo.rdheld == nn.rdheld
-      (((0 < Boogie.MapSelect(etran.oldEtran.Heap, o, "held")) ==@
-        (0 < Boogie.MapSelect(etran.Heap, n, "held"))) &&
-       (Boogie.MapSelect(etran.oldEtran.Heap, o, "rdheld") ==@
-        Boogie.MapSelect(etran.Heap, n, "rdheld"))) ::
+      (((0 < new Boogie.MapSelect(etran.oldEtran.Heap, o, "held")) ==@
+        (0 < new Boogie.MapSelect(etran.Heap, n, "held"))) &&
+       (new Boogie.MapSelect(etran.oldEtran.Heap, o, "rdheld") ==@
+        new Boogie.MapSelect(etran.Heap, n, "rdheld"))) ::
       // no.held == on.held && no.rdheld == on.rdheld
-      (((0 < Boogie.MapSelect(etran.Heap, o, "held")) ==@
-        (0 < Boogie.MapSelect(etran.oldEtran.Heap, n, "held"))) &&
-       (Boogie.MapSelect(etran.Heap, o, "rdheld") ==@
-        Boogie.MapSelect(etran.oldEtran.Heap, n, "rdheld"))) ::
+      (((0 < new Boogie.MapSelect(etran.Heap, o, "held")) ==@
+        (0 < new Boogie.MapSelect(etran.oldEtran.Heap, n, "held"))) &&
+       (new Boogie.MapSelect(etran.Heap, o, "rdheld") ==@
+        new Boogie.MapSelect(etran.oldEtran.Heap, n, "rdheld"))) ::
       // o == n || (oo.held != no.held && (!oo.rdheld || !no.rdheld))
       ((o ==@ n) ||
-       (((0 < Boogie.MapSelect(etran.oldEtran.Heap, o, "held")) !=@ (0 < Boogie.MapSelect(etran.Heap, o, "held"))) &&
-        ((! Boogie.MapSelect(etran.oldEtran.Heap, o, "rdheld")) ||
-         (! Boogie.MapSelect(etran.Heap, o, "rdheld"))))) ::
+       (((0 < new Boogie.MapSelect(etran.oldEtran.Heap, o, "held")) !=@ (0 < new Boogie.MapSelect(etran.Heap, o, "held"))) &&
+        ((! new Boogie.MapSelect(etran.oldEtran.Heap, o, "rdheld")) ||
+         (! new Boogie.MapSelect(etran.Heap, o, "rdheld"))))) ::
       Nil
     })
   }
@@ -1164,8 +1164,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         prove(nonNull(Tr(e)), e.pos, "Receiver might be null.") ::
         prove(CanRead(Tr(e), fs.f.FullName), fs.pos, "Location might not be readable.")
       case Full | Epsilon | Star => Nil
-      case Frac(perm) => isDefined(perm) ::: bassert(Boogie.IntLiteral(0)<=Tr(perm), perm.pos, "Fraction might be negative.") ::
-        /*TODO: is this guard necessary? (if(! e.isPredicate) (e denotes the object that has the field) */ bassert(Tr(perm) <= Boogie.IntLiteral(100), perm.pos, "Fraction might exceed 100.") :: Nil
+      case Frac(perm) => isDefined(perm) ::: bassert(Boogie.IntLiteral(0)<=Tr(perm), perm.pos, "Fraction might be negative.") :: Nil
       case Epsilons(p) => isDefined(p) ::: bassert(Boogie.IntLiteral(0)<=Tr(p), p.pos, "Number of epsilons might be negative.")
       case _:PermissionExpr => throw new Exception("permission expression unexpected here: " + e.pos)
       case c@Credit(e, n) =>
@@ -1388,7 +1387,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       Tr(e0) > Tr(e1)
     case LockBelow(e0,e1) => {
       def MuValue(b: Expression): Boogie.Expr =
-        if (b.typ.IsRef) Boogie.MapSelect(Heap, Tr(b), "mu") else Tr(b)
+        if (b.typ.IsRef) new Boogie.MapSelect(Heap, Tr(b), "mu") else Tr(b)
       (ShaveOffOld(e0), ShaveOffOld(e1)) match {
         case ((MaxLockLiteral(),o0), (MaxLockLiteral(),o1)) =>
           if (o0 == o1)
@@ -1524,12 +1523,13 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
 
       // List(bassert(nonNull(trE), acc.pos, "The target of the acc predicate might be null."))
-      (if(check) isDefined(e.e)(true) ::: isDefined(perm)(true) else Nil) :::        
+      (if(check) isDefined(e.e)(true) ::: isDefined(perm)(true) ::: (perm match {case Frac(p) if(! e.isPredicate) => bassert(Tr(p) <= 100, p.pos, "Fraction might exceed 100.") :: Nil; case _ => Nil})
+      else Nil) :::
       bassume(nonNull(trE)) ::
-      MapUpdate(Heap, trE, memberName, Boogie.MapSelect(ih, trE, memberName)) ::
+      new MapUpdate(Heap, trE, VarExpr(memberName), new Boogie.MapSelect(ih, trE, memberName)) ::
       bassume(wf(Heap, Mask)) ::
-      (if(e.isPredicate && e.predicate.Parent.module.equals(currentClass.module)) List(bassume(Boogie.MapSelect(ih, trE, memberName) ==@ Heap)) else Nil) :::
-      (if(e.isPredicate) Nil else List(bassume(TypeInformation(Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
+      (if(e.isPredicate && e.predicate.Parent.module.equals(currentClass.module)) List(bassume(new Boogie.MapSelect(ih, trE, memberName) ==@ Heap)) else Nil) :::
+      (if(e.isPredicate) Nil else List(bassume(TypeInformation(new Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
       (perm match {
         case Full => IncPermission(trE, memberName, 100)
         case Frac(perm) => IncPermission(trE, memberName, Tr(perm))
@@ -1538,9 +1538,48 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         case Star => IncPermissionEpsilon(trE, memberName, null)
       }) ::
       bassume(IsGoodMask(Mask)) ::
-      bassume(IsGoodState(Boogie.MapSelect(ih, trE, memberName))) ::
+      bassume(IsGoodState(new Boogie.MapSelect(ih, trE, memberName))) ::
       bassume(wf(Heap, Mask)) ::
-      bassume(wf(ih, Mask))     
+      bassume(wf(ih, Mask))
+    case acc @ AccessSeq(s, Some(_), perm) =>
+      if (acc.memberAccess.get.isPredicate) throw new Exception("not yet implemented");
+      val e = Tr(s);
+      val member = acc.memberAccess.get;
+      val memberName = member.f.FullName;
+      val (r, n) = perm match {
+        case Full => (100, 0) : (Expr, Expr)
+        case Frac(p) => (Tr(p), 0) : (Expr, Expr)
+        case Epsilon => (0, 1) : (Expr, Expr)        // TODO: check for infinity bounds -- or perhaps just wait till epsilons are gone
+        case Epsilons(p) => (0, Tr(p)) : (Expr, Expr)
+      };
+
+      (if (check) isDefined(s)(true) ::: isDefined(perm)(true) else Nil) :::
+      {
+        val (aV,a) = Boogie.NewTVar("alpha");
+        val (refV, ref) = Boogie.NewBVar("ref", tref, true);
+        val (fV, f) = Boogie.NewBVar("f", FieldType(a), true);
+        (Heap := Lambda(List(aV), List(refV, fV),
+          (FunctionApp("Seq#Contains", List(e, ref)) && f ==@ memberName).thenElse
+            (ih(ref, f), Heap(ref, f)))) ::
+        bassume((FunctionApp("Seq#Contains", List(e, ref)) ==> TypeInformation(Heap(ref, memberName), member.f.typ.typ)).forall(refV))
+      } :::
+      bassume(wf(Heap, Mask)) ::
+      {
+        val (aV,a) = Boogie.NewTVar("alpha");
+        val (refV, ref) = Boogie.NewBVar("ref", tref, true);
+        val (fV, f) = Boogie.NewBVar("f", FieldType(a), true);
+        val (pcV,pc) = Boogie.NewBVar("p", tperm, true);
+        Mask := Lambda(List(aV), List(refV, fV),
+          (FunctionApp("Seq#Contains", List(e, ref)) && f ==@ memberName).thenElse
+            (Lambda(List(), List(pcV),
+              Boogie.Ite(pc ==@ "perm$R",
+                Mask(ref, f)("perm$R") + r,
+                Mask(ref, f)("perm$N") + n)),
+            Mask(ref, f)))
+      } ::: 
+      bassume(IsGoodMask(Mask)) ::      
+      bassume(wf(Heap, Mask)) ::
+      bassume(wf(ih, Mask))          
     case cr@Credit(ch, n) =>
       val trCh = Tr(ch)
       (if (check)
@@ -1565,16 +1604,16 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
          bassert(nonNull(trE), holds.pos, "The target of the holds predicate might be null.")
        else Nil) :::
       bassume(IsGoodMask(Mask)) ::
-      bassume(IsGoodState(Boogie.MapSelect(ih, trE, "held"))) ::
+      bassume(IsGoodState(new Boogie.MapSelect(ih, trE, "held"))) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(ih, Mask)) ::
-      Boogie.MapUpdate(Heap, trE, "held",
-                      Boogie.MapSelect(ih, trE, "held")) ::
-      bassume(0 < Boogie.MapSelect(ih, trE, "held")) ::
-      bassume(! Boogie.MapSelect(ih, trE, "rdheld")) ::
+      new Boogie.MapUpdate(Heap, trE, VarExpr("held"),
+                      new Boogie.MapSelect(ih, trE, "held")) ::
+      bassume(0 < new Boogie.MapSelect(ih, trE, "held")) ::
+      bassume(! new Boogie.MapSelect(ih, trE, "rdheld")) ::
       bassume(wf(Heap, Mask)) ::
       bassume(IsGoodMask(Mask)) ::
-      bassume(IsGoodState(Boogie.MapSelect(ih, trE, "held"))) ::
+      bassume(IsGoodState(new Boogie.MapSelect(ih, trE, "held"))) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(ih, Mask))
     case Eval(h, e) => 
@@ -1630,11 +1669,13 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         Exhale(exhalee, em, eh, error, check) }
     case acc@Access(e,perm:Write) =>
       val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
+
       // look up the fraction
       val (fraction, checkFraction) = perm match {
         case Full => (IntLiteral(100), Nil)
         case Frac(fr) => (fr, bassert(0<=Tr(fr), fr.pos, "Fraction might be negative.") :: (if(! e.isPredicate) bassert(Tr(fr)<=100, fr.pos, "Fraction might exceed 100.") :: Nil else Nil) ::: Nil)
       }
+
       val (fractionV, frac) = NewBVar("fraction", tint, true);
       // check definedness
       (if(check) isDefined(e.e)(true) :::
@@ -1687,9 +1728,44 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
        else Nil) :::
       // check that the necessary permissions are there and remove them from the mask
       DecPermissionEpsilon(Tr(e.e), memberName, if(epsilons != null) eps else null, em, error, rd.pos) :::
+      bassume(IsGoodMask(Mask)) :: // TODO: is this necessary?
+      bassume(wf(Heap, Mask)) ::
+      bassume(wf(Heap, em))
+    case acc @ AccessSeq(s, Some(_), perm) =>
+      if (acc.memberAccess.get.isPredicate) throw new Exception("not yet implemented");
+      val e = Tr(s);
+      val member = acc.memberAccess.get;
+      val memberName = member.f.FullName;
+      val (r, n) = perm match {
+        case Full => (100, 0) : (Expr, Expr)
+        case Frac(p) => (p, 0) : (Expr, Expr)
+        case Epsilon => (0, 1) : (Expr, Expr)        // TODO: check for infinity bounds -- or perhaps just wait till epsilons are gone
+        case Epsilons(p) => (0, p) : (Expr, Expr)
+      };
+
+      (if (check) isDefined(s)(true) ::: isDefined(perm)(true) else Nil) :::
+      {
+        val (aV,a) = Boogie.NewTVar("alpha");
+        val (refV, ref) = Boogie.NewBVar("ref", tref, true);
+        val (fV, f) = Boogie.NewBVar("f", FieldType(a), true);
+        val (pcV,pc) = Boogie.NewBVar("p", tperm, true);
+        val mr = em(ref, memberName)("perm$R");
+        val mn = em(ref, memberName)("perm$N");
+
+        bassert((FunctionApp("Seq#Contains", List(e, ref)) ==>
+          perm match {
+            case _: Read => mr ==@ 0 ==> n <= mn
+            case _: Write => r <= mr && (r ==@ mr ==> 0 <= mn)
+          }).forall(refV), error.pos, error.message + " Insufficient permissions") ::
+        (em := Lambda(List(aV), List(refV, fV),
+          (FunctionApp("Seq#Contains", List(e, ref)) && f ==@ memberName).thenElse(
+            Lambda(List(), List(pcV), (pc ==@ "perm$R").thenElse(mr - r, mn - n)),
+            em(ref, f))))
+      } :::
       bassume(IsGoodMask(Mask)) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(Heap, em))
+
     case cr@Credit(ch, n) =>
       val trCh = Tr(ch)
       (if (check)
@@ -1710,8 +1786,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     case holds@Holds(e) => 
       (if(check) isDefined(e)(true) :::
       bassert(nonNull(Tr(e)), error.pos, error.message + " The target of the holds predicate at " + holds.pos + " might be null.") :: Nil else Nil) :::
-      bassert(0 < Boogie.MapSelect(Heap, Tr(e), "held"), error.pos, error.message + " The current thread might not hold lock at " + holds.pos + ".") ::
-      bassert(! Boogie.MapSelect(Heap, Tr(e), "rdheld"), error.pos, error.message + " The current thread might hold the read lock at " + holds.pos + ".") ::
+      bassert(0 < new Boogie.MapSelect(Heap, Tr(e), "held"), error.pos, error.message + " The current thread might not hold lock at " + holds.pos + ".") ::
+      bassert(! new Boogie.MapSelect(Heap, Tr(e), "rdheld"), error.pos, error.message + " The current thread might hold the read lock at " + holds.pos + ".") ::
       bassume(IsGoodMask(Mask)) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(Heap, em))
@@ -1770,12 +1846,12 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     (new Boogie.MapSelect(Mask, obj, field, "perm$R") ==@ Boogie.IntLiteral(0)) &&
     (new Boogie.MapSelect(Mask, obj, field, "perm$N") ==@ Boogie.IntLiteral(0))
   def SetNoPermission(obj: Boogie.Expr, field: String, mask: Boogie.Expr) =
-    Boogie.Assign(Boogie.MapSelect(mask, obj, field), Boogie.VarExpr("Permission$Zero"))
+    Boogie.Assign(new Boogie.MapSelect(mask, obj, field), Boogie.VarExpr("Permission$Zero"))
   def HasFullPermission(obj: Boogie.Expr, field: String, mask: Boogie.Expr) =
     (new Boogie.MapSelect(mask, obj, field, "perm$R") ==@ Boogie.IntLiteral(100)) &&
     (new Boogie.MapSelect(mask, obj, field, "perm$N") ==@ Boogie.IntLiteral(0))
   def SetFullPermission(obj: Boogie.Expr, field: String) =
-    Boogie.Assign(Boogie.MapSelect(Mask, obj, field), Boogie.VarExpr("Permission$Full"))
+    Boogie.Assign(new Boogie.MapSelect(Mask, obj, field), Boogie.VarExpr("Permission$Full"))
 
   def IncPermission(obj: Boogie.Expr, field: String, howMuch: Boogie.Expr) =
     MapUpdate3(Mask, obj, field, "perm$R", new Boogie.MapSelect(Mask, obj, field, "perm$R") + howMuch)
@@ -1818,7 +1894,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     // m[a,b,c] := rhs
     // m[a,b][c] := rhs
     // m[a,b] := map[a,b][c := rhs]
-    val m01 = Boogie.MapSelect(m, arg0, arg1)
+    val m01 = new Boogie.MapSelect(m, arg0, arg1)
     Boogie.Assign(m01, Boogie.MapStore(m01, arg2, rhs))
   }
 
@@ -1832,21 +1908,21 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     val (oV, o) = Boogie.NewBVar("o", tref, false)
     new Boogie.Forall(oV,
                       (contributesToWaitLevel(o, Heap, Credits)) ==>
-                      new Boogie.FunctionApp("MuBelow", Boogie.MapSelect(Heap, o, "mu"), x))
+                      new Boogie.FunctionApp("MuBelow", new Boogie.MapSelect(Heap, o, "mu"), x))
   }
   def MaxLockIsAboveX(x: Boogie.Expr) = {  // x << waitlevel
     val (oV, o) = Boogie.NewBVar("o", tref, false)
     new Boogie.Exists(oV,
                       (contributesToWaitLevel(o, Heap, Credits)) &&
-                      new Boogie.FunctionApp("MuBelow", x, Boogie.MapSelect(Heap, o, "mu")))
+                      new Boogie.FunctionApp("MuBelow", x, new Boogie.MapSelect(Heap, o, "mu")))
   }
   def IsHighestLock(x: Boogie.Expr) = {
     // (forall r :: r.held ==> r.mu << x || r.mu == x)
     val (rV, r) = Boogie.NewBVar("r", tref, false)
     new Boogie.Forall(rV,
                       contributesToWaitLevel(r, Heap, Credits) ==>
-                        (new Boogie.FunctionApp("MuBelow", MapSelect(Heap, r, "mu"), x) ||
-                        (Boogie.MapSelect(Heap, r, "mu") ==@ x)))
+                        (new Boogie.FunctionApp("MuBelow", new MapSelect(Heap, r, "mu"), x) ||
+                        (new Boogie.MapSelect(Heap, r, "mu") ==@ x)))
   }
   def MaxLockPreserved = {  // old(waitlevel) == waitlevel
     // I don't know what the best encoding of this conding is, so I'll try a disjunction.
@@ -1857,11 +1933,11 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     //     (Heap[r,held] ==> old(Heap)[r,mu] == Heap[r,mu]))
     val (rV, r) = Boogie.NewBVar("r", tref, false)
     val b0 = new Boogie.Forall(rV,
-                      ((0 < Boogie.MapSelect(oldEtran.Heap, r, "held")) ==@
-                       (0 < Boogie.MapSelect(Heap, r, "held"))) &&
-                      ((0 < Boogie.MapSelect(Heap, r, "held")) ==>
-                        (Boogie.MapSelect(oldEtran.Heap, r, "mu") ==@
-                         Boogie.MapSelect(Heap, r, "mu"))))
+                      ((0 < new Boogie.MapSelect(oldEtran.Heap, r, "held")) ==@
+                       (0 < new Boogie.MapSelect(Heap, r, "held"))) &&
+                      ((0 < new Boogie.MapSelect(Heap, r, "held")) ==>
+                        (new Boogie.MapSelect(oldEtran.Heap, r, "mu") ==@
+                         new Boogie.MapSelect(Heap, r, "mu"))))
 
     // (forall o, p ::
     //     old(o.held) && (forall r :: old(r.held) ==> old(r.mu) << old(o.mu) || old(r.mu)==old(o.mu)) &&
@@ -1871,12 +1947,12 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     val (oV, o) = Boogie.NewBVar("o", tref, false)
     val (pV, p) = Boogie.NewBVar("p", tref, false)
     val b1 = new Boogie.Forall(List(oV,pV), List(),
-                  ((0 < Boogie.MapSelect(oldEtran.Heap, o, "held")) &&
-                   oldEtran.IsHighestLock(Boogie.MapSelect(oldEtran.Heap, o, "mu")) &&
-                   (0 < Boogie.MapSelect(Heap, p, "held")) &&
-                   IsHighestLock(Boogie.MapSelect(Heap, p, "mu")))
+                  ((0 < new Boogie.MapSelect(oldEtran.Heap, o, "held")) &&
+                   oldEtran.IsHighestLock(new Boogie.MapSelect(oldEtran.Heap, o, "mu")) &&
+                   (0 < new Boogie.MapSelect(Heap, p, "held")) &&
+                   IsHighestLock(new Boogie.MapSelect(Heap, p, "mu")))
                   ==>
-                  (Boogie.MapSelect(oldEtran.Heap, o, "mu") ==@ Boogie.MapSelect(Heap, p, "mu")))
+                  (new Boogie.MapSelect(oldEtran.Heap, o, "mu") ==@ new Boogie.MapSelect(Heap, p, "mu")))
     b0 || b1
   }
   def TemporalMaxLockComparison(e0: ExpressionTranslator, e1: ExpressionTranslator) = {  // e0(waitlevel) << e1(waitlevel)
@@ -1885,8 +1961,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     //     (forall r :: e0(r.held) ==> e0(r.mu) << e1(o.mu)))
     val (oV, o) = Boogie.NewBVar("o", tref, false)
     new Boogie.Exists(oV,
-                      (0 < Boogie.MapSelect(e1.Heap, o, "held")) &&
-                      e0.MaxLockIsBelowX(Boogie.MapSelect(e1.Heap, o, "mu")))
+                      (0 < new Boogie.MapSelect(e1.Heap, o, "held")) &&
+                      e0.MaxLockIsBelowX(new Boogie.MapSelect(e1.Heap, o, "mu")))
   }
 
   def fractionOk(expr: Expression) = {
@@ -1966,6 +2042,7 @@ object TranslationHelper {
   def theap = NamedType("HeapType");
   def tmask = NamedType("MaskType");
   def tcredits = NamedType("CreditsType");
+  def tperm = NamedType("PermissionComponent");
   def ZeroMask = VarExpr("ZeroMask");
   def ZeroCredits = VarExpr("ZeroCredits");
   def HeapName = "Heap";
@@ -2076,7 +2153,7 @@ object TranslationHelper {
         Version(Access(pred, Full), etran)
       case acc@Access(e,perm) =>
         val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
-        Boogie.MapSelect(etran.Heap, etran.Tr(e.e), memberName)
+        new Boogie.MapSelect(etran.Heap, etran.Tr(e.e), memberName)
       case Implies(e0,e1) =>
         Boogie.Ite(etran.Tr(e0), Version(e1, etran), 0)
       case And(e0,e1) =>
