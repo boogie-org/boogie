@@ -77,10 +77,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\Binaries\Microsoft.Contracts.dll</HintPath>
     </Reference>
-    <Reference Include="Provers.Simplify, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Simplify\bin\debug\Provers.Simplify.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Compiler.Runtime, Version=1.0.21125.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -105,6 +101,12 @@
     <Compile Include="ProverInterface.cs" />
     <Compile Include="SMTLibLineariser.cs" />
     <Compile Include="TypeDeclCollector.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Simplify\Simplify.csproj">
+      <Project>{FEE9F01B-9722-4A76-A24B-72A4016DFA8E}</Project>
+      <Name>Simplify</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

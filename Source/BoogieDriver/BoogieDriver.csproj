@@ -113,8 +113,8 @@
       <Project>{435D5BD0-6F62-49F8-BB24-33E2257519AD}</Project>
       <Name>Isabelle</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Provers\Simplify\Simplify.sscproj">
-      <Project>{F75666DE-FB56-457C-8782-09BE243450FC}</Project>
+    <ProjectReference Include="..\Provers\Simplify\Simplify.csproj">
+      <Project>{FEE9F01B-9722-4A76-A24B-72A4016DFA8E}</Project>
       <Name>Simplify</Name>
     </ProjectReference>
     <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj">

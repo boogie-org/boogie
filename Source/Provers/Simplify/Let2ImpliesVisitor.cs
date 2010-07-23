@@ -7,7 +7,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.Simplify
@@ -21,11 +21,14 @@ namespace Microsoft.Boogie.Simplify
 
   public class Let2ImpliesMutator : SubstitutingVCExprVisitor {
 
-    public Let2ImpliesMutator(VCExpressionGenerator! gen) {
-      this(gen, false, false);
+    public Let2ImpliesMutator(VCExpressionGenerator gen) :base(gen) {
+     Contract.Requires(gen!=null);
+     this.keepLetFormula = this.keepLetTerm = false;
     }
-    public Let2ImpliesMutator(VCExpressionGenerator! gen, bool keepLetTerm, bool keepLetFormula) {
-      base(gen);
+
+    public Let2ImpliesMutator(VCExpressionGenerator gen, bool keepLetTerm, bool keepLetFormula):base(gen) {
+      Contract.Requires(gen!=null);
+      
       this.keepLetTerm = keepLetTerm;
       this.keepLetFormula = keepLetFormula;
     }
@@ -33,7 +36,10 @@ namespace Microsoft.Boogie.Simplify
     readonly bool keepLetTerm;
     readonly bool keepLetFormula;
 
-    public VCExpr! Mutate(VCExpr! expr) {
+    public VCExpr Mutate(VCExpr expr) {
+      Contract.Requires(expr != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
       return Mutate(expr, new VCExprSubstitution ());
     }
 
@@ -69,14 +75,24 @@ namespace Microsoft.Boogie.Simplify
       }
     }
 
-    private IDictionary<VCExprVar!, OccurrenceTypes>! VarOccurrences =
-      new Dictionary<VCExprVar!, OccurrenceTypes>();
+    private IDictionary<VCExprVar/*!*/, OccurrenceTypes>/*!*/ VarOccurrences =
+      new Dictionary<VCExprVar/*!*/, OccurrenceTypes>();
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(cce.NonNullElements(VarOccurrences));
+}
 
     ////////////////////////////////////////////////////////////////////////////
 
-    public override VCExpr! Visit(VCExprVar! node,
-                                  VCExprSubstitution! substitution) {
-      VCExpr! res = base.Visit(node, substitution);
+    public override VCExpr Visit(VCExprVar node,
+                                  VCExprSubstitution substitution) {
+      Contract.Requires(node!= null);
+      Contract.Requires(substitution != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+      VCExpr res = base.Visit(node, substitution);
+      Contract.Assert(res!=null);
 
       VCExprVar resAsVar = res as VCExprVar;
       if (resAsVar != null) {
@@ -97,23 +113,29 @@ namespace Microsoft.Boogie.Simplify
       return res;
     }
 
-    public override VCExpr! Visit(VCExprNAry! node,
-                                  VCExprSubstitution! substitution) {
+    public override VCExpr Visit(VCExprNAry node,
+                                  VCExprSubstitution substitution) {
+      Contract.Requires(node != null);
+      Contract.Requires(substitution != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
       // track the polarity to ensure that no implications are introduced
       // in negative positions
       // UGLY: the code for tracking polarities should be factored out
       // (similar code is used in the TypeEraser)
 
-      VCExpr! res;
+      VCExpr res;
       if (node.Op.Equals(VCExpressionGenerator.NotOp)) {
         polarity = -polarity;
         res = base.Visit(node, substitution);
         polarity = -polarity;
       } else if (node.Op.Equals(VCExpressionGenerator.ImpliesOp)) {
         polarity = -polarity;
-        VCExpr! newArg0 = Mutate(node[0], substitution);
+        VCExpr newArg0 = Mutate(node[0], substitution);
+        Contract.Assert(newArg0 != null);
         polarity = -polarity;
-        VCExpr! newArg1 = Mutate(node[1], substitution);
+        VCExpr newArg1 = Mutate(node[1], substitution);
+        Contract.Assert(newArg1 != null);
 
         res = Gen.Implies(newArg0, newArg1);
       } else if (!node.Op.Equals(VCExpressionGenerator.AndOp) &&
@@ -131,11 +153,17 @@ namespace Microsoft.Boogie.Simplify
       return res;
     }
 
-    public override VCExpr! Visit(VCExprLet! originalNode,
-                                  VCExprSubstitution! substitution) {
+    public override VCExpr Visit(VCExprLet originalNode,
+                                  VCExprSubstitution substitution) {
+      Contract.Requires(originalNode != null);
+      Contract.Requires(substitution != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
       // first sort the bindings to be able to apply substitutions
-      LetBindingSorter! letSorter = new LetBindingSorter (Gen);
-      VCExpr! newNode = letSorter.Mutate(originalNode, true);
+      LetBindingSorter letSorter = new LetBindingSorter (Gen);
+      Contract.Assert(letSorter != null);
+      VCExpr newNode = letSorter.Mutate(originalNode, true);
+      Contract.Assert(newNode != null);
       VCExprLet node = newNode as VCExprLet;
 
       if (node == null)
@@ -146,24 +174,26 @@ namespace Microsoft.Boogie.Simplify
       substitution.PushScope(); try {
 
       // the bindings that remain and that are later handled using an implication
-      List<VCExprLetBinding!> bindings = new List<VCExprLetBinding!> ();
-      List<VCExprLetBinding!> keepBindings = new List<VCExprLetBinding!> ();
+      List<VCExprLetBinding> bindings = new List<VCExprLetBinding> ();
+      List<VCExprLetBinding> keepBindings = new List<VCExprLetBinding> ();
 
-      foreach (VCExprLetBinding! binding in node) {
+      foreach (VCExprLetBinding binding in node) {
+        Contract.Assert(binding != null);
         // in all cases we apply the substitution up to this point
         // to the bound formula
-        VCExpr! newE = Mutate(binding.E, substitution);
-
+        VCExpr newE = Mutate(binding.E, substitution);
+        Contract.Assert(newE != null);
         if (binding.V.Type.IsBool) {
           // a bound formula is handled using an implication; we introduce
           // a fresh variable to avoid clashes
-          assert polarity > 0;
+          Contract.Assert( polarity > 0);
           
           if (keepLetFormula) {
             keepBindings.Add(Gen.LetBinding(binding.V, newE));
             
           } else {
-            VCExprVar! newVar = Gen.Variable(binding.V.Name, Type.Bool);
+            VCExprVar newVar = Gen.Variable(binding.V.Name, Type.Bool);
+            Contract.Assert(newVar != null);
             substitution[binding.V] = newVar;
 
             bindings.Add(Gen.LetBinding(newVar, newE));
@@ -178,7 +208,8 @@ namespace Microsoft.Boogie.Simplify
         }
       }
 
-      VCExpr! newBody = Mutate(node.Body, substitution);
+      VCExpr newBody = Mutate(node.Body, substitution);
+        Contract.Assert(newBody != null);
       if (keepBindings.Count > 0) {
         newBody = Gen.Let(keepBindings, newBody);
       }
@@ -187,10 +218,11 @@ namespace Microsoft.Boogie.Simplify
       // have to introduce implications or equations to define the
       // bound variables. For the time being, we just assert that all
       // occurrences are positive
-      foreach (VCExprLetBinding! b in bindings) {
+      foreach (VCExprLetBinding b in bindings) {
+        Contract.Assert(b != null);
         OccurrenceTypes occ;
         if (VarOccurrences.TryGetValue(b.V, out occ))
-          assert occ == OccurrenceTypes.None || occ == OccurrenceTypes.Pos;
+          Contract.Assert( occ == OccurrenceTypes.None || occ == OccurrenceTypes.Pos);
       }
 
       return Gen.ImpliesSimp(Gen.AsImplications(bindings), newBody);
