@@ -55,7 +55,7 @@ namespace Microsoft.Boogie {
       public override Program! VisitProgram(Program! prog)
       {
         foreach (Declaration! decl in prog.TopLevelDeclarations) {
-          if (decl is Axiom) {
+          if (decl is Axiom || decl is Function) {
             this.Visit(decl);
           }
         }
