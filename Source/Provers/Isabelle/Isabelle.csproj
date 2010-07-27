@@ -63,34 +63,36 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AIFramework, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\AIFramework\bin\debug\AIFramework.dll</HintPath>
-    </Reference>
-    <Reference Include="Basetypes, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Basetypes\bin\debug\Basetypes.dll</HintPath>
-    </Reference>
-    <Reference Include="Core, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Core\bin\Debug\Core.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="VCExpr, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\VCExpr\bin\debug\VCExpr.dll</HintPath>
-    </Reference>
-    <Reference Include="VCGeneration, Version=2.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\VCGeneration\bin\debug\VCGeneration.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Prover.cs" />
     <Compile Include="version.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\AIFramework\AIFramework.sscproj">
+      <Project>{24B55172-AD8B-47D1-8952-5A95CFDB9B31}</Project>
+      <Name>AIFramework</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Basetypes\Basetypes.sscproj">
+      <Project>{0C692837-77EC-415F-BF04-395E3ED06E9A}</Project>
+      <Name>Basetypes</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Core\Core.sscproj">
+      <Project>{47BC34F1-A173-40BE-84C2-9332B4418387}</Project>
+      <Name>Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\VCExpr\VCExpr.sscproj">
+      <Project>{CF42B700-10AA-4DA9-8992-48A800251C11}</Project>
+      <Name>VCExpr</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\VCGeneration\VCGeneration.csproj">
+      <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
+      <Name>VCGeneration</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
