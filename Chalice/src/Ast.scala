@@ -277,9 +277,7 @@ case class Access(e: MemberAccess, perm: Permission) extends PermissionExpr(perm
   def getMemberAccess = e : MemberAccess;
 }
 case class AccessAll(obj: Expression, perm: Permission) extends WildCardPermission(perm)
-case class AccessSeq(s: Expression, f: Option[String], perm: Permission) extends WildCardPermission(perm) {
-  var memberAccess: Option[MemberAccess] = None; // resolved (for s[0] to make type checker happy) -- f == Nil is all fields
-}
+case class AccessSeq(s: Expression, f: Option[MemberAccess], perm: Permission) extends WildCardPermission(perm)
 
 case class Credit(e: Expression, n: Option[Expression]) extends Expression {
   def N = n match { case None => IntLiteral(1) case Some(n) => n }

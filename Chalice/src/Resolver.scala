@@ -652,10 +652,7 @@ object Resolver {
      ResolveExpr(perm, context, twoStateContext, false);
      f match {
        case Some(x) =>
-         var ma = MemberAccess(At(s, IntLiteral(0)), x);
-         ma.pos = expr.pos;
-         ResolveExpr(ma, context, twoStateContext, true);
-         expr.memberAccess = Some(ma);
+         ResolveExpr(x, context, twoStateContext, true);
        case _ => }
      expr.typ = BoolClass
    case expr@ Credit(e,n) =>
@@ -767,7 +764,7 @@ object Resolver {
      ResolveExpr(e0, context, twoStateContext, false);
      ResolveExpr(e1, context, twoStateContext, false);
      if(! e1.typ.IsSeq) context.Error(contains.pos, "RHS operand of 'in' must be sequence. (found: " + e1.typ.FullName + ").");
-     if(e0.typ ne e1.typ.parameters(0)) context.Error(contains.pos, "LHS operand's type must be element type of sequence. (found: " + e0.typ.FullName + ", expected: " + e1.typ.parameters(0).FullName + ").");
+     else if(e0.typ ne e1.typ.parameters(0)) context.Error(contains.pos, "LHS operand's type must be element type of sequence. (found: " + e0.typ.FullName + ", expected: " + e1.typ.parameters(0).FullName + ").");
      contains.typ = BoolClass;
    case bin: BinaryExpr =>
      ResolveExpr(bin.E0, context, twoStateContext, specContext && bin.isInstanceOf[And])

@@ -19,7 +19,7 @@ object PrintProgram {
     case MonitorInvariant(e) =>
       print("  invariant "); Expr(e); println(Semi)
     case f@ Field(id, t) =>
-      println("  " + (if (f.IsGhost) "ghost " else "") + "var " + id + ": " + t.id + Semi)
+      println("  " + (if (f.IsGhost) "ghost " else "") + "var " + id + ": " + t.FullName + Semi)
     case m: Method =>
       print("  method " + m.id)
       print("("); VarList(m.ins); print(")")
@@ -87,7 +87,7 @@ object PrintProgram {
     case LocalVar(id,t,c,g,rhs) =>
       if (g) print("ghost ")
       if (c) print("const ") else print("var ")
-      print(id + ": " + t.id)
+      print(id + ": " + t.FullName)
       rhs match { case None => case Some(rhs) => print(" := "); Rhs(rhs) }
       println(Semi)
     case Call(_, outs, obj, id, args) =>
@@ -176,8 +176,8 @@ object PrintProgram {
   def VarList(vv: List[Variable]) = vv match {
     case Nil =>
     case v :: rest =>
-      print(v.id + ": " + v.t.id)
-      rest foreach { v  => print(", " + v.id + ": " + v.t.id) }
+      print(v.id + ": " + v.t.FullName)
+      rest foreach { v  => print(", " + v.id + ": " + v.t.FullName) }
   }
   def ExprList(ee: List[Expression]) = ee match {
     case Nil =>

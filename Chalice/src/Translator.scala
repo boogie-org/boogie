@@ -1515,7 +1515,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     case AccessSeq(s, None, perm) =>
       s.typ.parameters(0).Fields flatMap { f =>
         val ma = MemberAccess(At(s, IntLiteral(0)), f.id); ma.f = f; ma.pos = p.pos;
-        val inhalee = AccessSeq(s, Some(f.id), perm); inhalee.memberAccess = Some(ma); inhalee.pos = p.pos;
+        val inhalee = AccessSeq(s, Some(ma), perm); inhalee.pos = p.pos;
         Inhale(inhalee, ih, check) }
     case acc@Access(e,perm) =>
       val trE = Tr(e.e)
@@ -1541,10 +1541,9 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       bassume(IsGoodState(new Boogie.MapSelect(ih, trE, memberName))) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(ih, Mask))
-    case acc @ AccessSeq(s, Some(_), perm) =>
-      if (acc.memberAccess.get.isPredicate) throw new Exception("not yet implemented");
+    case acc @ AccessSeq(s, Some(member), perm) =>
+      if (member.isPredicate) throw new Exception("not yet implemented");
       val e = Tr(s);
-      val member = acc.memberAccess.get;
       val memberName = member.f.FullName;
       val (r, n) = perm match {
         case Full => (100, 0) : (Expr, Expr)
@@ -1665,7 +1664,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     case AccessSeq(s, None, perm) =>
       s.typ.parameters(0).Fields flatMap { f =>
         val ma = MemberAccess(At(s, IntLiteral(0)), f.id); ma.f = f; ma.pos = p.pos;
-        val exhalee = AccessSeq(s, Some(f.id), perm); exhalee.memberAccess = Some(ma); exhalee.pos = p.pos;
+        val exhalee = AccessSeq(s, Some(ma), perm); exhalee.pos = p.pos;
         Exhale(exhalee, em, eh, error, check) }
     case acc@Access(e,perm:Write) =>
       val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
@@ -1731,10 +1730,9 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       bassume(IsGoodMask(Mask)) :: // TODO: is this necessary?
       bassume(wf(Heap, Mask)) ::
       bassume(wf(Heap, em))
-    case acc @ AccessSeq(s, Some(_), perm) =>
-      if (acc.memberAccess.get.isPredicate) throw new Exception("not yet implemented");
+    case acc @ AccessSeq(s, Some(member), perm) =>
+      if (member.isPredicate) throw new Exception("not yet implemented");
       val e = Tr(s);
-      val member = acc.memberAccess.get;
       val memberName = member.f.FullName;
       val (r, n) = perm match {
         case Full => (100, 0) : (Expr, Expr)
@@ -2345,7 +2343,7 @@ object TranslationHelper {
           // TODO: this will update the value of x's position many times -- better than none
           for ((v,x) <- sub if v == e.v) { x.pos = v.pos; x.typ = e.typ; return x }
           e
-        case q : Quantification =>
+        case q: Quantification =>
           // would be better if this is a part of manipulate method
           val newSub = sub filter { xv => q.Is forall { variable => ! variable.id.equals(xv._1)}};
           val result = q match {
@@ -2396,7 +2394,8 @@ object TranslationHelper {
       case Epsilons(perm) => Epsilons(func(perm))
       case Access(e, perm) => Access(func(e).asInstanceOf[MemberAccess], manipulate(perm, func).asInstanceOf[Permission]);
       case AccessAll(obj, perm) => AccessAll(func(obj), manipulate(perm, func).asInstanceOf[Permission]);
-      case AccessSeq(s, f, perm) => AccessSeq(func(s), f, manipulate(perm, func).asInstanceOf[Permission]);
+      case AccessSeq(s, None, perm) => AccessSeq(func(s), None, manipulate(perm, func).asInstanceOf[Permission])
+      case AccessSeq(s, Some(f), perm) => AccessSeq(func(s), Some(func(f).asInstanceOf[MemberAccess]), manipulate(perm, func).asInstanceOf[Permission])
       case Credit(e, None) => Credit(func(e), None)
       case Credit(e, Some(n)) => Credit(func(e), Some(func(n)))
       case Holds(e) => Holds(func(e))

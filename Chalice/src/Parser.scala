@@ -100,14 +100,17 @@ class Parser extends StandardTokenParsers {
       case None => Nil
       case Some(ids) => ids }
   def formalList(immutable: Boolean) = {
-    def MVar(id: String, t: Type) = {
-      currentLocalVariables = currentLocalVariables + id
-      if (immutable) new ImmutableVariable(id,t) else new Variable(id,t)
-    }
-    ( idType ^^ { case (id,t) => MVar(id,t)} ) ~
-    (("," ~> idType ^^ { case (id,t) => MVar(id,t)} ) *) ^^ {
-      case e ~ ee => e::ee }
+    repsep(formal(immutable), ",")
   }
+  def formal(immutable: Boolean): Parser[Variable] =
+    idType ^^ {case (id,t) =>
+      currentLocalVariables = currentLocalVariables + id;
+      if (immutable)
+        new ImmutableVariable(id,t)
+      else
+        new Variable(id,t) 
+    }
+
   def methodSpec =
     positioned( "requires" ~> expression <~ Semi ^^ Precondition
     | "ensures" ~> expression <~ Semi ^^ Postcondition
@@ -446,7 +449,7 @@ class Parser extends StandardTokenParsers {
       ) ^^ {
         case MemberAccess(obj, "*") ~ p => AccessAll(obj, p);
         case MemberAccess(obj, "[*].*") ~ p => AccessSeq(obj, None, p);
-        case MemberAccess(MemberAccess(obj, "[*]"), f) ~ p => AccessSeq(obj, Some(f), p);
+        case MemberAccess(MemberAccess(obj, "[*]"), f) ~ p => AccessSeq(obj, Some(MemberAccess(At(obj, IntLiteral(0)), f)), p);
         case e ~ p => Access(e, p)
       }
     | "acc" ~> "(" ~>
@@ -455,7 +458,7 @@ class Parser extends StandardTokenParsers {
       ) ^^ {
         case MemberAccess(obj, "*") ~ p => AccessAll(obj, p);
         case MemberAccess(obj, "[*].*") ~ p => AccessSeq(obj, None, p);
-        case MemberAccess(MemberAccess(obj, "[*]"), f) ~ p => AccessSeq(obj, Some(f), p);
+        case MemberAccess(MemberAccess(obj, "[*]"), f) ~ p => AccessSeq(obj, Some(MemberAccess(At(obj, IntLiteral(0)), f)), p);
         case e ~ p => Access(e, p)
       }
     | "credit" ~> "(" ~> expression ~ ("," ~> expression ?) <~ ")" ^^ {
