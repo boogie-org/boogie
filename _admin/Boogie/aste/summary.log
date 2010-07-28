@@ -1,94 +1,41 @@
-# Aste started: 2010-07-24 07:00:06
+# Aste started: 2010-07-28 07:00:02
 # Host id: Boogiebox
-# [2010-07-24 07:02:13] SpecSharp revision: 55320
-# [2010-07-24 07:03:07] Boogie revision: 55501
-# [2010-07-24 07:03:33] SscBoogie revision: 55325
-[2010-07-24 07:03:58] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-07-28 07:01:43] SpecSharp revision: 55320
+# [2010-07-28 07:02:34] Boogie revision: 55730
+# [2010-07-28 07:02:56] SscBoogie revision: 55325
+[2010-07-28 07:03:20] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-07-24 07:05:34] [Error] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-07-28 07:04:58] [Error] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "VCGeneration". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "Core". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "VCExpr". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "Basetypes". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "AIFramework". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "Graph". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(11,24): error CS0234: The type or namespace name 'VCExprAST' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(22,37): error CS0246: The type or namespace name 'SubstitutingVCExprVisitor' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(14,24): error CS0234: The type or namespace name 'AbstractInterpretation' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(16,24): error CS0234: The type or namespace name 'VCExprAST' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(17,24): error CS0234: The type or namespace name 'TypeErasure' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(20,46): error CS0246: The type or namespace name 'ProverInterface' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(634,49): error CS0246: The type or namespace name 'VCExprTranslator' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(814,26): error CS0246: The type or namespace name 'ProverFactory' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(24,31): error CS0246: The type or namespace name 'VCExpressionGenerator' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(29,31): error CS0246: The type or namespace name 'VCExpressionGenerator' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(39,26): error CS0246: The type or namespace name 'VCExpr' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(39,12): error CS0246: The type or namespace name 'VCExpr' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(78,25): error CS0246: The type or namespace name 'VCExprVar' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(88,34): error CS0246: The type or namespace name 'VCExprVar' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(89,35): error CS0246: The type or namespace name 'VCExprSubstitution' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(88,21): error CS0246: The type or namespace name 'VCExpr' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(116,34): error CS0246: The type or namespace name 'VCExprNAry' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(117,35): error CS0246: The type or namespace name 'VCExprSubstitution' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(116,21): error CS0246: The type or namespace name 'VCExpr' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(156,34): error CS0246: The type or namespace name 'VCExprLet' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(157,35): error CS0246: The type or namespace name 'VCExprSubstitution' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(156,21): error CS0246: The type or namespace name 'VCExpr' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs(26,38): error CS0246: The type or namespace name 'VariableSeq' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(206,65): error CS0234: The type or namespace name 'ProverInterface' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(521,65): error CS0234: The type or namespace name 'ProverInterface' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(603,50): error CS0234: The type or namespace name 'ProverInterface' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(22,34): error CS0246: The type or namespace name 'ProverOptions' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(25,9): error CS0246: The type or namespace name 'VCExpressionGenerator' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(54,24): error CS0246: The type or namespace name 'VCExpressionGenerator' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(66,24): error CS0246: The type or namespace name 'ProverOptions' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(158,21): error CS0246: The type or namespace name 'VCExpressionGenerator' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(181,68): error CS0246: The type or namespace name 'ProverOptions' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(291,15): error CS0246: The type or namespace name 'DeclFreeProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(296,33): error CS0246: The type or namespace name 'ProverOptions' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(296,56): error CS0246: The type or namespace name 'VCExpressionGenerator' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(296,83): error CS0246: The type or namespace name 'DeclFreeProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(328,43): error CS0246: The type or namespace name 'VCExpr' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(333,49): error CS0246: The type or namespace name 'VCExpr' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(382,13): error CS0246: The type or namespace name 'UnexpectedProverOutputException' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(384,61): error CS0246: The type or namespace name 'VCExpr' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(384,72): error CS0246: The type or namespace name 'ErrorHandler' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(426,42): error CS0246: The type or namespace name 'ErrorHandler' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(426,21): error CS0246: The type or namespace name 'Outcome' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(582,21): error CS0246: The type or namespace name 'ProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(591,68): error CS0246: The type or namespace name 'ProverOptions' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(603,42): error CS0246: The type or namespace name 'ProverOptions' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(603,65): error CS0246: The type or namespace name 'VCExpressionGenerator' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(603,92): error CS0246: The type or namespace name 'DeclFreeProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(610,34): error CS0246: The type or namespace name 'ProverOptions' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(610,57): error CS0246: The type or namespace name 'VCExpressionGenerator' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(610,84): error CS0246: The type or namespace name 'DeclFreeProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(622,68): error CS0246: The type or namespace name 'ProverOptions' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(710,37): error CS0246: The type or namespace name 'VCExpressionGenerator' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(743,22): error CS0246: The type or namespace name 'VCExpressionGenerator' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(744,22): error CS0246: The type or namespace name 'TypeAxiomBuilder' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(745,22): error CS0246: The type or namespace name 'UniqueNamer' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(746,22): error CS0246: The type or namespace name 'BigLiteralAbstracter' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(756,35): error CS0246: The type or namespace name 'VCExprVar' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(763,38): error CS0246: The type or namespace name 'VCExpr' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(815,40): error CS0246: The type or namespace name 'ProverOptions' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(825,45): error CS0246: The type or namespace name 'ProverOptions' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(842,21): error CS0246: The type or namespace name 'CommandLineOptions' could not be found (are you missing a using directive or an assembly reference?)
     error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Debug\Provers.Simplify.dll' could not be found
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "Provers.Simplify". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    D:\Temp\aste\Boogie\Source\Provers\Z3\Inspector.cs(14,24): error CS0234: The type or namespace name 'Simplify' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(15,24): error CS0234: The type or namespace name 'Simplify' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(21,36): error CS0246: The type or namespace name 'ProverProcess' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3\ProverInterface.cs(21,24): error CS0234: The type or namespace name 'Simplify' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3\ProverInterface.cs(25,41): error CS0246: The type or namespace name 'ProcessTheoremProver' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3\ProverInterface.cs(229,37): error CS0246: The type or namespace name 'AxiomVCExprTranslator' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(375,21): error CS0246: The type or namespace name 'ProverOutcome' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3\ProverInterface.cs(55,41): error CS0234: The type or namespace name 'Simplify' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3\ProverInterface.cs(68,24): error CS0246: The type or namespace name 'AxiomVCExprTranslator' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3\ProverInterface.cs(75,72): error CS0246: The type or namespace name 'ErrorHandler' could not be found (are you missing a using directive or an assembly reference?)
+    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Debug\Provers.Simplify.dll' could not be found
+    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(124,36): error CS0246: The type or namespace name 'ProverInterface' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(176,34): error CS0246: The type or namespace name 'DeclFreeProverContext' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(138,30): error CS0246: The type or namespace name 'ProverContext' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(142,21): error CS0246: The type or namespace name 'ProverContext' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(155,61): error CS0246: The type or namespace name 'ErrorHandler' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(170,42): error CS0246: The type or namespace name 'ErrorHandler' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(170,21): error CS0246: The type or namespace name 'Outcome' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(306,9): error CS0246: The type or namespace name 'ProverInterface' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(323,13): error CS0246: The type or namespace name 'ProverInterface' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(324,12): error CS0246: The type or namespace name 'ProverInterface' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(421,33): error CS0246: The type or namespace name 'ProverInterface' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(308,7): warning CS0162: Unreachable code detected
@@ -97,12 +44,14 @@
     D:\Temp\aste\Boogie\Source\AbsInt\LoopInvariantsOnDemand.cs(74,7): warning CC1032: Method 'Microsoft.Boogie.AbstractInterpretation.FreeVariablesVisitor.VisitFunction(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunction)' overrides 'Microsoft.AbstractInterpretationFramework.ExprVisitor.VisitFunction(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunction)', thus cannot add Requires.
     error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Z3\bin\Debug\Provers.Z3.dll' could not be found
     error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\bin\Debug\Provers.SMTLib.dll' could not be found
+    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Isabelle\bin\Debug\Provers.Isabelle.dll' could not be found
     error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Debug\Provers.Simplify.dll' could not be found
     warning CS0162
     warning CS0162
     warning CS0162
-    62 error
+    14 error
     1 error
-    10 error
-    3 error
-    4 failed
+    1 error
+    11 error
+    4 error
+    5 failed
