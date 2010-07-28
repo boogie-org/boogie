@@ -89,8 +89,8 @@
       <Project>{CF42B700-10AA-4DA9-8992-48A800251C11}</Project>
       <Name>VCExpr</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\VCGeneration\VCGeneration.csproj">
-      <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
+    <ProjectReference Include="..\..\VCGeneration\VCGeneration.sscproj">
+      <Project>{F65666DE-FB56-457C-8782-09BE243450FC}</Project>
       <Name>VCGeneration</Name>
     </ProjectReference>
   </ItemGroup>
