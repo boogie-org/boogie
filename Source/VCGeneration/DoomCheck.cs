@@ -18,7 +18,7 @@ using System.IO;
 using Microsoft.Boogie;
 using Graphing;
 using AI = Microsoft.AbstractInterpretationFramework;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;
 
@@ -32,25 +32,35 @@ namespace VC
             }
         }
         
-        private Checker! m_Checker;
+      [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(m_Checker!=null);
+}
+
+        private Checker m_Checker;
         private DoomErrorHandler m_ErrorHandler;                        
         
         [NotDelayed]
-        public Evc(Checker! check) {
+        public Evc(Checker check) {
+          Contract.Requires(check != null);
             m_Checker = check;     
-            base();       
+                   
         }
         
-        public void Initialize(VCExpr! evc) {
+        public void Initialize(VCExpr evc) {
+          Contract.Requires(evc != null);
             m_Checker.PushVCExpr(evc);
         }
         
     
-        public bool CheckReachvar(Variable! reachvar, out ProverInterface.Outcome outcome) {
-            VCExpr! vc = m_Checker.TheoremProver.Context.BoogieExprTranslator.LookupVariable(reachvar);
+        public bool CheckReachvar(Variable reachvar, out ProverInterface.Outcome outcome) {
+          Contract.Requires(reachvar != null);
+            VCExpr vc = m_Checker.TheoremProver.Context.BoogieExprTranslator.LookupVariable(reachvar);
+          Contract.Assert(vc != null);
             // Todo: Check if vc is trivial true or false            
             outcome = ProverInterface.Outcome.Undetermined;
-            assert m_ErrorHandler !=null;
+            Contract.Assert( m_ErrorHandler !=null);
             m_Checker.BeginCheck(reachvar.Name, vc, m_ErrorHandler);            
             m_Checker.ProverDone.WaitOne();
             
@@ -70,8 +80,17 @@ namespace VC
 
     internal class DoomCheck {
         
+      [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(Label2Absy!=null);
+    Contract.Invariant(m_Check != null);
+        Contract.Invariant(m_Evc != null);
+        Contract.Invariant(m_Order != null);
+}
+
         #region Attributes
-        public Hashtable! Label2Absy;
+        public Hashtable Label2Absy;
         public DoomErrorHandler ErrorHandler {
             set {
                 m_ErrHandler = value;
@@ -84,25 +103,27 @@ namespace VC
         }
         
         private DoomErrorHandler m_ErrHandler;                      
-        private Checker! m_Check;        
-        private InclusionOrder! m_Order; 
-        private Evc! m_Evc;       
+        private Checker m_Check;        
+        private InclusionOrder m_Order; 
+        private Evc m_Evc;       
         #endregion
         
         [NotDelayed]
-        public DoomCheck (Implementation! passive_impl, Checker! check) {            
+        public DoomCheck (Implementation passive_impl, Checker check) {
+          Contract.Requires(passive_impl != null);
+          Contract.Requires(check != null);
             m_Check = check;          
             if (!VC.DCGen.UseItAsDebugger ) {  
                 m_Order = new InclusionOrder(passive_impl.Blocks[0]);
             } else {
-                m_Order = new InclusionOrder((!)VC.DCGen.firstNonDebugBlock );
+                m_Order = new InclusionOrder(cce.NonNull(VC.DCGen.firstNonDebugBlock) );
             }
             Label2Absy = new Hashtable(); // This is only a dummy
             m_Evc = new Evc(check);
-            base();
             Hashtable l2a = null;
-            VCExpr! vce = this.GenerateEVC(passive_impl, out l2a, check);
-            assert l2a!=null;
+            VCExpr vce = this.GenerateEVC(passive_impl, out l2a, check);
+          Contract.Assert(vce != null);
+            Contract.Assert( l2a!=null);
             Label2Absy = l2a;
 //            vce = check.VCExprGen.Implies(vce, vce);
             m_Evc.Initialize(vce);            
@@ -120,8 +141,8 @@ namespace VC
             - outcome is set to Outcome.Invalid if the Block denoted by reachvar is doomed.            
             - returns false if the theorem prover throws an exception, otherwise true.            
         */
-        public bool CheckLabel(Variable! reachvar, out ProverInterface.Outcome outcome) {
-           
+        public bool CheckLabel(Variable reachvar, out ProverInterface.Outcome outcome) {
+           Contract.Requires(reachvar != null);
             outcome = ProverInterface.Outcome.Undetermined;
             if (m_Evc.CheckReachvar(reachvar, out outcome) ) {
                 if (!m_Order.SetCurrentResult(reachvar, outcome, m_ErrHandler)) {
@@ -134,8 +155,10 @@ namespace VC
             }
         }
 
-        public List<List<Block!>!>! DoomedSequences { 
+        public List<List<Block/*!>!>!*/>> DoomedSequences { 
             get {
+              Contract.Ensures(Contract.ForAll(Contract.Result<List<List<Block>>>(), i=> cce.NonNullElements(i)));
+
                 return m_Order.DetectedBlock;
             }
         }
@@ -153,29 +176,34 @@ namespace VC
        */ 
         private bool _tmpUseFreshBVars;
        
-        VCExpr! GenerateEVC(Implementation! impl, out Hashtable label2absy, Checker! ch)
+        VCExpr GenerateEVC(Implementation impl, out Hashtable label2absy, Checker ch)
         {
+          Contract.Requires(impl != null);
+          Contract.Requires(ch != null);
+          Contract.Ensures(Contract.Result<VCExpr>() != null);
+
 			    TypecheckingContext tc = new TypecheckingContext(null);
 			    impl.Typecheck(tc);
 			    label2absy = new Hashtable/*<int, Absy!>*/();
-			    VCExpr! vc;
+			    VCExpr vc;
 			    switch (CommandLineOptions.Clo.vcVariety) {
 				    case CommandLineOptions.VCVariety.Doomed:
 
                         if (!VC.DCGen.UseItAsDebugger ) {
-                            vc = LetVC((!)impl.Blocks[0], label2absy, ch.TheoremProver.Context);
+                            vc = LetVC(cce.NonNull(impl.Blocks[0]), label2absy, ch.TheoremProver.Context);
                         }
                         #region _TESTING_NEW_STUFF_
                         else  {
                         
                                                                         
                         CommandLineOptions.Clo.vcVariety = CommandLineOptions.VCVariety.Block;				        
-				        assert VC.DCGen.firstDebugBlock != null;
-				        VCExpr! a = LetVC(VC.DCGen.firstDebugBlock, label2absy, ch.TheoremProver.Context);				        				        				        
+				        Contract.Assert( VC.DCGen.firstDebugBlock != null);
+				        VCExpr a = LetVC(VC.DCGen.firstDebugBlock, label2absy, ch.TheoremProver.Context);				        				        				        
+                          Contract.Assert(a != null);
 				        CommandLineOptions.Clo.vcVariety = CommandLineOptions.VCVariety.Doomed;			
 
                         				        
-                        VCExpr! b = LetVC((!)VC.DCGen.firstNonDebugBlock, label2absy, ch.TheoremProver.Context);
+                        VCExpr b = LetVC(cce.NonNull(VC.DCGen.firstNonDebugBlock), label2absy, ch.TheoremProver.Context);
 
 					    //_tmpUseFreshBVars=false;
 					    //vc = ch.VCExprGen.Not(ch.VCExprGen.Implies( wp, ch.VCExprGen.Not(vc)));
@@ -197,17 +225,21 @@ namespace VC
 					    break;
 					    
 				    default:
-					    assert false;  // unexpected enumeration value
+					    Contract.Assert(false);throw new cce.UnreachableException();  // unexpected enumeration value
 			    }
 			    return vc;      
         }
 
-        public VCExpr! LetVC(Block! startBlock,
-                             Hashtable/*<int, Absy!>*/! label2absy,
-                             ProverContext! proverCtxt)
-        {
-          Hashtable/*<Block, LetVariable!>*/! blockVariables = new Hashtable/*<Block, LetVariable!!>*/();
-          List<VCExprLetBinding!>! bindings = new List<VCExprLetBinding!>();
+        public VCExpr LetVC(Block startBlock,
+                             Hashtable/*<int, Absy!>*/ label2absy,
+                             ProverContext proverCtxt)
+        {Contract.Requires(startBlock != null);
+          Contract.Requires(label2absy != null);
+          Contract.Requires(proverCtxt != null);
+          Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+          Hashtable/*<Block, LetVariable!>*/ blockVariables = new Hashtable/*<Block, LetVariable!!>*/();
+          List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
           VCExpr startCorrect = LetVC(startBlock, label2absy, blockVariables, bindings, proverCtxt);
           if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
             return proverCtxt.ExprGen.Let(bindings, proverCtxt.ExprGen.Not(startCorrect) );
@@ -216,13 +248,20 @@ namespace VC
           }
         }
 
-        VCExpr! LetVC(Block! block,
-                             Hashtable/*<int, Absy!>*/! label2absy,
-                             Hashtable/*<Block, VCExprVar!>*/! blockVariables,
-                             List<VCExprLetBinding!>! bindings,
-                             ProverContext! proverCtxt)
+        VCExpr LetVC(Block block,
+                             Hashtable/*<int, Absy!>*/ label2absy,
+                             Hashtable/*<Block, VCExprVar!>*/ blockVariables,
+                             List<VCExprLetBinding> bindings,
+                             ProverContext proverCtxt)
         {
-          VCExpressionGenerator! gen = proverCtxt.ExprGen;
+      Contract.Requires(label2absy != null);
+      Contract.Requires(blockVariables != null);
+      Contract.Requires(proverCtxt != null);
+      Contract.Requires(cce.NonNullElements(bindings));
+          Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+          VCExpressionGenerator gen = proverCtxt.ExprGen;
+          Contract.Assert(gen != null);
           VCExprVar v = (VCExprVar)blockVariables[block];
           if (v == null) {
             /*
@@ -240,9 +279,10 @@ namespace VC
                     SuccCorrect = VCExpressionGenerator.True;
                 }
             } else {
-              assert gotocmd.labelTargets != null;
-              List<VCExpr!> SuccCorrectVars = new List<VCExpr!>(gotocmd.labelTargets.Length);
-              foreach (Block! successor in gotocmd.labelTargets) {
+              Contract.Assert( gotocmd.labelTargets != null);
+              List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Length);
+              foreach (Block successor in gotocmd.labelTargets) {
+                Contract.Assert(successor != null);
                 VCExpr s = LetVC(successor, label2absy, blockVariables, bindings, proverCtxt);
                 SuccCorrectVars.Add(s);
               }
@@ -271,15 +311,22 @@ namespace VC
         {
 
             #region Attributes
-            public List<List<Block!>!>! DetectedBlock = new List<List<Block!>!>(); 
+            public List<List<Block/*!*/>/*!*/>/*!*/ DetectedBlock = new List<List<Block/*!*/>/*!*/>();
+ 
             
-            InclusionTree! RootNode = new InclusionTree(null);             
+            InclusionTree RootNode = new InclusionTree(null);             
             InclusionTree currentNode = null;
-            
+            [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(DetectedBlock!=null);
+              Contract.Invariant(RootNode != null);
+}
+
             #endregion
         
             [NotDelayed]
-            public InclusionOrder(Block! rootblock) {
+            public InclusionOrder(Block rootblock) {Contract.Requires(rootblock != null);
                 /*
                     We now compute for each block the set of blocks that
                     are reached on every execution reaching this block (dominator).
@@ -287,28 +334,29 @@ namespace VC
                     block and second from the Term block to the current one.
                     Finally we build the union.
                 */
+                Dictionary<Block,TraceNode> map2 = new Dictionary<Block,TraceNode>();
+                Dictionary<Block,TraceNode> map = new Dictionary<Block,TraceNode>();
                 
-                base();
-                Dictionary<Block!,TraceNode!>! map2 = new Dictionary<Block!,TraceNode!>();
-                Dictionary<Block!,TraceNode!>! map = new Dictionary<Block!,TraceNode!>();
-                
-                Dictionary<Block!, List<Block!>!>! unavoidablemap = new Dictionary<Block!, List<Block!>!>();
+                Dictionary<Block, List<Block>> unavoidablemap = new Dictionary<Block, List<Block>>();
 
-                Block! exitblock = BreadthFirst(rootblock, map2);
+                Block exitblock = BreadthFirst(rootblock, map2);Contract.Assert(exitblock != null);
                 BreadthFirstBwd(exitblock, map);               
 
-                foreach (KeyValuePair<Block!, TraceNode!> kvp in map) {
-                    List<Block!>! blist = new List<Block!>();
+                foreach (KeyValuePair<Block, TraceNode> kvp in map) {
+                  Contract.Assert(kvp.Key != null);Contract.Assert(kvp.Value != null);
+                    List<Block/*!*/>/*!*/ blist = new List<Block/*!*/>();
                     foreach (TraceNode tn in kvp.Value.Unavoidables ) {
                         blist.Add(tn.block);
                     }
                     unavoidablemap.Add(kvp.Key, blist);
                 }
-                foreach (KeyValuePair<Block!, List<Block!>!> kvp in unavoidablemap) {
+                foreach (KeyValuePair<Block, List<Block>> kvp in unavoidablemap) {
+                  Contract.Assert(kvp.Key != null);
+                  Contract.Assert(cce.NonNullElements(kvp.Value));
                     TraceNode tn = null;
                     if (map2.TryGetValue(kvp.Key, out tn) ) {
-                        assert tn!=null;
-                        foreach (TraceNode! t0 in tn.Unavoidables) {
+                        Contract.Assert( tn!=null);
+                        foreach (TraceNode t0 in tn.Unavoidables) {Contract.Assert(t0 != null);
                             if (!kvp.Value.Contains(t0.block))
                                 kvp.Value.Add(t0.block);
                         }
@@ -316,15 +364,17 @@ namespace VC
                         //assert false;
                     }
                 }
-                                                               
-                foreach (KeyValuePair<Block!, List<Block!>!> kvp in unavoidablemap) {
+
+                foreach (KeyValuePair<Block, List<Block>> kvp in unavoidablemap) {
+                  Contract.Assert(kvp.Key != null);
+                  Contract.Assert(cce.NonNullElements(kvp.Value));
                     Insert2Tree(RootNode,kvp);
                 }
                 InitCurrentNode(RootNode);
                 //printtree(RootNode, "",0);                
             }
                                   
-            void InitCurrentNode(InclusionTree! n) {
+            void InitCurrentNode(InclusionTree n) {Contract.Requires(n != null);
                 if (n.Children.Count>0) {
                     InitCurrentNode(n.Children[0]);
                 } else {
@@ -347,8 +397,8 @@ namespace VC
                 a map from Block to InclusionTree to prevent running through
                 the tree over and over again.
             */
-            private void MarkUndoomedFromCE(Block! b, InclusionTree! node)
-            {
+            private void MarkUndoomedFromCE(Block b, InclusionTree node)
+            {Contract.Requires(b != null);Contract.Requires(node != null);
                 if (node.EquivBlock.Contains(b) ) {
                     //Console.WriteLine("Block {0} does not need to be checked - appears in CE", b.Label);
                     node.HasBeenChecked = true;
@@ -357,8 +407,8 @@ namespace VC
                     return;
                 } else
                 {
-                    foreach (InclusionTree! c in node.Children)
-                    {
+                    foreach (InclusionTree c in node.Children) {
+                      Contract.Assert(c != null);
                         MarkUndoomedFromCE(b, c);
                     }
                 }
@@ -369,7 +419,7 @@ namespace VC
             // desteny
             // returns false if an explicite assert false was found.
             // Warning: Still slow; we do not need to do this while constructing the error report!            
-            public bool SetCurrentResult(Variable! reachvar, ProverInterface.Outcome outcome, DoomErrorHandler cb) {                
+            public bool SetCurrentResult(Variable reachvar, ProverInterface.Outcome outcome, DoomErrorHandler cb) {Contract.Requires(reachvar != null);
                 if (outcome!=ProverInterface.Outcome.Valid) { 
                     if (currentNode != null) {
                         currentNode.IsDoomed = false;
@@ -377,8 +427,8 @@ namespace VC
                         MarkUndoomedParents(currentNode); 
                         if (cb != null) {
                             //Console.WriteLine("CE contains: ");
-                            foreach (Block! b in cb.TraceNodes)
-                            {
+                            foreach (Block b in cb.TraceNodes)
+                            {Contract.Assert(b != null);
                                 //Console.Write("{0}, ", b.Label);                                
                                 MarkUndoomedFromCE(b, RootNode);
                             }
@@ -407,7 +457,7 @@ namespace VC
 //                            return false;                       
 //                        }
                         
-                        List<Block!>! traceblocks = new List<Block!>();
+                        List<Block> traceblocks = new List<Block>();
                                                 
                         TracedChildern(currentNode, traceblocks);
                         TracedParents(currentNode, traceblocks);
@@ -419,7 +469,7 @@ namespace VC
                                                 
                         if (currentNode.EquivBlock.Count>0) {
                             
-                            foreach (InclusionTree! n in currentNode.Children) {
+                            foreach (InclusionTree n in currentNode.Children) {Contract.Assert(n != null);
                                 if (DetectedBlock.Contains(n.EquivBlock) ) {
                                     DetectedBlock.Remove(n.EquivBlock);
                                 }
@@ -429,7 +479,7 @@ namespace VC
 
                         } else {
                             Console.WriteLine("An empty equivalence class has been detected");
-                            assert false;
+                            Contract.Assert(false);throw new cce.UnreachableException();
                         }
                         
                         currentNode.IsDoomed = true;
@@ -437,7 +487,8 @@ namespace VC
                         MarkDoomedChildren(currentNode);
                         currentNode = currentNode.Parent;
                         if (currentNode!=null) {
-                            foreach (InclusionTree! it in currentNode.Children) {
+                          foreach (InclusionTree it in currentNode.Children) {
+                            Contract.Assert(it != null);
                                 if (!it.HasBeenChecked) {
                                     currentNode = DescendToDeepestUnchecked(it);
                                     break;
@@ -449,9 +500,12 @@ namespace VC
                 return true;
             }      
             
-            private InclusionTree! DescendToDeepestUnchecked(InclusionTree! node) 
+            private InclusionTree DescendToDeepestUnchecked(InclusionTree node) 
             {
-                foreach (InclusionTree! it in node.Children) {
+              Contract.Requires(node != null);
+              Contract.Ensures(Contract.Result<InclusionTree>() != null);
+
+                foreach (InclusionTree it in node.Children) {Contract.Assert(it != null);
                     if (!it.HasBeenChecked) {
                         return DescendToDeepestUnchecked(it);
                     }
@@ -459,15 +513,16 @@ namespace VC
                 return node;
             }                
             
-            private bool ECContainsAssertFalse(List<Block!>! equiv) {
-                foreach (Block! b in equiv) {
+            private bool ECContainsAssertFalse(List<Block> equiv) {
+              Contract.Requires(cce.NonNullElements(equiv));
+                foreach (Block b in equiv) {Contract.Assert(b != null);
                     if (BlockContainsAssertFalse(b)) return true;
                 }
                 return false;
             }
 
-            private bool BlockContainsAssertFalse(Block! b) {
-                foreach (Cmd! c in b.Cmds) {
+            private bool BlockContainsAssertFalse(Block b) {Contract.Requires(b != null);
+                foreach (Cmd c in b.Cmds) {Contract.Assert(c != null);
                     AssertCmd ac = c as AssertCmd;
                     if (ac!=null) {
                         if (IsFalse(ac.Expr) || QKeyValue.FindBoolAttribute(ac.Attributes, "PossiblyUnreachable") ) {
@@ -480,8 +535,9 @@ namespace VC
 
             // check if e is true, false, !true, !false
             // if so return true and the value of the expression in val
-            bool BooleanEval(Expr! e, ref bool val)
+            bool BooleanEval(Expr e, ref bool val)
             {
+              Contract.Requires(e != null);
                 LiteralExpr lit = e as LiteralExpr;
                 NAryExpr call = e as NAryExpr;
 
@@ -491,7 +547,7 @@ namespace VC
             } else if (call != null && 
                        call.Fun is UnaryOperator && 
                        ((UnaryOperator)call.Fun).Op == UnaryOperator.Opcode.Not &&
-                       BooleanEval((!)call.Args[0], ref val)) {
+                       BooleanEval(cce.NonNull(call.Args[0]), ref val)) {
               val = !val;
               return true;
             } 
@@ -500,7 +556,7 @@ namespace VC
                        call.Fun is BinaryOperator && 
                        ((BinaryOperator)call.Fun).Op == BinaryOperator.Opcode.Neq &&
                        call.Args[0] is LiteralExpr &&
-                       ((!)call.Args[0]).Equals(call.Args[1]))
+                       cce.NonNull(call.Args[0]).Equals(call.Args[1]))
             {
               val = false;
               return true;
@@ -509,23 +565,28 @@ namespace VC
             return false;
             }
 
-            bool IsFalse(Expr! e)
-            {
+            bool IsFalse(Expr e)
+            {Contract.Requires(e != null);
                 bool val = false;
                 return BooleanEval(e, ref val) && !val;
             }
 
-            private void TracedChildern(InclusionTree! node, List<Block!>! blist) {
-                foreach (Block! b in node.EquivBlock) {
+            private void TracedChildern(InclusionTree node, List<Block/*!*/>/*!*/ blist) {
+              Contract.Requires(node != null);
+              Contract.Requires(cce.NonNullElements(blist));
+                foreach (Block b in node.EquivBlock) {Contract.Assert(b != null);
                     if (!blist.Contains(b)) blist.Add(b);
                 }
-                foreach (InclusionTree! n in node.Children) {
+                foreach (InclusionTree n in node.Children) {
+                  Contract.Assert(n != null);
                     TracedChildern(n, blist);
                 }
             }
             
-            private void TracedParents(InclusionTree! node, List<Block!>! blist) {
-                foreach (Block! b in node.EquivBlock) {
+            private void TracedParents(InclusionTree node, List<Block> blist) {
+              Contract.Requires(node != null);
+              Contract.Requires(cce.NonNullElements(blist));
+                foreach (Block b in node.EquivBlock) {Contract.Assert(b != null);
                     if (!blist.Contains(b)) blist.Add(b);
                 }
                 if (node.Parent!=null) {
@@ -533,11 +594,12 @@ namespace VC
                 }
             }
                                     
-            InclusionTree FindNextNode(InclusionTree! n) {
-                assert n!=n.Parent;
+            InclusionTree FindNextNode(InclusionTree n) {Contract.Requires(n != null);
+                Contract.Assert( n!=n.Parent);
                 InclusionTree next = n.Parent;                
                 if (next!=null) {
-                    foreach (InclusionTree! n0 in next.Children) {
+                  foreach (InclusionTree n0 in next.Children) {
+                    Contract.Assert(n0 != null);
                         if (!n0.HasBeenChecked) {
                             return n0;
                         }
@@ -547,7 +609,7 @@ namespace VC
                 return next;
             }
             
-            void MarkUndoomedParents(InclusionTree! n) {
+            void MarkUndoomedParents(InclusionTree n) {Contract.Requires(n != null);
                 if (n.Parent != null) {
                     n.Parent.HasBeenChecked = true;
                     n.Parent.IsDoomed = false;
@@ -555,15 +617,19 @@ namespace VC
                 }
             }
             
-            void MarkDoomedChildren(InclusionTree! n) {
-                foreach (InclusionTree! t in n.Children) {
+            void MarkDoomedChildren(InclusionTree n) {Contract.Requires(n != null);
+            foreach (InclusionTree t in n.Children) {
+              Contract.Assert(t != null);
                     t.IsDoomed = true;
                     t.HasBeenChecked = true;
                     MarkDoomedChildren(t);
                 }
             }
                                    
-            bool Insert2Tree(InclusionTree! node, KeyValuePair<Block!, List<Block!>!> kvp) {
+            bool Insert2Tree(InclusionTree node, KeyValuePair<Block, List<Block>> kvp) {
+              Contract.Requires(node != null);
+              Contract.Requires(kvp.Key != null);
+              Contract.Requires(cce.NonNullElements(kvp.Value));
                 if (IsSubset(node.PathBlocks, kvp.Value) ) {
                     if (IsSubset(kvp.Value, node.PathBlocks) ) {
                         // The set of unavoidable blocks is equal, so 
@@ -571,14 +637,15 @@ namespace VC
                         node.EquivBlock.Add(kvp.Key);
                         return true;
                     } else {
-                        foreach (InclusionTree! n in node.Children) {
+                        foreach (InclusionTree n in node.Children) {Contract.Assert(n != null);
                             if (Insert2Tree(n,kvp) ) {
                                 return true;
                             }
                         }
                         // we have not been able to add the block to one of
                         // the children, so we have to create a new child.
-                        InclusionTree! it = new InclusionTree(node);
+                        InclusionTree it = new InclusionTree(node);
+                        Contract.Assert(it != null);
                         it.EquivBlock.Add(kvp.Key);
                         it.PathBlocks.AddRange(kvp.Value);
                         node.Children.Add(it);
@@ -592,21 +659,23 @@ namespace VC
                 return false;
             }            
             
-            bool IsSubset(List<Block!>! sub, List<Block!>! super ) {
-                foreach (Block! b in sub) {
+            bool IsSubset(List<Block> sub, List<Block> super ) {Contract.Requires(sub!=null);Contract.Requires(cce.NonNullElements(super));
+                foreach (Block b in sub) {
+                  Contract.Assert(b != null);
                     if (!super.Contains(b) ) return false;                    
                 }
                 return true;
             }
             
-            void printtree(InclusionTree! n, string indent, int level) {
+            void printtree(InclusionTree n, string indent, int level) {Contract.Requires(n != null);
                 Console.Write("{0}Level {1}: Blocks ", indent, level);
-                foreach (Block! b in n.EquivBlock) {
+                foreach (Block b in n.EquivBlock) {Contract.Assert(b != null);
                     Console.Write("{0}, ", b.Label);
                 }
                 Console.WriteLine();
-                
-                foreach (InclusionTree! t in n.Children) {
+
+                foreach (InclusionTree t in n.Children) {
+                  Contract.Assert(t != null);
                     printtree(t, indent+"  ", level+1);
                 }
             }
@@ -621,41 +690,55 @@ namespace VC
                 public bool HasBeenChecked;
                 public bool IsDoomed;
                 public InclusionTree Parent;
-                public List<Block!>! EquivBlock = new List<Block!>();
-                public List<Block!>! PathBlocks = new List<Block!>();
-                public List<InclusionTree!>! Children = new List<InclusionTree!>();
+                public List<Block/*!*/>/*!*/ EquivBlock = new List<Block>();
+                public List<Block/*!*/>/*!*/ PathBlocks = new List<Block>();
+                public List<InclusionTree/*!*/>/*!*/ Children = new List<InclusionTree>();
+              [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(Parent!=null);
+                Contract.Invariant(cce.NonNullElements(EquivBlock));
+                Contract.Invariant(cce.NonNullElements(PathBlocks));
+                Contract.Invariant(cce.NonNullElements(Children));
+}
+
             }
             
             #region Collect Unavoidable Blocks
-            private Block! BreadthFirst(Block! start, Dictionary<Block!, TraceNode!>! blockmap) {
-                List<Block!>! JobList = new List<Block!>();
-                List<Block!>! DoneList = new List<Block!>();
+            private Block BreadthFirst(Block start, Dictionary<Block, TraceNode> blockmap) {
+              Contract.Requires(start != null);
+              Contract.Requires(cce.NonNullElements(blockmap));
+              Contract.Ensures(Contract.Result<Block>() != null);
+
+                List<Block> JobList = new List<Block>();
+                List<Block> DoneList = new List<Block>();
                 Block exitblock=null;
                 JobList.Add(start);
-                Block! currentBlock = JobList[0];
+                Block currentBlock = JobList[0];
                 // Travers the Graph Breadth First and collect all 
                 // predecessors of each node that are reached on any
                 // path to this node
                 while (JobList.Count>0)
                 {                    
                     currentBlock = JobList[0];
-                    TraceNode! tn = new TraceNode(currentBlock);
+                    TraceNode tn = new TraceNode(currentBlock);
+                  Contract.Assert(tn != null);
                     
                     if (currentBlock.Predecessors.Length>0 ) {                    
                         TraceNode t0 =null;
                         Block firstpred = currentBlock.Predecessors[0];
                         
-                        assert firstpred!=null;
+                        Contract.Assert( firstpred!=null);
                         if (blockmap.TryGetValue(firstpred, out t0)) {
-                            assert t0 !=null;
+                            Contract.Assert( t0 !=null);
                             tn.Unavoidables.AddRange(t0.Unavoidables);                                
                         }
                     }   
                                          
-                    foreach (Block! b0 in currentBlock.Predecessors) {
+                    foreach (Block b0 in currentBlock.Predecessors) {Contract.Assert(b0 != null);
                         TraceNode t = null;
                         if (blockmap.TryGetValue(b0, out t)) {
-                            assert t!=null;
+                            Contract.Assert( t!=null);
                             tn.Predecessors.Add(t);                            
                             IntersectUnavoidables(t,tn);                            
                             if (!t.Successors.Contains(tn)) t.Successors.Add(tn);
@@ -666,7 +749,7 @@ namespace VC
                         tn.Unavoidables.Add(tn);
                     } else
                     {
-                        assert false;
+                        Contract.Assert(false);throw new cce.UnreachableException();
                     }          
                     
                                         
@@ -674,8 +757,8 @@ namespace VC
                     
                     GotoCmd gc = currentBlock.TransferCmd as GotoCmd;
                     if (gc!=null) {
-                        assert gc.labelTargets!=null;
-                        foreach (Block! b0 in gc.labelTargets) {
+                        Contract.Assert( gc.labelTargets!=null);
+                        foreach (Block b0 in gc.labelTargets) {Contract.Assert(b0 != null);
                             if (!JobList.Contains(b0) && !DoneList.Contains(b0)) {
                                 
                                 JobList.Add(b0);
@@ -687,25 +770,28 @@ namespace VC
                     DoneList.Add(currentBlock);
                     JobList.RemoveAt(0);
                 }
-                assert exitblock!=null;
+                Contract.Assert( exitblock!=null);
                 return exitblock;
             }
        
             // WARNING: It is only for testing reasons that
             // BreadthFirstBwd and BreadthFirst and separat functions
             // it should be implemented using one function later on.
-            private void BreadthFirstBwd(Block! start, Dictionary<Block!, TraceNode!>! blockmap) {
-                List<Block!>! JobList = new List<Block!>();                
-                List<Block!>! DoneList = new List<Block!>();
+            private void BreadthFirstBwd(Block start, Dictionary<Block, TraceNode> blockmap) {
+              Contract.Requires(start != null);
+              Contract.Requires(cce.NonNullElements(blockmap));
+
+                List<Block> JobList = new List<Block>();
+                List<Block> DoneList = new List<Block>();
                 JobList.Add(start);
-                Block! currentBlock = JobList[0];
+                Block currentBlock = JobList[0];
                 // Travers the Graph Breadth First and collect all 
                 // predecessors of each node that are reached on any
                 // path to this node
                 while (JobList.Count>0)
                 {                    
                     currentBlock = JobList[0];
-                    TraceNode! tn = new TraceNode(currentBlock);
+                    TraceNode tn = new TraceNode(currentBlock);Contract.Assert(tn != null);
                     
                     GotoCmd gc = currentBlock.TransferCmd as GotoCmd;
                     BlockSeq preds = null;
@@ -718,17 +804,17 @@ namespace VC
                         TraceNode t0 =null;
                         Block firstpred = preds[0];
                         
-                        assert firstpred!=null;
+                        Contract.Assert( firstpred!=null);
                         if (blockmap.TryGetValue(firstpred, out t0)) {
-                            assert t0 !=null;
+                            Contract.Assert( t0 !=null);
                             tn.Unavoidables.AddRange(t0.Unavoidables);                                
                         }
                       
                                          
-                        foreach (Block! b0 in preds) {
+                        foreach (Block b0 in preds) {Contract.Assert(b0 != null);
                             TraceNode t = null;
                             if (blockmap.TryGetValue(b0, out t)) {
-                                assert t!=null;
+                                Contract.Assert( t!=null);
                                 tn.Successors.Add(t);                            
                                 IntersectUnavoidables(t,tn);                            
                                 if (!t.Predecessors.Contains(tn)) t.Predecessors.Add(tn);
@@ -740,12 +826,13 @@ namespace VC
                         tn.Unavoidables.Add(tn);
                     } else
                     {
-                        assert false;
+                        Contract.Assert(false);throw new cce.UnreachableException();
                     }
                     blockmap.Add(currentBlock, tn);
                                         
-                    if (currentBlock.Predecessors.Length>0) {                        
-                        foreach (Block! b0 in currentBlock.Predecessors) {
+                    if (currentBlock.Predecessors.Length>0) {
+                      foreach (Block b0 in currentBlock.Predecessors) {
+                        Contract.Assert(b0 != null);
                             if (!JobList.Contains(b0) && !DoneList.Contains(b0) ) 
                                 JobList.Add(b0);
                         }
@@ -755,19 +842,21 @@ namespace VC
                 }
             }
                    
-            private void IntersectUnavoidables(TraceNode! parent, TraceNode! child) {
-                List<TraceNode!>! ret = new List<TraceNode!>();
-                List<TraceNode!>! tmp = new List<TraceNode!>();
+            private void IntersectUnavoidables(TraceNode parent, TraceNode child) {
+              Contract.Requires(parent != null);
+              Contract.Requires(child != null);
+                List<TraceNode/*!*/>/*!*/ ret = new List<TraceNode>();
+                List<TraceNode/*!*/>/*!*/ tmp = new List<TraceNode>();
                 tmp.AddRange(parent.Unavoidables);
                 tmp.AddRange(child.Unavoidables);
                 
-                foreach (TraceNode! tn in tmp) {                        
+                foreach (TraceNode tn in tmp) {Contract.Assert(tn != null);
                     if (parent.Unavoidables.Contains(tn) && child.Unavoidables.Contains(tn) 
                         && !ret.Contains(tn) ) {
                         ret.Add(tn);
                     }
                 }
-                assert ret.Count <= parent.Unavoidables.Count && ret.Count <= child.Unavoidables.Count;
+                Contract.Assert( ret.Count <= parent.Unavoidables.Count && ret.Count <= child.Unavoidables.Count);
                 child.Unavoidables = ret;
                 
              }
@@ -776,13 +865,21 @@ namespace VC
             // We assume that the program is already loopfree, otherwise we will
             // not terminate      
             private class TraceNode  {
-                public List<TraceNode!>! Predecessors = new List<TraceNode!>();
-                public List<TraceNode!>! Successors = new List<TraceNode!>();
-                public List<TraceNode!>! Unavoidables = new List<TraceNode!>();
-                public Block! block;
-            
-               
-                public TraceNode(Block! b) {                    
+                public List<TraceNode/*!*/>/*!*/ Predecessors = new List<TraceNode>();
+                public List<TraceNode/*!*/>/*!*/ Successors = new List<TraceNode>();
+                public List<TraceNode/*!*/>/*!*/ Unavoidables = new List<TraceNode>();
+                public Block/*!*/ block;
+
+                [ContractInvariantMethod]
+                void ObjectInvariant() {
+                  Contract.Invariant(block != null);
+                  Contract.Invariant(cce.NonNullElements(Predecessors));
+                  Contract.Invariant(cce.NonNullElements(Successors));
+                  Contract.Invariant(cce.NonNullElements(Unavoidables));
+                }
+
+                public TraceNode(Block b) {
+                  Contract.Requires(b != null);
                     block=b;                          
                 }
                 

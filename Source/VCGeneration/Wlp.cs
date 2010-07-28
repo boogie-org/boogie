@@ -7,26 +7,37 @@ using System;
 using System.Collections;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using Microsoft.Basetypes;
 
 namespace VC {
   public class VCContext 
   {
-    [Rep] public readonly Hashtable/*<int, Absy!>*/! Label2absy;
-    [Rep] public readonly ProverContext! Ctxt;
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(Label2absy!=null);
+      Contract.Invariant(Ctxt != null);
+}
+
+    [Rep] public readonly Hashtable/*<int, Absy!>*/ Label2absy;
+    [Rep] public readonly ProverContext Ctxt;
     public readonly Variable ControlFlowVariable;
     
-    public VCContext(Hashtable/*<int, Absy!>*/! label2absy, ProverContext! ctxt)
+    public VCContext(Hashtable/*<int, Absy!>*/ label2absy, ProverContext ctxt)
     {
+      Contract.Requires(label2absy != null);
+      Contract.Requires(ctxt != null);
       this.Label2absy = label2absy;
       this.Ctxt = ctxt;
       // base();
     }
     
-    public VCContext(Hashtable/*<int, Absy!>*/! label2absy, ProverContext! ctxt, Variable controlFlowVariable)
+    public VCContext(Hashtable/*<int, Absy!>*/ label2absy, ProverContext ctxt, Variable controlFlowVariable)
     {
+      Contract.Requires(label2absy != null);
+      Contract.Requires(ctxt != null);
       this.Label2absy = label2absy;
       this.Ctxt = ctxt;
       this.ControlFlowVariable = controlFlowVariable;
@@ -38,33 +49,46 @@ namespace VC {
   
   public class Wlp
   {
-    public static VCExpr! Block(Block! b, VCExpr! N, VCContext! ctxt)
-      modifies ctxt.*;
+    public static VCExpr Block(Block b, VCExpr N, VCContext ctxt)
+      //modifies ctxt.*;
     {
-      VCExpressionGenerator! gen = ctxt.Ctxt.ExprGen;
-      VCExpr! res = N;
+    Contract.Requires(b != null);
+    Contract.Requires(N != null);
+    Contract.Requires(ctxt != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+      VCExpressionGenerator gen = ctxt.Ctxt.ExprGen;
+      Contract.Assert(gen != null);
       
-      for (int i = b.Cmds.Length; --i>=0; )
+      VCExpr res = N;
+
+      for (int i = b.Cmds.Length; --i >= 0; )
       {
-        res = Cmd((!) b.Cmds[i], res, ctxt);
+        res = Cmd(cce.NonNull( b.Cmds[i]), res, ctxt);
       }
       
       int id = b.UniqueId;
-      expose (ctxt) {
+      cce.BeginExpose(ctxt); {
         ctxt.Label2absy[id] = b;
         if (ctxt.ControlFlowVariable != null)
           return res;
         else 
-          return gen.Implies(gen.LabelPos((!)id.ToString(), VCExpressionGenerator.True), res);
-      }
+          return gen.Implies(gen.LabelPos(cce.NonNull(id.ToString()), VCExpressionGenerator.True), res);
+      }cce.EndExpose();
     }
 
     /// <summary>
     /// Computes the wlp for an assert or assume command "cmd".
     /// </summary>
-    public static VCExpr! Cmd(Cmd! cmd, VCExpr! N, VCContext! ctxt)
+    public static VCExpr Cmd(Cmd cmd, VCExpr N, VCContext ctxt)
     {
-      VCExpressionGenerator! gen = ctxt.Ctxt.ExprGen;
+      Contract.Requires(cmd!= null);
+      Contract.Requires(N != null);
+      Contract.Requires(ctxt != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+      VCExpressionGenerator gen = ctxt.Ctxt.ExprGen;
+      Contract.Assert(gen != null);
       if (cmd is AssertCmd) {
         AssertCmd ac = (AssertCmd)cmd;
         VCExpr C = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
@@ -85,7 +109,7 @@ namespace VC {
               }
               break;
             default:
-              assert false;  // unexpected case
+              Contract.Assert(false);throw new cce.UnreachableException();  // unexpected case
           }
           
           // (MSchaef) Hack: This line might be useless, but at least it is not harmfull
@@ -95,18 +119,20 @@ namespace VC {
           
           if (ctxt.ControlFlowVariable != null)
           {
-            VCExpr! controlFlowVariableExpr = 
+            VCExpr controlFlowVariableExpr = 
               ctxt.Ctxt.BoogieExprTranslator.LookupVariable(ctxt.ControlFlowVariable);
-            VCExpr! controlFlowFunctionAppl1 = 
+            Contract.Assert(controlFlowVariableExpr != null);
+            VCExpr controlFlowFunctionAppl1 = 
               gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(id)));
-            VCExpr! controlFlowFunctionAppl2 = 
+            Contract.Assert(controlFlowFunctionAppl1 != null);
+            VCExpr controlFlowFunctionAppl2 = 
               gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(id)));
-            VCExpr! assertFailure = gen.Eq(controlFlowFunctionAppl1, gen.Integer(BigNum.FromInt(0)));
-            VCExpr! assertSuccess = gen.Neq(controlFlowFunctionAppl2, gen.Integer(BigNum.FromInt(0)));
+            VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl1, gen.Integer(BigNum.FromInt(0)));
+            VCExpr assertSuccess = gen.Neq(controlFlowFunctionAppl2, gen.Integer(BigNum.FromInt(0)));
             return gen.And(gen.Implies(assertFailure, C), gen.Implies(assertSuccess, N));
           }
           else
-            return gen.AndSimp(gen.LabelNeg((!)id.ToString(), C), N);
+            return gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), C), N);
         }
 
       } else if (cmd is AssumeCmd) {
@@ -119,7 +145,7 @@ namespace VC {
             if (naryExpr.Fun is FunctionCall) {
               int id = ac.UniqueId;
               ctxt.Label2absy[id] = ac;
-              return gen.ImpliesSimp(gen.LabelPos((!)"si_fcall_" + id.ToString(), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N);
+              return gen.ImpliesSimp(gen.LabelPos(cce.NonNull("si_fcall_" + id.ToString()), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N);
             }
           }
         }
@@ -128,11 +154,12 @@ namespace VC {
 
       } else {
       Console.WriteLine(cmd.ToString());
-        assert false;  // unexpected command
+        Contract.Assert(false);throw new cce.UnreachableException();  // unexpected command
       }
     }
     
-    public static CommandLineOptions.SubsumptionOption Subsumption(AssertCmd! ac) {
+    public static CommandLineOptions.SubsumptionOption Subsumption(AssertCmd ac) {
+      Contract.Requires(ac != null);
       int n = QKeyValue.FindIntAttribute(ac.Attributes, "subsumption", -1);
       switch (n) {
         case 0:  return CommandLineOptions.SubsumptionOption.Never;
@@ -142,8 +169,13 @@ namespace VC {
       }
     }
 
-    public static VCExpr! RegExpr(RE! r, VCExpr! N, VCContext! ctxt)
+    public static VCExpr RegExpr(RE r, VCExpr N, VCContext ctxt)
     {
+      Contract.Requires(r != null);
+      Contract.Requires(N != null);
+      Contract.Requires(ctxt != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
       if ( r is AtomicRE )
       {
         AtomicRE ar = (AtomicRE) r;
@@ -157,17 +189,17 @@ namespace VC {
       else if ( r is Choice )
       {
         Choice ch = (Choice) r;
-        VCExpr! res;
+        VCExpr res;
         if (ch.rs == null || ch.rs.Length==0) 
         {
           res = N;
         } 
         else 
         {
-          VCExpr currentWLP = RegExpr((!)ch.rs[0], N, ctxt);
+          VCExpr currentWLP = RegExpr(cce.NonNull(ch.rs[0]), N, ctxt);
           for (int i = 1, n = ch.rs.Length; i < n; i++)
           {
-            currentWLP = ctxt.Ctxt.ExprGen.And(currentWLP, RegExpr((!)ch.rs[i], N, ctxt));
+            currentWLP = ctxt.Ctxt.ExprGen.And(currentWLP, RegExpr(cce.NonNull(ch.rs[i]), N, ctxt));
           }
           res = currentWLP;
         }
@@ -175,7 +207,7 @@ namespace VC {
       }
       else
       {
-        assert false;  // unexpected RE subtype
+        Contract.Assert(false);throw new cce.UnreachableException();  // unexpected RE subtype
       }
     }
   }
