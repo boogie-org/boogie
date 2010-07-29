@@ -1,57 +1,335 @@
-# Aste started: 2010-07-28 07:00:02
+# Aste started: 2010-07-29 07:00:05
 # Host id: Boogiebox
-# [2010-07-28 07:01:43] SpecSharp revision: 55320
-# [2010-07-28 07:02:34] Boogie revision: 55730
-# [2010-07-28 07:02:56] SscBoogie revision: 55325
-[2010-07-28 07:03:20] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-07-29 07:02:19] SpecSharp revision: 55320
+# [2010-07-29 07:03:12] Boogie revision: 55810
+# [2010-07-29 07:03:36] SscBoogie revision: 55325
+[2010-07-29 07:04:06] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-07-28 07:04:58] [Error] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-07-29 07:05:40] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(20,46): error CS0246: The type or namespace name 'ProverInterface' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(634,49): error CS0246: The type or namespace name 'VCExprTranslator' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(206,65): error CS0234: The type or namespace name 'ProverInterface' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(521,65): error CS0234: The type or namespace name 'ProverInterface' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(603,50): error CS0234: The type or namespace name 'ProverInterface' does not exist in the namespace 'Microsoft.Boogie' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(291,15): error CS0246: The type or namespace name 'DeclFreeProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(296,83): error CS0246: The type or namespace name 'DeclFreeProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(382,13): error CS0246: The type or namespace name 'UnexpectedProverOutputException' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(384,72): error CS0246: The type or namespace name 'ErrorHandler' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(426,42): error CS0246: The type or namespace name 'ErrorHandler' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(426,21): error CS0246: The type or namespace name 'Outcome' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(582,21): error CS0246: The type or namespace name 'ProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(603,92): error CS0246: The type or namespace name 'DeclFreeProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(610,84): error CS0246: The type or namespace name 'DeclFreeProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Debug\Provers.Simplify.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Debug\Provers.Simplify.dll' could not be found
-    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(124,36): error CS0246: The type or namespace name 'ProverInterface' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(176,34): error CS0246: The type or namespace name 'DeclFreeProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(138,30): error CS0246: The type or namespace name 'ProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(142,21): error CS0246: The type or namespace name 'ProverContext' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(155,61): error CS0246: The type or namespace name 'ErrorHandler' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(170,42): error CS0246: The type or namespace name 'ErrorHandler' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(170,21): error CS0246: The type or namespace name 'Outcome' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(306,9): error CS0246: The type or namespace name 'ProverInterface' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(323,13): error CS0246: The type or namespace name 'ProverInterface' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(324,12): error CS0246: The type or namespace name 'ProverInterface' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Isabelle\Prover.cs(421,33): error CS0246: The type or namespace name 'ProverInterface' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4223,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(720,15): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(742,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(1084,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\Wlp.cs(77,8): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(379,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(445,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(856,29): warning CS0649: Field 'VC.VCGen.Split.first_assert' is never assigned to, and will always have its default value null
+    D:\Temp\aste\Boogie\Source\VCGeneration\DoomCheck.cs(177,22): warning CS0169: The field 'VC.DoomCheck._tmpUseFreshBVars' is never used
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(29,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(32,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(34,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(36,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(115,6): warning CS0436: The type 'NoDefaultContractAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NoDefaultContractAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(116,6): warning CS0436: The type 'VerifyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'VerifyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(255,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(451,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(454,6): warning CS0436: The type 'VerifyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'VerifyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(21,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(52,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(53,6): warning CS0436: The type 'AdditiveAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'AdditiveAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(57,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(59,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(61,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(63,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(65,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(67,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(286,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(295,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(358,6): warning CS0436: The type 'NoDefaultContractAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NoDefaultContractAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(519,6): warning CS0436: The type 'NoDefaultContractAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NoDefaultContractAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(602,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(609,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(51,8): warning CS0436: The type 'NoDefaultContractAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NoDefaultContractAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Let2ImpliesVisitor.cs(83,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(29,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(32,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(34,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(36,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(51,8): warning CS0436: The type 'NoDefaultContractAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NoDefaultContractAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(55,27): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(65,9): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(102,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(115,6): warning CS0436: The type 'NoDefaultContractAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NoDefaultContractAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(116,6): warning CS0436: The type 'VerifyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'VerifyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(139,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(152,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(164,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(174,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(233,9): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(255,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(287,11): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(295,11): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(335,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(339,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(343,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(355,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(364,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(371,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(380,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(388,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(403,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(410,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(451,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(454,6): warning CS0436: The type 'VerifyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'VerifyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(21,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(52,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(53,6): warning CS0436: The type 'AdditiveAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'AdditiveAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(57,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(59,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(61,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(63,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(65,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(67,6): warning CS0436: The type 'StrictReadonlyAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'StrictReadonlyAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(77,26): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(177,16): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(206,36): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(211,26): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(232,14): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(286,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(295,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(358,6): warning CS0436: The type 'NoDefaultContractAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NoDefaultContractAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(371,9): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(468,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(478,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(519,6): warning CS0436: The type 'NoDefaultContractAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NoDefaultContractAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(522,32): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(602,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(609,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(821,40): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\ProverInterface.cs(835,23): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Simplify\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Inspector.cs(52,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Inspector.cs(53,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Inspector.cs(54,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(22,6): warning CS0436: The type 'PeerAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'PeerAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(23,6): warning CS0436: The type 'PeerAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'PeerAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(63,6): warning CS0436: The type 'CapturedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'CapturedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\ProverInterface.cs(36,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Inspector.cs(25,38): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Inspector.cs(31,86): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Inspector.cs(52,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Inspector.cs(53,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Inspector.cs(54,6): warning CS0436: The type 'RepAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'RepAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(22,6): warning CS0436: The type 'PeerAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'PeerAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(23,6): warning CS0436: The type 'PeerAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'PeerAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(33,26): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(54,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(63,6): warning CS0436: The type 'CapturedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'CapturedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(68,44): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(317,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(329,26): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(428,11): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(465,27): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(533,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(566,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(699,54): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(745,52): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(890,54): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(948,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(992,14): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\Prover.cs(1004,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\TypeDeclCollector.cs(32,26): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\TypeDeclCollector.cs(96,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\TypeDeclCollector.cs(104,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\ProverInterface.cs(36,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\ProverInterface.cs(165,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\ProverInterface.cs(199,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\ProverInterface.cs(383,32): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\Z3\ProverInterface.cs(397,32): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\Z3\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\ProverInterface.cs(42,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\ProverInterface.cs(158,6): warning CS0436: The type 'NoDefaultContractAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'NoDefaultContractAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(65,14): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(119,19): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(249,21): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(261,46): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(290,23): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(474,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(482,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(490,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(500,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(511,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(540,27): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(580,50): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(682,44): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\SMTLibLineariser.cs(689,44): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\ProverInterface.cs(35,26): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\ProverInterface.cs(42,6): warning CS0436: The type 'NotDelayedAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'NotDelayedAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\ProverInterface.cs(147,62): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\ProverInterface.cs(158,6): warning CS0436: The type 'NoDefaultContractAttribute' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'NoDefaultContractAttribute' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\ProverInterface.cs(249,11): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\ProverInterface.cs(271,31): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\TypeDeclCollector.cs(52,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Provers\SMTLib\TypeDeclCollector.cs(60,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\cce.cs'.
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(308,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\LoopInvariantsOnDemand.cs(44,7): warning CC1032: Method 'Microsoft.Boogie.AbstractInterpretation.FreeVariablesVisitor.Default(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IExpr)' overrides 'Microsoft.AbstractInterpretationFramework.ExprVisitor.Default(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IExpr)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\AbsInt\LoopInvariantsOnDemand.cs(65,7): warning CC1032: Method 'Microsoft.Boogie.AbstractInterpretation.FreeVariablesVisitor.VisitFunApp(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunApp)' overrides 'Microsoft.AbstractInterpretationFramework.ExprVisitor.VisitFunApp(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunApp)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\AbsInt\LoopInvariantsOnDemand.cs(74,7): warning CC1032: Method 'Microsoft.Boogie.AbstractInterpretation.FreeVariablesVisitor.VisitFunction(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunction)' overrides 'Microsoft.AbstractInterpretationFramework.ExprVisitor.VisitFunction(optional(Microsoft.Contracts.NonNullType) Microsoft.AbstractInterpretationFramework.IFunction)', thus cannot add Requires.
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Z3\bin\Debug\Provers.Z3.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\bin\Debug\Provers.SMTLib.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Isabelle\bin\Debug\Provers.Isabelle.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Debug\Provers.Simplify.dll' could not be found
     warning CS0162
     warning CS0162
     warning CS0162
-    14 error
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    warning CS0649
+    warning CS0169
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0162
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0162
+    warning CS0436
+    warning CS0436
+    warning CS0162
+    warning CS0436
+    warning CS0162
+    warning CS0436
+    warning CS0162
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0162
+    warning CS0162
+    warning CS0162
+[2010-07-29 07:06:02] [Error] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
+
+    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "System.Compiler, Version=1.0.21125.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
+    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "Microsoft.SpecSharp, Version=1.0.21125.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
+    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "System.Compiler.Runtime, Version=1.0.21125.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
+    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3247: Found conflicts between different versions of the same dependent assembly.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(23,22): error CS0234: The type or namespace name 'Compiler' does not exist in the namespace 'System' (are you missing an assembly reference?)
     1 error
-    1 error
-    11 error
-    4 error
-    5 failed
+    1 failed
