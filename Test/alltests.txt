@@ -1,3 +1,4 @@
+sanity		 Use    Build stability test - makes sure the current build doesn't encounter a runtime error (a smoke test)
 test0            Use    Name resolution tests
 test1            Use    Typechecking tests
 test2            Use    VC generation
