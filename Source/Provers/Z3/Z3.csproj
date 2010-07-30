@@ -76,7 +76,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="cce.cs" />
     <Compile Include="Inspector.cs" />
     <Compile Include="Prover.cs" />
     <Compile Include="ProverInterface.cs" />

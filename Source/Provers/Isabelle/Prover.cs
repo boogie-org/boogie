@@ -1055,25 +1055,4 @@ namespace Microsoft.Boogie.Isabelle {
 
 
   }
-
-  public class cce {
-    [Pure]
-    public static T NonNull<T>(T t) {
-      Contract.Assert(t != null);
-      return t;
-    }
-    [Pure]
-    public static bool NonNullElements<T>(IEnumerable<T> collection) {
-      return collection != null && Contract.ForAll(collection, c => c != null);
-    }
-    [Pure]
-    public static bool NonNullElements(VariableSeq collection) {
-      return collection != null && Contract.ForAll(0, collection.Length, i => collection[i] != null);
-    }
-
-    public class UnreachableException : Exception {
-      public UnreachableException() {
-      }
-    }
-  }
 }
