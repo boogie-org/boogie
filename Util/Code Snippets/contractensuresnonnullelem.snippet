@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <SnippetTypes>
+        <SnippetType>Expansion</SnippetType>
+      </SnippetTypes>
+      <Title>Contract.Ensures(cce.NonNullElements(Contract.Result&lt;...&gt;()))</Title>
+      <Shortcut>cenn</Shortcut>
+      <Description>Emits a 'Contract.Ensures' non-null elements clause</Description>
+      <Author>tabarbe</Author>
+    </Header>
+    <Snippet>
+      <Imports>
+        <Import>
+          <Namespace>System.Diagnostics.Contracts</Namespace>
+        </Import>
+      </Imports>
+      <Declarations>
+        <Object Editable="true">
+          <ID>collection</ID>
+          <ToolTip>Collection whose elements must not be null</ToolTip>
+          <Default>List&lt;string&gt;</Default>
+          <Function>
+          </Function>
+        </Object>
+      </Declarations>
+      <Code Language="CSharp" Kind="method body"><![CDATA[Contract.Ensures(cce.NonNullElements(Contract.Result<$collection$>()));$end$]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

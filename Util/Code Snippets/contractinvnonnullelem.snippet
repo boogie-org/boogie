@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <SnippetTypes>
+        <SnippetType>Expansion</SnippetType>
+      </SnippetTypes>
+      <Title>Contract.Invariant(cce.NonNullElements(...))</Title>
+      <Shortcut>cinn</Shortcut>
+      <Description>Emits a 'Contract.Invariant' non-null elements clause</Description>
+      <Author>tabarbe</Author>
+    </Header>
+    <Snippet>
+      <Imports>
+        <Import>
+          <Namespace>System.Diagnostics.Contracts</Namespace>
+        </Import>
+      </Imports>
+      <Declarations>
+        <Object Editable="true">
+          <ID>collection</ID>
+          <ToolTip>collection whose elements must not be null</ToolTip>
+          <Default>arg</Default>
+          <Function>
+          </Function>
+        </Object>
+      </Declarations>
+      <Code Language="CSharp" Kind="method body"><![CDATA[Contract.Invariant(cce.NonNullElements($collection$));$end$]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>
