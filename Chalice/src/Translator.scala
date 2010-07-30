@@ -20,6 +20,7 @@ object TranslationOptions {
   var checkLeaks = false: Boolean;
   var autoMagic = false: Boolean;
   var skipDeadlockChecks = false: Boolean;
+  var skipTermination = false: Boolean;
 }
 
 class Translator {
@@ -124,7 +125,7 @@ class Translator {
 
   def translateFunction(f: Function): List[Decl] = {
     val myresult = BVar("result", f.out.typ);
-    etran.checkTermination = true;
+    etran.checkTermination = !skipTermination;
     val checkBody = isDefined(f.definition);
     etran.checkTermination = false;
     // Boogie function that represents the Chalice function
@@ -1110,7 +1111,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   val Mask = globals(1);
   val Credits = globals(2);
   lazy val oldEtran = new ExpressionTranslator(preGlobals, preGlobals, currentClass)
-  var checkTermination = false; // check that heap required by callee is strictly smaller than heap required by caller
+  var checkTermination = false; 
 
   def this(globals: List[Boogie.Expr], cl: Class) = this(globals, globals map (g => Boogie.Old(g)), cl)
   def this(cl: Class) = this(for ((id,t) <- S_ExpressionTranslator.Globals) yield Boogie.VarExpr(id), cl)

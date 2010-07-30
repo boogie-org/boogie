@@ -214,9 +214,8 @@ object Resolver {
      ResolveExpr(e, context, true, true)(false)
      if (!e.typ.IsBool) context.Error(e.pos, "assert statement requires a boolean expression (found " + e.typ.FullName + ")")
    case Assume(e) =>
-     ResolveExpr(e, context, false, false)(false)  // assume expressions remain at run-time, so OLD is not allowed
+     ResolveExpr(e, context, true, true)(false)  
      if (!e.typ.IsBool) context.Error(e.pos, "assume statement requires a boolean expression (found " + e.typ.FullName + ")")
-     CheckNoGhost(e, context)
    case BlockStmt(ss) =>
      var ctx = context
      for (s <- ss) s match {

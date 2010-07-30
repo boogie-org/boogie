@@ -98,7 +98,10 @@ class ChaliceToCSharp {
   def convertStatement(statement: Statement): String = {
     statement match {
       case Assert(e) => indent + "// assert" + nl
-      case Assume(e) => indent + "assert " + convertExpression(e) + ";" // todo: what if e contains old, result, ...
+      case Assume(e) => indent + {e match {
+        case BoolLiteral(false) => "assert false;" + nl // abort since we made a wrong choice...
+        case _ => // TODO: what to do with assume expressions that contain old, result, ghost variables, etc.
+          "// assume" + nl}}
       case BlockStmt(ss) => indent + "{" + nl + (indentMore { rep(ss map convertStatement) }) + indent + "}" + nl
       case IfStmt(guard, thn, els) => indent + "if (" + convertExpression(guard) + ")" + nl + convertStatement(thn) + 
         (if(els.isDefined) (indent + "else" + nl + convertStatement(els.get)) else { "" }) + nl

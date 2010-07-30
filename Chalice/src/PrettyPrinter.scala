@@ -41,19 +41,22 @@ object PrintProgram {
       print("  condition " + id)
       optE match {
         case None =>
-        case Some(e) => print(" where " + Expr(e))
+        case Some(e) => print(" where "); Expr(e)
       }
       println(Semi)
     case Predicate(id, definition) =>
-      println("  predicate " + id + "  { " + Expr(definition) + "}")
+      print("  predicate " + id + " { "); Expr(definition); println(" }")
     case Function(id, ins, out, specs, e) =>
-      print("  function " + id + "(" + VarList(ins) + ")" + ": " + out.id);
+      print("  function " + id + "("); VarList(ins); print("): " + out.FullName);
+      println
       specs foreach {
         case Precondition(e) => print("    requires "); Expr(e); println(Semi)
         case Postcondition(e) => print("    ensures "); Expr(e); println(Semi)
         case LockChange(ee) => print("    lockchange "); ExprList(ee); println(Semi)
       }
-      print("  { " + Expr(e) + "}");
+      print("  { ");
+      Expr(e);
+      println(" }");
   }
   def Stmt(s: Statement, indent: Int): Unit = s match {
     case Assert(e) =>

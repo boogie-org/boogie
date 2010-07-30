@@ -199,7 +199,7 @@ namespace Demo
         FunctionExpression.Rule = QualifiedName + LParen + expressionList.Q() + RParen;
 
         QualifiedName.Rule = ident | QualifiedName + dot + ident;
-        AccessQualName.Rule = ident | "*" | QualifiedName + dot + (ident | "*");
+        AccessQualName.Rule = ident | "*" | QualifiedName + dot + (ident | "*" | "[*]" + dot + "*" | "[*]" + dot + ident);
 
 
         GenericsPostfix.Rule = less + QualifiedName + greater;
