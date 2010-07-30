@@ -87,6 +87,7 @@
   <ItemGroup>
     <Compile Include="BoogieDriver.cs" />
     <Compile Include="..\version.cs" />
+    <Compile Include="cce.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AbsInt\AbsInt.csproj">

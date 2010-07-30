@@ -35,7 +35,7 @@ namespace Microsoft.Boogie {
     // Main
 
     public static void Main(string[] args) {
-      Contract.Requires(NonNullElements(args));
+      Contract.Requires(cce.NonNullElements(args));
       CommandLineOptions.Clo.RunningBoogieFromCommandLine = true;
       if (CommandLineOptions.Clo.Parse(args) != 1) {
         goto END;
@@ -187,7 +187,7 @@ namespace Microsoft.Boogie {
         kind = "Error";
       }
       if (node.SourceContext.Document != null) {
-        return string.Format("{0}({1},{2}): {3}: {4}", Path.GetFileName(NonNull(node.SourceContext.Document.Name)), node.SourceContext.StartLine, node.SourceContext.StartColumn, kind, message);
+        return string.Format("{0}({1},{2}): {3}: {4}", Path.GetFileName(cce.NonNull(node.SourceContext.Document.Name)), node.SourceContext.StartLine, node.SourceContext.StartColumn, kind, message);
       } else {
         return string.Format("{0}: {1}", kind, message);
       }
@@ -223,7 +223,7 @@ namespace Microsoft.Boogie {
     }
 
     static void ProcessFiles(List<string> fileNames) {
-      Contract.Requires(NonNullElements(fileNames));
+      Contract.Requires(cce.NonNullElements(fileNames));
       using (XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1])) {
         //BoogiePL.Errors.count = 0;
         Program program = ParseBoogieProgram(fileNames, false);
@@ -280,7 +280,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(program != null);
       // We inspect the last declaration because the first comes from the prelude and therefore always has source context.
       return program.TopLevelDeclarations.Count > 0 &&
-          ((NonNull(program.TopLevelDeclarations)[program.TopLevelDeclarations.Count - 1]).tok.IsValid);
+          ((cce.NonNull(program.TopLevelDeclarations)[program.TopLevelDeclarations.Count - 1]).tok.IsValid);
     }
 
 
@@ -354,7 +354,7 @@ namespace Microsoft.Boogie {
     /// and null will be returned.  On success, a non-null program is returned.
     /// </summary>
     static Program ParseBoogieProgram(List<string> fileNames, bool suppressTraceOutput) {
-      Contract.Requires(NonNullElements(fileNames));
+      Contract.Requires(cce.NonNullElements(fileNames));
       //BoogiePL.Errors.count = 0;
       Program program = null;
       bool okay = true;
@@ -467,7 +467,7 @@ namespace Microsoft.Boogie {
 
       // Inline
       // In Spec#, there was no run-time test. The type was just List<Declaration!>
-      List<Declaration> TopLevelDeclarations = NonNull(program.TopLevelDeclarations);
+      List<Declaration> TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
       
       
       if (CommandLineOptions.Clo.ProcedureInlining != CommandLineOptions.Inlining.None) {
@@ -568,7 +568,7 @@ namespace Microsoft.Boogie {
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Contract.Assert(decl != null);
         Implementation impl = decl as Implementation;
-        if (impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(NonNull(impl.Name)) && !impl.SkipVerification) {
+        if (impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification) {
           //TODO: Resolve arraylist nonnulls
           List<Counterexample/*!*/>/*?*/ errors;
 
@@ -611,7 +611,7 @@ namespace Microsoft.Boogie {
           switch (outcome) {
             default:
               Contract.Assert(false);  // unexpected outcome
-              throw new UnreachableException();
+              throw new cce.UnreachableException();
             case VCGen.Outcome.Correct:
               if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
                 Inform(String.Format("{0}credible", timeIndication));
@@ -729,26 +729,12 @@ namespace Microsoft.Boogie {
         }
       }
       vcgen.Close();
-      NonNull(CommandLineOptions.Clo.TheProverFactory).Close();
+      cce.NonNull(CommandLineOptions.Clo.TheProverFactory).Close();
 
 
       #endregion
 
       return PipelineOutcome.VerificationCompleted;
-    }
-    [Pure]
-    public static T NonNull<T>(T t) {
-      Contract.Assert(t != null);
-      return t;
-    }
-    [Pure]
-    public static bool NonNullElements<T>(IEnumerable<T> collection) {
-      return collection != null && Contract.ForAll(collection, c => c != null);
-    }
-
-    public class UnreachableException : Exception {
-      public UnreachableException() {
-      }
     }
 
   }
