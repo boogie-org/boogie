@@ -14,7 +14,7 @@
     <FileAlignment>512</FileAlignment>
     <CodeContractsAssemblyMode>0</CodeContractsAssemblyMode>
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>InterimKey.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>..\InterimKey.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -85,10 +85,7 @@
     <Compile Include="ExprFactories.cs" />
     <Compile Include="LoopInvariantsOnDemand.cs" />
     <Compile Include="Traverse.cs" />
-    <Compile Include="version.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="InterimKey.snk" />
+    <Compile Include="..\version.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AIFramework\AIFramework.sscproj">

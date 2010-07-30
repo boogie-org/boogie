@@ -86,7 +86,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BoogieDriver.cs" />
-    <Compile Include="version.cs" />
+    <Compile Include="..\version.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AbsInt\AbsInt.csproj">
@@ -133,9 +133,6 @@
       <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
       <Name>VCGeneration</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="InterimKey.snk" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

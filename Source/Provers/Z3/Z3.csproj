@@ -13,6 +13,8 @@
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <CodeContractsAssemblyMode>0</CodeContractsAssemblyMode>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\InterimKey.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -79,6 +81,7 @@
     <Compile Include="Prover.cs" />
     <Compile Include="ProverInterface.cs" />
     <Compile Include="TypeDeclCollector.cs" />
+    <Compile Include="..\..\version.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\AIFramework\AIFramework.sscproj">
