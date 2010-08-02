@@ -1,7 +1,8 @@
 @echo off
 echo start > Output
 
-set CHALICE=call scala -cp bin Chalice -nologo
+set CHALICE=call scala -cp bin Chalice -nologo -boogie:"C:\\Users\\t-kuayes\\Documents\\Boogie-2010-07-13\\Boogie.exe" 
+
 
 REM to do: AssociationList
 REM to do: GhostConst
@@ -11,7 +12,7 @@ for %%f in (cell counter dining-philosophers ForkJoin HandOverHand
             iterator iterator2 producer-consumer
             prog0 prog1 prog2 prog3 prog4 ImplicitLocals
             RockBand swap OwickiGries ProdConsChannel LoopLockChange
-            PetersonsAlgorithm) do (
+            PetersonsAlgorithm quantifiers) do (
   echo   Testing %%f.chalice ...
   echo ------ Running regression test %%f.chalice >> Output
   %CHALICE% %* examples\%%f.chalice >> Output 2>&1

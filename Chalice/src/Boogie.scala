@@ -94,14 +94,17 @@ object Boogie {
    def this(f: String, a0: Expr, a1: Expr) = this(f, List(a0, a1))
    def this(f: String, a0: Expr, a1: Expr, a2: Expr) = this(f, List(a0, a1, a2))
  }
- case class Forall(ta: List[TVar], xs: List[BVar], triggers: List[Expr], body: Expr) extends Expr {
+ case class Trigger(ts: List[Expr]) extends Expr {
+   def this(t: Expr) = this(List(t))
+ }
+ case class Forall(ta: List[TVar], xs: List[BVar], triggers: List[Trigger], body: Expr) extends Expr {
    def this(x: BVar, body: Expr) = this(Nil, List(x), Nil, body)   
-   def this(xs: List[BVar], triggers: List[Expr], body: Expr) = this(Nil, xs, triggers, body)
+   def this(xs: List[BVar], trigger: Trigger, body: Expr) = this(Nil, xs, List(trigger), body)
    def this(t: TVar, x: BVar, body: Expr) = this(List(t), List(x), Nil, body)
  }
- case class Exists(ta: List[TVar], xs: List[BVar], triggers: List[Expr], body: Expr) extends Expr {
+ case class Exists(ta: List[TVar], xs: List[BVar], triggers: List[Trigger], body: Expr) extends Expr {
    def this(x: BVar, body: Expr) = this(Nil, List(x), List(), body)
-   def this(xs: List[BVar], triggers: List[Expr], body: Expr) = this(Nil, xs, triggers, body)   
+   def this(xs: List[BVar], trigger: Trigger, body: Expr) = this(Nil, xs, List(trigger), body)
  }
  case class Lambda(ta: List[TVar], xs: List[BVar], body: Expr) extends Expr
 
@@ -273,7 +276,7 @@ object Boogie {
      (if (ts.length == 0) " " else "<" + Print(ts, ", ", { x: TVar => x.id }) + "> ") +
      Print(xs, ", ", { x: BVar => x.id +  ": " + PrintType(x.t) }) +
      " :: " +
-     Print(triggers , "", { s: Expr => "{" + PrintExpr(s) + "} " }) +
+     Print(triggers , "", { t: Trigger => "{" + Print(t.ts,", ", PrintExpr) + "} " }) +
      PrintExpr(body) +
      ")"
    case Exists(ts, xs, triggers, body) =>
@@ -281,7 +284,7 @@ object Boogie {
      (if (ts.length == 0) " " else "<" + Print(ts, ", ", { x: TVar => x.id }) + "> ") +     
      Print(xs, ", ", { x: BVar => x.id +  ": " + PrintType(x.t) }) +
      " :: " +
-     Print(triggers , "", { s: Expr => "{" + PrintExpr(s) + "} " }) +
+     Print(triggers , "", { t: Trigger => "{" + Print(t.ts,", ", PrintExpr) + "} " }) +
      PrintExpr(body) +
      ")"
    case Lambda(ts, xs, body) =>

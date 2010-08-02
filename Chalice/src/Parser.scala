@@ -479,7 +479,7 @@ class Parser extends StandardTokenParsers {
     | "(" ~> expression <~ ")"
     | quantifierType
     | quantifierSeq
-    | ("[" ~> expression) ~ (":" ~> expression <~ "]") ^^ { case from ~ to => Range(from, to) }
+    | ("[" ~> expression) ~ (".." ~> expression <~ "]") ^^ { case from ~ to => Range(from, to) }
     | ("nil" ~> "<") ~> (typeDecl <~ ">") ^^ EmptySeq
     | ("[" ~> expressionList <~ "]") ^^ { case es => ExplicitSeq(es) }
     )

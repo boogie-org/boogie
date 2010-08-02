@@ -9,7 +9,7 @@ import scala.util.parsing.input.NoPosition
 import Boogie.Proc, Boogie.NamedType, Boogie.NewBVar, Boogie.Havoc, Boogie.Stmt, Boogie.Const,
        Boogie.Decl, Boogie.Expr, Boogie.FunctionApp, Boogie.Axiom, Boogie.BVar, Boogie.BType,
        Boogie.VarExpr, Boogie.IndexedType, Boogie.Comment, Boogie.MapUpdate, Boogie.MapSelect,
-       Boogie.If, Boogie.Lambda;
+       Boogie.If, Boogie.Lambda, Boogie.Trigger;
 
 case class ErrorMessage(pos: Position, message: String)
 
@@ -130,7 +130,7 @@ class Translator {
     val checkBody = isDefined(f.definition);
     etran.checkTermination = false;
     // Boogie function that represents the Chalice function
-    Boogie.Function(functionName(f), BVar("heap", theap) :: Boogie.BVar("mask", tmask) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new Boogie.BVar("$myresult", f.out.typ)) ::
+    Boogie.Function(functionName(f), BVar("heap", theap) :: BVar("mask", tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar), BVar("$myresult", f.out.typ)) ::
     // check definedness of the function's precondition and body
     Proc(f.FullName + "$checkDefinedness", 
       NewBVarWhere("this", new Type(currentClass)) :: (f.ins map {i => Variable2BVarWhere(i)}),
@@ -146,17 +146,17 @@ class Translator {
       BLocal(myresult) ::
       (Boogie.VarExpr("result") := etran.Tr(f.definition)) ::
       // check that postcondition holds
-      ExhaleWithChecking(Postconditions(f.spec) map { post => ((if(0<defaults) UnfoldPredicatesWithReceiverThis(post) else post), ErrorMessage(f.pos, "Postcondition at " + post.pos + " might not hold."))}, "function postcondition")) :: 
-      // definition axiom
-      definitionAxiom(f) ::
-      // framing axiom (+ frame function)
-      framingAxiom(f) :::
-      // postcondition axiom(s)
-      postconditionAxiom(f)
+      ExhaleWithChecking(Postconditions(f.spec) map { post => ((if(0<defaults) UnfoldPredicatesWithReceiverThis(post) else post),
+              ErrorMessage(f.pos, "Postcondition at " + post.pos + " might not hold."))}, "function postcondition")) ::
+    // definition axiom
+    definitionAxiom(f) :::
+    // framing axiom (+ frame function)
+    framingAxiom(f) :::
+    // postcondition axiom(s)
+    postconditionAxiom(f)
   }
 
-  def definitionAxiom(f: Function): Axiom = {
-    val version = Version(Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) }), etran);
+  def definitionAxiom(f: Function): List[Decl] = {
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
     val frameFunctionName = "##" + f.FullName;
 
@@ -164,36 +164,94 @@ class Translator {
          wf(h, m) && CurrentModule == module#C ==> #C.f(h, m, this, x_1, ..., x_n) == tr(body))
     */
     val args = VarExpr("this") :: inArgs;
+    var formals = BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar);
     val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask) ::: args);
+
+    /** Limit application of the function by introducing a second limited function */
+    val body = etran.Tr(if (f.isRecursive) {
+      val limited = Map() ++ (f.SCC zip (f.SCC map {f =>
+        val result = Function(f.id + "#limited", f.ins, f.out, f.spec, f.definition);
+        result.Parent = f.Parent;
+        result;
+      }));
+      def limit: Expression => Option[Expression] = _ match {
+        case app @ FunctionApplication(obj, id, args) if (f.SCC contains app.f) =>
+          val result = FunctionApplication(obj transform limit, id, args map (e => e transform limit));          
+          result.f = limited(app.f);          
+          Some(result)
+        case _ => None
+      }
+      f.definition transform limit;
+    } else
+      f.definition);
+
     Axiom(new Boogie.Forall(
-      BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
-      List(applyF),
+      formals, new Trigger(applyF),
         (wf(VarExpr(HeapName), VarExpr(MaskName)) && (CurrentModule ==@ ModuleName(currentClass)))
         ==>
-        (applyF ==@ etran.Tr(f.definition)))
-    )
+        (applyF ==@ body))) ::
+    (if (f.isRecursive)
+      // define the limited function
+      Boogie.Function(functionName(f) + "#limited", formals, BVar("$myresult", f.out.typ)) ::
+      Axiom(new Boogie.Forall(
+        formals, new Trigger(applyF),
+        applyF ==@ FunctionApp(functionName(f) + "#limited", List(etran.Heap, etran.Mask) ::: args))) ::
+      Nil
+    else
+      Nil)            
   }
 
   def framingAxiom(f: Function): List[Decl] = {
-    /* function ##C.f(state, ref, t_1, ..., t_n) returns (t);       
-       axiom (forall h: HeapType, m: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
-          wf(h, m) && IsGoodState(version) ==> #C.f(h, m, this, x_1, ..., x_n) ==  ##C.f(version, this, x_1, ..., x_n))
-    */
-    val version = Version(Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) }), etran);
-    val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
-    val frameFunctionName = "##" + f.FullName;
+    val pre = Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) });
+    var hasAccessSeq = false;
+    pre visit {_ match {case _: AccessSeq => hasAccessSeq = true; case _ => }}
 
-    val args = VarExpr("this") :: inArgs;
-    val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask) ::: args);
-    val applyFrameFunction = FunctionApp(frameFunctionName, version :: args);
-    Boogie.Function("##" + f.FullName, Boogie.BVar("state", theap) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new BVar("$myresult", f.out.typ)) ::
-    Axiom(new Boogie.Forall(
-      BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
-      List(applyF),
-        (wf(VarExpr(HeapName), VarExpr(MaskName)) && IsGoodState(version) && CanAssumeFunctionDefs)
-        ==>
-        (applyF ==@ applyFrameFunction))
-    )
+    if (!hasAccessSeq) {
+      // Encoding with nostate and combine
+      /* function ##C.f(state, ref, t_1, ..., t_n) returns (t);
+         axiom (forall h: HeapType, m: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
+            wf(h, m) && IsGoodState(version) ==> #C.f(h, m, this, x_1, ..., x_n) ==  ##C.f(version, this, x_1, ..., x_n))
+      */
+      // make sure version is of HeapType
+      val version = Boogie.FunctionApp("combine", List("nostate", Version(pre, etran)));
+      val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
+      val frameFunctionName = "##" + f.FullName;
+
+      val args = VarExpr("this") :: inArgs;
+      val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask) ::: args);
+      val applyFrameFunction = FunctionApp(frameFunctionName, version :: args);
+      Boogie.Function(frameFunctionName, Boogie.BVar("state", theap) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new BVar("$myresult", f.out.typ)) ::
+      Axiom(new Boogie.Forall(
+        BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
+        new Trigger(applyF),
+          (wf(VarExpr(HeapName), VarExpr(MaskName)) && IsGoodState(version) && CanAssumeFunctionDefs)
+          ==>
+          (applyF ==@ applyFrameFunction))
+      )
+    } else {
+      // Encoding with two heap quantification
+      /* axiom (forall h1, h2: HeapType, m1, m2: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
+            wf(h1,m1) && wf(h2,m2) && version(h1, h2, #C.f) ==>
+              #C.f(h1, m1, this, x_1, ..., x_n) == #C.f(h2, m2, this, x_1, ..., x_n)
+       */
+      var args = VarExpr("this") :: (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
+
+      // create two heaps
+      val globals1 = etran.FreshGlobals("a"); val etran1 = new ExpressionTranslator(globals1 map {v => new Boogie.VarExpr(v)}, currentClass);
+      val globals2 = etran.FreshGlobals("b"); val etran2 = new ExpressionTranslator(globals2 map {v => new Boogie.VarExpr(v)}, currentClass);
+      val List(heap1, mask1, _) = globals1;
+      val List(heap2, mask2, _) = globals2;
+      val apply1 = FunctionApp(functionName(f), etran1.Heap :: etran1.Mask :: args);
+      val apply2 = FunctionApp(functionName(f), etran2.Heap :: etran2.Mask :: args);
+
+      Axiom(new Boogie.Forall(
+        heap1 :: heap2 :: mask1 :: mask2 :: BVar("this", tref) :: (f.ins map Variable2BVar),
+        new Trigger(List(apply1, apply2)),
+          ((wf(etran1.Heap, etran1.Mask) && wf(etran2.Heap, etran2.Mask) && Version(pre, etran1, etran2) && CanAssumeFunctionDefs)
+          ==>
+          (apply1 ==@ apply2))
+      ))
+    }
   }
 
   def postconditionAxiom(f: Function): List[Decl] = {
@@ -201,7 +259,6 @@ class Translator {
        axiom (forall h: HeapType, m: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
           wf(h, m) && CanAssumeFunctionDefs ==> Q[#C.f(h, m, this, x_1, ..., x_n)/result]
     */
-    val version = Version(Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) }), etran);
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
     val myresult = Boogie.BVar("result", f.out.typ);
     val args = VarExpr("this") :: inArgs;
@@ -210,7 +267,7 @@ class Translator {
     (Postconditions(f.spec) map { post : Expression =>
       Axiom(new Boogie.Forall(
         BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
-        List(applyF),
+        new Trigger(applyF),
         (wf(VarExpr(HeapName), VarExpr(MaskName)) && CanAssumeFunctionDefs)
           ==>
         etran.Tr(SubstResult(post, f.apply(ExplicitThisExpr(), f.ins map { arg => new VariableExpr(arg) })))
@@ -1011,8 +1068,8 @@ class Translator {
   def LocksUnchanged(exceptions: List[Boogie.Expr], etran: ExpressionTranslator) = {
     val (lkV, lk) = Boogie.NewBVar("lk", tref, true)
     val b: Boogie.Expr = false
-    new Boogie.Forall(List(lkV),
-                  List(etran.Heap.select(lk, "held"), etran.Heap.select(lk, "rdheld")),
+    Boogie.Forall(Nil, List(lkV),
+                  List(new Trigger(etran.Heap.select(lk, "held")), new Trigger(etran.Heap.select(lk, "rdheld"))),
                   (((0 < etran.Heap.select(lk, "held")) ==@
                     (0 < etran.oldEtran.Heap.select(lk, "held"))) &&
                    (new Boogie.MapSelect(etran.Heap, lk, "rdheld") ==@
@@ -1115,7 +1172,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   var checkTermination = false; 
 
   def this(globals: List[Boogie.Expr], cl: Class) = this(globals, globals map (g => Boogie.Old(g)), cl)
-  def this(cl: Class) = this(for ((id,t) <- S_ExpressionTranslator.Globals) yield Boogie.VarExpr(id), cl)
+  def this(cl: Class) = this(for ((id,t) <- ExpressionTranslator.Globals) yield Boogie.VarExpr(id), cl)
 
   def Globals = List(Heap, Mask, Credits)
   def ChooseEtran(chooseOld: Boolean) = if (chooseOld) oldEtran else this
@@ -1130,7 +1187,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   // Create a new ExpressionTranslator that is a copy of the receiver, but with
   // preGlobals as the old global variables 
   def FromPreGlobals(preGlobals: List[Boogie.BVar]) = {
-    val g = for ((id,t) <- S_ExpressionTranslator.Globals) yield VarExpr(id)
+    val g = for ((id,t) <- ExpressionTranslator.Globals) yield VarExpr(id)
     val pg = preGlobals map (g => new VarExpr(g))
     new ExpressionTranslator(g, pg, currentClass)
   }
@@ -1292,7 +1349,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       case tq @ TypeQuantification(_, _, _, e) =>
         // replace variables since we need locals
         val vars = tq.variables map {v => val result = new Variable(v.id, v.t); result.pos = v.pos; result;}
-        (vars map {v => BLocal(Boogie.BVar(v.UniqueName, type2BType(v.t.typ)))}) :::
+        (vars map {v => BLocal(Variable2BVarWhere(v))}) :::
         isDefined(SubstVars(e, tq.variables, vars map {v => new VariableExpr(v);}))
     }
   }
@@ -1330,7 +1387,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     case Not(e) =>
       ! Tr(e)
     case func@FunctionApplication(obj, id, args) =>
-      FunctionApp("#" + func.f.Parent.id + "." + id, Heap :: Mask :: (obj :: args map { arg => Tr(arg)}))
+      FunctionApp(functionName(func.f), Heap :: Mask :: (obj :: args map { arg => Tr(arg)}))
     case uf@Unfolding(_, e) =>
       Tr(e)
     case Iff(e0,e1) =>
@@ -1413,9 +1470,9 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       evalEtran.Tr(e)
     case _:SeqQuantification => throw new Exception("should be desugared")
     case tq @ TypeQuantification(Forall, _, _, e) =>
-      new Boogie.Forall(tq.variables map { v => Variable2BVar(v)}, Nil, Tr(e))
+      Boogie.Forall(Nil, tq.variables map { v => Variable2BVar(v)}, Nil, Tr(e))
     case tq @ TypeQuantification(Exists, _, _, e) =>
-      new Boogie.Exists(tq.variables map { v => Variable2BVar(v)}, Nil, Tr(e))
+      Boogie.Exists(Nil, tq.variables map { v => Variable2BVar(v)}, Nil, Tr(e))
   }
 
   def ShaveOffOld(e: Expression): (Expression, Boolean) = e match {
@@ -1661,7 +1718,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
        else Nil) :::
       // check that the necessary permissions are there and remove them from the mask
       DecPermissionEpsilon(Tr(e.e), memberName, if(epsilons != null) eps else null, em, error, rd.pos) :::
-      bassume(IsGoodMask(Mask)) :: // TODO: is this necessary?
+      bassume(IsGoodMask(Mask)) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(Heap, em))
     case acc @ AccessSeq(s, Some(member), perm) =>
@@ -1765,79 +1822,6 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
          (new MapSelect(argsSeq, 0) ==@ Tr(obj) ) &&
          (((args zip (1 until args.length+1).toList) map { a => new MapSelect(argsSeq, a._2) ==@ Tr(a._1)}).foldLeft(true: Expr){ (a: Expr, b: Expr) => a && b})
         )
-    }
-  }
-
-
-  // De-sugar expression (idempotent)
-  // * unroll wildcard pattern (for objects) in permission expression
-  // * convert sequence quantification into type quantification
-  def desugar(expr: Expression): Expression = expr transform {
-    _ match {
-      case AccessAll(obj, perm) =>
-        Some(obj.typ.Fields.map({f =>
-          val ma = MemberAccess(desugar(obj), f.id);
-          ma.f = f; ma.pos = expr.pos; ma.typ = f.typ.typ;
-          val acc = Access(ma, perm);
-          acc.pos = expr.pos; acc.typ = acc.typ; acc
-        }).foldLeft(BoolLiteral(true): Expression){(e1, e2) =>
-          val and = And(e1, e2);
-          and.pos = expr.pos; and.typ = BoolClass; and
-        })
-      case AccessSeq(s, None, perm) =>
-        Some(s.typ.parameters(0).Fields.map({(f) =>
-          val ma = MemberAccess(At(desugar(s), IntLiteral(0)), f.id);
-          ma.f = f; ma.pos = expr.pos; ma.typ = f.typ.typ;
-          val acc = AccessSeq(s, Some(ma), perm);
-          acc.pos = expr.pos; acc.typ = acc.typ; acc
-        }).foldLeft(BoolLiteral(true): Expression){(e1, e2) =>
-          val and = And(e1, e2);
-          and.pos = expr.pos; and.typ = BoolClass; and
-        })
-      case qe @ SeqQuantification(q, is, Range(min, max), e) =>
-        val dmin = desugar(min);
-        val dmax = desugar(max);
-        val dis = qe.variables;
-        val disx = dis map {v => new VariableExpr(v)};
-        val de = desugar(e);
-
-        val assumption = disx map {x =>
-          And(AtMost(dmin, x), Less(x, dmax))
-        } reduceLeft {(e0, e1) =>
-          And(e0, e1)
-        };
-        assumption transform {e => e.pos = expr.pos; None};
-        val body = q match {
-          case Forall => Implies(assumption, de);
-          case Exists => And(assumption, de);
-        }
-        body.pos = expr.pos;
-        val result = TypeQuantification(q, is, new Type(IntClass), body);
-        result.variables = dis;
-        Some(result);
-      case qe @ SeqQuantification(q, is, seq, e) =>
-        val dseq = desugar(seq);
-        val min = IntLiteral(0);
-        val max = Length(dseq);
-        val dis = qe.variables map {v => new Variable(v.UniqueName, new Type(IntClass))};
-        val disx = dis map {v => new VariableExpr(v)};
-        val de = SubstVars(desugar(e), qe.variables, disx map {x => At(dseq, x)});
-
-        val assumption = disx map {x =>
-          And(AtMost(min, x), Less(x, max))
-        } reduceLeft {(e0, e1) =>
-          And(e0, e1)
-        };
-        assumption transform {e => e.pos = expr.pos; None};
-        val body = q match {
-          case Forall => Implies(assumption, de);
-          case Exists => And(assumption, de);
-        }
-        body.pos = expr.pos;
-        val result = TypeQuantification(q, is, new Type(IntClass), body);
-        result.variables = dis;
-        Some(result);
-      case _ => None;
     }
   }
 
@@ -1951,7 +1935,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     //     old(o.mu) == p.mu)
     val (oV, o) = Boogie.NewBVar("o", tref, false)
     val (pV, p) = Boogie.NewBVar("p", tref, false)
-    val b1 = new Boogie.Forall(List(oV,pV), List(),
+    val b1 = Boogie.Forall(Nil, List(oV,pV), Nil,
                   ((0 < new Boogie.MapSelect(oldEtran.Heap, o, "held")) &&
                    oldEtran.IsHighestLock(new Boogie.MapSelect(oldEtran.Heap, o, "mu")) &&
                    (0 < new Boogie.MapSelect(Heap, p, "held")) &&
@@ -1985,7 +1969,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   def isRdHeld(e: Expr): Expr = etran.Heap.select(e, "rdheld")
   def isShared(e: Expr): Expr = etran.Heap.select(e, "mu") !=@ bLockBottom
 
-object S_ExpressionTranslator {
+object ExpressionTranslator {
   val Globals = {
     ("Heap", theap) ::
     ("Mask", tmask) ::
@@ -2157,19 +2141,55 @@ object TranslationHelper {
   }
 
   def Version(expr: Expression, etran: ExpressionTranslator): Boogie.Expr = {
-    expr match{
+    val nostate = Boogie.VarExpr("nostate");
+    desugar(expr) match {
       case pred@MemberAccess(e, p) if pred.isPredicate =>
         Version(Access(pred, Full), etran)
-      case acc@Access(e,perm) =>
+      case acc@Access(e, _) =>
         val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
         new Boogie.MapSelect(etran.Heap, etran.Tr(e.e), memberName)
       case Implies(e0,e1) =>
-        Boogie.Ite(etran.Tr(e0), Version(e1, etran), 0)
+        Boogie.Ite(etran.Tr(e0), Version(e1, etran), nostate)
       case And(e0,e1) =>
-        Boogie.FunctionApp("combine", List(Version(e0, etran), Version(e1, etran)))
+        val l = Version(e0, etran);
+        val r = Version(e1, etran);
+        if (l == nostate) r
+        else if (r == nostate) l
+        else Boogie.FunctionApp("combine", List(l, r))
       case IfThenElse(con, then, els) =>
         Boogie.Ite(etran.Tr(con), Version(then, etran), Version(els, etran))
-      case e => Boogie.VarExpr("nostate")
+      case _: PermissionExpr => throw new Exception("unexpected permission expression")
+      case e =>
+        e visit {_ match { case _ : PermissionExpr => throw new Exception("unexpected permission expression"); case _ =>}}
+        nostate
+    }
+  }
+
+  // conservative for Implies and IfThenElse
+  // returns an expression of Boogie type bool
+  def Version(expr: Expression, etran1: ExpressionTranslator, etran2: ExpressionTranslator): Boogie.Expr = {
+    desugar(expr) match {
+      case pred@MemberAccess(e, p) if pred.isPredicate =>
+        Version(Access(pred, Full), etran1, etran2)
+      case Access(e, _) =>
+        val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
+        etran1.Heap.select(etran1.Tr(e.e), memberName) ==@ etran2.Heap.select(etran2.Tr(e.e), memberName)
+      case AccessSeq(s, Some(e), _) =>
+        val name = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
+        val (iV, i) = Boogie.NewBVar("i", tint, true)
+        (SeqLength(etran1.Tr(s)) ==@ SeqLength(etran2.Tr(s))) &&
+        ((((0 <= i) && (i < SeqLength(etran1.Tr(s)))) ==>
+          (etran1.Heap.select(SeqIndex(etran1.Tr(s), i), name) ==@ etran2.Heap.select(SeqIndex(etran2.Tr(s), i), name))).forall(iV))
+      case Implies(e0,e1) =>
+        Boogie.Ite(etran1.Tr(e0) || etran2.Tr(e0), Version(e1, etran1, etran2), true)
+      case And(e0,e1) =>
+        Version(e0, etran1, etran2) && Version(e1, etran1, etran2)
+      case IfThenElse(con, then, els) =>
+        Version(then, etran1, etran2) && Version(els, etran1, etran2)
+      case _: PermissionExpr => throw new Exception("unexpected permission expression")
+      case e =>
+        e visit {_ match { case _ : PermissionExpr => throw new Exception("unexpected permission expression"); case _ =>}}
+        Boogie.BoolLiteral(true)
     }
   }
   
@@ -2344,6 +2364,78 @@ object TranslationHelper {
     _ match {
       case _: Result => Some(x)
       case _ => None
+    }
+  }  
+
+  // De-sugar expression (idempotent)
+  // * unroll wildcard pattern (for objects) in permission expression
+  // * convert sequence quantification into type quantification
+  def desugar(expr: Expression): Expression = expr transform {
+    _ match {
+      case AccessAll(obj, perm) =>
+        Some(obj.typ.Fields.map({f =>
+          val ma = MemberAccess(desugar(obj), f.id);
+          ma.f = f; ma.pos = expr.pos; ma.typ = f.typ.typ;
+          val acc = Access(ma, perm);
+          acc.pos = expr.pos; acc.typ = acc.typ; acc
+        }).foldLeft(BoolLiteral(true): Expression){(e1, e2) =>
+          val and = And(e1, e2);
+          and.pos = expr.pos; and.typ = BoolClass; and
+        })
+      case AccessSeq(s, None, perm) =>
+        Some(s.typ.parameters(0).Fields.map({(f) =>
+          val ma = MemberAccess(At(desugar(s), IntLiteral(0)), f.id);
+          ma.f = f; ma.pos = expr.pos; ma.typ = f.typ.typ;
+          val acc = AccessSeq(s, Some(ma), perm);
+          acc.pos = expr.pos; acc.typ = acc.typ; acc
+        }).foldLeft(BoolLiteral(true): Expression){(e1, e2) =>
+          val and = And(e1, e2);
+          and.pos = expr.pos; and.typ = BoolClass; and
+        })
+      case qe @ SeqQuantification(q, is, Range(min, max), e) =>
+        val dmin = desugar(min);
+        val dmax = desugar(max);
+        val dis = qe.variables;
+        val disx = dis map {v => new VariableExpr(v)};
+        val de = desugar(e);
+
+        val assumption = disx map {x =>
+          And(AtMost(dmin, x), Less(x, dmax))
+        } reduceLeft {(e0, e1) =>
+          And(e0, e1)
+        };
+        assumption transform {e => e.pos = expr.pos; None};
+        val body = q match {
+          case Forall => Implies(assumption, de);
+          case Exists => And(assumption, de);
+        }
+        body.pos = expr.pos;
+        val result = TypeQuantification(q, is, new Type(IntClass), body);
+        result.variables = dis;
+        Some(result);
+      case qe @ SeqQuantification(q, is, seq, e) =>
+        val dseq = desugar(seq);
+        val min = IntLiteral(0);
+        val max = Length(dseq);
+        val dis = qe.variables map {v => new Variable(v.UniqueName, new Type(IntClass))};
+        val disx = dis map {v => new VariableExpr(v)};
+        val de = SubstVars(desugar(e), qe.variables, disx map {x => At(dseq, x)});
+
+        val assumption = disx map {x =>
+          And(AtMost(min, x), Less(x, max))
+        } reduceLeft {(e0, e1) =>
+          And(e0, e1)
+        };
+        assumption transform {e => e.pos = expr.pos; None};
+        val body = q match {
+          case Forall => Implies(assumption, de);
+          case Exists => And(assumption, de);
+        }
+        body.pos = expr.pos;
+        val result = TypeQuantification(q, is, new Type(IntClass), body);
+        result.variables = dis;
+        Some(result);
+      case _ => None;
     }
   }
 }

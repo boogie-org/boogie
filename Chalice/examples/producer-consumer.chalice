@@ -164,7 +164,7 @@ class List module Collections {
   method add(x: int) 
     requires valid;
     ensures valid && size() == old(size()+1) && get(size()-1) == x;
-    ensures forall i in [0:size()-1] :: get(i) == old(get(i));
+    ensures forall i in [0..size()-1] :: get(i) == old(get(i));
   {
     unfold valid;
     contents := contents ++ [x];
@@ -174,7 +174,7 @@ class List module Collections {
   method removeFirst() returns (rt: int) 
     requires valid && 0<size();
     ensures valid && size() == old(size()-1);
-    ensures forall i in [0:size()] :: get(i) == old(get(i+1));
+    ensures forall i in [0..size()] :: get(i) == old(get(i+1));
   {
     unfold valid;
     rt := contents[0];

@@ -137,6 +137,9 @@ case class Function(id: String, ins: List[Variable], out: Type, spec: List[Speci
     result.f = this;
     result
   }
+  val isUnlimited = false;
+  var isRecursive = false;
+  var SCC: List[Function] = Nil;
 }
 case class Condition(id: String, where: Option[Expression]) extends NamedMember(id)
 class Variable(name: String, typ: Type) extends ASTNode {
@@ -235,6 +238,7 @@ case class Init(id: String, e: Expression) extends ASTNode {
 }
 sealed abstract class Expression extends RValue {
   def transform(f: Expression => Option[Expression]) = AST.transform(this, f)
+  def visit(f: RValue => Unit) = AST.visit(this, f);
 }
 sealed abstract class Literal extends Expression
 case class IntLiteral(n: Int) extends Literal
