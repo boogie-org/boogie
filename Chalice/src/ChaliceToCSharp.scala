@@ -56,7 +56,7 @@ class ChaliceToCSharp {
   
   def convertMember(member: Member): String = {
     member match {
-      case Field(id, tp) =>
+      case Field(id, tp, false) =>
         indent + "public " + convertType(tp) + " " + id + ";" + nl
       case meth@Method(id, ins, outs, spec, body) =>
         var csharpmain = if(id.equals("Start") && ins.length == 0 && outs.length == 0) {

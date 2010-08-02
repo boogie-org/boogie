@@ -78,9 +78,9 @@ object Resolver {
      case cl: Class =>
        for (m <- cl.asInstanceOf[Class].members) m match {
          case _:MonitorInvariant =>
-         case Field(id,t) =>
+         case Field(_, t, _) =>
            ResolveType(t, contextNoCurrentClass)
-         case Method(id, ins, outs, spec, body) =>
+         case Method(_, ins, outs, _, _) =>
            for (v <- ins ++ outs) {
              ResolveType(v.t, contextNoCurrentClass)
            }
@@ -101,7 +101,7 @@ object Resolver {
    //  * VariableExpr and FieldSelect expressions
    for (decl <- prog) decl match {
      case ch: Channel =>
-        val context = new ProgramContext(decls, ChannelClass(ch))
+       val context = new ProgramContext(decls, ChannelClass(ch))
        var ctx = context
        for (v <- ch.parameters) {
          ctx = ctx.AddVariable(v)
@@ -276,11 +276,11 @@ object Resolver {
      }
    case fu@FieldUpdate(lhs, rhs) =>
      ResolveExpr(lhs, context, false, false)(false)
-     if (! lhs.isPredicate && lhs.f != null && !lhs.f.IsGhost) CheckNoGhost(lhs.e, context)
+     if (! lhs.isPredicate && lhs.f != null && !lhs.f.isGhost) CheckNoGhost(lhs.e, context)
      if (! lhs.isPredicate && lhs.f.isInstanceOf[SpecialField]) context.Error(lhs.pos, "cannot assign directly to special field: " + lhs.id)
      ResolveExpr(rhs, context, false, false)(false)
      if (! lhs.isPredicate && !canAssign(lhs.typ, rhs.typ)) context.Error(fu.pos, "type mismatch in assignment, lhs=" + lhs.typ.FullName + " rhs=" + rhs.typ.FullName)
-     if (! lhs.isPredicate && lhs.f != null && !lhs.f.IsGhost) CheckNoGhost(rhs, context)
+     if (! lhs.isPredicate && lhs.f != null && !lhs.f.isGhost) CheckNoGhost(rhs, context)
    case lv:LocalVar => throw new Exception("unexpected LocalVar; should have been handled in BlockStmt above")
    case c @ Call(declaresLocal, lhs, obj, id, args) =>
      ResolveExpr(obj, context, false, false)(false)
@@ -361,11 +361,11 @@ object Resolver {
    case fld@Fold(e) =>
      ResolveExpr(e, context, false, true)(false);
      CheckNoGhost(e, context);
-     if(!e.getMemberAccess.isPredicate) context.Error(fld.pos, "Fold can only be applied to predicates.")
+     if(!e.ma.isPredicate) context.Error(fld.pos, "Fold can only be applied to predicates.")
    case ufld@Unfold(e) =>
      ResolveExpr(e, context, false, true)(false);
      CheckNoGhost(e, context);
-     if(!e.getMemberAccess.isPredicate) context.Error(ufld.pos, "Unfold can only be applied to predicates.")
+     if(!e.ma.isPredicate) context.Error(ufld.pos, "Unfold can only be applied to predicates.")
    case c@CallAsync(declaresLocal, token, obj, id, args) => 
      // resolve receiver
      ResolveExpr(obj, context, false, false)(false)
@@ -575,7 +575,7 @@ object Resolver {
          } else {
            fieldNames = fieldNames + f
            e.typ.LookupMember(f) match {
-             case Some(field@Field(name, tp)) =>
+             case Some(field@Field(name, tp, _)) =>
                if(field.isInstanceOf[SpecialField]) context.Error(init.pos, "Initializer cannot assign to special field " + name + ".");
                ResolveExpr(init, context, false, false);
                if(! canAssign(tp.typ, init.typ)) context.Error(init.pos, "The field " + name + " cannot be initialized with an expression of type " + init.typ.id + ".");
@@ -715,7 +715,7 @@ object Resolver {
    case uf@Unfolding(pred, e) =>
      ResolveExpr(pred, context, twoStateContext, true);
      ResolveExpr(e, context, twoStateContext, false);
-     if(! pred.getMemberAccess.isPredicate) context.Error(uf.pos, "Only predicates can be unfolded.")
+     if(! pred.ma.isPredicate) context.Error(uf.pos, "Only predicates can be unfolded.")
      uf.typ = e.typ;
    case bin: EqualityCompareExpr =>
      ResolveExpr(bin.E0, context, twoStateContext, false)
@@ -777,16 +777,26 @@ object Resolver {
                      " (expected " + bin.ExpectedRhsType.FullName + ", found " + bin.E1.typ.FullName + ")")
      bin.typ = bin.ResultType
    case q: Quantification =>
-     q.Is foreach { i => if(context.LookupVariable(i).isDefined) context.Error(q.pos, "The variable " + i + " hides another local.") }
-     ResolveExpr(q.Seq, context, twoStateContext, false);
-     if(! q.Seq.typ.IsSeq) 
-       context.Error(q.Seq.pos, "A quantification must range over a sequence. (found: " + q.Seq.typ.FullName + ").");
-     else {
-       val elementType = q.Seq.typ.parameters(0);
+     q.Is foreach { i => if(context.LookupVariable(i).isDefined) context.Error(q.pos, "The variable " + i + " hides another local.") };
+     val typ = q match {
+       case q: SeqQuantification =>
+         ResolveExpr(q.seq, context, twoStateContext, false);
+         if(! q.seq.typ.IsSeq) {
+           context.Error(q.seq.pos, "A quantification must range over a sequence. (found: " + q.seq.typ.FullName + ").");
+           None;
+         } else
+           Some(q.seq.typ.parameters(0));
+       case q: TypeQuantification =>
+         ResolveType(q.t, context);
+         if (q.t.typ == null) None else Some(q.t.typ);
+     };
+
+     if (typ.isDefined) {
+       val vartype = typ.get;
        var bodyContext = context;
        var bvariables = Nil: List[Variable];
        q.Is foreach { i =>
-         val variable = new Variable(i, new Type(elementType));
+         val variable = new Variable(i, new Type(vartype));
          bodyContext = bodyContext.AddVariable(variable);
          bvariables = bvariables ::: List(variable);
        }
@@ -895,27 +905,26 @@ object Resolver {
        case ve: VariableExpr =>
          if (ve.v != null && ve.v.IsGhost) context.Error(ve.pos, "ghost variable not allowed here")
        case fs@ MemberAccess(e, id) =>
-         if (!fs.isPredicate && fs.f != null && fs.f.IsGhost) context.Error(fs.pos, "ghost fields not allowed here")
-         CheckNoGhost(e, context)
+         if (!fs.isPredicate && fs.f != null && fs.f.isGhost) context.Error(fs.pos, "ghost fields not allowed here")
        case a: Assigned =>
          if (a.v != null && a.v.IsGhost) context.Error(a.pos, "ghost variable not allowed here")
-       case _ => visitE(e, specOk)
+       case _ => // do nothing
      }
    }
-   specOk(expr)
+   AST.visit(expr, specOk);
  }
 
  def CheckNoImmutableGhosts(expr: RValue, context: ProgramContext): Unit = {
-   def specOk(e: RValue): Unit = { 
+   def specOk(e: RValue): Unit = {
      e match {
        case ve: VariableExpr =>
          if (ve.v != null && ve.v.IsGhost && ve.v.IsImmutable) context.Error(ve.pos, "ghost const not allowed here")
        case a: Assigned =>
          if (a.v != null && a.v.IsGhost && a.v.IsImmutable) context.Error(a.pos, "ghost const not allowed here")
-       case _ => visitE(e, specOk)
+       case _ => // do nothing
      }
    }
-   specOk(expr)
+   AST.visit(expr, specOk);
  }
 
  def CheckRunSpecification(e: Expression, context: ProgramContext, allowMaxLock: Boolean): Unit = e match {
@@ -972,8 +981,10 @@ object Resolver {
    case bin: BinaryExpr =>
      CheckRunSpecification(bin.E0, context, false)
      CheckRunSpecification(bin.E1, context, false)
-   case q: Quantification =>
-     CheckRunSpecification(q.Seq, context, false)
+   case q: SeqQuantification =>
+     CheckRunSpecification(q.seq, context, false)
+     CheckRunSpecification(q.E, context, true)
+   case q: TypeQuantification =>
      CheckRunSpecification(q.E, context, true)
    case Length(e) =>
      CheckRunSpecification(e, context, false);
@@ -989,78 +1000,5 @@ object Resolver {
        case CallState(token, obj, id, args) => CheckRunSpecification(token, context, false); CheckRunSpecification(obj, context, false);  args foreach { a: Expression => CheckRunSpecification(a, context, false)};
      }
      CheckRunSpecification(e, context, allowMaxLock)
- }
-
- def visitE(expr: RValue, func: RValue => Unit): Unit = {
-   expr match {
-     case _:NewRhs =>
-     case e: Literal => ;
-     case _:ThisExpr => ;
-     case _:Result => ;
-     case e:VariableExpr => ;
-     case acc@MemberAccess(e,f) =>
-       func(e);
-     case Frac(p) => func(p);
-     case Epsilons(p) => func(p);
-     case Full | Epsilon | Star =>;
-     case Access(e, perm) =>
-       func(e); visitE(perm, func);
-     case AccessAll(obj, perm) =>
-       func(obj); visitE(perm, func);
-     case AccessSeq(s, f, perm) =>
-       func(s); visitE(perm, func);
-     case Credit(e, n) =>
-       func(e); n match { case Some(n) => func(n); case _ => }
-     case Holds(e) => func(e);
-     case RdHolds(e) => func(e);
-     case e: Assigned => e
-     case Old(e) => func(e);
-     case IfThenElse(con, then, els) => func(con); func(then); func(els);
-     case Not(e) => func(e);
-     case funapp@FunctionApplication(obj, id, args) =>
-       func(obj); args foreach { arg => func(arg) };
-     case Unfolding(pred, e) =>
-       func(pred); func(e); 
-     case Iff(e0,e1) => func(e0); func(e1);
-     case Implies(e0,e1) => func(e0); func(e1);
-     case And(e0,e1) =>func(e0); func(e1);
-     case Or(e0,e1) => func(e0); func(e1);
-     case Eq(e0,e1) => func(e0); func(e1);
-     case Neq(e0,e1) => func(e0); func(e1);
-     case Less(e0,e1) => func(e0); func(e1);
-     case AtMost(e0,e1) => func(e0); func(e1);
-     case AtLeast(e0,e1) => func(e0); func(e1);
-     case Greater(e0,e1) => func(e0); func(e1);
-     case LockBelow(e0,e1) => func(e0); func(e1);
-     case Plus(e0,e1) => func(e0); func(e1);
-     case Minus(e0,e1) => func(e0); func(e1);
-     case Times(e0,e1) => func(e0); func(e1);
-     case Div(e0,e1) => func(e0); func(e1);
-     case Mod(e0,e1) => func(e0); func(e1);
-     case Forall(i, seq, e) => func(seq); func(e);
-     case Exists(i, seq, e) => func(seq); func(e);
-     case ExplicitSeq(es) =>
-       es foreach { e => func(e) }
-     case Range(min, max) =>
-       func(min); func(max);
-     case Append(e0, e1) =>
-       func(e0); func(e1);
-     case at@At(e0, e1) =>
-       func(e0); func(e1);
-     case Drop(e0, e1) =>
-       func(e0); func(e1);
-     case Take(e0, e1) =>
-       func(e0); func(e1);
-     case Length(e) =>
-       func(e)
-     case Contains(s, n) => func(s); func(n);
-     case Eval(h, e) =>
-       h match {
-         case AcquireState(obj) => func(obj);
-         case ReleaseState(obj) => func(obj);
-         case CallState(token, obj, id, args) => func(token); func(obj); args foreach {a : Expression => func(a)};
-       }
-       func(e);
-   }
  }
 }

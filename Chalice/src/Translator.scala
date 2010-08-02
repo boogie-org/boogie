@@ -4,6 +4,7 @@
 //
 //-----------------------------------------------------------------------------
 import scala.util.parsing.input.Position
+import scala.util.parsing.input.NoPosition
 
 import Boogie.Proc, Boogie.NamedType, Boogie.NewBVar, Boogie.Havoc, Boogie.Stmt, Boogie.Const,
        Boogie.Decl, Boogie.Expr, Boogie.FunctionApp, Boogie.Axiom, Boogie.BVar, Boogie.BType,
@@ -579,7 +580,7 @@ class Translator {
         } :::
         // exhale preconditions
         Exhale(Preconditions(c.m.spec) map
-          (p => SubstVars(p, Some(formalThis), c.m.ins, formalIns)) zip (Preconditions(c.m.spec) map { p => ErrorMessage(c.pos, "The precondition at " + p.pos + " might not hold.")}), "precondition") :::
+          (p => SubstVars(p, formalThis, c.m.ins, formalIns)) zip (Preconditions(c.m.spec) map { p => ErrorMessage(c.pos, "The precondition at " + p.pos + " might not hold.")}), "precondition") :::
         // create a new token
         BLocal(tokenV) :: Havoc(tokenId) :: bassume(nonNull(tokenId)) ::
         // the following assumes help in proving that the token is fresh
@@ -637,7 +638,7 @@ class Translator {
         etran.SetNoPermission(token, "joinable", etran.Mask) ::
         // inhale postcondition of the call
         postEtran.Inhale(Postconditions(jn.m.spec) map
-                         { p => SubstVars(p, Some(formalThis), jn.m.ins ++ jn.m.outs, formalIns ++ formalOuts)}, "postcondition", false) :::
+                         { p => SubstVars(p, formalThis, jn.m.ins ++ jn.m.outs, formalIns ++ formalOuts)}, "postcondition", false) :::
         // assign formal outs to actual outs
         (for ((v,e) <- lhs zip formalOuts) yield (v := e))
       case s@Send(ch, args) =>
@@ -660,7 +661,7 @@ class Translator {
         new Boogie.MapUpdate(etran.Credits, TrExpr(ch), new Boogie.MapSelect(etran.Credits, TrExpr(ch)) + 1) ::
         // exhale where clause
         Exhale(List(
-          (SubstVars(channel.where, Some(formalThis), channel.parameters, formalParams),
+          (SubstVars(channel.where, formalThis, channel.parameters, formalParams),
            ErrorMessage(s.pos, "The where clause at " + channel.where.pos + " might not hold."))),
           "channel where clause")
       case r@Receive(_, ch, outs) =>
@@ -684,7 +685,7 @@ class Translator {
         (formalThis := ch) ::
         (for (v <- formalParams) yield Havoc(v)) :::
         // inhale where clause
-        Inhale(List(SubstVars(channel.where, Some(formalThis), channel.parameters, formalParams)), "channel where clause") :::
+        Inhale(List(SubstVars(channel.where, formalThis, channel.parameters, formalParams)), "channel where clause") :::
         // declare any new local variables among the actual outs
         (for (v <- r.locals) yield BLocal(Variable2BVarWhere(v))) :::
         // assign formal outs to actual outs
@@ -820,14 +821,14 @@ class Translator {
     (for ((v,e) <- formalIns zip args) yield (v := e)) :::
     // exhale preconditions
     Exhale(Preconditions(c.m.spec) map
-          (p => SubstVars(p, Some(formalThis), c.m.ins, formalIns)) zip (Preconditions(c.m.spec) map { p => ErrorMessage(c.pos, "The precondition at " + p.pos + " might not hold.")}), "precondition") :::
+          (p => SubstVars(p, formalThis, c.m.ins, formalIns)) zip (Preconditions(c.m.spec) map { p => ErrorMessage(c.pos, "The precondition at " + p.pos + " might not hold.")}), "precondition") :::
     // havoc formal outs
     (for (v <- formalOuts) yield Havoc(v)) :::
     // havoc lockchanges
-    LockHavoc(for (e <- LockChanges(c.m.spec) map (p => SubstVars(p, Some(formalThis), c.m.ins, formalIns))) yield etran.Tr(e), postEtran) :::
+    LockHavoc(for (e <- LockChanges(c.m.spec) map (p => SubstVars(p, formalThis, c.m.ins, formalIns))) yield etran.Tr(e), postEtran) :::
     // inhale postconditions (using the state before the call as the "old" state)
     postEtran.Inhale(Postconditions(c.m.spec) map
-                     (p => SubstVars(p, Some(formalThis), c.m.ins ++ c.m.outs, formalIns ++ formalOuts)) , "postcondition", false) :::
+                     (p => SubstVars(p, formalThis, c.m.ins ++ c.m.outs, formalIns ++ formalOuts)) , "postcondition", false) :::
     // declare any new local variables among the actual outs
     (for (v <- c.locals) yield BLocal(Variable2BVarWhere(v))) :::
     // assign formal outs to actual outs
@@ -846,9 +847,9 @@ class Translator {
     val iterStartEtran = etran.FromPreGlobals(iterStartGlobals)
     val saveLocalsV = for (v <- w.LoopTargetsList) yield new Variable(v.id, v.t)
     val iterStartLocalsV = for (v <- w.LoopTargetsList) yield new Variable(v.id, v.t)
-    val lkchOld = lkch map (e => SubstVars(e, None, w.LoopTargetsList,
+    val lkchOld = lkch map (e => SubstVars(e, w.LoopTargetsList,
                                              for (v <- saveLocalsV) yield new VariableExpr(v)))
-    val lkchIterStart = lkch map (e => SubstVars(e, None, w.LoopTargetsList,
+    val lkchIterStart = lkch map (e => SubstVars(e, w.LoopTargetsList,
                                                    for (v <- iterStartLocalsV) yield new VariableExpr(v)))
     val oldLocks = lkchOld map (e => loopEtran.oldEtran.Tr(e))
     val iterStartLocks = lkchIterStart map (e => iterStartEtran.oldEtran.Tr(e))
@@ -1147,10 +1148,10 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   **********************************************************************/
 
   def isDefined(e: Expression)(implicit assumption: Expr): List[Boogie.Stmt] = {
-    def prove(goal: Expr, pos: Position, msg: String)(implicit assumption: Expr): Boogie.Assert = {
+    def prove(goal: Expr, pos: Position, msg: String)(implicit assumption: Expr) =
       bassert(assumption ==> goal, pos, msg)
-    }
-    e match {
+    
+    desugar(e) match {
       case IntLiteral(n) => Nil
       case BoolLiteral(b) => Nil
       case NullLiteral() => Nil
@@ -1198,7 +1199,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         BLocal(tmpHeapV) :: (tmpHeap := Heap) ::
         BLocal(tmpMaskV) :: (tmpMask := Mask) :::
         BLocal(tmpCreditsV) :: (tmpCredits := Credits) :::
-        tmpTranslator.Exhale(Preconditions(func.f.spec) map { pre=> (SubstVars(pre, Some(obj), func.f.ins, args), ErrorMessage(func.pos, "Precondition at " + pre.pos + " might not hold."))},
+        tmpTranslator.Exhale(Preconditions(func.f.spec) map { pre=> (SubstVars(pre, obj, func.f.ins, args), ErrorMessage(func.pos, "Precondition at " + pre.pos + " might not hold."))},
                              "function call",
                              false) :::
         // size of the heap of callee must be strictly smaller than size of the heap of the caller
@@ -1260,16 +1261,6 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         isDefined(e0) ::: isDefined(e1) ::: List(prove(Tr(e1) !=@ 0, e1.pos, "Denominator might be zero."))
       case e: ArithmeticExpr =>
         isDefined(e.E0) ::: isDefined(e.E1)
-      case q@Forall(i, Range(min, max), e) =>
-        isDefinedQuantification(q.variables, min, max, e)
-      case q@Exists(i, Range(min, max), e) =>
-        isDefinedQuantification(q.variables, min, max, e)
-      case q@Forall(i, seq, e) =>
-        var newVars = q.variables map (v => new Variable(v.UniqueName, new Type(IntClass)))
-        isDefinedQuantification(newVars, IntLiteral(0), Length(seq), SubstVars(e, None, q.variables, newVars map {v => At(seq, new VariableExpr(v)) }))
-      case q@Exists(i, seq, e) =>
-        var newVars = q.variables map (v => new Variable(v.UniqueName, new Type(IntClass)))
-        isDefinedQuantification(newVars, IntLiteral(0), Length(seq), SubstVars(e, None, q.variables, newVars map {v => At(seq, new VariableExpr(v)) }))
       case EmptySeq(t) => Nil
       case ExplicitSeq(es) =>
         es flatMap { e => isDefined(e) }
@@ -1280,15 +1271,15 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       case at@At(e0, e1) =>
         isDefined(e0) ::: isDefined(e1) :::
         prove(0 <= Tr(e1), at.pos, "Sequence index might be negative.") ::
-        prove(Tr(e1) < Boogie.FunctionApp("Seq#Length", List(Tr(e0))), at.pos, "Sequence index might be larger than or equal to the length of the sequence.")
+        prove(Tr(e1) < SeqLength(Tr(e0)), at.pos, "Sequence index might be larger than or equal to the length of the sequence.")
       case Drop(e0, e1) => 
         isDefined(e0) ::: isDefined(e1) :::
         prove(0 <= Tr(e1), e.pos, "Cannot drop less than zero elements.") ::
-        prove(Tr(e1) <= Boogie.FunctionApp("Seq#Length", List(Tr(e0))), e.pos, "Cannot drop more than elements than the length of the sequence.")
+        prove(Tr(e1) <= SeqLength(Tr(e0)), e.pos, "Cannot drop more than elements than the length of the sequence.")
       case Take(e0, e1) => 
         isDefined(e0) ::: isDefined(e1) :::
         prove(0 <= Tr(e1), e.pos, "Cannot take less than zero elements.") ::
-        prove(Tr(e1) <= Boogie.FunctionApp("Seq#Length", List(Tr(e0))), e.pos, "Cannot take more than elements than the length of the sequence.")
+        prove(Tr(e1) <= SeqLength(Tr(e0)), e.pos, "Cannot take more than elements than the length of the sequence.")
       case Length(e) =>
         isDefined(e)
       case Contains(e0, e1) =>
@@ -1297,28 +1288,16 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val (evalHeap, evalMask, evalCredits, checks, assumptions) = fromEvalState(h);
         val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalCredits), currentClass);
         evalEtran.isDefined(e)
+      case _ : SeqQuantification => throw new Exception("should be desugared")
+      case tq @ TypeQuantification(_, _, _, e) =>
+        // replace variables since we need locals
+        val vars = tq.variables map {v => val result = new Variable(v.id, v.t); result.pos = v.pos; result;}
+        (vars map {v => BLocal(Boogie.BVar(v.UniqueName, type2BType(v.t.typ)))}) :::
+        isDefined(SubstVars(e, tq.variables, vars map {v => new VariableExpr(v);}))
     }
   }
 
-  def isDefinedQuantification(is: List[Variable], min: Expression, max: Expression, e: Expression)(implicit assumption: Expr): List[Stmt] = {
-    var iTmps = Nil: List[Variable];
-    var assumption2 = assumption;
-    for(i <- is) { 
-      val iTmp = new Variable(i.UniqueName, new Type(IntClass));
-      iTmps = iTmp :: iTmps; 
-      assumption2 = assumption2 && (Tr(min)<=VarExpr(iTmp.UniqueName)) && (VarExpr(iTmp.UniqueName) < Tr(max))
-    }
-    // check definedness of the bounds
-    isDefined(min) ::: isDefined(max) :::
-    // introduce a new local iTmp with an arbitrary value
-    (iTmps map { iTmp =>
-      BLocal(Boogie.BVar(iTmp.UniqueName, tint))
-    }) :::
-    // prove that the body is well-defined for iTmp, provided iTmp lies between min and max
-    isDefined(SubstVars(e, None, is, iTmps map { iTmp => new VariableExpr(iTmp)}))(assumption2)
-  }
-
-  def Tr(e: Expression): Boogie.Expr = e match {
+  def Tr(e: Expression): Boogie.Expr = desugar(e) match {
     case IntLiteral(n) => n
     case BoolLiteral(b) => b
     case NullLiteral() => bnull
@@ -1409,8 +1388,6 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       Tr(e0) / Tr(e1)
     case Mod(e0,e1) =>
       Tr(e0) % Tr(e1)
-    case q: Quantification =>
-      translateQuantification(q)
     case EmptySeq(t) =>
       createEmptySeq
     case ExplicitSeq(es) =>
@@ -1423,44 +1400,22 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       createRange(Tr(min), Tr(max))
     case Append(e0, e1) =>
       createAppendSeq(Tr(e0), Tr(e1))
-    case at@At(e0, e1) =>
-      FunctionApp("Seq#Index", List(Tr(e0), Tr(e1)))  // of type: VarExpr(TrClass(e0.typ.parameters(0)))
+    case at@At(e0, e1) =>SeqIndex(Tr(e0), Tr(e1))
     case Drop(e0, e1) =>
       Boogie.FunctionApp("Seq#Drop", List(Tr(e0), Tr(e1)))
     case Take(e0, e1) =>
       Boogie.FunctionApp("Seq#Take", List(Tr(e0), Tr(e1)))
-    case Length(e) =>
-      Boogie.FunctionApp("Seq#Length", List(Tr(e)))
-    case Contains(e0, e1) =>
-      Boogie.FunctionApp("Seq#Contains", List(Tr(e1), Tr(e0)))
+    case Length(e) => SeqLength(e)
+    case Contains(e0, e1) => SeqContains(Tr(e1), Tr(e0))
     case Eval(h, e) =>
       val (evalHeap, evalMask, evalCredits, checks, assumptions) = fromEvalState(h);
       val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalCredits), currentClass);
       evalEtran.Tr(e)
-  }
-
-  def translateQuantification(q: Quantification): Expr = {
-    // generate index variables
-    var (is, min, max, e) = q match {
-      case Forall(_, Range(min, max), e) => (q.variables, min, max, e);
-      case Exists(_, Range(min, max), e) => (q.variables, min, max, e);
-      case Forall(_, seq, eo) =>
-        var is = q.variables map (v => new Variable(v.UniqueName, new Type(IntClass)));
-        var e = SubstVars(eo, None, q.variables, is map {v => At(seq, new VariableExpr(v))});
-        (is, IntLiteral(0), Length(seq), e);
-      case Exists(_, seq, eo) =>
-        var is = q.variables map (v => new Variable(v.UniqueName, new Type(IntClass)));
-        var e = SubstVars(eo, None, q.variables, is map {v => At(seq, new VariableExpr(v))});
-        (is, IntLiteral(0), Length(seq), e);
-    }
-    var assumption = true: Expr;
-    for(i <- is) {
-      assumption = assumption && (Tr(min) <= VarExpr(i.UniqueName) && VarExpr(i.UniqueName) < Tr(max));
-    }
-    q match {
-      case _: Forall => new Boogie.Forall(is map { i => Variable2BVar(i)}, Nil, assumption ==> Tr(e));
-      case _: Exists => new Boogie.Exists(is map { i => Variable2BVar(i)}, Nil, assumption && Tr(e));
-    }
+    case _:SeqQuantification => throw new Exception("should be desugared")
+    case tq @ TypeQuantification(Forall, _, _, e) =>
+      new Boogie.Forall(tq.variables map { v => Variable2BVar(v)}, Nil, Tr(e))
+    case tq @ TypeQuantification(Exists, _, _, e) =>
+      new Boogie.Exists(tq.variables map { v => Variable2BVar(v)}, Nil, Tr(e))
   }
 
   def ShaveOffOld(e: Expression): (Expression, Boolean) = e match {
@@ -1500,24 +1455,13 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     Comment("end inhale")
   }
 
-  def Inhale(p: Expression, ih: Boogie.Expr, check: Boolean): List[Boogie.Stmt] = p match {
+  def Inhale(p: Expression, ih: Boogie.Expr, check: Boolean): List[Boogie.Stmt] = desugar(p) match {
     case pred@MemberAccess(e, p) if pred.isPredicate => 
       val tmp = Access(pred, Full);
       tmp.pos = pred.pos;
       Inhale(tmp, ih, check)
-    case acc@AccessAll(obj, perm) =>
-      obj.typ.Fields flatMap { f => 
-        val ma = MemberAccess(obj, f.id);
-        ma.f = f;
-        ma.pos = acc.pos;
-        val inhalee = Access(ma, perm);
-        inhalee.pos = acc.pos;
-        Inhale(inhalee, ih, check) }
-    case AccessSeq(s, None, perm) =>
-      s.typ.parameters(0).Fields flatMap { f =>
-        val ma = MemberAccess(At(s, IntLiteral(0)), f.id); ma.f = f; ma.pos = p.pos;
-        val inhalee = AccessSeq(s, Some(ma), perm); inhalee.pos = p.pos;
-        Inhale(inhalee, ih, check) }
+    case AccessAll(obj, perm) => throw new Exception("should be desugared")
+    case AccessSeq(s, None, perm) => throw new Exception("should be desugared")
     case acc@Access(e,perm) =>
       val trE = Tr(e.e)
       val module = currentClass.module;
@@ -1559,9 +1503,9 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val (refV, ref) = Boogie.NewBVar("ref", tref, true);
         val (fV, f) = Boogie.NewBVar("f", FieldType(a), true);
         (Heap := Lambda(List(aV), List(refV, fV),
-          (FunctionApp("Seq#Contains", List(e, ref)) && f ==@ memberName).thenElse
+          (SeqContains(e, ref) && f ==@ memberName).thenElse
             (ih(ref, f), Heap(ref, f)))) ::
-        bassume((FunctionApp("Seq#Contains", List(e, ref)) ==> TypeInformation(Heap(ref, memberName), member.f.typ.typ)).forall(refV))
+        bassume((SeqContains(e, ref) ==> TypeInformation(Heap(ref, memberName), member.f.typ.typ)).forall(refV))
       } :::
       bassume(wf(Heap, Mask)) ::
       {
@@ -1570,7 +1514,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val (fV, f) = Boogie.NewBVar("f", FieldType(a), true);
         val (pcV,pc) = Boogie.NewBVar("p", tperm, true);
         Mask := Lambda(List(aV), List(refV, fV),
-          (FunctionApp("Seq#Contains", List(e, ref)) && f ==@ memberName).thenElse
+          (SeqContains(e, ref) && f ==@ memberName).thenElse
             (Lambda(List(), List(pcV),
               Boogie.Ite(pc ==@ "perm$R",
                 Mask(ref, f)("perm$R") + r,
@@ -1649,24 +1593,13 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     Comment("end exhale")
   }
 
-  def Exhale(p: Expression, em: Boogie.Expr, eh: Boogie.Expr, error: ErrorMessage, check: Boolean): List[Boogie.Stmt] = p match {
+  def Exhale(p: Expression, em: Boogie.Expr, eh: Boogie.Expr, error: ErrorMessage, check: Boolean): List[Boogie.Stmt] = desugar(p) match {
     case pred@MemberAccess(e, p) if pred.isPredicate =>
       val tmp = Access(pred, Full);
       tmp.pos = pred.pos;
       Exhale(tmp, em , eh, error, check)
-    case acc@AccessAll(obj, perm) =>
-      obj.typ.Fields flatMap { f => 
-        val ma = MemberAccess(obj, f.id);
-        ma.f = f;
-        ma.pos = acc.pos;
-        val exhalee = Access(ma, perm);
-        exhalee.pos = acc.pos;
-        Exhale(exhalee, em, eh, error, check) }
-    case AccessSeq(s, None, perm) =>
-      s.typ.parameters(0).Fields flatMap { f =>
-        val ma = MemberAccess(At(s, IntLiteral(0)), f.id); ma.f = f; ma.pos = p.pos;
-        val exhalee = AccessSeq(s, Some(ma), perm); exhalee.pos = p.pos;
-        Exhale(exhalee, em, eh, error, check) }
+    case AccessAll(obj, perm) => throw new Exception("should be desugared")
+    case AccessSeq(s, None, perm) => throw new Exception("should be desugared")
     case acc@Access(e,perm:Write) =>
       val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
 
@@ -1751,13 +1684,13 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val mr = em(ref, memberName)("perm$R");
         val mn = em(ref, memberName)("perm$N");
 
-        bassert((FunctionApp("Seq#Contains", List(e, ref)) ==>
+        bassert((SeqContains(e, ref) ==>
           (perm match {
             case _: Read => mr ==@ 0 ==> n <= mn
             case _: Write => r <= mr && (r ==@ mr ==> 0 <= mn)
           })).forall(refV), error.pos, error.message + " Insufficient permissions") ::
         (em := Lambda(List(aV), List(refV, fV),
-          (FunctionApp("Seq#Contains", List(e, ref)) && f ==@ memberName).thenElse(
+          (SeqContains(e, ref) && f ==@ memberName).thenElse(
             Lambda(List(), List(pcV), (pc ==@ "perm$R").thenElse(mr - r, mn - n)),
             em(ref, f))))
       } :::
@@ -1832,6 +1765,79 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
          (new MapSelect(argsSeq, 0) ==@ Tr(obj) ) &&
          (((args zip (1 until args.length+1).toList) map { a => new MapSelect(argsSeq, a._2) ==@ Tr(a._1)}).foldLeft(true: Expr){ (a: Expr, b: Expr) => a && b})
         )
+    }
+  }
+
+
+  // De-sugar expression (idempotent)
+  // * unroll wildcard pattern (for objects) in permission expression
+  // * convert sequence quantification into type quantification
+  def desugar(expr: Expression): Expression = expr transform {
+    _ match {
+      case AccessAll(obj, perm) =>
+        Some(obj.typ.Fields.map({f =>
+          val ma = MemberAccess(desugar(obj), f.id);
+          ma.f = f; ma.pos = expr.pos; ma.typ = f.typ.typ;
+          val acc = Access(ma, perm);
+          acc.pos = expr.pos; acc.typ = acc.typ; acc
+        }).foldLeft(BoolLiteral(true): Expression){(e1, e2) =>
+          val and = And(e1, e2);
+          and.pos = expr.pos; and.typ = BoolClass; and
+        })
+      case AccessSeq(s, None, perm) =>
+        Some(s.typ.parameters(0).Fields.map({(f) =>
+          val ma = MemberAccess(At(desugar(s), IntLiteral(0)), f.id);
+          ma.f = f; ma.pos = expr.pos; ma.typ = f.typ.typ;
+          val acc = AccessSeq(s, Some(ma), perm);
+          acc.pos = expr.pos; acc.typ = acc.typ; acc
+        }).foldLeft(BoolLiteral(true): Expression){(e1, e2) =>
+          val and = And(e1, e2);
+          and.pos = expr.pos; and.typ = BoolClass; and
+        })
+      case qe @ SeqQuantification(q, is, Range(min, max), e) =>
+        val dmin = desugar(min);
+        val dmax = desugar(max);
+        val dis = qe.variables;
+        val disx = dis map {v => new VariableExpr(v)};
+        val de = desugar(e);
+
+        val assumption = disx map {x =>
+          And(AtMost(dmin, x), Less(x, dmax))
+        } reduceLeft {(e0, e1) =>
+          And(e0, e1)
+        };
+        assumption transform {e => e.pos = expr.pos; None};
+        val body = q match {
+          case Forall => Implies(assumption, de);
+          case Exists => And(assumption, de);
+        }
+        body.pos = expr.pos;
+        val result = TypeQuantification(q, is, new Type(IntClass), body);
+        result.variables = dis;
+        Some(result);
+      case qe @ SeqQuantification(q, is, seq, e) =>
+        val dseq = desugar(seq);
+        val min = IntLiteral(0);
+        val max = Length(dseq);
+        val dis = qe.variables map {v => new Variable(v.UniqueName, new Type(IntClass))};
+        val disx = dis map {v => new VariableExpr(v)};
+        val de = SubstVars(desugar(e), qe.variables, disx map {x => At(dseq, x)});
+
+        val assumption = disx map {x =>
+          And(AtMost(min, x), Less(x, max))
+        } reduceLeft {(e0, e1) =>
+          And(e0, e1)
+        };
+        assumption transform {e => e.pos = expr.pos; None};
+        val body = q match {
+          case Forall => Implies(assumption, de);
+          case Exists => And(assumption, de);
+        }
+        body.pos = expr.pos;
+        val result = TypeQuantification(q, is, new Type(IntClass), body);
+        result.variables = dis;
+        Some(result);
+      case _ => None;
     }
   }
 
@@ -2077,11 +2083,17 @@ object TranslationHelper {
   def NonEmptyMask(m: Expr) = ! FunctionApp("EmptyMask", List(m))
   def NonPredicateField(f: String) = FunctionApp("NonPredicateField", List(VarExpr(f)))
   def PredicateField(f: String) = FunctionApp("PredicateField", List(VarExpr(f)))
+  def cast(a: Expr, b: Expr) = FunctionApp("cast", List(a, b))
+
+  // Sequences
+
   def createEmptySeq = FunctionApp("Seq#Empty", List())
   def createSingletonSeq(e: Expr) = FunctionApp("Seq#Singleton", List(e)) 
   def createAppendSeq(a: Expr, b: Expr) = FunctionApp("Seq#Append", List(a, b)) 
   def createRange(min: Expr, max: Expr) = FunctionApp("Seq#Range", List(min, max))
-  def cast(a: Expr, b: Expr) = FunctionApp("cast", List(a, b))
+  def SeqLength(s: Expr) = FunctionApp("Seq#Length", List(s))
+  def SeqContains(s: Expr, elt: Expr) = FunctionApp("Seq#Contains", List(s, elt))
+  def SeqIndex(s: Expr, idx: Expr) = FunctionApp("Seq#Index", List(s, idx))
 
   def Variable2BVar(v: Variable) = new Boogie.BVar(v.UniqueName, v.t.typ)
   def Variable2BVarWhere(v: Variable) = NewBVarWhere(v.UniqueName, v.t)
@@ -2137,16 +2149,14 @@ object TranslationHelper {
       (e ==@ Boogie.Null()) || (dtype(e) ==@ className(cl))
     } else if (cl.IsSeq && cl.parameters(0).IsRef) {
       val (v,ve) = Boogie.NewBVar("$i", tint, true);
-      new Boogie.Forall(List(v), Nil,
-        0 <= ve && ve < Boogie.FunctionApp("Seq#Length", List(e)) ==>
-        TypeInformation(Boogie.FunctionApp("Seq#Index", List(e,ve)), cl.parameters(0)));
+      (0 <= ve && ve < SeqLength(e)
+        ==> TypeInformation(SeqIndex(e,ve), cl.parameters(0))).forall(v);
     } else {
       true
     }
   }
 
-  def Version(expr: Expression, etran: ExpressionTranslator): Boogie.Expr =
-  {
+  def Version(expr: Expression, etran: ExpressionTranslator): Boogie.Expr = {
     expr match{
       case pred@MemberAccess(e, p) if pred.isPredicate =>
         Version(Access(pred, Full), etran)
@@ -2162,26 +2172,7 @@ object TranslationHelper {
       case e => Boogie.VarExpr("nostate")
     }
   }
-  /* Unused code that would fail for a nontrivial class
-  def FieldTp(f: Field): String = {
-    f match {
-      case SpecialField("mu", _) => "Mu"
-      case SpecialField("held", _) => "int"
-      case SpecialField("rdheld", _) => "bool"
-      case SpecialField("joinable", _) => "int"
-      case f: Field => TrClass(f.typ.typ)
-    }
-  }
-
-  def TrClass(tp: Class): String = {
-    tp.id match {
-      case "int" => "int"
-      case "bool" => "bool"
-      case "$Mu" => "Mu"
-      case _ => if(tp.IsSeq) "seq" else "ref"
-    }
-  }
- */
+  
   def Preconditions(spec: List[Specification]): List[Expression] = {
     val result = spec flatMap ( s => s match {
       case Precondition(e) => List(e)
@@ -2258,10 +2249,6 @@ object TranslationHelper {
         val (assumptions, handled1) = automagic(bin.E0, handled);
         val result = automagic(bin.E1, handled1); 
         (assumptions ::: result._1, result._2)
-      case q@Forall(is, Range(min, max), e) =>
-        (Nil, handled)
-      case q@Forall(is, seq, e) =>
-        (Nil, handled)
       case EmptySeq(t) =>
         (Nil, handled)
       case ExplicitSeq(es) =>
@@ -2301,160 +2288,63 @@ object TranslationHelper {
 
   def SubstRd(e: Expression): Expression = e match {
     case Access(e, _:Write) =>
-      val r = Access(e,Epsilon); r.typ = BoolClass; r
-    case Access(_, _:Read) => e
+      val r = Access(e,Epsilon); r.pos = e.pos; r.typ = BoolClass; r
     case Implies(e0,e1) =>
-      val r = Implies(e0, SubstRd(e1)); r.typ = BoolClass; r
+      val r = Implies(e0, SubstRd(e1)); r.pos = e.pos; r.typ = BoolClass; r
     case And(e0,e1) =>
-      val r = And(SubstRd(e0), SubstRd(e1)); r.typ = BoolClass; r
-    case e => e
+      val r = And(SubstRd(e0), SubstRd(e1)); r.pos = e.pos; r.typ = BoolClass; r
+    case _ => e
   }
 
   def UnfoldPredicatesWithReceiverThis(expr: Expression): Expression = {
-    def unfoldPred(e: Expression): Expression = {
+    val func = (e:Expression) =>
       e match {
         case pred@MemberAccess(o, f) if pred.isPredicate && o.isInstanceOf[ThisExpr] =>
-          SubstThis(DefinitionOf(pred.predicate), o)
+          Some(SubstThis(DefinitionOf(pred.predicate), o))
         case Access(pred@MemberAccess(o, f), p) if pred.isPredicate && o.isInstanceOf[ThisExpr] =>
-          p match {
+          Some(p match {
             case Full => SubstThis(DefinitionOf(pred.predicate), o)
             case Frac(p) => FractionOf(SubstThis(DefinitionOf(pred.predicate), o), p)
             case Epsilon => EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), o), IntLiteral(1))
             case Star => throw new Exception("not supported yet")
             case Epsilons(p) => EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), o), p)
-          }
+          })
         case func@FunctionApplication(obj: ThisExpr, name, args) if 2<=TranslationOptions.defaults =>
-          SubstVars(func.f.definition, Some(obj), func.f.ins, args) 
-        case _ => manipulate(e, {ex => unfoldPred(ex)})
+          Some(SubstVars(func.f.definition, obj, func.f.ins, args))
+        case _ => None
       }
-    }
-    unfoldPred(expr)
+    AST.transform(expr, func)
   }
 
   // needed to do a _simultaneous_ substitution!
-  def SubstVars(expr: Expression, thisReplacement: Option[Expression], vs: List[Variable], xs: List[Expression]): Expression = {
-    def replace(e: Expression, sub: List[(Variable, Expression)]): Expression = {
-      e match {
-        case _: ThisExpr =>
-          thisReplacement match {
-            case Some(e) => e;
-            case None => e;
-          }
-        case e: VariableExpr =>
-          // TODO: this will update the value of x's position many times -- better than none
-          for ((v,x) <- sub if v == e.v) { x.pos = v.pos; x.typ = e.typ; return x }
-          e
-        case q: Quantification =>
-          // would be better if this is a part of manipulate method
-          val newSub = sub filter { xv => q.Is forall { variable => ! variable.id.equals(xv._1)}};
-          val result = q match {
-            case _ : Forall => Forall(q.Is, replace(q.Seq, sub), replace(q.E, newSub));
-            case _ : Exists => Exists(q.Is, replace(q.Seq, sub), replace(q.E, newSub));
-          }
-          result.variables = q.variables;
-          result.typ = q.typ;
-          result.pos = q.pos;
-          result
-        case _ => manipulate(e, {ex => replace(ex, sub)})
-      }
+  def SubstVars(expr: Expression, x:Expression, vs:List[Variable], es:List[Expression]): Expression =
+    SubstVars(expr, Some(x), Map() ++ (vs zip es));
+  def SubstVars(expr: Expression, vs:List[Variable], es:List[Expression]): Expression =
+    SubstVars(expr, None, Map() ++ (vs zip es));
+  def SubstVars(expr: Expression, t: Option[Expression], vs: Map[Variable, Expression]): Expression = expr.transform {
+    _ match {
+      case _: ThisExpr if t.isDefined => t
+      case e: VariableExpr =>
+        if (vs.contains(e.v)) Some(vs(e.v)) else None;
+      case q: Quantification =>
+        q.variables foreach { (v) => if (vs.contains(v)) throw new Exception("cannot substitute a variable bound in the quantifier")}
+        None;
+      case _ => None;
     }
-    replace(expr, vs zip xs)
   }
 
-  def SubstThis(expr: Expression, x: Expression): Expression = {
-    def replaceThis(e: Expression): Expression = {
-      e match {
-        case _: ThisExpr => x
-        case _ => manipulate(e, {ex => replaceThis(ex)})
-      }
+  def SubstThis(expr: Expression, x: Expression): Expression = expr.transform {
+    _ match {
+      case _: ThisExpr => Some(x)
+      case _ => None
     }
-    replaceThis(expr)
   }
 
-  def SubstResult(expr: Expression, x: Expression): Expression = {
-    def replaceThis(e: Expression): Expression = {
-      e match {
-        case _: Result => x
-        case _ => manipulate(e, {ex => replaceThis(ex)})
-      }
+  def SubstResult(expr: Expression, x: Expression): Expression = expr.transform {
+    _ match {
+      case _: Result => Some(x)
+      case _ => None
     }
-    replaceThis(expr)
-  }
-
-  /** Applies function to the children of an AST node but not the node itself. */
-  def manipulate(expr: Expression, func: Expression => Expression): Expression = {
-    val result = expr match {
-      case e: Literal => expr
-      case _:ThisExpr => expr
-      case _:Result => expr
-      case e:VariableExpr => expr
-      case acc@MemberAccess(e,f) =>
-        val g = MemberAccess(func(e), f); g.f = acc.f; g.predicate = acc.predicate; g.isPredicate = acc.isPredicate; g
-      case Full | Epsilon | Star => expr
-      case Frac(perm) => Frac(func(perm))
-      case Epsilons(perm) => Epsilons(func(perm))
-      case Access(e, perm) => Access(func(e).asInstanceOf[MemberAccess], manipulate(perm, func).asInstanceOf[Permission]);
-      case AccessAll(obj, perm) => AccessAll(func(obj), manipulate(perm, func).asInstanceOf[Permission]);
-      case AccessSeq(s, None, perm) => AccessSeq(func(s), None, manipulate(perm, func).asInstanceOf[Permission])
-      case AccessSeq(s, Some(f), perm) => AccessSeq(func(s), Some(func(f).asInstanceOf[MemberAccess]), manipulate(perm, func).asInstanceOf[Permission])
-      case Credit(e, None) => Credit(func(e), None)
-      case Credit(e, Some(n)) => Credit(func(e), Some(func(n)))
-      case Holds(e) => Holds(func(e))
-      case RdHolds(e) => RdHolds(func(e))
-      case e: Assigned => e
-      case Old(e) => Old(func(e))
-      case IfThenElse(con, then, els) => IfThenElse(func(con), func(then), func(els))
-      case Not(e) => Not(func(e))
-      case funapp@FunctionApplication(obj, id, args) =>
-        val appl = FunctionApplication(func(obj), id, args map { arg => func(arg)}); appl.f = funapp.f; appl
-      case Unfolding(pred, e) =>
-        Unfolding(func(pred).asInstanceOf[Access], func(e))
-      case Iff(e0,e1) => Iff(func(e0), func(e1))
-      case Implies(e0,e1) => Implies(func(e0), func(e1))
-      case And(e0,e1) => And(func(e0), func(e1))
-      case Or(e0,e1) => Or(func(e0), func(e1))
-      case Eq(e0,e1) => Eq(func(e0), func(e1))
-      case Neq(e0,e1) => Neq(func(e0), func(e1))
-      case Less(e0,e1) => Less(func(e0), func(e1))
-      case AtMost(e0,e1) => AtMost(func(e0), func(e1))
-      case AtLeast(e0,e1) => AtLeast(func(e0), func(e1))
-      case Greater(e0,e1) => Greater(func(e0), func(e1))
-      case LockBelow(e0,e1) => LockBelow(func(e0), func(e1))
-      case Plus(e0,e1) => Plus(func(e0), func(e1))
-      case Minus(e0,e1) => Minus(func(e0), func(e1))
-      case Times(e0,e1) => Times(func(e0), func(e1))
-      case Div(e0,e1) => Div(func(e0), func(e1))
-      case Mod(e0,e1) => Mod(func(e0), func(e1))
-      case forall@Forall(i, seq, e) => val result = Forall(i, func(seq), func(e)); result.variables = forall.variables; result
-      case exists@Exists(i, seq, e) => val result = Exists(i, func(seq), func(e)); result.variables = exists.variables; result
-      case ExplicitSeq(es) =>
-        ExplicitSeq(es map { e => func(e) })
-      case Range(min, max)=>
-        Range(func(min), func(max))
-      case Append(e0, e1) =>
-        Append(func(e0), func(e1))
-      case At(e0, e1) =>
-        At(func(e0), func(e1))
-      case Drop(e0, e1) =>
-        Drop(func(e0), func(e1))
-      case Take(e0, e1) =>
-        Take(func(e0), func(e1))
-      case Length(e) =>
-        Length(func(e))
-      case Contains(e0, e1) =>
-        Contains(func(e0), func(e1))
-      case Eval(h, e) =>
-        Eval(h match { 
-          case AcquireState(obj) => AcquireState(func(obj)) 
-          case ReleaseState(obj) => ReleaseState(func(obj)) 
-          case CallState(token, obj, i, args) => CallState(func(token), func(obj), i, args map { a => func(a)})
-        }, func(e)) 
-    }
-    if(result.typ == null) {
-      result.typ = expr.typ;
-    }
-    result.pos = expr.pos
-    result
   }
 }
 }

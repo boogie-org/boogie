@@ -18,8 +18,8 @@ object PrintProgram {
   def Member(m: Member) = m match {
     case MonitorInvariant(e) =>
       print("  invariant "); Expr(e); println(Semi)
-    case f@ Field(id, t) =>
-      println("  " + (if (f.IsGhost) "ghost " else "") + "var " + id + ": " + t.FullName + Semi)
+    case f@ Field(id, t, ghost) =>
+      println("  " + (if (ghost) "ghost " else "") + "var " + id + ": " + t.FullName + Semi)
     case m: Method =>
       print("  method " + m.id)
       print("("); VarList(m.ins); print(")")
@@ -257,12 +257,16 @@ object PrintProgram {
     case e:Div => BinExpr(e, e.OpName, 0x60, false, true, contextBindingPower, fragileContext)
     case e:Mod => BinExpr(e, e.OpName, 0x60, false, true, contextBindingPower, fragileContext)
     case q:Quantification => 
-      print("(" + q.Quantor + " "); 
+      print("(" + (q.Q match {case Forall => "forall"; case Exists => "exists"}) + " ");
       q.Is match {
         case Nil =>
         case i :: rest => print(i); rest foreach { v => print(", " + v) }
       }
-      print(" in "); Expr(q.Seq); print(" :: "); Expr(q.E); print(")");
+      q match {
+        case q: SeqQuantification => print(" in "); Expr(q.seq);
+        case q: TypeQuantification => print(": "); print(q.t.typ.FullName);
+      }
+      print(" :: "); Expr(q.E); print(")");
     case EmptySeq(t) =>
       print("nil<"); print(t.FullName); print(">");
     case ExplicitSeq(es) =>

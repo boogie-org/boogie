@@ -57,8 +57,8 @@ class Parser extends StandardTokenParsers {
                    predicateDecl | functionDecl)
 
   def fieldDecl =
-        ( "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id,t) }
-        | "ghost" ~> "var" ~> idType <~ Semi ^^ { case (id,t) => new Field(id,t){override val IsGhost = true} }
+        ( "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id, t, false) }
+        | "ghost" ~> "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id, t, true) }
         )
   def Ident = 
     positioned(ident ^^ PositionedString)
@@ -78,14 +78,15 @@ class Parser extends StandardTokenParsers {
 
   def invariantDecl = positioned("invariant" ~> expression <~ Semi ^^ MonitorInvariant)
 
-  def methodDecl =
-        "method" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~
-        (methodSpec*) ~ blockStatement ^^ {
-          case id ~ ins ~ outs ~ spec ~ body =>
-            currentLocalVariables = Set[String]()
-            outs match {
-              case None => Method(id, ins, Nil, spec, body)
-              case Some(outs) => Method(id, ins, outs, spec, body) }}
+  def methodDecl = {
+    currentLocalVariables = Set[String]()
+    "method" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~
+    (methodSpec*) ~ blockStatement ^^ {
+      case id ~ ins ~ outs ~ spec ~ body =>
+        outs match {
+          case None => Method(id, ins, Nil, spec, body)
+          case Some(outs) => Method(id, ins, outs, spec, body) }}
+  }
   def channelDecl =
     "channel" ~> ident ~ formalParameters(true) ~ ("where" ~> expression ?) <~ Semi ^^ {
       case id ~ ins ~ None => Channel(id, ins, BoolLiteral(true))
@@ -476,21 +477,37 @@ class Parser extends StandardTokenParsers {
     | ("ite" ~> "(" ~> expression <~ ",") ~ (expression <~ ",") ~ (expression <~ ")") ^^ {
         case con ~ then ~ els => IfThenElse (con, then, els) }
     | "(" ~> expression <~ ")"
-    | forall
+    | quantifierType
+    | quantifierSeq
     | ("[" ~> expression) ~ (":" ~> expression <~ "]") ^^ { case from ~ to => Range(from, to) }
     | ("nil" ~> "<") ~> (typeDecl <~ ">") ^^ EmptySeq
     | ("[" ~> expressionList <~ "]") ^^ { case es => ExplicitSeq(es) }
     )
-  def forall: Parser[Quantification] =
-    (("forall" | "exists") ~ repsep(ident, ",") <~ "in") into {case quant ~ is => quantifierBody(quant, is)}
 
-  def quantifierBody(quant: String, is: List[String]) : Parser[Quantification] =
-    ((expression <~ "::") ~ (exprWithLocals(is))) ^^
+  // Scala type inference resists figuring out | (alternative) for these two
+
+  def quantifierSeq: Parser[Quantification] =
+    (quant ~ repsep(ident, ",")) into {case q ~ is => quantifierSeqBody(q, is)}
+
+  def quantifierSeqBody(q: Quant, is: List[String]) : Parser[Quantification] =
+    (("in" ~> expression <~ "::") ~ (exprWithLocals(is))) ^^
       { case seq ~ e =>
-        val result = quant match {case "forall" => Forall(is, seq, e); case "exists" => Exists(is, seq, e);};
         currentLocalVariables = currentLocalVariables -- is;
-        result
-      }  
+        SeqQuantification(q, is, seq, e);
+      }
+  
+  def quantifierType: Parser[Quantification] =
+    (quant ~ repsep(ident, ",")) into {case q ~ is => quantifierTypeBody(q, is)}
+
+  def quantifierTypeBody(q: Quant, is: List[String]) : Parser[Quantification] =
+    ((":" ~> typeDecl <~ "::") ~ (exprWithLocals(is))) ^^
+      { case t ~ e =>
+        currentLocalVariables = currentLocalVariables -- is;
+        TypeQuantification(q, is, t, e);
+      }
+
+  def quant: Parser[Quant] =
+    ( "forall" ^^^ Forall | "exists" ^^^ Exists)
 
   def exprWithLocals(i: List[String]) : Parser[Expression] = {
     currentLocalVariables = currentLocalVariables ++ i;

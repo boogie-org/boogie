@@ -68,8 +68,9 @@ object Boogie {
    def apply(e: Expr, f: Expr) = new MapSelect(this, e, Some(f))
    def apply(e: Expr) = new MapSelect(this, e, None)
    def thenElse(thenE: Expr, elseE: Expr) = new Ite(this, thenE, elseE)
-   def select(e: Expr, s: String) = new MapSelect(this, e, s)
+   def select(e: Expr, s: String) = new MapSelect(this, e, s) // useful for working on heap
    def forall(x: BVar) = new Forall(x, this)
+   def exists(x: BVar) = new Exists(x, this)
    def store(e: Expr, f: Expr, rhs: Expr) = MapUpdate(this, e, Some(f), rhs)
  }
  case class IntLiteral(n: Int) extends Expr
@@ -94,12 +95,13 @@ object Boogie {
    def this(f: String, a0: Expr, a1: Expr, a2: Expr) = this(f, List(a0, a1, a2))
  }
  case class Forall(ta: List[TVar], xs: List[BVar], triggers: List[Expr], body: Expr) extends Expr {
-   def this(xs: List[BVar], triggers: List[Expr], body: Expr) = this(List(), xs, triggers, body)
-   def this(x: BVar, body: Expr) = this(List(), List(x), List(), body)
-   def this(t: TVar, x: BVar, body: Expr) = this(List(t), List(x), List(), body)
+   def this(x: BVar, body: Expr) = this(Nil, List(x), Nil, body)   
+   def this(xs: List[BVar], triggers: List[Expr], body: Expr) = this(Nil, xs, triggers, body)
+   def this(t: TVar, x: BVar, body: Expr) = this(List(t), List(x), Nil, body)
  }
- case class Exists(xs: List[BVar], triggers: List[Expr], body: Expr) extends Expr {
-   def this(x: BVar, body: Expr) = this(List(x), List(), body)
+ case class Exists(ta: List[TVar], xs: List[BVar], triggers: List[Expr], body: Expr) extends Expr {
+   def this(x: BVar, body: Expr) = this(Nil, List(x), List(), body)
+   def this(xs: List[BVar], triggers: List[Expr], body: Expr) = this(Nil, xs, triggers, body)   
  }
  case class Lambda(ta: List[TVar], xs: List[BVar], body: Expr) extends Expr
 
@@ -274,8 +276,9 @@ object Boogie {
      Print(triggers , "", { s: Expr => "{" + PrintExpr(s) + "} " }) +
      PrintExpr(body) +
      ")"
-   case Exists(xs, triggers, body) =>
+   case Exists(ts, xs, triggers, body) =>
      "(exists " +
+     (if (ts.length == 0) " " else "<" + Print(ts, ", ", { x: TVar => x.id }) + "> ") +     
      Print(xs, ", ", { x: BVar => x.id +  ": " + PrintType(x.t) }) +
      " :: " +
      Print(triggers , "", { s: Expr => "{" + PrintExpr(s) + "} " }) +
