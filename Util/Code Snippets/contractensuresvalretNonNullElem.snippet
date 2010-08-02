@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <SnippetTypes>
+        <SnippetType>Expansion</SnippetType>
+      </SnippetTypes>
+      <Title>Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(...)))</Title>
+      <Shortcut>cernn</Shortcut>
+      <Description>Emits a 'Contract.Ensures' cce.non-nullelements out parameter clause</Description>
+      <Author>tabarbe</Author>
+    </Header>
+    <Snippet>
+      <Imports>
+        <Import>
+          <Namespace>System.Diagnostics.Contracts</Namespace>
+        </Import>
+      </Imports>
+      <Declarations>
+        <Object Editable="true">
+          <ID>value</ID>
+          <ToolTip>Value that must not be null</ToolTip>
+          <Default>arg</Default>
+          <Function>
+          </Function>
+        </Object>
+      </Declarations>
+      <Code Language="CSharp" Kind="method body"><![CDATA[Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out $value$)));$end$]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>
