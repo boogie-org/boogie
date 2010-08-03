@@ -99,6 +99,8 @@ object Resolver {
    //  * Field types and Method formal-parameter types
    //  * Assign, FieldUpdate, and Call statements
    //  * VariableExpr and FieldSelect expressions
+   //  * Call graph for functions
+   val calls = new DiGraph[Function];
    for (decl <- prog) decl match {
      case ch: Channel =>
        val context = new ProgramContext(decls, ChannelClass(ch))
@@ -143,17 +145,37 @@ object Resolver {
              for (v <- ins) {
                ctx = ctx.AddVariable(v)
              }
-          // TODO: disallow credit(...) expressions in function specifications
+              // TODO: disallow credit(...) expressions in function specifications
              spec foreach {
                case Precondition(e) => ResolveExpr(e, ctx, false, true)(false)
-               case pc@Postcondition(e) => assert(ctx.CurrentMember != null); ResolveExpr(e, ctx, false, true)(false)
-               case lc@LockChange(ee) => context.Error(lc.pos, "lockchange not allowed on function") 
+               case Postcondition(e) => assert(ctx.CurrentMember != null); ResolveExpr(e, ctx, false, true)(false)
+               case lc : LockChange => context.Error(lc.pos, "lockchange not allowed on function") 
              }
              ResolveExpr(e, ctx, false, false)(false)
              if(! canAssign(out.typ, e.typ)) context.Error(e.pos, "function body does not match declared type (expected: " + out.FullName + ", found: " + e.typ.FullName + ")")
+
+             // resolve function calls
+             calls addNode f;
+             e visit {
+               case app : FunctionApplication =>
+                 assert(app.f != null);
+                 calls addNode app.f;
+                 calls.addEdge(f, app.f);
+                 if (app.f == f) f.isRecursive = true; // self-recursion
+               case _ =>
+             }
          }
        }
        errors = errors ++ context.errors
+   }
+
+   // fill in SCC 
+   val (_, h) = calls.computeSCC;
+   h.keys foreach {f:Function =>
+     f.SCC = h(f);
+     assert(f.SCC contains f);
+     if (h(f).size > 1)
+       f.isRecursive = true;
    }
 
    if (errors.length == 0) {
