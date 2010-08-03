@@ -6,7 +6,7 @@
 // Added parent pointer p (stack remains)
 // Note: the challenge is to update children field of nodes on stack so that we can recover 
 //  parent pointer in pop operation
-// Add parent field to Node and made stack ghost (verification time , limited functions)
+// Add parent field to Node and made stack ghost (verification time 80s, limited functions)
 class Node {
   var children: seq<Node>;
   var marked: bool;
@@ -78,20 +78,17 @@ class Main {
         t := n;
         t.marked := true;
         assert Reachable(t.path[0], t.path[1..], root); // limited function
-        assert Reachable(t, t.path, root);
         assert forall x in S :: x.marked ==> Reachable(x, x.path, root);
         assume forall x in S :: x.marked ==> Reachable(x, x.path, root);
-      } else {              
+      } else {    
         // pop
         if (p == null) {
           stop := true;
-        } else {                 
-          t.parent := null;   
+        } else {                          
           t := p;
-          p := p.parent;
-          stack := stack[1..];  
-          assert t !in stack;
-          assert 0 < |stack| ==> p == stack[0];
+          p := t.parent;
+          t.parent := null;
+          stack := stack[1..];
         }
       }
     }
@@ -104,6 +101,6 @@ class Main {
     ensures x != null ==> x in p && ! x.marked;
     ensures x == null ==> (forall n in p :: n.marked);
   {
-    assume false; // magic!
+    assume false;
   }
 }
