@@ -1,12 +1,13 @@
 // Schorr-Waite algorithm in Chalice
 // (see Test/dafny1/SchorrWaite.dfy)
 
+// (incomplete version) Two children instead of a sequence of an array
 class Node {
   var left: Node;
   var right: Node;
   var marked: bool;
   var l: bool;
-  var r: bool;  
+  var r: bool; 
 }
 
 class Main {
@@ -88,14 +89,14 @@ class Main {
       invariant acc(S[*].*);
       invariant root.marked && t in S && t !in stack;
       invariant forall n in stack :: n in S;
-      invariant forall i in [0:|stack|] :: forall j in [i+1:|stack|] :: stack[i] != stack[j];    
+      invariant forall i in [0..|stack|] :: forall j in [i+1..|stack|] :: stack[i] != stack[j];    
       invariant forall n in S :: (n in stack || n == t) ==>
         n.marked &&
         (n.r ==> n.l) &&
         (n.l && n.left != null ==> n.left in S && n.left.marked) &&
         (n.r && n.right != null ==> n.right in S && n.right.marked)
       // stack is linked
-      invariant forall i in [1:|stack|] :: stack[i-1] == (stack[i].l ? stack[i].right : stack[i].left);
+      invariant forall i in [1..|stack|] :: stack[i-1] == (stack[i].l ? stack[i].right : stack[i].left);
       invariant 0 < |stack| ==> t == (stack[0].l ? stack[0].right : stack[0].left);
       // goal
       invariant forall n in S :: n.marked && n !in stack && n != t ==> 

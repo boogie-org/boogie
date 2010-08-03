@@ -1,0 +1,109 @@
+/* Recursive implementation and specification of a linked list. */
+
+class Node {
+  var next: Node;
+  var value: int;
+
+  method init(v: int)
+    requires acc(next) && acc(value);
+    ensures valid && size() == 1;
+  {
+    next := null;
+    value := v;
+    fold this.valid;
+  }
+
+  method append(x: int) 
+    requires valid;
+    ensures valid;
+    ensures size() == old(size())+1;
+  {
+    unfold this.valid;
+    if(next==null) {
+      var n : Node;
+      n := new Node;
+      call n.init(x);
+      next := n;
+    } else {
+      call next.append(x);
+    }
+    fold this.valid;
+  }
+
+  method prepend(x: int) returns (rt: Node)
+    requires valid;
+    ensures rt!=null && rt.valid;
+    ensures rt.size() == old(size()) + 1;
+  {
+    var n: Node;
+    n := new Node;
+    n.value := x;
+    n.next := this; 
+    fold n.valid;
+    rt := n;
+  }
+
+  function at(i: int): int
+    requires valid && 0<=i && i<size();
+  {
+    unfolding valid in i==0 ? value : next.at(i-1)  
+  }
+
+  function size(): int
+    requires valid;
+  {
+    unfolding this.valid in (next!=null ? 1 + next.size() : 1)
+  }
+
+  predicate valid {
+    acc(next) && acc(value) && 
+    (next!=null ==> next.valid)  
+  }
+}
+
+// abstract sequence of integers
+class LinkedList {
+  ghost var rep: seq<int>;
+
+  var first: Node;
+
+  method init()
+    requires acc(this.*);
+    ensures valid;
+  {    
+    first := null;   
+    assert coupling(rep, first); 
+    fold valid;
+  }
+
+  method append(x: int)
+    requires valid;
+    ensures valid;
+  {
+    unfold valid;
+    rep := rep ++ [x];
+    fold valid;
+  }
+
+  method prepend(x: int)
+    requires valid;
+    ensures valid;
+  {
+    unfold valid;
+    rep := [x] ++ rep;
+    fold valid;
+  }
+
+  predicate valid {
+    acc(rep) && acc(first) && (first != null ==> first.valid)
+  }
+
+  function coupling(a: seq<int>, c: Node) : bool
+    requires c != null ==> c.valid;
+  {
+    c == null ? a == nil<int> : 
+      (|a| > 0 && a[0] == c.value && coupling(a[1..], c.next))
+  }
+
+
+}
