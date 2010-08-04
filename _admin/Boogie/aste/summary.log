@@ -1,13 +1,13 @@
-# Aste started: 2010-07-31 07:00:05
+# Aste started: 2010-08-04 07:00:07
 # Host id: Boogiebox
-# [2010-07-31 07:02:13] SpecSharp revision: 55320
-# [2010-07-31 07:03:06] Boogie revision: 55909
-# [2010-07-31 07:03:27] SscBoogie revision: 55325
-[2010-07-31 07:03:54] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-08-04 07:02:12] SpecSharp revision: 55320
+# [2010-08-04 07:03:06] Boogie revision: 56053
+# [2010-08-04 07:03:29] SscBoogie revision: 55325
+[2010-08-04 07:03:53] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-07-31 07:05:29] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-08-04 07:05:23] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4223,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(720,15): warning CS0162: Unreachable code detected
@@ -64,18 +64,30 @@
     warning CS0436
     warning CS0436
     warning CS0436
-[2010-07-31 07:05:52] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
+[2010-08-04 07:05:31] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
 
-    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(39,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(187,73): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(220,21): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(302,13): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(371,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(426,23): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(457,44): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(572,76): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(617,48): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(735,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(760,18): warning CS0168: The variable 's' is declared but never used
+    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1340,72): warning CS0168: The variable 'id' is declared but never used
+    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1352,108): warning CS0168: The variable 'e' is declared but never used
+    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1890,15): warning CS0168: The variable 'tok' is declared but never used
+    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1890,31): warning CS0168: The variable 'e' is declared but never used
+    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1890,48): warning CS0168: The variable 'es' is declared but never used
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(39,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(187,73): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(220,21): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(302,13): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(371,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(426,23): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(457,44): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(572,76): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(617,48): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(735,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
     warning CS0436
     warning CS0436
     warning CS0436
@@ -86,5 +98,5 @@
     warning CS0436
     warning CS0436
     warning CS0436
-[2010-07-31 07:29:19] 0 out of 26 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2010-07-31 07:31:03] Released nightly of Boogie
+[2010-08-04 07:28:48] 0 out of 26 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2010-08-04 07:30:31] Released nightly of Boogie
