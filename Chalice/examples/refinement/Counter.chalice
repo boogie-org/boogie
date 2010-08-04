@@ -1,136 +1,128 @@
-class Cell {
-  var n : int;
-}
+class Cell {var n: int;}
 
-class A {
-  var x : int;
-
-  predicate valid { 
-    acc(x) && x >= 0 
-  }
-
-  function getX(): int requires valid 
-  { 
-    unfolding valid in x 
-  }
-
-  method init()
+class Counter0 {
+  var x: int;
+  
+  method init() 
     requires acc(this.*);
-    ensures valid;
+    ensures acc(x);
   {
-    x := 0;
-    fold valid;
+    x := 0;  
   }
 
   method inc()
-    requires valid;
-    ensures valid && getX() == old(getX()) + 1;
+    requires acc(x);
+    ensures acc(x);
   {
-    unfold valid;
     x := x + 1;
-    fold valid;
   } 
 
   method dec()
-    requires valid && getX() > 0;
-    ensures valid;
+    requires acc(x);
+    ensures acc(x);
   {    
-    unfold valid;
-    x := x - 1;
-    fold valid;
+    x := x - 1;  
   }
 
-  method magic() returns (c: Cell) 
-    requires valid;
-    ensures valid;
+  method magic1() returns (c: Cell) 
+    requires acc(x)
+    ensures acc(c.n);
   {
+    c := new Cell;
+  }
+
+  method magic2() returns (c: Cell)
+    requires acc(x);
+    ensures acc(x) && acc(c.n);
+  {
+    c := new Cell;
   }
 }
 
-class C {
-  ghost var x : int;
-  var y : Cell;
-  var z : Cell;
-  
-  function getX() : int
-    requires valid;
-  { 
-    unfolding valid in y.n - z.n 
-  }
-
-  predicate valid {
-    acc(x) && acc(y) && acc(z) && acc(y.n) && acc(z.n) &&
-    y != null && z != null && 
-    y.n >= 0 && z.n >= 0 &&
-    y.n - z.n == x &&
-    x >= 0
-  }
+class Counter1 {
+  ghost var x: int;
+  var y: int;
+  var z: int;  
+  // replaces x by acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0;
   
   method init()
     requires acc(this.*);
-    ensures valid;
+    ensures acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0;
   {
     x := 0;
-    //
-    y := new Cell;
-    z := new Cell;
-    y.n := 0;
-    z.n := 0;    
-    fold valid;
+    y := 0;
+    z := 0;    
+  }
+
+  method inc()
+    requires acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0;
+    ensures acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0;
+  {
+    x := x + 1;
+    y := y + 1;
+  }
+
+  method dec() 
+    requires acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0;
+    ensures acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0;
+  {
+    x := x - 1;
+    z := z + 1;
+  }       
+}
+
+class Counter2 {
+  ghost var x: int;
+  ghost var y: int;
+  ghost var z: int;
+  var a: Cell;
+  var b: Cell;
+  // replace y || z by acc(a) && acc(b) && acc(a.n) && acc(b.n) && y == a.n && z == b.n;
+  
+  method init() 
+    requires acc(this.*);
+    ensures acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0 && acc(a) && acc(b) && acc(a.n) && acc(b.n) && y == a.n && z == b.n;
+  {
+    x := 0;
+    y := 0;
+    z := 0;
+    a := new Cell;
+    b := new Cell;
+    a.n := 0;
+    b.n := 0;
   }
 
   method inc() 
-    requires valid;
-    ensures valid && getX() == old(getX()) + 1;
+    requires acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0 && acc(a) && acc(b) && acc(a.n) && acc(b.n) && y == a.n && z == b.n;
+    ensures acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0 && acc(a) && acc(b) && acc(a.n) && acc(b.n) && y == a.n && z == b.n;
   {
-    unfold valid;
     x := x + 1;
-    //
-    y.n := y.n + 1; 
-    fold valid;
+    y := y + 1;
+    a.n := a.n + 1;
   }
 
   method dec()
-    requires valid && getX() > 0;
-    ensures valid;
+    requires acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0 && acc(a) && acc(b) && acc(a.n) && acc(b.n) && y == a.n && z == b.n;
+    ensures acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0 && acc(a) && acc(b) && acc(a.n) && acc(b.n) && y == a.n && z == b.n;
   {
-    unfold valid;
     x := x - 1;
-    //
-    z.n := z.n + 1;
-    fold valid;
+    z := z + 1;
+    b.n := b.n + 1;
   }
 
-  method magic() returns (c: Cell)
-    requires valid;
-    ensures valid;
+  method magic1() returns (c: Cell)
+    requires acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0 && acc(a) && acc(b) && acc(a.n) && acc(b.n) && y == a.n && z == b.n;
+    ensures acc(c.n);
   {
-    unfold valid;
-    c := y;
-    fold valid;
+    c := a;
+  }
+
+  method magic2() returns (c: Cell)
+    requires acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0 && acc(a) && acc(b) && acc(a.n) && acc(b.n) && y == a.n && z == b.n;
+    ensures acc(x) && acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0 && acc(a) && acc(b) && acc(a.n) && acc(b.n) && y == a.n && z == b.n && acc(c.n);
+  {
+    c := a;
   }
 }
 
-class Client {
-  method main() 
-  {
-    // Abstract program
-    var a := new A;    
-    call a.init();
-    call a.inc(); // problem is here
-    call a.inc();
-    call a.dec();
-    call ac := a.magic();
-    ac.n := 0; 
-  
-    // Concrete program
-    var c := new C;
-    call c.init();
-    call c.inc();
-    call c.inc();
-    call c.dec();
-    call cc := c.magic();
-    cc.n := 0; 
-  }
-}
   
