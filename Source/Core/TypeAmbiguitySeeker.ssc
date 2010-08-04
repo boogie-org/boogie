@@ -42,7 +42,7 @@ namespace Microsoft.Boogie
 
     public override AssignLhs! VisitMapAssignLhs(MapAssignLhs! node) {
       CheckTypeParams(node, (!)node.TypeParameters);
-      return base.VisitMapAssignLhs(node);      
+      return base.VisitMapAssignLhs(node);
     }
   }
 

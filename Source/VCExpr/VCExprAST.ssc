@@ -197,7 +197,7 @@ namespace Microsoft.Boogie
             // combine the antecedents
             e0 = And(e0, n[0]);
             e1 = n[1];
-            continue; 
+            continue;
           }
         }
         break;
@@ -788,7 +788,7 @@ namespace Microsoft.Boogie.VCExprAST
     internal VCExprMultiAry(VCExprOp! op, List<VCExpr!>! arguments, List<Type!>! typeArguments)
       requires (arguments.Count > 2 || typeArguments.Count > 0);
       requires op.Arity == arguments.Count;
-      requires op.TypeParamArity == typeArguments.Count; 
+      requires op.TypeParamArity == typeArguments.Count;
     {
       base(op);
       this.Arguments = arguments;

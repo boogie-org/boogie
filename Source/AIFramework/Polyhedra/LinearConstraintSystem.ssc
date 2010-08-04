@@ -717,7 +717,7 @@ namespace Microsoft.AbstractInterpretationFramework
 
       CHECK_NEXT_CONSTRAINT: {}
 #if DEBUG_PRINT
-        Console.WriteLine("Widen checking: done with that constraint"); 
+        Console.WriteLine("Widen checking: done with that constraint");
 #endif
       }
 

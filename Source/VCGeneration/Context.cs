@@ -252,7 +252,7 @@ void ObjectInvariant()
   public abstract class VCExprTranslator : ICloneable {
     public abstract string translate(VCExpr expr, int polarity);
     public abstract string Lookup(VCExprVar var);
-    public abstract Object Clone();    
+    public abstract Object Clone();
   }
 
   [ContractClassFor(typeof(VCExprTranslator))]

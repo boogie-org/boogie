@@ -147,7 +147,7 @@ namespace Microsoft.Boogie
       } catch (UnificationFailedException) {
         return false;
       }
-      return true;      
+      return true;
     }
 
     public abstract void Unify(Type! that,
@@ -508,7 +508,7 @@ namespace Microsoft.Boogie
 
       // we only allow type parameters to be substituted
       assert forall{TypeVariable! var in subst.Keys; typeParams.Has(var)};
-      return subst;      
+      return subst;
     }
 #else
     /// <summary>
@@ -785,7 +785,7 @@ namespace Microsoft.Boogie
     public BvType(int bits)
       : base(Token.NoToken)
     {
-      Bits = bits;      
+      Bits = bits;
     }
 
     //-----------  Cloning  ----------------------------------
@@ -2051,7 +2051,7 @@ namespace Microsoft.Boogie
       : base(token) {
       this.Decl = decl;
       this.Arguments = arguments;
-      this.ExpandedType = expandedType;      
+      this.ExpandedType = expandedType;
     }
 
     //-----------  Cloning  ----------------------------------

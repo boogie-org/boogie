@@ -156,7 +156,7 @@ namespace Microsoft.Boogie
 
       foreach(ICollection<Node> component in this) 
       {      
-        string! tmp = System.String.Format("\nComponent #{0} = ", i++);       
+        string! tmp = System.String.Format("\nComponent #{0} = ", i++);
         outStr += tmp;
 
         bool firstInRow = true;

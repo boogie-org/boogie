@@ -44,7 +44,7 @@ void ObjectInvariant()
           Labels[lab.label] = lab.pos;
         }
       }
-      return true;      
+      return true;
     }
   }
 

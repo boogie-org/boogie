@@ -237,40 +237,40 @@ public class Scanner {
 		for (int i = 126; i <= 126; ++i) start[i] = 2;
 		for (int i = 48; i <= 57; ++i) start[i] = 9;
 		for (int i = 34; i <= 34; ++i) start[i] = 6;
-		start[92] = 1; 
-		start[59] = 10; 
-		start[40] = 11; 
-		start[41] = 12; 
-		start[58] = 47; 
-		start[44] = 13; 
-		start[91] = 14; 
-		start[93] = 15; 
-		start[60] = 48; 
-		start[62] = 49; 
-		start[123] = 50; 
-		start[125] = 51; 
-		start[61] = 52; 
-		start[42] = 18; 
-		start[8660] = 21; 
-		start[8658] = 23; 
-		start[8656] = 24; 
-		start[38] = 25; 
-		start[8743] = 27; 
-		start[124] = 28; 
-		start[8744] = 30; 
-		start[33] = 53; 
-		start[8800] = 34; 
-		start[8804] = 35; 
-		start[8805] = 36; 
-		start[43] = 54; 
-		start[45] = 38; 
-		start[47] = 39; 
-		start[37] = 40; 
-		start[172] = 41; 
-		start[8704] = 42; 
-		start[8707] = 43; 
-		start[955] = 44; 
-		start[8226] = 46; 
+		start[92] = 1;
+		start[59] = 10;
+		start[40] = 11;
+		start[41] = 12;
+		start[58] = 47;
+		start[44] = 13;
+		start[91] = 14;
+		start[93] = 15;
+		start[60] = 48;
+		start[62] = 49;
+		start[123] = 50;
+		start[125] = 51;
+		start[61] = 52;
+		start[42] = 18;
+		start[8660] = 21;
+		start[8658] = 23;
+		start[8656] = 24;
+		start[38] = 25;
+		start[8743] = 27;
+		start[124] = 28;
+		start[8744] = 30;
+		start[33] = 53;
+		start[8800] = 34;
+		start[8804] = 35;
+		start[8805] = 36;
+		start[43] = 54;
+		start[45] = 38;
+		start[47] = 39;
+		start[37] = 40;
+		start[172] = 41;
+		start[8704] = 42;
+		start[8707] = 43;
+		start[955] = 44;
+		start[8226] = 46;
 		start[Buffer.EOF] = -1;
 
 	}
@@ -351,7 +351,7 @@ public class Scanner {
 				// eol handling uniform across Windows, Unix and Mac
 				if (ch == '\r' && buffer.Peek() != '\n') ch = EOL;
 				if (ch == EOL) {
-					line++; col = 0; 
+					line++; col = 0;
 				} else if (ch == '#' && col == 1) {
 				  int prLine = line;
 				  int prColumn = 0;
@@ -510,7 +510,7 @@ public class Scanner {
 		int recKind = noSym;
 		int recEnd = pos;
 		t = new Token();
-		t.pos = pos; t.col = col; t.line = line; 
+		t.pos = pos; t.col = col; t.line = line;
 		t.filename = this.Filename;
 		int state;
 		if (start.ContainsKey(ch)) { state = (int) (!) start[ch]; }

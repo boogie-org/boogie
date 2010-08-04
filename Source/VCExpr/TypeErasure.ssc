@@ -131,7 +131,7 @@ namespace Microsoft.Boogie.TypeErasure
       List<VCExprVar!>! res = new List<VCExprVar!> (types.Count);
       for (int i = 0; i < types.Count; ++i)
         res.Add(gen.Variable(baseName + i, types[i]));
-      return res;                             
+      return res;
     }
   }
 
@@ -318,7 +318,7 @@ namespace Microsoft.Boogie.TypeErasure
         Typed2UntypedVariables.Add(var, res);
         AddVarTypeAxiom(res, var.Type);
       }
-      return (!)res;      
+      return (!)res;
     }
 
     protected abstract void AddVarTypeAxiom(VCExprVar! var, Type! originalType);
@@ -371,7 +371,7 @@ namespace Microsoft.Boogie.TypeErasure
       CurrentCtorNum = BigNum.ZERO;
       TypeCtorReprs = new Dictionary<TypeCtorDecl!, TypeCtorRepr> ();
       TypeVariableMapping = new Dictionary<TypeVariable!, VCExprVar!> ();
-      Typed2UntypedVariables = new Dictionary<VCExprVar!, VCExprVar!> ();    
+      Typed2UntypedVariables = new Dictionary<VCExprVar!, VCExprVar!> ();
 
       TypeCtorDecl! uDecl = new TypeCtorDecl(Token.NoToken, "U", 0);
       UDecl = uDecl;
@@ -847,7 +847,7 @@ namespace Microsoft.Boogie.TypeErasure
       VCExprVar res;
       if (!bindings.VCExprVarBindings.TryGetValue(node, out res))
         return AxBuilder.Typed2Untyped(node);
-      return (!)res;      
+      return (!)res;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -863,7 +863,7 @@ namespace Microsoft.Boogie.TypeErasure
                                                       VariableBindings! bindings) {
       List<VCExprVar!>! newBoundVars = new List<VCExprVar!> (oldBoundVars.Count);
       foreach (VCExprVar! var in oldBoundVars) {
-        Type! newType = AxBuilder.TypeAfterErasure(var.Type); 
+        Type! newType = AxBuilder.TypeAfterErasure(var.Type);
         VCExprVar! newVar = Gen.Variable(var.Name, newType);
         newBoundVars.Add(newVar);
         bindings.VCExprVarBindings.Add(var, newVar);
@@ -899,7 +899,7 @@ namespace Microsoft.Boogie.TypeErasure
       foreach (VCExprVar! var in node.BoundVars) {
         Type! newType =
           castVariables.Contains(var) ? AxBuilder.U
-                                      : AxBuilder.TypeAfterErasure(var.Type); 
+                                      : AxBuilder.TypeAfterErasure(var.Type);
         VCExprVar! newVar = Gen.Variable(var.Name, newType);
         newBoundVars.Add(newVar);
         newBindings.VCExprVarBindings.Add(var, newVar);
@@ -985,7 +985,7 @@ namespace Microsoft.Boogie.TypeErasure
           forall{int i in (1:node.Arity); node[i].Type.Equals(oldType)})
         return Gen.Function(node.Op, AxBuilder.CastSeq(newArgs, oldType));
       else
-        return Gen.Function(node.Op, AxBuilder.CastSeq(newArgs, AxBuilder.U));        
+        return Gen.Function(node.Op, AxBuilder.CastSeq(newArgs, AxBuilder.U));
     }
 
     ///////////////////////////////////////////////////////////////////////////

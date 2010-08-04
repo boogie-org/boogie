@@ -1467,7 +1467,7 @@ namespace Microsoft.Boogie
       int previousTypeBinderState = rc.TypeBinderState;
       try {
         foreach (TypeVariable! v in Proc.TypeParameters)
-          rc.AddTypeBinder(v);      
+          rc.AddTypeBinder(v);
         Type.CheckBoundVariableOccurrences(Proc.TypeParameters,
                                            formalInTypes, formalOutTypes,
                                            this.tok, "types of given arguments",

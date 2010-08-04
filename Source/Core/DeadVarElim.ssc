@@ -146,7 +146,7 @@ namespace Microsoft.Boogie
       insideOldExpr ++;
       node.Expr = this.VisitExpr(node.Expr);
       insideOldExpr --;
-      return node; 
+      return node;
     }
     
     public override Expr! VisitIdentifierExpr(IdentifierExpr! node) {
@@ -596,12 +596,12 @@ namespace Microsoft.Boogie
             predEdges.Add(b, new Set<Block!>());
          }     
          
-         nodes.Add(b); 
+         nodes.Add(b);
       }
       
       private void addEdge(Block! src, Block! tgt) {
          registerNode(src);
-         registerNode(tgt);  
+         registerNode(tgt);
          
          succEdges[src].Add(tgt);
          predEdges[tgt].Add(src);
@@ -975,7 +975,7 @@ namespace Microsoft.Boogie
                  
                  // Continue with intra propagation
                  GenKillWeight! summary = getWeightCall((CallCmd!)cmd);
-                 prop = summary.getLiveVars(prop);               
+                 prop = summary.getLiveVars(prop);
               } else {
                  LiveVariableAnalysis.Propagate(cmd, prop);
               }
@@ -1156,7 +1156,7 @@ namespace Microsoft.Boogie
     private static GenKillWeight! getWeightAfterCall(Cmd! cmd) {
       
       if(weightCacheAfterCall.ContainsKey(cmd))
-        return weightCacheAfterCall[cmd];   
+        return weightCacheAfterCall[cmd];
       
       Set<Variable!>! gen = new Set<Variable!>();
       Set<Variable!>! kill = new Set<Variable!>();
@@ -1187,7 +1187,7 @@ namespace Microsoft.Boogie
 	private static GenKillWeight! getWeightBeforeCall(Cmd! cmd) {
       assert (cmd is CallCmd);
       if(weightCacheBeforeCall.ContainsKey(cmd))
-        return weightCacheBeforeCall[cmd];   
+        return weightCacheBeforeCall[cmd];
       
       Set<Variable!>! gen = new Set<Variable!>();
       Set<Variable!>! kill = new Set<Variable!>();

@@ -245,11 +245,11 @@ namespace Microsoft.Boogie
     }
     public override Cmd! VisitAssertRequiresCmd(AssertRequiresCmd! node)
     {
-      return base.VisitAssertRequiresCmd((AssertRequiresCmd)node.Clone()); 
+      return base.VisitAssertRequiresCmd((AssertRequiresCmd)node.Clone());
     }
     public override Cmd! VisitAssertEnsuresCmd(AssertEnsuresCmd! node)
     {
-      return base.VisitAssertEnsuresCmd((AssertEnsuresCmd)node.Clone()); 
+      return base.VisitAssertEnsuresCmd((AssertEnsuresCmd)node.Clone());
     }    
     public override Ensures! VisitEnsures(Ensures! node)
     {

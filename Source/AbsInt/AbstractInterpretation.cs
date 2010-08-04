@@ -176,7 +176,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
       foreach (Implementation impl in implementations) 
       { 
         impl.AbstractFunction = AbstractFunction.Empty.WithPair(this.lattice.Bottom, this.lattice.Bottom);
-        this.implWorkItems.Enqueue(impl); 
+        this.implWorkItems.Enqueue(impl);
       }
 
       while (this.implWorkItems.Count > 0) // until fixed point reached
@@ -554,7 +554,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
           //PM: The following assertion follows from a nontrivial invariant of ArrayAssignCmd,
           //PM: which we do not have yet. Therefore, we put in an assume fo now.
           assume assmt.Index1 != null;
-          assert assmt.Index1 != null;          
+          assert assmt.Index1 != null;
           // heap succession predicate
           Expr heapsucc = Expr.HeapSucc(oldHeap, newHeap, assmt.Index0, assmt.Index1);
 
@@ -735,14 +735,14 @@ namespace Microsoft.Boogie.AbstractInterpretation {
       lattice.ToPredicate(incomingValue).DoVisit(freeVarsVisitorForA);
       lattice.ToPredicate(block.PreInvariant).DoVisit(freeVarsVisitorForB);
       
-      List<AI.IVariable!>! freeVarsOfA = freeVarsVisitorForA.FreeVariables; 
-      List<AI.IVariable!>! freeVarsOfB = freeVarsVisitorForB.FreeVariables; 
+      List<AI.IVariable!>! freeVarsOfA = freeVarsVisitorForA.FreeVariables;
+      List<AI.IVariable!>! freeVarsOfB = freeVarsVisitorForB.FreeVariables;
 
       System.Console.WriteLine("@@ Compared for block {0}:", block.Label);
       System.Console.WriteLine("@@ Incoming: {0}", lattice.ToPredicate((!) incomingValue));
-      System.Console.WriteLine("@@ Free Variables : {0}", ToString(freeVarsOfA)); 
+      System.Console.WriteLine("@@ Free Variables : {0}", ToString(freeVarsOfA));
       System.Console.WriteLine("@@ Previous: {0}", lattice.ToPredicate(block.PreInvariant));
-      System.Console.WriteLine("@@ Free Variables : {0}", ToString(freeVarsOfB)); 
+      System.Console.WriteLine("@@ Free Variables : {0}", ToString(freeVarsOfB));
       System.Console.WriteLine("@@ result = False");
       System.Console.WriteLine("@@ end Compare");
       string operation = "";
@@ -762,7 +762,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
 #endif
 
           // The default is to have have a widening that perform a (approximation of) the closure of the operands, so to improve the precision
-          //    block.PreInvariant =  WideningWithClosure.MorePreciseWiden(lattice, (!) block.PreInvariant, incomingValue);            
+          //    block.PreInvariant =  WideningWithClosure.MorePreciseWiden(lattice, (!) block.PreInvariant, incomingValue);
           block.PreInvariant = (AI.Lattice.Element)lattice.Widen(block.PreInvariant, incomingValue);
         }
         block.iterations++;

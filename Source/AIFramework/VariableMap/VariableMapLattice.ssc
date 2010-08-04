@@ -78,7 +78,7 @@ namespace Microsoft.AbstractInterpretationFramework
 
             public bool IsBottom { 
                  get { 
-                   return this.constraints == null; 
+                   return this.constraints == null;
                  } 
             }
 
@@ -89,7 +89,7 @@ namespace Microsoft.AbstractInterpretationFramework
                   requires !this.IsBottom;
                 { 
                   assume this.constraints != null;
-                  return (!) this.constraints.Keys; 
+                  return (!) this.constraints.Keys;
                 } 
             }
 
@@ -117,7 +117,7 @@ namespace Microsoft.AbstractInterpretationFramework
                 requires !this.IsBottom;
                 { 
                   assume this.constraints != null;
-                  return (Element)constraints[key]; 
+                  return (Element)constraints[key];
                 } 
             }
 
@@ -303,7 +303,7 @@ namespace Microsoft.AbstractInterpretationFramework
             }
             Elt! join = new Elt(newMap);
         
-            // System.Console.WriteLine("{0} join {1} = {2} ", this.ToString(a), ToString(b), ToString(join)); 
+            // System.Console.WriteLine("{0} join {1} = {2} ", this.ToString(a), ToString(b), ToString(join));
 
             return join;
         }
@@ -368,9 +368,9 @@ namespace Microsoft.AbstractInterpretationFramework
             }
             Element! widen= new Elt(newMap);
       
-            // System.Console.WriteLine("{0} widen {1} = {2} ", this.ToString(a), ToString(b), ToString(widen)); 
+            // System.Console.WriteLine("{0} widen {1} = {2} ", this.ToString(a), ToString(b), ToString(widen));
 
-            return widen;  
+            return widen;
         }
 
         internal static ISet/*<IVariable!>*/! VariablesInExpression(IExpr! e, ISet/*<IVariable!>*/! ignoreVars)
@@ -482,7 +482,7 @@ namespace Microsoft.AbstractInterpretationFramework
           else 
           {
             IExpr! left = (IExpr!) fun.Arguments[0];
-            IExpr! right = (IExpr!) fun.Arguments[1];          
+            IExpr! right = (IExpr!) fun.Arguments[1];
 
             if(!(left is IVariable || right is IVariable))    // At least one of the two operands must be a variable
               return false;
@@ -493,7 +493,7 @@ namespace Microsoft.AbstractInterpretationFramework
                 || fun.FunctionSymbol.Equals(Int.Mul)
                 || fun.FunctionSymbol.Equals(Int.Div)
                 || fun.FunctionSymbol.Equals(Int.Mod))
-              return IsArithmeticExpr(left) && IsArithmeticExpr(right);          
+              return IsArithmeticExpr(left) && IsArithmeticExpr(right);
             else 
               return false;
           } 

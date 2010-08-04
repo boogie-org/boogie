@@ -57,7 +57,7 @@ namespace Microsoft.AbstractInterpretationFramework
     {
       IntervalElement interval = (IntervalElement) element;
       
-      return interval.IsTop();      
+      return interval.IsTop();
     }
 
     /// <summary>
@@ -67,7 +67,7 @@ namespace Microsoft.AbstractInterpretationFramework
     {
       IntervalElement interval = (IntervalElement) element;
       
-      return interval.IsBottom(); 
+      return interval.IsBottom();
     }
 
     /// <summary>
@@ -83,7 +83,7 @@ namespace Microsoft.AbstractInterpretationFramework
 
       IntervalElement! join =  IntervalElement.Factory(inf, sup);
 
-      return join;    
+      return join;
     }
 
     /// <summary>
@@ -146,9 +146,9 @@ namespace Microsoft.AbstractInterpretationFramework
     /// </summary>
     public override IExpr! ToPredicate(IVariable! var, Element! element)
     {
-      IntervalElement! interval = (IntervalElement!) element;      
+      IntervalElement! interval = (IntervalElement!) element;
       IExpr lowerBound = null;
-      IExpr upperBound = null;      
+      IExpr upperBound = null;
 
       if(! (interval.Inf is InfinitaryInt)) 
       {
@@ -168,7 +168,7 @@ namespace Microsoft.AbstractInterpretationFramework
           return lowerBound;
       else 
         if(upperBound != null)
-          return upperBound;      
+          return upperBound;
       else      // If we reach this point, both lowerBound and upperBound are null, i.e. we have no bounds on var, so we return simply true...
           return this.factory.True;
     }    
@@ -178,7 +178,7 @@ namespace Microsoft.AbstractInterpretationFramework
     /// </summary>
     public override bool Understands(IFunctionSymbol! f, IList /*<IExpr*/ ! args)
     {          
-      return f.Equals(Microsoft.AbstractInterpretationFramework.Value.Eq);  
+      return f.Equals(Microsoft.AbstractInterpretationFramework.Value.Eq);
     }
 
 
@@ -211,7 +211,7 @@ namespace Microsoft.AbstractInterpretationFramework
         }                
       }
       // otherwise we simply return Top
-      return IntervalElement.Top;      
+      return IntervalElement.Top;
     }
 
     /// <summary>
@@ -237,7 +237,7 @@ namespace Microsoft.AbstractInterpretationFramework
       }
       else if(exp is IFunApp)
       {    
-        IFunApp fun = (IFunApp) exp;      
+        IFunApp fun = (IFunApp) exp;
         
         if(fun.FunctionSymbol is IntSymbol)   // An integer
         {
@@ -271,7 +271,7 @@ namespace Microsoft.AbstractInterpretationFramework
           else if(fun.FunctionSymbol.Equals(Int.Div))
             retVal = leftVal / rightVal;
           else if(fun.FunctionSymbol.Equals(Int.Mod))
-            retVal = leftVal % rightVal;                
+            retVal = leftVal % rightVal;
         }
       }  
         
@@ -385,7 +385,7 @@ namespace Microsoft.AbstractInterpretationFramework
           ExtendedInt! inf = a.inf + b.inf;
           ExtendedInt! sup = a.sup + b.sup;
 
-          return Factory(inf, sup);                      
+          return Factory(inf, sup);
         }
 
          // Subtraction
@@ -394,7 +394,7 @@ namespace Microsoft.AbstractInterpretationFramework
           ExtendedInt! inf = a.inf - b.sup;
           ExtendedInt! sup = a.sup - b.inf;
 
-          IntervalElement! sub = Factory(inf, sup);                      
+          IntervalElement! sub = Factory(inf, sup);
 
           return sub;
         }       

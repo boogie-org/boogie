@@ -140,7 +140,7 @@ namespace Microsoft.Basetypes {
         }
 	}
 
-    private static readonly System.Numerics.BigInteger BI_2_TO_24 = new BIM(0x1000000);    
+    private static readonly System.Numerics.BigInteger BI_2_TO_24 = new BIM(0x1000000);
 
     [Pure]
     private string! toHex(string! format) {

@@ -157,7 +157,7 @@ namespace Microsoft.Boogie
     public bool UseArrayTheory = false;
     public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
 
-    public bool DoModSetAnalysis = false;    
+    public bool DoModSetAnalysis = false;
     public bool UseAbstractInterpretation = true;          // true iff the user want to use abstract interpretation
     public int  /*0..9*/StepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
     invariant 0 <= StepsBeforeWidening && StepsBeforeWidening <= 9;
@@ -181,7 +181,7 @@ namespace Microsoft.Boogie
     public int SmokeTimeout = 10; // default to 10s
     public int ProverCCLimit = 5;
     public bool z3AtFlag = true;
-    public bool RestartProverPerVC = false; 
+    public bool RestartProverPerVC = false;
 
     public double VcsMaxCost = 1.0;
     public double VcsPathJoinMult = 0.8;
@@ -325,7 +325,7 @@ namespace Microsoft.Boogie
       int res = 1;  // the result value
     
       while (ps.i < args.Length)
-        invariant ps.IsPeerConsistent; 
+        invariant ps.IsPeerConsistent;
         invariant ps.args == args;
       {
         ps.s = args[ps.i];
@@ -518,7 +518,7 @@ namespace Microsoft.Boogie
             {
               XmlSinkFilename = args[ps.i];
             }
-            break;            
+            break;
             
           case "-print":
           case "/print":
@@ -761,7 +761,7 @@ namespace Microsoft.Boogie
               PrintErrorModelFile = args[ps.i];
             }
             CEVPrint = true;
-            break;            
+            break;
 
           case "-printModelToFile":
           case "/printModelToFile":
@@ -769,7 +769,7 @@ namespace Microsoft.Boogie
             {
               PrintErrorModelFile = args[ps.i];
             }
-            break;            
+            break;
 
           
           case "-enhancedErrorMessages":
@@ -780,7 +780,7 @@ namespace Microsoft.Boogie
           case "-forceBplErrors":
           case "/forceBplErrors":
             ForceBplErrors = true;
-            break;     
+            break;
            
           case "-bv":
           case "/bv":
@@ -961,10 +961,10 @@ namespace Microsoft.Boogie
               switch (args[ps.i]) 
               {
                 case "0":
-                  LazyInlining = 0;  
+                  LazyInlining = 0;
                   break;
                 case "1":
-                  LazyInlining = 1;  
+                  LazyInlining = 1;
                   break;
                 case "2":
                   LazyInlining = 2;
@@ -981,10 +981,10 @@ namespace Microsoft.Boogie
               switch (args[ps.i]) 
               {
                 case "0":
-                  StratifiedInlining = 0;  
+                  StratifiedInlining = 0;
                   break;
                 case "1":
-                  StratifiedInlining = 1;  
+                  StratifiedInlining = 1;
                   break;
                 default:
                   StratifiedInlining = Int32.Parse((!)args[ps.i]);
@@ -992,7 +992,7 @@ namespace Microsoft.Boogie
                   break;
               }
             }
-            break;            
+            break;
           case "-typeEncoding":
           case "/typeEncoding":
             if (ps.ConfirmArgumentCount(1)) {

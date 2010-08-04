@@ -82,7 +82,7 @@ namespace Microsoft.AbstractInterpretationFramework
         get
         {    
           assert (this.variableBindings == null) <==> (this.variableDependences == null);
-          return this.variableBindings == null && this.variableDependences == null;  
+          return this.variableBindings == null && this.variableDependences == null;
         }      
       }
 
@@ -91,7 +91,7 @@ namespace Microsoft.AbstractInterpretationFramework
       /// </summary>
       public static AbstractElement! Join(AbstractElement! left, AbstractElement! right)
       {
-        AbstractElement! result = new AbstractElement(); 
+        AbstractElement! result = new AbstractElement();
         
         // Put all the variables in the left
         foreach(IVariable! var in left.variableBindings.Keys)
@@ -103,7 +103,7 @@ namespace Microsoft.AbstractInterpretationFramework
 
           if(rightVal== null)   // the expression is not there
           {
-            result.variableBindings.Add(var, leftVal);  
+            result.variableBindings.Add(var, leftVal);
           }
           else    // both abstract elements have a definition for the variable....
           {
@@ -121,7 +121,7 @@ namespace Microsoft.AbstractInterpretationFramework
           
           if(rightVal== null)   // the expression is not there
           {
-            result.variableBindings.Add(var, rightVal);  
+            result.variableBindings.Add(var, rightVal);
           }
           else    // both abstract elements have a definition for the variable....
           {
@@ -219,18 +219,18 @@ namespace Microsoft.AbstractInterpretationFramework
           List<IVariable> depRight = right.variableDependences[var];
 
           // Intersect the two sets
-          result.variableDependences.Add(var, depLeft);    
+          result.variableDependences.Add(var, depLeft);
           foreach(IVariable v in depRight) 
           {
             if(!result.variableDependences.ContainsKey(v))
             {
-              result.variableDependences.Remove(v);              
+              result.variableDependences.Remove(v);
             }
           }              
         } 
 
         // Now we remove the dependencies with variables not in variableBindings
-        List<IVariable>! varsToRemove = new List<IVariable>();         
+        List<IVariable>! varsToRemove = new List<IVariable>();
     
        foreach(IVariable var in result.
           
@@ -252,7 +252,7 @@ namespace Microsoft.AbstractInterpretationFramework
         {
           List<IVariable> dependingVars = this.variableDependences[var];
           List<IVariable> clonedDependingVars = new List<IVariable>(dependingVars);
-          cloned.variableDependences.Add(var, clonedDependingVars);        
+          cloned.variableDependences.Add(var, clonedDependingVars);
         }
       }
 
@@ -268,7 +268,7 @@ namespace Microsoft.AbstractInterpretationFramework
 
       public override string! ToString() 
       {
-        string! retString = "";          
+        string! retString = "";
         retString += "Bindings";
         
         foreach(IVariable var in this.variableBindings.Keys)

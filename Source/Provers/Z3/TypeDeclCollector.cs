@@ -282,7 +282,7 @@ void ObjectInvariant()
 
     private string ExtractBuiltin(Function f) {
       Contract.Requires(f != null);
-      string retVal = null; 
+      string retVal = null;
       if (NativeBv) {
         retVal = f.FindStringAttribute("bvbuiltin");
       } 

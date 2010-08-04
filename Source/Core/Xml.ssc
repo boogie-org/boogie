@@ -121,12 +121,12 @@ namespace Microsoft.Boogie
                 WriteTokenAttributes(b.tok);
                 wr.WriteAttributeString("label", b.Label);
               }
-              wr.WriteEndElement();  
+              wr.WriteEndElement();
             }
             wr.WriteEndElement();
           }
         }
-        wr.WriteEndElement();      
+        wr.WriteEndElement();
       } 
     }     
 
@@ -155,12 +155,12 @@ namespace Microsoft.Boogie
                 this.WriteTokenAttributes(b.tok);
                 wr.WriteAttributeString("label", b.Label);
               }
-              wr.WriteEndElement();  
+              wr.WriteEndElement();
             }
             wr.WriteEndElement();
           }
         }
-        wr.WriteEndElement();      
+        wr.WriteEndElement();
       } 
     }
 

@@ -675,7 +675,7 @@ void ObjectInvariant()
           cce.Owner.AssignSame(boxedN, cce.Owner.ElementProxy(partitionToValue));
           partitionToValue.Add(boxedN);
           Contract.Assume( !valueToPartition.ContainsKey(boxedN));  // a RHS value should occur only once in the Z3 output
-          valueToPartition.Add(boxedN, zID); 
+          valueToPartition.Add(boxedN, zID);
         } else if (type.StartsWith("bv") && BigNum.TryParse(number, out bvVal) && int.TryParse(type.Substring(2), out bvSize)) {
           BvConst bitV = new BvConst(bvVal, bvSize);
           cce.Owner.AssignSame(bitV, cce.Owner.ElementProxy(partitionToValue));
@@ -1131,7 +1131,7 @@ void ObjectInvariant()
         writer.WriteLine("identifierToPartition:");
         foreach (KeyValuePair<string, int> kvp in identifierToPartition) {
           Contract.Assert(kvp.Key!=null);
-          writer.WriteLine(kvp.Key + " : " + "*" + kvp.Value);  
+          writer.WriteLine(kvp.Key + " : " + "*" + kvp.Value);
         }
         
         writer.WriteLine("valueToPartition:");

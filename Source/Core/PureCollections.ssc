@@ -68,7 +68,7 @@ namespace PureCollections {
       if (o == null || !(o is Tuple) || elems.Length != ((!)((Tuple)o).elems).Length)
         return false;
 
-      Tuple s = (Tuple) o;  
+      Tuple s = (Tuple) o;
       for(int i = 0; i < elems.Length; i ++)
         if ( ! Equals(this.elems[i], s.elems[i]))
           return false;
@@ -90,7 +90,7 @@ namespace PureCollections {
         if (elem != null) 
           h += elem.GetHashCode();
       }
-      return h;  
+      return h;
     }
 
     //Compare - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -122,7 +122,7 @@ namespace PureCollections {
     //ToString - - - -  - - - - - - - - - - - - - - - - - - - - - - - -
     [Pure]
     public override string! ToString() {
-      assert this.elems != null; 
+      assert this.elems != null;
       if (elems.Length==0)
         return "()";
       
@@ -241,7 +241,7 @@ namespace PureCollections {
    
     public void Insert(Object key, Object val) {
       if (key == null)
-        throw new MissingCase();      
+        throw new MissingCase();
       
       assert this.elems != null;
       if (elems.Length == 0 || 2*card >= elems.Length){
@@ -274,7 +274,7 @@ namespace PureCollections {
           card ++;
           return;
         } else if (key.Equals(elems[j])) {
-          vals[j] = val; 
+          vals[j] = val;
           return;
         }
       }
@@ -322,16 +322,16 @@ namespace PureCollections {
           if (o == null || !o.Equals(s.vals[i]))
             return false;
         }
-      return true; 
+      return true;
     }
     public static bool operator < (Map s, Map t){
-      return s == null || t == null ? false : s.card < t.card && s <= t; 
+      return s == null || t == null ? false : s.card < t.card && s <= t;
     }
     public static bool operator >= (Map s, Map t){
-      return t <= s;  
+      return t <= s;
     }    
     public static bool operator > (Map s, Map t){ 
-      return t < s; 
+      return t < s;
     }
 
     // Equality - - - - - - - - - - - - - - - - - - - - - - -
@@ -349,7 +349,7 @@ namespace PureCollections {
     }
     [Pure][Reads(ReadsAttribute.Reads.Nothing)]  // ugh, is this right?  --KRML
     public static bool operator != (Map s, Map t){ 
-      return ! (t == s); 
+      return ! (t == s);
     }
     [Pure]
     public override int GetHashCode (){
@@ -363,7 +363,7 @@ namespace PureCollections {
           h += elem.GetHashCode() + ((!)vals[i]).GetHashCode();
         }
       }
-      return h;  
+      return h;
     }
  
     //Ordinary map operations- - - - - - - - - - - - - - - - - - - - - - - - 
@@ -371,7 +371,7 @@ namespace PureCollections {
     [Pure]
     public bool Has(Object x) {      
       if (x == null) 
-        throw new MissingCase();      
+        throw new MissingCase();
 
       assert this.elems != null;
       if (elems.Length == 0) 
@@ -397,7 +397,7 @@ namespace PureCollections {
         if (elems[j] != null && x.Equals(elems[j]))
           return vals[j];
       }
-      return null;     
+      return null;
     }
 
     public static Map Override(Map! s, Map! t) {      
@@ -410,7 +410,7 @@ namespace PureCollections {
       for(int i = 0; i< t.elems.Length; i++)
         if (t.elems[i] != null) 
           m.Insert(t.elems[i], t.vals[i]);
-      return m;    
+      return m;
     }   
   }
 
@@ -492,7 +492,7 @@ namespace PureCollections {
     }
 
     public void Add(object o){
-      assert this.elems != null; 
+      assert this.elems != null;
       int n = this.elems.Length;
       int i = this.card++;
       if (i == n){
@@ -520,7 +520,7 @@ namespace PureCollections {
     public void Remove(Object x) {
       if (x == null)
         throw new MissingCase();
-      assert this.elems != null; 
+      assert this.elems != null;
       for (int i = 0; i < card; i++) {
         if (x.Equals(elems[i])) {
           ++i;
@@ -549,7 +549,7 @@ namespace PureCollections {
     [Pure]
     public override string! ToString() {
       string s ="";
-      assert this.elems != null; 
+      assert this.elems != null;
       if (card > 0 && elems[0] is Char) {
         for(int i =0; i < card ; i++)
         {
@@ -585,27 +585,27 @@ namespace PureCollections {
             return false;
         }
       if (s.card != t.card) return false;
-      assert s.elems != null; 
-      assert t.elems != null; 
+      assert s.elems != null;
+      assert t.elems != null;
       for(int i = 0; i < s.card; i++)
         if (! Equals(s.elems[i], t.elems[i])) 
           return false;
-      return true; 
+      return true;
     }
     [Pure][Reads(ReadsAttribute.Reads.Nothing)]  // ugh, is this right?  --KRML
     public static bool operator != (Sequence s, Sequence t){ 
-      return !(s == t); 
+      return !(s == t);
     }
     [Pure]
     public override int GetHashCode (){
       int h = 0;
       for(int i = 0; i < card; i++)
       {
-        assert this.elems != null; 
+        assert this.elems != null;
         object elem = elems[i];
         if (elem != null) { h += elem.GetHashCode(); }
       }
-      return h; 
+      return h;
     }
     //Subset- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
     // View Sequence of T as Set of (Integer,T) 
@@ -623,23 +623,23 @@ namespace PureCollections {
       if (s==null) throw new ArgumentNullException("s");
       if (t==null) throw new ArgumentNullException("t");
       if (s.card >= t.card) return false;
-      assert s.elems != null; 
-      assert t.elems != null; 
+      assert s.elems != null;
+      assert t.elems != null;
       for(int i = 0; i < s.card; i++)
         if ( ! Equals(s.elems[i], t.elems[i])) 
           return false;
-      return true; 
+      return true;
     }
     public static bool operator <= (Sequence s, Sequence t){ 
       if (s==null) throw new ArgumentNullException("s");
       if (t==null) throw new ArgumentNullException("t");
       if (s.card > t.card) return false;
-      assert s.elems != null; 
-      assert t.elems != null; 
+      assert s.elems != null;
+      assert t.elems != null;
       for(int i = 0; i < s.card; i++)
         if ( ! Equals(s.elems[i], t.elems[i])) 
           return false;
-      return true; 
+      return true;
     }
     public static bool operator > (Sequence s, Sequence t){ return t < s;}
     public static bool operator >= (Sequence s, Sequence t){ return t <= s;}
@@ -649,7 +649,7 @@ namespace PureCollections {
     public bool Has(object x) {         // WS translate to tailrecursion 
       if (x == null)
         throw new MissingCase();
-      assert this.elems != null; 
+      assert this.elems != null;
       for (int i = 0; i< card; i++)
         if (x.Equals(elems[i]))
           return true;
@@ -662,7 +662,7 @@ namespace PureCollections {
     public int IndexOf(object x) {
       if (x == null)
         throw new MissingCase();
-      assert this.elems != null; 
+      assert this.elems != null;
       for (int i = 0; i< card; i++)
         if (x.Equals(elems[i]))
           return i;
@@ -675,7 +675,7 @@ namespace PureCollections {
     public int LastIndexOf(object x) {
       if (x == null)
         throw new MissingCase();
-      assert this.elems != null; 
+      assert this.elems != null;
       for (int i = card - 1; i >= 0; i--)
         if (x.Equals(elems[i]))
           return i;
@@ -687,26 +687,26 @@ namespace PureCollections {
 
     public static Sequence Tail(Sequence! s) { 
       Sequence n = new Sequence(new Capacity(s.card-1));
-      assert n.elems != null; 
-      assert s.elems != null; 
+      assert n.elems != null;
+      assert s.elems != null;
       for (int i = 1; i< s.card; i++) n.elems[n.card++] = s.elems[i];
       return n;
     }
 
     public static Sequence Front(Sequence! s) { 
       Sequence n = new Sequence(new Capacity(s.card-1));
-      assert n.elems != null; 
-      assert s.elems != null; 
+      assert n.elems != null;
+      assert s.elems != null;
       for (int i = 0; i< s.card-1; i++) n.elems[n.card++] = s.elems[i];
       return n;
     }
     public static Sequence Concat(Sequence! s) { 
       Sequence n = new Sequence(new Capacity(s.card));
-      assert n.elems != null; 
-      assert s.elems != null; 
+      assert n.elems != null;
+      assert s.elems != null;
       for (int i = 0; i< s.card; i++) {
         Sequence t = (Sequence!) s.elems[i];
-        assert t.elems != null; 
+        assert t.elems != null;
         for (int j = 0; j < t.card; j ++)
           n.Add(t.elems[j]);
       }
@@ -715,8 +715,8 @@ namespace PureCollections {
 
     public static Sequence Reverse(Sequence! s) { 
       Sequence n = new Sequence(new Capacity(s.card));
-      assert n.elems != null; 
-      assert s.elems != null; 
+      assert n.elems != null;
+      assert s.elems != null;
       for (int i = s.card-1; i>=0; i--) n.elems[n.card++] = s.elems[i];
       return n;
     }
@@ -730,9 +730,9 @@ namespace PureCollections {
     
     public static Sequence! Append(Sequence! s, Sequence! t) {       
       Sequence! n = new Sequence(new Capacity(s.card + t.card));
-      assert n.elems != null; 
-      assert s.elems != null; 
-      assert t.elems != null; 
+      assert n.elems != null;
+      assert s.elems != null;
+      assert t.elems != null;
       for (int i = 0; i< s.card; i++) n.elems[n.card++] = s.elems[i];
       for (int i = 0; i< t.card; i++) n.elems[n.card++] = t.elems[i];
       return n;
@@ -740,18 +740,18 @@ namespace PureCollections {
     public static Sequence Zip(Sequence! s, Sequence! t) { 
       int min = s.card<t.card ? s.card : t.card;
       Sequence n = new Sequence(new Capacity(min));
-      assert n.elems != null; 
-      assert s.elems != null; 
-      assert t.elems != null; 
+      assert n.elems != null;
+      assert s.elems != null;
+      assert t.elems != null;
       for (int i = 0; i< min; i++) n.elems[n.card++] = new Tuple(s.elems[i], t.elems[i]);
       return n;
     }
     public static Tuple Unzip(Sequence! s) { 
       Sequence n0 = new Sequence(new Capacity(s.card));
       Sequence n1 = new Sequence(new Capacity(s.card));
-      assert s.elems != null; 
-      assert n0.elems != null; 
-      assert n1.elems != null; 
+      assert s.elems != null;
+      assert n0.elems != null;
+      assert n1.elems != null;
       for (int i = 0; i< s.card; i++) {
         n0.elems[n0.card++] = ((!)((Tuple!)s.elems[i]).elems)[0];
         n1.elems[n1.card++] = ((!)((Tuple!)s.elems[i]).elems)[1];
@@ -762,7 +762,7 @@ namespace PureCollections {
     public static Sequence FromTo(int from, int to) {       //WS hash the result! 
       if (from > to) return new Sequence();
       Sequence n = new Sequence(new Capacity(to-from+1));
-      assert n.elems != null; 
+      assert n.elems != null;
       for (int i = from; i<= to; i++) 
         n.elems[n.card++] = i;
       return n;
@@ -773,10 +773,10 @@ namespace PureCollections {
       int incr = step-from;
       if (incr >0)
         for (int i = from; i<= to; i+=incr) 
-          n.Add(i); 
+          n.Add(i);
       else if (incr < 0)
         for (int i = to; i>= from; i-=incr) 
-          n.Add(i); 
+          n.Add(i);
       return n;
     }
    

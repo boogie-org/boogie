@@ -262,7 +262,7 @@ namespace Microsoft.Boogie.VCExprAST
     internal const string! eqName = "EQ"; // equality
     internal const string! neqName = "NEQ"; // inequality
     internal const string! lessName = "<";
-    internal const string! greaterName = ">"; 
+    internal const string! greaterName = ">";
     internal const string! atmostName = "<=";
     internal const string! atleastName = ">=";
     internal const string! TRUEName = "TRUE"; // nullary predicate that is always true
@@ -377,7 +377,7 @@ namespace Microsoft.Boogie.VCExprAST
       } else {
         wr.Write("({0} ", eqName);
         WriteId(printedName);
-        wr.Write(" {0})", boolTrueName);        
+        wr.Write(" {0})", boolTrueName);
       }
 
       return true;
@@ -663,7 +663,7 @@ namespace Microsoft.Boogie.VCExprAST
           ExprLineariser.Linearise(node[0], options);
           wr.Write("))");
         } else {
-          WriteApplication(impliesName, node, options);          
+          WriteApplication(impliesName, node, options);
         }
         return true;
       }

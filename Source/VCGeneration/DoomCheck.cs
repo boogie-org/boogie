@@ -39,12 +39,12 @@ void ObjectInvariant()
 }
 
         private Checker m_Checker;
-        private DoomErrorHandler m_ErrorHandler;                        
+        private DoomErrorHandler m_ErrorHandler;
         
         [NotDelayed]
         public Evc(Checker check) {
           Contract.Requires(check != null);
-            m_Checker = check;     
+            m_Checker = check;
                    
         }
         
@@ -61,11 +61,11 @@ void ObjectInvariant()
             // Todo: Check if vc is trivial true or false            
             outcome = ProverInterface.Outcome.Undetermined;
             Contract.Assert( m_ErrorHandler !=null);
-            m_Checker.BeginCheck(reachvar.Name, vc, m_ErrorHandler);            
+            m_Checker.BeginCheck(reachvar.Name, vc, m_ErrorHandler);
             m_Checker.ProverDone.WaitOne();
             
             try {
-              outcome = m_Checker.ReadOutcome();                             
+              outcome = m_Checker.ReadOutcome();
             } catch (UnexpectedProverOutputException e)
             {
               if (CommandLineOptions.Clo.TraceVerify) { 
@@ -102,17 +102,17 @@ void ObjectInvariant()
             }
         }
         
-        private DoomErrorHandler m_ErrHandler;                      
-        private Checker m_Check;        
-        private InclusionOrder m_Order; 
-        private Evc m_Evc;       
+        private DoomErrorHandler m_ErrHandler;
+        private Checker m_Check;
+        private InclusionOrder m_Order;
+        private Evc m_Evc;
         #endregion
         
         [NotDelayed]
         public DoomCheck (Implementation passive_impl, Checker check) {
           Contract.Requires(passive_impl != null);
           Contract.Requires(check != null);
-            m_Check = check;          
+            m_Check = check;
             if (!VC.DCGen.UseItAsDebugger ) {  
                 m_Order = new InclusionOrder(passive_impl.Blocks[0]);
             } else {
@@ -126,7 +126,7 @@ void ObjectInvariant()
             Contract.Assert( l2a!=null);
             Label2Absy = l2a;
 //            vce = check.VCExprGen.Implies(vce, vce);
-            m_Evc.Initialize(vce);            
+            m_Evc.Initialize(vce);
         }
 
         /* - Set b to the next block that needs to be checked.
@@ -148,9 +148,9 @@ void ObjectInvariant()
                 if (!m_Order.SetCurrentResult(reachvar, outcome, m_ErrHandler)) {
                     outcome = ProverInterface.Outcome.Undetermined;
                 }
-                return true;            
+                return true;
             } else {
-                m_Order.SetCurrentResult(reachvar, ProverInterface.Outcome.Undetermined, m_ErrHandler);              
+                m_Order.SetCurrentResult(reachvar, ProverInterface.Outcome.Undetermined, m_ErrHandler);
                 return false;
             }
         }
@@ -215,8 +215,8 @@ void ObjectInvariant()
                             ConsoleColor col = Console.ForegroundColor;
                             Console.ForegroundColor = ConsoleColor.Green; 					    
 					        Console.WriteLine(vc.ToString());
-                            Console.ForegroundColor = col;   
-                            Console.WriteLine(" ... was asked.");   
+                            Console.ForegroundColor = col;
+                            Console.WriteLine(" ... was asked.");
                         */
                                                                  
 					    }
@@ -227,7 +227,7 @@ void ObjectInvariant()
 				    default:
 					    Contract.Assert(false);throw new cce.UnreachableException();  // unexpected enumeration value
 			    }
-			    return vc;      
+			    return vc;
         }
 
         public VCExpr LetVC(Block startBlock,
@@ -294,7 +294,7 @@ void ObjectInvariant()
 
             VCExpr vc = Wlp.Block(block, SuccCorrect, context);
 
-            v = gen.Variable(block.Label + "_correct", Microsoft.Boogie.Type.Bool);            
+            v = gen.Variable(block.Label + "_correct", Microsoft.Boogie.Type.Bool);
             
             bindings.Add(gen.LetBinding(v, vc));
             blockVariables.Add(block, v);
@@ -314,7 +314,7 @@ void ObjectInvariant()
             public List<List<Block/*!*/>/*!*/>/*!*/ DetectedBlock = new List<List<Block/*!*/>/*!*/>();
  
             
-            InclusionTree RootNode = new InclusionTree(null);             
+            InclusionTree RootNode = new InclusionTree(null);
             InclusionTree currentNode = null;
             [ContractInvariantMethod]
 void ObjectInvariant() 
@@ -340,7 +340,7 @@ void ObjectInvariant()
                 Dictionary<Block, List<Block>> unavoidablemap = new Dictionary<Block, List<Block>>();
 
                 Block exitblock = BreadthFirst(rootblock, map2);Contract.Assert(exitblock != null);
-                BreadthFirstBwd(exitblock, map);               
+                BreadthFirstBwd(exitblock, map);
 
                 foreach (KeyValuePair<Block, TraceNode> kvp in map) {
                   Contract.Assert(kvp.Key != null);Contract.Assert(kvp.Value != null);
@@ -371,7 +371,7 @@ void ObjectInvariant()
                     Insert2Tree(RootNode,kvp);
                 }
                 InitCurrentNode(RootNode);
-                //printtree(RootNode, "",0);                
+                //printtree(RootNode, "",0);
             }
                                   
             void InitCurrentNode(InclusionTree n) {Contract.Requires(n != null);
@@ -424,12 +424,12 @@ void ObjectInvariant()
                     if (currentNode != null) {
                         currentNode.IsDoomed = false;
                         currentNode.HasBeenChecked = true;
-                        MarkUndoomedParents(currentNode); 
+                        MarkUndoomedParents(currentNode);
                         if (cb != null) {
                             //Console.WriteLine("CE contains: ");
                             foreach (Block b in cb.TraceNodes)
                             {Contract.Assert(b != null);
-                                //Console.Write("{0}, ", b.Label);                                
+                                //Console.Write("{0}, ", b.Label);
                                 MarkUndoomedFromCE(b, RootNode);
                             }
                             //Console.WriteLine();
@@ -447,14 +447,14 @@ void ObjectInvariant()
 //                        if (ECContainsAssertFalse(currentNode.EquivBlock)) {  
 //                        
 //                            ConsoleColor col = Console.ForegroundColor;
-//                            Console.ForegroundColor = ConsoleColor.Blue; 
+//                            Console.ForegroundColor = ConsoleColor.Blue;
 //                            Console.WriteLine("Assert false or PossiblyUnreachable was detected, but ignored");
-//                            Console.ForegroundColor = col;                                              
+//                            Console.ForegroundColor = col;
 //
-//                            currentNode.HasBeenChecked = true;  
-//                            currentNode.IsDoomed = false;                          
-//                            currentNode = currentNode.Parent; 
-//                            return false;                       
+//                            currentNode.HasBeenChecked = true;
+//                            currentNode.IsDoomed = false;
+//                            currentNode = currentNode.Parent;
+//                            return false;
 //                        }
                         
                         List<Block> traceblocks = new List<Block>();
@@ -464,7 +464,7 @@ void ObjectInvariant()
                         
 //                        cb.OnWarning("Doomed program points found!");
                         if (cb != null) {
-                            cb.OnDoom(reachvar, currentNode.EquivBlock, traceblocks);                            
+                            cb.OnDoom(reachvar, currentNode.EquivBlock, traceblocks);
                         }
                                                 
                         if (currentNode.EquivBlock.Count>0) {
@@ -596,7 +596,7 @@ void ObjectInvariant()
                                     
             InclusionTree FindNextNode(InclusionTree n) {Contract.Requires(n != null);
                 Contract.Assert( n!=n.Parent);
-                InclusionTree next = n.Parent;                
+                InclusionTree next = n.Parent;
                 if (next!=null) {
                   foreach (InclusionTree n0 in next.Children) {
                     Contract.Assert(n0 != null);
@@ -604,7 +604,7 @@ void ObjectInvariant()
                             return n0;
                         }
                     }
-                    return FindNextNode(next);                    
+                    return FindNextNode(next);
                 }                
                 return next;
             }
@@ -662,7 +662,7 @@ void ObjectInvariant()
             bool IsSubset(List<Block> sub, List<Block> super ) {Contract.Requires(sub!=null);Contract.Requires(cce.NonNullElements(super));
                 foreach (Block b in sub) {
                   Contract.Assert(b != null);
-                    if (!super.Contains(b) ) return false;                    
+                    if (!super.Contains(b) ) return false;
                 }
                 return true;
             }
@@ -683,7 +683,7 @@ void ObjectInvariant()
             private class InclusionTree {
                 public InclusionTree(InclusionTree p) {
                     Parent = p;
-                    HasBeenChecked=false;  
+                    HasBeenChecked=false;
                     IsDoomed = false;
                 }
                 
@@ -731,7 +731,7 @@ void ObjectInvariant()
                         Contract.Assert( firstpred!=null);
                         if (blockmap.TryGetValue(firstpred, out t0)) {
                             Contract.Assert( t0 !=null);
-                            tn.Unavoidables.AddRange(t0.Unavoidables);                                
+                            tn.Unavoidables.AddRange(t0.Unavoidables);
                         }
                     }   
                                          
@@ -739,8 +739,8 @@ void ObjectInvariant()
                         TraceNode t = null;
                         if (blockmap.TryGetValue(b0, out t)) {
                             Contract.Assert( t!=null);
-                            tn.Predecessors.Add(t);                            
-                            IntersectUnavoidables(t,tn);                            
+                            tn.Predecessors.Add(t);
+                            IntersectUnavoidables(t,tn);
                             if (!t.Successors.Contains(tn)) t.Successors.Add(tn);
                             blockmap[b0]=t;
                         }
@@ -807,7 +807,7 @@ void ObjectInvariant()
                         Contract.Assert( firstpred!=null);
                         if (blockmap.TryGetValue(firstpred, out t0)) {
                             Contract.Assert( t0 !=null);
-                            tn.Unavoidables.AddRange(t0.Unavoidables);                                
+                            tn.Unavoidables.AddRange(t0.Unavoidables);
                         }
                       
                                          
@@ -815,8 +815,8 @@ void ObjectInvariant()
                             TraceNode t = null;
                             if (blockmap.TryGetValue(b0, out t)) {
                                 Contract.Assert( t!=null);
-                                tn.Successors.Add(t);                            
-                                IntersectUnavoidables(t,tn);                            
+                                tn.Successors.Add(t);
+                                IntersectUnavoidables(t,tn);
                                 if (!t.Predecessors.Contains(tn)) t.Predecessors.Add(tn);
                                 blockmap[b0]=t;
                             }
@@ -880,7 +880,7 @@ void ObjectInvariant()
 
                 public TraceNode(Block b) {
                   Contract.Requires(b != null);
-                    block=b;                          
+                    block=b;
                 }
                 
             }

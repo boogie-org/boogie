@@ -58,12 +58,12 @@ namespace Microsoft.Boogie
     }
     public virtual AIVariableExpr! VisitAIVariableExpr(AIVariableExpr! node)
     {
-      return node; 
+      return node;
     }
     public virtual Cmd! VisitAssertCmd(AssertCmd! node)
     {
       node.Expr = this.VisitExpr(node.Expr);
-      return node; 
+      return node;
     }
     public virtual Cmd! VisitAssignCmd(AssignCmd! node)
     {
@@ -76,21 +76,21 @@ namespace Microsoft.Boogie
     public virtual Cmd! VisitAssumeCmd(AssumeCmd! node)
     {
       node.Expr = this.VisitExpr(node.Expr);
-      return node; 
+      return node;
     }
     public virtual AtomicRE! VisitAtomicRE(AtomicRE! node)
     {
       node.b = this.VisitBlock(node.b);
-      return node; 
+      return node;
     }
     public virtual Axiom! VisitAxiom(Axiom! node)
     {
       node.Expr = this.VisitExpr(node.Expr);
-      return node; 
+      return node;
     }
     public virtual Type! VisitBasicType(BasicType! node)
     {
-      return this.VisitType(node); 
+      return this.VisitType(node);
     }
     public virtual BvConcatExpr! VisitBvConcatExpr(BvConcatExpr! node)
     {
@@ -100,7 +100,7 @@ namespace Microsoft.Boogie
     }
     public virtual Type! VisitBvType(BvType! node)
     {
-      return this.VisitType(node); 
+      return this.VisitType(node);
     }
     public virtual Type! VisitBvTypeProxy(BvTypeProxy! node)
     {
@@ -114,13 +114,13 @@ namespace Microsoft.Boogie
     {
       node.Cmds = this.VisitCmdSeq(node.Cmds);
       node.TransferCmd = this.VisitTransferCmd((!)node.TransferCmd);
-      return node; 
+      return node;
     }
     public virtual Expr! VisitBlockExpr(BlockExpr! node)
     {
       node.LocVars = this.VisitVariableSeq(node.LocVars);
       node.Blocks = this.VisitBlockSeq(node.Blocks);
-      return node; 
+      return node;
     }
     public virtual BlockSeq! VisitBlockSeq(BlockSeq! blockSeq)
     {
@@ -138,7 +138,7 @@ namespace Microsoft.Boogie
     public virtual BoundVariable! VisitBoundVariable(BoundVariable! node)
     {
       node = (BoundVariable) this.VisitVariable(node);
-      return node; 
+      return node;
     }
     public virtual Cmd! VisitCallCmd(CallCmd! node)
     {
@@ -148,7 +148,7 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.Outs.Count; ++i)
         if (node.Outs[i] != null)
           node.Outs[i] = (IdentifierExpr)this.VisitIdentifierExpr((!)node.Outs[i]);
-      return node; 
+      return node;
     }
     public virtual Cmd! VisitCallForallCmd(CallForallCmd! node)
     {
@@ -162,7 +162,7 @@ namespace Microsoft.Boogie
       }
       node.Ins = elist;
       node.Proc = this.VisitProcedure((!)node.Proc);
-      return node; 
+      return node;
     }
     public virtual CmdSeq! VisitCmdSeq(CmdSeq! cmdSeq)
     {
@@ -173,7 +173,7 @@ namespace Microsoft.Boogie
     public virtual Choice! VisitChoice(Choice! node)
     {
       node.rs = this.VisitRESeq(node.rs);
-      return node; 
+      return node;
     }
     public virtual Cmd! VisitCommentCmd(CommentCmd! node)
     {
@@ -181,7 +181,7 @@ namespace Microsoft.Boogie
     }
     public virtual Constant! VisitConstant(Constant! node)
     {
-      return node; 
+      return node;
     }
     public virtual CtorType! VisitCtorType(CtorType! node)
     {
@@ -191,29 +191,29 @@ namespace Microsoft.Boogie
     }
     public virtual Declaration! VisitDeclaration(Declaration! node)
     {
-      return node; 
+      return node;
     }
     public virtual List<Declaration!>! VisitDeclarationList(List<Declaration!>! declarationList)
     {
       for (int i = 0, n = declarationList.Count; i < n; i++)
         declarationList[i] = (Declaration!) this.Visit(declarationList[i]);
-      return declarationList; 
+      return declarationList;
     }
     public virtual DeclWithFormals! VisitDeclWithFormals(DeclWithFormals! node)
     {
       node.InParams = this.VisitVariableSeq(node.InParams);
       node.OutParams = this.VisitVariableSeq(node.OutParams);
-      return node; 
+      return node;
     }
     public virtual ExistsExpr! VisitExistsExpr(ExistsExpr! node)
     {
       node = (ExistsExpr) this.VisitQuantifierExpr(node);
-      return node; 
+      return node;
     }
     public virtual BvExtractExpr! VisitBvExtractExpr(BvExtractExpr! node)
     {
       node.Bitvector = this.VisitExpr(node.Bitvector);
-      return node; 
+      return node;
     }
     public virtual Expr! VisitExpr(Expr! node)
     {
@@ -224,7 +224,7 @@ namespace Microsoft.Boogie
     {
       for (int i = 0, n = exprSeq.Length; i < n; i++)
         exprSeq[i] = this.VisitExpr( (!)exprSeq[i]);
-      return exprSeq; 
+      return exprSeq;
     }
     public virtual Requires! VisitRequires(Requires! @requires)
     {
@@ -251,50 +251,50 @@ namespace Microsoft.Boogie
     public virtual ForallExpr! VisitForallExpr(ForallExpr! node)
     {
       node = (ForallExpr) this.VisitQuantifierExpr(node);
-      return node; 
+      return node;
     }
     public virtual LambdaExpr! VisitLambdaExpr(LambdaExpr! node)
     {
       node = (LambdaExpr) this.VisitBinderExpr(node);
-      return node; 
+      return node;
     }
     public virtual Formal! VisitFormal(Formal! node)
     {
-      return node; 
+      return node;
     }
     public virtual Function! VisitFunction(Function! node)
     {
       node = (Function) this.VisitDeclWithFormals(node);
       if (node.Body != null)
         node.Body = this.VisitExpr(node.Body);
-      return node; 
+      return node;
     }
     public virtual GlobalVariable! VisitGlobalVariable(GlobalVariable! node)
     {
       node = (GlobalVariable) this.VisitVariable(node);
-      return node; 
+      return node;
     }
     public virtual GotoCmd! VisitGotoCmd(GotoCmd! node)
     {
       node.labelTargets = this.VisitBlockSeq((!)node.labelTargets);
-      return node; 
+      return node;
     }
     public virtual Cmd! VisitHavocCmd(HavocCmd! node)
     {
       node.Vars = this.VisitIdentifierExprSeq(node.Vars);
-      return node; 
+      return node;
     }
     public virtual Expr! VisitIdentifierExpr(IdentifierExpr! node)
     {
       if (node.Decl != null)
         node.Decl = this.VisitVariable(node.Decl);
-      return node; 
+      return node;
     }
     public virtual IdentifierExprSeq! VisitIdentifierExprSeq(IdentifierExprSeq! identifierExprSeq)
     {
       for (int i = 0, n = identifierExprSeq.Length; i < n; i++)
         identifierExprSeq[i] = (IdentifierExpr) this.VisitIdentifierExpr( (!)identifierExprSeq[i]);
-      return identifierExprSeq; 
+      return identifierExprSeq;
     }
     public virtual Implementation! VisitImplementation(Implementation! node)
     {
@@ -302,16 +302,16 @@ namespace Microsoft.Boogie
       node.Blocks = this.VisitBlockList(node.Blocks);
       node.Proc = this.VisitProcedure((!)node.Proc);
       node = (Implementation) this.VisitDeclWithFormals(node); // do this first or last?
-      return node; 
+      return node;
     }
     public virtual LiteralExpr! VisitLiteralExpr(LiteralExpr! node)
     {
-      return node; 
+      return node;
     }
 
     public virtual LocalVariable! VisitLocalVariable(LocalVariable! node)
     {
-      return node; 
+      return node;
     }
 
     public virtual AssignLhs! VisitMapAssignLhs(MapAssignLhs! node)
@@ -319,7 +319,7 @@ namespace Microsoft.Boogie
       node.Map = (AssignLhs!)this.Visit(node.Map);
       for (int i = 0; i < node.Indexes.Count; ++i)
         node.Indexes[i] = (Expr!)this.Visit(node.Indexes[i]);
-      return node; 
+      return node;
     }
     public virtual MapType! VisitMapType(MapType! node)
     {
@@ -345,12 +345,12 @@ namespace Microsoft.Boogie
     public virtual Expr! VisitNAryExpr(NAryExpr! node)
     {
       node.Args = this.VisitExprSeq(node.Args);
-      return node; 
+      return node;
     }
     public virtual Expr! VisitOldExpr(OldExpr! node)
     {
       node.Expr = this.VisitExpr(node.Expr);
-      return node; 
+      return node;
     }
     public virtual Procedure! VisitProcedure(Procedure! node)
     {
@@ -359,19 +359,19 @@ namespace Microsoft.Boogie
       node.Modifies = this.VisitIdentifierExprSeq(node.Modifies);
       node.OutParams = this.VisitVariableSeq(node.OutParams);
       node.Requires = this.VisitRequiresSeq(node.Requires);
-      return node; 
+      return node;
     }
     public virtual Program! VisitProgram(Program! node)
     {
       node.TopLevelDeclarations = this.VisitDeclarationList(node.TopLevelDeclarations);
-      return node; 
+      return node;
     }
     public virtual BinderExpr! VisitBinderExpr(BinderExpr! node)
     {
       node.Body = this.VisitExpr(node.Body);
       node.Dummies = this.VisitVariableSeq(node.Dummies);
       //node.Type = this.VisitType(node.Type);
-      return node; 
+      return node;
     }
     public virtual QuantifierExpr! VisitQuantifierExpr(QuantifierExpr! node)
     {
@@ -379,7 +379,7 @@ namespace Microsoft.Boogie
       if (node.Triggers != null) {
         node.Triggers = this.VisitTrigger(node.Triggers);
       }
-      return node; 
+      return node;
     }
     public virtual Cmd! VisitRE(RE! node)
     {
@@ -389,11 +389,11 @@ namespace Microsoft.Boogie
     {
       for (int i = 0, n = reSeq.Length; i < n; i++)
         reSeq[i] = (RE) this.VisitRE( (!)reSeq[i]);
-      return reSeq; 
+      return reSeq;
     }
     public virtual ReturnCmd! VisitReturnCmd(ReturnCmd! node)
     {
-      return (ReturnCmd) this.VisitTransferCmd(node); 
+      return (ReturnCmd) this.VisitTransferCmd(node);
     }
     public virtual ReturnExprCmd! VisitReturnExprCmd(ReturnExprCmd! node)
     {
@@ -404,23 +404,23 @@ namespace Microsoft.Boogie
     {
       node.first = (RE) this.VisitRE(node.first);
       node.second = (RE) this.VisitRE(node.second);
-      return node; 
+      return node;
     }
     public virtual AssignLhs! VisitSimpleAssignLhs(SimpleAssignLhs! node)
     {
       node.AssignedVariable =
         (IdentifierExpr) this.VisitIdentifierExpr(node.AssignedVariable);
-      return node; 
+      return node;
     }
     public virtual Cmd! VisitStateCmd(StateCmd! node)
     {
       node.Locals = this.VisitVariableSeq(node.Locals);
       node.Cmds = this.VisitCmdSeq(node.Cmds);
-      return node; 
+      return node;
     }
     public virtual TransferCmd! VisitTransferCmd(TransferCmd! node)
     {
-      return node; 
+      return node;
     }
     public virtual Trigger! VisitTrigger(Trigger! node)
     {
@@ -433,17 +433,17 @@ namespace Microsoft.Boogie
         }
       }
       node.Tr = this.VisitExprSeq(node.Tr);
-      return node; 
+      return node;
     }
     // called by default for all nullary type constructors and type variables
     public virtual Type! VisitType(Type! node)
     {
-      return node; 
+      return node;
     }
     public virtual TypedIdent! VisitTypedIdent(TypedIdent! node)
     {
       node.Type = (Type)this.Visit(node.Type);
-      return node; 
+      return node;
     }
     public virtual Declaration! VisitTypeCtorDecl(TypeCtorDecl! node)
     {
@@ -462,7 +462,7 @@ namespace Microsoft.Boogie
     }
     public virtual Type! VisitTypeVariable(TypeVariable! node)
     {
-      return this.VisitType(node); 
+      return this.VisitType(node);
     }
     public virtual Type! VisitTypeProxy(TypeProxy! node)
     {
@@ -474,30 +474,30 @@ namespace Microsoft.Boogie
     }
     public virtual Type! VisitUnresolvedTypeIdentifier(UnresolvedTypeIdentifier! node)
     {
-      return this.VisitType(node); 
+      return this.VisitType(node);
     }
     public virtual Variable! VisitVariable(Variable! node)
     {
       node.TypedIdent = this.VisitTypedIdent(node.TypedIdent);
-      return node; 
+      return node;
     }
     public virtual VariableSeq! VisitVariableSeq(VariableSeq! variableSeq)
     {
       for (int i = 0, n = variableSeq.Length; i < n; i++)
         variableSeq[i] = this.VisitVariable( (!)variableSeq[i]);
-      return variableSeq; 
+      return variableSeq;
     }    
     public virtual Cmd! VisitAssertEnsuresCmd(AssertEnsuresCmd! node)
     {
       node.Ensures = this.VisitEnsures(node.Ensures);
       node.Expr = this.VisitExpr(node.Expr);
-      return node; 
+      return node;
     }    
     public virtual Cmd! VisitAssertRequiresCmd(AssertRequiresCmd! node)
     {
       node.Requires = this.VisitRequires(node.Requires);
       node.Expr = this.VisitExpr(node.Expr);
-      return node; 
+      return node;
     }
   }
 }

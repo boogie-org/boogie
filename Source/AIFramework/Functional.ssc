@@ -102,7 +102,7 @@ namespace Microsoft.AbstractInterpretationFramework.Collections
             assume r != null;
             assert this.Contains(key);    // The entry must be defined
              
-            r[key] = value;  
+            r[key] = value;
             return new FunctionalHashtable(r);
         }
 
@@ -195,7 +195,7 @@ namespace Microsoft.AbstractInterpretationFramework.Collections
         public override int GetHashCode()
         {
             int h = this.first == null ? 0 : this.first.GetHashCode();
-            h ^= this.second == null ? 0 : this.second.GetHashCode(); 
+            h ^= this.second == null ? 0 : this.second.GetHashCode();
             return h;
         }
     }
@@ -232,7 +232,7 @@ namespace Microsoft.AbstractInterpretationFramework.Collections.Generic
         public override int GetHashCode()
         {
             int h = this.first == null ? 0 : this.first.GetHashCode();
-            h ^= this.second == null ? 0 : this.second.GetHashCode(); 
+            h ^= this.second == null ? 0 : this.second.GetHashCode();
             return h;
         }
         
@@ -271,7 +271,7 @@ namespace Microsoft.AbstractInterpretationFramework.Collections.Generic
         public override int GetHashCode()
         {
             int h = this.first == null ? 0 : this.first.GetHashCode();
-            h ^= this.second == null ? 0 : this.second.GetHashCode(); 
+            h ^= this.second == null ? 0 : this.second.GetHashCode();
             h ^= this.third == null ? 0 : this.third.GetHashCode();
             return h;
         }

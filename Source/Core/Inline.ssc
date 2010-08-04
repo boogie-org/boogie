@@ -170,7 +170,7 @@ namespace Microsoft.Boogie {
       List<Block!>! newBlocks = new List<Block!>();
 
       foreach(Block block in blocks) {      
-        TransferCmd! transferCmd = (!) block.TransferCmd;         
+        TransferCmd! transferCmd = (!) block.TransferCmd;
         CmdSeq cmds = block.Cmds;
         CmdSeq newCmds = new CmdSeq();
         Block newBlock;
@@ -178,12 +178,12 @@ namespace Microsoft.Boogie {
         int lblCount = 0;
         
         for(int i = 0; i < cmds.Length; ++i) {
-          Cmd cmd = cmds[i];          
+          Cmd cmd = cmds[i];
           CallCmd callCmd = cmd as CallCmd;
           
           if(callCmd == null) {
             // if not call command, leave it as is
-            newCmds.Add(codeCopier.CopyCmd(cmd));            
+            newCmds.Add(codeCopier.CopyCmd(cmd));
           } else {
             assert(callCmd.Proc != null);
             Procedure proc = null;
@@ -242,7 +242,7 @@ namespace Microsoft.Boogie {
               newBlocks.AddRange(inlinedBlocks);
               
               lblCount = nextlblCount;
-              newCmds = new CmdSeq();              
+              newCmds = new CmdSeq();
             } else if (inline == 0) {
               inlinedSomething = true;
               if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assert) {
@@ -328,8 +328,8 @@ namespace Microsoft.Boogie {
         }
       }
       
-      codeCopier.Subst = Substituter.SubstitutionFromHashtable(substMap);     
-      codeCopier.OldSubst = Substituter.SubstitutionFromHashtable(substMapOld);      
+      codeCopier.Subst = Substituter.SubstitutionFromHashtable(substMap);
+      codeCopier.OldSubst = Substituter.SubstitutionFromHashtable(substMapOld);
     }
     
     protected void EndInline() {
@@ -374,7 +374,7 @@ namespace Microsoft.Boogie {
         }
       }
 
-      VariableSeq locVars = (!)impl.OriginalLocVars; 
+      VariableSeq locVars = (!)impl.OriginalLocVars;
       
       // add where clauses of local vars as assume
       for(int i = 0; i < locVars.Length; ++i) {
@@ -410,7 +410,7 @@ namespace Microsoft.Boogie {
       
       GotoCmd inGotoCmd = new GotoCmd(callCmd.tok, new StringSeq(GetInlinedProcLabel(proc.Name) + "$" + startLabel));
       Block inBlock = new Block(impl.tok, GetInlinedProcLabel(proc.Name) + "$Entry", inCmds, inGotoCmd);
-      inlinedBlocks.Add(inBlock);     
+      inlinedBlocks.Add(inBlock);
       
       // inject the blocks of the implementation
       Block intBlock;
@@ -418,7 +418,7 @@ namespace Microsoft.Boogie {
         CmdSeq copyCmds =  codeCopier.CopyCmdSeq(block.Cmds);
         TransferCmd transferCmd = CreateInlinedTransferCmd((!) block.TransferCmd, GetInlinedProcLabel(proc.Name));
         intBlock = new Block(block.tok, GetInlinedProcLabel(proc.Name) + "$" + block.Label, copyCmds, transferCmd);
-        inlinedBlocks.Add(intBlock); 
+        inlinedBlocks.Add(intBlock);
       }
       
       // create out block

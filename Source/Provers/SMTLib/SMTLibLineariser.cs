@@ -180,7 +180,7 @@ void ObjectInvariant()
     internal const string iffName = "iff"; // logical equivalence
     internal const string eqName = "="; // equality
     internal const string lessName = "<";
-    internal const string greaterName = ">"; 
+    internal const string greaterName = ">";
     internal const string atmostName = "<=";
     internal const string atleastName = ">=";
     internal const string TRUEName = "true"; // nullary predicate that is always true
@@ -358,7 +358,7 @@ void ObjectInvariant()
 
       Linearise(node.Body, options);
 
-      WriteTriggers(node.Triggers, options);        
+      WriteTriggers(node.Triggers, options);
       wr.Write(")");
 
       return true;
@@ -591,7 +591,7 @@ void ObjectInvariant()
           }
         }
 
-        return true;        
+        return true;
       }
 
       public bool VisitEqOp       (VCExprNAry node, LineariserOptions options) {

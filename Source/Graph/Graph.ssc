@@ -435,7 +435,7 @@ public class Graph<Node> {
       }
       // mark root so it won't be used again
       incomingEdges[rootIndex] = -1;
-      Node root = numberToNode[rootIndex].Val; 
+      Node root = numberToNode[rootIndex].Val;
       sorted.Add(root);
       ++sortedIndex;
       foreach (Node s in this.Successors(root)){

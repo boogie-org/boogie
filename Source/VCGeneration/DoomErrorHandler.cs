@@ -59,7 +59,7 @@ void ObjectInvariant()
           Contract.Requires(cce.NonNullElements(traceblocks));
             m_Reachvar = reachvar;
             m_DoomedBlocks = doomedblocks;
-            m_TraceBlocks = traceblocks;            
+            m_TraceBlocks = traceblocks;
         }
         
         
@@ -90,7 +90,7 @@ void ObjectInvariant()
             //Console.Write("{0}, ", b.Label);
           } else {
             AssertCmd a = (AssertCmd)node;
-            assertNodes.Add(a);            
+            assertNodes.Add(a);
           }
         }
         m_CurrentTrace.AddRange(traceNodes);

@@ -881,7 +881,7 @@ namespace Microsoft.Boogie
           p.Parent.Emit(stream);
         }
         if (ChildrenComplete)
-          stream.Write(this, level, " complete");          
+          stream.Write(this, level, " complete");
       }
       
       stream.WriteLine(";");
@@ -1119,7 +1119,7 @@ namespace Microsoft.Boogie
     // Register all type parameters at the resolution context
     protected void RegisterTypeParameters(ResolutionContext! rc) {
       foreach (TypeVariable! v in TypeParameters)
-        rc.AddTypeBinder(v);      
+        rc.AddTypeBinder(v);
     }
 
     protected void SortTypeParams() {

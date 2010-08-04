@@ -97,7 +97,7 @@ namespace Microsoft.Boogie.Simplify {
     }
 
     public void Close()
-      //modifies this.*; 
+      //modifies this.*;
     {
       cce.BeginExpose(this);
       {

@@ -336,7 +336,7 @@ namespace Microsoft.Boogie.VCExprAST
     
     protected override bool StandardResult(VCExpr! node, bool arg) {
       Size = Size + 1;
-      return true;      
+      return true;
     }
   }
 

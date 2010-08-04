@@ -5,7 +5,7 @@
 //-----------------------------------------------------------------------------
 namespace Microsoft.AbstractInterpretationFramework.Collections
 {
-    using System.Collections;   
+    using System.Collections;
     using Microsoft.Contracts;
 
     /// <summary>
@@ -52,7 +52,7 @@ namespace Microsoft.AbstractInterpretationFramework.Collections
         // ICollection members
         public void CopyTo (System.Array! a, int i) { 
           if (this.Count > a.Length - i) throw new System.ArgumentException();
-          int j = i; 
+          int j = i;
           foreach(object o in this){
             a.SetValue(o, j++);
           }

@@ -11,7 +11,7 @@ namespace Microsoft.AbstractInterpretationFramework
     using System.Diagnostics;
     using Microsoft.AbstractInterpretationFramework.Collections;
 
-    using Microsoft.Boogie;    
+    using Microsoft.Boogie;
     using ISet = Microsoft.Boogie.Set;
 
 
@@ -39,7 +39,7 @@ namespace Microsoft.AbstractInterpretationFramework
                     {
                         newEPL[i] = (Element) ((!)otherEPL[i]).Clone();
                     }
-                    this.elementPerLattice = newEPL;          
+                    this.elementPerLattice = newEPL;
                 }
             }
             

@@ -199,7 +199,7 @@ namespace Microsoft.Boogie.TypeErasure
       NonNullType.AssertInitialized(selectTypes);
       NonNullType.AssertInitialized(storeTypes);
       
-      select = HelperFuns.BoogieFunction(baseName + "Select", selectTypes);      
+      select = HelperFuns.BoogieFunction(baseName + "Select", selectTypes);
       store = HelperFuns.BoogieFunction(baseName + "Store", storeTypes);
       
       if (CommandLineOptions.Clo.UseArrayTheory) {

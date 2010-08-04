@@ -72,7 +72,7 @@ namespace Microsoft.Boogie {
         Contract.Assume(g.labelTargets != null);
         cce.BeginExpose(g.labelTargets);
         foreach (Block succ in g.labelTargets)
-        //              invariant b.currentlyTraversed; 
+        //              invariant b.currentlyTraversed;
         //PM: The following loop invariant will work once properties are axiomatized
         //&& (g.labelNames != null && g.labelTargets != null ==> g.labelNames.Length == g.labelTargets.Length);
               {

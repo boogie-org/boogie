@@ -1706,7 +1706,7 @@ namespace VC {
       CheckIntAttributeOnImpl(impl, "vcs_max_splits", ref max_splits);
       CheckIntAttributeOnImpl(impl, "vcs_max_keep_going_splits", ref max_kg_splits);
       if (tmp_max_vc_cost >= 0) { 
-        max_vc_cost = tmp_max_vc_cost; 
+        max_vc_cost = tmp_max_vc_cost;
       }
 
       Outcome outcome = Outcome.Correct;
@@ -1721,7 +1721,7 @@ namespace VC {
       int total = 0;
       int no = max_splits == 1 && !keep_going ? -1 : 0;
       bool first_round = true;
-      bool do_splitting = keep_going || max_splits > 1; 
+      bool do_splitting = keep_going || max_splits > 1;
       double remaining_cost = 0.0, proven_cost = 0.0;
 
       if (do_splitting) {
@@ -1952,7 +1952,7 @@ namespace VC {
 		   reporter.underapproximationMode = false;
 	       
 		   //Console.Write("Checking with preds == true: "); Console.Out.Flush();
-		   ret = CheckVC(vc, reporter, checker, impl.Name);  
+		   ret = CheckVC(vc, reporter, checker, impl.Name);
 		   //Console.WriteLine(ret.ToString());
 	       
 		   if(ret == Outcome.Correct) {
@@ -2220,7 +2220,7 @@ namespace VC {
         VCExprNAry vnary = node as VCExprNAry;
         if(vnary == null) return true;
         VCExprBoogieFunctionOp bop = vnary.Op as VCExprBoogieFunctionOp;
-        if(bop == null) return true;  
+        if(bop == null) return true;
         if(implName2StratifiedInliningInfo.ContainsKey(bop.Func.Name)) {
            fcalls.Add(vnary);
         }
@@ -3236,7 +3236,7 @@ namespace VC {
         {
           Block entryBlock = cce.NonNull( impl.Blocks[0]);
           RemoveEmptyBlocks(entryBlock);
-          impl.PruneUnreachableBlocks();  
+          impl.PruneUnreachableBlocks();
         }
         #endregion Get rid of empty blocks
         
@@ -3318,7 +3318,7 @@ namespace VC {
         for (int i = 0; i < cmds.Length; i++)
         {
           Cmd cmd = cce.NonNull( cmds[i]);
-          AssertCmd assertCmd = cmd as AssertCmd;  
+          AssertCmd assertCmd = cmd as AssertCmd;
           if (assertCmd != null && errModel.LookupControlFlowFunctionAt(cfcValue, assertCmd.UniqueId) == 0)
           {
             Counterexample newCounterexample;
@@ -3468,7 +3468,7 @@ namespace VC {
         string calleeName = naryExpr.Fun.FunctionName;
         if (!implName2LazyInliningInfo.ContainsKey(calleeName)) continue;
         VCExprTranslator vcExprTranslator = cce.NonNull(context.exprTranslator);
-        Boogie2VCExprTranslator boogieExprTranslator = context.BoogieExprTranslator;  
+        Boogie2VCExprTranslator boogieExprTranslator = context.BoogieExprTranslator;
         Contract.Assert(boogieExprTranslator != null);
         List<int> args = new List<int>();
         foreach (Expr expr in naryExpr.Args)

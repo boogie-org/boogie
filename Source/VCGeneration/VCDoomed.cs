@@ -182,7 +182,7 @@ namespace VC {
         Dictionary<Block, Block> tmpdict = new Dictionary<Block, Block>();
         CopyImplBlocks(impl.Blocks[0], ref blist, impl.Blocks[0], ref tmpdict);
         blist.Reverse();
-        //_tmpImpl = new Implementation(impl.tok, impl.Name, impl.TypeParameters, impl.InParams, impl.OutParams, impl.LocVars, blist);              
+        //_tmpImpl = new Implementation(impl.tok, impl.Name, impl.TypeParameters, impl.InParams, impl.OutParams, impl.LocVars, blist);
 
         #endregion ////////////////////////////////////
 
@@ -291,7 +291,7 @@ namespace VC {
       UseItAsDebugger = CommandLineOptions.Clo.useDoomDebug;
       Stopwatch watch = new Stopwatch();
 
-      //Impl2Dot(impl, String.Format("c:/dot/{0}_raw.dot", impl.Name) );               
+      //Impl2Dot(impl, String.Format("c:/dot/{0}_raw.dot", impl.Name) );
 
       if (CommandLineOptions.Clo.TraceVerify) {
         Console.WriteLine(">>> Checking function {0} for doomed points.", impl.Name);
@@ -333,10 +333,10 @@ namespace VC {
 
 
       #endregion
-      //EmitImpl(impl,false);    
+      //EmitImpl(impl,false);
 
 
-      //Impl2Dot(impl, String.Format("c:/dot/{0}_passive.dot", impl.Name) );   
+      //Impl2Dot(impl, String.Format("c:/dot/{0}_passive.dot", impl.Name) );
 
       // ---------------------------------------------------------------------------
       if (UseItAsDebugger) {
@@ -350,9 +350,9 @@ namespace VC {
       }
       // ---------------------------------------------------------------------------      
 
-      // EmitImpl(impl,false);    
+      // EmitImpl(impl,false);
 
-      //Impl2Dot(impl, String.Format("c:/dot/{0}_final.dot", impl.Name) );               
+      //Impl2Dot(impl, String.Format("c:/dot/{0}_final.dot", impl.Name) );
 
       bool __debug = false;
 
@@ -419,7 +419,7 @@ namespace VC {
       #region Try to produce a counter example (brute force)
       if (dc.DoomedSequences.Count > 0) {
         ConsoleColor col = Console.ForegroundColor;
-        //        Console.ForegroundColor = ConsoleColor.Red;              
+        //        Console.ForegroundColor = ConsoleColor.Red;
         //        Console.WriteLine("  {0} is DOOMED!", impl.Name);
         //        foreach (List<Block!> bl in dc.DoomedSequences) {
         //            Console.Write("Doomed Blocks: ");
@@ -715,12 +715,12 @@ namespace VC {
             //                    Console.Write("   Witness (");
             //                    
             //                    ConsoleColor col = Console.ForegroundColor;
-            //                    Console.ForegroundColor = ConsoleColor.White; 
-            //                    Console.Write("{0};{1}", b.Cmds[endidx].tok.line, b.Cmds[endidx].tok.col );                    
+            //                    Console.ForegroundColor = ConsoleColor.White;
+            //                    Console.Write("{0};{1}", b.Cmds[endidx].tok.line, b.Cmds[endidx].tok.col );
             //                    Console.ForegroundColor = col;
-            //                    Console.Write("):   ");                    
+            //                    Console.Write("):   ");
             //                    Console.ForegroundColor = ConsoleColor.Yellow;
-            //                    b.Cmds[endidx].Emit(new TokenTextWriter("<console>", Console.Out, false), 0);                                        
+            //                    b.Cmds[endidx].Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
             //                    Console.ForegroundColor = col;
 
             m_doomedCmds.Add(b.Cmds[endidx]);

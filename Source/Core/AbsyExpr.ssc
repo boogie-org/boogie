@@ -115,7 +115,7 @@ namespace Microsoft.Boogie
       else { return Binary(BinaryOperator.Opcode.Or, e1, e2); }
     }
     public static Expr! Not (Expr! e1) {
-        NAryExpr nary = e1 as NAryExpr;     
+        NAryExpr nary = e1 as NAryExpr;
         
         if (e1 == true_) { return false_; }
         else if (e1 == false_) { return true_; }
@@ -480,7 +480,7 @@ namespace Microsoft.Boogie
     public override bool Equals(object obj)
     {
       BvConst other = obj as BvConst;
-      if (other == null) return false;      
+      if (other == null) return false;
 
       return Bits == other.Bits && Value == other.Value;
     }
@@ -1375,8 +1375,8 @@ namespace Microsoft.Boogie
         case Opcode.Imp: if (e1 is bool && e2 is bool) { return ! (bool)e1 || (bool)e2; } break;
         case Opcode.Iff: if (e1 is bool && e2 is bool) { return e1 == e2; } break;
 
-        case Opcode.Eq: return Equals(e1,e2); 
-        case Opcode.Neq: return ! Equals(e1,e2); 
+        case Opcode.Eq: return Equals(e1,e2);
+        case Opcode.Neq: return ! Equals(e1,e2);
 
         case Opcode.Subtype: throw new System.NotImplementedException();
       }
@@ -1942,7 +1942,7 @@ namespace Microsoft.Boogie
         return null;
       }
       
-      return ((!)args[0]).Type;      
+      return ((!)args[0]).Type;
     }
 
     public Type Typecheck(ref ExprSeq! args,
@@ -2272,7 +2272,7 @@ namespace Microsoft.Boogie
     }
     public AI.IFunApp! CloneWithArguments(IList/*<AI.IExpr!>*/! args)
     {
-      AI.IFunApp! retFun;  
+      AI.IFunApp! retFun;
     
       if(args.Count == 3)
       {      
@@ -2403,7 +2403,7 @@ namespace Microsoft.Boogie
     }
     public AI.IFunApp! CloneWithArguments(IList/*<AI.IExpr!>*/! args)
     {
-      AI.IFunApp! retFun;  
+      AI.IFunApp! retFun;
     
       if(args.Count == 2)
       {      

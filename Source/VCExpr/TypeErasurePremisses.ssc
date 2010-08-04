@@ -172,7 +172,7 @@ namespace Microsoft.Boogie.TypeErasure
       else
         bodyWithPremisses = Gen.AndSimp(typePremisses, body);
 
-      return Gen.Let(typeVarBindings, bodyWithPremisses);      
+      return Gen.Let(typeVarBindings, bodyWithPremisses);
     }
 
 
@@ -278,7 +278,7 @@ namespace Microsoft.Boogie.TypeErasure
         }
         
         implicitParams.TrimExcess();
-        explicitParams.TrimExcess();      
+        explicitParams.TrimExcess();
     }
 
     internal UntypedFunction Typed2Untyped(Function! fun) {
@@ -364,7 +364,7 @@ namespace Microsoft.Boogie.TypeErasure
       // bound term variables are replaced with bound term variables typed in
       // a simpler way
       foreach (VCExprVar! var in typedInputVars) {
-        Type! newType = TypeAfterErasure(var.Type); 
+        Type! newType = TypeAfterErasure(var.Type);
         VCExprVar! newVar = Gen.Variable(var.Name, newType);
         boundVars.Add(newVar);
         bindings.VCExprVarBindings.Add(var, newVar);
@@ -396,7 +396,7 @@ namespace Microsoft.Boogie.TypeErasure
       if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.None) return;
       AddTypeAxiom(GenVarTypeAxiom(var, originalType,
                                    // we don't have any bindings available
-                                   new Dictionary<TypeVariable!, VCExpr!> ()));      
+                                   new Dictionary<TypeVariable!, VCExpr!> ()));
     }
 
     public VCExpr! GenVarTypeAxiom(VCExprVar! var, Type! originalType,

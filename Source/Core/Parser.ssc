@@ -241,7 +241,7 @@ private class BvBounds : Expr {
 			}
 			case 27: {
 				Axiom(out ax);
-				Pgm.TopLevelDeclarations.Add(ax); 
+				Pgm.TopLevelDeclarations.Add(ax);
 				break;
 			}
 			case 28: {
@@ -267,7 +267,7 @@ private class BvBounds : Expr {
 			}
 			case 31: {
 				Implementation(out nnim);
-				Pgm.TopLevelDeclarations.Add(nnim); 
+				Pgm.TopLevelDeclarations.Add(nnim);
 				break;
 			}
 			}
@@ -280,15 +280,15 @@ private class BvBounds : Expr {
 		ds = new VariableSeq();
 		bool u = false; QKeyValue kv = null;
 		bool ChildrenComplete = false;
-		List<ConstantParent!> Parents = null; 
+		List<ConstantParent!> Parents = null;
 		Expect(19);
-		y = t; 
+		y = t;
 		while (la.kind == 25) {
 			Attribute(ref kv);
 		}
 		if (la.kind == 20) {
 			Get();
-			u = true;  
+			u = true;
 		}
 		IdsType(out xs);
 		if (la.kind == 21) {
@@ -339,11 +339,11 @@ private class BvBounds : Expr {
 		Expect(8);
 		if (StartOf(2)) {
 			VarOrType(out tyd);
-			arguments.Add(new Formal(tyd.tok, tyd, true)); 
+			arguments.Add(new Formal(tyd.tok, tyd, true));
 			while (la.kind == 11) {
 				Get();
 				VarOrType(out tyd);
-				arguments.Add(new Formal(tyd.tok, tyd, true)); 
+				arguments.Add(new Formal(tyd.tok, tyd, true));
 			}
 		}
 		Expect(9);
@@ -352,16 +352,16 @@ private class BvBounds : Expr {
 			Expect(8);
 			VarOrType(out tyd);
 			Expect(9);
-			retTyd = tyd; 
+			retTyd = tyd;
 		} else if (la.kind == 10) {
 			Get();
 			Type(out retTy);
-			retTyd = new TypedIdent(retTy.tok, "", retTy); 
+			retTyd = new TypedIdent(retTy.tok, "", retTy);
 		} else SynErr(89);
 		if (la.kind == 25) {
 			Get();
 			Expression(out tmp);
-			definition = tmp; 
+			definition = tmp;
 			Expect(26);
 		} else if (la.kind == 7) {
 			Get();
@@ -440,35 +440,35 @@ private class BvBounds : Expr {
 	}
 
 	void Axiom(out Axiom! m) {
-		Expr! e; QKeyValue kv = null; 
+		Expr! e; QKeyValue kv = null;
 		Expect(27);
 		while (la.kind == 25) {
 			Attribute(ref kv);
 		}
-		IToken! x = t; 
+		IToken! x = t;
 		Proposition(out e);
 		Expect(7);
-		m = new Axiom(x,e, null, kv); 
+		m = new Axiom(x,e, null, kv);
 	}
 
 	void UserDefinedTypes(out List<Declaration!>! ts) {
-		Declaration! decl; QKeyValue kv = null; ts = new List<Declaration!> (); 
+		Declaration! decl; QKeyValue kv = null; ts = new List<Declaration!> ();
 		Expect(28);
 		while (la.kind == 25) {
 			Attribute(ref kv);
 		}
 		UserDefinedType(out decl, kv);
-		ts.Add(decl);  
+		ts.Add(decl);
 		while (la.kind == 11) {
 			Get();
 			UserDefinedType(out decl, kv);
-			ts.Add(decl);  
+			ts.Add(decl);
 		}
 		Expect(7);
 	}
 
 	void GlobalVars(out VariableSeq! ds) {
-		TypedIdentSeq! tyds = new TypedIdentSeq(); ds = new VariableSeq(); QKeyValue kv = null; 
+		TypedIdentSeq! tyds = new TypedIdentSeq(); ds = new VariableSeq(); QKeyValue kv = null;
 		Expect(6);
 		while (la.kind == 25) {
 			Attribute(ref kv);
@@ -507,10 +507,10 @@ private class BvBounds : Expr {
 			}
 			ImplBody(out locals, out stmtList);
 			impl = new Implementation(x, x.val, typeParams,
-			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, null, this.errors); 
+			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, null, this.errors);
 			
 		} else SynErr(91);
-		proc = new Procedure(x, x.val, typeParams, ins, outs, pre, mods, post, kv); 
+		proc = new Procedure(x, x.val, typeParams, ins, outs, pre, mods, post, kv);
 	}
 
 	void Implementation(out Implementation! impl) {
@@ -524,13 +524,13 @@ private class BvBounds : Expr {
 		Expect(31);
 		ProcSignature(false, out x, out typeParams, out ins, out outs, out kv);
 		ImplBody(out locals, out stmtList);
-		impl = new Implementation(x, x.val, typeParams, ins, outs, locals, stmtList, kv, this.errors); 
+		impl = new Implementation(x, x.val, typeParams, ins, outs, locals, stmtList, kv, this.errors);
 	}
 
 	void Attribute(ref QKeyValue kv) {
-		Trigger trig = null; 
+		Trigger trig = null;
 		AttributeOrTrigger(ref kv, ref trig);
-		if (trig != null) this.SemErr("only attributes, not triggers, allowed here"); 
+		if (trig != null) this.SemErr("only attributes, not triggers, allowed here");
 	}
 
 	void IdsTypeWheres(bool allowWhereClauses, TypedIdentSeq! tyds) {
@@ -542,7 +542,7 @@ private class BvBounds : Expr {
 	}
 
 	void LocalVars(VariableSeq! ds) {
-		TypedIdentSeq! tyds = new TypedIdentSeq(); QKeyValue kv = null; 
+		TypedIdentSeq! tyds = new TypedIdentSeq(); QKeyValue kv = null;
 		Expect(6);
 		while (la.kind == 25) {
 			Attribute(ref kv);
@@ -556,7 +556,7 @@ private class BvBounds : Expr {
 	}
 
 	void ProcFormals(bool incoming, bool allowWhereClauses, out VariableSeq! ds) {
-		TypedIdentSeq! tyds = new TypedIdentSeq(); ds = new VariableSeq(); 
+		TypedIdentSeq! tyds = new TypedIdentSeq(); ds = new VariableSeq();
 		Expect(8);
 		if (la.kind == 1) {
 			IdsTypeWheres(allowWhereClauses, tyds);
@@ -569,7 +569,7 @@ private class BvBounds : Expr {
 	}
 
 	void BoundVars(IToken! x, out VariableSeq! ds) {
-		TypedIdentSeq! tyds = new TypedIdentSeq(); ds = new VariableSeq(); 
+		TypedIdentSeq! tyds = new TypedIdentSeq(); ds = new VariableSeq();
 		IdsTypeWheres(false, tyds);
 		foreach (TypedIdent! tyd in tyds) {
 		 ds.Add(new BoundVariable(tyd.tok, tyd));
@@ -578,7 +578,7 @@ private class BvBounds : Expr {
 	}
 
 	void IdsType(out TypedIdentSeq! tyds) {
-		TokenSeq! ids;  Bpl.Type! ty; 
+		TokenSeq! ids;  Bpl.Type! ty;
 		Idents(out ids);
 		Expect(10);
 		Type(out ty);
@@ -590,34 +590,34 @@ private class BvBounds : Expr {
 	}
 
 	void Idents(out TokenSeq! xs) {
-		IToken! id; xs = new TokenSeq(); 
+		IToken! id; xs = new TokenSeq();
 		Ident(out id);
-		xs.Add(id); 
+		xs.Add(id);
 		while (la.kind == 11) {
 			Get();
 			Ident(out id);
-			xs.Add(id); 
+			xs.Add(id);
 		}
 	}
 
 	void Type(out Bpl.Type! ty) {
-		IToken! tok; ty = dummyType; 
+		IToken! tok; ty = dummyType;
 		if (la.kind == 8 || la.kind == 13 || la.kind == 14) {
 			TypeAtom(out ty);
 		} else if (la.kind == 1) {
 			Ident(out tok);
-			TypeSeq! args = new TypeSeq (); 
+			TypeSeq! args = new TypeSeq ();
 			if (StartOf(2)) {
 				TypeArgs(args);
 			}
-			ty = new UnresolvedTypeIdentifier (tok, tok.val, args); 
+			ty = new UnresolvedTypeIdentifier (tok, tok.val, args);
 		} else if (la.kind == 15 || la.kind == 17) {
 			MapType(out ty);
 		} else SynErr(92);
 	}
 
 	void IdsTypeWhere(bool allowWhereClauses, TypedIdentSeq! tyds) {
-		TokenSeq! ids;  Bpl.Type! ty;  Expr wh = null;  Expr! nne; 
+		TokenSeq! ids;  Bpl.Type! ty;  Expr wh = null;  Expr! nne;
 		Idents(out ids);
 		Expect(10);
 		Type(out ty);
@@ -638,24 +638,24 @@ private class BvBounds : Expr {
 	}
 
 	void Expression(out Expr! e0) {
-		IToken! x; Expr! e1; 
+		IToken! x; Expr! e1;
 		ImpliesExpression(false, out e0);
 		while (la.kind == 52 || la.kind == 53) {
 			EquivOp();
-			x = t; 
+			x = t;
 			ImpliesExpression(false, out e1);
-			e0 = Expr.Binary(x, BinaryOperator.Opcode.Iff, e0, e1); 
+			e0 = Expr.Binary(x, BinaryOperator.Opcode.Iff, e0, e1);
 		}
 	}
 
 	void TypeAtom(out Bpl.Type! ty) {
-		ty = dummyType; 
+		ty = dummyType;
 		if (la.kind == 13) {
 			Get();
-			ty = new BasicType(t, SimpleType.Int); 
+			ty = new BasicType(t, SimpleType.Int);
 		} else if (la.kind == 14) {
 			Get();
-			ty = new BasicType(t, SimpleType.Bool); 
+			ty = new BasicType(t, SimpleType.Bool);
 		} else if (la.kind == 8) {
 			Get();
 			Type(out ty);
@@ -672,23 +672,23 @@ private class BvBounds : Expr {
 	}
 
 	void TypeArgs(TypeSeq! ts) {
-		IToken! tok; Type! ty; 
+		IToken! tok; Type! ty;
 		if (la.kind == 8 || la.kind == 13 || la.kind == 14) {
 			TypeAtom(out ty);
-			ts.Add(ty); 
+			ts.Add(ty);
 			if (StartOf(2)) {
 				TypeArgs(ts);
 			}
 		} else if (la.kind == 1) {
 			Ident(out tok);
 			TypeSeq! args = new TypeSeq ();
-			ts.Add(new UnresolvedTypeIdentifier (tok, tok.val, args)); 
+			ts.Add(new UnresolvedTypeIdentifier (tok, tok.val, args));
 			if (StartOf(2)) {
 				TypeArgs(ts);
 			}
 		} else if (la.kind == 15 || la.kind == 17) {
 			MapType(out ty);
-			ts.Add(ty); 
+			ts.Add(ty);
 		} else SynErr(94);
 	}
 
@@ -701,10 +701,10 @@ private class BvBounds : Expr {
 		
 		if (la.kind == 17) {
 			TypeParams(out nnTok, out typeParameters);
-			tok = nnTok; 
+			tok = nnTok;
 		}
 		Expect(15);
-		if (tok == null) tok = t;  
+		if (tok == null) tok = t;
 		if (StartOf(2)) {
 			Types(arguments);
 		}
@@ -715,9 +715,9 @@ private class BvBounds : Expr {
 	}
 
 	void TypeParams(out IToken! tok, out Bpl.TypeVariableSeq! typeParams) {
-		TokenSeq! typeParamToks; 
+		TokenSeq! typeParamToks;
 		Expect(17);
-		tok = t;  
+		tok = t;
 		Idents(out typeParamToks);
 		Expect(18);
 		typeParams = new TypeVariableSeq ();
@@ -727,13 +727,13 @@ private class BvBounds : Expr {
 	}
 
 	void Types(TypeSeq! ts) {
-		Bpl.Type! ty; 
+		Bpl.Type! ty;
 		Type(out ty);
-		ts.Add(ty); 
+		ts.Add(ty);
 		while (la.kind == 11) {
 			Get();
 			Type(out ty);
-			ts.Add(ty); 
+			ts.Add(ty);
 		}
 	}
 
@@ -741,40 +741,40 @@ private class BvBounds : Expr {
 		ChildrenComplete = false;
 		Parents = null;
 		bool u;
-		IToken! parent; 
+		IToken! parent;
 		Expect(21);
 		Parents = new List<ConstantParent!> ();
-		u = false; 
+		u = false;
 		if (la.kind == 1 || la.kind == 20) {
 			if (la.kind == 20) {
 				Get();
-				u = true; 
+				u = true;
 			}
 			Ident(out parent);
 			Parents.Add(new ConstantParent (
-			           new IdentifierExpr(parent, parent.val), u)); 
+			           new IdentifierExpr(parent, parent.val), u));
 			while (la.kind == 11) {
 				Get();
-				u = false; 
+				u = false;
 				if (la.kind == 20) {
 					Get();
-					u = true; 
+					u = true;
 				}
 				Ident(out parent);
 				Parents.Add(new ConstantParent (
-				           new IdentifierExpr(parent, parent.val), u)); 
+				           new IdentifierExpr(parent, parent.val), u));
 			}
 		}
 		if (la.kind == 22) {
 			Get();
-			ChildrenComplete = true; 
+			ChildrenComplete = true;
 		}
 	}
 
 	void VarOrType(out TypedIdent! tyd) {
-		string! varName = ""; Bpl.Type! ty; IToken! tok; 
+		string! varName = ""; Bpl.Type! ty; IToken! tok;
 		Type(out ty);
-		tok = ty.tok; 
+		tok = ty.tok;
 		if (la.kind == 10) {
 			Get();
 			if (ty is UnresolvedTypeIdentifier &&
@@ -786,7 +786,7 @@ private class BvBounds : Expr {
 			
 			Type(out ty);
 		}
-		tyd = new TypedIdent(tok, varName, ty); 
+		tyd = new TypedIdent(tok, varName, ty);
 	}
 
 	void Proposition(out Expr! e) {
@@ -795,7 +795,7 @@ private class BvBounds : Expr {
 
 	void UserDefinedType(out Declaration! decl, QKeyValue kv) {
 		IToken! id; IToken! id2; TokenSeq! paramTokens = new TokenSeq ();
-		Type! body = dummyType; bool synonym = false; 
+		Type! body = dummyType; bool synonym = false;
 		Ident(out id);
 		if (la.kind == 1) {
 			WhiteSpaceIdents(out paramTokens);
@@ -803,7 +803,7 @@ private class BvBounds : Expr {
 		if (la.kind == 29) {
 			Get();
 			Type(out body);
-			synonym = true; 
+			synonym = true;
 		}
 		if (synonym) {
 		 TypeVariableSeq! typeParams = new TypeVariableSeq();
@@ -817,19 +817,19 @@ private class BvBounds : Expr {
 	}
 
 	void WhiteSpaceIdents(out TokenSeq! xs) {
-		IToken! id; xs = new TokenSeq(); 
+		IToken! id; xs = new TokenSeq();
 		Ident(out id);
-		xs.Add(id); 
+		xs.Add(id);
 		while (la.kind == 1) {
 			Ident(out id);
-			xs.Add(id); 
+			xs.Add(id);
 		}
 	}
 
 	void ProcSignature(bool allowWhereClausesOnFormals, out IToken! name, out TypeVariableSeq! typeParams,
 out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		IToken! typeParamTok; typeParams = new TypeVariableSeq();
-		outs = new VariableSeq(); kv = null; 
+		outs = new VariableSeq(); kv = null;
 		while (la.kind == 25) {
 			Attribute(ref kv);
 		}
@@ -845,7 +845,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 	}
 
 	void Spec(RequiresSeq! pre, IdentifierExprSeq! mods, EnsuresSeq! post) {
-		TokenSeq! ms; 
+		TokenSeq! ms;
 		if (la.kind == 32) {
 			Get();
 			if (la.kind == 1) {
@@ -865,7 +865,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 	}
 
 	void ImplBody(out VariableSeq! locals, out StmtList! stmtList) {
-		locals = new VariableSeq(); 
+		locals = new VariableSeq();
 		Expect(25);
 		while (la.kind == 6) {
 			LocalVars(locals);
@@ -874,51 +874,51 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 	}
 
 	void SpecPrePost(bool free, RequiresSeq! pre, EnsuresSeq! post) {
-		Expr! e; VariableSeq! locals; BlockSeq! blocks; Token tok = null; QKeyValue kv = null; 
+		Expr! e; VariableSeq! locals; BlockSeq! blocks; Token tok = null; QKeyValue kv = null;
 		if (la.kind == 34) {
 			Get();
-			tok = t; 
+			tok = t;
 			while (la.kind == 25) {
 				Attribute(ref kv);
 			}
 			if (StartOf(5)) {
 				Proposition(out e);
 				Expect(7);
-				pre.Add(new Requires(tok, free, e, null, kv)); 
+				pre.Add(new Requires(tok, free, e, null, kv));
 			} else if (la.kind == 36) {
 				SpecBody(out locals, out blocks);
 				Expect(7);
-				pre.Add(new Requires(tok, free, new BlockExpr(locals, blocks), null, kv)); 
+				pre.Add(new Requires(tok, free, new BlockExpr(locals, blocks), null, kv));
 			} else SynErr(96);
 		} else if (la.kind == 35) {
 			Get();
-			tok = t; 
+			tok = t;
 			while (la.kind == 25) {
 				Attribute(ref kv);
 			}
 			if (StartOf(5)) {
 				Proposition(out e);
 				Expect(7);
-				post.Add(new Ensures(tok, free, e, null, kv)); 
+				post.Add(new Ensures(tok, free, e, null, kv));
 			} else if (la.kind == 36) {
 				SpecBody(out locals, out blocks);
 				Expect(7);
-				post.Add(new Ensures(tok, free, new BlockExpr(locals, blocks), null, kv)); 
+				post.Add(new Ensures(tok, free, new BlockExpr(locals, blocks), null, kv));
 			} else SynErr(97);
 		} else SynErr(98);
 	}
 
 	void SpecBody(out VariableSeq! locals, out BlockSeq! blocks) {
-		locals = new VariableSeq(); Block! b; 
+		locals = new VariableSeq(); Block! b;
 		Expect(36);
 		while (la.kind == 6) {
 			LocalVars(locals);
 		}
 		SpecBlock(out b);
-		blocks = new BlockSeq(b); 
+		blocks = new BlockSeq(b);
 		while (la.kind == 1) {
 			SpecBlock(out b);
-			blocks.Add(b); 
+			blocks.Add(b);
 		}
 		Expect(37);
 	}
@@ -947,7 +947,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		}
 		if (la.kind == 38) {
 			Get();
-			y = t; 
+			y = t;
 			Idents(out xs);
 			foreach (IToken! s in xs) { ss.Add(s.val); }
 			b = new Block(x,x.val,cs,new GotoCmd(y,ss));
@@ -955,7 +955,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		} else if (la.kind == 39) {
 			Get();
 			Expression(out e);
-			b = new Block(x,x.val,cs,new ReturnExprCmd(t,e)); 
+			b = new Block(x,x.val,cs,new ReturnExprCmd(t,e));
 		} else SynErr(99);
 		Expect(7);
 	}
@@ -972,22 +972,22 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			LabelOrAssign(out c, out label);
 		} else if (la.kind == 46) {
 			Get();
-			x = t; 
+			x = t;
 			while (la.kind == 25) {
 				Attribute(ref kv);
 			}
 			Proposition(out e);
-			c = new AssertCmd(x,e, kv); 
+			c = new AssertCmd(x,e, kv);
 			Expect(7);
 		} else if (la.kind == 47) {
 			Get();
-			x = t; 
+			x = t;
 			Proposition(out e);
-			c = new AssumeCmd(x,e); 
+			c = new AssumeCmd(x,e);
 			Expect(7);
 		} else if (la.kind == 48) {
 			Get();
-			x = t; 
+			x = t;
 			Idents(out xs);
 			Expect(7);
 			ids = new IdentifierExprSeq();
@@ -999,7 +999,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		} else if (la.kind == 50) {
 			CallCmd(out cn);
 			Expect(7);
-			c = cn; 
+			c = cn;
 		} else SynErr(100);
 	}
 
@@ -1078,13 +1078,13 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		
 		if (la.kind == 40) {
 			IfCmd(out ifcmd);
-			ec = ifcmd; 
+			ec = ifcmd;
 		} else if (la.kind == 42) {
 			WhileCmd(out wcmd);
-			ec = wcmd; 
+			ec = wcmd;
 		} else if (la.kind == 45) {
 			BreakCmd(out bcmd);
-			ec = bcmd; 
+			ec = bcmd;
 		} else SynErr(101);
 	}
 
@@ -1095,14 +1095,14 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		
 		if (la.kind == 38) {
 			Get();
-			y = t; 
+			y = t;
 			Idents(out xs);
 			foreach (IToken! s in xs) { ss.Add(s.val); }
 			tc = new GotoCmd(y, ss);
 			
 		} else if (la.kind == 39) {
 			Get();
-			tc = new ReturnCmd(t); 
+			tc = new ReturnCmd(t);
 		} else SynErr(102);
 		Expect(7);
 	}
@@ -1115,7 +1115,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		StmtList! els;  StmtList elseOption = null;
 		
 		Expect(40);
-		x = t; 
+		x = t;
 		Guard(out guard);
 		Expect(25);
 		StmtList(out thn);
@@ -1123,14 +1123,14 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			Get();
 			if (la.kind == 40) {
 				IfCmd(out elseIf);
-				elseIfOption = elseIf; 
+				elseIfOption = elseIf;
 			} else if (la.kind == 25) {
 				Get();
 				StmtList(out els);
-				elseOption = els; 
+				elseOption = els;
 			} else SynErr(103);
 		}
-		ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption); 
+		ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption);
 	}
 
 	void WhileCmd(out WhileCmd! wcmd) {
@@ -1140,14 +1140,14 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		StmtList! body;
 		
 		Expect(42);
-		x = t; 
+		x = t;
 		Guard(out guard);
-		assume guard == null || Owner.None(guard); 
+		assume guard == null || Owner.None(guard);
 		while (la.kind == 33 || la.kind == 43) {
-			isFree = false; z = la/*lookahead token*/; 
+			isFree = false; z = la/*lookahead token*/;
 			if (la.kind == 33) {
 				Get();
-				isFree = true;  
+				isFree = true;
 			}
 			Expect(43);
 			Expression(out e);
@@ -1161,7 +1161,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		}
 		Expect(25);
 		StmtList(out body);
-		wcmd = new WhileCmd(x, guard, invariants, body); 
+		wcmd = new WhileCmd(x, guard, invariants, body);
 	}
 
 	void BreakCmd(out BreakCmd! bcmd) {
@@ -1169,24 +1169,24 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		string breakLabel = null;
 		
 		Expect(45);
-		x = t; 
+		x = t;
 		if (la.kind == 1) {
 			Ident(out y);
-			breakLabel = y.val; 
+			breakLabel = y.val;
 		}
 		Expect(7);
-		bcmd = new BreakCmd(x, breakLabel); 
+		bcmd = new BreakCmd(x, breakLabel);
 	}
 
 	void Guard(out Expr e) {
-		Expr! ee;  e = null; 
+		Expr! ee;  e = null;
 		Expect(8);
 		if (la.kind == 44) {
 			Get();
-			e = null; 
+			e = null;
 		} else if (StartOf(5)) {
 			Expression(out ee);
-			e = ee; 
+			e = ee;
 		} else SynErr(104);
 		Expect(9);
 	}
@@ -1199,32 +1199,32 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		List<Expr!>! rhss;
 		
 		Ident(out id);
-		x = t; 
+		x = t;
 		if (la.kind == 10) {
 			Get();
-			c = null;  label = x; 
+			c = null;  label = x;
 		} else if (la.kind == 11 || la.kind == 15 || la.kind == 49) {
 			MapAssignIndexes(id, out lhs);
 			lhss = new List<AssignLhs!> ();
-			lhss.Add(lhs); 
+			lhss.Add(lhs);
 			while (la.kind == 11) {
 				Get();
 				Ident(out id);
 				MapAssignIndexes(id, out lhs);
-				lhss.Add(lhs); 
+				lhss.Add(lhs);
 			}
 			Expect(49);
 			x = t; /* use location of := */ 
 			Expression(out e0);
 			rhss = new List<Expr!> ();
-			rhss.Add(e0); 
+			rhss.Add(e0);
 			while (la.kind == 11) {
 				Get();
 				Expression(out e0);
-				rhss.Add(e0); 
+				rhss.Add(e0);
 			}
 			Expect(7);
-			c = new AssignCmd(x, lhss, rhss); 
+			c = new AssignCmd(x, lhss, rhss);
 		} else SynErr(105);
 	}
 
@@ -1237,7 +1237,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		c = dummyCmd;
 		
 		Expect(50);
-		x = t; 
+		x = t;
 		while (la.kind == 25) {
 			Attribute(ref kv);
 		}
@@ -1247,17 +1247,17 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 				Get();
 				if (StartOf(8)) {
 					CallForallArg(out en);
-					es.Add(en); 
+					es.Add(en);
 					while (la.kind == 11) {
 						Get();
 						CallForallArg(out en);
-						es.Add(en); 
+						es.Add(en);
 					}
 				}
 				Expect(9);
-				c = new CallCmd(x, first.val, es, ids, kv); 
+				c = new CallCmd(x, first.val, es, ids, kv);
 			} else if (la.kind == 11 || la.kind == 49) {
-				ids.Add(new IdentifierExpr(first, first.val)); 
+				ids.Add(new IdentifierExpr(first, first.val));
 				if (la.kind == 11) {
 					Get();
 					CallOutIdent(out p);
@@ -1283,35 +1283,35 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 				Expect(8);
 				if (StartOf(8)) {
 					CallForallArg(out en);
-					es.Add(en); 
+					es.Add(en);
 					while (la.kind == 11) {
 						Get();
 						CallForallArg(out en);
-						es.Add(en); 
+						es.Add(en);
 					}
 				}
 				Expect(9);
-				c = new CallCmd(x, first.val, es, ids, kv); 
+				c = new CallCmd(x, first.val, es, ids, kv);
 			} else SynErr(106);
 		} else if (la.kind == 51) {
 			Get();
 			Ident(out first);
 			Expect(8);
-			args = new List<Expr>(); 
+			args = new List<Expr>();
 			if (StartOf(8)) {
 				CallForallArg(out en);
-				args.Add(en); 
+				args.Add(en);
 				while (la.kind == 11) {
 					Get();
 					CallForallArg(out en);
-					args.Add(en); 
+					args.Add(en);
 				}
 			}
 			Expect(9);
-			c = new CallForallCmd(x, first.val, args, kv); 
+			c = new CallForallCmd(x, first.val, args, kv);
 		} else if (la.kind == 44) {
 			Get();
-			ids.Add(null); 
+			ids.Add(null);
 			if (la.kind == 11) {
 				Get();
 				CallOutIdent(out p);
@@ -1337,15 +1337,15 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			Expect(8);
 			if (StartOf(8)) {
 				CallForallArg(out en);
-				es.Add(en); 
+				es.Add(en);
 				while (la.kind == 11) {
 					Get();
 					CallForallArg(out en);
-					es.Add(en); 
+					es.Add(en);
 				}
 			}
 			Expect(9);
-			c = new CallCmd(x, first.val, es, ids, kv); 
+			c = new CallCmd(x, first.val, es, ids, kv);
 		} else SynErr(107);
 	}
 
@@ -1360,21 +1360,21 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		while (la.kind == 15) {
 			Get();
 			x = t;
-			indexes = new List<Expr!> (); 
+			indexes = new List<Expr!> ();
 			if (StartOf(5)) {
 				Expression(out e0);
-				indexes.Add(e0); 
+				indexes.Add(e0);
 				while (la.kind == 11) {
 					Get();
 					Expression(out e0);
-					indexes.Add(e0); 
+					indexes.Add(e0);
 				}
 			}
 			Expect(16);
 			runningLhs =
-			 new MapAssignLhs (x, runningLhs, indexes);  
+			 new MapAssignLhs (x, runningLhs, indexes);
 		}
-		lhs = runningLhs; 
+		lhs = runningLhs;
 	}
 
 	void CallForallArg(out Expr exprOptional) {
@@ -1385,7 +1385,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			Get();
 		} else if (StartOf(5)) {
 			Expression(out e);
-			exprOptional = e; 
+			exprOptional = e;
 		} else SynErr(108);
 	}
 
@@ -1397,42 +1397,42 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 1) {
 			Ident(out p);
-			id = p; 
+			id = p;
 		} else SynErr(109);
 	}
 
 	void Expressions(out ExprSeq! es) {
-		Expr! e; es = new ExprSeq(); 
+		Expr! e; es = new ExprSeq();
 		Expression(out e);
-		es.Add(e); 
+		es.Add(e);
 		while (la.kind == 11) {
 			Get();
 			Expression(out e);
-			es.Add(e); 
+			es.Add(e);
 		}
 	}
 
 	void ImpliesExpression(bool noExplies, out Expr! e0) {
-		IToken! x; Expr! e1; 
+		IToken! x; Expr! e1;
 		LogicalExpression(out e0);
 		if (StartOf(9)) {
 			if (la.kind == 54 || la.kind == 55) {
 				ImpliesOp();
-				x = t; 
+				x = t;
 				ImpliesExpression(true, out e1);
-				e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e0, e1); 
+				e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e0, e1);
 			} else {
 				ExpliesOp();
 				if (noExplies)
 				 this.SemErr("illegal mixture of ==> and <==, use parentheses to disambiguate");
-				x = t; 
+				x = t;
 				LogicalExpression(out e1);
-				e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e1, e0); 
+				e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e1, e0);
 				while (la.kind == 56 || la.kind == 57) {
 					ExpliesOp();
-					x = t; 
+					x = t;
 					LogicalExpression(out e1);
-					e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e1, e0); 
+					e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e1, e0);
 				}
 			}
 		}
@@ -1447,30 +1447,30 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 	}
 
 	void LogicalExpression(out Expr! e0) {
-		IToken! x; Expr! e1; BinaryOperator.Opcode op; 
+		IToken! x; Expr! e1; BinaryOperator.Opcode op;
 		RelationalExpression(out e0);
 		if (StartOf(10)) {
 			if (la.kind == 58 || la.kind == 59) {
 				AndOp();
-				x = t; 
+				x = t;
 				RelationalExpression(out e1);
-				e0 = Expr.Binary(x, BinaryOperator.Opcode.And, e0, e1); 
+				e0 = Expr.Binary(x, BinaryOperator.Opcode.And, e0, e1);
 				while (la.kind == 58 || la.kind == 59) {
 					AndOp();
-					x = t; 
+					x = t;
 					RelationalExpression(out e1);
-					e0 = Expr.Binary(x, BinaryOperator.Opcode.And, e0, e1); 
+					e0 = Expr.Binary(x, BinaryOperator.Opcode.And, e0, e1);
 				}
 			} else {
 				OrOp();
-				x = t; 
+				x = t;
 				RelationalExpression(out e1);
-				e0 = Expr.Binary(x, BinaryOperator.Opcode.Or, e0, e1); 
+				e0 = Expr.Binary(x, BinaryOperator.Opcode.Or, e0, e1);
 				while (la.kind == 60 || la.kind == 61) {
 					OrOp();
-					x = t; 
+					x = t;
 					RelationalExpression(out e1);
-					e0 = Expr.Binary(x, BinaryOperator.Opcode.Or, e0, e1); 
+					e0 = Expr.Binary(x, BinaryOperator.Opcode.Or, e0, e1);
 				}
 			}
 		}
@@ -1493,12 +1493,12 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 	}
 
 	void RelationalExpression(out Expr! e0) {
-		IToken! x; Expr! e1; BinaryOperator.Opcode op; 
+		IToken! x; Expr! e1; BinaryOperator.Opcode op;
 		BvTerm(out e0);
 		if (StartOf(11)) {
 			RelOp(out x, out op);
 			BvTerm(out e1);
-			e0 = Expr.Binary(x, op, e0, e1); 
+			e0 = Expr.Binary(x, op, e0, e1);
 		}
 	}
 
@@ -1519,67 +1519,67 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 	}
 
 	void BvTerm(out Expr! e0) {
-		IToken! x; Expr! e1; 
+		IToken! x; Expr! e1;
 		Term(out e0);
 		while (la.kind == 70) {
 			Get();
-			x = t; 
+			x = t;
 			Term(out e1);
-			e0 = new BvConcatExpr(x, e0, e1); 
+			e0 = new BvConcatExpr(x, e0, e1);
 		}
 	}
 
 	void RelOp(out IToken! x, out BinaryOperator.Opcode op) {
-		x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; 
+		x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/;
 		switch (la.kind) {
 		case 62: {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Eq; 
+			x = t; op=BinaryOperator.Opcode.Eq;
 			break;
 		}
 		case 17: {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Lt; 
+			x = t; op=BinaryOperator.Opcode.Lt;
 			break;
 		}
 		case 18: {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Gt; 
+			x = t; op=BinaryOperator.Opcode.Gt;
 			break;
 		}
 		case 63: {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Le; 
+			x = t; op=BinaryOperator.Opcode.Le;
 			break;
 		}
 		case 64: {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Ge; 
+			x = t; op=BinaryOperator.Opcode.Ge;
 			break;
 		}
 		case 65: {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Neq; 
+			x = t; op=BinaryOperator.Opcode.Neq;
 			break;
 		}
 		case 66: {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Subtype; 
+			x = t; op=BinaryOperator.Opcode.Subtype;
 			break;
 		}
 		case 67: {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Neq; 
+			x = t; op=BinaryOperator.Opcode.Neq;
 			break;
 		}
 		case 68: {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Le; 
+			x = t; op=BinaryOperator.Opcode.Le;
 			break;
 		}
 		case 69: {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Ge; 
+			x = t; op=BinaryOperator.Opcode.Ge;
 			break;
 		}
 		default: SynErr(115); break;
@@ -1587,33 +1587,33 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 	}
 
 	void Term(out Expr! e0) {
-		IToken! x; Expr! e1; BinaryOperator.Opcode op; 
+		IToken! x; Expr! e1; BinaryOperator.Opcode op;
 		Factor(out e0);
 		while (la.kind == 71 || la.kind == 72) {
 			AddOp(out x, out op);
 			Factor(out e1);
-			e0 = Expr.Binary(x, op, e0, e1); 
+			e0 = Expr.Binary(x, op, e0, e1);
 		}
 	}
 
 	void Factor(out Expr! e0) {
-		IToken! x; Expr! e1; BinaryOperator.Opcode op; 
+		IToken! x; Expr! e1; BinaryOperator.Opcode op;
 		UnaryExpression(out e0);
 		while (la.kind == 44 || la.kind == 73 || la.kind == 74) {
 			MulOp(out x, out op);
 			UnaryExpression(out e1);
-			e0 = Expr.Binary(x, op, e0, e1); 
+			e0 = Expr.Binary(x, op, e0, e1);
 		}
 	}
 
 	void AddOp(out IToken! x, out BinaryOperator.Opcode op) {
-		x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; 
+		x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/;
 		if (la.kind == 71) {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Add; 
+			x = t; op=BinaryOperator.Opcode.Add;
 		} else if (la.kind == 72) {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Sub; 
+			x = t; op=BinaryOperator.Opcode.Sub;
 		} else SynErr(116);
 	}
 
@@ -1623,30 +1623,30 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		
 		if (la.kind == 72) {
 			Get();
-			x = t; 
+			x = t;
 			UnaryExpression(out e);
-			e = Expr.Binary(x, BinaryOperator.Opcode.Sub, new LiteralExpr(x, BigNum.ZERO), e); 
+			e = Expr.Binary(x, BinaryOperator.Opcode.Sub, new LiteralExpr(x, BigNum.ZERO), e);
 		} else if (la.kind == 75 || la.kind == 76) {
 			NegOp();
-			x = t; 
+			x = t;
 			UnaryExpression(out e);
-			e = Expr.Unary(x, UnaryOperator.Opcode.Not, e); 
+			e = Expr.Unary(x, UnaryOperator.Opcode.Not, e);
 		} else if (StartOf(12)) {
 			CoercionExpression(out e);
 		} else SynErr(117);
 	}
 
 	void MulOp(out IToken! x, out BinaryOperator.Opcode op) {
-		x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; 
+		x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/;
 		if (la.kind == 44) {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Mul; 
+			x = t; op=BinaryOperator.Opcode.Mul;
 		} else if (la.kind == 73) {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Div; 
+			x = t; op=BinaryOperator.Opcode.Div;
 		} else if (la.kind == 74) {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Mod; 
+			x = t; op=BinaryOperator.Opcode.Mod;
 		} else SynErr(118);
 	}
 
@@ -1666,10 +1666,10 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		ArrayExpression(out e);
 		while (la.kind == 10) {
 			Get();
-			x = t; 
+			x = t;
 			if (StartOf(2)) {
 				Type(out coercedTo);
-				e = Expr.CoerceType(x, e, coercedTo); 
+				e = Expr.CoerceType(x, e, coercedTo);
 			} else if (la.kind == 3) {
 				Nat(out bn);
 				if (!(e is LiteralExpr) || !((LiteralExpr)e).isBigNum) {
@@ -1694,7 +1694,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			Get();
 			x = t; allArgs = new ExprSeq ();
 			allArgs.Add(e);
-			store = false; bvExtract = false; 
+			store = false; bvExtract = false;
 			if (StartOf(13)) {
 				if (StartOf(5)) {
 					Expression(out index0);
@@ -1722,7 +1722,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 				} else {
 					Get();
 					Expression(out e1);
-					allArgs.Add(e1); store = true; 
+					allArgs.Add(e1); store = true;
 				}
 			}
 			Expect(16);
@@ -1733,7 +1733,7 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 			                        ((BvBounds)index0).Upper.ToIntSafe,
 			                        ((BvBounds)index0).Lower.ToIntSafe);
 			else
-			  e = new NAryExpr(x, new MapSelect(x, allArgs.Length - 1), allArgs); 
+			  e = new NAryExpr(x, new MapSelect(x, allArgs.Length - 1), allArgs);
 			
 		}
 	}
@@ -1761,34 +1761,34 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		switch (la.kind) {
 		case 77: {
 			Get();
-			e = new LiteralExpr(t, false); 
+			e = new LiteralExpr(t, false);
 			break;
 		}
 		case 78: {
 			Get();
-			e = new LiteralExpr(t, true); 
+			e = new LiteralExpr(t, true);
 			break;
 		}
 		case 3: {
 			Nat(out bn);
-			e = new LiteralExpr(t, bn); 
+			e = new LiteralExpr(t, bn);
 			break;
 		}
 		case 2: {
 			BvLit(out bn, out n);
-			e = new LiteralExpr(t, bn, n); 
+			e = new LiteralExpr(t, bn, n);
 			break;
 		}
 		case 1: {
 			Ident(out x);
-			id = new IdentifierExpr(x, x.val);  e = id; 
+			id = new IdentifierExpr(x, x.val);  e = id;
 			if (la.kind == 8) {
 				Get();
 				if (StartOf(5)) {
 					Expressions(out es);
-					e = new NAryExpr(x, new FunctionCall(id), es); 
+					e = new NAryExpr(x, new FunctionCall(id), es);
 				} else if (la.kind == 9) {
-					e = new NAryExpr(x, new FunctionCall(id), new ExprSeq()); 
+					e = new NAryExpr(x, new FunctionCall(id), new ExprSeq());
 				} else SynErr(121);
 				Expect(9);
 			}
@@ -1796,11 +1796,11 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 		}
 		case 79: {
 			Get();
-			x = t; 
+			x = t;
 			Expect(8);
 			Expression(out e);
 			Expect(9);
-			e = new OldExpr(x, e); 
+			e = new OldExpr(x, e);
 			break;
 		}
 		case 8: {
@@ -1809,27 +1809,27 @@ out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv) {
 				Expression(out e);
 				if (e is BvBounds)
 				 this.SemErr("parentheses around bitvector bounds " +
-				        "are not allowed"); 
+				        "are not allowed");
 			} else if (la.kind == 51 || la.kind == 81) {
 				Forall();
-				x = t; 
+				x = t;
 				QuantifierBody(x, out typeParams, out ds, out kv, out trig, out e);
 				if (typeParams.Length + ds.Length > 0)
-				 e = new ForallExpr(x, typeParams, ds, kv, trig, e); 
+				 e = new ForallExpr(x, typeParams, ds, kv, trig, e);
 			} else if (la.kind == 82 || la.kind == 83) {
 				Exists();
-				x = t; 
+				x = t;
 				QuantifierBody(x, out typeParams, out ds, out kv, out trig, out e);
 				if (typeParams.Length + ds.Length > 0)
-				 e = new ExistsExpr(x, typeParams, ds, kv, trig, e); 
+				 e = new ExistsExpr(x, typeParams, ds, kv, trig, e);
 			} else if (la.kind == 84 || la.kind == 85) {
 				Lambda();
-				x = t; 
+				x = t;
 				QuantifierBody(x, out typeParams, out ds, out kv, out trig, out e);
 				if (trig != null)
 				 SemErr("triggers not allowed in lambda expressions");
 				if (typeParams.Length + ds.Length > 0)
-				  e = new LambdaExpr(x, typeParams, ds, kv, e); 
+				  e = new LambdaExpr(x, typeParams, ds, kv, e);
 			} else SynErr(122);
 			Expect(9);
 			break;
@@ -1906,16 +1906,16 @@ out QKeyValue kv, out Trigger trig, out Expr! body) {
 
 	void IfThenElseExpression(out Expr! e) {
 		IToken! tok;
-		Expr! e0, e1, e2; 
-		e = dummyExpr; 
+		Expr! e0, e1, e2;
+		e = dummyExpr;
 		Expect(40);
-		tok = t; 
+		tok = t;
 		Expression(out e0);
 		Expect(80);
 		Expression(out e1);
 		Expect(41);
 		Expression(out e2);
-		e = new NAryExpr(tok, new IfThenElse(tok), new ExprSeq(e0, e1, e2)); 
+		e = new NAryExpr(tok, new IfThenElse(tok), new ExprSeq(e0, e1, e2));
 	}
 
 	void AttributeOrTrigger(ref QKeyValue kv, ref Trigger trig) {
@@ -1924,18 +1924,18 @@ out QKeyValue kv, out Trigger trig, out Expr! body) {
 		List<object!> parameters;  object! param;
 		
 		Expect(25);
-		tok = t; 
+		tok = t;
 		if (la.kind == 10) {
 			Get();
 			Expect(1);
-			key = t.val;  parameters = new List<object!>(); 
+			key = t.val;  parameters = new List<object!>();
 			if (StartOf(14)) {
 				AttributeParameter(out param);
-				parameters.Add(param); 
+				parameters.Add(param);
 				while (la.kind == 11) {
 					Get();
 					AttributeParameter(out param);
-					parameters.Add(param); 
+					parameters.Add(param);
 				}
 			}
 			if (key == "nopats") {
@@ -1959,11 +1959,11 @@ out QKeyValue kv, out Trigger trig, out Expr! body) {
 			
 		} else if (StartOf(5)) {
 			Expression(out e);
-			es = new ExprSeq(e); 
+			es = new ExprSeq(e);
 			while (la.kind == 11) {
 				Get();
 				Expression(out e);
-				es.Add(e); 
+				es.Add(e);
 			}
 			if (trig==null) {
 			 trig = new Trigger(tok, true, es, null);
@@ -1981,10 +1981,10 @@ out QKeyValue kv, out Trigger trig, out Expr! body) {
 		
 		if (la.kind == 4) {
 			Get();
-			o = t.val.Substring(1, t.val.Length-2); 
+			o = t.val.Substring(1, t.val.Length-2);
 		} else if (StartOf(5)) {
 			Expression(out e);
-			o = e; 
+			o = e;
 		} else SynErr(129);
 	}
 

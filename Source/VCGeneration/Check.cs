@@ -227,7 +227,7 @@ void ObjectInvariant()
     public void PushVCExpr(VCExpr vc)
     {
       Contract.Requires(vc != null);
-      //thmProver.Context.AddAxiom(vc);      
+      //thmProver.Context.AddAxiom(vc);
       thmProver.PushVCExpression(vc);
     }
 
@@ -326,7 +326,7 @@ void ObjectInvariant()
   public class ErrorModel {
     public Dictionary<string/*!*/, int>/*!*/ identifierToPartition;
     public List<List<string/*!>>!*/>> partitionToIdentifiers;
-    public List<Object>/*!*/ partitionToValue;  
+    public List<Object>/*!*/ partitionToValue;
     public Dictionary<object, int>/*!*/ valueToPartition;
     public Dictionary<string/*!*/, List<List<int>>/*!*/>/*!*/ definedFunctions;
 
@@ -436,7 +436,7 @@ void ObjectInvariant()
         {
           if (values[i] == tuple[j]) {
             // succeeded in matching tuple[j]
-            j++; 
+            j++;
             if (j == tuple.Count-1) return tuple[tuple.Count - 1];
           }
         }

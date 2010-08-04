@@ -187,7 +187,7 @@ namespace Microsoft.Boogie.Clustering
 
           int reprSizeA, reprSizeB;
           visitor.RepresentationSize(globalVars, out reprSizeA, out reprSizeB);
-          Dist = (a.Size - 1) * reprSizeA + (b.Size - 1) * reprSizeB;          
+          Dist = (a.Size - 1) * reprSizeA + (b.Size - 1) * reprSizeB;
         }
       }
 
@@ -443,7 +443,7 @@ namespace Microsoft.Boogie.Clustering
       VCExprVar nodeAsVar = node as VCExprVar;
       if (nodeAsVar == null || globalVars.ContainsKey(nodeAsVar))
         Size = Size + 1;
-      return true;      
+      return true;
     }
   }
 }

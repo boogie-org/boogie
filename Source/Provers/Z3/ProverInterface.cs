@@ -90,7 +90,7 @@ void ObjectInvariant()
     public int Timeout { get { return TimeLimit / 1000; } }
     public bool Typed {
       get { 
-        return CommandLineOptions.Clo.Z3types || BitVectors == CommandLineOptions.BvHandling.Z3Native; 
+        return CommandLineOptions.Clo.Z3types || BitVectors == CommandLineOptions.BvHandling.Z3Native;
       } 
     }
     public int Lets {

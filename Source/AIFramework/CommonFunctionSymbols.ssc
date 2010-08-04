@@ -441,7 +441,7 @@ namespace Microsoft.AbstractInterpretationFramework
         private static readonly AIType! heaptype = new Heap();
         public static AIType! Type { get { return heaptype; } }
 
-        // the types in the following, select1, select2, are hard-coded; 
+        // the types in the following, select1, select2, are hard-coded;
         // these types may not always be appropriate
         private static readonly FunctionSymbol! _select1 = new FunctionSymbol("sel1",
             // Heap x FieldName -> Prop
@@ -455,7 +455,7 @@ namespace Microsoft.AbstractInterpretationFramework
         );
         public static FunctionSymbol! Select2 { get { return _select2; } }
 
-        // the types in the following, store1, store2, are hard-coded; 
+        // the types in the following, store1, store2, are hard-coded;
         // these types may not always be appropriate
         private static readonly FunctionSymbol! _update1 = new FunctionSymbol("upd1",
             // Heap x FieldName x Value -> Heap

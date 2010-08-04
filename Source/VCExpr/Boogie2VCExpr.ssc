@@ -123,11 +123,11 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       public void PushScope() {
-        Mapping.Add(new Dictionary<VarKind!, VCExprVar!> ());        
+        Mapping.Add(new Dictionary<VarKind!, VCExprVar!> ());
       }
 
       public void PopScope() {
-        assume Mapping.Count > 0; 
+        assume Mapping.Count > 0;
         Mapping.RemoveAt(Mapping.Count - 1);
       }
       
@@ -266,7 +266,7 @@ namespace Microsoft.Boogie.VCExprAST
     public override Expr! VisitIdentifierExpr(IdentifierExpr! node) {
       assume node.Decl != null;   // the expression has to be resolved
       Push(LookupVariable(node.Decl));
-      return node; 
+      return node;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -328,13 +328,13 @@ namespace Microsoft.Boogie.VCExprAST
     public override ExistsExpr! VisitExistsExpr(ExistsExpr! node)
     {
       node = (ExistsExpr) this.VisitQuantifierExpr(node);
-      return node; 
+      return node;
     }
 
     public override ForallExpr! VisitForallExpr(ForallExpr! node)
     {
       node = (ForallExpr) this.VisitQuantifierExpr(node);
-      return node; 
+      return node;
     }
 
     private VCExpr! TranslateQuantifierExpr(QuantifierExpr! node)
