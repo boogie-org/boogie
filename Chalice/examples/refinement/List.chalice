@@ -1,109 +1,159 @@
-/* Recursive implementation and specification of a linked list. */
+/** 
+Interesting issues:
+  * using functions in refinement to write getters
+  * using functions to write coupling invariant
+  * refining to a recursive implementation
+  * restricting refinement (List1 must have at least one item)
+  * refining a method with an output variable  
 
-class Node {
-  var next: Node;
-  var value: int;
+Do we shadows the abstract variables in the later concrete programs?
 
-  method init(v: int)
-    requires acc(next) && acc(value);
-    ensures valid && size() == 1;
+How do we handle generic sequence in List2
+*/
+
+class List0 {
+  var rep: seq<int>;
+
+  method init() 
+    requires acc(this.*);
+    ensures acc(rep);
   {
-    next := null;
-    value := v;
-    fold this.valid;
+    rep := [0];
   }
 
-  method append(x: int) 
-    requires valid;
-    ensures valid;
-    ensures size() == old(size())+1;
+  function length(): int
+    requires acc(rep);
   {
-    unfold this.valid;
-    if(next==null) {
-      var n : Node;
-      n := new Node;
-      call n.init(x);
-      next := n;
-    } else {
-      call next.append(x);
-    }
-    fold this.valid;
+    |rep|
   }
 
-  method prepend(x: int) returns (rt: Node)
-    requires valid;
-    ensures rt!=null && rt.valid;
-    ensures rt.size() == old(size()) + 1;
+  method get(i: int) returns (v: int)
+    requires acc(rep);
+    requires 0 <= i && i < length();
+    ensures acc(rep);
   {
-    var n: Node;
-    n := new Node;
-    n.value := x;
-    n.next := this; 
-    fold n.valid;
-    rt := n;
+    v := rep[i];
   }
 
-  function at(i: int): int
-    requires valid && 0<=i && i<size();
+  method pick() returns (v: int) 
+    requires acc(rep);
+    ensures acc(rep);
   {
-    unfolding valid in i==0 ? value : next.at(i-1)  
-  }
-
-  function size(): int
-    requires valid;
-  {
-    unfolding this.valid in (next!=null ? 1 + next.size() : 1)
-  }
-
-  predicate valid {
-    acc(next) && acc(value) && 
-    (next!=null ==> next.valid)  
+    var i: int;
+    assume 0 <= i && i < length();
+    v := rep[i];
   }
 }
 
-// abstract sequence of integers
-class LinkedList {
+class List1 {
   ghost var rep: seq<int>;
 
-  var first: Node;
+  var data: int;
+  var l: seq<List1>;
+
+  function inv(): bool
+    requires acc(rep) && acc(l) && acc(data) && acc(l[*].data) && acc(l[*].l);
+  {
+    /** valid */ |l| >= 0 &&  
+    (forall i in [0..|l|] :: l[i] != null && l[i].l == l[i+1..]) &&
+    /** coupling */ |l| + 1 == |rep| && 
+    (forall i in [0..|l|] :: l[i].data == rep[i+1]) &&
+    data == rep[0]
+  }
 
   method init()
     requires acc(this.*);
-    ensures valid;
-  {    
-    first := null;   
-    assert coupling(rep, first); 
-    fold valid;
-  }
-
-  method append(x: int)
-    requires valid;
-    ensures valid;
+    ensures acc(rep) && acc(l) && acc(data) && acc(l[*].data) && acc(l[*].l) && inv();
   {
-    unfold valid;
-    rep := rep ++ [x];
-    fold valid;
+    rep := [0];
+    data := 0;
+    l := nil<List1>;    
   }
 
-  method prepend(x: int)
-    requires valid;
-    ensures valid;
+  function length(): int
+    requires acc(rep) && acc(l) && acc(data) && acc(l[*].data) && acc(l[*].l) && inv();
   {
-    unfold valid;
-    rep := [x] ++ rep;
-    fold valid;
+    |l| + 1
   }
 
-  predicate valid {
-    acc(rep) && acc(first) && (first != null ==> first.valid)
-  }
-
-  function coupling(a: seq<int>, c: Node) : bool
-    requires c != null ==> c.valid;
+  method checkLength() 
+    requires acc(rep) && acc(l) && acc(data) && acc(l[*].data) && acc(l[*].l) && inv();
   {
-    c == null ? a == nil<int> : 
-      (|a| > 0 && a[0] == c.value && coupling(a[1..], c.next))
+    assert |l| + 1 == |rep|;
   }
 
-
+  method get(i: int) returns (v: int)
+    requires acc(rep) && acc(l) && acc(data) && acc(l[*].data) && acc(l[*].l) && inv();
+    requires 0 <= i && i < length();
+    ensures acc(rep) && acc(l) && acc(data) && acc(l[*].data) && acc(l[*].l) && inv();
+  {
+    if (i == 0) {
+      v := data;
+    } else {
+      v := l[i-1].data;
+    }
+    assert v == rep[i];
+  }
 }
+
+class List2 {
+  ghost var rep: seq<int>;
+  ghost var l: seq<List2>;
+
+  var data: int;
+  var next: List2;
+  var size: int;
+
+  function inv(): bool
+    requires acc(rep) && acc(l) && acc(data) && acc(l[*].data) && acc(l[*].l) && acc(size) && acc(next) && acc(l[*].size) && acc(l[*].next);
+  {
+    /** valid */ |l| >= 0 &&  
+    (forall i in [0..|l|] :: l[i] != null && l[i].l == l[i+1..]) &&
+    /** coupling */ |l| + 1 == |rep| && 
+    (forall i in [0..|l|] :: l[i].data == rep[i+1]) &&
+    data == rep[0] &&
+    /** coupling */ size == |l| + 1 &&
+    (next == null ==> |l| == 0) &&
+    (next != null ==> |l| > 0 && next == l[0] && l[|l|-1].next == null) &&
+    (forall i in [0..|l|] :: l[i].size == size - i - 1) && 
+    (forall i in [0..|l|-1] :: l[i].next == l[i+1])    
+  }
+
+  method init()
+    requires acc(this.*);
+    ensures acc(rep) && acc(l) && acc(data) && acc(l[*].data) && acc(l[*].l)  && acc(size) && acc(next) && acc(l[*].size) && acc(l[*].next) && inv();
+  {
+    rep := [0];
+    data := 0;
+    l := nil<List2>;    
+    next := null;
+    size := 1;
+  }
+
+  function length(): int
+    requires acc(rep) && acc(l) && acc(data) && acc(l[*].data) && acc(l[*].l) && acc(size) && acc(next) && acc(l[*].size) && acc(l[*].next) && inv();
+  {
+    size
+  }
+
+  method checkLength() 
+    requires acc(rep) && acc(l) && acc(data) && acc(l[*].data) && acc(l[*].l) && acc(size) && acc(next) && acc(l[*].size) && acc(l[*].next) && inv();
+  {
+    assert size == |l| + 1;
+  }
+
+  method get(i: int) returns (v: int)
+    requires acc(rep) && acc(l) && acc(data) && acc(l[*].data) && acc(l[*].l) && acc(size) && acc(next) && acc(l[*].size) && acc(l[*].next) && inv();
+    requires 0 <= i && i < length();
+    ensures acc(rep) && acc(l) && acc(data) && acc(l[*].data) && acc(l[*].l) && acc(size) && acc(next) && acc(l[*].size) && acc(l[*].next) && inv();
+  {
+    if (i == 0) {
+      v := data;
+    } else {
+      call w := next.get(i-1);
+      v := w;
+      assert v == l[i-1].data;
+    }
+  }
+}
+
