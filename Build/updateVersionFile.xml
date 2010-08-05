@@ -8,9 +8,6 @@
       ForceReadOnly="true"
       VersionFileName="..\Source\version.ssc"
     />
-  </Target>
-
-  <Target Name="CreateAssemblyInfo">
     <CreateAssemblyInfo
       Version="$(CCNetLabel)"
       CreateVersionFile="true"
