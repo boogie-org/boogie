@@ -991,7 +991,7 @@ namespace VC {
         }
         foreach (Block c in Exits(b)) {
           Contract.Assert(c != null);
-          s.virtual_successors.Add(b);
+          s.virtual_successors.Add(c);
         }
         if (s.virtual_successors.Count == 1) {
           Block next = s.virtual_successors[0];
