@@ -15,3 +15,6 @@ for %%f in (bv5.bpl bv6.bpl bv8.bpl) do (
   echo -------------------- %%f --------------------
   %BGEXE% %* %%f
 )
+
+echo -------------------- bv9.bpl /bv:z /z3bv --------------------
+%BGEXE% /bv:z /z3bv bv9.bpl

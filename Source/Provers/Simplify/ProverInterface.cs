@@ -519,7 +519,7 @@ namespace Microsoft.Boogie.Simplify {
     [NoDefaultContract]
     private void FireUpNewProver()
     {
-            Contract.Requires( cce.IsExposed(this));
+      Contract.Requires( cce.IsExposed(this));
       Contract.Requires( thmProver == null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 

@@ -206,6 +206,7 @@ namespace Microsoft.Boogie
     public int Z3mam = 0;
     [Peer] public List<string!>! Z3Options = new List<string!>();
     public bool Z3types = false;
+    public bool Z3OptimizeForBitvectors = false;
     public int Z3lets = 3;  // 0 - none, 1 - only LET TERM, 2 - only LET FORMULA, 3 - (default) any
     invariant 0 <= Z3lets && Z3lets < 4;
 
@@ -1236,6 +1237,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("causalImplies", ref CausalImplies) ||
               ps.CheckBooleanFlag("reflectAdd", ref ReflectAdd) ||
               ps.CheckBooleanFlag("z3types", ref Z3types) ||
+              ps.CheckBooleanFlag("z3bv", ref Z3OptimizeForBitvectors) ||
               ps.CheckBooleanFlag("z3multipleErrors", ref z3AtFlag, false) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
@@ -2102,6 +2104,7 @@ namespace Microsoft.Boogie
   /z3types       : generate multi-sorted VC that make use of Z3 types
   /z3lets:<n>    : 0 - no LETs, 1 - only LET TERM, 2 - only LET FORMULA,
                    3 - (default) any
+  /z3bv          : use Z3 settings optimized for bitvector reasoning
 ");
     }
   }

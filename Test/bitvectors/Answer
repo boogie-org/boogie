@@ -49,3 +49,7 @@ Boogie program verifier finished with 0 verified, 1 error
 -------------------- bv8.bpl --------------------
 
 Boogie program verifier finished with 2 verified, 0 errors
+-------------------- bv9.bpl /bv:z /z3bv --------------------
+Boogie program verifier version 2, Copyright (c) 2003-2010, Microsoft.
+
+Boogie program verifier finished with 1 verified, 0 errors
