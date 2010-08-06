@@ -6,8 +6,8 @@ SPECSHARPROOT = d:\SpecSharpCodePlex\SpecSharp
 # Use the first one if you want to build Boogie using the LKG build of Spec#.
 # Use the second one if you want to build Boogie using a freshly built version of Spec#.
 #
-SPECSHARPBINDIR = Microsoft.SpecSharp\LastKnownGood9
-#SPECSHARPBINDIR = Microsoft.SpecSharp\Registration
+#SPECSHARPBINDIR = Microsoft.SpecSharp\LastKnownGood9
+SPECSHARPBINDIR = Microsoft.SpecSharp\Registration
 
 all: 
 	copy /y "$(SPECSHARPROOT)\$(SPECSHARPBINDIR)\ITaskManager.dll"
