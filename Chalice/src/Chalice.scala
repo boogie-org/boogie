@@ -118,15 +118,34 @@ object Chalice {
                val bplFilename = if (vsMode) "c:\\tmp\\out.bpl" else "out.bpl"
                writeFile(bplFilename, bplText);
                // run Boogie.exe on out.bpl
-               val boogie = Runtime.getRuntime().exec(boogiePath + " /errorTrace:0 " + boogieArgs + bplFilename);
-               val input = new BufferedReader(new InputStreamReader(boogie.getInputStream()));
+               val boogie = Runtime.getRuntime.exec(boogiePath + " /errorTrace:0 " + boogieArgs + bplFilename);
+               // terminate boogie if interrupted
+               Runtime.getRuntime.addShutdownHook(new Thread(new Runnable() {
+                 def run {
+                   boogie.destroy
+                 }
+               }))
+               // the process blocks until we exhaust input and error streams
+               new Thread(new Runnable() {
+                 def run {
+                   val err = new BufferedReader(new InputStreamReader(boogie.getErrorStream));
+                   var line = err.readLine;
+                   while(line!=null) {Console.err.println(line); Console.err.flush}
+                 }
+               }).start;
+               val input = new BufferedReader(new InputStreamReader(boogie.getInputStream));
                var line = input.readLine();
                var previous_line = null: String;
                while(line!=null){
-                 println(line);
+                 Console.out.println(line);
+                 Console.out.flush;
                  previous_line = line;
                  line = input.readLine();
                }
+               boogie.waitFor;
+               input.close;
+
+               // generate code
                if(gen && (previous_line != null) && previous_line.endsWith(" 0 errors")) { // hack
                  val converter = new ChaliceToCSharp(); 
                  println("Code generated in out.cs.");
