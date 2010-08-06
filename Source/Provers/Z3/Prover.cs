@@ -113,24 +113,12 @@ namespace Microsoft.Boogie.Z3
       AddOption(result, "MODEL_V1", "true");
       AddOption(result, "ASYNC_COMMANDS", "false");
 
-      if (!CommandLineOptions.Clo.Z3OptimizeForBitvectors) {
-
+      if (!opts.OptimizeForBv) {
         // Phase selection means to always try the negative literal polarity first, seems to be good for Boogie.
         // The restart parameters change the restart behavior to match Z3 v1, which also seems to be good.
         AddOption(result, "PHASE_SELECTION", "0");
         AddOption(result, "RESTART_STRATEGY", "0");
         AddOption(result, "RESTART_FACTOR", "|1.5|");
-
-        // This is used by VCC, but could be also useful for others, if sk_hack(foo(x)) is included as trigger,
-        // the foo(x0) will be activated for e-matching when x is skolemized to x0.
-        AddOption(result, "NNF_SK_HACK", "true");
-
-        // More or less like MAM=0.
-        AddOption(result, "QI_EAGER_THRESHOLD", "100");
-        // Complex proof attempts in VCC (and likely elsewhere) require matching depth of 20 or more.
-
-        // the following will make the :weight option more usable
-        AddOption(result, "QI_COST", "|\"(+ weight generation)\"|");
 
         // Make the integer model more diverse by default, speeds up some benchmarks a lot.
         AddOption(result, "ARITH_RANDOM_INITIAL_VALUE", "true");
@@ -143,6 +131,17 @@ namespace Microsoft.Boogie.Z3
         AddOption(result, "DELAY_UNITS", "true");
         AddOption(result, "DELAY_UNITS_THRESHOLD", "16");
       }
+
+      // This is used by VCC, but could be also useful for others, if sk_hack(foo(x)) is included as trigger,
+      // the foo(x0) will be activated for e-matching when x is skolemized to x0.
+      AddOption(result, "NNF_SK_HACK", "true");
+
+      // More or less like MAM=0.
+      AddOption(result, "QI_EAGER_THRESHOLD", "100");
+      // Complex proof attempts in VCC (and likely elsewhere) require matching depth of 20 or more.
+
+      // the following will make the :weight option more usable
+      AddOption(result, "QI_COST", "|\"(+ weight generation)\"|");
 
       if (opts.Inspector != null)
         AddOption(result, "PROGRESS_SAMPLING_FREQ", "100");

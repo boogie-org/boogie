@@ -53,12 +53,12 @@ void ObjectInvariant()
     [Rep] readonly TextReader fromInspector;
     [Rep] readonly TextWriter toInspector;
     [ContractInvariantMethod]
-void ObjectInvariant() 
-{
-    Contract.Invariant(inspector!=null);
+    void ObjectInvariant() 
+    {
+      Contract.Invariant(inspector!=null);
       Contract.Invariant(fromInspector!=null);
       Contract.Invariant(toInspector != null);
-}
+    }
 
 
     public Inspector(Z3InstanceOptions opts)

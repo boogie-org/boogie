@@ -104,11 +104,13 @@ void ObjectInvariant()
     public string ExeName = "z3.exe";
     public bool InverseImplies = false;
     public string Inspector = null;
+    public bool OptimizeForBv = false;
+
     [ContractInvariantMethod]
-void ObjectInvariant() 
-{
-    Contract.Invariant(ExeName!=null);
-}
+    void ObjectInvariant() 
+    {
+      Contract.Invariant(ExeName!=null);
+    }
 
 
     protected override bool Parse(string opt)
@@ -117,6 +119,7 @@ void ObjectInvariant()
       return ParseBool(opt, "REVERSE_IMPLIES", ref InverseImplies) ||
              ParseString(opt, "INSPECTOR", ref Inspector) ||
              ParseBool(opt, "DIST", ref DistZ3) ||
+             ParseBool(opt, "OPTIMIZE_FOR_BV", ref OptimizeForBv) ||
              base.Parse(opt);
     }
 
@@ -129,16 +132,37 @@ void ObjectInvariant()
         CommandLineOptions.Clo.RestartProverPerVC = true;
       }     
     }
+
+    public string Help
+    {
+      get
+      {
+          return
+              // base.Help +
+@"
+Z3-specific options:
+~~~~~~~~~~~~~~~~~~~~
+INSPECTOR=<string>        Use the specified Z3Inspector binary.
+OPTIMIZE_FOR_BV=<bool>    Optimize Z3 options for bitvector reasoning, and not quantifier instantiation. Defaults to false.
+
+Obscure options:
+~~~~~~~~~~~~~~~~
+DIST=<bool>               Use z3-dist.exe binary.
+REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
+";
+          // DIST requires non-public binaries
+      }
+    }
   }
 
   internal class Z3LineariserOptions : LineariserOptions {
     private readonly Z3InstanceOptions opts;
 
     [ContractInvariantMethod]
-void ObjectInvariant() 
-{
-    Contract.Invariant(opts!=null);
-}
+    void ObjectInvariant() 
+    {
+        Contract.Invariant(opts!=null);
+    }
 
 
     public override CommandLineOptions.BvHandling Bitvectors { get {
@@ -250,15 +274,15 @@ void ObjectInvariant()
       return new Z3VCExprTranslator(this);
     }
 
-[ContractInvariantMethod]
-void ObjectInvariant() 
-{
-    Contract.Invariant(Opts!=null);
-    Contract.Invariant(Gen != null);
-  Contract.Invariant(AxBuilder != null);
-  Contract.Invariant(Namer != null);
-  Contract.Invariant(DeclCollector != null);
-}
+    [ContractInvariantMethod]
+    void ObjectInvariant() 
+    {
+      Contract.Invariant(Opts!=null);
+      Contract.Invariant(Gen != null);
+      Contract.Invariant(AxBuilder != null);
+      Contract.Invariant(Namer != null);
+      Contract.Invariant(DeclCollector != null);
+    }
 
     private readonly Z3InstanceOptions Opts;
     private readonly VCExpressionGenerator Gen;
