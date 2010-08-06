@@ -1,0 +1,163 @@
+/** 
+Interesting issues:
+  * recursive functions should either use read accesses or provide frame conditions of operating on the same state
+  * carrying super-abstract state might be beneficial for the proof in the concrete program
+  * proofs of function refinement might be needed as lemmas in places where they are used
+*/
+
+class List0 {
+  var rep: seq<int>;
+
+  method init() 
+    requires acc(this.*);
+    ensures acc(rep);
+  {
+    rep := [0];
+  }
+
+  function length(): int
+    requires acc(rep);
+  {
+    |rep|
+  }
+
+  method get(i: int) returns (v: int)
+    requires acc(rep);
+    requires 0 <= i && i < length();
+    ensures acc(rep);
+  {
+    v := rep[i];
+  }
+
+  method pick() returns (v: int) 
+    requires acc(rep);
+    ensures acc(rep);
+  {
+    var i: int;
+    assume 0 <= i && i < length();
+    v := rep[i];
+  }
+}
+
+class Node1 {
+  var data;
+}
+
+class List1 {
+  ghost var rep: seq<int>;
+  var l: seq<Node1>;
+
+  function inv(): bool
+    requires acc(rep) && acc(l) && acc(l[*].data);
+  {
+    /** valid */ (forall i in [0..|l|] :: l[i] != null) &&
+    /** coupling */ |l| == |rep| && (forall i in [0..|l|] :: l[i].data == rep[i]) 
+  }
+
+  method init()
+    requires acc(this.*);
+    ensures acc(rep) && acc(l) && acc(l[*].data) && inv();
+  {
+    rep := nil<int>;
+    l := nil<Node1>;
+  }
+
+  function length(): int
+    requires acc(rep) && acc(l) && acc(l[*].data) && inv();
+  {
+    |l| 
+  }
+
+  method checkLength() 
+    requires acc(rep) && acc(l) && acc(l[*].data) && inv();
+  {
+    assert length() == |rep|;
+  }
+
+  method get(i: int) returns (v: int)
+    requires acc(rep) && acc(l) && acc(l[*].data) && inv();
+    requires 0 <= i && i < length();
+    ensures acc(rep) && acc(l) && acc(l[*].data) && inv();
+  {
+    v := l[i].data;
+    assert v == rep[i];
+  }
+}
+
+class Node2 {
+  var data;
+  var next: Node2;
+}
+
+class List2 {
+  ghost var rep: seq<int>;  
+  ghost var l: seq<Node2>;
+
+  var head: Node2;
+  var size: int;
+
+  function inv(): bool
+    requires acc(rep) && acc(l) && acc(l[*].data) && acc(l[*].next) && acc(head) && acc(size) 
+  {
+    /** valid */ (forall i in [0..|l|] :: l[i] != null) &&
+    /** coupling */ |l| == |rep| && (forall i in [0..|l|] :: l[i].data == rep[i]) &&
+    /** new coupling */ size == |l| &&
+    (head == null ==> |l| == 0) &&
+    (head != null ==> |l| > 0 && head == l[0] && l[|l|-1].next == null) &&
+    (forall i in [0..|l|-1] :: l[i].next == l[i+1])
+  }
+
+  method init()
+    requires acc(this.*);
+    ensures acc(rep) && acc(l) && acc(l[*].data) && acc(l[*].next) && acc(head) && acc(size) && inv();
+  {
+    rep := nil<int>;
+    l := nil<Node2>;    
+    head := null;
+    size := 0;
+  }
+
+  function length(): int
+    requires acc(rep) && acc(l) && acc(l[*].data) && acc(l[*].next) && acc(head) && acc(size) && inv();
+  {
+    size
+  }
+
+  method checkLength() 
+    requires acc(rep) && acc(l) && acc(l[*].data) && acc(l[*].next) && acc(head) && acc(size) && inv();
+  {
+    assert length() == |l|;
+  }
+
+  method get(i: int) returns (v: int)
+    requires acc(rep) && acc(l) && acc(l[*].data) && acc(l[*].next) && acc(head) && acc(size) && inv();
+    requires 0 <= i && i < length();
+    ensures acc(rep) && acc(l) && acc(l[*].data) && acc(l[*].next) && acc(head) && acc(size) && inv();
+  {
+    call v := getrec(i, head, 0);
+    assert v == l[i].data;
+  }   
+
+  method getrec(i: int, n: Node2, /* ghost */ j: int) returns (v: int)
+    requires acc(rep) && acc(l) && acc(l[*].data) && acc(l[*].next) && acc(head) && acc(size) && inv();
+    requires length() == |l|;
+    requires 0 <= i && i < length();
+    requires 0 <= j && j <= i;
+    requires l[j] == n;
+    ensures acc(rep) && acc(l) && acc(l[*].data) && acc(l[*].next) && acc(head) && acc(size) && inv();
+    // frame
+    ensures l == old(l);
+    ensures forall x in l :: x != null && x.data == old(x.data) && x.next == old(x.next);
+    ensures size == old(size);
+    ensures head == old(head);
+    ensures rep == old(rep);
+    ensures v == l[i].data;
+    ensures l == old(l);
+  {
+    if (i == j) {
+      v := n.data;
+    } else {
+      call v := getrec(i, n.next, j+1);
+    }
+  }
+}
