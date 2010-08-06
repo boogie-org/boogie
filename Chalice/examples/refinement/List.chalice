@@ -58,7 +58,7 @@ class List1 {
     (forall i in [0..|l|] :: l[i] != null && l[i].l == l[i+1..]) &&
     /** coupling */ |l| + 1 == |rep| && 
     (forall i in [0..|l|] :: l[i].data == rep[i+1]) &&
-    data == rep[0]
+    data == rep[0]  
   }
 
   method init()
@@ -113,7 +113,7 @@ class List2 {
     (next == null ==> |l| == 0) &&
     (next != null ==> |l| > 0 && next == l[0] && l[|l|-1].next == null) &&
     (forall i in [0..|l|] :: l[i].size == size - i - 1) && 
-    (forall i in [0..|l|-1] :: l[i].next == l[i+1])    
+    (forall i in [0..|l|-1] :: l[i].next == l[i+1]) 
   }
 
   method init()
@@ -149,6 +149,8 @@ class List2 {
     if (i == 0) {
       v := data;
     } else {
+      assert next != null;      
+      assert l == [next] ++ next.l;
       call w := next.get(i-1);
       v := w;
     }

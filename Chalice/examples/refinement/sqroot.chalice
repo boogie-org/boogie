@@ -1,0 +1,62 @@
+// Based on Back & Wright p.342
+// Algorithmic refinement with a recursion introduction
+
+// how Chalice proves termination?
+// interesting that if I leave out l >= 0 and r >= 0 (as I did initially) then Chalice correctly cannot prove refinement of sqrt1
+
+class Cell {
+  var x: int;
+
+  method compute0(e: int)
+    requires e >= 0 && acc(x);
+    ensures acc(x) && x*x <= e && e < (x+1)*(x+1);
+  {
+    assume false;
+  }
+
+  method compute1(e: int)
+    requires e >= 0 && acc(x);
+    ensures acc(x) && x*x <= e && e < (x+1)*(x+1);
+  {
+    call sqrt0(e, 0, e+1);
+  }
+
+  method sqrt0(n, l, r)
+    requires acc(x) && l*l <= n && n < r*r && l >= 0 && r >= 0;
+    ensures acc(x) && x*x <= n && n < (x+1)*(x+1);
+  {
+    if (l + 1 == r) {
+      x := l;
+    } else {
+      var k: int;
+      assume k > l;
+      assume k < r;
+      if (n < k*k) {
+        call sqrt0(n, l, k);
+      } else {
+        call sqrt0(n, k, r);
+      }
+    }
+  }
+
+ method sqrt1(n, l, r)
+    requires acc(x) && l*l <= n && n < r*r && l >= 0 && r >= 0;
+    ensures acc(x) && x*x <= n && n < (x+1)*(x+1);
+  {
+    assert l < r;
+    if (l + 1 == r) {
+      x := l;
+    } else {      
+      var k := l + 1; // no division in chalice
+      assert k > l;
+      assert k < r;
+      if (n < k*k) {
+        call sqrt1(n, l, k);
+      } else {
+        call sqrt1(n, k, r);
+      }
+    }
+  }
+
+ 
+}

@@ -1745,7 +1745,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
           (perm match {
             case _: Read => mr ==@ 0 ==> n <= mn
             case _: Write => r <= mr && (r ==@ mr ==> 0 <= mn)
-          })).forall(refV), error.pos, error.message + " Insufficient permissions") ::
+          })).forall(refV), error.pos, error.message + " Insufficient permissions at " + acc.pos + " for " + member.f.FullName) ::
         (em := Lambda(List(aV), List(refV, fV),
           (SeqContains(e, ref) && f ==@ memberName).thenElse(
             Lambda(List(), List(pcV), (pc ==@ "perm$R").thenElse(mr - r, mn - n)),
