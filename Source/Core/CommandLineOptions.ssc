@@ -2053,7 +2053,6 @@ namespace Microsoft.Boogie
                    ContractInference (uses Z3)
                    Z3api (Z3 using Managed .NET API)
   /proverOpt:KEY[=VALUE] : Provide a prover-specific option.
-                   V1 - enables Z3 version 1.3 (with /prover:z3).
   /proverLog:<file> : Log input for the theorem prover.  Like filenames
                    supplied as arguments to other options, <file> can use the
                    following macros:

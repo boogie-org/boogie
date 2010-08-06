@@ -100,8 +100,6 @@ void ObjectInvariant()
         return CommandLineOptions.Clo.Z3lets;
       }
     }
-    public bool V1 = false;
-    public bool V2 = false; // default set in PostParse
     public bool DistZ3 = false;
     public string ExeName = "z3.exe";
     public bool InverseImplies = false;
@@ -116,9 +114,7 @@ void ObjectInvariant()
     protected override bool Parse(string opt)
     {
       Contract.Requires(opt!=null);
-      return ParseBool(opt, "V1", ref V1) ||
-             ParseBool(opt, "V2", ref V2) ||
-             ParseBool(opt, "REVERSE_IMPLIES", ref InverseImplies) ||
+      return ParseBool(opt, "REVERSE_IMPLIES", ref InverseImplies) ||
              ParseString(opt, "INSPECTOR", ref Inspector) ||
              ParseBool(opt, "DIST", ref DistZ3) ||
              base.Parse(opt);
@@ -128,21 +124,10 @@ void ObjectInvariant()
     {
       base.PostParse();
 
-      if (!V1 && !V2) {
-        V2 = true; // default
-      } else if (V1 && V2) {
-        ReportError("V1 and V2 requested at the same time");
-      } else if (V1 && DistZ3) {
-        ReportError("V1 and DistZ3 requested at the same time");
-      }
-      if (V1) {
-        ExeName = "z3-v1.3.exe";
-      }
       if (DistZ3) {
         ExeName = "z3-dist.exe";
         CommandLineOptions.Clo.RestartProverPerVC = true;
-      }
-      
+      }     
     }
   }
 
@@ -169,7 +154,7 @@ void ObjectInvariant()
     }
 
     public override bool UseWeights { get {
-      return opts.V2;
+      return true;
     } }
 
     public override bool UseTypes { get {

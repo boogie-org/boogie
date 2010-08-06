@@ -26,11 +26,8 @@ namespace Microsoft.Boogie.Z3
     private readonly Inspector/*?*/ inspector;
     private readonly bool expectingModel = false;
 
-    private string cmdLineArgs = "";
-
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cmdLineArgs != null);
       Contract.Invariant(opts != null);
       Contract.Invariant(cce.NonNullElements(parameterSettings));
     }
@@ -69,96 +66,93 @@ namespace Microsoft.Boogie.Z3
       cmdLineBldr.Append(' ').Append(OptionChar()).Append(name);
     }
 
-    static List<OptionValue/*!*/>/*!*/ CreateParameterListForOptions(Z3InstanceOptions opts, Inspector inspector, out string cmdLineArgs, out bool expectingModel)
+    static bool ExpectingModel()
     {
-      List<OptionValue/*!*/>/*!*/ result = new List<OptionValue/*!*/>();
+      return CommandLineOptions.Clo.PrintErrorModel >= 1 ||
+             CommandLineOptions.Clo.EnhancedErrorMessages == 1 ||
+             CommandLineOptions.Clo.ContractInfer ||
+             CommandLineOptions.Clo.LazyInlining > 0 ||
+             CommandLineOptions.Clo.StratifiedInlining > 0;
+    }
+
+    static string/*!*/ CreateCommandLineArgsForOptions(Z3InstanceOptions opts)
+    {
       StringBuilder cmdLineArgsBldr = new StringBuilder();
       AppendCmdLineOption(cmdLineArgsBldr, "si");
-      expectingModel = false;
 
-      if (opts.V1) {
-        AddOption(result, "PARTIAL_MODELS", "true");
-        AddOption(result, "MODEL_VALUE_COMPLETION", "false");
-        AddOption(result, "HIDE_UNUSED_PARTITIONS", "false");
-        AppendCmdLineOption(cmdLineArgsBldr, "mam", CommandLineOptions.Clo.Z3mam);
-      } else {
-        AddOption(result, "MODEL_PARTIAL", "true");
-        AddOption(result, "MODEL_VALUE_COMPLETION", "false");
-        AddOption(result, "MODEL_HIDE_UNUSED_PARTITIONS", "false");
-        AddOption(result, "MODEL_V1", "true");
-        AddOption(result, "ASYNC_COMMANDS", "false");
+      if (CommandLineOptions.Clo.LazyInlining == 2) 
+        AppendCmdLineOption(cmdLineArgsBldr, "nw");
 
-        // Phase selection means to always try the negative literal polarity first, seems to be good for Boogie.
-        // The restart parameters change the restart behavior to match Z3 v1, which also seems to be good.
-        AddOption(result, "PHASE_SELECTION", "0");
-        AddOption(result, "RESTART_STRATEGY", "0");
-        AddOption(result, "RESTART_FACTOR", "|1.5|");
+      if (CommandLineOptions.Clo.z3AtFlag)
+        AppendCmdLineOption(cmdLineArgsBldr, "@");
 
-        // This is used by VCC, but could be also useful for others, if sk_hack(foo(x)) is included as trigger,
-        // the foo(x0) will be activated for e-matching when x is skolemized to x0.
-        AddOption(result, "NNF_SK_HACK", "true");
+      if (0 <= CommandLineOptions.Clo.ProverCCLimit)
+        AppendCmdLineOption(cmdLineArgsBldr, "cex", CommandLineOptions.Clo.ProverCCLimit);
 
-        // More or less like MAM=0.
-        AddOption(result, "QI_EAGER_THRESHOLD", "100");
-        // Complex proof attempts in VCC (and likely elsewhere) require matching depth of 20 or more.
+      if (0 <= opts.Timeout)
+        AppendCmdLineOption(cmdLineArgsBldr, "t", opts.Timeout);
 
-        // the following will make the :weight option more usable
-        AddOption(result, "QI_COST", "|\"(+ weight generation)\"|");
+      if (ExpectingModel())
+        AppendCmdLineOption(cmdLineArgsBldr, "m");
 
-        // Make the integer model more diverse by default, speeds up some benchmarks a lot.
-        AddOption(result, "ARITH_RANDOM_INITIAL_VALUE", "true");
-
-        // The left-to-right structural case-splitting strategy.
-        AddOption(result, "SORT_AND_OR", "false");
-        AddOption(result, "CASE_SPLIT", "3");
-
-        // In addition delay adding unit conflicts.
-        AddOption(result, "DELAY_UNITS", "true");
-        AddOption(result, "DELAY_UNITS_THRESHOLD", "16");
-
-        if (opts.Inspector != null) {
-          AddOption(result, "PROGRESS_SAMPLING_FREQ", "100");
-        }
+      foreach (string opt in CommandLineOptions.Clo.Z3Options) {
+        Contract.Assert(opt != null);
+        cmdLineArgsBldr.Append(" \"").Append(opt).Append('\"');
       }
+
+      return cmdLineArgsBldr.ToString();
+    }
+
+    static List<OptionValue/*!*/>/*!*/ CreateParameterListForOptions(Z3InstanceOptions opts, Inspector inspector)
+    {
+      List<OptionValue/*!*/>/*!*/ result = new List<OptionValue/*!*/>();
+
+      AddOption(result, "MODEL_PARTIAL", "true");
+      AddOption(result, "MODEL_VALUE_COMPLETION", "false");
+      AddOption(result, "MODEL_HIDE_UNUSED_PARTITIONS", "false");
+      AddOption(result, "MODEL_V1", "true");
+      AddOption(result, "ASYNC_COMMANDS", "false");
+
+      // Phase selection means to always try the negative literal polarity first, seems to be good for Boogie.
+      // The restart parameters change the restart behavior to match Z3 v1, which also seems to be good.
+      AddOption(result, "PHASE_SELECTION", "0");
+      AddOption(result, "RESTART_STRATEGY", "0");
+      AddOption(result, "RESTART_FACTOR", "|1.5|");
+
+      // This is used by VCC, but could be also useful for others, if sk_hack(foo(x)) is included as trigger,
+      // the foo(x0) will be activated for e-matching when x is skolemized to x0.
+      AddOption(result, "NNF_SK_HACK", "true");
+
+      // More or less like MAM=0.
+      AddOption(result, "QI_EAGER_THRESHOLD", "100");
+      // Complex proof attempts in VCC (and likely elsewhere) require matching depth of 20 or more.
+
+      // the following will make the :weight option more usable
+      AddOption(result, "QI_COST", "|\"(+ weight generation)\"|");
+
+      // Make the integer model more diverse by default, speeds up some benchmarks a lot.
+      AddOption(result, "ARITH_RANDOM_INITIAL_VALUE", "true");
+
+      // The left-to-right structural case-splitting strategy.
+      AddOption(result, "SORT_AND_OR", "false");
+      AddOption(result, "CASE_SPLIT", "3");
+
+      // In addition delay adding unit conflicts.
+      AddOption(result, "DELAY_UNITS", "true");
+      AddOption(result, "DELAY_UNITS_THRESHOLD", "16");
+
+      if (opts.Inspector != null)
+        AddOption(result, "PROGRESS_SAMPLING_FREQ", "100");
 
       if (opts.Typed) {
         AddOption(result, "TYPE_CHECK", "true");
         if (opts.BitVectors == CommandLineOptions.BvHandling.Z3Native)
-          if (opts.V2)
             AddOption(result, "BV_REFLECT", "true");
-          else
-            AddOption(result, "REFLECT_BV_OPS", "true");
       }
 
-      if (CommandLineOptions.Clo.LazyInlining == 2) {
+      if (CommandLineOptions.Clo.LazyInlining == 2)
         AddOption(result, "MACRO_EXPANSION", "true");
-        AppendCmdLineOption(cmdLineArgsBldr, "nw");
-      }
-
-      if (CommandLineOptions.Clo.z3AtFlag) 
-        AppendCmdLineOption(cmdLineArgsBldr, "@ "); 
       
-      if (0 <= CommandLineOptions.Clo.ProverCCLimit)
-         AppendCmdLineOption(cmdLineArgsBldr, "cex", CommandLineOptions.Clo.ProverCCLimit);
-      
-      if (0 <= opts.Timeout) {
-        AppendCmdLineOption(cmdLineArgsBldr, "t", opts.Timeout);
-      }
-      if (CommandLineOptions.Clo.PrintErrorModel >= 1 ||
-          CommandLineOptions.Clo.EnhancedErrorMessages == 1 ||
-          CommandLineOptions.Clo.ContractInfer ||
-          CommandLineOptions.Clo.LazyInlining > 0 ||
-          CommandLineOptions.Clo.StratifiedInlining > 0) {
-        AppendCmdLineOption(cmdLineArgsBldr, "m");
-        expectingModel = true;
-      }
-      
-      // Z3 version 1.3 does not support SETPARAMETER in the input, so we tack on the OPTION=value pairs to z3args
-      if (opts.V1) {
-        foreach (OptionValue opt in result) 
-          cmdLineArgsBldr.Append(" \"").Append(opt.Option).Append('=').Append(opt.Value).Append('\"');
-      }
-
       foreach (string opt in CommandLineOptions.Clo.Z3Options) {
         Contract.Assert(opt != null);
         int eq = opt.IndexOf("=");
@@ -169,10 +163,8 @@ namespace Microsoft.Boogie.Z3
         if (eq > 0 && opt.IndexOf(" ") < 0 && 'A' <= opt[0] && opt[0] <= 'Z') {
           AddOption(result, opt.Substring(0, eq), opt.Substring(eq + 1));
         }
-        cmdLineArgsBldr.Append(" \"").Append(opt).Append('\"');
       }
 
-      cmdLineArgs = cmdLineArgsBldr.ToString();
       return result;
     }
 
@@ -182,18 +174,16 @@ namespace Microsoft.Boogie.Z3
       : base(ComputeProcessStartInfo(opts), opts.ExeName) { // throws ProverException
       Contract.Requires(opts != null);
       Contract.Requires(inspector == null || cce.Owner.Same(opts, inspector));
-      this.parameterSettings = CreateParameterListForOptions(opts, inspector, out this.cmdLineArgs, out expectingModel);
+      this.parameterSettings = CreateParameterListForOptions(opts, inspector);
       cce.Owner.AssignSame(this, opts);
       this.opts = opts;
       this.inspector = inspector;
+      this.expectingModel = ExpectingModel();
     }
 
     private static ProcessStartInfo ComputeProcessStartInfo(Z3InstanceOptions opts)
     {
-      string cmdLineArgs;
-      bool dummy;
-      CreateParameterListForOptions(opts, null, out cmdLineArgs, out dummy);
-      return new ProcessStartInfo(opts.ExeName, cmdLineArgs)
+      return new ProcessStartInfo(opts.ExeName, CreateCommandLineArgsForOptions(opts))
                {
                  CreateNoWindow = true,
                  UseShellExecute = false,
@@ -208,7 +198,7 @@ namespace Microsoft.Boogie.Z3
 
       StringBuilder sb = new StringBuilder();
       sb.AppendFormat("Z3 command line: {0} {1}\nUser supplied Z3 options:",
-                      opts.ExeName, cmdLineArgs);
+                      opts.ExeName, this.simplify.StartInfo.Arguments);
       Contract.Assume(cce.IsPeerConsistent(CommandLineOptions.Clo));
       foreach (string opt in CommandLineOptions.Clo.Z3Options) {
         Contract.Assert(opt != null);
@@ -222,11 +212,8 @@ namespace Microsoft.Boogie.Z3
     public override IEnumerable<string/*!>!*/> ParameterSettings {
       get {
         Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<string>>()));
-
-        if (opts.V2) {
-          foreach (OptionValue opt in parameterSettings) {
-            yield return "(SETPARAMETER " + opt.Option + " " + opt.Value + ")";
-          }
+        foreach (OptionValue opt in parameterSettings) {
+          yield return "(SETPARAMETER " + opt.Option + " " + opt.Value + ")";
         }
       }
     }
