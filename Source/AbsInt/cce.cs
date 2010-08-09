@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if CONTRACTS_FULL
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Text;
@@ -60,3 +61,4 @@ public class RepAttribute : System.Attribute {
 }
 public class CapturedAttribute : System.Attribute {
 }
+#endif
