@@ -1,4 +1,4 @@
-﻿#if CONTRACTS_FULL
+﻿
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -103,4 +103,3 @@ public class ReadsAttribute : System.Attribute {
   public ReadsAttribute(object o) {
   }
 }
-#endif

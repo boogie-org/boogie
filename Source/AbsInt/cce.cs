@@ -1,4 +1,4 @@
-﻿#if CONTRACTS_FULL
+﻿
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -54,11 +54,9 @@ public static class cce {
     }
   }
 }
-
 public class PeerAttribute : System.Attribute {
 }
 public class RepAttribute : System.Attribute {
 }
 public class CapturedAttribute : System.Attribute {
 }
-#endif
