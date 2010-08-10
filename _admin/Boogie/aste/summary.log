@@ -1,22 +1,22 @@
-# Aste started: 2010-08-08 07:00:02
+# Aste started: 2010-08-10 07:00:03
 # Host id: Boogiebox
-# [2010-08-08 07:01:46] SpecSharp revision: 55320
-# [2010-08-08 07:02:44] Boogie revision: 56211
-# [2010-08-08 07:03:07] SscBoogie revision: 55325
-[2010-08-08 07:03:31] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-08-10 07:02:13] SpecSharp revision: 55320
+# [2010-08-10 07:03:10] Boogie revision: 56292
+# [2010-08-10 07:03:35] SscBoogie revision: 55325
+[2010-08-10 07:04:00] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-08-08 07:04:57] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-08-10 07:05:26] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4223,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(720,15): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(742,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(1084,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4271,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(717,15): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(741,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(1083,11): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\Wlp.cs(77,8): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(379,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(445,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(856,29): warning CS0649: Field 'VC.VCGen.Split.first_assert' is never assigned to, and will always have its default value null
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(853,29): warning CS0649: Field 'VC.VCGen.Split.first_assert' is never assigned to, and will always have its default value null
     D:\Temp\aste\Boogie\Source\VCGeneration\DoomCheck.cs(177,22): warning CS0169: The field 'VC.DoomCheck._tmpUseFreshBVars' is never used
     D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(65,9): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(339,7): warning CS0162: Unreachable code detected
@@ -61,7 +61,7 @@
     warning CS0436
     warning CS0436
     warning CS0436
-[2010-08-08 07:05:03] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
+[2010-08-10 07:05:32] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(760,18): warning CS0168: The variable 's' is declared but never used
     D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1340,72): warning CS0168: The variable 'id' is declared but never used
@@ -95,6 +95,6 @@
     warning CS0436
     warning CS0436
     warning CS0436
-[2010-08-08 07:28:17] 1 out of 26 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+[2010-08-10 07:33:36] 1 out of 27 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
 ['bitvectors']
-# [2010-08-08 07:29:55] Released nightly of Boogie
+# [2010-08-10 07:35:22] Released nightly of Boogie
