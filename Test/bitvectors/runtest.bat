@@ -16,5 +16,5 @@ for %%f in (bv5.bpl bv6.bpl bv8.bpl) do (
   %BGEXE% %* %%f
 )
 
-echo -------------------- bv9.bpl /bv:z /z3bv --------------------
-%BGEXE% /bv:z /z3bv bv9.bpl
+echo -------------------- bv9.bpl /bv:z /proverOpt:OPTIMIZE_FOR_BV=true --------------------
+%BGEXE% /bv:z /proverOpt:OPTIMIZE_FOR_BV=true bv9.bpl

@@ -37,19 +37,19 @@ bv4.bpl(5,14): Error: no bitvector handling specified, please use /bv:i or /bv:z
 -------------------- bv5.bpl --------------------
 bv5.bpl(10,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    bv5.bpl(5,12): anon0
+        bv5.bpl(5,12): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 -------------------- bv6.bpl --------------------
 bv6.bpl(8,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    bv6.bpl(5,5): anon0
+        bv6.bpl(5,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 -------------------- bv8.bpl --------------------
 
 Boogie program verifier finished with 2 verified, 0 errors
--------------------- bv9.bpl /bv:z /z3bv --------------------
+-------------------- bv9.bpl /bv:z /proverOpt:OPTIMIZE_FOR_BV=true --------------------
 Boogie program verifier version 2, Copyright (c) 2003-2010, Microsoft.
 
 Boogie program verifier finished with 1 verified, 0 errors
