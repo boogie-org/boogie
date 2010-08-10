@@ -122,6 +122,9 @@ object Chalice {
                // terminate boogie if interrupted
                Runtime.getRuntime.addShutdownHook(new Thread(new Runnable() {
                  def run {
+                   val kill = Runtime.getRuntime.exec("taskkill /T /F /IM Boogie.exe");
+                   kill.waitFor;
+                   // just to be sure
                    boogie.destroy
                  }
                }))
