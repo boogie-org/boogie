@@ -462,7 +462,7 @@ void ObjectInvariant()
           List<List<int>> array = (List<List<int>>) o;
           List<List<object>> arrayVal = new List<List<object>>();
           foreach (List<int> tuple in array) {
-            Contract.Assert(Contract.Result<List<int>>() != null);
+            Contract.Assert(tuple != null);
 
             List<object> tupleVal = new List<object>();
             foreach (int j in tuple) {
