@@ -1,0 +1,45 @@
+class Cube0 {
+  method compute(n:int) returns (v: int)
+    requires n >= 0; 
+    ensures v == n*n*n;
+  {
+    assume v == n*n*n;
+  }
+}
+
+class Cube1 {
+  method compute(n:int) returns (v: int, w:int) // introducing recursion-local state?
+    requires n >= 0;
+    ensures v == n*n*n;
+    ensures w == (n+1)*(n+1)*(n+1)-n*n*n; // strengthen post-condition
+  {
+    if (n == 0) {
+      v := 0;
+      w := 1;
+    } else {
+      call v,w := compute(n-1); // rely on stronger post-condition
+      v := v + w;
+      assume w == 3*n*n + 3*n + 1; // simplify and guess next step
+    }
+  }
+}
+
+class Cube2 {
+  method compute(n:int) returns (v: int, w:int, x:int) // more state
+    requires n >= 0;
+    ensures v == n*n*n;
+    ensures w == (n+1)*(n+1)*(n+1)-n*n*n;
+    ensures x == (n+1)*(n+1);
+  { 
+    if (n == 0) {
+      v := 0;
+      w := 1;
+      x := 1;
+    } else {
+      call v,w,x := compute(n-1);
+      v := v + w;
+      w := 3*x + 3*n + 1;
+      x := x + 2*n + 1;
+    }
+  }
+} 
