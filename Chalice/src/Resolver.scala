@@ -86,7 +86,7 @@ object Resolver {
            }
          case _:Condition =>
          case _:Predicate =>
-         case Function(id, ins, out, specs, definition) => 
+         case Function(id, ins, out, specs, _) => 
            for (v <- ins) {
              ResolveType(v.t, contextNoCurrentClass)
            }
@@ -140,7 +140,7 @@ object Resolver {
              var ctx = context;
              ResolveExpr(e, ctx, false, true)(true);
              if(!e.typ.IsBool) context.Error(e.pos, "predicate requires a boolean expression (found " + e.typ.FullName + ")")
-           case f@Function(id, ins, out, spec, e) =>
+           case f@Function(id, ins, out, spec, definition) =>
              var ctx = context
              for (v <- ins) {
                ctx = ctx.AddVariable(v)
@@ -151,18 +151,22 @@ object Resolver {
                case Postcondition(e) => assert(ctx.CurrentMember != null); ResolveExpr(e, ctx, false, true)(false)
                case lc : LockChange => context.Error(lc.pos, "lockchange not allowed on function") 
              }
-             ResolveExpr(e, ctx, false, false)(false)
-             if(! canAssign(out.typ, e.typ)) context.Error(e.pos, "function body does not match declared type (expected: " + out.FullName + ", found: " + e.typ.FullName + ")")
 
-             // resolve function calls
-             calls addNode f;
-             e visit {
-               case app : FunctionApplication =>
-                 assert(app.f != null);
-                 calls addNode app.f;
-                 calls.addEdge(f, app.f);
-                 if (app.f == f) f.isRecursive = true; // self-recursion
-               case _ =>
+             definition match {
+               case Some(e) =>
+                 ResolveExpr(e, ctx, false, false)(false)
+                 if(! canAssign(out.typ, e.typ)) context.Error(e.pos, "function body does not match declared type (expected: " + out.FullName + ", found: " + e.typ.FullName + ")")
+                 // resolve function calls
+                 calls addNode f;
+                 e visit {
+                 case app : FunctionApplication =>
+                   assert(app.f != null);
+                   calls addNode app.f;
+                   calls.addEdge(f, app.f);
+                   if (app.f == f) f.isRecursive = true; // self-recursion
+                 case _ =>
+                 }
+               case None =>
              }
          }
        }
@@ -784,8 +788,10 @@ object Resolver {
    case contains@Contains(e0, e1) =>
      ResolveExpr(e0, context, twoStateContext, false);
      ResolveExpr(e1, context, twoStateContext, false);
-     if(! e1.typ.IsSeq) context.Error(contains.pos, "RHS operand of 'in' must be sequence. (found: " + e1.typ.FullName + ").");
-     else if(e0.typ ne e1.typ.parameters(0)) context.Error(contains.pos, "LHS operand's type must be element type of sequence. (found: " + e0.typ.FullName + ", expected: " + e1.typ.parameters(0).FullName + ").");
+     if(! e1.typ.IsSeq)
+       context.Error(contains.pos, "RHS operand of 'in' must be sequence. (found: " + e1.typ.FullName + ").");
+     else if(! canAssign(e1.typ.parameters(0), e0.typ))
+       context.Error(contains.pos, "LHS operand's type must be element type of sequence. (found: " + e0.typ.FullName + ", expected: " + e1.typ.parameters(0).FullName + ").");
      contains.typ = BoolClass;
    case bin: BinaryExpr =>
      ResolveExpr(bin.E0, context, twoStateContext, specContext && bin.isInstanceOf[And])

@@ -131,7 +131,7 @@ case class SpecialField(name: String, tp: Type) extends Field(name, tp, false) {
 }
 case class Method(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], body: List[Statement]) extends NamedMember(id)
 case class Predicate(id: String, definition: Expression) extends NamedMember(id)
-case class Function(id: String, ins: List[Variable], out: Type, spec: List[Specification], definition: Expression) extends NamedMember(id) {
+case class Function(id: String, ins: List[Variable], out: Type, spec: List[Specification], definition: Option[Expression]) extends NamedMember(id) {
   def apply(rec: Expression, args: List[Expression]): FunctionApplication = {
     val result = FunctionApplication(rec, id, args);
     result.f = this;

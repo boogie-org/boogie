@@ -127,7 +127,7 @@ class Translator {
   def translateFunction(f: Function): List[Decl] = {
     val myresult = BVar("result", f.out.typ);
     etran.checkTermination = !skipTermination;
-    val checkBody = isDefined(f.definition);
+    val checkBody = f.definition match {case Some(e) => isDefined(e); case None => Nil};
     etran.checkTermination = false;
     // Boogie function that represents the Chalice function
     Boogie.Function(functionName(f), BVar("heap", theap) :: BVar("mask", tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar), BVar("$myresult", f.out.typ)) ::
@@ -143,13 +143,12 @@ class Translator {
       bassume(CurrentModule ==@ VarExpr(ModuleName(currentClass))) :: // verify the body assuming that you are in the module
       // check definedness of function body
       checkBody :::
-      BLocal(myresult) ::
-      (Boogie.VarExpr("result") := etran.Tr(f.definition)) ::
+      (f.definition match {case Some(e) => BLocal(myresult) :: (Boogie.VarExpr("result") := etran.Tr(e)); case None => Nil}) :::
       // check that postcondition holds
       ExhaleWithChecking(Postconditions(f.spec) map { post => ((if(0<defaults) UnfoldPredicatesWithReceiverThis(post) else post),
               ErrorMessage(f.pos, "Postcondition at " + post.pos + " might not hold."))}, "function postcondition")) ::
     // definition axiom
-    definitionAxiom(f) :::
+    (if (f.definition.isDefined) definitionAxiom(f) else Nil) :::
     // framing axiom (+ frame function)
     framingAxiom(f) :::
     // postcondition axiom(s)
@@ -157,6 +156,7 @@ class Translator {
   }
 
   def definitionAxiom(f: Function): List[Decl] = {
+    assert(f.definition.isDefined)
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
     val frameFunctionName = "##" + f.FullName;
 
@@ -181,9 +181,9 @@ class Translator {
           Some(result)
         case _ => None
       }
-      f.definition transform limit;
+      f.definition.get transform limit;
     } else
-      f.definition);
+      f.definition.get);
 
     Axiom(new Boogie.Forall(
       formals, new Trigger(applyF),
@@ -2329,8 +2329,8 @@ object TranslationHelper {
             case Star => throw new Exception("not supported yet")
             case Epsilons(p) => EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), o), p)
           })
-        case func@FunctionApplication(obj: ThisExpr, name, args) if 2<=TranslationOptions.defaults =>
-          Some(SubstVars(func.f.definition, obj, func.f.ins, args))
+        case func@FunctionApplication(obj: ThisExpr, name, args) if 2<=TranslationOptions.defaults && func.f.definition.isDefined =>
+          Some(SubstVars(func.f.definition.get, obj, func.f.ins, args))
         case _ => None
       }
     AST.transform(expr, func)

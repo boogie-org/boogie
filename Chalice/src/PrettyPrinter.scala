@@ -54,9 +54,10 @@ object PrintProgram {
         case Postcondition(e) => print("    ensures "); Expr(e); println(Semi)
         case LockChange(ee) => print("    lockchange "); ExprList(ee); println(Semi)
       }
-      print("  { ");
-      Expr(e);
-      println(" }");
+      e match {
+        case Some(e) => print("  { "); Expr(e); println(" }");
+        case None =>
+      }      
   }
   def Stmt(s: Statement, indent: Int): Unit = s match {
     case Assert(e) =>

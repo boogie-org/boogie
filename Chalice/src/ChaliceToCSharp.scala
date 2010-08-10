@@ -84,11 +84,11 @@ class ChaliceToCSharp {
           (rep(outs map { o: Variable => indent + "public " + convertType(o.t) + " " + o.id + ";" + nl  }))
         }) +
         indent + "}"  + nl
-      case Function(id, ins, out, spec, definition) => 
+      case Function(id, ins, out, spec, definition) if definition.isDefined =>
         indent + "public " + convertType(out) + " " + id + "(" + 
          repsep(ins map { variable => convertType(variable.t) + " " + variable.id }, ", ") + 
          ") " + "{" + nl +
-         indentMore { indent + "return " + convertExpression(definition) + ";" + nl } +
+         indentMore { indent + "return " + convertExpression(definition.get) + ";" + nl } +
         indent +  "}" + nl
       case MonitorInvariant(_) => indent + "// monitor invariant" + nl
       case Predicate(_, _) => indent + "//predicate" + nl

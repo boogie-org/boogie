@@ -95,7 +95,7 @@ class Parser extends StandardTokenParsers {
   def predicateDecl: Parser[Predicate] = 
     ("predicate" ~> ident) ~ ("{" ~> expression <~ "}") ^^ { case id ~ definition => Predicate(id, definition) }
   def functionDecl = 
-    ("function" ~> ident) ~ formalParameters(true) ~ (":" ~> typeDecl) ~ (methodSpec*) ~ ("{" ~> expression <~ "}") ^^ { case id ~ ins ~ out ~ specs ~ body => Function(id, ins, out, specs, body) }
+    ("function" ~> ident) ~ formalParameters(true) ~ (":" ~> typeDecl) ~ (methodSpec*) ~ opt("{" ~> expression <~ "}") ^^ { case id ~ ins ~ out ~ specs ~ body => Function(id, ins, out, specs, body) }
   def formalParameters(immutable: Boolean) =
     "(" ~> (formalList(immutable) ?) <~ ")" ^^ {
       case None => Nil
@@ -236,6 +236,7 @@ class Parser extends StandardTokenParsers {
                        rhs match {
                          case Some(NewRhs(tid, _, _, _)) => Type(tid, Nil)
                          case Some(BoolLiteral(b)) => Type("bool", Nil)
+                         case Some(x:BinaryExpr) if x.ResultType != null => new Type(x.ResultType);
                          case _ => Type("int", Nil)
                        }
                    },
@@ -350,7 +351,7 @@ class Parser extends StandardTokenParsers {
           case e0 ~ Some(">" ~ e1) => Greater(e0,e1)
           case e0 ~ Some("<<" ~ e1) => LockBelow(e0,e1)
           case e0 ~ Some("in" ~ e1) => Contains(e0, e1)
-          case e0 ~ Some("!in" ~ e1) => Not(Contains(e0, e1))
+          case e0 ~ Some("!in" ~ e1) => val c = Contains(e0, e1); c.pos = e0.pos; Not(c)
         })
   def CompareOp = "==" | "!=" | "<" | "<=" | ">=" | ">" | "<<" | "in" | "!in"
   def concatExpr =
