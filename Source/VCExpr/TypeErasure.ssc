@@ -1027,6 +1027,10 @@ namespace Microsoft.Boogie.TypeErasure
       newArgs[2] = AxBuilder.Cast(newArgs[2], t);
       return Gen.Function(node.Op, newArgs);
     }
+    public override VCExpr! VisitCustomOp         (VCExprNAry! node, VariableBindings! bindings) {
+      List<VCExpr!>! newArgs = MutateSeq(node, bindings, 0);
+      return Gen.Function(node.Op, newArgs);
+    }
     public override VCExpr! VisitAddOp            (VCExprNAry! node, VariableBindings! bindings) {
       return CastArguments(node, Type.Int, bindings, 0);
     }

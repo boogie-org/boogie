@@ -331,7 +331,6 @@ namespace VC {
 
       PassifyProgram(impl);
 
-
       #endregion
       //EmitImpl(impl,false);
 
@@ -1284,7 +1283,7 @@ namespace VC {
       Block exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
       Contract.Assert(exitBlock != null);
 
-      AddBlocksBetween(impl);
+      AddBlocksBetween(impl.Blocks);
 
       #region Insert pre- and post-conditions and where clauses as assume and assert statements
       {
@@ -1323,9 +1322,8 @@ namespace VC {
       Contract.Requires(impl != null);
       Contract.Ensures(Contract.Result<Hashtable>() != null);
 
-      current_impl = impl;
+      CurrentLocalVariables = impl.LocVars;
       Convert2PassiveCmd(impl);
-      impl = current_impl;
       return new Hashtable();
     }
 

@@ -40,11 +40,8 @@ namespace VC {
         this.GenerateVCsForLazyInlining(program);
       }
       if (CommandLineOptions.Clo.StratifiedInlining > 0) {
-
         this.GenerateVCsForStratifiedInlining(program);
-
       }
-      // base();
     }
 
     private static AssumeCmd AssertTurnedIntoAssume(AssertCmd assrt) {
@@ -143,7 +140,7 @@ namespace VC {
           Contract.Assert(v != null);
           functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
         }
-        TypedIdent ti = new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Bool);
+        TypedIdent ti = new TypedIdent(Token.NoToken, "", Bpl.Type.Bool);
         Contract.Assert(ti != null);
         Formal returnVar = new Formal(Token.NoToken, ti, false);
         Contract.Assert(returnVar != null);
@@ -650,7 +647,7 @@ namespace VC {
           System.Console.WriteLine(" --- smoke #{0}, before passify", id);
           Emit();
         }
-        parent.current_impl = impl;
+        parent.CurrentLocalVariables = impl.LocVars;
         parent.PassifyImpl(impl, program);
         Hashtable label2Absy;
         Checker ch = parent.FindCheckerFor(impl, CommandLineOptions.Clo.SmokeTimeout);
@@ -666,7 +663,7 @@ namespace VC {
         ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback));
         ch.ProverDone.WaitOne();
         ProverInterface.Outcome outcome = ch.ReadOutcome();
-        parent.current_impl = null;
+        parent.CurrentLocalVariables = null;
 
         DateTime end = DateTime.Now;
         TimeSpan elapsed = end - start;
@@ -1150,7 +1147,7 @@ namespace VC {
 
         if (allow_small) {
           foreach (Block ch in Exits(b)) {
-            Contract.Assert(b != null);
+            Contract.Assert(ch != null);
             if (b == split_block && assumized_branches.Contains(ch))
               continue;
             ComputeBlockSetsHelper(ch, allow_small);
@@ -1541,9 +1538,52 @@ namespace VC {
         impl.Blocks = blocks;
 
         checker = parent.FindCheckerFor(impl, timeout);
+        Hashtable/*<int, Absy!>*/ label2absy = new Hashtable/*<int, Absy!>*/();
 
-        Hashtable/*<int, Absy!>*/ label2absy;
-        VCExpr vc = parent.GenerateVC(impl, null, out label2absy, checker);
+        ProverInterface tp = checker.TheoremProver;
+        ProverContext ctx = tp.Context;
+        Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
+        bet.SetCodeExprConverter(
+          new CodeExprConverter(
+          delegate (CodeExpr codeExpr, Hashtable/*<Block, VCExprVar!>*/ blockVariables, List<VCExprLetBinding/*!*/> bindings) {
+            VCGen vcgen = new VCGen(new Program(), null, false);
+            vcgen.variable2SequenceNumber = new Hashtable/*Variable -> int*/();
+            vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
+            vcgen.CurrentLocalVariables = codeExpr.LocVars;
+            // codeExpr.Blocks.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
+
+            vcgen.ComputePredecessors(codeExpr.Blocks);
+            vcgen.AddBlocksBetween(codeExpr.Blocks);
+            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq());
+            VCExpr startCorrect = VCGen.LetVC(
+		      codeExpr.Blocks[0],
+              null,
+              label2absy,
+		      blockVariables,
+		      bindings,
+		      ctx);
+            VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
+
+            if (vcgen.CurrentLocalVariables.Length != 0) {
+              Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
+              List<VCExprVar> boundVars = new List<VCExprVar>();
+              foreach (Variable v in vcgen.CurrentLocalVariables) {
+                Contract.Assert(v != null);
+                VCExprVar ev = translator.LookupVariable(v);
+                Contract.Assert(ev != null);
+                boundVars.Add(ev);
+                if (v.TypedIdent.Type.Equals(Bpl.Type.Bool)) {
+                  // add an antecedent (tickleBool ev) to help the prover find a possible trigger
+                  vce = checker.VCExprGen.Implies(checker.VCExprGen.Function(VCExpressionGenerator.TickleBoolOp, ev), vce);
+                }
+              }
+              vce = checker.VCExprGen.Forall(boundVars, new List<VCTrigger>(), vce);
+            }
+            return vce;
+          }
+		  ));
+
+        VCExpr vc = parent.GenerateVCAux(impl, null, label2absy, checker);
         Contract.Assert(vc != null);
 
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
@@ -1618,17 +1658,25 @@ namespace VC {
     #endregion
 
 
-    protected VCExpr GenerateVC(Implementation/*!*/ impl, Variable controlFlowVariable, out Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch) {
+    protected VCExpr GenerateVC(Implementation/*!*/ impl, Variable controlFlowVariable, out Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch)
+    {
       Contract.Requires(impl != null);
       Contract.Requires(ch != null);
       Contract.Ensures(Contract.ValueAtReturn(out label2absy) != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
 
+      label2absy = new Hashtable/*<int, Absy!>*/();
+      return GenerateVCAux(impl, controlFlowVariable, label2absy, ch);
+    }
+
+    protected VCExpr GenerateVCAux(Implementation/*!*/ impl, Variable controlFlowVariable, Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch) {
+      Contract.Requires(impl != null);
+      Contract.Requires(ch != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       TypecheckingContext tc = new TypecheckingContext(null);
       impl.Typecheck(tc);
 
-      label2absy = new Hashtable/*<int, Absy!>*/();
       VCExpr vc;
       switch (CommandLineOptions.Clo.vcVariety) {
         case CommandLineOptions.VCVariety.Structured:
@@ -1676,9 +1724,9 @@ namespace VC {
 
     public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback){
       Contract.Requires(impl != null);
-       Contract.Requires(program != null);
+      Contract.Requires(program != null);
       Contract.Requires(callback != null);
-      Contract.EnsuresOnThrow< UnexpectedProverOutputException>(true);
+      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       if (impl.SkipVerification) {
         return Outcome.Inconclusive; // not sure about this one
       } 
@@ -2140,7 +2188,7 @@ namespace VC {
     }
 
     // Return the VC for the impl (don't pass it to the theorem prover).
-    // GetVC is a cheap imitation of VerifyImplementatio, except that the VC is not passed to the theorem prover.
+    // GetVC is a cheap imitation of VerifyImplementation, except that the VC is not passed to the theorem prover.
     private void GetVC(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback, out VCExpr/*!*/ vc, out Hashtable/*<int, Absy!>*//*!*/ label2absy, out StratifiedInliningErrorReporter/*!*/ reporter) {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
@@ -2914,7 +2962,7 @@ namespace VC {
     Contract.Requires(program != null);
       impl.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
 
-      current_impl = impl;
+      CurrentLocalVariables = impl.LocVars;
       variable2SequenceNumber = new Hashtable/*Variable -> int*/();
       incarnationOriginMap = new Dictionary<Incarnation, Absy>();
 
@@ -3124,7 +3172,7 @@ namespace VC {
     {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
-    Contract.Ensures(Contract.Result<Hashtable>() != null);
+      Contract.Ensures(Contract.Result<Hashtable>() != null);
 
       Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = new Hashtable/*TransferCmd->ReturnCmd*/();
       Block exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
@@ -3157,7 +3205,6 @@ namespace VC {
             cc.Add(c);
           }
         }
-
         // add cc and the preconditions to new blocks preceding impl.Blocks[0]
         InjectPreconditions(impl, cc);
 
@@ -3192,7 +3239,7 @@ namespace VC {
       }
       #endregion
 
-      AddBlocksBetween(impl);
+      AddBlocksBetween(impl.Blocks);
       
       #region Debug Tracing
       if (CommandLineOptions.Clo.TraceVerify) 
@@ -3207,6 +3254,7 @@ namespace VC {
       }
       
       Hashtable exitIncarnationMap = Convert2PassiveCmd(impl);
+
       if (implName2LazyInliningInfo != null && implName2LazyInliningInfo.ContainsKey(impl.Name))
       {
         LazyInliningInfo info = implName2LazyInliningInfo[impl.Name];
@@ -3296,7 +3344,7 @@ namespace VC {
       Contract.Requires(program != null);
       Contract.Requires(implName != null);
       Contract.Requires(values != null);
-    Contract.Ensures(Contract.Result<Counterexample>() != null);
+      Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       VCExprTranslator vcExprTranslator = cce.NonNull(context.exprTranslator);
       Boogie2VCExprTranslator boogieExprTranslator = context.BoogieExprTranslator;
@@ -4280,14 +4328,13 @@ namespace VC {
     //    }
 
     static VCExpr LetVC(Block startBlock,
-                         Variable controlFlowVariable,
-                         Hashtable/*<int, Absy!>*/ label2absy,
-                         ProverContext proverCtxt) {
+                        Variable controlFlowVariable,
+                        Hashtable/*<int, Absy!>*/ label2absy,
+                        ProverContext proverCtxt) {
       Contract.Requires(startBlock != null);
       Contract.Requires(controlFlowVariable != null);
       Contract.Requires(label2absy != null);
       Contract.Requires(proverCtxt != null);
-
 
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
@@ -4298,11 +4345,11 @@ namespace VC {
     }
 
     static VCExpr LetVC(Block block,
-                         Variable controlFlowVariable,
-                         Hashtable/*<int, Absy!>*/ label2absy,
-                         Hashtable/*<Block, VCExprVar!>*/ blockVariables,
-                         List<VCExprLetBinding/*!*/>/*!*/ bindings,
-                         ProverContext proverCtxt)
+                        Variable controlFlowVariable,
+                        Hashtable/*<int, Absy!>*/ label2absy,
+                        Hashtable/*<Block, VCExprVar!>*/ blockVariables,
+                        List<VCExprLetBinding/*!*/>/*!*/ bindings,
+                        ProverContext proverCtxt)
     {
       Contract.Requires(block != null);
       Contract.Requires(controlFlowVariable != null);
@@ -4311,7 +4358,7 @@ namespace VC {
       Contract.Requires(cce.NonNullElements(bindings));
       Contract.Requires(proverCtxt != null);
 
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       VCExpressionGenerator gen = proverCtxt.ExprGen;
       Contract.Assert(gen != null);
@@ -4326,7 +4373,12 @@ namespace VC {
         VCExpr SuccCorrect;
         GotoCmd gotocmd = block.TransferCmd as GotoCmd;
         if (gotocmd == null) {
-          SuccCorrect = VCExpressionGenerator.True;
+          ReturnExprCmd re = block.TransferCmd as ReturnExprCmd;
+          if (re == null) {
+            SuccCorrect = VCExpressionGenerator.True;
+          } else {
+            SuccCorrect = proverCtxt.BoogieExprTranslator.Translate(re.Expr);
+          }
         } else {
           Contract.Assert( gotocmd.labelTargets != null);
           List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Length);
@@ -4364,7 +4416,7 @@ namespace VC {
       Contract.Requires(label2absy != null);
       Contract.Requires(blockEquations != null);
       Contract.Requires(proverCtxt != null);
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       VCExpressionGenerator gen = proverCtxt.ExprGen;
       Contract.Assert(gen != null);
@@ -4807,9 +4859,17 @@ namespace VC {
 
       Contract.Ensures(Contract.Result<Graph<Block>>() != null);
 
+      return GraphFromBlocks(impl.Blocks);
+    }
+
+    static Graph<Block> GraphFromBlocks(List<Block> blocks) {
+      Contract.Requires(blocks != null);
+
+      Contract.Ensures(Contract.Result<Graph<Block>>() != null);
+
       Graph<Block> g = new Graph<Block>();
-      g.AddSource(cce.NonNull(impl.Blocks[0])); // there is always at least one node in the graph
-      foreach (Block b in impl.Blocks) {
+      g.AddSource(cce.NonNull(blocks[0])); // there is always at least one node in the graph
+      foreach (Block b in blocks) {
         Contract.Assert(b != null);
         GotoCmd gtc = b.TransferCmd as GotoCmd;
         if (gtc != null) {

@@ -40,6 +40,8 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
 
+  public delegate VCExpr! CodeExprConverter(CodeExpr! codeExpr, Hashtable/*<Block, VCExprVar!>*/! blockVariables, List<VCExprLetBinding!>! bindings);
+
   public class Boogie2VCExprTranslator : StandardVisitor, ICloneable {
     // Stack on which the various Visit-methods put the result of the translation
     private readonly Stack<VCExpr!>! SubExpressions = new Stack<VCExpr!> ();
@@ -477,9 +479,19 @@ namespace Microsoft.Boogie.VCExprAST
     {
       assert false;
     }
-    public override Expr! VisitBlockExpr(BlockExpr! node)
+    CodeExprConverter codeExprConverter = null;
+    public void SetCodeExprConverter(CodeExprConverter f){
+      this.codeExprConverter = f;
+    }
+    public override Expr! VisitCodeExpr(CodeExpr! codeExpr)
     {
-      assert false;
+      assume codeExprConverter != null;
+
+      Hashtable/*<Block, LetVariable!>*/ blockVariables = new Hashtable/*<Block, LetVariable!!>*/();
+      List<VCExprLetBinding!> bindings = new List<VCExprLetBinding!>();
+      VCExpr e = codeExprConverter(codeExpr, blockVariables, bindings);
+      Push(e);
+      return codeExpr;
     }
     public override BlockSeq! VisitBlockSeq(BlockSeq! blockSeq)
     {

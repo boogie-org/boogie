@@ -410,26 +410,36 @@ namespace Microsoft.Boogie
 
         // ------------------------------  Blocks  ------------------------------
 
-        // blocks
-        [Microsoft.Contracts.SpecPublic]
-        /*maybe null*/ Hashtable /*string->Block*/ blocks;
-
-        /// <summary>
-        /// Requires there not to be a procedure context.  Creates one.
-        /// </summary>
-        public void StartProcedureContext() 
-        {
-            System.Diagnostics.Debug.Assert(blocks == null);
-            blocks = new Hashtable /*string->Block*/ ();
+        class ProcedureContext {
+            public readonly Hashtable! /*string->Block!*/ Blocks;
+            public readonly ProcedureContext Next;
+            public ProcedureContext(ProcedureContext next) {
+                Blocks = new Hashtable /*string->Block!*/ ();
+                Next = next;
+            }
+        }
+        /*maybe null*/ ProcedureContext procedureContext;  // stack of procedure contexts
+        public bool HasProcedureContext {
+          get { return procedureContext != null; }
         }
 
         /// <summary>
-        /// Requires there to be a procedure context.  Removes it.
+        /// Pushes a new procedure context.
         /// </summary>
-        public void EndProcedureContext() 
+        public void PushProcedureContext() 
+          ensures HasProcedureContext;
         {
-            System.Diagnostics.Debug.Assert(blocks != null);
-            blocks = null;
+          procedureContext = new ProcedureContext(procedureContext);
+        }
+
+        /// <summary>
+        /// Requires there to be a procedure context.  Pops it.
+        /// </summary>
+        public void PopProcedureContext() 
+          requires HasProcedureContext;
+        {
+          assert procedureContext != null;  // follows from precondition
+          procedureContext = procedureContext.Next;
         }
 
         /// <summary>
@@ -437,8 +447,10 @@ namespace Microsoft.Boogie
         /// </summary>
         /// <param name="block"></param>
         public void AddBlock(Block! block) 
-          requires this.blocks != null;
+          requires HasProcedureContext;
         {
+            assert procedureContext != null;  // follows from precondition
+            Hashtable! /*string->Block!*/ blocks = procedureContext.Blocks;
             if (blocks[block.Label] != null) 
             {
                 Error(block, "more than one declaration of block name: {0}", block.Label);
@@ -457,8 +469,10 @@ namespace Microsoft.Boogie
         /// <param name="name"></param>
         /// <returns></returns>
         public Block LookUpBlock(string! name)
-          requires this.blocks != null;
+          requires HasProcedureContext;
         {
+            assert procedureContext != null;  // follows from precondition
+            Hashtable! /*string->Block!*/ blocks = procedureContext.Blocks;
             return (Block)blocks[name];
         }
 

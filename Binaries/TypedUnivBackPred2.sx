@@ -10,6 +10,8 @@
 (DEFOP <: U U $bool)         ; used for translation with type premisses
 (DEFOP <:: T U U $bool)      ; used for translation with type arguments
 
+(DEFOP tickleBool $bool $bool) ; used in triggers to exhaustively instantiate quantifiers over booleans
+
 (BG_PUSH (AND
 
   ; false is not true
@@ -126,6 +128,8 @@
   ; Reflect plus
   (FORALL (a b) (PATS (Reflect$Add a b)) (EQ (Reflect$Add a b) (+ a b)))
 
+  (tickleBool FALSE)
+  (tickleBool TRUE)
 ))  ;; AND, BG_PUSH
 ; End Boogie universal background predicate
 ; -------------------------------------------------------------------------

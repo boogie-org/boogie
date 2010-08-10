@@ -19,6 +19,11 @@ $pow2 -> {
   *8 -> *9
   else -> #unspecified
 }
+tickleBool -> {
+  *1 -> *0
+  *0 -> *0
+  else -> #unspecified
+}
 Ctor -> {
   *4 -> *8
   *5 -> *9
@@ -50,7 +55,7 @@ False : *1
 End of model.
 NullInModel.bpl(2,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    NullInModel.bpl(2,3): anon0
+        NullInModel.bpl(2,3): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 
@@ -69,6 +74,11 @@ partitions:
 function interpretations:
 $pow2 -> {
   *6 -> *7
+  else -> #unspecified
+}
+tickleBool -> {
+  *1 -> *0
+  *0 -> *0
   else -> #unspecified
 }
 Ctor -> {
@@ -94,7 +104,7 @@ False : *1
 End of model.
 IntInModel.bpl(2,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    IntInModel.bpl(2,3): anon0
+        IntInModel.bpl(2,3): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 
@@ -119,6 +129,11 @@ partitions:
 function interpretations:
 $pow2 -> {
   *13 -> *9
+  else -> #unspecified
+}
+tickleBool -> {
+  *1 -> *0
+  *0 -> *0
   else -> #unspecified
 }
 Ctor -> {
@@ -159,19 +174,19 @@ False : *1
 End of model.
 ModelTest.bpl(7,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    ModelTest.bpl(3,5): anon0
+        ModelTest.bpl(3,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 
 -------------------- InterpretedFunctionTests --------------------
 InterpretedFunctionTests.bpl(4,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    InterpretedFunctionTests.bpl(2,3): anon0
+        InterpretedFunctionTests.bpl(2,3): anon0
 InterpretedFunctionTests.bpl(10,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    InterpretedFunctionTests.bpl(8,3): anon0
+        InterpretedFunctionTests.bpl(8,3): anon0
 InterpretedFunctionTests.bpl(16,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    InterpretedFunctionTests.bpl(14,3): anon0
+        InterpretedFunctionTests.bpl(14,3): anon0
 
 Boogie program verifier finished with 0 verified, 3 errors

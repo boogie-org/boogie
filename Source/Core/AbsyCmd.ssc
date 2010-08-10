@@ -1578,7 +1578,7 @@ namespace Microsoft.Boogie
       // cins   : new variables created just for this call, one per ains
       // cframe : new variables created just for this call, to keep track of OLD values
       // couts  : new variables created just for this call, one per aouts
-      // WildcarVars : new variables created just for this call, one per null in ains
+      // WildcardVars : new variables created just for this call, one per null in ains
       
       #region Create cins; each one is an incarnation of the corresponding in parameter
       VariableSeq! cins = new VariableSeq();

@@ -52,6 +52,7 @@ namespace Microsoft.Boogie.VCExprAST
     Result VisitSubtype3Op       (VCExprNAry! node, Arg arg);
     Result VisitBoogieFunctionOp (VCExprNAry! node, Arg arg);
     Result VisitIfThenElseOp     (VCExprNAry! node, Arg arg);
+    Result VisitCustomOp         (VCExprNAry! node, Arg arg);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -957,6 +958,9 @@ namespace Microsoft.Boogie.VCExprAST
       return StandardResult(node, arg);
     }
     public virtual Result VisitIfThenElseOp (VCExprNAry! node, Arg arg) {
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitCustomOp     (VCExprNAry! node, Arg arg) {
       return StandardResult(node, arg);
     }
     public virtual Result VisitAddOp            (VCExprNAry! node, Arg arg) {

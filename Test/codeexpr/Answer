@@ -1,0 +1,31 @@
+
+------------------------------ CodeExpr0.bpl ---------------------
+CodeExpr0.bpl(15,3): Error BP5001: This assertion might not hold.
+Execution trace:
+        CodeExpr0.bpl(15,3): anon0
+CodeExpr0.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+        CodeExpr0.bpl(20,3): anon0
+CodeExpr0.bpl(52,3): Error BP5001: This assertion might not hold.
+Execution trace:
+        CodeExpr0.bpl(52,3): anon0
+
+Boogie program verifier finished with 3 verified, 3 errors
+
+------------------------------ CodeExpr1.bpl ---------------------
+CodeExpr1.bpl(44,5): Error BP5003: A postcondition might not hold at this return statement.
+CodeExpr1.bpl(40,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+        CodeExpr1.bpl(42,3): start
+CodeExpr1.bpl(52,5): Error BP5001: This assertion might not hold.
+Execution trace:
+        CodeExpr1.bpl(49,3): start
+CodeExpr1.bpl(66,5): Error BP5001: This assertion might not hold.
+Execution trace:
+        CodeExpr1.bpl(57,3): start
+
+Boogie program verifier finished with 3 verified, 3 errors
+
+------------------------------ CodeExpr2.bpl ---------------------
+
+Boogie program verifier finished with 6 verified, 0 errors

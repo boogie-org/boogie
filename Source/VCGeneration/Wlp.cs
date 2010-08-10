@@ -15,11 +15,11 @@ namespace VC {
   public class VCContext 
   {
     [ContractInvariantMethod]
-void ObjectInvariant() 
-{
-    Contract.Invariant(Label2absy!=null);
+    void ObjectInvariant() 
+    {
+      Contract.Invariant(Label2absy!=null);
       Contract.Invariant(Ctxt != null);
-}
+    }
 
     [Rep] public readonly Hashtable/*<int, Absy!>*/ Label2absy;
     [Rep] public readonly ProverContext Ctxt;
@@ -52,9 +52,9 @@ void ObjectInvariant()
     public static VCExpr Block(Block b, VCExpr N, VCContext ctxt)
       //modifies ctxt.*;
     {
-    Contract.Requires(b != null);
-    Contract.Requires(N != null);
-    Contract.Requires(ctxt != null);
+      Contract.Requires(b != null);
+      Contract.Requires(N != null);
+      Contract.Requires(ctxt != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       VCExpressionGenerator gen = ctxt.Ctxt.ExprGen;

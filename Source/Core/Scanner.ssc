@@ -237,40 +237,40 @@ public class Scanner {
 		for (int i = 126; i <= 126; ++i) start[i] = 2;
 		for (int i = 48; i <= 57; ++i) start[i] = 9;
 		for (int i = 34; i <= 34; ++i) start[i] = 6;
-		start[92] = 1;
-		start[59] = 10;
-		start[40] = 11;
-		start[41] = 12;
-		start[58] = 47;
-		start[44] = 13;
-		start[91] = 14;
-		start[93] = 15;
-		start[60] = 48;
-		start[62] = 49;
-		start[123] = 50;
-		start[125] = 51;
-		start[61] = 52;
-		start[42] = 18;
-		start[8660] = 21;
-		start[8658] = 23;
-		start[8656] = 24;
-		start[38] = 25;
-		start[8743] = 27;
-		start[124] = 28;
-		start[8744] = 30;
-		start[33] = 53;
-		start[8800] = 34;
-		start[8804] = 35;
-		start[8805] = 36;
-		start[43] = 54;
-		start[45] = 38;
-		start[47] = 39;
-		start[37] = 40;
-		start[172] = 41;
-		start[8704] = 42;
-		start[8707] = 43;
-		start[955] = 44;
-		start[8226] = 46;
+		start[92] = 1; 
+		start[59] = 10; 
+		start[40] = 11; 
+		start[41] = 12; 
+		start[58] = 47; 
+		start[44] = 13; 
+		start[91] = 14; 
+		start[93] = 15; 
+		start[60] = 48; 
+		start[62] = 49; 
+		start[123] = 16; 
+		start[125] = 50; 
+		start[61] = 51; 
+		start[42] = 17; 
+		start[8660] = 20; 
+		start[8658] = 22; 
+		start[8656] = 23; 
+		start[38] = 24; 
+		start[8743] = 26; 
+		start[124] = 52; 
+		start[8744] = 28; 
+		start[33] = 53; 
+		start[8800] = 32; 
+		start[8804] = 33; 
+		start[8805] = 34; 
+		start[43] = 54; 
+		start[45] = 36; 
+		start[47] = 37; 
+		start[37] = 38; 
+		start[172] = 39; 
+		start[8704] = 42; 
+		start[8707] = 43; 
+		start[955] = 44; 
+		start[8226] = 46; 
 		start[Buffer.EOF] = -1;
 
 	}
@@ -351,7 +351,7 @@ public class Scanner {
 				// eol handling uniform across Windows, Unix and Mac
 				if (ch == '\r' && buffer.Peek() != '\n') ch = EOL;
 				if (ch == EOL) {
-					line++; col = 0;
+					line++; col = 0; 
 				} else if (ch == '#' && col == 1) {
 				  int prLine = line;
 				  int prColumn = 0;
@@ -480,21 +480,21 @@ public class Scanner {
 			case "free": t.kind = 33; break;
 			case "requires": t.kind = 34; break;
 			case "ensures": t.kind = 35; break;
-			case "goto": t.kind = 38; break;
-			case "return": t.kind = 39; break;
-			case "if": t.kind = 40; break;
-			case "else": t.kind = 41; break;
-			case "while": t.kind = 42; break;
-			case "invariant": t.kind = 43; break;
-			case "break": t.kind = 45; break;
-			case "assert": t.kind = 46; break;
-			case "assume": t.kind = 47; break;
-			case "havoc": t.kind = 48; break;
-			case "call": t.kind = 50; break;
-			case "forall": t.kind = 51; break;
-			case "false": t.kind = 77; break;
-			case "true": t.kind = 78; break;
-			case "old": t.kind = 79; break;
+			case "goto": t.kind = 36; break;
+			case "return": t.kind = 37; break;
+			case "if": t.kind = 38; break;
+			case "else": t.kind = 39; break;
+			case "while": t.kind = 40; break;
+			case "invariant": t.kind = 41; break;
+			case "break": t.kind = 43; break;
+			case "assert": t.kind = 44; break;
+			case "assume": t.kind = 45; break;
+			case "havoc": t.kind = 46; break;
+			case "call": t.kind = 48; break;
+			case "forall": t.kind = 49; break;
+			case "false": t.kind = 75; break;
+			case "true": t.kind = 76; break;
+			case "old": t.kind = 77; break;
 			case "then": t.kind = 80; break;
 			case "exists": t.kind = 82; break;
 			case "lambda": t.kind = 84; break;
@@ -510,7 +510,7 @@ public class Scanner {
 		int recKind = noSym;
 		int recEnd = pos;
 		t = new Token();
-		t.pos = pos; t.col = col; t.line = line;
+		t.pos = pos; t.col = col; t.line = line; 
 		t.filename = this.Filename;
 		int state;
 		if (start.ContainsKey(ch)) { state = (int) (!) start[ch]; }
@@ -572,37 +572,36 @@ public class Scanner {
 			case 15:
 				{t.kind = 16; break;}
 			case 16:
-				{t.kind = 36; break;}
+				{t.kind = 25; break;}
 			case 17:
-				{t.kind = 37; break;}
+				{t.kind = 42; break;}
 			case 18:
-				{t.kind = 44; break;}
+				{t.kind = 47; break;}
 			case 19:
-				{t.kind = 49; break;}
+				{t.kind = 50; break;}
 			case 20:
-				{t.kind = 52; break;}
+				{t.kind = 51; break;}
 			case 21:
-				{t.kind = 53; break;}
+				{t.kind = 52; break;}
 			case 22:
-				{t.kind = 54; break;}
+				{t.kind = 53; break;}
 			case 23:
 				{t.kind = 55; break;}
 			case 24:
-				{t.kind = 57; break;}
+				if (ch == '&') {AddCh(); goto case 25;}
+				else {goto case 0;}
 			case 25:
-				if (ch == '&') {AddCh(); goto case 26;}
-				else {goto case 0;}
+				{t.kind = 56; break;}
 			case 26:
-				{t.kind = 58; break;}
+				{t.kind = 57; break;}
 			case 27:
-				{t.kind = 59; break;}
+				{t.kind = 58; break;}
 			case 28:
-				if (ch == '|') {AddCh(); goto case 29;}
-				else {goto case 0;}
+				{t.kind = 59; break;}
 			case 29:
-				{t.kind = 60; break;}
+				{t.kind = 62; break;}
 			case 30:
-				{t.kind = 61; break;}
+				{t.kind = 63; break;}
 			case 31:
 				{t.kind = 64; break;}
 			case 32:
@@ -614,17 +613,17 @@ public class Scanner {
 			case 35:
 				{t.kind = 68; break;}
 			case 36:
-				{t.kind = 69; break;}
-			case 37:
 				{t.kind = 70; break;}
+			case 37:
+				{t.kind = 71; break;}
 			case 38:
 				{t.kind = 72; break;}
 			case 39:
-				{t.kind = 73; break;}
-			case 40:
 				{t.kind = 74; break;}
+			case 40:
+				{t.kind = 78; break;}
 			case 41:
-				{t.kind = 76; break;}
+				{t.kind = 79; break;}
 			case 42:
 				{t.kind = 81; break;}
 			case 43:
@@ -637,50 +636,50 @@ public class Scanner {
 				{t.kind = 87; break;}
 			case 47:
 				recEnd = pos; recKind = 10;
-				if (ch == '=') {AddCh(); goto case 19;}
+				if (ch == '=') {AddCh(); goto case 18;}
 				else if (ch == ':') {AddCh(); goto case 45;}
 				else {t.kind = 10; break;}
 			case 48:
 				recEnd = pos; recKind = 17;
 				if (ch == '=') {AddCh(); goto case 55;}
-				else if (ch == ':') {AddCh(); goto case 33;}
+				else if (ch == ':') {AddCh(); goto case 31;}
 				else {t.kind = 17; break;}
 			case 49:
 				recEnd = pos; recKind = 18;
-				if (ch == '=') {AddCh(); goto case 31;}
+				if (ch == '=') {AddCh(); goto case 29;}
 				else {t.kind = 18; break;}
 			case 50:
-				recEnd = pos; recKind = 25;
-				if (ch == '{') {AddCh(); goto case 16;}
-				else {t.kind = 25; break;}
-			case 51:
 				recEnd = pos; recKind = 26;
-				if (ch == '}') {AddCh(); goto case 17;}
+				if (ch == '|') {AddCh(); goto case 41;}
 				else {t.kind = 26; break;}
-			case 52:
+			case 51:
 				recEnd = pos; recKind = 29;
 				if (ch == '=') {AddCh(); goto case 56;}
 				else {t.kind = 29; break;}
+			case 52:
+				if (ch == '|') {AddCh(); goto case 27;}
+				else if (ch == '{') {AddCh(); goto case 40;}
+				else {goto case 0;}
 			case 53:
-				recEnd = pos; recKind = 75;
-				if (ch == '=') {AddCh(); goto case 32;}
-				else {t.kind = 75; break;}
+				recEnd = pos; recKind = 73;
+				if (ch == '=') {AddCh(); goto case 30;}
+				else {t.kind = 73; break;}
 			case 54:
-				recEnd = pos; recKind = 71;
-				if (ch == '+') {AddCh(); goto case 37;}
-				else {t.kind = 71; break;}
+				recEnd = pos; recKind = 69;
+				if (ch == '+') {AddCh(); goto case 35;}
+				else {t.kind = 69; break;}
 			case 55:
-				recEnd = pos; recKind = 63;
+				recEnd = pos; recKind = 61;
 				if (ch == '=') {AddCh(); goto case 57;}
-				else {t.kind = 63; break;}
+				else {t.kind = 61; break;}
 			case 56:
-				recEnd = pos; recKind = 62;
-				if (ch == '>') {AddCh(); goto case 22;}
-				else {t.kind = 62; break;}
+				recEnd = pos; recKind = 60;
+				if (ch == '>') {AddCh(); goto case 21;}
+				else {t.kind = 60; break;}
 			case 57:
-				recEnd = pos; recKind = 56;
-				if (ch == '>') {AddCh(); goto case 20;}
-				else {t.kind = 56; break;}
+				recEnd = pos; recKind = 54;
+				if (ch == '>') {AddCh(); goto case 19;}
+				else {t.kind = 54; break;}
 
 		}
 		t.val = new String(tval, 0, tlen);

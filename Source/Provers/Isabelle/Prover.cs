@@ -961,6 +961,31 @@ namespace Microsoft.Boogie.Isabelle {
       return Write(b2i, B2I.Kind.IfThenElse, node);
     }
 
+    public bool VisitCustomOp(VCExprNAry node, B2I b2i) {
+      Contract.Requires(node != null);
+      Contract.Requires(b2i != null);
+      VCExprCustomOp op = (VCExprCustomOp)node.Op;
+
+      Contract.Assert(op.Arity == node.Length);
+      b2i.Write(B2I.Kind.Function, op.Name + " " + node.Length);
+      if (b2i.Context.AllTypes) {
+        b2i.Indent(2);
+
+        // pick the types from the actual arguments
+        foreach (VCExpr arg in node) {
+          Contract.Assert(arg != null);
+          b2i.Write(arg.Type);
+        }
+        b2i.Unindent();
+      }
+      if (b2i.Context.AllTypes) {
+        b2i.Indent(2);
+        b2i.Write(op.Type);
+        b2i.Unindent();
+      }
+      WriteArguments(b2i, node);
+      return true;
+    }
 
     public bool VisitHeapSuccessionOp(VCExprNAry node, B2I b2i) {
       Contract.Requires(node != null);

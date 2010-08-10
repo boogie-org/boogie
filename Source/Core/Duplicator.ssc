@@ -52,9 +52,35 @@ namespace Microsoft.Boogie
     {
       return base.VisitBlock ((Block)node.Clone());
     }
+    public override Expr! VisitCodeExpr(CodeExpr! node)
+    {
+      CodeExpr clone = (CodeExpr)base.VisitCodeExpr((CodeExpr)node.Clone());
+      // Before returning, fix up the resolved goto targets
+      assert node.Blocks.Count == clone.Blocks.Count;
+      Dictionary<Block,Block> subst = new Dictionary<Block,Block>();
+      for (int i = 0; i < node.Blocks.Count; i++) {
+        subst.Add(node.Blocks[i], clone.Blocks[i]);
+      }
+      foreach (Block! b in clone.Blocks) {
+        GotoCmd g = b.TransferCmd as GotoCmd;
+        if (g != null) {
+          BlockSeq targets = new BlockSeq();
+          foreach (Block t in (!)g.labelTargets) {
+            Block nt = subst[t];
+            targets.Add(nt);
+          }
+          g.labelTargets = targets;
+        }
+      }
+      return clone; 
+    }
     public override BlockSeq! VisitBlockSeq(BlockSeq! blockSeq)
     {
-      return base.VisitBlockSeq (blockSeq);
+      return base.VisitBlockSeq (new BlockSeq(blockSeq));
+    }
+    public override List<Block!>! VisitBlockList(List<Block!>! blocks)
+    {
+      return base.VisitBlockList (new List<Block!>(blocks));
     }
     public override BoundVariable! VisitBoundVariable(BoundVariable! node)
     {
@@ -205,6 +231,10 @@ namespace Microsoft.Boogie
     public override ReturnCmd! VisitReturnCmd(ReturnCmd! node)
     {
       return base.VisitReturnCmd ((ReturnCmd) node.Clone());
+    }
+    public override ReturnExprCmd! VisitReturnExprCmd(ReturnExprCmd! node)
+    {
+      return base.VisitReturnExprCmd((ReturnExprCmd)node.Clone());
     }
     public override Sequential! VisitSequential(Sequential! node)
     {

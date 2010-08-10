@@ -240,6 +240,8 @@ namespace Microsoft.Boogie
     // the type of the compared terms
     public static readonly VCExprOp! Subtype3Op       = new VCExprNAryOp (3, Type.Bool);
     public static readonly VCExprOp! IfThenElseOp     = new VCExprIfThenElseOp();
+    
+    public static readonly VCExprOp! TickleBoolOp     = new VCExprCustomOp("tickleBool", 1, Type.Bool);
 
     public VCExprOp! BoogieFunctionOp(Function! func) {
       return new VCExprBoogieFunctionOp(func);
@@ -1034,6 +1036,33 @@ namespace Microsoft.Boogie.VCExprAST
     public override Result Accept<Result, Arg>
            (VCExprNAry! expr, IVCExprOpVisitor<Result, Arg>! visitor, Arg arg) {
       return visitor.VisitIfThenElseOp(expr, arg);
+    }
+  }
+  
+  public class VCExprCustomOp : VCExprOp {
+    public readonly string! Name;
+    int arity;
+    public readonly Type! Type;
+    public VCExprCustomOp(string! name, int arity, Type! type) {
+      this.Name = name;
+      this.arity = arity;
+      this.Type = type;
+    }
+    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object that) {
+      if (Object.ReferenceEquals(this, that))
+        return true;
+      VCExprCustomOp t = that as VCExprCustomOp;
+      if (t == null)
+        return false;
+      return this.Name == t.Name && this.arity == t.arity && this.Type == t.Type;
+    }
+    public override int Arity { get { return arity; } }
+    public override int TypeParamArity { get { return 0; } }
+    public override Type! InferType(List<VCExpr!>! args, List<Type!>! typeArgs) { return Type; }
+    public override Result Accept<Result, Arg>
+           (VCExprNAry! expr, IVCExprOpVisitor<Result, Arg>! visitor, Arg arg) {
+      return visitor.VisitCustomOp(expr, arg);
     }
   }
 

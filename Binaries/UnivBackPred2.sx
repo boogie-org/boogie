@@ -80,6 +80,8 @@
   ; Reflect plus
   (FORALL (a b) (PATS (Reflect$Add a b)) (EQ (Reflect$Add a b) (+ a b)))
 
+  (EQ (tickleBool |@false|) |@true|)
+  (EQ (tickleBool |@true|) |@true|)
 ))  ;; AND, BG_PUSH
 ; End Boogie universal background predicate
 ; -------------------------------------------------------------------------

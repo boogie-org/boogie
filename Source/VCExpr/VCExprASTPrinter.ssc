@@ -196,6 +196,10 @@ namespace Microsoft.Boogie.VCExprAST
     public bool VisitIfThenElseOp(VCExprNAry! node, TextWriter! wr) {
       return PrintNAry("if-then-else", node, wr);
     }
+    public bool VisitCustomOp(VCExprNAry! node, TextWriter! wr) {
+      VCExprCustomOp op = (VCExprCustomOp)node.Op;
+      return PrintNAry(op.Name, node, wr);
+    }
     public bool VisitAddOp            (VCExprNAry! node, TextWriter! wr) {
       if (CommandLineOptions.Clo.ReflectAdd) {
         return PrintNAry("Reflect$Add", node, wr);

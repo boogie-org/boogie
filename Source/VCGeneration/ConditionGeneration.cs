@@ -278,7 +278,7 @@ namespace VC {
     }
 
     protected readonly List<Checker>/*!>!*/ checkers = new List<Checker>();
-    protected Implementation current_impl = null;
+    protected VariableSeq CurrentLocalVariables = null;
 
     // shared across each implementation; created anew for each implementation
     protected Hashtable /*Variable -> int*/ variable2SequenceNumber;
@@ -357,20 +357,20 @@ namespace VC {
 
     #region Methods for injecting pre- and postconditions
     private static void
-      ThreadInBlockExpr(Implementation impl,
-                        Block targetBlock,
-                        BlockExpr blockExpr,
-                        bool replaceWithAssert,
-                        TokenTextWriter debugWriter) {
+      ThreadInCodeExpr(Implementation impl,
+                       Block targetBlock,
+                       CodeExpr codeExpr,
+                       bool replaceWithAssert,
+                       TokenTextWriter debugWriter) {
       Contract.Requires(impl != null);
-      Contract.Requires(blockExpr != null);
+      Contract.Requires(codeExpr != null);
       Contract.Requires(targetBlock != null);
-      // Go through blockExpr and for all blocks that have a "return e"
+      // Go through codeExpr and for all blocks that have a "return e"
       // as their transfer command:
       //   Replace all "return e" with "assert/assume e"
       //   Change the transfer command to "goto targetBlock"
-      // Then add all of the blocks in blockExpr to the implementation (at the end)
-      foreach (Block b in blockExpr.Blocks) {
+      // Then add all of the blocks in codeExpr to the implementation (at the end)
+      foreach (Block b in codeExpr.Blocks) {
         Contract.Assert(b != null);
         ReturnExprCmd rec = b.TransferCmd as ReturnExprCmd;
         if (rec != null) { // otherwise it is a goto command
@@ -391,7 +391,7 @@ namespace VC {
         impl.Blocks.Add(b);
       }
       if (debugWriter != null) {
-        blockExpr.Emit(debugWriter, 1, false);
+        codeExpr.Emit(debugWriter, 1, false);
       }
       return;
     }
@@ -442,31 +442,10 @@ namespace VC {
       {
         Contract.Assert(req != null);
         Expr e = Substituter.Apply(formalProcImplSubst, req.Condition);
-        BlockExpr be = e as BlockExpr;
-        if (be == null) {
-          // This is the normal case, where the precondition is an ordinary expression
-          Cmd c = new AssumeCmd(req.tok, e);
-          insertionPoint.Cmds.Add(c);
-          if (debugWriter != null) {
-            c.Emit(debugWriter, 1);
-          }
-        } else {
-          // This is a BlockExpr, so append all of its blocks (changing return expressions
-          // to assume statements), make the insertion-point block goto the head block of the
-          // BlockExpr, and create a new empty block as the current insertion point.
-          // Here goes:  First, create the new block, which will become the new insertion
-          // point and which will serve as a target for the BlockExpr.  Move the goto's from
-          // the current insertion point to this new block.
-          Block nextIP = new Block(new Token(-17, -4), LabelPrefix + k, new CmdSeq(), insertionPoint.TransferCmd);
-          k++;
-          // Second, append the BlockExpr blocks to the implementation's blocks
-          ThreadInBlockExpr(impl, nextIP, be, false, debugWriter);
-          // Third, make the old insertion-point block goto the entry block of the BlockExpr
-          Block beEntry = cce.NonNull(be.Blocks[0]);
-          insertionPoint.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq(beEntry.Label), new BlockSeq(beEntry));
-          beEntry.Predecessors.Add(insertionPoint);
-          // Fourth, update the insertion point
-          insertionPoint = nextIP;
+        Cmd c = new AssumeCmd(req.tok, e);
+        insertionPoint.Cmds.Add(c);
+        if (debugWriter != null) {
+          c.Emit(debugWriter, 1);
         }
       }
       origStartBlock.Predecessors.Add(insertionPoint);
@@ -512,7 +491,7 @@ namespace VC {
         Contract.Assert(ens != null);
         if (!ens.Free) { // skip free ensures clauses
           Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
-          BlockExpr be = ens.Condition as BlockExpr;
+          CodeExpr be = ens.Condition as CodeExpr;
           if (be == null) {
             // This is the normal case, where the postcondition is an ordinary expression
             Ensures ensCopy = (Ensures)cce.NonNull(ens.Clone());
@@ -524,17 +503,17 @@ namespace VC {
               c.Emit(debugWriter, 1);
             }
           } else {
-            // This is a BlockExpr, so append all of its blocks (changing return expressions
+            // This is a CodeExpr, so append all of its blocks (changing return expressions
             // to assert statements), insert a goto to its head block from the current insertion
             // point, and create a new empty block as the current insertion point.
             // Here goes:  First, create the new block, which will become the new insertion
-            // point and which will serve as a target for the BlockExpr.  Steal the TransferCmd
+            // point and which will serve as a target for the CodeExpr.  Steal the TransferCmd
             // from insertionPoint, since insertionPoint's TransferCmd will soon be replaced anyhow.
             Block nextIP = new Block(new Token(-17, -4), LabelPrefix + k, new CmdSeq(), insertionPoint.TransferCmd);
             k++;
-            // Second, append the BlockExpr blocks to the implementation's blocks
-            ThreadInBlockExpr(impl, nextIP, be, true, debugWriter);
-            // Third, make the old insertion-point block goto the entry block of the BlockExpr
+            // Second, append the CodeExpr blocks to the implementation's blocks
+            ThreadInCodeExpr(impl, nextIP, be, true, debugWriter);
+            // Third, make the old insertion-point block goto the entry block of the CodeExpr
             Block beEntry = cce.NonNull(be.Blocks[0]);
             insertionPoint.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq(beEntry.Label), new BlockSeq(beEntry));
             beEntry.Predecessors.Add(insertionPoint);
@@ -691,6 +670,14 @@ namespace VC {
       return whereClauses;
     }
 
+    protected static void RestoreParamWhereClauses(Implementation impl) {
+      Contract.Requires(impl != null);
+      // We no longer need the where clauses on the out parameters, so we remove them to restore the situation from before VC generation
+      foreach (Formal f in impl.OutParams) {
+        Contract.Assert(f != null);
+        f.TypedIdent.WhereExpr = null;
+      }
+    }
     #endregion
 
 
@@ -848,7 +835,7 @@ namespace VC {
 
     protected Variable CreateIncarnation(Variable x, Absy a) {
       Contract.Requires(this.variable2SequenceNumber != null);
-      Contract.Requires(this.current_impl != null);
+      Contract.Requires(this.CurrentLocalVariables != null);
       Contract.Requires(a is Block || a is AssignCmd || a is HavocCmd);
 
       Contract.Requires(x != null);
@@ -862,8 +849,7 @@ namespace VC {
         -1;
       Variable v = new Incarnation(x, currentIncarnationNumber + 1);
       variable2SequenceNumber[x] = currentIncarnationNumber + 1;
-      Contract.Assert(current_impl != null);  // otherwise, the field current_impl wasn't set
-      current_impl.LocVars.Add(v);
+      CurrentLocalVariables.Add(v);
       incarnationOriginMap.Add((Incarnation)v, a);
       return v;
     }
@@ -962,12 +948,7 @@ namespace VC {
           IdentifierExpr v_prime_exp = new IdentifierExpr(v_prime.tok, v_prime);
           #endregion
           #region Create the assume command itself
-          Expr e = Expr.Binary(Token.NoToken,
-            BinaryOperator.Opcode.Eq,
-            v_prime_exp,
-            pred_incarnation_exp
-            );
-          AssumeCmd ac = new AssumeCmd(v.tok, e);
+          AssumeCmd ac = new AssumeCmd(v.tok, TypedExprEq(v_prime_exp, pred_incarnation_exp));
           pred.Cmds.Add(ac);
           #endregion
           #endregion
@@ -989,22 +970,46 @@ namespace VC {
 
       CmdSeq passiveCmds = new CmdSeq();
       foreach (Cmd c in b.Cmds) {
-        Contract.Assert(b != null); // walk forward over the commands because the map gets modified in a forward direction      
+        Contract.Assert(c != null); // walk forward over the commands because the map gets modified in a forward direction      
         TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds);
       }
       b.Cmds = passiveCmds;
 
+      if (b.TransferCmd is ReturnExprCmd) {
+        ReturnExprCmd rec = (ReturnExprCmd)b.TransferCmd.Clone();
+        Substitution incarnationSubst = Substituter.SubstitutionFromHashtable(incarnationMap);
+        rec.Expr = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, rec.Expr);
+        b.TransferCmd = rec;
+      }
       #endregion
     }
 
     protected Hashtable /*Variable -> Expr*/ Convert2PassiveCmd(Implementation impl) {
       Contract.Requires(impl != null);
+
+      Hashtable r = ConvertBlocks2PassiveCmd(impl.Blocks, impl.Proc.Modifies);
+
+      RestoreParamWhereClauses(impl);
+
+      #region Debug Tracing
+      if (CommandLineOptions.Clo.TraceVerify) {
+        Console.WriteLine("after conversion to passive commands");
+        EmitImpl(impl, true);
+      }
+      #endregion
+
+      return r;
+    }
+
+    protected Hashtable /*Variable -> Expr*/ ConvertBlocks2PassiveCmd(List<Block> blocks, IdentifierExprSeq modifies) {
+      Contract.Requires(blocks != null);
+      Contract.Requires(modifies != null);
       #region Convert to Passive Commands
 
       #region Topological sort -- need to process in a linearization of the partial order
       Graph<Block> dag = new Graph<Block>();
-      dag.AddSource(cce.NonNull(impl.Blocks[0])); // there is always at least one node in the graph
-      foreach (Block b in impl.Blocks) {
+      dag.AddSource(cce.NonNull(blocks[0])); // there is always at least one node in the graph
+      foreach (Block b in blocks) {
         GotoCmd gtc = b.TransferCmd as GotoCmd;
         if (gtc != null) {
           Contract.Assume(gtc.labelTargets != null);
@@ -1016,13 +1021,11 @@ namespace VC {
       }
       IEnumerable sortedNodes = dag.TopologicalSort();
       Contract.Assert(sortedNodes != null);
-      // assume sortedNodes != null;
       #endregion
 
       // Create substitution for old expressions
       Hashtable/*Variable!->Expr!*/ oldFrameMap = new Hashtable();
-      Contract.Assume(impl.Proc != null);
-      foreach (IdentifierExpr ie in impl.Proc.Modifies) {
+      foreach (IdentifierExpr ie in modifies) {
         Contract.Assert(ie != null);
         if (!oldFrameMap.Contains(cce.NonNull(ie.Decl)))
           oldFrameMap.Add(ie.Decl, ie);
@@ -1049,20 +1052,7 @@ namespace VC {
       // Verify that exitBlock is indeed the unique exit block
       Contract.Assert(exitBlock != null);
       Contract.Assert(exitBlock.TransferCmd is ReturnCmd);
-
-      // We no longer need the where clauses on the out parameters, so we remove them to restore the situation from before VC generation
-      foreach (Formal f in impl.OutParams) {
-        Contract.Assert(f != null);
-        f.TypedIdent.WhereExpr = null;
-      }
       #endregion Convert to Passive Commands
-
-      #region Debug Tracing
-      if (CommandLineOptions.Clo.TraceVerify) {
-        Console.WriteLine("after conversion to passive commands");
-        EmitImpl(impl, true);
-      }
-      #endregion
 
       return (Hashtable)block2Incarnation[exitBlock];
     }
@@ -1095,7 +1085,7 @@ namespace VC {
       }
       #endregion
       #region x1 := E1, x2 := E2, ... |--> assume x1' = E1[in] & x2' = E2[in], out := in( x |-> x' ) [except as noted below]
- else if (c is AssignCmd) {
+      else if (c is AssignCmd) {
         AssignCmd assign = ((AssignCmd)c).AsSimpleAssignCmd; // first remove map assignments
         Contract.Assert(assign != null);
         #region Substitute all variables in E with the current map
@@ -1143,7 +1133,7 @@ namespace VC {
             }
             #endregion
             #region Create an assume command with the new variable
-            assumptions.Add(Expr.Eq(x_prime_exp, copies[i]));
+            assumptions.Add(TypedExprEq(x_prime_exp, copies[i]));
             #endregion
           }
         }
@@ -1165,7 +1155,7 @@ namespace VC {
       }
       #endregion
       #region havoc w |--> assume whereClauses, out := in( w |-> w' )
- else if (c is HavocCmd) {
+      else if (c is HavocCmd) {
         if (this.preHavocIncarnationMap == null)      // Save a copy of the incarnation map (at the top of a sequence of havoc statements)
           this.preHavocIncarnationMap = (Hashtable)incarnationMap.Clone();
 
@@ -1196,7 +1186,7 @@ namespace VC {
         }
       }
       #endregion
- else if (c is CommentCmd) {
+      else if (c is CommentCmd) {
         // comments are just for debugging and don't affect verification
       } else if (c is SugaredCmd) {
         SugaredCmd sug = (SugaredCmd)c;
@@ -1228,7 +1218,7 @@ namespace VC {
         }
       }
       #region There shouldn't be any other types of commands at this point
- else {
+      else {
         Debug.Fail("Internal Error: Passive transformation handed a command that is not one of assert,assume,havoc,assign.");
       }
       #endregion
@@ -1240,6 +1230,15 @@ namespace VC {
         this.preHavocIncarnationMap = null;
       // else: it has already been set by the case for the HavocCmd    
       #endregion
+    }
+
+    NAryExpr TypedExprEq(Expr e0, Expr e1) {
+      Contract.Requires(e0 != null);
+      Contract.Requires(e1 != null);
+      NAryExpr e = Expr.Eq(e0, e1);
+      e.Type = Bpl.Type.Bool;
+      e.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+      return e;
     }
 
     /// <summary>
@@ -1295,11 +1294,11 @@ namespace VC {
       return newBlock;
     }
 
-    protected void AddBlocksBetween(Implementation impl) {
-      Contract.Requires(impl != null);
+    protected void AddBlocksBetween(List<Block> blocks) {
+      Contract.Requires(blocks != null);
       #region Introduce empty blocks between join points and their multi-successor predecessors
       List<Block> tweens = new List<Block>();
-      foreach (Block b in impl.Blocks) {
+      foreach (Block b in blocks) {
         int nPreds = b.Predecessors.Length;
         if (nPreds > 1) {
           // b is a join point (i.e., it has more than one predecessor)
@@ -1311,7 +1310,7 @@ namespace VC {
           }
         }
       }
-      impl.Blocks.AddRange(tweens);  // must wait until iteration is done before changing the list
+      blocks.AddRange(tweens);  // must wait until iteration is done before changing the list
       #endregion
     }
 

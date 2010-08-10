@@ -740,6 +740,17 @@ namespace Microsoft.Boogie.VCExprAST
         return true;
       }
 
+      public bool VisitCustomOp (VCExprNAry! node, LineariserOptions! options) {
+        VCExprCustomOp op = (VCExprCustomOp)node.Op;
+        wr.Write("({0}", op.Name);
+        foreach (VCExpr arg in node) {
+          wr.Write(" ");
+          ExprLineariser.Linearise(arg, options);
+        }
+        wr.Write(")");
+        return true;
+      }
+
       public bool VisitAddOp            (VCExprNAry! node, LineariserOptions! options) {
         if (CommandLineOptions.Clo.ReflectAdd) {
           WriteTermApplication(intAddNameReflect, node, options);

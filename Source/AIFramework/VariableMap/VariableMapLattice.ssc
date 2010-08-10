@@ -400,6 +400,10 @@ namespace Microsoft.AbstractInterpretationFramework
                 // Ignore the bound variable
                 s.AddAll(VariablesInExpression(lambda.Body, (!) Set.Union(ignoreVars, x)));
             }
+            else if (e is IUnknown)
+            {
+                // skip (actually, it would be appropriate to return the universal set of all variables)
+            }
             else
             {
                 Debug.Assert(false, "case not handled: " + e);
@@ -590,6 +594,12 @@ namespace Microsoft.AbstractInterpretationFramework
                            InlineVariables(element, lambda.Body,
                                            (!) Set.Union(notInlineable, x), unableToInline)
                        );
+            }
+
+            // else
+            
+            if (expr is IUnknown) {
+              return expr;
             }
 
             else

@@ -1812,7 +1812,7 @@ namespace Microsoft.Boogie
           v.ResolveWhere(rc);
         }
 
-        rc.StartProcedureContext();
+        rc.PushProcedureContext();
         foreach (Block b in Blocks) 
         {
           b.Register(rc);
@@ -1827,7 +1827,7 @@ namespace Microsoft.Boogie
         }
         rc.StateMode = ResolutionContext.State.Single;
       
-        rc.EndProcedureContext();
+        rc.PopProcedureContext();
         rc.PopVarContext();
 
         Type.CheckBoundVariableOccurrences(TypeParameters,

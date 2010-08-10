@@ -26,7 +26,7 @@ namespace Microsoft.AbstractInterpretationFramework
     ///  AST nodes as AIF expressions.
     /// 
     ///  This only serves as a place for operations on expressions.  Clients
-    ///  should implement directly either IVariable or IFunApp.
+    ///  should implement directly IVariable, IFunApp, ...
     /// </summary>
     public interface IExpr
     {
@@ -90,6 +90,14 @@ namespace Microsoft.AbstractInterpretationFramework
     }
 
     /// <summary>
+    /// An interface representing an expression that at any moment could, in principle, evaluate
+    /// to a different value.  That is, the abstract interpreter should treat these IExpr's
+    /// as unknown values.  They are used when there is no other IExpr corresponding to the
+    /// expression to be modeled.
+    /// </summary>
+    public interface IUnknown : IExpr {}
+    
+    /// <summary>
     /// An abstract class that provides an interface for expression visitors.
     /// </summary>
     public abstract class ExprVisitor
@@ -146,6 +154,10 @@ namespace Microsoft.AbstractInterpretationFramework
                     result = fun;
                 else
                     result = fun.CloneWithBody(Substitute(subst, var, fun.Body));
+            }
+            else if (inexpr is IUnknown)
+            {
+                result = inexpr;
             }
             else
             {

@@ -642,6 +642,15 @@ void ObjectInvariant()
         return true;
       }
 
+      public bool VisitCustomOp(VCExprNAry node, LineariserOptions options) {
+        Contract.Requires(node != null);
+        Contract.Requires(options != null);
+
+        VCExprCustomOp op = (VCExprCustomOp)node.Op;
+        WriteApplicationTermOnly(op.Name, node, options);
+        return true;
+      }
+
       public bool VisitDistinctOp (VCExprNAry node, LineariserOptions options) {
         Contract.Requires(node != null);
         Contract.Requires(options != null);

@@ -55,6 +55,8 @@ namespace Microsoft.Boogie.AbstractInterpretation {
         return VisitFunApp((AI.IFunApp)expr);
       else if (expr is AI.IFunction)
         return VisitFunction((AI.IFunction)expr);
+      else if (expr is AI.IUnknown)
+        return null;
       else {
         Contract.Assert(false);
         throw new cce.UnreachableException();

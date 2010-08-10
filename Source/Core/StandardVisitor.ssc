@@ -113,13 +113,13 @@ namespace Microsoft.Boogie
     public virtual Block! VisitBlock(Block! node)
     {
       node.Cmds = this.VisitCmdSeq(node.Cmds);
-      node.TransferCmd = this.VisitTransferCmd((!)node.TransferCmd);
+      node.TransferCmd = (TransferCmd)this.Visit((!)node.TransferCmd);
       return node;
     }
-    public virtual Expr! VisitBlockExpr(BlockExpr! node)
+    public virtual Expr! VisitCodeExpr(CodeExpr! node)
     {
       node.LocVars = this.VisitVariableSeq(node.LocVars);
-      node.Blocks = this.VisitBlockSeq(node.Blocks);
+      node.Blocks = this.VisitBlockList(node.Blocks);
       return node;
     }
     public virtual BlockSeq! VisitBlockSeq(BlockSeq! blockSeq)
@@ -276,7 +276,7 @@ namespace Microsoft.Boogie
     }
     public virtual GotoCmd! VisitGotoCmd(GotoCmd! node)
     {
-      node.labelTargets = this.VisitBlockSeq((!)node.labelTargets);
+      // do not visit the labelTargets, or control-flow loops will lead to a looping visitor
       return node;
     }
     public virtual Cmd! VisitHavocCmd(HavocCmd! node)

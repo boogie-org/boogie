@@ -81,19 +81,19 @@ namespace Microsoft.Boogie
 
     // Handy syntactic sugar follows:
 
-    public static NAryExpr! Binary (IToken! x, BinaryOperator.Opcode op, Expr! e1, Expr! e2) 
-    {
-      return new NAryExpr(x, new BinaryOperator(x, op), new ExprSeq(e1, e2));
-    }
-
     public static NAryExpr! Unary (IToken! x, UnaryOperator.Opcode op, Expr! e1) 
     {
       return new NAryExpr(x, new UnaryOperator(x, op), new ExprSeq(e1));
     }
 
-    public static NAryExpr! Binary (BinaryOperator.Opcode op, Expr! e1, Expr! e2) 
+    public static NAryExpr! Binary (IToken! x, BinaryOperator.Opcode op, Expr! e0, Expr! e1) 
     {
-      return new NAryExpr(Token.NoToken, new BinaryOperator(Token.NoToken, op), new ExprSeq(e1, e2));
+      return new NAryExpr(x, new BinaryOperator(x, op), new ExprSeq(e0, e1));
+    }
+
+    public static NAryExpr! Binary (BinaryOperator.Opcode op, Expr! e0, Expr! e1) 
+    {
+      return Binary(Token.NoToken, op, e0, e1);
     }
 
     public static NAryExpr! Eq (Expr! e1, Expr! e2) { return Binary(BinaryOperator.Opcode.Eq, e1, e2); }
@@ -2071,25 +2071,22 @@ namespace Microsoft.Boogie
   
 
 
-  public class BlockExpr : Expr
+  public class CodeExpr : Expr, AI.IUnknown
   {
     public VariableSeq! LocVars;
     [Rep]
-    public BlockSeq! Blocks;
-    public BlockExpr(VariableSeq! localVariables, BlockSeq! blocks)
+    public List<Block!>! Blocks;
+    public CodeExpr(VariableSeq! localVariables, List<Block!>! blocks)
       : base(Token.NoToken)
+      requires 0 < blocks.Count;
     {
       LocVars = localVariables;
       Blocks = blocks;
     }
-    public override AI.IExpr! IExpr {
-        get {
-          // An BlockExpr has no AI.IExpr representation
-          assert false;
-          throw new System.Exception(); // make compiler shut up
-          return Expr.False;
-        }
-    }
+
+    public override AI.IExpr! IExpr { get { return this; } }
+    [Pure] public object DoVisit(AI.ExprVisitor! visitor) { return this; }
+    
     public override void ComputeFreeVariables(Set /*Variable*/! freeVars) {
       // Treat a BlockEexpr as if it has no free variables at all
     }
@@ -2097,7 +2094,7 @@ namespace Microsoft.Boogie
     {
       //level++;
       int level = 0;
-      stream.WriteLine(level, "{0}", '{');
+      stream.WriteLine(level, "|{");
 
       if (this.LocVars.Length > 0) 
       {
@@ -2112,7 +2109,7 @@ namespace Microsoft.Boogie
       }
 
       stream.WriteLine();
-      stream.WriteLine(level, "{0}", '}');
+      stream.WriteLine(level, "}|");
 
       stream.WriteLine();
       stream.WriteLine();
@@ -2128,7 +2125,7 @@ namespace Microsoft.Boogie
         v.Resolve(rc);
       }
 
-      rc.StartProcedureContext();
+      rc.PushProcedureContext();
       foreach (Block! b in Blocks) 
       {
         b.Register(rc);
@@ -2139,7 +2136,7 @@ namespace Microsoft.Boogie
         b.Resolve(rc);
       }
       
-      rc.EndProcedureContext();
+      rc.PopProcedureContext();
       rc.PopVarContext();
     }
 
@@ -2160,7 +2157,7 @@ namespace Microsoft.Boogie
 
     public override Absy! StdDispatch(StandardVisitor! visitor)
     {
-      return visitor.VisitBlockExpr(this);
+      return visitor.VisitCodeExpr(this);
     }
   }
 

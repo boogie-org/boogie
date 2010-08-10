@@ -38,7 +38,6 @@ public static int Parse (string! filename, /*maybe null*/ List<string!> defines,
 
 
   FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
-//  Scanner scanner = new Scanner(stream);
   
   if (defines == null) {
     defines = new List<string!>();
@@ -49,9 +48,6 @@ public static int Parse (string! filename, /*maybe null*/ List<string!> defines,
   Errors errors = new Errors();
   Scanner scanner = new Scanner(ms, errors, filename);
 
-/*  
-  Scanner scanner = new Scanner(filename);
-*/
   Parser parser = new Parser(scanner, errors);
   Pgm = new Program(); // reset the global variable
     parser.Parse();
@@ -65,48 +61,7 @@ public static int Parse (string! filename, /*maybe null*/ List<string!> defines,
       program = null;
       return parser.errors.count;
     }
-/*
-  using (System.IO.StreamReader reader = new System.IO.StreamReader(filename)) {
-    Buffer.Fill(reader);
-    Scanner.Init(filename);
-    return Parse(out program);
-  }
-*/
 }
-
-///<summary>
-///Returns the number of parsing errors encountered.  If 0, "program" returns as
-///the parsed program.
-///Note: first initialize the Scanner.
-///</summary>
-//public static int Parse (out /*maybe null*/ Program program) {
-//  Pgm = new Program(); // reset the global variable
-//    Parse();
-//    if (Errors.count == 0)
-//    {
-//      program = Pgm;
-//      return 0;
-//    }
-//    else
-//    {
-//      program = null;
-//      return Errors.count;
-//    }
-//}
-
-/*
-public static int ParseProposition (string! text, out Expr! expression)
-{
-  Buffer.Fill(text);
-  Scanner.Init(string.Format("\"{0}\"", text));
-
-  Errors.SynErr = new ErrorProc(SynErr);
-  la = new Token();
-  Get();
-  Proposition(out expression);
-  return Errors.count;
-}
-*/
 
 // Class to represent the bounds of a bitvector expression t[a:b].
 // Objects of this class only exist during parsing and are directly
@@ -639,58 +594,11 @@ SpecPrePost<bool free, RequiresSeq! pre, EnsuresSeq! post>
 = (. Expr! e; VariableSeq! locals; BlockSeq! blocks; Token tok = null; QKeyValue kv = null; .)
   ( "requires"              (. tok = t; .)
     { Attribute<ref kv> }
-    (Proposition<out e> ";"  (. pre.Add(new Requires(tok, free, e, null, kv)); .)
-    |
-     SpecBody<out locals, out blocks> ";"
-                            (. pre.Add(new Requires(tok, free, new BlockExpr(locals, blocks), null, kv)); .)
-    )
+    Proposition<out e> ";"  (. pre.Add(new Requires(tok, free, e, null, kv)); .)
   | "ensures"               (. tok = t; .)
     { Attribute<ref kv> }
-    (Proposition<out e> ";"  (. post.Add(new Ensures(tok, free, e, null, kv)); .)
-    |
-     SpecBody<out locals, out blocks> ";"
-                            (. post.Add(new Ensures(tok, free, new BlockExpr(locals, blocks), null, kv)); .)
-    )
+    Proposition<out e> ";"  (. post.Add(new Ensures(tok, free, e, null, kv)); .)
   )
-  .
-
-SpecBody<out VariableSeq! locals, out BlockSeq! blocks>
-= (. locals = new VariableSeq(); Block! b; .)
-  "{{"
-  { LocalVars<locals> }
-  SpecBlock<out b>          (. blocks = new BlockSeq(b); .)
-  { SpecBlock<out b>        (. blocks.Add(b); .)
-  }
-  "}}"
-  .
-
-SpecBlock<out Block! b>
-= (. IToken! x; IToken! y;
-     Cmd c;  IToken label;
-     CmdSeq cs = new CmdSeq();
-     TokenSeq! xs;
-     StringSeq ss = new StringSeq();
-     b = dummyBlock;
-     Expr! e;
-  .)
-  Ident<out x> ":"
-  { LabelOrCmd<out c, out label>
-                       (. if (c != null) {
-                            assert label == null;
-                            cs.Add(c);
-                          } else {
-                            assert label != null;
-                            this.SemErr("SpecBlock's can only have one label");
-                          }
-                       .)
-  }
-  ( "goto"             (. y = t; .)
-    Idents<out xs>     (. foreach (IToken! s in xs) { ss.Add(s.val); }
-                          b = new Block(x,x.val,cs,new GotoCmd(y,ss));
-                       .)
-  | "return" Expression<out e>
-                       (. b = new Block(x,x.val,cs,new ReturnExprCmd(t,e)); .)
-  ) ";"
   .
 
 /*------------------------------------------------------------------------*/
@@ -891,21 +799,29 @@ LabelOrCmd<out Cmd c, out IToken label>
 
 LabelOrAssign<out Cmd c, out IToken label>
 /* ensures (c == null) != (label != null) */
-= (. IToken! id; IToken! x; Expr! e, e0;
+= (. IToken! id; IToken! x, y; Expr! e, e0;
      c = dummyCmd;  label = null;
      AssignLhs! lhs;
      List<AssignLhs!>! lhss;
      List<Expr!>! rhss;
+     List<Expr!>! indexes;
   .)
   Ident<out id>              (. x = t; .)
   ( ":"                      (. c = null;  label = x; .)
-  | 
-    MapAssignIndexes<id, out lhs>    (. lhss = new List<AssignLhs!> ();
-                                        lhss.Add(lhs); .)
+
+  | (. lhss = new List<AssignLhs!>(); .)
+    (. lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); .)
+
+    { MapAssignIndex<out y, out indexes>    (. lhs = new MapAssignLhs(y, lhs, indexes); .) }
+    (. lhss.Add(lhs); .)
+
     { ","
       Ident<out id>
-      MapAssignIndexes<id, out lhs>  (. lhss.Add(lhs); .)
+      (. lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); .)
+      { MapAssignIndex<out y, out indexes>    (. lhs = new MapAssignLhs(y, lhs, indexes); .) }
+      (. lhss.Add(lhs); .)
     }
+
     ":="                     (. x = t; /* use location of := */ .)
     Expression<out e0>       (. rhss = new List<Expr!> ();
                                 rhss.Add(e0); .)
@@ -916,27 +832,18 @@ LabelOrAssign<out Cmd c, out IToken label>
   )
   .
 
-MapAssignIndexes<IToken! assignedVariable, out AssignLhs! lhs>
-= (. IToken! x;
-     AssignLhs! runningLhs =
-       new SimpleAssignLhs(assignedVariable,
-                           new IdentifierExpr(assignedVariable, assignedVariable.val));
-     List<Expr!>! indexes;
-     Expr! e0;
+MapAssignIndex<.out IToken! x, out List<Expr!>! indexes.>
+= (. indexes = new List<Expr!> ();
+     Expr! e;
   .)
-  {
-    "["                        (. x = t;
-                                  indexes = new List<Expr!> (); .)
-      [
-        Expression<out e0>     (. indexes.Add(e0); .)
-        { ","
-          Expression<out e0>   (. indexes.Add(e0); .)
-        }
-      ]     
-    "]"                        (. runningLhs =
-                                    new MapAssignLhs (x, runningLhs, indexes);  .)
-  }
-                               (. lhs = runningLhs; .)
+  "["                        (. x = t; .)
+    [
+      Expression<out e>      (. indexes.Add(e); .)
+      { ","
+        Expression<out e>    (. indexes.Add(e); .)
+      }
+    ]
+  "]"
   .
 
 /*------------------------------------------------------------------------*/
@@ -1296,6 +1203,8 @@ AtomExpression<out Expr! e>
      Bpl.Type! ty;
      QKeyValue kv;
      e = dummyExpr;
+     VariableSeq! locals;
+     List<Block!>! blocks;
   .)
   ( "false"           (. e = new LiteralExpr(t, false); .)
   | "true"            (. e = new LiteralExpr(t, true); .)
@@ -1335,7 +1244,50 @@ AtomExpression<out Expr! e>
         )
     ")"
   | IfThenElseExpression<out e>
+  | CodeExpression<out locals, out blocks> (. e = new CodeExpr(locals, blocks); .)
   )
+  .
+
+CodeExpression<.out VariableSeq! locals, out List<Block!>! blocks.>
+= (. locals = new VariableSeq(); Block! b;
+     blocks = new List<Block!>();
+  .)
+  "|{"
+  { LocalVars<locals> }
+  SpecBlock<out b>          (. blocks.Add(b); .)
+  { SpecBlock<out b>        (. blocks.Add(b); .)
+  }
+  "}|"
+  .
+
+SpecBlock<out Block! b>
+= (. IToken! x; IToken! y;
+     Cmd c;  IToken label;
+     CmdSeq cs = new CmdSeq();
+     TokenSeq! xs;
+     StringSeq ss = new StringSeq();
+     b = dummyBlock;
+     Expr! e;
+  .)
+  Ident<out x> ":"
+  { LabelOrCmd<out c, out label>
+                       (. if (c != null) {
+                            assert label == null;
+                            cs.Add(c);
+                          } else {
+                            assert label != null;
+                            SemErr("SpecBlock's can only have one label");
+                          }
+                       .)
+  }
+  ( "goto"             (. y = t; .)
+    Idents<out xs>     (. foreach (IToken! s in xs) { ss.Add(s.val); }
+                          b = new Block(x,x.val,cs,new GotoCmd(y,ss));
+                       .)
+  | "return" Expression<out e>
+                       (. b = new Block(x,x.val,cs,new ReturnExprCmd(t,e)); .)
+  )
+  ";"
   .
 
 Attribute<ref QKeyValue kv>
