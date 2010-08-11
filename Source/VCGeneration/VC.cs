@@ -2989,7 +2989,7 @@ namespace VC {
       #region Use the graph library to figure out where the (natural) loops are
 
       #region Create the graph by adding the source node and each edge
-      Graph<Block> g = GraphFromImpl(impl);
+      Graph<Block> g = Program.GraphFromImpl(impl);
       #endregion
 
       g.ComputeLoops(); // this is the call that does all of the processing
@@ -4598,7 +4598,7 @@ namespace VC {
 
       VCExpressionGenerator gen = proverCtxt.ExprGen;
       Contract.Assert(gen != null);
-      Graph<Block> g = GraphFromImpl(impl);
+      Graph<Block> g = Program.GraphFromImpl(impl);
 
       Hashtable/* Block --> VCExprVar */ BlkCorrect = BlockVariableMap(impl.Blocks, "_correct", gen);
       Hashtable/* Block --> VCExprVar */ BlkReached = reach ? BlockVariableMap(impl.Blocks, "_reached", gen) : null;
@@ -4853,35 +4853,6 @@ namespace VC {
         return new BlockSeq(b);
       }
     }
-
-    static Graph<Block> GraphFromImpl(Implementation impl) {
-      Contract.Requires(impl != null);
-
-      Contract.Ensures(Contract.Result<Graph<Block>>() != null);
-
-      return GraphFromBlocks(impl.Blocks);
-    }
-
-    static Graph<Block> GraphFromBlocks(List<Block> blocks) {
-      Contract.Requires(blocks != null);
-
-      Contract.Ensures(Contract.Result<Graph<Block>>() != null);
-
-      Graph<Block> g = new Graph<Block>();
-      g.AddSource(cce.NonNull(blocks[0])); // there is always at least one node in the graph
-      foreach (Block b in blocks) {
-        Contract.Assert(b != null);
-        GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null) {
-          foreach (Block dest in cce.NonNull(gtc.labelTargets)) {
-            Contract.Assert(dest != null);
-            g.AddEdge(b, dest);
-          }
-        }
-      }
-      return g;
-    }
-
 
     static void DumpMap(Hashtable /*Variable->Expr*/ map) {
       Contract.Requires(map != null);

@@ -223,6 +223,7 @@ namespace Microsoft.Boogie
     public enum Inlining { None, Assert, Assume, Spec };
     public Inlining ProcedureInlining = Inlining.Assume;
     public bool PrintInlined = false;
+    public bool ExtractLoops = false;
     public int LazyInlining = 0;
     public int StratifiedInlining = 0;
     
@@ -922,6 +923,12 @@ namespace Microsoft.Boogie
             }
             break;
 
+          case "-extractLoops":
+          case "/extractLoops":
+            if (ps.ConfirmArgumentCount(0)) {
+              ExtractLoops = true;
+            }
+            break;
           case "-inline":
           case "/inline":
             if (ps.ConfirmArgumentCount(1)) {

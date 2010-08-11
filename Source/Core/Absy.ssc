@@ -73,6 +73,7 @@ namespace Microsoft.Boogie
   using Microsoft.Boogie.AbstractInterpretation;
   using AI = Microsoft.AbstractInterpretationFramework;
   using Microsoft.Contracts;
+  using Graphing;
 
 
   public abstract class Absy
@@ -304,6 +305,264 @@ namespace Microsoft.Boogie
       }
     }
 
+    void CreateProceduresForLoops(Implementation! impl, Graph<Block!>! g, List<Implementation!>! loopImpls)
+    {
+        // Enumerate the headers 
+        // for each header h:
+        //   create implementation p_h with 
+        //     inputs = inputs, outputs, and locals of impl
+        //     outputs = outputs and locals of impl
+        //     locals = empty set
+        //   add call o := p_h(i) at the beginning of the header block
+        //   break the back edges whose target is h
+        // Enumerate the headers again to create the bodies of p_h 
+        // for each header h:
+        //   compute the loop corresponding to h
+        //   make copies of all blocks in the loop for h
+        //   delete all target edges that do not go to a block in the loop
+        //   create a new entry block and a new return block
+        //   add edges from entry block to the loop header and the return block
+        //   add calls o := p_h(i) at the end of the blocks that are sources of back edges
+        Dictionary<Block!, string!>! loopHeaderToName = new Dictionary<Block!, string!>();
+        Dictionary<Block!, VariableSeq!>! loopHeaderToInputs = new Dictionary<Block!, VariableSeq!>();
+        Dictionary<Block!, VariableSeq!>! loopHeaderToOutputs = new Dictionary<Block!, VariableSeq!>();
+        Dictionary<Block!, Hashtable!>! loopHeaderToSubstMap = new Dictionary<Block!, Hashtable!>();
+        Dictionary<Block!, Procedure!>! loopHeaderToLoopProc = new Dictionary<Block!, Procedure!>();
+        Dictionary<Block!, CallCmd!>! loopHeaderToCallCmd = new Dictionary<Block!, CallCmd!>();
+        foreach (Block! header in g.Headers)
+        {
+            Contract.Assert(header != null);
+            string name = header.ToString();
+            loopHeaderToName[header] = name;
+            VariableSeq inputs = new VariableSeq();
+            VariableSeq outputs = new VariableSeq();
+            ExprSeq callInputs = new ExprSeq();
+            IdentifierExprSeq callOutputs = new IdentifierExprSeq();
+            Hashtable substMap = new Hashtable(); // Variable -> IdentifierExpr
+
+            foreach (Variable! v in impl.InParams)
+            {
+                callInputs.Add(new IdentifierExpr(Token.NoToken, v));
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true);
+                inputs.Add(f);
+                substMap[v] = new IdentifierExpr(Token.NoToken, f);
+            }
+            foreach (Variable! v in impl.OutParams)
+            {
+                callInputs.Add(new IdentifierExpr(Token.NoToken, v));
+                inputs.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true));
+                callOutputs.Add(new IdentifierExpr(Token.NoToken, v));
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "out_" + v.Name, v.TypedIdent.Type), false);
+                outputs.Add(f);
+                substMap[v] = new IdentifierExpr(Token.NoToken, f);
+            }
+            foreach (Variable! v in impl.LocVars)
+            {
+                callInputs.Add(new IdentifierExpr(Token.NoToken, v));
+                inputs.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true));
+                callOutputs.Add(new IdentifierExpr(Token.NoToken, v));
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "out_" + v.Name, v.TypedIdent.Type), false);
+                outputs.Add(f);
+                substMap[v] = new IdentifierExpr(Token.NoToken, f);
+            }
+            VariableSeq! targets = new VariableSeq();
+            foreach (Block! b in g.BackEdgeNodes(header))
+            {
+              foreach (Block! block in g.NaturalLoops(header, b))
+              {
+                foreach (Cmd! cmd in block.Cmds)
+                {
+                  cmd.AddAssignedVariables(targets);
+                }
+              }
+            }
+            IdentifierExprSeq! globalMods = new IdentifierExprSeq();
+            Set globalModsSet = new Set();
+            foreach (Variable! v in targets)
+            {
+              if (!(v is GlobalVariable)) continue;
+              if (globalModsSet.Contains(v)) continue;
+              globalModsSet.Add(v);
+              globalMods.Add(new IdentifierExpr(Token.NoToken, v));
+            }
+            loopHeaderToInputs[header] = inputs;
+            loopHeaderToOutputs[header] = outputs;
+            loopHeaderToSubstMap[header] = substMap;
+            Procedure! proc = 
+                new Procedure(Token.NoToken, "loop_" + header.ToString(),
+                              new TypeVariableSeq(), inputs, outputs,
+                              new RequiresSeq(), globalMods, new EnsuresSeq());
+            if (CommandLineOptions.Clo.LazyInlining > 0 || CommandLineOptions.Clo.StratifiedInlining > 0)
+            {
+              proc.AddAttribute("inline", Expr.Literal(1));
+            }
+            loopHeaderToLoopProc[header] = proc;
+            CallCmd callCmd = new CallCmd(Token.NoToken, name, callInputs, callOutputs);
+            callCmd.Proc = proc;
+            loopHeaderToCallCmd[header] = callCmd;
+        }
+
+        foreach (Block! header in g.Headers)
+        {
+            Procedure loopProc = loopHeaderToLoopProc[header];
+            Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
+            CodeCopier codeCopier = new CodeCopier(loopHeaderToSubstMap[header]);  // fix me
+            VariableSeq inputs = loopHeaderToInputs[header];
+            VariableSeq outputs = loopHeaderToOutputs[header];
+            foreach (Block! source in g.BackEdgeNodes(header))
+            {
+                foreach (Block! block in g.NaturalLoops(header, source))
+                {
+                    if (blockMap.ContainsKey(block)) continue;
+                    Block newBlock = new Block();
+                    newBlock.Label = block.Label;
+                    newBlock.Cmds = codeCopier.CopyCmdSeq(block.Cmds);
+                    blockMap[block] = newBlock;
+                }
+                string callee = loopHeaderToName[header];
+                ExprSeq ins = new ExprSeq();
+                IdentifierExprSeq outs = new IdentifierExprSeq();
+                for (int i = 0; i < impl.InParams.Length; i++)
+                {
+                  ins.Add(new IdentifierExpr(Token.NoToken, (!) inputs[i]));
+                }
+                foreach (Variable! v in outputs)
+                {
+                    ins.Add(new IdentifierExpr(Token.NoToken, v));
+                    outs.Add(new IdentifierExpr(Token.NoToken, v));
+                }
+                CallCmd callCmd = new CallCmd(Token.NoToken, callee, ins, outs);
+                callCmd.Proc = loopProc;
+                Block! block1 = new Block(Token.NoToken, source.Label + "_dummy",
+                                    new CmdSeq(new AssumeCmd(Token.NoToken, Expr.False)), new ReturnCmd(Token.NoToken));
+                Block! block2 = new Block(Token.NoToken, block1.Label, 
+                                    new CmdSeq(callCmd), new ReturnCmd(Token.NoToken));
+                impl.Blocks.Add(block1);
+                
+                GotoCmd gotoCmd = source.TransferCmd as GotoCmd;
+                assert gotoCmd != null && gotoCmd.labelNames != null && gotoCmd.labelTargets != null && gotoCmd.labelTargets.Length >= 1;
+                StringSeq! newLabels = new StringSeq();
+                BlockSeq! newTargets = new BlockSeq();
+                for (int i = 0; i < gotoCmd.labelTargets.Length; i++)
+                {
+                  if (gotoCmd.labelTargets[i] == header) continue;
+                  newTargets.Add(gotoCmd.labelTargets[i]);
+                  newLabels.Add(gotoCmd.labelNames[i]);
+                }
+                newTargets.Add(block1);
+                newLabels.Add(block1.Label);
+                gotoCmd.labelNames = newLabels;
+                gotoCmd.labelTargets = newTargets;
+                
+                blockMap[block1] = block2;
+            }   
+            List<Block!>! blocks = new List<Block!>();
+            Block exit = new Block(Token.NoToken, "exit", new CmdSeq(), new ReturnCmd(Token.NoToken));
+            GotoCmd cmd = new GotoCmd(Token.NoToken,
+                                        new StringSeq(((!)blockMap[header]).Label, exit.Label),
+                                        new BlockSeq(blockMap[header], exit));
+            
+            Debug.Assert(outputs.Length + impl.InParams.Length == inputs.Length);
+            List<AssignLhs!>! lhss = new List<AssignLhs!>();
+            List<Expr!>! rhss = new List<Expr!>();
+            for (int i = impl.InParams.Length; i < inputs.Length; i++)
+            {
+                Variable! inv = (!)inputs[i];
+                Variable! outv = (!)outputs[i - impl.InParams.Length];
+                AssignLhs lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, outv));
+                Expr rhs = new IdentifierExpr(Token.NoToken, inv);
+                lhss.Add(lhs);
+                rhss.Add(rhs);
+            }
+            AssignCmd assignCmd = new AssignCmd(Token.NoToken, lhss, rhss);
+            Block entry = new Block(Token.NoToken, "entry", new CmdSeq(assignCmd), cmd);
+            blocks.Add(entry); 
+            foreach (Block! block in blockMap.Keys)
+            {
+                Block! newBlock = (!) blockMap[block];
+                GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
+                if (gotoCmd == null)
+                {
+                    newBlock.TransferCmd = new ReturnCmd(Token.NoToken);
+                }
+                else
+                {
+                    assume gotoCmd.labelNames != null && gotoCmd.labelTargets != null;
+                    StringSeq newLabels = new StringSeq();
+                    BlockSeq newTargets = new BlockSeq();
+                    for (int i = 0; i < gotoCmd.labelTargets.Length; i++)
+                    {
+                        Block target = gotoCmd.labelTargets[i];
+                        if (blockMap.ContainsKey(target))
+                        {
+                            newLabels.Add(gotoCmd.labelNames[i]);
+                            newTargets.Add(blockMap[target]);
+                        }
+                    }
+                    if (newTargets.Length == 0)
+                    {
+                        newBlock.Cmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
+                        newBlock.TransferCmd = new ReturnCmd(Token.NoToken);
+                    }
+                    else
+                    {
+                        newBlock.TransferCmd = new GotoCmd(Token.NoToken, newLabels, newTargets);
+                    }
+                }
+                blocks.Add(newBlock);
+            }
+            blocks.Add(exit);
+            Implementation loopImpl = 
+                new Implementation(Token.NoToken, loopProc.Name,
+                                    new TypeVariableSeq(), inputs, outputs, new VariableSeq(), blocks);
+            loopImpl.Proc = loopProc;
+            loopImpls.Add(loopImpl);
+            
+            // Finally, add call to the loop in the containing procedure
+            CmdSeq cmdSeq = new CmdSeq();
+            cmdSeq.Add(loopHeaderToCallCmd[header]);
+            cmdSeq.AddRange(header.Cmds);
+            header.Cmds = cmdSeq;
+        }
+    }
+    
+    public static Graph<Block!>! GraphFromImpl(Implementation! impl) {
+      Contract.Ensures(Contract.Result<Graph<Block>>() != null);
+
+      Graph<Block!> g = new Graph<Block!>();
+      g.AddSource(impl.Blocks[0]); // there is always at least one node in the graph
+      foreach (Block b in impl.Blocks) {
+        Contract.Assert(b != null);
+        GotoCmd gtc = b.TransferCmd as GotoCmd;
+        if (gtc != null) {
+          foreach (Block! dest in (!)gtc.labelTargets) {
+            g.AddEdge(b, dest);
+          }
+        }
+      }
+      return g;
+    }
+    
+    public void ExtractLoops()
+    {
+      List<Implementation!>! loopImpls = new List<Implementation!>();
+      foreach (Declaration d in this.TopLevelDeclarations) {
+        Implementation impl = d as Implementation;
+        if (impl != null && impl.Blocks != null && impl.Blocks.Count > 0) {
+            Graph<Block!>! g = GraphFromImpl(impl);
+            g.ComputeLoops();
+            if (!g.Reducible)
+            {
+              throw new Exception("Irreducible flow graphs are unsupported.");
+            }
+            CreateProceduresForLoops(impl, g, loopImpls);
+        }
+      }
+      foreach (Implementation! loopImpl in loopImpls)
+      {
+        TopLevelDeclarations.Add(loopImpl);
+      }
+    }
 
     public override Absy! StdDispatch(StandardVisitor! visitor)
     {

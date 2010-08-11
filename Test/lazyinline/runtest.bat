@@ -19,4 +19,6 @@ echo -----
 echo ----- Running regression test bar6.bpl
 %BGEXE% %* /noinfer /lazyInline:1 bar6.bpl
 echo -----
-
+echo ----- Running regression test foo.bpl
+%BGEXE% %* /noinfer /lazyInline:1 /extractLoops foo.bpl
+echo -----

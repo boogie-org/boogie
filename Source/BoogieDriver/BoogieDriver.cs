@@ -529,6 +529,11 @@ namespace Microsoft.Boogie {
         program.UnrollLoops(CommandLineOptions.Clo.LoopUnrollCount);
       }
 
+      if (CommandLineOptions.Clo.ExtractLoops)
+      {
+          program.ExtractLoops();
+      }
+
       if (CommandLineOptions.Clo.PrintInstrumented) {
         program.Emit(new TokenTextWriter(Console.Out));
       }

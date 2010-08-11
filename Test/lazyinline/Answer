@@ -62,3 +62,7 @@ Boogie program verifier finished with 1 verified, 0 errors
 
 Boogie program verifier finished with 1 verified, 0 errors
 -----
+----- Running regression test foo.bpl
+
+Boogie program verifier finished with 1 verified, 0 errors
+-----
