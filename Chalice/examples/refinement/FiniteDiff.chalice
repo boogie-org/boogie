@@ -1,3 +1,7 @@
+// Example of a program computing cube using only addition. 
+// Step-wise refinement using specification statement. 
+// Chalice does not have termination metric for recursive methods.
+
 class Cube0 {
   method compute(n:int) returns (v: int)
     requires n >= 0; 
@@ -17,8 +21,8 @@ class Cube1 {
       v := 0;
       w := 1;
     } else {
-      call v,w := compute(n-1); // rely on stronger post-condition
-      v := v + w;
+      call v1,w1 := compute(n-1); // rely on stronger post-condition
+      v := v1 + w1;
       assume w == 3*n*n + 3*n + 1; // simplify and guess next step
     }
   }
@@ -29,17 +33,17 @@ class Cube2 {
     requires n >= 0;
     ensures v == n*n*n;
     ensures w == (n+1)*(n+1)*(n+1)-n*n*n;
-    ensures x == (n+1)*(n+1);
+    ensures x == (n+1)*(n+1); // stop it here; \delta w is messy
   { 
     if (n == 0) {
       v := 0;
       w := 1;
       x := 1;
     } else {
-      call v,w,x := compute(n-1);
-      v := v + w;
-      w := 3*x + 3*n + 1;
-      x := x + 2*n + 1;
+      call v1,w1,x1 := compute(n-1);
+      v := v1 + w1;
+      w := 3*x1 + 3*n + 1;
+      x := x1 + 2*n + 1;
     }
   }
 } 
