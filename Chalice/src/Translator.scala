@@ -3,6 +3,7 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
+package chalice;
 import scala.util.parsing.input.Position
 import scala.util.parsing.input.NoPosition
 

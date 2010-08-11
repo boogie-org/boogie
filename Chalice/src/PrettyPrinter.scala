@@ -3,6 +3,7 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
+package chalice;
 object PrintProgram {
   def P(prog: List[TopLevelDecl]) =
     for (decl <- prog) decl match {

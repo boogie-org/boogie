@@ -3,7 +3,8 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
-object TranslatorPrelude { 
+package chalice;
+object TranslatorPrelude {
 
   val P =
 """// Copyright (c) 2008, Microsoft

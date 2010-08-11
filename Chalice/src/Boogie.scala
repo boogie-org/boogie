@@ -3,6 +3,7 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
+package chalice;
 import scala.util.parsing.input.Position
 import scala.util.parsing.input.NoPosition
 
@@ -271,12 +272,13 @@ object Boogie {
      ")"
    case Ite(con, then, els) =>
      "ite(" + PrintExpr(con) + ", " + PrintExpr(then) + ", " + PrintExpr(els) + ")"
+   case Trigger(ts) => Print(ts,", ", PrintExpr)
    case Forall(ts, xs, triggers, body) =>
      "(forall" +
      (if (ts.length == 0) " " else "<" + Print(ts, ", ", { x: TVar => x.id }) + "> ") +
      Print(xs, ", ", { x: BVar => x.id +  ": " + PrintType(x.t) }) +
      " :: " +
-     Print(triggers , "", { t: Trigger => "{" + Print(t.ts,", ", PrintExpr) + "} " }) +
+     Print(triggers , "", { t: Trigger => "{" +  PrintExpr(t) + "} " }) +
      PrintExpr(body) +
      ")"
    case Exists(ts, xs, triggers, body) =>
@@ -284,7 +286,7 @@ object Boogie {
      (if (ts.length == 0) " " else "<" + Print(ts, ", ", { x: TVar => x.id }) + "> ") +     
      Print(xs, ", ", { x: BVar => x.id +  ": " + PrintType(x.t) }) +
      " :: " +
-     Print(triggers , "", { t: Trigger => "{" + Print(t.ts,", ", PrintExpr) + "} " }) +
+     Print(triggers , "", { t: Trigger => "{" + PrintExpr(t) + "} " }) +
      PrintExpr(body) +
      ")"
    case Lambda(ts, xs, body) =>

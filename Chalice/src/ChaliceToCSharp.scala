@@ -3,6 +3,7 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
+package chalice;
 class ChaliceToCSharp {
     
   def convertProgram(decls: List[TopLevelDecl]): String = {

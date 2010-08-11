@@ -7,7 +7,7 @@
 /**
  * Graph algorithms
  */
-
+package chalice;
 import scala.collection.mutable;
 import scala.collection.immutable;
 

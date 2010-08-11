@@ -3,6 +3,7 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
+package chalice;
 import scala.util.parsing.combinator.syntactical.StandardTokenParsers
 import scala.util.parsing.input.PagedSeqReader
 import scala.collection.immutable.PagedSeq
