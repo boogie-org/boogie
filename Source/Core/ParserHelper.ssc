@@ -93,8 +93,8 @@ public static class ParserHelper {
     return defines.Contains(arg) == sense;
   }
   
-  public static string! Fill(FileStream! fileStream, List<string!>! defines) {
-    StreamReader! reader = new StreamReader(fileStream);
+  public static string! Fill(Stream! stream, List<string!>! defines) {
+    StreamReader! reader = new StreamReader(stream);
     return Fill(reader, defines);
   }
   public static string! Fill(TextReader! reader, List<string!>! defines) {

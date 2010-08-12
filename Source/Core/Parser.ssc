@@ -57,6 +57,11 @@ public static int Parse (string! filename, /*maybe null*/ List<string!> defines,
 
 
   FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+  return Parse(stream, filename, defines, out program);
+}
+
+// Read the program from a stream. This allows the program to be stored in memory.
+public static int Parse (Stream! stream, string! filename, /*maybe null*/ List<string!> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
   
   if (defines == null) {
     defines = new List<string!>();
