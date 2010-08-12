@@ -77,6 +77,8 @@ class Translator {
         translatePredicate(pred)
       case inv: MonitorInvariant =>
         Nil // already dealt with before
+      case _: Condition =>
+        throw new Exception("not yet implemented")
     }
   }
 
@@ -159,40 +161,41 @@ class Translator {
   def definitionAxiom(f: Function): List[Decl] = {
     assert(f.definition.isDefined)
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
-    val frameFunctionName = "##" + f.FullName;
+    val args = VarExpr("this") :: inArgs;
+    val formals = BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar);
+    val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask) ::: args);
+
+    /** Limit application of the function by introducing a second (limited) function */
+    val body = etran.Tr(
+      if (f.isRecursive && ! f.isUnlimited) {
+        val limited = Map() ++ (f.SCC zip (f.SCC map {f =>
+          val result = Function(f.id + "#limited", f.ins, f.out, f.spec, f.definition);
+          result.Parent = f.Parent;
+          result;
+        }));
+        def limit: Expression => Option[Expression] = _ match {
+          case app @ FunctionApplication(obj, id, args) if (f.SCC contains app.f) =>
+            val result = FunctionApplication(obj transform limit, id, args map (e => e transform limit));
+            result.f = limited(app.f);
+            Some(result)
+          case _ => None
+        }
+        f.definition.get transform limit;
+      } else {
+        f.definition.get
+      }
+    );
 
     /* axiom (forall h: HeapType, m: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
          wf(h, m) && CurrentModule == module#C ==> #C.f(h, m, this, x_1, ..., x_n) == tr(body))
-    */
-    val args = VarExpr("this") :: inArgs;
-    var formals = BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar);
-    val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask) ::: args);
-
-    /** Limit application of the function by introducing a second limited function */
-    val body = etran.Tr(if (f.isRecursive) {
-      val limited = Map() ++ (f.SCC zip (f.SCC map {f =>
-        val result = Function(f.id + "#limited", f.ins, f.out, f.spec, f.definition);
-        result.Parent = f.Parent;
-        result;
-      }));
-      def limit: Expression => Option[Expression] = _ match {
-        case app @ FunctionApplication(obj, id, args) if (f.SCC contains app.f) =>
-          val result = FunctionApplication(obj transform limit, id, args map (e => e transform limit));          
-          result.f = limited(app.f);          
-          Some(result)
-        case _ => None
-      }
-      f.definition.get transform limit;
-    } else
-      f.definition.get);
-
+    */    
     Axiom(new Boogie.Forall(
       formals, new Trigger(applyF),
         (wf(VarExpr(HeapName), VarExpr(MaskName)) && (CurrentModule ==@ ModuleName(currentClass)))
         ==>
         (applyF ==@ body))) ::
     (if (f.isRecursive)
-      // define the limited function
+      // define the limited function (even for unlimited function since its SCC might have limited functions)
       Boogie.Function(functionName(f) + "#limited", formals, BVar("$myresult", f.out.typ)) ::
       Axiom(new Boogie.Forall(
         formals, new Trigger(applyF),
@@ -1553,6 +1556,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         case Frac(p) => (Tr(p), 0) : (Expr, Expr)
         case Epsilon => (0, 1) : (Expr, Expr)        // TODO: check for infinity bounds -- or perhaps just wait till epsilons are gone
         case Epsilons(p) => (0, Tr(p)) : (Expr, Expr)
+        case Star => throw new Exception("not yet implemented")
       };
 
       (if (check) isDefined(s)(true) ::: isDefined(perm)(true) else Nil) :::
@@ -1731,6 +1735,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         case Frac(p) => (p, 0) : (Expr, Expr)
         case Epsilon => (0, 1) : (Expr, Expr)        // TODO: check for infinity bounds -- or perhaps just wait till epsilons are gone
         case Epsilons(p) => (0, p) : (Expr, Expr)
+        case Star => throw new Exception("not yet implemented")
       };
 
       (if (check) isDefined(s)(true) ::: isDefined(perm)(true) else Nil) :::

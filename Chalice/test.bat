@@ -1,7 +1,7 @@
 @echo off
 echo start > Output
 
-set CHALICE=call scala -cp bin Chalice -nologo -boogie:"C:\\Users\\t-kuayes\\Documents\\Boogie-2010-07-13\\Boogie.exe" 
+set CHALICE=call scala -cp bin chalice.Chalice -nologo -boogie:"C:\\Users\\t-kuayes\\Documents\\Boogie-2010-07-13\\Boogie.exe" 
 
 
 REM to do: AssociationList

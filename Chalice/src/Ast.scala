@@ -10,7 +10,9 @@ import scala.util.parsing.input.Positional
 
 trait ASTNode extends Positional
 
-// classes and types
+/**
+ * Classes and types
+ */
 
 case class TopLevelDecl(id: String) extends ASTNode
 
@@ -115,7 +117,9 @@ sealed case class TokenType(C: Type, m: String) extends Type("token", Nil) {  //
   override def FullName: String = "token<" + C.FullName + "." + m + ">"
 }
 
-// members
+/**
+ * Members 
+ */
 
 sealed abstract class Member extends ASTNode {
   val Hidden: Boolean = false  // hidden means not mentionable in source
@@ -167,7 +171,9 @@ case class Precondition(e: Expression) extends Specification
 case class Postcondition(e: Expression) extends Specification
 case class LockChange(ee: List[Expression]) extends Specification
 
-// statements
+/**
+ * Statements
+ */
 
 sealed abstract class Statement extends ASTNode
 case class Assert(e: Expression) extends Statement
@@ -196,6 +202,9 @@ case class LocalVar(id: String, t: Type, const: Boolean, ghost: Boolean, rhs: Op
 case class Call(declaresLocal: List[Boolean], lhs: List[VariableExpr], obj: Expression, id: String, args: List[Expression]) extends Statement {
   var locals = List[Variable]()
   var m: Method = null
+}
+case class Spec(declaresLocal: List[Boolean], lhs: List[VariableExpr], pred: Expression) extends Statement {
+  var locals = List[Variable]()
 }
 case class Install(obj: Expression, lowerBounds: List[Expression], upperBounds: List[Expression]) extends Statement
 case class Share(obj: Expression, lowerBounds: List[Expression], upperBounds: List[Expression]) extends Statement
@@ -228,7 +237,9 @@ case class Receive(declaresLocal: List[Boolean], ch: Expression, outs: List[Vari
 case class Fold(pred: Access) extends Statement
 case class Unfold(pred: Access) extends Statement
 
-// expressions
+/**
+ * Expressions
+ */
 
 sealed abstract class RValue extends ASTNode {
   var typ: Class = null
@@ -370,7 +381,10 @@ case class LockBelow(e0: Expression, e1: Expression) extends CompareExpr(e0,e1) 
   override val OpName = "<<"
 }
 
-// quantifiers
+/**
+ * Expressions: quantifiers
+ */
+
 trait Quant
 object Forall extends Quant
 object Exists extends Quant
@@ -384,7 +398,9 @@ sealed abstract class Quantification(q: Quant, is: List[String], e: Expression) 
 case class SeqQuantification(q: Quant, is: List[String], seq: Expression, e: Expression) extends Quantification(q, is, e)
 case class TypeQuantification(q: Quant, is: List[String], t: Type, e: Expression) extends Quantification(q, is, e)
 
-// sequences
+/**
+ * Expressions: sequences
+ */
 
 case class EmptySeq(t: Type) extends Literal
 case class ExplicitSeq(elems: List[Expression]) extends Expression
@@ -428,7 +444,9 @@ case class CallState(token: Expression, obj: Expression, id: String, args: List[
   def target() = token;
 }
 
-// visitors / operations
+/**
+ * AST operations
+ */
 
 object AST {
   /**

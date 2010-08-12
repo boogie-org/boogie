@@ -10,17 +10,12 @@ import scala.collection.immutable.PagedSeq
 import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
 import scala.util.parsing.input.NoPosition
+import java.io.File
 
 class Parser extends StandardTokenParsers {
 
-  def parseFile(path: String): this.ParseResult[List[TopLevelDecl]] = {
-    val tokens = if (path == "<stdin>") {
-        new lexical.Scanner(new PagedSeqReader(PagedSeq fromReader Console.in))
-      } else {
-        new lexical.Scanner(new PagedSeqReader(PagedSeq fromFile path));
-      }
-    phrase(programUnit)(tokens)
-  }
+  def parseStdin = phrase(programUnit)(new lexical.Scanner(new PagedSeqReader(PagedSeq fromReader Console.in)))
+  def parseFile(file: File) = phrase(programUnit)(new lexical.Scanner(new PagedSeqReader(PagedSeq fromFile file)))
  
   case class PositionedString(v: String) extends Positional
 
@@ -44,8 +39,12 @@ class Parser extends StandardTokenParsers {
                          ";", ":", ":=", ",", "?", "|", "[", "]", "++", "::")
 
   def programUnit = (classDecl | channelDecl)*
+  def Semi = ";" ?
+  var currentLocalVariables = Set[String]() // used in the method context
 
-  // class and members
+  /**
+   * Top level declarations
+   */
 
   def classDecl =
         positioned(("external" ?) ~ ("class" ~> ident) ~ opt("module" ~> ident) ~ "{" ~ (memberDecl*) <~ "}" ^^ {
@@ -54,15 +53,54 @@ class Parser extends StandardTokenParsers {
             ext match { case None => case Some(t) => cl.IsExternal = true }
             cl
         })
-  def memberDecl = positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl |
-                   predicateDecl | functionDecl)
+  def channelDecl =
+    "channel" ~> ident ~ formalParameters(true) ~ ("where" ~> expression ?) <~ Semi ^^ {
+      case id ~ ins ~ None => Channel(id, ins, BoolLiteral(true))
+      case id ~ ins ~ Some(e) => Channel(id, ins, e)
+    }
 
+  /**
+   * Member declarations
+   */
+
+  def memberDecl = positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl | predicateDecl | functionDecl)
   def fieldDecl =
         ( "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id, t, false) }
         | "ghost" ~> "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id, t, true) }
         )
-  def Ident = 
-    positioned(ident ^^ PositionedString)
+  def invariantDecl = positioned("invariant" ~> expression <~ Semi ^^ MonitorInvariant)
+  def methodDecl = {
+    currentLocalVariables = Set[String]()
+    "method" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~
+    (methodSpec*) ~ blockStatement ^^ {
+      case id ~ ins ~ outs ~ spec ~ body =>
+        outs match {
+          case None => Method(id, ins, Nil, spec, body)
+          case Some(outs) => Method(id, ins, outs, spec, body) }}
+  }
+  def predicateDecl: Parser[Predicate] =
+    ("predicate" ~> ident) ~ ("{" ~> expression <~ "}") ^^ { case id ~ definition => Predicate(id, definition) }
+  def functionDecl = 
+    ("function" ~> ident) ~ formalParameters(true) ~ (":" ~> typeDecl) ~ (methodSpec*) ~ opt("{" ~> expression <~ "}") ^^ {
+      case id ~ ins ~ out ~ specs ~ body => Function(id, ins, out, specs, body)
+    }
+  def conditionDecl =
+    "condition" ~> ident ~ ("where" ~> expression ?) <~ Semi ^^ {
+      case id ~ optE => Condition(id, optE) }
+  
+  def formalParameters(immutable: Boolean) =
+    "(" ~> (formalList(immutable) ?) <~ ")" ^^ {
+      case None => Nil
+      case Some(ids) => ids }
+  def formalList(immutable: Boolean) = repsep(formal(immutable), ",")  
+  def formal(immutable: Boolean): Parser[Variable] =
+    idType ^^ {case (id,t) =>
+      currentLocalVariables = currentLocalVariables + id;
+      if (immutable) new ImmutableVariable(id,t)
+      else new Variable(id,t) 
+    }
+
+  def Ident = positioned(ident ^^ PositionedString)
   def idType =
     idTypeOpt ^^ {
       case (id, None) => (id, Type("int", Nil))
@@ -73,66 +111,27 @@ class Parser extends StandardTokenParsers {
       positioned(("int" | "bool" | ident | "seq") ~ opt("<" ~> repsep(typeDecl, ",") <~ ">") ^^ { case t ~ parameters => Type(t, parameters.getOrElse(Nil)) }
       | ("token" ~ "<") ~> (typeDecl <~ ".") ~ ident <~ ">" ^^ { case c ~ m => TokenType(c, m) }
       )
-  def Semi = ";" ?
 
-  var currentLocalVariables = Set[String]()
-
-  def invariantDecl = positioned("invariant" ~> expression <~ Semi ^^ MonitorInvariant)
-
-  def methodDecl = {
-    currentLocalVariables = Set[String]()
-    "method" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~
-    (methodSpec*) ~ blockStatement ^^ {
-      case id ~ ins ~ outs ~ spec ~ body =>
-        outs match {
-          case None => Method(id, ins, Nil, spec, body)
-          case Some(outs) => Method(id, ins, outs, spec, body) }}
-  }
-  def channelDecl =
-    "channel" ~> ident ~ formalParameters(true) ~ ("where" ~> expression ?) <~ Semi ^^ {
-      case id ~ ins ~ None => Channel(id, ins, BoolLiteral(true))
-      case id ~ ins ~ Some(e) => Channel(id, ins, e)
-    }
-  def predicateDecl: Parser[Predicate] = 
-    ("predicate" ~> ident) ~ ("{" ~> expression <~ "}") ^^ { case id ~ definition => Predicate(id, definition) }
-  def functionDecl = 
-    ("function" ~> ident) ~ formalParameters(true) ~ (":" ~> typeDecl) ~ (methodSpec*) ~ opt("{" ~> expression <~ "}") ^^ { case id ~ ins ~ out ~ specs ~ body => Function(id, ins, out, specs, body) }
-  def formalParameters(immutable: Boolean) =
-    "(" ~> (formalList(immutable) ?) <~ ")" ^^ {
-      case None => Nil
-      case Some(ids) => ids }
-  def formalList(immutable: Boolean) = {
-    repsep(formal(immutable), ",")
-  }
-  def formal(immutable: Boolean): Parser[Variable] =
-    idType ^^ {case (id,t) =>
-      currentLocalVariables = currentLocalVariables + id;
-      if (immutable)
-        new ImmutableVariable(id,t)
-      else
-        new Variable(id,t) 
-    }
-
+  /**
+   * Pre and post conditions
+   */
+  
   def methodSpec =
     positioned( "requires" ~> expression <~ Semi ^^ Precondition
     | "ensures" ~> expression <~ Semi ^^ Postcondition
     | "lockchange" ~> expressionList <~ Semi ^^ LockChange
     )
-  def blockStatement: Parser[List[Statement]] = {
-    "{" ~> blockStatementBody <~ "}"
-  }
+
+  /**
+   * Statements
+   */
+
+  def blockStatement: Parser[List[Statement]] = "{" ~> blockStatementBody <~ "}"
   def blockStatementBody: Parser[List[Statement]] = {
     val prev = currentLocalVariables
     (statement*) ^^ {
       case x => currentLocalVariables = prev; x }
   }
-
-  def conditionDecl =
-    "condition" ~> ident ~ ("where" ~> expression ?) <~ Semi ^^ {
-      case id ~ optE => Condition(id, optE) }
-
-  // statements
-
   def statement: Parser[Statement] =
     positioned( "assert" ~> expression <~ Semi ^^ Assert
     | "assume" ~> expression <~ Semi ^^ Assume
@@ -316,9 +315,11 @@ class Parser extends StandardTokenParsers {
         case l ~ None => (l,Nil)
         case l ~ Some(u) => (l,u) }
     )
-  
-  // expressions
 
+  /**
+   * Expressions
+   */
+  
   def expressionList =
     repsep(expression, ",")
   def expression = positioned(iteExpr)
@@ -400,7 +401,6 @@ class Parser extends StandardTokenParsers {
   def exprBody =
     "{" ~> expression <~ "}"
 
-  // what is "FerSure"?
   def selectExprFerSure: Parser[MemberAccess] =
     positioned(atom ~ "." ~ ident ~ ("." ~> ident *) ^^ {
       case e ~ _ ~ field ~ moreFields =>
@@ -486,28 +486,22 @@ class Parser extends StandardTokenParsers {
     | ("[" ~> expressionList <~ "]") ^^ { case es => ExplicitSeq(es) }
     )
 
-  // Scala type inference resists figuring out | (alternative) for these two
-
   def quantifierSeq: Parser[Quantification] =
     (quant ~ repsep(ident, ",")) into {case q ~ is => quantifierSeqBody(q, is)}
-
   def quantifierSeqBody(q: Quant, is: List[String]) : Parser[Quantification] =
     (("in" ~> expression <~ "::") ~ (exprWithLocals(is))) ^^
       { case seq ~ e =>
         currentLocalVariables = currentLocalVariables -- is;
         SeqQuantification(q, is, seq, e);
       }
-  
   def quantifierType: Parser[Quantification] =
     (quant ~ repsep(ident, ",")) into {case q ~ is => quantifierTypeBody(q, is)}
-
   def quantifierTypeBody(q: Quant, is: List[String]) : Parser[Quantification] =
     ((":" ~> typeDecl <~ "::") ~ (exprWithLocals(is))) ^^
       { case t ~ e =>
         currentLocalVariables = currentLocalVariables -- is;
         TypeQuantification(q, is, t, e);
       }
-
   def quant: Parser[Quant] =
     ( "forall" ^^^ Forall | "exists" ^^^ Exists)
 
