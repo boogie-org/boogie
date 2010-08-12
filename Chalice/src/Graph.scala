@@ -11,10 +11,7 @@ package chalice;
 import scala.collection.mutable;
 import scala.collection.immutable;
 
-
-/**
- * Undirected graph without edge payload. Stored with adjacency lists. Edges have no multiplicites
- */
+// Directed simple graph on T. Payload of nodes (of type T) should remain immutable while in graph.
 class DiGraph[T] {
   private class Node[T](t: T) {
     val data: T = t;
@@ -58,8 +55,8 @@ class DiGraph[T] {
     immutable.Set() ++ (rep(t).children map {x => x.data})
   }
   
-  // Compute condensation of the digraph
-  // The result digraph has no self loops  
+  // Compute condensation of the digraph.
+  // The resulting digraph has no self loops
   def computeSCC(): (DiGraph[List[T]],mutable.Map[T,List[T]]) = {
     // Tarjan's algorithm for finding strongly connected components
     // http://algowiki.net/wiki/index.php/Tarjan%27s_algorithm

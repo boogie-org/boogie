@@ -1,0 +1,31 @@
+// Prove \sum i*i*i == (\sum i)(\sum i)
+class SumCubes {
+  method compute0(n: int)
+    requires n >= 0;
+  {
+    var i := 0;
+    var s := 0;
+    while (i < n)
+      invariant i <= n;
+    {
+      i := i + 1;
+      s := s + i*i*i;
+    }
+  }
+  method compute1(n: int)
+    requires n >= 0; 
+  {
+    var i := 0;
+    var s := 0;
+    var t := 0;
+    while (i < n)
+      invariant i <= n;
+      invariant s == t*t;
+      invariant 2*t == i*(i+1);
+    {    
+      i := i + 1;      
+      s := s + i*i*i;          
+      t := t + i;
+    }
+  }
+}
