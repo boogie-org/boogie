@@ -8,7 +8,7 @@ using System.Text;
 using System.IO;
 using System.Collections;
 using System.Collections.Generic;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 using Microsoft.Basetypes;
 
 // Code for replacing large integer literals in VCExpr with
@@ -20,21 +20,23 @@ namespace Microsoft.Boogie.VCExprAST
 
   public class BigLiteralAbstracter : MutatingVCExprVisitor<bool>, ICloneable {
 
-    public BigLiteralAbstracter(VCExpressionGenerator! gen) {
-      base(gen);
+    public BigLiteralAbstracter(VCExpressionGenerator gen) :base(gen){
+      Contract.Requires(gen != null);
       DummyVar = gen.Variable("x", Type.Int);
-      IncAxioms = new List<VCExpr!> ();
-      Literals = new List<KeyValuePair<BigNum, VCExprVar!>> ();
+      IncAxioms = new List<VCExpr> ();
+      Literals = new List<KeyValuePair<BigNum, VCExprVar>> ();
     }
 
-    private BigLiteralAbstracter(BigLiteralAbstracter! abstracter) {
-      base(abstracter.Gen);
+    private BigLiteralAbstracter(BigLiteralAbstracter abstracter) :base(abstracter.Gen){
+      Contract.Requires(abstracter != null);
       DummyVar = abstracter.DummyVar;
-      IncAxioms = new List<VCExpr!> (abstracter.IncAxioms);
-      Literals = new List<KeyValuePair<BigNum, VCExprVar!>> (abstracter.Literals);
+      IncAxioms = new List<VCExpr> (abstracter.IncAxioms);
+      Literals = new List<KeyValuePair<BigNum, VCExprVar>> (abstracter.Literals);
     }
 
-    public Object! Clone() {
+    public Object Clone() {
+      Contract.Ensures(Contract.Result<Object>() != null);
+
       return new BigLiteralAbstracter(this);
     }
 
@@ -44,23 +46,34 @@ namespace Microsoft.Boogie.VCExprAST
     private static readonly BigNum ConstantDistanceTPO = BigNum.FromLong(200001);
     private static readonly BigNum ConstantDistancePO = BigNum.FromLong(100001);
 
-    public VCExpr! Abstract(VCExpr! expr) {
+    public VCExpr Abstract(VCExpr expr) {
+      Contract.Requires(expr != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
       return Mutate(expr, true);
     }
 
     ////////////////////////////////////////////////////////////////////////////
 
     // list in which axioms are incrementally collected
-    private readonly List<VCExpr!>! IncAxioms;
+    private readonly List<VCExpr/*!*/>/*!*/ IncAxioms;
 
-    private void AddAxiom(VCExpr! axiom) {
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(cce.NonNullElements(IncAxioms));
+}
+
+    private void AddAxiom(VCExpr/*!*/ axiom) {
+      Contract.Requires(axiom != null);
       IncAxioms.Add(axiom);
     }
 
     // Return all axioms that were added since the last time NewAxioms
     // was called
-    public VCExpr! GetNewAxioms() {
-      VCExpr! res = Gen.NAry(VCExpressionGenerator.AndOp, IncAxioms);
+    public VCExpr GetNewAxioms() {
+Contract.Ensures(Contract.Result<VCExpr>() != null);
+      VCExpr res = Gen.NAry(VCExpressionGenerator.AndOp, IncAxioms);
       IncAxioms.Clear();
       return res;
     }
@@ -70,11 +83,20 @@ namespace Microsoft.Boogie.VCExprAST
     // All named integer literals known to the visitor, in ascending
     // order. Such literals are always positive, and the distance
     // between two literals is always more than ConstantDistance.
-    private readonly List<KeyValuePair<BigNum, VCExprVar!>>! Literals;
+    private readonly List<KeyValuePair<BigNum, VCExprVar/*!*/>>/*!*/ Literals;
+
+    [ContractInvariantMethod]
+void ObjectInvariat() 
+{
+    Contract.Invariant(Literals!=null);
+      Contract.Invariant(Contract.ForAll(Literals,i=>i.Value!=null));
+}
+
     
-    private class EntryComparerC : IComparer<KeyValuePair<BigNum, VCExprVar!>> {
-      public int Compare(KeyValuePair<BigNum, VCExprVar!> a,
-                         KeyValuePair<BigNum, VCExprVar!> b) {
+    private class EntryComparerC : IComparer<KeyValuePair<BigNum, VCExprVar/*!*/>> {
+      public int Compare(KeyValuePair<BigNum, VCExprVar/*!*/> a,
+                         KeyValuePair<BigNum, VCExprVar/*!*/> b) {Contract.Requires(a.Value!=null);
+        Contract.Requires(b.Value!=null);
         return a.Key.CompareTo(b.Key);
       }
     }
@@ -82,14 +104,21 @@ namespace Microsoft.Boogie.VCExprAST
     private static readonly EntryComparerC EntryComparer = new EntryComparerC ();
 
     // variable used when searching for entries in the literal list
-    private readonly VCExprVar! DummyVar;
+    private readonly VCExprVar/*!*/ DummyVar;
+    [ContractInvariantMethod]
+void ObjectInvarint() 
+{
+    Contract.Invariant(DummyVar!=null);
+}
+
 
     ////////////////////////////////////////////////////////////////////////////
     
     // Construct an expression to represent the given (large) integer
     // literal. Constants are defined and axiomatised if necessary
-    private VCExpr! Represent(BigNum lit)
-      requires NegConstantDistance > lit || lit > ConstantDistance; {
+    private VCExpr Represent(BigNum lit) {
+Contract.Requires((NegConstantDistance > lit || lit > ConstantDistance));
+Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (lit.IsNegative)
         return Gen.Function(VCExpressionGenerator.SubOp,
@@ -98,8 +127,9 @@ namespace Microsoft.Boogie.VCExprAST
         return RepresentPos(lit);
     }
 
-    private VCExpr! RepresentPos(BigNum lit)
-      requires lit > ConstantDistance; {
+    private VCExpr RepresentPos(BigNum lit) {
+Contract.Requires((lit > ConstantDistance));
+Contract.Ensures(Contract.Result<VCExpr>() != null);
       
       int index = GetIndexFor(lit);
       if (index >= 0)
@@ -137,15 +167,16 @@ namespace Microsoft.Boogie.VCExprAST
       return AddConstantFor(lit);
     }
 
-    private VCExpr! AddConstantFor(BigNum lit)
-      requires lit > ConstantDistance; {
+    private VCExpr AddConstantFor(BigNum lit) {
+Contract.Requires((lit > ConstantDistance));
+Contract.Ensures(Contract.Result<VCExpr>() != null);
       
-      VCExprVar! res = Gen.Variable("int#" + lit, Type.Int);
+      VCExprVar res = Gen.Variable("int#" + lit, Type.Int);
       int index = GetIndexFor(lit);
-      assert index < 0;
+      Contract.Assert(index < 0);
       index = ~index;
 
-      Literals.Insert(index, new KeyValuePair<BigNum, VCExprVar!>(lit, res));
+      Literals.Insert(index, new KeyValuePair<BigNum, VCExprVar>(lit, res));
       
       // relate the new constant to the predecessor and successor
       if (index > 0)
@@ -161,12 +192,14 @@ namespace Microsoft.Boogie.VCExprAST
       return res;
     }
     
-    private void DefineRelationship(VCExpr! aExpr, BigNum aValue,
-                                    VCExpr! bExpr, BigNum bValue)
-      requires aValue < bValue; {
+    private void DefineRelationship(VCExpr/*!*/ aExpr, BigNum aValue,
+                                    VCExpr/*!*/ bExpr, BigNum bValue)
+      {Contract.Requires(aValue < bValue);
+      Contract.Requires(aExpr != null);
+      Contract.Requires(bExpr != null);
 
       BigNum dist = bValue - aValue;
-      VCExpr! distExpr = Gen.Function(VCExpressionGenerator.SubOp, bExpr, aExpr);
+      VCExpr distExpr = Gen.Function(VCExpressionGenerator.SubOp, bExpr, aExpr);
       if (dist <= ConstantDistanceTPO)
         // constants that are sufficiently close to each other are put
         // into a precise relationship
@@ -177,14 +210,16 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     private int GetIndexFor(BigNum lit) {
-      return Literals.BinarySearch(new KeyValuePair<BigNum, VCExprVar!>
+      return Literals.BinarySearch(new KeyValuePair<BigNum, VCExprVar>
                                                    (lit, DummyVar),
                                    EntryComparer);
     }
 
     ////////////////////////////////////////////////////////////////////////////
 
-    public override VCExpr! Visit(VCExprLiteral! node, bool arg) {
+    public override VCExpr Visit(VCExprLiteral node, bool arg) {
+      Contract.Requires(node != null);
+Contract.Ensures(Contract.Result<VCExpr>() != null);
       VCExprIntLit intLit = node as VCExprIntLit;
       if (intLit != null) {
         if (NegConstantDistance > intLit.Val || intLit.Val > ConstantDistance)

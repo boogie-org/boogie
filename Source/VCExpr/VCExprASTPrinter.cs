@@ -8,7 +8,7 @@ using System.Text;
 using System.IO;
 using System.Collections;
 using System.Collections.Generic;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 using Microsoft.Basetypes;
 
 // A simple visitor for turning a VCExpr into a human-readable string
@@ -17,19 +17,24 @@ using Microsoft.Basetypes;
 namespace Microsoft.Boogie.VCExprAST
 {
 
-  public class VCExprPrinter : IVCExprVisitor<bool, TextWriter!> {
+  public class VCExprPrinter : IVCExprVisitor<bool, TextWriter/*!*/> {
     private VCExprOpPrinter OpPrinterVar = null;
-    private VCExprOpPrinter! OpPrinter { get {
+    private VCExprOpPrinter/*!*/ OpPrinter { get {Contract.Ensures(Contract.Result<VCExprOpPrinter>() != null);
+
       if (OpPrinterVar == null)
         OpPrinterVar = new VCExprOpPrinter(this);
       return OpPrinterVar;
     } }
 
-    public void Print(VCExpr! expr, TextWriter! wr) {
-      expr.Accept<bool, TextWriter!>(this, wr);
+    public void Print(VCExpr expr, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(expr != null);
+      expr.Accept<bool, TextWriter/*!*/>(this, wr);
     }
 
-    public bool Visit(VCExprLiteral! node, TextWriter! wr) {
+    public bool Visit(VCExprLiteral node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       if (node == VCExpressionGenerator.True)
         wr.Write("true");
       else if (node == VCExpressionGenerator.False)
@@ -37,11 +42,14 @@ namespace Microsoft.Boogie.VCExprAST
       else if (node is VCExprIntLit) {
         wr.Write(((VCExprIntLit)node).Val);
       } else
-        assert false;
+        Contract.Assert(false); throw new cce.UnreachableException();
       return true;
     }
-    public bool Visit(VCExprNAry! node, TextWriter! wr) {
-      VCExprOp! op = node.Op;
+    public bool Visit(VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
+      VCExprOp/*!*/ op = node.Op;
+      Contract.Assert(op != null);
 
       if (op.Equals(VCExpressionGenerator.AndOp) ||
           op.Equals(VCExpressionGenerator.OrOp)) {
@@ -49,12 +57,13 @@ namespace Microsoft.Boogie.VCExprAST
 
         wr.Write("({0}",
                  op.Equals(VCExpressionGenerator.AndOp) ? "And" : "Or");
-        IEnumerator! enumerator = new VCExprNAryUniformOpEnumerator (node);
+        IEnumerator/*!*/ enumerator = new VCExprNAryUniformOpEnumerator (node);
+        Contract.Assert(enumerator != null);
         while (enumerator.MoveNext()) {
           VCExprNAry naryExpr = enumerator.Current as VCExprNAry;
           if (naryExpr == null || !naryExpr.Op.Equals(op)) {
             wr.Write(" ");
-            Print((VCExpr!)enumerator.Current, wr);
+            Print(cce.NonNull((VCExpr/*!*/)enumerator.Current), wr);
           }
         }
 
@@ -63,21 +72,27 @@ namespace Microsoft.Boogie.VCExprAST
         return true;
       }
 
-      return node.Accept<bool, TextWriter!>(OpPrinter, wr);
+      return node.Accept<bool, TextWriter/*!*/>(OpPrinter, wr);
     }
-    public bool Visit(VCExprVar! node, TextWriter! wr) {
+    public bool Visit(VCExprVar node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       wr.Write(node.Name);
       return true;
     }
-    public bool Visit(VCExprQuantifier! node, TextWriter! wr) {
-      string! quan = node.Quan == Quantifier.ALL ? "Forall" : "Exists";
+    public bool Visit(VCExprQuantifier node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
+      string/*!*/ quan = node.Quan == Quantifier.ALL ? "Forall" : "Exists";
+      Contract.Assert(quan != null);
 
       wr.Write("({0} ", quan);
 
       if (node.TypeParameters.Count > 0) {
         wr.Write("<");
-        string! sep = "";
-        foreach (TypeVariable! v in node.TypeParameters) {
+        string/*!*/ sep = "";
+        foreach(TypeVariable/*!*/ v in node.TypeParameters){
+Contract.Assert(v != null);
           wr.Write(sep);
           sep = ", ";
           wr.Write("{0}", v.Name);
@@ -86,8 +101,9 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       if (node.BoundVars.Count > 0) {
-        string! sep = "";
-        foreach (VCExprVar! v in node.BoundVars) {
+        string/*!*/ sep = "";
+        foreach(VCExprVar/*!*/ v in node.BoundVars){
+Contract.Assert(v != null);
           wr.Write(sep);
           sep = ", ";
           Print(v, wr);
@@ -99,12 +115,14 @@ namespace Microsoft.Boogie.VCExprAST
 
       if (node.Triggers.Count > 0) {
         wr.Write("{0} ", "{");
-        string! sep = "";
-        foreach (VCTrigger! t in node.Triggers) {
+        string/*!*/ sep = "";
+        foreach(VCTrigger/*!*/ t in node.Triggers){
+Contract.Assert(t != null);
           wr.Write(sep);
           sep = ", ";
-          string! sep2 = "";
-          foreach (VCExpr! e in t.Exprs) {
+          string/*!*/ sep2 = "";
+          foreach(VCExpr/*!*/ e in t.Exprs){
+Contract.Assert(e != null);
             wr.Write(sep2);
             sep2 = "+";
             Print(e, wr);
@@ -117,11 +135,14 @@ namespace Microsoft.Boogie.VCExprAST
       wr.Write(")");
       return true;
     }
-    public bool Visit(VCExprLet! node, TextWriter! wr) {
+    public bool Visit(VCExprLet node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       wr.Write("(Let ");
 
-      string! sep = "";
-      foreach (VCExprLetBinding! b in node) {
+      string/*!*/ sep = "";
+      foreach(VCExprLetBinding/*!*/ b in node){
+Contract.Assert(b != null);
         wr.Write(sep);
         sep = ", ";
         Print(b.V, wr);
@@ -136,16 +157,26 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
 
-  public class VCExprOpPrinter : IVCExprOpVisitor<bool, TextWriter!> {
-    private VCExprPrinter! ExprPrinter;
+  public class VCExprOpPrinter : IVCExprOpVisitor<bool, TextWriter/*!*/> {
+    private VCExprPrinter/*!*/ ExprPrinter;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(ExprPrinter != null);
+    }
 
-    public VCExprOpPrinter(VCExprPrinter! exprPrinter) {
+
+    public VCExprOpPrinter(VCExprPrinter exprPrinter){
+Contract.Requires(exprPrinter != null);
       this.ExprPrinter = exprPrinter;
     }
 
-    private bool PrintNAry(string! op, VCExprNAry! node, TextWriter! wr) {
+    private bool PrintNAry(string op, VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
+Contract.Requires(op != null);
       wr.Write("({0}", op);
-      foreach (VCExpr! arg in node) {
+      foreach(VCExpr/*!*/ arg in node){
+Contract.Assert(arg != null);
         wr.Write(" ");
         ExprPrinter.Print(arg, wr);
       }
@@ -153,92 +184,148 @@ namespace Microsoft.Boogie.VCExprAST
       return true;
     }
 
-    public bool VisitNotOp      (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitNotOp    (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("!", node, wr);
     }
-    public bool VisitEqOp       (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitEqOp     (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("==", node, wr);
     }
-    public bool VisitNeqOp      (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitNeqOp    (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("!=", node, wr);
     }
-    public bool VisitAndOp      (VCExprNAry! node, TextWriter! wr) {
-      assert false;
+    public bool VisitAndOp    (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
+      Contract.Assert(false); throw new cce.UnreachableException();
     }
-    public bool VisitOrOp       (VCExprNAry! node, TextWriter! wr) {
-      assert false;
+    public bool VisitOrOp     (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
+      Contract.Assert(false); throw new cce.UnreachableException();
     }
-    public bool VisitImpliesOp  (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitImpliesOp (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("Implies", node, wr);
     }
-    public bool VisitDistinctOp (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitDistinctOp (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("Distinct", node, wr);
     }
-    public bool VisitLabelOp    (VCExprNAry! node, TextWriter! wr) {
-      VCExprLabelOp! op = (VCExprLabelOp)node.Op;
+    public bool VisitLabelOp  (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
+VCExprLabelOp/*!*/ op = (VCExprLabelOp)node.Op;
+Contract.Assert(op != null);
       return PrintNAry("Label " + op.label, node, wr);
     }
-    public bool VisitSelectOp   (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitSelectOp (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("Select", node, wr);
     }
-    public bool VisitStoreOp    (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitStoreOp  (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("Store", node, wr);
     }
-    public bool VisitBvOp       (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitBvOp     (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("Bv", node, wr);
     }
-    public bool VisitBvExtractOp(VCExprNAry! node, TextWriter! wr) {
+    public bool VisitBvExtractOp(VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("BvExtract", node, wr);
     }
-    public bool VisitBvConcatOp (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitBvConcatOp (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("BvConcat", node, wr);
     }
-    public bool VisitIfThenElseOp(VCExprNAry! node, TextWriter! wr) {
+    public bool VisitIfThenElseOp(VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("if-then-else", node, wr);
     }
-    public bool VisitCustomOp(VCExprNAry! node, TextWriter! wr) {
+    public bool VisitCustomOp(VCExprNAry/*!*/ node, TextWriter/*!*/ wr) {
+      Contract.Requires(node!=null);
+      Contract.Requires(wr != null);
       VCExprCustomOp op = (VCExprCustomOp)node.Op;
       return PrintNAry(op.Name, node, wr);
     }
-    public bool VisitAddOp            (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitAddOp          (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       if (CommandLineOptions.Clo.ReflectAdd) {
         return PrintNAry("Reflect$Add", node, wr);
       } else {
         return PrintNAry("+", node, wr);
       }
     }
-    public bool VisitSubOp            (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitSubOp          (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("-", node, wr);
     }
-    public bool VisitMulOp            (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitMulOp          (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("*", node, wr);
     }
-    public bool VisitDivOp            (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitDivOp          (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("/", node, wr);
     }
-    public bool VisitModOp            (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitModOp          (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("%", node, wr);
     }
-    public bool VisitLtOp             (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitLtOp           (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("<", node, wr);
     }
-    public bool VisitLeOp             (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitLeOp           (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("<=", node, wr);
     }
-    public bool VisitGtOp             (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitGtOp           (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry(">", node, wr);
     }
-    public bool VisitGeOp             (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitGeOp           (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry(">=", node, wr);
     }
-    public bool VisitSubtypeOp        (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitSubtypeOp      (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("<:", node, wr);
     }
-    public bool VisitSubtype3Op       (VCExprNAry! node, TextWriter! wr) {
+    public bool VisitSubtype3Op     (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
       return PrintNAry("<::", node, wr);
     }
-    public bool VisitBoogieFunctionOp (VCExprNAry! node, TextWriter! wr) {
-      VCExprBoogieFunctionOp! op = (VCExprBoogieFunctionOp)node.Op;
+    public bool VisitBoogieFunctionOp (VCExprNAry node, TextWriter wr){
+Contract.Requires(wr != null);
+Contract.Requires(node != null);
+VCExprBoogieFunctionOp/*!*/ op = (VCExprBoogieFunctionOp)node.Op;
+Contract.Assert(op != null);
       return PrintNAry(op.Func.Name, node, wr);
     }
   }

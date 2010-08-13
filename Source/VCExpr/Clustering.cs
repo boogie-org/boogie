@@ -8,50 +8,61 @@ using System.Text;
 using System.IO;
 using System.Collections;
 using System.Collections.Generic;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;
 
 // Code for managing and clusterings sets of terms; this is used to
 // compress the input given to the theorem prover
 
-namespace Microsoft.Boogie.Clustering
-{
+namespace Microsoft.Boogie.Clustering {
   using Microsoft.Boogie.VCExprAST;
 
 
   public class SubtermCollector : BoundVarTraversingVCExprVisitor<bool, bool> {
-    
-    private readonly VCExpressionGenerator! Gen;
 
-    public SubtermCollector(VCExpressionGenerator! gen) {
+    private readonly VCExpressionGenerator/*!*/ Gen;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(Gen != null);
+      Contract.Invariant(cce.NonNullElements(GlobalVariables));
+      Contract.Invariant(cce.NonNullElements(SubtermClusters));
+    }
+
+
+    public SubtermCollector(VCExpressionGenerator gen) {
+      Contract.Requires(gen != null);
       Gen = gen;
     }
 
     // variables that are global and treated like constants
-    private readonly IDictionary<VCExprVar!, VCExprVar!>! GlobalVariables =
-      new Dictionary<VCExprVar!, VCExprVar!> ();
+    private readonly IDictionary<VCExprVar/*!*/, VCExprVar/*!*/> GlobalVariables = new Dictionary<VCExprVar/*!*/, VCExprVar/*!*/>();
 
-    private readonly IDictionary<VCExprOp!, TermClustersSameHead!>! SubtermClusters =
-      new Dictionary<VCExprOp!, TermClustersSameHead!> ();
+    private readonly IDictionary<VCExprOp/*!*/, TermClustersSameHead/*!*/> SubtermClusters =
+      new Dictionary<VCExprOp/*!*/, TermClustersSameHead/*!*/>();
 
     public void UnifyClusters() {
-      foreach (KeyValuePair<VCExprOp!, TermClustersSameHead!> pair
-                 in SubtermClusters)
+      foreach (KeyValuePair<VCExprOp/*!*/, TermClustersSameHead/*!*/> pair
+                 in SubtermClusters) {
+        Contract.Assert(cce.NonNullElements(pair));
         pair.Value.UnifyClusters();
+      }
     }
 
     ////////////////////////////////////////////////////////////////////////////
 
-    protected override bool StandardResult(VCExpr! node, bool arg) {
+    protected override bool StandardResult(VCExpr node, bool arg) {
+      Contract.Requires(node != null);
       return false;   // by default, do not collect terms containing node
     }
 
-    public override bool Visit(VCExprLiteral! node, bool arg) {
+    public override bool Visit(VCExprLiteral node, bool arg) {
+      Contract.Requires(node != null);
       return true;
     }
 
-    public override bool Visit(VCExprNAry! node, bool arg) {
+    public override bool Visit(VCExprNAry node, bool arg) {
+      Contract.Requires(node != null);
       VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
       if (op == null) {
         base.Visit(node, arg);
@@ -59,8 +70,10 @@ namespace Microsoft.Boogie.Clustering
       }
 
       bool res = true;
-      foreach (VCExpr! subexpr in node)
+      foreach (VCExpr subexpr in node) {
+        Contract.Assert(subexpr != null);
         res &= this.Traverse(subexpr, arg);
+      }
 
       if (res) {
         TermClustersSameHead clusters;
@@ -68,25 +81,28 @@ namespace Microsoft.Boogie.Clustering
           clusters = new TermClustersSameHead(op, GlobalVariables, Gen);
           SubtermClusters.Add(op, clusters);
         }
-        ((!)clusters).AddExpr(node);
+        cce.NonNull(clusters).AddExpr(node);
       }
 
       return res;
     }
 
-    public override bool Visit(VCExprVar! node, bool arg) {
+    public override bool Visit(VCExprVar node, bool arg) {
+      Contract.Requires(node != null);
       if (!BoundTermVars.Contains(node))
         GlobalVariables[node] = node;
       return true;
     }
 
     [Pure]
-    public override string! ToString()
-    {
-      string! res = "";
-      foreach (KeyValuePair<VCExprOp!, TermClustersSameHead!> pair
-                 in SubtermClusters)
+    public override string ToString() {
+      Contract.Ensures(Contract.Result<string>() != null);
+      string/*!*/ res = "";
+      foreach (KeyValuePair<VCExprOp/*!*/, TermClustersSameHead/*!*/> pair
+                 in SubtermClusters) {
+        Contract.Assert(cce.NonNullElements(pair));
         res = res + pair.Value + "\n";
+      }
       return res;
     }
   }
@@ -97,34 +113,45 @@ namespace Microsoft.Boogie.Clustering
   // with the same function symbol
   internal class TermClustersSameHead {
 
-    public readonly VCExprOp! Op;
-    private readonly VCExpressionGenerator! Gen;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(Op != null);
+      Contract.Invariant(Gen != null);
+      Contract.Invariant(cce.NonNullElements(GlobalVariables));
+    }
+    // variables that are global and treated like constants
+    private readonly IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ GlobalVariables;
+    public readonly VCExprOp/*!*/ Op;
+    private readonly VCExpressionGenerator/*!*/ Gen;
 
-    public TermClustersSameHead(VCExprOp! op,
-                                IDictionary<VCExprVar!, VCExprVar!>! globalVars,
-                                VCExpressionGenerator! gen) {
+    public TermClustersSameHead(VCExprOp op, IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ globalVars, VCExpressionGenerator/*!*/ gen) {
+      Contract.Requires(cce.NonNullElements(globalVars));
+      Contract.Requires(gen != null);
+      Contract.Requires(op != null);
       Op = op;
       GlobalVariables = globalVars;
       Gen = gen;
     }
 
-    // variables that are global and treated like constants
-    private readonly IDictionary<VCExprVar!, VCExprVar!>! GlobalVariables;
-
-    private readonly List<Cluster>! Clusters = new List<Cluster> ();
+    private readonly List<Cluster>/*!*/ Clusters = new List<Cluster>();
 
     private struct Cluster {
-      public readonly VCExprNAry! Generator;
+      public readonly VCExprNAry/*!*/ Generator;
       public readonly int Size;
+      [ContractInvariantMethod]
+      void ObjectInvariant() {
+        Contract.Invariant(Generator != null);
+      }
 
-      public Cluster(VCExprNAry! generator, int size) {
+      public Cluster(VCExprNAry generator, int size) {
+        Contract.Requires(generator != null);
         Generator = generator;
         Size = size;
       }
     }
 
     private int Distance(Cluster a, Cluster b) {
-      AntiUnificationVisitor! visitor = new AntiUnificationVisitor (Gen);
+      AntiUnificationVisitor/*!*/ visitor = new AntiUnificationVisitor(Gen);
       visitor.AntiUnify(a.Generator, b.Generator);
 
       int reprSizeA, reprSizeB;
@@ -133,29 +160,31 @@ namespace Microsoft.Boogie.Clustering
     }
 
     private bool EqualUpToRenaming(Cluster a, Cluster b) {
-      AntiUnificationVisitor! visitor = new AntiUnificationVisitor (Gen);
+      AntiUnificationVisitor/*!*/ visitor = new AntiUnificationVisitor(Gen);
       visitor.AntiUnify(a.Generator, b.Generator);
       return visitor.RepresentationIsRenaming(GlobalVariables);
     }
 
     private Cluster Merge(Cluster a, Cluster b) {
-      AntiUnificationVisitor! visitor = new AntiUnificationVisitor (Gen);
-      VCExpr! generator = visitor.AntiUnify(a.Generator, b.Generator);
+      AntiUnificationVisitor/*!*/ visitor = new AntiUnificationVisitor(Gen);
+      VCExpr/*!*/ generator = visitor.AntiUnify(a.Generator, b.Generator);
+      Contract.Assert(generator != null);
       VCExprNAry generatorNAry = generator as VCExprNAry;
-      assert generatorNAry != null && Op.Equals(generatorNAry.Op);
+      Contract.Assert(generatorNAry != null && Op.Equals(generatorNAry.Op));
       return new Cluster(generatorNAry, a.Size + b.Size);
     }
 
     ////////////////////////////////////////////////////////////////////////////
 
-    public void AddExpr(VCExprNAry! expr)
-      requires Op.Equals(expr.Op); {
+    public void AddExpr(VCExprNAry expr) {
+      Contract.Requires(expr != null);
+      Contract.Requires(Op.Equals(expr.Op));
 
-      Cluster c = new Cluster (expr, 1);
+      Cluster c = new Cluster(expr, 1);
       for (int i = 0; i < Clusters.Count; ++i) {
         Cluster d = Clusters[i];
         if (EqualUpToRenaming(c, d)) {
-          Clusters[i] = new Cluster (d.Generator, d.Size + 1);
+          Clusters[i] = new Cluster(d.Generator, d.Size + 1);
           return;
         }
       }
@@ -166,23 +195,33 @@ namespace Microsoft.Boogie.Clustering
     ////////////////////////////////////////////////////////////////////////////
 
     private struct ClusteringMatrix {
-      
-      private readonly VCExpressionGenerator! Gen;
-      private readonly IDictionary<VCExprVar!, VCExprVar!>! GlobalVariables;
 
-      public readonly List<Cluster>! Clusters;
-      public readonly bool[]! RemainingClusters;
+      private readonly VCExpressionGenerator/*!*/ Gen;
+      private readonly IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ GlobalVariables;
 
-      public readonly Distance[,]! Distances;
+      public readonly List<Cluster>/*!*/ Clusters;
+      public readonly bool[]/*!*/ RemainingClusters;
+
+      public readonly Distance[,]/*!*/ Distances;
+
+      [ContractInvariantMethod]
+      void ObjectInvariant() {
+        Contract.Invariant(Gen != null);
+        Contract.Invariant(cce.NonNullElements(GlobalVariables));
+        Contract.Invariant(Clusters != null);
+        Contract.Invariant(RemainingClusters != null);
+        Contract.Invariant(Distances != null);
+      }
+
 
       public struct Distance {
         public readonly int Dist;
-        public readonly VCExprNAry! Generator;
+        public readonly VCExprNAry/*!*/ Generator;
 
-        public Distance(Cluster a, Cluster b,
-                        IDictionary<VCExprVar!, VCExprVar!>! globalVars,
-                        VCExpressionGenerator! gen) {
-          AntiUnificationVisitor! visitor = new AntiUnificationVisitor (gen);
+        public Distance(Cluster a, Cluster b, IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ globalVars, VCExpressionGenerator gen) {
+          Contract.Requires(gen != null);
+          Contract.Requires(cce.NonNullElements(globalVars));
+          AntiUnificationVisitor/*!*/ visitor = new AntiUnificationVisitor(gen);
           Generator = (VCExprNAry)visitor.AntiUnify(a.Generator, b.Generator);
 
           int reprSizeA, reprSizeB;
@@ -191,34 +230,35 @@ namespace Microsoft.Boogie.Clustering
         }
       }
 
-      public ClusteringMatrix(List<Cluster>! clusters,
-                              IDictionary<VCExprVar!, VCExprVar!>! globalVars,
-                              VCExpressionGenerator! gen) {
-        List<Cluster>! c = new List<Cluster> ();
+      public ClusteringMatrix(List<Cluster> clusters, IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ globalVars, VCExpressionGenerator gen) {
+        Contract.Requires(gen != null);
+        Contract.Requires(clusters != null);
+        Contract.Requires(cce.NonNullElements(globalVars));
+        List<Cluster> c = new List<Cluster>();
         c.AddRange(clusters);
         Clusters = c;
 
         GlobalVariables = globalVars;
         Gen = gen;
 
-        bool[] remaining = new bool [clusters.Count];
+        bool[] remaining = new bool[clusters.Count];
         RemainingClusters = remaining;
         for (int i = 0; i < remaining.Length; ++i)
           remaining[i] = true;
 
-        Distance[,]! distances = new Distance [clusters.Count, clusters.Count];
+        Distance[,]/*!*/ distances = new Distance[clusters.Count, clusters.Count];
         Distances = distances;
         for (int i = 1; i < clusters.Count; ++i)
           for (int j = 0; j < i; ++j)
             distances[i, j] =
-              new Distance (clusters[i], clusters[j], GlobalVariables, Gen);
+              new Distance(clusters[i], clusters[j], GlobalVariables, Gen);
       }
-      
+
       public void UnifyClusters(int maxDist) {
         while (true) {
           int i, j;
           int minDist = FindMinDistance(out i, out j);
-        
+
           if (minDist > maxDist)
             return;
 
@@ -226,7 +266,8 @@ namespace Microsoft.Boogie.Clustering
         }
       }
 
-      public void ResultingClusters(List<Cluster>! clusters) {
+      public void ResultingClusters(List<Cluster> clusters) {
+        Contract.Requires(clusters != null);
         clusters.Clear();
         for (int i = 0; i < Clusters.Count; ++i)
           if (RemainingClusters[i])
@@ -239,12 +280,12 @@ namespace Microsoft.Boogie.Clustering
         for (int j = 0; j < i; ++j) {
           if (RemainingClusters[j])
             Distances[i, j] =
-              new Distance (Clusters[i], Clusters[j], GlobalVariables, Gen);
+              new Distance(Clusters[i], Clusters[j], GlobalVariables, Gen);
         }
         for (int j = i + 1; j < Clusters.Count; ++j) {
           if (RemainingClusters[j])
             Distances[j, i] =
-              new Distance (Clusters[j], Clusters[i], GlobalVariables, Gen);
+              new Distance(Clusters[j], Clusters[i], GlobalVariables, Gen);
         }
       }
 
@@ -265,14 +306,13 @@ namespace Microsoft.Boogie.Clustering
               }
           }
 
-        assert c0 == -1 && c1 == -1 || c0 > c1 && c1 >= 0;
+        Contract.Assert(c0 == -1 && c1 == -1 || c0 > c1 && c1 >= 0);
         return minDist;
       }
 
-      private void MergeClusters(int i, int j)
-        requires j >= 0 && i > j &&
-                 RemainingClusters[i] && RemainingClusters[j]; {
-        Clusters[i] = new Cluster (Distances[i, j].Generator,
+      private void MergeClusters(int i, int j) {
+        Contract.Requires(j >= 0 && i > j && RemainingClusters[i] && RemainingClusters[j]);
+        Clusters[i] = new Cluster(Distances[i, j].Generator,
                                    Clusters[i].Size + Clusters[j].Size);
         RemainingClusters[j] = false;
         Update(i);
@@ -283,43 +323,61 @@ namespace Microsoft.Boogie.Clustering
 
     public void UnifyClusters() {
       ClusteringMatrix matrix =
-        new ClusteringMatrix (Clusters, GlobalVariables, Gen);
+        new ClusteringMatrix(Clusters, GlobalVariables, Gen);
       matrix.UnifyClusters(50);
       matrix.ResultingClusters(Clusters);
     }
 
     [Pure]
-    public override string! ToString()
-    {
-      string! res = "";
+    public override string ToString() {
+      Contract.Ensures(Contract.Result<string>() != null);
+      string/*!*/ res = "";
       foreach (Cluster c in Clusters)
         res = res + c.Generator + "\t" + c.Size + "\n";
       return res;
-    }    
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
 
-  internal class AntiUnificationVisitor : TraversingVCExprVisitor<VCExpr!, VCExpr!> {
+  internal class AntiUnificationVisitor : TraversingVCExprVisitor<VCExpr/*!*/, VCExpr/*!*/> {
 
-    private readonly VCExpressionGenerator! Gen;
+    private readonly VCExpressionGenerator/*!*/ Gen;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(Gen != null);
+      Contract.Invariant(cce.NonNullElements(Representation));
+    }
 
-    public AntiUnificationVisitor(VCExpressionGenerator! gen) {
+
+    public AntiUnificationVisitor(VCExpressionGenerator gen) {
+      Contract.Requires(gen != null);
       Gen = gen;
     }
 
     // Sub-expressions in the first and second expression to be
     // anti-unified that are replaced with variables
-    private readonly IDictionary<ExprPair, VCExprVar!>! Representation =
-      new Dictionary<ExprPair, VCExprVar!> ();
+    private readonly IDictionary<ExprPair, VCExprVar/*!*/>/*!*/ Representation =
+      new Dictionary<ExprPair, VCExprVar/*!*/>();
+
+
 
     private struct ExprPair {
-      public readonly VCExpr! Expr0, Expr1;
-      public ExprPair(VCExpr! expr0, VCExpr! expr1) {
+      public readonly VCExpr/*!*/ Expr0, Expr1;
+      [ContractInvariantMethod]
+      void ObjectInvariant() {
+        Contract.Invariant(Expr0 != null);
+        Contract.Invariant(Expr1 != null);
+      }
+
+      public ExprPair(VCExpr expr0, VCExpr expr1) {
+        Contract.Requires(expr1 != null);
+        Contract.Requires(expr0 != null);
         Expr0 = expr0;
         Expr1 = expr1;
       }
-      [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+      [Pure]
+      [Reads(ReadsAttribute.Reads.Nothing)]
       public override bool Equals(object that) {
         if (that is ExprPair) {
           ExprPair thatPair = (ExprPair)that;
@@ -331,36 +389,30 @@ namespace Microsoft.Boogie.Clustering
       [Pure]
       public override int GetHashCode() {
         return Expr0.GetHashCode() + Expr1.GetHashCode() * 13;
-      }      
+      }
     }
 
     public void Reset() {
-      Representation.Clear ();
+      Representation.Clear();
     }
 
-    public bool RepresentationIsRenaming(IDictionary<VCExprVar!, VCExprVar!>! globalVars) {
-      if (!forall{KeyValuePair<ExprPair, VCExprVar!> pair in Representation;
-                  pair.Key.Expr0 is VCExprVar &&
-                  pair.Key.Expr1 is VCExprVar &&
-                  !globalVars.ContainsKey((VCExprVar!)pair.Key.Expr0) &&
-                  !globalVars.ContainsKey((VCExprVar!)pair.Key.Expr1)})
+    public bool RepresentationIsRenaming(IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ globalVars) {
+      Contract.Requires(cce.NonNullElements(globalVars));
+      if (!Contract.ForAll(Representation, pair => pair.Key.Expr0 is VCExprVar && pair.Key.Expr1 is VCExprVar && !globalVars.ContainsKey(cce.NonNull((VCExprVar)pair.Key.Expr0)) && !globalVars.ContainsKey(cce.NonNull((VCExprVar/*!*/)pair.Key.Expr1))))
         return false;
       // check that all substituted variables are distinct
       // TODO: optimise
       return
-        forall{KeyValuePair<ExprPair, VCExprVar!> pair1 in Representation;
-        forall{KeyValuePair<ExprPair, VCExprVar!> pair2 in Representation;
-          pair1.Value.Equals(pair2.Value) || !pair1.Key.Expr0.Equals(pair2.Key.Expr0)
-                                             && !pair1.Key.Expr1.Equals(pair2.Key.Expr1)
-        }};
+        Contract.ForAll(Representation, pair1 => Contract.ForAll(Representation, pair2 => pair1.Value.Equals(pair2.Value) || !pair1.Key.Expr0.Equals(pair2.Key.Expr0) && !pair1.Key.Expr1.Equals(pair2.Key.Expr1)));
     }
 
-    public void RepresentationSize(IDictionary<VCExprVar!, VCExprVar!>! globalVars,
-                                   out int expr0Size, out int expr1Size) {
-      ReprSizeComputingVisitor! size0Visitor = new ReprSizeComputingVisitor ();
-      ReprSizeComputingVisitor! size1Visitor = new ReprSizeComputingVisitor ();
+    public void RepresentationSize(IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ globalVars, out int expr0Size, out int expr1Size) {
+      Contract.Requires(cce.NonNullElements(globalVars));
+      ReprSizeComputingVisitor/*!*/ size0Visitor = new ReprSizeComputingVisitor();
+      ReprSizeComputingVisitor/*!*/ size1Visitor = new ReprSizeComputingVisitor();
 
-      foreach (KeyValuePair<ExprPair, VCExprVar!> pair in Representation) {
+      foreach (KeyValuePair<ExprPair, VCExprVar/*!*/> pair in Representation) {
+        Contract.Assert(cce.NonNullElements(pair));
         size0Visitor.ComputeSize(pair.Key.Expr0, globalVars);
         size1Visitor.ComputeSize(pair.Key.Expr1, globalVars);
       }
@@ -369,58 +421,76 @@ namespace Microsoft.Boogie.Clustering
       expr1Size = size1Visitor.Size;
     }
 
-    public VCExpr! AntiUnify(VCExpr! s, VCExpr! t)
-      requires s.Type.Equals(t.Type); {
+    public VCExpr AntiUnify(VCExpr s, VCExpr t) {
+      Contract.Requires(t != null);
+      Contract.Requires(s != null);
+      Contract.Requires((s.Type.Equals(t.Type)));
+Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Traverse(s, t);
     }
 
     ////////////////////////////////////////////////////////////////////////////
 
-    private VCExprVar! AbstractWithVariable(VCExpr! s, VCExpr! t)
-      requires s.Type.Equals(t.Type); {
+    private VCExprVar AbstractWithVariable(VCExpr s, VCExpr t) {
+      Contract.Requires(t != null);
+      Contract.Requires(s != null);
+      Contract.Requires((s.Type.Equals(t.Type)));
+Contract.Ensures(Contract.Result<VCExprVar>() != null);
 
-      ExprPair pair = new ExprPair (s, t);
+      ExprPair pair = new ExprPair(s, t);
       VCExprVar repr;
       if (!Representation.TryGetValue(pair, out repr)) {
         repr = Gen.Variable("abs" + Representation.Count, s.Type);
         Representation.Add(pair, repr);
       }
-      return (!)repr;
+      return cce.NonNull(repr);
     }
 
     ////////////////////////////////////////////////////////////////////////////
 
-    public override VCExpr! Visit(VCExprLiteral! node, VCExpr! that) {
+    public override VCExpr Visit(VCExprLiteral node, VCExpr that) {
+      Contract.Requires(that != null);
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (node.Equals(that))
         return node;
       return AbstractWithVariable(node, that);
     }
 
-    public override VCExpr! Visit(VCExprNAry! node, VCExpr! that) {
+    public override VCExpr Visit(VCExprNAry node, VCExpr that) {
+      Contract.Requires(that != null);
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
       VCExprNAry thatNAry = that as VCExprNAry;
       if (thatNAry != null && node.Op.Equals(thatNAry.Op)) {
         // type parameters should already have been eliminated at this
         // stage
-        assert node.TypeParamArity == 0 && thatNAry.TypeParamArity == 0 &&
-               node.Arity == thatNAry.Arity;
-        
-        List<VCExpr!>! unifiedArgs = new List<VCExpr!> ();
+        Contract.Assert(node.TypeParamArity == 0 && thatNAry.TypeParamArity == 0 && node.Arity == thatNAry.Arity);
+
+        List<VCExpr/*!*/>/*!*/ unifiedArgs = new List<VCExpr/*!*/>();
         for (int i = 0; i < node.Arity; ++i)
           unifiedArgs.Add(Traverse(node[i], thatNAry[i]));
-        
+
         return Gen.Function(node.Op, unifiedArgs);
       }
       return AbstractWithVariable(node, that);
     }
 
-    public override VCExpr! Visit(VCExprVar! node, VCExpr! that) {
+    public override VCExpr Visit(VCExprVar node, VCExpr that) {
+      Contract.Requires(that != null);
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (node.Equals(that))
         return node;
       return AbstractWithVariable(node, that);
     }
 
-    protected override VCExpr! StandardResult(VCExpr! node, VCExpr! that) {
-      assert false; // not handled here      
+    protected override VCExpr StandardResult(VCExpr node, VCExpr that) {
+      Contract.Requires(that != null);
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      Contract.Assert(false);
+      throw new cce.UnreachableException(); // not handled here      
     }
   }
 
@@ -428,18 +498,20 @@ namespace Microsoft.Boogie.Clustering
 
   internal class ReprSizeComputingVisitor
                  : TraversingVCExprVisitor<bool,
-                                           // variables considered as global constants
-                                           IDictionary<VCExprVar!, VCExprVar!>!> {
+    // variables considered as global constants
+                                           IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/> {
 
     public int Size = 0;
 
-    public void ComputeSize(VCExpr! expr,
-                            IDictionary<VCExprVar!, VCExprVar!>! globalVars) {
+    public void ComputeSize(VCExpr expr, IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ globalVars) {
+      Contract.Requires(expr != null);
+      Contract.Requires(cce.NonNullElements(globalVars));
       Traverse(expr, globalVars);
     }
-    
-    protected override bool StandardResult(VCExpr! node,
-                                           IDictionary<VCExprVar!, VCExprVar!>! globalVars) {
+
+    protected override bool StandardResult(VCExpr node, IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ globalVars) {
+      Contract.Requires(node != null);
+      Contract.Requires(cce.NonNullElements(globalVars));
       VCExprVar nodeAsVar = node as VCExprVar;
       if (nodeAsVar == null || globalVars.ContainsKey(nodeAsVar))
         Size = Size + 1;
