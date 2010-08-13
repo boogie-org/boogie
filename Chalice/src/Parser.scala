@@ -231,7 +231,10 @@ class Parser extends StandardTokenParsers {
         val lhs = for ((id, _) <- decls) yield {
           val v = VariableExpr(id.v); v.pos = id.pos; v
         }
-        "[" ~> expression <~ "]" <~ Semi ^^ {e => SpecStmt(lhs, locals, e)};
+        "[" ~> opt(expression <~ ",") ~ expression <~ "]" <~ Semi ^^ {
+          case Some(pre) ~ post => SpecStmt(lhs, locals, pre, post)
+          case None ~ post => SpecStmt(lhs, locals, BoolLiteral(true), post)
+        };
      } })
     | idTypeOpt ~ (":=" ~> Rhs ?) <~ Semi ^^ {
         case (id,optT) ~ rhs =>

@@ -429,14 +429,8 @@ class Translator {
           //update the local, provided a rhs was provided
           case None => Nil
           case Some(rhs) => translateStatement(Assign(new VariableExpr(lv.v), rhs)) }}
-      case SpecStmt(lhs, locals, expr) =>
-        locals.flatMap(v => translateLocalVarDecl(v, true)) :::
-        Comment("spec statement") ::
-        lhs.map(l => Boogie.Havoc(l)) :::
-        isDefined(expr) :::
-        bassume(expr)
-      case c: Call =>
-        translateCall(c)
+      case s: SpecStmt => translateSpecStmt(s)
+      case c: Call => translateCall(c)
       case Install(obj, lowerBounds, upperBounds) =>
         Comment("install") ::
         isDefined(obj) :::
@@ -863,6 +857,23 @@ class Translator {
     BLocal(heldV) :: Havoc(held) :: bassume(held <= 0) ::
     etran.Heap.store(o, "held", held) ::
     etran.Heap.store(o, "rdheld", false)
+  }
+
+  def translateSpecStmt(s: SpecStmt): List[Stmt] = {
+    val preGlobals = etran.FreshGlobals("pre")
+
+    // declare new local variables
+    s.locals.flatMap(v => translateLocalVarDecl(v, true)) :::
+    Comment("spec statement") ::
+    (for (v <- preGlobals) yield BLocal(v)) :::
+    // remember values of globals
+    (for ((o,g) <- preGlobals zip etran.Globals) yield (new Boogie.VarExpr(o) := g)) :::
+    // exhale preconditions
+    etran.Exhale(List((s.pre, ErrorMessage(s.pos, "The specification statement precondition at " + s.pos + " might not hold."))), "precondition", true) :::
+    // havoc locals
+    (s.lhs.map(l => Boogie.Havoc(l))) :::
+    // inhale postconditions (using the state before the call as the "old" state)
+    etran.FromPreGlobals(preGlobals).Inhale(List(s.post), "postcondition", true)
   }
 
   def translateCall(c: Call): List[Stmt] = {

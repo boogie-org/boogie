@@ -197,7 +197,7 @@ case class Call(declaresLocal: List[Boolean], lhs: List[VariableExpr], obj: Expr
   var locals = List[Variable]()
   var m: Method = null
 }
-case class SpecStmt(lhs: List[VariableExpr], locals:List[Variable], expr: Expression) extends Statement
+case class SpecStmt(lhs: List[VariableExpr], locals:List[Variable], pre: Expression, post: Expression) extends Statement
 case class Install(obj: Expression, lowerBounds: List[Expression], upperBounds: List[Expression]) extends Statement
 case class Share(obj: Expression, lowerBounds: List[Expression], upperBounds: List[Expression]) extends Statement
 case class Unshare(obj: Expression) extends Statement

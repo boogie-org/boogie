@@ -59,7 +59,7 @@ object Chalice {
    " [-boogie:path]" +
    " [-defaults:int]" +
    " [<boogie option>]*" +
-   " <file.chalice>";
+   " <file.chalice>*";
 
    for (a <- args) {
      if (options contains a) options(a)()

@@ -277,7 +277,8 @@ object Resolver {
            if (v.v != null && !s.locals.contains(v.v) && v.v.IsImmutable)
              context.Error(s.pos, "Immutable variable cannot be updated by a spec statement: " + v.id);           
          }
-         ResolveExpr(s.expr, ctx, true, true)(false)
+         ResolveExpr(s.pre, ctx, false, true)(false)
+         ResolveExpr(s.post, ctx, true, true)(false)
        case s =>
          ResolveStmt(s, ctx)
      }

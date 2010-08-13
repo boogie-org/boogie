@@ -95,7 +95,7 @@ object PrintProgram {
       print(id + ": " + t.FullName)
       rhs match { case None => case Some(rhs) => print(" := "); Rhs(rhs) }
       println(Semi)
-    case SpecStmt(lhs, locals, expr) =>
+    case SpecStmt(lhs, locals, pre, post) =>
       if (locals.size > 0) {
         if (locals(0).IsGhost) print("ghost ");
         if (locals(0).IsImmutable) print("const ") else print("var ")
@@ -108,7 +108,7 @@ object PrintProgram {
           if (first) first = false else print(", ");
           print(l.id);
         }
-      print(" ["); Expr(expr); print("]"); println(Semi);
+      print(" ["); Expr(pre); print(", "); Expr(post); print("]"); println(Semi);
     case Call(_, outs, obj, id, args) =>
       print("call ")
       outs match {
