@@ -126,10 +126,6 @@
       <Project>{BB49B90B-BE21-4BE8-85BA-359FDB55F4DF}</Project>
       <Name>Z3</Name>
     </ProjectReference>
-    <ProjectReference Include="..\VCExpr\VCExpr.sscproj">
-      <Project>{CF42B700-10AA-4DA9-8992-48A800251C11}</Project>
-      <Name>VCExpr</Name>
-    </ProjectReference>
     <ProjectReference Include="..\VCGeneration\VCGeneration.csproj">
       <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
       <Name>VCGeneration</Name>

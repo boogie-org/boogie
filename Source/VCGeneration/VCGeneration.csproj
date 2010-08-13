@@ -77,7 +77,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="cce.cs" />
     <Compile Include="Check.cs" />
     <Compile Include="ConditionGeneration.cs" />
     <Compile Include="Context.cs" />
@@ -106,8 +105,8 @@
       <Project>{4C28FB90-630E-4B55-A937-11A011B79765}</Project>
       <Name>Graph</Name>
     </ProjectReference>
-    <ProjectReference Include="..\VCExpr\VCExpr.sscproj">
-      <Project>{CF42B700-10AA-4DA9-8992-48A800251C11}</Project>
+    <ProjectReference Include="..\VCExpr\VCExpr.csproj">
+      <Project>{56FFDBCA-7D14-43B8-A6CA-22A20E417EE1}</Project>
       <Name>VCExpr</Name>
     </ProjectReference>
   </ItemGroup>
