@@ -1,14 +1,17 @@
-# Aste started: 2010-08-12 07:00:04
+# Aste started: 2010-08-13 07:00:04
 # Host id: Boogiebox
-# [2010-08-12 07:02:12] SpecSharp revision: 55320
-# [2010-08-12 07:03:09] Boogie revision: 56354
-# [2010-08-12 07:03:33] SscBoogie revision: 56316
-[2010-08-12 07:04:00] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-08-13 07:02:14] SpecSharp revision: 55320
+# [2010-08-13 07:03:13] Boogie revision: 56389
+# [2010-08-13 07:03:38] SscBoogie revision: 56316
+[2010-08-13 07:04:15] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-08-12 07:05:27] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-08-13 07:05:36] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
+    D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(1473,16): warning CS0659: 'Microsoft.Boogie.VCExprAST.VCExprCustomOp' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+    D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(662,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCExpr\VCExprASTPrinter.cs(46,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4271,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(717,15): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(741,7): warning CS0162: Unreachable code detected
@@ -26,15 +29,18 @@
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(308,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(38,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(190,73): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(226,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(283,13): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(357,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(470,48): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(576,76): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(619,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
-    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(737,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(38,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(190,73): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(226,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(283,13): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(357,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(470,48): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(576,76): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(619,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\BoogieDriver\BoogieDriver.cs(737,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\BoogieDriver\cce.cs'.
+    warning CS0659
+    warning CS0162
+    warning CS0162
     warning CS0162
     warning CS0162
     warning CS0162
@@ -61,7 +67,7 @@
     warning CS0436
     warning CS0436
     warning CS0436
-[2010-08-12 07:05:34] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
+[2010-08-13 07:05:43] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(760,18): warning CS0168: The variable 's' is declared but never used
     D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1340,72): warning CS0168: The variable 'id' is declared but never used
@@ -95,6 +101,6 @@
     warning CS0436
     warning CS0436
     warning CS0436
-[2010-08-12 07:33:36] 1 out of 27 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+[2010-08-13 07:34:40] 1 out of 27 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
 ['bitvectors']
-# [2010-08-12 07:35:18] Released nightly of Boogie
+# [2010-08-13 07:36:25] Released nightly of Boogie
