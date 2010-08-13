@@ -95,6 +95,20 @@ object PrintProgram {
       print(id + ": " + t.FullName)
       rhs match { case None => case Some(rhs) => print(" := "); Rhs(rhs) }
       println(Semi)
+    case SpecStmt(lhs, locals, expr) =>
+      if (locals.size > 0) {
+        if (locals(0).IsGhost) print("ghost ");
+        if (locals(0).IsImmutable) print("const ") else print("var ")
+      } else
+        print("var ");
+      VarList(locals);
+      var first = (locals.size == 0);
+      for (l <- lhs)
+        if (! locals.exists(v => v.id == l.id)) {
+          if (first) first = false else print(", ");
+          print(l.id);
+        }
+      print(" ["); Expr(expr); print("]"); println(Semi);
     case Call(_, outs, obj, id, args) =>
       print("call ")
       outs match {

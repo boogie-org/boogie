@@ -390,7 +390,7 @@ class Translator {
         translateWhile(w)
       case Assign(lhs, rhs) =>
         def assignOrAssumeEqual(r: Boogie.Expr): List[Boogie.Stmt] = {
-          if (lhs.v.isInstanceOf[ImmutableVariable]) {
+          if (lhs.v.IsImmutable) {
             // this must be a "ghost const"
             val name = lhs.v.UniqueName
             bassert(! VarExpr("assigned$" + name), lhs.pos, "Const variable can be assigned to only once.") ::
@@ -423,21 +423,18 @@ class Translator {
         isDefined(target) :::
         bassert(CanWrite(target, lhs.f), s.pos, "Location might not be writable") ::
         statements ::: etran.Heap.store(target, lhs.f, toStore) :: bassume(wf(VarExpr(HeapName), VarExpr(MaskName)))
-      case lv @ LocalVar(id, t, const, ghost, rhs) =>
-        val bv = Variable2BVarWhere(lv.v)
-        val isAssignedVar = if (const) new Boogie.BVar("assigned$" + bv.id, BoolClass) else null
-        Comment("local " + (if (ghost) "ghost " else "") + (if (const) "const " else "var ") + id) ::
-        BLocal(bv) :: 
-        { if (const)
-            // havoc x; var assigned$x: bool; assigned$x := false; 
-            Havoc(new Boogie.VarExpr(bv)) ::
-            BLocal(isAssignedVar) :: (new Boogie.VarExpr(isAssignedVar) := false)
-          else
-            List() } :::
-        { rhs match {
+      case lv : LocalVar =>
+        translateLocalVarDecl(lv.v, false) :::
+        { lv.rhs match {
           //update the local, provided a rhs was provided
-          case None => List()
+          case None => Nil
           case Some(rhs) => translateStatement(Assign(new VariableExpr(lv.v), rhs)) }}
+      case SpecStmt(lhs, locals, expr) =>
+        locals.flatMap(v => translateLocalVarDecl(v, true)) :::
+        Comment("spec statement") ::
+        lhs.map(l => Boogie.Havoc(l)) :::
+        isDefined(expr) :::
+        bassume(expr)
       case c: Call =>
         translateCall(c)
       case Install(obj, lowerBounds, upperBounds) =>
@@ -756,6 +753,20 @@ class Translator {
     }
   }
 
+  def translateLocalVarDecl(v: Variable, assignConst: Boolean) = {
+    val bv = Variable2BVarWhere(v)
+    Comment("local " + v) ::
+    BLocal(bv) ::
+    { if (v.IsImmutable) {
+        val isAssignedVar = new Boogie.BVar("assigned$" + bv.id, BoolClass)
+        // havoc x; var assigned$x: bool; assigned$x := false;
+        Havoc(new Boogie.VarExpr(bv)) ::
+        BLocal(isAssignedVar) ::
+        (new Boogie.VarExpr(isAssignedVar) := assignConst)
+      } else
+        Nil }
+  }
+
   def translateAllocation(cl: Class, initialization: List[Init], lowerBounds: List[Expression], upperBounds: List[Expression], pos: Position): (Boogie.BVar, List[Boogie.Stmt]) = {
     val (nw, nwe) = NewBVar("nw", cl, true)
     val (ttV,tt) = Boogie.NewTVar("T")
@@ -933,7 +944,7 @@ class Translator {
       (new VariableExpr(sv) := new VariableExpr(v))) :::
     // havoc local-variable loop targets
     (w.LoopTargets :\ List[Boogie.Stmt]()) ( (v,vars) => (v match {
-      case v: ImmutableVariable => Boogie.Havoc(Boogie.VarExpr("assigned$" + v.id))
+      case v: Variable if v.IsImmutable => Boogie.Havoc(Boogie.VarExpr("assigned$" + v.id))
       case _ => Boogie.Havoc(Boogie.VarExpr(v.UniqueName)) }) :: vars) :::
     Boogie.If(null,
     // 1. CHECK  DEFINEDNESS OF INVARIANT

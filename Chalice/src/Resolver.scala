@@ -6,6 +6,7 @@
 package chalice;
 import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
+import collection.mutable.ListBuffer
 
 object Resolver {
  sealed abstract class ResolverOutcome
@@ -268,7 +269,15 @@ object Resolver {
          for (v <- c.locals) { ctx = ctx.AddVariable(v) } 
        case r: Receive =>
          ResolveStmt(r, ctx)
-         for (v <- r.locals) { ctx = ctx.AddVariable(v) } 
+         for (v <- r.locals) { ctx = ctx.AddVariable(v) }
+       case s: SpecStmt =>
+         for (v <- s.locals) { ResolveType(v.t, ctx); ctx = ctx.AddVariable(v) }
+         for (v <- s.lhs) {
+           ResolveExpr(v, ctx, true, true)(false)
+           if (v.v != null && !s.locals.contains(v.v) && v.v.IsImmutable)
+             context.Error(s.pos, "Immutable variable cannot be updated by a spec statement: " + v.id);           
+         }
+         ResolveExpr(s.expr, ctx, true, true)(false)
        case s =>
          ResolveStmt(s, ctx)
      }
@@ -308,7 +317,8 @@ object Resolver {
      ResolveExpr(rhs, context, false, false)(false)
      if (! lhs.isPredicate && !canAssign(lhs.typ, rhs.typ)) context.Error(fu.pos, "type mismatch in assignment, lhs=" + lhs.typ.FullName + " rhs=" + rhs.typ.FullName)
      if (! lhs.isPredicate && lhs.f != null && !lhs.f.isGhost) CheckNoGhost(rhs, context)
-   case lv:LocalVar => throw new Exception("unexpected LocalVar; should have been handled in BlockStmt above")
+   case _:LocalVar => throw new Exception("unexpected LocalVar; should have been handled in BlockStmt above")
+   case _:SpecStmt => throw new Exception("should have been handled before")
    case c @ Call(declaresLocal, lhs, obj, id, args) =>
      ResolveExpr(obj, context, false, false)(false)
      CheckNoGhost(obj, context)

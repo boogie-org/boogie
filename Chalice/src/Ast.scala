@@ -147,25 +147,23 @@ case class Function(id: String, ins: List[Variable], out: Type, spec: List[Speci
   var SCC: List[Function] = Nil;
 }
 case class Condition(id: String, where: Option[Expression]) extends NamedMember(id)
-class Variable(name: String, typ: Type) extends ASTNode {
+class Variable(name: String, typ: Type, isGhost: Boolean, isImmutable: Boolean) extends ASTNode {
   val id = name
   val t = typ
-  val IsGhost: Boolean = false
-  val IsImmutable: Boolean = false
+  val IsGhost = isGhost
+  val IsImmutable = isImmutable
   val UniqueName = {
     val n = Variable.VariableCount
     Variable.VariableCount = Variable.VariableCount + 1
     name + "#" + n
   }
+  def this(name: String, typ: Type) = this(name,typ,false,false);
+  override def toString = (if (IsGhost) "ghost " else "") + (if (IsImmutable) "const " else "var ") + id;
 }
 object Variable { var VariableCount = 0 }
-class ImmutableVariable(id: String, t: Type) extends Variable(id, t) {
-  override val IsImmutable: Boolean = true
-}
-class SpecialVariable(name: String, typ: Type) extends Variable(name, typ) {
+class SpecialVariable(name: String, typ: Type) extends Variable(name, typ, false, false) {
   override val UniqueName = name
 }
-
 sealed abstract class Specification extends ASTNode
 case class Precondition(e: Expression) extends Specification
 case class Postcondition(e: Expression) extends Specification
@@ -193,19 +191,13 @@ case class WhileStmt(guard: Expression,
 case class Assign(lhs: VariableExpr, rhs: RValue) extends Statement
 case class FieldUpdate(lhs: MemberAccess, rhs: RValue) extends Statement
 case class LocalVar(id: String, t: Type, const: Boolean, ghost: Boolean, rhs: Option[RValue]) extends Statement {
-  val v =
-    if (const)
-      new ImmutableVariable(id, t){override val IsGhost = ghost}
-    else
-      new Variable(id, t){override val IsGhost = ghost}
+  val v = new Variable(id, t, ghost, const);
 }
 case class Call(declaresLocal: List[Boolean], lhs: List[VariableExpr], obj: Expression, id: String, args: List[Expression]) extends Statement {
   var locals = List[Variable]()
   var m: Method = null
 }
-case class Spec(declaresLocal: List[Boolean], lhs: List[VariableExpr], pred: Expression) extends Statement {
-  var locals = List[Variable]()
-}
+case class SpecStmt(lhs: List[VariableExpr], locals:List[Variable], expr: Expression) extends Statement
 case class Install(obj: Expression, lowerBounds: List[Expression], upperBounds: List[Expression]) extends Statement
 case class Share(obj: Expression, lowerBounds: List[Expression], upperBounds: List[Expression]) extends Statement
 case class Unshare(obj: Expression) extends Statement

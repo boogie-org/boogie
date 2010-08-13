@@ -65,8 +65,8 @@ class Parser extends StandardTokenParsers {
 
   def memberDecl = positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl | predicateDecl | functionDecl)
   def fieldDecl =
-        ( "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id, t, false) }
-        | "ghost" ~> "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id, t, true) }
+        ( "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, false) }
+        | "ghost" ~> "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, true) }
         )
   def invariantDecl = positioned("invariant" ~> expression <~ Semi ^^ MonitorInvariant)
   def methodDecl = {
@@ -95,18 +95,15 @@ class Parser extends StandardTokenParsers {
   def formalList(immutable: Boolean) = repsep(formal(immutable), ",")  
   def formal(immutable: Boolean): Parser[Variable] =
     idType ^^ {case (id,t) =>
-      currentLocalVariables = currentLocalVariables + id;
-      if (immutable) new ImmutableVariable(id,t)
-      else new Variable(id,t) 
+      currentLocalVariables = currentLocalVariables + id.v;
+      new Variable(id.v,t,false,immutable) 
     }
-
   def Ident = positioned(ident ^^ PositionedString)
-  def idType =
-    idTypeOpt ^^ {
+  def idType = idTypeOpt ^^ {
       case (id, None) => (id, Type("int", Nil))
       case (id, Some(t)) => (id, t) }
   def idTypeOpt =
-    ident ~ (":" ~> typeDecl ?) ^^ { case id ~ optT => (id, optT) }
+    Ident ~ (":" ~> typeDecl ?) ^^ { case id ~ optT => (id, optT) }
   def typeDecl: Parser[Type] =
       positioned(("int" | "bool" | ident | "seq") ~ opt("<" ~> repsep(typeDecl, ",") <~ ">") ^^ { case t ~ parameters => Type(t, parameters.getOrElse(Nil)) }
       | ("token" ~ "<") ~> (typeDecl <~ ".") ~ ident <~ ">" ^^ { case c ~ m => TokenType(c, m) }
@@ -138,7 +135,8 @@ class Parser extends StandardTokenParsers {
     | blockStatement ^^ BlockStmt
     | "var" ~> localVarStmt(false, false)
     | "const" ~> localVarStmt(true, false)
-    | "ghost" ~> ( "const" ~> localVarStmt(true, true) | "var" ~> localVarStmt(false, true))
+    | "ghost" ~> "const" ~> localVarStmt(true, true)
+    | "ghost" ~> "var" ~> localVarStmt(false, true)
     | "call" ~> callStmt
     | "if" ~> ifStmtThen
     | "while" ~> "(" ~> expression ~ ")" ~ loopSpec ~ blockStatement ^^ {
@@ -225,10 +223,20 @@ class Parser extends StandardTokenParsers {
           Receive(declareImplicitLocals(lhs), e, lhs) }
     )
   def localVarStmt(const: Boolean, ghost: Boolean) =
-      idTypeOpt ~ (":=" ~> Rhs ?) <~ Semi ^^ {
+    ( (rep1sep(idType, ",") into {decls:List[(PositionedString,Type)] => {
+        val locals = for ((id, t) <- decls; if (! currentLocalVariables.contains(id.v))) yield {
+          currentLocalVariables = currentLocalVariables + id.v
+          new Variable(id.v, t, ghost, const)
+        }
+        val lhs = for ((id, _) <- decls) yield {
+          val v = VariableExpr(id.v); v.pos = id.pos; v
+        }
+        "[" ~> expression <~ "]" <~ Semi ^^ {e => SpecStmt(lhs, locals, e)};
+     } })
+    | idTypeOpt ~ (":=" ~> Rhs ?) <~ Semi ^^ {
         case (id,optT) ~ rhs =>
-          currentLocalVariables = currentLocalVariables + id
-          LocalVar(id,
+          currentLocalVariables = currentLocalVariables + id.v
+          LocalVar(id.v,
                    optT match {
                      case Some(t) => t
                      case None =>
@@ -240,8 +248,8 @@ class Parser extends StandardTokenParsers {
                          case _ => Type("int", Nil)
                        }
                    },
-                   const, ghost, rhs)
-      }
+                   const, ghost, rhs) }
+    )
   def ifStmtThen: Parser[IfStmt] =
     "(" ~> expression ~ ")" ~ blockStatement ~ ("else" ~> ifStmtElse ?) ^^ {
       case guard ~ _ ~ thenClause ~ elseClause => IfStmt(guard, BlockStmt(thenClause), elseClause) }
