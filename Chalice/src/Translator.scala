@@ -129,9 +129,9 @@ class Translator {
 
   def translateFunction(f: Function): List[Decl] = {
     val myresult = BVar("result", f.out.typ);
-    etran.checkTermination = !skipTermination;
+    etran = etran.CheckTermination(!skipTermination);
     val checkBody = f.definition match {case Some(e) => isDefined(e); case None => Nil};
-    etran.checkTermination = false;
+    etran = etran.CheckTermination(false);
     // Boogie function that represents the Chalice function
     Boogie.Function(functionName(f), BVar("heap", theap) :: BVar("mask", tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar), BVar("$myresult", f.out.typ)) ::
     // check definedness of the function's precondition and body
@@ -336,10 +336,12 @@ class Translator {
     new Boogie.Forall(chV, (ch ==@ bnull) || (0 <= new MapSelect(etran.Credits, ch)))
   }
 
-  def DefaultPrecondition() : List[String] = 
-  {
-    List("requires this!=null;", "free requires wf(Heap, Mask);")
+  def DefaultPrecondition() = {
+    "requires this!=null;" ::
+    "free requires wf(Heap, Mask);" ::
+    Nil
   }
+
   def DefinePreInitialState = {
     Comment("define pre-initial state") ::
     (etran.Mask := ZeroMask) :: (etran.Credits := ZeroCredits)
@@ -354,9 +356,7 @@ class Translator {
   /**********************************************************************
   *****************           STATEMENTS                *****************
   **********************************************************************/
-  def translateStatements(statements: List[Statement]): List[Stmt] = {
-    statements flatMap translateStatement
-  }
+  def translateStatements(statements: List[Statement]): List[Stmt] = statements flatMap translateStatement
 
   def translateStatement(s: Statement): List[Stmt] = {
     s match {
@@ -1183,26 +1183,41 @@ class Translator {
   def CanWrite(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = etran.CanWrite(obj, field)
 
 
-  /**********************************************************************
-  *****************          EXPRESSIONS                *****************
-  **********************************************************************/
+/**********************************************************************
+*****************          EXPRESSIONS                *****************
+**********************************************************************/
 
-class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.Expr], currentClass: Class) {
+object ExpressionTranslator {
+  val Globals = {
+    ("Heap", theap) ::
+    ("Mask", tmask) ::
+    ("Credits", tcredits) ::
+    Nil
+  }
+}
+
+class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.Expr], currentClass: Class, checkTermination: Boolean) {
+  assert(globals.size == 3)
+  assert(preGlobals.size == 3)
+
   import TranslationHelper._
   import TranslationOptions._
 
   val Heap = globals(0);
   val Mask = globals(1);
   val Credits = globals(2);
-  lazy val oldEtran = new ExpressionTranslator(preGlobals, preGlobals, currentClass)
-  var checkTermination = false; 
+  lazy val oldEtran = new ExpressionTranslator(preGlobals, preGlobals, currentClass, checkTermination)
 
+  def this(globals: List[Boogie.Expr], preGlobals: List[Boogie.Expr], currentClass: Class) = this(globals, preGlobals, currentClass, false)
   def this(globals: List[Boogie.Expr], cl: Class) = this(globals, globals map (g => Boogie.Old(g)), cl)
   def this(cl: Class) = this(for ((id,t) <- ExpressionTranslator.Globals) yield Boogie.VarExpr(id), cl)
 
   def Globals = List(Heap, Mask, Credits)
   def ChooseEtran(chooseOld: Boolean) = if (chooseOld) oldEtran else this
-  // Create a list of fresh global variables
+
+  /**
+   * Create a list of fresh global variables
+   */
   def FreshGlobals(prefix: String) = {
     new Boogie.BVar(prefix + HeapName, theap, true) ::
     new Boogie.BVar(prefix + MaskName, tmask, true) ::
@@ -1210,20 +1225,26 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     Nil
   }
 
-  // Create a new ExpressionTranslator that is a copy of the receiver, but with
-  // preGlobals as the old global variables 
+  /**
+   * Create a new ExpressionTranslator that is a copy of the receiver, but with
+   * preGlobals as the old global variables
+   */
   def FromPreGlobals(preGlobals: List[Boogie.BVar]) = {
     val g = for ((id,t) <- ExpressionTranslator.Globals) yield VarExpr(id)
     val pg = preGlobals map (g => new VarExpr(g))
-    new ExpressionTranslator(g, pg, currentClass)
+    new ExpressionTranslator(g, pg, currentClass, checkTermination)
   }
 
   def UseCurrentAsOld() = {
-    new ExpressionTranslator(globals, globals, currentClass);
+    new ExpressionTranslator(globals, globals, currentClass, checkTermination);
   }
 
   def WhereOldIs(h: Boogie.Expr, m: Boogie.Expr, c: Boogie.Expr) = {
-    new ExpressionTranslator(globals, List(h, m, c), currentClass);
+    new ExpressionTranslator(globals, List(h, m, c), currentClass, checkTermination);
+  }
+
+  def CheckTermination(check: Boolean) = {
+    new ExpressionTranslator(globals, preGlobals, currentClass, check);
   }
 
   /**********************************************************************
@@ -1436,10 +1457,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         case _ => if(e0.typ.IsSeq) FunctionApp("Seq#Equal", List(Tr(e0), Tr(e1))) else (Tr(e0) ==@ Tr(e1))
       }
     case Neq(e0,e1) =>
-      if (IsMaxLockLit(e0) || IsMaxLockLit(e1))
-        Tr(Not(Eq(e0,e1)))
-      else
-        (Tr(e0) !=@ Tr(e1))
+      Tr(Not(Eq(e0,e1)))
     case Less(e0,e1) =>
       Tr(e0) < Tr(e1)
     case AtMost(e0,e1) =>
@@ -1853,7 +1871,9 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     }
   }
 
-  // permissions
+  /**********************************************************************
+  *****************          PERMISSIONS                *****************
+  **********************************************************************/
 
   def CanRead(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanRead", Mask, obj, field)
   def CanRead(obj: Boogie.Expr, field: String): Boogie.Expr = CanRead(obj, new Boogie.VarExpr(field))
@@ -1983,7 +2003,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   }
 
   def fractionOk(expr: Expression) = {
-    bassert(0<=Tr(expr), expr.pos, "Fraction might be negative.") :: 
+    bassert(0 <= Tr(expr), expr.pos, "Fraction might be negative.") ::
     bassert(Tr(expr) <= 100, expr.pos, "Fraction might exceed 100.")
   }
 }
@@ -1996,15 +2016,6 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   def isHeld(e: Expr): Expr = (0 < etran.Heap.select(e, "held"))
   def isRdHeld(e: Expr): Expr = etran.Heap.select(e, "rdheld")
   def isShared(e: Expr): Expr = etran.Heap.select(e, "mu") !=@ bLockBottom
-
-object ExpressionTranslator {
-  val Globals = {
-    ("Heap", theap) ::
-    ("Mask", tmask) ::
-    ("Credits", tcredits) ::
-    Nil
-  }
-}
 
 object TranslationHelper {
   // implicit conversions
