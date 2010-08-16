@@ -2314,7 +2314,7 @@ namespace Microsoft.Boogie
       Adjacency<Block!> next = new Adjacency<Block!>(Successors);
       Adjacency<Block!> prev = new Adjacency<Block!>(Predecessors);
 
-      this.scc = new StronglyConnectedComponents<Block><Block!>(this.Blocks, next, prev);
+      this.scc = new StronglyConnectedComponents<Block!>(this.Blocks, next, prev);
       scc.Compute();
 
       foreach(Block! block in this.Blocks)
