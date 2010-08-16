@@ -2951,52 +2951,65 @@ namespace VC {
         Contract.Requires(trace != null);
         Contract.Requires(cce.NonNullElements(calleeCounterexamples));
         // After translation, all potential errors come from asserts.
-        CmdSeq cmds = b.Cmds;
-        TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
-        for (int i = 0; i < cmds.Length; i++) {
-          Cmd cmd = cce.NonNull(cmds[i]);
+        while (true)
+        {
+            CmdSeq cmds = b.Cmds;
+            TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
+            for (int i = 0; i < cmds.Length; i++)
+            {
+                Cmd cmd = cce.NonNull(cmds[i]);
 
-          // Skip if 'cmd' not contained in the trace or not an assert
-          if (cmd is AssertCmd && traceNodes.Contains(cmd)) {
-            Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, new Dictionary<Incarnation, Absy/*!*/>());
-            newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
-            return newCounterexample;
-          }
+                // Skip if 'cmd' not contained in the trace or not an assert
+                if (cmd is AssertCmd && traceNodes.Contains(cmd))
+                {
+                    Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, new Dictionary<Incarnation, Absy/*!*/>());
+                    newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
+                    return newCounterexample;
+                }
 
-          // Counterexample generation for inlined procedures
-          AssumeCmd assumeCmd = cmd as AssumeCmd;
-          if (assumeCmd == null)
-            continue;
-          NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
-          if (naryExpr == null)
-            continue;
-          string calleeName = naryExpr.Fun.FunctionName;
-          Contract.Assert(calleeName != null);
-          if (!implName2StratifiedInliningInfo.ContainsKey(calleeName))
-            continue;
+                // Counterexample generation for inlined procedures
+                AssumeCmd assumeCmd = cmd as AssumeCmd;
+                if (assumeCmd == null)
+                    continue;
+                NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
+                if (naryExpr == null)
+                    continue;
+                string calleeName = naryExpr.Fun.FunctionName;
+                Contract.Assert(calleeName != null);
+                if (!implName2StratifiedInliningInfo.ContainsKey(calleeName))
+                    continue;
 
-          Contract.Assert(calls != null);
-          int calleeId = calls.boogieExpr2Id[new BoogieCallExpr(naryExpr, candidateId)];
+                Contract.Assert(calls != null);
+                int calleeId = calls.boogieExpr2Id[new BoogieCallExpr(naryExpr, candidateId)];
 
-          calleeCounterexamples[assumeCmd] =
-              new CalleeCounterexampleInfo(
-                  cce.NonNull(GenerateTrace(labels, errModel, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
-                  new List<object>());
+                calleeCounterexamples[assumeCmd] =
+                    new CalleeCounterexampleInfo(
+                        cce.NonNull(GenerateTrace(labels, errModel, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
+                        new List<object>());
 
-        }
-
-        GotoCmd gotoCmd = transferCmd as GotoCmd;
-        if (gotoCmd != null) {
-          foreach (Block bb in cce.NonNull(gotoCmd.labelTargets)) {
-            Contract.Assert(bb != null);
-            if (traceNodes.Contains(bb)) {
-              trace.Add(bb);
-              return GenerateTraceRec(labels, errModel, candidateId, bb, traceNodes, trace, calleeCounterexamples);
             }
-          }
+
+            GotoCmd gotoCmd = transferCmd as GotoCmd;
+            if (gotoCmd != null)
+            {
+                b = null;
+                foreach (Block bb in cce.NonNull(gotoCmd.labelTargets))
+                {
+                    Contract.Assert(bb != null);
+                    if (traceNodes.Contains(bb))
+                    {
+                        trace.Add(bb);
+                        b = bb;
+                        break;
+                        //return GenerateTraceRec(labels, errModel, candidateId, bb, traceNodes, trace, calleeCounterexamples);
+                    }
+                }
+                if (b != null) continue;
+            }
+            return null;
         }
 
-        return null;
+        //return null;
 
       }
 
