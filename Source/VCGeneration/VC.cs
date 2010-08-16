@@ -280,6 +280,7 @@ namespace VC {
         Contract.Invariant(cce.NonNullElements(interfaceExprVars));
       }
 
+      public bool initialized;
       public int inline_cnt;
       public List<VCExprVar> privateVars;
       public List<VCExprVar> interfaceExprVars;
@@ -293,6 +294,7 @@ namespace VC {
         inline_cnt = 0;
         privateVars = new List<VCExprVar>();
         interfaceExprVars = new List<VCExprVar>();
+        initialized = false;
       }
 
     }
@@ -345,6 +347,9 @@ namespace VC {
       Contract.Requires(checker != null);
       Contract.Requires(info.impl != null);
       Contract.Requires(info.impl.Proc != null);
+      Contract.Requires(!info.initialized);
+      Contract.Ensures(info.initialized);
+
       Implementation impl = info.impl;
       Contract.Assert(impl != null);
       ConvertCFG2DAG(impl, program);
@@ -384,22 +389,7 @@ namespace VC {
       info.funcExpr = gen.Function(function, interfaceExprs);
       info.vcexpr = vcexpr;
 
-      // Build the "false" expression: forall a b c: foo(a,b,c) <==> false
-
-      info.falseExpr = gen.Eq(info.funcExpr, VCExpressionGenerator.False);
-
-      List<VCTrigger> triggers = new List<VCTrigger>();
-      List<VCExpr> exprs = new List<VCExpr>();
-      exprs.Add(info.funcExpr);
-      VCTrigger trigger = new VCTrigger(true, exprs);
-      Contract.Assert(trigger != null);
-      triggers.Add(trigger);
-
-      Expr e = new LiteralExpr(Token.NoToken, BigNum.FromInt(1));
-      QKeyValue q = new QKeyValue(Token.NoToken, "weight", new List<object>(new object[] { e }), null);
-      //info.interfaceExprVars.Reverse();
-      info.falseExpr = gen.Forall(new List<TypeVariable>(), info.interfaceExprVars, triggers,
-                                  new VCQuantifierInfos(impl.Name, QuantifierExpr.GetNextSkolemId(), false, q), info.falseExpr);
+      info.initialized = true;
 
       //checker.TheoremProver.PushVCExpression(vcexpr);
       /*
@@ -1897,7 +1887,29 @@ namespace VC {
        // This flag control the nature of queries made by StratifiedVerifyImplementation
        // true: incremental search; false: in-place inlining
        bool incrementalSearch = true;
-       
+       // This flag allows the VCs (and live variable analysis) to be created on-demand
+       bool createVConDemand = true;
+
+       switch (CommandLineOptions.Clo.StratifiedInliningOption)
+       {
+           case 0:
+               incrementalSearch = true;
+               createVConDemand = true;
+               break;
+           case 1:
+               incrementalSearch = false;
+               createVConDemand = true;
+               break;
+           case 2:
+               incrementalSearch = true;
+               createVConDemand = false;
+               break;
+           case 3:
+               incrementalSearch = false;
+               createVConDemand = false;
+               break;
+       }
+
        // Get the checker
        Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);Contract.Assert(checker != null);
        
@@ -1908,18 +1920,23 @@ namespace VC {
        
        // Build VCs for all procedures
        Contract.Assert( implName2StratifiedInliningInfo != null);
-       foreach(StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
+       this.program = program;
+
+       if (!createVConDemand)
        {
-         Contract.Assert(info != null);
-         GenerateVCForStratifiedInlining(program, info, checker);
-       }        
+           foreach (StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
+           {
+               Contract.Assert(info != null);
+               GenerateVCForStratifiedInlining(program, info, checker);
+           }
+       }
 
        // Get the VC of the current procedure
        VCExpr vc;
        StratifiedInliningErrorReporter reporter;
        Hashtable/*<int, Absy!>*/ mainLabel2absy;
        GetVC(impl, program, callback, out vc, out mainLabel2absy, out reporter);
-       
+
        // Find all procedure calls in vc and put labels on them      
        FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, mainLabel2absy);
        calls.setCurrProcAsMain();
@@ -2066,9 +2083,14 @@ namespace VC {
 		  string procName = cce.NonNull(expr.Op as VCExprBoogieFunctionOp).Func.Name;
 		  if(!implName2StratifiedInliningInfo.ContainsKey(procName)) continue;
           
-          //Console.WriteLine("Expanding: {0}", expr.ToString());
+          //Console.WriteLine("Expanding: {0}", procName);
           
 		  StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
+          if (!info.initialized)
+          {
+              GenerateVCForStratifiedInlining(program, info, checker);
+          }
+
 		  VCExpr expansion = cce.NonNull(info.vcexpr);
           
 		  // Instantiate the "forall" variables
@@ -2142,6 +2164,11 @@ namespace VC {
 		  if(!implName2StratifiedInliningInfo.ContainsKey(procName)) continue;
           
 		  StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
+          if (!info.initialized)
+          {
+              GenerateVCForStratifiedInlining(program, info, checker);
+          }
+
 		  VCExpr expansion = cce.NonNull(info.vcexpr);
           
 		  // Instantiate the "forall" variables
@@ -2323,6 +2350,8 @@ namespace VC {
         currCandidates = new Microsoft.SpecSharp.Collections.Set<int>();
         currInlineCount = 0;
         currProc = null;
+        labelRenamer = new Dictionary<string, int>();
+        labelRenamerInv = new Dictionary<int, string>();
       }
 
       public void Clear() {
@@ -2362,24 +2391,34 @@ namespace VC {
         return label2Id[label];
       }
 
+      Dictionary<string, int> labelRenamer;
+      Dictionary<int, string> labelRenamerInv;
+
       public string RenameAbsyLabel(string label) {
         Contract.Requires(label != null);
         Contract.Requires(label.Length >= 1);
         Contract.Ensures(Contract.Result<string>() != null);
 
-
         // Remove the sign from the label
         string nosign = label.Substring(1);
-        return "si_inline_" + currInlineCount.ToString() + "_" + nosign;
+        var ret = "si_inline_" + currInlineCount.ToString() + "_" + nosign;
+
+        if (!labelRenamer.ContainsKey(ret))
+        {
+            var c = labelRenamer.Count + 11; // two digit labels only
+            labelRenamer.Add(ret, c);
+            labelRenamerInv.Add(c,ret);
+        }
+        return labelRenamer[ret].ToString();
       }
 
       public string ParseRenamedAbsyLabel(string label) {
         Contract.Requires(label != null);
-        string prefix = RenameAbsyLabel("+");
-        Contract.Assert(prefix != null);
-        if (!label.StartsWith(prefix))
-          return null;
-        return label.Substring(prefix.Length);
+        if (labelRenamer.ContainsKey(label))
+        {
+            return labelRenamerInv[labelRenamer[label]];
+        }
+        return null;
       }
 
       public void setCurrProc(string name) {
@@ -2833,18 +2872,23 @@ namespace VC {
 
         Hashtable traceNodes = new Hashtable();
         string procPrefix = "si_inline_" + candidateId.ToString() + "_";
-
+          
+        //Console.WriteLine("GenerateTrace: {0}", procImpl.Name);
         foreach (string s in labels) {
           Contract.Assert(s != null);
-          if (!s.StartsWith(procPrefix))
-            continue;
+          var absylabel = calls.ParseRenamedAbsyLabel(s);
+          //if (!s.StartsWith(procPrefix))
+          //  continue;
+          if(absylabel == null) continue;
 
           Absy absy;
 
           if (candidateId == 0) {
-            absy = Label2Absy(s.Substring(procPrefix.Length));
+            //absy = Label2Absy(s.Substring(procPrefix.Length));
+              absy = Label2Absy(absylabel);
           } else {
-            absy = Label2Absy(procImpl.Name, s.Substring(procPrefix.Length));
+            //absy = Label2Absy(procImpl.Name, s.Substring(procPrefix.Length));
+              absy = Label2Absy(procImpl.Name, absylabel);
           }
 
           if (traceNodes.ContainsKey(absy))

@@ -226,6 +226,7 @@ namespace Microsoft.Boogie
     public bool ExtractLoops = false;
     public int LazyInlining = 0;
     public int StratifiedInlining = 0;
+    public int StratifiedInliningOption = 0;
     
     public enum TypeEncoding { None, Predicates, Arguments, Monomorphic };
     public TypeEncoding TypeEncodingMethod = TypeEncoding.Predicates;
@@ -990,6 +991,12 @@ namespace Microsoft.Boogie
               }
             }
             break;
+          case "-stratifiedInlineOption":
+          case "/stratifiedInlineOption":
+            if (ps.ConfirmArgumentCount(1)) {
+              StratifiedInliningOption = Int32.Parse((!)args[ps.i]);
+            }
+            break;            
           case "-typeEncoding":
           case "/typeEncoding":
             if (ps.ConfirmArgumentCount(1)) {
