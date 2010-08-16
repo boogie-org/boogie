@@ -1889,7 +1889,7 @@ namespace VC {
        bool incrementalSearch = true;
        // This flag allows the VCs (and live variable analysis) to be created on-demand
        bool createVConDemand = true;
-
+       
        switch (CommandLineOptions.Clo.StratifiedInliningOption)
        {
            case 0:
@@ -2305,6 +2305,35 @@ namespace VC {
     }
     */
 
+    // Uniquely identifies a procedure call (the call expr, instance)
+    public class BoogieCallExpr : IEquatable<BoogieCallExpr>
+    {
+        public NAryExpr expr;
+        public int inlineCnt;
+
+        public BoogieCallExpr(NAryExpr expr, int inlineCnt)
+        {
+            this.expr = expr;
+            this.inlineCnt = inlineCnt;
+        }
+
+        public override int GetHashCode()
+        {
+            return expr.GetHashCode() + 131 * inlineCnt.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            BoogieCallExpr that = obj as BoogieCallExpr;
+            return (expr == that.expr && inlineCnt == that.inlineCnt);
+        }
+
+        public bool Equals(BoogieCallExpr that)
+        {
+            return (expr == that.expr && inlineCnt == that.inlineCnt);
+        }
+    }
+
     // This class is used to traverse VCs and do the following:
     // -- collect the set of FunctionCall nodes and label them with a unique string
     // -- Rename all other labels (so that calling this on the same VC results in 
@@ -2312,7 +2341,7 @@ namespace VC {
     public class FCallHandler : MutatingVCExprVisitor<bool> {
       Dictionary<string/*!*/, StratifiedInliningInfo/*!*/>/*!*/ implName2StratifiedInliningInfo;
       public readonly Hashtable/*<int, Absy!>*//*!*/ mainLabel2absy;
-      public Dictionary<NAryExpr/*!*/, int>/*!*/ boogieExpr2Id;
+      public Dictionary<BoogieCallExpr/*!*/, int>/*!*/ boogieExpr2Id;
       public Dictionary<int, VCExprNAry/*!*/>/*!*/ id2Candidate;
       public Dictionary<VCExprNAry/*!*/, int>/*!*/ candidate2Id;
       public Dictionary<string/*!*/, int>/*!*/ label2Id;
@@ -2345,13 +2374,13 @@ namespace VC {
         this.mainLabel2absy = mainLabel2absy;
         id2Candidate = new Dictionary<int, VCExprNAry>();
         candidate2Id = new Dictionary<VCExprNAry, int>();
-        boogieExpr2Id = new Dictionary<NAryExpr, int>();
+        boogieExpr2Id = new Dictionary<BoogieCallExpr, int>();
         label2Id = new Dictionary<string, int>();
         currCandidates = new Microsoft.SpecSharp.Collections.Set<int>();
         currInlineCount = 0;
         currProc = null;
         labelRenamer = new Dictionary<string, int>();
-        labelRenamerInv = new Dictionary<int, string>();
+        labelRenamerInv = new Dictionary<string, string>();
       }
 
       public void Clear() {
@@ -2392,7 +2421,7 @@ namespace VC {
       }
 
       Dictionary<string, int> labelRenamer;
-      Dictionary<int, string> labelRenamerInv;
+      Dictionary<string, string> labelRenamerInv;
 
       public string RenameAbsyLabel(string label) {
         Contract.Requires(label != null);
@@ -2407,18 +2436,22 @@ namespace VC {
         {
             var c = labelRenamer.Count + 11; // two digit labels only
             labelRenamer.Add(ret, c);
-            labelRenamerInv.Add(c,ret);
+            labelRenamerInv.Add(c.ToString(),ret);
         }
         return labelRenamer[ret].ToString();
       }
 
-      public string ParseRenamedAbsyLabel(string label) {
-        Contract.Requires(label != null);
-        if (labelRenamer.ContainsKey(label))
-        {
-            return labelRenamerInv[labelRenamer[label]];
-        }
-        return null;
+      public string ParseRenamedAbsyLabel(string label, int cnt)
+      {
+          Contract.Requires(label != null);
+          if (!labelRenamerInv.ContainsKey(label))
+          {
+              return null;
+          }
+          var str = labelRenamerInv[label];
+          var prefix = "si_inline_" + cnt.ToString() + "_";
+          if (!str.StartsWith(prefix)) return null;
+          return str.Substring(prefix.Length);
       }
 
       public void setCurrProc(string name) {
@@ -2491,7 +2524,7 @@ namespace VC {
              
            if(implName2StratifiedInliningInfo.ContainsKey(calleeName)) {
              int candidateId = GetId(callExpr);
-             boogieExpr2Id[naryExpr] = candidateId;
+             boogieExpr2Id[new BoogieCallExpr(naryExpr, currInlineCount)] = candidateId;
              string label = GetLabel(candidateId);
              return Gen.LabelPos(label, callExpr);
            } else {
@@ -2871,23 +2904,20 @@ namespace VC {
         Contract.Requires(procImpl != null);
 
         Hashtable traceNodes = new Hashtable();
-        string procPrefix = "si_inline_" + candidateId.ToString() + "_";
-          
+        //string procPrefix = "si_inline_" + candidateId.ToString() + "_";
+
         //Console.WriteLine("GenerateTrace: {0}", procImpl.Name);
         foreach (string s in labels) {
           Contract.Assert(s != null);
-          var absylabel = calls.ParseRenamedAbsyLabel(s);
-          //if (!s.StartsWith(procPrefix))
-          //  continue;
+          var absylabel = calls.ParseRenamedAbsyLabel(s, candidateId);
+
           if(absylabel == null) continue;
 
           Absy absy;
 
           if (candidateId == 0) {
-            //absy = Label2Absy(s.Substring(procPrefix.Length));
               absy = Label2Absy(absylabel);
           } else {
-            //absy = Label2Absy(procImpl.Name, s.Substring(procPrefix.Length));
               absy = Label2Absy(procImpl.Name, absylabel);
           }
 
@@ -2904,14 +2934,14 @@ namespace VC {
         trace.Add(entryBlock);
 
         Dictionary<Absy, CalleeCounterexampleInfo> calleeCounterexamples = new Dictionary<Absy, CalleeCounterexampleInfo>();
-        Counterexample newCounterexample = GenerateTraceRec(labels, errModel, entryBlock, traceNodes, trace, calleeCounterexamples);
+        Counterexample newCounterexample = GenerateTraceRec(labels, errModel, candidateId, entryBlock, traceNodes, trace, calleeCounterexamples);
 
         return newCounterexample;
 
       }
 
       private Counterexample GenerateTraceRec(
-                            IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel,
+                            IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, int candidateId,
                             Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace,
                             Dictionary<Absy/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples) {
         Contract.Requires(cce.NonNullElements(labels));
@@ -2946,7 +2976,7 @@ namespace VC {
             continue;
 
           Contract.Assert(calls != null);
-          int calleeId = calls.boogieExpr2Id[naryExpr];
+          int calleeId = calls.boogieExpr2Id[new BoogieCallExpr(naryExpr, candidateId)];
 
           calleeCounterexamples[assumeCmd] =
               new CalleeCounterexampleInfo(
@@ -2961,7 +2991,7 @@ namespace VC {
             Contract.Assert(bb != null);
             if (traceNodes.Contains(bb)) {
               trace.Add(bb);
-              return GenerateTraceRec(labels, errModel, bb, traceNodes, trace, calleeCounterexamples);
+              return GenerateTraceRec(labels, errModel, candidateId, bb, traceNodes, trace, calleeCounterexamples);
             }
           }
         }
