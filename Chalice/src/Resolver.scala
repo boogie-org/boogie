@@ -13,7 +13,7 @@ object Resolver {
  case class Success() extends ResolverOutcome
  case class Errors(ss: List[(Position,String)]) extends ResolverOutcome
 
- var seqClasses = Map[String, SeqClass]();
+ val runMethod = "run";
 
  class ProgramContext(decls: Map[String,TopLevelDecl], currentClass: Class) {
    val Decls = decls
@@ -53,14 +53,15 @@ object Resolver {
      } else {
        decl match {
          case cl: Class =>
+           val ids = scala.collection.mutable.Set.empty[String]
            for (m <- cl.members) m match {
              case _:MonitorInvariant =>
              case m: NamedMember =>
                m.Parent = cl
-               if (cl.mm contains m.Id) {
+               if (ids contains m.Id) {
                  return Errors(List((m.pos, "duplicate member name " + m.Id + " in class " + cl.id)))
                } else {
-                 cl.mm = cl.mm + (m.Id -> m)
+                 ids + m.Id
                }
            }
          case ch: Channel =>
@@ -68,6 +69,52 @@ object Resolver {
        decls = decls + (decl.id -> decl)
      }
    }
+
+   // resolve refinements
+   val refinesRel = new DiGraph[Class];
+   for (decl <- prog) decl match {
+     case cl: Class if cl.IsRefinement =>
+       if (! (decls contains cl.refinesId)) {
+         return Errors(List((cl.pos, "refined class " + cl.refinesId + " does not exist")))
+       } else if (! decls(cl.refinesId).isInstanceOf[Class]) {
+         return Errors(List((cl.pos, "refined declaration " + cl.refinesId + " is not a class")))
+       } else if (cl.refinesId == cl.id) {
+         return Errors(List((cl.pos, "class cannot refine itself")))
+       } else {
+         cl.refines = decls(cl.refinesId).asInstanceOf[Class];
+         refinesRel.addNode(cl);
+         refinesRel.addNode(cl.refines);
+         refinesRel.addEdge(cl, cl.refines);
+       }
+     case _ =>
+   }
+   val (dag, refinesSCC) = refinesRel.computeSCC;
+   refinesSCC.values foreach {l =>
+     if (l.size > 1) {
+       val msg = new StringBuilder("a refinement cycle detected ")
+       return Errors(List((l(0).pos, l.map(cl => cl.id).addString(msg, "->").toString)))
+     }
+   }
+
+   // resolve refinement members
+   for (List(cl) <- dag.computeTopologicalSort.reverse) {
+     if (! cl.IsRefinement) {
+       // check has no refinement members
+       if (cl.members.exists{case _: Refinement => true; case _ => false})
+         return Errors(List((cl.pos, "non-refinement class cannot have refinement members")))
+     } else for (member <- cl.members) member match {
+       case r: Refinement =>
+         if (! cl.refines.LookupMember(r.Id).isDefined)
+           return Errors(List((r.pos, "abstract class has no member with name " + r.Id)))
+         r.refines = cl.refines.LookupMember(r.Id).get
+       case m: NamedMember =>
+         if (cl.refines.LookupMember(m.Id).isDefined)
+           return Errors(List((m.pos, "member needs to be a refinement since abstract class has a member with the same name")))
+       case _ => 
+     }
+   }
+
+   // collect errors
    var errors = List[(Position,String)]()
 
    // resolve types of members
@@ -78,21 +125,19 @@ object Resolver {
          ResolveType(v.t, contextNoCurrentClass)
         }
      case cl: Class =>
-       for (m <- cl.asInstanceOf[Class].members) m match {
-         case _:MonitorInvariant =>
+       for (m <- cl.members) m match {
+         case _: MonitorInvariant =>
          case Field(_, t, _) =>
            ResolveType(t, contextNoCurrentClass)
          case Method(_, ins, outs, _, _) =>
-           for (v <- ins ++ outs) {
-             ResolveType(v.t, contextNoCurrentClass)
-           }
-         case _:Condition =>
-         case _:Predicate =>
+           for (v <- ins ++ outs) ResolveType(v.t, contextNoCurrentClass)
+         case _: Condition =>
+         case _: Predicate =>
          case Function(id, ins, out, specs, _) => 
-           for (v <- ins) {
-             ResolveType(v.t, contextNoCurrentClass)
-           }
+           for (v <- ins) ResolveType(v.t, contextNoCurrentClass)
            ResolveType(out, contextNoCurrentClass)
+         case mt: MethodTransform =>
+           for (v <- mt.ins ++ mt.outs) ResolveType(v.t, contextNoCurrentClass)
        }
    }
    errors = errors ++ contextNoCurrentClass.errors;
@@ -130,7 +175,7 @@ object Resolver {
                case Precondition(e) => ResolveExpr(e, ctx, false, true)(false)
                case Postcondition(e) => ResolveExpr(e, ctx, true, true)(false)
                case lc@LockChange(ee) => 
-               if(m.id.equals("run")) context.Error(lc.pos, "lockchange not allowed on method run") 
+               if(m.id == runMethod) context.Error(lc.pos, "lockchange not allowed on method run") 
                ee foreach (e => ResolveExpr(e, ctx, true, false)(false))
              }
              ResolveStmt(BlockStmt(body), ctx)
@@ -170,12 +215,14 @@ object Resolver {
                  }
                case None =>
              }
+           case mt: MethodTransform =>
+             ResolveTransform(mt, context)
          }
        }
        errors = errors ++ context.errors
    }
 
-   // fill in SCC 
+   // fill in SCC for recursive functions 
    val (_, h) = calls.computeSCC;
    h.keys foreach {f:Function =>
      f.SCC = h(f);
@@ -214,27 +261,13 @@ object Resolver {
            t.typ = IntClass
        }
      } else {
-       if(seqClasses.contains(t.FullName)) {
-         t.typ = seqClasses(t.FullName)
-       } else if(t.id.equals("seq") && t.params.length == 1) {
-         val seqt = new SeqClass(t.params(0).typ);
-         seqClasses = seqClasses + ((seqt.FullName, seqt));
-         t.typ = seqt;
+       if(t.id.equals("seq") && t.params.length == 1) {
+         t.typ = new SeqClass(t.params(0).typ);
        } else {
          context.Error(t.pos, "undeclared type " + t.FullName)
          t.typ = IntClass
        }
      }
- }
-
- def getSeqType(param: Class, context: ProgramContext): Class = {
-   if(seqClasses.contains("seq<" + param.FullName + ">")) {
-     seqClasses("seq<" + param.FullName + ">")
-   } else {
-     val seqt = new SeqClass(param);
-     seqClasses = seqClasses + ((seqt.FullName, seqt));
-     seqt
-   }
  }
 
  def ResolveStmt(s: Statement, context: ProgramContext): Unit = s match {
@@ -274,7 +307,7 @@ object Resolver {
          for (v <- s.locals) { ResolveType(v.t, ctx); ctx = ctx.AddVariable(v) }
          for (v <- s.lhs) {
            ResolveExpr(v, ctx, true, true)(false)
-           if (v.v != null && !s.locals.contains(v.v) && v.v.IsImmutable)
+           if (v.v != null && !s.locals.contains(v.v) && v.v.isImmutable)
              context.Error(s.pos, "Immutable variable cannot be updated by a spec statement: " + v.id);           
          }
          ResolveExpr(s.pre, ctx, false, true)(false)
@@ -305,8 +338,8 @@ object Resolver {
    case Assign(lhs, rhs) => 
      ResolveExpr(lhs, context, false, false)(false)
      ResolveAssign(lhs, rhs, context)
-     if (lhs.v != null && lhs.v.IsImmutable) {
-       if (lhs.v.IsGhost)
+     if (lhs.v != null && lhs.v.isImmutable) {
+       if (lhs.v.isGhost)
          CheckNoGhost(rhs, context)
        else
          context.Error(lhs.pos, "cannot assign to immutable variable " + lhs.v.id)
@@ -444,7 +477,7 @@ object Resolver {
      for (v <- lhs) {
        ResolveExpr(v, context, false, false)(false)
        if (v.v != null) {
-         if (v.v.IsImmutable) context.Error(v.pos, "cannot use immutable variable " + v.id + " as actual out-parameter")
+         if (v.v.isImmutable) context.Error(v.pos, "cannot use immutable variable " + v.id + " as actual out-parameter")
          if (vars contains v.v) {
            context.Error(v.pos, "duplicate actual out-parameter: " + v.id)
          } else {
@@ -548,7 +581,7 @@ object Resolver {
                          formal.t.FullName + ", found: " + actual.typ.FullName + ")")
          if (vars contains actual.v)
            ctx.Error(actual.pos, "duplicate actual out-parameter: " + actual.id)
-         else if (actual.v.IsImmutable)
+         else if (actual.v.isImmutable)
            ctx.Error(actual.pos, "cannot use immutable variable " + actual.id + " as actual out-parameter")
          vars = vars + actual.v
        }
@@ -589,7 +622,7 @@ object Resolver {
    }
    if (! canAssign(lhs.typ, rhs.typ))
      context.Error(lhs.pos, "type mismatch in assignment, lhs=" + lhs.typ.FullName + " rhs=" + rhs.typ.FullName)
-   if (lhs.v != null && !lhs.v.IsGhost) CheckNoGhost(rhs, context)
+   if (lhs.v != null && !lhs.v.isGhost) CheckNoGhost(rhs, context)
  }
 
  // ResolveExpr resolves all parts of an RValue, if possible, and (always) sets the RValue's typ field
@@ -711,7 +744,7 @@ object Resolver {
        case None => context.Error(expr.pos, "undefined local variable " + id)
        case Some(v) =>
          expr.v = v
-         if (!(v.IsImmutable && v.IsGhost))
+         if (!(v.isImmutable && v.isGhost))
            context.Error(expr.pos, "assigned can only be used with ghost consts")
      }
      expr.typ = BoolClass
@@ -847,21 +880,21 @@ object Resolver {
      q.typ = BoolClass
    case seq@EmptySeq(t) =>
      ResolveType(t, context)
-     seq.typ = getSeqType(t.typ, context);
+     seq.typ = SeqClass(t.typ);
    case seq@ExplicitSeq(es) =>
      es foreach { e => ResolveExpr(e, context, twoStateContext, false) }
      es match {
-       case Nil => seq.typ = getSeqType(IntClass, context);
+       case Nil => seq.typ = SeqClass(IntClass);
        case h :: t =>
          t foreach { e => if(! (e.typ == h.typ)) context.Error(e.pos, "The elements of the sequence expression have different types.")};
-         seq.typ = getSeqType(h.typ, context);
+         seq.typ = SeqClass(h.typ);
      }
    case ran@Range(min, max) =>
      ResolveExpr(min, context, twoStateContext, false);
      if(! min.typ.IsInt) context.Error(min.pos, "The mininum of a range expression must be an integer (found: " + min.typ.FullName + ").");
      ResolveExpr(max, context, twoStateContext, false);
      if(! max.typ.IsInt) context.Error(max.pos, "The maximum of a range expression must be an integer (found: " + max.typ.FullName + ").");
-     ran.typ = getSeqType(IntClass, context);
+     ran.typ = SeqClass(IntClass);
    case len@Length(e) =>
      ResolveExpr(e, context, twoStateContext, false);
      if(! e.typ.IsSeq) context.Error(len.pos, "The operand of a length expression must be sequence. (found: " + e.typ.FullName + ").");
@@ -906,7 +939,7 @@ object Resolver {
  }
 
  def LookupRunMethod(cl: Class, context: ProgramContext, op: String, pos: Position): Option[Method] = {
-   cl.LookupMember("run") match {
+   cl.LookupMember(runMethod) match {
      case None =>
        context.Error(pos, "object given in " + op + " statement must be of a type with a parameter-less run method" +
                      " (found type " + cl.id + ")")
@@ -943,11 +976,11 @@ object Resolver {
    def specOk(e: RValue): Unit = { 
      e match {
        case ve: VariableExpr =>
-         if (ve.v != null && ve.v.IsGhost) context.Error(ve.pos, "ghost variable not allowed here")
+         if (ve.v != null && ve.v.isGhost) context.Error(ve.pos, "ghost variable not allowed here")
        case fs@ MemberAccess(e, id) =>
          if (!fs.isPredicate && fs.f != null && fs.f.isGhost) context.Error(fs.pos, "ghost fields not allowed here")
        case a: Assigned =>
-         if (a.v != null && a.v.IsGhost) context.Error(a.pos, "ghost variable not allowed here")
+         if (a.v != null && a.v.isGhost) context.Error(a.pos, "ghost variable not allowed here")
        case _ => // do nothing
      }
    }
@@ -958,9 +991,9 @@ object Resolver {
    def specOk(e: RValue): Unit = {
      e match {
        case ve: VariableExpr =>
-         if (ve.v != null && ve.v.IsGhost && ve.v.IsImmutable) context.Error(ve.pos, "ghost const not allowed here")
+         if (ve.v != null && ve.v.isGhost && ve.v.isImmutable) context.Error(ve.pos, "ghost const not allowed here")
        case a: Assigned =>
-         if (a.v != null && a.v.IsGhost && a.v.IsImmutable) context.Error(a.pos, "ghost const not allowed here")
+         if (a.v != null && a.v.isGhost && a.v.isImmutable) context.Error(a.pos, "ghost const not allowed here")
        case _ => // do nothing
      }
    }
@@ -1023,9 +1056,9 @@ object Resolver {
      CheckRunSpecification(bin.E1, context, false)
    case q: SeqQuantification =>
      CheckRunSpecification(q.seq, context, false)
-     CheckRunSpecification(q.E, context, true)
+     CheckRunSpecification(q.e, context, true)
    case q: TypeQuantification =>
-     CheckRunSpecification(q.E, context, true)
+     CheckRunSpecification(q.e, context, true)
    case Length(e) =>
      CheckRunSpecification(e, context, false);
    case ExplicitSeq(es) =>
@@ -1040,5 +1073,17 @@ object Resolver {
        case CallState(token, obj, id, args) => CheckRunSpecification(token, context, false); CheckRunSpecification(obj, context, false);  args foreach { a: Expression => CheckRunSpecification(a, context, false)};
      }
      CheckRunSpecification(e, context, allowMaxLock)
+ }
+
+ def ResolveTransform(mt: MethodTransform, context: ProgramContext) {
+   mt.refines match {
+     case m: Method =>
+       if (mt.ins != m.ins) context.Error(mt.pos, "Refinement must have same input arguments")
+       if (! mt.outs.startsWith(m.outs)) context.Error(mt.pos, "Refinement must declare all concrete output variables")
+     case r: MethodTransform =>
+       if (mt.ins != r.ins) context.Error(mt.pos, "Refinement must have same input arguments")
+       if (! mt.outs.startsWith(r.outs)) context.Error(mt.pos, "Refinement must declare all concrete output variables")    
+     case _ => context.Error(mt.pos, "Method can only refine another method or a transform")
+   }
  }
 }

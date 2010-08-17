@@ -54,10 +54,29 @@ class DiGraph[T] {
     assert (rep contains t);
     immutable.Set() ++ (rep(t).children map {x => x.data})
   }
+
+  // Compute topological sort (edges point in forward direction in the list)
+  // Terminates but incorrect if not a DAG.
+  def computeTopologicalSort: List[T] = {
+    rep.values foreach {v => assert(!v.onstack)}
+    var l: List[T] = Nil;
+
+    def tarjan(v: Node[T]) {
+      if (! v.onstack) {
+        v.onstack = true;
+        for (w <- v.children) tarjan(w)
+        l = v.data :: l;
+      }
+    }
+
+    rep.values foreach {v => tarjan(v)}
+    rep.values foreach {v => assert(v.onstack); v.onstack = false;}
+    l
+  }
   
   // Compute condensation of the digraph.
   // The resulting digraph has no self loops
-  def computeSCC(): (DiGraph[List[T]],mutable.Map[T,List[T]]) = {
+  def computeSCC: (DiGraph[List[T]],mutable.Map[T,List[T]]) = {
     // Tarjan's algorithm for finding strongly connected components
     // http://algowiki.net/wiki/index.php/Tarjan%27s_algorithm
     rep.values foreach {x => assert(x.index == -1 && x.lowlink == -1 && !x.onstack)};

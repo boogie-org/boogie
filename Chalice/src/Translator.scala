@@ -390,7 +390,7 @@ class Translator {
         translateWhile(w)
       case Assign(lhs, rhs) =>
         def assignOrAssumeEqual(r: Boogie.Expr): List[Boogie.Stmt] = {
-          if (lhs.v.IsImmutable) {
+          if (lhs.v.isImmutable) {
             // this must be a "ghost const"
             val name = lhs.v.UniqueName
             bassert(! VarExpr("assigned$" + name), lhs.pos, "Const variable can be assigned to only once.") ::
@@ -751,7 +751,7 @@ class Translator {
     val bv = Variable2BVarWhere(v)
     Comment("local " + v) ::
     BLocal(bv) ::
-    { if (v.IsImmutable) {
+    { if (v.isImmutable) {
         val isAssignedVar = new Boogie.BVar("assigned$" + bv.id, BoolClass)
         // havoc x; var assigned$x: bool; assigned$x := false;
         Havoc(new Boogie.VarExpr(bv)) ::
@@ -955,7 +955,7 @@ class Translator {
       (new VariableExpr(sv) := new VariableExpr(v))) :::
     // havoc local-variable loop targets
     (w.LoopTargets :\ List[Boogie.Stmt]()) ( (v,vars) => (v match {
-      case v: Variable if v.IsImmutable => Boogie.Havoc(Boogie.VarExpr("assigned$" + v.id))
+      case v: Variable if v.isImmutable => Boogie.Havoc(Boogie.VarExpr("assigned$" + v.id))
       case _ => Boogie.Havoc(Boogie.VarExpr(v.UniqueName)) }) :: vars) :::
     Boogie.If(null,
     // 1. CHECK  DEFINEDNESS OF INVARIANT
@@ -2381,29 +2381,23 @@ object TranslationHelper {
   def SubstVars(expr: Expression, vs:List[Variable], es:List[Expression]): Expression =
     SubstVars(expr, None, Map() ++ (vs zip es));
   def SubstVars(expr: Expression, t: Option[Expression], vs: Map[Variable, Expression]): Expression = expr.transform {
-    _ match {
-      case _: ThisExpr if t.isDefined => t
-      case e: VariableExpr =>
-        if (vs.contains(e.v)) Some(vs(e.v)) else None;
-      case q: Quantification =>
-        q.variables foreach { (v) => if (vs.contains(v)) throw new Exception("cannot substitute a variable bound in the quantifier")}
-        None;
-      case _ => None;
-    }
+    case _: ThisExpr if t.isDefined => t
+    case e: VariableExpr =>
+      if (vs.contains(e.v)) Some(vs(e.v)) else None;
+    case q: Quantification =>
+      q.variables foreach { (v) => if (vs.contains(v)) throw new Exception("cannot substitute a variable bound in the quantifier")}
+      None;
+    case _ => None;
   }
 
   def SubstThis(expr: Expression, x: Expression): Expression = expr.transform {
-    _ match {
-      case _: ThisExpr => Some(x)
-      case _ => None
-    }
+    case _: ThisExpr => Some(x)
+    case _ => None
   }
 
   def SubstResult(expr: Expression, x: Expression): Expression = expr.transform {
-    _ match {
-      case _: Result => Some(x)
-      case _ => None
-    }
+    case _: Result => Some(x)
+    case _ => None
   }  
 
   // De-sugar expression (idempotent)

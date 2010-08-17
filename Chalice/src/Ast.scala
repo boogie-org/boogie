@@ -16,18 +16,7 @@ trait ASTNode extends Positional
 
 case class TopLevelDecl(id: String) extends ASTNode
 
-// this is in fact root of type hierarchy (confusingly, called "class")
 sealed case class Class(classId: String, parameters: List[Class], module: String, members: List[Member]) extends TopLevelDecl(classId) {
-  var mm = Map[String,Member]()
-  def LookupMember(id: String): Option[Member] = {
-    if (mm.keys exists { i => i.equals(id)})
-      Some(mm(id))
-    else if (IsRef && (RootClass.mm contains id)) {
-      val m = RootClass.mm(id)
-      if (m.Hidden) None else Some(m)
-    } else
-      None
-  }
   def IsInt: Boolean = false
   def IsBool: Boolean = false
   def IsRef: Boolean = true
@@ -38,22 +27,41 @@ sealed case class Class(classId: String, parameters: List[Class], module: String
   def IsChannel: Boolean = false
   def IsState: Boolean = false
   def IsNormalClass = true;
-  var IsExternal = false;  // says whether or not to compile the class (compilation ignores external classes)
 
-  def Fields: List[Field] = {
-    members flatMap (m => m match { case f:Field => List(f) case _ => List() })
+  lazy val Fields: List[Field] = members flatMap {case x: Field => List(x); case _ => Nil}
+  lazy val MentionableFields = Fields filter {x => ! x.Hidden}
+  lazy val Invariants: List[MonitorInvariant] = members flatMap {case x: MonitorInvariant => List(x); case _ => Nil}
+  lazy val id2member:Map[String,NamedMember] = Map() ++ {
+    val named = members flatMap {case x: NamedMember => List(x); case _ => Nil};
+    (named map {x => x.Id}) zip named
   }
-  def Invariants: List[MonitorInvariant] = {
-    (members :\ List[MonitorInvariant]()) { (m,list) => m match {
-      case m:MonitorInvariant => m :: list
-      case _ => list }}
+  def LookupMember(id: String): Option[NamedMember] = {
+    if (id2member contains id)
+      Some(id2member(id))
+    else if (IsRef && this != RootClass) {
+      // check with root class
+      RootClass LookupMember id match {
+        case Some(m) if (! m.Hidden) => Some(m)
+        case _ => None
+      }
+    } else
+      None
   }
   def FullName: String = if(parameters.isEmpty) id else id + "<" + parameters.tail.foldLeft(parameters.head.FullName){(a, b) => a + ", " + b.FullName} + ">"
+  override def toString = FullName
+
+  // Says whether or not to compile the class (compilation ignores external classes)
+  var IsExternal = false;   
+
+  // Refinement extension
+  var IsRefinement = false;
+  var refinesId: String = null;
+  var refines: Class = null;
 }
 
 sealed case class Channel(channelId: String, parameters: List[Variable], where: Expression) extends TopLevelDecl(channelId)
 
-case class SeqClass(parameter: Class) extends Class("seq", List(parameter), "default", Nil) {
+sealed case class SeqClass(parameter: Class) extends Class("seq", List(parameter), "default", Nil) {
   override def IsRef = false;
   override def IsSeq = true;
   override def IsNormalClass = false;
@@ -85,8 +93,7 @@ case class TokenClass(c: Type, m: String) extends Class("token", Nil, "default",
   override def IsRef = true;
   override def IsToken = true;
   override def IsNormalClass = false;
-  override def FullName: String = "token<" + c.FullName + "." + m + ">"
-  mm = mm.+(("joinable", Fields(0)));
+  override def FullName: String = "token<" + c.FullName + "." + m + ">"  
 }
 case class ChannelClass(ch: Channel) extends Class(ch.id, Nil, "default", Nil) {
   override def IsRef = true;
@@ -99,9 +106,6 @@ object RootClass extends Class("$root", Nil, "default", List(
   new SpecialField("held", new Type(BoolClass)){ override val Hidden = true },
   new SpecialField("rdheld", new Type(BoolClass)){ override val Hidden = true }
   ))  // joinable and held are bool in Chalice, but translated into an int in Boogie
-{
-  def MentionableFields = Fields filter {fld => fld.id != "held" && fld.id != "rdheld"}
-}
 
 sealed case class Type(id: String, params: List[Type]) extends ASTNode {  // denotes the use of a type
   var typ: Class = null
@@ -147,27 +151,40 @@ case class Function(id: String, ins: List[Variable], out: Type, spec: List[Speci
   var SCC: List[Function] = Nil;
 }
 case class Condition(id: String, where: Option[Expression]) extends NamedMember(id)
-class Variable(name: String, typ: Type, isGhost: Boolean, isImmutable: Boolean) extends ASTNode {
-  val id = name
-  val t = typ
-  val IsGhost = isGhost
-  val IsImmutable = isImmutable
+case class Variable(id: String, t: Type, isGhost: Boolean, isImmutable: Boolean) extends ASTNode {
   val UniqueName = {
     val n = Variable.VariableCount
     Variable.VariableCount = Variable.VariableCount + 1
-    name + "#" + n
+    id + "#" + n
   }
   def this(name: String, typ: Type) = this(name,typ,false,false);
-  override def toString = (if (IsGhost) "ghost " else "") + (if (IsImmutable) "const " else "var ") + id;
+  override def toString = (if (isGhost) "ghost " else "") + (if (isImmutable) "const " else "var ") + id;
 }
 object Variable { var VariableCount = 0 }
-class SpecialVariable(name: String, typ: Type) extends Variable(name, typ, false, false) {
+case class SpecialVariable(name: String, typ: Type) extends Variable(name, typ, false, false) {
   override val UniqueName = name
 }
 sealed abstract class Specification extends ASTNode
 case class Precondition(e: Expression) extends Specification
 case class Postcondition(e: Expression) extends Specification
 case class LockChange(ee: List[Expression]) extends Specification
+
+/**
+ * Refinement members
+ */
+
+sealed abstract class Refinement(id: String) extends NamedMember(id) {
+  var refines = null: NamedMember;
+}
+case class MethodTransform(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], trans: Transform) extends Refinement(id)
+
+sealed abstract class Transform extends ASTNode
+case class BlockPattern() extends Transform // pattern within a block (*)
+case class ProgramPattern() extends Transform // can match entire block (*)
+case class IfPattern(thn: Transform, els: Option[Transform]) extends Transform
+case class NonDetPattern(code: BlockStmt) extends Transform // matches var or spec
+case class InsertPattern(code: Statement) extends Transform
+case class SequencePattern(pats: List[Transform]) extends Transform 
 
 /**
  * Statements
@@ -256,14 +273,15 @@ case class VariableExpr(id: String) extends Expression {
   def Resolve(vr: Variable) = { v = vr; typ = vr.t.typ }
 }
 case class Result() extends Expression
-sealed abstract class ThisExpr extends Expression {
-  override def equals(other: Any): Boolean = {
-    // needed in autoMagic, which checks for syntactic equality using equals
-    other.isInstanceOf[ThisExpr]
-  }
+sealed abstract class ThisExpr extends Expression
+case class ExplicitThisExpr() extends ThisExpr {
+  override def hashCode = 0;
+  override def equals(other: Any) = other.isInstanceOf[ThisExpr]
 }
-case class ExplicitThisExpr() extends ThisExpr
-case class ImplicitThisExpr() extends ThisExpr
+case class ImplicitThisExpr() extends ThisExpr {
+  override def hashCode = 0;
+  override def equals(other: Any) = other.isInstanceOf[ThisExpr]  
+}
 case class MemberAccess(e: Expression, id: String) extends Expression {
   var isPredicate: Boolean = false;
   var f: Field = null

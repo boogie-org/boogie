@@ -13,6 +13,8 @@ import scala.util.parsing.input.NoPosition
 import java.io.File
 
 class Parser extends StandardTokenParsers {
+  
+
 
   def parseStdin = phrase(programUnit)(new lexical.Scanner(new PagedSeqReader(PagedSeq fromReader Console.in)))
   def parseFile(file: File) = phrase(programUnit)(new lexical.Scanner(new PagedSeqReader(PagedSeq fromFile file)))
@@ -30,13 +32,17 @@ class Parser extends StandardTokenParsers {
                        "predicate", "function", "free", "send", "receive",
                        "ite", "fold", "unfold", "unfolding", "in", "forall", "exists",
                        "seq", "nil", "result", "eval", "token",
-                       "wait", "signal")
+                       "wait", "signal",
+                       "refines", "transforms"
+                      )
   // todo: can we remove "nil"?
   lexical.delimiters += ("(", ")", "{", "}", "[[", "]]",
                          "<==>", "==>", "&&", "||",
                          "==", "!=", "<", "<=", ">=", ">", "<<", "in", "!in",
                          "+", "-", "*", "/", "%", "!", ".", "..",
-                         ";", ":", ":=", ",", "?", "|", "[", "]", "++", "::")
+                         ";", ":", ":=", ",", "?", "|", "[", "]", "++", "::",
+                         "_"
+                        )
 
   def programUnit = (classDecl | channelDecl)*
   def Semi = ";" ?
@@ -47,10 +53,12 @@ class Parser extends StandardTokenParsers {
    */
 
   def classDecl =
-        positioned(("external" ?) ~ ("class" ~> ident) ~ opt("module" ~> ident) ~ "{" ~ (memberDecl*) <~ "}" ^^ {
-          case ext ~ id ~ module ~ _ ~ members =>
+        positioned(("external" ?) ~ ("class" ~> ident) ~ opt("module" ~> ident) ~ opt("refines" ~> ident) ~
+                ("{" ~> (memberDecl*) <~ "}") ^^ {
+          case ext ~ id ~ module ~ refines ~ members =>
             val cl = Class(id, Nil, module.getOrElse("default"), members)
-            ext match { case None => case Some(t) => cl.IsExternal = true }
+            if (ext.isDefined) cl.IsExternal = true
+            if (refines.isDefined) {cl.IsRefinement = true; cl.refinesId = refines.get}
             cl
         })
   def channelDecl =
@@ -63,7 +71,7 @@ class Parser extends StandardTokenParsers {
    * Member declarations
    */
 
-  def memberDecl = positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl | predicateDecl | functionDecl)
+  def memberDecl = positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl | predicateDecl | functionDecl | transformDecl)
   def fieldDecl =
         ( "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, false) }
         | "ghost" ~> "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, true) }
@@ -87,6 +95,15 @@ class Parser extends StandardTokenParsers {
   def conditionDecl =
     "condition" ~> ident ~ ("where" ~> expression ?) <~ Semi ^^ {
       case id ~ optE => Condition(id, optE) }
+  def transformDecl = {
+    currentLocalVariables = Set[String]()
+    "transforms" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~
+    (methodSpec*) ~ ("{" ~> transform <~ "}") ^^ {
+      case id ~ ins ~ outs ~ spec ~ trans =>
+        MethodTransform(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, trans)
+    }
+  }
+
   
   def formalParameters(immutable: Boolean) =
     "(" ~> (formalList(immutable) ?) <~ ")" ^^ {
@@ -222,6 +239,7 @@ class Parser extends StandardTokenParsers {
           val lhs = ExtractList(outs)
           Receive(declareImplicitLocals(lhs), e, lhs) }
     )
+  // this could be slightly changed to make it LL(1)
   def localVarStmt(const: Boolean, ghost: Boolean) =
     ( (rep1sep(idType, ",") into {decls:List[(PositionedString,Type)] => {
         val locals = for ((id, t) <- decls; if (! currentLocalVariables.contains(id.v))) yield {
@@ -536,4 +554,26 @@ class Parser extends StandardTokenParsers {
 
   def accPermArg : Parser[Write] =
       opt( "," ~> expression ^^ { case e => Frac(e) }) ^^ { case None => Full; case Some(p) => p}
+
+  /**
+   * Transforms
+   */
+
+  def transform: Parser[Transform] = positioned(
+      "if" ~> ifTransform
+    | transformAtom ~ rep(transform) ^^ {case atom ~ t => SequencePattern(atom :: t)}
+    )
+  def transformAtom: Parser[Transform] = positioned(
+      "_" ~ Semi ^^^ BlockPattern()
+    | statement ^^ {case s => InsertPattern(s)}
+    )
+  def ifTransform: Parser[IfPattern] =
+    ("{" ~> transform <~ "}") ~ ("else" ~> ifTransformElse ?) ^^ {
+      case thn ~ els => IfPattern(thn, els)
+    }
+  def ifTransformElse = (
+      "if" ~> ifTransform
+    | "{" ~> transform <~ "}"
+    )
+
 }

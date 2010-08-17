@@ -9,7 +9,7 @@ object PrintProgram {
     for (decl <- prog) decl match {
       case cl: Class =>
         if (cl.IsExternal) print("external ")
-        println("class " + cl.id + " module " + cl.module + " {")
+        println("class " + cl.id + " module " + cl.module + (if (cl.IsRefinement) " refines " + cl.refinesId else "") + " {")
         cl.members foreach Member
         println("}")
       case ch: Channel =>
@@ -97,8 +97,8 @@ object PrintProgram {
       println(Semi)
     case SpecStmt(lhs, locals, pre, post) =>
       if (locals.size > 0) {
-        if (locals(0).IsGhost) print("ghost ");
-        if (locals(0).IsImmutable) print("const ") else print("var ")
+        if (locals(0).isGhost) print("ghost ");
+        if (locals(0).isImmutable) print("const ") else print("var ")
       } else
         print("var ");
       VarList(locals);
