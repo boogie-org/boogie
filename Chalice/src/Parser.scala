@@ -13,8 +13,6 @@ import scala.util.parsing.input.NoPosition
 import java.io.File
 
 class Parser extends StandardTokenParsers {
-  
-
 
   def parseStdin = phrase(programUnit)(new lexical.Scanner(new PagedSeqReader(PagedSeq fromReader Console.in)))
   def parseFile(file: File) = phrase(programUnit)(new lexical.Scanner(new PagedSeqReader(PagedSeq fromFile file)))
@@ -33,7 +31,7 @@ class Parser extends StandardTokenParsers {
                        "ite", "fold", "unfold", "unfolding", "in", "forall", "exists",
                        "seq", "nil", "result", "eval", "token",
                        "wait", "signal",
-                       "refines", "transforms"
+                       "refines", "transforms", "replaces", "by"
                       )
   // todo: can we remove "nil"?
   lexical.delimiters += ("(", ")", "{", "}", "[[", "]]",
@@ -47,6 +45,7 @@ class Parser extends StandardTokenParsers {
   def programUnit = (classDecl | channelDecl)*
   def Semi = ";" ?
   var currentLocalVariables = Set[String]() // used in the method context
+  var assumeAllLocals = false;
 
   /**
    * Top level declarations
@@ -71,24 +70,25 @@ class Parser extends StandardTokenParsers {
    * Member declarations
    */
 
-  def memberDecl = positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl | predicateDecl | functionDecl | transformDecl)
+  def memberDecl = {
+    currentLocalVariables = Set[String](); assumeAllLocals = false; 
+    positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl | predicateDecl | functionDecl | transformDecl)
+  }
   def fieldDecl =
         ( "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, false) }
         | "ghost" ~> "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, true) }
         )
   def invariantDecl = positioned("invariant" ~> expression <~ Semi ^^ MonitorInvariant)
-  def methodDecl = {
-    currentLocalVariables = Set[String]()
+  def methodDecl =
     "method" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~
     (methodSpec*) ~ blockStatement ^^ {
       case id ~ ins ~ outs ~ spec ~ body =>
         outs match {
           case None => Method(id, ins, Nil, spec, body)
           case Some(outs) => Method(id, ins, outs, spec, body) }}
-  }
   def predicateDecl: Parser[Predicate] =
     ("predicate" ~> ident) ~ ("{" ~> expression <~ "}") ^^ { case id ~ definition => Predicate(id, definition) }
-  def functionDecl = 
+  def functionDecl =
     ("function" ~> ident) ~ formalParameters(true) ~ (":" ~> typeDecl) ~ (methodSpec*) ~ opt("{" ~> expression <~ "}") ^^ {
       case id ~ ins ~ out ~ specs ~ body => Function(id, ins, out, specs, body)
     }
@@ -96,15 +96,14 @@ class Parser extends StandardTokenParsers {
     "condition" ~> ident ~ ("where" ~> expression ?) <~ Semi ^^ {
       case id ~ optE => Condition(id, optE) }
   def transformDecl = {
-    currentLocalVariables = Set[String]()
+    assumeAllLocals = true;
     "transforms" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~
     (methodSpec*) ~ ("{" ~> transform <~ "}") ^^ {
       case id ~ ins ~ outs ~ spec ~ trans =>
-        MethodTransform(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, trans)
+        MethodTransform(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, AST.normalize(trans))
     }
   }
 
-  
   def formalParameters(immutable: Boolean) =
     "(" ~> (formalList(immutable) ?) <~ ")" ^^ {
       case None => Nil
@@ -182,7 +181,7 @@ class Parser extends StandardTokenParsers {
     | "free" ~> expression <~ Semi ^^ Free
     | Ident ~ ":=" ~ Rhs <~ Semi ^^ {
         case lhs ~ _ ~ rhs =>
-          if (currentLocalVariables contains lhs.v) {
+          if ((currentLocalVariables contains lhs.v) || assumeAllLocals) {
             val varExpr = VariableExpr(lhs.v); varExpr.pos = lhs.pos;
             Assign(varExpr, rhs)
           } else {
@@ -463,7 +462,7 @@ class Parser extends StandardTokenParsers {
     | positioned(Ident) ~ opt("(" ~> expressionList <~ ")") ^^ {
         case id ~ None =>
           val r =
-          if (currentLocalVariables contains id.v) {
+          if ((currentLocalVariables contains id.v) || assumeAllLocals) {
             VariableExpr(id.v)
           } else {
             val implicitThis = ImplicitThisExpr(); implicitThis.pos = id.pos
@@ -561,15 +560,19 @@ class Parser extends StandardTokenParsers {
 
   def transform: Parser[Transform] = positioned(
       "if" ~> ifTransform
-    | transformAtom ~ rep(transform) ^^ {case atom ~ t => SequencePattern(atom :: t)}
+    | transformAtom ~ rep(transform) ^^ {case atom ~ t => SeqPat(atom :: t)}
     )
   def transformAtom: Parser[Transform] = positioned(
-      "_" ~ Semi ^^^ BlockPattern()
-    | statement ^^ {case s => InsertPattern(s)}
+      "_" ~ Semi ^^^ BlockPat()
+    | "*" ~ Semi ^^^ SkipPat()              
+    | "replaces" ~> rep1sep(Ident,",") ~ ("by" ~> blockStatement) ^^ {
+        case ids ~ code => NonDetPat(ids map {x => x.v}, code)
+      }
+    | rep1(statement) ^^ {case s => InsertPat(s)}
     )
-  def ifTransform: Parser[IfPattern] =
+  def ifTransform: Parser[IfPat] =
     ("{" ~> transform <~ "}") ~ ("else" ~> ifTransformElse ?) ^^ {
-      case thn ~ els => IfPattern(thn, els)
+      case thn ~ els => IfPat(thn, els)
     }
   def ifTransformElse = (
       "if" ~> ifTransform

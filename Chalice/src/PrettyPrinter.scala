@@ -24,10 +24,8 @@ object PrintProgram {
     case m: Method =>
       print("  method " + m.id)
       print("("); VarList(m.ins); print(")")
-      if (m.outs != Nil) {
-        print(" returns ("); VarList(m.outs); print(")")
-      }
-      println
+      if (m.outs != Nil) print(" returns ("); VarList(m.outs); print(")")
+      println;
       m.spec foreach {
         case Precondition(e) => print("    requires "); Expr(e); println(Semi)
         case Postcondition(e) => print("    ensures "); Expr(e); println(Semi)
@@ -58,7 +56,20 @@ object PrintProgram {
       e match {
         case Some(e) => print("  { "); Expr(e); println(" }");
         case None =>
-      }      
+      }
+    case m: MethodTransform =>
+      print("  transforms " + m.id);
+      print("("); VarList(m.ins); print(")")
+      if (m.outs != Nil) print(" returns ("); VarList(m.outs); print(")")
+      println;
+      m.spec foreach {
+        case Precondition(e) => print("    requires "); Expr(e); println(Semi)
+        case Postcondition(e) => print("    ensures "); Expr(e); println(Semi)
+      }
+      println("  {");
+      throw new Exception("not yet implemented")
+      // TODO: print out transform
+      println("  }")
   }
   def Stmt(s: Statement, indent: Int): Unit = s match {
     case Assert(e) =>
@@ -66,6 +77,8 @@ object PrintProgram {
     case Assume(e) =>
       print("assume "); Expr(e); println(Semi)
     case BlockStmt(ss) =>
+      PrintBlockStmt(ss, indent); println
+    case RefinementBlock(ss, _) =>
       PrintBlockStmt(ss, indent); println
     case IfStmt(guard, BlockStmt(thn), els) =>
       print("if ("); Expr(guard); print(") ")

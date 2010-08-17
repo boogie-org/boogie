@@ -97,21 +97,23 @@ object Resolver {
    }
 
    // resolve refinement members
-   for (List(cl) <- dag.computeTopologicalSort.reverse) {
-     if (! cl.IsRefinement) {
-       // check has no refinement members
-       if (cl.members.exists{case _: Refinement => true; case _ => false})
-         return Errors(List((cl.pos, "non-refinement class cannot have refinement members")))
-     } else for (member <- cl.members) member match {
-       case r: Refinement =>
-         if (! cl.refines.LookupMember(r.Id).isDefined)
-           return Errors(List((r.pos, "abstract class has no member with name " + r.Id)))
-         r.refines = cl.refines.LookupMember(r.Id).get
-       case m: NamedMember =>
-         if (cl.refines.LookupMember(m.Id).isDefined)
-           return Errors(List((m.pos, "member needs to be a refinement since abstract class has a member with the same name")))
-       case _ => 
-     }
+   for (decl <- prog) decl match {
+     case cl: Class =>
+       if (! cl.IsRefinement) {
+         // check has no refinement members
+         if (cl.members.exists{case _: Refinement => true; case _ => false})
+           return Errors(List((cl.pos, "non-refinement class cannot have refinement members")))
+       } else for (member <- cl.members) member match {
+         case r: Refinement =>
+           if (! cl.refines.LookupMember(r.Id).isDefined)
+             return Errors(List((r.pos, "abstract class has no member with name " + r.Id)))
+           r.refines = cl.refines.LookupMember(r.Id).get
+         case m: NamedMember =>
+           if (cl.refines.LookupMember(m.Id).isDefined)
+             return Errors(List((m.pos, "member needs to be a refinement since abstract class has a member with the same name")))
+         case _ =>
+       }
+     case _ =>
    }
 
    // collect errors
@@ -156,7 +158,7 @@ object Resolver {
          ctx = ctx.AddVariable(v)
        }
        ResolveExpr(ch.where, ctx, false, true)(false)
-        errors = errors ++ context.errors
+       errors = errors ++ context.errors
      case cl: Class =>
        val context = new ProgramContext(decls, cl)
        for (m <- cl.members) {
@@ -216,7 +218,6 @@ object Resolver {
                case None =>
              }
            case mt: MethodTransform =>
-             ResolveTransform(mt, context)
          }
        }
        errors = errors ++ context.errors
@@ -229,6 +230,18 @@ object Resolver {
      assert(f.SCC contains f);
      if (h(f).size > 1)
        f.isRecursive = true;
+   }
+
+   // resolve refinement transforms
+   for (List(cl) <- dag.computeTopologicalSort.reverse) {
+     val context = new ProgramContext(decls, cl)
+     for (m <- cl.members) m match {
+       case mt: MethodTransform =>
+         context.currentMember = mt;
+         ResolveTransform(mt, context);
+       case _ =>
+     }
+     errors = errors ++ context.errors
    }
 
    if (errors.length == 0) {
@@ -1076,14 +1089,24 @@ object Resolver {
  }
 
  def ResolveTransform(mt: MethodTransform, context: ProgramContext) {
-   mt.refines match {
+   val orig = mt.refines match {
      case m: Method =>
        if (mt.ins != m.ins) context.Error(mt.pos, "Refinement must have same input arguments")
-       if (! mt.outs.startsWith(m.outs)) context.Error(mt.pos, "Refinement must declare all concrete output variables")
+       if (! mt.outs.startsWith(m.outs)) context.Error(mt.pos, "Refinement must declare all abstract output variables")
+       m.body
      case r: MethodTransform =>
        if (mt.ins != r.ins) context.Error(mt.pos, "Refinement must have same input arguments")
-       if (! mt.outs.startsWith(r.outs)) context.Error(mt.pos, "Refinement must declare all concrete output variables")    
-     case _ => context.Error(mt.pos, "Method can only refine another method or a transform")
+       if (! mt.outs.startsWith(r.outs)) context.Error(mt.pos, "Refinement must declare all abstract output variables")
+       assert(r.body != null)
+       r.body
+     case _ =>
+       context.Error(mt.pos, "Transform must refine a method or a transform")
+       Nil
    }
+   mt.body = AST.refine(orig, mt.trans) match {
+     case AST.Matched(ss) => ss
+     case AST.Unmatched(t) => context.Error(mt.pos, "Cannot match transform around " + t); Nil
+   }
+   PrintProgram.Stmt(BlockStmt(mt.body), 0)
  }
 }
