@@ -223,10 +223,9 @@ case class WhileStmt(guard: Expression,
                      invs: List[Expression], lkch: List[Expression],
                      body: BlockStmt) extends Statement {
   var LoopTargets: Set[Variable] = null
-  lazy val LoopTargetsList: List[Variable] = {  // to be called only after LoopTargets has been completely filled in
-    var vv = List[Variable]()
-    LoopTargets foreach (v => vv = v :: vv)
-    vv
+  lazy val LoopTargetsList = {
+    assert (LoopTargets != null)
+    LoopTargets.toList
   }
 }
 case class Assign(lhs: VariableExpr, rhs: RValue) extends Statement

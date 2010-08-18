@@ -116,6 +116,10 @@ object Chalice {
          if (!vsMode) Console.err.println("The program did not typecheck.");
          msgs foreach { msg => ReportError(msg._1, msg._2) }
        case Resolver.Success() =>
+         if (printProgram) {
+           Console.out.println("Program after type checking: ");
+           PrintProgram.P(program)
+         }
          if (doTranslate) {
            // checking if Boogie.exe exists
            val boogieFile = new File(boogiePath);

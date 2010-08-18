@@ -15,32 +15,26 @@ object Resolver {
 
  val runMethod = "run";
 
- class ProgramContext(decls: Map[String,TopLevelDecl], currentClass: Class) {
-   val Decls = decls
-   val CurrentClass = currentClass
-   var currentMember = null: Member;
-   def CurrentMember = currentMember: Member;  
-   var errors: List[(Position,String)] = Nil;
-   def Error(pos: Position, msg: String) {
-     errors = errors ::: List((pos, msg))
-   }
-   def AddVariable(v: Variable): ProgramContext = {
-     new LProgramContext(v, this);
-   }
+ sealed class ProgramContext(val decls: Map[String,TopLevelDecl], val currentClass: Class,
+                      val currentMember: Member, val errors: ListBuffer[(Position,String)]) {
+   final def AddVariable(v: Variable): ProgramContext = new LProgramContext(v, this);
+   final def Error(pos: Position, msg: String) {errors + (pos, msg)}
+   final def SetClass(cl: Class): ProgramContext = new MProgramContext(cl, null, this)
+   final def SetMember(m: Member): ProgramContext = new MProgramContext(currentClass, m, this)
+
    def LookupVariable(id: String): Option[Variable] = None
    def IsVariablePresent(vr: Variable): Boolean = false
 
-   private class LProgramContext(v: Variable, parent: ProgramContext) extends ProgramContext(parent.Decls, parent.CurrentClass) {
-     override def Error(pos: Position, msg: String) = parent.Error(pos, msg)
-     override def LookupVariable(id: String): Option[Variable] = {
+   private class LProgramContext(v: Variable, parent: ProgramContext) extends ProgramContext(parent.decls, parent.currentClass, parent.currentMember, errors) {
+     assert (v!=null)
+     override def LookupVariable(id: String): Option[Variable] =
        if (id == v.id) Some(v) else parent.LookupVariable(id)
-     }
-     override def IsVariablePresent(vr: Variable): Boolean = {
+     override def IsVariablePresent(vr: Variable): Boolean =
        if (vr == v) true else parent.IsVariablePresent(vr)
-     }
-     override def CurrentMember() = {
-       parent.CurrentMember
-     }
+   }
+   private class MProgramContext(cl: Class, m: Member, parent: ProgramContext) extends ProgramContext(parent.decls, cl, m, errors) {
+     override def LookupVariable(id: String) = parent.LookupVariable(id)
+     override def IsVariablePresent(vr: Variable) = parent.IsVariablePresent(vr)
    }
  }
 
@@ -117,32 +111,30 @@ object Resolver {
    }
 
    // collect errors
-   var errors = List[(Position,String)]()
+   val baseContext = new ProgramContext(decls, null, null, new ListBuffer[(Position,String)])
 
    // resolve types of members
-   val contextNoCurrentClass = new ProgramContext(decls, null)
    for (decl <- prog) decl match {
      case ch: Channel =>
        for (v <- ch.parameters) {
-         ResolveType(v.t, contextNoCurrentClass)
+         ResolveType(v.t, baseContext)
         }
      case cl: Class =>
        for (m <- cl.members) m match {
          case _: MonitorInvariant =>
          case Field(_, t, _) =>
-           ResolveType(t, contextNoCurrentClass)
+           ResolveType(t, baseContext)
          case Method(_, ins, outs, _, _) =>
-           for (v <- ins ++ outs) ResolveType(v.t, contextNoCurrentClass)
+           for (v <- ins ++ outs) ResolveType(v.t, baseContext)
          case _: Condition =>
          case _: Predicate =>
          case Function(id, ins, out, specs, _) => 
-           for (v <- ins) ResolveType(v.t, contextNoCurrentClass)
-           ResolveType(out, contextNoCurrentClass)
+           for (v <- ins) ResolveType(v.t, baseContext)
+           ResolveType(out, baseContext)
          case mt: MethodTransform =>
-           for (v <- mt.ins ++ mt.outs) ResolveType(v.t, contextNoCurrentClass)
+           for (v <- mt.ins ++ mt.outs) ResolveType(v.t, baseContext)
        }
-   }
-   errors = errors ++ contextNoCurrentClass.errors;
+   }   
 
    // now, resolve and typecheck all
    //  * Field types and Method formal-parameter types
@@ -152,17 +144,15 @@ object Resolver {
    val calls = new DiGraph[Function];
    for (decl <- prog) decl match {
      case ch: Channel =>
-       val context = new ProgramContext(decls, ChannelClass(ch))
+       val context = baseContext.SetClass(ChannelClass(ch))
        var ctx = context
        for (v <- ch.parameters) {
          ctx = ctx.AddVariable(v)
        }
        ResolveExpr(ch.where, ctx, false, true)(false)
-       errors = errors ++ context.errors
      case cl: Class =>
-       val context = new ProgramContext(decls, cl)
        for (m <- cl.members) {
-         context.currentMember = m;
+         val context = baseContext.SetClass(cl).SetMember(m);
          m match {
            case MonitorInvariant(e) =>
              ResolveExpr(e, context, true, true)(true)
@@ -170,9 +160,7 @@ object Resolver {
            case _:Field => // nothing more to do
            case m@Method(id, ins, outs, spec, body) =>
              var ctx = context
-             for (v <- ins ++ outs) {
-               ctx = ctx.AddVariable(v)
-             }
+             for (v <- ins ++ outs) ctx = ctx.AddVariable(v)
              spec foreach {
                case Precondition(e) => ResolveExpr(e, ctx, false, true)(false)
                case Postcondition(e) => ResolveExpr(e, ctx, true, true)(false)
@@ -197,7 +185,7 @@ object Resolver {
               // TODO: disallow credit(...) expressions in function specifications
              spec foreach {
                case Precondition(e) => ResolveExpr(e, ctx, false, true)(false)
-               case Postcondition(e) => assert(ctx.CurrentMember != null); ResolveExpr(e, ctx, false, true)(false)
+               case Postcondition(e) => assert(ctx.currentMember != null); ResolveExpr(e, ctx, false, true)(false)
                case lc : LockChange => context.Error(lc.pos, "lockchange not allowed on function") 
              }
 
@@ -220,7 +208,6 @@ object Resolver {
            case mt: MethodTransform =>
          }
        }
-       errors = errors ++ context.errors
    }
 
    // fill in SCC for recursive functions 
@@ -234,16 +221,16 @@ object Resolver {
 
    // resolve refinement transforms
    for (List(cl) <- dag.computeTopologicalSort.reverse) {
-     val context = new ProgramContext(decls, cl)
      for (m <- cl.members) m match {
        case mt: MethodTransform =>
-         context.currentMember = mt;
+         var context = baseContext.SetClass(cl).SetMember(mt)
+         for (v <- mt.ins ++ mt.outs) context = context.AddVariable(v)
          ResolveTransform(mt, context);
        case _ =>
      }
-     errors = errors ++ context.errors
    }
 
+   val errors = baseContext.errors.toList
    if (errors.length == 0) {
      Success()
    } else {
@@ -265,8 +252,8 @@ object Resolver {
        }
        return;
      }
-     if (context.Decls contains t.FullName) {
-       context.Decls(t.FullName) match {
+     if (context.decls contains t.FullName) {
+       context.decls(t.FullName) match {
          case cl: Class => t.typ = cl
          case ch: Channel => t.typ = ChannelClass(ch)
          case _ =>
@@ -283,13 +270,15 @@ object Resolver {
      }
  }
 
- def ResolveStmt(s: Statement, context: ProgramContext): Unit = s match {
+ def ResolveStmt(s: Statement, context: ProgramContext): ProgramContext = s match {
    case Assert(e) =>
      ResolveExpr(e, context, true, true)(false)
      if (!e.typ.IsBool) context.Error(e.pos, "assert statement requires a boolean expression (found " + e.typ.FullName + ")")
+     context
    case Assume(e) =>
      ResolveExpr(e, context, true, true)(false)  
      if (!e.typ.IsBool) context.Error(e.pos, "assume statement requires a boolean expression (found " + e.typ.FullName + ")")
+     context
    case BlockStmt(ss) =>
      var ctx = context
      for (s <- ss) s match {
@@ -328,12 +317,14 @@ object Resolver {
        case s =>
          ResolveStmt(s, ctx)
      }
+     ctx
    case IfStmt(guard, thn, els) =>
      ResolveExpr(guard, context, false, false)(false)
      if (!guard.typ.IsBool) context.Error(guard.pos, "if statement requires a boolean guard (found " + guard.typ.FullName + ")")
      CheckNoGhost(guard, context)
      ResolveStmt(thn, context)
      els match { case None => case Some(s) => ResolveStmt(s, context) }
+     context
    case w@ WhileStmt(guard, invs, lkch, body) =>
      ResolveExpr(guard, context, false, false)(false)
      if (!guard.typ.IsBool) context.Error(guard.pos, "while statement requires a boolean guard (found " + guard.typ.FullName + ")")
@@ -348,6 +339,7 @@ object Resolver {
      }
      ResolveStmt(body, context)
      w.LoopTargets = ComputeLoopTargets(body) filter context.IsVariablePresent
+     context
    case Assign(lhs, rhs) => 
      ResolveExpr(lhs, context, false, false)(false)
      ResolveAssign(lhs, rhs, context)
@@ -357,6 +349,7 @@ object Resolver {
        else
          context.Error(lhs.pos, "cannot assign to immutable variable " + lhs.v.id)
      }
+     context
    case fu@FieldUpdate(lhs, rhs) =>
      ResolveExpr(lhs, context, false, false)(false)
      if (! lhs.isPredicate && lhs.f != null && !lhs.f.isGhost) CheckNoGhost(lhs.e, context)
@@ -364,6 +357,7 @@ object Resolver {
      ResolveExpr(rhs, context, false, false)(false)
      if (! lhs.isPredicate && !canAssign(lhs.typ, rhs.typ)) context.Error(fu.pos, "type mismatch in assignment, lhs=" + lhs.typ.FullName + " rhs=" + rhs.typ.FullName)
      if (! lhs.isPredicate && lhs.f != null && !lhs.f.isGhost) CheckNoGhost(rhs, context)
+     context
    case _:LocalVar => throw new Exception("unexpected LocalVar; should have been handled in BlockStmt above")
    case _:SpecStmt => throw new Exception("should have been handled before")
    case c @ Call(declaresLocal, lhs, obj, id, args) =>
@@ -393,38 +387,46 @@ object Resolver {
            c.locals = ResolveLHS(declaresLocal, lhs, m.outs, context)
        case _ => context.Error(c.pos, "call expression does not denote a method: " + obj.typ.FullName + "." + id)
      }
+     context
    case Install(obj, lowerBounds, upperBounds) =>
      ResolveExpr(obj, context, false, false)(false)
      if (!obj.typ.IsRef) context.Error(obj.pos, "object in reorder statement must be of a reference type (found " + obj.typ.FullName + ")")
      if (obj.typ.IsChannel) context.Error(obj.pos, "object in reorder statement must not be a channel (found " + obj.typ.FullName + ")")
      ResolveBounds(lowerBounds, upperBounds, context, "install")
+     context
    case Share(obj, lowerBounds, upperBounds) =>
      ResolveExpr(obj, context, false, false)(false)
      CheckNoGhost(obj, context)
      if (!obj.typ.IsRef) context.Error(obj.pos, "object in share statement must be of a reference type (found " + obj.typ.FullName + ")")
      if (obj.typ.IsChannel) context.Error(obj.pos, "object in share statement must not be a channel (found " + obj.typ.FullName + ")")
      ResolveBounds(lowerBounds, upperBounds, context, "share")
+     context
    case Unshare(obj) =>
      ResolveExpr(obj, context, false, false)(false)
      CheckNoGhost(obj, context)
      if (!obj.typ.IsRef) context.Error(obj.pos, "object in unshare statement must be of a reference type (found " + obj.typ.FullName + ")")
      if (obj.typ.IsChannel) context.Error(obj.pos, "object in unshare statement must not be a channel (found " + obj.typ.FullName + ")")
+     context
    case Acquire(obj) =>
      ResolveExpr(obj, context, false, false)(false)
      CheckNoGhost(obj, context)
      if (!obj.typ.IsRef) context.Error(obj.pos, "object in acquire statement must be of a reference type (found " + obj.typ.FullName + ")")
+     context
    case Release(obj) =>
      ResolveExpr(obj, context, false, false)(false)
      CheckNoGhost(obj, context)
      if (!obj.typ.IsRef) context.Error(obj.pos, "object in release statement must be of a reference type (found " + obj.typ.FullName + ")")
+     context
    case RdAcquire(obj) =>
      ResolveExpr(obj, context, false, false)(false)
      CheckNoGhost(obj, context)
      if (!obj.typ.IsRef) context.Error(obj.pos, "object in rd acquire statement must be of a reference type (found " + obj.typ.FullName + ")")
+     context
    case RdRelease(obj) =>
      ResolveExpr(obj, context, false, false)(false)
      CheckNoGhost(obj, context)
      if (!obj.typ.IsRef) context.Error(obj.pos, "object in rd release statement must be of a reference type (found " + obj.typ.FullName + ")")
+     context
    case Lock(obj, b, rdLock) =>
      ResolveExpr(obj, context, false, false)(false)
      CheckNoGhost(obj, context)
@@ -434,23 +436,28 @@ object Resolver {
                                       
      }
      ResolveStmt(b, context)
+     context
    case Downgrade(obj) =>
      ResolveExpr(obj, context, false, false)(false)
      CheckNoGhost(obj, context)
      if (!obj.typ.IsRef) context.Error(obj.pos, "object in downgrade statement must be of a reference type (found " + obj.typ.FullName + ")")
+     context
    case Free(obj) =>
      ResolveExpr(obj, context, false, false)(false)
      CheckNoGhost(obj, context)
      if (!obj.typ.IsRef) context.Error(obj.pos, "object in free statement must be of a reference type (found " + obj.typ.FullName + ")")
+     context
    case fld@Fold(e) =>
      ResolveExpr(e, context, false, true)(false);
      CheckNoGhost(e, context);
      if(!e.ma.isPredicate) context.Error(fld.pos, "Fold can only be applied to predicates.")
+     context
    case ufld@Unfold(e) =>
      ResolveExpr(e, context, false, true)(false);
      CheckNoGhost(e, context);
      if(!e.ma.isPredicate) context.Error(ufld.pos, "Unfold can only be applied to predicates.")
-   case c@CallAsync(declaresLocal, token, obj, id, args) => 
+     context
+   case c@CallAsync(declaresLocal, token, obj, id, args) =>
      // resolve receiver
      ResolveExpr(obj, context, false, false)(false)
      CheckNoGhost(obj, context)
@@ -484,6 +491,7 @@ object Resolver {
        if(! canAssign(token.typ, TokenClass(new Type(obj.typ), id)))
          context.Error(token.pos, "wrong token type")
      }
+     context
    case jn@JoinAsync(lhs, token) =>
      // resolve the assignees
      var vars = Set[Variable]()
@@ -516,6 +524,7 @@ object Resolver {
        }
      
      }
+     context
    case w@Wait(obj, id) =>
      // resolve receiver
      ResolveExpr(obj, context, false, false)(false)
@@ -528,6 +537,7 @@ object Resolver {
        case _ =>
          context.Error(w.pos, "wait expression does not denote a condition: " + obj.typ.FullName + "." + id)
      }
+     context
    case s@Signal(obj, id, all) =>
      // resolve receiver
      ResolveExpr(obj, context, false, false)(false)
@@ -540,6 +550,7 @@ object Resolver {
        case _ =>
          context.Error(s.pos, "signal expression does not denote a condition: " + obj.typ.FullName + "." + id)
      }
+     context
    case s@Send(ch, args) =>
      ResolveExpr(ch, context, false, false)(false)
      CheckNoGhost(ch, context)
@@ -558,6 +569,7 @@ object Resolver {
          }
        case _ => context.Error(s.pos, "send expression (which has type " + ch.typ.FullName + ") does not denote a channel")
      }
+     context
    case r@Receive(declaresLocal, ch, outs) =>
      ResolveExpr(ch, context, false, false)(false)
      CheckNoGhost(ch, context)
@@ -571,6 +583,7 @@ object Resolver {
            r.locals = ResolveLHS(declaresLocal, outs, channel.parameters, context)
        case _ => context.Error(r.pos, "receive expression (which has type " + ch.typ.FullName + ") does not denote a channel")
      }
+     context
  }
 
  def ResolveLHS(declaresLocal: List[Boolean], actuals: List[VariableExpr], formals: List[Variable], context: ProgramContext): List[Variable] = {
@@ -642,8 +655,8 @@ object Resolver {
  def ResolveExpr(e: RValue, context: ProgramContext,
                  twoStateContext: Boolean, specContext: Boolean)(implicit inPredicate: Boolean): Unit = e match {
    case e @ NewRhs(id, initialization, lower, upper) =>
-     if (context.Decls contains id) {
-       context.Decls(id) match {
+     if (context.decls contains id) {
+       context.decls(id) match {
          case ch: Channel =>
            e.typ = ChannelClass(ch)
          case cl: Class =>
@@ -686,18 +699,18 @@ object Resolver {
    case mx:LockBottomLiteral =>
      mx.typ = MuClass
    case r:Result =>
-     assert(context.CurrentMember!=null);
+     assert(context.currentMember!=null);
      r.typ = IntClass
-     if(context.CurrentMember==null || ! context.CurrentMember.isInstanceOf[Function]){
+     if(context.currentMember==null || ! context.currentMember.isInstanceOf[Function]){
        context.Error(r.pos, "The variable result can only be used in the postcondition of a function.");
      } else {
-       r.typ = context.CurrentMember.asInstanceOf[Function].out.typ;
+       r.typ = context.currentMember.asInstanceOf[Function].out.typ;
      }
    case ve @ VariableExpr(id) =>
      context.LookupVariable(id) match {
        case None => context.Error(ve.pos, "undefined local variable " + id); ve.typ = IntClass
        case Some(v) => ve.Resolve(v) }
-   case v:ThisExpr => v.typ = context.CurrentClass
+   case v:ThisExpr => v.typ = context.currentClass
    case sel @ MemberAccess(e, id) =>
      ResolveExpr(e, context, twoStateContext, false)
      var typ: Class = IntClass
@@ -1107,6 +1120,31 @@ object Resolver {
      case AST.Matched(ss) => ss
      case AST.Unmatched(t) => context.Error(mt.pos, "Cannot match transform around " + t); Nil
    }
-   PrintProgram.Stmt(BlockStmt(mt.body), 0)
+
+   // resolution must check for:
+   // * refinement blocks (call statements are in different scope)
+   // * loops might have more loop targets
+   def resolveBody(ss: List[Statement], context: ProgramContext) {
+     var ctx = context;
+     for (s <- ss) s match {
+       case l: LocalVar =>
+         ctx = ctx.AddVariable(l.v)
+       case c: Call =>
+         for (v <- c.locals) ctx = ctx.AddVariable(v)
+       case s: SpecStmt =>
+         for (v <- s.locals) ctx = ctx.AddVariable(v)
+       case RefinementBlock(l, original) =>
+         ctx = ResolveStmt(BlockStmt(l), ctx)
+       case IfStmt(_, thn, None) =>
+         resolveBody(thn.ss, ctx)
+       case IfStmt(_, thn, Some(els)) =>
+         resolveBody(thn.ss, ctx)
+         resolveBody(List(els), ctx)
+       case BlockStmt(ss) =>
+         resolveBody(ss, ctx)
+       case _ => 
+     }
+   }
+   resolveBody(mt.body, context)
  }
 }

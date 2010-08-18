@@ -25,16 +25,10 @@ object PrintProgram {
       print("  method " + m.id)
       print("("); VarList(m.ins); print(")")
       if (m.outs != Nil) print(" returns ("); VarList(m.outs); print(")")
-      println;
-      m.spec foreach {
-        case Precondition(e) => print("    requires "); Expr(e); println(Semi)
-        case Postcondition(e) => print("    ensures "); Expr(e); println(Semi)
-        case LockChange(ee) => print("    lockchange "); ExprList(ee); println(Semi)
-      }
-      println("  {");
-      for (s <- m.body) {
-        print("    "); Stmt(s, 4)
-      }
+      println
+      PrintSpec(m.spec)
+      println("  {")
+      for (s <- m.body) {Spaces(4); Stmt(s, 4)}
       println("  }")
     case Condition(id, optE) =>
       print("  condition " + id)
@@ -48,28 +42,30 @@ object PrintProgram {
     case Function(id, ins, out, specs, e) =>
       print("  function " + id + "("); VarList(ins); print("): " + out.FullName);
       println
-      specs foreach {
-        case Precondition(e) => print("    requires "); Expr(e); println(Semi)
-        case Postcondition(e) => print("    ensures "); Expr(e); println(Semi)
-        case LockChange(ee) => print("    lockchange "); ExprList(ee); println(Semi)
-      }
+      PrintSpec(specs)
       e match {
         case Some(e) => print("  { "); Expr(e); println(" }");
         case None =>
       }
     case m: MethodTransform =>
-      print("  transforms " + m.id);
+      print("  method " + m.id);
       print("("); VarList(m.ins); print(")")
       if (m.outs != Nil) print(" returns ("); VarList(m.outs); print(")")
       println;
-      m.spec foreach {
-        case Precondition(e) => print("    requires "); Expr(e); println(Semi)
-        case Postcondition(e) => print("    ensures "); Expr(e); println(Semi)
-      }
+      PrintSpec(m.spec);
       println("  {");
-      throw new Exception("not yet implemented")
-      // TODO: print out transform
+      if (m.body == null)
+        println("    // body is not resolved")
+      else
+        for (s <- m.body) {Spaces(4); Stmt(s, 4)}
       println("  }")
+  }
+  def PrintSpec(specs: List[Specification]) {
+    specs foreach {
+      case Precondition(e) => print("    requires "); Expr(e); println(Semi)
+      case Postcondition(e) => print("    ensures "); Expr(e); println(Semi)
+      case LockChange(ee) => print("    lockchange "); ExprList(ee); println(Semi)
+    }
   }
   def Stmt(s: Statement, indent: Int): Unit = s match {
     case Assert(e) =>
@@ -78,8 +74,11 @@ object PrintProgram {
       print("assume "); Expr(e); println(Semi)
     case BlockStmt(ss) =>
       PrintBlockStmt(ss, indent); println
-    case RefinementBlock(ss, _) =>
-      PrintBlockStmt(ss, indent); println
+    case RefinementBlock(ss, old) =>
+      println("// begin of refinement block")
+      for (s <- old) {Spaces(indent); print("// "); Stmt(s, indent)}
+      for (s <- ss) {Spaces(indent); Stmt(s, indent)}
+      Spaces(indent); println("// end of refinement block")
     case IfStmt(guard, BlockStmt(thn), els) =>
       print("if ("); Expr(guard); print(") ")
       PrintBlockStmt(thn, indent)
