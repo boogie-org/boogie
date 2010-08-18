@@ -192,7 +192,7 @@ Contract.Ensures(Contract.ValueAtReturn(out store) != null);
         storeTypes[i] = AxBuilder.T;
       }
       // Fill in the map type
-      if (CommandLineOptions.Clo.UseArrayTheory) {
+      if (CommandLineOptions.Clo.MonomorphicArrays) {
         selectTypes[i] = abstractedType;
         storeTypes[i] = abstractedType;
       } else {
@@ -223,7 +223,7 @@ Contract.Ensures(Contract.ValueAtReturn(out store) != null);
       }
       i++;
       // Fill in the map type which is the output of the store function
-      if (CommandLineOptions.Clo.UseArrayTheory)
+      if (CommandLineOptions.Clo.MonomorphicArrays)
         storeTypes[i] = abstractedType;
       else
         storeTypes[i] = AxBuilder.U;

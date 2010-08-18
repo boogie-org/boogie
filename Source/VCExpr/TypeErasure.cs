@@ -727,7 +727,7 @@ Contract.Ensures(Contract.ValueAtReturn(out var) != null);
     [Pure]
     public override bool UnchangedType(Type type) {
       Contract.Requires(type != null);
-      return type.IsInt || type.IsBool || type.IsBv || (type.IsMap && CommandLineOptions.Clo.UseArrayTheory);
+      return type.IsInt || type.IsBool || type.IsBv || (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays);
     }
 
     public VCExpr Cast(VCExpr expr, Type toType) {

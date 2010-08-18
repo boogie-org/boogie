@@ -132,27 +132,35 @@ void ObjectInvariant()
     {
       Contract.Requires(type != null);
       if (KnownTypes.ContainsKey(type)) return;
-      
-      if (type.IsMap && CommandLineOptions.Clo.UseArrayTheory) {
+
+      if (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays) {
         KnownTypes.Add(type, true);
         string declString = "";
         MapType mapType = type.AsMap;
-        Contract.Assert(mapType!=null);
-        
-        declString += "(DEFTYPE " +  TypeToString(type) + " :BUILTIN Array ";
-		foreach (Type t in mapType.Arguments) {
-      Contract.Assert(t!=null);
-		  RegisterType(t);
-		  declString += TypeToString(t);
-		  declString += " ";
-		}
-		RegisterType(mapType.Result);
-		declString += TypeToString(mapType.Result);
-		declString += ")";
-		AddDeclaration(declString);		
-		return;
+        Contract.Assert(mapType != null);
+
+        foreach (Type t in mapType.Arguments) {
+          Contract.Assert(t != null);
+          RegisterType(t);
+        }
+        RegisterType(mapType.Result);
+
+        declString += "(DEFTYPE " + TypeToString(type);
+
+        if (CommandLineOptions.Clo.UseArrayTheory) {
+          declString += " :BUILTIN Array ";
+          foreach (Type t in mapType.Arguments) {
+            declString += TypeToString(t);
+            declString += " ";
+          }
+          declString += TypeToString(mapType.Result);
+        }
+
+        declString += ")";
+        AddDeclaration(declString);
+        return;
       }
-      
+
       if (type.IsBv && NativeBv) {
         int bits = type.BvBits;
         string name = TypeToString(type);
@@ -212,34 +220,87 @@ void ObjectInvariant()
         }
         //
       } else if (node.Op is VCExprStoreOp) {
-        //
-        RegisterType(node[0].Type);
-        RegisterType(node[1].Type);
-        RegisterType(node[2].Type);
-        RegisterType(node.Type);
+        RegisterType(node.Type);        // this is the map type, registering it should register also the index and value types
         string name = SimplifyLikeExprLineariser.StoreOpName(node);
         if (!KnownStoreFunctions.ContainsKey(name)) {
-          AddDeclaration("(DEFOP " + name + 
-                         " " + TypeToString(node[0].Type) + 
-                         " " + TypeToString(node[1].Type) +
-                         " " + TypeToString(node[2].Type) + 
-                         " " + TypeToString(node.Type) + 
-                         " :BUILTIN store)");
+          string decl = "(DEFOP " + name;
+
+          foreach (VCExpr ch in node) {
+            decl += " " + TypeToString(ch.Type);
+          }
+          decl += " " + TypeToString(node.Type);
+
+          if (CommandLineOptions.Clo.UseArrayTheory)
+            decl += " :BUILTIN store";
+          decl += ")";
+          AddDeclaration(decl);
+
+          if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
+            var sel = SimplifyLikeExprLineariser.SelectOpName(node);
+
+            if (!KnownSelectFunctions.ContainsKey(name)) {
+              // need to declare it before reference
+              string seldecl = "(DEFOP " + sel;
+              foreach (VCExpr ch in node) {
+                seldecl += " " + TypeToString(ch.Type);
+              }
+              AddDeclaration(seldecl + ")");
+              KnownSelectFunctions.Add(name, true);
+            }
+
+            var eq = "EQ";
+            if (node[node.Arity - 1].Type.IsBool)
+              eq = "IFF";
+
+            string ax1 = "(BG_PUSH (FORALL (";
+            string ax2 = "(BG_PUSH (FORALL (";
+            string argX = "", argY = "";
+            string dist = "";
+            for (int i = 0; i < node.Arity; i++) {
+              var t = " :TYPE " + TypeToString(node[i].Type);
+              var x = " x" + i;
+              var y = " y" + i;
+              ax1 += x + t;
+              ax2 += x + t;
+              if (i != 0 && i != node.Arity - 1) {
+                argX += x;
+                argY += y;
+                ax2 += y + t;
+                dist += " (NEQ" + x + y + ")";
+              }
+            }
+            string v = " x" + (node.Arity - 1);
+            ax1 += ") ";
+            ax1 += "(" + eq + " (" + sel + " (" + name + " x0" + argX + v + ")" + argX + ") " + v + ")";
+            ax1 += "))";
+
+            ax2 += ") ";
+            ax2 += "(IMPLIES (OR " + dist + ") (" + eq + " (" + sel + " (" + name + " x0" + argX + v + ")" + argY + ") (" + sel + " x0" + argY + ")))";
+            ax2 += "))";
+
+            AddDeclaration(ax1);
+            AddDeclaration(ax2);
+          }
+          
           KnownStoreFunctions.Add(name, true);
         }
         //
       } else if (node.Op is VCExprSelectOp) {
         //
         RegisterType(node[0].Type);
-        RegisterType(node[1].Type);
-        RegisterType(node.Type);
         string name = SimplifyLikeExprLineariser.SelectOpName(node);
         if (!KnownSelectFunctions.ContainsKey(name)) {
-          AddDeclaration("(DEFOP " + name + 
-                         " " + TypeToString(node[0].Type) + 
-                         " " + TypeToString(node[1].Type) +
-                         " " + TypeToString(node.Type) + 
-                         " :BUILTIN select)");
+          string decl = "(DEFOP " + name;
+
+          foreach (VCExpr ch in node) {
+            decl += " " + TypeToString(ch.Type);
+          }
+          decl += " " + TypeToString(node.Type);
+
+          if (CommandLineOptions.Clo.UseArrayTheory)
+            decl += " :BUILTIN select";
+          decl += ")";
+          AddDeclaration(decl);
           KnownSelectFunctions.Add(name, true);
         }
         //
@@ -277,7 +338,18 @@ void ObjectInvariant()
         //
       }
 
-      return base.Visit(node, arg);
+      // What happens in base.Visit() just seems wrong. It seems to use some hack to enumerate 
+      // recursive children of current node, which doesn't seem to work for nested store expressions
+      // (the store expressions themselves get skipped).
+      var res = StandardResult(node, arg);
+      foreach (VCExpr n in node)
+      {
+        n.Accept(this, arg);
+      }
+
+      return res;
+
+      // return base.Visit(node, arg);
     }
 
     private string ExtractBuiltin(Function f) {

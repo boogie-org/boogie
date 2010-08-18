@@ -256,6 +256,7 @@ namespace Microsoft.Boogie.VCExprAST {
 Contract.Requires(node != null);
       Result res = StandardResult(node, arg);
 
+
       if (node.TypeParamArity == 0) {
         Contract.Assert(node.Op != null);
         VCExprOp op = node.Op;

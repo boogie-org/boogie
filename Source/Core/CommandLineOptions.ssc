@@ -153,6 +153,7 @@ namespace Microsoft.Boogie
     public BvHandling Bitvectors = BvHandling.Z3Native;
     
     public bool UseArrayTheory = false;
+    public bool MonomorphicArrays { get { return UseArrayTheory || TypeEncodingMethod == TypeEncoding.Monomorphic; } }
     public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
 
     public bool DoModSetAnalysis = false;
@@ -1324,7 +1325,7 @@ namespace Microsoft.Boogie
         OwnershipModelEncoding = OwnershipModelOption.Trivial;
       }
       
-      if (UseArrayTheory) {
+      if (MonomorphicArrays) {
         Monomorphize = true;
       }
       

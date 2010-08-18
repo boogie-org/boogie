@@ -2131,7 +2131,8 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter! stream, int contextBindingStrength) 
     {
       stream.SetToken(this);
-      CtorType.EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
+      ExpandedType.Emit(stream, contextBindingStrength);      
+      // CtorType.EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
     }
 
     //-----------  Resolution  ----------------------------------

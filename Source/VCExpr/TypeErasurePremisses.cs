@@ -634,7 +634,7 @@ Contract.Requires(var != null);
         mapTypeParams.Add(var);
       }
 
-      if (CommandLineOptions.Clo.UseArrayTheory)
+      if (CommandLineOptions.Clo.MonomorphicArrays)
         mapTypeSynonym = abstractedType;
       else
         mapTypeSynonym = new CtorType(Token.NoToken, synonymDecl, mapTypeParams);
