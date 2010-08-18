@@ -251,9 +251,14 @@ Contract.Ensures(Contract.Result<string>() != null);
       }
       return buffer.ToString();
     }
-    public static string TypeToString(Type t){
-Contract.Requires(t != null);
-Contract.Ensures(Contract.Result<string>() != null);
+    public static string TypeToString(Type t)
+    {
+      Contract.Requires(t != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+      TypeSynonymAnnotation syn = t as TypeSynonymAnnotation;
+      if (syn != null)
+        return TypeToString(syn.ExpandedType);
+
       if (t.IsBool)
         return "$bool";
       else if (t.IsInt)

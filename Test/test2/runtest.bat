@@ -17,6 +17,12 @@ for %%f in (FormulaTerm.bpl FormulaTerm2.bpl Passification.bpl B.bpl
   %BGEXE% %* /noinfer %%f
 )
 
+for %%f in (Arrays.bpl Lambda.bpl TypeEncodingM.bpl ) do (
+  echo.
+  echo -------------------- %%f /typeEncoding:m --------------------
+  %BGEXE% %* /noinfer /typeEncoding:m %%f
+)
+
 echo -------------------- sk_hack.bpl --------------------
 %BGEXE% %* /noinfer /bv:z sk_hack.bpl 
 

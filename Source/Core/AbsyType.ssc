@@ -63,7 +63,7 @@ namespace Microsoft.Boogie
       }
       return buffer.ToString();
     }
-
+    
     //-----------  Equality  ----------------------------------
 
     [Pure][Reads(ReadsAttribute.Reads.Nothing)]
@@ -2131,8 +2131,7 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter! stream, int contextBindingStrength) 
     {
       stream.SetToken(this);
-      ExpandedType.Emit(stream, contextBindingStrength);      
-      // CtorType.EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
+      CtorType.EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
     }
 
     //-----------  Resolution  ----------------------------------
