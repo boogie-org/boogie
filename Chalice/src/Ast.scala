@@ -138,7 +138,18 @@ case class Field(id: String, typ: Type, isGhost: Boolean) extends NamedMember(id
 case class SpecialField(name: String, tp: Type) extends Field(name, tp, false) {  // direct assignments are not allowed to a SpecialField
   override def FullName = id
 }
-case class Method(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], body: List[Statement]) extends NamedMember(id)
+sealed abstract class Callable(id: String) extends NamedMember(id) {
+  def Spec:List[Specification]
+  def Body:List[Statement]
+  def Ins:List[Variable]
+  def Outs:List[Variable]
+}
+case class Method(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], body: List[Statement]) extends Callable(id) {
+  override def Spec = spec;
+  override def Body = body;
+  override def Ins = ins;
+  override def Outs = outs;
+}
 case class Predicate(id: String, definition: Expression) extends NamedMember(id)
 case class Function(id: String, ins: List[Variable], out: Type, spec: List[Specification], definition: Option[Expression]) extends NamedMember(id) {
   def apply(rec: Expression, args: List[Expression]): FunctionApplication = {
@@ -173,13 +184,16 @@ case class LockChange(ee: List[Expression]) extends Specification
  * Refinement members
  */
 
-sealed abstract class Refinement(id: String) extends NamedMember(id) {
-  var refines = null: NamedMember;
+sealed abstract class Refinement(id: String) extends Callable(id) {
+  var refines = null: Callable;
 }
 case class MethodTransform(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], trans: Transform) extends Refinement(id) {
   var body = null:List[Statement];
+  def Spec = {assert(refines != null); refines.Spec ++ spec}
+  def Body = {assert(body != null); body}
+  def Ins = {assert(refines != null); refines.Ins}
+  def Outs = {assert(refines != null); refines.Outs ++ outs.drop(refines.Outs.size)}
 }
-
 sealed abstract class Transform extends ASTNode
 /** Pattern matching within a block (zero or more) over deterministic statements */
 case class BlockPat() extends Transform {
@@ -208,16 +222,25 @@ case class InsertPat(code: List[Statement]) extends Transform
 case class SeqPat(pats: List[Transform]) extends Transform {
   assert(pats.size > 0)
 }
-case class RefinementBlock(ss: List[Statement], original: List[Statement]) extends Statement
+case class RefinementBlock(con: List[Statement], abs: List[Statement]) extends Statement {
+  if (con.size > 0) pos = con.first.pos;
+  var locals: List[Variable] = null;
+  override def Declares = BlockStmt(con).Declares
+}
 
 /**
  * Statements
  */
 
-sealed abstract class Statement extends ASTNode
+sealed abstract class Statement extends ASTNode {
+  // requires resolved statements
+  def Declares: List[Variable] = Nil
+}
 case class Assert(e: Expression) extends Statement
 case class Assume(e: Expression) extends Statement
-case class BlockStmt(ss: List[Statement]) extends Statement
+case class BlockStmt(ss: List[Statement]) extends Statement {
+  override def Declares = ss flatMap {s => s.Declares}
+}
 case class IfStmt(guard: Expression, thn: BlockStmt, els: Option[Statement]) extends Statement
 case class WhileStmt(guard: Expression,
                      invs: List[Expression], lkch: List[Expression],
@@ -232,12 +255,16 @@ case class Assign(lhs: VariableExpr, rhs: RValue) extends Statement
 case class FieldUpdate(lhs: MemberAccess, rhs: RValue) extends Statement
 case class LocalVar(id: String, t: Type, const: Boolean, ghost: Boolean, rhs: Option[RValue]) extends Statement {
   val v = new Variable(id, t, ghost, const);
+  override def Declares = List(v)
 }
 case class Call(declaresLocal: List[Boolean], lhs: List[VariableExpr], obj: Expression, id: String, args: List[Expression]) extends Statement {
   var locals = List[Variable]()
-  var m: Method = null
+  var m: Callable = null
+  override def Declares = locals
 }
-case class SpecStmt(lhs: List[VariableExpr], locals:List[Variable], pre: Expression, post: Expression) extends Statement
+case class SpecStmt(lhs: List[VariableExpr], locals:List[Variable], pre: Expression, post: Expression) extends Statement {
+  override def Declares = locals;
+}
 case class Install(obj: Expression, lowerBounds: List[Expression], upperBounds: List[Expression]) extends Statement
 case class Share(obj: Expression, lowerBounds: List[Expression], upperBounds: List[Expression]) extends Statement
 case class Unshare(obj: Expression) extends Statement
@@ -251,6 +278,7 @@ case class Free(obj: Expression) extends Statement
 case class CallAsync(declaresLocal: Boolean, lhs: VariableExpr, obj: Expression, id: String, args: List[Expression]) extends Statement {
   var local: Variable = null
   var m: Method = null
+  override def Declares = if (local != null) List(local) else Nil
 }
 case class JoinAsync(lhs: List[VariableExpr], token: Expression) extends Statement {
   var m: Method = null
@@ -265,6 +293,7 @@ case class Send(ch: Expression, args: List[Expression]) extends Statement {
 }
 case class Receive(declaresLocal: List[Boolean], ch: Expression, outs: List[VariableExpr]) extends Statement {
   var locals = List[Variable]()
+  override def Declares = locals;  
 }
 case class Fold(pred: Access) extends Statement
 case class Unfold(pred: Access) extends Statement

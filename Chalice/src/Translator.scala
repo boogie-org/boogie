@@ -29,7 +29,6 @@ class Translator {
   import TranslationHelper._;
   import TranslationOptions._;
   var currentClass = null: Class;
-  var currentMethod = null: Method;
   var modules = Nil: List[String]
   var etran = new ExpressionTranslator(null);
 
@@ -79,6 +78,8 @@ class Translator {
         Nil // already dealt with before
       case _: Condition =>
         throw new Exception("not yet implemented")
+      case mt: MethodTransform =>
+        translateMethodTransform(mt)
     }
   }
 
@@ -325,9 +326,42 @@ class Translator {
         DefineInitialState :::
         translateStatements(method.body) :::
         Exhale(Postconditions(method.spec) map { p => ((if(0<defaults) UnfoldPredicatesWithReceiverThis(p) else p), ErrorMessage(method.pos, "The postcondition at " + p.pos + " might not hold."))}, "postcondition") :::
-        (if(checkLeaks) isLeaking(method.pos, "Method " + method.FullName + " might leak refereces.") else Nil) :::
+        (if(checkLeaks) isLeaking(method.pos, "Method " + method.FullName + " might leak references.") else Nil) :::
         bassert(LockFrame(LockChanges(method.spec), etran), method.pos, "Method might lock/unlock more than allowed.") :::
         bassert(DebtCheck, method.pos, "Method body is not allowed to leave any debt."))
+  }
+
+  def translateMethodTransform(mt: MethodTransform): List[Decl] = {
+    // check definedness of refinement specifications
+    Proc(mt.FullName + "$checkDefinedness",
+      NewBVarWhere("this", new Type(currentClass)) :: (mt.Ins map {i => Variable2BVarWhere(i)}),
+      mt.Outs map {i => Variable2BVarWhere(i)},
+      GlobalNames,
+      DefaultPrecondition(),
+        DefinePreInitialState :::
+        bassume(CanAssumeFunctionDefs) ::
+        // check precondition
+        InhaleWithChecking(Preconditions(mt.Spec), "precondition") :::
+        DefineInitialState :::
+        (etran.Mask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
+        Havoc(etran.Heap) ::
+        // check postcondition
+        InhaleWithChecking(Postconditions(mt.Spec), "postcondition")
+      ) ::
+    // check correctness of refinement
+    Proc(mt.FullName,
+      NewBVarWhere("this", new Type(currentClass)) :: (mt.Ins map {i => Variable2BVarWhere(i)}),
+      mt.Outs map {i => Variable2BVarWhere(i)},
+      GlobalNames,
+      DefaultPrecondition(),
+        bassume(CurrentModule ==@ Boogie.VarExpr(ModuleName(currentClass))) ::
+        bassume(CanAssumeFunctionDefs) ::
+        DefinePreInitialState :::
+        Inhale(Preconditions(mt.Spec), "precondition") :::
+        DefineInitialState :::
+        translateStatements(mt.Body) :::
+        Exhale(Postconditions(mt.Spec) map { p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}, "postcondition")
+      )
   }
 
   def DebtCheck() = {
@@ -744,6 +778,8 @@ class Translator {
         (for ((v,e) <- outs zip formalParams) yield (v := e)) :::
         // decrease credits
         new Boogie.MapUpdate(etran.Credits, TrExpr(ch), new Boogie.MapSelect(etran.Credits, TrExpr(ch)) - 1)
+      case r: RefinementBlock =>
+        translateRefinement(r)
     }
   }
 
@@ -869,11 +905,11 @@ class Translator {
     // remember values of globals
     (for ((o,g) <- preGlobals zip etran.Globals) yield (new Boogie.VarExpr(o) := g)) :::
     // exhale preconditions
-    etran.Exhale(List((s.pre, ErrorMessage(s.pos, "The specification statement precondition at " + s.pos + " might not hold."))), "precondition", true) :::
+    etran.Exhale(List((s.pre, ErrorMessage(s.pos, "The specification statement precondition at " + s.pos + " might not hold."))), "spec stmt precondition", true) :::
     // havoc locals
     (s.lhs.map(l => Boogie.Havoc(l))) :::
     // inhale postconditions (using the state before the call as the "old" state)
-    etran.FromPreGlobals(preGlobals).Inhale(List(s.post), "postcondition", true)
+    etran.FromPreGlobals(preGlobals).Inhale(List(s.post), "spec stmt postcondition", true)
   }
 
   def translateCall(c: Call): List[Stmt] = {
@@ -883,9 +919,9 @@ class Translator {
     val args = c.args;
     val formalThisV = new Variable("this", new Type(c.m.Parent))
     val formalThis = new VariableExpr(formalThisV)
-    val formalInsV = for (p <- c.m.ins) yield new Variable(p.id, p.t)
+    val formalInsV = for (p <- c.m.Ins) yield new Variable(p.id, p.t)
     val formalIns = for (v <- formalInsV) yield new VariableExpr(v)
-    val formalOutsV = for (p <- c.m.outs) yield new Variable(p.id, p.t)
+    val formalOutsV = for (p <- c.m.Outs) yield new Variable(p.id, p.t)
     val formalOuts = for (v <- formalOutsV) yield new VariableExpr(v)
     val preGlobals = etran.FreshGlobals("call")
     val postEtran = etran.FromPreGlobals(preGlobals)
@@ -903,15 +939,15 @@ class Translator {
     (formalThis := obj) ::
     (for ((v,e) <- formalIns zip args) yield (v := e)) :::
     // exhale preconditions
-    Exhale(Preconditions(c.m.spec) map
-          (p => SubstVars(p, formalThis, c.m.ins, formalIns)) zip (Preconditions(c.m.spec) map { p => ErrorMessage(c.pos, "The precondition at " + p.pos + " might not hold.")}), "precondition") :::
+    Exhale(Preconditions(c.m.Spec) map
+          (p => SubstVars(p, formalThis, c.m.Ins, formalIns)) zip (Preconditions(c.m.Spec) map { p => ErrorMessage(c.pos, "The precondition at " + p.pos + " might not hold.")}), "precondition") :::
     // havoc formal outs
     (for (v <- formalOuts) yield Havoc(v)) :::
     // havoc lockchanges
-    LockHavoc(for (e <- LockChanges(c.m.spec) map (p => SubstVars(p, formalThis, c.m.ins, formalIns))) yield etran.Tr(e), postEtran) :::
+    LockHavoc(for (e <- LockChanges(c.m.Spec) map (p => SubstVars(p, formalThis, c.m.Ins, formalIns))) yield etran.Tr(e), postEtran) :::
     // inhale postconditions (using the state before the call as the "old" state)
-    postEtran.Inhale(Postconditions(c.m.spec) map
-                     (p => SubstVars(p, formalThis, c.m.ins ++ c.m.outs, formalIns ++ formalOuts)) , "postcondition", false) :::
+    postEtran.Inhale(Postconditions(c.m.Spec) map
+                     (p => SubstVars(p, formalThis, c.m.Ins ++ c.m.Outs, formalIns ++ formalOuts)) , "postcondition", false) :::
     // declare any new local variables among the actual outs
     (for (v <- c.locals) yield BLocal(Variable2BVarWhere(v))) :::
     // assign formal outs to actual outs
@@ -1001,6 +1037,66 @@ class Translator {
      Inhale(invs, "loop invariant, after loop") :::
      bassume(!guard)))
   }
+
+  def translateRefinement(r: RefinementBlock): List[Stmt] = {
+    // abstract expression translator
+    val absTran = etran;
+    // concrete expression translate
+    val conGlobals = etran.FreshGlobals("concrete")
+    val conTran = new ExpressionTranslator(conGlobals map {v => new VarExpr(v)}, etran.oldEtran.Globals, currentClass);
+    // shared locals before block (excluding immutable)
+    val before = for (v <- r.locals; if (! v.isImmutable)) yield v;
+    // shared locals in block
+    val duringA = for (v <- BlockStmt(r.abs).Declares) yield v;
+    val duringC = for (v <- duringA) yield BlockStmt(r.con).Declares.find(_ == v).get
+    // save locals before (to restore for abstract block)
+    val beforeV = for (v <- before) yield new Variable(v.id, v.t)
+    // save locals after (to compare with abstract block)
+    val afterV = for (v <- before) yield new Variable(v.id, v.t)
+
+    Comment("refinement block") ::
+    // TODO: duplicate heap
+    (for (c <- conGlobals) yield BLocal(c)) :::
+    (for ((c, a) <- conGlobals zip etran.Globals) yield (new VarExpr(c) := a)) :::
+    // TODO: global coupling: assume coupling invariant for locations with positive permission
+    // save shared local variables
+    (for (v <- beforeV) yield BLocal(Variable2BVarWhere(v))) :::            
+    (for ((v, w) <- beforeV zip before) yield (new VariableExpr(v) := new VariableExpr(w))) :::
+    // run concrete C on the fresh heap
+    {
+      etran = conTran;
+      Comment("run concrete program") ::
+      translateStatements(r.con)
+    } :::
+    // run angelically A on the old heap
+    Comment("run abstract program") ::
+    {r.abs match {
+      case List(s: SpecStmt) =>
+        etran = absTran;
+        Comment("witness declared local variables") ::
+        (for (v <- duringA) yield BLocal(Variable2BVarWhere(v))) :::
+        (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
+        bassert(s.post, r.pos, "Refinement fails to satisfy specification statement post-condition") ::
+        (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
+          bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable not in frame of the specification statement: " + v.id))        
+      case _ =>
+        etran = absTran;
+        Comment("save locals after") ::
+        (for (v <- afterV) yield BLocal(Variable2BVarWhere(v))) :::
+        (for ((v, w) <- afterV zip before) yield (new VariableExpr(v) := new VariableExpr(w))) :::
+        Comment("restore locals before") ::
+        (for ((v, w) <- before zip beforeV) yield (new VariableExpr(v) := new VariableExpr(w))) :::
+        translateStatements(r.abs) :::
+        Comment("assert equality on shared locals") ::
+        (for ((v, w) <- afterV zip before) yield
+          bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce different value for pre-state local variable: " + v.id)) :::
+        (for ((v, w) <- duringA zip duringC) yield
+          bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce different value for a declared local variable: " + v.id))
+    }} :::
+    Comment("end of refinement block")
+    // TODO: global coupling: assert coupling invariants for locations with positive
+  }
+
 
   def UpdateMu(o: Expr, allowOnlyFromBottom: Boolean, justAssumeValue: Boolean,
                lowerBounds: List[Expression], upperBounds: List[Expression], error: ErrorMessage): List[Stmt] = {
@@ -1218,17 +1314,13 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   /**
    * Create a list of fresh global variables
    */
-  def FreshGlobals(prefix: String) = {
+  def FreshGlobals(prefix: String):List[Boogie.BVar] = {
     new Boogie.BVar(prefix + HeapName, theap, true) ::
     new Boogie.BVar(prefix + MaskName, tmask, true) ::
     new Boogie.BVar(prefix + CreditsName, tcredits, true) ::
     Nil
   }
 
-  /**
-   * Create a new ExpressionTranslator that is a copy of the receiver, but with
-   * preGlobals as the old global variables
-   */
   def FromPreGlobals(preGlobals: List[Boogie.BVar]) = {
     val g = for ((id,t) <- ExpressionTranslator.Globals) yield VarExpr(id)
     val pg = preGlobals map (g => new VarExpr(g))
@@ -2037,7 +2129,7 @@ object TranslationHelper {
     } else if(cl.IsSeq) {
       tseq(type2BType(cl.asInstanceOf[SeqClass].parameter))
     } else {
-      assert(false, "unexpectected type: " + cl.FullName); null
+      assert(false, "unexpected type: " + cl.FullName); null
     }
   }
   implicit def decl2DeclList(decl: Decl): List[Decl] = List(decl)
@@ -2055,9 +2147,7 @@ object TranslationHelper {
   def ModuleName(cl: Class) = "module#" + cl.module.id;
   def TypeName = NamedType("TypeName");
   def FieldType(tp: BType) = IndexedType("Field", tp);
-  def bassert(e: Expr, pos: Position, msg: String) = {
-    val result = Boogie.Assert(e); result.pos = pos; result.message = msg; result
-  }
+  def bassert(e: Expr, pos: Position, msg: String) = new Boogie.Assert(e, pos, msg)
   def bassume(e: Expr) = Boogie.Assume(e)
   def BLocal(id: String, tp: BType) = new Boogie.LocalVar(id, tp)
   def BLocal(x: Boogie.BVar) = Boogie.LocalVar(x)
@@ -2237,7 +2327,7 @@ object TranslationHelper {
       case Precondition(e) => List(e)
       case _ => Nil });
     if(autoMagic) {
-     automagic(result.foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b)}), Nil)._1 ::: result
+      automagic(result.foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b)}), Nil)._1 ::: result
     } else {
       result
     }

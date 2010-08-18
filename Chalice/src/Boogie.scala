@@ -43,7 +43,6 @@ object Boogie {
  }
  case class LocalVar(x: BVar) extends Stmt {
    def this(id: String, tp: BType) = this(BVar(id, tp))
-
    override def Locals = List(x)
  }
 
@@ -114,15 +113,15 @@ object Boogie {
  case class BVar(id: String, t: BType) {
    def this(id: String, t: BType, uniquifyName: Boolean) =
      this(if (uniquifyName) {
-            val n = S_BVar.VariableCount
-            S_BVar.VariableCount = S_BVar.VariableCount + 1
+            val n = BVar.VariableCount
+            BVar.VariableCount = BVar.VariableCount + 1
             id + "#_" + n
           } else {
             id
           }, t)
    val where: Expr = null
  }
- object S_BVar { var VariableCount = 0 }
+ object BVar { var VariableCount = 0 }
  def NewBVar(id: String, t: BType, uniquifyName: Boolean) = {
    val v = new Boogie.BVar(id, t, uniquifyName)
    val e = new Boogie.VarExpr(v)
@@ -131,15 +130,15 @@ object Boogie {
  case class TVar(id: String) {
    def this(id: String, uniquifyName: Boolean) =
      this(if (uniquifyName) {
-            val n = S_TVar.VariableCount
-            S_TVar.VariableCount = S_TVar.VariableCount + 1
+            val n = TVar.VariableCount
+            TVar.VariableCount = TVar.VariableCount + 1
             id + "#_" + n
           } else {
             id
           })
    val where: Expr = null
  }
- object S_TVar { var VariableCount = 0 }
+ object TVar { var VariableCount = 0 }
  def NewTVar(id: String) = {
    val v = new Boogie.TVar(id, true)
    val e = new Boogie.NamedType(v.id)

@@ -564,7 +564,8 @@ class Parser extends StandardTokenParsers {
     )
   def transformAtom: Parser[Transform] = positioned(
       "_" ~ Semi ^^^ BlockPat()
-    | "*" ~ Semi ^^^ SkipPat()              
+    | "*" ~ Semi ^^^ SkipPat()
+    | "replaces" ~> "*" ~> "by" ~> blockStatement ^^ ProgramPat              
     | "replaces" ~> rep1sep(Ident,",") ~ ("by" ~> blockStatement) ^^ {
         case ids ~ code => NonDetPat(ids map {x => x.v}, code)
       }

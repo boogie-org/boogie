@@ -26,7 +26,7 @@ object PrintProgram {
       print("("); VarList(m.ins); print(")")
       if (m.outs != Nil) print(" returns ("); VarList(m.outs); print(")")
       println
-      PrintSpec(m.spec)
+      PrintSpec(m.Spec)
       println("  {")
       for (s <- m.body) {Spaces(4); Stmt(s, 4)}
       println("  }")
@@ -52,7 +52,7 @@ object PrintProgram {
       print("("); VarList(m.ins); print(")")
       if (m.outs != Nil) print(" returns ("); VarList(m.outs); print(")")
       println;
-      PrintSpec(m.spec);
+      if (m.refines != null) PrintSpec(m.Spec);
       println("  {");
       if (m.body == null)
         println("    // body is not resolved")
