@@ -1913,7 +1913,7 @@ namespace VC {
        // create a process for displaying coverage information
        Process coverageProcess = null;
        ProcessStartInfo coverageProcessInfo = null;
-
+       #region Coverage reporter
        if (CommandLineOptions.Clo.CoverageReporterPath != null)
        {
            coverageProcess = new Process();
@@ -1935,7 +1935,8 @@ namespace VC {
                coverageProcess.Dispose();
                coverageProcess = null;
            }
-       } 
+       }
+       #endregion
 
        // Get the checker
        Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);Contract.Assert(checker != null);
@@ -1964,8 +1965,10 @@ namespace VC {
        Hashtable/*<int, Absy!>*/ mainLabel2absy;
        GetVC(impl, program, callback, out vc, out mainLabel2absy, out reporter);
 
-       if(coverageProcess != null)
+       #region Coverage reporter
+       if (coverageProcess != null)
             coverageProcess.StandardInput.WriteLine(impl.Name + " main");
+       #endregion
 
        // Find all procedure calls in vc and put labels on them      
        FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, mainLabel2absy);
@@ -1992,7 +1995,7 @@ namespace VC {
               DoExpansion(toExpand, calls, checker, coverageProcess);
           } else 
           {
-            vc = DoExpansionAndInline(vc, toExpand, calls, checker);
+            vc = DoExpansionAndInline(vc, toExpand, calls, checker, coverageProcess);
           }
        }
        
@@ -2004,14 +2007,15 @@ namespace VC {
 		   checker.TheoremProver.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
 		   
 		   int prev_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
-		   
-		   foreach(int id in calls.currCandidates) {
-		      VCExprNAry vce = calls.id2Candidate[id];
-         Contract.Assert(vce != null);
-			  VCExpr falseExpr = checker.VCExprGen.Eq(vce, VCExpressionGenerator.False);
-         Contract.Assert(falseExpr != null);
-			  checker.TheoremProver.PushVCExpression(falseExpr);
-		   }
+
+           foreach (int id in calls.currCandidates)
+           {
+               VCExprNAry vce = calls.id2Candidate[id];
+               Contract.Assert(vce != null);
+               VCExpr falseExpr = checker.VCExprGen.Eq(vce, VCExpressionGenerator.False);
+               Contract.Assert(falseExpr != null);
+               checker.TheoremProver.PushVCExpression(falseExpr);
+           }
 	       int axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
 	       
 	       // Note: axioms_pushed may not be the same as calls.currCandidates.Count 
@@ -2063,16 +2067,18 @@ namespace VC {
 	       
 	       expansionCount += reporter.candidatesToExpand.Count;
 
+           #region Coverage reporter
            if (coverageProcess != null)
               coverageProcess.StandardInput.WriteLine("reset_graph_round");
+           #endregion
 
-	       if(incrementalSearch) 
+           if (incrementalSearch) 
 	       {
 	         total_axioms_pushed +=
                DoExpansion(reporter.candidatesToExpand, calls, checker, coverageProcess);
 	       } else 
 	       {
-	         vc = DoExpansionAndInline(vc, reporter.candidatesToExpand, calls, checker);
+	         vc = DoExpansionAndInline(vc, reporter.candidatesToExpand, calls, checker, coverageProcess);
 	       }
 
 		   checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
@@ -2093,6 +2099,7 @@ namespace VC {
        checker.TheoremProver.LogComment(string.Format("Stratified Inlining: Expansions performed: {0}", expansionCount));
        checker.TheoremProver.LogComment(string.Format("Stratified Inlining: Candidates left: {0}", calls.currCandidates.Count));
 
+       #region Coverage reporter
        if (coverageProcess != null)
        {
            coverageProcess.StandardInput.WriteLine("Done");
@@ -2103,8 +2110,9 @@ namespace VC {
                coverageProcess.StandardInput.WriteLine();
            } while (!coverageProcess.HasExited);
        }
+       #endregion
 
-        return ret;
+       return ret;
     }
 
     // A counter for adding new variables
@@ -2113,167 +2121,200 @@ namespace VC {
     // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.
     // Returns the number of axioms pushed.
     private int DoExpansion(List<int>/*!*/ candidates,
-                             FCallHandler/*!*/ calls, Checker/*!*/ checker, Process progress){
-      Contract.Requires(candidates != null);
-      Contract.Requires(calls != null);
-      Contract.Requires(checker != null);
-      Contract.EnsuresOnThrow< UnexpectedProverOutputException>(true);
-       int old_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
-       VCExpr exprToPush = VCExpressionGenerator.True;
-      Contract.Assert(exprToPush != null);
-	   foreach(int id in candidates) {
-	      VCExprNAry expr = calls.id2Candidate[id];
-       Contract.Assert(expr != null);
-		  string procName = cce.NonNull(expr.Op as VCExprBoogieFunctionOp).Func.Name;
-		  if(!implName2StratifiedInliningInfo.ContainsKey(procName)) continue;
-          
-          //Console.WriteLine("Expanding: {0}", procName);
-          
-          // Get the parent procedure and report progress
-          if (progress != null && calls.candidateParent.ContainsKey(id))
-          {
-              var parentId = calls.candidateParent[id];
-              string str = "";
-              if (parentId == 0)
-              {
-                  str = "main";
-              }
-              else
-              {
-                  str = (calls.id2Candidate[parentId].Op as VCExprBoogieFunctionOp).Func.Name;
-                  str += "_" + parentId.ToString();
-              }
-              str = str + " " + procName + "_" + id.ToString();
-              progress.StandardInput.WriteLine(str);
-          }
+                             FCallHandler/*!*/ calls, Checker/*!*/ checker, Process progress)
+    {
+        Contract.Requires(candidates != null);
+        Contract.Requires(calls != null);
+        Contract.Requires(checker != null);
+        Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+        int old_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+        VCExpr exprToPush = VCExpressionGenerator.True;
+        Contract.Assert(exprToPush != null);
+        foreach (int id in candidates)
+        {
+            VCExprNAry expr = calls.id2Candidate[id];
+            Contract.Assert(expr != null);
+            string procName = cce.NonNull(expr.Op as VCExprBoogieFunctionOp).Func.Name;
+            if (!implName2StratifiedInliningInfo.ContainsKey(procName)) continue;
 
-		  StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
-          if (!info.initialized)
-          {
-              GenerateVCForStratifiedInlining(program, info, checker);
-          }
+            //Console.WriteLine("Expanding: {0}", procName);
 
-		  VCExpr expansion = cce.NonNull(info.vcexpr);
-          
-		  // Instantiate the "forall" variables
-		  Dictionary<VCExprVar, VCExpr> substForallDict = new Dictionary<VCExprVar, VCExpr>();
-		  Contract.Assert( info.interfaceExprVars.Count == expr.Length);
-		  for(int i = 0; i < info.interfaceExprVars.Count; i++) {
-			substForallDict.Add(info.interfaceExprVars[i], expr[i]);
-		  }
-		  VCExprSubstitution substForall = new VCExprSubstitution(substForallDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
-          
-		  SubstitutingVCExprVisitor subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
-       Contract.Assert(subst != null);
-		  expansion = subst.Mutate(expansion, substForall);
-          
-		  // Instantiate and declare the "exists" variables
-		  Dictionary<VCExprVar, VCExpr> substExistsDict = new Dictionary<VCExprVar, VCExpr>();
-		  foreach(VCExprVar v in info.privateVars) {
-        Contract.Assert(v != null);
-		     string newName = v.Name + "_si_" + newVarCnt.ToString();
-		     newVarCnt ++;
-			 checker.TheoremProver.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, v.Type)), false, null);
-			 substExistsDict.Add(v, checker.VCExprGen.Variable(newName, v.Type));
-		  }
-		  VCExprSubstitution substExists = new VCExprSubstitution(substExistsDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
-          
-		  subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
-		  expansion = subst.Mutate(expansion, substExists);
+            #region Coverage reporter
+            // Get the parent procedure and report progress
+            if (progress != null && calls.candidateParent.ContainsKey(id))
+            {
+                var parentId = calls.candidateParent[id];
+                string str = "";
+                if (parentId == 0)
+                {
+                    str = "main";
+                }
+                else
+                {
+                    str = (calls.id2Candidate[parentId].Op as VCExprBoogieFunctionOp).Func.Name;
+                    str += "_" + parentId.ToString();
+                }
+                str = str + " " + procName + "_" + id.ToString();
+                progress.StandardInput.WriteLine(str);
+            }
+            #endregion
 
-		  if(!calls.currCandidates.Contains(id)) {
-		    Console.WriteLine("Don't know what we just expanded");
-		  }
-		  
-		  calls.currCandidates.Remove(id);
-		  
-		  // Record the new set of candidates and rename absy labels
-		  calls.currInlineCount = id;
-		  calls.setCurrProc(procName);
-		  expansion = calls.Mutate(expansion, true);
-		  
-		  expansion = checker.VCExprGen.Eq(expr, expansion);
-		  exprToPush = checker.VCExprGen.And(exprToPush, expansion);
-		  //checker.TheoremProver.PushVCExpression(expansion);
-		  
-	    }
-	    checker.TheoremProver.PushVCExpression(exprToPush);
-	    
-	    int axioms_pushed = checker.TheoremProver.NumAxiomsPushed() - old_axioms_pushed;
-	    checker.TheoremProver.FlushAxiomsToTheoremProver();
-	    return axioms_pushed;
+            StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
+            if (!info.initialized)
+            {
+                GenerateVCForStratifiedInlining(program, info, checker);
+            }
+
+            VCExpr expansion = cce.NonNull(info.vcexpr);
+
+            // Instantiate the "forall" variables
+            Dictionary<VCExprVar, VCExpr> substForallDict = new Dictionary<VCExprVar, VCExpr>();
+            Contract.Assert(info.interfaceExprVars.Count == expr.Length);
+            for (int i = 0; i < info.interfaceExprVars.Count; i++)
+            {
+                substForallDict.Add(info.interfaceExprVars[i], expr[i]);
+            }
+            VCExprSubstitution substForall = new VCExprSubstitution(substForallDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
+
+            SubstitutingVCExprVisitor subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
+            Contract.Assert(subst != null);
+            expansion = subst.Mutate(expansion, substForall);
+
+            // Instantiate and declare the "exists" variables
+            Dictionary<VCExprVar, VCExpr> substExistsDict = new Dictionary<VCExprVar, VCExpr>();
+            foreach (VCExprVar v in info.privateVars)
+            {
+                Contract.Assert(v != null);
+                string newName = v.Name + "_si_" + newVarCnt.ToString();
+                newVarCnt++;
+                checker.TheoremProver.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, v.Type)), false, null);
+                substExistsDict.Add(v, checker.VCExprGen.Variable(newName, v.Type));
+            }
+            VCExprSubstitution substExists = new VCExprSubstitution(substExistsDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
+
+            subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
+            expansion = subst.Mutate(expansion, substExists);
+
+            if (!calls.currCandidates.Contains(id))
+            {
+                Console.WriteLine("Don't know what we just expanded");
+            }
+
+            calls.currCandidates.Remove(id);
+
+            // Record the new set of candidates and rename absy labels
+            calls.currInlineCount = id;
+            calls.setCurrProc(procName);
+            expansion = calls.Mutate(expansion, true);
+
+            expansion = checker.VCExprGen.Eq(expr, expansion);
+            exprToPush = checker.VCExprGen.And(exprToPush, expansion);
+            //checker.TheoremProver.PushVCExpression(expansion);
+
+        }
+        checker.TheoremProver.PushVCExpression(exprToPush);
+
+        int axioms_pushed = checker.TheoremProver.NumAxiomsPushed() - old_axioms_pushed;
+        checker.TheoremProver.FlushAxiomsToTheoremProver();
+        return axioms_pushed;
     }
 
     // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.
     // Returns the number of axioms pushed.
     private VCExpr DoExpansionAndInline(
                                 VCExpr/*!*/ mainVC, List<int>/*!*/ candidates,
-                                FCallHandler/*!*/ calls, Checker/*!*/ checker){ 
-      Contract.Requires(mainVC != null);
-      Contract.Requires(candidates != null);
-      Contract.Requires(calls != null);
-      Contract.Requires(checker != null);
-      Contract.EnsuresOnThrow< UnexpectedProverOutputException>(true);
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+                                FCallHandler/*!*/ calls, Checker/*!*/ checker,
+                                Process progress)
+    {
+        Contract.Requires(mainVC != null);
+        Contract.Requires(candidates != null);
+        Contract.Requires(calls != null);
+        Contract.Requires(checker != null);
+        Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+        Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-       FCallInliner inliner = new FCallInliner(checker.VCExprGen);
-      Contract.Assert(inliner != null);
-	   foreach(int id in candidates) {
-	      VCExprNAry expr = calls.id2Candidate[id];
-       Contract.Assert(expr != null);
-	      
-		  string procName = (cce.NonNull(expr.Op as VCExprBoogieFunctionOp)).Func.Name;
-		  if(!implName2StratifiedInliningInfo.ContainsKey(procName)) continue;
-          
-		  StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
-          if (!info.initialized)
-          {
-              GenerateVCForStratifiedInlining(program, info, checker);
-          }
+        FCallInliner inliner = new FCallInliner(checker.VCExprGen);
+        Contract.Assert(inliner != null);
+        foreach (int id in candidates)
+        {
+            VCExprNAry expr = calls.id2Candidate[id];
+            Contract.Assert(expr != null);
 
-		  VCExpr expansion = cce.NonNull(info.vcexpr);
-          
-		  // Instantiate the "forall" variables
-		  Dictionary<VCExprVar, VCExpr> substForallDict = new Dictionary<VCExprVar, VCExpr>();
-		  Contract.Assert( info.interfaceExprVars.Count == expr.Length);
-		  for(int i = 0; i < info.interfaceExprVars.Count; i++) {
-			substForallDict.Add(info.interfaceExprVars[i], expr[i]);
-		  }
-		  VCExprSubstitution substForall = new VCExprSubstitution(substForallDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
-          
-		  SubstitutingVCExprVisitor subst = new SubstitutingVCExprVisitor(checker.VCExprGen);Contract.Assert(subst != null);
-		  expansion = subst.Mutate(expansion, substForall);
-          
-		  // Instantiate and declare the "exists" variables
-		  Dictionary<VCExprVar, VCExpr> substExistsDict = new Dictionary<VCExprVar, VCExpr>();
-		  for(int i = 0; i < info.privateVars.Count; i++) {
-		     VCExprVar v = info.privateVars[i];
-		     string newName = v.Name + "_si_" + newVarCnt.ToString();
-		     newVarCnt ++;
-			 checker.TheoremProver.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, v.Type)), false, null);
-			 substExistsDict.Add(v, checker.VCExprGen.Variable(newName, v.Type));
-		  }
-		  VCExprSubstitution substExists = new VCExprSubstitution(substExistsDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
-          
-		  subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
-		  expansion = subst.Mutate(expansion, substExists);
+            string procName = (cce.NonNull(expr.Op as VCExprBoogieFunctionOp)).Func.Name;
+            if (!implName2StratifiedInliningInfo.ContainsKey(procName)) continue;
 
-		  if(!calls.currCandidates.Contains(id)) {
-		    Console.WriteLine("Don't know what we just expanded");
-		  }
-		  
-		  calls.currCandidates.Remove(id);
-		  
-		  // Record the new set of candidates and rename absy labels
-		  calls.currInlineCount = id;
-		  calls.setCurrProc(procName);
-		  expansion = calls.Mutate(expansion, true);
-		  
-		  inliner.subst.Add(id, expansion);
-		  
-	    }
-	    
-	    return inliner.Mutate(mainVC, true);
+            #region Coverage reporter
+            // Get the parent procedure and report progress
+            if (progress != null && calls.candidateParent.ContainsKey(id))
+            {
+                var parentId = calls.candidateParent[id];
+                string str = "";
+                if (parentId == 0)
+                {
+                    str = "main";
+                }
+                else
+                {
+                    str = (calls.id2Candidate[parentId].Op as VCExprBoogieFunctionOp).Func.Name;
+                    str += "_" + parentId.ToString();
+                }
+                str = str + " " + procName + "_" + id.ToString();
+                progress.StandardInput.WriteLine(str);
+            }
+            #endregion
+
+            StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
+            if (!info.initialized)
+            {
+                GenerateVCForStratifiedInlining(program, info, checker);
+            }
+
+            VCExpr expansion = cce.NonNull(info.vcexpr);
+
+            // Instantiate the "forall" variables
+            Dictionary<VCExprVar, VCExpr> substForallDict = new Dictionary<VCExprVar, VCExpr>();
+            Contract.Assert(info.interfaceExprVars.Count == expr.Length);
+            for (int i = 0; i < info.interfaceExprVars.Count; i++)
+            {
+                substForallDict.Add(info.interfaceExprVars[i], expr[i]);
+            }
+            VCExprSubstitution substForall = new VCExprSubstitution(substForallDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
+
+            SubstitutingVCExprVisitor subst = new SubstitutingVCExprVisitor(checker.VCExprGen); Contract.Assert(subst != null);
+            expansion = subst.Mutate(expansion, substForall);
+
+            // Instantiate and declare the "exists" variables
+            Dictionary<VCExprVar, VCExpr> substExistsDict = new Dictionary<VCExprVar, VCExpr>();
+            for (int i = 0; i < info.privateVars.Count; i++)
+            {
+                VCExprVar v = info.privateVars[i];
+                string newName = v.Name + "_si_" + newVarCnt.ToString();
+                newVarCnt++;
+                checker.TheoremProver.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, v.Type)), false, null);
+                substExistsDict.Add(v, checker.VCExprGen.Variable(newName, v.Type));
+            }
+            VCExprSubstitution substExists = new VCExprSubstitution(substExistsDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
+
+            subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
+            expansion = subst.Mutate(expansion, substExists);
+
+            if (!calls.currCandidates.Contains(id))
+            {
+                Console.WriteLine("Don't know what we just expanded");
+            }
+
+            calls.currCandidates.Remove(id);
+
+            // Record the new set of candidates and rename absy labels
+            calls.currInlineCount = id;
+            calls.setCurrProc(procName);
+            expansion = calls.Mutate(expansion, true);
+
+            inliner.subst.Add(id, expansion);
+
+        }
+
+        return inliner.Mutate(mainVC, true);
     }
 
     // Return the VC for the impl (don't pass it to the theorem prover).
