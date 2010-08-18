@@ -228,6 +228,7 @@ namespace Microsoft.Boogie
     public int LazyInlining = 0;
     public int StratifiedInlining = 0;
     public int StratifiedInliningOption = 0;
+    public string CoverageReporterPath = null;
     
     public enum TypeEncoding { None, Predicates, Arguments, Monomorphic };
     public TypeEncoding TypeEncodingMethod = TypeEncoding.Predicates;
@@ -992,6 +993,12 @@ namespace Microsoft.Boogie
               }
             }
             break;
+          case "-coverageReporter":
+          case "/coverageReporter":
+            if (ps.ConfirmArgumentCount(1)) {
+              CoverageReporterPath = args[ps.i];
+            }
+            break;            
           case "-stratifiedInlineOption":
           case "/stratifiedInlineOption":
             if (ps.ConfirmArgumentCount(1)) {

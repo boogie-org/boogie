@@ -1910,6 +1910,33 @@ namespace VC {
                break;
        }
 
+       // create a process for displaying coverage information
+       Process coverageProcess = null;
+       ProcessStartInfo coverageProcessInfo = null;
+
+       if (CommandLineOptions.Clo.CoverageReporterPath != null)
+       {
+           coverageProcess = new Process();
+           coverageProcessInfo = new ProcessStartInfo();
+           coverageProcessInfo.CreateNoWindow = true;
+           coverageProcessInfo.FileName = CommandLineOptions.Clo.CoverageReporterPath + @"\CoverageGraph.exe";
+           coverageProcessInfo.RedirectStandardInput = true;
+           coverageProcessInfo.RedirectStandardOutput = true;
+           coverageProcessInfo.RedirectStandardError = false;
+           coverageProcessInfo.UseShellExecute = false;
+
+           coverageProcess.StartInfo = coverageProcessInfo;
+           try
+           {
+               coverageProcess.Start();
+           }
+           catch (System.ComponentModel.Win32Exception e)
+           {
+               coverageProcess.Dispose();
+               coverageProcess = null;
+           }
+       } 
+
        // Get the checker
        Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);Contract.Assert(checker != null);
        
@@ -1937,6 +1964,9 @@ namespace VC {
        Hashtable/*<int, Absy!>*/ mainLabel2absy;
        GetVC(impl, program, callback, out vc, out mainLabel2absy, out reporter);
 
+       if(coverageProcess != null)
+            coverageProcess.StandardInput.WriteLine(impl.Name + " main");
+
        // Find all procedure calls in vc and put labels on them      
        FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, mainLabel2absy);
        calls.setCurrProcAsMain();
@@ -1959,7 +1989,7 @@ namespace VC {
           if(incrementalSearch) 
           {
             total_axioms_pushed +=
-              DoExpansion(toExpand, calls, checker);
+              DoExpansion(toExpand, calls, checker, coverageProcess);
           } else 
           {
             vc = DoExpansionAndInline(vc, toExpand, calls, checker);
@@ -2033,10 +2063,13 @@ namespace VC {
 	       
 	       expansionCount += reporter.candidatesToExpand.Count;
 
+           if (coverageProcess != null)
+              coverageProcess.StandardInput.WriteLine("reset_graph_round");
+
 	       if(incrementalSearch) 
 	       {
 	         total_axioms_pushed +=
-	           DoExpansion(reporter.candidatesToExpand, calls, checker);
+               DoExpansion(reporter.candidatesToExpand, calls, checker, coverageProcess);
 	       } else 
 	       {
 	         vc = DoExpansionAndInline(vc, reporter.candidatesToExpand, calls, checker);
@@ -2059,8 +2092,19 @@ namespace VC {
        checker.TheoremProver.LogComment(string.Format("Stratified Inlining: Calls to Z3: {0}", 2*cnt));
        checker.TheoremProver.LogComment(string.Format("Stratified Inlining: Expansions performed: {0}", expansionCount));
        checker.TheoremProver.LogComment(string.Format("Stratified Inlining: Candidates left: {0}", calls.currCandidates.Count));
-       
-       return ret;
+
+       if (coverageProcess != null)
+       {
+           coverageProcess.StandardInput.WriteLine("Done");
+
+           do
+           {
+               coverageProcess.WaitForExit(100);
+               coverageProcess.StandardInput.WriteLine();
+           } while (!coverageProcess.HasExited);
+       }
+
+        return ret;
     }
 
     // A counter for adding new variables
@@ -2069,7 +2113,7 @@ namespace VC {
     // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.
     // Returns the number of axioms pushed.
     private int DoExpansion(List<int>/*!*/ candidates,
-                             FCallHandler/*!*/ calls, Checker/*!*/ checker){
+                             FCallHandler/*!*/ calls, Checker/*!*/ checker, Process progress){
       Contract.Requires(candidates != null);
       Contract.Requires(calls != null);
       Contract.Requires(checker != null);
@@ -2085,6 +2129,24 @@ namespace VC {
           
           //Console.WriteLine("Expanding: {0}", procName);
           
+          // Get the parent procedure and report progress
+          if (progress != null && calls.candidateParent.ContainsKey(id))
+          {
+              var parentId = calls.candidateParent[id];
+              string str = "";
+              if (parentId == 0)
+              {
+                  str = "main";
+              }
+              else
+              {
+                  str = (calls.id2Candidate[parentId].Op as VCExprBoogieFunctionOp).Func.Name;
+                  str += "_" + parentId.ToString();
+              }
+              str = str + " " + procName + "_" + id.ToString();
+              progress.StandardInput.WriteLine(str);
+          }
+
 		  StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
           if (!info.initialized)
           {
@@ -2345,6 +2407,8 @@ namespace VC {
       public Dictionary<int, VCExprNAry/*!*/>/*!*/ id2Candidate;
       public Dictionary<VCExprNAry/*!*/, int>/*!*/ candidate2Id;
       public Dictionary<string/*!*/, int>/*!*/ label2Id;
+      // Stores the candidate from which this one originated
+      public Dictionary<int, int> candidateParent;
       public Microsoft.SpecSharp.Collections.Set<int> currCandidates;
       [ContractInvariantMethod]
       void ObjectInvariant() {
@@ -2381,6 +2445,7 @@ namespace VC {
         currProc = null;
         labelRenamer = new Dictionary<string, int>();
         labelRenamerInv = new Dictionary<string, string>();
+        candidateParent = new Dictionary<int, int>();
       }
 
       public void Clear() {
@@ -2525,6 +2590,7 @@ namespace VC {
            if(implName2StratifiedInliningInfo.ContainsKey(calleeName)) {
              int candidateId = GetId(callExpr);
              boogieExpr2Id[new BoogieCallExpr(naryExpr, currInlineCount)] = candidateId;
+             candidateParent[candidateId] = currInlineCount;
              string label = GetLabel(candidateId);
              return Gen.LabelPos(label, callExpr);
            } else {
