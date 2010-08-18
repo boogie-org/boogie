@@ -242,22 +242,45 @@ Contract.Ensures(Contract.Result<string>() != null);
       }
     }
 
-    private static string TypeToStringHelper(Type t){
-Contract.Requires(t != null);
-Contract.Ensures(Contract.Result<string>() != null);
-      System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
-        t.Emit(stream);
+    private static void TypeToStringHelper(Type t, StringBuilder sb)
+    {
+      Contract.Requires(t != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+
+      TypeSynonymAnnotation syn = t as TypeSynonymAnnotation;
+      if (syn != null) {
+        TypeToStringHelper(syn.ExpandedType, sb);
       }
-      return buffer.ToString();
+      else {
+        if (t.IsMap) {
+          MapType m = t.AsMap;
+          sb.Append('[');
+          for (int i = 0; i < m.MapArity; ++i) {
+            if (i != 0) sb.Append(',');
+            TypeToStringHelper(m.Arguments[i], sb);
+          }
+          sb.Append(']');
+          TypeToStringHelper(m.Result, sb);
+        }
+        else if (t.IsBool || t.IsInt || t.IsBv) {
+          sb.Append(TypeToString(t));
+        }
+        else {
+          System.IO.StringWriter buffer = new System.IO.StringWriter();
+          using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
+            t.Emit(stream);
+          }
+          sb.Append(buffer.ToString());
+        }
+      }
+
     }
+
+
     public static string TypeToString(Type t)
     {
       Contract.Requires(t != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      TypeSynonymAnnotation syn = t as TypeSynonymAnnotation;
-      if (syn != null)
-        return TypeToString(syn.ExpandedType);
 
       if (t.IsBool)
         return "$bool";
@@ -265,11 +288,10 @@ Contract.Ensures(Contract.Result<string>() != null);
         return "$int";
       else if (t.IsBv)
         return "$bv" + t.BvBits;
-      else if (t.IsMap)
-        return TypeToStringHelper(t);
       else {
-        // at this point, only the types U, T, and bitvector types should be left
-        return TypeToStringHelper(t);
+        StringBuilder sb = new StringBuilder();
+        TypeToStringHelper(t, sb);
+        return sb.ToString();
       }
     }
 
