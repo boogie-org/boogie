@@ -174,7 +174,18 @@ void ObjectInvariant()
                        + expr + ") (QID bvconv" + bits + ") (EQ " + expr + " x)))");
 
         KnownTypes.Add(type, true);
+        return;
       }
+
+      if (type.IsBool || type.IsInt)
+        return;
+
+      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
+        AddDeclaration("(DEFTYPE " + TypeToString(type) + ")");
+        KnownTypes.Add(type, true);
+        return;
+      }
+
     }
 
     public override bool Visit(VCExprNAry node, bool arg) {
@@ -235,7 +246,7 @@ void ObjectInvariant()
           decl += ")";
           AddDeclaration(decl);
 
-          if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
+          if (CommandLineOptions.Clo.MonomorphicArrays && !CommandLineOptions.Clo.UseArrayTheory) {
             var sel = SimplifyLikeExprLineariser.SelectOpName(node);
 
             if (!KnownSelectFunctions.ContainsKey(name)) {
@@ -338,18 +349,7 @@ void ObjectInvariant()
         //
       }
 
-      // What happens in base.Visit() just seems wrong. It seems to use some hack to enumerate 
-      // recursive children of current node, which doesn't seem to work for nested store expressions
-      // (the store expressions themselves get skipped).
-      var res = StandardResult(node, arg);
-      foreach (VCExpr n in node)
-      {
-        n.Accept(this, arg);
-      }
-
-      return res;
-
-      // return base.Visit(node, arg);
+      return base.Visit(node, arg);
     }
 
     private string ExtractBuiltin(Function f) {

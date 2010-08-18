@@ -257,7 +257,11 @@ Contract.Requires(node != null);
       Result res = StandardResult(node, arg);
 
 
-      if (node.TypeParamArity == 0) {
+      if (node.TypeParamArity == 0 &&
+          (node.Op == VCExpressionGenerator.AndOp ||
+           node.Op == VCExpressionGenerator.OrOp  ||
+           node.Op == VCExpressionGenerator.ImpliesOp))
+      {
         Contract.Assert(node.Op != null);
         VCExprOp op = node.Op;
         

@@ -264,10 +264,7 @@ Contract.Ensures(Contract.Result<string>() != null);
         return TypeToStringHelper(t);
       else {
         // at this point, only the types U, T, and bitvector types should be left
-        if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
-          return "U";
-        else
-          return TypeToStringHelper(t);
+        return TypeToStringHelper(t);
       }
     }
 
