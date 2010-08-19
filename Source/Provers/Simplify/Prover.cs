@@ -207,7 +207,6 @@ namespace Microsoft.Boogie.Simplify {
     //modifies this.**;
     //modifies Console.Out.*, Console.Error.*;
     //modifies handler.*;
-    //TODO: Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
     protected abstract void DoBeginCheck(string descriptiveName, string formula);
     //modifies this.*;
