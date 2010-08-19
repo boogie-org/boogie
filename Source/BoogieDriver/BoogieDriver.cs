@@ -574,7 +574,6 @@ namespace Microsoft.Boogie {
         Contract.Assert(decl != null);
         Implementation impl = decl as Implementation;
         if (impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification) {
-          //TODO: Resolve arraylist nonnulls
           List<Counterexample/*!*/>/*?*/ errors;
 
           DateTime start = new DateTime();  // to please compiler's definite assignment rules
