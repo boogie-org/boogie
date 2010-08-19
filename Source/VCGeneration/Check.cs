@@ -548,14 +548,18 @@ void ObjectInvariant()
     public abstract ProverContext Context { get; }
 public abstract VCExpressionGenerator VCExprGen { get; }
   }
-  public class ProverInterfaceContracts:ProverInterface{//TODO Contracts class
+  public class ProverInterfaceContracts:ProverInterface{
     public override ProverContext Context {
       get {
+        Contract.Ensures(Contract.Result<ProverContext>() != null);
+
         throw new NotImplementedException();
       }
     }
     public override VCExpressionGenerator VCExprGen {
       get {
+        Contract.Ensures(Contract.Result<VCExpressionGenerator>() != null);
+
         throw new NotImplementedException();
       }
     }
