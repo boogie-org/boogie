@@ -1998,108 +1998,217 @@ namespace VC {
             vc = DoExpansionAndInline(vc, toExpand, calls, checker, coverageProcess);
           }
        }
-       
-       int cnt = 0;
-       while(cnt < 500) {
-           cnt ++;
 
-		   // Push "false"
-		   checker.TheoremProver.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
-		   
-		   int prev_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+       // Number of Z3 queries
+       int numqueries = 0;
 
-           foreach (int id in calls.currCandidates)
+       // Under-approx query is only needed if something was inlined since
+       // the last time an under-approx query was made
+       bool underApproxNeeded = true;
+
+       // Bound is the recursion bound for stratified search
+       int bound = 1;
+       bool done = false;
+
+       while (bound < 500 && !done)
+       {
+           while (true)
            {
-               VCExprNAry vce = calls.id2Candidate[id];
-               Contract.Assert(vce != null);
-               VCExpr falseExpr = checker.VCExprGen.Eq(vce, VCExpressionGenerator.False);
-               Contract.Assert(falseExpr != null);
-               checker.TheoremProver.PushVCExpression(falseExpr);
+               int axioms_pushed, prev_axioms_pushed;
+
+               // Underapprox query
+               if (underApproxNeeded)
+               {
+                   reporter.underapproximationMode = true;
+                   checker.TheoremProver.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
+
+                   prev_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+
+                   foreach (int id in calls.currCandidates)
+                   {
+                       VCExprNAry vce = calls.id2Candidate[id];
+                       Contract.Assert(vce != null);
+                       VCExpr falseExpr = checker.VCExprGen.Eq(vce, VCExpressionGenerator.False);
+                       Contract.Assert(falseExpr != null);
+                       checker.TheoremProver.PushVCExpression(falseExpr);
+                   }
+                   axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+                   checker.TheoremProver.FlushAxiomsToTheoremProver();
+
+                   // Note: axioms_pushed may not be the same as calls.currCandidates.Count 
+                   // because PushVCExpression pushes other stuff too (which always seems 
+                   // to be TRUE)         
+
+                   // Check!
+                   //Console.Write("Checking with preds == false: "); Console.Out.Flush();
+                   ret = CheckVC(vc, reporter, checker, impl.Name);
+                   //Console.WriteLine(ret.ToString());
+                   numqueries++;
+
+                   // Pop
+                   for (int i = 0; i < axioms_pushed - prev_axioms_pushed; i++)
+                   {
+                       checker.TheoremProver.Pop();
+                   }
+
+                   checker.TheoremProver.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
+
+                   if (ret == Outcome.Errors)
+                   {
+                       done = true;
+                       break;
+                   }
+
+                   if (ret != Outcome.Correct && ret != Outcome.Errors)
+                   {
+                       // The query ran out of memory or time, that's it,
+                       // we cannot do better. Give up!
+                       done = true;
+                       break;
+                   }
+
+                   // If we didn't underapproximate, then we're done
+                   if (calls.currCandidates.Count == 0)
+                   {
+                       Contract.Assert(ret == Outcome.Correct);
+                       done = true;
+                       break;
+                   }
+
+                   Contract.Assert(ret == Outcome.Correct);
+               }
+               
+               underApproxNeeded = true;
+
+               checker.TheoremProver.LogComment(";;;;;;;;;;;; Overapprox mode begin ;;;;;;;;;;");
+
+               // Over-approx query
+               reporter.underapproximationMode = false;
+
+               // Push "true" (No-op) for all, except:
+               // push "false" for all candidates that have reached
+               // the recursion bounds
+
+               bool pushedNone = true;
+               bool pushedAll = true;
+               prev_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+
+               foreach (int id in calls.currCandidates)
+               {
+                   if (calls.getRecursionBound(id) <= bound)
+                   {
+                       pushedAll = false;
+                       continue;
+                   }
+
+                   VCExprNAry vce = calls.id2Candidate[id];
+                   Contract.Assert(vce != null);
+                   VCExpr falseExpr = checker.VCExprGen.Eq(vce, VCExpressionGenerator.False);
+                   Contract.Assert(falseExpr != null);
+                   checker.TheoremProver.PushVCExpression(falseExpr);
+                   pushedNone = false;
+               }
+
+               axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+               checker.TheoremProver.FlushAxiomsToTheoremProver();
+
+               // Check
+               if (pushedAll)
+               {
+                   // If we made all candidates false, then this is the same
+                   // as the underapprox query. We already know the answer.
+                   ret = Outcome.Correct;
+               }
+               else
+               {
+                   //Console.Write("Checking with preds == true: "); Console.Out.Flush();
+                   ret = CheckVC(vc, reporter, checker, impl.Name);
+                   //Console.WriteLine(ret.ToString());
+                   numqueries++;
+               }
+
+               // Pop
+               for (int i = 0; i < axioms_pushed - prev_axioms_pushed; i++)
+               {
+                   checker.TheoremProver.Pop();
+               }
+
+               if (ret == Outcome.Correct)
+               {
+                   // If nothing was made false, then we're done
+                   if (pushedNone)
+                   {
+                       done = true;
+                       break;
+                   }
+
+                   // Nothing more can be done with current recursion bound. 
+                   Contract.Assert(done == false);
+                   underApproxNeeded = false;
+                   break;
+               }
+
+               if (ret != Outcome.Correct && ret != Outcome.Errors)
+               {
+                   // The query ran out of memory or time, that's it,
+                   // we cannot do better. Give up!
+                   done = true;
+                   break;
+               }
+
+
+               Contract.Assert(ret == Outcome.Errors);
+
+               checker.TheoremProver.LogComment(";;;;;;;;;;;; Overapprox mode end ;;;;;;;;;;");
+
+               checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
+
+               // Look at the errors to see what to inline
+               Contract.Assert(reporter.candidatesToExpand.Count != 0);
+
+               expansionCount += reporter.candidatesToExpand.Count;
+
+               #region Coverage reporter
+               if (coverageProcess != null)
+                   coverageProcess.StandardInput.WriteLine("reset_graph_round");
+               #endregion
+
+               if (incrementalSearch)
+               {
+                   total_axioms_pushed +=
+                     DoExpansion(reporter.candidatesToExpand, calls, checker, coverageProcess);
+               }
+               else
+               {
+                   vc = DoExpansionAndInline(vc, reporter.candidatesToExpand, calls, checker, coverageProcess);
+               }
+
+               checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
            }
-	       int axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
-	       
-	       // Note: axioms_pushed may not be the same as calls.currCandidates.Count 
-	       // because PushVCExpression pushes other stuff too (which always seems 
-	       // to be TRUE)
-	       
-		   reporter.underapproximationMode = true;
-	       
-	       // Check!
-		   //Console.Write("Checking with preds == false: "); Console.Out.Flush();
-		   ret = CheckVC(vc, reporter, checker, impl.Name);
-		   //Console.WriteLine(ret.ToString());
-	       
-		   // Pop
-		   for(int i = 0; i < axioms_pushed - prev_axioms_pushed; i++) {
-			  checker.TheoremProver.Pop();
-		   }
-		   	       
-	       checker.TheoremProver.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
-		   
-		   if(ret == Outcome.Errors) {
-			 break;
-		   }	
-		          
-	       // If we didn't underapproximate, then we're done
-	       if(calls.currCandidates.Count == 0) {
-	          break;
-	       }
-	       
-	       checker.TheoremProver.LogComment(";;;;;;;;;;;; Overapprox mode begin ;;;;;;;;;;");
-		   // Push "true" (No-op)
-		   // Check
-		   reporter.underapproximationMode = false;
-	       
-		   //Console.Write("Checking with preds == true: "); Console.Out.Flush();
-		   ret = CheckVC(vc, reporter, checker, impl.Name);
-		   //Console.WriteLine(ret.ToString());
-	       
-		   if(ret == Outcome.Correct) {
-			  break;
-		   }
-	       
-	       checker.TheoremProver.LogComment(";;;;;;;;;;;; Overapprox mode end ;;;;;;;;;;");
-	       
-	       checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
-	       
-		   // Look at the errors to see what to inline
-		   Contract.Assert( reporter.candidatesToExpand.Count != 0);
-	       
-	       expansionCount += reporter.candidatesToExpand.Count;
 
-           #region Coverage reporter
-           if (coverageProcess != null)
-              coverageProcess.StandardInput.WriteLine("reset_graph_round");
-           #endregion
-
-           if (incrementalSearch) 
-	       {
-	         total_axioms_pushed +=
-               DoExpansion(reporter.candidatesToExpand, calls, checker, coverageProcess);
-	       } else 
-	       {
-	         vc = DoExpansionAndInline(vc, reporter.candidatesToExpand, calls, checker, coverageProcess);
-	       }
-
-		   checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
-	   }
-       
+           // TODO: What is the optimal increment here?
+           bound++;
+       }
+      
        // Pop off everything that we pushed so that there are no side effects from
        // this call to VerifyImplementation
        for(int i = 0; i < total_axioms_pushed; i++) {
 	      checker.TheoremProver.Pop();
 	   }
-		   
-       if(cnt == 500) 
+
+       if (!done)
        {
-          checker.TheoremProver.LogComment("Stratified Inlining: timeout");
+           return Outcome.TimedOut;
        }
-       
-       checker.TheoremProver.LogComment(string.Format("Stratified Inlining: Calls to Z3: {0}", 2*cnt));
-       checker.TheoremProver.LogComment(string.Format("Stratified Inlining: Expansions performed: {0}", expansionCount));
-       checker.TheoremProver.LogComment(string.Format("Stratified Inlining: Candidates left: {0}", calls.currCandidates.Count));
 
        #region Coverage reporter
+       if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
+       {
+           Console.WriteLine("Stratified Inlining: Calls to Z3: {0}", numqueries);
+           Console.WriteLine("Stratified Inlining: Expansions performed: {0}", expansionCount);
+           Console.WriteLine("Stratified Inlining: Candidates left: {0}", calls.currCandidates.Count);
+       }
+
        if (coverageProcess != null)
        {
            coverageProcess.StandardInput.WriteLine("Done");
@@ -2449,7 +2558,9 @@ namespace VC {
       public Dictionary<VCExprNAry/*!*/, int>/*!*/ candidate2Id;
       public Dictionary<string/*!*/, int>/*!*/ label2Id;
       // Stores the candidate from which this one originated
+      
       public Dictionary<int, int> candidateParent;
+        
       public Microsoft.SpecSharp.Collections.Set<int> currCandidates;
       [ContractInvariantMethod]
       void ObjectInvariant() {
@@ -2491,6 +2602,32 @@ namespace VC {
 
       public void Clear() {
         currCandidates = new Microsoft.SpecSharp.Collections.Set<int>();
+      }
+
+      // Given a candidate "id", let proc(id) be the
+      // procedure corresponding to id. This procedure returns
+      // the number of times proc(id) appears as an ancestor
+      // of id. This is the same as the number of times we've
+      // recursed on proc(id)
+      public int getRecursionBound(int id)
+      {
+          int ret = 1;
+          var str = getProc(id);
+          while (candidateParent.ContainsKey(id))
+          {
+              id = candidateParent[id];
+              if (getProc(id) == str) ret++;
+          }
+          return ret;
+      }
+
+      // Returns the name of the procedure corresponding to candidate id
+      private string getProc(int id)
+      {
+          // We don't have the name of the main procedure
+          if (id == 0) return "";
+
+          return (id2Candidate[id].Op as VCExprBoogieFunctionOp).Func.Name;
       }
 
       private int GetId(VCExprNAry vc) {
