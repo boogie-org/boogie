@@ -392,11 +392,12 @@ namespace Microsoft.Boogie.Z3
 
     -----------------------------------------------------------------------------*/
     private string ParseModel(out Z3ErrorModel errModel)
-      //TODO: modifies this.*;
+      //modifies this.*;
       //throws UnexpectedProverOutputException;
     {
       Contract.Ensures(Contract.Result<string>() == "." || Contract.Result<string>().StartsWith("labels: (") || Contract.Result<string>() == "END_OF_MODEL");
       Contract.Ensures(Contract.Result<string>() != null);
+      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
       //Format in the grammar:
       // ZID ["{" ID+"}"] ["->" "(" (number | false | true) ")"]
@@ -437,7 +438,7 @@ namespace Microsoft.Boogie.Z3
         List<List<string/*!*/>>/*!*/ partitionToIdentifiers,
         List<Object>/*!*/ partitionToValue,
         Dictionary<Object, int>/*!*/ valueToPartition)
-      //TODO: modifies this.*, identifierToPartition.*, partitionToIdentifiers.*, partitionToValue.*, valueToPartition.*;
+      //modifies this.*, identifierToPartition.*, partitionToIdentifiers.*, partitionToValue.*, valueToPartition.*;
     {
       Contract.Requires(partitionToValue != null);
       Contract.Requires(valueToPartition != null);
@@ -571,8 +572,7 @@ namespace Microsoft.Boogie.Z3
     private static int ParseModelZidAndIdentifiers(int zID, string s,
         Dictionary<string/*!*/, int>/*!*/ identifierToPartition,
         List<List<string/*!*/>>/*!*/ partitionToIdentifiers)
-      //TODO: modifies identifierToPartition.*, partitionToIdentifiers.*;
-      //TODO: Find all modifies statements
+      //modifies identifierToPartition.*, partitionToIdentifiers.*;
     {
       Contract.Requires(identifierToPartition != null && cce.NonNullElements(identifierToPartition.Keys));
       Contract.Requires(partitionToIdentifiers != null && Contract.ForAll(partitionToIdentifiers, identifier => cce.NonNullElements(identifier)));
@@ -588,8 +588,8 @@ namespace Microsoft.Boogie.Z3
         Contract.Assume(j < s.Length);  // there should be more characters; the ending '}', for one
         //ID*
         while (true) {
-          Contract.Invariant(cce.IsPeerConsistent(identifiers) && cce.IsPeerConsistent(identifierToPartition) && cce.IsPeerConsistent(partitionToIdentifiers));
-          Contract.Invariant(0 <= j && j < s.Length);
+          cce.LoopInvariant(cce.IsPeerConsistent(identifiers) && cce.IsPeerConsistent(identifierToPartition) && cce.IsPeerConsistent(partitionToIdentifiers));
+          cce.LoopInvariant(0 <= j && j < s.Length);
           int k = s.IndexOfAny(new char[] { ' ', '}' }, j);
           Contract.Assume(j <= k);
           string id = s.Substring(j, k - j);
@@ -617,7 +617,7 @@ namespace Microsoft.Boogie.Z3
       List<Object>/*!*/ partitionToValue,
       Dictionary<Object, int>/*!*/ valueToPartition
     )
-      //TODO:  modifies this.*;
+      //modifies this.*;
     {
       Contract.Requires(identifierToPartition != null && cce.NonNullElements(identifierToPartition.Keys));
       Contract.Requires(partitionToIdentifiers != null && Contract.ForAll(partitionToIdentifiers, identifier => cce.NonNullElements(identifier)));
@@ -681,7 +681,7 @@ namespace Microsoft.Boogie.Z3
 
           //ZID*
           while (true) {
-            Contract.Invariant(0 <= j && j <= s.Length);
+            cce.LoopInvariant(0 <= j && j <= s.Length);
 
             j = s.IndexOfAny(new Char[] { '*', '-' }, j);
             // true because this always ends with a "->":
