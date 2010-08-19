@@ -62,7 +62,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
 
     public AbstractionEngine(AI.Lattice lattice) {
       Contract.Requires(lattice != null);
-      Contract.Assume(cce.IsExposable(log)); //TODO: use the extension method syntax  //PM: One would need static class invariants to prove this property
+      Contract.Assume(cce.IsExposable(log)); //PM: One would need static class invariants to prove this property
       cce.BeginExpose(log);
       log.Enabled = AI.Lattice.LogSwitch;
       cce.EndExpose();
@@ -420,7 +420,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
       return fresh;
     }
 
-    private delegate CallSite/*!*/ MarkCallSite(AI.Lattice.Element/*!*/ currentValue);//TODO: Think this is an invariant, but not sure how2 deal with it
+    private delegate CallSite/*!*/ MarkCallSite(AI.Lattice.Element/*!*/ currentValue);
 
     /// <summary>
     /// Given a basic block, it propagates the abstract state at the entry point through the exit point of the block
