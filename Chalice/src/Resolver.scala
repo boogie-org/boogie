@@ -287,8 +287,7 @@ object Resolver {
    case Assume(e) =>
      ResolveExpr(e, context, true, true)(false)  
      if (!e.typ.IsBool) context.Error(e.pos, "assume statement requires a boolean expression (found " + e.typ.FullName + ")")
-   case RefinementBlock(ss, _) =>
-     ResolveStmt(BlockStmt(ss), context)  // TODO is this correct for multi-step refinement?
+   case RefinementBlock(ss, _) => throw new Exception("unexpected statement")
    case BlockStmt(ss) =>
      var ctx = context
      for (s <- ss) s match {
@@ -333,7 +332,8 @@ object Resolver {
      CheckNoGhost(guard, context)
      ResolveStmt(thn, context)
      els match { case None => case Some(s) => ResolveStmt(s, context) }
-   case w@ WhileStmt(guard, invs, lkch, body) =>
+   case w@ WhileStmt(guard, invs, ref, lkch, body) =>
+     if (ref.size > 0) throw new Exception("unexpected statement")
      ResolveExpr(guard, context, false, false)(false)
      if (!guard.typ.IsBool) context.Error(guard.pos, "while statement requires a boolean guard (found " + guard.typ.FullName + ")")
      CheckNoGhost(guard, context)
@@ -346,7 +346,7 @@ object Resolver {
        if (!l.typ.IsRef) context.Error(l.pos, "lockchange expression must be reference (found " + l.typ.FullName + ")")
      }
      ResolveStmt(body, context)
-     w.LoopTargets = ComputeLoopTargets(body) filter context.IsVariablePresent
+     w.LoopTargets = body.Targets.filter(context.IsVariablePresent).toList
    case Assign(lhs, rhs) =>
      ResolveExpr(lhs, context, false, false)(false)
      ResolveAssign(lhs, rhs, context)
@@ -613,26 +613,6 @@ object Resolver {
      if (!b.typ.IsRef && !b.typ.IsMu)
        context.Error(b.pos, descript + " bound must be of a reference type or Mu type (found " + b.typ.FullName + ")")
    }
-
- def ComputeLoopTargets(s: Statement): Set[Variable] = s match {  // local variables
-   case BlockStmt(ss) =>
-     (ss :\ Set[Variable]()) { (s,vars) => vars ++ ComputeLoopTargets(s) }
-   case IfStmt(guard, thn, els) =>
-     val vars = ComputeLoopTargets(thn)
-     els match { case None => vars; case Some(els) => vars ++ ComputeLoopTargets(els) }
-   case w: WhileStmt =>
-     // assume w.LoopTargets is non-null and that it was computed with a larger context
-     w.LoopTargets
-   case Assign(lhs, rhs) =>
-     if (lhs.v != null) Set(lhs.v) else Set()  // don't assume resolution was successful
-   case s: SpecStmt =>
-     (s.lhs :\ Set[Variable]()) { (ve,vars) => if (ve.v != null) vars + ve.v else vars }
-   case lv: LocalVar =>
-     lv.rhs match { case None => Set() case Some(_) => Set(lv.v) }
-   case Call(_, lhs, obj, id, args) =>
-     (lhs :\ Set[Variable]()) { (ve,vars) => if (ve.v != null) vars + ve.v else vars }
-   case _ => Set()
- }
 
  def ResolveAssign(lhs: VariableExpr, rhs: RValue, context: ProgramContext) = {
    rhs match {
@@ -1096,7 +1076,8 @@ object Resolver {
 
  def ResolveTransform(mt: MethodTransform, context: ProgramContext) {
    mt.spec foreach {
-     case Precondition(e) => throw new Exception("not implemented")
+     case Precondition(e) =>
+       context.Error(e.pos, "Method refinement cannot have a pre-condition")
      case Postcondition(e) =>
        ResolveExpr(e, context.SetClass(mt.Parent).SetMember(mt), true, true)(false)
      case _ : LockChange => throw new Exception("not implemented")
@@ -1106,25 +1087,27 @@ object Resolver {
 
    mt.body = AST.refine(mt.refines.Body, mt.trans) match {
      case AST.Matched(ss) => ss
-     case AST.Unmatched(t) => context.Error(mt.pos, "Cannot match transform around " + t); Nil
+     case AST.Unmatched(t) => context.Error(mt.pos, "Cannot match transform around " + t.pos); Nil
    }
                                 
-   // resolution must check for:
-   // * resolve statements in refinement blocks
-   // * loops might have more loop targets
-   // * compute abstract local variables for every refinement block
    def resolveBody(ss: List[Statement], con: ProgramContext, abs: List[Variable]) {
      var ctx = con;
      var locals = abs;
      for (s <- ss) {
        s match {
-         case r @ RefinementBlock(l, original) =>
+         case r @ RefinementBlock(c, a) =>
+           // abstract globals available at this point in the program
            r.locals = locals
-           ResolveStmt(BlockStmt(l), ctx)
-           val vs = BlockStmt(l).Declares;
-           for (v <- BlockStmt(original).Declares)
-             if (! vs.contains(v))
-               ctx.Error(s.pos, "Refinement block must declare a local variable from abstract program: " + v.id)
+           ResolveStmt(BlockStmt(c), ctx)
+           val vs = c flatMap {s => s.Declares};
+           for (v <- a flatMap {s => s.Declares}; if (! vs.contains(v)))
+             ctx.Error(r.pos, "Refinement block must declare a local variable from abstract program: " + v.id)
+         case w @ WhileStmt(guard, oi, ni, lks, body) =>
+           for (inv <- ni) {
+             ResolveExpr(inv, ctx, true, true)(false)
+             if (!inv.typ.IsBool) ctx.Error(inv.pos, "loop invariant must be boolean (found " + inv.typ.FullName + ")")
+           }
+           resolveBody(body.ss, ctx, locals)
          case IfStmt(_, thn, None) =>
            resolveBody(thn.ss, ctx, locals)
          case IfStmt(_, thn, Some(els)) =>
@@ -1137,7 +1120,7 @@ object Resolver {
        // declare concrete and abstract locals
        for (v <- s.Declares) ctx = ctx.AddVariable(v);
        s match {
-         case RefinementBlock(_, abs) => locals = locals ++ BlockStmt(abs).Declares
+         case RefinementBlock(_, a) => locals = locals ++ (a flatMap {s => s.Declares})
          case _ => locals = locals ++ s.Declares 
        }
      }

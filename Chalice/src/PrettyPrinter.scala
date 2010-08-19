@@ -76,7 +76,7 @@ object PrintProgram {
       PrintBlockStmt(ss, indent); println
     case RefinementBlock(ss, old) =>
       println("/* begin of refinement block")
-      for (s <- old) {Spaces(indent); Stmt(s, indent)}
+      for (s <- old) {Spaces(indent + 2); Stmt(s, indent + 2)}
       Spaces(indent); println("end of abstract code */")
       for (s <- ss) {Spaces(indent); Stmt(s, indent)}
       Spaces(indent); println("// end of refinement block")
@@ -87,9 +87,9 @@ object PrintProgram {
         case None => println
         case Some(s) => print(" else "); Stmt(s, indent)
       }
-    case WhileStmt(guard, invs, lkch, body) =>
+    case w @ WhileStmt(guard, _, _, lkch, body) =>
       print("while ("); Expr(guard); println(")")
-      for (inv <- invs) {
+      for (inv <- w.Invs) {
         Spaces(indent+2)
         print("invariant "); Expr(inv); println(Semi)
       }

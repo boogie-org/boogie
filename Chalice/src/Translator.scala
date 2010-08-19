@@ -113,7 +113,6 @@ class Translator {
   def translateField(f: Field): List[Decl] = {
     Const(f.FullName, true, FieldType(f.typ.typ)) ::
     Axiom(NonPredicateField(f.FullName))
-    // TODO: add typeinformation as an axiom
   }
 
   def translateFunction(f: Function): List[Decl] = {
@@ -773,6 +772,8 @@ class Translator {
         new Boogie.MapUpdate(etran.Credits, TrExpr(ch), new Boogie.MapSelect(etran.Credits, TrExpr(ch)) - 1)
       case r: RefinementBlock =>
         translateRefinement(r)
+      case _: Signal => throw new Exception("not implemented")
+      case _: Wait => throw new Exception("not implemented")      
     }
   }
 
@@ -949,19 +950,18 @@ class Translator {
 
   def translateWhile(w: WhileStmt): List[Stmt] = {
     val guard = w.guard;
-    val invs = w.invs;
-    val lkch = w. lkch;
+    val lkch = w.lkch;
     val body = w.body;
 
     val preLoopGlobals = etran.FreshGlobals("while")
     val loopEtran = etran.FromPreGlobals(preLoopGlobals)
     val iterStartGlobals = etran.FreshGlobals("iterStart")
     val iterStartEtran = etran.FromPreGlobals(iterStartGlobals)
-    val saveLocalsV = for (v <- w.LoopTargetsList) yield new Variable(v.id, v.t)
-    val iterStartLocalsV = for (v <- w.LoopTargetsList) yield new Variable(v.id, v.t)
-    val lkchOld = lkch map (e => SubstVars(e, w.LoopTargetsList,
+    val saveLocalsV = for (v <- w.LoopTargets) yield new Variable(v.id, v.t)
+    val iterStartLocalsV = for (v <- w.LoopTargets) yield new Variable(v.id, v.t)
+    val lkchOld = lkch map (e => SubstVars(e, w.LoopTargets,
                                              for (v <- saveLocalsV) yield new VariableExpr(v)))
-    val lkchIterStart = lkch map (e => SubstVars(e, w.LoopTargetsList,
+    val lkchIterStart = lkch map (e => SubstVars(e, w.LoopTargets,
                                                    for (v <- iterStartLocalsV) yield new VariableExpr(v)))
     val oldLocks = lkchOld map (e => loopEtran.oldEtran.Tr(e))
     val iterStartLocks = lkchIterStart map (e => iterStartEtran.oldEtran.Tr(e))
@@ -973,15 +973,15 @@ class Translator {
     (loopEtran.oldEtran.Mask := loopEtran.Mask) ::  // oldMask is not actually used below
     (loopEtran.oldEtran.Credits := loopEtran.Credits) ::  // is oldCredits?
     // check invariant on entry to the loop
-    Exhale(invs map { inv => (inv, ErrorMessage(inv.pos, "The loop invariant might not hold on entry to the loop."))}, "loop invariant, initially") :::
-     List(bassert(DebtCheck, w.pos, "Loop invariant must consume all debt on entry to the loop.")) :::
+    Exhale(w.oldInvs map { inv => (inv, ErrorMessage(inv.pos, "The loop invariant might not hold on entry to the loop."))}, "loop invariant, initially") :::
+    tag(Exhale(w.newInvs map { inv => (inv, ErrorMessage(inv.pos, "The loop invariant might not hold on entry to the loop."))}, "loop invariant, initially"), keepTag) :::
+    List(bassert(DebtCheck, w.pos, "Loop invariant must consume all debt on entry to the loop.")) :::
     // check lockchange on entry to the loop
     Comment("check lockchange on entry to the loop") ::
     (bassert(LockFrame(lkch, etran), w.pos, "Method execution before loop might lock/unlock more than allowed by lockchange clause of loop.")) ::
     // save values of local-variable loop targets
     (for (sv <- saveLocalsV) yield BLocal(Variable2BVarWhere(sv))) :::
-    (for ((v,sv) <- w.LoopTargetsList zip saveLocalsV) yield
-      (new VariableExpr(sv) := new VariableExpr(v))) :::
+    (for ((v,sv) <- w.LoopTargets zip saveLocalsV) yield (new VariableExpr(sv) := new VariableExpr(v))) :::
     // havoc local-variable loop targets
     (w.LoopTargets :\ List[Boogie.Stmt]()) ( (v,vars) => (v match {
       case v: Variable if v.isImmutable => Boogie.Havoc(Boogie.VarExpr("assigned$" + v.id))
@@ -991,14 +991,15 @@ class Translator {
       Comment("check loop invariant definedness") ::
       //(w.LoopTargets.toList map { v: Variable => Boogie.Havoc(Boogie.VarExpr(v.id)) }) :::
       Boogie.Havoc(etran.Heap) :: Boogie.Assign(etran.Mask, ZeroMask) :: Boogie.Assign(etran.Credits, ZeroCredits) ::
-      InhaleWithChecking(invs, "loop invariant definedness") :::
+      InhaleWithChecking(w.oldInvs, "loop invariant definedness") :::
+      tag(InhaleWithChecking(w.newInvs, "loop invariant definedness"), keepTag) :::                  
       bassume(false)
     , Boogie.If(null,
     // 2. CHECK LOOP BODY
       // Renew state: set Mask to ZeroMask and Credits to ZeroCredits, and havoc Heap everywhere except
       // at {old(local),local}.{held,rdheld}
       Havoc(etran.Heap) :: (etran.Mask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
-      Inhale(invs, "loop invariant, body") :::
+      Inhale(w.Invs, "loop invariant, body") :::
       // assume lockchange at the beginning of the loop iteration
       Comment("assume lockchange at the beginning of the loop iteration") ::
       (bassume(LockFrame(lkch, etran))) ::
@@ -1008,13 +1009,14 @@ class Translator {
       (iterStartEtran.oldEtran.Mask := iterStartEtran.Mask) ::  // oldMask is not actually used below
       (iterStartEtran.oldEtran.Credits := iterStartEtran.Credits) ::  // is oldCredits?
       (for (isv <- iterStartLocalsV) yield BLocal(Variable2BVarWhere(isv))) :::
-      (for ((v,isv) <- w.LoopTargetsList zip iterStartLocalsV) yield
+      (for ((v,isv) <- w.LoopTargets zip iterStartLocalsV) yield
          (new VariableExpr(isv) := new VariableExpr(v))) :::
       // evaluate the guard
       isDefined(guard) ::: List(bassume(guard)) :::
       translateStatement(body) ::: 
       // check invariant
-      Exhale(invs map { inv => (inv, ErrorMessage(w.pos, "The loop invariant at " + inv.pos + " might not be preserved by the loop."))}, "loop invariant, maintained") :::
+      Exhale(w.oldInvs map { inv => (inv, ErrorMessage(w.pos, "The loop invariant at " + inv.pos + " might not be preserved by the loop."))}, "loop invariant, maintained") :::
+      tag(Exhale(w.newInvs map { inv => (inv, ErrorMessage(w.pos, "The loop invariant at " + inv.pos + " might not be preserved by the loop."))}, "loop invariant, maintained"), keepTag) :::
       isLeaking(w.pos, "The loop might leak refereces.") :::
       // check lockchange after loop iteration
       Comment("check lockchange after loop iteration") ::
@@ -1027,7 +1029,7 @@ class Translator {
      // assume lockchange after the loop
      Comment("assume lockchange after the loop") ::
      (bassume(LockFrame(lkch, etran))) ::
-     Inhale(invs, "loop invariant, after loop") :::
+     Inhale(w.Invs, "loop invariant, after loop") :::
      bassume(!guard)))
   }
 
@@ -1040,18 +1042,17 @@ class Translator {
     // shared locals before block (excluding immutable)
     val before = for (v <- r.locals; if (! v.isImmutable)) yield v;
     // shared locals in block
-    val duringA = for (v <- BlockStmt(r.abs).Declares) yield v;
-    val duringC = for (v <- duringA) yield BlockStmt(r.con).Declares.find(_ == v).get
+    val duringA = for (v <- r.abs.flatMap(s => s.Declares)) yield v;
+    val duringC = for (v <- duringA) yield r.con.flatMap(s => s.Declares).find(_ == v).get
     // save locals before (to restore for abstract block)
     val beforeV = for (v <- before) yield new Variable(v.id, v.t)
     // save locals after (to compare with abstract block)
     val afterV = for (v <- before) yield new Variable(v.id, v.t)
 
     Comment("refinement block") ::
-    // TODO: duplicate heap
     (for (c <- conGlobals) yield BLocal(c)) :::
     (for ((c, a) <- conGlobals zip etran.Globals) yield (new VarExpr(c) := a)) :::
-    // TODO: global coupling: assume coupling invariant for locations with positive permission
+    // TODO: inhale heap, global coupling: assume coupling invariant for locations with positive permission
     // save shared local variables
     (for (v <- beforeV) yield BLocal(Variable2BVarWhere(v))) :::            
     (for ((v, w) <- beforeV zip before) yield (new VariableExpr(v) := new VariableExpr(w))) :::
@@ -1059,7 +1060,7 @@ class Translator {
     {
       etran = conTran;
       Comment("run concrete program:") ::
-      translateStatements(r.con)
+      tag(translateStatements(r.con), keepTag)
     } :::
     // run angelically A on the old heap
     Comment("run abstract program:") ::
@@ -1070,18 +1071,18 @@ class Translator {
           Comment("witness declared local variables") ::
           (for (v <- duringA) yield BLocal(Variable2BVarWhere(v))) :::
           (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
-          bassert(s.post, r.pos, "Refinement fails to satisfy specification statement post-condition") ::
+          bassert(s.post, r.pos, "Refinement may fail to satisfy specification statement post-condition") ::
           (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
              bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable not in frame of the specification statement: " + v.id)),
           keepTag)
       case _ =>
-        Comment("save locals after") ::
+        // save locals after
         (for (v <- afterV) yield BLocal(Variable2BVarWhere(v))) :::
         (for ((v, w) <- afterV zip before) yield (new VariableExpr(v) := new VariableExpr(w))) :::
-        Comment("restore locals before") ::
+        // restore locals before
         (for ((v, w) <- before zip beforeV) yield (new VariableExpr(v) := new VariableExpr(w))) :::
         translateStatements(r.abs) :::
-        Comment("assert equality on shared locals") ::
+        // assert equality on shared locals
         tag(
           (for ((v, w) <- afterV zip before) yield
             bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce different value for pre-state local variable: " + v.id)) :::
@@ -2558,7 +2559,7 @@ object TranslationHelper {
   }
 
   val keepTag = Boogie.Tag("keep")
-  // Assume the only composite statement is If
+  // Assume the only composite statement in Boogie is If
   def tag(l: List[Stmt], t: Boogie.Tag):List[Stmt] =
     for (s <- l) yield {
       s.tags = t :: s.tags;
@@ -2568,7 +2569,7 @@ object TranslationHelper {
       }
       s
     }
-  // Assume the only composite statement is If
+  // Assume the only composite statement in Boogie is If
   def assert2assume(l: List[Stmt]):List[Stmt] =
     if (Chalice.noFreeAssume) l else
       l flatMap {

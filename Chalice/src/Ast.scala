@@ -190,7 +190,7 @@ sealed abstract class Refinement(id: String) extends Callable(id) {
 case class MethodTransform(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], trans: Transform) extends Refinement(id) {
   var body = null:List[Statement];
   def Spec = {assert(refines != null); refines.Spec ++ spec}
-  def Body = {assert(body != null); body}
+  def Body = {assert(body != null); body}   // TODO: get rid of refinement blocks (that is make sure variables match)
   def Ins = {assert(refines != null); refines.Ins}
   def Outs = {assert(refines != null); refines.Outs ++ outs.drop(refines.Outs.size)}
 }
@@ -211,6 +211,7 @@ case class SkipPat() extends Transform
 /** Replacement pattern for arbitrary block */
 case class ProgramPat(code: List[Statement]) extends Transform
 case class IfPat(thn: Transform, els: Option[Transform]) extends Transform
+case class WhilePat(invs: List[Expression], body: Transform) extends Transform
 case class NonDetPat(is: List[String], code: List[Statement]) extends Transform {
   def matches(s: Statement) = s match {
     case _:Call => true
@@ -221,11 +222,12 @@ case class NonDetPat(is: List[String], code: List[Statement]) extends Transform 
 case class InsertPat(code: List[Statement]) extends Transform
 case class SeqPat(pats: List[Transform]) extends Transform {
   assert(pats.size > 0)
+  pos = pats.first.pos;
 }
 case class RefinementBlock(con: List[Statement], abs: List[Statement]) extends Statement {
   if (con.size > 0) pos = con.first.pos;
   var locals: List[Variable] = null;
-  override def Declares = BlockStmt(con).Declares
+  override def Declares = con flatMap {_.Declares}
 }
 
 /**
@@ -233,37 +235,42 @@ case class RefinementBlock(con: List[Statement], abs: List[Statement]) extends S
  */
 
 sealed abstract class Statement extends ASTNode {
-  // requires resolved statements
-  def Declares: List[Variable] = Nil
+  def Declares: List[Variable] = Nil // call after resolution
+  def Targets: Set[Variable] = Set() // assigned local variables
 }
 case class Assert(e: Expression) extends Statement
 case class Assume(e: Expression) extends Statement
 case class BlockStmt(ss: List[Statement]) extends Statement {
-  override def Declares = ss flatMap {s => s.Declares}
+  override def Targets = (ss :\ Set[Variable]()) { (s, vars) => vars ++ s.Targets}
 }
-case class IfStmt(guard: Expression, thn: BlockStmt, els: Option[Statement]) extends Statement
+case class IfStmt(guard: Expression, thn: BlockStmt, els: Option[Statement]) extends Statement {
+  override def Targets = thn.Targets ++ (els match {case None => Set(); case Some(els) => els.Targets}) 
+}
 case class WhileStmt(guard: Expression,
-                     invs: List[Expression], lkch: List[Expression],
+                     oldInvs: List[Expression], newInvs: List[Expression], lkch: List[Expression], 
                      body: BlockStmt) extends Statement {
-  var LoopTargets: Set[Variable] = null
-  lazy val LoopTargetsList = {
-    assert (LoopTargets != null)
-    LoopTargets.toList
-  }
+  val Invs = oldInvs ++ newInvs;
+  var LoopTargets: List[Variable] = Nil;
+  override def Targets = body.Targets;
 }
-case class Assign(lhs: VariableExpr, rhs: RValue) extends Statement
+case class Assign(lhs: VariableExpr, rhs: RValue) extends Statement {
+  override def Targets = if (lhs.v != null) Set(lhs.v) else Set()
+}
 case class FieldUpdate(lhs: MemberAccess, rhs: RValue) extends Statement
 case class LocalVar(id: String, t: Type, const: Boolean, ghost: Boolean, rhs: Option[RValue]) extends Statement {
   val v = new Variable(id, t, ghost, const);
   override def Declares = List(v)
+  override def Targets = rhs match {case None => Set(); case Some(_) => Set(v)}
 }
 case class Call(declaresLocal: List[Boolean], lhs: List[VariableExpr], obj: Expression, id: String, args: List[Expression]) extends Statement {
   var locals = List[Variable]()
   var m: Callable = null
   override def Declares = locals
+  override def Targets = (lhs :\ Set[Variable]()) { (ve, vars) => if (ve.v != null) vars + ve.v else vars }
 }
 case class SpecStmt(lhs: List[VariableExpr], locals:List[Variable], pre: Expression, post: Expression) extends Statement {
   override def Declares = locals;
+  override def Targets = (lhs :\ Set[Variable]()) { (ve, vars) => if (ve.v != null) vars + ve.v else vars }
 }
 case class Install(obj: Expression, lowerBounds: List[Expression], upperBounds: List[Expression]) extends Statement
 case class Share(obj: Expression, lowerBounds: List[Expression], upperBounds: List[Expression]) extends Statement
@@ -279,6 +286,7 @@ case class CallAsync(declaresLocal: Boolean, lhs: VariableExpr, obj: Expression,
   var local: Variable = null
   var m: Method = null
   override def Declares = if (local != null) List(local) else Nil
+  override def Targets = if (lhs.v != null) Set(lhs.v) else Set()
 }
 case class JoinAsync(lhs: List[VariableExpr], token: Expression) extends Statement {
   var m: Method = null
@@ -539,12 +547,17 @@ object AST {
 
   /**
    * Matches a proper block to a transform.
-   * Requires: a sequence pattern should not contain a sequence pattern
+   * Effects: some statements might be replaced by refinements blocks; Loops might have new invariants.
+   * Requires: in transform, a sequence pattern should not contain a sequence pattern.
    */
   def refine:(List[Statement], Transform) => TransformMatch = {
     // order is important!
+    // reduction of base cases
+    case (l, SeqPat(List(t))) => refine(l, t)
+    case (List(BlockStmt(ss)), t) => refine(ss, t)
     // whole program 
     case (l, ProgramPat(code)) => new Matched(RefinementBlock(code, l))
+    case (l, SkipPat()) => Matched(l)    
     // if pattern
     case (List(IfStmt(guard, thn, None)), t @ IfPat(thnT, None)) =>
       refine(thn.ss, thnT) match {
@@ -556,24 +569,26 @@ object AST {
         case (Matched(thn0), Matched(els0)) => new Matched(IfStmt(guard, BlockStmt(thn0), Some(BlockStmt(els0))))
         case _ => Unmatched(t)
       }
+    // while pattern
+    case (List(WhileStmt(guard, oi, Nil, lks, body)), wp @ WhilePat(l, t)) =>
+      refine(body.ss, t) match {
+        case Matched(body0) => new Matched(WhileStmt(guard, oi, l, lks, BlockStmt(body0)))
+        case _ => Unmatched(wp)
+      }
     // non det pat
     case (l @ List(_: Call), NonDetPat(_, code)) => new Matched(RefinementBlock(code, l))
     case (l @ List(_: SpecStmt), NonDetPat(_, code)) => new Matched(RefinementBlock(code, l))
     // insert pat
     case (Nil, InsertPat(code)) => new Matched(RefinementBlock(code, Nil))
-    // reduction of base cases
-    case (l, SeqPat(List(t))) => refine(l, t)
-    case (List(BlockStmt(ss)), t) => refine(ss, t)        
     // block pattern (greedy matching)
     case (l, bp @ BlockPat()) if (l forall {s => bp matches s}) => Matched(l)
-    case (s :: ss, SeqPat((bp @ BlockPat()) :: ts)) if (bp matches s) =>
-      refine(ss, SeqPat(ts)) match {
+    case (s :: ss, t @ SeqPat((bp @ BlockPat()) :: _)) if (bp matches s) =>
+      refine(ss, t) match {
         case Matched(l) => Matched(s :: l)
         case x => x
       }
     case (l, SeqPat((bp @ BlockPat()) :: ts)) if (l.size == 0 || !(bp matches l.head)) =>
       refine(l, SeqPat(ts))
-    case (l, SkipPat()) => Matched(l)
     // sequence pattern
     case (s :: ss, SeqPat((np: NonDetPat) :: ts)) =>
       (refine(List(s), np), refine(ss, SeqPat(ts))) match {
@@ -589,6 +604,11 @@ object AST {
       refine(l, SeqPat(ts)) match {
         case Matched(a) => Matched(RefinementBlock(code, Nil) :: a)
         case x => x
+      }
+    case (s :: ss, SeqPat((wp: WhilePat) :: ts)) =>
+      (refine(List(s), wp), refine(ss, SeqPat(ts))) match {
+        case (Matched(a), Matched(b)) => Matched(a ::: b)
+        case _ => Unmatched(wp)
       }
     case (_, t) => Unmatched(t)
   }

@@ -1,0 +1,13 @@
+class A {
+  var x:int;
+  function f():int {1}
+  method m(i:int) returns (j:int) {
+    var j [j > 0];    
+  }
+}
+
+class B refines C {}
+class C refines D {}
+class D refines A {
+  transforms m(i:int) returns (j:int, k:int) {*} 
+}

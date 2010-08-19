@@ -114,7 +114,7 @@ class ChaliceToCSharp {
         indent + convertExpression(target) + "." + f + " = " + convertExpression(rhs) + ";" + nl
       case Assign(VariableExpr(x), rhs) =>
         indent + x + " = " + convertExpression(rhs) + ";" + nl
-      case WhileStmt(guard, _, _, body) =>
+      case WhileStmt(guard, _, _, _, body) =>
         indent + "while (" + convertExpression(guard) + ")" + nl + convertStatement(body) + nl
       case c@Call(_, lhs, target, id, args) =>
         declareLocals(c.locals) +

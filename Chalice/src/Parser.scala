@@ -157,7 +157,7 @@ class Parser extends StandardTokenParsers {
     | "if" ~> ifStmtThen
     | "while" ~> "(" ~> expression ~ ")" ~ loopSpec ~ blockStatement ^^ {
         case guard ~ _ ~ lSpec ~ body =>
-          lSpec match { case (invs,lkch) => WhileStmt(guard, invs, lkch, BlockStmt(body)) }}
+          lSpec match { case (invs,lkch) => WhileStmt(guard, invs, Nil, lkch, BlockStmt(body)) }}
     | "reorder" ~> expression ~ (installBounds ?) <~ Semi ^^ {
         case obj ~ None => Install(obj, List(), List())
         case obj ~ Some(bounds) => Install(obj, bounds._1, bounds._2) }
@@ -558,13 +558,12 @@ class Parser extends StandardTokenParsers {
    * Transforms
    */
 
-  def transform: Parser[Transform] = positioned(
-      "if" ~> ifTransform
-    | transformAtom ~ rep(transform) ^^ {case atom ~ t => SeqPat(atom :: t)}
-    )
+  def transform: Parser[Transform] = rep1(transformAtom) ^^ SeqPat
   def transformAtom: Parser[Transform] = positioned(
       "_" ~ Semi ^^^ BlockPat()
     | "*" ~ Semi ^^^ SkipPat()
+    | "if" ~> ifTransform
+    | "while" ~> rep("invariant" ~> expression <~ Semi) ~ ("{" ~> transform <~ "}") ^^ {case ee ~ body => WhilePat(ee, body)}
     | "replaces" ~> "*" ~> "by" ~> blockStatement ^^ ProgramPat              
     | "replaces" ~> rep1sep(Ident,",") ~ ("by" ~> blockStatement) ^^ {
         case ids ~ code => NonDetPat(ids map {x => x.v}, code)
