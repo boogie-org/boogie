@@ -800,7 +800,7 @@ TypeSeq/*!*/ res = new TypeSeq();
     }
     public override Type Type {
       get {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<VCExpr>>()));
+        Contract.Ensures(Contract.Result<Type>()!=null);
         throw new NotImplementedException();
       }
     }
@@ -929,7 +929,7 @@ TypeSeq/*!*/ res = new TypeSeq();
 
     public override Type Type {
       get {
-        Contract.Ensures(Contract.Result<VCExpr>() != null);
+        Contract.Ensures(Contract.Result<Type>() != null);
         return ExprType;
       }
     }
