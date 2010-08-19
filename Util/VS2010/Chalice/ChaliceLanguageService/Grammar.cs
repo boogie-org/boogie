@@ -10,15 +10,11 @@ namespace Demo
     {
       public Grammar() {
         #region 1. Terminals
-        NumberLiteral n = TerminalFactory.CreateCSharpNumber("number");
-
+        NumberLiteral n = TerminalFactory.CreateCSharpNumber("number");        
         IdentifierTerminal ident = new IdentifierTerminal("Identifier");
-        /*     v.AddReservedWords("true", "false", "null", "if", "else",
-                                "while", "for", "foreach", "in",
-                                "switch", "case", "default", "break",
-                                "continue", "return", "function", "is",
-                                "pre", "post", "invariant", "new"); */
-        this.MarkReservedWords(
+
+        // Copy pasted directly from Parser.scala
+        string[] reserved = new string[] {
           "class", "ghost", "var", "const", "method", "channel", "condition",
           "assert", "assume", "new", "this", "reorder",
           "between", "and", "above", "below", "share", "unshare", "acquire", "release", "downgrade",
@@ -31,11 +27,31 @@ namespace Demo
           "predicate", "function", "free", "send", "receive",
           "ite", "fold", "unfold", "unfolding", "in", "forall", "exists",
           "seq", "nil", "result", "eval", "token",
-          "wait", "signal"
-          );
+          "wait", "signal",
+          "refines", "transforms", "replaces", "by"
+        };
 
+        string[] delimiters = new string[] {
+          "(", ")", "{", "}", "[[", "]]",
+          "<==>", "==>", "&&", "||",
+          "==", "!=", "<", "<=", ">=", ">", "<<", "in", "!in",
+          "+", "-", "*", "/", "%", "!", ".", "..",
+          ";", ":", ":=", ",", "?", "|", "[", "]", "++", "::",
+          "_"
+        }; 
+
+        this.MarkReservedWords(reserved);
+
+        Terminal Comment = new CommentTerminal("Comment", "/*", "*/");
+        NonGrammarTerminals.Add(Comment);
+        Terminal LineComment = new CommentTerminal("LineComment", "//", "\n");
+        NonGrammarTerminals.Add(LineComment);
+
+        #endregion
+
+        #region Disabled for a simpler grammar
+        /*
         StringLiteral s = new StringLiteral("String", "'", StringFlags.AllowsDoubledQuote);
-
         Terminal dot = ToTerm(".", "dot");
         Terminal less = ToTerm("<");
         Terminal greater = ToTerm(">");
@@ -51,8 +67,6 @@ namespace Demo
         Terminal comma = ToTerm(",");
         Terminal semicolon = ToTerm(";");
         Terminal colon = ToTerm(":");
-
-        #endregion
 
         #region 2. Non-terminals
         #region 2.1 Expressions
@@ -335,17 +349,13 @@ namespace Demo
         declaration.Rule = classDecl | channelDecl
           ;
 
-
-        Terminal Comment = new CommentTerminal("Comment", "/*", "*/");
-        NonGrammarTerminals.Add(Comment);
-        Terminal LineComment = new CommentTerminal("LineComment", "//", "\n");
-        NonGrammarTerminals.Add(LineComment);
         #endregion
         #endregion
 
         #region 4. Set starting symbol
         this.Root = Prog; // Set grammar root
         #endregion
+
 
         #region 5. Operators precedence
         RegisterOperators(1, "=", "+=", "-=");
@@ -366,6 +376,23 @@ namespace Demo
 
         #region 6. Punctuation symbols
         RegisterPunctuation("(", ")", "[", "]", "{", "}", ",", ";");
+        #endregion
+        */
+        #endregion
+
+        #region Simple grammar
+        NonTerminal Simple = new NonTerminal("SimpleProg");
+        NonTerminal Anything = new NonTerminal("Token");
+        Simple.Rule = Anything.Star() + Eof;
+        Anything.Rule = n;
+        foreach (string keyword in reserved) Anything.Rule = Anything.Rule | ToTerm(keyword);
+        Anything.Rule = Anything.Rule | ident;
+        foreach (string delimiter in delimiters) Anything.Rule = Anything.Rule | ToTerm(delimiter);
+
+        RegisterBracePair("{", "}");
+        RegisterBracePair("(", ")");
+        
+        this.Root = Simple; 
         #endregion
       }
     }

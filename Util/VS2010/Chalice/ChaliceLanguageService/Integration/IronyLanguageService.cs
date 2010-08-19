@@ -173,7 +173,7 @@ namespace Demo
                             //Console.Write(result);
 
                             for (string line = reader.ReadLine(); !String.IsNullOrEmpty(line); line = reader.ReadLine()) {
-                              // each line is of the form: "x,y,w,z:arbitrary text"
+                              // each line is of the form: "x,y,w,z:arbitrary text"                              
                               string[] numbersAndText = line.Split(':');
                               if (numbersAndText.Length != 2) {
                                 AddErrorBecauseOfToolProblems(req, "Couldn't find colon in '" + line + "'");
