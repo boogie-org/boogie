@@ -89,9 +89,13 @@ object PrintProgram {
       }
     case w @ WhileStmt(guard, _, _, lkch, body) =>
       print("while ("); Expr(guard); println(")")
-      for (inv <- w.Invs) {
+      for (inv <- w.oldInvs) {
         Spaces(indent+2)
         print("invariant "); Expr(inv); println(Semi)
+      }
+      for (inv <- w.newInvs) {
+        Spaces(indent+2)
+        print("invariant "); Expr(inv); print(" // refined"); println(Semi)
       }
       for (l <- lkch) {
         Spaces(indent+2)
@@ -102,10 +106,8 @@ object PrintProgram {
       Expr(lhs); print(" := "); Rhs(rhs); println(Semi)
     case FieldUpdate(lhs,rhs) =>
       Expr(lhs); print(" := "); Rhs(rhs); println(Semi)
-    case LocalVar(id,t,c,g,rhs) =>
-      if (g) print("ghost ")
-      if (c) print("const ") else print("var ")
-      print(id + ": " + t.FullName)
+    case LocalVar(v,rhs) =>
+      print(v + ": " + v.t.FullName)
       rhs match { case None => case Some(rhs) => print(" := "); Rhs(rhs) }
       println(Semi)
     case SpecStmt(lhs, locals, pre, post) =>

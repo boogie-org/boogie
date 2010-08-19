@@ -256,7 +256,7 @@ class Parser extends StandardTokenParsers {
     | idTypeOpt ~ (":=" ~> Rhs ?) <~ Semi ^^ {
         case (id,optT) ~ rhs =>
           currentLocalVariables = currentLocalVariables + id.v
-          LocalVar(id.v,
+          val v = Variable(id.v,
                    optT match {
                      case Some(t) => t
                      case None =>
@@ -267,8 +267,8 @@ class Parser extends StandardTokenParsers {
                          case Some(x:BinaryExpr) if x.ResultType != null => new Type(x.ResultType);
                          case _ => Type("int", Nil)
                        }
-                   },
-                   const, ghost, rhs) }
+                   }, ghost, const)
+          LocalVar(v, rhs) }
     )
   def ifStmtThen: Parser[IfStmt] =
     "(" ~> expression ~ ")" ~ blockStatement ~ ("else" ~> ifStmtElse ?) ^^ {

@@ -190,10 +190,25 @@ sealed abstract class Refinement(id: String) extends Callable(id) {
 case class MethodTransform(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], trans: Transform) extends Refinement(id) {
   var body = null:List[Statement];
   def Spec = {assert(refines != null); refines.Spec ++ spec}
-  def Body = {assert(body != null); body}   // TODO: get rid of refinement blocks (that is make sure variables match)
+  def Body = {
+    assert(body != null);
+    // make sure the body appears as if it is from a normal method
+    def concretize(ss: List[Statement]): List[Statement] = ss flatMap {
+      case r @ RefinementBlock(con, abs) =>
+        con :::
+        (for ((a,c) <- (r.during._1 zip r.during._2)) yield LocalVar(a, Some(new VariableExpr(c))))
+      case BlockStmt(ss) => List(BlockStmt(concretize(ss)))
+      case IfStmt(guard, BlockStmt(thn), None) => List(IfStmt(guard, BlockStmt(concretize(thn)), None))
+      case IfStmt(guard, BlockStmt(thn), Some(els)) => List(IfStmt(guard, BlockStmt(concretize(thn)), Some(BlockStmt(concretize(List(els))))))
+      case WhileStmt(guard, oi, ni, lks, BlockStmt(ss)) => List(WhileStmt(guard, oi ++ ni, Nil, lks, BlockStmt(concretize(ss))))
+      case s => List(s)
+    }
+    concretize(body)
+  }
   def Ins = {assert(refines != null); refines.Ins}
   def Outs = {assert(refines != null); refines.Outs ++ outs.drop(refines.Outs.size)}
 }
+
 sealed abstract class Transform extends ASTNode
 /** Pattern matching within a block (zero or more) over deterministic statements */
 case class BlockPat() extends Transform {
@@ -226,7 +241,14 @@ case class SeqPat(pats: List[Transform]) extends Transform {
 }
 case class RefinementBlock(con: List[Statement], abs: List[Statement]) extends Statement {
   if (con.size > 0) pos = con.first.pos;
-  var locals: List[Variable] = null;
+  // existing local variables before the block
+  var before: List[Variable] = null;
+  // shared declared local variables
+  lazy val during: (List[Variable], List[Variable]) = {
+    val a = for (v <- abs.flatMap(s => s.Declares)) yield v;
+    val c = for (v <- a) yield con.flatMap(s => s.Declares).find(_ == v).get
+    (a,c)
+  }         
   override def Declares = con flatMap {_.Declares}
 }
 
@@ -257,8 +279,7 @@ case class Assign(lhs: VariableExpr, rhs: RValue) extends Statement {
   override def Targets = if (lhs.v != null) Set(lhs.v) else Set()
 }
 case class FieldUpdate(lhs: MemberAccess, rhs: RValue) extends Statement
-case class LocalVar(id: String, t: Type, const: Boolean, ghost: Boolean, rhs: Option[RValue]) extends Statement {
-  val v = new Variable(id, t, ghost, const);
+case class LocalVar(v: Variable, rhs: Option[RValue]) extends Statement {
   override def Declares = List(v)
   override def Targets = rhs match {case None => Set(); case Some(_) => Set(v)}
 }
@@ -520,7 +541,7 @@ case class CallState(token: Expression, obj: Expression, id: String, args: List[
 
 object AST {
   /**
-   * Flattens sequences of transforms and merges consecutive blocks
+   * Flattens sequences of transforms and merges consecutive block patterns
    */
   def normalize(trans: Transform): Transform = trans match {
     case IfPat(thn, Some(els)) => IfPat(normalize(thn), Some(normalize(els)))
@@ -548,7 +569,7 @@ object AST {
   /**
    * Matches a proper block to a transform.
    * Effects: some statements might be replaced by refinements blocks; Loops might have new invariants.
-   * Requires: in transform, a sequence pattern should not contain a sequence pattern.
+   * Requires: transform is normalized
    */
   def refine:(List[Statement], Transform) => TransformMatch = {
     // order is important!

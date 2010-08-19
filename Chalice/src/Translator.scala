@@ -347,7 +347,7 @@ class Translator {
           DefinePreInitialState :::
           Inhale(Preconditions(mt.Spec), "precondition") :::
           DefineInitialState :::
-          translateStatements(mt.Body) :::
+          translateStatements(mt.body) :::
           Exhale(Postconditions(mt.refines.Spec) map {p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}, "postcondition") :::
           tag(
             Exhale(Postconditions(mt.spec) map {p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}, "refinement postcondition"),
@@ -1040,10 +1040,9 @@ class Translator {
     val conGlobals = etran.FreshGlobals("concrete")
     val conTran = new ExpressionTranslator(conGlobals map {v => new VarExpr(v)}, etran.oldEtran.Globals, currentClass);
     // shared locals before block (excluding immutable)
-    val before = for (v <- r.locals; if (! v.isImmutable)) yield v;
+    val before = for (v <- r.before; if (! v.isImmutable)) yield v;
     // shared locals in block
-    val duringA = for (v <- r.abs.flatMap(s => s.Declares)) yield v;
-    val duringC = for (v <- duringA) yield r.con.flatMap(s => s.Declares).find(_ == v).get
+    val (duringA, duringC) = r.during;
     // save locals before (to restore for abstract block)
     val beforeV = for (v <- before) yield new Variable(v.id, v.t)
     // save locals after (to compare with abstract block)

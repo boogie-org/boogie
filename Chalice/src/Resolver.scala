@@ -291,14 +291,14 @@ object Resolver {
    case BlockStmt(ss) =>
      var ctx = context
      for (s <- ss) s match {
-       case l @ LocalVar(id, t, c, g, rhs) =>
-         ResolveType(l.v.t, ctx)
+       case l @ LocalVar(v, rhs) =>
+         ResolveType(v.t, ctx)
          val oldCtx = ctx
-         ctx = ctx.AddVariable(l.v)
+         ctx = ctx.AddVariable(v)
          rhs match {
            case None =>
            case Some(rhs) =>
-             val lhs = VariableExpr(id)
+             val lhs = VariableExpr(v.id)
              lhs.pos = l.pos;
              ResolveExpr(lhs, ctx, false, false)(false)
              ResolveAssign(lhs, rhs, oldCtx)
@@ -1097,7 +1097,7 @@ object Resolver {
        s match {
          case r @ RefinementBlock(c, a) =>
            // abstract globals available at this point in the program
-           r.locals = locals
+           r.before = locals
            ResolveStmt(BlockStmt(c), ctx)
            val vs = c flatMap {s => s.Declares};
            for (v <- a flatMap {s => s.Declares}; if (! vs.contains(v)))

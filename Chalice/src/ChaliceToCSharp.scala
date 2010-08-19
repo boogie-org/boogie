@@ -106,9 +106,9 @@ class ChaliceToCSharp {
       case BlockStmt(ss) => indent + "{" + nl + (indentMore { rep(ss map convertStatement) }) + indent + "}" + nl
       case IfStmt(guard, thn, els) => indent + "if (" + convertExpression(guard) + ")" + nl + convertStatement(thn) + 
         (if(els.isDefined) (indent + "else" + nl + convertStatement(els.get)) else { "" }) + nl
-      case LocalVar(id, tp, const, ghost, rhs) =>
-        indent + convertType(tp) + " " + id + " = " +
-        (if(rhs.isDefined) convertExpression(rhs.get) else defaultValue(tp)) + 
+      case LocalVar(v, rhs) =>
+        indent + convertType(v.t) + " " + v.id + " = " +
+        (if(rhs.isDefined) convertExpression(rhs.get) else defaultValue(v.t)) + 
         ";" + nl
       case FieldUpdate(MemberAccess(target, f), rhs) =>
         indent + convertExpression(target) + "." + f + " = " + convertExpression(rhs) + ";" + nl

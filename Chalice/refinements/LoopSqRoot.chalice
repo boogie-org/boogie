@@ -27,25 +27,17 @@ class A1 refines A0 {
     }
   }
 }
-/*
-  method compute2(n: int) returns (x: int)
-    requires n >= 0;
-  { 
-    var l := 0;
-    var r := n + 1;
-    while (l + 1 != r)
-      invariant l >= 0 && r > l;
-      invariant l*l <= n && n < r*r;
-    {
-      var p [2*p <= l+r && l+r < 2*(p+1)];
-      assert l < p && p < r;
-      if (p*p <= n) {
-        l := p;
-      } else {
-        r := p;
+
+class A2 refines A1 {
+  transforms sqroot(n) returns (x)
+  {
+    _
+    while {
+      replaces k by {
+        var k [2*k <= l+r && l+r < 2*(k+1)]        
       }
+      *
     }
-    // no need to reverify
+    _
   }
 }
-*/
