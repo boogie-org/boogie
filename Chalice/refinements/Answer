@@ -19,3 +19,6 @@ Boogie program verifier finished with 10 verified, 0 errors
 Processing TestRefines.chalice
 
 Boogie program verifier finished with 9 verified, 0 errors
+Processing RecFiniteDiff.chalice
+
+Boogie program verifier finished with 9 verified, 0 errors

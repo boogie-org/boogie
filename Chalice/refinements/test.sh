@@ -7,6 +7,7 @@ TESTS="
   SumCubes.chalice
   TestTransform.chalice
   TestRefines.chalice
+  RecFiniteDiff.chalice
 "
 if [ -f Output ]
 then
