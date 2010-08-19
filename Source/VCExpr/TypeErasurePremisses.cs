@@ -72,7 +72,7 @@ void ObjectInvariant()
     // constructor to allow cloning
     [NotDelayed]
     internal TypeAxiomBuilderPremisses(TypeAxiomBuilderPremisses builder)
-      : base(builder) {//TODO: Possible troublespot
+      : base(builder) {
       Contract.Requires(builder != null);
       TypeFunction = builder.TypeFunction;
       Typed2UntypedFunctions =
@@ -321,6 +321,7 @@ Contract.Requires(cce.NonNullElements(extractors));
 
     // Globally defined functions
     private readonly IDictionary<Function/*!*/, UntypedFunction/*!*/>/*!*/ Typed2UntypedFunctions; 
+    [ContractInvariantMethod]
 void Typed2UntypedFunctionsInvariantMethod(){
 Contract.Invariant(cce.NonNullElements(Typed2UntypedFunctions));} 
 
