@@ -35,7 +35,8 @@ class Cube2 refines Cube1 {
     ensures x == (n+1)*(n+1);   
   { 
     if {
-      _; x := 1;
+      _
+      x := 1;
     } else {
       replaces v1, w1 by {
         call v1,w1,x1 := compute(n-1);

@@ -1,0 +1,61 @@
+class Cube0 {
+  method compute(n) 
+    requires n >= 0;   
+  {
+    var v [v == n*n*n];
+  }
+}
+
+class Cube1 refines Cube0 {
+  transforms compute(n) 
+  {
+    replaces v by {
+      var i := 0;
+      var v := 0;
+      while (i < n) 
+        invariant i <= n
+        invariant v == i * i * i
+      {
+        i := i + 1;
+        var v [v == i * i * i];
+      }
+    }
+  }
+}
+
+class Cube2 refines Cube1 {
+  transforms compute(n) 
+  {
+    _    
+    var w := 1;
+    while 
+      invariant w == (i+1)*(i+1)*(i+1) - i*i*i
+    {
+      _
+      replaces v by {        
+        v := v + w;
+        var w [w == (i+1)*(i+1)*(i+1) - i*i*i];
+      }      
+    }
+    _
+  }
+}
+
+class Cube3 refines Cube2 {
+  transforms compute(n)
+  {
+    _    
+    var x := 0;
+    while    
+      invariant x == i*i 
+    {
+      _
+      replaces w by {        
+        x := x + 2*i - 1;      
+        w := 3*x + 3*i + 1;
+      } 
+    }
+    _
+  }
+}
+

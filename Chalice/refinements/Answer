@@ -22,3 +22,10 @@ Boogie program verifier finished with 9 verified, 0 errors
 Processing RecFiniteDiff.chalice
 
 Boogie program verifier finished with 9 verified, 0 errors
+Processing LoopFiniteDiff.chalice
+
+Boogie program verifier finished with 12 verified, 0 errors
+Processing Pick.chalice
+  26.25: Sequence index might be larger than or equal to the length of the sequence.
+
+Boogie program verifier finished with 11 verified, 1 error

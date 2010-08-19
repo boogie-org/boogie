@@ -95,7 +95,7 @@ object PrintProgram {
       }
       for (inv <- w.newInvs) {
         Spaces(indent+2)
-        print("invariant "); Expr(inv); print(" // refined"); println(Semi)
+        print("invariant "); Expr(inv); print(Semi); println(" // refined");
       }
       for (l <- lkch) {
         Spaces(indent+2)

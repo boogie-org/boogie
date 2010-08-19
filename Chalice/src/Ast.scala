@@ -241,9 +241,9 @@ case class SeqPat(pats: List[Transform]) extends Transform {
 }
 case class RefinementBlock(con: List[Statement], abs: List[Statement]) extends Statement {
   if (con.size > 0) pos = con.first.pos;
-  // existing local variables before the block
+  // local variables in context at the beginning of the block
   var before: List[Variable] = null;
-  // shared declared local variables
+  // shared declared local variables (mapping between abstract and concrete)
   lazy val during: (List[Variable], List[Variable]) = {
     val a = for (v <- abs.flatMap(s => s.Declares)) yield v;
     val c = for (v <- a) yield con.flatMap(s => s.Declares).find(_ == v).get
@@ -266,7 +266,7 @@ case class BlockStmt(ss: List[Statement]) extends Statement {
   override def Targets = (ss :\ Set[Variable]()) { (s, vars) => vars ++ s.Targets}
 }
 case class IfStmt(guard: Expression, thn: BlockStmt, els: Option[Statement]) extends Statement {
-  override def Targets = thn.Targets ++ (els match {case None => Set(); case Some(els) => els.Targets}) 
+  override def Targets = thn.Targets ++ (els match {case None => Set(); case Some(els) => els.Targets})
 }
 case class WhileStmt(guard: Expression,
                      oldInvs: List[Expression], newInvs: List[Expression], lkch: List[Expression], 
@@ -552,7 +552,7 @@ object AST {
         case x => List(x)
       }}
       def noTwoBlocks: List[Transform] => List[Transform] = {
-        case BlockPat() :: BlockPat() :: l => noTwoBlocks(BlockPat() :: l)
+        case BlockPat() :: (bp @ BlockPat()) :: l => noTwoBlocks(bp :: l)
         case x :: l => x :: noTwoBlocks(l)
         case Nil => Nil
       }

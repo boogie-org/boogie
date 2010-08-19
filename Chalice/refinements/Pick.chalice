@@ -1,0 +1,28 @@
+class Pick0 {
+  method pick(s: seq<int>) returns (x)
+    requires |s| > 0;
+  {
+    var x [x in s]
+  }
+}
+
+class Pick1 refines Pick0 {
+  transforms pick(s: seq<int>) returns (x)
+  {
+    replaces x by {x := s[0]}
+  }
+}
+
+class Pick2 refines Pick0 {
+  transforms pick(s: seq<int>) returns (x)
+  {
+    replaces * by {x := s[|s|-1]}
+  }
+}
+
+class Pick3 refines Pick0 {
+  transforms pick(s: seq<int>) returns (x)
+  {
+    replaces x by {x := s[1]}
+  }
+}
