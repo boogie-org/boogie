@@ -164,14 +164,14 @@ case class Function(id: String, ins: List[Variable], out: Type, spec: List[Speci
 case class Condition(id: String, where: Option[Expression]) extends NamedMember(id)
 case class Variable(id: String, t: Type, isGhost: Boolean, isImmutable: Boolean) extends ASTNode {
   val UniqueName = {
-    val n = Variable.VariableCount
-    Variable.VariableCount = Variable.VariableCount + 1
+    val n = S_Variable.VariableCount
+    S_Variable.VariableCount = S_Variable.VariableCount + 1
     id + "#" + n
   }
   def this(name: String, typ: Type) = this(name,typ,false,false);
   override def toString = (if (isGhost) "ghost " else "") + (if (isImmutable) "const " else "var ") + id;
 }
-object Variable { var VariableCount = 0 }
+object S_Variable { var VariableCount = 0 }
 case class SpecialVariable(name: String, typ: Type) extends Variable(name, typ, false, false) {
   override val UniqueName = name
 }

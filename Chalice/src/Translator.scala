@@ -14,20 +14,8 @@ import Boogie.Proc, Boogie.NamedType, Boogie.NewBVar, Boogie.Havoc, Boogie.Stmt,
 
 case class ErrorMessage(pos: Position, message: String)
 
-object TranslationOptions {
-  // note: the initial values should match those Chalice.scala
-
-  var defaults = 0: Int;
-  var autoFold = false: Boolean;
-  var checkLeaks = false: Boolean;
-  var autoMagic = false: Boolean;
-  var skipDeadlockChecks = false: Boolean;
-  var skipTermination = false: Boolean;
-}
-
 class Translator {
   import TranslationHelper._;
-  import TranslationOptions._;
   var currentClass = null: Class;
   var modules = Nil: List[String]
   var etran = new ExpressionTranslator(null);
@@ -103,7 +91,7 @@ class Translator {
         Havoc(etran.Heap) ::
         // check that invariant is well-defined
         etran.WhereOldIs(h1, m1, c1).Inhale(invs map { mi => mi.e}, "monitor invariant", true) :::
-        (if (!checkLeaks || invs.length == 0) Nil else
+        (if (! Chalice.checkLeaks || invs.length == 0) Nil else
           // check that there are no loops among .mu permissions in monitors
           // !CanWrite[this,mu]
           bassert(!etran.CanWrite(VarExpr("this"), "mu"), invs(0).pos, "Monitor invariant is not allowed to hold write permission to this.mu") ::
@@ -130,7 +118,7 @@ class Translator {
 
   def translateFunction(f: Function): List[Decl] = {
     val myresult = BVar("result", f.out.typ);
-    etran = etran.CheckTermination(!skipTermination);
+    etran = etran.CheckTermination(! Chalice.skipTermination);
     val checkBody = f.definition match {case Some(e) => isDefined(e); case None => Nil};
     etran = etran.CheckTermination(false);
     // Boogie function that represents the Chalice function
@@ -143,13 +131,13 @@ class Translator {
       DefaultPrecondition(),
       DefinePreInitialState :::
       // check definedness of the precondition
-      InhaleWithChecking(Preconditions(f.spec) map { p => (if(0<defaults) UnfoldPredicatesWithReceiverThis(p) else p)}, "precondition") :::
+      InhaleWithChecking(Preconditions(f.spec) map { p => (if(0 < Chalice.defaults) UnfoldPredicatesWithReceiverThis(p) else p)}, "precondition") :::
       bassume(CurrentModule ==@ VarExpr(ModuleName(currentClass))) :: // verify the body assuming that you are in the module
       // check definedness of function body
       checkBody :::
       (f.definition match {case Some(e) => BLocal(myresult) :: (Boogie.VarExpr("result") := etran.Tr(e)); case None => Nil}) :::
       // check that postcondition holds
-      ExhaleWithChecking(Postconditions(f.spec) map { post => ((if(0<defaults) UnfoldPredicatesWithReceiverThis(post) else post),
+      ExhaleWithChecking(Postconditions(f.spec) map { post => ((if(0 < Chalice.defaults) UnfoldPredicatesWithReceiverThis(post) else post),
               ErrorMessage(f.pos, "Postcondition at " + post.pos + " might not hold."))}, "function postcondition")) ::
     // definition axiom
     (if (f.definition.isDefined) definitionAxiom(f) else Nil) :::
@@ -322,11 +310,11 @@ class Translator {
         bassume(CurrentModule ==@ Boogie.VarExpr(ModuleName(currentClass))) ::
         bassume(CanAssumeFunctionDefs) ::
         DefinePreInitialState :::
-        Inhale(Preconditions(method.spec) map { p => (if(0<defaults) UnfoldPredicatesWithReceiverThis(p) else p)}, "precondition") :::
+        Inhale(Preconditions(method.spec) map { p => (if(0 < Chalice.defaults) UnfoldPredicatesWithReceiverThis(p) else p)}, "precondition") :::
         DefineInitialState :::
         translateStatements(method.body) :::
-        Exhale(Postconditions(method.spec) map { p => ((if(0<defaults) UnfoldPredicatesWithReceiverThis(p) else p), ErrorMessage(method.pos, "The postcondition at " + p.pos + " might not hold."))}, "postcondition") :::
-        (if(checkLeaks) isLeaking(method.pos, "Method " + method.FullName + " might leak references.") else Nil) :::
+        Exhale(Postconditions(method.spec) map { p => ((if(0 < Chalice.defaults) UnfoldPredicatesWithReceiverThis(p) else p), ErrorMessage(method.pos, "The postcondition at " + p.pos + " might not hold."))}, "postcondition") :::
+        (if(Chalice.checkLeaks) isLeaking(method.pos, "Method " + method.FullName + " might leak references.") else Nil) :::
         bassert(LockFrame(LockChanges(method.spec), etran), method.pos, "Method might lock/unlock more than allowed.") :::
         bassert(DebtCheck, method.pos, "Method body is not allowed to leave any debt."))
   }
@@ -354,13 +342,18 @@ class Translator {
       mt.Outs map {i => Variable2BVarWhere(i)},
       GlobalNames,
       DefaultPrecondition(),
-        bassume(CurrentModule ==@ Boogie.VarExpr(ModuleName(currentClass))) ::
-        bassume(CanAssumeFunctionDefs) ::
-        DefinePreInitialState :::
-        Inhale(Preconditions(mt.Spec), "precondition") :::
-        DefineInitialState :::
-        translateStatements(mt.Body) :::
-        Exhale(Postconditions(mt.Spec) map { p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}, "postcondition")
+        assert2assume {
+          bassume(CurrentModule ==@ Boogie.VarExpr(ModuleName(currentClass))) ::
+          bassume(CanAssumeFunctionDefs) ::
+          DefinePreInitialState :::
+          Inhale(Preconditions(mt.Spec), "precondition") :::
+          DefineInitialState :::
+          translateStatements(mt.Body) :::
+          Exhale(Postconditions(mt.refines.Spec) map {p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}, "postcondition") :::
+          tag(
+            Exhale(Postconditions(mt.spec) map {p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}, "refinement postcondition"),
+            keepTag)
+        }
       )
   }
 
@@ -826,7 +819,7 @@ class Translator {
     val (lastAcquireVar, lastAcquire) = Boogie.NewBVar("lastAcquire", IntClass, true)
     val (lastSeenHeldV, lastSeenHeld) = Boogie.NewBVar("lastSeenHeld", tint, true)
     val (lastSeenMuV, lastSeenMu) = Boogie.NewBVar("lastSeenMu", tmu, true)
-    (if (skipDeadlockChecks)
+    (if (Chalice.skipDeadlockChecks)
        bassume(CanRead(o, "mu")) ::
        bassume(etran.MaxLockIsBelowX(etran.Heap.select(o,"mu")))
      else
@@ -1065,22 +1058,23 @@ class Translator {
     // run concrete C on the fresh heap
     {
       etran = conTran;
-      Comment("run concrete program") ::
+      Comment("run concrete program:") ::
       translateStatements(r.con)
     } :::
     // run angelically A on the old heap
-    Comment("run abstract program") ::
-    {r.abs match {
+    Comment("run abstract program:") ::
+    { etran = absTran;
+    r.abs match {
       case List(s: SpecStmt) =>
-        etran = absTran;
-        Comment("witness declared local variables") ::
-        (for (v <- duringA) yield BLocal(Variable2BVarWhere(v))) :::
-        (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
-        bassert(s.post, r.pos, "Refinement fails to satisfy specification statement post-condition") ::
-        (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
-          bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable not in frame of the specification statement: " + v.id))        
+        tag(
+          Comment("witness declared local variables") ::
+          (for (v <- duringA) yield BLocal(Variable2BVarWhere(v))) :::
+          (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
+          bassert(s.post, r.pos, "Refinement fails to satisfy specification statement post-condition") ::
+          (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
+             bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable not in frame of the specification statement: " + v.id)),
+          keepTag)
       case _ =>
-        etran = absTran;
         Comment("save locals after") ::
         (for (v <- afterV) yield BLocal(Variable2BVarWhere(v))) :::
         (for ((v, w) <- afterV zip before) yield (new VariableExpr(v) := new VariableExpr(w))) :::
@@ -1088,13 +1082,15 @@ class Translator {
         (for ((v, w) <- before zip beforeV) yield (new VariableExpr(v) := new VariableExpr(w))) :::
         translateStatements(r.abs) :::
         Comment("assert equality on shared locals") ::
-        (for ((v, w) <- afterV zip before) yield
-          bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce different value for pre-state local variable: " + v.id)) :::
-        (for ((v, w) <- duringA zip duringC) yield
-          bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce different value for a declared local variable: " + v.id))
+        tag(
+          (for ((v, w) <- afterV zip before) yield
+            bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce different value for pre-state local variable: " + v.id)) :::
+          (for ((v, w) <- duringA zip duringC) yield
+            bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce different value for a declared local variable: " + v.id)),
+          keepTag)
     }} :::
     Comment("end of refinement block")
-    // TODO: global coupling: assert coupling invariants for locations with positive
+    // TODO: global coupling: assert coupling invariants for locations with positive, preserve permissions?
   }
 
 
@@ -1168,7 +1164,7 @@ class Translator {
   }
 
   def isLeaking(pos: Position, msg: String): List[Boogie.Stmt] = {
-    if(checkLeaks) {
+    if(Chalice.checkLeaks) {
       var o = Boogie.VarExpr("$o");
       var f = "$f";
       val (ttV,tt) = Boogie.NewTVar("T")
@@ -1297,7 +1293,6 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   assert(preGlobals.size == 3)
 
   import TranslationHelper._
-  import TranslationOptions._
 
   val Heap = globals(0);
   val Mask = globals(1);
@@ -1810,7 +1805,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
                  bassert(nonNull(Tr(e.e)), error.pos, error.message + " The target of the acc predicate at " + acc.pos + " might be null.") else Nil) :::
       BLocal(fractionV) :: (frac := Tr(fraction)) ::
       // if the mask does not contain sufficient permissions, try folding acc(e, fraction)
-      (if(e.isPredicate && autoFold && (perm == Full || canTakeFractionOf(DefinitionOf(e.predicate)))) {
+      (if(e.isPredicate && Chalice.autoFold && (perm == Full || canTakeFractionOf(DefinitionOf(e.predicate)))) {
          val inhaleTran = new ExpressionTranslator(List(Heap, em, Credits), currentClass);
          val sourceVar = new Variable("fraction", new Type(IntClass));
          val bplVar = Variable2BVar(sourceVar);
@@ -1843,7 +1838,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         dfP else Nil) :::
       BLocal(epsilonsV) :: (if(epsilons!=null) (eps := Tr(epsilons)) :: Nil else Nil) :::
       // if the mask does not contain sufficient permissions, try folding rdacc(e, epsilons)
-      (if(e.isPredicate && autoFold && canTakeEpsilonsOf(DefinitionOf(e.predicate)) && epsilons!=null) {
+      (if(e.isPredicate && Chalice.autoFold && canTakeEpsilonsOf(DefinitionOf(e.predicate)) && epsilons!=null) {
           val inhaleTran = new ExpressionTranslator(List(Heap, em, Credits), currentClass);
           val sourceVar = new Variable("epsilons", new Type(IntClass));
           val bplVar = Variable2BVar(sourceVar);
@@ -2198,7 +2193,7 @@ object TranslationHelper {
   def PredicateField(f: String) = FunctionApp("PredicateField", List(VarExpr(f)))
   def cast(a: Expr, b: Expr) = FunctionApp("cast", List(a, b))
 
-  // Sequences
+  // sequences
 
   def createEmptySeq = FunctionApp("Seq#Empty", List())
   def createSingletonSeq(e: Expr) = FunctionApp("Seq#Singleton", List(e)) 
@@ -2326,7 +2321,7 @@ object TranslationHelper {
     val result = spec flatMap ( s => s match {
       case Precondition(e) => List(e)
       case _ => Nil });
-    if(autoMagic) {
+    if(Chalice.autoMagic) {
       automagic(result.foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b)}), Nil)._1 ::: result
     } else {
       result
@@ -2336,7 +2331,7 @@ object TranslationHelper {
     val result = spec flatMap ( s => s match {
       case Postcondition(e) => List(e)
       case _ => Nil })
-    if(autoMagic) {
+    if(Chalice.autoMagic) {
       automagic(result.foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b)}), Nil)._1 ::: result
     } else {
       result
@@ -2422,7 +2417,7 @@ object TranslationHelper {
   }
 
   def DefinitionOf(predicate: Predicate): Expression = {
-    if(autoMagic) {
+    if(Chalice.autoMagic) {
       And(automagic(predicate.definition, Nil)._1.foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b)}), predicate.definition)
     } else {
       predicate.definition
@@ -2561,5 +2556,26 @@ object TranslationHelper {
       case _ => None;
     }
   }
+
+  val keepTag = Boogie.Tag("keep")
+  // Assume the only composite statement is If
+  def tag(l: List[Stmt], t: Boogie.Tag):List[Stmt] =
+    for (s <- l) yield {
+      s.tags = t :: s.tags;
+      s match {
+        case Boogie.If(_, thn, els) => tag(thn, t); tag(els, t);
+        case _ => 
+      }
+      s
+    }
+  // Assume the only composite statement is If
+  def assert2assume(l: List[Stmt]):List[Stmt] =
+    if (Chalice.noFreeAssume) l else
+      l flatMap {
+        case Boogie.If(guard, thn, els) => Boogie.If(guard, assert2assume(thn), assert2assume(els))
+        case ba @ Boogie.Assert(e) =>
+          if (ba.tags contains keepTag) ba else Comment(" assert " + ba.pos + ": " + ba.message) :: Boogie.Assume(e)
+        case s => s
+      }
 }
 }

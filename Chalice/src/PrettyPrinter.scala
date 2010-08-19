@@ -75,8 +75,9 @@ object PrintProgram {
     case BlockStmt(ss) =>
       PrintBlockStmt(ss, indent); println
     case RefinementBlock(ss, old) =>
-      println("// begin of refinement block")
-      for (s <- old) {Spaces(indent); print("// "); Stmt(s, indent)}
+      println("/* begin of refinement block")
+      for (s <- old) {Spaces(indent); Stmt(s, indent)}
+      Spaces(indent); println("end of abstract code */")
       for (s <- ss) {Spaces(indent); Stmt(s, indent)}
       Spaces(indent); println("// end of refinement block")
     case IfStmt(guard, BlockStmt(thn), els) =>

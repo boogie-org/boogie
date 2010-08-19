@@ -21,8 +21,10 @@ object Boogie {
  case class NamedType(s: String) extends BType
  case class IndexedType(id: String, t: BType) extends BType
 
+ case class Tag(s: String)
  sealed abstract class Stmt {
    def Locals = List[BVar]()
+   var tags: List[Tag] = Nil
  }
  case class Comment(comment: String) extends Stmt
  case class Assert(e: Expr) extends Stmt {
@@ -113,15 +115,15 @@ object Boogie {
  case class BVar(id: String, t: BType) {
    def this(id: String, t: BType, uniquifyName: Boolean) =
      this(if (uniquifyName) {
-            val n = BVar.VariableCount
-            BVar.VariableCount = BVar.VariableCount + 1
+            val n = S_BVar.VariableCount
+            S_BVar.VariableCount = S_BVar.VariableCount + 1
             id + "#_" + n
           } else {
             id
           }, t)
    val where: Expr = null
  }
- object BVar { var VariableCount = 0 }
+ object S_BVar { var VariableCount = 0 }
  def NewBVar(id: String, t: BType, uniquifyName: Boolean) = {
    val v = new Boogie.BVar(id, t, uniquifyName)
    val e = new Boogie.VarExpr(v)
@@ -130,25 +132,23 @@ object Boogie {
  case class TVar(id: String) {
    def this(id: String, uniquifyName: Boolean) =
      this(if (uniquifyName) {
-            val n = TVar.VariableCount
-            TVar.VariableCount = TVar.VariableCount + 1
+            val n = S_TVar.VariableCount
+            S_TVar.VariableCount = S_TVar.VariableCount + 1
             id + "#_" + n
           } else {
             id
           })
    val where: Expr = null
  }
- object TVar { var VariableCount = 0 }
+ object S_TVar { var VariableCount = 0 }
  def NewTVar(id: String) = {
    val v = new Boogie.TVar(id, true)
    val e = new Boogie.NamedType(v.id)
    (v,e)
  }
 
- var vsMode = false;  // global variable settable from outside the class (non-ideal design)
-
  // def out(s: String) = Console.out.print(s)
- var indentLevel = 1
+ private var indentLevel = 1
  def indent: String = {
    def doIndent(i: Int): String = {
      if(i==0) { "" } else { "  " + doIndent(i-1) }
@@ -163,7 +163,7 @@ object Boogie {
    indentLevel = prev
    result
  }
- def nl = System.getProperty("line.separator");
+ private val nl = System.getProperty("line.separator");
  
  def Print[T](list: List[T], sep: String, p: T => String): String = list match {
    case Nil => ""
@@ -207,7 +207,7 @@ object Boogie {
  def PrintStmt(s: Stmt): String = s match {
    case Comment(msg) => indent +  "// " +  msg + nl
    case assert@Assert(e) =>
-     val pos = if (vsMode) {
+     val pos = if (Chalice.vsMode) {
        val r = assert.pos.line - 1;
        val c = assert.pos.column - 1;
        r + "," + c + "," + r + "," + (c+5) + ":"

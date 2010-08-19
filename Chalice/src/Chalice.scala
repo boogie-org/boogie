@@ -12,12 +12,32 @@ import scala.util.parsing.input.Position
 import collection.mutable.ListBuffer
 
 object Chalice {
- def main(args: Array[String]): Unit = {
-   var boogiePath = "C:\\boogie\\Binaries\\Boogie.exe"
-   val inputs = new ListBuffer[String]()
-   var printProgram = false
-   var vsMode = false;
-   def ReportError(pos: Position, msg: String) = {
+  /**
+   * Reporting options
+   */
+  private[chalice] var vsMode = false;
+
+  /**
+   * Translation options
+   */
+  // level 0 or below: no defaults
+  // level 1: unfold predicates with receiver this in pre and postconditions
+  // level 2: unfold predicates and functions with receiver this in pre and postconditions
+  // level 3 or above: level 2 + autoMagic\
+  private[chalice] var defaults = 0: Int;
+  private[chalice] var autoFold = false: Boolean;
+  private[chalice] var checkLeaks = false: Boolean;
+  private[chalice] var autoMagic = false: Boolean;
+  private[chalice] var skipDeadlockChecks = false: Boolean;
+  private[chalice] var skipTermination = false: Boolean;
+  private[chalice] var noFreeAssume = false: Boolean;
+
+  def main(args: Array[String]): Unit = {
+    var boogiePath = "C:\\boogie\\Binaries\\Boogie.exe"
+    val inputs = new ListBuffer[String]()
+    var printProgram = false
+
+    def ReportError(pos: Position, msg: String) = {
      if (vsMode) {
        val r = pos.line - 1;
        val c = pos.column - 1;
@@ -25,43 +45,34 @@ object Chalice {
      } else {
        Console.err.println(pos + ": " + msg)
      }
-   }
-   var doTypecheck = true
-   var doTranslate = true
-   var checkLeaks = false
-   // level 0 or below: no defaults
-   // level 1: unfold predicates with receiver this in pre and postconditions
-   // level 2: unfold predicates and functions with receiver this in pre and postconditions
-   // level 3 or above: level 2 + autoMagic
-   var defaults = 0
-   var autoFold = false
-   var autoMagic = false
-   var skipDeadlockChecks = false
-   var skipTermination = false;
-   var boogieArgs = " ";
-   var gen = false;
+    }
+    var doTypecheck = true
+    var doTranslate = true
+    var boogieArgs = " ";
+    var gen = false;
 
-   // closures should be idempotent
-   val options = Map(
+    // closures should be idempotent
+    val options = Map(
      "-print" -> {() => printProgram = true},
      "-noTranslate" -> {() => doTranslate = false},
      "-noTypecheck"-> {() => doTypecheck = false},
      "-vs" -> {() => vsMode = true},
      "-checkLeaks" -> {() => checkLeaks = true},
      "-noDeadlockChecks" -> {() => skipDeadlockChecks = true},
-     "-noTermination" -> {() => skipTermination = true}, 
+     "-noTermination" -> {() => skipTermination = true},
      "-defaults" -> {() => defaults = 3},
      "-gen" -> {() => gen = true},
      "-autoFold" -> {() => autoFold = true},
-     "-autoMagic"-> {() => autoMagic = true}
-   )
-   lazy val help = options.keys.foldLeft("syntax: chalice")((s, o) => s + " [" + o + "]") +
-   " [-boogie:path]" +
-   " [-defaults:int]" +
-   " [<boogie option>]*" +
-   " <file.chalice>*";
+     "-autoMagic"-> {() => autoMagic = true},
+     "-noFreeAssume" -> {() => noFreeAssume = true}
+    )
+    lazy val help = options.keys.foldLeft("syntax: chalice")((s, o) => s + " [" + o + "]") +
+    " [-boogie:path]" +
+    " [-defaults:int]" +
+    " <boogie option>*" +
+    " <file.chalice>*";
 
-   for (a <- args) {
+    for (a <- args) {
      if (options contains a) options(a)()
      else if (a == "-help") {Console.out.println(help); return}
      else if (a.startsWith("-boogie:")) boogiePath = a.substring(8)
@@ -73,29 +84,30 @@ object Chalice {
      }
      else if (a.startsWith("-") || a.startsWith("/")) boogieArgs += (a + " ") // other arguments starting with "-" or "/" are sent to Boogie.exe
      else inputs += a
-   }
+    }
 
-   // check that input files exist
-   var files = for (input <- inputs.toList) yield {
+    // check that input files exist
+    var files = for (input <- inputs.toList) yield {
      val file = new File(input);
      if(! file.exists) {
-       CommandLineError("input file " + file.getName() + " could not be found", help); return
+       CommandLineError("input file " + file.getName() + " could not be found", help);
+       return
      }
      file;
-   }
+    }
 
-   // parse programs
-   val parser = new Parser();
-   val parseResults = if (files.isEmpty) {
+    // parse programs
+    val parser = new Parser();
+    val parseResults = if (files.isEmpty) {
      List(parser.parseStdin)
-   } else for (file <- files) yield {
+    } else for (file <- files) yield {
      parser.parseFile(file)
-   }
-   
-   // report errors and merge declarations
-   assert(parseResults.size > 0)
-   var parseErrors = false;
-   val program:List[TopLevelDecl] = parseResults.map(result => result match {
+    }
+
+    // report errors and merge declarations
+    assert(parseResults.size > 0)
+    var parseErrors = false;
+    val program:List[TopLevelDecl] = parseResults.map(result => result match {
      case e:parser.NoSuccess =>
        parseErrors = true;
        if (vsMode)
@@ -106,11 +118,11 @@ object Chalice {
      case parser.Success(prog, _) =>
        if (printProgram) PrintProgram.P(prog)
        prog
-   }).flatten;
-   if (parseErrors) return;
+    }).flatten;
+    if (parseErrors) return;
 
-   // typecheck program   
-   if (doTypecheck) {
+    // typecheck program
+    if (doTypecheck) {
      Resolver.Resolve(program) match {
        case Resolver.Errors(msgs) =>
          if (!vsMode) Console.err.println("The program did not typecheck.");
@@ -128,16 +140,8 @@ object Chalice {
            }
            // translate program to Boogie
            val translator = new Translator();
-           // set the translation options
-           TranslationOptions.checkLeaks = checkLeaks;
-           TranslationOptions.defaults = defaults;
-           TranslationOptions.autoFold = autoFold;
-           TranslationOptions.autoMagic = autoMagic;
-           TranslationOptions.skipDeadlockChecks = skipDeadlockChecks;
-           TranslationOptions.skipTermination = skipTermination;
            val bplProg = translator.translateProgram(program);
            // write to out.bpl
-           Boogie.vsMode = vsMode;
            val bplText = TranslatorPrelude.P + (bplProg map Boogie.Print).foldLeft(""){ (a, b) => a + b };
            val bplFilename = if (vsMode) "c:\\tmp\\out.bpl" else "out.bpl"
            writeFile(bplFilename, bplText);
@@ -179,19 +183,19 @@ object Chalice {
              writeFile("out.cs", converter.convertProgram(program));
            }
          }
-     }   
-   }
- }
+     }
+    }
+  }
 
- def writeFile(filename: String, text: String) {
+  def writeFile(filename: String, text: String) {
    val writer = new FileWriter(new File(filename));
    writer.write(text);
    writer.flush();
    writer.close();
- }
+  }
 
- def CommandLineError(msg: String, help: String) = {
+  def CommandLineError(msg: String, help: String) = {
    Console.err.println("Error: " + msg)
    Console.err.println(help);
- }   
+  }
 }
