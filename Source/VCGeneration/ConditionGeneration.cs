@@ -109,8 +109,8 @@ namespace Microsoft.Boogie {
 
   public class CounterexampleComparer : IComparer<Counterexample> {
     public int Compare(Counterexample c1, Counterexample c2) {
-      Contract.Requires(c1 != null);
-      Contract.Requires(c2 != null);
+      //Contract.Requires(c1 != null);
+      //Contract.Requires(c2 != null);
       if (c1.GetLocation() == c2.GetLocation())
         return 0;
       if (c1.GetLocation() > c2.GetLocation())

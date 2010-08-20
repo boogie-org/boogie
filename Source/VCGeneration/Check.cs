@@ -563,10 +563,10 @@ public abstract VCExpressionGenerator VCExprGen { get; }
         throw new NotImplementedException();
       }
     }
-    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler){Contract.Requires(descriptiveName != null); Contract.Requires(vc != null);Contract.Requires(handler != null);throw new NotImplementedException();}
+    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler){/*Contract.Requires(descriptiveName != null);*/ Contract.Requires(vc != null);Contract.Requires(handler != null);throw new NotImplementedException();}
     [NoDefaultContract]
     public override Outcome CheckOutcome(ErrorHandler handler){
-    Contract.Requires(handler != null);
+    //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow< UnexpectedProverOutputException>(true);
     throw new NotImplementedException();}
   }

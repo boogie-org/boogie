@@ -164,7 +164,7 @@ void ObjectInvariant()
 
     protected override void ProcessDeclaration(Declaration decl)
     {
-      Contract.Requires(decl != null);
+      //Contract.Requires(decl != null);
       for (QKeyValue a = decl.Attributes; a != null; a = a.Next) {
         if (a.Key == "prover" && a.Params.Count == 1) {
           string cmd = a.Params[0] as string;
@@ -180,11 +180,11 @@ void ObjectInvariant()
       }
     }
     
-    public override void DeclareFunction(Function f, string attributes) {Contract.Requires(f != null);
+    public override void DeclareFunction(Function f, string attributes) {//Contract.Requires(f != null);
       base.ProcessDeclaration(f);
     }
 
-    public override void DeclareConstant(Constant c, bool uniq, string attributes) {Contract.Requires(c != null);
+    public override void DeclareConstant(Constant c, bool uniq, string attributes) {//Contract.Requires(c != null);
       base.DeclareConstant(c, uniq, attributes);
       orderingAxiomBuilder.AddConstant(c);
 
@@ -195,7 +195,7 @@ void ObjectInvariant()
       }
     }
     
-    public override void AddAxiom(Axiom ax, string attributes) {Contract.Requires(ax != null);
+    public override void AddAxiom(Axiom ax, string attributes) {//Contract.Requires(ax != null);
       base.AddAxiom(ax, attributes);
 
       string ignore = ax.FindStringAttribute("ignore");
@@ -207,7 +207,7 @@ void ObjectInvariant()
     }
 
     public override void AddAxiom(VCExpr vc)
-    {Contract.Requires(vc != null);
+    {//Contract.Requires(vc != null);
       axiomConjuncts.Add(vc);
     }
 
