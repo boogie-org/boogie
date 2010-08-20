@@ -1,0 +1,503 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------
+// BoogiePL - StandardVisitor.cs
+//---------------------------------------------------------------------------------------------
+
+using System.Collections.Generic;
+
+namespace Microsoft.Boogie 
+{
+  /// <summary>
+  /// Base for all classes that process the Absy using the visitor pattern.
+  /// </summary>
+  public abstract class Visitor
+  {
+    /// <summary>
+    /// Switches on node.NodeType to call a visitor method that has been specialized for node.
+    /// </summary>
+    /// <param name="a">The Absy node to be visited.</param>
+    /// <returns> Returns null if node is null. Otherwise returns an updated node (possibly a different object).</returns>
+    public abstract Absy! Visit (Absy! node);
+    
+    /// <summary>
+    /// Transfers the state from one visitor to another. This enables separate visitor instances to cooperative process a single IR.
+    /// </summary>
+    public virtual void TransferStateTo(Visitor targetVisitor)
+    {
+    }
+
+    public virtual ExprSeq! VisitExprSeq(ExprSeq! list)
+    {
+      for( int i = 0, n = list.Length; i < n; i++)
+        list[i] = (Expr)this.Visit( (!) list[i]);
+      return list;
+    }
+  }
+
+  /// <summary>
+  /// Walks an IR, mutuating it into a new form
+  /// </summary>   
+  public abstract class StandardVisitor: Visitor
+  {
+    public Visitor callingVisitor;
+        
+    public StandardVisitor()
+    {
+    }
+    public StandardVisitor(Visitor callingVisitor)
+    {
+      this.callingVisitor = callingVisitor;
+    }
+    public override Absy! Visit (Absy! node)
+    {
+      return node.StdDispatch(this);
+    }
+    public virtual AIVariableExpr! VisitAIVariableExpr(AIVariableExpr! node)
+    {
+      return node;
+    }
+    public virtual Cmd! VisitAssertCmd(AssertCmd! node)
+    {
+      node.Expr = this.VisitExpr(node.Expr);
+      return node;
+    }
+    public virtual Cmd! VisitAssignCmd(AssignCmd! node)
+    {
+      for (int i = 0; i < node.Lhss.Count; ++i) {
+        node.Lhss[i] = (AssignLhs!)this.Visit(node.Lhss[i]);
+        node.Rhss[i] = (Expr!)this.Visit(node.Rhss[i]);
+      }
+      return node;
+    }
+    public virtual Cmd! VisitAssumeCmd(AssumeCmd! node)
+    {
+      node.Expr = this.VisitExpr(node.Expr);
+      return node;
+    }
+    public virtual AtomicRE! VisitAtomicRE(AtomicRE! node)
+    {
+      node.b = this.VisitBlock(node.b);
+      return node;
+    }
+    public virtual Axiom! VisitAxiom(Axiom! node)
+    {
+      node.Expr = this.VisitExpr(node.Expr);
+      return node;
+    }
+    public virtual Type! VisitBasicType(BasicType! node)
+    {
+      return this.VisitType(node);
+    }
+    public virtual BvConcatExpr! VisitBvConcatExpr(BvConcatExpr! node)
+    {
+      node.E0 = this.VisitExpr(node.E0);
+      node.E1 = this.VisitExpr(node.E1);
+      return node;
+    }
+    public virtual Type! VisitBvType(BvType! node)
+    {
+      return this.VisitType(node);
+    }
+    public virtual Type! VisitBvTypeProxy(BvTypeProxy! node)
+    {
+      // if the type proxy is instantiated with some more
+      // specific type, we visit the instantiation
+      if (node.ProxyFor != null)
+        return (Type)this.Visit(node.ProxyFor);
+      return this.VisitType(node);
+    }
+    public virtual Block! VisitBlock(Block! node)
+    {
+      node.Cmds = this.VisitCmdSeq(node.Cmds);
+      node.TransferCmd = (TransferCmd)this.Visit((!)node.TransferCmd);
+      return node;
+    }
+    public virtual Expr! VisitCodeExpr(CodeExpr! node)
+    {
+      node.LocVars = this.VisitVariableSeq(node.LocVars);
+      node.Blocks = this.VisitBlockList(node.Blocks);
+      return node;
+    }
+    public virtual BlockSeq! VisitBlockSeq(BlockSeq! blockSeq)
+    {
+      for (int i = 0, n = blockSeq.Length; i < n; i++)
+        blockSeq[i] = this.VisitBlock( (!)blockSeq[i]);
+      return blockSeq;
+    }
+    public virtual List<Block!>! VisitBlockList(List<Block!>! blocks)
+    {
+      for (int i = 0, n = blocks.Count; i < n; i++) {
+        blocks[i] = this.VisitBlock(blocks[i]);
+      }
+      return blocks;
+    }
+    public virtual BoundVariable! VisitBoundVariable(BoundVariable! node)
+    {
+      node = (BoundVariable) this.VisitVariable(node);
+      return node;
+    }
+    public virtual Cmd! VisitCallCmd(CallCmd! node)
+    {
+      for (int i = 0; i < node.Ins.Count; ++i)
+        if (node.Ins[i] != null)
+          node.Ins[i] = this.VisitExpr((!)node.Ins[i]);
+      for (int i = 0; i < node.Outs.Count; ++i)
+        if (node.Outs[i] != null)
+          node.Outs[i] = (IdentifierExpr)this.VisitIdentifierExpr((!)node.Outs[i]);
+      return node;
+    }
+    public virtual Cmd! VisitCallForallCmd(CallForallCmd! node)
+    {
+      List<Expr> elist = new List<Expr>(node.Ins.Count);
+      foreach (Expr arg in node.Ins) {
+        if (arg == null) {
+          elist.Add(null);
+        } else {
+          elist.Add(this.VisitExpr(arg));
+        }
+      }
+      node.Ins = elist;
+      node.Proc = this.VisitProcedure((!)node.Proc);
+      return node;
+    }
+    public virtual CmdSeq! VisitCmdSeq(CmdSeq! cmdSeq)
+    {
+      for (int i = 0, n = cmdSeq.Length; i < n; i++)
+        cmdSeq[i] = (Cmd) this.Visit( (!)cmdSeq[i]); // call general Visit so subtypes of Cmd get visited by their particular visitor
+      return cmdSeq;
+    }
+    public virtual Choice! VisitChoice(Choice! node)
+    {
+      node.rs = this.VisitRESeq(node.rs);
+      return node;
+    }
+    public virtual Cmd! VisitCommentCmd(CommentCmd! node)
+    {
+      return node;
+    }
+    public virtual Constant! VisitConstant(Constant! node)
+    {
+      return node;
+    }
+    public virtual CtorType! VisitCtorType(CtorType! node)
+    {
+      for (int i = 0; i < node.Arguments.Length; ++i)
+        node.Arguments[i] = (Type!)this.Visit(node.Arguments[i]);
+      return node;
+    }
+    public virtual Declaration! VisitDeclaration(Declaration! node)
+    {
+      return node;
+    }
+    public virtual List<Declaration!>! VisitDeclarationList(List<Declaration!>! declarationList)
+    {
+      for (int i = 0, n = declarationList.Count; i < n; i++)
+        declarationList[i] = (Declaration!) this.Visit(declarationList[i]);
+      return declarationList;
+    }
+    public virtual DeclWithFormals! VisitDeclWithFormals(DeclWithFormals! node)
+    {
+      node.InParams = this.VisitVariableSeq(node.InParams);
+      node.OutParams = this.VisitVariableSeq(node.OutParams);
+      return node;
+    }
+    public virtual ExistsExpr! VisitExistsExpr(ExistsExpr! node)
+    {
+      node = (ExistsExpr) this.VisitQuantifierExpr(node);
+      return node;
+    }
+    public virtual BvExtractExpr! VisitBvExtractExpr(BvExtractExpr! node)
+    {
+      node.Bitvector = this.VisitExpr(node.Bitvector);
+      return node;
+    }
+    public virtual Expr! VisitExpr(Expr! node)
+    {
+      Expr e = (Expr) this.Visit(node);
+      return e;
+    }
+    public override ExprSeq! VisitExprSeq(ExprSeq! exprSeq)
+    {
+      for (int i = 0, n = exprSeq.Length; i < n; i++)
+        exprSeq[i] = this.VisitExpr( (!)exprSeq[i]);
+      return exprSeq;
+    }
+    public virtual Requires! VisitRequires(Requires! @requires)
+    {
+      @requires.Condition = this.VisitExpr(@requires.Condition);
+      return @requires;
+    }
+    public virtual RequiresSeq! VisitRequiresSeq(RequiresSeq! requiresSeq)
+    {
+      for (int i = 0, n = requiresSeq.Length; i < n; i++)
+        requiresSeq[i] = this.VisitRequires(requiresSeq[i]);
+      return requiresSeq;
+    }
+    public virtual Ensures! VisitEnsures(Ensures! @ensures)
+    {
+      @ensures.Condition = this.VisitExpr(@ensures.Condition);
+      return @ensures;
+    }
+    public virtual EnsuresSeq! VisitEnsuresSeq(EnsuresSeq! ensuresSeq)
+    {
+      for (int i = 0, n = ensuresSeq.Length; i < n; i++)
+        ensuresSeq[i] = this.VisitEnsures(ensuresSeq[i]);
+      return ensuresSeq;
+    }
+    public virtual ForallExpr! VisitForallExpr(ForallExpr! node)
+    {
+      node = (ForallExpr) this.VisitQuantifierExpr(node);
+      return node;
+    }
+    public virtual LambdaExpr! VisitLambdaExpr(LambdaExpr! node)
+    {
+      node = (LambdaExpr) this.VisitBinderExpr(node);
+      return node;
+    }
+    public virtual Formal! VisitFormal(Formal! node)
+    {
+      return node;
+    }
+    public virtual Function! VisitFunction(Function! node)
+    {
+      node = (Function) this.VisitDeclWithFormals(node);
+      if (node.Body != null)
+        node.Body = this.VisitExpr(node.Body);
+      return node;
+    }
+    public virtual GlobalVariable! VisitGlobalVariable(GlobalVariable! node)
+    {
+      node = (GlobalVariable) this.VisitVariable(node);
+      return node;
+    }
+    public virtual GotoCmd! VisitGotoCmd(GotoCmd! node)
+    {
+      // do not visit the labelTargets, or control-flow loops will lead to a looping visitor
+      return node;
+    }
+    public virtual Cmd! VisitHavocCmd(HavocCmd! node)
+    {
+      node.Vars = this.VisitIdentifierExprSeq(node.Vars);
+      return node;
+    }
+    public virtual Expr! VisitIdentifierExpr(IdentifierExpr! node)
+    {
+      if (node.Decl != null)
+        node.Decl = this.VisitVariable(node.Decl);
+      return node;
+    }
+    public virtual IdentifierExprSeq! VisitIdentifierExprSeq(IdentifierExprSeq! identifierExprSeq)
+    {
+      for (int i = 0, n = identifierExprSeq.Length; i < n; i++)
+        identifierExprSeq[i] = (IdentifierExpr) this.VisitIdentifierExpr( (!)identifierExprSeq[i]);
+      return identifierExprSeq;
+    }
+    public virtual Implementation! VisitImplementation(Implementation! node)
+    {
+      node.LocVars = this.VisitVariableSeq(node.LocVars);
+      node.Blocks = this.VisitBlockList(node.Blocks);
+      node.Proc = this.VisitProcedure((!)node.Proc);
+      node = (Implementation) this.VisitDeclWithFormals(node); // do this first or last?
+      return node;
+    }
+    public virtual LiteralExpr! VisitLiteralExpr(LiteralExpr! node)
+    {
+      return node;
+    }
+
+    public virtual LocalVariable! VisitLocalVariable(LocalVariable! node)
+    {
+      return node;
+    }
+
+    public virtual AssignLhs! VisitMapAssignLhs(MapAssignLhs! node)
+    {
+      node.Map = (AssignLhs!)this.Visit(node.Map);
+      for (int i = 0; i < node.Indexes.Count; ++i)
+        node.Indexes[i] = (Expr!)this.Visit(node.Indexes[i]);
+      return node;
+    }
+    public virtual MapType! VisitMapType(MapType! node)
+    {
+      // not doing anything about the bound variables ... maybe
+      // these should be visited as well ...
+      //
+      // NOTE: when overriding this method, you have to make sure that
+      // the bound variables of the map type are updated correctly
+      for (int i = 0; i < node.Arguments.Length; ++i)
+        node.Arguments[i] = (Type!)this.Visit(node.Arguments[i]);
+      node.Result = (Type!)this.Visit(node.Result);
+      return node;
+    }
+    public virtual Type! VisitMapTypeProxy(MapTypeProxy! node)
+    {
+      // if the type proxy is instantiated with some more
+      // specific type, we visit the instantiation
+      if (node.ProxyFor != null)
+        return (Type)this.Visit(node.ProxyFor);
+      return this.VisitType(node);
+    }
+
+    public virtual Expr! VisitNAryExpr(NAryExpr! node)
+    {
+      node.Args = this.VisitExprSeq(node.Args);
+      return node;
+    }
+    public virtual Expr! VisitOldExpr(OldExpr! node)
+    {
+      node.Expr = this.VisitExpr(node.Expr);
+      return node;
+    }
+    public virtual Procedure! VisitProcedure(Procedure! node)
+    {
+      node.Ensures = this.VisitEnsuresSeq(node.Ensures);
+      node.InParams = this.VisitVariableSeq(node.InParams);
+      node.Modifies = this.VisitIdentifierExprSeq(node.Modifies);
+      node.OutParams = this.VisitVariableSeq(node.OutParams);
+      node.Requires = this.VisitRequiresSeq(node.Requires);
+      return node;
+    }
+    public virtual Program! VisitProgram(Program! node)
+    {
+      node.TopLevelDeclarations = this.VisitDeclarationList(node.TopLevelDeclarations);
+      return node;
+    }
+    public virtual BinderExpr! VisitBinderExpr(BinderExpr! node)
+    {
+      node.Body = this.VisitExpr(node.Body);
+      node.Dummies = this.VisitVariableSeq(node.Dummies);
+      //node.Type = this.VisitType(node.Type);
+      return node;
+    }
+    public virtual QuantifierExpr! VisitQuantifierExpr(QuantifierExpr! node)
+    {
+      node = (QuantifierExpr!) this.VisitBinderExpr(node);
+      if (node.Triggers != null) {
+        node.Triggers = this.VisitTrigger(node.Triggers);
+      }
+      return node;
+    }
+    public virtual Cmd! VisitRE(RE! node)
+    {
+      return (Cmd) this.Visit(node); // Call general visit so subtypes get visited by their particular visitor
+    }
+    public virtual RESeq! VisitRESeq(RESeq! reSeq)
+    {
+      for (int i = 0, n = reSeq.Length; i < n; i++)
+        reSeq[i] = (RE) this.VisitRE( (!)reSeq[i]);
+      return reSeq;
+    }
+    public virtual ReturnCmd! VisitReturnCmd(ReturnCmd! node)
+    {
+      return (ReturnCmd) this.VisitTransferCmd(node);
+    }
+    public virtual ReturnExprCmd! VisitReturnExprCmd(ReturnExprCmd! node)
+    {
+      node.Expr = this.VisitExpr(node.Expr);
+      return node;
+    }
+    public virtual Sequential! VisitSequential(Sequential! node)
+    {
+      node.first = (RE) this.VisitRE(node.first);
+      node.second = (RE) this.VisitRE(node.second);
+      return node;
+    }
+    public virtual AssignLhs! VisitSimpleAssignLhs(SimpleAssignLhs! node)
+    {
+      node.AssignedVariable =
+        (IdentifierExpr) this.VisitIdentifierExpr(node.AssignedVariable);
+      return node;
+    }
+    public virtual Cmd! VisitStateCmd(StateCmd! node)
+    {
+      node.Locals = this.VisitVariableSeq(node.Locals);
+      node.Cmds = this.VisitCmdSeq(node.Cmds);
+      return node;
+    }
+    public virtual TransferCmd! VisitTransferCmd(TransferCmd! node)
+    {
+      return node;
+    }
+    public virtual Trigger! VisitTrigger(Trigger! node)
+    {
+      Trigger origNext = node.Next;
+      if (origNext != null) {
+        Trigger newNext = this.VisitTrigger(origNext);
+        if (newNext != origNext) {
+          node = new Trigger(node.tok, node.Pos, node.Tr);  // note: this creates sharing between the old and new Tr sequence
+          node.Next = newNext;
+        }
+      }
+      node.Tr = this.VisitExprSeq(node.Tr);
+      return node;
+    }
+    // called by default for all nullary type constructors and type variables
+    public virtual Type! VisitType(Type! node)
+    {
+      return node;
+    }
+    public virtual TypedIdent! VisitTypedIdent(TypedIdent! node)
+    {
+      node.Type = (Type)this.Visit(node.Type);
+      return node;
+    }
+    public virtual Declaration! VisitTypeCtorDecl(TypeCtorDecl! node)
+    {
+      return this.VisitDeclaration(node);
+    }
+    public virtual Type! VisitTypeSynonymAnnotation(TypeSynonymAnnotation! node)
+    {
+      node.ExpandedType = (Type!)this.Visit(node.ExpandedType);
+      for (int i = 0; i < node.Arguments.Length; ++i)
+        node.Arguments[i] = (Type!)this.Visit(node.Arguments[i]);
+      return node;
+    }
+    public virtual Declaration! VisitTypeSynonymDecl(TypeSynonymDecl! node)
+    {
+      return this.VisitDeclaration(node);
+    }
+    public virtual Type! VisitTypeVariable(TypeVariable! node)
+    {
+      return this.VisitType(node);
+    }
+    public virtual Type! VisitTypeProxy(TypeProxy! node)
+    {
+      // if the type proxy is instantiated with some more
+      // specific type, we visit the instantiation
+      if (node.ProxyFor != null)
+        return (Type!)this.Visit(node.ProxyFor);
+      return this.VisitType(node);
+    }
+    public virtual Type! VisitUnresolvedTypeIdentifier(UnresolvedTypeIdentifier! node)
+    {
+      return this.VisitType(node);
+    }
+    public virtual Variable! VisitVariable(Variable! node)
+    {
+      node.TypedIdent = this.VisitTypedIdent(node.TypedIdent);
+      return node;
+    }
+    public virtual VariableSeq! VisitVariableSeq(VariableSeq! variableSeq)
+    {
+      for (int i = 0, n = variableSeq.Length; i < n; i++)
+        variableSeq[i] = this.VisitVariable( (!)variableSeq[i]);
+      return variableSeq;
+    }    
+    public virtual Cmd! VisitAssertEnsuresCmd(AssertEnsuresCmd! node)
+    {
+      node.Ensures = this.VisitEnsures(node.Ensures);
+      node.Expr = this.VisitExpr(node.Expr);
+      return node;
+    }    
+    public virtual Cmd! VisitAssertRequiresCmd(AssertRequiresCmd! node)
+    {
+      node.Requires = this.VisitRequires(node.Requires);
+      node.Expr = this.VisitExpr(node.Expr);
+      return node;
+    }
+  }
+}

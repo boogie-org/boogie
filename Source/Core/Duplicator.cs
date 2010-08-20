@@ -1,0 +1,408 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------
+// BoogiePL - Duplicator.cs
+//---------------------------------------------------------------------------------------------
+
+using System.Collections;
+using System.Collections.Generic;
+
+namespace Microsoft.Boogie 
+{
+  public class Duplicator : StandardVisitor 
+  {
+    public override Absy! Visit(Absy! node)
+    {
+      node = base.Visit(node);
+      return node;
+    }
+
+    public override Cmd! VisitAssertCmd(AssertCmd! node)
+    {
+      return base.VisitAssertCmd ((AssertCmd)node.Clone());
+    }
+    public override Cmd! VisitAssignCmd(AssignCmd! node)
+    {
+      AssignCmd clone = (AssignCmd)node.Clone();
+      clone.Lhss = new List<AssignLhs!>(clone.Lhss);
+      clone.Rhss = new List<Expr!>(clone.Rhss);
+      return base.VisitAssignCmd(clone);
+    }
+    public override Cmd! VisitAssumeCmd(AssumeCmd! node)
+    {
+      return base.VisitAssumeCmd ((AssumeCmd)node.Clone());
+    }
+    public override AtomicRE! VisitAtomicRE(AtomicRE! node)
+    {
+      return base.VisitAtomicRE ((AtomicRE)node.Clone());
+    }
+    public override Axiom! VisitAxiom(Axiom! node)
+    {
+      return base.VisitAxiom ((Axiom)node.Clone());
+    }
+    public override Type! VisitBasicType(BasicType! node)
+    {
+      // do /not/ clone the type recursively
+      return (BasicType)node.Clone();
+    }
+    public override Block! VisitBlock(Block! node)
+    {
+      return base.VisitBlock ((Block)node.Clone());
+    }
+    public override Expr! VisitCodeExpr(CodeExpr! node)
+    {
+      CodeExpr clone = (CodeExpr)base.VisitCodeExpr((CodeExpr)node.Clone());
+      // Before returning, fix up the resolved goto targets
+      assert node.Blocks.Count == clone.Blocks.Count;
+      Dictionary<Block,Block> subst = new Dictionary<Block,Block>();
+      for (int i = 0; i < node.Blocks.Count; i++) {
+        subst.Add(node.Blocks[i], clone.Blocks[i]);
+      }
+      foreach (Block! b in clone.Blocks) {
+        GotoCmd g = b.TransferCmd as GotoCmd;
+        if (g != null) {
+          BlockSeq targets = new BlockSeq();
+          foreach (Block t in (!)g.labelTargets) {
+            Block nt = subst[t];
+            targets.Add(nt);
+          }
+          g.labelTargets = targets;
+        }
+      }
+      return clone; 
+    }
+    public override BlockSeq! VisitBlockSeq(BlockSeq! blockSeq)
+    {
+      return base.VisitBlockSeq (new BlockSeq(blockSeq));
+    }
+    public override List<Block!>! VisitBlockList(List<Block!>! blocks)
+    {
+      return base.VisitBlockList (new List<Block!>(blocks));
+    }
+    public override BoundVariable! VisitBoundVariable(BoundVariable! node)
+    {
+      return base.VisitBoundVariable ((BoundVariable)node.Clone());
+    }
+    public override Type! VisitBvType(BvType! node)
+    {
+      // do /not/ clone the type recursively
+      return (BvType)node.Clone();
+    }
+    public override Cmd! VisitCallCmd(CallCmd! node)
+    {
+      CallCmd! clone = (CallCmd)node.Clone();
+      clone.Ins = new List<Expr>(clone.Ins);
+      clone.Outs = new List<IdentifierExpr>(clone.Outs);
+      return base.VisitCallCmd(clone);
+    }
+    public override Cmd! VisitCallForallCmd(CallForallCmd! node)
+    {
+      CallForallCmd! clone = (CallForallCmd)node.Clone();
+      clone.Ins = new List<Expr>(clone.Ins);
+      return base.VisitCallForallCmd(clone);
+    }
+    public override Choice! VisitChoice(Choice! node)
+    {
+      return base.VisitChoice ((Choice)node.Clone());
+    }
+    public override CmdSeq! VisitCmdSeq(CmdSeq! cmdSeq)
+    {
+      return base.VisitCmdSeq (cmdSeq);
+    }
+    public override Constant! VisitConstant(Constant! node)
+    {
+      return base.VisitConstant ((Constant)node.Clone());
+    }
+    public override CtorType! VisitCtorType(CtorType! node)
+    {
+      // do /not/ clone the type recursively
+      return (CtorType)node.Clone();
+    }
+    public override Declaration! VisitDeclaration(Declaration! node)
+    {
+      return base.VisitDeclaration ((Declaration)node.Clone());
+    }
+    public override List<Declaration!>! VisitDeclarationList(List<Declaration!>! declarationList)
+    {
+      return base.VisitDeclarationList(declarationList);
+    }
+    public override DeclWithFormals! VisitDeclWithFormals(DeclWithFormals! node)
+    {
+      return base.VisitDeclWithFormals ((DeclWithFormals)node.Clone());
+    }
+    public override ExistsExpr! VisitExistsExpr(ExistsExpr! node)
+    {
+      return base.VisitExistsExpr ((ExistsExpr)node.Clone());
+    }
+    public override Expr! VisitExpr(Expr! node)
+    {
+      return base.VisitExpr ((Expr)node.Clone());
+    }
+    public override ExprSeq! VisitExprSeq(ExprSeq! list)
+    {
+      return base.VisitExprSeq (new ExprSeq(list));
+    }
+    public override ForallExpr! VisitForallExpr(ForallExpr! node)
+    {
+      return base.VisitForallExpr ((ForallExpr)node.Clone());
+    }
+    public override Formal! VisitFormal(Formal! node)
+    {
+      return base.VisitFormal ((Formal)node.Clone());
+    }
+    public override Function! VisitFunction(Function! node)
+    {
+      return base.VisitFunction ((Function)node.Clone());
+    }
+    public override GlobalVariable! VisitGlobalVariable(GlobalVariable! node)
+    {
+      return base.VisitGlobalVariable ((GlobalVariable)node.Clone());
+    }
+    public override GotoCmd! VisitGotoCmd(GotoCmd! node)
+    {
+      return base.VisitGotoCmd ((GotoCmd)node.Clone());
+    }
+    public override Cmd! VisitHavocCmd(HavocCmd! node)
+    {
+      return base.VisitHavocCmd ((HavocCmd)node.Clone());
+    }
+    public override Expr! VisitIdentifierExpr(IdentifierExpr! node)
+    {
+      return base.VisitIdentifierExpr ((IdentifierExpr) node.Clone());
+    }
+    public override IdentifierExprSeq! VisitIdentifierExprSeq(IdentifierExprSeq! identifierExprSeq)
+    {
+      return base.VisitIdentifierExprSeq (new IdentifierExprSeq(identifierExprSeq));
+    }
+    public override Implementation! VisitImplementation(Implementation! node)
+    {
+      return base.VisitImplementation ((Implementation)node.Clone());
+    }
+    public override LiteralExpr! VisitLiteralExpr(LiteralExpr! node)
+    {
+      return base.VisitLiteralExpr ((LiteralExpr)node.Clone());
+    }
+    public override LocalVariable! VisitLocalVariable(LocalVariable! node)
+    {
+      return base.VisitLocalVariable ((LocalVariable)node.Clone());
+    }
+    public override AssignLhs! VisitMapAssignLhs(MapAssignLhs! node)
+    {
+      MapAssignLhs clone = (MapAssignLhs)node.Clone();
+      clone.Indexes = new List<Expr!>(clone.Indexes);
+      return base.VisitMapAssignLhs(clone);
+    }
+    public override MapType! VisitMapType(MapType! node)
+    {
+      // do /not/ clone the type recursively
+      return (MapType)node.Clone();
+    }
+    public override Expr! VisitNAryExpr(NAryExpr! node)
+    {
+      return base.VisitNAryExpr ((NAryExpr)node.Clone());
+    }
+    public override Expr! VisitOldExpr(OldExpr! node)
+    {
+      return base.VisitOldExpr ((OldExpr) node.Clone());
+    }
+    public override Procedure! VisitProcedure(Procedure! node)
+    {
+      return base.VisitProcedure ((Procedure)node.Clone());
+    }
+    public override Program! VisitProgram(Program! node)
+    {
+      return base.VisitProgram ((Program) node.Clone());
+    }
+    public override BinderExpr! VisitBinderExpr(BinderExpr! node)
+    {
+      return base.VisitBinderExpr ((BinderExpr) node.Clone());
+    }
+    public override Cmd! VisitRE(RE! node)
+    {
+      return base.VisitRE ((RE) node.Clone());
+    }
+    public override RESeq! VisitRESeq(RESeq! reSeq)
+    {
+      return base.VisitRESeq (new RESeq(reSeq));
+    }
+    public override ReturnCmd! VisitReturnCmd(ReturnCmd! node)
+    {
+      return base.VisitReturnCmd ((ReturnCmd) node.Clone());
+    }
+    public override ReturnExprCmd! VisitReturnExprCmd(ReturnExprCmd! node)
+    {
+      return base.VisitReturnExprCmd((ReturnExprCmd)node.Clone());
+    }
+    public override Sequential! VisitSequential(Sequential! node)
+    {
+      return base.VisitSequential ((Sequential) node.Clone());
+    }
+    public override AssignLhs! VisitSimpleAssignLhs(SimpleAssignLhs! node)
+    {
+      return base.VisitSimpleAssignLhs ((SimpleAssignLhs)node.Clone());
+    }
+    public override Cmd! VisitStateCmd(StateCmd! node)
+    {
+      return base.VisitStateCmd ((StateCmd)node.Clone());
+    }
+    public override TransferCmd! VisitTransferCmd(TransferCmd! node)
+    {
+      return base.VisitTransferCmd ((TransferCmd) node.Clone());
+    }
+    public override Trigger! VisitTrigger(Trigger! node)
+    {
+      return base.VisitTrigger ((Trigger) node.Clone());
+    }
+    public override Type! VisitType(Type! node)
+    {
+      // do /not/ clone the type recursively
+      return (Type)node.Clone();
+    }
+    public override TypedIdent! VisitTypedIdent(TypedIdent! node)
+    {
+      return base.VisitTypedIdent ((TypedIdent) node.Clone());
+    }
+    public override Variable! VisitVariable(Variable! node)
+    {
+      return node;
+    }
+    public override VariableSeq! VisitVariableSeq(VariableSeq! variableSeq)
+    {
+      return base.VisitVariableSeq (new VariableSeq(variableSeq));
+    }
+    public override Cmd! VisitAssertRequiresCmd(AssertRequiresCmd! node)
+    {
+      return base.VisitAssertRequiresCmd((AssertRequiresCmd)node.Clone());
+    }
+    public override Cmd! VisitAssertEnsuresCmd(AssertEnsuresCmd! node)
+    {
+      return base.VisitAssertEnsuresCmd((AssertEnsuresCmd)node.Clone());
+    }    
+    public override Ensures! VisitEnsures(Ensures! node)
+    {
+	  return base.VisitEnsures((Ensures)node.Clone());
+    }    
+    public override Requires! VisitRequires(Requires! node)
+    {
+	  return base.VisitRequires((Requires)node.Clone());
+    }
+  }
+ 
+   
+  #region A duplicator that also does substitutions for a set of variables 
+  /// <summary>
+  /// A substitution is a partial mapping from Variables to Exprs.
+  /// </summary>
+  public delegate Expr/*?*/ Substitution(Variable! v);
+  
+  public static class Substituter
+  {
+    public static Substitution! SubstitutionFromHashtable(Hashtable/*Variable!->Expr!*/! map)
+    {
+      // TODO: With Whidbey, could use anonymous functions.
+      return new Substitution(new CreateSubstitutionClosure(map).Method);
+    }
+    private sealed class CreateSubstitutionClosure
+    {
+      Hashtable/*Variable!->Expr!*/! map;
+      public CreateSubstitutionClosure(Hashtable/*Variable!->Expr!*/! map) { this.map = map; base(); }
+      public Expr/*?*/ Method(Variable! v) { return (Expr) map[v]; }
+    }
+   
+    /// <summary>
+    /// Apply a substitution to an expression.  Any variables not in domain(subst)
+    /// is not changed.  The substitutions applies within the "old", but the "old"
+    /// expression remains.
+    /// </summary>
+    public static Expr! Apply(Substitution! subst, Expr! expr)
+    {
+      return (Expr) new NormalSubstituter(subst).Visit(expr);
+    }
+
+    /// <summary>
+    /// Apply a substitution to a command.  Any variables not in domain(subst)
+    /// is not changed.  The substitutions applies within the "old", but the "old"
+    /// expression remains.
+    /// </summary>
+    public static Cmd! Apply(Substitution! subst, Cmd! cmd)
+    {
+      return (Cmd) new NormalSubstituter(subst).Visit(cmd);
+    }
+
+    /// <summary>
+    /// Apply a substitution to an expression replacing "old" expressions.
+    /// Outside "old" expressions, the substitution "always" is applied; any variable not in
+    /// domain(always) is not changed.  Inside "old" expressions, apply map "oldExpr" to
+    /// variables in domain(oldExpr), apply map "always" to variables in
+    /// domain(always)-domain(oldExpr), and leave variable unchanged otherwise.
+    /// </summary>    
+    public static Expr! ApplyReplacingOldExprs(Substitution! always, Substitution! forold, Expr! expr)
+    {
+      return (Expr) new ReplacingOldSubstituter(always, forold).Visit(expr);
+    }
+  
+    /// <summary>
+    /// Apply a substitution to a command replacing "old" expressions.
+    /// Outside "old" expressions, the substitution "always" is applied; any variable not in
+    /// domain(always) is not changed.  Inside "old" expressions, apply map "oldExpr" to
+    /// variables in domain(oldExpr), apply map "always" to variables in
+    /// domain(always)-domain(oldExpr), and leave variable unchanged otherwise.
+    /// </summary>    
+    public static Cmd! ApplyReplacingOldExprs(Substitution! always, Substitution! forold, Cmd! cmd)
+    {
+      return (Cmd) new ReplacingOldSubstituter(always, forold).Visit(cmd);
+    }
+  
+    private sealed class NormalSubstituter : Duplicator
+    {
+      private readonly Substitution! subst;
+      public NormalSubstituter(Substitution! subst) { this.subst = subst; base(); }
+      
+      public override Expr! VisitIdentifierExpr(IdentifierExpr! node)
+      {
+        Expr/*?*/ e = subst((!)node.Decl);
+        return e == null ? base.VisitIdentifierExpr(node) : e;
+      }
+    }
+    
+    private sealed class ReplacingOldSubstituter : Duplicator
+    {
+      private readonly Substitution! always;
+      private readonly Substitution! forold;
+      public ReplacingOldSubstituter(Substitution! always, Substitution! forold)
+      { this.always = always; this.forold = forold; base(); }
+      
+      private bool insideOldExpr = false;
+      
+      public override Expr! VisitIdentifierExpr(IdentifierExpr! node)
+      {
+        Expr/*?*/ e = null;
+        
+        if (insideOldExpr)
+        {
+          e = forold((!)node.Decl);
+        }
+        
+        if (e == null)
+        {
+          e = always((!)node.Decl);
+        }
+        
+        return e == null ? base.VisitIdentifierExpr(node) : e;
+      }
+      
+      public override Expr! VisitOldExpr(OldExpr! node)
+      {
+        bool previouslyInOld = insideOldExpr;
+        insideOldExpr = true;
+        Expr! e = (Expr!)this.Visit(node.Expr);
+        insideOldExpr = previouslyInOld;
+        return e;
+      }
+    }
+  }
+  #endregion
+}

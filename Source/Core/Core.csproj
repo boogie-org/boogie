@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VisualStudioProject>
+  <XEN ProjectType="Local"
+     SchemaVersion="1.0"
+     Name="Core"
+     ProjectGuid="47bc34f1-a173-40be-84c2-9332b4418387"
+    >
+    <Build>
+      <Settings ApplicationIcon=""
+         AssemblyName="Core"
+         OutputType="Library"
+         RootNamespace="Core"
+         StartupObject=""
+         TargetPlatform="v2"
+         TargetPlatformLocation=""
+         ShadowedAssembly=""
+         StandardLibraryLocation=""
+        >
+        <Config Name="Debug"
+           AllowUnsafeBlocks="False"
+           BaseAddress="285212672"
+           CheckForOverflowUnderflow="False"
+           ConfigurationOverrideFile=""
+           DefineConstants="DEBUG;TRACE;WHIDBEY"
+           DocumentationFile=""
+           DebugSymbols="True"
+           FileAlignment="4096"
+           IncrementalBuild="True"
+           Optimize="False"
+           OutputPath="bin\Debug"
+           RegisterForComInterop="False"
+           RemoveIntegerChecks="false"
+           TreatWarningsAsErrors="False"
+           WarningLevel="4"
+           RunProgramVerifier="False"
+           ProgramVerifierCommandLineOptions=""
+           ReferenceTypesAreNonNullByDefault="False"
+           RunProgramVerifierWhileEditing="False"
+           AllowPointersToManagedStructures="False"
+           CheckContractAdmissibility="True"
+           CheckPurity="False"
+           DisableAssumeChecks="False"
+           DisableDefensiveChecks="False"
+           DisableGuardedClassesChecks="False"
+           DisableInternalChecks="False"
+           DisableInternalContractsMetadata="False"
+           DisablePublicContractsMetadata="False"
+           DebugMode="Project"
+           StartProgram=""
+           StartURL=""
+           StartPage=""
+           UseIE="False"
+           EnableRemoteDebugging="False"
+           RemoteDebugMachine=""
+           />
+        <Config Name="Release"
+           AllowUnsafeBlocks="false"
+           BaseAddress="285212672"
+           CheckForOverflowUnderflow="false"
+           ConfigurationOverrideFile=""
+           DefineConstants="TRACE;WHIDBEY"
+           DocumentationFile=""
+           DebugSymbols="false"
+           FileAlignment="4096"
+           IncrementalBuild="false"
+           Optimize="true"
+           OutputPath="bin\release"
+           RegisterForComInterop="false"
+           RemoveIntegerChecks="false"
+           TreatWarningsAsErrors="True"
+           WarningLevel="4"
+           />
+      </Settings>
+      <References>
+        <Reference Name="Mscorlib.Contracts"
+             AssemblyName="Mscorlib.Contracts"
+             Private="false"
+             HintPath="../../Binaries/Mscorlib.Contracts.dll"
+             />
+        <Reference Name="System"
+             AssemblyName="System"
+             Private="false"
+             />
+        <Reference Name="System.Compiler.Framework"
+             AssemblyName="System.Compiler.Framework"
+             Private="true"
+             HintPath="../../Binaries/System.Compiler.Framework.dll"
+             />
+        <Reference Name="AIFramework"
+             Project="{24B55172-AD8B-47D1-8952-5A95CFDB9B31}"
+             Private="true"
+             />
+        <Reference Name="System.Compiler"
+             AssemblyName="System.Compiler"
+             Private="true"
+             HintPath="../../Binaries/System.Compiler.dll"
+             />
+        <Reference Name="System.Compiler.Contracts"
+             AssemblyName="System.Compiler.Contracts"
+             Private="false"
+             HintPath="../../Binaries/System.Compiler.Contracts.dll"
+             />
+        <Reference Name="Graph"
+             Project="{4C28FB90-630E-4B55-A937-11A011B79765}"
+             Private="true"
+             />
+        <Reference Name="System.XML"
+             AssemblyName="System.XML"
+             Private="false"
+             />
+        <Reference Name="System.Xml.Contracts"
+             AssemblyName="System.Xml.Contracts"
+             Private="false"
+             HintPath="../../Binaries/System.Xml.Contracts.dll"
+             />
+        <Reference Name="FSharp.Core"
+             AssemblyName="FSharp.Core"
+             Private="false"
+             HintPath="../../Binaries/FSharp.Core.dll"
+             />
+        <Reference Name="Basetypes"
+             Project="{0C692837-77EC-415F-BF04-395E3ED06E9A}"
+             Private="true"
+             />
+      </References>
+    </Build>
+    <Files>
+      <Include>
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="Absy.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="..\version.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="Duplicator.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="OOLongUtil.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="PureCollections.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="ResolutionContext.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="StandardVisitor.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="Util.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="CommandLineOptions.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="scanner.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="parser.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="ParserHelper.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="GraphAlgorithms.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AbsyType.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AbsyCmd.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AbsyExpr.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AbsyQuant.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="Xml.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="Inline.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="LambdaHelper.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="LoopUnroll.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="VCExp.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="TypeAmbiguitySeeker.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="AssemblyInfo.ssc"
+                 />
+        <File BuildAction="Compile"
+                 SubType="Code"
+                 RelPath="DeadVarElim.ssc"
+                 />
+      </Include>
+    </Files>
+  </XEN>
+</VisualStudioProject>
