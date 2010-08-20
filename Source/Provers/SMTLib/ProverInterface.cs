@@ -85,9 +85,9 @@ void ObjectInvariant()
     }}
 
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler) {
-      Contract.Requires(descriptiveName != null);
-      Contract.Requires(vc != null);
-      Contract.Requires(handler != null);
+      //Contract.Requires(descriptiveName != null);
+      //Contract.Requires(vc != null);
+      //Contract.Requires(handler != null);
       TextWriter output = OpenOutputFile(descriptiveName);
       Contract.Assert(output!=null);
 
@@ -157,7 +157,7 @@ void ObjectInvariant()
 
     [NoDefaultContract]
     public override Outcome CheckOutcome(ErrorHandler handler)
-   {Contract.Requires(handler != null);
+   {  //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       return Outcome.Undetermined;
     }
@@ -263,8 +263,8 @@ void ObjectInvariant()
 
     public override object SpawnProver(ProverOptions options, object ctxt)
     {
-    Contract.Requires(ctxt != null);
-    Contract.Requires(options != null);
+    //Contract.Requires(ctxt != null);
+    //Contract.Requires(options != null);
     Contract.Ensures(Contract.Result<object>() != null);
 
       return this.SpawnProver(options,
@@ -273,7 +273,7 @@ void ObjectInvariant()
     }
 
     public override object NewProverContext(ProverOptions options) {
-      Contract.Requires(options != null);
+      //Contract.Requires(options != null);
       Contract.Ensures(Contract.Result<object>() != null);
 
       if (CommandLineOptions.Clo.BracketIdsInVC < 0) {
