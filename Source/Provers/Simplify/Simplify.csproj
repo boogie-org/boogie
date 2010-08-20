@@ -45,7 +45,8 @@
     </CodeContractsCustomRewriterClass>
     <CodeContractsLibPaths>
     </CodeContractsLibPaths>
-    <CodeContractsExtraRewriteOptions>/ignore:CC1002</CodeContractsExtraRewriteOptions>
+    <CodeContractsExtraRewriteOptions>
+    </CodeContractsExtraRewriteOptions>
     <CodeContractsExtraAnalysisOptions>
     </CodeContractsExtraAnalysisOptions>
     <CodeContractsBaseLineFile>
@@ -86,8 +87,8 @@
       <Project>{0C692837-77EC-415F-BF04-395E3ED06E9A}</Project>
       <Name>Basetypes</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\Core\Core.sscproj">
-      <Project>{47BC34F1-A173-40BE-84C2-9332B4418387}</Project>
+    <ProjectReference Include="..\..\Core\Core.csproj">
+      <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>
       <Name>Core</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\Graph\Graph.sscproj">

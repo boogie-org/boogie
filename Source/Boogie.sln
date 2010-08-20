@@ -7,8 +7,6 @@ Project("{07C4E3D1-6B67-4060-8A92-940DB82041ED}") = "AIFramework", "AIFramework\
 EndProject
 Project("{07C4E3D1-6B67-4060-8A92-940DB82041ED}") = "Basetypes", "Basetypes\Basetypes.sscproj", "{0C692837-77EC-415F-BF04-395E3ED06E9A}"
 EndProject
-Project("{07C4E3D1-6B67-4060-8A92-940DB82041ED}") = "Core", "Core\Core.sscproj", "{47BC34F1-A173-40BE-84C2-9332B4418387}"
-EndProject
 Project("{07C4E3D1-6B67-4060-8A92-940DB82041ED}") = "Graph", "Graph\Graph.sscproj", "{4C28FB90-630E-4B55-A937-11A011B79765}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BoogieDriver", "BoogieDriver\BoogieDriver.csproj", "{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}"
@@ -27,8 +25,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VCGeneration", "VCGeneratio
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VCExpr", "VCExpr\VCExpr.csproj", "{56FFDBCA-7D14-43B8-A6CA-22A20E417EE1}"
 EndProject
+<<<<<<< .mine
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core", "Core\Core.csproj", "{B230A69C-C466-4065-B9C1-84D80E76D802}"
+EndProject
+=======
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Z3api", "Provers\Z3api\Z3api.csproj", "{966DD87B-A29D-4F3C-9406-F680A61DC0E0}"
 EndProject
+>>>>>>> .r56635
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|.NET = Debug|.NET
@@ -59,16 +62,6 @@ Global
 		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Release|Any CPU.ActiveCfg = Release|.NET
 		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Release|Mixed Platforms.ActiveCfg = Release|.NET
 		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Release|Mixed Platforms.Build.0 = Release|.NET
-		{47BC34F1-A173-40BE-84C2-9332B4418387}.Debug|.NET.ActiveCfg = Debug|.NET
-		{47BC34F1-A173-40BE-84C2-9332B4418387}.Debug|.NET.Build.0 = Debug|.NET
-		{47BC34F1-A173-40BE-84C2-9332B4418387}.Debug|Any CPU.ActiveCfg = Debug|.NET
-		{47BC34F1-A173-40BE-84C2-9332B4418387}.Debug|Mixed Platforms.ActiveCfg = Debug|.NET
-		{47BC34F1-A173-40BE-84C2-9332B4418387}.Debug|Mixed Platforms.Build.0 = Debug|.NET
-		{47BC34F1-A173-40BE-84C2-9332B4418387}.Release|.NET.ActiveCfg = Release|.NET
-		{47BC34F1-A173-40BE-84C2-9332B4418387}.Release|.NET.Build.0 = Release|.NET
-		{47BC34F1-A173-40BE-84C2-9332B4418387}.Release|Any CPU.ActiveCfg = Release|.NET
-		{47BC34F1-A173-40BE-84C2-9332B4418387}.Release|Mixed Platforms.ActiveCfg = Release|.NET
-		{47BC34F1-A173-40BE-84C2-9332B4418387}.Release|Mixed Platforms.Build.0 = Release|.NET
 		{4C28FB90-630E-4B55-A937-11A011B79765}.Debug|.NET.ActiveCfg = Debug|.NET
 		{4C28FB90-630E-4B55-A937-11A011B79765}.Debug|.NET.Build.0 = Debug|.NET
 		{4C28FB90-630E-4B55-A937-11A011B79765}.Debug|Any CPU.ActiveCfg = Debug|.NET
@@ -166,6 +159,18 @@ Global
 		{56FFDBCA-7D14-43B8-A6CA-22A20E417EE1}.Release|Any CPU.Build.0 = Release|Any CPU
 		{56FFDBCA-7D14-43B8-A6CA-22A20E417EE1}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{56FFDBCA-7D14-43B8-A6CA-22A20E417EE1}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+<<<<<<< .mine
+		{B230A69C-C466-4065-B9C1-84D80E76D802}.Debug|.NET.ActiveCfg = Debug|Any CPU
+		{B230A69C-C466-4065-B9C1-84D80E76D802}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B230A69C-C466-4065-B9C1-84D80E76D802}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B230A69C-C466-4065-B9C1-84D80E76D802}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{B230A69C-C466-4065-B9C1-84D80E76D802}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{B230A69C-C466-4065-B9C1-84D80E76D802}.Release|.NET.ActiveCfg = Release|Any CPU
+		{B230A69C-C466-4065-B9C1-84D80E76D802}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B230A69C-C466-4065-B9C1-84D80E76D802}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B230A69C-C466-4065-B9C1-84D80E76D802}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{B230A69C-C466-4065-B9C1-84D80E76D802}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+=======
 		{966DD87B-A29D-4F3C-9406-F680A61DC0E0}.Debug|.NET.ActiveCfg = Debug|Any CPU
 		{966DD87B-A29D-4F3C-9406-F680A61DC0E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{966DD87B-A29D-4F3C-9406-F680A61DC0E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
@@ -176,6 +181,7 @@ Global
 		{966DD87B-A29D-4F3C-9406-F680A61DC0E0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{966DD87B-A29D-4F3C-9406-F680A61DC0E0}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{966DD87B-A29D-4F3C-9406-F680A61DC0E0}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+>>>>>>> .r56635
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
