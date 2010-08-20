@@ -655,10 +655,10 @@ Contract.Ensures(Contract.ValueAtReturn(out var) != null);
       }
       return res;
     }
-
+    [Pure]
     public Function CastTo(Type type) {
       Contract.Requires(type != null);
-      Contract.Requires((UnchangedType(type)));
+      Contract.Requires(UnchangedType(type));
       Contract.Ensures(Contract.Result<Function>() != null);
       return GetTypeCasts(type).CastFromU;
     }
