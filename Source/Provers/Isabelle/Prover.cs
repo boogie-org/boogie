@@ -41,7 +41,7 @@ namespace Microsoft.Boogie.Isabelle {
     public bool AllTypes = false;
 
     protected override bool Parse(string opt) {
-      Contract.Requires(opt != null);
+      //Contract.Requires(opt != null);
       bool v2 = false;
       return
         ParseString(opt, "ISABELLE_INPUT", ref filename) ||
@@ -80,7 +80,7 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public override object NewProverContext(ProverOptions options) {
-      Contract.Requires(options != null);
+      //Contract.Requires(options != null);
       Contract.Ensures(Contract.Result<object>() != null);//POSTCORE
 
       IsabelleProverOptions opts = (IsabelleProverOptions)options;
@@ -99,8 +99,8 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public override object SpawnProver(ProverOptions options, object ctxt) {
-      Contract.Requires(options != null);
-      Contract.Requires(ctxt != null);
+      //Contract.Requires(options != null);
+      //Contract.Requires(ctxt != null);
       Contract.Ensures(Contract.Result<object>() != null);//POSTCORE
 
       return new IsabelleInterface(cce.NonNull((ProverContext)ctxt));
@@ -153,9 +153,9 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public override void BeginCheck(string name, VCExpr vc, ErrorHandler h) {
-      Contract.Requires(h != null);
-      Contract.Requires(vc != null);
-      Contract.Requires(name != null);
+      //Contract.Requires(h != null);
+      //Contract.Requires(vc != null);
+      //Contract.Requires(name != null);
 
       int index;
       lock (lastVCIndex) {
@@ -168,7 +168,7 @@ namespace Microsoft.Boogie.Isabelle {
       }
     }
     public override Outcome CheckOutcome(ErrorHandler handler) {
-      Contract.Requires(handler != null);
+      //Contract.Requires(handler != null);
       return Outcome.Undetermined; // we will check the goal later in Isabelle
     }
   }
@@ -205,7 +205,7 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public override void DeclareType(TypeCtorDecl t, string atts) {
-      Contract.Requires(t != null);
+      //Contract.Requires(t != null);
 
       B2I b2i = new B2I(this);
       b2i.Write(B2I.Kind.TypeDecl, t.Name + " " + t.Arity + " " +
@@ -216,7 +216,7 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public override void DeclareConstant(Constant c, bool uniq, string atts) {
-      Contract.Requires(c != null);
+      //Contract.Requires(c != null);
       QKeyValue attributes = c.Attributes;
       if (c.Unique) {
         attributes = B2I.Add("unique", null, attributes);
@@ -239,7 +239,7 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public override void DeclareFunction(Function f, string atts) {
-      Contract.Requires(f != null);
+      //Contract.Requires(f != null);
       declaredFunctions.Add(f.Name);
 
       B2I b2i = new B2I(this);
@@ -270,7 +270,7 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public override void AddAxiom(Axiom a, string atts) {
-      Contract.Requires(a != null);
+      //Contract.Requires(a != null);
       B2I b2i = new B2I(this);
       b2i.Write(B2I.Kind.Axiom, B2I.CountOf(a.Attributes).ToString());
       b2i.Indent(4);
@@ -282,7 +282,7 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public override void AddAxiom(VCExpr e) {
-      Contract.Requires(e != null);
+      //Contract.Requires(e != null);
       B2I b2i = new B2I(this);
       b2i.Write(B2I.Kind.Axiom, "0");
       b2i.Indent(4);
@@ -291,7 +291,7 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public override void DeclareGlobalVariable(GlobalVariable v, string atts) {
-      Contract.Requires(v != null);
+      //Contract.Requires(v != null);
       B2I b2i = new B2I(this);
       b2i.Write(B2I.Kind.VarDecl, v.Name + " " + B2I.CountOf(v.Attributes));
       b2i.Indent(4);
@@ -644,8 +644,8 @@ namespace Microsoft.Boogie.Isabelle {
 
   class VCExprWriter : IVCExprVisitor<bool, B2I/*!*/> {
     public bool Visit(VCExprLiteral node, B2I b2i) {
-      Contract.Requires(node != null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node != null);
+      //Contract.Requires(b2i != null);
 
       if (node == VCExpressionGenerator.True) {
         b2i.Write(B2I.Kind.True);
@@ -659,15 +659,15 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public bool Visit(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       b2i.Write(node);
       return true;
     }
 
     public bool Visit(VCExprVar node, B2I b2i) {
-      Contract.Requires(node != null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node != null);
+      //Contract.Requires(b2i != null);
       if (b2i.Context.IsFunctionDeclared(node.Name)) {
         b2i.Write(B2I.Kind.Function, node.Name + " 0");
         if (b2i.Context.AllTypes) {
@@ -685,8 +685,8 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public bool Visit(VCExprQuantifier node, B2I b2i) {
-      Contract.Requires(node != null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node != null);
+      //Contract.Requires(b2i != null);
       QKeyValue attribs =
         B2I.Add("qid", node.Infos.qid,
         B2I.Add("uniqueId", node.Infos.uniqueId.ToString(),
@@ -736,8 +736,8 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public bool Visit(VCExprLet node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       // we do not support "let"
       Contract.Assert(false);
       return true;
@@ -761,13 +761,13 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public bool VisitNotOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Not, node);
     }
     public bool VisitEqOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       b2i.Write(B2I.Kind.Eq);
       if (b2i.Context.AllTypes) {
         b2i.Indent(2);
@@ -778,8 +778,8 @@ namespace Microsoft.Boogie.Isabelle {
       return true;
     }
     public bool VisitNeqOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       b2i.Write(B2I.Kind.Not);
       b2i.Write(B2I.Kind.Eq);
       if (b2i.Context.AllTypes) {
@@ -823,23 +823,23 @@ namespace Microsoft.Boogie.Isabelle {
       return true;
     }
     public bool VisitAndOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node != null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node != null);
+      //Contract.Requires(b2i != null);
       return Unroll(B2I.Kind.And, node, b2i);
     }
     public bool VisitOrOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Unroll(B2I.Kind.Or, node, b2i);
     }
     public bool VisitImpliesOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Implies, node);
     }
     public bool VisitDistinctOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       b2i.Write(B2I.Kind.Distinct, node.Length.ToString());
       if (b2i.Context.AllTypes) {
         b2i.Indent(2);
@@ -851,8 +851,8 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public bool VisitLabelOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node != null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node != null);
+      //Contract.Requires(b2i != null);
       VCExprLabelOp op = (VCExprLabelOp)node.Op;
       Contract.Assert(op != null);
       string label = op.label.Substring(1);
@@ -873,8 +873,8 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public bool VisitSelectOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node != null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node != null);
+      //Contract.Requires(b2i != null);
       b2i.Write(B2I.Kind.Select, node.Length.ToString());
       if (b2i.Context.AllTypes) {
         b2i.Indent(2);
@@ -889,8 +889,8 @@ namespace Microsoft.Boogie.Isabelle {
       return true;
     }
     public bool VisitStoreOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node != null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node != null);
+      //Contract.Requires(b2i != null);
       b2i.Write(B2I.Kind.Store, node.Length.ToString());
       if (b2i.Context.AllTypes) {
         b2i.Indent(2);
@@ -906,8 +906,8 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public bool VisitBvOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node != null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node != null);
+      //Contract.Requires(b2i != null);
       VCExprIntLit num = node[0] as VCExprIntLit;
       if (num == null) {
         Contract.Assert(false);
@@ -916,8 +916,8 @@ namespace Microsoft.Boogie.Isabelle {
       return true;
     }
     public bool VisitBvExtractOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       VCExprBvExtractOp op = (VCExprBvExtractOp)node.Op;
       Contract.Assert(op != null);
       VCExpr child = node[0];
@@ -934,8 +934,8 @@ namespace Microsoft.Boogie.Isabelle {
       return true;
     }
     public bool VisitBvConcatOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node != null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node != null);
+      //Contract.Requires(b2i != null);
       Contract.Requires(node.Length >= 2);
 
       VCExpr child1 = node[0];
@@ -956,14 +956,14 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public bool VisitIfThenElseOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node != null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node != null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.IfThenElse, node);
     }
 
     public bool VisitCustomOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node != null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node != null);
+      //Contract.Requires(b2i != null);
       VCExprCustomOp op = (VCExprCustomOp)node.Op;
 
       Contract.Assert(op.Arity == node.Length);
@@ -994,65 +994,65 @@ namespace Microsoft.Boogie.Isabelle {
     }
 
     public bool VisitAddOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node != null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node != null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Add, node);
     }
     public bool VisitSubOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Sub, node);
     }
     public bool VisitMulOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Mul, node);
     }
     public bool VisitDivOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Div, node);
     }
     public bool VisitModOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Mod, node);
     }
     public bool VisitLtOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Lt, node);
     }
     public bool VisitLeOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Le, node);
     }
     public bool VisitGtOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Gt, node);
     }
     public bool VisitGeOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Ge, node);
     }
 
     public bool VisitSubtypeOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Subtype, node);
     }
     public bool VisitSubtype3Op(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       return Write(b2i, B2I.Kind.Subtype3, node);
     }
 
     public bool VisitBoogieFunctionOp(VCExprNAry node, B2I b2i) {
-      Contract.Requires(node!=null);
-      Contract.Requires(b2i != null);
+      //Contract.Requires(node!=null);
+      //Contract.Requires(b2i != null);
       Function f = cce.NonNull((VCExprBoogieFunctionOp)node.Op).Func;
 
       Contract.Assert(f.InParams.Length == node.Length);
