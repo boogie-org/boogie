@@ -36,7 +36,7 @@ namespace Microsoft.Boogie
   }
   
 [ContractClassFor(typeof(ProverContext))]
-public class ProverContextContracts:ProverContext{
+public abstract class ProverContextContracts:ProverContext{
   public override void AddAxiom(VCExpr vc) {
   }
   public override void  AddAxiom(Axiom a, string attributes)
@@ -257,7 +257,7 @@ void ObjectInvariant()
 
   [ContractClassFor(typeof(VCExprTranslator))]
 
-  public class VCExprTranslatorContracts : VCExprTranslator {
+  public abstract class VCExprTranslatorContracts : VCExprTranslator {
     public override object Clone() {
       Contract.Ensures(Contract.Result<object>() != null);
       throw new NotImplementedException();
