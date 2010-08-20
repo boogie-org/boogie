@@ -587,7 +587,7 @@ namespace Microsoft.Boogie.Simplify {
     }
   }
   [ContractClassFor(typeof(ProcessTheoremProver))]
-  public class ProcessTheoremProverContracts :ProcessTheoremProver{
+  public abstract class ProcessTheoremProverContracts :ProcessTheoremProver{
     protected override AxiomVCExprTranslator SpawnVCExprTranslator(ProverOptions p) {
       Contract.Requires(p != null);
       Contract.Ensures(Contract.Result<AxiomVCExprTranslator>() != null);
