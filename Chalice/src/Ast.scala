@@ -26,7 +26,7 @@ sealed case class Class(classId: String, parameters: List[Class], module: String
   def IsToken: Boolean = false
   def IsChannel: Boolean = false
   def IsState: Boolean = false
-  def IsNormalClass = true;
+  def IsNormalClass = true
 
   lazy val Fields: List[Field] = members flatMap {case x: Field => List(x); case _ => Nil}
   lazy val MentionableFields = Fields filter {x => ! x.Hidden}
@@ -51,12 +51,12 @@ sealed case class Class(classId: String, parameters: List[Class], module: String
   override def toString = FullName
 
   // Says whether or not to compile the class (compilation ignores external classes)
-  var IsExternal = false;   
+  var IsExternal = false
 
   // Refinement extension
-  var IsRefinement = false;
-  var refinesId: String = null;
-  var refines: Class = null;
+  var IsRefinement = false
+  var refinesId: String = null
+  var refines: Class = null
 }
 
 sealed case class Channel(channelId: String, parameters: List[Variable], where: Expression) extends TopLevelDecl(channelId)
@@ -64,47 +64,47 @@ sealed case class Channel(channelId: String, parameters: List[Variable], where: 
 sealed case class SeqClass(parameter: Class) extends Class("seq", List(parameter), "default", Nil) {
   override def IsRef = false;
   override def IsSeq = true;
-  override def IsNormalClass = false;
+  override def IsNormalClass = false
 }
 object IntClass extends Class("int", Nil, "default", Nil) {
   override def IsRef = false
   override def IsInt = true
-  override def IsNormalClass = false;
+  override def IsNormalClass = false
 }
 object BoolClass extends Class("bool", Nil, "default", Nil) {
   override def IsRef = false
   override def IsBool = true
-  override def IsNormalClass = false;
+  override def IsNormalClass = false
 }
 object NullClass extends Class("null", Nil, "default", Nil) {
   override def IsNull = true
-  override def IsNormalClass = false;
+  override def IsNormalClass = false
 }
 object MuClass extends Class("$Mu", Nil, "default", Nil) {
   override def IsRef = false
   override def IsMu = true
-  override def IsNormalClass = false;
+  override def IsNormalClass = false
 }
 case class TokenClass(c: Type, m: String) extends Class("token", Nil, "default", List( 
-  new SpecialField("joinable", new Type(BoolClass))
+  new SpecialField("joinable", new Type(BoolClass), false)
 ))
 {
-  var method = null: Method;
-  override def IsRef = true;
-  override def IsToken = true;
-  override def IsNormalClass = false;
+  var method = null: Method
+  override def IsRef = true
+  override def IsToken = true
+  override def IsNormalClass = false
   override def FullName: String = "token<" + c.FullName + "." + m + ">"  
 }
 case class ChannelClass(ch: Channel) extends Class(ch.id, Nil, "default", Nil) {
-  override def IsRef = true;
-  override def IsChannel = true;
-  override def IsNormalClass = false;
+  override def IsRef = true
+  override def IsChannel = true
+  override def IsNormalClass = false
 }
 
 object RootClass extends Class("$root", Nil, "default", List(
-  new SpecialField("mu", new Type(MuClass)),
-  new SpecialField("held", new Type(BoolClass)){ override val Hidden = true },
-  new SpecialField("rdheld", new Type(BoolClass)){ override val Hidden = true }
+  new SpecialField("mu", new Type(MuClass), false),
+  new SpecialField("held", new Type(BoolClass), true),
+  new SpecialField("rdheld", new Type(BoolClass), true)
   ))  // joinable and held are bool in Chalice, but translated into an int in Boogie
 
 sealed case class Type(id: String, params: List[Type]) extends ASTNode {  // denotes the use of a type
@@ -135,8 +135,9 @@ sealed abstract class NamedMember(id: String) extends Member {
   def FullName = Parent.id + "." + Id
 }
 case class Field(id: String, typ: Type, isGhost: Boolean) extends NamedMember(id)
-case class SpecialField(name: String, tp: Type) extends Field(name, tp, false) {  // direct assignments are not allowed to a SpecialField
+case class SpecialField(name: String, tp: Type, hidden: Boolean) extends Field(name, tp, false) {  // direct assignments are not allowed to a SpecialField
   override def FullName = id
+  override val Hidden = hidden
 }
 sealed abstract class Callable(id: String) extends NamedMember(id) {
   def Spec:List[Specification]
@@ -145,10 +146,10 @@ sealed abstract class Callable(id: String) extends NamedMember(id) {
   def Outs:List[Variable]
 }
 case class Method(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], body: List[Statement]) extends Callable(id) {
-  override def Spec = spec;
-  override def Body = body;
-  override def Ins = ins;
-  override def Outs = outs;
+  override def Spec = spec
+  override def Body = body
+  override def Ins = ins
+  override def Outs = outs
 }
 case class Predicate(id: String, definition: Expression) extends NamedMember(id)
 case class Function(id: String, ins: List[Variable], out: Type, spec: List[Specification], definition: Option[Expression]) extends NamedMember(id) {
@@ -157,9 +158,9 @@ case class Function(id: String, ins: List[Variable], out: Type, spec: List[Speci
     result.f = this;
     result
   }
-  val isUnlimited = false;
-  var isRecursive = false;
-  var SCC: List[Function] = Nil;
+  val isUnlimited = false
+  var isRecursive = false
+  var SCC: List[Function] = Nil
 }
 case class Condition(id: String, where: Option[Expression]) extends NamedMember(id)
 case class Variable(id: String, t: Type, isGhost: Boolean, isImmutable: Boolean) extends ASTNode {
@@ -184,11 +185,13 @@ case class LockChange(ee: List[Expression]) extends Specification
  * Refinement members
  */
 
-sealed abstract class Refinement(id: String) extends Callable(id) {
-  var refines = null: Callable;
+case class CouplingInvariant(ids: List[String], e: Expression) extends Member {
+  assert(ids.size > 0)
+  var fields = null:List[Field]
 }
-case class MethodTransform(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], trans: Transform) extends Refinement(id) {
-  var body = null:List[Statement];
+case class MethodTransform(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], trans: Transform) extends Callable(id) {
+  var refines = null: Callable
+  var body = null:List[Statement]
   def Spec = {assert(refines != null); refines.Spec ++ spec}
   def Body = {
     assert(body != null);
@@ -240,9 +243,9 @@ case class SeqPat(pats: List[Transform]) extends Transform {
   pos = pats.first.pos;
 }
 case class RefinementBlock(con: List[Statement], abs: List[Statement]) extends Statement {
-  if (con.size > 0) pos = con.first.pos;
+  if (con.size > 0) pos = con.first.pos
   // local variables in context at the beginning of the block
-  var before: List[Variable] = null;
+  var before: List[Variable] = null
   // shared declared local variables (mapping between abstract and concrete)
   lazy val during: (List[Variable], List[Variable]) = {
     val a = for (v <- abs.flatMap(s => s.Declares)) yield v;
@@ -271,9 +274,9 @@ case class IfStmt(guard: Expression, thn: BlockStmt, els: Option[Statement]) ext
 case class WhileStmt(guard: Expression,
                      oldInvs: List[Expression], newInvs: List[Expression], lkch: List[Expression], 
                      body: BlockStmt) extends Statement {
-  val Invs = oldInvs ++ newInvs;
-  var LoopTargets: List[Variable] = Nil;
-  override def Targets = body.Targets;
+  val Invs = oldInvs ++ newInvs
+  var LoopTargets: List[Variable] = Nil
+  override def Targets = body.Targets
 }
 case class Assign(lhs: VariableExpr, rhs: RValue) extends Statement {
   override def Targets = if (lhs.v != null) Set(lhs.v) else Set()
@@ -290,7 +293,7 @@ case class Call(declaresLocal: List[Boolean], lhs: List[VariableExpr], obj: Expr
   override def Targets = (lhs :\ Set[Variable]()) { (ve, vars) => if (ve.v != null) vars + ve.v else vars }
 }
 case class SpecStmt(lhs: List[VariableExpr], locals:List[Variable], pre: Expression, post: Expression) extends Statement {
-  override def Declares = locals;
+  override def Declares = locals
   override def Targets = (lhs :\ Set[Variable]()) { (ve, vars) => if (ve.v != null) vars + ve.v else vars }
 }
 case class Install(obj: Expression, lowerBounds: List[Expression], upperBounds: List[Expression]) extends Statement
@@ -322,7 +325,7 @@ case class Send(ch: Expression, args: List[Expression]) extends Statement {
 }
 case class Receive(declaresLocal: List[Boolean], ch: Expression, outs: List[VariableExpr]) extends Statement {
   var locals = List[Variable]()
-  override def Declares = locals;  
+  override def Declares = locals
 }
 case class Fold(pred: Access) extends Statement
 case class Unfold(pred: Access) extends Statement
@@ -340,7 +343,7 @@ case class Init(id: String, e: Expression) extends ASTNode {
 }
 sealed abstract class Expression extends RValue {
   def transform(f: Expression => Option[Expression]) = AST.transform(this, f)
-  def visit(f: RValue => Unit) = AST.visit(this, f);
+  def visit(f: RValue => Unit) = AST.visit(this, f)
 }
 sealed abstract class Literal extends Expression
 case class IntLiteral(n: Int) extends Literal
@@ -356,15 +359,15 @@ case class VariableExpr(id: String) extends Expression {
 case class Result() extends Expression
 sealed abstract class ThisExpr extends Expression
 case class ExplicitThisExpr() extends ThisExpr {
-  override def hashCode = 0;
+  override def hashCode = 0
   override def equals(other: Any) = other.isInstanceOf[ThisExpr]
 }
 case class ImplicitThisExpr() extends ThisExpr {
-  override def hashCode = 0;
+  override def hashCode = 0
   override def equals(other: Any) = other.isInstanceOf[ThisExpr]  
 }
 case class MemberAccess(e: Expression, id: String) extends Expression {
-  var isPredicate: Boolean = false;
+  var isPredicate: Boolean = false
   var f: Field = null
   var predicate: Predicate = null
 }

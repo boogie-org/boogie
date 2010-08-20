@@ -72,7 +72,7 @@ class Parser extends StandardTokenParsers {
 
   def memberDecl = {
     currentLocalVariables = Set[String](); assumeAllLocals = false; 
-    positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl | predicateDecl | functionDecl | transformDecl)
+    positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl | predicateDecl | functionDecl | transformDecl | couplingDecl)
   }
   def fieldDecl =
         ( "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, false) }
@@ -103,6 +103,9 @@ class Parser extends StandardTokenParsers {
         MethodTransform(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, AST.normalize(trans))
     }
   }
+  def couplingDecl = positioned(
+    ("replaces" ~> rep1(ident) <~ "by") ~ expression <~ Semi ^^ {case ids ~ e => CouplingInvariant(ids, e)} 
+  )
 
   def formalParameters(immutable: Boolean) =
     "(" ~> (formalList(immutable) ?) <~ ")" ^^ {

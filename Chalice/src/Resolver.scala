@@ -65,6 +65,7 @@ object Resolver {
            val ids = scala.collection.mutable.Set.empty[String]
            for (m <- cl.members) m match {
              case _:MonitorInvariant =>
+             case _:CouplingInvariant =>
              case m: NamedMember =>
                m.Parent = cl
                if (ids contains m.Id) {
@@ -105,25 +106,29 @@ object Resolver {
      }
    }
 
-   // resolve refinement members
+   // resolve refinement members: set-up refinement between members and check for duplicates
    for (decl <- prog) decl match {
      case cl: Class =>
        if (! cl.IsRefinement) {
          // check has no refinement members
-         if (cl.members.exists{case _: Refinement => true; case _ => false})
+         if (cl.members.exists{
+           case _: CouplingInvariant => true
+           case _: MethodTransform => true
+           case _ => false})
            return Errors(List((cl.pos, "non-refinement class cannot have refinement members")))
        } else for (member <- cl.members) member match {
-         case r: Refinement =>
-           if (! cl.refines.LookupMember(r.Id).isDefined)
-             return Errors(List((r.pos, "abstract class has no member with name " + r.Id)))
+         case r: MethodTransform =>
            r.refines = cl.refines.LookupMember(r.Id) match {
              case Some(m: Method) => m;
              case Some(mt: MethodTransform) => mt
+             case None => return Errors(List((r.pos, "abstract class has no method with name " + r.Id))) 
              case _ => return Errors(List((r.pos, "method transform can only refine a method or a method transform")))
            }
          case m: NamedMember =>
-           if (cl.refines.LookupMember(m.Id).isDefined)
-             return Errors(List((m.pos, "member needs to be a refinement since abstract class has a member with the same name")))
+           cl.refines.LookupMember(m.Id) match {
+             case Some(x) => return Errors(List((m.pos, "member needs to be a refinement since abstract class has a member with the same name: " + x.pos)))
+             case None =>
+           }
          case _ =>
        }
      case _ =>
@@ -141,6 +146,7 @@ object Resolver {
      case cl: Class =>
        for (m <- cl.members) m match {
          case _: MonitorInvariant =>
+         case _: CouplingInvariant =>
          case Field(_, t, _) =>
            ResolveType(t, baseContext)
          case Method(_, ins, outs, _, _) =>
@@ -232,10 +238,11 @@ object Resolver {
        f.isRecursive = true;
    }
 
-   // resolve refinement transforms
+   // resolve refinement members (starting from abstract programs): assign types to expressions
    for (List(cl) <- dag.computeTopologicalSort.reverse) {
      for (m <- cl.members) m match {
-       case mt: MethodTransform => ResolveTransform(mt, baseContext);
+       case mt: MethodTransform => ResolveTransform(mt, baseContext)
+       case ci: CouplingInvariant => ResolveCouplingInvariant(ci, cl, baseContext) 
        case _ =>
      }
    }
@@ -972,31 +979,25 @@ object Resolver {
  }
 
  def CheckNoGhost(expr: RValue, context: ProgramContext): Unit = {
-   def specOk(e: RValue): Unit = { 
-     e match {
-       case ve: VariableExpr =>
-         if (ve.v != null && ve.v.isGhost) context.Error(ve.pos, "ghost variable not allowed here")
-       case fs@ MemberAccess(e, id) =>
-         if (!fs.isPredicate && fs.f != null && fs.f.isGhost) context.Error(fs.pos, "ghost fields not allowed here")
-       case a: Assigned =>
-         if (a.v != null && a.v.isGhost) context.Error(a.pos, "ghost variable not allowed here")
-       case _ => // do nothing
-     }
-   }
-   AST.visit(expr, specOk);
+   AST.visit(expr, e => e match {
+     case ve: VariableExpr =>
+       if (ve.v != null && ve.v.isGhost) context.Error(ve.pos, "ghost variable not allowed here")
+     case fs@ MemberAccess(e, id) =>
+       if (!fs.isPredicate && fs.f != null && fs.f.isGhost) context.Error(fs.pos, "ghost fields not allowed here")
+     case a: Assigned =>
+       if (a.v != null && a.v.isGhost) context.Error(a.pos, "ghost variable not allowed here")
+     case _ => // do nothing
+   })   
  }
 
  def CheckNoImmutableGhosts(expr: RValue, context: ProgramContext): Unit = {
-   def specOk(e: RValue): Unit = {
-     e match {
-       case ve: VariableExpr =>
-         if (ve.v != null && ve.v.isGhost && ve.v.isImmutable) context.Error(ve.pos, "ghost const not allowed here")
-       case a: Assigned =>
-         if (a.v != null && a.v.isGhost && a.v.isImmutable) context.Error(a.pos, "ghost const not allowed here")
-       case _ => // do nothing
-     }
-   }
-   AST.visit(expr, specOk);
+   AST.visit(expr, e => e match {
+     case ve: VariableExpr =>
+       if (ve.v != null && ve.v.isGhost && ve.v.isImmutable) context.Error(ve.pos, "ghost const not allowed here")
+     case a: Assigned =>
+       if (a.v != null && a.v.isGhost && a.v.isImmutable) context.Error(a.pos, "ghost const not allowed here")
+     case _ => // do nothing
+   })
  }
 
  def CheckRunSpecification(e: Expression, context: ProgramContext, allowMaxLock: Boolean): Unit = e match {
@@ -1126,5 +1127,16 @@ object Resolver {
      }
    }
    resolveBody(mt.body, context.SetClass(mt.Parent).SetMember(mt), Nil)
+ }
+
+ def ResolveCouplingInvariant(ci: CouplingInvariant, cl: Class, context: ProgramContext) {
+   assert (cl.IsRefinement)
+   for (id <- ci.ids) cl.refines.LookupMember(id) match {
+     case Some(f: Field) => ci.fields = f :: ci.fields
+     case Some(_) => context.Error(ci.pos, "coupling invariant can only be bound to a field of the abstract program")
+     case None => context.Error(ci.pos, "coupling invariant does not refer to a member of the abstract program")
+   }
+   ResolveExpr(ci.e, context.SetClass(cl).SetMember(ci), false, true)(true)
+   if (!ci.e.typ.IsBool) context.Error(ci.pos, "coupling invariant requires a boolean expression (found " + ci.e.typ.FullName + ")")
  }
 }

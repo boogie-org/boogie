@@ -55,10 +55,13 @@ object PrintProgram {
       if (m.refines != null) PrintSpec(m.Spec);
       println("  {");
       if (m.body == null)
-        println("    // body is not resolved")
+        println("    // body transform is not resolved")
       else
         for (s <- m.body) {Spaces(4); Stmt(s, 4)}
       println("  }")
+    case CouplingInvariant(ids, e) =>
+      print("  replaces "); Commas(ids); print(" by "); Expr(e); println(Semi);
+      
   }
   def PrintSpec(specs: List[Specification]) {
     specs foreach {
@@ -207,11 +210,11 @@ object PrintProgram {
     for (s <- ss) { Spaces(indent+2); Stmt(s, indent+2) }
     Spaces(indent);  print("}")
   }
-  def VarList(vv: List[Variable]) = vv match {
+  def VarList(vv: List[Variable]) = Commas(vv map {v => v.id + ": " + v.t.FullName})
+  def Commas(ss: List[String]) = ss match {
     case Nil =>
-    case v :: rest =>
-      print(v.id + ": " + v.t.FullName)
-      rest foreach { v  => print(", " + v.id + ": " + v.t.FullName) }
+    case s :: rest =>
+      print(s); rest foreach {s => print(", " + s)}
   }
   def ExprList(ee: List[Expression]) = ee match {
     case Nil =>
