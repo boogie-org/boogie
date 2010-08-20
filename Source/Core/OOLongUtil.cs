@@ -6,14 +6,22 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 
 namespace Boogie.Util {
   public class TeeWriter : TextWriter {
-    readonly TextWriter! a;
-    readonly TextWriter! b;
+    readonly TextWriter/*!*/ a;
+    readonly TextWriter/*!*/ b;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(a != null);
+      Contract.Invariant(b != null);
+    }
 
-    public TeeWriter(TextWriter! a, TextWriter! b) {
+
+    public TeeWriter(TextWriter a, TextWriter b) {
+      Contract.Requires(b != null);
+      Contract.Requires(a != null);
       this.a = a;
       this.b = b;
     }
@@ -28,14 +36,15 @@ namespace Boogie.Util {
       a.Close();
       b.Close();
     }
-    
+
     public override void Flush() {
       a.Flush();
       b.Flush();
     }
 
     [Pure]
-    public override string! ToString() {
+    public override string ToString() {
+      Contract.Ensures(Contract.Result<string>() != null);
       return "<TeeWriter: " + a.ToString() + ", " + b.ToString() + ">";
     }
 
@@ -55,21 +64,32 @@ namespace Boogie.Util {
   /// It simply reads from the given "reader".
   /// </summary>
   public class LineReader : TextReader {
-    [Rep] readonly TextReader! reader;
+    [Rep]
+    readonly TextReader/*!*/ reader;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(reader != null);
+      Contract.Invariant(readAhead == null || (0 <= readAheadConsumed && readAheadConsumed < readAhead.Length));
+    }
+
     string readAhead;
     int readAheadConsumed;
-    invariant readAhead == null || (0 <= readAheadConsumed && readAheadConsumed < readAhead.Length);
 
-    public LineReader([Captured] TextReader! reader) {
+
+    public LineReader([Captured] TextReader reader) {
+      Contract.Requires(reader != null);
       this.reader = reader;
     }
     public override void Close() {
-      expose (this) {
+      cce.BeginExpose(this);
+      {
         reader.Close();
       }
+      cce.EndExpose();
     }
     public override int Read() {
-      expose (this) {
+      cce.BeginExpose(this);
+      {
         while (readAhead == null) {
           readAhead = reader.ReadLine();
           if (readAhead == null) {
@@ -86,8 +106,10 @@ namespace Boogie.Util {
         }
         return res;
       }
+      cce.EndExpose();
     }
-    public override int Read(char[]! buffer, int index, int count) {
+    public override int Read(char[] buffer, int index, int count) {
+      
       int n = 0;
       for (; n < count; n++) {
         int ch = Read();
@@ -101,10 +123,12 @@ namespace Boogie.Util {
     public override string ReadLine() {
       string res;
       if (readAhead != null) {
-        expose (this) {
+        cce.BeginExpose(this);
+        {
           res = readAhead.Substring(readAheadConsumed);
           readAhead = null;
         }
+        cce.EndExpose();
       } else {
         res = reader.ReadLine();
       }
@@ -113,16 +137,28 @@ namespace Boogie.Util {
   }
 
   public class IfdefReader : LineReader {
-    [Rep] readonly List<string!>! defines;
-    [Rep] readonly List<bool>! readState = new List<bool>();
+    [Rep]
+    readonly List<string/*!*/>/*!*/ defines;
+    [Rep]
+    readonly List<bool>/*!*/ readState = new List<bool>();
     int ignoreCutoff = 0;  // 0 means we're not ignoring
-    invariant 0 <= ignoreCutoff && ignoreCutoff <= readState.Count;
-    
-    public IfdefReader([Captured] TextReader! reader, [Captured] List<string!>! defines) {
-      base(reader);
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(readState != null);
+      Contract.Invariant(cce.NonNullElements(defines));
+      Contract.Invariant(0 <= ignoreCutoff && ignoreCutoff <= readState.Count);
+    }
+
+
+
+    public IfdefReader([Captured] TextReader reader, [Captured] List<string/*!*/>/*!*/ defines)
+      : base(reader) {//BASEMOVEA
+      Contract.Requires(reader != null);
+      Contract.Requires(cce.NonNullElements(defines));
+      //:base(reader);
       this.defines = defines;
     }
-    
+
     public override string ReadLine() {
       while (true) {
         string s = base.ReadLine();
@@ -143,11 +179,11 @@ namespace Boogie.Util {
             ignoreCutoff = readState.Count;  // start ignoring
           }
         } else if (t == "#else") {
-          if (readState.Count == 0 || !readState[readState.Count-1]) {
+          if (readState.Count == 0 || !readState[readState.Count - 1]) {
             return s;  // malformed input; return the read line as if it were not special
           }
           // change the "true" to a "false" on top of the state, since we're now going into the "else" branch
-          readState[readState.Count-1] = false;
+          readState[readState.Count - 1] = false;
           if (ignoreCutoff == 0) {
             // the "then" branch had been included, so we'll ignore the "else" branch
             ignoreCutoff = readState.Count;
@@ -164,7 +200,7 @@ namespace Boogie.Util {
             ignoreCutoff = 0;
           }
           // pop
-          readState.RemoveAt(readState.Count-1);
+          readState.RemoveAt(readState.Count - 1);
         } else if (ignoreCutoff == 0) {
           return s;
         }

@@ -4,17 +4,20 @@
 //
 //-----------------------------------------------------------------------------
 namespace Microsoft.Boogie {
-  
+
   using System;
   using System.IO;
   using System.Collections;
   using System.Collections.Generic;
   using System.Diagnostics;
+  using System.Diagnostics.Contracts;
 
-  public static class LambdaHelper
-  {   
-    public static Absy! Desugar(Absy! node, out List<Expr!>! axioms, out List<Function!>! functions)
-    {
+  public static class LambdaHelper {
+    public static Absy Desugar(Absy node, out List<Expr/*!*/>/*!*/ axioms, out List<Function/*!*/>/*!*/ functions) {
+      Contract.Requires(node != null);
+      Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out functions)));
+      Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out axioms)));
+      Contract.Ensures(Contract.Result<Absy>() != null);
       LambdaVisitor v = new LambdaVisitor();
       node = v.Visit(node);
       axioms = v.lambdaAxioms;
@@ -33,10 +36,11 @@ namespace Microsoft.Boogie {
       return node;
     }
 
-    public static void ExpandLambdas(Program! prog)
-    {
-      List<Expr!>! axioms;
-      List<Function!>! functions;
+    public static void ExpandLambdas(Program prog) {
+      Contract.Requires(prog != null);
+      List<Expr/*!*/>/*!*/ axioms;
+      List<Function/*!*/>/*!*/ functions;
+
       Desugar(prog, out axioms, out functions);
       foreach (var f in functions) {
         prog.TopLevelDeclarations.Add(f);
@@ -46,15 +50,22 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private class LambdaVisitor : StandardVisitor
-    {   
-      internal List<Expr!>! lambdaAxioms = new List<Expr!>();
-      internal List<Function!>! lambdaFunctions = new List<Function!>();
+    private class LambdaVisitor : StandardVisitor {
+      internal List<Expr/*!*/>/*!*/ lambdaAxioms = new List<Expr/*!*/>();
+      internal List<Function/*!*/>/*!*/ lambdaFunctions = new List<Function/*!*/>();
+      [ContractInvariantMethod]
+      void ObjectInvariant() {
+        Contract.Invariant(cce.NonNullElements(lambdaAxioms));
+        Contract.Invariant(cce.NonNullElements(lambdaFunctions));
+      }
+
       static int lambdaid = 0;
 
-      public override Program! VisitProgram(Program! prog)
-      {
-        foreach (Declaration! decl in prog.TopLevelDeclarations) {
+      public override Program VisitProgram(Program prog) {
+        //Contract.Requires(prog != null);
+        Contract.Ensures(Contract.Result<Program>() != null);
+        foreach (Declaration/*!*/ decl in prog.TopLevelDeclarations) {
+          Contract.Assert(decl != null);
           if (decl is Axiom || decl is Function) {
             this.Visit(decl);
           }
@@ -62,20 +73,23 @@ namespace Microsoft.Boogie {
 
         return prog;
       }
-      
-      public override Procedure! VisitProcedure(Procedure! node)
-      {
+
+      public override Procedure VisitProcedure(Procedure node) {
+        //Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Procedure>() != null);
         // do not visit requires/ensures when calling this on Implementation
         return node;
-      }  
+      }
 
-      public override Absy! Visit(Absy! node)
-      {
+      public override Absy Visit(Absy node) {
+        //Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Absy>() != null);
         node = base.Visit(node);
 
         LambdaExpr lambda = node as LambdaExpr;
         if (lambda != null) {
-          IToken! tok = lambda.tok;
+          IToken/*!*/ tok = lambda.tok;
+          Contract.Assert(tok != null);
 
           Set freeVars = new Set();
           lambda.ComputeFreeVariables(freeVars);
@@ -86,7 +100,7 @@ namespace Microsoft.Boogie {
           ExprSeq axCallArgs = new ExprSeq();
           VariableSeq dummies = new VariableSeq(lambda.Dummies);
           TypeVariableSeq freeTypeVars = new TypeVariableSeq();
-          List<Type!> fnTypeVarActuals = new List<Type!>();
+          List<Type/*!*/> fnTypeVarActuals = new List<Type/*!*/>();
           TypeVariableSeq freshTypeVars = new TypeVariableSeq();  // these are only used in the lambda@n function's definition
           foreach (object o in freeVars) {
             // 'o' is either a Variable or a TypeVariable.  Since the lambda desugaring happens only
@@ -102,7 +116,8 @@ namespace Microsoft.Boogie {
               BoundVariable b = new BoundVariable(v.tok, ti);
               dummies.Add(b);
               callArgs.Add(new IdentifierExpr(v.tok, v));
-              Expr! id = new IdentifierExpr(f.tok, b);
+              Expr/*!*/ id = new IdentifierExpr(f.tok, b);
+              Contract.Assert(id != null);
               subst.Add(v, id);
               axCallArgs.Add(id);
             } else if (o is TypeVariable) {
@@ -112,16 +127,17 @@ namespace Microsoft.Boogie {
               freshTypeVars.Add(new TypeVariable(tv.tok, tv.Name));
             }
           }
-          
-          Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, (!)lambda.Type), false);
+
+          Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, cce.NonNull(lambda.Type)), false);
           Function fn = new Function(tok, "lambda@" + lambdaid++, freshTypeVars, formals, res, "auto-generated lambda function", lambda.Attributes);
           lambdaFunctions.Add(fn);
 
           FunctionCall fcall = new FunctionCall(new IdentifierExpr(tok, fn.Name));
           fcall.Func = fn;  // resolve here
 
-          List<Expr!> selectArgs = new List<Expr!>();
-          foreach (Variable! v in lambda.Dummies) {
+          List<Expr/*!*/> selectArgs = new List<Expr/*!*/>();
+          foreach (Variable/*!*/ v in lambda.Dummies) {
+            Contract.Assert(v != null);
             selectArgs.Add(new IdentifierExpr(v.tok, v));
           }
           NAryExpr axcall = new NAryExpr(tok, fcall, axCallArgs);
@@ -129,9 +145,10 @@ namespace Microsoft.Boogie {
           axcall.TypeParameters = SimpleTypeParamInstantiation.From(freeTypeVars, fnTypeVarActuals);
           NAryExpr select = Expr.Select(axcall, selectArgs);
           select.Type = lambda.Body.Type;
-          List<Type!> selectTypeParamActuals = new List<Type!>();
+          List<Type/*!*/> selectTypeParamActuals = new List<Type/*!*/>();
           TypeVariableSeq forallTypeVariables = new TypeVariableSeq();
-          foreach (TypeVariable! tp in lambda.TypeParameters) {
+          foreach (TypeVariable/*!*/ tp in lambda.TypeParameters) {
+            Contract.Assert(tp != null);
             selectTypeParamActuals.Add(tp);
             forallTypeVariables.Add(tp);
           }
@@ -156,6 +173,5 @@ namespace Microsoft.Boogie {
       }
     }
   }
-  
-} // end namespace
 
+} // end namespace

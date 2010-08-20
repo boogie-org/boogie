@@ -1,5 +1,4 @@
 COCO = ..\..\Binaries\Coco.exe
-ASML = ..\..\Binaries\asmlc.boot.exe
 
 # ###############################################################################
 # The frame files are no longer in this directory. They must be downloaded
@@ -13,13 +12,8 @@ FRAME_DIR = c:\BoogiePartners\CocoR\Modified
 # nmake that.  --KRML
 all: Parser.ssc 
 
-#Graph.dll: Graph.as
-#  $(ASML) /target:library Graph.as
-  
 Parser.ssc: $(FRAME_DIR)\Scanner.frame $(FRAME_DIR)\Parser.frame BoogiePL.atg
 	$(COCO) BoogiePL.atg -namespace Microsoft.Boogie -frames $(FRAME_DIR)
-	copy Parser.cs Parser.ssc
-	copy Scanner.cs Scanner.ssc
 
 clean:
-	rm -f Scanner.ssc Parser.ssc
+	rm -f Scanner.cs Parser.cs

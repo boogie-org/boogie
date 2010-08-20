@@ -19,31 +19,33 @@ COMPILER BoogiePL
 
 /*--------------------------------------------------------------------------*/
 
-static Program! Pgm = new Program();
+static Program/*!*/ Pgm = new Program();
 
-static Expr! dummyExpr = new LiteralExpr(Token.NoToken, false);
-static Cmd! dummyCmd = new AssumeCmd(Token.NoToken, dummyExpr);
-static Block! dummyBlock = new Block(Token.NoToken, "dummyBlock", new CmdSeq(),
+static Expr/*!*/ dummyExpr = new LiteralExpr(Token.NoToken, false);
+static Cmd/*!*/ dummyCmd = new AssumeCmd(Token.NoToken, dummyExpr);
+static Block/*!*/ dummyBlock = new Block(Token.NoToken, "dummyBlock", new CmdSeq(),
                                      new ReturnCmd(Token.NoToken));
-static Bpl.Type! dummyType = new BasicType(Token.NoToken, SimpleType.Bool);
-static Bpl.ExprSeq! dummyExprSeq = new ExprSeq ();
-static TransferCmd! dummyTransferCmd = new ReturnCmd(Token.NoToken);
-static StructuredCmd! dummyStructuredCmd = new BreakCmd(Token.NoToken, null);
+static Bpl.Type/*!*/ dummyType = new BasicType(Token.NoToken, SimpleType.Bool);
+static Bpl.ExprSeq/*!*/ dummyExprSeq = new ExprSeq ();
+static TransferCmd/*!*/ dummyTransferCmd = new ReturnCmd(Token.NoToken);
+static StructuredCmd/*!*/ dummyStructuredCmd = new BreakCmd(Token.NoToken, null);
 
 ///<summary>
 ///Returns the number of parsing errors encountered.  If 0, "program" returns as
 ///the parsed program.
 ///</summary>
-public static int Parse (string! filename, /*maybe null*/ List<string!> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
+public static int Parse (string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
+Contract.Requires(filename != null);
+Contract.Requires(cce.NonNullElements(defines,true));
 
 
   FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
   
   if (defines == null) {
-    defines = new List<string!>();
+    defines = new List<string/*!*/>();
   }
   string s = ParserHelper.Fill(stream, defines);
-  byte[]! buffer = (!) UTF8Encoding.Default.GetBytes(s);
+  byte[]/*!*/ buffer = cce.NonNull(UTF8Encoding.Default.GetBytes(s));
   MemoryStream ms = new MemoryStream(buffer,false);
   Errors errors = new Errors();
   Scanner scanner = new Scanner(ms, errors, filename);
@@ -69,21 +71,24 @@ public static int Parse (string! filename, /*maybe null*/ List<string!> defines,
 private class BvBounds : Expr {
   public BigNum Lower;
   public BigNum Upper;
-  public BvBounds(IToken! tok, BigNum lower, BigNum upper) {
-    base(tok);
+  public BvBounds(IToken/*!*/ tok, BigNum lower, BigNum upper) :base(tok){//BASEMOVE
+    Contract.Requires(tok != null);
+    //:base(tok);
     this.Lower = lower;
     this.Upper = upper;
   }
-  public override Type! ShallowType { get { return Bpl.Type.Int; } }
-  public override void Resolve(ResolutionContext! rc) {
+  public override Type/*!*/ ShallowType { get {Contract.Ensures(Contract.Result<Type>() != null); return Bpl.Type.Int; } }
+  public override void Resolve(ResolutionContext/*!*/ rc) {
+  Contract.Requires(rc != null);
     rc.Error(this, "bitvector bounds in illegal position");
   }
-  public override void Emit(TokenTextWriter! stream,
+  public override void Emit(TokenTextWriter/*!*/ stream,
                             int contextBindingStrength, bool fragileContext) {
-    assert false;
+    Contract.Requires(stream != null);
+    {Contract.Assert(false);throw new cce.UnreachableException();}
   }
-  public override void ComputeFreeVariables(Set! freeVars) { assert false; }
-  public override AI.IExpr! IExpr { get { assert false; } }
+  public override void ComputeFreeVariables(Set/*!*/ freeVars) {Contract.Requires(freeVars != null); {Contract.Assert(false);throw new cce.UnreachableException();} }
+  public override AI.IExpr/*!*/ IExpr { get { Contract.Ensures(Contract.Result<AI.IExpr>()!=null); {Contract.Assert(false);throw new cce.UnreachableException();} } }
 }
 
 /*--------------------------------------------------------------------------*/
@@ -124,21 +129,28 @@ PRODUCTIONS
 
 /*------------------------------------------------------------------------*/
 BoogiePL
-= (. VariableSeq! vs;
-     DeclarationSeq! ds;
-     Axiom! ax;
-     List<Declaration!>! ts;
-     Procedure! pr;
+= (. VariableSeq/*!*/ vs;
+     DeclarationSeq/*!*/ ds;
+     Axiom/*!*/ ax;
+     List<Declaration/*!*/>/*!*/ ts;
+     Procedure/*!*/ pr;
      Implementation im;
-     Implementation! nnim;
+     Implementation/*!*/ nnim;
   .)
-  { Consts<out vs>             (. foreach (Bpl.Variable! v in vs) { Pgm.TopLevelDeclarations.Add(v); } .)
-  | Function<out ds>           (. foreach (Bpl.Declaration! d in ds) { Pgm.TopLevelDeclarations.Add(d); } .)
+  { Consts<out vs>             (. foreach(Bpl.Variable/*!*/ v in vs){
+Contract.Assert(v != null);
+ Pgm.TopLevelDeclarations.Add(v); } .)
+  | Function<out ds>           (. foreach(Bpl.Declaration/*!*/ d in ds){
+Contract.Assert(d != null);
+ Pgm.TopLevelDeclarations.Add(d); } .)
   | Axiom<out ax>              (. Pgm.TopLevelDeclarations.Add(ax); .)
-  | UserDefinedTypes<out ts>   (. foreach (Declaration! td in ts) {
+  | UserDefinedTypes<out ts>   (. foreach(Declaration/*!*/ td in ts){
+Contract.Assert(td != null);
                                         Pgm.TopLevelDeclarations.Add(td);
                                       } .)
-  | GlobalVars<out vs>         (. foreach (Bpl.Variable! v in vs) { Pgm.TopLevelDeclarations.Add(v); } .)
+  | GlobalVars<out vs>         (. foreach(Bpl.Variable/*!*/ v in vs){
+Contract.Assert(v != null);
+ Pgm.TopLevelDeclarations.Add(v); } .)
   | Procedure<out pr, out im>  (. Pgm.TopLevelDeclarations.Add(pr);
                                    if (im != null) {
                                      Pgm.TopLevelDeclarations.Add(im);
@@ -150,43 +162,47 @@ BoogiePL
   .
 
 /*------------------------------------------------------------------------*/
-GlobalVars<out VariableSeq! ds>
-= (. TypedIdentSeq! tyds = new TypedIdentSeq(); ds = new VariableSeq(); QKeyValue kv = null; .)
+GlobalVars<out VariableSeq/*!*/ ds>
+= (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); ds = new VariableSeq(); QKeyValue kv = null; .)
   "var"
   { Attribute<ref kv> }
   IdsTypeWheres<true, tyds> ";"
-  (. foreach(TypedIdent! tyd in tyds) {
+  (. foreach(TypedIdent/*!*/ tyd in tyds){
+Contract.Assert(tyd != null);
        ds.Add(new GlobalVariable(tyd.tok, tyd, kv));
      }
   .)
   .
 
-LocalVars<VariableSeq! ds>
-= (. TypedIdentSeq! tyds = new TypedIdentSeq(); QKeyValue kv = null; .)
+LocalVars<VariableSeq/*!*/ ds>
+= (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); QKeyValue kv = null; .)
   "var"
   { Attribute<ref kv> }
   IdsTypeWheres<true, tyds> ";"
-  (. foreach(TypedIdent! tyd in tyds) {
+  (. foreach(TypedIdent/*!*/ tyd in tyds){
+Contract.Assert(tyd != null);
        ds.Add(new LocalVariable(tyd.tok, tyd, kv));
      }
   .)
   .
 
-ProcFormals<bool incoming, bool allowWhereClauses, out VariableSeq! ds>
-= (. TypedIdentSeq! tyds = new TypedIdentSeq(); ds = new VariableSeq(); .)
+ProcFormals<bool incoming, bool allowWhereClauses, out VariableSeq/*!*/ ds>
+= (.Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); ds = new VariableSeq(); .)
   "("
   [ IdsTypeWheres<allowWhereClauses, tyds> ]
   ")"
-  (. foreach (TypedIdent! tyd in tyds) {
+  (. foreach(TypedIdent/*!*/ tyd in tyds){
+Contract.Assert(tyd != null);
        ds.Add(new Formal(tyd.tok, tyd, incoming));
      }
   .)
   .
 
-BoundVars<IToken! x, out VariableSeq! ds>
-= (. TypedIdentSeq! tyds = new TypedIdentSeq(); ds = new VariableSeq(); .)
+BoundVars<IToken/*!*/ x, out VariableSeq/*!*/ ds>
+= (. Contract.Requires(x != null); Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); ds = new VariableSeq(); .)
   IdsTypeWheres<false, tyds>
-  (. foreach (TypedIdent! tyd in tyds) {
+  (. foreach(TypedIdent/*!*/ tyd in tyds){
+Contract.Assert(tyd != null);
        ds.Add(new BoundVariable(tyd.tok, tyd));
      }
   .)
@@ -194,11 +210,12 @@ BoundVars<IToken! x, out VariableSeq! ds>
 
 /*------------------------------------------------------------------------*/
 /* IdsType is used with const declarations */
-IdsType<out TypedIdentSeq! tyds>
-= (. TokenSeq! ids;  Bpl.Type! ty; .)
+IdsType<out TypedIdentSeq/*!*/ tyds>
+= (. Contract.Ensures(Contract.ValueAtReturn(out tyds) != null); TokenSeq/*!*/ ids;  Bpl.Type/*!*/ ty; .)
   Idents<out ids> ":" Type<out ty>
   (. tyds = new TypedIdentSeq();
-     foreach (Token! id in ids) {
+     foreach(Token/*!*/ id in ids){
+Contract.Assert(id != null);
        tyds.Add(new TypedIdent(id, id.val, ty, null));
      }
   .)
@@ -206,14 +223,14 @@ IdsType<out TypedIdentSeq! tyds>
 
 /* IdsTypeWheres is used with the declarations of global and local variables,
    procedure parameters, and quantifier bound variables. */
-IdsTypeWheres<bool allowWhereClauses, TypedIdentSeq! tyds>
-=
+IdsTypeWheres<bool allowWhereClauses, TypedIdentSeq/*!*/ tyds>
+=(.Contract.Requires(tyds != null);.)
   IdsTypeWhere<allowWhereClauses, tyds>
   { "," IdsTypeWhere<allowWhereClauses, tyds> }
   .
 
-IdsTypeWhere<bool allowWhereClauses, TypedIdentSeq! tyds>
-= (. TokenSeq! ids;  Bpl.Type! ty;  Expr wh = null;  Expr! nne; .)
+IdsTypeWhere<bool allowWhereClauses, TypedIdentSeq/*!*/ tyds>
+= (.Contract.Requires(tyds != null); TokenSeq/*!*/ ids;  Bpl.Type/*!*/ ty;  Expr wh = null;  Expr/*!*/ nne; .)
   Idents<out ids> ":" Type<out ty>
   [ "where" Expression<out nne>  (. if (allowWhereClauses) {
                                       wh = nne;
@@ -222,32 +239,33 @@ IdsTypeWhere<bool allowWhereClauses, TypedIdentSeq! tyds>
                                     }
                                  .)
   ]
-  (. foreach (Token! id in ids) {
+  (. foreach(Token/*!*/ id in ids){
+Contract.Assert(id != null);
        tyds.Add(new TypedIdent(id, id.val, ty, wh));
      }
   .)
   .
 
 /*------------------------------------------------------------------------*/
-Type<out Bpl.Type! ty>
-= (. IToken! tok; ty = dummyType; .)
+Type<out Bpl.Type/*!*/ ty>
+= (.Contract.Ensures(Contract.ValueAtReturn(out ty) != null); IToken/*!*/ tok; ty = dummyType; .)
   (
     TypeAtom<out ty>
   |
-    Ident<out tok>       (. TypeSeq! args = new TypeSeq (); .)
+    Ident<out tok>       (. TypeSeq/*!*/ args = new TypeSeq (); .)
     [ TypeArgs<args> ]   (. ty = new UnresolvedTypeIdentifier (tok, tok.val, args); .)
   |
     MapType<out ty>
   )
   .
 
-TypeArgs<TypeSeq! ts>
-= (. IToken! tok; Type! ty; .)
+TypeArgs<TypeSeq/*!*/ ts>
+= (.Contract.Requires(ts != null); IToken/*!*/ tok; Type/*!*/ ty; .)
   (
     TypeAtom<out ty>     (. ts.Add(ty); .)
     [ TypeArgs<ts> ]
   |
-    Ident<out tok>       (. TypeSeq! args = new TypeSeq ();
+    Ident<out tok>       (. TypeSeq/*!*/ args = new TypeSeq ();
                             ts.Add(new UnresolvedTypeIdentifier (tok, tok.val, args)); .)
     [ TypeArgs<ts> ]
   |
@@ -255,8 +273,8 @@ TypeArgs<TypeSeq! ts>
   )
   .
 
-TypeAtom<out Bpl.Type! ty>
-= (. ty = dummyType; .)
+TypeAtom<out Bpl.Type/*!*/ ty>
+= (.Contract.Ensures(Contract.ValueAtReturn(out ty) != null); ty = dummyType; .)
   ( "int"              (. ty = new BasicType(t, SimpleType.Int); .)
   | "bool"             (. ty = new BasicType(t, SimpleType.Bool); .)
   /* note: bitvectors are handled in UnresolvedTypeIdentifier */
@@ -267,12 +285,12 @@ TypeAtom<out Bpl.Type! ty>
   )
   .
 
-MapType<out Bpl.Type! ty>
-= (. IToken tok = null;
-     IToken! nnTok;
-     TypeSeq! arguments = new TypeSeq();
-     Type! result;
-     TypeVariableSeq! typeParameters = new TypeVariableSeq();
+MapType<out Bpl.Type/*!*/ ty>
+= (.Contract.Ensures(Contract.ValueAtReturn(out ty) != null); IToken tok = null;
+     IToken/*!*/ nnTok;
+     TypeSeq/*!*/ arguments = new TypeSeq();
+     Type/*!*/ result;
+     TypeVariableSeq/*!*/ typeParameters = new TypeVariableSeq();
    .)
   [ TypeParams<out nnTok, out typeParameters> (. tok = nnTok; .) ]
   "["                                         (.  if (tok == null) tok = t;  .)
@@ -284,20 +302,21 @@ MapType<out Bpl.Type! ty>
   .)
   .
 
-TypeParams<out IToken! tok, out Bpl.TypeVariableSeq! typeParams>
-= (. TokenSeq! typeParamToks; .)
+TypeParams<out IToken/*!*/ tok, out Bpl.TypeVariableSeq/*!*/ typeParams>
+= (.Contract.Ensures(Contract.ValueAtReturn(out tok) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); TokenSeq/*!*/ typeParamToks; .)
   "<"    (.  tok = t;  .)
     Idents<out typeParamToks>
   ">"
   (.
     typeParams = new TypeVariableSeq ();
-    foreach (Token! id in typeParamToks)
-      typeParams.Add(new TypeVariable(id, id.val));
+    foreach(Token/*!*/ id in typeParamToks){
+Contract.Assert(id != null);
+      typeParams.Add(new TypeVariable(id, id.val));}
    .)
   .
 
-Types<TypeSeq! ts>
-= (. Bpl.Type! ty; .)
+Types<TypeSeq/*!*/ ts>
+= (. Contract.Requires(ts != null); Bpl.Type/*!*/ ty; .)
   Type<out ty>                 (. ts.Add(ty); .)
   { "," Type<out ty>           (. ts.Add(ty); .)
   }
@@ -305,12 +324,12 @@ Types<TypeSeq! ts>
 
 
 /*------------------------------------------------------------------------*/
-Consts<out VariableSeq! ds> 
-= (. IToken! y; TypedIdentSeq! xs;
+Consts<out VariableSeq/*!*/ ds> 
+= (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; TypedIdentSeq/*!*/ xs;
      ds = new VariableSeq();
      bool u = false; QKeyValue kv = null;
      bool ChildrenComplete = false;
-     List<ConstantParent!> Parents = null; .)
+     List<ConstantParent/*!*/> Parents = null; .)
   "const"                 (. y = t; .)
   { Attribute<ref kv> }
   [ "unique"              (. u = true;  .)
@@ -318,16 +337,17 @@ Consts<out VariableSeq! ds>
   IdsType<out xs>
   [ OrderSpec<out ChildrenComplete, out Parents> ]
   (. bool makeClone = false;
-     foreach(TypedIdent! x in xs) {
+     foreach(TypedIdent/*!*/ x in xs){
+Contract.Assert(x != null);
 
        // ensure that no sharing is introduced
-       List<ConstantParent!> ParentsClone;
+       List<ConstantParent/*!*/> ParentsClone;
        if (makeClone && Parents != null) {
-         ParentsClone = new List<ConstantParent!> ();
-         foreach (ConstantParent! p in Parents)
+         ParentsClone = new List<ConstantParent/*!*/> ();
+         foreach (ConstantParent/*!*/ p in Parents){Contract.Assert(p != null);
            ParentsClone.Add(new ConstantParent (
                             new IdentifierExpr (p.Parent.tok, p.Parent.Name),
-                            p.Unique));
+                            p.Unique));}
        } else {
          ParentsClone = Parents;
        }
@@ -339,12 +359,12 @@ Consts<out VariableSeq! ds>
   ";"
   .
 
-OrderSpec<.out bool ChildrenComplete, out List<ConstantParent!> Parents.>
-= (. ChildrenComplete = false;
+OrderSpec<.out bool ChildrenComplete, out List<ConstantParent/*!*/> Parents.>
+= (.Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out Parents),true)); ChildrenComplete = false;
      Parents = null;
      bool u;
-     IToken! parent; .)
-  "extends"                (. Parents = new List<ConstantParent!> ();
+     IToken/*!*/ parent; .)
+  "extends"                (. Parents = new List<ConstantParent/*!*/> ();
                               u = false; .)
   [
     [ "unique"             (. u = true; .)
@@ -364,17 +384,18 @@ OrderSpec<.out bool ChildrenComplete, out List<ConstantParent!> Parents.>
   .
 
 /*------------------------------------------------------------------------*/
-Function<out DeclarationSeq! ds>
-= (. ds = new DeclarationSeq(); IToken! z;
-     IToken! typeParamTok;
-     TypeVariableSeq! typeParams = new TypeVariableSeq();
+Function<out DeclarationSeq/*!*/ ds>
+= (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
+ds = new DeclarationSeq(); IToken/*!*/ z;
+     IToken/*!*/ typeParamTok;
+     TypeVariableSeq/*!*/ typeParams = new TypeVariableSeq();
      VariableSeq arguments = new VariableSeq();
-     TypedIdent! tyd;
+     TypedIdent/*!*/ tyd;
      TypedIdent retTyd = null;
-     Type! retTy;
+     Type/*!*/ retTy;
      QKeyValue kv = null;
      Expr definition = null;
-     Expr! tmp;
+     Expr/*!*/ tmp;
   .)
   "function" { Attribute<ref kv> } Ident<out z> 
   [ TypeParams<out typeParamTok, out typeParams> ]
@@ -395,11 +416,13 @@ Function<out DeclarationSeq! ds>
     } else {
       tyd = retTyd;
     }
-    Function! func = new Function(z, z.val, typeParams, arguments,
+    Function/*!*/ func = new Function(z, z.val, typeParams, arguments,
                            new Formal(tyd.tok, tyd, false), null, kv);
+    Contract.Assert(func != null);
     ds.Add(func);
     bool allUnnamed = true;
-    foreach (Formal! f in arguments) {
+    foreach(Formal/*!*/ f in arguments){
+Contract.Assert(f != null);
       if (f.TypedIdent.Name != "") {
         allUnnamed = false;
 	break;
@@ -408,7 +431,7 @@ Function<out DeclarationSeq! ds>
     if (!allUnnamed) {
       Type prevType = null;
       for (int i = arguments.Length - 1; i >= 0; i--) {
-        TypedIdent! curr = ((!)arguments[i]).TypedIdent;
+        TypedIdent/*!*/ curr = cce.NonNull(arguments[i]).TypedIdent;
         if (curr.Name == "") {
 	  if (prevType == null) {
 	    this.errors.SemErr(curr.tok, "the type of the last parameter is unspecified");
@@ -416,8 +439,8 @@ Function<out DeclarationSeq! ds>
 	  }
 	  Type ty = curr.Type;
           if (ty is UnresolvedTypeIdentifier &&
-              ((!)(ty as UnresolvedTypeIdentifier)).Arguments.Length == 0) {
-	    curr.Name = ((!)(ty as UnresolvedTypeIdentifier)).Name;
+              cce.NonNull(ty as UnresolvedTypeIdentifier).Arguments.Length == 0) {
+	    curr.Name = cce.NonNull(ty as UnresolvedTypeIdentifier).Name;
 	    curr.Type = prevType;
 	  } else {
 	    this.errors.SemErr(curr.tok, "expecting an identifier as parameter name");
@@ -435,15 +458,17 @@ Function<out DeclarationSeq! ds>
         VariableSeq dummies = new VariableSeq();
         ExprSeq callArgs = new ExprSeq();
         int i = 0;
-        foreach (Formal! f in arguments) {
+        foreach(Formal/*!*/ f in arguments){
+Contract.Assert(f != null);
           string nm = f.TypedIdent.HasName ? f.TypedIdent.Name : "_" + i;
           dummies.Add(new BoundVariable(f.tok, new TypedIdent(f.tok, nm, f.TypedIdent.Type)));
           callArgs.Add(new IdentifierExpr(f.tok, nm));
           i++;
         }
-        TypeVariableSeq! quantifiedTypeVars = new TypeVariableSeq ();
-        foreach (TypeVariable! t in typeParams)
-          quantifiedTypeVars.Add(new TypeVariable (Token.NoToken, t.Name));
+        TypeVariableSeq/*!*/ quantifiedTypeVars = new TypeVariableSeq ();
+        foreach(TypeVariable/*!*/ t in typeParams){
+Contract.Assert(t != null);
+          quantifiedTypeVars.Add(new TypeVariable (Token.NoToken, t.Name));}
 
         Expr call = new NAryExpr(z, new FunctionCall(new IdentifierExpr(z, z.val)), callArgs);
         // specify the type of the function, because it might be that
@@ -462,12 +487,12 @@ Function<out DeclarationSeq! ds>
   .)
   .
 
-VarOrType<out TypedIdent! tyd>
-= (. string! varName = ""; Bpl.Type! ty; IToken! tok; .)
+VarOrType<out TypedIdent/*!*/ tyd>
+= (.Contract.Ensures(Contract.ValueAtReturn(out tyd) != null); string/*!*/ varName = ""; Bpl.Type/*!*/ ty; IToken/*!*/ tok; .)
   Type<out ty>    (. tok = ty.tok; .)
   [ ":"           (. if (ty is UnresolvedTypeIdentifier &&
-                         ((!)(ty as UnresolvedTypeIdentifier)).Arguments.Length == 0) {
-                       varName = ((!)(ty as UnresolvedTypeIdentifier)).Name;
+                         cce.NonNull(ty as UnresolvedTypeIdentifier).Arguments.Length == 0) {
+                       varName = cce.NonNull(ty as UnresolvedTypeIdentifier).Name;
                      } else {
                        this.SemErr("expected identifier before ':'");
                      }
@@ -478,17 +503,17 @@ VarOrType<out TypedIdent! tyd>
   .
 
 /*------------------------------------------------------------------------*/
-Axiom<out Axiom! m>
-= (. Expr! e; QKeyValue kv = null; .)
+Axiom<out Axiom/*!*/ m>
+= (.Contract.Ensures(Contract.ValueAtReturn(out m) != null); Expr/*!*/ e; QKeyValue kv = null; .)
   "axiom"
    { Attribute<ref kv> }
-   (. IToken! x = t; .)
+   (. IToken/*!*/ x = t; .)
   Proposition<out e> ";"  (. m = new Axiom(x,e, null, kv); .)
   .
 
 /*------------------------------------------------------------------------*/
-UserDefinedTypes<.out List<Declaration!>! ts.>
-= (. Declaration! decl; QKeyValue kv = null; ts = new List<Declaration!> (); .)
+UserDefinedTypes<.out List<Declaration/*!*/>/*!*/ ts.>
+= (. Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out ts))); Declaration/*!*/ decl; QKeyValue kv = null; ts = new List<Declaration/*!*/> (); .)
   "type"
   { Attribute<ref kv> }
   UserDefinedType<out decl, kv>          (.  ts.Add(decl);  .)
@@ -496,9 +521,9 @@ UserDefinedTypes<.out List<Declaration!>! ts.>
   ";"
   .
 
-UserDefinedType<out Declaration! decl, QKeyValue kv>
-= (. IToken! id; IToken! id2; TokenSeq! paramTokens = new TokenSeq ();
-     Type! body = dummyType; bool synonym = false; .)
+UserDefinedType<out Declaration/*!*/ decl, QKeyValue kv>
+= (. Contract.Ensures(Contract.ValueAtReturn(out decl) != null); IToken/*!*/ id; IToken/*!*/ id2; TokenSeq/*!*/ paramTokens = new TokenSeq ();
+     Type/*!*/ body = dummyType; bool synonym = false; .)
   Ident<out id>
   [ WhiteSpaceIdents<out paramTokens> ]
   [
@@ -507,9 +532,10 @@ UserDefinedType<out Declaration! decl, QKeyValue kv>
   ]
   (.
      if (synonym) {
-       TypeVariableSeq! typeParams = new TypeVariableSeq();
-       foreach (Token! t in paramTokens)
-         typeParams.Add(new TypeVariable(t, t.val));
+       TypeVariableSeq/*!*/ typeParams = new TypeVariableSeq();
+       foreach(Token/*!*/ t in paramTokens){
+Contract.Assert(t != null);
+         typeParams.Add(new TypeVariable(t, t.val));}
        decl = new TypeSynonymDecl(id, id.val, typeParams, body, kv);
      } else {
        decl = new TypeCtorDecl(id, id.val, paramTokens.Length, kv);
@@ -519,16 +545,16 @@ UserDefinedType<out Declaration! decl, QKeyValue kv>
 
 
 /*------------------------------------------------------------------------*/
-Procedure<out Procedure! proc, out /*maybe null*/ Implementation impl>
-= (. IToken! x;
-     TypeVariableSeq! typeParams;
-     VariableSeq! ins, outs;
-     RequiresSeq! pre = new RequiresSeq();
-     IdentifierExprSeq! mods = new IdentifierExprSeq();
-     EnsuresSeq! post = new EnsuresSeq();
+Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
+= (. Contract.Ensures(Contract.ValueAtReturn(out proc) != null); IToken/*!*/ x;
+     TypeVariableSeq/*!*/ typeParams;
+     VariableSeq/*!*/ ins, outs;
+     RequiresSeq/*!*/ pre = new RequiresSeq();
+     IdentifierExprSeq/*!*/ mods = new IdentifierExprSeq();
+     EnsuresSeq/*!*/ post = new EnsuresSeq();
 
-     VariableSeq! locals = new VariableSeq();
-     StmtList! stmtList;
+     VariableSeq/*!*/ locals = new VariableSeq();
+     StmtList/*!*/ stmtList;
      QKeyValue kv = null;
      impl = null;
   .)
@@ -549,12 +575,12 @@ Procedure<out Procedure! proc, out /*maybe null*/ Implementation impl>
   .
 
 
-Implementation<out Implementation! impl>
-= (. IToken! x;
-     TypeVariableSeq! typeParams;
-     VariableSeq! ins, outs;
-     VariableSeq! locals;
-     StmtList! stmtList;
+Implementation<out Implementation/*!*/ impl>
+= (. Contract.Ensures(Contract.ValueAtReturn(out impl) != null); IToken/*!*/ x;
+     TypeVariableSeq/*!*/ typeParams;
+     VariableSeq/*!*/ ins, outs;
+     VariableSeq/*!*/ locals;
+     StmtList/*!*/ stmtList;
      QKeyValue kv;
   .)
 
@@ -565,9 +591,10 @@ Implementation<out Implementation! impl>
   .
 
 
-ProcSignature<bool allowWhereClausesOnFormals, out IToken! name, out TypeVariableSeq! typeParams,
-              out VariableSeq! ins, out VariableSeq! outs, out QKeyValue kv>
-= (. IToken! typeParamTok; typeParams = new TypeVariableSeq();
+ProcSignature<bool allowWhereClausesOnFormals, out IToken/*!*/ name, out TypeVariableSeq/*!*/ typeParams,
+              out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv>
+= (. Contract.Ensures(Contract.ValueAtReturn(out name) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ins) != null); Contract.Ensures(Contract.ValueAtReturn(out outs) != null);
+     IToken/*!*/ typeParamTok; typeParams = new TypeVariableSeq();
      outs = new VariableSeq(); kv = null; .)
   { Attribute<ref kv> }
   Ident<out name>
@@ -577,10 +604,11 @@ ProcSignature<bool allowWhereClausesOnFormals, out IToken! name, out TypeVariabl
   .
 
 
-Spec<RequiresSeq! pre, IdentifierExprSeq! mods, EnsuresSeq! post>
-= (. TokenSeq! ms; .)
+Spec<RequiresSeq/*!*/ pre, IdentifierExprSeq/*!*/ mods, EnsuresSeq/*!*/ post>
+= (.Contract.Requires(pre != null); Contract.Requires(mods != null); Contract.Requires(post != null); TokenSeq/*!*/ ms; .)
   ( "modifies"
-    [ Idents<out ms>        (. foreach (IToken! m in ms) {
+    [ Idents<out ms>        (. foreach(IToken/*!*/ m in ms){
+Contract.Assert(m != null);
                                  mods.Add(new IdentifierExpr(m, m.val));
                                }
                             .)
@@ -590,8 +618,8 @@ Spec<RequiresSeq! pre, IdentifierExprSeq! mods, EnsuresSeq! post>
   )
   .
 
-SpecPrePost<bool free, RequiresSeq! pre, EnsuresSeq! post>
-= (. Expr! e; VariableSeq! locals; BlockSeq! blocks; Token tok = null; QKeyValue kv = null; .)
+SpecPrePost<bool free, RequiresSeq/*!*/ pre, EnsuresSeq/*!*/ post>
+= (. Contract.Requires(pre != null); Contract.Requires(post != null); Expr/*!*/ e; VariableSeq/*!*/ locals; BlockSeq/*!*/ blocks; Token tok = null; QKeyValue kv = null; .)
   ( "requires"              (. tok = t; .)
     { Attribute<ref kv> }
     Proposition<out e> ";"  (. pre.Add(new Requires(tok, free, e, null, kv)); .)
@@ -603,38 +631,38 @@ SpecPrePost<bool free, RequiresSeq! pre, EnsuresSeq! post>
 
 /*------------------------------------------------------------------------*/
 
-ImplBody<out VariableSeq! locals, out StmtList! stmtList>
-= (. locals = new VariableSeq(); .)
+ImplBody<out VariableSeq/*!*/ locals, out StmtList/*!*/ stmtList>
+= (. Contract.Ensures(Contract.ValueAtReturn(out locals) != null); Contract.Ensures(Contract.ValueAtReturn(out stmtList) != null); locals = new VariableSeq(); .)
   "{"
   { LocalVars<locals> }
   StmtList<out stmtList>
   .
 
 /* the StmtList also reads the final curly brace */
-StmtList<out StmtList! stmtList>
-= (. List<BigBlock!> bigblocks = new List<BigBlock!>();
+StmtList<out StmtList/*!*/ stmtList>
+= (. Contract.Ensures(Contract.ValueAtReturn(out stmtList) != null); List<BigBlock/*!*/> bigblocks = new List<BigBlock/*!*/>();
      /* built-up state for the current BigBlock: */
      IToken startToken = null;  string currentLabel = null;
      CmdSeq cs = null;  /* invariant: startToken != null ==> cs != null */
      /* temporary variables: */
      IToken label;  Cmd c;  BigBlock b;
-     StructuredCmd ec = null;  StructuredCmd! ecn;
-     TransferCmd tc = null;  TransferCmd! tcn;
+     StructuredCmd ec = null;  StructuredCmd/*!*/ ecn;
+     TransferCmd tc = null;  TransferCmd/*!*/ tcn;
   .)
 
   {
   ( LabelOrCmd<out c, out label>
     (. if (c != null) {
          // LabelOrCmd read a Cmd
-         assert label == null;
+         Contract.Assert(label == null);
          if (startToken == null) { startToken = c.tok;  cs = new CmdSeq(); }
-         assert cs != null;
+         Contract.Assert(cs != null);
          cs.Add(c);
        } else {
          // LabelOrCmd read a label
-         assert label != null;
+         Contract.Assert(label != null);
          if (startToken != null) {
-           assert cs != null;
+           Contract.Assert(cs != null);
            // dump the built-up state into a BigBlock
            b = new BigBlock(startToken, currentLabel, cs, null, null);
            bigblocks.Add(b);
@@ -649,7 +677,7 @@ StmtList<out StmtList! stmtList>
   | StructuredCmd<out ecn>
     (. ec = ecn;
        if (startToken == null) { startToken = ec.tok;  cs = new CmdSeq(); }
-       assert cs != null;
+       Contract.Assert(cs != null);
        b = new BigBlock(startToken, currentLabel, cs, ec, null);
        bigblocks.Add(b);
        startToken = null;  currentLabel = null;  cs = null;
@@ -658,7 +686,7 @@ StmtList<out StmtList! stmtList>
   | TransferCmd<out tcn>
     (. tc = tcn;
        if (startToken == null) { startToken = tc.tok;  cs = new CmdSeq(); }
-       assert cs != null;
+       Contract.Assert(cs != null);
        b = new BigBlock(startToken, currentLabel, cs, null, tc);
        bigblocks.Add(b);
        startToken = null;  currentLabel = null;  cs = null;
@@ -667,12 +695,12 @@ StmtList<out StmtList! stmtList>
   )
   }
   "}"
-  (. IToken! endCurly = t;
+  (. IToken/*!*/ endCurly = t;
      if (startToken == null && bigblocks.Count == 0) {
        startToken = t;  cs = new CmdSeq();
      }
      if (startToken != null) {
-       assert cs != null;
+       Contract.Assert(cs != null);
        b = new BigBlock(startToken, currentLabel, cs, null, null);
        bigblocks.Add(b);
      }
@@ -681,22 +709,24 @@ StmtList<out StmtList! stmtList>
   .)
   .
 
-TransferCmd<out TransferCmd! tc>
-= (. tc = dummyTransferCmd;
-     Token y;  TokenSeq! xs;
+TransferCmd<out TransferCmd/*!*/ tc>
+= (. Contract.Ensures(Contract.ValueAtReturn(out tc) != null); tc = dummyTransferCmd;
+     Token y;  TokenSeq/*!*/ xs;
      StringSeq ss = new StringSeq();
   .)
   ( "goto"             (. y = t; .)
-    Idents<out xs>     (. foreach (IToken! s in xs) { ss.Add(s.val); }
+    Idents<out xs>     (. foreach(IToken/*!*/ s in xs){
+Contract.Assert(s != null);
+ ss.Add(s.val); }
                           tc = new GotoCmd(y, ss);
                        .)
   | "return"           (. tc = new ReturnCmd(t); .)
   ) ";"
   .
 
-StructuredCmd<out StructuredCmd! ec>
-= (. ec = dummyStructuredCmd;  assume ec.IsPeerConsistent;
-     IfCmd! ifcmd;  WhileCmd! wcmd;  BreakCmd! bcmd;
+StructuredCmd<out StructuredCmd/*!*/ ec>
+= (. Contract.Ensures(Contract.ValueAtReturn(out ec) != null); ec = dummyStructuredCmd;  Contract.Assume(cce.IsPeerConsistent(ec));
+     IfCmd/*!*/ ifcmd;  WhileCmd/*!*/ wcmd;  BreakCmd/*!*/ bcmd;
   .)
   ( IfCmd<out ifcmd>    (. ec = ifcmd; .)
   | WhileCmd<out wcmd>  (. ec = wcmd; .)
@@ -704,12 +734,12 @@ StructuredCmd<out StructuredCmd! ec>
   )
   .
 
-IfCmd<out IfCmd! ifcmd>
-= (. IToken! x;
+IfCmd<out IfCmd/*!*/ ifcmd>
+= (. Contract.Ensures(Contract.ValueAtReturn(out ifcmd) != null); IToken/*!*/ x;
      Expr guard;
-     StmtList! thn;
-     IfCmd! elseIf;  IfCmd elseIfOption = null;
-     StmtList! els;  StmtList elseOption = null;
+     StmtList/*!*/ thn;
+     IfCmd/*!*/ elseIf;  IfCmd elseIfOption = null;
+     StmtList/*!*/ els;  StmtList elseOption = null;
   .)
   "if"                       (. x = t; .)
   Guard<out guard>
@@ -723,14 +753,14 @@ IfCmd<out IfCmd! ifcmd>
   (. ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption); .)
   .
 
-WhileCmd<out WhileCmd! wcmd>
-= (. IToken! x;  Token z;
-     Expr guard;  Expr! e;  bool isFree;
-     List<PredicateCmd!> invariants = new List<PredicateCmd!>();
-     StmtList! body;
+WhileCmd<out WhileCmd/*!*/ wcmd>
+= (. Contract.Ensures(Contract.ValueAtReturn(out wcmd) != null); IToken/*!*/ x;  Token z;
+     Expr guard;  Expr/*!*/ e;  bool isFree;
+     List<PredicateCmd/*!*/> invariants = new List<PredicateCmd/*!*/>();
+     StmtList/*!*/ body;
   .)
   "while"             (. x = t; .)
-  Guard<out guard>    (. assume guard == null || Owner.None(guard); .)
+  Guard<out guard>    (. Contract.Assume(guard == null || cce.Owner.None(guard)); .)
   {                   (. isFree = false; z = la/*lookahead token*/; .)
     [ "free"          (. isFree = true;  .)
     ]
@@ -748,7 +778,7 @@ WhileCmd<out WhileCmd! wcmd>
   .
 
 Guard<out Expr e>
-= (. Expr! ee;  e = null; .)
+= (. Expr/*!*/ ee;  e = null; .)
   "("
   ( "*"                   (. e = null; .)
   | Expression<out ee>    (. e = ee; .)
@@ -756,8 +786,8 @@ Guard<out Expr e>
   ")"
   .
 
-BreakCmd<out BreakCmd! bcmd>
-= (. IToken! x;  IToken! y;
+BreakCmd<out BreakCmd/*!*/ bcmd>
+= (.Contract.Ensures(Contract.ValueAtReturn(out bcmd) != null); IToken/*!*/ x;  IToken/*!*/ y;
      string breakLabel = null;
   .)
   "break"             (. x = t; .)
@@ -769,11 +799,11 @@ BreakCmd<out BreakCmd! bcmd>
 
 LabelOrCmd<out Cmd c, out IToken label>
 /* ensures (c == null) != (label != null) */
-= (. IToken! x; Expr! e;
-     TokenSeq! xs;
+= (. IToken/*!*/ x; Expr/*!*/ e;
+     TokenSeq/*!*/ xs;
      IdentifierExprSeq ids;
      c = dummyCmd;  label = null;
-     Cmd! cn;
+     Cmd/*!*/ cn;
      QKeyValue kv = null;
   .)
   ( LabelOrAssign<out c, out label>
@@ -786,7 +816,8 @@ LabelOrCmd<out Cmd c, out IToken label>
     ";"
   | "havoc"               (. x = t; .)
     Idents<out xs> ";"    (. ids = new IdentifierExprSeq();
-                             foreach (IToken! y in xs) {
+                             foreach(IToken/*!*/ y in xs){
+Contract.Assert(y != null);
                                ids.Add(new IdentifierExpr(y, y.val));
                              }
                              c = new HavocCmd(x,ids);
@@ -799,17 +830,17 @@ LabelOrCmd<out Cmd c, out IToken label>
 
 LabelOrAssign<out Cmd c, out IToken label>
 /* ensures (c == null) != (label != null) */
-= (. IToken! id; IToken! x, y; Expr! e, e0;
+= (. IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e, e0;
      c = dummyCmd;  label = null;
-     AssignLhs! lhs;
-     List<AssignLhs!>! lhss;
-     List<Expr!>! rhss;
-     List<Expr!>! indexes;
+     AssignLhs/*!*/ lhs;
+     List<AssignLhs/*!*/>/*!*/ lhss;
+     List<Expr/*!*/>/*!*/ rhss;
+     List<Expr/*!*/>/*!*/ indexes;
   .)
   Ident<out id>              (. x = t; .)
   ( ":"                      (. c = null;  label = x; .)
 
-  | (. lhss = new List<AssignLhs!>(); .)
+  | (. lhss = new List<AssignLhs/*!*/>(); .)
     (. lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); .)
 
     { MapAssignIndex<out y, out indexes>    (. lhs = new MapAssignLhs(y, lhs, indexes); .) }
@@ -823,7 +854,7 @@ LabelOrAssign<out Cmd c, out IToken label>
     }
 
     ":="                     (. x = t; /* use location of := */ .)
-    Expression<out e0>       (. rhss = new List<Expr!> ();
+    Expression<out e0>       (. rhss = new List<Expr/*!*/> ();
                                 rhss.Add(e0); .)
     { ","
       Expression<out e0>     (. rhss.Add(e0); .)
@@ -832,9 +863,9 @@ LabelOrAssign<out Cmd c, out IToken label>
   )
   .
 
-MapAssignIndex<.out IToken! x, out List<Expr!>! indexes.>
-= (. indexes = new List<Expr!> ();
-     Expr! e;
+MapAssignIndex<.out IToken/*!*/ x, out List<Expr/*!*/>/*!*/ indexes.>
+= (.Contract.Ensures(Contract.ValueAtReturn(out x) != null); Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out indexes))); indexes = new List<Expr/*!*/> ();
+     Expr/*!*/ e;
   .)
   "["                        (. x = t; .)
     [
@@ -847,10 +878,10 @@ MapAssignIndex<.out IToken! x, out List<Expr!>! indexes.>
   .
 
 /*------------------------------------------------------------------------*/
-CallCmd<out Cmd! c>
-= (. IToken! x; IToken! first; IToken p;
-     List<IdentifierExpr>! ids = new List<IdentifierExpr>();
-     List<Expr>! es = new List<Expr>();
+CallCmd<out Cmd/*!*/ c>
+= (. Contract.Ensures(Contract.ValueAtReturn(out c) != null); IToken/*!*/ x; IToken/*!*/ first; IToken p;
+     List<IdentifierExpr>/*!*/ ids = new List<IdentifierExpr>();
+     List<Expr>/*!*/ es = new List<Expr>();
      QKeyValue kv = null;
      Expr en;  List<Expr> args;
      c = dummyCmd;
@@ -925,7 +956,7 @@ CallCmd<out Cmd! c>
 
 CallOutIdent<out IToken id>
 = (. id = null;
-     IToken! p;
+     IToken/*!*/ p;
   .)
   ( "*"
   | Ident<out p>                   (. id = p; .)
@@ -934,7 +965,7 @@ CallOutIdent<out IToken id>
 
 CallForallArg<out Expr exprOptional>
 = (. exprOptional = null;
-     Expr! e;
+     Expr/*!*/ e;
   .)
   ( "*"
   | Expression<out e>             (. exprOptional = e; .)
@@ -942,38 +973,38 @@ CallForallArg<out Expr exprOptional>
   .
 
 /*------------------------------------------------------------------------*/
-Proposition<out Expr! e>
-=
+Proposition<out Expr/*!*/ e>
+=(.Contract.Ensures(Contract.ValueAtReturn(out e) != null);.)
   Expression<out e>
   .
 
 /*------------------------------------------------------------------------*/
-Idents<out TokenSeq! xs>
-= (. IToken! id; xs = new TokenSeq(); .)
+Idents<out TokenSeq/*!*/ xs>
+= (.Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new TokenSeq(); .)
   Ident<out id>                 (. xs.Add(id); .)
   { "," Ident<out id>           (. xs.Add(id); .)
   }
   .
 
 /*------------------------------------------------------------------------*/
-WhiteSpaceIdents<out TokenSeq! xs>
-= (. IToken! id; xs = new TokenSeq(); .)
+WhiteSpaceIdents<out TokenSeq/*!*/ xs>
+= (. Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new TokenSeq(); .)
   Ident<out id>                 (. xs.Add(id); .)
   { Ident<out id>               (. xs.Add(id); .)
   }
   .
 
 /*------------------------------------------------------------------------*/
-Expressions<out ExprSeq! es>
-= (. Expr! e; es = new ExprSeq(); .)
+Expressions<out ExprSeq/*!*/ es>
+= (. Contract.Ensures(Contract.ValueAtReturn(out es) != null); Expr/*!*/ e; es = new ExprSeq(); .)
   Expression<out e>             (. es.Add(e); .)
   { "," Expression<out e>       (. es.Add(e); .)
   }
   .
 
 /*------------------------------------------------------------------------*/
-Expression<out Expr! e0>
-= (. IToken! x; Expr! e1; .)
+Expression<out Expr/*!*/ e0>
+= (. Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; .)
   ImpliesExpression<false, out e0>
   { EquivOp        (. x = t; .)
     ImpliesExpression<false, out e1>
@@ -984,8 +1015,8 @@ Expression<out Expr! e0>
 EquivOp = "<==>" | '\u21d4'.
 
 /*------------------------------------------------------------------------*/
-ImpliesExpression<bool noExplies, out Expr! e0>
-= (. IToken! x; Expr! e1; .)
+ImpliesExpression<bool noExplies, out Expr/*!*/ e0>
+= (. Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; .)
   LogicalExpression<out e0>
   [
     ImpliesOp      (. x = t; .)
@@ -1011,8 +1042,8 @@ ImpliesOp = "==>" | '\u21d2'.
 ExpliesOp = "<==" | '\u21d0'.
 
 /*------------------------------------------------------------------------*/
-LogicalExpression<out Expr! e0>
-= (. IToken! x; Expr! e1; BinaryOperator.Opcode op; .)
+LogicalExpression<out Expr/*!*/ e0>
+= (. Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; .)
   RelationalExpression<out e0>
   [ AndOp          (. x = t; .)
     RelationalExpression<out e1>
@@ -1035,16 +1066,16 @@ AndOp = "&&" | '\u2227'.
 OrOp = "||" | '\u2228'.
 
 /*------------------------------------------------------------------------*/
-RelationalExpression<out Expr! e0>
-= (. IToken! x; Expr! e1; BinaryOperator.Opcode op; .)
+RelationalExpression<out Expr/*!*/ e0>
+= (. Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; .)
   BvTerm<out e0>
   [ RelOp<out x, out op>
     BvTerm<out e1>            (. e0 = Expr.Binary(x, op, e0, e1); .)
   ]
   .
 
-RelOp<out IToken! x, out BinaryOperator.Opcode op>
-=                  (. x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
+RelOp<out IToken/*!*/ x, out BinaryOperator.Opcode op>
+=                  (.Contract.Ensures(Contract.ValueAtReturn(out x) != null); x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
   ( "=="           (. x = t; op=BinaryOperator.Opcode.Eq; .)
   | "<"            (. x = t; op=BinaryOperator.Opcode.Lt; .)
   | ">"            (. x = t; op=BinaryOperator.Opcode.Gt; .)
@@ -1059,8 +1090,8 @@ RelOp<out IToken! x, out BinaryOperator.Opcode op>
   .
 
 /*------------------------------------------------------------------------*/
-BvTerm<out Expr! e0>
-= (. IToken! x; Expr! e1; .)
+BvTerm<out Expr/*!*/ e0>
+= (. Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; .)
   Term<out e0>
   { "++"                  (. x = t; .)
     Term<out e1>          (. e0 = new BvConcatExpr(x, e0, e1); .)
@@ -1069,32 +1100,32 @@ BvTerm<out Expr! e0>
 
 
 /*------------------------------------------------------------------------*/
-Term<out Expr! e0>
-= (. IToken! x; Expr! e1; BinaryOperator.Opcode op; .)
+Term<out Expr/*!*/ e0>
+= (.Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; .)
   Factor<out e0>
   { AddOp<out x, out op>
     Factor<out e1>          (. e0 = Expr.Binary(x, op, e0, e1); .)
   }
   .
 
-AddOp<out IToken! x, out BinaryOperator.Opcode op>
-=                  (. x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
+AddOp<out IToken/*!*/ x, out BinaryOperator.Opcode op>
+=                  (.Contract.Ensures(Contract.ValueAtReturn(out x) != null); x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
   ( "+"            (. x = t; op=BinaryOperator.Opcode.Add; .)
   | "-"            (. x = t; op=BinaryOperator.Opcode.Sub; .)
   )
   .
 
 /*------------------------------------------------------------------------*/
-Factor<out Expr! e0>
-= (. IToken! x; Expr! e1; BinaryOperator.Opcode op; .)
+Factor<out Expr/*!*/ e0>
+= (.Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; .)
   UnaryExpression<out e0>
   { MulOp<out x, out op>
     UnaryExpression<out e1> (. e0 = Expr.Binary(x, op, e0, e1); .)
   }
   .
 
-MulOp<out IToken! x, out BinaryOperator.Opcode op>
-=                  (. x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
+MulOp<out IToken/*!*/ x, out BinaryOperator.Opcode op>
+=                  (. Contract.Ensures(Contract.ValueAtReturn(out x) != null); x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
   ( "*"            (. x = t; op=BinaryOperator.Opcode.Mul; .)
   | "/"            (. x = t; op=BinaryOperator.Opcode.Div; .)
   | "%"            (. x = t; op=BinaryOperator.Opcode.Mod; .)
@@ -1102,8 +1133,8 @@ MulOp<out IToken! x, out BinaryOperator.Opcode op>
   .
 
 /*------------------------------------------------------------------------*/
-UnaryExpression<out Expr! e>
-= (. IToken! x;
+UnaryExpression<out Expr/*!*/ e>
+= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
      e = dummyExpr;
   .)
   ( "-"                        (. x = t; .)
@@ -1125,9 +1156,9 @@ NegOp = "!" | '\u00ac'.
    will cause a parse error because "<" is treated as the beginning of a
    map type. */
 
-CoercionExpression<out Expr! e>
-= (. IToken! x;
-     Type! coercedTo;
+CoercionExpression<out Expr/*!*/ e>
+= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
+     Type/*!*/ coercedTo;
      BigNum bn;
     .)
   ArrayExpression<out e>
@@ -1149,11 +1180,11 @@ CoercionExpression<out Expr! e>
   .
 
 /*------------------------------------------------------------------------*/
-ArrayExpression<out Expr! e>
-= (. IToken! x;
-     Expr! index0 = dummyExpr; Expr! e1;
+ArrayExpression<out Expr/*!*/ e>
+= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
+     Expr/*!*/ index0 = dummyExpr; Expr/*!*/ e1;
      bool store; bool bvExtract;
-     ExprSeq! allArgs = dummyExprSeq;
+     ExprSeq/*!*/ allArgs = dummyExprSeq;
   .)
   AtomExpression<out e>
   { "["        (. x = t; allArgs = new ExprSeq ();
@@ -1195,16 +1226,16 @@ ArrayExpression<out Expr! e>
 
 
 /*------------------------------------------------------------------------*/
-AtomExpression<out Expr! e>
-= (. IToken! x; int n; BigNum bn;
-     ExprSeq! es;  VariableSeq! ds;  Trigger trig;
-     TypeVariableSeq! typeParams;
-     IdentifierExpr! id;
-     Bpl.Type! ty;
+AtomExpression<out Expr/*!*/ e>
+= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn;
+     ExprSeq/*!*/ es;  VariableSeq/*!*/ ds;  Trigger trig;
+     TypeVariableSeq/*!*/ typeParams;
+     IdentifierExpr/*!*/ id;
+     Bpl.Type/*!*/ ty;
      QKeyValue kv;
      e = dummyExpr;
-     VariableSeq! locals;
-     List<Block!>! blocks;
+     VariableSeq/*!*/ locals;
+     List<Block/*!*/>/*!*/ blocks;
   .)
   ( "false"           (. e = new LiteralExpr(t, false); .)
   | "true"            (. e = new LiteralExpr(t, true); .)
@@ -1248,9 +1279,9 @@ AtomExpression<out Expr! e>
   )
   .
 
-CodeExpression<.out VariableSeq! locals, out List<Block!>! blocks.>
-= (. locals = new VariableSeq(); Block! b;
-     blocks = new List<Block!>();
+CodeExpression<.out VariableSeq/*!*/ locals, out List<Block/*!*/>/*!*/ blocks.>
+= (. Contract.Ensures(Contract.ValueAtReturn(out locals) != null); Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out blocks))); locals = new VariableSeq(); Block/*!*/ b;
+     blocks = new List<Block/*!*/>();
   .)
   "|{"
   { LocalVars<locals> }
@@ -1260,28 +1291,30 @@ CodeExpression<.out VariableSeq! locals, out List<Block!>! blocks.>
   "}|"
   .
 
-SpecBlock<out Block! b>
-= (. IToken! x; IToken! y;
+SpecBlock<out Block/*!*/ b>
+= (. Contract.Ensures(Contract.ValueAtReturn(out b) != null); IToken/*!*/ x; IToken/*!*/ y;
      Cmd c;  IToken label;
      CmdSeq cs = new CmdSeq();
-     TokenSeq! xs;
+     TokenSeq/*!*/ xs;
      StringSeq ss = new StringSeq();
      b = dummyBlock;
-     Expr! e;
+     Expr/*!*/ e;
   .)
   Ident<out x> ":"
   { LabelOrCmd<out c, out label>
                        (. if (c != null) {
-                            assert label == null;
+                            Contract.Assert(label == null);
                             cs.Add(c);
                           } else {
-                            assert label != null;
+                            Contract.Assert(label != null);
                             SemErr("SpecBlock's can only have one label");
                           }
                        .)
   }
   ( "goto"             (. y = t; .)
-    Idents<out xs>     (. foreach (IToken! s in xs) { ss.Add(s.val); }
+    Idents<out xs>     (. foreach(IToken/*!*/ s in xs){
+Contract.Assert(s != null);
+ ss.Add(s.val); }
                           b = new Block(x,x.val,cs,new GotoCmd(y,ss));
                        .)
   | "return" Expression<out e>
@@ -1296,13 +1329,13 @@ Attribute<ref QKeyValue kv>
 .
 
 AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
-= (. IToken! tok;  Expr! e;  ExprSeq! es;
+= (. IToken/*!*/ tok;  Expr/*!*/ e;  ExprSeq/*!*/ es;
      string key;  string value;
-     List<object!> parameters;  object! param;
+     List<object/*!*/> parameters;  object/*!*/ param;
   .)
   "{"                                         (. tok = t; .)
      (
-       ":" ident                              (. key = t.val;  parameters = new List<object!>(); .)
+       ":" ident                              (. key = t.val;  parameters = new List<object/*!*/>(); .)
        [ AttributeParameter<out param>        (. parameters.Add(param); .)
          { "," AttributeParameter<out param>  (. parameters.Add(param); .)
          }
@@ -1339,28 +1372,31 @@ AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
   "}"
   .
 
-AttributeParameter<out object! o>
-= (. o = "error";
-     Expr! e;
+AttributeParameter<out object/*!*/ o>
+= (. Contract.Ensures(Contract.ValueAtReturn(out o) != null);
+     o = "error";
+     Expr/*!*/ e;
   .)
   ( string                (. o = t.val.Substring(1, t.val.Length-2); .)
   | Expression<out e>     (. o = e; .)
   )
   .
 
-IfThenElseExpression<out Expr! e>
-= (. IToken! tok;
-     Expr! e0, e1, e2; 
+IfThenElseExpression<out Expr/*!*/ e>
+= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null);
+     IToken/*!*/ tok;
+     Expr/*!*/ e0, e1, e2; 
      e = dummyExpr; .)
   "if" (. tok = t; .) Expression<out e0> "then" Expression<out e1> "else" Expression<out e2>
   (. e = new NAryExpr(tok, new IfThenElse(tok), new ExprSeq(e0, e1, e2)); .)
   .
 
 
-QuantifierBody<IToken! q, out TypeVariableSeq! typeParams, out VariableSeq! ds,
-               out QKeyValue kv, out Trigger trig, out Expr! body>
-= (. trig = null; typeParams = new TypeVariableSeq ();
-     IToken! tok;  Expr! e;  ExprSeq! es;
+QuantifierBody<IToken/*!*/ q, out TypeVariableSeq/*!*/ typeParams, out VariableSeq/*!*/ ds,
+               out QKeyValue kv, out Trigger trig, out Expr/*!*/ body>
+= (. Contract.Requires(q != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ds) != null); Contract.Ensures(Contract.ValueAtReturn(out body) != null);
+trig = null; typeParams = new TypeVariableSeq ();
+     IToken/*!*/ tok;  Expr/*!*/ e;  ExprSeq/*!*/ es;
      kv = null;  string key;  string value;
      ds = new VariableSeq ();
   .)
@@ -1381,8 +1417,8 @@ Lambda = "lambda" | '\u03bb'.
 QSep = "::" | '\u2022'.
 
 /*------------------------------------------------------------------------*/
-Ident<out IToken! x>
-=
+Ident<out IToken/*!*/ x>
+=(.Contract.Ensures(Contract.ValueAtReturn(out x) != null);.)
   ident            (.  x = t;
                        if (x.val.StartsWith("\\"))
                          x.val = x.val.Substring(1);
@@ -1420,5 +1456,4 @@ BvLit<out BigNum n, out int m>
      }
   .)
   .
-
 END BoogiePL.

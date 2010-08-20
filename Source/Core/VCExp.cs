@@ -9,16 +9,17 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 using Microsoft.Basetypes;
-
-
 namespace Microsoft.Boogie {
 
-  public class ProverOptions
-  {
+  public class ProverOptions {
     public class OptionException : Exception {
-      public OptionException(string! msg) { base(msg); }
+      public OptionException(string msg)
+        : base(msg) {//BASEMOVEA
+        Contract.Requires(msg != null);
+        //:base(msg);
+      }
     }
 
     public string/*?*/ LogFilename = null;
@@ -31,30 +32,37 @@ namespace Microsoft.Boogie {
     public CommandLineOptions.BvHandling BitVectors = CommandLineOptions.BvHandling.None;
     public int Verbosity = 0;
 
-    private string! stringRepr = "";
+    private string/*!*/ stringRepr = "";
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(stringRepr != null);
+    }
+
 
     [Pure]
-    public override string! ToString()
-    {
+    public override string ToString() {
+      Contract.Ensures(Contract.Result<string>() != null);
       return stringRepr;
     }
 
     // The usual thing to override.
-    protected virtual bool Parse(string! opt)
-    {
+    protected virtual bool Parse(string opt) {
+      Contract.Requires(opt != null);
       return ParseString(opt, "LOG_FILE", ref LogFilename) ||
              ParseBool(opt, "APPEND_LOG_FILE", ref AppendLogFile) ||
              ParseBool(opt, "FORCE_LOG_STATUS", ref ForceLogStatus) ||
              ParseInt(opt, "MEMORY_LIMIT", ref MemoryLimit) ||
              ParseInt(opt, "VERBOSITY", ref Verbosity) ||
              ParseInt(opt, "TIME_LIMIT", ref TimeLimit);
-             // || base.Parse(opt)
+      // || base.Parse(opt)
     }
 
-    public virtual void Parse(List<string!>! opts)
-    {
-      StringBuilder! sb = new StringBuilder(stringRepr);
-      foreach (string! opt in opts) {
+    public virtual void Parse(List<string/*!*/>/*!*/ opts) {
+      Contract.Requires(cce.NonNullElements(opts));
+      StringBuilder sb = new StringBuilder(stringRepr);
+      Contract.Assert(sb != null);
+      foreach (string/*!*/ opt in opts) {
+        Contract.Assert(opt != null);
         if (!Parse(opt)) {
           ReportError("Unrecognised prover option: " + opt);
         }
@@ -64,20 +72,20 @@ namespace Microsoft.Boogie {
       PostParse();
     }
 
-    protected virtual void PostParse()
-    {
+    protected virtual void PostParse() {
       if (LogFilename != null && LogFilename.Contains("@PROC@")) {
         SeparateLogFiles = true;
       }
     }
 
-    protected void ReportError(string! msg)
-    {
+    protected void ReportError(string msg) {
+      Contract.Requires(msg != null);
       throw new OptionException(msg);
     }
 
-    protected virtual bool ParseString(string! opt, string! name, ref string field)
-    {
+    protected virtual bool ParseString(string opt, string name, ref string field) {
+      Contract.Requires(name != null);
+      Contract.Requires(opt != null);
       if (opt.Length >= name.Length && opt.StartsWith(name)) {
         if (opt.Length == name.Length) {
           field = "";
@@ -90,33 +98,35 @@ namespace Microsoft.Boogie {
       return false;
     }
 
-    protected virtual bool ParseBool(string! opt, string! name, ref bool field)
-    {
+    protected virtual bool ParseBool(string opt, string name, ref bool field) {
+      Contract.Requires(name != null);
+      Contract.Requires(opt != null);
       string tmp = null;
       if (ParseString(opt, name, ref tmp))
-        switch (((!)tmp).ToLower()) {
-        case "1":
-        case "true":
-        case "":
-          field = true;
-          return true;
-        case "0":
-        case "false":
-          field = false;
-          return true;
-        default:
-          ReportError("Invalid Boolean option \"" + opt + "\"");
-          return false;
+        switch (cce.NonNull(tmp).ToLower()) {
+          case "1":
+          case "true":
+          case "":
+            field = true;
+            return true;
+          case "0":
+          case "false":
+            field = false;
+            return true;
+          default:
+            ReportError("Invalid Boolean option \"" + opt + "\"");
+            return false;
         }
       return false;
     }
 
-    protected virtual bool ParseInt(string! opt, string! name, ref int field)
-    {
+    protected virtual bool ParseInt(string opt, string name, ref int field) {
+      Contract.Requires(name != null);
+      Contract.Requires(opt != null);
       string tmp = null;
       int t2;
       if (ParseString(opt, name, ref tmp)) {
-        if (int.TryParse((!)tmp, out t2)) {
+        if (int.TryParse(cce.NonNull(tmp), out t2)) {
           field = t2;
           return true;
         } else {
@@ -127,10 +137,10 @@ namespace Microsoft.Boogie {
     }
 
     static int sequenceNumber = 0;
-    public virtual TextWriter? OpenLog(string/*?*/ descName)
-    {
+    public virtual TextWriter OpenLog(string/*?*/ descName) {
       if (LogFilename != null) {
-        string! filename = LogFilename;
+        string filename = LogFilename;
+        Contract.Assert(filename != null);
         if (descName != null)
           filename = Helpers.SubstituteAtPROC(descName, filename);
         return new StreamWriter(filename, AppendLogFile);
@@ -140,52 +150,62 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public abstract class ProverFactory
-  {
+  [ContractClass(typeof(ProverFactoryContracts))]
+  public abstract class ProverFactory {
     // Really returns ProverInterface.
     //public abstract object! SpawnProver(ProverOptions! options, object! ctxt);
     public abstract object SpawnProver(ProverOptions options, object ctxt);
 
     // Really returns ProverContext
-    public abstract object! NewProverContext(ProverOptions! options);
+    public abstract object/*!*/ NewProverContext(ProverOptions/*!*/ options);
 
-    public virtual ProverOptions! BlankProverOptions()
-    {
+    public virtual ProverOptions BlankProverOptions() {
+      Contract.Ensures(Contract.Result<ProverOptions>() != null);
       return new ProverOptions();
     }
 
     // return true if the prover supports DAG AST as opposed to LET AST
-    public virtual bool SupportsDags
-    {
-      get { return false; }
+    public virtual bool SupportsDags {
+      get {
+        return false;
+      }
     }
 
-    public virtual CommandLineOptions.VCVariety DefaultVCVariety
-    {
-      get 
-        ensures result != CommandLineOptions.VCVariety.Unspecified;
-        { return CommandLineOptions.VCVariety.Dag; }
+    public virtual CommandLineOptions.VCVariety DefaultVCVariety {
+      get {
+        Contract.Ensures(Contract.Result<CommandLineOptions.VCVariety>() != CommandLineOptions.VCVariety.Unspecified);
+        return CommandLineOptions.VCVariety.Dag;
+      }
     }
 
-    public virtual void Close()
-    {
+    public virtual void Close() {
     }
 
-    public static ProverFactory! Load(string! proverName)
-      ensures result.IsNew && Microsoft.Contracts.Owner.New(result);
-    {
-      string! path;
+    public static ProverFactory Load(string proverName) {
+      Contract.Requires(proverName != null);
+      Contract.Ensures(Contract.Result<ProverFactory>() != null);
+      Contract.Ensures(cce.IsNew(Contract.Result<ProverFactory>()) && cce.Owner.New(Contract.Result<ProverFactory>()));
+      string/*!*/ path;
       if (proverName.IndexOf("/") > 0 || proverName.IndexOf("\\") > 0) {
         path = proverName;
       } else {
-        string! codebase = (!) System.IO.Path.GetDirectoryName(
-                                 (!)System.Reflection.Assembly.GetExecutingAssembly().Location);
+        string codebase = cce.NonNull(System.IO.Path.GetDirectoryName(
+                                 cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location)));
         path = System.IO.Path.Combine(codebase, "Provers." + proverName + ".dll");
       }
-      Assembly asm = (!)Assembly.LoadFrom(path);
-      string name = (!)asm.GetName().Name;
-      System.Type factoryType = (!)asm.GetType("Microsoft.Boogie." + name.Replace("Provers.", "") + ".Factory");
-      return (ProverFactory!)Activator.CreateInstance(factoryType);
+      Assembly asm = cce.NonNull(Assembly.LoadFrom(path));
+      string name = cce.NonNull(asm.GetName().Name);
+      System.Type factoryType = cce.NonNull(asm.GetType("Microsoft.Boogie." + name.Replace("Provers.", "") + ".Factory"));
+      return cce.NonNull((ProverFactory/*!*/)Activator.CreateInstance(factoryType));
+    }
+  }
+  [ContractClassFor(typeof(ProverFactory))]
+  public abstract class ProverFactoryContracts : ProverFactory {
+    public override object NewProverContext(ProverOptions options) {
+      Contract.Requires(options != null);
+      Contract.Ensures(Contract.Result<object>() != null);
+
+      throw new NotImplementedException();
     }
   }
 }

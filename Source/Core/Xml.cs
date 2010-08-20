@@ -7,35 +7,42 @@ using System;
 using System.IO;
 using System.Xml;
 using System.Collections.Generic;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 using Cci = System.Compiler;
-
-namespace Microsoft.Boogie
-{
+namespace Microsoft.Boogie {
 
   public class XmlSink {
-    string! filename;
-    [Rep] XmlWriter wr;
-    public bool IsOpen {
-      get { return wr != null; }
+    string/*!*/ filename;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(filename != null);
     }
-    
-    public XmlSink(string! filename) {
+
+    [Rep]
+    XmlWriter wr;
+    public bool IsOpen {
+      get {
+        return wr != null;
+      }
+    }
+
+    public XmlSink(string filename) {
+      Contract.Requires(filename != null);
       this.filename = filename;
     }
-    
+
     /// <summary>
     /// Returns null on success, in which case the caller should eventually invoke Close.
     /// Returns an error string on failure.
     /// </summary>
-    public string Open()
-      modifies this.*;
-      ensures IsOpen;
-    {
+    public string Open() {
+      //modifies this.*;
+      Contract.Ensures(IsOpen);
       if (wr != null) {
         Close();
       }
-      expose (this) {
+      cce.BeginExpose(this);
+      {
         XmlWriterSettings settings = new XmlWriterSettings();
         settings.Indent = true;
         wr = XmlWriter.Create(filename, settings);
@@ -44,77 +51,82 @@ namespace Microsoft.Boogie
         wr.WriteAttributeString("version", CommandLineOptions.VersionNumber);
         wr.WriteAttributeString("commandLine", Environment.CommandLine);
       }
+      cce.EndExpose();
       return null;  // success
     }
-    
-    public void Close()
-      modifies this.*;
-    {
+
+    public void Close() {
+      //modifies this.*;
       if (wr != null) {
-        expose (this) {
+        cce.BeginExpose(this);
+        {
           wr.WriteEndDocument();
           wr.Close();
           wr = null;
         }
+        cce.EndExpose();
       }
     }
-    
+
     const string DateTimeFormatString = "u";
-    
-    public void WriteStartMethod(string! methodName, DateTime startTime)
-      requires IsOpen;
-      modifies this.*;
-      ensures IsOpen;
-    {
-      assert wr != null;
-      expose (this) {
+
+    public void WriteStartMethod(string methodName, DateTime startTime) {
+      Contract.Requires(methodName != null);
+      Contract.Requires(IsOpen);
+      //modifies this.*;
+      Contract.Ensures(IsOpen);
+      Contract.Assert(wr != null);
+      cce.BeginExpose(this);
+      {
         wr.WriteStartElement("method");
         wr.WriteAttributeString("name", methodName);
         wr.WriteAttributeString("startTime", startTime.ToString(DateTimeFormatString));
       }
+      cce.EndExpose();
     }
-    
-    public void WriteEndMethod(string! outcome, DateTime endTime, TimeSpan elapsed)
-      requires IsOpen;
-      modifies this.*;
-      ensures IsOpen;
-    {
-      assert wr != null;
-      expose (this) {
+
+    public void WriteEndMethod(string outcome, DateTime endTime, TimeSpan elapsed) {
+      Contract.Requires(outcome != null);
+      Contract.Requires(IsOpen);
+      //modifies this.*;
+      Contract.Ensures(IsOpen);
+      Contract.Assert(wr != null);
+      cce.BeginExpose(this);
+      {
         wr.WriteStartElement("conclusion");
         wr.WriteAttributeString("endTime", endTime.ToString(DateTimeFormatString));
         wr.WriteAttributeString("duration", elapsed.TotalSeconds.ToString());
         wr.WriteAttributeString("outcome", outcome);
-        
+
         wr.WriteEndElement();  // outcome
         wr.WriteEndElement();  // method
       }
+      cce.EndExpose();
     }
-    
-    public void WriteError(string! message, IToken! errorToken, IToken relatedToken, BlockSeq trace)
-      requires IsOpen && (trace == null || Owner.Different(this, trace));
-      modifies this.*, errorToken.*, relatedToken.*, trace.*;
-      ensures IsOpen;
-    {
-      assert wr != null;
-      expose(this){
+
+    public void WriteError(string message, IToken errorToken, IToken relatedToken, BlockSeq trace) {
+      Contract.Requires(errorToken != null);
+      Contract.Requires(message != null);
+      Contract.Requires(IsOpen && (trace == null || cce.Owner.Different(this, trace)));
+      //modifies this.*, errorToken.*, relatedToken.*, trace.*;
+      Contract.Ensures(IsOpen);
+      Contract.Assert(wr != null);
+      cce.BeginExpose(this);
+      {
         wr.WriteStartElement("error");
         wr.WriteAttributeString("message", message);
         WriteTokenAttributes(errorToken);
-        if (relatedToken != null)
-        {
+        if (relatedToken != null) {
           wr.WriteStartElement("related");
           WriteTokenAttributes(relatedToken);
           wr.WriteEndElement();
         }
-        if (trace != null)
-        {
+        if (trace != null) {
           wr.WriteStartElement("trace");
           {
-            foreach (object bo in trace)
-              invariant wr != null;
-            {
-              assume bo is Block;
+            foreach (object bo in trace) {
+              cce.LoopInvariant(wr != null);
+              Contract.Assume(bo is Block);
               Block b = (Block)bo;
               wr.WriteStartElement("traceNode");
               {
@@ -127,28 +139,29 @@ namespace Microsoft.Boogie
           }
         }
         wr.WriteEndElement();
-      } 
-    }     
+      }
+      cce.EndExpose();
+    }
 
-    public void WriteError(string! message, Cci.Node! offendingNode, BlockSeq trace)
-      requires IsOpen && Owner.Different(this, offendingNode);
-      requires trace == null || Owner.Different(this, trace);
-      modifies this.*, offendingNode.*, trace.*;
-      ensures IsOpen;
-    {
-      assert wr != null;
-      expose(this){
+    public void WriteError(string message, Cci.Node offendingNode, BlockSeq trace) {
+      Contract.Requires(offendingNode != null);
+      Contract.Requires(message != null);
+      Contract.Requires(IsOpen && cce.Owner.Different(this, offendingNode));
+      Contract.Requires(trace == null || cce.Owner.Different(this, trace));
+      //modifies this.*, offendingNode.*, trace.*;
+      Contract.Ensures(IsOpen);
+      Contract.Assert(wr != null);
+      cce.BeginExpose(this);
+      {
         wr.WriteStartElement("error");
         wr.WriteAttributeString("message", message);
         WriteTokenAttributes(offendingNode);
-        if (trace != null)
-        {
+        if (trace != null) {
           wr.WriteStartElement("trace");
           {
-            foreach (object bo in trace)
-              invariant wr != null;
-            {
-              assume bo is Block;
+            foreach (object bo in trace) {
+              cce.LoopInvariant(wr != null);
+              Contract.Assume(bo is Block);
               Block b = (Block)bo;
               wr.WriteStartElement("traceNode");
               {
@@ -161,16 +174,15 @@ namespace Microsoft.Boogie
           }
         }
         wr.WriteEndElement();
-      } 
+      }
+      cce.EndExpose();
     }
 
     [Inside]
-    private void WriteTokenAttributes(IToken tok) 
-      requires wr != null && wr.IsPeerConsistent;
-      modifies this.0, wr.*;
-    {
-      if (tok != null && tok.filename != null)
-      {
+    private void WriteTokenAttributes(IToken tok) {
+      Contract.Requires(wr != null && cce.IsPeerConsistent(wr));
+      //modifies this.0, wr.*;
+      if (tok != null && tok.filename != null) {
         wr.WriteAttributeString("file", tok.filename);
         wr.WriteAttributeString("line", tok.line.ToString());
         wr.WriteAttributeString("column", tok.col.ToString());
@@ -178,112 +190,122 @@ namespace Microsoft.Boogie
     }
 
     [Inside]
-    private void WriteTokenAttributes(Cci.Node! node) 
-      requires wr != null && wr.IsPeerConsistent;
-      modifies this.0, wr.*;
-    {
-      assert wr != null;
-      if (node.SourceContext.Document != null)
-      {
+    private void WriteTokenAttributes(Cci.Node node) {
+      Contract.Requires(node != null);
+      Contract.Requires(wr != null && cce.IsPeerConsistent(wr));
+      //modifies this.0, wr.*;
+      Contract.Assert(wr != null);
+      if (node.SourceContext.Document != null) {
         wr.WriteAttributeString("file", node.SourceContext.Document.Name);
         wr.WriteAttributeString("line", node.SourceContext.StartLine.ToString());
         wr.WriteAttributeString("column", node.SourceContext.StartColumn.ToString());
       }
     }
-    
-    public void WriteStartInference(string! inferenceName)
-      requires IsOpen;
-      modifies this.*;
-      ensures IsOpen;
-    {
-      assert wr != null;
-      expose (this) {
+
+    public void WriteStartInference(string inferenceName) {
+      Contract.Requires(inferenceName != null);
+      Contract.Requires(IsOpen);
+      //modifies this.*;
+      Contract.Ensures(IsOpen);
+      Contract.Assert(wr != null);
+      cce.BeginExpose(this);
+      {
         wr.WriteStartElement("inference");
         wr.WriteAttributeString("name", inferenceName);
       }
+      cce.EndExpose();
     }
-    
-    public void WriteEndInference()
-      requires IsOpen;
-      modifies this.*;
-      ensures IsOpen;
-    {
-      assert wr != null;
-      expose (this) {
+
+    public void WriteEndInference() {
+      Contract.Requires(IsOpen);
+      //modifies this.*;
+      Contract.Ensures(IsOpen);
+      Contract.Assert(wr != null);
+      cce.BeginExpose(this);
+      {
         wr.WriteEndElement();  // inference
       }
+      cce.EndExpose();
     }
-    
-    public void WriteContractParaAssignment(string! varName, string val)
-      requires IsOpen;
-      modifies this.*;
-      ensures IsOpen;
-    {
-      assert wr != null;
-      expose (this) {
+
+    public void WriteContractParaAssignment(string varName, string val) {
+      Contract.Requires(varName != null);
+      Contract.Requires(IsOpen);
+      //modifies this.*;
+      Contract.Ensures(IsOpen);
+      Contract.Assert(wr != null);
+      cce.BeginExpose(this);
+      {
         wr.WriteStartElement("assignment");
         wr.WriteAttributeString("name", varName);
         wr.WriteAttributeString("value", val);
         wr.WriteEndElement();
       }
+      cce.EndExpose();
     }
-    
-    public void WriteStartFile(string! filename)
-      requires IsOpen;
-      modifies this.*;
-      ensures IsOpen;
-    {
-      assert wr != null;
-      expose (this) {
+
+    public void WriteStartFile(string filename) {
+      Contract.Requires(filename != null);
+      Contract.Requires(IsOpen);
+      //modifies this.*;
+      Contract.Ensures(IsOpen);
+      Contract.Assert(wr != null);
+      cce.BeginExpose(this);
+      {
         wr.WriteStartElement("file");
         wr.WriteAttributeString("name", filename);
       }
+      cce.EndExpose();
     }
 
-    public void WriteEndFile()
-      requires IsOpen;
-      modifies this.*;
-      ensures IsOpen;
-    {
-      assert wr != null;
-      expose (this) {
+    public void WriteEndFile() {
+      Contract.Requires(IsOpen);
+      //modifies this.*;
+      Contract.Ensures(IsOpen);
+      Contract.Assert(wr != null);
+      cce.BeginExpose(this);
+      {
         wr.WriteEndElement();
       }
+      cce.EndExpose();
     }
-    
-    public void WriteFileFragment(string! fragment)
-      requires IsOpen;
-      modifies this.*;
-      ensures IsOpen;
-    {
-      assert wr != null;
-      expose (this) {
+
+    public void WriteFileFragment(string fragment) {
+      Contract.Requires(fragment != null);
+      Contract.Requires(IsOpen);
+      //modifies this.*;
+      Contract.Ensures(IsOpen);
+      Contract.Assert(wr != null);
+      cce.BeginExpose(this);
+      {
         wr.WriteStartElement("fileFragment");
         wr.WriteAttributeString("name", fragment);
         wr.WriteEndElement();
       }
+      cce.EndExpose();
     }
   }
-  
+
   public class XmlFileScope : IDisposable {
-    [Peer] [SpecPublic] XmlSink sink;
-    
+    [Peer]
+    [SpecPublic]
+    XmlSink sink;
+
     [Captured]
-    public XmlFileScope(XmlSink? sink, string! filename)
-      requires sink != null ==> sink.IsOpen;
-      modifies sink.*;
-    {
+    public XmlFileScope(XmlSink sink, string filename) {
+      Contract.Requires(filename != null);
+      Contract.Requires(sink == null || sink.IsOpen);
+      //modifies sink.*;
       if (sink != null) {
         sink.WriteStartFile(filename);  // invoke this method while "sink" is still peer consistent
-        Owner.AssignSame(this, sink);
+        cce.Owner.AssignSame(this, sink);
         this.sink = sink;
       }
     }
-    
-    public void Dispose()
-    {
+
+    public void Dispose() {
       if (sink != null) {
-        assume sink.IsOpen;
+        Contract.Assume(sink.IsOpen);
         sink.WriteEndFile();
       }
     }

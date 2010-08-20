@@ -2,111 +2,140 @@
 using System.Collections.Generic;
 using Graphing;
 using PureCollections;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 
-namespace Microsoft.Boogie
-{
+namespace Microsoft.Boogie {
   public class UnusedVarEliminator : VariableCollector {
-    public static void Eliminate(Program! program) {
+    public static void Eliminate(Program program) {
+      Contract.Requires(program != null);
       UnusedVarEliminator elim = new UnusedVarEliminator();
       elim.Visit(program);
     }
-  
-    private UnusedVarEliminator() {
-      base();
+
+    private UnusedVarEliminator()
+      : base() {//BasemoveA
+
     }
-      
-	public override Implementation! VisitImplementation(Implementation! node) {
-	  //Console.WriteLine("Procedure {0}", node.Name);
-	  Implementation! impl = base.VisitImplementation(node);
-	  //Console.WriteLine("Old number of local variables = {0}", impl.LocVars.Length);
-	  Microsoft.Boogie.VariableSeq! vars = new Microsoft.Boogie.VariableSeq();
-	  foreach (Variable! var in impl.LocVars) {
-	    if (usedVars.Contains(var))
-	      vars.Add(var);
-	  }
-	  impl.LocVars = vars;
-	  //Console.WriteLine("New number of local variables = {0}", impl.LocVars.Length);
-	  //Console.WriteLine("---------------------------------");
-	  usedVars.Clear();
-	  return impl;
-	}
+
+    public override Implementation VisitImplementation(Implementation node) {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Implementation>() != null);
+      //Console.WriteLine("Procedure {0}", node.Name);
+      Implementation/*!*/ impl = base.VisitImplementation(node);
+      Contract.Assert(impl != null);
+      //Console.WriteLine("Old number of local variables = {0}", impl.LocVars.Length);
+      Microsoft.Boogie.VariableSeq/*!*/ vars = new Microsoft.Boogie.VariableSeq();
+      foreach (Variable/*!*/ var in impl.LocVars) {
+        Contract.Assert(var != null);
+        if (usedVars.Contains(var))
+          vars.Add(var);
+      }
+      impl.LocVars = vars;
+      //Console.WriteLine("New number of local variables = {0}", impl.LocVars.Length);
+      //Console.WriteLine("---------------------------------");
+      usedVars.Clear();
+      return impl;
+    }
   }
-  
+
   public class ModSetCollector : StandardVisitor {
     static Procedure proc;
-    static Dictionary<Procedure!, Set<Variable!>!>! modSets;
+    static Dictionary<Procedure/*!*/, Set<Variable/*!*/>/*!*/>/*!*/ modSets;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(cce.NonNullElements(modSets));
+      Contract.Invariant(Contract.ForAll(modSets.Values, v => cce.NonNullElements(v)));
+    }
+
     static bool moreProcessingRequired;
-    
-    public static void DoModSetAnalysis(Program! program) {
+
+    public static void DoModSetAnalysis(Program program) {
+      Contract.Requires(program != null);
       int procCount = 0;
-      foreach (Declaration! decl in program.TopLevelDeclarations) {
+      foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
+        Contract.Assert(decl != null);
         if (decl is Procedure)
           procCount++;
       }
       Console.WriteLine("Number of procedures = {0}", procCount);
-      
-      modSets = new Dictionary<Procedure!, Set<Variable!>!>();
-      
-      Set<Procedure!> implementedProcs = new Set<Procedure!> ();
-      foreach (Declaration! decl in program.TopLevelDeclarations) {
+
+      modSets = new Dictionary<Procedure/*!*/, Set<Variable/*!*/>/*!*/>();
+
+      Set<Procedure/*!*/> implementedProcs = new Set<Procedure/*!*/>();
+      foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
+        Contract.Assert(decl != null);
         if (decl is Implementation) {
-          Implementation impl = (Implementation) decl;
+          Implementation impl = (Implementation)decl;
           if (impl.Proc != null)
             implementedProcs.Add(impl.Proc);
         }
       }
-      foreach (Declaration! decl in program.TopLevelDeclarations) {
-        if (decl is Procedure && !implementedProcs.Contains((Procedure!) decl)) {
-          proc = (Procedure) decl;
-          foreach (IdentifierExpr! expr in proc.Modifies) {
+      foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
+        Contract.Assert(decl != null);
+        if (decl is Procedure && !implementedProcs.Contains(cce.NonNull((Procedure)decl))) {
+          proc = (Procedure)decl;
+          foreach (IdentifierExpr/*!*/ expr in proc.Modifies) {
+            Contract.Assert(expr != null);
             ProcessVariable(expr.Decl);
           }
           proc = null;
         }
       }
-      
+
       moreProcessingRequired = true;
       while (moreProcessingRequired) {
         moreProcessingRequired = false;
         ModSetCollector modSetCollector = new ModSetCollector();
         modSetCollector.Visit(program);
       }
-      
+
       procCount = 0;
-      foreach (Procedure! x in modSets.Keys) {
+      foreach (Procedure/*!*/ x in modSets.Keys) {
+        Contract.Assert(x != null);
         procCount++;
         Console.Write("{0} : ", x.Name);
-        foreach (Variable! y in modSets[x]) {
+        foreach (Variable/*!*/ y in modSets[x]) {
+          Contract.Assert(y != null);
           Console.Write("{0}, ", y.Name);
         }
         Console.WriteLine("");
       }
       Console.WriteLine("Number of procedures with nonempty modsets = {0}", procCount);
     }
-    
-    public override Implementation! VisitImplementation(Implementation! node) {
+
+    public override Implementation VisitImplementation(Implementation node) {
+      //Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Implementation>() != null);
       proc = node.Proc;
-      Implementation! ret = base.VisitImplementation(node);
+      Implementation/*!*/ ret = base.VisitImplementation(node);
+      Contract.Assert(ret != null);
       proc = null;
-      
+
       return ret;
     }
-    public override Cmd! VisitAssignCmd(AssignCmd! assignCmd) {
+    public override Cmd VisitAssignCmd(AssignCmd assignCmd) {
+      //Contract.Requires(assignCmd != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
       Cmd ret = base.VisitAssignCmd(assignCmd);
-      foreach (AssignLhs! lhs in assignCmd.Lhss) {
-	    ProcessVariable(lhs.DeepAssignedVariable);
-	  }
+      foreach (AssignLhs/*!*/ lhs in assignCmd.Lhss) {
+        Contract.Assert(lhs != null);
+        ProcessVariable(lhs.DeepAssignedVariable);
+      }
       return ret;
     }
-    public override Cmd! VisitHavocCmd(HavocCmd! havocCmd) {
+    public override Cmd VisitHavocCmd(HavocCmd havocCmd) {
+      //Contract.Requires(havocCmd != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
       Cmd ret = base.VisitHavocCmd(havocCmd);
-      foreach (IdentifierExpr! expr in havocCmd.Vars) {
+      foreach (IdentifierExpr/*!*/ expr in havocCmd.Vars) {
+        Contract.Assert(expr != null);
         ProcessVariable(expr.Decl);
-	  }
-	  return ret;
+      }
+      return ret;
     }
-    public override Cmd! VisitCallCmd(CallCmd! callCmd) {
+    public override Cmd VisitCallCmd(CallCmd callCmd) {
+      //Contract.Requires(callCmd != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
       Cmd ret = base.VisitCallCmd(callCmd);
       Procedure callee = callCmd.Proc;
       if (callee != null && modSets.ContainsKey(callee)) {
@@ -117,101 +146,131 @@ namespace Microsoft.Boogie
       return ret;
     }
     private static void ProcessVariable(Variable var) {
-      Procedure! localProc = (!)proc;
-      if (var == null) return;
-	  if (!(var is GlobalVariable)) return;
-	  if (var.Name == "alloc") return;
-	  if (!modSets.ContainsKey(localProc)) {
-	    modSets[localProc] = new Set<Variable!> ();
-	  }
-	  if (modSets[localProc].Contains(var)) return;
-	  moreProcessingRequired = true;
-	  modSets[localProc].Add(var);
+      Procedure/*!*/ localProc = cce.NonNull(proc);
+      if (var == null)
+        return;
+      if (!(var is GlobalVariable))
+        return;
+      if (var.Name == "alloc")
+        return;
+      if (!modSets.ContainsKey(localProc)) {
+        modSets[localProc] = new Set<Variable/*!*/>();
+      }
+      if (modSets[localProc].Contains(var))
+        return;
+      moreProcessingRequired = true;
+      modSets[localProc].Add(var);
     }
   }
-  
+
   public class VariableCollector : StandardVisitor {
-	public System.Collections.Generic.Set<Variable!>! usedVars;
-	public System.Collections.Generic.Set<Variable!>! oldVarsUsed;
-	int insideOldExpr;
-	
-	public VariableCollector() {
-	  usedVars = new System.Collections.Generic.Set<Variable!>();
-	  oldVarsUsed = new System.Collections.Generic.Set<Variable!>();
-	  insideOldExpr = 0;
-	}
-	
-    public override Expr! VisitOldExpr(OldExpr! node)
-    {
-      insideOldExpr ++;
+    public System.Collections.Generic.Set<Variable/*!*/>/*!*/ usedVars;
+    public System.Collections.Generic.Set<Variable/*!*/>/*!*/ oldVarsUsed;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(cce.NonNullElements(usedVars));
+      Contract.Invariant(cce.NonNullElements(oldVarsUsed));
+    }
+
+    int insideOldExpr;
+
+    public VariableCollector() {
+      usedVars = new System.Collections.Generic.Set<Variable/*!*/>();
+      oldVarsUsed = new System.Collections.Generic.Set<Variable/*!*/>();
+      insideOldExpr = 0;
+    }
+
+    public override Expr VisitOldExpr(OldExpr node) {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
+      insideOldExpr++;
       node.Expr = this.VisitExpr(node.Expr);
-      insideOldExpr --;
+      insideOldExpr--;
       return node;
     }
-    
-    public override Expr! VisitIdentifierExpr(IdentifierExpr! node) {
+
+    public override Expr VisitIdentifierExpr(IdentifierExpr node) {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       if (node.Decl != null) {
         usedVars.Add(node.Decl);
-        if(insideOldExpr > 0) {
+        if (insideOldExpr > 0) {
           oldVarsUsed.Add(node.Decl);
         }
       }
       return node;
     }
-  } 
-  
-  public class BlockCoalescer : StandardVisitor { 
-    public static void CoalesceBlocks(Program! program) {
+  }
+
+  public class BlockCoalescer : StandardVisitor {
+    public static void CoalesceBlocks(Program program) {
+      Contract.Requires(program != null);
       BlockCoalescer blockCoalescer = new BlockCoalescer();
       blockCoalescer.Visit(program);
     }
-    
-    private static Set<Block!>! ComputeMultiPredecessorBlocks(Implementation !impl) {
-      Set<Block!> visitedBlocks = new Set<Block!>();
-      Set<Block!> multiPredBlocks = new Set<Block!>();
-      Stack<Block!> dfsStack = new Stack<Block!>();
+
+    private static Set<Block/*!*/>/*!*/ ComputeMultiPredecessorBlocks(Implementation/*!*/ impl) {
+      Contract.Requires(impl != null);
+      Contract.Ensures(cce.NonNullElements(Contract.Result<Set<Block>>()));
+      Set<Block/*!*/> visitedBlocks = new Set<Block/*!*/>();
+      Set<Block/*!*/> multiPredBlocks = new Set<Block/*!*/>();
+      Stack<Block/*!*/> dfsStack = new Stack<Block/*!*/>();
       dfsStack.Push(impl.Blocks[0]);
       while (dfsStack.Count > 0) {
-        Block! b = dfsStack.Pop();
+        Block/*!*/ b = dfsStack.Pop();
+        Contract.Assert(b != null);
         if (visitedBlocks.Contains(b)) {
           multiPredBlocks.Add(b);
           continue;
         }
         visitedBlocks.Add(b);
-        if (b.TransferCmd == null) continue;
-        if (b.TransferCmd is ReturnCmd) continue;
-        assert b.TransferCmd is GotoCmd;
-        GotoCmd gotoCmd = (GotoCmd) b.TransferCmd;
-        if (gotoCmd.labelTargets == null) continue;
-        foreach (Block! succ in gotoCmd.labelTargets) {
+        if (b.TransferCmd == null)
+          continue;
+        if (b.TransferCmd is ReturnCmd)
+          continue;
+        Contract.Assert(b.TransferCmd is GotoCmd);
+        GotoCmd gotoCmd = (GotoCmd)b.TransferCmd;
+        if (gotoCmd.labelTargets == null)
+          continue;
+        foreach (Block/*!*/ succ in gotoCmd.labelTargets) {
+          Contract.Assert(succ != null);
           dfsStack.Push(succ);
         }
       }
       return multiPredBlocks;
     }
-    
-    public override Implementation! VisitImplementation(Implementation! impl) {
+
+    public override Implementation VisitImplementation(Implementation impl) {
+      //Contract.Requires(impl != null);
+      Contract.Ensures(Contract.Result<Implementation>() != null);
       //Console.WriteLine("Procedure {0}", impl.Name);
       //Console.WriteLine("Initial number of blocks = {0}", impl.Blocks.Count);
-      
-      Set<Block!> multiPredBlocks = ComputeMultiPredecessorBlocks(impl);
-      Set<Block!> visitedBlocks = new Set<Block!>();
-      Set<Block!> removedBlocks = new Set<Block!>();
-      Stack<Block!> dfsStack = new Stack<Block!>();
+
+      Set<Block/*!*/> multiPredBlocks = ComputeMultiPredecessorBlocks(impl);
+      Contract.Assert(cce.NonNullElements(multiPredBlocks));
+      Set<Block/*!*/> visitedBlocks = new Set<Block/*!*/>();
+      Set<Block/*!*/> removedBlocks = new Set<Block/*!*/>();
+      Stack<Block/*!*/> dfsStack = new Stack<Block/*!*/>();
       dfsStack.Push(impl.Blocks[0]);
       while (dfsStack.Count > 0) {
-        Block! b = dfsStack.Pop();
-        if (visitedBlocks.Contains(b)) continue;
+        Block/*!*/ b = dfsStack.Pop();
+        Contract.Assert(b != null);
+        if (visitedBlocks.Contains(b))
+          continue;
         visitedBlocks.Add(b);
-        if (b.TransferCmd == null) continue;
-        if (b.TransferCmd is ReturnCmd) continue;
-        assert b.TransferCmd is GotoCmd;
-        GotoCmd gotoCmd = (GotoCmd) b.TransferCmd;
-        if (gotoCmd.labelTargets == null) continue;
+        if (b.TransferCmd == null)
+          continue;
+        if (b.TransferCmd is ReturnCmd)
+          continue;
+        Contract.Assert(b.TransferCmd is GotoCmd);
+        GotoCmd gotoCmd = (GotoCmd)b.TransferCmd;
+        if (gotoCmd.labelTargets == null)
+          continue;
         if (gotoCmd.labelTargets.Length == 1) {
-          Block! succ = (!)gotoCmd.labelTargets[0];
+          Block/*!*/ succ = cce.NonNull(gotoCmd.labelTargets[0]);
           if (!multiPredBlocks.Contains(succ)) {
-            foreach (Cmd! cmd in succ.Cmds) {
+            foreach (Cmd/*!*/ cmd in succ.Cmds) {
+              Contract.Assert(cmd != null);
               b.Cmds.Add(cmd);
             }
             b.TransferCmd = succ.TransferCmd;
@@ -224,162 +283,176 @@ namespace Microsoft.Boogie
             visitedBlocks.Remove(b);
             continue;
           }
-        } 
-        foreach (Block! succ in gotoCmd.labelTargets) {
+        }
+        foreach (Block/*!*/ succ in gotoCmd.labelTargets) {
+          Contract.Assert(succ != null);
           dfsStack.Push(succ);
         }
       }
-      
-      List<Block!> newBlocks = new List<Block!>();
-      foreach (Block! b in impl.Blocks) {
+
+      List<Block/*!*/> newBlocks = new List<Block/*!*/>();
+      foreach (Block/*!*/ b in impl.Blocks) {
+        Contract.Assert(b != null);
         if (!removedBlocks.Contains(b)) {
           newBlocks.Add(b);
         }
       }
       impl.Blocks = newBlocks;
-      
+
       // Console.WriteLine("Final number of blocks = {0}", impl.Blocks.Count);
       return impl;
     }
   }
-  
+
   public class LiveVariableAnalysis {
-    public static void ClearLiveVariables(Implementation! impl) {
-      foreach (Block! block in impl.Blocks) {
+    public static void ClearLiveVariables(Implementation impl) {
+      Contract.Requires(impl != null);
+      foreach (Block/*!*/ block in impl.Blocks) {
+        Contract.Assert(block != null);
         block.liveVarsBefore = null;
       }
     }
-    
-	public static void ComputeLiveVariables(Implementation! impl) {
-	  Microsoft.Boogie.Helpers.ExtraTraceInformation("Starting live variable analysis");
-	  Graphing.Graph<Block> dag = new Graph<Block>();
-      dag.AddSource((!)impl.Blocks[0]); // there is always at least one node in the graph
-      foreach (Block b in impl.Blocks)
-      {
+
+    public static void ComputeLiveVariables(Implementation impl) {
+      Contract.Requires(impl != null);
+      Microsoft.Boogie.Helpers.ExtraTraceInformation("Starting live variable analysis");
+      Graphing.Graph<Block> dag = new Graph<Block>();
+      dag.AddSource(cce.NonNull(impl.Blocks[0])); // there is always at least one node in the graph
+      foreach (Block b in impl.Blocks) {
         GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null)
-        {
-          assume gtc.labelTargets != null;
-          foreach (Block! dest in gtc.labelTargets)
-          {
+        if (gtc != null) {
+          Contract.Assume(gtc.labelTargets != null);
+          foreach (Block/*!*/ dest in gtc.labelTargets) {
+            Contract.Assert(dest != null);
             dag.AddEdge(dest, b);
           }
         }
       }
-      
+
       IEnumerable<Block> sortedNodes = dag.TopologicalSort();
-	  foreach (Block! block in sortedNodes) {
-	    Set<Variable!>! liveVarsAfter = new Set<Variable!>();
-	    if (block.TransferCmd is GotoCmd) {
-	      GotoCmd gotoCmd = (GotoCmd) block.TransferCmd;
-	      if (gotoCmd.labelTargets != null) {
-	        foreach (Block! succ in gotoCmd.labelTargets) {
-	          assert succ.liveVarsBefore != null;
-	          liveVarsAfter.AddRange(succ.liveVarsBefore);
-	        }
-	      }
-	    } 
-	    
+      foreach (Block/*!*/ block in sortedNodes) {
+        Contract.Assert(block != null);
+        Set<Variable/*!*/>/*!*/ liveVarsAfter = new Set<Variable/*!*/>();
+        if (block.TransferCmd is GotoCmd) {
+          GotoCmd gotoCmd = (GotoCmd)block.TransferCmd;
+          if (gotoCmd.labelTargets != null) {
+            foreach (Block/*!*/ succ in gotoCmd.labelTargets) {
+              Contract.Assert(succ != null);
+              Contract.Assert(succ.liveVarsBefore != null);
+              liveVarsAfter.AddRange(succ.liveVarsBefore);
+            }
+          }
+        }
+
         CmdSeq cmds = block.Cmds;
-	    int len = cmds.Length;
-	    for (int i = len - 1; i >= 0; i--) {
-	      if(cmds[i] is CallCmd) {
-	        Procedure! proc = (!)((CallCmd!)cmds[i]).Proc;
-	        if(InterProcGenKill.HasSummary(proc.Name)) {
-	          liveVarsAfter = 
-	            InterProcGenKill.PropagateLiveVarsAcrossCall((CallCmd!)cmds[i], liveVarsAfter);
-	          continue;
-	        }
-	      }
-	      Propagate(cmds[i], liveVarsAfter);
-	    }
-	    
-	    block.liveVarsBefore = liveVarsAfter;
-	    	    
-	  }
-	}
-	
-	// perform in place update of liveSet
-	public static void Propagate(Cmd! cmd, Set<Variable!>! liveSet) {
-	  if (cmd is AssignCmd) {
-	    AssignCmd! assignCmd = (AssignCmd) cmd;
-	    // I must first iterate over all the targets and remove the live ones.
-	    // After the removals are done, I must add the variables referred on 
-	    // the right side of the removed targets
-	    Set<int> indexSet = new Set<int>();
-	    int index = 0;
-	    foreach (AssignLhs! lhs in assignCmd.Lhss) {
-	      Variable var = lhs.DeepAssignedVariable;
-	      if (var != null && liveSet.Contains(var)) {
-	        indexSet.Add(index);
-	        if (lhs is SimpleAssignLhs) {
-	          // we should only remove non-map target variables because there is an implicit
-	          // read of a map variable in an assignment to it
-			  liveSet.Remove(var);
-			}
-	      }
-	      index++;
-	    }
-	    index = 0;
-	    foreach (Expr! expr in assignCmd.Rhss) {
-	      if (indexSet.Contains(index)) {
-	        VariableCollector! collector = new VariableCollector();
-	        collector.Visit(expr);
-	        liveSet.AddRange(collector.usedVars);
-	        AssignLhs lhs = assignCmd.Lhss[index];
-	        if (lhs is MapAssignLhs) {
-	          // If the target is a map, then all indices are also read
-	          MapAssignLhs malhs = (MapAssignLhs) lhs;
-	          foreach (Expr e in malhs.Indexes) {
-	            VariableCollector! c = new VariableCollector();
-	            c.Visit(e);
-	            liveSet.AddRange(c.usedVars);
-	          }
-	        }
-	      }
-	      index++;
-	    }
-	  } else if (cmd is HavocCmd) {
-	    HavocCmd! havocCmd = (HavocCmd) cmd;
-	    foreach (IdentifierExpr! expr in havocCmd.Vars) {
-	      if (expr.Decl != null) {
-	        liveSet.Remove(expr.Decl);
-	      }
-	    }
-	  } else if (cmd is PredicateCmd) {
-	    assert (cmd is AssertCmd || cmd is AssumeCmd);
-	    PredicateCmd! predicateCmd = (PredicateCmd) cmd;
-	    if (predicateCmd.Expr is LiteralExpr) {
-	      LiteralExpr le = (LiteralExpr) predicateCmd.Expr;
-	      if (le.IsFalse) {
-	        liveSet.Clear();
-	      }
-	    } else {
-	      VariableCollector! collector = new VariableCollector();
-	      collector.Visit(predicateCmd.Expr);
-	      liveSet.AddRange(collector.usedVars);
-	    }
-	  } else if (cmd is CommentCmd) {
+        int len = cmds.Length;
+        for (int i = len - 1; i >= 0; i--) {
+          if (cmds[i] is CallCmd) {
+            Procedure/*!*/ proc = cce.NonNull(cce.NonNull((CallCmd/*!*/)cmds[i]).Proc);
+            if (InterProcGenKill.HasSummary(proc.Name)) {
+              liveVarsAfter =
+                InterProcGenKill.PropagateLiveVarsAcrossCall(cce.NonNull((CallCmd/*!*/)cmds[i]), liveVarsAfter);
+              continue;
+            }
+          }
+          Propagate(cmds[i], liveVarsAfter);
+        }
+
+        block.liveVarsBefore = liveVarsAfter;
+
+      }
+    }
+
+    // perform in place update of liveSet
+    public static void Propagate(Cmd cmd, Set<Variable/*!*/>/*!*/ liveSet) {
+      Contract.Requires(cmd != null);
+      Contract.Requires(cce.NonNullElements(liveSet));
+      if (cmd is AssignCmd) {
+        AssignCmd/*!*/ assignCmd = (AssignCmd)cce.NonNull(cmd);
+        // I must first iterate over all the targets and remove the live ones.
+        // After the removals are done, I must add the variables referred on 
+        // the right side of the removed targets
+        Set<int> indexSet = new Set<int>();
+        int index = 0;
+        foreach (AssignLhs/*!*/ lhs in assignCmd.Lhss) {
+          Contract.Assert(lhs != null);
+          Variable var = lhs.DeepAssignedVariable;
+          if (var != null && liveSet.Contains(var)) {
+            indexSet.Add(index);
+            if (lhs is SimpleAssignLhs) {
+              // we should only remove non-map target variables because there is an implicit
+              // read of a map variable in an assignment to it
+              liveSet.Remove(var);
+            }
+          }
+          index++;
+        }
+        index = 0;
+        foreach (Expr/*!*/ expr in assignCmd.Rhss) {
+          Contract.Assert(expr != null);
+          if (indexSet.Contains(index)) {
+            VariableCollector/*!*/ collector = new VariableCollector();
+            collector.Visit(expr);
+            liveSet.AddRange(collector.usedVars);
+            AssignLhs lhs = assignCmd.Lhss[index];
+            if (lhs is MapAssignLhs) {
+              // If the target is a map, then all indices are also read
+              MapAssignLhs malhs = (MapAssignLhs)lhs;
+              foreach (Expr e in malhs.Indexes) {
+                VariableCollector/*!*/ c = new VariableCollector();
+                c.Visit(e);
+                liveSet.AddRange(c.usedVars);
+              }
+            }
+          }
+          index++;
+        }
+      } else if (cmd is HavocCmd) {
+        HavocCmd/*!*/ havocCmd = (HavocCmd)cmd;
+        foreach (IdentifierExpr/*!*/ expr in havocCmd.Vars) {
+          Contract.Assert(expr != null);
+          if (expr.Decl != null) {
+            liveSet.Remove(expr.Decl);
+          }
+        }
+      } else if (cmd is PredicateCmd) {
+        Contract.Assert((cmd is AssertCmd || cmd is AssumeCmd));
+        PredicateCmd/*!*/ predicateCmd = (PredicateCmd)cce.NonNull(cmd);
+        if (predicateCmd.Expr is LiteralExpr) {
+          LiteralExpr le = (LiteralExpr)predicateCmd.Expr;
+          if (le.IsFalse) {
+            liveSet.Clear();
+          }
+        } else {
+          VariableCollector/*!*/ collector = new VariableCollector();
+          collector.Visit(predicateCmd.Expr);
+          liveSet.AddRange(collector.usedVars);
+        }
+      } else if (cmd is CommentCmd) {
         // comments are just for debugging and don't affect verification
       } else if (cmd is SugaredCmd) {
-        SugaredCmd! sugCmd = (SugaredCmd) cmd;
+        SugaredCmd/*!*/ sugCmd = (SugaredCmd)cce.NonNull(cmd);
         Propagate(sugCmd.Desugaring, liveSet);
       } else if (cmd is StateCmd) {
-        StateCmd! stCmd = (StateCmd) cmd;
-        CmdSeq! cmds = stCmd.Cmds;
+        StateCmd/*!*/ stCmd = (StateCmd)cce.NonNull(cmd);
+        CmdSeq/*!*/ cmds = cce.NonNull(stCmd.Cmds);
         int len = cmds.Length;
         for (int i = len - 1; i >= 0; i--) {
           Propagate(cmds[i], liveSet);
         }
-        foreach (Variable! v in stCmd.Locals) {
+        foreach (Variable/*!*/ v in stCmd.Locals) {
+          Contract.Assert(v != null);
           liveSet.Remove(v);
         }
       } else {
-        assert false;
+        {
+          Contract.Assert(false);
+          throw new cce.UnreachableException();
+        }
       }
-	}
+    }
   }
-  
+
   /*
   // An idempotent semiring interface
   abstract public class Weight {
@@ -391,844 +464,1066 @@ namespace Microsoft.Boogie
      abstract public Weight! projectLocals()
   }
   */
-  
+
   // Weight domain for LiveVariableAnalysis (Gen/Kill)
-  
+
   public class GenKillWeight {
-     // lambda S. (S - kill) union gen
-     Set<Variable!>! gen;
-     Set<Variable!>! kill;
-     bool isZero;
-     
-     public static GenKillWeight! oneWeight = new GenKillWeight(new Set<Variable!>(), new Set<Variable!>());
-     public static GenKillWeight! zeroWeight = new GenKillWeight();
-     
-     // initializes to zero
-     public GenKillWeight() {
-        this.isZero = true;
-        this.gen = new Set<Variable!>();
-        this.kill = new Set<Variable!>();
-     }
-     
-     public GenKillWeight(Set<Variable!> gen, Set<Variable!> kill) {
-        assert gen != null;
-        assert kill != null;
-        this.gen = gen;
-        this.kill = kill;
-        this.isZero = false;
-     }
-     
-     public static GenKillWeight! one() {
-        return oneWeight;
-     }
-     
-     public static GenKillWeight! zero() {
-        return zeroWeight;
-     }
-     
-     public static GenKillWeight! extend(GenKillWeight! w1, GenKillWeight! w2) {       
-        if(w1.isZero || w2.isZero) return zero();
-        
-        return new GenKillWeight(w1.gen.Union(w2.gen.Difference(w1.kill)), w1.kill.Union(w2.kill));
-     }
-     
-     public static GenKillWeight! combine(GenKillWeight! w1, GenKillWeight! w2) {
-        if(w1.isZero) return w2;
-        if(w2.isZero) return w1;
-        
-        return new GenKillWeight(w1.gen.Union(w2.gen), w1.kill.Intersection(w2.kill));
-     }
-     
-     public static GenKillWeight! projectLocals(GenKillWeight! w) {
-        Set<Variable!> gen = w.gen.FindAll(isGlobal);
-        Set<Variable!> kill = w.kill.FindAll(isGlobal);
-        
-        return new GenKillWeight(gen, kill);
-     }
-     
-     public static bool isEqual(GenKillWeight! w1, GenKillWeight! w2) {
-        if(w1.isZero) return w2.isZero;
-        if(w2.isZero) return w1.isZero;
-        
-        return (w1.gen.Equals(w2.gen) && w1.kill.Equals(w2.kill));
-     }
-        
-     private static bool isGlobal(Variable! v) 
-     {
-        return (v is GlobalVariable);
-     } 
-     
-     [Pure]
-     public override string! ToString() {
-       return string.Format("({0},{1})", gen.ToString(), kill.ToString());
-     }
-     
-     public Set<Variable!>! getLiveVars() {
-       return gen;
-     }
-     
-     public Set<Variable!>! getLiveVars(Set<Variable!>! lv) {
-       Set<Variable!>! temp = (!)lv.Difference(kill);
-       return (!)temp.Union(gen);
-     }
-  
-  }
-  
-  public class ICFG 
-  {
-      public Graph<Block!>! graph;
-      // Map from procedure to the list of blocks that call that procedure
-      public Dictionary<string!, List<Block!>!>! procsCalled;
-      public Set<Block!>! nodes;
-      public Dictionary<Block!, Set<Block!>!>! succEdges;
-      public Dictionary<Block!, Set<Block!>!>! predEdges;
-      private Dictionary<Block!, int>! priority;
-      
-      public Set<Block!>! srcNodes;
-      public Set<Block!>! exitNodes;
-      
-      public Dictionary<Block!, GenKillWeight!>! weightBefore;
-      public Dictionary<Block!, GenKillWeight!>! weightAfter;
-      public Dictionary<Block!, Set<Variable!>!>! liveVarsAfter;
-      public Dictionary<Block!, Set<Variable!>!>! liveVarsBefore;
-      
-      public GenKillWeight! summary;
-      public Implementation! impl;
-      
-      [NotDelayed]
-      public ICFG(Implementation! impl) {
-         this.graph = new Graph<Block!>();
-         this.procsCalled = new Dictionary<string!, List<Block!>!>();
-         this.nodes = new Set<Block!>();
-         this.succEdges = new Dictionary<Block!, Set<Block!>!>();
-         this.predEdges = new Dictionary<Block!, Set<Block!>!>();
-         
-         this.priority = new Dictionary<Block!, int>();
-         
-         this.srcNodes = new Set<Block!>();
-         this.exitNodes = new Set<Block!>();
-         
-         this.weightBefore = new Dictionary<Block!, GenKillWeight!>();
-         this.weightAfter = new Dictionary<Block!, GenKillWeight!>();
-         this.liveVarsAfter = new Dictionary<Block!, Set<Variable!>!>();
-         this.liveVarsBefore = new Dictionary<Block!, Set<Variable!>!>();
-         
-         summary = GenKillWeight.zero();
-         this.impl = impl;
-         
-         base();
-         
-         Initialize(impl);
-         
-      }
-      
-      private void Initialize(Implementation! impl) {   
-         addSource(impl.Blocks[0]);
-         graph.AddSource(impl.Blocks[0]);
-         
-         foreach(Block! b in impl.Blocks) {
-            if(b.TransferCmd is ReturnCmd) {
-               exitNodes.Add(b);
-            } else {
-               GotoCmd gc = b.TransferCmd as GotoCmd;
-               assert gc != null;
-               assert gc.labelTargets != null;
-               foreach(Block! t in gc.labelTargets) {
-                  addEdge(b,t);
-                  graph.AddEdge(b,t);
-               }
-            }
-            
-            weightBefore[b] = GenKillWeight.zero();
-            weightAfter[b] = GenKillWeight.zero();
-            
-            foreach(Cmd! c in b.Cmds) {
-               if(c is CallCmd) {
-                  CallCmd! cc = (CallCmd!)c;
-                  assert cc.Proc != null;
-                  string! procName = cc.Proc.Name;
-                  if(!procsCalled.ContainsKey(procName)) {
-                    procsCalled.Add(procName, new List<Block!>());
-                  }
-                  procsCalled[procName].Add(b);
-               }
-            }
-         }
-         
-         List<Block>! sortedNodes;
-         bool acyclic;
-         
-         graph.TarjanTopSort(out acyclic, out sortedNodes);
-         
-         if(!acyclic) {
-            Console.WriteLine("Warning: graph is not a dag");
-         }    
-              
-         int num = sortedNodes.Count;
-         foreach(Block! b in sortedNodes) {
-            priority.Add(b,num);
-            num--;
-         }
+    // lambda S. (S - kill) union gen
+    Set<Variable/*!*/>/*!*/ gen;
+    Set<Variable/*!*/>/*!*/ kill;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(cce.NonNullElements(gen));
+      Contract.Invariant(cce.NonNullElements(kill));
+      Contract.Invariant(oneWeight != null);
+      Contract.Invariant(zeroWeight != null);
+    }
 
-      }
-      
-      public int getPriority(Block! b) {
-         if(priority.ContainsKey(b)) return priority[b];
-         return Int32.MaxValue;
-      }
-      
-      private void addSource(Block! b) {
-         registerNode(b);
-         this.srcNodes.Add(b);
-      }
-      
-      private void addExit(Block! b) {
-         registerNode(b);
-         this.exitNodes.Add(b);
-      }
-      
-      private void registerNode(Block! b) {
-          if(!succEdges.ContainsKey(b)) {
-            succEdges.Add(b, new Set<Block!>());
-         }
+    bool isZero;
 
-         if(!predEdges.ContainsKey(b)) {
-            predEdges.Add(b, new Set<Block!>());
-         }     
-         
-         nodes.Add(b);
-      }
-      
-      private void addEdge(Block! src, Block! tgt) {
-         registerNode(src);
-         registerNode(tgt);
-         
-         succEdges[src].Add(tgt);
-         predEdges[tgt].Add(src);
-      }   
-      
-  
+    public static GenKillWeight/*!*/ oneWeight = new GenKillWeight(new Set<Variable/*!*/>(), new Set<Variable/*!*/>());
+    public static GenKillWeight/*!*/ zeroWeight = new GenKillWeight();
+
+    // initializes to zero
+    public GenKillWeight() {
+      this.isZero = true;
+      this.gen = new Set<Variable/*!*/>();
+      this.kill = new Set<Variable/*!*/>();
+    }
+
+    public GenKillWeight(Set<Variable/*!*/> gen, Set<Variable/*!*/> kill) {
+      Contract.Requires(cce.NonNullElements(gen));
+      Contract.Requires(cce.NonNullElements(kill));
+      Contract.Assert(gen != null);
+      Contract.Assert(kill != null);
+      this.gen = gen;
+      this.kill = kill;
+      this.isZero = false;
+    }
+
+    public static GenKillWeight one() {
+      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      return oneWeight;
+    }
+
+    public static GenKillWeight zero() {
+      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      return zeroWeight;
+    }
+
+    public static GenKillWeight extend(GenKillWeight w1, GenKillWeight w2) {
+      Contract.Requires(w2 != null);
+      Contract.Requires(w1 != null);
+      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      if (w1.isZero || w2.isZero)
+        return zero();
+
+      return new GenKillWeight(w1.gen.Union(w2.gen.Difference(w1.kill)), w1.kill.Union(w2.kill));
+    }
+
+    public static GenKillWeight combine(GenKillWeight w1, GenKillWeight w2) {
+      Contract.Requires(w2 != null);
+      Contract.Requires(w1 != null);
+      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      if (w1.isZero)
+        return w2;
+      if (w2.isZero)
+        return w1;
+
+      return new GenKillWeight(w1.gen.Union(w2.gen), w1.kill.Intersection(w2.kill));
+    }
+
+    public static GenKillWeight projectLocals(GenKillWeight w) {
+      Contract.Requires(w != null);
+      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      Set<Variable/*!*/> gen = w.gen.FindAll(isGlobal);
+      Contract.Assert(cce.NonNullElements(gen));
+      Set<Variable/*!*/> kill = w.kill.FindAll(isGlobal);
+      Contract.Assert(cce.NonNullElements(kill));
+
+      return new GenKillWeight(gen, kill);
+    }
+
+    public static bool isEqual(GenKillWeight w1, GenKillWeight w2) {
+      Contract.Requires(w2 != null);
+      Contract.Requires(w1 != null);
+      if (w1.isZero)
+        return w2.isZero;
+      if (w2.isZero)
+        return w1.isZero;
+
+      return (w1.gen.Equals(w2.gen) && w1.kill.Equals(w2.kill));
+    }
+
+    private static bool isGlobal(Variable v) {
+      Contract.Requires(v != null);
+      return (v is GlobalVariable);
+    }
+
+    [Pure]
+    public override string ToString() {
+      Contract.Ensures(Contract.Result<string>() != null);
+      return string.Format("({0},{1})", gen.ToString(), kill.ToString());
+    }
+
+    public Set<Variable/*!*/>/*!*/ getLiveVars() {
+      Contract.Ensures(cce.NonNullElements(Contract.Result<Set<Variable>>()));
+      return gen;
+    }
+
+    public Set<Variable/*!*/>/*!*/ getLiveVars(Set<Variable/*!*/>/*!*/ lv) {
+      Contract.Requires(cce.NonNullElements(lv));
+      Contract.Ensures(cce.NonNullElements(Contract.Result<Set<Variable>>()));
+      Set<Variable/*!*/>/*!*/ temp = cce.NonNull(lv.Difference(kill));
+      return cce.NonNull(temp.Union(gen));
+    }
+
   }
-  
+
+  public class ICFG {
+    public Graph<Block/*!*/>/*!*/ graph;
+    // Map from procedure to the list of blocks that call that procedure
+    public Dictionary<string/*!*/, List<Block/*!*/>/*!*/>/*!*/ procsCalled;
+    public Set<Block/*!*/>/*!*/ nodes;
+    public Dictionary<Block/*!*/, Set<Block/*!*/>/*!*/>/*!*/ succEdges;
+    public Dictionary<Block/*!*/, Set<Block/*!*/>/*!*/>/*!*/ predEdges;
+    private Dictionary<Block/*!*/, int>/*!*/ priority;
+
+    public Set<Block/*!*/>/*!*/ srcNodes;
+    public Set<Block/*!*/>/*!*/ exitNodes;
+
+    public Dictionary<Block/*!*/, GenKillWeight/*!*/>/*!*/ weightBefore;
+    public Dictionary<Block/*!*/, GenKillWeight/*!*/>/*!*/ weightAfter;
+    public Dictionary<Block/*!*/, Set<Variable/*!*/>/*!*/>/*!*/ liveVarsAfter;
+    public Dictionary<Block/*!*/, Set<Variable/*!*/>/*!*/>/*!*/ liveVarsBefore;
+
+    public GenKillWeight/*!*/ summary;
+    public Implementation/*!*/ impl;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(cce.NonNullElements(graph.TopologicalSort()));
+      Contract.Invariant(cce.NonNullElements(procsCalled));
+      Contract.Invariant(cce.NonNullElements(nodes));
+      Contract.Invariant(cce.NonNullElements(succEdges));
+      Contract.Invariant(cce.NonNullElements(predEdges));
+      Contract.Invariant(cce.NonNullElements(priority));
+      Contract.Invariant(cce.NonNullElements(srcNodes));
+      Contract.Invariant(cce.NonNullElements(exitNodes));
+      Contract.Invariant(cce.NonNullElements(weightBefore));
+      Contract.Invariant(cce.NonNullElements(weightAfter));
+      Contract.Invariant(cce.NonNullElements(liveVarsAfter));
+      Contract.Invariant(cce.NonNullElements(liveVarsBefore));
+      Contract.Invariant(summary != null);
+      Contract.Invariant(impl != null);
+    }
+
+
+    [NotDelayed]
+    public ICFG(Implementation impl) {//BASEMOVE DANGER
+      Contract.Requires(impl != null);
+      this.graph = new Graph<Block/*!*/>();
+      this.procsCalled = new Dictionary<string/*!*/, List<Block/*!*/>/*!*/>();
+      this.nodes = new Set<Block/*!*/>();
+      this.succEdges = new Dictionary<Block/*!*/, Set<Block/*!*/>/*!*/>();
+      this.predEdges = new Dictionary<Block/*!*/, Set<Block/*!*/>/*!*/>();
+
+      this.priority = new Dictionary<Block/*!*/, int>();
+
+      this.srcNodes = new Set<Block/*!*/>();
+      this.exitNodes = new Set<Block/*!*/>();
+
+      this.weightBefore = new Dictionary<Block/*!*/, GenKillWeight/*!*/>();
+      this.weightAfter = new Dictionary<Block/*!*/, GenKillWeight/*!*/>();
+      this.liveVarsAfter = new Dictionary<Block/*!*/, Set<Variable/*!*/>/*!*/>();
+      this.liveVarsBefore = new Dictionary<Block/*!*/, Set<Variable/*!*/>/*!*/>();
+
+      summary = GenKillWeight.zero();
+      this.impl = impl;
+
+      //:base();
+
+      Initialize(impl);
+
+    }
+
+    private void Initialize(Implementation impl) {
+      Contract.Requires(impl != null);
+      addSource(impl.Blocks[0]);
+      graph.AddSource(impl.Blocks[0]);
+
+      foreach (Block/*!*/ b in impl.Blocks) {
+        Contract.Assert(b != null);
+        if (b.TransferCmd is ReturnCmd) {
+          exitNodes.Add(b);
+        } else {
+          GotoCmd gc = b.TransferCmd as GotoCmd;
+          Contract.Assert(gc != null);
+          Contract.Assert(gc.labelTargets != null);
+          foreach (Block/*!*/ t in gc.labelTargets) {
+            Contract.Assert(t != null);
+            addEdge(b, t);
+            graph.AddEdge(b, t);
+          }
+        }
+
+        weightBefore[b] = GenKillWeight.zero();
+        weightAfter[b] = GenKillWeight.zero();
+
+        foreach (Cmd/*!*/ c in b.Cmds) {
+          Contract.Assert(c != null);
+          if (c is CallCmd) {
+            CallCmd/*!*/ cc = cce.NonNull((CallCmd/*!*/)c);
+            Contract.Assert(cc.Proc != null);
+            string/*!*/ procName = cc.Proc.Name;
+            Contract.Assert(procName != null);
+            if (!procsCalled.ContainsKey(procName)) {
+              procsCalled.Add(procName, new List<Block/*!*/>());
+            }
+            procsCalled[procName].Add(b);
+          }
+        }
+      }
+
+      List<Block>/*!*/ sortedNodes;
+      bool acyclic;
+
+      graph.TarjanTopSort(out acyclic, out sortedNodes);
+
+      if (!acyclic) {
+        Console.WriteLine("Warning: graph is not a dag");
+      }
+
+      int num = sortedNodes.Count;
+      foreach (Block/*!*/ b in sortedNodes) {
+        Contract.Assert(b != null);
+        priority.Add(b, num);
+        num--;
+      }
+
+    }
+
+    public int getPriority(Block b) {
+      Contract.Requires(b != null);
+      if (priority.ContainsKey(b))
+        return priority[b];
+      return Int32.MaxValue;
+    }
+
+    private void addSource(Block b) {
+      Contract.Requires(b != null);
+      registerNode(b);
+      this.srcNodes.Add(b);
+    }
+
+    private void addExit(Block b) {
+      Contract.Requires(b != null);
+      registerNode(b);
+      this.exitNodes.Add(b);
+    }
+
+    private void registerNode(Block b) {
+      Contract.Requires(b != null);
+      if (!succEdges.ContainsKey(b)) {
+        succEdges.Add(b, new Set<Block/*!*/>());
+      }
+
+      if (!predEdges.ContainsKey(b)) {
+        predEdges.Add(b, new Set<Block/*!*/>());
+      }
+
+      nodes.Add(b);
+    }
+
+    private void addEdge(Block src, Block tgt) {
+      Contract.Requires(tgt != null);
+      Contract.Requires(src != null);
+      registerNode(src);
+      registerNode(tgt);
+
+      succEdges[src].Add(tgt);
+      predEdges[tgt].Add(src);
+    }
+
+
+  }
+
   // Interprocedural Gen/Kill Analysis
-  public class InterProcGenKill
-  {
-     Program! program;
-     Dictionary<string!, ICFG!>! procICFG;
-     Dictionary<string!, Procedure!>! name2Proc;
-     Dictionary<string!, List<WorkItem!>!>! callers;
-     Graph<string!>! callGraph;
-     Dictionary<string!, int>! procPriority;
-     int maxBlocksInProc;
-     
-     WorkList! workList;
-     
-     Implementation! mainImpl;
-     
-     static Dictionary<string!, Set<Variable!>!>! varsLiveAtExit = new Dictionary<string!, Set<Variable!>!>();
-     static Dictionary<string!, Set<Variable!>!>! varsLiveAtEntry = new Dictionary<string!, Set<Variable!>!>();
-     static Dictionary<string!, GenKillWeight!>! varsLiveSummary = new Dictionary<string!, GenKillWeight!>();
-     
-     [NotDelayed]
-     public InterProcGenKill(Implementation! impl, Program! program) {
-        this.program = program;
-        procICFG = new Dictionary<string!, ICFG!>();
-        name2Proc = new Dictionary<string!, Procedure!>();
-        workList = new WorkList();
-        this.callers = new Dictionary<string!, List<WorkItem!>!>();
-        this.callGraph = new Graph<string!>();
-        this.procPriority = new Dictionary<string!, int>();
-        this.maxBlocksInProc = 0;
-        this.mainImpl = impl;
-        
-        Dictionary<string!, Implementation!>! name2Impl = new Dictionary<string!, Implementation!>();
-        varsLiveAtExit.Clear();
-        varsLiveAtEntry.Clear();
-        varsLiveSummary.Clear();
-        
-        base();
-        
-        foreach(Declaration! decl in program.TopLevelDeclarations) {
-           if(decl is Implementation) {
-             Implementation! imp = (Implementation!)decl;
-             name2Impl[imp.Name] = imp;
-           } else if(decl is Procedure) {
-             Procedure! proc = (!)(decl as Procedure);
-             name2Proc[proc.Name] = proc;
-           }
-        }
-        
-        ICFG! mainICFG = new ICFG(mainImpl);
-        procICFG.Add(mainICFG.impl.Name, mainICFG);
-        callGraph.AddSource(mainICFG.impl.Name);
-        
-        List<ICFG!>! procsToConsider = new List<ICFG!>();
-        procsToConsider.Add(mainICFG);
-        
-        while(procsToConsider.Count != 0) {
-           ICFG! p = procsToConsider[0];
-           procsToConsider.RemoveAt(0);
-           
-           foreach(string! callee in p.procsCalled.Keys) {   
-              if(!name2Impl.ContainsKey(callee)) continue;
+  public class InterProcGenKill {
+    Program/*!*/ program;
+    Dictionary<string/*!*/, ICFG/*!*/>/*!*/ procICFG;
+    Dictionary<string/*!*/, Procedure/*!*/>/*!*/ name2Proc;
+    Dictionary<string/*!*/, List<WorkItem/*!*/>/*!*/>/*!*/ callers;
+    Graph<string/*!*/>/*!*/ callGraph;
+    Dictionary<string/*!*/, int>/*!*/ procPriority;
+    int maxBlocksInProc;
 
-              callGraph.AddEdge(p.impl.Name, callee);
-              
-              if(maxBlocksInProc < p.nodes.Count) {
-                maxBlocksInProc = p.nodes.Count;
-              }
-              
-              if(!callers.ContainsKey(callee)) {
-                callers.Add(callee, new List<WorkItem!>());
-              }
-              foreach(Block!  b in p.procsCalled[callee]) {
-                callers[callee].Add(new WorkItem(p, b));
-              }
-              
-              if(procICFG.ContainsKey(callee)) continue;
-              ICFG! ncfg = new ICFG(name2Impl[callee]);
-              procICFG.Add(callee, ncfg);
-              procsToConsider.Add(ncfg);
-           }
-        }
-        
-        bool acyclic;
-        List<string>! sortedNodes;
-        callGraph.TarjanTopSort(out acyclic, out sortedNodes);
-        
-        assert acyclic;
-        
-        int cnt = 0;
-        for(int i  = sortedNodes.Count - 1; i >= 0; i--) {
-          string s = sortedNodes[i];
-          if(s == null) continue;
-          procPriority.Add(s, cnt);
-          cnt++;
-        }
-        
-     }
-     
-     public static Set<Variable!>! GetVarsLiveAtExit(Implementation! impl, Program! prog) {
-       if(varsLiveAtExit.ContainsKey(impl.Name)) {
-         return varsLiveAtExit[impl.Name];
-       }
-       // Return default: all globals and out params
-       Set<Variable!>! lv = new Set<Variable!>();
-       foreach(Variable! v in prog.GlobalVariables()) {
-         lv.Add(v);
-       }
-       foreach(Variable! v in impl.OutParams) {
-         lv.Add(v);
-       }
-       return lv;
-     }
-     
-     public static Set<Variable!>! GetVarsLiveAtEntry(Implementation! impl, Program! prog) {
-       if(varsLiveAtEntry.ContainsKey(impl.Name)) {
-         return varsLiveAtEntry[impl.Name];
-       }
-       // Return default: all globals and in params
-       Set<Variable!>! lv = new Set<Variable!>();
-       foreach(Variable! v in prog.GlobalVariables()) {
-         lv.Add(v);
-       }
-       foreach(Variable! v in impl.InParams) {
-         lv.Add(v);
-       }
-       return lv;
-     }
-     
-     public static bool HasSummary(string! name) {
-        return varsLiveSummary.ContainsKey(name);
-     }
-     
-     public static Set<Variable!>! PropagateLiveVarsAcrossCall(CallCmd! cmd, Set<Variable!>! lvAfter) {
-        Procedure! proc = (!)cmd.Proc;
-        if(varsLiveSummary.ContainsKey(proc.Name)) {
-          GenKillWeight! w1 = getWeightBeforeCall(cmd);
-          GenKillWeight! w2 = varsLiveSummary[proc.Name];
-          GenKillWeight! w3 = getWeightAfterCall(cmd);
-          GenKillWeight! w = GenKillWeight.extend(w1, GenKillWeight.extend(w2, w3));
-          return w.getLiveVars(lvAfter);
-        }
-        Set<Variable!>! ret = new Set<Variable!>();
-        ret.AddRange(lvAfter);
-        LiveVariableAnalysis.Propagate(cmd, ret);
-        return ret;
-     }
-              
-     class WorkItem {
-       public ICFG! cfg;
-       public Block! block;
-       
-       public WorkItem(ICFG! cfg, Block! block) {
-          this.cfg = cfg;
-          this.block = block;
-       }
-       
-       public GenKillWeight! getWeightAfter() {
-         return cfg.weightAfter[block];
-       }
-       
-       public bool setWeightBefore(GenKillWeight! w) {
-         GenKillWeight! prev = cfg.weightBefore[block];
-         GenKillWeight! curr = GenKillWeight.combine(w, prev);
-         if(GenKillWeight.isEqual(prev, curr)) return false;
-         cfg.weightBefore[block] = curr;
-         return true;
-       }
-       
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)]
-        public override bool Equals(object other)
-        {
-            WorkItem! wi = (WorkItem!)(other);
-            return (wi.cfg == cfg && wi.block == block);
-        }
-        
-        [Pure]
-        public override int GetHashCode()
-        {
-            return 0;
-        }
-       
-        public string! getLabel() {
-           return cfg.impl.Name + "::" + block.Label;
-        }
-        
-     }
-       
-     private void AddToWorkList(WorkItem! wi) {
-        int i = procPriority[wi.cfg.impl.Name];
-        int j = wi.cfg.getPriority(wi.block);
-        int priority = (i * maxBlocksInProc) + j;
-             
-        workList.Add(wi, priority);
-     }
+    WorkList/*!*/ workList;
 
-     private void AddToWorkListReverse(WorkItem! wi) {
-        int i = procPriority[wi.cfg.impl.Name];
-        int j = wi.cfg.getPriority(wi.block);
-        int priority = (procPriority.Count - i) * maxBlocksInProc + j;
-        workList.Add(wi, priority);
-     }
-           
-     class WorkList {
-        SortedList<int,int>! priorities;
-        Set<string!>! labels;
-        
-        Dictionary<int, List<WorkItem!>!>! workList;
-        
-        public WorkList() {
-          labels = new Set<string!>();
-          priorities = new SortedList<int,int>();
-          workList = new Dictionary<int, List<WorkItem!>!>();
-        }
-        
-        public void Add(WorkItem! wi, int priority) {
-          string! lab = wi.getLabel();
-          if(labels.Contains(lab)) {
-            // Already on worklist
-            return;
-          }
-          labels.Add(lab);
-          if(!workList.ContainsKey(priority)) {
-             workList.Add(priority, new List<WorkItem!>());
-          }
-          workList[priority].Add(wi);
-          if(!priorities.ContainsKey(priority)) {
-            priorities.Add(priority,0);
-          }
-          
-          priorities[priority] = priorities[priority] + 1;
-        }
-        
-        public WorkItem! Get() {
-          // Get minimum priority
-          int p = ((!)priorities.Keys)[0];
-          priorities[p] = priorities[p] - 1;
-          if(priorities[p] == 0) {
-            priorities.Remove(p);
-          }
-          
-          // Get a WI with this priority
-          WorkItem! wi = workList[p][0];
-          workList[p].RemoveAt(0);
-          
-          // update labels
-          labels.Remove(wi.getLabel());
-          return wi;
-        }
-        
-        public int Count {
-          get {
-            return labels.Count;
-          }
-        }
-     }
-     
-     private GenKillWeight! getSummary(CallCmd! cmd) {
-       assert cmd.Proc != null;
-       string! procName = cmd.Proc.Name;
-       if(procICFG.ContainsKey(procName)) {
-         ICFG! cfg = procICFG[procName];
-         return GenKillWeight.projectLocals(cfg.summary);
-       }
-       assert false;
-     }
-     
-     public static void ComputeLiveVars(Implementation! impl, Program !prog) {
-       InterProcGenKill! ipgk = new InterProcGenKill(impl, prog);
-       ipgk.Compute();
-     }
-     
-     public void Compute() {
-       // Put all exit nodes in the worklist
-       foreach(ICFG! cfg in procICFG.Values) {
-         foreach(Block! eb in cfg.exitNodes) {
-           WorkItem! wi = new WorkItem(cfg, eb);
-           cfg.weightAfter[eb] = GenKillWeight.one();
-           AddToWorkList(wi);
-         }
-       }
-     
-       while(workList.Count != 0) {
-         WorkItem! wi = workList.Get();
-         process(wi);
-       }
-       
-       // Propagate LV to all procedures
-       foreach(ICFG! cfg in procICFG.Values) {
-         foreach(Block! b in cfg.nodes) {
-           cfg.liveVarsAfter.Add(b, new Set<Variable!>());
-           cfg.liveVarsBefore.Add(b, new Set<Variable!>());
-         }
-       }
-       
-       ICFG! mainCfg = procICFG[mainImpl.Name];
-       foreach(Block! eb in mainCfg.exitNodes) {
-         WorkItem! wi = new WorkItem(mainCfg, eb);
-         AddToWorkListReverse(wi);
-       }
-       
-       while(workList.Count != 0) {
-         WorkItem! wi = workList.Get();
-         processLV(wi);
-       }
+    Implementation/*!*/ mainImpl;
 
-       // Set live variable info
-       foreach(ICFG! cfg in procICFG.Values) {
-          Set<Variable!>! lv = new Set<Variable!>();
-          foreach(Block! eb in cfg.exitNodes) {
-            lv.AddRange(cfg.liveVarsAfter[eb]);
-          }
-          varsLiveAtExit.Add(cfg.impl.Name, lv);
-          lv = new Set<Variable!>();
-          foreach(Block! eb in cfg.srcNodes) {
-            lv.AddRange(cfg.liveVarsBefore[eb]);
-          }
-          varsLiveAtEntry.Add(cfg.impl.Name, lv);
-          varsLiveSummary.Add(cfg.impl.Name, cfg.summary);
-       }
-       
-       /*
-       foreach(Block! b in mainImpl.Blocks) {
-         //Set<Variable!> lv = cfg.weightBefore[b].getLiveVars();
-         b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
-         //foreach(GlobalVariable! v in program.GlobalVariables()) {
-         //  b.liveVarsBefore.Add(v);
-         //}
-       }
-       */
-     }
-          
-     // Called when summaries have already been computed
-     private void processLV(WorkItem! wi) {
-        ICFG! cfg = wi.cfg;
-        Block! block = wi.block;
-        
-        Set<Variable!>! lv = cfg.liveVarsAfter[block];
-        
-        // Propagate backwards in the block
-        Set<Variable!>! prop = new Set<Variable!>();
-        prop.AddRange(lv);
-        for(int i = block.Cmds.Length - 1; i >= 0; i--) {
-           Cmd! cmd = block.Cmds[i];
-           if(cmd is CallCmd) {
-              string! procName = ((!)((CallCmd!)cmd).Proc).Name;
-              if(procICFG.ContainsKey(procName)) {
-                 ICFG! callee = procICFG[procName];
-                 // Inter propagation
-                 // Remove local variables; add return variables
-                 Set<Variable!>! elv = new Set<Variable!>();
-                 foreach(Variable! v in prop) {
-                   if(v is GlobalVariable) elv.Add(v);
-                 }
-                 foreach(Variable! v in callee.impl.OutParams) {
-                   elv.Add(v);
-                 }
-           
-                 foreach(Block! eb in callee.exitNodes) {
-                   callee.liveVarsAfter[eb].AddRange(elv);
-                   // TODO: check if modified before inserting
-                   AddToWorkListReverse(new WorkItem(callee, eb));
-                 }
-                 
-                 // Continue with intra propagation
-                 GenKillWeight! summary = getWeightCall((CallCmd!)cmd);
-                 prop = summary.getLiveVars(prop);
-              } else {
-                 LiveVariableAnalysis.Propagate(cmd, prop);
-              }
-           } else {
-             LiveVariableAnalysis.Propagate(cmd, prop);
-           }
+    static Dictionary<string/*!*/, Set<Variable/*!*/>/*!*/>/*!*/ varsLiveAtExit = new Dictionary<string/*!*/, Set<Variable/*!*/>/*!*/>();
+    static Dictionary<string/*!*/, Set<Variable/*!*/>/*!*/>/*!*/ varsLiveAtEntry = new Dictionary<string/*!*/, Set<Variable/*!*/>/*!*/>();
+    static Dictionary<string/*!*/, GenKillWeight/*!*/>/*!*/ varsLiveSummary = new Dictionary<string/*!*/, GenKillWeight/*!*/>();
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(workList != null);
+      Contract.Invariant(mainImpl != null);
+      Contract.Invariant(program != null);
+      Contract.Invariant(cce.NonNullElements(procICFG));
+      Contract.Invariant(cce.NonNullElements(name2Proc));
+      Contract.Invariant(cce.NonNullElements(callers) &&
+        Contract.ForAll(callers.Values, v => cce.NonNullElements(v)));
+      Contract.Invariant(cce.NonNullElements(callGraph.TopologicalSort()));
+      Contract.Invariant(cce.NonNullElements(procPriority));
+      Contract.Invariant(cce.NonNullElements(varsLiveAtEntry));
+      Contract.Invariant(cce.NonNullElements(varsLiveAtExit) &&
+        Contract.ForAll(varsLiveAtExit.Values, v => cce.NonNullElements(v)));
+      Contract.Invariant(cce.NonNullElements(varsLiveSummary));
+      Contract.Invariant(cce.NonNullElements(weightCacheAfterCall));
+      Contract.Invariant(cce.NonNullElements(weightCacheBeforeCall));
+    }
+
+
+    [NotDelayed]
+    public InterProcGenKill(Implementation impl, Program program) {//BASEMOVE DANGER
+      Contract.Requires(program != null);
+      Contract.Requires(impl != null);
+      this.program = program;
+      procICFG = new Dictionary<string/*!*/, ICFG/*!*/>();
+      name2Proc = new Dictionary<string/*!*/, Procedure/*!*/>();
+      workList = new WorkList();
+      this.callers = new Dictionary<string/*!*/, List<WorkItem/*!*/>/*!*/>();
+      this.callGraph = new Graph<string/*!*/>();
+      this.procPriority = new Dictionary<string/*!*/, int>();
+      this.maxBlocksInProc = 0;
+      this.mainImpl = impl;
+
+      Dictionary<string/*!*/, Implementation/*!*/>/*!*/ name2Impl = new Dictionary<string/*!*/, Implementation/*!*/>();
+      varsLiveAtExit.Clear();
+      varsLiveAtEntry.Clear();
+      varsLiveSummary.Clear();
+
+      //base();
+
+      foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
+        Contract.Assert(decl != null);
+        if (decl is Implementation) {
+          Implementation/*!*/ imp = (Implementation/*!*/)cce.NonNull(decl);
+          name2Impl[imp.Name] = imp;
+        } else if (decl is Procedure) {
+          Procedure/*!*/ proc = cce.NonNull(decl as Procedure);
+          name2Proc[proc.Name] = proc;
         }
-        
-        cfg.liveVarsBefore[block].AddRange(prop);
-        
-        foreach(Block! b in cfg.predEdges[block]) {
-           Set<Variable!>! prev = cfg.liveVarsAfter[b];
-           Set<Variable!>! curr = (!)prev.Union(cfg.liveVarsBefore[block]);
-           if(curr.Count != prev.Count) {
-             cfg.liveVarsAfter[b] = curr;
-             AddToWorkListReverse(new WorkItem(cfg, b));
-           }
+      }
+
+      ICFG/*!*/ mainICFG = new ICFG(mainImpl);
+      Contract.Assert(mainICFG != null);
+      procICFG.Add(mainICFG.impl.Name, mainICFG);
+      callGraph.AddSource(mainICFG.impl.Name);
+
+      List<ICFG/*!*/>/*!*/ procsToConsider = new List<ICFG/*!*/>();
+      procsToConsider.Add(mainICFG);
+
+      while (procsToConsider.Count != 0) {
+        ICFG/*!*/ p = procsToConsider[0];
+        Contract.Assert(p != null);
+        procsToConsider.RemoveAt(0);
+
+        foreach (string/*!*/ callee in p.procsCalled.Keys) {
+          Contract.Assert(callee != null);
+          if (!name2Impl.ContainsKey(callee))
+            continue;
+
+          callGraph.AddEdge(p.impl.Name, callee);
+
+          if (maxBlocksInProc < p.nodes.Count) {
+            maxBlocksInProc = p.nodes.Count;
+          }
+
+          if (!callers.ContainsKey(callee)) {
+            callers.Add(callee, new List<WorkItem/*!*/>());
+          }
+          foreach (Block/*!*/ b in p.procsCalled[callee]) {
+            Contract.Assert(b != null);
+            callers[callee].Add(new WorkItem(p, b));
+          }
+
+          if (procICFG.ContainsKey(callee))
+            continue;
+          ICFG/*!*/ ncfg = new ICFG(name2Impl[callee]);
+          Contract.Assert(ncfg != null);
+          procICFG.Add(callee, ncfg);
+          procsToConsider.Add(ncfg);
         }
-     }
-     
-     private void process(WorkItem! wi) 
-     {
-       GenKillWeight! w = wi.getWeightAfter();
-       
-       for(int i = wi.block.Cmds.Length - 1; i >= 0; i--) {
-          Cmd! c = wi.block.Cmds[i];
-          if(c is CallCmd && procICFG.ContainsKey( ((!)((CallCmd!)c).Proc).Name ) ){
-            w = GenKillWeight.extend(getWeightCall((CallCmd!)c), w);
+      }
+
+      bool acyclic;
+      List<string>/*!*/ sortedNodes;
+      callGraph.TarjanTopSort(out acyclic, out sortedNodes);
+
+      Contract.Assert(acyclic);
+
+      int cnt = 0;
+      for (int i = sortedNodes.Count - 1; i >= 0; i--) {
+        string s = sortedNodes[i];
+        if (s == null)
+          continue;
+        procPriority.Add(s, cnt);
+        cnt++;
+      }
+
+    }
+
+    public static Set<Variable/*!*/>/*!*/ GetVarsLiveAtExit(Implementation impl, Program prog) {
+      Contract.Requires(prog != null);
+      Contract.Requires(impl != null);
+      Contract.Ensures(cce.NonNullElements(Contract.Result<Set<Variable>>()));
+      if (varsLiveAtExit.ContainsKey(impl.Name)) {
+        return varsLiveAtExit[impl.Name];
+      }
+      // Return default: all globals and out params
+      Set<Variable/*!*/>/*!*/ lv = new Set<Variable/*!*/>();
+      foreach (Variable/*!*/ v in prog.GlobalVariables()) {
+        Contract.Assert(v != null);
+        lv.Add(v);
+      }
+      foreach (Variable/*!*/ v in impl.OutParams) {
+        Contract.Assert(v != null);
+        lv.Add(v);
+      }
+      return lv;
+    }
+
+    public static Set<Variable/*!*/>/*!*/ GetVarsLiveAtEntry(Implementation impl, Program prog) {
+      Contract.Requires(prog != null);
+      Contract.Requires(impl != null);
+      Contract.Ensures(cce.NonNullElements(Contract.Result<Set<Variable>>()));
+      if (varsLiveAtEntry.ContainsKey(impl.Name)) {
+        return varsLiveAtEntry[impl.Name];
+      }
+      // Return default: all globals and in params
+      Set<Variable/*!*/>/*!*/ lv = new Set<Variable/*!*/>();
+      foreach (Variable/*!*/ v in prog.GlobalVariables()) {
+        Contract.Assert(v != null);
+        lv.Add(v);
+      }
+      foreach (Variable/*!*/ v in impl.InParams) {
+        Contract.Assert(v != null);
+        lv.Add(v);
+      }
+      return lv;
+    }
+
+    public static bool HasSummary(string name) {
+      Contract.Requires(name != null);
+      return varsLiveSummary.ContainsKey(name);
+    }
+
+    public static Set<Variable/*!*/>/*!*/ PropagateLiveVarsAcrossCall(CallCmd cmd, Set<Variable/*!*/>/*!*/ lvAfter) {
+      Contract.Requires(cmd != null);
+      Contract.Requires(cce.NonNullElements(lvAfter));
+      Contract.Ensures(cce.NonNullElements(Contract.Result<Set<Variable>>()));
+      Procedure/*!*/ proc = cce.NonNull(cmd.Proc);
+      if (varsLiveSummary.ContainsKey(proc.Name)) {
+        GenKillWeight/*!*/ w1 = getWeightBeforeCall(cmd);
+        Contract.Assert(w1 != null);
+        GenKillWeight/*!*/ w2 = varsLiveSummary[proc.Name];
+        Contract.Assert(w2 != null);
+        GenKillWeight/*!*/ w3 = getWeightAfterCall(cmd);
+        Contract.Assert(w3 != null);
+        GenKillWeight/*!*/ w = GenKillWeight.extend(w1, GenKillWeight.extend(w2, w3));
+        Contract.Assert(w != null);
+        return w.getLiveVars(lvAfter);
+      }
+      Set<Variable/*!*/>/*!*/ ret = new Set<Variable/*!*/>();
+      ret.AddRange(lvAfter);
+      LiveVariableAnalysis.Propagate(cmd, ret);
+      return ret;
+    }
+
+    class WorkItem {
+      public ICFG/*!*/ cfg;
+      public Block/*!*/ block;
+      [ContractInvariantMethod]
+      void ObjectInvariant() {
+        Contract.Invariant(cfg != null);
+        Contract.Invariant(block != null);
+      }
+
+
+      public WorkItem(ICFG cfg, Block block) {
+        Contract.Requires(block != null);
+        Contract.Requires(cfg != null);
+        this.cfg = cfg;
+        this.block = block;
+      }
+
+      public GenKillWeight getWeightAfter() {
+        Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+        return cfg.weightAfter[block];
+      }
+
+      public bool setWeightBefore(GenKillWeight w) {
+        Contract.Requires(w != null);
+        GenKillWeight/*!*/ prev = cfg.weightBefore[block];
+        Contract.Assert(prev != null);
+        GenKillWeight/*!*/ curr = GenKillWeight.combine(w, prev);
+        Contract.Assert(curr != null);
+        if (GenKillWeight.isEqual(prev, curr))
+          return false;
+        cfg.weightBefore[block] = curr;
+        return true;
+      }
+
+      [Pure]
+      [Reads(ReadsAttribute.Reads.Nothing)]
+      public override bool Equals(object other) {
+        WorkItem/*!*/ wi = (WorkItem/*!*/)cce.NonNull(other);
+        return (wi.cfg == cfg && wi.block == block);
+      }
+
+      [Pure]
+      public override int GetHashCode() {
+        return 0;
+      }
+
+      public string getLabel() {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return cfg.impl.Name + "::" + block.Label;
+      }
+
+    }
+
+    private void AddToWorkList(WorkItem wi) {
+      Contract.Requires(wi != null);
+      int i = procPriority[wi.cfg.impl.Name];
+      int j = wi.cfg.getPriority(wi.block);
+      int priority = (i * maxBlocksInProc) + j;
+
+      workList.Add(wi, priority);
+    }
+
+    private void AddToWorkListReverse(WorkItem wi) {
+      Contract.Requires(wi != null);
+      int i = procPriority[wi.cfg.impl.Name];
+      int j = wi.cfg.getPriority(wi.block);
+      int priority = (procPriority.Count - i) * maxBlocksInProc + j;
+      workList.Add(wi, priority);
+    }
+
+    class WorkList {
+      SortedList<int, int>/*!*/ priorities;
+      Set<string/*!*/>/*!*/ labels;
+
+      Dictionary<int, List<WorkItem/*!*/>/*!*/>/*!*/ workList;
+      [ContractInvariantMethod]
+      void ObjectInvariant() {
+        Contract.Invariant(priorities != null);
+        Contract.Invariant(cce.NonNullElements(labels));
+        Contract.Invariant(cce.NonNullElements(workList) &&
+          Contract.ForAll(workList.Values, v => cce.NonNullElements(v)));
+      }
+
+
+      public WorkList() {
+        labels = new Set<string/*!*/>();
+        priorities = new SortedList<int, int>();
+        workList = new Dictionary<int, List<WorkItem/*!*/>/*!*/>();
+      }
+
+      public void Add(WorkItem wi, int priority) {
+        Contract.Requires(wi != null);
+        string/*!*/ lab = wi.getLabel();
+        Contract.Assert(lab != null);
+        if (labels.Contains(lab)) {
+          // Already on worklist
+          return;
+        }
+        labels.Add(lab);
+        if (!workList.ContainsKey(priority)) {
+          workList.Add(priority, new List<WorkItem/*!*/>());
+        }
+        workList[priority].Add(wi);
+        if (!priorities.ContainsKey(priority)) {
+          priorities.Add(priority, 0);
+        }
+
+        priorities[priority] = priorities[priority] + 1;
+      }
+
+      public WorkItem Get() {
+        Contract.Ensures(Contract.Result<WorkItem>() != null);
+        // Get minimum priority
+        int p = cce.NonNull(priorities.Keys)[0];
+        priorities[p] = priorities[p] - 1;
+        if (priorities[p] == 0) {
+          priorities.Remove(p);
+        }
+
+        // Get a WI with this priority
+        WorkItem/*!*/ wi = workList[p][0];
+        Contract.Assert(wi != null);
+        workList[p].RemoveAt(0);
+
+        // update labels
+        labels.Remove(wi.getLabel());
+        return wi;
+      }
+
+      public int Count {
+        get {
+          return labels.Count;
+        }
+      }
+    }
+
+    private GenKillWeight getSummary(CallCmd cmd) {
+      Contract.Requires(cmd != null);
+      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      Contract.Assert(cmd.Proc != null);
+      string/*!*/ procName = cmd.Proc.Name;
+      Contract.Assert(procName != null);
+      if (procICFG.ContainsKey(procName)) {
+        ICFG/*!*/ cfg = procICFG[procName];
+        Contract.Assert(cfg != null);
+        return GenKillWeight.projectLocals(cfg.summary);
+      }
+      {
+        Contract.Assert(false);
+        throw new cce.UnreachableException();
+      }
+    }
+
+    public static void ComputeLiveVars(Implementation impl, Program/*!*/ prog) {
+      Contract.Requires(prog != null);
+      Contract.Requires(impl != null);
+      InterProcGenKill/*!*/ ipgk = new InterProcGenKill(impl, prog);
+      Contract.Assert(ipgk != null);
+      ipgk.Compute();
+    }
+
+    public void Compute() {
+      // Put all exit nodes in the worklist
+      foreach (ICFG/*!*/ cfg in procICFG.Values) {
+        Contract.Assert(cfg != null);
+        foreach (Block/*!*/ eb in cfg.exitNodes) {
+          Contract.Assert(eb != null);
+          WorkItem/*!*/ wi = new WorkItem(cfg, eb);
+          Contract.Assert(wi != null);
+          cfg.weightAfter[eb] = GenKillWeight.one();
+          AddToWorkList(wi);
+        }
+      }
+
+      while (workList.Count != 0) {
+        WorkItem/*!*/ wi = workList.Get();
+        Contract.Assert(wi != null);
+        process(wi);
+      }
+
+      // Propagate LV to all procedures
+      foreach (ICFG/*!*/ cfg in procICFG.Values) {
+        Contract.Assert(cfg != null);
+        foreach (Block/*!*/ b in cfg.nodes) {
+          Contract.Assert(b != null);
+          cfg.liveVarsAfter.Add(b, new Set<Variable/*!*/>());
+          cfg.liveVarsBefore.Add(b, new Set<Variable/*!*/>());
+        }
+      }
+
+      ICFG/*!*/ mainCfg = procICFG[mainImpl.Name];
+      Contract.Assert(mainCfg != null);
+      foreach (Block/*!*/ eb in mainCfg.exitNodes) {
+        Contract.Assert(eb != null);
+        WorkItem/*!*/ wi = new WorkItem(mainCfg, eb);
+        Contract.Assert(wi != null);
+        AddToWorkListReverse(wi);
+      }
+
+      while (workList.Count != 0) {
+        WorkItem/*!*/ wi = workList.Get();
+        Contract.Assert(wi != null);
+        processLV(wi);
+      }
+
+      // Set live variable info
+      foreach (ICFG/*!*/ cfg in procICFG.Values) {
+        Contract.Assert(cfg != null);
+        Set<Variable/*!*/>/*!*/ lv = new Set<Variable/*!*/>();
+        foreach (Block/*!*/ eb in cfg.exitNodes) {
+          Contract.Assert(eb != null);
+          lv.AddRange(cfg.liveVarsAfter[eb]);
+        }
+        varsLiveAtExit.Add(cfg.impl.Name, lv);
+        lv = new Set<Variable/*!*/>();
+        foreach (Block/*!*/ eb in cfg.srcNodes) {
+          Contract.Assert(eb != null);
+          lv.AddRange(cfg.liveVarsBefore[eb]);
+        }
+        varsLiveAtEntry.Add(cfg.impl.Name, lv);
+        varsLiveSummary.Add(cfg.impl.Name, cfg.summary);
+      }
+
+      /*
+      foreach(Block/*!*/
+      /* b in mainImpl.Blocks){
+Contract.Assert(b != null);
+//Set<Variable!> lv = cfg.weightBefore[b].getLiveVars();
+b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
+//foreach(GlobalVariable/*!*/
+      /* v in program.GlobalVariables()){Contract.Assert(v != null);
+//  b.liveVarsBefore.Add(v);
+//}
+}
+*/
+    }
+
+    // Called when summaries have already been computed
+    private void processLV(WorkItem wi) {
+      Contract.Requires(wi != null);
+      ICFG/*!*/ cfg = wi.cfg;
+      Contract.Assert(cfg != null);
+      Block/*!*/ block = wi.block;
+      Contract.Assert(block != null);
+      Set<Variable/*!*/>/*!*/ lv = cfg.liveVarsAfter[block];
+      Contract.Assert(cce.NonNullElements(lv));
+      // Propagate backwards in the block
+      Set<Variable/*!*/>/*!*/ prop = new Set<Variable/*!*/>();
+      prop.AddRange(lv);
+      for (int i = block.Cmds.Length - 1; i >= 0; i--) {
+        Cmd/*!*/ cmd = block.Cmds[i];
+        Contract.Assert(cmd != null);
+        if (cmd is CallCmd) {
+          string/*!*/ procName = cce.NonNull(cce.NonNull((CallCmd)cmd).Proc).Name;
+          Contract.Assert(procName != null);
+          if (procICFG.ContainsKey(procName)) {
+            ICFG/*!*/ callee = procICFG[procName];
+            Contract.Assert(callee != null);
+            // Inter propagation
+            // Remove local variables; add return variables
+            Set<Variable/*!*/>/*!*/ elv = new Set<Variable/*!*/>();
+            foreach (Variable/*!*/ v in prop) {
+              Contract.Assert(v != null);
+              if (v is GlobalVariable)
+                elv.Add(v);
+            }
+            foreach (Variable/*!*/ v in callee.impl.OutParams) {
+              Contract.Assert(v != null);
+              elv.Add(v);
+            }
+
+            foreach (Block/*!*/ eb in callee.exitNodes) {
+              Contract.Assert(eb != null);
+              callee.liveVarsAfter[eb].AddRange(elv);
+              // TODO: check if modified before inserting
+              AddToWorkListReverse(new WorkItem(callee, eb));
+            }
+
+            // Continue with intra propagation
+            GenKillWeight/*!*/ summary = getWeightCall(cce.NonNull((CallCmd/*!*/)cmd));
+            prop = summary.getLiveVars(prop);
           } else {
-            GenKillWeight! cweight = getWeight(c, wi.cfg.impl, program);
-            w = GenKillWeight.extend(cweight, w);
+            LiveVariableAnalysis.Propagate(cmd, prop);
           }
-       }
-       
-       bool change = wi.setWeightBefore(w);
-       
-       if(change && wi.cfg.srcNodes.Contains(wi.block)) {
-         GenKillWeight! prev = wi.cfg.summary;
-         GenKillWeight! curr = GenKillWeight.combine(prev, wi.cfg.weightBefore[wi.block]);
-         if(!GenKillWeight.isEqual(prev, curr)) {
-           wi.cfg.summary = curr;
-           // push callers onto the worklist
-           if(callers.ContainsKey(wi.cfg.impl.Name)) {
-             foreach(WorkItem! caller in callers[wi.cfg.impl.Name]) {
-               AddToWorkList(caller);
-             }
-           }
-         } 
-       }
-       
-       foreach(Block! b in wi.cfg.predEdges[wi.block]) {
-          GenKillWeight! prev = wi.cfg.weightAfter[b];
-          GenKillWeight! curr = GenKillWeight.combine(prev, w);
-          if(!GenKillWeight.isEqual(prev, curr)) {
-            wi.cfg.weightAfter[b] = curr;
-            AddToWorkList(new WorkItem(wi.cfg, b));
+        } else {
+          LiveVariableAnalysis.Propagate(cmd, prop);
+        }
+      }
+
+      cfg.liveVarsBefore[block].AddRange(prop);
+
+      foreach (Block/*!*/ b in cfg.predEdges[block]) {
+        Contract.Assert(b != null);
+        Set<Variable/*!*/>/*!*/ prev = cfg.liveVarsAfter[b];
+        Contract.Assert(cce.NonNullElements(prev));
+        Set<Variable/*!*/>/*!*/ curr = cce.NonNull(prev.Union(cfg.liveVarsBefore[block]));
+        Contract.Assert(cce.NonNullElements(curr));
+        if (curr.Count != prev.Count) {
+          cfg.liveVarsAfter[b] = curr;
+          AddToWorkListReverse(new WorkItem(cfg, b));
+        }
+      }
+    }
+
+    private void process(WorkItem wi) {
+      Contract.Requires(wi != null);
+      GenKillWeight/*!*/ w = wi.getWeightAfter();
+      Contract.Assert(w != null);
+
+      for (int i = wi.block.Cmds.Length - 1; i >= 0; i--) {
+        Cmd/*!*/ c = wi.block.Cmds[i];
+        Contract.Assert(c != null);
+        if (c is CallCmd && procICFG.ContainsKey(cce.NonNull(cce.NonNull((CallCmd)c).Proc).Name)) {
+          w = GenKillWeight.extend(getWeightCall(cce.NonNull((CallCmd)c)), w);
+        } else {
+          GenKillWeight/*!*/ cweight = getWeight(c, wi.cfg.impl, program);
+          Contract.Assert(cweight != null);
+          w = GenKillWeight.extend(cweight, w);
+        }
+      }
+
+      bool change = wi.setWeightBefore(w);
+
+      if (change && wi.cfg.srcNodes.Contains(wi.block)) {
+        GenKillWeight/*!*/ prev = wi.cfg.summary;
+        Contract.Assert(prev != null);
+        GenKillWeight/*!*/ curr = GenKillWeight.combine(prev, wi.cfg.weightBefore[wi.block]);
+        Contract.Assert(curr != null);
+        if (!GenKillWeight.isEqual(prev, curr)) {
+          wi.cfg.summary = curr;
+          // push callers onto the worklist
+          if (callers.ContainsKey(wi.cfg.impl.Name)) {
+            foreach (WorkItem/*!*/ caller in callers[wi.cfg.impl.Name]) {
+              Contract.Assert(caller != null);
+              AddToWorkList(caller);
+            }
           }
-       }
-     
-     }
+        }
+      }
 
-     static Dictionary<Cmd!, GenKillWeight!>! weightCache = new Dictionary<Cmd!, GenKillWeight!>();
+      foreach (Block/*!*/ b in wi.cfg.predEdges[wi.block]) {
+        Contract.Assert(b != null);
+        GenKillWeight/*!*/ prev = wi.cfg.weightAfter[b];
+        Contract.Assert(prev != null);
+        GenKillWeight/*!*/ curr = GenKillWeight.combine(prev, w);
+        Contract.Assert(curr != null);
+        if (!GenKillWeight.isEqual(prev, curr)) {
+          wi.cfg.weightAfter[b] = curr;
+          AddToWorkList(new WorkItem(wi.cfg, b));
+        }
+      }
 
-     private static GenKillWeight! getWeight(Cmd! cmd) {
-       return getWeight(cmd, null, null);
-     }
+    }
 
-     private GenKillWeight! getWeightCall(CallCmd! cmd) {
-        GenKillWeight! w1 = getWeightBeforeCall(cmd);
-        GenKillWeight! w2 = getSummary(cmd);
-        GenKillWeight! w3 = getWeightAfterCall(cmd);
-        return GenKillWeight.extend(w1, GenKillWeight.extend(w2, w3));
-     }
+    static Dictionary<Cmd/*!*/, GenKillWeight/*!*/>/*!*/ weightCache = new Dictionary<Cmd/*!*/, GenKillWeight/*!*/>();
 
-     private static GenKillWeight! getWeight(Cmd! cmd, Implementation impl, Program prog) {
+    private static GenKillWeight getWeight(Cmd cmd) {
+      Contract.Requires(cmd != null);
+      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      return getWeight(cmd, null, null);
+    }
 
-      if(weightCache.ContainsKey(cmd))
+    private GenKillWeight getWeightCall(CallCmd cmd) {
+      Contract.Requires(cmd != null);
+      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      GenKillWeight/*!*/ w1 = getWeightBeforeCall(cmd);
+      GenKillWeight/*!*/ w2 = getSummary(cmd);
+      GenKillWeight/*!*/ w3 = getWeightAfterCall(cmd);
+      Contract.Assert(w1 != null);
+      Contract.Assert(w2 != null);
+      Contract.Assert(w3 != null);
+      return GenKillWeight.extend(w1, GenKillWeight.extend(w2, w3));
+    }
+
+    private static GenKillWeight getWeight(Cmd cmd, Implementation impl, Program prog) {
+      Contract.Requires(cmd != null);
+      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+
+      if (weightCache.ContainsKey(cmd))
         return weightCache[cmd];
-        
-      Set<Variable!>! gen = new Set<Variable!>();
-      Set<Variable!>! kill = new Set<Variable!>();
-      GenKillWeight! ret;
-      
-	  if (cmd is AssignCmd) {
-	    AssignCmd! assignCmd = (AssignCmd) cmd;
-	    // I must first iterate over all the targets and remove the live ones.
-	    // After the removals are done, I must add the variables referred on 
-	    // the right side of the removed targets
-	    foreach (AssignLhs! lhs in assignCmd.Lhss) {
-	      Variable var = lhs.DeepAssignedVariable;
-	      if (var != null) {
-	        if (lhs is SimpleAssignLhs) {
-	          // we should only remove non-map target variables because there is an implicit
-	          // read of a map variable in an assignment to it
-			  kill.Add(var);
-			}
-	      }
-	    }
-	    int index = 0;
-	    foreach (Expr! expr in assignCmd.Rhss) {
-		  VariableCollector! collector = new VariableCollector();
-		  collector.Visit(expr);
-		  gen.AddRange(collector.usedVars);
-		  AssignLhs lhs = assignCmd.Lhss[index];
-		  if (lhs is MapAssignLhs) {
-		    // If the target is a map, then all indices are also read
-		    MapAssignLhs malhs = (MapAssignLhs) lhs;
-		    foreach (Expr e in malhs.Indexes) {
-		  	VariableCollector! c = new VariableCollector();
-		 	c.Visit(e);
-			gen.AddRange(c.usedVars);
-		    } 
-		  }
-	      index++;
-	    }
-	    ret = new GenKillWeight(gen, kill);
-	  } else if (cmd is HavocCmd) {
-	    HavocCmd! havocCmd = (HavocCmd) cmd;
-	    foreach (IdentifierExpr! expr in havocCmd.Vars) {
-	      if (expr.Decl != null) {
-	        kill.Add(expr.Decl);
-	      }
-	    }
-	    ret = new GenKillWeight(gen, kill);
-	  } else if (cmd is PredicateCmd) {
-	    assert (cmd is AssertCmd || cmd is AssumeCmd);
-	    PredicateCmd! predicateCmd = (PredicateCmd) cmd;
-	    if (predicateCmd.Expr is LiteralExpr && prog != null && impl != null) {
-	      LiteralExpr le = (LiteralExpr) predicateCmd.Expr;
-	      if (le.IsFalse) {
-	        List<GlobalVariable!>! globals = prog.GlobalVariables();
-	        foreach(Variable! v in globals) {
-	          kill.Add(v);
-	        }
-	        foreach(Variable! v in impl.LocVars) {
-	          kill.Add(v);
-	        }
-	        foreach(Variable! v in impl.OutParams) {
-	          kill.Add(v);
-	        }
-	      }
-	    } else {
-	      VariableCollector! collector = new VariableCollector();
-	      collector.Visit(predicateCmd.Expr);
-	      gen.AddRange(collector.usedVars);
-	    }
-	    ret = new GenKillWeight(gen, kill);
-	  } else if (cmd is CommentCmd) {
-	    ret = new GenKillWeight(gen, kill);
+
+      Set<Variable/*!*/>/*!*/ gen = new Set<Variable/*!*/>();
+      Set<Variable/*!*/>/*!*/ kill = new Set<Variable/*!*/>();
+      GenKillWeight/*!*/ ret;
+
+      if (cmd is AssignCmd) {
+        AssignCmd/*!*/ assignCmd = (AssignCmd)cmd;
+        Contract.Assert(cmd != null);
+        // I must first iterate over all the targets and remove the live ones.
+        // After the removals are done, I must add the variables referred on 
+        // the right side of the removed targets
+        foreach (AssignLhs/*!*/ lhs in assignCmd.Lhss) {
+          Contract.Assert(lhs != null);
+          Variable var = lhs.DeepAssignedVariable;
+          if (var != null) {
+            if (lhs is SimpleAssignLhs) {
+              // we should only remove non-map target variables because there is an implicit
+              // read of a map variable in an assignment to it
+              kill.Add(var);
+            }
+          }
+        }
+        int index = 0;
+        foreach (Expr/*!*/ expr in assignCmd.Rhss) {
+          Contract.Assert(expr != null);
+          VariableCollector/*!*/ collector = new VariableCollector();
+          collector.Visit(expr);
+          gen.AddRange(collector.usedVars);
+          AssignLhs lhs = assignCmd.Lhss[index];
+          if (lhs is MapAssignLhs) {
+            // If the target is a map, then all indices are also read
+            MapAssignLhs malhs = (MapAssignLhs)lhs;
+            foreach (Expr e in malhs.Indexes) {
+              VariableCollector/*!*/ c = new VariableCollector();
+              c.Visit(e);
+              gen.AddRange(c.usedVars);
+            }
+          }
+          index++;
+        }
+        ret = new GenKillWeight(gen, kill);
+      } else if (cmd is HavocCmd) {
+        HavocCmd/*!*/ havocCmd = (HavocCmd)cce.NonNull(cmd);
+        foreach (IdentifierExpr/*!*/ expr in havocCmd.Vars) {
+          Contract.Assert(expr != null);
+          if (expr.Decl != null) {
+            kill.Add(expr.Decl);
+          }
+        }
+        ret = new GenKillWeight(gen, kill);
+      } else if (cmd is PredicateCmd) {
+        Contract.Assert((cmd is AssertCmd || cmd is AssumeCmd));
+        PredicateCmd/*!*/ predicateCmd = (PredicateCmd)cce.NonNull(cmd);
+        if (predicateCmd.Expr is LiteralExpr && prog != null && impl != null) {
+          LiteralExpr le = (LiteralExpr)predicateCmd.Expr;
+          if (le.IsFalse) {
+            List<GlobalVariable/*!*/>/*!*/ globals = prog.GlobalVariables();
+            Contract.Assert(cce.NonNullElements(globals));
+            foreach (Variable/*!*/ v in globals) {
+              Contract.Assert(v != null);
+              kill.Add(v);
+            }
+            foreach (Variable/*!*/ v in impl.LocVars) {
+              Contract.Assert(v != null);
+              kill.Add(v);
+            }
+            foreach (Variable/*!*/ v in impl.OutParams) {
+              Contract.Assert(v != null);
+              kill.Add(v);
+            }
+          }
+        } else {
+          VariableCollector/*!*/ collector = new VariableCollector();
+          collector.Visit(predicateCmd.Expr);
+          gen.AddRange(collector.usedVars);
+        }
+        ret = new GenKillWeight(gen, kill);
+      } else if (cmd is CommentCmd) {
+        ret = new GenKillWeight(gen, kill);
         // comments are just for debugging and don't affect verification
       } else if (cmd is SugaredCmd) {
-        SugaredCmd! sugCmd = (SugaredCmd) cmd;
+        SugaredCmd/*!*/ sugCmd = (SugaredCmd)cmd;
+        Contract.Assert(sugCmd != null);
         ret = getWeight(sugCmd.Desugaring, impl, prog);
       } else if (cmd is StateCmd) {
-        StateCmd! stCmd = (StateCmd) cmd;
-        CmdSeq! cmds = stCmd.Cmds;
+        StateCmd/*!*/ stCmd = (StateCmd)cmd;
+        Contract.Assert(stCmd != null);
+        CmdSeq/*!*/ cmds = stCmd.Cmds;
+        Contract.Assert(cmds != null);
         int len = cmds.Length;
         ret = GenKillWeight.one();
         for (int i = len - 1; i >= 0; i--) {
-          GenKillWeight! w = getWeight(cmds[i], impl, prog);
+          GenKillWeight/*!*/ w = getWeight(cmds[i], impl, prog);
+          Contract.Assert(w != null);
           ret = GenKillWeight.extend(w, ret);
         }
-        foreach (Variable! v in stCmd.Locals) {
+        foreach (Variable/*!*/ v in stCmd.Locals) {
+          Contract.Assert(v != null);
           kill.Add(v);
         }
         ret = GenKillWeight.extend(new GenKillWeight(gen, kill), ret);
       } else {
-        assert false;
+        {
+          Contract.Assert(false);
+          throw new cce.UnreachableException();
+        }
       }
-      
+
       weightCache[cmd] = ret;
       return ret;
-	}
-     
-    static Dictionary<Cmd!, GenKillWeight!>! weightCacheAfterCall = new Dictionary<Cmd!, GenKillWeight!>();
-    static Dictionary<Cmd!, GenKillWeight!>! weightCacheBeforeCall = new Dictionary<Cmd!, GenKillWeight!>();
+    }
 
-    private static GenKillWeight! getWeightAfterCall(Cmd! cmd) {
-      
-      if(weightCacheAfterCall.ContainsKey(cmd))
+    static Dictionary<Cmd/*!*/, GenKillWeight/*!*/>/*!*/ weightCacheAfterCall = new Dictionary<Cmd/*!*/, GenKillWeight/*!*/>();
+    static Dictionary<Cmd/*!*/, GenKillWeight/*!*/>/*!*/ weightCacheBeforeCall = new Dictionary<Cmd/*!*/, GenKillWeight/*!*/>();
+
+    private static GenKillWeight getWeightAfterCall(Cmd cmd) {
+      Contract.Requires(cmd != null);
+      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+
+      if (weightCacheAfterCall.ContainsKey(cmd))
         return weightCacheAfterCall[cmd];
-      
-      Set<Variable!>! gen = new Set<Variable!>();
-      Set<Variable!>! kill = new Set<Variable!>();
-      
-      assert (cmd is CallCmd);
-	  CallCmd! ccmd = (CallCmd!)cmd;
-	  
-	  foreach(IdentifierExpr! ie in ccmd.Outs) {
-	    if(ie.Decl != null) kill.Add(ie.Decl);
-	  }
+
+      Set<Variable/*!*/>/*!*/ gen = new Set<Variable/*!*/>();
+      Set<Variable/*!*/>/*!*/ kill = new Set<Variable/*!*/>();
+
+      Contract.Assert(cmd is CallCmd);
+      CallCmd/*!*/ ccmd = cce.NonNull((CallCmd)cmd);
+
+      foreach (IdentifierExpr/*!*/ ie in ccmd.Outs) {
+        Contract.Assert(ie != null);
+        if (ie.Decl != null)
+          kill.Add(ie.Decl);
+      }
 
       // Variables in ensures are considered as "read"
-      foreach(Ensures! re in ((!)ccmd.Proc).Ensures) {
-		VariableCollector! collector = new VariableCollector();
-		collector.Visit(re.Condition);
-		foreach(Variable! v in collector.usedVars) {
-		  if(v is GlobalVariable) {
-		    gen.Add(v);
-		  }
-		}  
+      foreach (Ensures/*!*/ re in cce.NonNull(ccmd.Proc).Ensures) {
+        Contract.Assert(re != null);
+        VariableCollector/*!*/ collector = new VariableCollector();
+        collector.Visit(re.Condition);
+        foreach (Variable/*!*/ v in collector.usedVars) {
+          Contract.Assert(v != null);
+          if (v is GlobalVariable) {
+            gen.Add(v);
+          }
+        }
       }
-      	  
-	  GenKillWeight! ret = new GenKillWeight(gen, kill);
-	  weightCacheAfterCall[cmd] = ret;
-	  return ret;
-	}
-	
-	private static GenKillWeight! getWeightBeforeCall(Cmd! cmd) {
-      assert (cmd is CallCmd);
-      if(weightCacheBeforeCall.ContainsKey(cmd))
+
+      GenKillWeight/*!*/ ret = new GenKillWeight(gen, kill);
+      Contract.Assert(ret != null);
+      weightCacheAfterCall[cmd] = ret;
+      return ret;
+    }
+
+    private static GenKillWeight getWeightBeforeCall(Cmd cmd) {
+      Contract.Requires(cmd != null);
+      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      Contract.Assert((cmd is CallCmd));
+      if (weightCacheBeforeCall.ContainsKey(cmd))
         return weightCacheBeforeCall[cmd];
-      
-      Set<Variable!>! gen = new Set<Variable!>();
-      Set<Variable!>! kill = new Set<Variable!>();
-      CallCmd! ccmd = (CallCmd!)cmd;
-      
-      foreach (Expr! expr in ccmd.Ins) {
-		VariableCollector! collector = new VariableCollector();
-		collector.Visit(expr);
-		gen.AddRange(collector.usedVars);
+
+      Set<Variable/*!*/>/*!*/ gen = new Set<Variable/*!*/>();
+      Set<Variable/*!*/>/*!*/ kill = new Set<Variable/*!*/>();
+      CallCmd/*!*/ ccmd = cce.NonNull((CallCmd/*!*/)cmd);
+
+      foreach (Expr/*!*/ expr in ccmd.Ins) {
+        Contract.Assert(expr != null);
+        VariableCollector/*!*/ collector = new VariableCollector();
+        collector.Visit(expr);
+        gen.AddRange(collector.usedVars);
       }
-      
-      assert ccmd.Proc != null;
-      
+
+      Contract.Assert(ccmd.Proc != null);
+
       // Variables in requires are considered as "read"
-      foreach(Requires! re in ccmd.Proc.Requires) {
-		VariableCollector! collector = new VariableCollector();
-		collector.Visit(re.Condition);
-		foreach(Variable! v in collector.usedVars) {
-		  if(v is GlobalVariable) {
-		    gen.Add(v);
-		  }
-		}
+      foreach (Requires/*!*/ re in ccmd.Proc.Requires) {
+        Contract.Assert(re != null);
+        VariableCollector/*!*/ collector = new VariableCollector();
+        collector.Visit(re.Condition);
+        foreach (Variable/*!*/ v in collector.usedVars) {
+          Contract.Assert(v != null);
+          if (v is GlobalVariable) {
+            gen.Add(v);
+          }
+        }
       }
 
       // Old variables in ensures are considered as "read"
-      foreach(Ensures! re in ccmd.Proc.Ensures) {
-		VariableCollector! collector = new VariableCollector();
-		collector.Visit(re.Condition);
-		foreach(Variable! v in collector.oldVarsUsed) {
-		  if(v is GlobalVariable) {
-		    gen.Add(v);
-		  }
-		}
+      foreach (Ensures/*!*/ re in ccmd.Proc.Ensures) {
+        Contract.Assert(re != null);
+        VariableCollector/*!*/ collector = new VariableCollector();
+        collector.Visit(re.Condition);
+        foreach (Variable/*!*/ v in collector.oldVarsUsed) {
+          Contract.Assert(v != null);
+          if (v is GlobalVariable) {
+            gen.Add(v);
+          }
+        }
       }
-            
-      GenKillWeight! ret = new GenKillWeight(gen, kill);
-	  weightCacheAfterCall[cmd] = ret;
-	  return ret;
-	}      
-		
-  
+
+      GenKillWeight/*!*/ ret = new GenKillWeight(gen, kill);
+      Contract.Assert(ret != null);
+      weightCacheAfterCall[cmd] = ret;
+      return ret;
+    }
   }
-  
 }
