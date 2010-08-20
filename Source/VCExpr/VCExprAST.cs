@@ -798,12 +798,6 @@ TypeSeq/*!*/ res = new TypeSeq();
         throw new NotImplementedException();
       }
     }
-    public override Type Type {
-      get {
-        Contract.Ensures(Contract.Result<Type>()!=null);
-        throw new NotImplementedException();
-      }
-    }
   }
 
   [ContractClass(typeof(VCExprNAryContracts))]
