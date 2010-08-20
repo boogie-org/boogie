@@ -228,6 +228,7 @@ namespace Microsoft.Boogie
     public int LazyInlining = 0;
     public int StratifiedInlining = 0;
     public int StratifiedInliningOption = 0;
+    public int RecursionBound = 500;
     public string CoverageReporterPath = null;
     
     public enum TypeEncoding { None, Predicates, Arguments, Monomorphic };
@@ -991,6 +992,12 @@ namespace Microsoft.Boogie
                   //ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                   break;
               }
+            }
+            break;
+          case "-recursionBound":
+          case "/recursionBound":
+            if (ps.ConfirmArgumentCount(1)) {
+              RecursionBound = Int32.Parse((!)args[ps.i]);
             }
             break;
           case "-coverageReporter":

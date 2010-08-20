@@ -2010,7 +2010,7 @@ namespace VC {
        int bound = 1;
        bool done = false;
 
-       while (bound < 500 && !done)
+       while (bound < CommandLineOptions.Clo.RecursionBound && !done)
        {
            while (true)
            {
