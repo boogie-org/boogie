@@ -1,0 +1,97 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.21022</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{966DD87B-A29D-4F3C-9406-F680A61DC0E0}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Z3api</RootNamespace>
+    <AssemblyName>Z3api</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <StartupObject>
+    </StartupObject>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+  <ItemGroup>
+    <Reference Include="Microsoft.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Binaries\Microsoft.Contracts.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Z3, Version=2.0.3662.37897, Culture=neutral, PublicKeyToken=9c8d792caae602a2, processorArchitecture=x86">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Binaries\Microsoft.Z3.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Compiler.Runtime, Version=1.0.21125.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Binaries\System.Compiler.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.XML" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\AIFramework\AIFramework.sscproj">
+      <Project>{24B55172-AD8B-47D1-8952-5A95CFDB9B31}</Project>
+      <Name>AIFramework</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Basetypes\Basetypes.sscproj">
+      <Project>{0C692837-77EC-415F-BF04-395E3ED06E9A}</Project>
+      <Name>Basetypes</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Core\Core.sscproj">
+      <Project>{47BC34F1-A173-40BE-84C2-9332B4418387}</Project>
+      <Name>Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\VCExpr\VCExpr.csproj">
+      <Project>{56FFDBCA-7D14-43B8-A6CA-22A20E417EE1}</Project>
+      <Name>VCExpr</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\VCGeneration\VCGeneration.csproj">
+      <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
+      <Name>VCGeneration</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Z3\Z3.csproj">
+      <Project>{BB49B90B-BE21-4BE8-85BA-359FDB55F4DF}</Project>
+      <Name>Z3</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ContextLayer.cs" />
+    <Compile Include="ProverLayer.cs" />
+    <Compile Include="SafeContext.cs" />
+    <Compile Include="StubContext.cs" />
+    <Compile Include="TypeAdapter.cs" />
+    <Compile Include="VCExprVisitor.cs" />
+  </ItemGroup>
+</Project>
