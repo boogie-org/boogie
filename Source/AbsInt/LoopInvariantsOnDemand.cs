@@ -41,7 +41,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
     }
 
     override public object Default(AI.IExpr expr) {
-      Contract.Requires(expr != null);
+      
       if (expr is AI.IVariable) {
         if (!variables.Contains((AI.IVariable)expr)) {
           this.variables.Add((AI.IVariable)expr);
@@ -64,7 +64,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
     }
 
     public override object VisitFunApp(AI.IFunApp funapp) {
-      Contract.Requires(funapp != null);
+      
       foreach (AI.IExpr arg in funapp.Arguments) {
         Contract.Assert(arg != null);
         arg.DoVisit(this);
@@ -73,7 +73,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
     }
 
     public override object VisitFunction(AI.IFunction fun) {
-      Contract.Requires(fun != null);
+      //Contract.Requires(fun != null);
       fun.Body.DoVisit(this);
       this.variables.Remove(fun.Param);
       return true;
