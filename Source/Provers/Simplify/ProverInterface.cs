@@ -108,7 +108,7 @@ namespace Microsoft.Boogie.Simplify {
     /// the comment (like, perhaps, a newline or "*/").
     /// </summary>    
     public override void LogComment(string comment) {
-      Contract.Requires(comment != null);
+      //Contract.Requires(comment != null);
       LogComment(comment, false);
     }
 
@@ -326,12 +326,12 @@ namespace Microsoft.Boogie.Simplify {
     /// MSchaef: Allows to Push a VCExpression as Axiom on the prover stack (beta)
     /// </summary>
     public override void PushVCExpression(VCExpr vc) {
-      Contract.Requires(vc != null);
+      //Contract.Requires(vc != null);
       vcExprTranslator.AddAxiom(vcExprTranslator.translate(vc, 1));
     }
 
     public override string VCExpressionToString(VCExpr vc) {
-      Contract.Requires(vc != null);
+      //Contract.Requires(vc != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
       return vcExprTranslator.translate(vc, 1);
@@ -382,8 +382,8 @@ namespace Microsoft.Boogie.Simplify {
     private UnexpectedProverOutputException proverException;
 
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler) {
-      Contract.Requires(descriptiveName != null);
-      Contract.Requires(vc != null);
+      //Contract.Requires(descriptiveName != null);
+      //Contract.Requires(vc != null);
       Contract.Requires(handler != null);
       this.NewProblem(descriptiveName);
       this.proverException = null;
@@ -424,7 +424,7 @@ namespace Microsoft.Boogie.Simplify {
     }
 
     public override Outcome CheckOutcome(ErrorHandler handler) {
-      Contract.Requires(handler != null);
+      //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
       if (this.thmProver == null) {
@@ -613,14 +613,14 @@ namespace Microsoft.Boogie.Simplify {
     }
 
     protected override ProverProcess CreateProverProcess(string proverPath) {
-      Contract.Requires(proverPath != null);
+      //Contract.Requires(proverPath != null);
       Contract.Ensures(Contract.Result<ProverProcess>() != null);
 
       return new SimplifyProverProcess(proverPath);
     }
 
     protected override AxiomVCExprTranslator SpawnVCExprTranslator(ProverOptions opts) {
-      Contract.Requires(opts!=null);
+      //Contract.Requires(opts!=null);
       Contract.Ensures(Contract.Result<AxiomVCExprTranslator>() != null);
 
       return new SimplifyVCExprTranslator(gen);
@@ -754,14 +754,14 @@ namespace Microsoft.Boogie.Simplify {
 
 
     public override string Lookup(VCExprVar var) {
-      Contract.Requires(var != null);
+      //Contract.Requires(var != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
       return Namer.Lookup(var);
     }
 
     public override string translate(VCExpr expr, int polarity) {
-      Contract.Requires(expr != null);
+      //Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
       Let2ImpliesMutator letImplier = new Let2ImpliesMutator(Gen);
@@ -813,8 +813,8 @@ namespace Microsoft.Boogie.Simplify {
 
   public class Factory : ProverFactory {
     public override object SpawnProver(ProverOptions options, object ctxt) {
-      Contract.Requires(options != null);
-      Contract.Requires(ctxt != null);
+      //Contract.Requires(options != null);
+      //Contract.Requires(ctxt != null);
       Contract.Ensures(Contract.Result<object>() != null);
 
       return new SimplifyTheoremProver(options,
@@ -823,7 +823,7 @@ namespace Microsoft.Boogie.Simplify {
     }
 
     public override object NewProverContext(ProverOptions options) {
-      Contract.Requires(options != null);
+      //Contract.Requires(options != null);
       Contract.Ensures(Contract.Result<object>() != null);
 
       if (CommandLineOptions.Clo.BracketIdsInVC < 0) {

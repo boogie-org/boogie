@@ -480,7 +480,7 @@ namespace Microsoft.Boogie.Simplify {
     }
 
     public override void AddAxioms(string s) {
-      Contract.Requires(s != null);
+      //Contract.Requires(s != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       //ToWriteLine("(PROMPT_OFF)");
       base.AddAxioms(s);
@@ -489,7 +489,7 @@ namespace Microsoft.Boogie.Simplify {
     }
 
     public override void Feed(string s, int statementCount) {
-      Contract.Requires(s != null);
+      //Contract.Requires(s != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       //ToWriteLine("(PROMPT_OFF)");
       base.Feed(s, statementCount);
@@ -506,7 +506,7 @@ namespace Microsoft.Boogie.Simplify {
     }
 
     protected override void DoBeginCheck(string descriptiveName, string formula) {
-      Contract.Requires(descriptiveName != null);
+      //Contract.Requires(descriptiveName != null);
       Contract.Requires(formula != null);
       //simplify.Refresh();
       //this.Comment("@@@@ Virtual Memory:  " + simplify.PeakVirtualMemorySize64);
@@ -518,7 +518,7 @@ namespace Microsoft.Boogie.Simplify {
     }
 
     public override ProverOutcome CheckOutcome(Microsoft.Boogie.ProverInterface.ErrorHandler handler) {
-      Contract.Requires(handler != null);
+      //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       ProverOutcome outcome;
 
