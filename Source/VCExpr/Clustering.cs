@@ -52,7 +52,7 @@ namespace Microsoft.Boogie.Clustering {
     ////////////////////////////////////////////////////////////////////////////
 
     protected override bool StandardResult(VCExpr node, bool arg) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       return false;   // by default, do not collect terms containing node
     }
 
@@ -486,8 +486,8 @@ Contract.Ensures(Contract.Result<VCExprVar>() != null);
     }
 
     protected override VCExpr StandardResult(VCExpr node, VCExpr that) {
-      Contract.Requires(that != null);
-      Contract.Requires(node != null);
+      //Contract.Requires(that != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException(); // not handled here      
@@ -510,8 +510,8 @@ Contract.Ensures(Contract.Result<VCExprVar>() != null);
     }
 
     protected override bool StandardResult(VCExpr node, IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ globalVars) {
-      Contract.Requires(node != null);
-      Contract.Requires(cce.NonNullElements(globalVars));
+      //Contract.Requires(node != null);
+      //Contract.Requires(cce.NonNullElements(globalVars));
       VCExprVar nodeAsVar = node as VCExprVar;
       if (nodeAsVar == null || globalVars.ContainsKey(nodeAsVar))
         Size = Size + 1;

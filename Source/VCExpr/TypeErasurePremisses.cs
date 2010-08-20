@@ -99,8 +99,8 @@ void ObjectInvariant()
     // generate axioms of the kind "forall x:U. {Int2U(U2Int(x))}
     //                                          type(x)=int ==> Int2U(U2Int(x))==x"
     protected override VCExpr GenReverseCastAxiom(Function castToU, Function castFromU) {
-      Contract.Requires(castFromU != null);
-      Contract.Requires(castToU != null);
+      //Contract.Requires(castFromU != null);
+      //Contract.Requires(castToU != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       List<VCTrigger/*!*/>/*!*/ triggers;
       VCExprVar/*!*/ var;
@@ -122,8 +122,8 @@ void ObjectInvariant()
     }
 
     protected override VCExpr GenCastTypeAxioms(Function castToU, Function castFromU) {
-      Contract.Requires(castFromU != null);
-      Contract.Requires(castToU != null);
+      //Contract.Requires(castFromU != null);
+      //Contract.Requires(castToU != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       Type/*!*/ fromType = cce.NonNull(castToU.InParams[0]).TypedIdent.Type;
       return GenFunctionAxiom(castToU, new List<TypeVariable/*!*/>(), new List<TypeVariable/*!*/>(),
@@ -485,8 +485,8 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
     ////////////////////////////////////////////////////////////////////////////
 
     protected override void AddVarTypeAxiom(VCExprVar var, Type originalType){
-Contract.Requires(originalType != null);
-Contract.Requires(var != null);
+//Contract.Requires(originalType != null);
+//Contract.Requires(var != null);
       if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.None) return;
       AddTypeAxiom(GenVarTypeAxiom(var, originalType,
                                    // we don't have any bindings available
@@ -574,8 +574,8 @@ Contract.Requires(var != null);
     ////////////////////////////////////////////////////////////////////////////
 
     protected override void GenSelectStoreFunctions(MapType abstractedType, TypeCtorDecl synonym, out Function/*!*/ select, out Function/*!*/ store) {
-      Contract.Requires(synonym != null);
-      Contract.Requires(abstractedType != null);
+      //Contract.Requires(synonym != null);
+      //Contract.Requires(abstractedType != null);
       Contract.Ensures(Contract.ValueAtReturn(out select) != null);
       Contract.Ensures(Contract.ValueAtReturn(out store) != null);
       Type/*!*/ mapTypeSynonym;

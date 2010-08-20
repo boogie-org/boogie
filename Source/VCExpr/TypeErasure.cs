@@ -714,7 +714,7 @@ Contract.Ensures(Contract.ValueAtReturn(out var) != null);
     // Type.Int, and Type.Bool
 
     public override Type TypeAfterErasure(Type type) {
-      Contract.Requires(type != null);
+      //Contract.Requires(type != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       if (UnchangedType(type))
         // these types are kept
@@ -726,7 +726,7 @@ Contract.Ensures(Contract.ValueAtReturn(out var) != null);
 
     [Pure]
     public override bool UnchangedType(Type type) {
-      Contract.Requires(type != null);
+      //Contract.Requires(type != null);
       return type.IsInt || type.IsBool || type.IsBv || (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays);
     }
 
@@ -1142,9 +1142,9 @@ Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
 
     // this method is called by MutatingVCExprVisitor.Visit(VCExprNAry, ...)
     protected override VCExpr/*!*/ UpdateModifiedNode(VCExprNAry/*!*/ originalNode, List<VCExpr/*!*/>/*!*/ newSubExprs, bool changed, VariableBindings/*!*/ bindings) {
-      Contract.Requires(originalNode != null);
-      Contract.Requires(cce.NonNullElements(newSubExprs));
-      Contract.Requires(bindings != null);
+      //Contract.Requires(originalNode != null);
+      //Contract.Requires(cce.NonNullElements(newSubExprs));
+      //Contract.Requires(bindings != null);
       Contract.Assume(originalNode.Op == VCExpressionGenerator.AndOp ||
              originalNode.Op == VCExpressionGenerator.OrOp);
       return Gen.Function(originalNode.Op,
@@ -1307,8 +1307,8 @@ Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
     }
 
     protected override VCExpr StandardResult(VCExprNAry node, VariableBindings bindings) {
-      Contract.Requires(bindings != null);
-      Contract.Requires(node != null);
+      //Contract.Requires(bindings != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       System.Diagnostics.Debug.Fail("Don't know how to erase types in this expression: " + node);
       Contract.Assert(false);
@@ -1570,7 +1570,7 @@ Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
     readonly TypeAxiomBuilderIntBoolU/*!*/ AxBuilder;
 
     protected override bool StandardResult(VCExpr node, bool arg) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       return true; // not used
     }
 

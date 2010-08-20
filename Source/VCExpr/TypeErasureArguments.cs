@@ -54,8 +54,8 @@ namespace Microsoft.Boogie.TypeErasure {
     // by the SMT-solver, i.e., that U2Int is only applied to terms that actually
     // are of type int)
     protected override VCExpr GenReverseCastAxiom(Function castToU, Function castFromU) {
-      Contract.Requires(castFromU != null);
-      Contract.Requires(castToU != null);
+      //Contract.Requires(castFromU != null);
+      //Contract.Requires(castToU != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       List<VCTrigger/*!*/>/*!*/ triggers;
       VCExprVar/*!*/ var;
@@ -64,8 +64,8 @@ namespace Microsoft.Boogie.TypeErasure {
     }
 
     protected override VCExpr GenCastTypeAxioms(Function castToU, Function castFromU) {
-      Contract.Requires(castFromU != null);
-      Contract.Requires(castToU != null);
+      //Contract.Requires(castFromU != null);
+      //Contract.Requires(castToU != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       // nothing
       return VCExpressionGenerator.True;
@@ -84,8 +84,8 @@ namespace Microsoft.Boogie.TypeErasure {
     }
 
     protected override void AddVarTypeAxiom(VCExprVar var, Type originalType) {
-      Contract.Requires(originalType != null);
-      Contract.Requires(var != null);
+      //Contract.Requires(originalType != null);
+      //Contract.Requires(var != null);
       // no axioms are needed for variable or function types
     }
 
@@ -171,8 +171,8 @@ namespace Microsoft.Boogie.TypeErasure {
     ////////////////////////////////////////////////////////////////////////////
 
     protected override void GenSelectStoreFunctions(MapType abstractedType, TypeCtorDecl synonym, out Function/*!*/ select, out Function/*!*/ store) {
-      Contract.Requires(((synonym != null)));
-Contract.Requires(((abstractedType != null)));
+      //Contract.Requires(synonym != null);
+//Contract.Requires(abstractedType != null);
 Contract.Ensures(Contract.ValueAtReturn(out select) != null);
 Contract.Ensures(Contract.ValueAtReturn(out store) != null);
       Contract.Assert(synonym.Name != null);
