@@ -9,6 +9,7 @@ using Irony.Parsing;
 using Irony.Ast;
 
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace Demo
 {
@@ -108,26 +109,26 @@ namespace Demo
                 }
 
                     // Used for brace matching.
-                    TokenStack braces = parser.Context.OpenBraces;
-                    foreach (Token brace in braces) {
-                      if (brace.OtherBrace == null) continue;
-                      TextSpan openBrace = new TextSpan();
-                      openBrace.iStartLine = brace.Location.Line;
-                      openBrace.iStartIndex = brace.Location.Column;
-                      openBrace.iEndLine = brace.Location.Line;
-                      openBrace.iEndIndex = openBrace.iStartIndex + brace.Length;
+                    //TokenStack braces = parser.Context.OpenBraces;
+                    //foreach (Token brace in braces) {
+                    //  if (brace.OtherBrace == null) continue;
+                    //  TextSpan openBrace = new TextSpan();
+                    //  openBrace.iStartLine = brace.Location.Line;
+                    //  openBrace.iStartIndex = brace.Location.Column;
+                    //  openBrace.iEndLine = brace.Location.Line;
+                    //  openBrace.iEndIndex = openBrace.iStartIndex + brace.Length;
 
-                      TextSpan closeBrace = new TextSpan();
-                      closeBrace.iStartLine = brace.OtherBrace.Location.Line;
-                      closeBrace.iStartIndex = brace.OtherBrace.Location.Column;
-                      closeBrace.iEndLine = brace.OtherBrace.Location.Line;
-                      closeBrace.iEndIndex = closeBrace.iStartIndex + brace.OtherBrace.Length;
+                    //  TextSpan closeBrace = new TextSpan();
+                    //  closeBrace.iStartLine = brace.OtherBrace.Location.Line;
+                    //  closeBrace.iStartIndex = brace.OtherBrace.Location.Column;
+                    //  closeBrace.iEndLine = brace.OtherBrace.Location.Line;
+                    //  closeBrace.iEndIndex = closeBrace.iStartIndex + brace.OtherBrace.Length;
 
-                      if (source.Braces == null) {
-                        source.Braces = new List<TextSpan[]>();
-                      }
-                      source.Braces.Add(new TextSpan[2] { openBrace, closeBrace });
-                    }
+                    //  if (source.Braces == null) {
+                    //    source.Braces = new List<TextSpan[]>();
+                    //  }
+                    //  source.Braces.Add(new TextSpan[2] { openBrace, closeBrace });
+                    //}
 
                     if (parser.Context.CurrentParseTree.ParserMessages.Count > 0) {
                       foreach (ParserMessage error in parser.Context.CurrentParseTree.ParserMessages) {
@@ -172,7 +173,15 @@ namespace Demo
                             //string result = reader.ReadToEnd();
                             //Console.Write(result);
 
-                            for (string line = reader.ReadLine(); !String.IsNullOrEmpty(line); line = reader.ReadLine()) {
+                            for (string line = reader.ReadLine(); line != null; line = reader.ReadLine()) {
+                              if (line == "") 
+                                continue;
+                              if (line.StartsWith("Boogie program verifier")) {
+                                if (!Regex.IsMatch(line, "Boogie program verifier finished with [0-9]* verified, 0 errors"))
+                                  AddErrorBecauseOfToolProblems(req, line);
+                                continue;
+                              }
+
                               // each line is of the form: "x,y,w,z:arbitrary text"                              
                               string[] numbersAndText = line.Split(':');
                               if (numbersAndText.Length != 2) {
@@ -188,10 +197,10 @@ namespace Demo
                               }
                               try {
                                 TextSpan span = new TextSpan();
-                                span.iStartLine = span.iEndLine = Int32.Parse(positions[0]);
-                                span.iStartIndex = Int32.Parse(positions[1]);
-                                span.iEndLine = Int32.Parse(positions[2]);
-                                span.iEndIndex = Int32.Parse(positions[3]);
+                                span.iStartLine = span.iEndLine = Math.Max(0, Int32.Parse(positions[0]) - 1);
+                                span.iStartIndex = Math.Max(0, Int32.Parse(positions[1]) - 1);
+                                span.iEndLine = Math.Max(0, Int32.Parse(positions[2]) - 1);
+                                span.iEndIndex = Math.Max(0, Int32.Parse(positions[3]) - 1);
                                 req.Sink.AddError(req.FileName, message, span, Severity.Error);
                               } catch (System.ArgumentNullException) {
                                 AddErrorBecauseOfToolProblems(req, "Couldn't parse numbers: '" + numbers + "'");
@@ -230,16 +239,16 @@ namespace Demo
 
                 case ParseReason.HighlightBraces:
                 case ParseReason.MemberSelectAndHighlightBraces:
-                    if (source.Braces != null)
-                    {
-                        foreach (TextSpan[] brace in source.Braces)
-                        {
-                            if (brace.Length == 2)
-                                req.Sink.MatchPair(brace[0], brace[1], 1);
-                            else if (brace.Length >= 3)
-                                req.Sink.MatchTriple(brace[0], brace[1], brace[2], 1);
-                        }
-                    }
+                    //if (source.Braces != null)
+                    //{
+                    //    foreach (TextSpan[] brace in source.Braces)
+                    //    {
+                    //        if (brace.Length == 2)
+                    //            req.Sink.MatchPair(brace[0], brace[1], 1);
+                    //        else if (brace.Length >= 3)
+                    //            req.Sink.MatchTriple(brace[0], brace[1], brace[2], 1);
+                    //    }
+                    //}
                     break;
             }
 
@@ -248,9 +257,9 @@ namespace Demo
 
         private static void AddErrorBecauseOfToolProblems(ParseRequest req, string msg) {
           TextSpan span = new TextSpan();
-          span.iStartLine = span.iEndLine = 1;
-          span.iStartIndex = 1;
-          span.iEndIndex = 2;
+          span.iStartLine = span.iEndLine = 0;
+          span.iStartIndex = 0;
+          span.iEndIndex = 5;
           req.Sink.AddError(req.FileName, msg, span, Severity.Error);
         }
 

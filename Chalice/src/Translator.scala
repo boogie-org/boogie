@@ -1015,8 +1015,8 @@ class Translator {
       isDefined(guard) ::: List(bassume(guard)) :::
       translateStatement(body) ::: 
       // check invariant
-      Exhale(w.oldInvs map { inv => (inv, ErrorMessage(w.pos, "The loop invariant at " + inv.pos + " might not be preserved by the loop."))}, "loop invariant, maintained") :::
-      tag(Exhale(w.newInvs map { inv => (inv, ErrorMessage(w.pos, "The loop invariant at " + inv.pos + " might not be preserved by the loop."))}, "loop invariant, maintained"), keepTag) :::
+      Exhale(w.oldInvs map { inv => (inv, ErrorMessage(inv.pos, "The loop invariant at " + inv.pos + " might not be preserved by the loop."))}, "loop invariant, maintained") :::
+      tag(Exhale(w.newInvs map { inv => (inv, ErrorMessage(inv.pos, "The loop invariant at " + inv.pos + " might not be preserved by the loop."))}, "loop invariant, maintained"), keepTag) :::
       isLeaking(w.pos, "The loop might leak refereces.") :::
       // check lockchange after loop iteration
       Comment("check lockchange after loop iteration") ::
@@ -1622,6 +1622,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   **********************************************************************/
 
   def Inhale(predicates: List[Expression], occasion: String, check: Boolean): List[Boogie.Stmt] = {
+    if (predicates.size == 0) return Nil;
+    
     val (ihV, ih) = Boogie.NewBVar("inhaleHeap", theap, true)
     Comment("inhale (" + occasion + ")") ::
     BLocal(ihV) :: Boogie.Havoc(ih) ::
@@ -1633,6 +1635,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   }
 
   def InhaleFrom(predicates: List[Expression], occasion: String, check: Boolean, useHeap: Boogie.Expr): List[Boogie.Stmt] = {
+    if (predicates.size == 0) return Nil;
+    
     val (ihV, ih) = Boogie.NewBVar("inhaleHeap", theap, true)
     Comment("inhale (" + occasion + ")") ::
     BLocal(ihV) :: Boogie.Assign(ih, useHeap) ::
@@ -1773,6 +1777,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   }
 
   def Exhale(predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean): List[Boogie.Stmt] = {
+    if (predicates.size == 0) return Nil;
+    
     val (emV, em) = NewBVar("exhaleMask", tmask, true)
     Comment("begin exhale (" + occasion + ")") ::
     BLocal(emV) :: (em := Mask) ::

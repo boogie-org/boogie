@@ -208,8 +208,8 @@ object Boogie {
    case Comment(msg) => indent +  "// " +  msg + nl
    case assert@Assert(e) =>
      val pos = if (Chalice.vsMode) {
-       val r = assert.pos.line - 1;
-       val c = assert.pos.column - 1;
+       val r = assert.pos.line;
+       val c = assert.pos.column;
        r + "," + c + "," + r + "," + (c+5) + ":"
      } else {
        "  " + assert.pos + ": "

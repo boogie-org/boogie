@@ -9,6 +9,7 @@ import java.io.InputStreamReader
 import java.io.File
 import java.io.FileWriter
 import scala.util.parsing.input.Position
+import scala.util.parsing.input.NoPosition
 import collection.mutable.ListBuffer
 
 object Chalice {
@@ -36,16 +37,6 @@ object Chalice {
     var boogiePath = "C:\\boogie\\Binaries\\Boogie.exe"
     val inputs = new ListBuffer[String]()
     var printProgram = false
-
-    def ReportError(pos: Position, msg: String) = {
-     if (vsMode) {
-       val r = pos.line - 1;
-       val c = pos.column - 1;
-       Console.out.println(r + "," + c + "," + r + "," + (c+5) + ":" + msg);
-     } else {
-       Console.err.println(pos + ": " + msg)
-     }
-    }
     var doTypecheck = true
     var doTranslate = true
     var boogieArgs = " ";
@@ -196,6 +187,14 @@ object Chalice {
 
   def CommandLineError(msg: String, help: String) = {
    Console.err.println("Error: " + msg)
-   Console.err.println(help);
   }
+
+  def ReportError(pos: Position, msg: String) = {
+    if (vsMode) {
+     val (r,c) = (pos.line, pos.column)     
+     Console.out.println(r + "," + c + "," + r + "," + (c+5) + ":" + msg);
+    } else {
+     Console.err.println(pos + ": " + msg)
+    }
+  }  
 }
