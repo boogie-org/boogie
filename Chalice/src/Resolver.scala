@@ -86,15 +86,16 @@ object Resolver {
      case cl: Class if cl.IsRefinement =>
        if (! (decls contains cl.refinesId)) {
          return Errors(List((cl.pos, "refined class " + cl.refinesId + " does not exist")))
-       } else if (! decls(cl.refinesId).isInstanceOf[Class]) {
-         return Errors(List((cl.pos, "refined declaration " + cl.refinesId + " is not a class")))
        } else if (cl.refinesId == cl.id) {
          return Errors(List((cl.pos, "class cannot refine itself")))
-       } else {
-         cl.refines = decls(cl.refinesId).asInstanceOf[Class];
-         refinesRel.addNode(cl);
-         refinesRel.addNode(cl.refines);
-         refinesRel.addEdge(cl, cl.refines);
+       } else decls(cl.refinesId) match {
+         case abs: Class =>
+           cl.refines = abs;
+           refinesRel.addNode(cl);
+           refinesRel.addNode(cl.refines);
+           refinesRel.addEdge(cl, cl.refines);
+         case _ =>
+           return Errors(List((cl.pos, "refined declaration " + cl.refinesId + " is not a class")))
        }
      case _ =>
    }
@@ -224,7 +225,8 @@ object Resolver {
                  }
                case None =>
              }
-           case mt: MethodTransform =>
+           case mt: MethodTransform => // need to resolve them in reverse refinement order
+           case ci: CouplingInvariant => ResolveCouplingInvariant(ci, cl, baseContext)
          }
        }
    }
@@ -242,7 +244,6 @@ object Resolver {
    for (List(cl) <- dag.computeTopologicalSort.reverse) {
      for (m <- cl.members) m match {
        case mt: MethodTransform => ResolveTransform(mt, baseContext)
-       case ci: CouplingInvariant => ResolveCouplingInvariant(ci, cl, baseContext) 
        case _ =>
      }
    }

@@ -23,7 +23,8 @@ class Translator {
   def translateProgram(decls: List[TopLevelDecl]): List[Decl] = {
     decls flatMap {
       case cl: Class => translateClass(cl)
-      case ch: Channel => translateClass(ChannelClass(ch)) /* TODO: admissibility check of where clause */
+      case ch: Channel => translateClass(ChannelClass(ch))
+        /* TODO: admissibility check of where clause */
         /* TODO: waitlevel not allowed in postcondition of things forked (or, rather, joined) */
     }
   }
@@ -68,6 +69,8 @@ class Translator {
         throw new Exception("not yet implemented")
       case mt: MethodTransform =>
         translateMethodTransform(mt)
+      case ci: CouplingInvariant =>
+        Nil
     }
   }
 
@@ -139,15 +142,17 @@ class Translator {
       ExhaleWithChecking(Postconditions(f.spec) map { post => ((if(0 < Chalice.defaults) UnfoldPredicatesWithReceiverThis(post) else post),
               ErrorMessage(f.pos, "Postcondition at " + post.pos + " might not hold."))}, "function postcondition")) ::
     // definition axiom
-    (if (f.definition.isDefined) definitionAxiom(f) else Nil) :::
+    (f.definition match {
+      case Some(definition) => definitionAxiom(f, definition);
+      case None => Nil
+    }) :::
     // framing axiom (+ frame function)
     framingAxiom(f) :::
     // postcondition axiom(s)
     postconditionAxiom(f)
   }
 
-  def definitionAxiom(f: Function): List[Decl] = {
-    assert(f.definition.isDefined)
+  def definitionAxiom(f: Function, definition: Expression): List[Decl] = {
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
     val args = VarExpr("this") :: inArgs;
     val formals = BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar);
@@ -157,7 +162,7 @@ class Translator {
     val body = etran.Tr(
       if (f.isRecursive && ! f.isUnlimited) {
         val limited = Map() ++ (f.SCC zip (f.SCC map {f =>
-          val result = Function(f.id + "#limited", f.ins, f.out, f.spec, f.definition);
+          val result = Function(f.id + "#limited", f.ins, f.out, f.spec, None);
           result.Parent = f.Parent;
           result;
         }));
@@ -168,9 +173,9 @@ class Translator {
             Some(result)
           case _ => None
         }
-        f.definition.get transform limit;
+        definition transform limit;
       } else {
-        f.definition.get
+        definition
       }
     );
 
@@ -221,7 +226,7 @@ class Translator {
           (applyF ==@ applyFrameFunction))
       )
     } else {
-      // Encoding with two heap quantification
+      // Encoding with universal quantification over two heaps
       /* axiom (forall h1, h2: HeapType, m1, m2: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
             wf(h1,m1) && wf(h2,m2) && version(h1, h2, #C.f) ==>
               #C.f(h1, m1, this, x_1, ..., x_n) == #C.f(h2, m2, this, x_1, ..., x_n)
@@ -247,8 +252,7 @@ class Translator {
   }
 
   def postconditionAxiom(f: Function): List[Decl] = {
-    /* function ##C.f(state, ref, t_1, ..., t_n) returns (t);       
-       axiom (forall h: HeapType, m: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
+    /* axiom (forall h: HeapType, m: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
           wf(h, m) && CanAssumeFunctionDefs ==> Q[#C.f(h, m, this, x_1, ..., x_n)/result]
     */
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
@@ -2459,7 +2463,7 @@ object TranslationHelper {
             case Star => throw new Exception("not supported yet")
             case Epsilons(p) => EpsilonsOf(SubstThis(DefinitionOf(pred.predicate), o), p)
           })
-        case func@FunctionApplication(obj: ThisExpr, name, args) if 2<=TranslationOptions.defaults && func.f.definition.isDefined =>
+        case func@FunctionApplication(obj: ThisExpr, name, args) if 2<=Chalice.defaults && func.f.definition.isDefined =>
           Some(SubstVars(func.f.definition.get, obj, func.f.ins, args))
         case _ => None
       }
@@ -2563,7 +2567,9 @@ object TranslationHelper {
     }
   }
 
+  // tags statements to be preserved
   val keepTag = Boogie.Tag("keep")
+  
   // Assume the only composite statement in Boogie is If
   def tag(l: List[Stmt], t: Boogie.Tag):List[Stmt] =
     for (s <- l) yield {

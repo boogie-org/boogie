@@ -38,6 +38,8 @@ sealed case class Class(classId: String, parameters: List[Class], module: String
   def LookupMember(id: String): Option[NamedMember] = {
     if (id2member contains id)
       Some(id2member(id))
+    else if (IsRefinement)
+      refines.LookupMember(id)         
     else if (IsRef && this != RootClass) {
       // check with root class
       RootClass LookupMember id match {
@@ -187,7 +189,7 @@ case class LockChange(ee: List[Expression]) extends Specification
 
 case class CouplingInvariant(ids: List[String], e: Expression) extends Member {
   assert(ids.size > 0)
-  var fields = null:List[Field]
+  var fields = Nil:List[Field]
 }
 case class MethodTransform(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], trans: Transform) extends Callable(id) {
   var refines = null: Callable

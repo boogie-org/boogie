@@ -71,14 +71,14 @@ class Parser extends StandardTokenParsers {
    */
 
   def memberDecl = {
-    currentLocalVariables = Set[String](); assumeAllLocals = false; 
-    positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl | predicateDecl | functionDecl | transformDecl | couplingDecl)
+    currentLocalVariables = Set[String]();
+    positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl | predicateDecl | functionDecl | couplingDecl | transformDecl) // important that last one is transformDecl
   }
   def fieldDecl =
         ( "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, false) }
         | "ghost" ~> "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, true) }
         )
-  def invariantDecl = positioned("invariant" ~> expression <~ Semi ^^ MonitorInvariant)
+  def invariantDecl = "invariant" ~> expression <~ Semi ^^ MonitorInvariant
   def methodDecl =
     "method" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~
     (methodSpec*) ~ blockStatement ^^ {
@@ -96,16 +96,16 @@ class Parser extends StandardTokenParsers {
     "condition" ~> ident ~ ("where" ~> expression ?) <~ Semi ^^ {
       case id ~ optE => Condition(id, optE) }
   def transformDecl = {
-    assumeAllLocals = true;
-    "transforms" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~
-    (methodSpec*) ~ ("{" ~> transform <~ "}") ^^ {
-      case id ~ ins ~ outs ~ spec ~ trans =>
-        MethodTransform(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, AST.normalize(trans))
+    "transforms" ~> ident into {id =>
+      assumeAllLocals = true;            
+      formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~ (methodSpec*) ~ ("{" ~> transform <~ "}") ^^ {
+        case ins ~ outs ~ spec ~ trans =>
+          assumeAllLocals = false;
+          MethodTransform(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, AST.normalize(trans))
+      }
     }
   }
-  def couplingDecl = positioned(
-    ("replaces" ~> rep1(ident) <~ "by") ~ expression <~ Semi ^^ {case ids ~ e => CouplingInvariant(ids, e)} 
-  )
+  def couplingDecl = ("replaces" ~> rep1sep(ident, ",") <~ "by") ~ expression <~ Semi ^^ {case ids ~ e => CouplingInvariant(ids, e)}
 
   def formalParameters(immutable: Boolean) =
     "(" ~> (formalList(immutable) ?) <~ ")" ^^ {
