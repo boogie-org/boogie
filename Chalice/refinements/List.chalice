@@ -1,0 +1,47 @@
+class List0 {
+  var rep: seq<int>;
+  
+  method init()
+    requires acc(rep);
+    ensures acc(rep);    
+  {
+    rep := [0];
+  }
+
+  method get(i) returns (v)
+    requires acc(rep);
+    requires 0 <= i && i < |rep|;
+    ensures acc(rep);
+  {
+    v := rep[i];
+  }
+}
+
+class List1 refines List0 {
+  var sub: seq<List1>;
+  var data: int;
+    
+  replaces rep by acc(sub) && acc(data) && acc(sub[*].sub) && acc(sub[*].data) &&
+    /** valid */ |sub| >= 0 &&
+    (forall i in [0..|sub|] :: sub[i] != null && sub[i].sub == sub[i+1..]) &&
+    /** coupling */ |sub| + 1 == |rep| &&
+    (forall i in [0..|sub|] :: sub[i].data == rep[i+1]) &&
+    data == rep[0]
+    
+  refines init()
+  {
+    data := 0;
+    sub := nil<List1>;
+  }
+
+  refines get(i) returns (v)    
+  {
+    if (i == 0) {
+      v := data;
+    } else {
+      var next:List1 := sub[0];
+      call v := next.get(i-1);
+      //v := sub[i-1].data;
+    }
+  }
+}

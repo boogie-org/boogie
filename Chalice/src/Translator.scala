@@ -2250,6 +2250,7 @@ object TranslationHelper {
   def FractionOf(expr: Expression, fraction: Expression) : Expression = {
     val result = expr match {
       case Access(e, Full) => Access(e, Frac(fraction))
+      case AccessSeq(e, f, Full) => AccessSeq(e, f, Frac(fraction))
       case And(lhs, rhs) => And(FractionOf(lhs, fraction), FractionOf(rhs, fraction))
       case Implies(lhs, rhs) => Implies(lhs, FractionOf(rhs, fraction))
       case _ if ! expr.isInstanceOf[PermissionExpr] => expr
@@ -2262,6 +2263,7 @@ object TranslationHelper {
   def canTakeFractionOf(expr: Expression): Boolean = {
     expr match {
       case Access(e, Full) => true
+      case AccessSeq(e, f, Full) => true
       case And(lhs, rhs) => canTakeFractionOf(lhs) && canTakeFractionOf(rhs)
       case Implies(lhs, rhs) => canTakeFractionOf(rhs)
       case _ if ! expr.isInstanceOf[PermissionExpr] => true
