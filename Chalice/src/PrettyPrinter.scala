@@ -8,7 +8,8 @@ object PrintProgram {
   def P(prog: List[TopLevelDecl]) =
     for (decl <- prog) decl match {
       case cl: Class =>
-        if (cl.IsExternal) print("external ")
+        if (cl.IsExternal)
+          print("external ")
         println("class " + cl.id + " module " + cl.module + (if (cl.IsRefinement) " refines " + cl.refinesId else "") + " {")
         cl.members foreach Member
         println("}")
@@ -24,11 +25,15 @@ object PrintProgram {
     case m: Method =>
       print("  method " + m.id)
       print("("); VarList(m.ins); print(")")
-      if (m.outs != Nil) print(" returns ("); VarList(m.outs); print(")")
+      if (m.outs != Nil) {
+        print(" returns ("); VarList(m.outs); print(")")
+      }
       println
       PrintSpec(m.Spec)
       println("  {")
-      for (s <- m.body) {Spaces(4); Stmt(s, 4)}
+      for (s <- m.body) {
+        Spaces(4); Stmt(s, 4)
+      }
       println("  }")
     case Condition(id, optE) =>
       print("  condition " + id)
@@ -50,14 +55,18 @@ object PrintProgram {
     case m: MethodTransform =>
       print("  method " + m.id);
       print("("); VarList(m.ins); print(")")
-      if (m.outs != Nil) print(" returns ("); VarList(m.outs); print(")")
+      if (m.outs != Nil) {
+        print(" returns ("); VarList(m.outs); print(")")
+      }
       println;
       if (m.refines != null) PrintSpec(m.Spec);
       println("  {");
       if (m.body == null)
         println("    // body transform is not resolved")
       else
-        for (s <- m.body) {Spaces(4); Stmt(s, 4)}
+        for (s <- m.body) {
+          Spaces(4); Stmt(s, 4)
+        }
       println("  }")
     case CouplingInvariant(ids, e) =>
       print("  replaces "); Commas(ids); print(" by "); Expr(e); println(Semi);
@@ -79,9 +88,13 @@ object PrintProgram {
       PrintBlockStmt(ss, indent); println
     case RefinementBlock(ss, old) =>
       println("/* begin of refinement block")
-      for (s <- old) {Spaces(indent + 2); Stmt(s, indent + 2)}
+      for (s <- old) {
+        Spaces(indent + 2); Stmt(s, indent + 2)
+      }
       Spaces(indent); println("end of abstract code */")
-      for (s <- ss) {Spaces(indent); Stmt(s, indent)}
+      for (s <- ss) {
+        Spaces(indent); Stmt(s, indent)
+      }
       Spaces(indent); println("// end of refinement block")
     case IfStmt(guard, BlockStmt(thn), els) =>
       print("if ("); Expr(guard); print(") ")
@@ -207,7 +220,9 @@ object PrintProgram {
   }
   def PrintBlockStmt(ss: List[Statement], indent: Int) = {
     println("{")
-    for (s <- ss) { Spaces(indent+2); Stmt(s, indent+2) }
+    for (s <- ss) {
+      Spaces(indent+2); Stmt(s, indent+2)
+    }
     Spaces(indent);  print("}")
   }
   def VarList(vv: List[Variable]) = Commas(vv map {v => v.id + ": " + v.t.FullName})

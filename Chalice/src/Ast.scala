@@ -28,10 +28,12 @@ sealed case class Class(classId: String, parameters: List[Class], module: String
   def IsState: Boolean = false
   def IsNormalClass = true
 
-  lazy val Fields: List[Field] = members flatMap {case x: Field => List(x); case _ => Nil}
+  lazy val DeclaredFields = members flatMap {case x: Field => List(x); case _ => Nil}
   lazy val MentionableFields = Fields filter {x => ! x.Hidden}
-  lazy val Invariants: List[MonitorInvariant] = members flatMap {case x: MonitorInvariant => List(x); case _ => Nil}
-  lazy val id2member:Map[String,NamedMember] = Map() ++ {
+  lazy val MonitorInvariants = members flatMap {case x: MonitorInvariant => List(x); case _ => Nil}
+  lazy val Fields:List[Field] = DeclaredFields ++ (if (IsRefinement) refines.Fields else Nil) 
+
+  private lazy val id2member:Map[String,NamedMember] = Map() ++ {
     val named = members flatMap {case x: NamedMember => List(x); case _ => Nil};
     (named map {x => x.Id}) zip named
   }
@@ -59,6 +61,8 @@ sealed case class Class(classId: String, parameters: List[Class], module: String
   var IsRefinement = false
   var refinesId: String = null
   var refines: Class = null
+  lazy val CouplingInvariants = members flatMap {case x: CouplingInvariant => List(x); case _ => Nil}
+  lazy val Replaces: List[Field] = CouplingInvariants flatMap (_.fields)
 }
 
 sealed case class Channel(channelId: String, parameters: List[Variable], where: Expression) extends TopLevelDecl(channelId)
@@ -190,6 +194,13 @@ case class LockChange(ee: List[Expression]) extends Specification
 case class CouplingInvariant(ids: List[String], e: Expression) extends Member {
   assert(ids.size > 0)
   var fields = Nil:List[Field]
+  /* Distribute 100 between fields */
+  def fraction(field: Field) = {
+    val k = fields.indexOf(field)
+    assert (0 <= k && k < fields.size)
+    val part: Int = 100 / fields.size
+    if (k == fields.size - 1) IntLiteral(100 - part * k) else IntLiteral(part)          
+  }
 }
 case class MethodTransform(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], trans: Transform) extends Callable(id) {
   var refines = null: Callable
@@ -229,7 +240,9 @@ case class BlockPat() extends Transform {
 /** Matches any block of code (greedily) and acts as identity */
 case class SkipPat() extends Transform
 /** Replacement pattern for arbitrary block */
-case class ProgramPat(code: List[Statement]) extends Transform
+case class ProgramPat(code: List[Statement]) extends Transform {
+  if (code.size > 0) pos = code.first.pos
+}
 case class IfPat(thn: Transform, els: Option[Transform]) extends Transform
 case class WhilePat(invs: List[Expression], body: Transform) extends Transform
 case class NonDetPat(is: List[String], code: List[Statement]) extends Transform {

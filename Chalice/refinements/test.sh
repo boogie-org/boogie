@@ -13,6 +13,7 @@ TESTS="
   RecFiniteDiff.chalice
   LoopFiniteDiff.chalice
   Pick.chalice
+  TestCoupling.chalice
 "
 
 # Switch to test directory

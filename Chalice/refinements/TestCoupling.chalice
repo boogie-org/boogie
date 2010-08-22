@@ -1,0 +1,74 @@
+class A0 {
+  var x: int;
+  var n: int;
+  var k: int;
+  
+  method inc()
+    requires acc(x) && acc(n);
+    ensures acc(x) && x == old(x) + 1;
+  {
+    x := x + 1;
+    n := n + 1;
+  }
+
+  method error() 
+    requires acc(x)
+    ensures acc(x)
+  {
+    x := x + 1;
+  } 
+}
+
+class A1 refines A0 {
+  var y: int;
+  var z: int;  
+  replaces x by acc(y) && acc(z) && x == y - z && y >= 0 && z >= 0;
+  
+  refines inc()
+    ensures y == old(y) + 1
+  {
+    this.y := 1 + this.y;
+    this.n := this.n + 1;    
+  }
+
+  refines error()     
+    ensures acc(y)
+  {
+    this.y := 1 + this.y;
+  }
+}
+
+class B0 {
+  var x: int; 
+  var y: int;
+  
+  method error()
+    requires acc(x);
+    ensures acc(x);
+  {
+    x := x + 1;     
+  }
+  
+  method inc()
+    requires acc(x) && acc(y);
+    ensures acc(x) && acc(y);
+  { 
+    x := x + 1;
+  }
+}
+
+class B1 refines B0 {
+  var z: int;
+  replaces x,y by acc(z) && z == x + y;
+
+  refines error() 
+  {
+    this.z := this.z + 1;
+  }
+
+  refines inc() 
+  {
+    this.z := this.z + 1;
+  }
+}
+   

@@ -1079,7 +1079,7 @@ object Resolver {
  def ResolveTransform(mt: MethodTransform, context: ProgramContext) {
    mt.spec foreach {
      case Precondition(e) =>
-       context.Error(e.pos, "Method refinement cannot have a pre-condition")
+       context.Error(e.pos, "Method refinement cannot add a pre-condition")
      case Postcondition(e) =>
        ResolveExpr(e, context.SetClass(mt.Parent).SetMember(mt), true, true)(false)
      case _ : LockChange => throw new Exception("not implemented")
@@ -1139,5 +1139,7 @@ object Resolver {
    }
    ResolveExpr(ci.e, context.SetClass(cl).SetMember(ci), false, true)(true)
    if (!ci.e.typ.IsBool) context.Error(ci.pos, "coupling invariant requires a boolean expression (found " + ci.e.typ.FullName + ")")
+   // TODO: check coupling invariant may only give permissions to newly declared fields
+   // TODO: check concrete body cannot refer to replaced fields
  }
 }

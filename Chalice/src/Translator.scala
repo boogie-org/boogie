@@ -41,7 +41,7 @@ class Translator {
     // add class name
     declarations = Const(className(cl).id, true, TypeName) :: declarations;
     // translate monitor invariant
-    declarations = declarations ::: translateMonitorInvariant(cl.Invariants, cl.pos);
+    declarations = declarations ::: translateMonitorInvariant(cl.MonitorInvariants, cl.pos);
     // translate each member
     for(member <- cl.members) {
       declarations = declarations ::: translateMember(member);
@@ -323,6 +323,20 @@ class Translator {
   }
 
   def translateMethodTransform(mt: MethodTransform): List[Decl] = {
+    // extract coupling invariants
+    def Invariants(e: Expression): Expression = desugar(e) match {
+      case And(a,b) => And(Invariants(a), Invariants(b))
+      case Implies(a,b) => Implies(a, Invariants(b))
+      case Access(ma, Full) if ! ma.isPredicate =>
+        val cis = for (ci <- mt.Parent.CouplingInvariants; if (ci.fields.contains(ma.f))) yield FractionOf(ci.e, ci.fraction(ma.f));
+        cis.foldLeft(BoolLiteral(true):Expression)(And(_,_))
+      case _: PermissionExpr => throw new Exception("not supported")
+      case _ => BoolLiteral(true)
+    }
+
+    val preCI = if (mt.Parent.CouplingInvariants.size > 0) Preconditions(mt.Spec).map(Invariants) else Nil
+    val postCI = if (mt.Parent.CouplingInvariants.size > 0) Postconditions(mt.refines.Spec).map(Invariants) else Nil
+
     // check definedness of refinement specifications
     Proc(mt.FullName + "$checkDefinedness",
       NewBVarWhere("this", new Type(currentClass)) :: (mt.Ins map {i => Variable2BVarWhere(i)}),
@@ -332,12 +346,13 @@ class Translator {
         DefinePreInitialState :::
         bassume(CanAssumeFunctionDefs) ::
         // check precondition
-        InhaleWithChecking(Preconditions(mt.Spec), "precondition") :::
+        InhaleWithChecking(Preconditions(mt.Spec) ::: preCI, "precondition") :::
         DefineInitialState :::
         (etran.Mask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
         Havoc(etran.Heap) ::
         // check postcondition
-        InhaleWithChecking(Postconditions(mt.Spec), "postcondition")
+        InhaleWithChecking(Postconditions(mt.refines.Spec), "postcondition") :::
+        tag(InhaleWithChecking(postCI ::: Postconditions(mt.spec), "postcondition"), keepTag)
       ) ::
     // check correctness of refinement
     Proc(mt.FullName,
@@ -349,15 +364,16 @@ class Translator {
           bassume(CurrentModule ==@ Boogie.VarExpr(ModuleName(currentClass))) ::
           bassume(CanAssumeFunctionDefs) ::
           DefinePreInitialState :::
-          Inhale(Preconditions(mt.Spec), "precondition") :::
+          Inhale(Preconditions(mt.Spec) ::: preCI, "precondition") :::
           DefineInitialState :::
           translateStatements(mt.body) :::
           Exhale(Postconditions(mt.refines.Spec) map {p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}, "postcondition") :::
-          tag(
-            Exhale(Postconditions(mt.spec) map {p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}, "refinement postcondition"),
-            keepTag)
+          tag(Exhale(
+            (postCI map {p => (p, ErrorMessage(mt.pos, "The coupling invariant might not be preserved."))}) :::
+            (Postconditions(mt.spec) map {p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}), "postcondition"), keepTag)
         }
       )
+
   }
 
   def DebtCheck() = {
@@ -1053,9 +1069,9 @@ class Translator {
     val afterV = for (v <- before) yield new Variable(v.id, v.t)
 
     Comment("refinement block") ::
+    // save heap
     (for (c <- conGlobals) yield BLocal(c)) :::
     (for ((c, a) <- conGlobals zip etran.Globals) yield (new VarExpr(c) := a)) :::
-    // TODO: inhale heap, global coupling: assume coupling invariant for locations with positive permission
     // save shared local variables
     (for (v <- beforeV) yield BLocal(Variable2BVarWhere(v))) :::            
     (for ((v, w) <- beforeV zip before) yield (new VariableExpr(v) := new VariableExpr(w))) :::
@@ -1071,7 +1087,7 @@ class Translator {
     r.abs match {
       case List(s: SpecStmt) =>
         tag(
-          Comment("witness declared local variables") ::
+          Comment("give witnesses to declared local variables") ::
           (for (v <- duringA) yield BLocal(Variable2BVarWhere(v))) :::
           (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
           bassert(s.post, r.pos, "Refinement may fail to satisfy specification statement post-condition") ::
@@ -1093,8 +1109,18 @@ class Translator {
             bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce different value for a declared local variable: " + v.id)),
           keepTag)
     }} :::
+    {
+      val (v,ve) = NewBVar("this", tref, true)
+      // TODO: we only preserve concrete fields of "this" at the moment       
+      // TODO: check for mask coupling
+
+      // assert equality on shared globals (except those that are replaced)
+      (for (f <- currentClass.refines.Fields; if ! currentClass.CouplingInvariants.exists(_.fields.contains(f)))
+        yield bassert((absTran.Heap.select(ve, f.FullName) ==@ conTran.Heap.select(ve, f.FullName)).forall(v), r.pos, "Refinement may change value of field " + f.FullName)) :::         
+      // copy new globals from concrete to abstract heap (to preserve their values across refinement blocks and establish invariant)
+      (for (f <- currentClass.DeclaredFields) yield absTran.Heap.store(VarExpr("this"), VarExpr(f.FullName), conTran.Heap.select(VarExpr("this"), f.FullName)))
+    } :::
     Comment("end of refinement block")
-    // TODO: global coupling: assert coupling invariants for locations with positive, preserve permissions?
   }
 
 
@@ -1241,7 +1267,7 @@ class Translator {
     val shV = new Variable("sh", new Type(obj.typ))
     val sh = new VariableExpr(shV)
     BLocal(Variable2BVar(shV)) :: Boogie.Assign(TrExpr(sh), TrExpr(obj)) ::
-    tran.Inhale(obj.typ.Invariants map
+    tran.Inhale(obj.typ.MonitorInvariants map
            (inv => SubstThis(inv.e, sh)) map
            (inv => (if (readonly) SubstRd(inv) else inv)), "monitor invariant", false)
   }
@@ -1249,7 +1275,7 @@ class Translator {
     val shV = new Variable("sh", new Type(obj.typ))
     val sh = new VariableExpr(shV)
     BLocal(Variable2BVar(shV)) :: Boogie.Assign(TrExpr(sh), TrExpr(obj)) ::
-    tran.Exhale(obj.typ.Invariants map
+    tran.Exhale(obj.typ.MonitorInvariants map
            (inv => SubstThis(inv.e, sh)) map
            (inv => (if (readonly) SubstRd(inv) else inv, msg)), "monitor invariant", false)
   }
@@ -1257,7 +1283,7 @@ class Translator {
     val shV = new Variable("sh", new Type(obj.typ))
     val sh = new VariableExpr(shV)
     BLocal(Variable2BVar(shV)) :: Boogie.Assign(TrExpr(sh), TrExpr(obj)) ::
-    Inhale(obj.typ.Invariants map
+    Inhale(obj.typ.MonitorInvariants map
            (inv => SubstThis(inv.e, sh)) map
            (inv => (if (readonly) SubstRd(inv) else inv)), "monitor invariant")
   }
@@ -1265,7 +1291,7 @@ class Translator {
     val shV = new Variable("sh", new Type(obj.typ))
     val sh = new VariableExpr(shV)
     BLocal(Variable2BVar(shV)) :: Boogie.Assign(TrExpr(sh), TrExpr(obj)) ::
-    Exhale(obj.typ.Invariants map
+    Exhale(obj.typ.MonitorInvariants map
            (inv => SubstThis(inv.e, sh)) map
            (inv => (if (readonly) SubstRd(inv) else inv, msg)), "monitor invariant")
   }
@@ -2225,6 +2251,7 @@ object TranslationHelper {
     val result = expr match {
       case Access(e, Full) => Access(e, Frac(fraction))
       case And(lhs, rhs) => And(FractionOf(lhs, fraction), FractionOf(rhs, fraction))
+      case Implies(lhs, rhs) => Implies(lhs, FractionOf(rhs, fraction))
       case _ if ! expr.isInstanceOf[PermissionExpr] => expr
       case _ => throw new Exception("  " + expr.pos + ": Scaling non-full permissions is not supported yet." + expr);
     }
@@ -2236,6 +2263,7 @@ object TranslationHelper {
     expr match {
       case Access(e, Full) => true
       case And(lhs, rhs) => canTakeFractionOf(lhs) && canTakeFractionOf(rhs)
+      case Implies(lhs, rhs) => canTakeFractionOf(rhs)
       case _ if ! expr.isInstanceOf[PermissionExpr] => true
       case _ => false
     }

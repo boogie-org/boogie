@@ -83,9 +83,8 @@ class Parser extends StandardTokenParsers {
     "method" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~
     (methodSpec*) ~ blockStatement ^^ {
       case id ~ ins ~ outs ~ spec ~ body =>
-        outs match {
-          case None => Method(id, ins, Nil, spec, body)
-          case Some(outs) => Method(id, ins, outs, spec, body) }}
+        Method(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, body)
+    }
   def predicateDecl: Parser[Predicate] =
     ("predicate" ~> ident) ~ ("{" ~> expression <~ "}") ^^ { case id ~ definition => Predicate(id, definition) }
   def functionDecl =
@@ -95,16 +94,18 @@ class Parser extends StandardTokenParsers {
   def conditionDecl =
     "condition" ~> ident ~ ("where" ~> expression ?) <~ Semi ^^ {
       case id ~ optE => Condition(id, optE) }
-  def transformDecl = {
-    "transforms" ~> ident into {id =>
-      assumeAllLocals = true;            
-      formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~ (methodSpec*) ~ ("{" ~> transform <~ "}") ^^ {
-        case ins ~ outs ~ spec ~ trans =>
-          assumeAllLocals = false;
-          MethodTransform(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, AST.normalize(trans))
-      }
-    }
-  }
+  def transformDecl =
+    ( "refines" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~ (methodSpec*) ~ blockStatement ^^ {
+        case id ~ ins ~outs ~ spec ~ body =>
+          MethodTransform(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, ProgramPat(body)) }).|(
+      "transforms" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~ (methodSpec*) into {case id ~ ins ~ outs ~ spec =>
+        assumeAllLocals = true;
+        "{" ~> transform <~ "}" ^^ {
+          trans =>
+            assumeAllLocals = false;
+            MethodTransform(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, AST.normalize(trans))
+        }
+      })
   def couplingDecl = ("replaces" ~> rep1sep(ident, ",") <~ "by") ~ expression <~ Semi ^^ {case ids ~ e => CouplingInvariant(ids, e)}
 
   def formalParameters(immutable: Boolean) =
