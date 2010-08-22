@@ -5,6 +5,8 @@ class Node {
   var children: seq<Node>;
   var marked: bool;
   ghost var path: seq<Node>;
+
+  var parent: Node;
 }
 
 class DSW0 {
@@ -55,9 +57,13 @@ class DSW0 {
       invariant forall n in S :: n.children == old(n.children);      
       // termination
       invariant stop ==> |stack| == 0 && (forall ch in t.children :: ch.marked);
-    { 
-      var s:seq<Node> := t.children; 
-      var n:Node [rd(s[*].marked), rd(s[*].marked) && n in t.children && ! n.marked];
+    {
+      var n: Node;
+
+      // stupid syntactic trick to make transformers go around call
+      if (true) {
+        call n := PickUnmarked(t.children); 
+      }
 
       if (n != null) {
         // push             
@@ -77,6 +83,55 @@ class DSW0 {
       }
     }
   }
+
+  method PickUnmarked(p: seq<Node>) returns (x: Node)
+    requires rd(p[*].marked);
+    requires forall n in p :: n != null;
+    ensures rd(p[*].marked);
+    ensures x != null ==> x in p && ! x.marked;
+    ensures x == null ==> (forall n in p :: n.marked);
+  {
+    var x [(exists n in p :: !n.marked) ? (x in p && !x.marked) : (x == null)]
+  }
 }
 
+class DSW1 refines DSW0 {
+  transforms IterativeMark(root: Node, S: seq<Node>) 
+  {
+    assume forall n in S :: n.parent == null;
+    _
+    while 
+      invariant forall n in S :: n !in stack ==> n.parent == null;
+      invariant forall i in [1..|stack|] :: stack[i-1].parent == stack[i];
+    {
+      _
+      if {*}
+      if {
+        // push
+        if (|stack| > 0) {
+          t.parent := stack[0];
+        }
+        *
+      } else {
+        // pop
+        if {*} else {
+          _
+          t.parent := null;
+        }
+      }
+    }
+  }
 
+  transforms PickUnmarked(p: seq<Node>) returns (x: Node)
+  {
+    replaces x by {
+      if (|p| == 0) {
+        x := null;
+      } else if (! p[0].marked) {
+        x := p[0];
+      } else {
+        call x := PickUnmarked(p[1..]);
+      }
+    }
+  }
+}
