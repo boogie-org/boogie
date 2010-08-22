@@ -216,12 +216,11 @@ object Resolver {
                  // resolve function calls
                  calls addNode f;
                  e visit {
-                 case app : FunctionApplication =>
-                   assert(app.f != null);
-                   calls addNode app.f;
-                   calls.addEdge(f, app.f);
-                   if (app.f == f) f.isRecursive = true; // self-recursion
-                 case _ =>
+                   case app : FunctionApplication if app.f != null /* may not be resolved */ =>
+                     calls addNode app.f;
+                     calls.addEdge(f, app.f);
+                     if (app.f == f) f.isRecursive = true; // self-recursion
+                   case _ =>
                  }
                case None =>
              }

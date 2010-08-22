@@ -283,7 +283,7 @@ object PrintProgram {
     case Old(e) =>
           print("old("); Expr(e); print(")")
     case IfThenElse(con, then, els) => 
-      print("ite("); Expr(con); print(", "); Expr(then); print(", "); Expr(els); print(")");
+      print("("); Expr(con); print(" ? "); Expr(then); print(" : "); Expr(els); print(")");
     case Not(e) => print("!"); Expr(e, 0x80, false)
     case FunctionApplication(obj, id, ins) =>
       Expr(obj); print("."); print(id); print("("); ExprList(ins); print(")");

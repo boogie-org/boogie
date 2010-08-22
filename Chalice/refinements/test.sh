@@ -14,6 +14,7 @@ TESTS="
   LoopFiniteDiff.chalice
   Pick.chalice
   TestCoupling.chalice
+  Calculator.chalice
 "
 
 # Switch to test directory
@@ -31,7 +32,7 @@ START=`date +%s`
 for f in ${TESTS}
 do
   echo "Processing $f" | tee -a Output
-  scala -cp ../bin chalice.Chalice -nologo $f >> Output 2>&1
+  scala -cp ../bin chalice.Chalice -nologo -noTermination $f >> Output 2>&1
 done
 END=`date +%s`
 echo "Time: $(( $END - $START )) seconds"

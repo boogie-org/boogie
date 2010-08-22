@@ -30,7 +30,7 @@ class Parser extends StandardTokenParsers {
                        "predicate", "function", "free", "send", "receive",
                        "ite", "fold", "unfold", "unfolding", "in", "forall", "exists",
                        "seq", "nil", "result", "eval", "token",
-                       "wait", "signal",
+                       "wait", "signal", "unlimited", 
                        "refines", "transforms", "replaces", "by"
                       )
   // todo: can we remove "nil"?
@@ -88,8 +88,12 @@ class Parser extends StandardTokenParsers {
   def predicateDecl: Parser[Predicate] =
     ("predicate" ~> ident) ~ ("{" ~> expression <~ "}") ^^ { case id ~ definition => Predicate(id, definition) }
   def functionDecl =
-    ("function" ~> ident) ~ formalParameters(true) ~ (":" ~> typeDecl) ~ (methodSpec*) ~ opt("{" ~> expression <~ "}") ^^ {
-      case id ~ ins ~ out ~ specs ~ body => Function(id, ins, out, specs, body)
+    ("unlimited" ?) ~ ("function" ~> ident) ~ formalParameters(true) ~ (":" ~> typeDecl) ~ (methodSpec*) ~ opt("{" ~> expression <~ "}") ^^ {
+      case u ~ id ~ ins ~ out ~ specs ~ body => {
+        val f = Function(id, ins, out, specs, body);
+        if (u.isDefined) f.isUnlimited = true;
+        f
+      }
     }
   def conditionDecl =
     "condition" ~> ident ~ ("where" ~> expression ?) <~ Semi ^^ {

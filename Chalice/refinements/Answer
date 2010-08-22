@@ -35,3 +35,6 @@ Processing TestCoupling.chalice
   66.5: Location might not be writable
 
 Boogie program verifier finished with 17 verified, 3 errors
+Processing Calculator.chalice
+
+Boogie program verifier finished with 15 verified, 0 errors

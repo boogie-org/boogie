@@ -164,7 +164,7 @@ case class Function(id: String, ins: List[Variable], out: Type, spec: List[Speci
     result.f = this;
     result
   }
-  val isUnlimited = false
+  var isUnlimited = false
   var isRecursive = false
   var SCC: List[Function] = Nil
 }
