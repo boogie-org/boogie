@@ -271,6 +271,9 @@ namespace Microsoft.Boogie.Z3
           return ProverOutcome.TimeOut;
         }
 
+        if (ch == -1)
+            throw new UnexpectedProverOutputException("z3 crashed and produced no output");          
+        
         string line = new string((char)ch, 1) + FromReadLine();
 
         if (line.StartsWith("STATS ")) {
