@@ -1,107 +1,135 @@
-# Aste started: 2010-08-21 07:00:04
+# Aste started: 2010-08-23 07:00:04
 # Host id: Boogiebox
-# [2010-08-21 07:05:13] SpecSharp revision: 55320
-# [2010-08-21 07:06:28] Boogie revision: 56643
-# [2010-08-21 07:06:52] SscBoogie revision: 56316
-[2010-08-21 07:07:28] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-08-23 07:02:06] SpecSharp revision: 55320
+# [2010-08-23 07:03:03] Boogie revision: 56686
+# [2010-08-23 07:03:27] SscBoogie revision: 56316
+[2010-08-23 07:04:00] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-08-21 07:08:25] [Error] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-08-23 07:04:57] [Error] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "Basetypes". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "AIFramework". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "Graph". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(17,19): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(19,19): error CS0234: The type or namespace name 'Basetypes' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(16,24): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyQuant.cs(18,19): error CS0234: The type or namespace name 'Basetypes' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyQuant.cs(16,24): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(97,9): error CS0246: The type or namespace name 'Graphing' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(96,24): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(7,17): error CS0234: The type or namespace name 'Basetypes' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\DeadVarElim.cs(3,7): error CS0246: The type or namespace name 'Graphing' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\VCExp.cs(13,17): error CS0234: The type or namespace name 'Basetypes' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(58,47): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(282,39): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(405,47): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(416,31): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(447,41): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(456,41): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(490,47): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(551,12): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(600,22): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(637,12): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(640,20): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(736,47): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(863,47): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(1013,47): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(1254,12): error CS0246: The type or namespace name 'IFunctionSymbol' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(2212,47): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(2817,47): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(2954,47): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\AbsyExpr.cs(3106,47): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\AbsyCmd.cs(16,24): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(16,24): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(825,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2804,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
-    D:\Temp\aste\Boogie\Source\Core\AbsyQuant.cs(40,31): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyQuant.cs(53,31): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\AbsyQuant.cs(183,47): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\AbsyQuant.cs(607,38): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(14,24): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(362,56): error CS0246: The type or namespace name 'Graph' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(577,19): error CS0246: The type or namespace name 'Graph' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(9,22): error CS0234: The type or namespace name 'AbstractInterpretationFramework' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(91,10): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(92,10): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(93,36): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(93,50): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(109,45): error CS0305: Using the generic type 'System.Collections.Generic.Set<T>' requires '1' type arguments
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1668,15): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1779,17): error CS0246: The type or namespace name 'BigNum' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\DeadVarElim.cs(584,12): error CS0246: The type or namespace name 'Graph' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Core\DeadVarElim.cs(756,5): error CS0246: The type or namespace name 'Graph' could not be found (are you missing a using directive or an assembly reference?)
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Debug\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Debug\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Debug\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Debug\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Debug\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Debug\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Debug\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Debug\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Debug\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Debug\Provers.Simplify.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Debug\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Debug\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Debug\Provers.Simplify.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Debug\Core.dll' could not be found
+    D:\Temp\aste\Boogie\Source\Core\Absy.cs(3472,9): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(783,91): warning CS0168: The variable 'id2' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(866,98): warning CS0168: The variable 'locals' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(866,120): warning CS0168: The variable 'blocks' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1123,47): warning CS0168: The variable 'e' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1377,112): warning CS0168: The variable 'op' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1684,17): warning CS0168: The variable 'ty' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1807,36): warning CS0168: The variable 'e' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1807,53): warning CS0168: The variable 'es' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1808,27): warning CS0168: The variable 'key' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1808,40): warning CS0168: The variable 'value' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1915,23): warning CS0168: The variable 'value' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Core\Util.cs(21,10): warning CS0414: The field 'Microsoft.Boogie.TokenTextWriter.writerOpenedHere' is assigned but its value is never used
+    D:\Temp\aste\Boogie\Source\Core\VCExp.cs(139,16): warning CS0414: The field 'Microsoft.Boogie.ProverOptions.sequenceNumber' is assigned but its value is never used
+    D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(1467,16): warning CS0659: 'Microsoft.Boogie.VCExprAST.VCExprCustomOp' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+    D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(662,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCExpr\VCExprASTPrinter.cs(46,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1933,56): warning CS0168: The variable 'e' is declared but never used
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4602,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(707,15): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(741,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(1083,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\Wlp.cs(77,8): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(379,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(445,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(843,29): warning CS0649: Field 'VC.VCGen.Split.first_assert' is never assigned to, and will always have its default value null
+    D:\Temp\aste\Boogie\Source\VCGeneration\DoomCheck.cs(177,22): warning CS0169: The field 'VC.DoomCheck._tmpUseFreshBVars' is never used
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(65,9): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(338,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(363,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(379,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(402,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(308,7): warning CS0162: Unreachable code detected
     C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "Microsoft.Z3". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Z3\bin\Debug\Provers.Z3.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Debug\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Debug\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Z3\bin\Debug\Provers.Z3.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Debug\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\bin\Debug\Provers.SMTLib.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Isabelle\bin\Debug\Provers.Isabelle.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\AbsInt\bin\Debug\AbsInt.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Debug\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Debug\Provers.Simplify.dll' could not be found
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(11,17): error CS0234: The type or namespace name 'Z3' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(11,17): error CS0234: The type or namespace name 'Z3' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\StubContext.cs(11,17): error CS0234: The type or namespace name 'Z3' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\TypeAdapter.cs(11,17): error CS0234: The type or namespace name 'Z3' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ProverLayer.cs(11,17): error CS0234: The type or namespace name 'Z3' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(18,17): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(19,31): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(23,16): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(31,17): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(32,34): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(36,16): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(44,17): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(45,36): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(49,16): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(57,17): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(58,27): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(62,16): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(71,17): error CS0246: The type or namespace name 'LabeledLiterals' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(72,38): error CS0246: The type or namespace name 'LabeledLiterals' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(76,16): error CS0246: The type or namespace name 'LabeledLiterals' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(85,45): error CS0246: The type or namespace name 'Symbol' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(90,17): error CS0246: The type or namespace name 'Context' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(158,22): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(169,22): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(180,17): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(186,17): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(192,17): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(198,37): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(203,42): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(208,40): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(221,22): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(309,57): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(441,22): error CS0246: The type or namespace name 'Symbol' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(449,17): error CS0246: The type or namespace name 'Symbol' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(548,17): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(561,19): error CS0246: The type or namespace name 'Context' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(563,34): error CS0246: The type or namespace name 'Context' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(568,33): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(18,17): error CS0246: The type or namespace name 'Config' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(72,16): error CS0246: The type or namespace name 'Config' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(229,66): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(261,67): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(272,79): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(343,64): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(349,46): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
     warning CS0659
     warning CS0659
-    48 error
-    1 error
-    2 error
-    3 error
-    3 error
-    4 error
-    4 error
-    1 error
-    4 error
-    7 error
-    10 failed
+    warning CS0162
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0162
+    warning CS0414
+    warning CS0414
+    warning CS0659
+    warning CS0162
+    warning CS0162
+    warning CS0168
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    warning CS0649
+    warning CS0169
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    warning CS0162
+    45 error
+    1 failed
