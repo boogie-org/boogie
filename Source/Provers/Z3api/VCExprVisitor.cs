@@ -14,7 +14,6 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.Z3
 {
-    // Lineariser for expressions. The result (bool) is currently not used for anything
     public class Z3apiExprLineariser : IVCExprVisitor<Z3TermAst, LineariserOptions>
     {
         private Z3apiOpLineariser OpLinObject = null;
@@ -30,18 +29,12 @@ namespace Microsoft.Boogie.Z3
         }
 
         internal readonly UniqueNamer Namer;
-        private readonly TextWriter wr;
-
         protected Z3Context cm;
-
-        protected Stack<Dictionary<string, VCExpr>> lets;
-        protected Stack<List<string>> binders;
 
         public Z3apiExprLineariser(Z3Context cm)
         {
             this.cm = cm;
-            Stack<Dictionary<string, VCExpr>> lets = new Stack<Dictionary<string, VCExpr>>();
-            Stack<List<string>> binders = new Stack<List<string>>();
+            this.Namer = new UniqueNamer();
         }
 
         public Z3TermAst Linearise(VCExpr expr, LineariserOptions options)
@@ -49,39 +42,6 @@ namespace Microsoft.Boogie.Z3
             Contract.Requires(options != null);
             Contract.Requires(expr != null);
             return expr.Accept<Z3TermAst, LineariserOptions>(this, options);
-        }
-
-        /////////////////////////////////////////////////////////////////////////////////////
-
-        private bool DeBruijnIndex(string variableName, out int deBruijnIndex)
-        {
-            deBruijnIndex = -1;
-            foreach (List<string> binder in binders)
-            {
-                for (int i = binder.Count - 1; i >= 0; i--)
-                {
-                    deBruijnIndex++;
-                    if (binder[i].Equals(variableName))
-                        return true;
-                }
-            }
-            deBruijnIndex = -1;
-            return false;
-        }
-
-        protected Z3TermAst FindDefinition(string variableName, Type variableType)
-        {
-            Z3TermAst termAst;
-            int deBruijnIndex;
-            if (DeBruijnIndex(variableName, out deBruijnIndex))
-            {
-                return cm.MakeBoundVariable((uint)deBruijnIndex, variableType);
-            }
-            else
-            {
-                termAst = cm.GetConstant(variableName, variableType);
-                return termAst;
-            }
         }
 
         /////////////////////////////////////////////////////////////////////////////////////
@@ -142,8 +102,8 @@ namespace Microsoft.Boogie.Z3
         {
             Contract.Requires(options != null);
             Contract.Requires(node != null);
-
-            return FindDefinition(node.Name, node.Type);
+            string varName = Namer.GetName(node, node.Name);
+            return cm.GetConstant(varName, node.Type);
         }
 
         /////////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +114,7 @@ namespace Microsoft.Boogie.Z3
             Contract.Requires(node != null);
             Contract.Assert(node.TypeParameters.Count == 0);
 
-            binders.Push(new List<string>());
+            Namer.PushScope();
             try
             {
                 List<string> varNames;
@@ -211,7 +171,7 @@ namespace Microsoft.Boogie.Z3
             }
             finally
             {
-                binders.Pop();
+                Namer.PopScope();
             }
         }
         
@@ -221,9 +181,9 @@ namespace Microsoft.Boogie.Z3
             varTypes = new List<Type>();
             foreach (VCExprVar var in boundVars)
             {
-                varNames.Add(var.Name);
+                string varName = Namer.GetLocalName(var, var.Name);
+                varNames.Add(varName);
                 varTypes.Add(var.Type);
-                binders.Peek().Add(var.Name);
             }
         }
 
@@ -260,24 +220,32 @@ namespace Microsoft.Boogie.Z3
 
         public Z3TermAst Visit(VCExprLet node, LineariserOptions options)
         {
+            Namer.PushScope();
             try
             {
-                Dictionary<string, VCExpr> let = new Dictionary<string, VCExpr>();
-                lets.Push(let);
+                List<Z3TermAst> equations = new List<Z3TermAst>();
                 foreach (VCExprLetBinding b in node)
                 {
-                    let.Add(b.V.Name, b.E);
+                    string varName = Namer.GetLocalName(b.V, b.V.Name);
+                    Z3TermAst varAst = cm.GetConstant(varName, b.V.Type);
+                    Z3TermAst defAst = Linearise(b.E, options);
+                    List<Z3TermAst> args = new List<Z3TermAst>();
+                    args.Add(varAst);
+                    args.Add(defAst);
+                    equations.Add(cm.Make("EQ", args));
                 }
-                Z3TermAst letAST = Linearise(node.Body, options);
-                return letAST;
+                System.Diagnostics.Debug.Assert(equations.Count > 0);
+                Z3TermAst eqAst = cm.Make("AND", equations);
+                List<Z3TermAst> t = new List<Z3TermAst>();
+                t.Add(eqAst);
+                t.Add(Linearise(node.Body, options));
+                return cm.Make("IMPLIES", t);
             }
             finally
             {
-                lets.Pop();
+                Namer.PopScope();
             }
-        }
-
-  
+        }  
 
         /////////////////////////////////////////////////////////////////////////////////////
 
@@ -546,28 +514,28 @@ namespace Microsoft.Boogie.Z3
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("intLess", node, options);  // arguments are always terms
+                return WriteApplication("<", node, options);  // arguments are always terms
             }
 
             public Z3TermAst VisitLeOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("intAtMost", node, options);  // arguments are always terms
+                return WriteApplication("<=", node, options);  // arguments are always terms
             }
 
             public Z3TermAst VisitGtOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("intGreater", node, options);  // arguments are always terms
+                return WriteApplication(">", node, options);  // arguments are always terms
             }
 
             public Z3TermAst VisitGeOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("intAtLeast", node, options);  // arguments are always terms
+                return WriteApplication(">=", node, options);  // arguments are always terms
             }
 
             public Z3TermAst VisitSubtypeOp(VCExprNAry node, LineariserOptions options)

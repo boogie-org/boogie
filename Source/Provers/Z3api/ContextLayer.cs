@@ -15,28 +15,18 @@ namespace Microsoft.Boogie.Z3
 {
     public class Z3Config
     {
+        ~Z3Config()
+        {
+            config.Dispose();
+        }
         private Config config = new Config();
         private int counterexamples;
         private string logFilename;
         private List<string> debugTraces = new List<string>();
 
-        public void SetPartialModels(bool enabled)
-        {
-            config.SetParamValue("PARTIAL_MODELS", (enabled ? "true" : "false"));
-        }
         public void SetModelCompletion(bool enabled)
         {
             config.SetParamValue("MODEL_VALUE_COMPLETION", (enabled ? "true" : "false"));
-        }
-
-        public void SetHideUnusedPartitions(bool enabled)
-        {
-            config.SetParamValue("HIDE_UNUSED_PARTITIONS", (enabled ? "true" : "false"));
-        }
-
-        public void SetMAM(string mamNumber)
-        {
-            config.SetParamValue("MAM", mamNumber);
         }
 
         public void SetModel(bool enabled)
@@ -52,11 +42,6 @@ namespace Microsoft.Boogie.Z3
         public void SetTypeCheck(bool enabled)
         {
             config.SetParamValue("TYPE_CHECK", (enabled ? "true" : "false"));
-        }
-
-        public void SetReflectBvOps(bool enabled)
-        {
-            config.SetParamValue("REFLECT_BV_OPS", (enabled ? "true" : "false"));
         }
 
         public void SetCounterExample(int counterexample)
@@ -93,16 +78,6 @@ namespace Microsoft.Boogie.Z3
         }
     }
 
-    public abstract class Z3ContextFactory
-    {
-
-        public static Z3Context BuildZ3Context(Z3Config config, VCExpressionGenerator gen)
-        {
-            return new Z3SafeContext(config, gen);
-        }
-    }
-
-
     public abstract class Z3TermAst { }
     public abstract class Z3PatternAst { }
     public abstract class Z3ConstDeclAst { }
@@ -112,8 +87,8 @@ namespace Microsoft.Boogie.Z3
     {
         void CreateBacktrackPoint();
         void Backtrack();
-        void AddAxiom(VCExpr vc);
-        void AddConjecture(VCExpr vc);
+        void AddAxiom(VCExpr vc, LineariserOptions linOptions);
+        void AddConjecture(VCExpr vc, LineariserOptions linOptions);
         void AddSmtlibString(string smtlibString);
         string GetDeclName(Z3ConstDeclAst constDeclAst);
         Z3PatternAst MakePattern(List<Z3TermAst> exprs);
@@ -142,7 +117,7 @@ namespace Microsoft.Boogie.Z3
         private int partitionCounter = FAKE_PARTITION;
         public int GetPartition(int valueHash)
         {
-            if (partitionToValueHash.ContainsKey(valueHash))
+            if (!partitionToValueHash.ContainsKey(valueHash))
             {
                 partitionCounter++;
                 partitionToValueHash.Add(valueHash, partitionCounter);
@@ -234,7 +209,7 @@ namespace Microsoft.Boogie.Z3
                 string c_name = container.GetDeclName(new Z3TypeSafeConstDecl(c));
                 Term v = z3Model.Eval(c, new Term[0]);
                 Sort s = v.GetSort();
-                Context ctx = new Context(null); // placeholder.
+                Context ctx = ((Z3SafeContext)container).z3;
                 Sort boolSort = ctx.MkBoolSort();
                 Sort intSort = ctx.MkIntSort();
 

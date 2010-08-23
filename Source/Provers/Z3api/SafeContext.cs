@@ -81,13 +81,16 @@ namespace Microsoft.Boogie.Z3
 
     public class Z3SafeContext : Z3Context
     {
-
         private BacktrackDictionary<string, Symbol> symbols = new BacktrackDictionary<string, Symbol>();
         internal BacktrackDictionary<string, Z3TypeSafeTerm> constants = new BacktrackDictionary<string, Z3TypeSafeTerm>();
         internal BacktrackDictionary<string, Z3TypeSafeConstDecl> functions = new BacktrackDictionary<string, Z3TypeSafeConstDecl>();
         internal BacktrackDictionary<string, Z3TypeSafeTerm> labels = new BacktrackDictionary<string, Z3TypeSafeTerm>();
 
-        private Context z3;
+        ~Z3SafeContext()
+        {
+            z3.Dispose();
+        }
+        public Context z3;
         private Z3Config config;
 
         public void CreateBacktrackPoint()
@@ -108,19 +111,19 @@ namespace Microsoft.Boogie.Z3
             symbols.Backtrack();
         }
 
-        public void AddAxiom(VCExpr vc)
+        public void AddAxiom(VCExpr vc, LineariserOptions linOptions)
         {
             Z3apiExprLineariser visitor = new Z3apiExprLineariser(this);
-            Z3TermAst z3ast = (Z3TermAst)vc.Accept(visitor, null);
+            Z3TermAst z3ast = (Z3TermAst)vc.Accept(visitor, linOptions);
             Term term = Unwrap(z3ast);
             z3.AssertCnstr(term);
         }
 
-        public void AddConjecture(VCExpr vc)
+        public void AddConjecture(VCExpr vc, LineariserOptions linOptions)
         {
             VCExpr not_vc = (VCExpr)this.gen.Not(vc);
             Z3apiExprLineariser visitor = new Z3apiExprLineariser(this);
-            Z3TermAst z3ast = (Z3TermAst)not_vc.Accept(visitor, null);
+            Z3TermAst z3ast = (Z3TermAst)not_vc.Accept(visitor, linOptions);
             Term term = Unwrap(z3ast);
             z3.AssertCnstr(term);
         }
@@ -281,7 +284,7 @@ namespace Microsoft.Boogie.Z3
                 return false;
 
             for (int i = 0; i < l.Count; i++)
-                if (l[i].Equals(r[i]))
+                if (!l[i].Equals(r[i]))
                     return false;
             return true;
         }
@@ -295,7 +298,7 @@ namespace Microsoft.Boogie.Z3
             {
                 Symbol sym = relevantLabels.GetLabel(i);
                 string labelName = z3.GetSymbolString(sym);
-                if (labelName.StartsWith("@"))
+                if (!labelName.StartsWith("@"))
                 {
                     relevantLabels.Disable(i);
                 }
@@ -321,7 +324,6 @@ namespace Microsoft.Boogie.Z3
             }
             System.Console.WriteLine("---");
         }
-
 
         public ProverInterface.Outcome Check(out List<Z3ErrorModelAndLabels> boogieErrors)
         {
@@ -380,7 +382,7 @@ namespace Microsoft.Boogie.Z3
 
         private VCExpressionGenerator gen;
 
-        internal Z3SafeContext(Z3Config config, VCExpressionGenerator gen)
+        public Z3SafeContext(Z3Config config, VCExpressionGenerator gen)
         {
             Context z3 = new Context(config.Config);
             // TBD: z3.EnableArithmetic();
@@ -390,7 +392,7 @@ namespace Microsoft.Boogie.Z3
                 z3.EnableDebugTrace(tag);
             this.z3 = z3;
             this.config = config;
-            this.tm = new Z3TransformerTypeCache(new Z3SafeTypeBuilder(z3), new IntTransformer());
+            this.tm = new Z3TypeCachedBuilder(new Z3SafeTypeBuilder(z3));
             this.gen = gen;
         }
 
@@ -448,13 +450,13 @@ namespace Microsoft.Boogie.Z3
 
         private Symbol GetSymbol(string symbolName)
         {
-            if (symbols.ContainsKey(symbolName))
+            if (!symbols.ContainsKey(symbolName))
             {
                 Symbol symbolAst = z3.MkSymbol(symbolName);
                 symbols.Add(symbolName, symbolAst);
             }
             Symbol result;
-            if (symbols.TryGetValue(symbolName, out result))
+            if (!symbols.TryGetValue(symbolName, out result))
                 throw new Exception("symbol " + symbolName + " is undefined");
             return result;
         }
@@ -462,10 +464,10 @@ namespace Microsoft.Boogie.Z3
         public Z3TermAst GetConstant(string constantName, Type constantType)
         {
             Z3TypeSafeTerm typeSafeTerm;
-            if (constants.ContainsKey(constantName))
+            if (!constants.ContainsKey(constantName))
                 this.DeclareConstant(constantName, constantType);
 
-            if (constants.TryGetValue(constantName, out typeSafeTerm))
+            if (!constants.TryGetValue(constantName, out typeSafeTerm))
                 throw new Exception("constant " + constantName + " is not defined");
             return typeSafeTerm;
         }
@@ -548,7 +550,7 @@ namespace Microsoft.Boogie.Z3
         private FuncDecl GetFunction(string functionName)
         {
             Z3TypeSafeConstDecl function;
-            if (functions.TryGetValue(functionName, out function))
+            if (!functions.TryGetValue(functionName, out function))
                 throw new Exception("function " + functionName + " is undefined");
             FuncDecl unwrapFunction = Unwrap(function);
             return unwrapFunction;
@@ -557,7 +559,6 @@ namespace Microsoft.Boogie.Z3
 
     public class Z3SafeTypeBuilder : Z3TypeBuilder
     {
-
         protected Context z3;
 
         public Z3SafeTypeBuilder(Context z3)

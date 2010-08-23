@@ -20,84 +20,31 @@ using PatternAst = System.IntPtr;
 
 namespace Microsoft.Boogie.Z3
 {
-    public class Z3ThreadTheoremProver : ProverInterface
+    public class Z3apiProcessTheoremProver : Z3ProcessTheoremProver
     {
-        protected DeclFreeProverContext ctx;
-        protected VCExpressionGenerator gen;
-        public override ProverContext Context
+        public Z3apiProcessTheoremProver(VCExpressionGenerator gen,
+                                         DeclFreeProverContext ctx,
+                                         Z3InstanceOptions opts)
+            : base(gen, ctx, opts)
         {
-            get { return this.ctx; }
-        }
-        public override VCExpressionGenerator VCExprGen
-        {
-            get { return this.gen; }
-        }
-
-        private int timeout;
-        private Z3Context cm;
-
-        public Z3ThreadTheoremProver(Z3InstanceOptions proverOptions)
-            : base()
-        {
-            gen = new VCExpressionGenerator();
-
-            string codebaseString = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            string backgroundPredicates;
-
-            // Initialize '_backgroundPredicates'
-            string univBackPredPath = Path.Combine(codebaseString,
-                // yes, using .NeedsTypes here is an ugly hack...
-                "Z3API_UnivBackPred.smt");
-            using (StreamReader reader = new System.IO.StreamReader(univBackPredPath))
-            {
-                backgroundPredicates = reader.ReadToEnd();
-            }
-
-            Z3Config config = BuildConfig(timeout, true);
-            Z3Context cm = Z3ContextFactory.BuildZ3Context(config, gen);
-            Z3ThreadProverContext ctx = new Z3ThreadProverContext(gen, cm);
-
-            this.cm = cm;
-            cm.AddSmtlibString(backgroundPredicates);
             this.z3ContextIsUsed = false;
-        }
-
-        private static Z3Config BuildConfig(int timeout, bool nativeBv)
-        {
-            Z3Config config = new Z3Config();
-            config.SetPartialModels(true);
-            config.SetModelCompletion(false);
-            config.SetHideUnusedPartitions(false);
-            config.SetModel(true);
-
-            if (0 <= CommandLineOptions.Clo.ProverCCLimit)
-            {
-                config.SetCounterExample(CommandLineOptions.Clo.ProverCCLimit);
-            }
-
-            if (0 <= timeout)
-            {
-                config.SetSoftTimeout(timeout.ToString());
-            }
-
-            config.SetTypeCheck(true);
-            if (nativeBv)
-                config.SetReflectBvOps(true);
-
-            return config;
         }
 
         private bool z3ContextIsUsed;
 
         public void PushAxiom(VCExpr axiom)
         {
+            Z3SafeContext cm = ((Z3apiProverContext)ctx).cm;
             cm.CreateBacktrackPoint();
-            cm.AddAxiom((VCExpr)axiom);
+            LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
+            cm.AddAxiom((VCExpr)axiom, linOptions);
         }
         private void PushConjecture(VCExpr conjecture)
         {
+            Z3SafeContext cm = ((Z3apiProverContext)ctx).cm;
             cm.CreateBacktrackPoint();
-            cm.AddConjecture((VCExpr)conjecture);
+            LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
+            cm.AddConjecture((VCExpr)conjecture, linOptions);
         }
 
         public void PrepareCheck(string descriptiveName, VCExpr vc)
@@ -108,31 +55,33 @@ namespace Microsoft.Boogie.Z3
 
         public void BeginPreparedCheck()
         {
+            Z3SafeContext cm = ((Z3apiProverContext)ctx).cm;
             outcome = Outcome.Undetermined;
             outcome = cm.Check(out z3LabelModels);
         }
 
         public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
         {
+            LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
+            Z3SafeContext cm = ((Z3apiProverContext)ctx).cm;
             if (z3ContextIsUsed)
             {
                 cm.Backtrack();
             }
             else
             {
-                cm.AddAxiom((VCExpr)ctx.Axioms);
+                cm.AddAxiom((VCExpr)ctx.Axioms, linOptions);
                 z3ContextIsUsed = true;
             }
 
             cm.CreateBacktrackPoint();
-            cm.AddConjecture((VCExpr)vc);
+            cm.AddConjecture((VCExpr)vc, linOptions);
 
             BeginPreparedCheck();
         }
 
         private Outcome outcome;
         private List<Z3ErrorModelAndLabels> z3LabelModels = new List<Z3ErrorModelAndLabels>();
-        private UnexpectedProverOutputException proverException = null;
 
         [NoDefaultContract]
         public override Outcome CheckOutcome(ErrorHandler handler)
@@ -141,7 +90,7 @@ namespace Microsoft.Boogie.Z3
             {
                 foreach (Z3ErrorModelAndLabels z3LabelModel in z3LabelModels)
                 {
-                    List<string> unprefixedLabels = RemovePreffixes(z3LabelModel.RelevantLabels);
+                    List<string> unprefixedLabels = RemovePrefixes(z3LabelModel.RelevantLabels);
                     handler.OnModel(unprefixedLabels, z3LabelModel.ErrorModel);
                 }
             }
@@ -150,14 +99,16 @@ namespace Microsoft.Boogie.Z3
 
         public void CreateBacktrackPoint()
         {
+            Z3SafeContext cm = ((Z3apiProverContext)ctx).cm;
             cm.CreateBacktrackPoint();
         }
         override public void Pop()
         {
+            Z3SafeContext cm = ((Z3apiProverContext)ctx).cm;
             cm.Backtrack();
         }
 
-        private List<string> RemovePreffixes(List<string> labels)
+        private List<string> RemovePrefixes(List<string> labels)
         {
             List<string> result = new List<string>();
             foreach (string label in labels)
@@ -175,22 +126,42 @@ namespace Microsoft.Boogie.Z3
                     result.Add(label.Substring(1));
                 }
                 else
-                    throw new Exception("Unknown preffix in label " + label);
+                    throw new Exception("Unknown prefix in label " + label);
             }
             return result;
         }
-
     }
 
-    public class Z3ThreadProverContext : DeclFreeProverContext
+    public class Z3apiProverContext : DeclFreeProverContext
     {
-
-        private Z3Context cm;
-
-        public Z3ThreadProverContext(VCExpressionGenerator gen, Z3Context cm)
-            : base(gen, null)
+        public Z3SafeContext cm;
+        
+        public Z3apiProverContext(VCExpressionGenerator gen, 
+                                  VCGenerationOptions genOptions, 
+                                  Z3InstanceOptions opts)
+            : base(gen, genOptions)
         {
-            this.cm = cm;
+            Z3Config config = BuildConfig(opts.Timeout, true);
+            this.cm = new Z3SafeContext(config, gen);
+        }
+        private static Z3Config BuildConfig(int timeout, bool nativeBv)
+        {
+            Z3Config config = new Z3Config();
+            config.SetModelCompletion(false);
+            config.SetModel(true);
+
+            if (0 <= CommandLineOptions.Clo.ProverCCLimit)
+            {
+                config.SetCounterExample(CommandLineOptions.Clo.ProverCCLimit);
+            }
+
+            if (0 <= timeout)
+            {
+                config.SetSoftTimeout(timeout.ToString());
+            }
+
+            config.SetTypeCheck(true);
+            return config;
         }
 
         public override void DeclareType(TypeCtorDecl t, string attributes)
@@ -204,7 +175,6 @@ namespace Microsoft.Boogie.Z3
             base.DeclareConstant(c, uniq, attributes);
             cm.DeclareConstant(c.Name, c.TypedIdent.Type);
         }
-
 
         public override void DeclareFunction(Function f, string attributes)
         {
@@ -231,23 +201,20 @@ namespace Microsoft.Boogie.Z3
 
 namespace Microsoft.Boogie.Z3api
 {
-
-    public class Factory : ProverFactory
+    public class Factory : Microsoft.Boogie.Z3.Factory
     {
-        public override object SpawnProver(ProverOptions popts, object ctxt)
+        protected override Z3ProcessTheoremProver SpawnProver(VCExpressionGenerator gen,
+                                                              DeclFreeProverContext ctx,
+                                                              Z3InstanceOptions opts)
         {
-            Z3InstanceOptions options = (Z3InstanceOptions) popts;
-            if (CommandLineOptions.Clo.BracketIdsInVC < 0)
-            {
-                CommandLineOptions.Clo.BracketIdsInVC = 0;
-            }
-
-            return new Z3ThreadTheoremProver(options);
+            return new Z3apiProcessTheoremProver(gen, ctx, opts);
         }
 
-        public override object NewProverContext(ProverOptions options)
+        protected override DeclFreeProverContext NewProverContext(VCExpressionGenerator gen,
+                                                                  VCGenerationOptions genOptions,
+                                                                  Z3InstanceOptions opts)
         {
-            throw new NotImplementedException();
+            return new Z3apiProverContext(gen, genOptions, opts);
         }
     }
 }

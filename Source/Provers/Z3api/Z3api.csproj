@@ -3,13 +3,13 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.30729</ProductVersion>
+    <ProductVersion>9.0.21022</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{966DD87B-A29D-4F3C-9406-F680A61DC0E0}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Z3api</RootNamespace>
-    <AssemblyName>Z3api</AssemblyName>
+    <RootNamespace>Microsoft.Boogie.Z3api</RootNamespace>
+    <AssemblyName>Provers.Z3api</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <StartupObject>
@@ -81,6 +81,10 @@
       <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
       <Name>VCGeneration</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Simplify\Simplify.csproj">
+      <Project>{FEE9F01B-9722-4A76-A24B-72A4016DFA8E}</Project>
+      <Name>Simplify</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Z3\Z3.csproj">
       <Project>{BB49B90B-BE21-4BE8-85BA-359FDB55F4DF}</Project>
       <Name>Z3</Name>
@@ -91,7 +95,9 @@
     <Compile Include="ProverLayer.cs" />
     <Compile Include="SafeContext.cs" />
     <Compile Include="StubContext.cs" />
-    <Compile Include="TypeAdapter.cs" />
+    <Compile Include="TypeAdapter.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="VCExprVisitor.cs" />
   </ItemGroup>
 </Project>

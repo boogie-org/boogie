@@ -155,7 +155,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
     }
   }
 
-  internal class Z3LineariserOptions : LineariserOptions {
+  public class Z3LineariserOptions : LineariserOptions {
     private readonly Z3InstanceOptions opts;
 
     [ContractInvariantMethod]
@@ -169,7 +169,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
       return opts.BitVectors;
     } }
  
-    internal Z3LineariserOptions(bool asTerm, Z3InstanceOptions opts, List<VCExprVar/*!>!*/> letVariables):base(asTerm) {
+    public Z3LineariserOptions(bool asTerm, Z3InstanceOptions opts, List<VCExprVar/*!>!*/> letVariables):base(asTerm) {
     Contract.Requires(opts != null);
       Contract.Requires(cce.NonNullElements(letVariables));
     
@@ -415,8 +415,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
         proverCommands.Add("bvInt");
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
       
-
-      return new DeclFreeProverContext(gen, genOptions);
+      return NewProverContext(gen, genOptions, opts);
     }
 
     public override ProverOptions BlankProverOptions()
@@ -426,8 +425,8 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
     }
 
     protected virtual Z3ProcessTheoremProver SpawnProver(VCExpressionGenerator gen,
-                                                          DeclFreeProverContext ctx,
-                                                          Z3InstanceOptions opts) {
+                                                         DeclFreeProverContext ctx,
+                                                         Z3InstanceOptions opts) {
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
       Contract.Requires(opts != null);
@@ -435,5 +434,12 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
 
       return new Z3ProcessTheoremProver(gen, ctx, opts);
     }
+
+      protected virtual DeclFreeProverContext NewProverContext(VCExpressionGenerator gen, 
+                                                               VCGenerationOptions genOptions,
+                                                               Z3InstanceOptions opts)
+      {
+          return new DeclFreeProverContext(gen, genOptions);
+      }
   }
 }
