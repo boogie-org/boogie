@@ -21,6 +21,13 @@ class Counter0 {
   {    
     x := x - 1;  
   }
+
+  method magic() returns (c: Cell)
+    requires acc(x);
+    ensures acc(x) && acc(c.n)
+  {
+    var c [acc(c.n)]
+  }
 }
 
 class Counter1 refines Counter0 {
@@ -53,15 +60,17 @@ the spec of Counter1 uses the abstract field x which disappears at the concrete 
 I'm not sure what a good solution to this problem...
 */
 
-class Counter2 refines Counter1 {
+class Counter2 refines Counter0 {
   var a: Cell;
   var b: Cell;
-  replaces y, z by acc(a) && acc(b) && acc(a.n) && acc(b.n) && y == a.n && z == b.n;
+  replaces x by acc(a) && acc(b) && acc(a.n) && acc(b.n) && x == a.n - b.n;
   
   refines init() 
   {    
-    this.a := new Cell {n := 0};
-    this.b := new Cell {n := 0};    
+    this.a := new Cell;
+    this.b := new Cell;
+    this.a.n := 0;
+    this.b.n := 0;
   }
 
   refines inc() 
@@ -72,6 +81,18 @@ class Counter2 refines Counter1 {
   refines dec()
   {
     this.b.n := this.b.n + 1;
+  }
+}
+
+class Client {
+  method main() 
+  {
+    var c := new Counter0;
+    call c.init();
+    call c.inc();
+    call c.inc();
+    call c.dec();
+    assert c.x == 1;
   }
 }
   

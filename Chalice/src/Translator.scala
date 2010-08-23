@@ -1111,14 +1111,24 @@ class Translator {
     }} :::
     {
       val (v,ve) = NewBVar("this", tref, true)
-      // TODO: we only preserve concrete fields of "this" at the moment       
       // TODO: check for mask coupling
+      // TODO: we only inhale concrete values for "This"
 
+      def copy(e: Expression):List[Stmt] = e match {
+        case And(a,b) => copy(a) ::: copy(b)
+        case Implies(a,b) => Boogie.If(absTran.Tr(a), copy(b), Nil)
+        case Access(ma, _) if ! ma.isPredicate => absTran.Heap.store(absTran.Tr(ma.e), new VarExpr(ma.f.FullName), conTran.Heap.select(absTran.Tr(ma.e), ma.f.FullName))
+        case _: PermissionExpr => throw new Exception("not implemented")
+        case _ => Nil
+      }
+
+      // copy variables in the coupling invariants to the abstract heap (to preserve their values across refinement blocks and establish invariant)
+      (for (ci <- currentClass.CouplingInvariants)
+        yield Boogie.If((ci.fields.map(f => absTran.CanRead(new VarExpr("this"), f.FullName)).reduceLeft(_ || _)),
+          copy(ci.e), Nil)) :::
       // assert equality on shared globals (except those that are replaced)
       (for (f <- currentClass.refines.Fields; if ! currentClass.CouplingInvariants.exists(_.fields.contains(f)))
-        yield bassert((absTran.Heap.select(ve, f.FullName) ==@ conTran.Heap.select(ve, f.FullName)).forall(v), r.pos, "Refinement may change value of field " + f.FullName)) :::         
-      // copy new globals from concrete to abstract heap (to preserve their values across refinement blocks and establish invariant)
-      (for (f <- currentClass.DeclaredFields) yield absTran.Heap.store(VarExpr("this"), VarExpr(f.FullName), conTran.Heap.select(VarExpr("this"), f.FullName)))
+        yield bassert((absTran.Heap.select(ve, f.FullName) ==@ conTran.Heap.select(ve, f.FullName)).forall(v), r.pos, "Refinement may change value of field " + f.FullName)) 
     } :::
     Comment("end of refinement block")
   }
