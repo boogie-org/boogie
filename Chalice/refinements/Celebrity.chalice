@@ -1,0 +1,48 @@
+// Celebrity example, inspired by the Rodin tutorial
+class Person {
+  function knows(other: Person): bool
+    requires this != other;
+}
+
+class Celebrity0 {
+  function IsCelebrity(c: Person, people: seq<Person>): bool
+    requires null !in people;
+  {
+    c in people && forall p in people :: p != c ==> (p.knows(c)) && (! c.knows(p))
+  }
+
+  method Find(people: seq<Person>, /*ghost*/ c: Person) returns (r: Person)
+    requires null !in people && IsCelebrity(c, people);
+  {
+    var r [r == c];
+  }
+}
+
+/** Without theory of sets, hard to describe: "remove an element from a sequence" */
+class Celebrity1 refines Celebrity0 {
+  refines Find(people: seq<Person>, c: Person) returns (r: Person)
+  {
+    var q:seq<Person> := people;
+
+    // pick and remove a
+    var a:Person := q[0]; q := q[1..]; assert people == [a] ++ q;
+      
+    while (|q| > 0)   
+      invariant forall p in q :: p in people;
+      invariant a in people;
+      invariant IsCelebrity(c,[a] ++ q);  
+    {      
+      // pick and remove b
+      var oldq:seq<Person> := q;
+      var b:Person := q[0]; q := q[1..]; 
+      assert oldq == [b] ++ q;
+
+      if (a != b && a.knows(b)) {
+        a := b;
+      }      
+    }         
+
+    r := a;
+  }
+}
+
