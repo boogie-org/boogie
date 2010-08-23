@@ -1086,11 +1086,15 @@ class Translator {
     { etran = absTran;
     r.abs match {
       case List(s: SpecStmt) =>
+        var (m, me) = NewBVar("specMask", tmask, true)
+
         tag(
           Comment("give witnesses to declared local variables") ::
           (for (v <- duringA) yield BLocal(Variable2BVarWhere(v))) :::
           (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
-          bassert(s.post, r.pos, "Refinement may fail to satisfy specification statement post-condition") ::
+          BLocal(m) ::
+          (me := absTran.Mask) ::
+          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false) :::
           (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
              bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable not in frame of the specification statement: " + v.id)),
           keepTag)
@@ -1127,8 +1131,10 @@ class Translator {
         yield Boogie.If((ci.fields.map(f => absTran.CanRead(new VarExpr("this"), f.FullName)).reduceLeft(_ || _)),
           copy(ci.e), Nil)) :::
       // assert equality on shared globals (except those that are replaced)
-      (for (f <- currentClass.refines.Fields; if ! currentClass.CouplingInvariants.exists(_.fields.contains(f)))
-        yield bassert((absTran.Heap.select(ve, f.FullName) ==@ conTran.Heap.select(ve, f.FullName)).forall(v), r.pos, "Refinement may change value of field " + f.FullName)) 
+      tag(
+        for (f <- currentClass.refines.Fields; if ! currentClass.CouplingInvariants.exists(_.fields.contains(f)))
+          yield bassert((absTran.Heap.select(ve, f.FullName) ==@ conTran.Heap.select(ve, f.FullName)).forall(v), r.pos, "Refinement may change value of field " + f.FullName),
+        keepTag)            
     } :::
     Comment("end of refinement block")
   }

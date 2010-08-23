@@ -49,7 +49,12 @@ class Counter1 refines Counter0 {
   refines dec() 
   {
     this.z := this.z + 1;
-  }       
+  }      
+
+  refines magic() returns (c: Cell)
+  {
+    c := new Cell;
+  } 
 }
 
 class Cell {var n: int}
@@ -81,6 +86,11 @@ class Counter2 refines Counter0 {
   refines dec()
   {
     this.b.n := this.b.n + 1;
+  }
+
+  refines magic() returns (c: Cell)
+  {
+    c := a;
   }
 }
 
