@@ -2130,6 +2130,10 @@ namespace Microsoft.Boogie {
                    spec
   /printInlined  : print the implementation after inlining calls to 
                    procedures with the :inline attribute (works with /inline)
+  /lazyInline:1  : Use the lazy inlining algorithm
+  /stratifiedInline:1 : Use the stratified inlining algorithm
+  /recursionBound:<n> : Set the recursion bound for stratified inlining to 
+                        be n (default 500)
   /smoke         : Soundness Smoke Test: try to stick assert false; in some 
                    places in the BPL and see if we can still prove it
   /smokeTimeout:<n> : Timeout, in seconds, for a single theorem prover 
