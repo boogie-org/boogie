@@ -199,9 +199,11 @@ namespace Microsoft.Boogie.VCExprAST {
         Contract.Requires(boogieVar != null);
         VCExprVar res;
         foreach (Dictionary<VarKind/*!*/, VCExprVar/*!*/>/*!*/ d in Mapping) {
-          Contract.Assert(cce.NonNullElements(d));
-          if (d.TryGetValue(boogieVar, out res))
-            return res;
+          //Contract.Assert(cce.NonNullElements(d));
+            if (d.TryGetValue(boogieVar, out res)) {
+               Contract.Assert(res != null);
+               return res;
+            }
         }
         return null;
       }
