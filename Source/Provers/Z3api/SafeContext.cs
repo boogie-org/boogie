@@ -67,7 +67,6 @@ namespace Microsoft.Boogie.Z3
 
     public class Z3SafeLabeledLiterals : Z3LabeledLiterals
     {
-
         private LabeledLiterals labeledLiterals;
         public Z3SafeLabeledLiterals(LabeledLiterals labeledLiterals)
         {
@@ -86,12 +85,10 @@ namespace Microsoft.Boogie.Z3
         internal BacktrackDictionary<string, Z3TypeSafeConstDecl> functions = new BacktrackDictionary<string, Z3TypeSafeConstDecl>();
         internal BacktrackDictionary<string, Z3TypeSafeTerm> labels = new BacktrackDictionary<string, Z3TypeSafeTerm>();
 
-        ~Z3SafeContext()
-        {
-            z3.Dispose();
-        }
         public Context z3;
-        private Z3Config config;
+        public Z3Config config;
+        private VCExpressionGenerator gen;
+        private Z3TypeCachedBuilder tm;
 
         public void CreateBacktrackPoint()
         {
@@ -233,46 +230,59 @@ namespace Microsoft.Boogie.Z3
             return z3Types;
         }
 
-        private const int DEFAULT_QUANTIFIER_WEIGHT = 0;
-
-        public Z3TermAst MakeForall(List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body)
+        public Z3TermAst MakeForall(uint weight, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body)
         {
-
             List<Pattern> unwrapPatterns = Unwrap(patterns);
-            List<Term> unwrapNoPatterns = Unwrap(no_patterns);
-            List<Sort> z3Types = GetTypes(boogieTypes);
-            List<Symbol> symbols = GetSymbols(varNames);
+            // List<Term> unwrapNoPatterns = Unwrap(no_patterns);
+            // List<Sort> z3Types = GetTypes(boogieTypes);
+            // List<Symbol> symbols = GetSymbols(varNames);
             Term unwrapBody = Unwrap(body);
 
+            List<Term> bound = new List<Term>();
+            for (int i = 0; i < varNames.Count; i++)
+            {
+                Z3TermAst t = GetConstant(varNames[i], boogieTypes[i]);
+                bound.Add(Unwrap(t));
+            }
+            Term termAst = z3.MkForall(weight, bound.ToArray(), unwrapPatterns.ToArray(), unwrapBody);
+            /*
             Term termAst = z3.MkQuantifier(true,
-                             DEFAULT_QUANTIFIER_WEIGHT,
+                             weight,
                              unwrapPatterns.ToArray(),
                              unwrapNoPatterns.ToArray(),
                              z3Types.ToArray(),
                              symbols.ToArray(),
                              unwrapBody);
-
+            */
             return Wrap(termAst);
         }
 
-        public Z3TermAst MakeExists(List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body)
+        public Z3TermAst MakeExists(uint weight, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body)
         {
             List<Pattern> unwrapPatterns = Unwrap(patterns);
-            List<Term> unwrapNoPatterns = Unwrap(no_patterns);
-            List<Sort> z3Types = GetTypes(boogieTypes);
-            List<Symbol> symbols = GetSymbols(varNames);
+            // List<Term> unwrapNoPatterns = Unwrap(no_patterns);
+            // List<Sort> z3Types = GetTypes(boogieTypes);
+            // List<Symbol> symbols = GetSymbols(varNames);
             Term unwrapBody = Unwrap(body);
 
+            List<Term> bound = new List<Term>();
+            for (int i = 0; i < varNames.Count; i++)
+            {
+                Z3TermAst t = GetConstant(varNames[i], boogieTypes[i]);
+                bound.Add(Unwrap(t));
+            }
+            Term termAst = z3.MkExists(weight, bound.ToArray(), unwrapPatterns.ToArray(), unwrapBody);
+            /*
             Term termAst = z3.MkQuantifier(false,
-                                                  DEFAULT_QUANTIFIER_WEIGHT,
+                                                  weight,
                                                   unwrapPatterns.ToArray(),
                                                   unwrapNoPatterns.ToArray(),
                                                   z3Types.ToArray(),
                                                   symbols.ToArray(),
                                                   unwrapBody);
+            */ 
             return Wrap(termAst);
         }
-
 
         private static bool Equals(List<string> l, List<string> r)
         {
@@ -380,8 +390,6 @@ namespace Microsoft.Boogie.Z3
                 throw new Exception("Failed Int Typecheck");
         }
 
-        private VCExpressionGenerator gen;
-
         public Z3SafeContext(Z3Config config, VCExpressionGenerator gen)
         {
             Context z3 = new Context(config.Config);
@@ -392,7 +400,7 @@ namespace Microsoft.Boogie.Z3
                 z3.EnableDebugTrace(tag);
             this.z3 = z3;
             this.config = config;
-            this.tm = new Z3TypeCachedBuilder(new Z3SafeTypeBuilder(z3));
+            this.tm = new Z3TypeCachedBuilder(this);
             this.gen = gen;
         }
 
@@ -409,18 +417,6 @@ namespace Microsoft.Boogie.Z3
             Term constAst = z3.MkConst(symbolAst, unwrapTypeAst);
             constants.Add(constantName, Wrap(constAst));
         }
-
-        public Z3TermAst MakeBoundVariable(uint deBruijnIndex, Type boogieType)
-        {
-            Z3Type typeAst = tm.GetType(boogieType);
-            Sort unwrapTypeAst = Unwrap(typeAst);
-
-            Term boundVariable = z3.MkBound(deBruijnIndex, unwrapTypeAst);
-            Z3TermAst wrappedBoundVariable = Wrap(boundVariable);
-            return wrappedBoundVariable;
-        }
-
-        private Z3TypeCachedBuilder tm;
 
         public void DeclareFunction(string functionName, List<Type> domain, Type range)
         {
@@ -504,6 +500,7 @@ namespace Microsoft.Boogie.Z3
             labels.Add(labelName, wrapLabeledExpr);
             return wrapLabeledExpr;
         }
+
         public Z3LabeledLiterals GetRelevantLabels()
         {
             Z3SafeLabeledLiterals safeLiterals = new Z3SafeLabeledLiterals(z3.GetRelevantLabels());
@@ -555,43 +552,17 @@ namespace Microsoft.Boogie.Z3
             FuncDecl unwrapFunction = Unwrap(function);
             return unwrapFunction;
         }
-    }
 
-    public class Z3SafeTypeBuilder : Z3TypeBuilder
-    {
-        protected Context z3;
-
-        public Z3SafeTypeBuilder(Context z3)
+        public Z3TermAst MakeArraySelect(List<Z3TermAst> args)
         {
-            this.z3 = z3;
+            Term[] unwrapChildren = Unwrap(args).ToArray();
+            return Wrap(z3.MkArraySelect(unwrapChildren[0], unwrapChildren[1]));
         }
 
-        private Z3Type WrapType(Sort typeAst)
+        public Z3TermAst MakeArrayStore(List<Z3TermAst> args)
         {
-            return new Z3SafeType(typeAst);
+            Term[] unwrapChildren = Unwrap(args).ToArray();
+            return Wrap(z3.MkArrayStore(unwrapChildren[0], unwrapChildren[1], unwrapChildren[2]));
         }
-
-        public Z3Type BuildBvType(BvType bvType)
-        {
-            Sort typeAst = z3.MkBvSort((uint)bvType.Bits);
-            return WrapType(typeAst);
-        }
-
-        public Z3Type BuildBasicType(BasicType basicType)
-        {
-            Sort typeAst;
-            if (basicType.IsBool)
-            {
-                typeAst = z3.MkBoolSort();
-            }
-            else if (basicType.IsInt)
-            {
-                typeAst = z3.MkIntSort();
-            }
-            else
-                throw new Exception("Unknown Basic Type " + basicType.ToString());
-            return WrapType(typeAst);
-        }
-
     }
 }

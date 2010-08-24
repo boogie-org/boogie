@@ -93,7 +93,7 @@ namespace VC {
       public Hashtable /*GotoCmd->returnCmd*/ gotoCmdOrigins;
       public Hashtable/*<int, Absy!>*/ label2absy;
 
-      public LazyInliningInfo(Implementation impl, Program program, int uniqueId) {
+      public LazyInliningInfo(Implementation impl, Program program, ProverContext ctxt, int uniqueId) {
         Contract.Requires(impl != null);
         Contract.Requires(program != null);
         this.impl = impl;
@@ -145,6 +145,7 @@ namespace VC {
         Formal returnVar = new Formal(Token.NoToken, ti, false);
         Contract.Assert(returnVar != null);
         this.function = new Function(Token.NoToken, proc.Name, functionInterfaceVars, returnVar);
+        ctxt.DeclareFunction(this.function, "");
       }
     }
     [ContractInvariantMethod]
@@ -159,6 +160,13 @@ namespace VC {
       Contract.Requires(program != null);
       Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);
       Contract.Assert(checker != null);
+
+      VCExpr a = checker.VCExprGen.Integer(BigNum.ONE);
+      VCExpr b = checker.VCExprGen.Integer(BigNum.ONE);
+      VCExprNAry c = (VCExprNAry) checker.VCExprGen.ControlFlowFunctionApplication(a, b);
+      VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)c.Op;
+      checker.TheoremProver.Context.DeclareFunction(op.Func, "");
+
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Contract.Assert(decl != null);
         Implementation impl = decl as Implementation;
@@ -166,7 +174,7 @@ namespace VC {
           continue;
         Procedure proc = cce.NonNull(impl.Proc);
         if (proc.FindExprAttribute("inline") != null) {
-          LazyInliningInfo info = new LazyInliningInfo(impl, program, QuantifierExpr.GetNextSkolemId());
+          LazyInliningInfo info = new LazyInliningInfo(impl, program, checker.TheoremProver.Context, QuantifierExpr.GetNextSkolemId());
           implName2LazyInliningInfo[impl.Name] = info;
           impl.LocVars.Add(info.controlFlowVariable);
           ExprSeq exprs = new ExprSeq();
@@ -287,8 +295,8 @@ namespace VC {
       public VCExpr funcExpr;
       public VCExpr falseExpr;
 
-      public StratifiedInliningInfo(Implementation impl, Program program, int uniqueid)
-        : base(impl, program, uniqueid) {
+      public StratifiedInliningInfo(Implementation impl, Program program, ProverContext ctxt, int uniqueid)
+        : base(impl, program, ctxt, uniqueid) {
         Contract.Requires(impl != null);
         Contract.Requires(program != null);
         inline_cnt = 0;
@@ -303,7 +311,7 @@ namespace VC {
 
     public void GenerateVCsForStratifiedInlining(Program program) {
       Contract.Requires(program != null);
-      //Checker! checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);
+      Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Contract.Assert(decl != null);
         Implementation impl = decl as Implementation;
@@ -311,7 +319,7 @@ namespace VC {
           continue;
         Procedure proc = cce.NonNull(impl.Proc);
         if (proc.FindExprAttribute("inline") != null) {
-          StratifiedInliningInfo info = new StratifiedInliningInfo(impl, program, QuantifierExpr.GetNextSkolemId());
+          StratifiedInliningInfo info = new StratifiedInliningInfo(impl, program, checker.TheoremProver.Context, QuantifierExpr.GetNextSkolemId());
           implName2StratifiedInliningInfo[impl.Name] = info;
           // We don't need controlFlowVariable for stratified Inlining
           //impl.LocVars.Add(info.controlFlowVariable);

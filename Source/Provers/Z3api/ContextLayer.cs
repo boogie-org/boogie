@@ -15,10 +15,6 @@ namespace Microsoft.Boogie.Z3
 {
     public class Z3Config
     {
-        ~Z3Config()
-        {
-            config.Dispose();
-        }
         private Config config = new Config();
         private int counterexamples;
         private string logFilename;
@@ -92,15 +88,14 @@ namespace Microsoft.Boogie.Z3
         void AddSmtlibString(string smtlibString);
         string GetDeclName(Z3ConstDeclAst constDeclAst);
         Z3PatternAst MakePattern(List<Z3TermAst> exprs);
-        Z3TermAst MakeForall(List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body);
-        Z3TermAst MakeExists(List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body);
+        Z3TermAst MakeForall(uint weight, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body);
+        Z3TermAst MakeExists(uint weight, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body);
         List<string> BuildConflictClause(Z3LabeledLiterals relevantLabels);
         ProverInterface.Outcome Check(out List<Z3ErrorModelAndLabels> boogieErrors);
         void TypeCheckBool(Z3TermAst t);
         void TypeCheckInt(Z3TermAst t);
         void DeclareType(string typeName);
         void DeclareConstant(string constantName, Type boogieType);
-        Z3TermAst MakeBoundVariable(uint deBruijnIndex, Type boogieType);
         void DeclareFunction(string functionName, List<Type> domain, Type range);
         Z3TermAst GetConstant(string constantName, Type constantType);
         Z3TermAst MakeIntLiteral(string numeral);
@@ -109,6 +104,8 @@ namespace Microsoft.Boogie.Z3
         Z3TermAst MakeLabel(string labelName, bool pos, Z3TermAst child);
         Z3LabeledLiterals GetRelevantLabels();
         Z3TermAst Make(string op, List<Z3TermAst> children);
+        Z3TermAst MakeArraySelect(List<Z3TermAst> args);
+        Z3TermAst MakeArrayStore(List<Z3TermAst> args);
     }
 
     internal class PartitionMap

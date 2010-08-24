@@ -28,10 +28,10 @@ namespace Microsoft.Boogie.Z3 {
     public Z3PatternAst MakePattern(List<Z3TermAst> exprs) {
       return new Z3StubPatternAst();
     }
-    public Z3TermAst MakeForall(List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body) {
+    public Z3TermAst MakeForall(uint weight, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body) {
       return new Z3StubTermAst();
     }
-    public Z3TermAst MakeExists(List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body) {
+    public Z3TermAst MakeExists(uint weight, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body) {
       return new Z3StubTermAst();
     }
     public List<string> BuildConflictClause(Z3LabeledLiterals relevantLabels) {
@@ -45,9 +45,6 @@ namespace Microsoft.Boogie.Z3 {
     public void TypeCheckInt(Z3TermAst t){}
     public void DeclareType(string typeName) {}
     public void DeclareConstant(string constantName, Type boogieType) {}
-    public Z3TermAst MakeBoundVariable(uint deBruijnIndex,Type boogieType) {
-      return new Z3StubTermAst();
-    }
     public void DeclareFunction(string functionName, List<Type> domain, Type range) {}
     public Z3TermAst GetConstant(string constantName, Type constantType) {
       return new Z3StubTermAst();
@@ -69,6 +66,14 @@ namespace Microsoft.Boogie.Z3 {
     }
     public Z3TermAst Make(string op, List<Z3TermAst> children) {
       return new Z3StubTermAst();
+    }
+    public Z3TermAst MakeArraySelect(List<Z3TermAst> args)
+    {
+        return new Z3StubTermAst();
+    }
+    public Z3TermAst MakeArrayStore(List<Z3TermAst> args)
+    {
+        return new Z3StubTermAst();
     }
   }
 }

@@ -28,13 +28,15 @@ namespace Microsoft.Boogie.Z3
             }
         }
 
-        internal readonly UniqueNamer Namer;
+        internal readonly UniqueNamer namer;
+        internal readonly Dictionary<VCExprVar, Z3TermAst> letBindings;
         protected Z3Context cm;
 
         public Z3apiExprLineariser(Z3Context cm)
         {
             this.cm = cm;
-            this.Namer = new UniqueNamer();
+            this.namer = new UniqueNamer();
+            this.letBindings = new Dictionary<VCExprVar, Z3TermAst>();
         }
 
         public Z3TermAst Linearise(VCExpr expr, LineariserOptions options)
@@ -63,8 +65,6 @@ namespace Microsoft.Boogie.Z3
                 throw new cce.UnreachableException();
             }
         }
-
-        /////////////////////////////////////////////////////////////////////////////////////
 
         public Z3TermAst Visit(VCExprNAry node, LineariserOptions options)
         {
@@ -96,17 +96,20 @@ namespace Microsoft.Boogie.Z3
             return node.Accept<Z3TermAst, LineariserOptions>(OpLineariser, options);
         }
 
-        /////////////////////////////////////////////////////////////////////////////////////
-
         public Z3TermAst Visit(VCExprVar node, LineariserOptions options)
         {
             Contract.Requires(options != null);
             Contract.Requires(node != null);
-            string varName = Namer.GetName(node, node.Name);
-            return cm.GetConstant(varName, node.Type);
+            if (letBindings.ContainsKey(node))
+            {
+                return letBindings[node];
+            }
+            else
+            {
+                string varName = namer.GetName(node, node.Name);
+                return cm.GetConstant(varName, node.Type);
+            }
         }
-
-        /////////////////////////////////////////////////////////////////////////////////////
 
         public Z3TermAst Visit(VCExprQuantifier node, LineariserOptions options)
         {
@@ -114,7 +117,7 @@ namespace Microsoft.Boogie.Z3
             Contract.Requires(node != null);
             Contract.Assert(node.TypeParameters.Count == 0);
 
-            Namer.PushScope();
+            namer.PushScope();
             try
             {
                 List<string> varNames;
@@ -125,6 +128,7 @@ namespace Microsoft.Boogie.Z3
                 VisitTriggers(node.Triggers, options, out patterns, out no_patterns);
                 Z3TermAst body = Linearise(node.Body, options);
                 Z3TermAst result;
+                uint weight = 1;
 
                 /*
                 if (options.QuantifierIds)
@@ -145,25 +149,19 @@ namespace Microsoft.Boogie.Z3
                         wr.Write(") ");
                     }
                 }
+                */
 
                 if (options.UseWeights)
                 {
-                    int weight = QKeyValue.FindIntAttribute(node.Infos.attributes, "weight", 1);
-                    if (weight != 1)
-                    {
-                        wr.Write("(WEIGHT ");
-                        wr.Write(weight);
-                        wr.Write(") ");
-                    }
+                    weight = (uint) QKeyValue.FindIntAttribute(node.Infos.attributes, "weight", 1);
                 }
-                */
 
                 switch (node.Quan)
                 {
                     case Quantifier.ALL:
-                        result = cm.MakeForall(varNames, varTypes, patterns, no_patterns, body); break;
+                        result = cm.MakeForall(weight, varNames, varTypes, patterns, no_patterns, body); break;
                     case Quantifier.EX:
-                        result = cm.MakeExists(varNames, varTypes, patterns, no_patterns, body); break;
+                        result = cm.MakeExists(weight, varNames, varTypes, patterns, no_patterns, body); break;
                     default:
                         throw new Exception("unknown quantifier kind " + node.Quan);
                 }
@@ -171,7 +169,7 @@ namespace Microsoft.Boogie.Z3
             }
             finally
             {
-                Namer.PopScope();
+                namer.PopScope();
             }
         }
         
@@ -181,7 +179,7 @@ namespace Microsoft.Boogie.Z3
             varTypes = new List<Type>();
             foreach (VCExprVar var in boundVars)
             {
-                string varName = Namer.GetLocalName(var, var.Name);
+                string varName = namer.GetLocalName(var, var.Name);
                 varNames.Add(varName);
                 varTypes.Add(var.Type);
             }
@@ -209,6 +207,7 @@ namespace Microsoft.Boogie.Z3
                     }
                     else
                     {
+                        System.Diagnostics.Debug.Assert(false, "Z3api currently does not handle nopats");
                         foreach (Z3TermAst expr in exprs)
                             no_patterns.Add(expr);
                     }
@@ -216,51 +215,32 @@ namespace Microsoft.Boogie.Z3
             }
         }
 
-        /////////////////////////////////////////////////////////////////////////////////////
-
         public Z3TermAst Visit(VCExprLet node, LineariserOptions options)
         {
-            Namer.PushScope();
-            try
+            foreach (VCExprLetBinding b in node)
             {
-                List<Z3TermAst> equations = new List<Z3TermAst>();
-                foreach (VCExprLetBinding b in node)
-                {
-                    string varName = Namer.GetLocalName(b.V, b.V.Name);
-                    Z3TermAst varAst = cm.GetConstant(varName, b.V.Type);
-                    Z3TermAst defAst = Linearise(b.E, options);
-                    List<Z3TermAst> args = new List<Z3TermAst>();
-                    args.Add(varAst);
-                    args.Add(defAst);
-                    equations.Add(cm.Make("EQ", args));
-                }
-                System.Diagnostics.Debug.Assert(equations.Count > 0);
-                Z3TermAst eqAst = cm.Make("AND", equations);
-                List<Z3TermAst> t = new List<Z3TermAst>();
-                t.Add(eqAst);
-                t.Add(Linearise(node.Body, options));
-                return cm.Make("IMPLIES", t);
+                Z3TermAst defAst = Linearise(b.E, options);
+                letBindings.Add(b.V, defAst);
             }
-            finally
+            Z3TermAst letAst = Linearise(node.Body, options);
+            foreach (VCExprLetBinding b in node)
             {
-                Namer.PopScope();
+                letBindings.Remove(b.V);
             }
+            return letAst;
         }  
 
         /////////////////////////////////////////////////////////////////////////////////////
 
-        // Lineariser for operator terms. The result (bool) is currently not used for anything
-        internal class Z3apiOpLineariser : IVCExprOpVisitor<Z3TermAst, LineariserOptions/*!*/>
+        internal class Z3apiOpLineariser : IVCExprOpVisitor<Z3TermAst, LineariserOptions>
         {
             [ContractInvariantMethod]
             void ObjectInvariant()
             {
                 Contract.Invariant(ExprLineariser != null);
-                Contract.Invariant(wr != null);
             }
 
-            private readonly Z3apiExprLineariser/*!*/ ExprLineariser;
-            private readonly TextWriter/*!*/ wr;
+            private readonly Z3apiExprLineariser ExprLineariser;
 
             public Z3apiOpLineariser(Z3apiExprLineariser ExprLineariser)
             {
@@ -298,38 +278,14 @@ namespace Microsoft.Boogie.Z3
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                if (node[0].Type.IsBool)
-                {
-                    Contract.Assert(node[1].Type.IsBool);
-                    // use equivalence
-                    return WriteApplication("IFF", node, options);
-                }
-                else
-                {
-                    Contract.Assert(!node[1].Type.IsBool);
-                    // use equality and write the arguments as terms
-                    return WriteApplication("EQ", node, options);
-                }
+                return WriteApplication("EQ", node, options);
             }
 
             public Z3TermAst VisitNeqOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-
-                if (node[0].Type.IsBool)
-                {
-                    Contract.Assert(node[1].Type.IsBool);
-                    // use equivalence and negate the whole thing
-                    List<Z3TermAst> args = new List<Z3TermAst>();
-                    args.Add(WriteApplication("IFF", node, options));
-                    return ExprLineariser.cm.Make("NOT", args);
-                }
-                else
-                {
-                    // use equality and write the arguments as terms
-                    return WriteApplication("NEQ", node, options);
-                }
+                return WriteApplication("NEQ", node, options);
             }
 
             public Z3TermAst VisitAndOp(VCExprNAry node, LineariserOptions options)
@@ -393,7 +349,7 @@ namespace Microsoft.Boogie.Z3
                 Contract.Requires(node != null);
                 VCExprLabelOp op = (VCExprLabelOp)node.Op;
                 Contract.Assert(op != null);
-                return ExprLineariser.Linearise(node[0], options); 
+                return ExprLineariser.cm.MakeLabel(op.label, op.pos, ExprLineariser.Linearise(node[0], options)); 
             }
 
             public Z3TermAst VisitSelectOp(VCExprNAry node, LineariserOptions options)
@@ -401,12 +357,13 @@ namespace Microsoft.Boogie.Z3
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
                 List<Z3TermAst> args = new List<Z3TermAst>();
-                foreach (VCExpr/*!*/ e in node)
+                foreach (VCExpr e in node)
                 {
                     Contract.Assert(e != null);
                     args.Add(ExprLineariser.Linearise(e, options));
                 }
-                return ExprLineariser.cm.Make(SimplifyLikeExprLineariser.SelectOpName(node), args);
+                return ExprLineariser.cm.MakeArraySelect(args);
+                // return ExprLineariser.cm.Make(SimplifyLikeExprLineariser.SelectOpName(node), args);
             }
 
             public Z3TermAst VisitStoreOp(VCExprNAry node, LineariserOptions options)
@@ -419,7 +376,8 @@ namespace Microsoft.Boogie.Z3
                     Contract.Assert(e != null);
                     args.Add(ExprLineariser.Linearise(e, options));
                 }
-                return ExprLineariser.cm.Make(SimplifyLikeExprLineariser.StoreOpName(node), args);
+                return ExprLineariser.cm.MakeArrayStore(args);
+                // return ExprLineariser.cm.Make(SimplifyLikeExprLineariser.StoreOpName(node), args);
             }
 
             public Z3TermAst VisitBvOp(VCExprNAry node, LineariserOptions options)
@@ -455,7 +413,7 @@ namespace Microsoft.Boogie.Z3
                 return ExprLineariser.cm.Make("ITE", args);
             }
 
-            public Z3TermAst VisitCustomOp(VCExprNAry/*!*/ node, LineariserOptions/*!*/ options)
+            public Z3TermAst VisitCustomOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(node != null);
                 Contract.Requires(options != null);
@@ -514,42 +472,42 @@ namespace Microsoft.Boogie.Z3
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("<", node, options);  // arguments are always terms
+                return WriteApplication("<", node, options);
             }
 
             public Z3TermAst VisitLeOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("<=", node, options);  // arguments are always terms
+                return WriteApplication("<=", node, options);
             }
 
             public Z3TermAst VisitGtOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication(">", node, options);  // arguments are always terms
+                return WriteApplication(">", node, options);
             }
 
             public Z3TermAst VisitGeOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication(">=", node, options);  // arguments are always terms
+                return WriteApplication(">=", node, options);
             }
 
             public Z3TermAst VisitSubtypeOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("<:", node, options);               // arguments are always terms
+                return WriteApplication("<:", node, options);
             }
 
             public Z3TermAst VisitSubtype3Op(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("<::", node, options);               // arguments are always terms
+                return WriteApplication("<::", node, options);
             }
 
             public Z3TermAst VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options)
@@ -561,7 +519,7 @@ namespace Microsoft.Boogie.Z3
                 string funcName = op.Func.Name;
                 Contract.Assert(funcName != null);
                 string bvzName = op.Func.FindStringAttribute("external");
-                string printedName = ExprLineariser.Namer.GetName(op.Func, funcName);
+                string printedName = ExprLineariser.namer.GetName(op.Func, funcName);
                 Contract.Assert(printedName != null);
                 if (bvzName != null) printedName = bvzName;
 
