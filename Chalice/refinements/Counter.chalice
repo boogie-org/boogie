@@ -24,7 +24,7 @@ class Counter0 {
 
   method magic() returns (c: Cell)
     requires acc(x);
-    ensures acc(x) && acc(c.n)
+    ensures acc(x) && acc(c.n) && x == old(x);
   {
     var c [acc(c.n)]
   }
@@ -85,7 +85,9 @@ class Counter2 refines Counter0 {
 
   refines dec()
   {
-    this.b.n := this.b.n + 1;
+    var i := this.b.n + 1;
+    this.b := new Cell;
+    this.b.n := i;
   }
 
   refines magic() returns (c: Cell)
@@ -102,6 +104,8 @@ class Client {
     call c.inc();
     call c.inc();
     call c.dec();
+    call d := c.magic();
+    d.n := 100;
     assert c.x == 1;
   }
 }
