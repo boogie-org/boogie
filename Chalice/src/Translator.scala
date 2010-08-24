@@ -414,9 +414,9 @@ class Translator {
         val tmpTranslator = new ExpressionTranslator(List(tmpHeap._1.id, tmpMask._1.id, tmpCredits._1.id), List(etran.ChooseEtran(true).Heap, etran.ChooseEtran(true).Mask, etran.ChooseEtran(true).Credits), currentClass);        
         Comment("assert") ::
         // exhale e in a copy of the heap/mask/credits
-        BLocal(tmpHeap._1) :: (tmpHeap._2 := VarExpr(HeapName)) ::
-        BLocal(tmpMask._1) :: (tmpMask._2 := VarExpr(MaskName)) ::
-        BLocal(tmpCredits._1) :: (tmpCredits._2 := VarExpr(CreditsName)) ::
+        BLocal(tmpHeap._1) :: (tmpHeap._2 := etran.Heap) ::
+        BLocal(tmpMask._1) :: (tmpMask._2 := etran.Mask) ::
+        BLocal(tmpCredits._1) :: (tmpCredits._2 := etran.Credits) ::
         tmpTranslator.Exhale(List((e, ErrorMessage(s.pos, "Assertion might not hold."))), "assert", true)
       case Assume(e) =>
         Comment("assume") ::
@@ -1363,9 +1363,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   }
 
   def FromPreGlobals(preGlobals: List[Boogie.BVar]) = {
-    val g = for ((id,t) <- ExpressionTranslator.Globals) yield VarExpr(id)
     val pg = preGlobals map (g => new VarExpr(g))
-    new ExpressionTranslator(g, pg, currentClass, checkTermination)
+    new ExpressionTranslator(globals, pg, currentClass, checkTermination)
   }
 
   def UseCurrentAsOld() = {
