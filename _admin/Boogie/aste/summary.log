@@ -1,13 +1,13 @@
-# Aste started: 2010-08-24 07:00:04
+# Aste started: 2010-08-25 07:00:04
 # Host id: Boogiebox
-# [2010-08-24 07:02:12] SpecSharp revision: 55320
-# [2010-08-24 07:03:15] Boogie revision: 56714
-# [2010-08-24 07:03:39] SscBoogie revision: 56316
-[2010-08-24 07:04:15] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-08-25 07:02:13] SpecSharp revision: 55320
+# [2010-08-25 07:03:18] Boogie revision: 56733
+# [2010-08-25 07:03:40] SscBoogie revision: 56316
+[2010-08-25 07:04:17] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-08-24 07:05:13] [Error] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-08-25 07:05:16] [Error] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(825,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2804,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -29,15 +29,15 @@
     D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(1467,16): warning CS0659: 'Microsoft.Boogie.VCExprAST.VCExprCustomOp' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(662,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCExpr\VCExprASTPrinter.cs(46,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1933,56): warning CS0168: The variable 'e' is declared but never used
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4602,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(707,15): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1941,56): warning CS0168: The variable 'e' is declared but never used
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4610,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(715,15): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(741,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(1083,11): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\Wlp.cs(77,8): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(379,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(445,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(843,29): warning CS0649: Field 'VC.VCGen.Split.first_assert' is never assigned to, and will always have its default value null
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(851,29): warning CS0649: Field 'VC.VCGen.Split.first_assert' is never assigned to, and will always have its default value null
     D:\Temp\aste\Boogie\Source\VCGeneration\DoomCheck.cs(177,22): warning CS0169: The field 'VC.DoomCheck._tmpUseFreshBVars' is never used
     D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(65,9): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(338,7): warning CS0162: Unreachable code detected
@@ -65,34 +65,32 @@
     D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(57,17): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(58,27): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
     D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(62,16): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(71,17): error CS0246: The type or namespace name 'LabeledLiterals' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(72,38): error CS0246: The type or namespace name 'LabeledLiterals' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(76,16): error CS0246: The type or namespace name 'LabeledLiterals' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(84,45): error CS0246: The type or namespace name 'Symbol' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(93,16): error CS0246: The type or namespace name 'Context' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(161,22): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(172,22): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(183,17): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(189,17): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(195,17): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(201,37): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(206,42): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(211,40): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(224,22): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(312,57): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(443,22): error CS0246: The type or namespace name 'Symbol' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(451,17): error CS0246: The type or namespace name 'Symbol' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(550,17): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(562,19): error CS0246: The type or namespace name 'Context' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(564,34): error CS0246: The type or namespace name 'Context' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(569,33): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(22,17): error CS0246: The type or namespace name 'Config' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(57,16): error CS0246: The type or namespace name 'Config' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(204,66): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(236,67): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(247,79): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(318,64): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(324,46): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(70,17): error CS0246: The type or namespace name 'LabeledLiterals' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(71,38): error CS0246: The type or namespace name 'LabeledLiterals' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(75,16): error CS0246: The type or namespace name 'LabeledLiterals' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(83,45): error CS0246: The type or namespace name 'Symbol' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(88,16): error CS0246: The type or namespace name 'Context' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(158,22): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(169,22): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(180,17): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(186,17): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(192,17): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(198,37): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(203,42): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(208,40): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(221,22): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(322,57): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(439,22): error CS0246: The type or namespace name 'Symbol' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(447,17): error CS0246: The type or namespace name 'Symbol' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(547,17): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(18,17): error CS0246: The type or namespace name 'Config' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(53,16): error CS0246: The type or namespace name 'Config' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(201,66): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(233,67): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(244,79): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(315,64): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(321,46): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
+    D:\Temp\aste\Boogie\Source\Provers\Z3api\TypeAdapter.cs(134,33): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
     error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Z3api\bin\Debug\Provers.Z3api.dll' could not be found
     warning CS0659
     warning CS0659
@@ -132,6 +130,6 @@
     warning CS0162
     warning CS0162
     warning CS0162
-    45 error
+    43 error
     1 error
     2 failed
