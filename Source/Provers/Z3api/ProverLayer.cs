@@ -28,6 +28,7 @@ namespace Microsoft.Boogie.Z3
             this.options = opts;
             this.context = (Z3apiProverContext) ctxt;
             this.z3ContextIsUsed = false;
+            this.numAxiomsPushed = 0;
         }
 
         private Z3InstanceOptions options;
@@ -42,6 +43,8 @@ namespace Microsoft.Boogie.Z3
         {
             get { return context.ExprGen; }
         }
+
+        private int numAxiomsPushed;
 
         public override void Close()
         {
@@ -84,6 +87,7 @@ namespace Microsoft.Boogie.Z3
         public override void PushVCExpression(VCExpr vc)
         {
             PushAxiom(vc);
+            numAxiomsPushed++;
         }
 
         public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
@@ -133,6 +137,19 @@ namespace Microsoft.Boogie.Z3
         {
             Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             cm.Backtrack();
+        }
+
+        // Number of axioms pushed since the last call to FlushAxioms
+        public override int NumAxiomsPushed()
+        {
+            return numAxiomsPushed;
+        }
+
+        public override int FlushAxiomsToTheoremProver()
+        {
+            var ret = numAxiomsPushed;
+            numAxiomsPushed = 0;
+            return ret;
         }
 
         private List<string> RemovePrefixes(List<string> labels)
