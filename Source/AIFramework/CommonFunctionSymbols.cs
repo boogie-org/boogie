@@ -5,9 +5,10 @@
 //-----------------------------------------------------------------------------
 namespace Microsoft.AbstractInterpretationFramework
 {
-    using Microsoft.Contracts;
+    using System.Diagnostics.Contracts;
     using System.Collections;
-    using Microsoft.SpecSharp.Collections;
+  using System.Collections.Generic;
+    //using Microsoft.SpecSharp.Collections;
 	using Microsoft.Basetypes;
 
     /// <summary>
@@ -15,27 +16,36 @@ namespace Microsoft.AbstractInterpretationFramework
     /// </summary>
     public class FunctionSymbol : IFunctionSymbol
     {
-        private readonly string! display;
-        private readonly AIType! typ;
+        private readonly string/*!*/ display;
+        private readonly AIType/*!*/ typ;
+      [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(display != null);
+        Contract.Invariant(typ != null);
+}
 
-        public FunctionSymbol(AIType! typ)
+
+        public FunctionSymbol(AIType/*!*/ typ)
         : this("FunctionSymbol", typ)
         {
+          Contract.Requires(typ != null);
         }
 
-        internal FunctionSymbol(string! display, AIType! typ)
-        {
+        internal FunctionSymbol(string/*!*/ display, AIType/*!*/ typ){
+Contract.Requires(typ != null);
+Contract.Requires(display != null);
             this.display = display;
             this.typ = typ;
             //            base();
         }
 
-        public AIType! AIType { get { return typ; } }
+        public AIType/*!*/ AIType { get {Contract.Ensures(Contract.Result<AIType>() != null); return typ; } }
 
         [NoDefaultContract]
         [Pure]
-        public override string! ToString()
-        {
+        public override string/*!*/ ToString() {
+Contract.Ensures(Contract.Result<string>() != null);
             return display;
         }
 
@@ -52,7 +62,7 @@ namespace Microsoft.AbstractInterpretationFramework
         /// The intention is that this constructor be called only from the Int.Const method.
         /// </summary>
         internal IntSymbol(BigNum x)
-        : base((!)x.ToString(), Int.Type)
+        : base(cce.NonNull(x.ToString()), Int.Type)
         {
             this.Value = x;
         }
@@ -113,7 +123,7 @@ namespace Microsoft.AbstractInterpretationFramework
         /// The intention is that this constructor be called only from the Double.Const method.
         /// </summary>
         internal DoubleSymbol(double x)
-        : base((!)x.ToString(), Double.Type)
+        : base(cce.NonNull(x.ToString()), Double.Type)
         {
             this.Value = x;
         }
@@ -138,11 +148,12 @@ namespace Microsoft.AbstractInterpretationFramework
     /// </summary>
     public class NamedSymbol : FunctionSymbol
     {
-        public string! Value { [NoDefaultContract] get { return (!) this.ToString(); } }
+        public string/*!*/ Value { [NoDefaultContract] get {Contract.Ensures(Contract.Result<string>() != null); return cce.NonNull(this.ToString()); } }
 
-        public NamedSymbol(string! symbol, AIType! typ)
-        : base(symbol, typ)
-        {
+        public NamedSymbol(string/*!*/ symbol, AIType/*!*/ typ)
+        : base(symbol, typ){
+Contract.Requires(typ != null);
+Contract.Requires(symbol != null);
         }
 
         [NoDefaultContract]
@@ -182,14 +193,14 @@ namespace Microsoft.AbstractInterpretationFramework
     /// </summary>
     public class Value : AIType
     {
-        private static readonly AIType! valtype = new Value();
-        public static AIType! Type { get { return valtype; } }
+        private static readonly AIType/*!*/ valtype = new Value();
+        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return valtype; } }
 
-        private static readonly FunctionType[]! funtypeCache = new FunctionType[5];
-        public static FunctionType! FunctionType(int inParameterCount)
-            requires 0 <= inParameterCount;
-            // ensures result.Arity == inParameterCount;
-        {
+        private static readonly FunctionType[]/*!*/ funtypeCache = new FunctionType[5];
+        public static FunctionType/*!*/ FunctionType(int inParameterCount) {
+Contract.Requires((0 <= inParameterCount));
+Contract.Ensures(Contract.Result<FunctionType>() != null);
+          // Contract.Ensures(Contract.Result<>().Arity == inParameterCount);
             FunctionType result;
             if (inParameterCount < funtypeCache.Length) {
                 result = funtypeCache[inParameterCount];
@@ -208,9 +219,19 @@ namespace Microsoft.AbstractInterpretationFramework
             return result;
         }
 
-        [Once] private static AIType! binreltype;
-        private static AIType! BinrelType {
-          get {
+        [Once] private static AIType/*!*/ binreltype;
+      [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(binreltype != null);
+        Contract.Invariant(_eq != null);
+        Contract.Invariant(_neq != null);
+        Contract.Invariant(_subtype != null);
+        Contract.Invariant(_typeof != null);
+}
+
+        private static AIType/*!*/ BinrelType {
+          get {Contract.Ensures(Contract.Result<AIType>() != null);
             if (binreltype == null) {
               binreltype = new FunctionType(Type, Type, Prop.Type);
             }
@@ -218,27 +239,27 @@ namespace Microsoft.AbstractInterpretationFramework
           }
         }
 
-        [Once] private static FunctionSymbol! _eq;
-        public static FunctionSymbol! Eq {
-          get {
+        [Once] private static FunctionSymbol/*!*/ _eq;
+        public static FunctionSymbol/*!*/ Eq {
+          get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null);
             if (_eq == null) {
               _eq = new FunctionSymbol("=", BinrelType);
             }
             return _eq;
           }
         }
-        [Once] private static FunctionSymbol! _neq;
-        public static FunctionSymbol! Neq {
-          get {
+        [Once] private static FunctionSymbol/*!*/ _neq;
+        public static FunctionSymbol/*!*/ Neq {
+          get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null);
             if (_neq == null) {
               _neq = new FunctionSymbol("!=", BinrelType);
             }
             return _neq;
           }
         }
-        [Once] private static FunctionSymbol! _subtype;
-        public static FunctionSymbol! Subtype {
-          get {
+        [Once] private static FunctionSymbol/*!*/ _subtype;
+        public static FunctionSymbol/*!*/ Subtype {
+          get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null);
             if (_subtype == null) {
               _subtype = new FunctionSymbol("<:", BinrelType);
             }
@@ -246,18 +267,18 @@ namespace Microsoft.AbstractInterpretationFramework
           }
         }
 
-        [Once] private static AIType! typeof_type;
-        private static AIType! TypeofType {
-          get {
+        [Once] private static AIType/*!*/ typeof_type;
+        private static AIType/*!*/ TypeofType {
+          get {Contract.Ensures(Contract.Result<AIType>() != null);
             if (typeof_type == null) {
               typeof_type = new FunctionType(Ref.Type, Type);
             }
             return typeof_type;
           }
         }
-        [Once] private static FunctionSymbol! _typeof;
-        public static FunctionSymbol! Typeof {
-          get {
+        [Once] private static FunctionSymbol/*!*/ _typeof;
+        public static FunctionSymbol/*!*/ Typeof {
+          get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null);
             if (_typeof == null) {
               _typeof = new FunctionSymbol("typeof", TypeofType);
             }
@@ -275,37 +296,37 @@ namespace Microsoft.AbstractInterpretationFramework
 
     public class Int : Value
     {
-        private static readonly AIType! inttype = new Int();
-        public static AIType! Type { get { return inttype; } }
+        private static readonly AIType/*!*/ inttype = new Int();
+        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return inttype; } }
         
-        private static readonly AIType! unaryinttype = new FunctionType(Type, Type);
-        private static readonly AIType! bininttype = new FunctionType(Type, Type, Type);
-        private static readonly AIType! relationtype = new FunctionType(Type, Type, Prop.Type);
+        private static readonly AIType/*!*/ unaryinttype = new FunctionType(Type, Type);
+        private static readonly AIType/*!*/ bininttype = new FunctionType(Type, Type, Type);
+        private static readonly AIType/*!*/ relationtype = new FunctionType(Type, Type, Prop.Type);
 
-        private static readonly FunctionSymbol! _negate = new FunctionSymbol("~", unaryinttype);
-        private static readonly FunctionSymbol! _add = new FunctionSymbol("+", bininttype);
-        private static readonly FunctionSymbol! _sub = new FunctionSymbol("-", bininttype);
-        private static readonly FunctionSymbol! _mul = new FunctionSymbol("*", bininttype);
-        private static readonly FunctionSymbol! _div = new FunctionSymbol("/", bininttype);
-        private static readonly FunctionSymbol! _mod = new FunctionSymbol("%", bininttype);
-        private static readonly FunctionSymbol! _atmost = new FunctionSymbol("<=", relationtype);
-        private static readonly FunctionSymbol! _less = new FunctionSymbol("<", relationtype);
-        private static readonly FunctionSymbol! _greater = new FunctionSymbol(">", relationtype);
-        private static readonly FunctionSymbol! _atleast = new FunctionSymbol(">=", relationtype);
+        private static readonly FunctionSymbol/*!*/ _negate = new FunctionSymbol("~", unaryinttype);
+        private static readonly FunctionSymbol/*!*/ _add = new FunctionSymbol("+", bininttype);
+        private static readonly FunctionSymbol/*!*/ _sub = new FunctionSymbol("-", bininttype);
+        private static readonly FunctionSymbol/*!*/ _mul = new FunctionSymbol("*", bininttype);
+        private static readonly FunctionSymbol/*!*/ _div = new FunctionSymbol("/", bininttype);
+        private static readonly FunctionSymbol/*!*/ _mod = new FunctionSymbol("%", bininttype);
+        private static readonly FunctionSymbol/*!*/ _atmost = new FunctionSymbol("<=", relationtype);
+        private static readonly FunctionSymbol/*!*/ _less = new FunctionSymbol("<", relationtype);
+        private static readonly FunctionSymbol/*!*/ _greater = new FunctionSymbol(">", relationtype);
+        private static readonly FunctionSymbol/*!*/ _atleast = new FunctionSymbol(">=", relationtype);
 
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Negate { get { return _negate; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Add { get { return _add; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Sub { get { return _sub; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Mul { get { return _mul; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Div { get { return _div; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Mod { get { return _mod; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! AtMost { get { return _atmost; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Less { get { return _less; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Greater { get { return _greater; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! AtLeast { get { return _atleast; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Negate { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _negate; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Add { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _add; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Sub { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _sub; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Mul { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _mul; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Div { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _div; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Mod { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _mod; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ AtMost { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _atmost; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Less { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _less; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Greater { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _greater; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ AtLeast { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _atleast; } }
 
-        public static IntSymbol! Const(BigNum x)
-        {
+        public static IntSymbol/*!*/ Const(BigNum x) {
+Contract.Ensures(Contract.Result<IntSymbol>() != null);
             // We could cache things here, but for now we don't.
             return new IntSymbol(x);
         }
@@ -319,11 +340,11 @@ namespace Microsoft.AbstractInterpretationFramework
 
     public class Double : Value
     {
-        private static readonly AIType! doubletype = new Double();
-        public static AIType! Type { get { return doubletype; } }
+        private static readonly AIType/*!*/ doubletype = new Double();
+        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return doubletype; } }
         
-        public static DoubleSymbol! Const(double x)
-        {
+        public static DoubleSymbol/*!*/ Const(double x) {
+Contract.Ensures(Contract.Result<DoubleSymbol>() != null);
             // We could cache things here, but for now we don't.
             return new DoubleSymbol(x);
         }
@@ -337,41 +358,41 @@ namespace Microsoft.AbstractInterpretationFramework
 
     public class Bv : Value
     {
-        private static readonly AIType! bvtype = new Bv();
-        public static AIType! Type { get { return bvtype; } }
+        private static readonly AIType/*!*/ bvtype = new Bv();
+        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return bvtype; } }
         
-        private static readonly AIType! unaryinttype = new FunctionType(Type, Type);
-        private static readonly AIType! bininttype = new FunctionType(Type, Type, Type);
-        private static readonly AIType! relationtype = new FunctionType(Type, Type, Prop.Type);
+        private static readonly AIType/*!*/ unaryinttype = new FunctionType(Type, Type);
+        private static readonly AIType/*!*/ bininttype = new FunctionType(Type, Type, Type);
+        private static readonly AIType/*!*/ relationtype = new FunctionType(Type, Type, Prop.Type);
 
-        private static readonly FunctionSymbol! _negate = new FunctionSymbol("~", unaryinttype);
-        private static readonly FunctionSymbol! _add = new FunctionSymbol("+", bininttype);
-        private static readonly FunctionSymbol! _sub = new FunctionSymbol("-", bininttype);
-        private static readonly FunctionSymbol! _mul = new FunctionSymbol("*", bininttype);
-        private static readonly FunctionSymbol! _div = new FunctionSymbol("/", bininttype);
-        private static readonly FunctionSymbol! _mod = new FunctionSymbol("%", bininttype);
-        private static readonly FunctionSymbol! _concat = new FunctionSymbol("$concat", bininttype);
-        private static readonly FunctionSymbol! _extract = new FunctionSymbol("$extract", unaryinttype);
-        private static readonly FunctionSymbol! _atmost = new FunctionSymbol("<=", relationtype);
-        private static readonly FunctionSymbol! _less = new FunctionSymbol("<", relationtype);
-        private static readonly FunctionSymbol! _greater = new FunctionSymbol(">", relationtype);
-        private static readonly FunctionSymbol! _atleast = new FunctionSymbol(">=", relationtype);
+        private static readonly FunctionSymbol/*!*/ _negate = new FunctionSymbol("~", unaryinttype);
+        private static readonly FunctionSymbol/*!*/ _add = new FunctionSymbol("+", bininttype);
+        private static readonly FunctionSymbol/*!*/ _sub = new FunctionSymbol("-", bininttype);
+        private static readonly FunctionSymbol/*!*/ _mul = new FunctionSymbol("*", bininttype);
+        private static readonly FunctionSymbol/*!*/ _div = new FunctionSymbol("/", bininttype);
+        private static readonly FunctionSymbol/*!*/ _mod = new FunctionSymbol("%", bininttype);
+        private static readonly FunctionSymbol/*!*/ _concat = new FunctionSymbol("$concat", bininttype);
+        private static readonly FunctionSymbol/*!*/ _extract = new FunctionSymbol("$extract", unaryinttype);
+        private static readonly FunctionSymbol/*!*/ _atmost = new FunctionSymbol("<=", relationtype);
+        private static readonly FunctionSymbol/*!*/ _less = new FunctionSymbol("<", relationtype);
+        private static readonly FunctionSymbol/*!*/ _greater = new FunctionSymbol(">", relationtype);
+        private static readonly FunctionSymbol/*!*/ _atleast = new FunctionSymbol(">=", relationtype);
 
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Negate { get { return _negate; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Add { get { return _add; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Sub { get { return _sub; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Mul { get { return _mul; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Div { get { return _div; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Mod { get { return _mod; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! AtMost { get { return _atmost; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Less { get { return _less; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Greater { get { return _greater; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! AtLeast { get { return _atleast; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Extract { get { return _extract; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Concat { get { return _concat; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Negate { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _negate; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Add { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _add; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Sub { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _sub; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Mul { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _mul; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Div { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _div; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Mod { get { Contract.Ensures(Contract.Result<FunctionSymbol>() != null);return _mod; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ AtMost { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _atmost; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Less { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _less; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Greater { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _greater; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ AtLeast { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _atleast; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Extract { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _extract; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Concat { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _concat; } }
 
-        public static BvSymbol! Const(BigNum x, int y)
-        {
+        public static BvSymbol/*!*/ Const(BigNum x, int y) {
+Contract.Ensures(Contract.Result<BvSymbol>() != null);
             // We could cache things here, but for now we don't.
             return new BvSymbol(x, y);
         }
@@ -385,12 +406,12 @@ namespace Microsoft.AbstractInterpretationFramework
 
     public class Ref : Value
     {
-        private static readonly AIType! reftype = new Ref();
-        public static AIType! Type { get { return reftype; } }
+        private static readonly AIType/*!*/ reftype = new Ref();
+        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return reftype; } }
 
-        private static readonly FunctionSymbol! _null = new FunctionSymbol("null", Type);
+        private static readonly FunctionSymbol/*!*/ _null = new FunctionSymbol("null", Type);
 
-        public static FunctionSymbol! Null { get { return _null; } }
+        public static FunctionSymbol/*!*/ Null { get { Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _null; } }
 
         /// <summary>
         /// Ref should not be instantiated from the outside, except perhaps in
@@ -401,8 +422,8 @@ namespace Microsoft.AbstractInterpretationFramework
 
     public class HeapStructure : Value
     {
-        private static readonly AIType! reftype = new HeapStructure();
-        public static AIType! Type { get { return reftype; } }
+        private static readonly AIType/*!*/ reftype = new HeapStructure();
+        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return reftype; } }
         
 
 
@@ -415,17 +436,17 @@ namespace Microsoft.AbstractInterpretationFramework
 
     public class FieldName : Value
     {
-        private static readonly AIType! fieldnametype = new FieldName();
-        public static AIType! Type { get { return fieldnametype; } }
+        private static readonly AIType/*!*/ fieldnametype = new FieldName();
+        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return fieldnametype; } }
 
-        private static readonly FunctionSymbol! _allocated = new FunctionSymbol("$allocated", FieldName.Type);
-        public static FunctionSymbol! Allocated { get { return _allocated; } }
+        private static readonly FunctionSymbol/*!*/ _allocated = new FunctionSymbol("$allocated", FieldName.Type);
+        public static FunctionSymbol/*!*/ Allocated { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _allocated; } }
 
         /// <summary>
         /// Is this a boolean field that monotonically goes from false to true?
         /// </summary>
-        public static bool IsBooleanMonotonicallyWeakening(IFunctionSymbol! f)
-        {
+        public static bool IsBooleanMonotonicallyWeakening(IFunctionSymbol/*!*/ f){
+Contract.Requires(f != null);
             return f.Equals(Allocated);
         }
 
@@ -438,43 +459,43 @@ namespace Microsoft.AbstractInterpretationFramework
 
     public class Heap : Value
     {
-        private static readonly AIType! heaptype = new Heap();
-        public static AIType! Type { get { return heaptype; } }
+        private static readonly AIType/*!*/ heaptype = new Heap();
+        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return heaptype; } }
 
         // the types in the following, select1, select2, are hard-coded;
         // these types may not always be appropriate
-        private static readonly FunctionSymbol! _select1 = new FunctionSymbol("sel1",
+        private static readonly FunctionSymbol/*!*/ _select1 = new FunctionSymbol("sel1",
             // Heap x FieldName -> Prop
             new FunctionType(Type, FieldName.Type, Prop.Type)
         );
-        public static FunctionSymbol! Select1 { get { return _select1; } }
+        public static FunctionSymbol/*!*/ Select1 { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _select1; } }
 
-        private static readonly FunctionSymbol! _select2 = new FunctionSymbol("sel2",
+        private static readonly FunctionSymbol/*!*/ _select2 = new FunctionSymbol("sel2",
             // Heap x Ref x FieldName -> Value
             new FunctionType(Type, Ref.Type, FieldName.Type, Value.Type)
         );
-        public static FunctionSymbol! Select2 { get { return _select2; } }
+        public static FunctionSymbol/*!*/ Select2 { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _select2; } }
 
         // the types in the following, store1, store2, are hard-coded;
         // these types may not always be appropriate
-        private static readonly FunctionSymbol! _update1 = new FunctionSymbol("upd1",
+        private static readonly FunctionSymbol/*!*/ _update1 = new FunctionSymbol("upd1",
             // Heap x FieldName x Value -> Heap
             new FunctionType(Type, FieldName.Type, Value.Type, Type)
         );
-        public static FunctionSymbol! Update1 { get { return _update1; } }
+        public static FunctionSymbol/*!*/ Update1 { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _update1; } }
 
-        private static readonly FunctionSymbol! _update2 = new FunctionSymbol("upd2",
+        private static readonly FunctionSymbol/*!*/ _update2 = new FunctionSymbol("upd2",
             // Heap x Ref x FieldName x Value -> Heap
             new FunctionType(Type, Ref.Type, FieldName.Type, Value.Type, Type)
         );
-        public static FunctionSymbol! Update2 { get { return _update2; } }
+        public static FunctionSymbol/*!*/ Update2 { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _update2; } }
 
-        private static readonly FunctionSymbol! _unsupportedHeapOp =
+        private static readonly FunctionSymbol/*!*/ _unsupportedHeapOp =
             new FunctionSymbol("UnsupportedHeapOp",
             // Heap x FieldName -> Prop
             new FunctionType(Type, FieldName.Type, Prop.Type)
         );
-        public static FunctionSymbol! UnsupportedHeapOp { get { return _unsupportedHeapOp; } }
+        public static FunctionSymbol/*!*/ UnsupportedHeapOp { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _unsupportedHeapOp; } }
 
         /// <summary>
         /// Heap should not be instantiated from the outside, except perhaps in
@@ -527,7 +548,9 @@ namespace Microsoft.AbstractInterpretationFramework
 //        }
 //
 //        private AIType! typeParameter;
-//        public AIType! TypeParameter { get { return typeParameter; } }
+//        public AIType(TypeParameter/*!*/ ){
+//Contract.Requires( != null);
+ //return typeParameter; } }
 //
 //        /// <summary>
 //        /// List should not be instantiated from the outside.
@@ -577,8 +600,12 @@ namespace Microsoft.AbstractInterpretationFramework
 //        protected AIType! type1;
 //        protected AIType! type2;
 //
-//        public AIType! Type1 { get { return type1; } }
-//        public AIType! Type2 { get { return type2; } }
+//        public AIType(Type1/*!*/ ){
+//Contract.Requires( != null);
+// return type1; } }
+//        public AIType(Type2/*!*/ ){
+//Contract.Requires( != null);
+// return type2; } }
 //
 //        /// <summary>
 //        /// Pair should not be instantiated from the outside, except by subclasses.
@@ -598,34 +625,40 @@ namespace Microsoft.AbstractInterpretationFramework
     /// </summary>
     public sealed class Prop : AIType
     {
-        private static readonly AIType! proptype = new Prop();
-        public static AIType! Type { get { return proptype; } }
+        private static readonly AIType/*!*/ proptype = new Prop();
+      [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(proptype != null);
+}
 
-        private static readonly AIType! unaryproptype = new FunctionType(Type, Type);
-        private static readonly AIType! binproptype = new FunctionType(Type, Type, Type);
-        private static readonly AIType! quantifiertype =
+        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return proptype; } }
+
+        private static readonly AIType/*!*/ unaryproptype = new FunctionType(Type, Type);
+        private static readonly AIType/*!*/ binproptype = new FunctionType(Type, Type, Type);
+        private static readonly AIType/*!*/ quantifiertype =
             new FunctionType(new FunctionType(Value.Type, Type), Type);
 
-        private static readonly FunctionSymbol! _false = new FunctionSymbol("false", Type);
-        private static readonly FunctionSymbol! _true = new FunctionSymbol("true", Type);
-        private static readonly FunctionSymbol! _not = new FunctionSymbol("!", unaryproptype);
-        private static readonly FunctionSymbol! _and = new FunctionSymbol("/\\", binproptype);
-        private static readonly FunctionSymbol! _or = new FunctionSymbol("\\/", binproptype);
-        private static readonly FunctionSymbol! _implies = new FunctionSymbol("==>", binproptype);
-        private static readonly FunctionSymbol! _exists = new FunctionSymbol("Exists", quantifiertype);
-        private static readonly FunctionSymbol! _forall = new FunctionSymbol("Forall", quantifiertype);
-        private static readonly FunctionSymbol! _lambda = new FunctionSymbol("Lambda", quantifiertype);
+        private static readonly FunctionSymbol/*!*/ _false = new FunctionSymbol("false", Type);
+        private static readonly FunctionSymbol/*!*/ _true = new FunctionSymbol("true", Type);
+        private static readonly FunctionSymbol/*!*/ _not = new FunctionSymbol("!", unaryproptype);
+        private static readonly FunctionSymbol/*!*/ _and = new FunctionSymbol("/\\", binproptype);
+        private static readonly FunctionSymbol/*!*/ _or = new FunctionSymbol("\\/", binproptype);
+        private static readonly FunctionSymbol/*!*/ _implies = new FunctionSymbol("==>", binproptype);
+        private static readonly FunctionSymbol/*!*/ _exists = new FunctionSymbol("Exists", quantifiertype);
+        private static readonly FunctionSymbol/*!*/ _forall = new FunctionSymbol("Forall", quantifiertype);
+        private static readonly FunctionSymbol/*!*/ _lambda = new FunctionSymbol("Lambda", quantifiertype);
 
 
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! False { get { return _false; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! True { get { return _true; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Not { get { return _not; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! And { [Pure] get { return _and; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Or { get { return _or; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Implies { get { return _implies; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Exists { get { return _exists; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Forall { get { return _forall; } }
-        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol! Lambda { get { return _lambda; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ False { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _false; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ True { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _true; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Not { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _not; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ And { [Pure] get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _and; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Or { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _or; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Implies { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _implies; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Exists { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _exists; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Forall { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _forall; } }
+        [Pure][Reads(ReadsAttribute.Reads.Nothing)] public static FunctionSymbol/*!*/ Lambda { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _lambda; } }
 
 
         /// <summary>
@@ -639,8 +672,11 @@ namespace Microsoft.AbstractInterpretationFramework
         // Utility Methods
         //
         
-        public static IExpr! SimplifiedAnd(IPropExprFactory! factory, IExpr! e0, IExpr! e1)
-        {
+        public static IExpr/*!*/ SimplifiedAnd(IPropExprFactory/*!*/ factory, IExpr/*!*/ e0, IExpr/*!*/ e1){
+Contract.Requires(e1 != null);
+Contract.Requires(e0 != null);
+Contract.Requires(factory != null);
+Contract.Ensures(Contract.Result<IExpr>() != null);
             IFunApp fun0 = e0 as IFunApp;
             if (fun0 != null)
             {
@@ -670,18 +706,24 @@ namespace Microsoft.AbstractInterpretationFramework
             return factory.And(e0, e1);
         }
         
-        public static IExpr! SimplifiedAnd(IPropExprFactory! factory, IEnumerable/*<IExpr!>*/! exprs)
-        {
-            IExpr! result = factory.True;
-            foreach (IExpr! conjunct in exprs)
-            {
+        public static IExpr/*!*/ SimplifiedAnd(IPropExprFactory/*!*/ factory, IEnumerable/*<IExpr!>*//*!*/ exprs){
+Contract.Requires(exprs != null);
+Contract.Requires(factory != null);
+Contract.Ensures(Contract.Result<IExpr>() != null);
+IExpr/*!*/ result = factory.True;
+Contract.Assert(result != null);
+            foreach(IExpr/*!*/ conjunct in exprs){
+Contract.Assert(conjunct != null);
                 result = SimplifiedAnd(factory, result, conjunct);
             }
             return result;
         }
 
-        public static IExpr! SimplifiedOr(IPropExprFactory! factory, IExpr! e0, IExpr! e1)
-        {
+        public static IExpr/*!*/ SimplifiedOr(IPropExprFactory/*!*/ factory, IExpr/*!*/ e0, IExpr/*!*/ e1){
+Contract.Requires(e1 != null);
+Contract.Requires(e0 != null);
+Contract.Requires(factory != null);
+Contract.Ensures(Contract.Result<IExpr>() != null);
             IFunApp fun0 = e0 as IFunApp;
             if (fun0 != null)
             {
@@ -711,11 +753,14 @@ namespace Microsoft.AbstractInterpretationFramework
             return factory.Or(e0, e1);
         }
         
-        public static IExpr! SimplifiedOr(IPropExprFactory! factory, IEnumerable/*<IExpr!>*/! exprs)
-        {
-            IExpr! result = factory.False;
-            foreach (IExpr! disj in exprs)
-            {
+        public static IExpr/*!*/ SimplifiedOr(IPropExprFactory/*!*/ factory, IEnumerable/*<IExpr!>*//*!*/ exprs){
+Contract.Requires(exprs != null);
+Contract.Requires(factory != null);
+Contract.Ensures(Contract.Result<IExpr>() != null);
+IExpr/*!*/ result = factory.False;
+Contract.Assert(result != null);
+            foreach(IExpr/*!*/ disj in exprs){
+Contract.Assert(disj != null);
                 result = SimplifiedOr(factory, result, disj);
             }
             return result;
@@ -728,9 +773,13 @@ namespace Microsoft.AbstractInterpretationFramework
         /// </summary>
         /// <param name="e">The expression to examine.</param>
         /// <returns>A list of conjuncts.</returns>
-        internal static IList/*<IExpr!>*/! BreakConjuncts(IExpr! e)
-          ensures forall{ IExpr sub in result; sub is IFunApp ==> !((IFunApp) sub).FunctionSymbol.Equals(Prop.And) };
-        {
+        internal static IList/*<IExpr!>*//*!*/ BreakConjuncts(IExpr/*!*/ e){
+Contract.Requires(e != null);
+          Contract.Ensures(Contract.Result<IList>() != null);
+          Contract.Ensures(Contract.ForAll(0, Contract.Result<IList>().Count, i => {
+            var sub = Contract.Result<IList>()[i];
+            return !(sub is IFunApp) || !((IFunApp)sub).FunctionSymbol.Equals(Prop.And);
+          }));
             return BreakJuncts(e, Prop.And);
         }
 
@@ -739,16 +788,25 @@ namespace Microsoft.AbstractInterpretationFramework
         /// </summary>
         /// <param name="e">The expression to examine.</param>
         /// <returns>A list of conjuncts.</returns>
-        internal static IList/*<IExpr!>*/! BreakDisjuncts(IExpr! e)
-          ensures forall{ IExpr sub in result; sub is IFunApp ==> !((IFunApp) sub).FunctionSymbol.Equals(Prop.Or) };
-        {
+        internal static IList/*<IExpr!>*//*!*/ BreakDisjuncts(IExpr/*!*/ e){
+Contract.Requires(e != null);
+          Contract.Ensures(Contract.Result<IList>() != null);
+          Contract.Ensures(Contract.ForAll(0, Contract.Result<IList>().Count, i => {
+            var sub = Contract.Result<IList>()[i];
+            return !(sub is IFunApp) || !((IFunApp)sub).FunctionSymbol.Equals(Prop.Or);
+          }));
             return BreakJuncts(e, Prop.Or);
         }
         
-        private static IList/*<IExpr!>*/! BreakJuncts(IExpr! e, IFunctionSymbol! sym)
-          ensures forall{ IExpr sub in result; sub is IFunApp ==> !((IFunApp) sub).FunctionSymbol.Equals(sym) };
-        {
-            ArrayList/*<IExpr!>*/! result = new ArrayList();
+        private static IList/*<IExpr!>*//*!*/ BreakJuncts(IExpr/*!*/ e, IFunctionSymbol/*!*/ sym){
+Contract.Requires(sym != null);
+Contract.Requires(e != null);
+          Contract.Ensures(Contract.Result<IList>() != null);
+          Contract.Ensures(Contract.ForAll(0, Contract.Result<IList>().Count, i => {
+            var sub = Contract.Result<IList>()[i];
+            return (sub is IFunApp) || !((IFunApp)sub).FunctionSymbol.Equals(sym);
+          }));
+            ArrayList/*<IExpr!>*//*!*/ result = new ArrayList();
 
             IFunApp f = e as IFunApp;
             if (f != null)
@@ -756,8 +814,8 @@ namespace Microsoft.AbstractInterpretationFramework
                 // If it is a sym, go down into sub-expressions.
                 if (f.FunctionSymbol.Equals(sym))
                 {
-                    foreach (IExpr! arg in f.Arguments)
-                    {
+                    foreach(IExpr/*!*/ arg in f.Arguments){
+Contract.Assert(arg != null);
                         result.AddRange(BreakJuncts(arg,sym));
                     }
                 }
@@ -781,7 +839,7 @@ namespace Microsoft.AbstractInterpretationFramework
     /// </summary>
     /// <param name="var">The bound variable to use.</param>
     /// <returns>The function body.</returns>
-    public delegate IExpr! FunctionBody(IVariable! var);
+    public delegate IExpr/*!*/ FunctionBody(IVariable/*!*/ var);
 
     /// <summary>
     ///  An interface for constructing propositional expressions.
@@ -789,30 +847,82 @@ namespace Microsoft.AbstractInterpretationFramework
     ///  This interface should be implemented by the client.  An implementation of
     ///  of this class should generally be used as a singleton object.
     /// </summary>
+    /// 
+    [ContractClass(typeof(IPropExprFactoryContracts))]
     public interface IPropExprFactory
     {
-        IFunApp! False { get /*ensures result.FunctionSymbol.Equals(Prop.False);*/; }
-        IFunApp! True { get /*ensures result.FunctionSymbol.Equals(Prop.True);*/; }
+        IFunApp/*!*/ False { get /*ensures result.FunctionSymbol.Equals(Prop.False);*/; }
+        IFunApp/*!*/ True { get /*ensures result.FunctionSymbol.Equals(Prop.True);*/; }
 
-        IFunApp! Not(IExpr! p) /*ensures result.FunctionSymbol.Equals(Prop.Not);*/;
+        IFunApp/*!*/ Not(IExpr/*!*/ p) /*ensures result.FunctionSymbol.Equals(Prop.Not);*/;
 
-        IFunApp! And(IExpr! p, IExpr! q) /*ensures result.FunctionSymbol.Equals(Prop.And);*/;
-        IFunApp! Or(IExpr! p, IExpr! q) /*ensures result.FunctionSymbol.Equals(Prop.Or);*/;
+        IFunApp/*!*/ And(IExpr/*!*/ p, IExpr/*!*/ q) /*ensures result.FunctionSymbol.Equals(Prop.And);*/;
+        IFunApp/*!*/ Or(IExpr/*!*/ p, IExpr/*!*/ q) /*ensures result.FunctionSymbol.Equals(Prop.Or);*/;
         
-        IFunApp! Implies(IExpr! p, IExpr! q) /*ensures result.FunctionSymbol.Equals(Prop.Implies);*/;
+        IFunApp/*!*/ Implies(IExpr/*!*/ p, IExpr/*!*/ q) /*ensures result.FunctionSymbol.Equals(Prop.Implies);*/;
     }
+    [ContractClassFor(typeof(IPropExprFactory))]
+    public abstract class IPropExprFactoryContracts:IPropExprFactory{
+    #region IPropExprFactory Members
+    IFunApp  IPropExprFactory.Implies(IExpr p, IExpr q)
+    {
+      Contract.Requires(p != null);
+      Contract.Requires(q != null);
+      Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	    throw new System.NotImplementedException();
+    }
+
+IFunApp  IPropExprFactory.False
+{
+  
+	get { Contract.Ensures(Contract.Result<IFunApp>() != null);throw new System.NotImplementedException(); }
+}
+
+IFunApp  IPropExprFactory.True
+{
+	get {Contract.Ensures(Contract.Result<IFunApp>() != null); throw new System.NotImplementedException(); }
+}
+
+IFunApp  IPropExprFactory.Not(IExpr p)
+{
+  Contract.Requires(p != null);
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  IPropExprFactory.And(IExpr p, IExpr q)
+{
+  Contract.Requires(p != null);
+  Contract.Requires(q != null);
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  IPropExprFactory.Or(IExpr p, IExpr q)
+{Contract.Requires(p != null);
+  Contract.Requires(q != null);
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+
+
+#endregion
+}
     
     /// <summary>
     /// Like IPropExprFactory, but also with quantifiers.
     /// </summary>
+    /// 
+  [ContractClass(typeof(IQuantPropExprFactoryContracts))]
     public interface IQuantPropExprFactory : IPropExprFactory {
         /// <summary>
         /// Produce an existential given the lambda-expression.
         /// </summary>
         /// <param name="p">The lambda-expression.</param>
         /// <returns>The existential.</returns>
-        IFunApp! Exists(IFunction! p) /*ensures result.FunctionSymbol.Equals(Prop.Exists);*/;
-        IFunApp! Forall(IFunction! p) /*ensures result.FunctionSymbol.Equals(Prop.Forall);*/;
+        IFunApp/*!*/ Exists(IFunction/*!*/ p) /*ensures result.FunctionSymbol.Equals(Prop.Exists);*/;
+        IFunApp/*!*/ Forall(IFunction/*!*/ p) /*ensures result.FunctionSymbol.Equals(Prop.Forall);*/;
 
         /// <summary>
         /// Produce an existential given a callback that can produce a function body given the
@@ -821,9 +931,71 @@ namespace Microsoft.AbstractInterpretationFramework
         /// </summary>
         /// <param name="body">The function body callback.</param>
         /// <returns>The existential.</returns>
-        IFunApp! Exists(AIType paramType, FunctionBody! body) /*ensures result.FunctionSymbol.Equals(Prop.Exists);*/;
-        IFunApp! Forall(AIType paramType, FunctionBody! body) /*ensures result.FunctionSymbol.Equals(Prop.Forall);*/;
+        IFunApp/*!*/ Exists(AIType paramType, FunctionBody/*!*/ body) /*ensures result.FunctionSymbol.Equals(Prop.Exists);*/;
+        IFunApp/*!*/ Forall(AIType paramType, FunctionBody/*!*/ body) /*ensures result.FunctionSymbol.Equals(Prop.Forall);*/;
     }
+  [ContractClassFor(typeof(IQuantPropExprFactory))]
+  public abstract class IQuantPropExprFactoryContracts:IQuantPropExprFactory{
+  #region IQuantPropExprFactory Members
+
+IFunApp  IQuantPropExprFactory.Exists(IFunction p)
+{
+  Contract.Requires(p != null);
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  IQuantPropExprFactory.Forall(IFunction p)
+{Contract.Requires(p != null);Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  IQuantPropExprFactory.Exists(AIType paramType, FunctionBody body)
+{Contract.Requires(body != null);Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  IQuantPropExprFactory.Forall(AIType paramType, FunctionBody body)
+{Contract.Requires(body != null);Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+#endregion
+
+#region IPropExprFactory Members
+
+IFunApp  IPropExprFactory.False
+{
+	get { throw new System.NotImplementedException(); }
+}
+
+IFunApp  IPropExprFactory.True
+{
+	get { throw new System.NotImplementedException(); }
+}
+
+IFunApp  IPropExprFactory.Not(IExpr p)
+{
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  IPropExprFactory.And(IExpr p, IExpr q)
+{
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  IPropExprFactory.Or(IExpr p, IExpr q)
+{
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  IPropExprFactory.Implies(IExpr p, IExpr q)
+{
+ 	throw new System.NotImplementedException();
+}
+
+#endregion
+}
 
     /// <summary>
     ///  An interface for constructing value expressions.
@@ -831,11 +1003,35 @@ namespace Microsoft.AbstractInterpretationFramework
     ///  This interface should be implemented by the client.  An implementation of
     ///  of this class should generally be used as a singleton object.
     /// </summary>
+    /// 
+  [ContractClass(typeof(IValueExprFactoryContracts))]
     public interface IValueExprFactory
     {
-        IFunApp! Eq(IExpr! e0, IExpr! e1) /*ensures result.FunctionSymbol.Equals(Value.Eq);*/;
-        IFunApp! Neq(IExpr! e0, IExpr! e1) /*ensures result.FunctionSymbol.Equals(Value.Neq);*/;
+        IFunApp/*!*/ Eq (IExpr/*!*/ e0, IExpr/*!*/ e1) /*ensures result.FunctionSymbol.Equals(Value.Eq);*/;
+        IFunApp/*!*/ Neq(IExpr/*!*/ e0, IExpr/*!*/ e1) /*ensures result.FunctionSymbol.Equals(Value.Neq);*/;
     }
+  [ContractClassFor(typeof(IValueExprFactory))]
+  public abstract class IValueExprFactoryContracts:IValueExprFactory{
+  #region IValueExprFactory Members
+
+IFunApp  IValueExprFactory.Eq(IExpr e0, IExpr e1)
+{
+  Contract.Requires(e0 != null);
+  Contract.Requires(e1 != null);
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  IValueExprFactory.Neq(IExpr e0, IExpr e1)
+{
+  Contract.Requires(e0 != null);
+  Contract.Requires(e1 != null);
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+#endregion
+}
 
     /// <summary>
     ///  An interface for constructing value expressions having to with null.
@@ -843,12 +1039,43 @@ namespace Microsoft.AbstractInterpretationFramework
     ///  This interface should be implemented by the client.  An implementation of
     ///  of this class should generally be used as a singleton object.
     /// </summary>
+    /// 
+  [ContractClass(typeof(INullnessFactoryContracts))]
     public interface INullnessFactory
     {
-        IFunApp! Eq(IExpr! e0, IExpr! e1) /*ensures result.FunctionSymbol.Equals(Value.Eq);*/;
-        IFunApp! Neq(IExpr! e0, IExpr! e1) /*ensures result.FunctionSymbol.Equals(Value.Neq);*/;
-        IFunApp! Null { get; /*ensures result.FunctionSymbol.Equals(Ref.Null);*/ }
+        IFunApp/*!*/ Eq(IExpr/*!*/ e0, IExpr/*!*/ e1) /*ensures result.FunctionSymbol.Equals(Value.Eq);*/;
+        IFunApp/*!*/ Neq(IExpr/*!*/ e0, IExpr/*!*/ e1) /*ensures result.FunctionSymbol.Equals(Value.Neq);*/;
+        IFunApp/*!*/ Null { get; /*ensures result.FunctionSymbol.Equals(Ref.Null);*/ }
     }
+  [ContractClassFor(typeof(INullnessFactory))]
+  public abstract class INullnessFactoryContracts:INullnessFactory{
+#region INullnessFactory Members
+
+IFunApp  INullnessFactory.Eq(IExpr e0, IExpr e1)
+{
+  Contract.Requires(e0 != null);
+  Contract.Requires(e1 != null);
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  INullnessFactory.Neq(IExpr e0, IExpr e1)
+{
+  Contract.Requires(e0 != null);
+  Contract.Requires(e1 != null);
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  INullnessFactory.Null
+{
+	get {
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+    throw new System.NotImplementedException(); }
+}
+
+#endregion
+}
 
     /// <summary>
     ///  An interface for constructing integer expressions.
@@ -856,9 +1083,35 @@ namespace Microsoft.AbstractInterpretationFramework
     ///  This interface should be implemented by the client.  An implementation of
     ///  of this class should generally be used as a singleton object.
     /// </summary>
+    /// 
+  [ContractClass(typeof(IIntExprFactoryContracts))]
     public interface IIntExprFactory : IValueExprFactory
     {
-        IFunApp! Const(BigNum i) /*ensures result.FunctionSymbol.Equals(new IntSymbol(i));*/;
+      IFunApp/*!*/ Const(BigNum i) /*ensures result.FunctionSymbol.Equals(new IntSymbol(i));*/;
+    }
+  [ContractClassFor(typeof(IIntExprFactory))]
+    public abstract class IIntExprFactoryContracts : IIntExprFactory {
+
+      #region IIntExprFactory Members
+
+      IFunApp IIntExprFactory.Const(BigNum i) {
+        Contract.Ensures(Contract.Result<IFunApp>() != null);
+        throw new System.NotImplementedException();
+      }
+
+      #endregion
+
+      #region IValueExprFactory Members
+
+      IFunApp IValueExprFactory.Eq(IExpr e0, IExpr e1) {
+        throw new System.NotImplementedException();
+      }
+
+      IFunApp IValueExprFactory.Neq(IExpr e0, IExpr e1) {
+        throw new System.NotImplementedException();
+      }
+
+      #endregion
     }
 
     /// <summary>
@@ -867,20 +1120,88 @@ namespace Microsoft.AbstractInterpretationFramework
     ///  This interface should be implemented by the client.  An implementation of
     ///  of this class should generally be used as a singleton object.
     /// </summary>
+    /// 
+  [ContractClass(typeof(ILinearExprFactoryContracts))]
     public interface ILinearExprFactory : IIntExprFactory
     {
-        IFunApp! AtMost(IExpr! e0, IExpr! e1) /*ensures result.FunctionSymbol.Equals(Value.AtMost);*/;
-        IFunApp! Add(IExpr! e0, IExpr! e1) /*ensures result.FunctionSymbol.Equals(Value.Add);*/;
+        IFunApp/*!*/ AtMost(IExpr/*!*/ e0, IExpr/*!*/ e1) /*ensures result.FunctionSymbol.Equals(Value.AtMost);*/;
+        IFunApp/*!*/ Add(IExpr/*!*/ e0, IExpr/*!*/ e1) /*ensures result.FunctionSymbol.Equals(Value.Add);*/;
         /// <summary>
         /// If "var" is null, returns an expression representing r.
         /// Otherwise, returns an expression representing r*var.
         /// </summary>
-        IExpr! Term(Microsoft.Basetypes.Rational r, IVariable var);
+        IExpr/*!*/ Term(Microsoft.Basetypes.Rational r, IVariable var);
 
-        IFunApp! False { get /*ensures result.FunctionSymbol.Equals(Prop.False);*/; }
-        IFunApp! True { get /*ensures result.FunctionSymbol.Equals(Prop.True);*/; }
-        IFunApp! And(IExpr! p, IExpr! q) /*ensures result.FunctionSymbol.Equals(Prop.And);*/;
+        IFunApp/*!*/ False { get /*ensures result.FunctionSymbol.Equals(Prop.False);*/; }
+        IFunApp/*!*/ True { get /*ensures result.FunctionSymbol.Equals(Prop.True);*/; }
+        IFunApp/*!*/ And(IExpr/*!*/ p, IExpr/*!*/ q) /*ensures result.FunctionSymbol.Equals(Prop.And);*/;
     }
+  [ContractClassFor(typeof(ILinearExprFactory))]
+  public abstract class ILinearExprFactoryContracts:ILinearExprFactory{
+
+  #region ILinearExprFactory Members
+
+IFunApp  ILinearExprFactory.AtMost(IExpr e0, IExpr e1)
+{
+  Contract.Requires(e0 != null);
+  Contract.Requires(e1 != null);
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  ILinearExprFactory.Add(IExpr e0, IExpr e1)
+{
+  Contract.Requires(e0 != null);
+  Contract.Requires(e1 != null);Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IExpr  ILinearExprFactory.Term(Rational r, IVariable var)
+{
+  Contract.Ensures(Contract.Result<IExpr>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  ILinearExprFactory.False
+{
+	get {Contract.Ensures(Contract.Result<IFunApp>() != null); throw new System.NotImplementedException(); }
+}
+
+IFunApp  ILinearExprFactory.True
+{
+	get { Contract.Ensures(Contract.Result<IFunApp>() != null);throw new System.NotImplementedException(); }
+}
+
+IFunApp  ILinearExprFactory.And(IExpr p, IExpr q)
+{
+  Contract.Requires(p != null);
+  Contract.Requires(q != null);
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+#endregion
+
+#region IIntExprFactory Members
+
+IFunApp IIntExprFactory.Const(BigNum i) {
+  throw new System.NotImplementedException();
+}
+
+#endregion
+
+#region IValueExprFactory Members
+
+IFunApp IValueExprFactory.Eq(IExpr e0, IExpr e1) {
+  throw new System.NotImplementedException();
+}
+
+IFunApp IValueExprFactory.Neq(IExpr e0, IExpr e1) {
+  throw new System.NotImplementedException();
+}
+
+#endregion
+  }
 
     /// <summary>
     ///  An interface for constructing type expressions and performing some type operations.
@@ -889,39 +1210,96 @@ namespace Microsoft.AbstractInterpretationFramework
     ///  This interface should be implemented by the client.  An implementation of
     ///  of this class should generally be used as a singleton object.
     /// </summary>
+    /// 
+  [ContractClass(typeof(ITypeExprFactoryContracts))]
     public interface ITypeExprFactory
     {
         /// <summary>
         /// Returns an expression denoting the top of the type hierarchy.
         /// </summary>
-        IExpr! RootType { get; }
+        IExpr/*!*/ RootType { get; }
 
         /// <summary>
         /// Returns true iff "t" denotes a type constant.
         /// </summary>
         [Pure]
-        bool IsTypeConstant(IExpr! t);
+        bool IsTypeConstant(IExpr/*!*/ t);
 
         /// <summary>
         /// Returns true iff t0 and t1 are types such that t0 and t1 are equal.
         /// </summary>
         [Pure]
-        bool IsTypeEqual(IExpr! t0, IExpr! t1);
+        bool IsTypeEqual(IExpr/*!*/ t0, IExpr/*!*/ t1);
 
         /// <summary>
         /// Returns true iff t0 and t1 are types such that t0 is a subtype of t1.
         /// </summary>
         [Pure]
-        bool IsSubType(IExpr! t0, IExpr! t1);
+        bool IsSubType(IExpr/*!*/ t0, IExpr/*!*/ t1);
 
         /// <summary>
         /// Returns the most derived supertype of both "t0" and "t1".  A precondition is
         /// that "t0" and "t1" both represent types.
         /// </summary>
-        IExpr! JoinTypes(IExpr! t0, IExpr! t1);
+        IExpr/*!*/ JoinTypes(IExpr/*!*/ t0, IExpr/*!*/ t1);
 
-        IFunApp! IsExactlyA(IExpr! e, IExpr! type) /*requires IsTypeConstant(type); ensures result.FunctionSymbol.Equals(Value.Eq);*/;
-        IFunApp! IsA(IExpr! e, IExpr! type) /*requires IsTypeConstant(type); ensures result.FunctionSymbol.Equals(Value.Subtype);*/;
+        IFunApp/*!*/ IsExactlyA(IExpr/*!*/ e, IExpr/*!*/ type) /*requires IsTypeConstant(type); ensures result.FunctionSymbol.Equals(Value.Eq);*/;
+        IFunApp/*!*/ IsA(IExpr/*!*/ e, IExpr/*!*/ type) /*requires IsTypeConstant(type); ensures result.FunctionSymbol.Equals(Value.Subtype);*/;
     }
+  [ContractClassFor(typeof(ITypeExprFactory))]
+  public abstract class ITypeExprFactoryContracts:ITypeExprFactory{
 
+  #region ITypeExprFactory Members
+
+IExpr  ITypeExprFactory.RootType
+{
+	get {Contract.Ensures(Contract.Result<IExpr>() != null); throw new System.NotImplementedException(); }
+}
+
+bool  ITypeExprFactory.IsTypeConstant(IExpr t)
+{
+  Contract.Requires(t != null);
+ 	throw new System.NotImplementedException();
+}
+
+bool  ITypeExprFactory.IsTypeEqual(IExpr t0, IExpr t1)
+{
+  Contract.Requires(t0 != null);
+  Contract.Requires(t1 != null);
+ 	throw new System.NotImplementedException();
+}
+
+bool  ITypeExprFactory.IsSubType(IExpr t0, IExpr t1)
+{
+  Contract.Requires(t0 != null);
+  Contract.Requires(t1 != null);
+ 	throw new System.NotImplementedException();
+}
+
+IExpr  ITypeExprFactory.JoinTypes(IExpr t0, IExpr t1)
+{
+  Contract.Requires(t0 != null);
+  Contract.Requires(t1 != null);
+  Contract.Ensures(Contract.Result<IExpr>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  ITypeExprFactory.IsExactlyA(IExpr e, IExpr type)
+{
+  Contract.Requires(e != null);
+  Contract.Requires(type != null);
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+IFunApp  ITypeExprFactory.IsA(IExpr e, IExpr type)
+{
+  Contract.Requires(e != null);
+  Contract.Requires(type != null);
+  Contract.Ensures(Contract.Result<IFunApp>() != null);
+ 	throw new System.NotImplementedException();
+}
+
+#endregion
+}
 }

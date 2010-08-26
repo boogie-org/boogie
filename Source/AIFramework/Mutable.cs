@@ -3,10 +3,11 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
+using System.Diagnostics.Contracts;
 namespace Microsoft.AbstractInterpretationFramework.Collections
 {
     using System.Collections;
-    using Microsoft.Contracts;
+    using System.Diagnostics.Contracts;
 
     /// <summary>
     ///  Extend sets for using as a IWorkList.
@@ -33,7 +34,7 @@ namespace Microsoft.AbstractInterpretationFramework.Collections
             IEnumerator iter = GetEnumerator();
             iter.MoveNext();
 
-            object result = (!)iter.Current;
+            object result = cce.NonNull(iter.Current);
             Remove(result);
 
             return result;
@@ -50,7 +51,8 @@ namespace Microsoft.AbstractInterpretationFramework.Collections
         }
         
         // ICollection members
-        public void CopyTo (System.Array! a, int i) { 
+        public void CopyTo (System.Array/*!*/ a, int i){
+Contract.Requires(a != null); 
           if (this.Count > a.Length - i) throw new System.ArgumentException();
           int j = i;
           foreach(object o in this){
@@ -58,7 +60,8 @@ namespace Microsoft.AbstractInterpretationFramework.Collections
           }
           return;
         }
-        object! ICollection.SyncRoot { [Pure] get { return this; } }
+        object/*!*/ ICollection.SyncRoot { [Pure] get {Contract.Ensures(Contract.Result<object>() != null);
+ return this; } }
         public bool IsSynchronized { get { return false; } }
           
     }
@@ -70,9 +73,14 @@ namespace Microsoft.AbstractInterpretationFramework.Collections.Generic
 
     public class HashMultiset<T>
     {
-        private readonly IDictionary<T,int>! dict;
+      [ContractInvariantMethod]
+      void ObjectInvariant() {
+        Contract.Invariant(dict != null);
+      }
+
+        private readonly IDictionary<T,int>/*!*/ dict;
         
-        //invariant forall{KeyValuePair<T,int> entry in dict; entry.Value >= 1};
+        //Contract.Invariant(Contract.ForAll(dict , entry => entry.Value >= 1));
         
         public HashMultiset()
         {
@@ -86,8 +94,9 @@ namespace Microsoft.AbstractInterpretationFramework.Collections.Generic
             // base();
         }
         
-        public void Add(T t)
-        { expose (this) {
+        public void Add(T t) {
+          cce.BeginExpose(this);
+          {
             if (dict.ContainsKey(t))
             {
                 dict[t] = dict[t] + 1;
@@ -96,16 +105,20 @@ namespace Microsoft.AbstractInterpretationFramework.Collections.Generic
             {
                 dict.Add(t,1);
             }
-        }}
+          }
+          cce.EndExpose();
+        }
         
         public void Remove(T t)
         {
             if (dict.ContainsKey(t))
-            { expose (this) {
+            { cce.BeginExpose(this); {
                 int count = dict[t];
                 if (count == 1) { dict.Remove(t); }
                 else { dict[t] = count - 1; }
-            }}
+            }
+            cce.EndExpose();
+            }
         }
         
         public bool Contains(T t)

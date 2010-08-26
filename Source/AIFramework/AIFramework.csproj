@@ -1,161 +1,109 @@
-<?xml version="1.0" encoding="utf-8"?>
-<VisualStudioProject>
-  <XEN ProjectType="Local"
-     SchemaVersion="1.0"
-     Name="AIFramework"
-     ProjectGuid="24b55172-ad8b-47d1-8952-5a95cfdb9b31"
-    >
-    <Build>
-      <Settings ApplicationIcon=""
-         AssemblyName="AIFramework"
-         OutputType="Library"
-         RootNamespace="AIFramework"
-         StartupObject=""
-         StandardLibraryLocation=""
-         TargetPlatform="v2"
-         TargetPlatformLocation=""
-         ShadowedAssembly=""
-        >
-        <Config Name="Debug"
-           AllowUnsafeBlocks="False"
-           BaseAddress="285212672"
-           CheckForOverflowUnderflow="False"
-           ConfigurationOverrideFile=""
-           DefineConstants="DEBUG;TRACE"
-           DocumentationFile=""
-           DebugSymbols="True"
-           FileAlignment="4096"
-           IncrementalBuild="True"
-           Optimize="False"
-           OutputPath="bin\debug"
-           RegisterForComInterop="False"
-           RemoveIntegerChecks="false"
-           TreatWarningsAsErrors="False"
-           WarningLevel="4"
-           RunProgramVerifier="False"
-           ProgramVerifierCommandLineOptions=""
-           ReferenceTypesAreNonNullByDefault="False"
-           RunProgramVerifierWhileEditing="False"
-           AllowPointersToManagedStructures="False"
-           CheckContractAdmissibility="True"
-           CheckPurity="False"
-           />
-        <Config Name="Release"
-           AllowUnsafeBlocks="false"
-           BaseAddress="285212672"
-           CheckForOverflowUnderflow="false"
-           ConfigurationOverrideFile=""
-           DefineConstants="TRACE"
-           DocumentationFile=""
-           DebugSymbols="false"
-           FileAlignment="4096"
-           IncrementalBuild="false"
-           Optimize="true"
-           OutputPath="bin\release"
-           RegisterForComInterop="false"
-           RemoveIntegerChecks="false"
-           TreatWarningsAsErrors="True"
-           WarningLevel="4"
-           />
-      </Settings>
-      <References>
-        <Reference Name="System"
-             AssemblyName="System"
-             Private="false"
-             />
-        <Reference Name="Basetypes"
-             Project="{0C692837-77EC-415F-BF04-395E3ED06E9A}"
-             Private="true"
-             />
-      </References>
-    </Build>
-    <Files>
-      <Include>
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="Expr.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="CommonFunctionSymbols.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="Lattice.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="Functional.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="Mutable.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="Logger.ssc"
-                 />
-        <Folder RelPath="VariableMap\"
-                 />
-        <Folder RelPath="Polyhedra\"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="VariableMap\MicroLattice.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="VariableMap\VariableMapLattice.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="MultiLattice.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="VariableMap\Nullness.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="VariableMap\ConstantAbstraction.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="VariableMap\DynamicTypeLattice.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="Polyhedra\SimplexTableau.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="Polyhedra\LinearConstraint.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="Polyhedra\LinearConstraintSystem.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="Polyhedra\PolyhedraAbstraction.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="..\version.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="VariableMap\Intervals.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="VariableMap\ConstantExpressions.ssc"
-                 />
-        <File BuildAction="Compile"
-                 SubType="Code"
-                 RelPath="AssemblyInfo.ssc"
-                 />
-      </Include>
-    </Files>
-  </XEN>
-</VisualStudioProject>
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{39B0658D-C955-41C5-9A43-48C97A1EF5FD}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>AIFramework</RootNamespace>
+    <AssemblyName>AIFramework</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <CodeContractsAssemblyMode>0</CodeContractsAssemblyMode>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\InterimKey.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <CodeContractsEnableRuntimeChecking>False</CodeContractsEnableRuntimeChecking>
+    <CodeContractsRuntimeOnlyPublicSurface>False</CodeContractsRuntimeOnlyPublicSurface>
+    <CodeContractsRuntimeThrowOnFailure>True</CodeContractsRuntimeThrowOnFailure>
+    <CodeContractsRuntimeCallSiteRequires>False</CodeContractsRuntimeCallSiteRequires>
+    <CodeContractsRunCodeAnalysis>False</CodeContractsRunCodeAnalysis>
+    <CodeContractsNonNullObligations>False</CodeContractsNonNullObligations>
+    <CodeContractsBoundsObligations>False</CodeContractsBoundsObligations>
+    <CodeContractsArithmeticObligations>False</CodeContractsArithmeticObligations>
+    <CodeContractsPointerObligations>False</CodeContractsPointerObligations>
+    <CodeContractsContainerAnalysis>False</CodeContractsContainerAnalysis>
+    <CodeContractsRedundantAssumptions>False</CodeContractsRedundantAssumptions>
+    <CodeContractsRunInBackground>True</CodeContractsRunInBackground>
+    <CodeContractsShowSquigglies>False</CodeContractsShowSquigglies>
+    <CodeContractsUseBaseLine>False</CodeContractsUseBaseLine>
+    <CodeContractsEmitXMLDocs>False</CodeContractsEmitXMLDocs>
+    <CodeContractsCustomRewriterAssembly>
+    </CodeContractsCustomRewriterAssembly>
+    <CodeContractsCustomRewriterClass>
+    </CodeContractsCustomRewriterClass>
+    <CodeContractsLibPaths>
+    </CodeContractsLibPaths>
+    <CodeContractsExtraRewriteOptions>
+    </CodeContractsExtraRewriteOptions>
+    <CodeContractsExtraAnalysisOptions>
+    </CodeContractsExtraAnalysisOptions>
+    <CodeContractsBaseLineFile>
+    </CodeContractsBaseLineFile>
+    <CodeContractsRuntimeCheckingLevel>Full</CodeContractsRuntimeCheckingLevel>
+    <CodeContractsReferenceAssembly>%28none%29</CodeContractsReferenceAssembly>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Binaries\Microsoft.Contracts.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="cce.cs" />
+    <Compile Include="CommonFunctionSymbols.cs" />
+    <Compile Include="Expr.cs" />
+    <Compile Include="Functional.cs" />
+    <Compile Include="Lattice.cs" />
+    <Compile Include="Logger.cs" />
+    <Compile Include="MultiLattice.cs" />
+    <Compile Include="Mutable.cs" />
+    <Compile Include="Polyhedra\LinearConstraint.cs" />
+    <Compile Include="Polyhedra\LinearConstraintSystem.cs" />
+    <Compile Include="Polyhedra\PolyhedraAbstraction.cs" />
+    <Compile Include="Polyhedra\SimplexTableau.cs" />
+    <Compile Include="VariableMap\ConstantAbstraction.cs" />
+    <Compile Include="VariableMap\DynamicTypeLattice.cs" />
+    <Compile Include="VariableMap\Intervals.cs" />
+    <Compile Include="VariableMap\MicroLattice.cs" />
+    <Compile Include="VariableMap\Nullness.cs" />
+    <Compile Include="VariableMap\VariableMapLattice.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Basetypes\Basetypes.sscproj">
+      <Project>{0C692837-77EC-415F-BF04-395E3ED06E9A}</Project>
+      <Name>Basetypes</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
