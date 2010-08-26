@@ -87,8 +87,29 @@ namespace Microsoft.Boogie.Z3
 
         public Context z3;
         public Z3Config config;
+        public Z3apiProverContext ctxt;
         private VCExpressionGenerator gen;
         private Z3TypeCachedBuilder tm;
+        private UniqueNamer namer;
+        public UniqueNamer Namer
+        {
+            get { return namer; }
+        }
+
+        public Z3SafeContext(Z3apiProverContext ctxt, Z3Config config, VCExpressionGenerator gen)
+        {
+            Context z3 = new Context(config.Config);
+            if (config.LogFilename != null)
+                z3.OpenLog(config.LogFilename);
+            foreach (string tag in config.DebugTraces)
+                z3.EnableDebugTrace(tag);
+            this.ctxt = ctxt;
+            this.z3 = z3;
+            this.config = config;
+            this.tm = new Z3TypeCachedBuilder(this);
+            this.gen = gen;
+            this.namer = new UniqueNamer();
+        }
 
         public void CreateBacktrackPoint()
         {
@@ -108,10 +129,10 @@ namespace Microsoft.Boogie.Z3
             symbols.Backtrack();
         }
 
-        public void AddAxiom(VCExpr vc, LineariserOptions linOptions)
+        public void AddAxiom(VCExpr axiom, LineariserOptions linOptions)
         {
-            Z3apiExprLineariser visitor = new Z3apiExprLineariser(this);
-            Z3TermAst z3ast = (Z3TermAst)vc.Accept(visitor, linOptions);
+            Z3apiExprLineariser visitor = new Z3apiExprLineariser(this, namer);
+            Z3TermAst z3ast = (Z3TermAst)axiom.Accept(visitor, linOptions);
             Term term = Unwrap(z3ast);
             z3.AssertCnstr(term);
         }
@@ -119,7 +140,7 @@ namespace Microsoft.Boogie.Z3
         public void AddConjecture(VCExpr vc, LineariserOptions linOptions)
         {
             VCExpr not_vc = (VCExpr)this.gen.Not(vc);
-            Z3apiExprLineariser visitor = new Z3apiExprLineariser(this);
+            Z3apiExprLineariser visitor = new Z3apiExprLineariser(this, namer);
             Z3TermAst z3ast = (Z3TermAst)not_vc.Accept(visitor, linOptions);
             Term term = Unwrap(z3ast);
             z3.AssertCnstr(term);
@@ -346,7 +367,7 @@ namespace Microsoft.Boogie.Z3
                 //System.Console.WriteLine("Check Begin");
                 outcome = z3.CheckAndGetModel(out z3Model);
                 //System.Console.WriteLine("Check End");
-                if (outcome == LBool.True)
+                if (outcome != LBool.False)
                 {
                     Debug.Assert(z3Model != null);
 
@@ -388,20 +409,6 @@ namespace Microsoft.Boogie.Z3
             bool intType = z3.GetSort(unwrapTerm).Equals(z3.MkIntSort());
             if (!intType)
                 throw new Exception("Failed Int Typecheck");
-        }
-
-        public Z3SafeContext(Z3Config config, VCExpressionGenerator gen)
-        {
-            Context z3 = new Context(config.Config);
-            // TBD: z3.EnableArithmetic();
-            if (config.LogFilename != null)
-                z3.OpenLog(config.LogFilename);
-            foreach (string tag in config.DebugTraces)
-                z3.EnableDebugTrace(tag);
-            this.z3 = z3;
-            this.config = config;
-            this.tm = new Z3TypeCachedBuilder(this);
-            this.gen = gen;
         }
 
         public void DeclareType(string typeName)

@@ -10,6 +10,7 @@ using Microsoft.Boogie;
 using Microsoft.Boogie.Z3;
 using Microsoft.Z3;
 using Microsoft.Boogie.VCExprAST;
+using Microsoft.Boogie.Simplify;
 
 using TypeAst = System.IntPtr;
 using TermAst = System.IntPtr;
@@ -20,49 +21,62 @@ using PatternAst = System.IntPtr;
 
 namespace Microsoft.Boogie.Z3
 {
-    public class Z3apiProcessTheoremProver : Z3ProcessTheoremProver
+    public class Z3apiProcessTheoremProver : ProverInterface
     {
-        public Z3apiProcessTheoremProver(VCExpressionGenerator gen,
-                                         DeclFreeProverContext ctx,
-                                         Z3InstanceOptions opts)
-            : base(gen, ctx, opts)
+        public Z3apiProcessTheoremProver(Z3InstanceOptions opts, DeclFreeProverContext ctxt)
         {
+            this.options = opts;
+            this.context = (Z3apiProverContext) ctxt;
             this.z3ContextIsUsed = false;
+        }
+
+        private Z3InstanceOptions options;
+
+        private Z3apiProverContext context;
+        public override ProverContext Context
+        {
+            get { return context; }
+        }
+
+        public override VCExpressionGenerator VCExprGen
+        {
+            get { return context.ExprGen; }
         }
 
         public override void Close()
         {
             base.Close();
-            ((Z3apiProverContext)Context).cm.z3.Dispose();
-            ((Z3apiProverContext)Context).cm.config.Config.Dispose();
+            ((Z3apiProverContext)context).cm.z3.Dispose();
+            ((Z3apiProverContext)context).cm.config.Config.Dispose();
         }
         private bool z3ContextIsUsed;
 
         public void PushAxiom(VCExpr axiom)
         {
-            Z3SafeContext cm = ((Z3apiProverContext)ctx).cm;
+            Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             cm.CreateBacktrackPoint();
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            cm.AddAxiom((VCExpr)axiom, linOptions);
+            cm.AddAxiom(axiom, linOptions);
+            
         }
 
         private void PushConjecture(VCExpr conjecture)
         {
-            Z3SafeContext cm = ((Z3apiProverContext)ctx).cm;
+            Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             cm.CreateBacktrackPoint();
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            cm.AddConjecture((VCExpr)conjecture, linOptions);
+            cm.AddConjecture(conjecture, linOptions);
         }
 
         public void PrepareCheck(string descriptiveName, VCExpr vc)
         {
-            PushAxiom(ctx.Axioms);
+            PushAxiom(context.Axioms);
             PushConjecture(vc);
         }
 
         public void BeginPreparedCheck()
         {
-            Z3SafeContext cm = ((Z3apiProverContext)ctx).cm;
+            Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             outcome = Outcome.Undetermined;
             outcome = cm.Check(out z3LabelModels);
         }
@@ -75,19 +89,19 @@ namespace Microsoft.Boogie.Z3
         public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
         {
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            Z3SafeContext cm = ((Z3apiProverContext)ctx).cm;
+            Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             if (z3ContextIsUsed)
             {
                 cm.Backtrack();
             }
             else
             {
-                cm.AddAxiom((VCExpr)ctx.Axioms, linOptions);
+                cm.AddAxiom(context.Axioms, linOptions);
                 z3ContextIsUsed = true;
             }
 
             cm.CreateBacktrackPoint();
-            cm.AddConjecture((VCExpr)vc, linOptions);
+            cm.AddConjecture(vc, linOptions);
 
             BeginPreparedCheck();
         }
@@ -111,12 +125,13 @@ namespace Microsoft.Boogie.Z3
 
         public void CreateBacktrackPoint()
         {
-            Z3SafeContext cm = ((Z3apiProverContext)ctx).cm;
+            Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             cm.CreateBacktrackPoint();
         }
+
         override public void Pop()
         {
-            Z3SafeContext cm = ((Z3apiProverContext)ctx).cm;
+            Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             cm.Backtrack();
         }
 
@@ -148,13 +163,11 @@ namespace Microsoft.Boogie.Z3
     {
         public Z3SafeContext cm;
         
-        public Z3apiProverContext(VCExpressionGenerator gen, 
-                                  VCGenerationOptions genOptions, 
-                                  Z3InstanceOptions opts)
-            : base(gen, genOptions)
+        public Z3apiProverContext(Z3InstanceOptions opts, VCExpressionGenerator gen)
+            : base(gen, new VCGenerationOptions(new List<string>()))
         {
             Z3Config config = BuildConfig(opts.Timeout, true);
-            this.cm = new Z3SafeContext(config, gen);
+            this.cm = new Z3SafeContext(this, config, gen);
         }
         private static Z3Config BuildConfig(int timeout, bool nativeBv)
         {
@@ -208,25 +221,37 @@ namespace Microsoft.Boogie.Z3
             base.DeclareGlobalVariable(v, attributes);
             cm.DeclareConstant(v.Name, v.TypedIdent.Type);
         }
+
+        public override string Lookup(VCExprVar var)
+        {
+            return cm.Namer.Lookup(var);
+        }
     }
 }
 
 namespace Microsoft.Boogie.Z3api
 {
-    public class Factory : Microsoft.Boogie.Z3.Factory
+    public class Factory : ProverFactory
     {
-        protected override Z3ProcessTheoremProver SpawnProver(VCExpressionGenerator gen,
-                                                              DeclFreeProverContext ctx,
-                                                              Z3InstanceOptions opts)
+        public override object SpawnProver(ProverOptions options, object ctxt)
         {
-            return new Z3apiProcessTheoremProver(gen, ctx, opts);
+            return new Z3apiProcessTheoremProver((Z3InstanceOptions) options, (Z3apiProverContext) ctxt);
         }
 
-        protected override DeclFreeProverContext NewProverContext(VCExpressionGenerator gen,
-                                                                  VCGenerationOptions genOptions,
-                                                                  Z3InstanceOptions opts)
+        public override object NewProverContext(ProverOptions opts)
         {
-            return new Z3apiProverContext(gen, genOptions, opts);
+            if (CommandLineOptions.Clo.BracketIdsInVC < 0)
+            {
+                CommandLineOptions.Clo.BracketIdsInVC = 0;
+            }
+
+            VCExpressionGenerator gen = new VCExpressionGenerator();
+            return new Z3apiProverContext((Z3InstanceOptions)opts, gen);
+        }
+
+        public override ProverOptions BlankProverOptions()
+        {
+            return new Z3InstanceOptions();
         }
     }
 }

@@ -29,6 +29,7 @@ namespace Microsoft.Boogie
     public virtual void AddAxiom(Axiom a, string attributes) {Contract.Requires(a != null); ProcessDeclaration(a); }
     public virtual void DeclareGlobalVariable(GlobalVariable v, string attributes) {Contract.Requires(v != null); ProcessDeclaration(v); }
     public abstract void AddAxiom(VCExpr vc);
+    public abstract string Lookup(VCExprVar var);
     public abstract VCExpressionGenerator ExprGen { get; }
     public abstract Boogie2VCExprTranslator BoogieExprTranslator { get; }
     public abstract VCGenerationOptions VCGenOptions { get; }
@@ -230,6 +231,11 @@ void ObjectInvariant()
       string res = (full ? proverCommands : incrementalProverCommands).ToString();
       incrementalProverCommands.Length = 0;
       return res;
+    }
+
+    public override string Lookup(VCExprVar var)
+    {
+        return exprTranslator.Lookup(var);
     }
 
     public override VCExpressionGenerator ExprGen { get {Contract.Ensures(Contract.Result<VCExpressionGenerator>() != null);

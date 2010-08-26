@@ -1585,9 +1585,9 @@ namespace VC {
         Contract.Assert(vc != null);
 
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
-          reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, parent.implName2LazyInliningInfo, cce.NonNull((DeclFreeProverContext)this.Checker.TheoremProver.Context), parent.program);
+          reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, parent.implName2LazyInliningInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);
         } else {
-          reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, parent.implName2LazyInliningInfo, (DeclFreeProverContext)this.Checker.TheoremProver.Context, parent.program);
+          reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, parent.implName2LazyInliningInfo, this.Checker.TheoremProver.Context, parent.program);
         }
 
         if (CommandLineOptions.Clo.TraceVerify && no >= 0) {
@@ -2454,15 +2454,15 @@ namespace VC {
       /*
       ErrorReporter errReporter;
       if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
-        errReporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, incarnationOriginMap, callback, implName2LazyInliningInfo, (DeclFreeProverContext!) checker.TheoremProver.Context, program);
+        errReporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, incarnationOriginMap, callback, implName2LazyInliningInfo, checker.TheoremProver.Context, program);
       } else {
-        errReporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, incarnationOriginMap, callback, implName2LazyInliningInfo, (DeclFreeProverContext!) checker.TheoremProver.Context, program);
+        errReporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, incarnationOriginMap, callback, implName2LazyInliningInfo, checker.TheoremProver.Context, program);
       }
       */
 
       reporter = new StratifiedInliningErrorReporter(
          cce.NonNull(implName2StratifiedInliningInfo), checker.TheoremProver, callback,
-         (DeclFreeProverContext)checker.TheoremProver.Context, gotoCmdOrigins, program, impl);
+         checker.TheoremProver.Context, gotoCmdOrigins, program, impl);
 
     }
 
@@ -2879,7 +2879,7 @@ namespace VC {
       }
 
       Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo;
-      DeclFreeProverContext/*!*/ context;
+      ProverContext/*!*/ context;
       Program/*!*/ program;
 
       public ErrorReporter(Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins,
@@ -2888,7 +2888,7 @@ namespace VC {
           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
           VerifierCallback/*!*/ callback,
           Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
-          DeclFreeProverContext/*!*/ context,
+          ProverContext/*!*/ context,
           Program/*!*/ program) {
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(label2absy != null);
@@ -2980,7 +2980,7 @@ namespace VC {
           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
           VerifierCallback/*!*/ callback,
           Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
-          DeclFreeProverContext/*!*/ context,
+          ProverContext/*!*/ context,
           Program/*!*/ program)
         : base(gotoCmdOrigins, label2absy, blocks, incarnationOriginMap, callback, implName2LazyInliningInfo, context, program) // here for aesthetic purposes //TODO: Maybe nix?
       {
@@ -3047,7 +3047,7 @@ namespace VC {
       FCallHandler calls;
       Program/*!*/ program;
       Implementation/*!*/ mainImpl;
-      DeclFreeProverContext/*!*/ context;
+      ProverContext/*!*/ context;
       Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins;
 
       public bool underapproximationMode;
@@ -3066,7 +3066,7 @@ namespace VC {
 
 
       public StratifiedInliningErrorReporter(Dictionary<string/*!*/, StratifiedInliningInfo/*!*/>/*!*/ implName2StratifiedInliningInfo,
-                                             ProverInterface/*!*/ theoremProver, VerifierCallback/*!*/ callback, DeclFreeProverContext/*!*/ context,
+                                             ProverInterface/*!*/ theoremProver, VerifierCallback/*!*/ callback, ProverContext/*!*/ context,
                                              Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins,
                                              Program/*!*/ program, Implementation/*!*/ mainImpl) {
         Contract.Requires(cce.NonNullElements(implName2StratifiedInliningInfo));
@@ -3673,7 +3673,7 @@ namespace VC {
     private static Counterexample LazyCounterexample(
                                        ErrorModel/*!*/ errModel,
                                        Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
-                                       DeclFreeProverContext/*!*/ context,
+                                       ProverContext/*!*/ context,
                                        Program/*!*/ program,
                                        string/*!*/ implName, List<int>/*!*/ values)
     {
@@ -3685,7 +3685,6 @@ namespace VC {
       Contract.Requires(values != null);
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
-      VCExprTranslator vcExprTranslator = cce.NonNull(context.exprTranslator);
       Boogie2VCExprTranslator boogieExprTranslator = context.BoogieExprTranslator;
       Contract.Assert(boogieExprTranslator != null);
       LazyInliningInfo info = implName2LazyInliningInfo[implName];
@@ -3694,7 +3693,7 @@ namespace VC {
       Block b = cce.NonNull( info.impl).Blocks[0];
       trace.Add(b);
       VCExprVar cfcVar = boogieExprTranslator.LookupVariable(info.controlFlowVariable);
-      string cfcName = vcExprTranslator.Lookup(cfcVar);
+      string cfcName = context.Lookup(cfcVar);
       int cfcPartition = errModel.LookupSkolemFunctionAt(cfcName + "!" + info.uniqueId, values);
       int cfcValue = errModel.LookupPartitionValue(cfcPartition);
       
@@ -3741,7 +3740,7 @@ namespace VC {
             if (var is Constant) 
             {
               exprVar = boogieExprTranslator.LookupVariable(var);
-              name = vcExprTranslator.Lookup(exprVar);
+              name = context.Lookup(exprVar);
               args.Add(errModel.identifierToPartition[name]);
               continue;
             }
@@ -3785,7 +3784,7 @@ namespace VC {
             }
             
             exprVar = boogieExprTranslator.LookupVariable(var);
-            name = vcExprTranslator.Lookup(exprVar);
+            name = context.Lookup(exprVar);
             args.Add(errModel.LookupSkolemFunctionAt(name + "!" + info.uniqueId, values));
           }
           calleeCounterexamples[assumeCmd] = 
@@ -3817,7 +3816,7 @@ namespace VC {
                           Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace, ErrorModel errModel,
                           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
                           Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
-                          DeclFreeProverContext/*!*/ context, Program/*!*/ program,
+                          ProverContext/*!*/ context, Program/*!*/ program,
                           Dictionary<Absy/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples)
     {
       Contract.Requires(b != null);
@@ -3854,7 +3853,6 @@ namespace VC {
         if (naryExpr == null) continue;
         string calleeName = naryExpr.Fun.FunctionName;
         if (!implName2LazyInliningInfo.ContainsKey(calleeName)) continue;
-        VCExprTranslator vcExprTranslator = cce.NonNull(context.exprTranslator);
         Boogie2VCExprTranslator boogieExprTranslator = context.BoogieExprTranslator;
         Contract.Assert(boogieExprTranslator != null);
         List<int> args = new List<int>();
@@ -3872,7 +3870,7 @@ namespace VC {
           Contract.Assert( idExpr.Decl != null);
           VCExprVar var = boogieExprTranslator.LookupVariable(idExpr.Decl);
           Contract.Assert(var != null);
-          string name = vcExprTranslator.Lookup(var);
+          string name = context.Lookup(var);
           Contract.Assert(name != null);
           args.Add(errModel.identifierToPartition[name]);
         }

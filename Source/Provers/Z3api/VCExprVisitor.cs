@@ -32,10 +32,10 @@ namespace Microsoft.Boogie.Z3
         internal readonly Dictionary<VCExprVar, Z3TermAst> letBindings;
         protected Z3Context cm;
 
-        public Z3apiExprLineariser(Z3Context cm)
+        public Z3apiExprLineariser(Z3Context cm, UniqueNamer namer)
         {
             this.cm = cm;
-            this.namer = new UniqueNamer();
+            this.namer = namer;
             this.letBindings = new Dictionary<VCExprVar, Z3TermAst>();
         }
 

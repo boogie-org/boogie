@@ -12,14 +12,14 @@ using Microsoft.Z3;
 using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.Z3 {
-  public class Z3StubContext:Z3Context {
+  public class Z3StubContext : Z3Context {
     class Z3StubPatternAst: Z3PatternAst {}
     class Z3StubTermAst: Z3TermAst {}
     class Z3StubLabeledLiterals: Z3LabeledLiterals {}
   
     public void CreateBacktrackPoint(){}
     public void Backtrack(){}
-    public void AddAxiom(VCExpr vc, LineariserOptions linOptions) {}
+    public void AddAxiom(VCExpr axiom, LineariserOptions linOptions) { }
     public void AddConjecture(VCExpr vc, LineariserOptions linOptions){}
     public void AddSmtlibString(string smtlibString) {}
     public string GetDeclName(Z3ConstDeclAst constDeclAst) {

@@ -83,7 +83,7 @@ namespace Microsoft.Boogie.Z3
     {
         void CreateBacktrackPoint();
         void Backtrack();
-        void AddAxiom(VCExpr vc, LineariserOptions linOptions);
+        void AddAxiom(VCExpr axiom, LineariserOptions linOptions);
         void AddConjecture(VCExpr vc, LineariserOptions linOptions);
         void AddSmtlibString(string smtlibString);
         string GetDeclName(Z3ConstDeclAst constDeclAst);
