@@ -1659,9 +1659,15 @@ namespace Microsoft.Boogie {
         errorData = value;
       }
     }
-
+    public static List<T> toList<T>(PureCollections.Sequence seq) {
+      List<T> toRet = new List<T>();
+      foreach (T t in seq)
+        if (t != null)
+          toRet.Add(t);
+      return toRet;
+    }
     public CallCmd(IToken tok, string callee, ExprSeq ins, IdentifierExprSeq outs)
-      : this(tok, callee, cce.toList<Expr>(ins), cce.toList<IdentifierExpr>(outs)) {
+      : this(tok, callee, toList<Expr>(ins), toList<IdentifierExpr>(outs)) {
       Contract.Requires(outs != null);
       Contract.Requires(ins != null);
       Contract.Requires(callee != null);
