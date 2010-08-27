@@ -266,15 +266,6 @@ namespace Microsoft.Boogie.Z3
                 bound.Add(Unwrap(t));
             }
             Term termAst = z3.MkForall(weight, bound.ToArray(), unwrapPatterns.ToArray(), unwrapBody);
-            /*
-            Term termAst = z3.MkQuantifier(true,
-                             weight,
-                             unwrapPatterns.ToArray(),
-                             unwrapNoPatterns.ToArray(),
-                             z3Types.ToArray(),
-                             symbols.ToArray(),
-                             unwrapBody);
-            */
             return Wrap(termAst);
         }
 
@@ -293,15 +284,6 @@ namespace Microsoft.Boogie.Z3
                 bound.Add(Unwrap(t));
             }
             Term termAst = z3.MkExists(weight, bound.ToArray(), unwrapPatterns.ToArray(), unwrapBody);
-            /*
-            Term termAst = z3.MkQuantifier(false,
-                                                  weight,
-                                                  unwrapPatterns.ToArray(),
-                                                  unwrapNoPatterns.ToArray(),
-                                                  z3Types.ToArray(),
-                                                  symbols.ToArray(),
-                                                  unwrapBody);
-            */ 
             return Wrap(termAst);
         }
 
@@ -360,7 +342,6 @@ namespace Microsoft.Boogie.Z3
         {
             boogieErrors = new List<Z3ErrorModelAndLabels>();
             LBool outcome = LBool.Undef;
-            z3.Push();
             while (boogieErrors.Count < this.config.Counterexamples)
             {
                 Model z3Model;
@@ -382,7 +363,6 @@ namespace Microsoft.Boogie.Z3
                 else
                     break;
             }
-            z3.Pop();
 
             if (boogieErrors.Count > 0)
                 return ProverInterface.Outcome.Invalid;

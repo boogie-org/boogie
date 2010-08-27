@@ -49,8 +49,9 @@ namespace Microsoft.Boogie.Z3
         public override void Close()
         {
             base.Close();
-            ((Z3apiProverContext)context).cm.z3.Dispose();
-            ((Z3apiProverContext)context).cm.config.Config.Dispose();
+            Z3SafeContext cm = ((Z3apiProverContext)context).cm;
+            cm.z3.Dispose();
+            cm.config.Config.Dispose();
         }
         private bool z3ContextIsUsed;
 
@@ -71,19 +72,6 @@ namespace Microsoft.Boogie.Z3
             cm.AddConjecture(conjecture, linOptions);
         }
 
-        public void PrepareCheck(string descriptiveName, VCExpr vc)
-        {
-            PushAxiom(context.Axioms);
-            PushConjecture(vc);
-        }
-
-        public void BeginPreparedCheck()
-        {
-            Z3SafeContext cm = ((Z3apiProverContext)context).cm;
-            outcome = Outcome.Undetermined;
-            outcome = cm.Check(out z3LabelModels);
-        }
-
         public override void PushVCExpression(VCExpr vc)
         {
             PushAxiom(vc);
@@ -94,37 +82,8 @@ namespace Microsoft.Boogie.Z3
         {
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
             Z3SafeContext cm = ((Z3apiProverContext)context).cm;
-            if (z3ContextIsUsed)
-            {
-                cm.Backtrack();
-            }
-            else
-            {
-                cm.AddAxiom(context.Axioms, linOptions);
-                z3ContextIsUsed = true;
-            }
-
-            cm.CreateBacktrackPoint();
             cm.AddConjecture(vc, linOptions);
-
-            BeginPreparedCheck();
-        }
-
-        private Outcome outcome;
-        private List<Z3ErrorModelAndLabels> z3LabelModels = new List<Z3ErrorModelAndLabels>();
-
-        [NoDefaultContract]
-        public override Outcome CheckOutcome(ErrorHandler handler)
-        {
-            if (outcome == Outcome.Invalid)
-            {
-                foreach (Z3ErrorModelAndLabels z3LabelModel in z3LabelModels)
-                {
-                    List<string> unprefixedLabels = RemovePrefixes(z3LabelModel.RelevantLabels);
-                    handler.OnModel(unprefixedLabels, z3LabelModel.ErrorModel);
-                }
-            }
-            return outcome;
+            outcome = cm.Check(out z3LabelModels);
         }
 
         public void CreateBacktrackPoint()
@@ -150,6 +109,23 @@ namespace Microsoft.Boogie.Z3
             var ret = numAxiomsPushed;
             numAxiomsPushed = 0;
             return ret;
+        }
+
+        private Outcome outcome;
+        private List<Z3ErrorModelAndLabels> z3LabelModels = new List<Z3ErrorModelAndLabels>();
+
+        [NoDefaultContract]
+        public override Outcome CheckOutcome(ErrorHandler handler)
+        {
+            if (outcome == Outcome.Invalid)
+            {
+                foreach (Z3ErrorModelAndLabels z3LabelModel in z3LabelModels)
+                {
+                    List<string> unprefixedLabels = RemovePrefixes(z3LabelModel.RelevantLabels);
+                    handler.OnModel(unprefixedLabels, z3LabelModel.ErrorModel);
+                }
+            }
+            return outcome;
         }
 
         private List<string> RemovePrefixes(List<string> labels)
