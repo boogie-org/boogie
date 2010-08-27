@@ -792,7 +792,7 @@ namespace Microsoft.AbstractInterpretationFramework {
 
     public override bool Understands(IFunctionSymbol/*!*/ f, IList/*!*/ args) {
       //Contract.Requires(args != null);
-      Contract.Requires(f != null);
+      //Contract.Requires(f != null);
       understandsCount++;
       return lattice.Understands(f, args);
     }

@@ -73,7 +73,7 @@ void ObjectInvariant()
 
     // not used
     protected override bool StandardResult(VCExpr node, bool arg) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       return true;
     }
 

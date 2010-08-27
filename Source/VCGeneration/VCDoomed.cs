@@ -283,9 +283,9 @@ namespace VC {
     ///
     /// </summary>
     public override Outcome VerifyImplementation(Implementation impl, Program program, VerifierCallback callback) {
-      Contract.Requires(impl != null);
-      Contract.Requires(program != null);
-      Contract.Requires(callback != null);
+      //Contract.Requires(impl != null);
+      //Contract.Requires(program != null);
+      //Contract.Requires(callback != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
       UseItAsDebugger = CommandLineOptions.Clo.useDoomDebug;

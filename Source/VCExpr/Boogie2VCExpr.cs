@@ -200,10 +200,10 @@ namespace Microsoft.Boogie.VCExprAST {
         VCExprVar res;
         foreach (Dictionary<VarKind/*!*/, VCExprVar/*!*/>/*!*/ d in Mapping) {
           //Contract.Assert(cce.NonNullElements(d));
-            if (d.TryGetValue(boogieVar, out res)) {
-               Contract.Assert(res != null);
-               return res;
-            }
+          if (d.TryGetValue(boogieVar, out res)) {
+            Contract.Assert(res != null);
+            return res;
+          }
         }
         return null;
       }
@@ -288,7 +288,7 @@ namespace Microsoft.Boogie.VCExprAST {
     ///////////////////////////////////////////////////////////////////////////////////
 
     public override LiteralExpr VisitLiteralExpr(LiteralExpr node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       Push(TranslateLiteralExpr(node));
       return node;
@@ -317,7 +317,7 @@ namespace Microsoft.Boogie.VCExprAST {
     ///////////////////////////////////////////////////////////////////////////////////
 
     public override AIVariableExpr VisitAIVariableExpr(AIVariableExpr node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<AIVariableExpr>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
@@ -326,7 +326,7 @@ namespace Microsoft.Boogie.VCExprAST {
     ///////////////////////////////////////////////////////////////////////////////////
 
     public override Expr VisitIdentifierExpr(IdentifierExpr node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
       Contract.Assume(node.Decl != null);   // the expression has to be resolved
       Push(LookupVariable(node.Decl));
@@ -340,7 +340,7 @@ namespace Microsoft.Boogie.VCExprAST {
     // causes it to become "x0". So we just remove old expressions with a visitor
     // before transforming it into a VCExpr.
     public override Expr VisitOldExpr(OldExpr node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
@@ -349,7 +349,7 @@ namespace Microsoft.Boogie.VCExprAST {
     ///////////////////////////////////////////////////////////////////////////////////
 
     public override Expr VisitNAryExpr(NAryExpr node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
       Push(TranslateNAryExpr(node));
       return node;
@@ -399,21 +399,21 @@ namespace Microsoft.Boogie.VCExprAST {
     ///////////////////////////////////////////////////////////////////////////////////
 
     public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<QuantifierExpr>() != null);
       Push(TranslateQuantifierExpr(node));
       return node;
     }
 
     public override ExistsExpr VisitExistsExpr(ExistsExpr node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ExistsExpr>() != null);
       node = (ExistsExpr)this.VisitQuantifierExpr(node);
       return node;
     }
 
     public override ForallExpr VisitForallExpr(ForallExpr node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ForallExpr>() != null);
       node = (ForallExpr)this.VisitQuantifierExpr(node);
       return node;
@@ -509,32 +509,32 @@ namespace Microsoft.Boogie.VCExprAST {
     ///////////////////////////////////////////////////////////////////////////////////
 
     public override BvExtractExpr VisitBvExtractExpr(BvExtractExpr node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BvExtractExpr>() != null);
       Push(TranslateBvExtractExpr(node));
       return node;
     }
 
-    private VCExpr TranslateBvExtractExpr(BvExtractExpr node){
-Contract.Requires(node != null);
-Contract.Requires((node.Start <= node.End));
-Contract.Ensures(Contract.Result<VCExpr>() != null);
-VCExpr/*!*/ bv = Translate(node.Bitvector);
-      return Gen.BvExtract(bv,cce.NonNull(node.Bitvector.Type).BvBits, node.Start, node.End);
+    private VCExpr TranslateBvExtractExpr(BvExtractExpr node) {
+      Contract.Requires(node != null);
+      Contract.Requires((node.Start <= node.End));
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      VCExpr/*!*/ bv = Translate(node.Bitvector);
+      return Gen.BvExtract(bv, cce.NonNull(node.Bitvector.Type).BvBits, node.Start, node.End);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
 
     public override BvConcatExpr VisitBvConcatExpr(BvConcatExpr node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BvConcatExpr>() != null);
       Push(TranslateBvConcatExpr(node));
       return node;
     }
 
-    private VCExpr TranslateBvConcatExpr(BvConcatExpr node){
-Contract.Requires(node != null);
-Contract.Ensures(Contract.Result<VCExpr>() != null);
+    private VCExpr TranslateBvConcatExpr(BvConcatExpr node) {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
       VCExpr/*!*/ bv0 = Translate(node.E0);
       VCExpr/*!*/ bv1 = Translate(node.E1);
       return Gen.BvConcat(bv0, bv1);
@@ -544,60 +544,59 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
     // all the other cases should never happen
 
     public override Cmd VisitAssertCmd(AssertCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Cmd VisitAssignCmd(AssignCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Cmd VisitAssumeCmd(AssumeCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override AtomicRE VisitAtomicRE(AtomicRE node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<AtomicRE>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Axiom VisitAxiom(Axiom node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Axiom>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Type VisitBasicType(BasicType node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Type VisitBvType(BvType node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Block VisitBlock(Block node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Block>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     CodeExprConverter codeExprConverter = null;
-    public void SetCodeExprConverter(CodeExprConverter f){
+    public void SetCodeExprConverter(CodeExprConverter f) {
       this.codeExprConverter = f;
     }
-    public override Expr/*!*/ VisitCodeExpr(CodeExpr/*!*/ codeExpr)
-    {
-      Contract.Requires(codeExpr != null);
+    public override Expr/*!*/ VisitCodeExpr(CodeExpr/*!*/ codeExpr) {
+      //Contract.Requires(codeExpr != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
 
       Contract.Assume(codeExprConverter != null);
@@ -609,271 +608,271 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
       return codeExpr;
     }
     public override BlockSeq VisitBlockSeq(BlockSeq blockSeq) {
-      Contract.Requires(blockSeq != null);
+      //Contract.Requires(blockSeq != null);
       Contract.Ensures(Contract.Result<BlockSeq>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override List<Block/*!*/>/*!*/ VisitBlockList(List<Block/*!*/>/*!*/ blocks) {
-      Contract.Requires(cce.NonNullElements(blocks));
+      //Contract.Requires(cce.NonNullElements(blocks));
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override BoundVariable VisitBoundVariable(BoundVariable node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BoundVariable>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Cmd VisitCallCmd(CallCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Cmd VisitCallForallCmd(CallForallCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {
-      Contract.Requires(cmdSeq != null);
+      //Contract.Requires(cmdSeq != null);
       Contract.Ensures(Contract.Result<CmdSeq>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Choice VisitChoice(Choice node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Choice>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Cmd VisitCommentCmd(CommentCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Constant VisitConstant(Constant node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Constant>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override CtorType VisitCtorType(CtorType node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<CtorType>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Declaration VisitDeclaration(Declaration node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Declaration>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override List<Declaration/*!*/>/*!*/ VisitDeclarationList(List<Declaration/*!*/>/*!*/ declarationList) {
-      Contract.Requires(cce.NonNullElements(declarationList));
+      //Contract.Requires(cce.NonNullElements(declarationList));
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Declaration>>()));
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override DeclWithFormals VisitDeclWithFormals(DeclWithFormals node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<DeclWithFormals>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Requires VisitRequires(Requires @requires) {
-      Contract.Requires(@requires != null);
+      //Contract.Requires(@requires != null);
       Contract.Ensures(Contract.Result<Requires>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override RequiresSeq VisitRequiresSeq(RequiresSeq requiresSeq) {
-      Contract.Requires(requiresSeq != null);
+      //Contract.Requires(requiresSeq != null);
       Contract.Ensures(Contract.Result<RequiresSeq>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Ensures VisitEnsures(Ensures @ensures) {
-      Contract.Requires(@ensures != null);
+      //Contract.Requires(@ensures != null);
       Contract.Ensures(Contract.Result<Ensures>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override EnsuresSeq VisitEnsuresSeq(EnsuresSeq ensuresSeq) {
-      Contract.Requires(ensuresSeq != null);
+      //Contract.Requires(ensuresSeq != null);
       Contract.Ensures(Contract.Result<EnsuresSeq>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Formal VisitFormal(Formal node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Formal>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Function VisitFunction(Function node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Function>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override GlobalVariable VisitGlobalVariable(GlobalVariable node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<GlobalVariable>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override GotoCmd VisitGotoCmd(GotoCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<GotoCmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Cmd VisitHavocCmd(HavocCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Implementation VisitImplementation(Implementation node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Implementation>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override LocalVariable VisitLocalVariable(LocalVariable node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<LocalVariable>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override AssignLhs VisitMapAssignLhs(MapAssignLhs node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<AssignLhs>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override MapType VisitMapType(MapType node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<MapType>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Procedure VisitProcedure(Procedure node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Procedure>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Program VisitProgram(Program node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Program>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Cmd VisitRE(RE node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override RESeq VisitRESeq(RESeq reSeq) {
-      Contract.Requires(reSeq != null);
+      //Contract.Requires(reSeq != null);
       Contract.Ensures(Contract.Result<RESeq>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override ReturnCmd VisitReturnCmd(ReturnCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ReturnCmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override ReturnExprCmd VisitReturnExprCmd(ReturnExprCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ReturnExprCmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Sequential VisitSequential(Sequential node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Sequential>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override AssignLhs VisitSimpleAssignLhs(SimpleAssignLhs node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<AssignLhs>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Cmd VisitStateCmd(StateCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override TransferCmd VisitTransferCmd(TransferCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<TransferCmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Trigger VisitTrigger(Trigger node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Trigger>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Type VisitType(Type node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override TypedIdent VisitTypedIdent(TypedIdent node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<TypedIdent>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Type VisitTypeVariable(TypeVariable node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Variable VisitVariable(Variable node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Variable>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override VariableSeq VisitVariableSeq(VariableSeq variableSeq) {
-      Contract.Requires(variableSeq != null);
+      //Contract.Requires(variableSeq != null);
       Contract.Ensures(Contract.Result<VariableSeq>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
     public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
@@ -924,13 +923,13 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
     }
 
 
-    public VCExpr Translate(IAppliable app, Type ty, List<VCExpr/*!*/>/*!*/ args, List<Type/*!*/>/*!*/ typeArgs){
-Contract.Requires(ty != null);
-Contract.Requires(app != null);
-Contract.Requires(cce.NonNullElements(typeArgs));
-Contract.Requires(cce.NonNullElements(args));
-Contract.Ensures(Contract.Result<VCExpr>() != null);
-    
+    public VCExpr Translate(IAppliable app, Type ty, List<VCExpr/*!*/>/*!*/ args, List<Type/*!*/>/*!*/ typeArgs) {
+      Contract.Requires(ty != null);
+      Contract.Requires(app != null);
+      Contract.Requires(cce.NonNullElements(typeArgs));
+      Contract.Requires(cce.NonNullElements(args));
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
       List<VCExpr/*!*/>/*!*/ oldArgs = this.args;
       List<Type/*!*/>/*!*/ oldTypeArgs = this.typeArgs;
       this.args = args;
@@ -946,45 +945,45 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
 
 
     public VCExpr Visit(UnaryOperator unaryOperator) {
-      Contract.Requires(unaryOperator != null);
+      //Contract.Requires(unaryOperator != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       Contract.Assert(unaryOperator.Op == UnaryOperator.Opcode.Not && this.args.Count == 1);
       return Gen.Not(this.args);
     }
 
     public VCExpr Visit(BinaryOperator binaryOperator) {
-      Contract.Requires(binaryOperator != null);
+      //Contract.Requires(binaryOperator != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return TranslateBinaryOperator(binaryOperator, this.args);
     }
 
     public VCExpr Visit(FunctionCall functionCall) {
-      Contract.Requires(functionCall != null);
+      //Contract.Requires(functionCall != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return TranslateFunctionCall(functionCall, this.args, this.typeArgs);
     }
 
     public VCExpr Visit(MapSelect mapSelect) {
-      Contract.Requires(mapSelect != null);
+      //Contract.Requires(mapSelect != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Gen.Select(this.args, this.typeArgs);
     }
 
     public VCExpr Visit(MapStore mapStore) {
-      Contract.Requires(mapStore != null);
+      //Contract.Requires(mapStore != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Gen.Store(this.args, this.typeArgs);
     }
 
     public VCExpr Visit(TypeCoercion typeCoercion) {
-      Contract.Requires(typeCoercion != null);
+      //Contract.Requires(typeCoercion != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       Contract.Assert(this.args.Count == 1);
       return this.args[0];
     }
 
     public VCExpr Visit(IfThenElse ite) {
-      Contract.Requires(ite != null);
+      //Contract.Requires(ite != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Gen.Function(VCExpressionGenerator.IfThenElseOp, this.args);
     }
@@ -1038,12 +1037,12 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
 
     ///////////////////////////////////////////////////////////////////////////////
 
-    private VCExpr/*!*/ TranslateFunctionCall(FunctionCall app, List<VCExpr/*!*/>/*!*/ args, List<Type/*!*/>/*!*/ typeArgs){
+    private VCExpr/*!*/ TranslateFunctionCall(FunctionCall app, List<VCExpr/*!*/>/*!*/ args, List<Type/*!*/>/*!*/ typeArgs) {
       Contract.Requires(cce.NonNullElements(args));
       Contract.Requires(cce.NonNullElements(typeArgs));
-Contract.Requires(app != null);
+      Contract.Requires(app != null);
       Contract.Requires((app.Func != null));
-Contract.Ensures(Contract.Result<VCExpr>() != null);    // resolution must have happened
+      Contract.Ensures(Contract.Result<VCExpr>() != null);    // resolution must have happened
 
       VCExpr res = ApplyExpansion(app, args, typeArgs);
       if (res != null)
@@ -1053,8 +1052,8 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);    // resolution must have 
       return Gen.Function(functionOp, args, typeArgs);
     }
 
-    private VCExpr ApplyExpansion(FunctionCall app, List<VCExpr/*!*/>/*!*/ args, List<Type/*!*/>/*!*/ typeArgs){
-Contract.Requires(app != null);
+    private VCExpr ApplyExpansion(FunctionCall app, List<VCExpr/*!*/>/*!*/ args, List<Type/*!*/>/*!*/ typeArgs) {
+      Contract.Requires(app != null);
       Contract.Requires(cce.NonNullElements(args));
       Contract.Requires(cce.NonNullElements(typeArgs));
       Contract.Assert(app.Func != null);    // resolution must have happened

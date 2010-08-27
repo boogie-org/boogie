@@ -780,7 +780,7 @@ namespace VC {
         }
 
         public override Absy Label2Absy(string label) {
-          Contract.Requires(label != null);
+          //Contract.Requires(label != null);
           Contract.Ensures(Contract.Result<Absy>() != null);
 
           int id = int.Parse(label);
@@ -788,7 +788,7 @@ namespace VC {
         }
 
         public override void OnProverWarning(string msg) {
-          Contract.Requires(msg != null);
+          //Contract.Requires(msg != null);
           this.callback.OnWarning(msg);
         }
       }
@@ -1721,9 +1721,9 @@ namespace VC {
     }
 
     public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback){
-      Contract.Requires(impl != null);
-      Contract.Requires(program != null);
-      Contract.Requires(callback != null);
+      //Contract.Requires(impl != null);
+      //Contract.Requires(program != null);
+      //Contract.Requires(callback != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       if (impl.SkipVerification) {
         return Outcome.Inconclusive; // not sure about this one
@@ -1888,9 +1888,9 @@ namespace VC {
     }
 
     public override Outcome StratifiedVerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback){
-      Contract.Requires(impl != null);
-      Contract.Requires(program != null);
-      Contract.Requires(callback != null);
+      //Contract.Requires(impl != null);
+      //Contract.Requires(program != null);
+      //Contract.Requires(callback != null);
       Contract.EnsuresOnThrow< UnexpectedProverOutputException>(true);
        // This flag control the nature of queries made by StratifiedVerifyImplementation
        // true: incremental search; false: in-place inlining
@@ -2738,8 +2738,8 @@ namespace VC {
                                                     bool changed,
                                                     bool arg) 
       {
-        Contract.Requires(originalNode != null);
-        Contract.Requires(cce.NonNullElements(newSubExprs));
+        //Contract.Requires(originalNode != null);
+        //Contract.Requires(cce.NonNullElements(newSubExprs));
         Contract.Ensures(Contract.Result<VCExpr>() != null);
 
         VCExpr ret;
@@ -2821,7 +2821,7 @@ namespace VC {
                                                     bool changed,
                                                     bool arg) 
       {
-        Contract.Requires(originalNode != null);Contract.Requires(newSubExprs != null);
+        //Contract.Requires(originalNode != null);Contract.Requires(newSubExprs != null);
         Contract.Ensures(Contract.Result<VCExpr>() != null);
 
         VCExpr ret;
@@ -2911,7 +2911,7 @@ namespace VC {
       }
 
       public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel) {
-        Contract.Requires(cce.NonNullElements(labels));
+        //Contract.Requires(cce.NonNullElements(labels));
         if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
           errModel.Print(ErrorReporter.ModelWriter);
           ErrorReporter.ModelWriter.Flush();
@@ -2955,7 +2955,7 @@ namespace VC {
       }
 
       public override Absy Label2Absy(string label) {
-        Contract.Requires(label != null);
+        //Contract.Requires(label != null);
         Contract.Ensures(Contract.Result<Absy>() != null);
 
         int id = int.Parse(label);
@@ -2963,12 +2963,12 @@ namespace VC {
       }
 
       public override void OnResourceExceeded(string msg) {
-        Contract.Requires(msg != null);
+        //Contract.Requires(msg != null);
         resourceExceededMessage = msg;
       }
 
       public override void OnProverWarning(string msg) {
-        Contract.Requires(msg != null);
+        //Contract.Requires(msg != null);
         callback.OnWarning(msg);
       }
     }
@@ -2996,7 +2996,7 @@ namespace VC {
       }
 
       public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel) {
-        Contract.Requires(cce.NonNullElements(labels));
+        //Contract.Requires(cce.NonNullElements(labels));
         // We ignore the error model here for enhanced error message purposes.
         // It is only printed to the command line.
         if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
@@ -3092,7 +3092,7 @@ namespace VC {
       }
 
       public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel) {
-        Contract.Requires(cce.NonNullElements(labels));
+        //Contract.Requires(cce.NonNullElements(labels));
         if (underapproximationMode) {
           if (errModel == null)
             return;
@@ -3266,7 +3266,7 @@ namespace VC {
       }
 
       public override Absy Label2Absy(string label) {
-        Contract.Requires(label != null);
+        //Contract.Requires(label != null);
         Contract.Ensures(Contract.Result<Absy>() != null);
 
         int id = int.Parse(label);
@@ -3285,12 +3285,12 @@ namespace VC {
       }
 
       public override void OnResourceExceeded(string msg) {
-        Contract.Requires(msg != null);
+        //Contract.Requires(msg != null);
         //resourceExceededMessage = msg;
       }
 
       public override void OnProverWarning(string msg) {
-        Contract.Requires(msg != null);
+        //Contract.Requires(msg != null);
         callback.OnWarning(msg);
       }
     }

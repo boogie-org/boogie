@@ -507,7 +507,7 @@ namespace Microsoft.Boogie.Simplify {
 
     protected override void DoBeginCheck(string descriptiveName, string formula) {
       //Contract.Requires(descriptiveName != null);
-      Contract.Requires(formula != null);
+      //Contract.Requires(formula != null);
       //simplify.Refresh();
       //this.Comment("@@@@ Virtual Memory:  " + simplify.PeakVirtualMemorySize64);
       //this.Comment("@@@@ Working Set:  " + simplify.PeakWorkingSet64);

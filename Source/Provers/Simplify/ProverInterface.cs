@@ -384,7 +384,7 @@ namespace Microsoft.Boogie.Simplify {
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler) {
       //Contract.Requires(descriptiveName != null);
       //Contract.Requires(vc != null);
-      Contract.Requires(handler != null);
+      //Contract.Requires(handler != null);
       this.NewProblem(descriptiveName);
       this.proverException = null;
 

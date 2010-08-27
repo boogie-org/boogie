@@ -15,23 +15,24 @@ using Microsoft.Basetypes;
 // constants. This is necessary for Simplify, which cannot deal with
 // literals larger than 32 bits
 
-namespace Microsoft.Boogie.VCExprAST
-{
+namespace Microsoft.Boogie.VCExprAST {
 
   public class BigLiteralAbstracter : MutatingVCExprVisitor<bool>, ICloneable {
 
-    public BigLiteralAbstracter(VCExpressionGenerator gen) :base(gen){
+    public BigLiteralAbstracter(VCExpressionGenerator gen)
+      : base(gen) {
       Contract.Requires(gen != null);
       DummyVar = gen.Variable("x", Type.Int);
-      IncAxioms = new List<VCExpr> ();
-      Literals = new List<KeyValuePair<BigNum, VCExprVar>> ();
+      IncAxioms = new List<VCExpr>();
+      Literals = new List<KeyValuePair<BigNum, VCExprVar>>();
     }
 
-    private BigLiteralAbstracter(BigLiteralAbstracter abstracter) :base(abstracter.Gen){
+    private BigLiteralAbstracter(BigLiteralAbstracter abstracter)
+      : base(abstracter.Gen) {
       Contract.Requires(abstracter != null);
       DummyVar = abstracter.DummyVar;
-      IncAxioms = new List<VCExpr> (abstracter.IncAxioms);
-      Literals = new List<KeyValuePair<BigNum, VCExprVar>> (abstracter.Literals);
+      IncAxioms = new List<VCExpr>(abstracter.IncAxioms);
+      Literals = new List<KeyValuePair<BigNum, VCExprVar>>(abstracter.Literals);
     }
 
     public Object Clone() {
@@ -59,10 +60,9 @@ namespace Microsoft.Boogie.VCExprAST
     private readonly List<VCExpr/*!*/>/*!*/ IncAxioms;
 
     [ContractInvariantMethod]
-void ObjectInvariant() 
-{
-    Contract.Invariant(cce.NonNullElements(IncAxioms));
-}
+    void ObjectInvariant() {
+      Contract.Invariant(cce.NonNullElements(IncAxioms));
+    }
 
     private void AddAxiom(VCExpr/*!*/ axiom) {
       Contract.Requires(axiom != null);
@@ -72,7 +72,7 @@ void ObjectInvariant()
     // Return all axioms that were added since the last time NewAxioms
     // was called
     public VCExpr GetNewAxioms() {
-Contract.Ensures(Contract.Result<VCExpr>() != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
       VCExpr res = Gen.NAry(VCExpressionGenerator.AndOp, IncAxioms);
       IncAxioms.Clear();
       return res;
@@ -86,39 +86,38 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
     private readonly List<KeyValuePair<BigNum, VCExprVar/*!*/>>/*!*/ Literals;
 
     [ContractInvariantMethod]
-void ObjectInvariat() 
-{
-    Contract.Invariant(Literals!=null);
-      Contract.Invariant(Contract.ForAll(Literals,i=>i.Value!=null));
-}
+    void ObjectInvariat() {
+      Contract.Invariant(Literals != null);
+      Contract.Invariant(Contract.ForAll(Literals, i => i.Value != null));
+    }
 
-    
+
     private class EntryComparerC : IComparer<KeyValuePair<BigNum, VCExprVar/*!*/>> {
       public int Compare(KeyValuePair<BigNum, VCExprVar/*!*/> a,
-                         KeyValuePair<BigNum, VCExprVar/*!*/> b) {Contract.Requires(a.Value!=null);
-        Contract.Requires(b.Value!=null);
+                         KeyValuePair<BigNum, VCExprVar/*!*/> b) {
+        //Contract.Requires(a.Value!=null);
+        //Contract.Requires(b.Value!=null);
         return a.Key.CompareTo(b.Key);
       }
     }
 
-    private static readonly EntryComparerC EntryComparer = new EntryComparerC ();
+    private static readonly EntryComparerC EntryComparer = new EntryComparerC();
 
     // variable used when searching for entries in the literal list
     private readonly VCExprVar/*!*/ DummyVar;
     [ContractInvariantMethod]
-void ObjectInvarint() 
-{
-    Contract.Invariant(DummyVar!=null);
-}
+    void ObjectInvarint() {
+      Contract.Invariant(DummyVar != null);
+    }
 
 
     ////////////////////////////////////////////////////////////////////////////
-    
+
     // Construct an expression to represent the given (large) integer
     // literal. Constants are defined and axiomatised if necessary
     private VCExpr Represent(BigNum lit) {
-Contract.Requires((NegConstantDistance > lit || lit > ConstantDistance));
-Contract.Ensures(Contract.Result<VCExpr>() != null);
+      Contract.Requires((NegConstantDistance > lit || lit > ConstantDistance));
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (lit.IsNegative)
         return Gen.Function(VCExpressionGenerator.SubOp,
@@ -128,14 +127,14 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
     }
 
     private VCExpr RepresentPos(BigNum lit) {
-Contract.Requires((lit > ConstantDistance));
-Contract.Ensures(Contract.Result<VCExpr>() != null);
-      
+      Contract.Requires((lit > ConstantDistance));
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
       int index = GetIndexFor(lit);
       if (index >= 0)
         // precise match
         return Literals[index].Value;
-      
+
       // check whether a constant is defined that is at most
       // ConstantDistance away from lit
       index = ~index;
@@ -168,33 +167,33 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
     }
 
     private VCExpr AddConstantFor(BigNum lit) {
-Contract.Requires((lit > ConstantDistance));
-Contract.Ensures(Contract.Result<VCExpr>() != null);
-      
+      Contract.Requires((lit > ConstantDistance));
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
       VCExprVar res = Gen.Variable("int#" + lit, Type.Int);
       int index = GetIndexFor(lit);
       Contract.Assert(index < 0);
       index = ~index;
 
       Literals.Insert(index, new KeyValuePair<BigNum, VCExprVar>(lit, res));
-      
+
       // relate the new constant to the predecessor and successor
       if (index > 0)
         DefineRelationship(Literals[index - 1].Value, Literals[index - 1].Key,
                            res, lit);
       else
         DefineRelationship(Gen.Integer(BigNum.ZERO), BigNum.ZERO, res, lit);
-        
+
       if (index < Literals.Count - 1)
         DefineRelationship(res, lit,
                            Literals[index + 1].Value, Literals[index + 1].Key);
 
       return res;
     }
-    
+
     private void DefineRelationship(VCExpr/*!*/ aExpr, BigNum aValue,
-                                    VCExpr/*!*/ bExpr, BigNum bValue)
-      {Contract.Requires(aValue < bValue);
+                                    VCExpr/*!*/ bExpr, BigNum bValue) {
+      Contract.Requires(aValue < bValue);
       Contract.Requires(aExpr != null);
       Contract.Requires(bExpr != null);
 
@@ -219,7 +218,7 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
 
     public override VCExpr Visit(VCExprLiteral node, bool arg) {
       Contract.Requires(node != null);
-Contract.Ensures(Contract.Result<VCExpr>() != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
       VCExprIntLit intLit = node as VCExprIntLit;
       if (intLit != null) {
         if (NegConstantDistance > intLit.Val || intLit.Val > ConstantDistance)

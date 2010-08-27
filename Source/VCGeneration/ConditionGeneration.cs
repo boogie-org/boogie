@@ -722,12 +722,12 @@ namespace VC {
 
       public readonly List<Counterexample>/*!>!*/ examples = new List<Counterexample>();
       public override void OnCounterexample(Counterexample ce, string/*?*/ reason) {
-        Contract.Requires(ce != null);
+        //Contract.Requires(ce != null);
         examples.Add(ce);
       }
 
       public override void OnUnreachableCode(Implementation impl) {
-        Contract.Requires(impl != null);
+        //Contract.Requires(impl != null);
         System.Console.WriteLine("found unreachable code:");
         EmitImpl(impl, false);
         // TODO report error about next to last in seq

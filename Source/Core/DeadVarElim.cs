@@ -18,7 +18,7 @@ namespace Microsoft.Boogie {
     }
 
     public override Implementation VisitImplementation(Implementation node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Implementation>() != null);
       //Console.WriteLine("Procedure {0}", node.Name);
       Implementation/*!*/ impl = base.VisitImplementation(node);
@@ -181,7 +181,7 @@ namespace Microsoft.Boogie {
     }
 
     public override Expr VisitOldExpr(OldExpr node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
       insideOldExpr++;
       node.Expr = this.VisitExpr(node.Expr);
@@ -190,7 +190,7 @@ namespace Microsoft.Boogie {
     }
 
     public override Expr VisitIdentifierExpr(IdentifierExpr node) {
-      Contract.Requires(node != null);
+      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
       if (node.Decl != null) {
         usedVars.Add(node.Decl);

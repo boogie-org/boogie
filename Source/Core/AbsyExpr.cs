@@ -598,7 +598,7 @@ namespace Microsoft.Boogie {
       }
     }
     public Microsoft.AbstractInterpretationFramework.IFunApp CloneWithArguments(IList/*<AI.IExpr!>*/ args) {
-      Contract.Requires(args != null);
+      //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Microsoft.AbstractInterpretationFramework.IFunApp>() != null);
       Contract.Assert(args.Count == 0);
       return this;
@@ -622,7 +622,7 @@ namespace Microsoft.Boogie {
     }
     [Pure]
     public object DoVisit(AI.ExprVisitor visitor) {
-      Contract.Requires(visitor != null);
+      //Contract.Requires(visitor != null);
       return visitor.VisitFunApp(this);
     }
 
@@ -923,14 +923,14 @@ namespace Microsoft.Boogie {
       }
 
       public AI.IFunApp CloneWithArguments(IList newargs) {
-        Contract.Requires(newargs != null);
+        //Contract.Requires(newargs != null);
         Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
         return this;
       }
 
       [Pure]
       public object DoVisit(AI.ExprVisitor visitor) {
-        Contract.Requires(visitor != null);
+        //Contract.Requires(visitor != null);
         return visitor.VisitFunApp(this);
       }
 
@@ -1038,11 +1038,11 @@ namespace Microsoft.Boogie {
     }
     [Pure]
     public object DoVisit(AI.ExprVisitor visitor) {
-      Contract.Requires(visitor != null);
+      //Contract.Requires(visitor != null);
       return visitor.VisitFunApp(this);
     }
     public AI.IFunApp CloneWithArguments(IList/*<IExpr!>*/ args) {
-      Contract.Requires(args != null);
+      //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
       Contract.Assume(args.Count == 1);
       AI.IExpr/*!*/ iexpr = (AI.IExpr)cce.NonNull(args[0]);
@@ -1985,7 +1985,7 @@ namespace Microsoft.Boogie {
 
     virtual public void Emit(ExprSeq args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
-      Contract.Requires(args != null);
+      //Contract.Requires(args != null);
       this.name.Emit(stream, 0xF0, false);
       stream.Write("(");
       args.Emit(stream);
@@ -1993,7 +1993,7 @@ namespace Microsoft.Boogie {
     }
     public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting) {
       //Contract.Requires(subjectForErrorReporting != null);
-      Contract.Requires(rc != null);
+      //Contract.Requires(rc != null);
       if (Func != null) {
         // already resolved
         return;
@@ -2291,14 +2291,14 @@ namespace Microsoft.Boogie {
       }
     }
     public AI.IFunApp CloneWithArguments(IList/*<AI.IExpr!>*/ args) {
-      Contract.Requires(args != null);
+      //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
       return new NAryExpr(this.tok, this.Fun, BoogieFactory.IExprArray2ExprSeq(args));
     }
 
     [Pure]
     public object DoVisit(AI.ExprVisitor visitor) {
-      Contract.Requires(visitor != null);
+      //Contract.Requires(visitor != null);
       return visitor.VisitFunApp(this);
     }
 
@@ -2715,7 +2715,7 @@ namespace Microsoft.Boogie {
 
     public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting) {
       //Contract.Requires(subjectForErrorReporting != null);
-      Contract.Requires(rc != null);
+      //Contract.Requires(rc != null);
       // PR: nothing?
     }
 
@@ -2810,7 +2810,7 @@ namespace Microsoft.Boogie {
     }
     [Pure]
     public object DoVisit(AI.ExprVisitor visitor) {
-      Contract.Requires(visitor != null);
+      //Contract.Requires(visitor != null);
       return this;
     }
 
@@ -3013,7 +3013,7 @@ namespace Microsoft.Boogie {
       }
     }
     public AI.IFunApp CloneWithArguments(IList/*<AI.IExpr!>*/ args) {
-      Contract.Requires(args != null);
+      //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
       AI.IFunApp retFun;
 
@@ -3033,7 +3033,7 @@ namespace Microsoft.Boogie {
 
     [Pure]
     public object DoVisit(AI.ExprVisitor visitor) {
-      Contract.Requires(visitor != null);
+      //Contract.Requires(visitor != null);
       return visitor.VisitFunApp(this);
     }
 
@@ -3161,7 +3161,7 @@ namespace Microsoft.Boogie {
       }
     }
     public AI.IFunApp CloneWithArguments(IList/*<AI.IExpr!>*/ args) {
-      Contract.Requires(args != null);
+      //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
       AI.IFunApp/*!*/ retFun;
 

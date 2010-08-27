@@ -1121,7 +1121,7 @@ namespace Microsoft.Boogie {
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
-      Contract.Requires(stream != null);
+      //Contract.Requires(stream != null);
       stream.Write(this, level, "var ");
       EmitAttributes(stream);
       EmitVitals(stream, level);
@@ -1135,7 +1135,7 @@ namespace Microsoft.Boogie {
       this.TypedIdent.Emit(stream);
     }
     public override void Resolve(ResolutionContext rc) {
-      Contract.Requires(rc != null);
+      //Contract.Requires(rc != null);
       this.TypedIdent.Resolve(rc);
     }
     public void ResolveWhere(ResolutionContext rc) {
@@ -1146,13 +1146,13 @@ namespace Microsoft.Boogie {
       ResolveAttributes(rc);
     }
     public override void Typecheck(TypecheckingContext tc) {
-      Contract.Requires(tc != null);
+      //Contract.Requires(tc != null);
       TypecheckAttributes(tc);
       this.TypedIdent.Typecheck(tc);
     }
     [Pure]
     public object DoVisit(AI.ExprVisitor visitor) {
-      Contract.Requires(visitor != null);
+      //Contract.Requires(visitor != null);
       return visitor.VisitVariable(this);
     }
   }

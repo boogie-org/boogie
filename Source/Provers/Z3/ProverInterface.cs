@@ -53,7 +53,7 @@ void ObjectInvariant()
     }
     
     protected override Microsoft.Boogie.Simplify.ProverProcess CreateProverProcess(string proverPath) {
-    Contract.Requires(proverPath!= null);
+    //Contract.Requires(proverPath!= null);
     Contract.Ensures(Contract.Result<Microsoft.Boogie.Simplify.ProverProcess>() != null);
 
 
@@ -66,7 +66,7 @@ void ObjectInvariant()
     }
 
     protected override AxiomVCExprTranslator SpawnVCExprTranslator(ProverOptions opts) {
-      Contract.Requires(opts != null);
+      //Contract.Requires(opts != null);
       Contract.Ensures(Contract.Result<AxiomVCExprTranslator>() != null);
 
       return new Z3VCExprTranslator(gen, (Z3InstanceOptions) opts);
@@ -74,9 +74,9 @@ void ObjectInvariant()
 
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
-      Contract.Requires(descriptiveName != null);
-      Contract.Requires(vc != null);
-      Contract.Requires(handler != null);
+      //Contract.Requires(descriptiveName != null);
+      //Contract.Requires(vc != null);
+      //Contract.Requires(handler != null);
       FireUpInspector();
       if (inspector != null) {
         inspector.NewProblem(descriptiveName, vc, handler);
@@ -115,7 +115,7 @@ void ObjectInvariant()
 
     protected override bool Parse(string opt)
     {
-      Contract.Requires(opt!=null);
+      //Contract.Requires(opt!=null);
       return ParseBool(opt, "REVERSE_IMPLIES", ref InverseImplies) ||
              ParseString(opt, "INSPECTOR", ref Inspector) ||
              ParseBool(opt, "DIST", ref DistZ3) ||
@@ -211,7 +211,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
     } }
 
     public override LineariserOptions AddLetVariable(VCExprVar furtherVar) {
-      Contract.Requires(furtherVar != null);
+      //Contract.Requires(furtherVar != null);
       Contract.Ensures(Contract.Result<LineariserOptions>() != null);
 
       List<VCExprVar/*!>!*/> allVars = new List<VCExprVar/*!*/>();
@@ -221,7 +221,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
     }
     
     public override LineariserOptions AddLetVariables(List<VCExprVar/*!>!*/> furtherVars) {
-      Contract.Requires(furtherVars != null);
+      //Contract.Requires(furtherVars != null);
     Contract.Ensures(Contract.Result<LineariserOptions>() != null);
 
       List<VCExprVar/*!>!*/> allVars = new List<VCExprVar/*!*/> ();
@@ -292,14 +292,14 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
 
     public override string Lookup(VCExprVar var)
     {
-      Contract.Requires(var != null);
+      //Contract.Requires(var != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
       return Namer.Lookup(var);
     }
     
     public override string translate(VCExpr expr, int polarity) {
-      Contract.Requires(expr != null);
+      //Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
       DateTime start = DateTime.Now;
@@ -385,8 +385,8 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
 
     public override object SpawnProver(ProverOptions popts, object ctxt)
     {
-      Contract.Requires(popts != null);
-      Contract.Requires(ctxt != null);
+      //Contract.Requires(popts != null);
+      //Contract.Requires(ctxt != null);
       Contract.Ensures(Contract.Result<object>() != null);
 
       Z3InstanceOptions opts = cce.NonNull((Z3InstanceOptions)popts);
@@ -396,8 +396,8 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
     }
 
     public override object NewProverContext(ProverOptions options) {
-      Contract.Requires(options != null);
-      Contract.Ensures(Contract.Result<object>() != null);
+      //Contract.Requires(options != null);
+      //Contract.Ensures(Contract.Result<object>() != null);
 
       if (CommandLineOptions.Clo.BracketIdsInVC < 0) {
         CommandLineOptions.Clo.BracketIdsInVC = 0;

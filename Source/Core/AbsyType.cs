@@ -904,7 +904,7 @@ namespace Microsoft.Boogie {
     public override bool Unify(Type that, TypeVariableSeq unifiableVariables, IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier) {
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(that != null);
-      Contract.Requires(cce.NonNullElements(unifier));
+      //Contract.Requires(cce.NonNullElements(unifier));
       // an idempotent substitution that describes the
       // unification result up to a certain point
 
@@ -1068,7 +1068,7 @@ namespace Microsoft.Boogie {
                                IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier) {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
-      Contract.Requires(cce.NonNullElements(unifier));
+      //Contract.Requires(cce.NonNullElements(unifier));
       that = that.Expanded;
       if (that is TypeProxy || that is TypeVariable) {
         return that.Unify(this, unifiableVariables, unifier);
@@ -1218,9 +1218,9 @@ Contract.Requires(that != null);
     public override bool Equals(Type that,
                                 TypeVariableSeq/*!*/ thisBoundVariables,
                                 TypeVariableSeq/*!*/ thatBoundVariables) {
-      Contract.Requires(thisBoundVariables != null);
-      Contract.Requires(thatBoundVariables != null);
-      Contract.Requires(that != null);
+      //Contract.Requires(thisBoundVariables != null);
+      //Contract.Requires(thatBoundVariables != null);
+      //Contract.Requires(that != null);
       System.Diagnostics.Debug.Fail("UnresolvedTypeIdentifier.Equals should never be called");
       return false; // to make the compiler happy      
     }
@@ -1230,9 +1230,9 @@ Contract.Requires(that != null);
     public override bool Unify(Type that,
                                TypeVariableSeq/*!*/ unifiableVariables,
                                IDictionary<TypeVariable/*!*/, Type/*!*/> result) {
-      Contract.Requires(unifiableVariables != null);
-      Contract.Requires(cce.NonNullElements(result));
-      Contract.Requires(that != null);
+      //Contract.Requires(unifiableVariables != null);
+      //Contract.Requires(cce.NonNullElements(result));
+      //Contract.Requires(that != null);
       {
         Contract.Assert(false);
         throw new cce.UnreachableException();
@@ -1254,7 +1254,7 @@ Contract.Requires(that != null);
     //-----------  Substitution of free variables with types not containing bound variables  -----------------
 
     public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
-      Contract.Requires(cce.NonNullElements(subst));
+      //Contract.Requires(cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       {
         Contract.Assert(false);
@@ -1266,7 +1266,7 @@ Contract.Requires(that != null);
 
     [Pure]
     public override int GetHashCode(TypeVariableSeq boundVariables) {
-      Contract.Requires(boundVariables != null);
+      //Contract.Requires(boundVariables != null);
       {
         Contract.Assert(false);
         throw new cce.UnreachableException();
@@ -1276,7 +1276,7 @@ Contract.Requires(that != null);
     //-----------  Resolution  ----------------------------------
 
     public override Type ResolveType(ResolutionContext rc) {
-      Contract.Requires(rc != null);
+      //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       // first case: the type name denotes a bitvector-type
       if (Name.StartsWith("bv") && Name.Length > 2) {
@@ -1392,7 +1392,7 @@ Contract.Requires(that != null);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
-      Contract.Requires(visitor != null);
+      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitUnresolvedTypeIdentifier(this);
     }

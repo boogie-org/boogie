@@ -329,7 +329,7 @@ namespace Microsoft.AbstractInterpretationFramework {
     }
 
     public override string/*!*/ ToString(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       Contract.Ensures(Contract.Result<string>() != null);
       Elt e = (Elt)element;
 
@@ -416,8 +416,8 @@ namespace Microsoft.AbstractInterpretationFramework {
     /// Perform the pointwise widening of the elements in the map
     /// </summary>
     public override Element/*!*/ Widen(Element/*!*/ first, Element/*!*/ second) {
-      Contract.Requires((second != null));
-      Contract.Requires((first != null));
+      //Contract.Requires((second != null));
+      //Contract.Requires((first != null));
       Contract.Ensures(Contract.Result<Element>() != null);
       Elt a = (Elt)first;
       Elt b = (Elt)second;
@@ -568,7 +568,7 @@ namespace Microsoft.AbstractInterpretationFramework {
     }
 
     public override IExpr/*!*/ ToPredicate(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       Contract.Ensures(Contract.Result<IExpr>() != null);
       if (IsTop(element)) {
         return propExprFactory.True;
@@ -765,8 +765,8 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override bool Understands(IFunctionSymbol/*!*/ f, IList/*!*/ args) {
-      Contract.Requires(args != null);
-      Contract.Requires(f != null);
+      //Contract.Requires(args != null);
+      //Contract.Requires(f != null);
       return f.Equals(Prop.And) ||
              f.Equals(Value.Eq) ||
              microLattice.Understands(f, args);

@@ -936,7 +936,7 @@ namespace Microsoft.Boogie.Isabelle {
     public bool VisitBvConcatOp(VCExprNAry node, B2I b2i) {
       //Contract.Requires(node != null);
       //Contract.Requires(b2i != null);
-      Contract.Requires(node.Length >= 2);
+      //Contract.Requires(node.Length >= 2);
 
       VCExpr child1 = node[0];
       Contract.Assert(child1 != null);

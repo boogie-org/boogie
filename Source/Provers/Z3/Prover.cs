@@ -234,8 +234,8 @@ namespace Microsoft.Boogie.Z3
     }
 
     protected override void DoBeginCheck(string descriptiveName, string formula) {
-      Contract.Requires(descriptiveName != null);
-      Contract.Requires(formula != null);
+      //Contract.Requires(descriptiveName != null);
+      //Contract.Requires(formula != null);
       ToWriteLine(formula);
       ToWriteLine(String.Format(";   END OF FORMULA {0} - {1}", NumFormulasChecked.ToString(), descriptiveName));
       ToFlush();
@@ -254,7 +254,7 @@ namespace Microsoft.Boogie.Z3
     }
 
     public override ProverOutcome CheckOutcome(Microsoft.Boogie.ProverInterface.ErrorHandler handler) {
-      Contract.Requires(handler != null);
+      //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       //ProverOutcome outcome;
       bool isInvalid = false;
@@ -920,7 +920,7 @@ namespace Microsoft.Boogie.Z3
     }
 
     public override void Print(TextWriter writer) {
-      Contract.Requires(writer != null);
+      //Contract.Requires(writer != null);
       if (CommandLineOptions.Clo.PrintErrorModel == 4) {
         PrintReadableModel(writer);
         return;

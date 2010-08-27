@@ -41,7 +41,7 @@ void ObjectInvariant()
         }
         
         public override Absy Label2Absy(string label) {
-          Contract.Requires(label != null);
+          //Contract.Requires(label != null);
           Contract.Ensures(Contract.Result<Absy>() != null);
 
           int id = int.Parse(label);
@@ -49,7 +49,7 @@ void ObjectInvariant()
         }
         
         public override void OnProverWarning(string msg) {
-          Contract.Requires(msg != null);
+          //Contract.Requires(msg != null);
           this.callback.OnWarning(msg);
         }
    
@@ -75,7 +75,7 @@ void ObjectInvariant()
         }
         
         public override void OnModel(IList<string>/*!>!*/ labels, ErrorModel errModel) {
-          Contract.Requires(labels != null);
+          //Contract.Requires(labels != null);
           
         m_CurrentTrace.Clear();
         //Console.Write("Used Blocks: ");

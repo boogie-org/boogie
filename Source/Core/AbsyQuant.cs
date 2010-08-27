@@ -257,7 +257,7 @@ namespace Microsoft.Boogie {
 
       [Pure]
       public object DoVisit(AI.ExprVisitor visitor) {
-        Contract.Requires(visitor != null);
+        //Contract.Requires(visitor != null);
         return visitor.VisitFunApp(this);
       }
 
@@ -284,7 +284,7 @@ namespace Microsoft.Boogie {
       }
 
       public AI.IFunApp CloneWithArguments(IList/*<IExpr!>*/ args) {
-        Contract.Requires(args != null);
+        //Contract.Requires(args != null);
         Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
         Contract.Assume(args.Count == 1);
 
@@ -336,7 +336,7 @@ namespace Microsoft.Boogie {
 
       [Pure]
       public object DoVisit(AI.ExprVisitor visitor) {
-        Contract.Requires(visitor != null);
+        //Contract.Requires(visitor != null);
         return visitor.VisitFunction(this);
       }
 
@@ -377,7 +377,7 @@ namespace Microsoft.Boogie {
         }
       }
       public AI.IFunction CloneWithBody(AI.IExpr body) {
-        Contract.Requires(body != null);
+        //Contract.Requires(body != null);
         Contract.Ensures(Contract.Result<AI.IFunction>() != null);
         BinderExpr realquant;
 

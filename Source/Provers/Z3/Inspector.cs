@@ -36,7 +36,7 @@ void ObjectInvariant()
     }
     
     protected override bool StandardResult(VCExpr node, bool arg) {
-      Contract.Requires(node!=null);
+      //Contract.Requires(node!=null);
       VCExprNAry nary = node as VCExprNAry;
       if (nary != null) {
         VCExprLabelOp lab = nary.Op as VCExprLabelOp;
