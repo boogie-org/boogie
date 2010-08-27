@@ -109,6 +109,10 @@ namespace Microsoft.Boogie.Z3
             this.tm = new Z3TypeCachedBuilder(this);
             this.gen = gen;
             this.namer = new UniqueNamer();
+            if (CommandLineOptions.Clo.SimplifyLogFilePath != null)
+            {
+                z3.TraceToFile(CommandLineOptions.Clo.SimplifyLogFilePath);
+            }
         }
 
         public void CreateBacktrackPoint()
@@ -342,6 +346,7 @@ namespace Microsoft.Boogie.Z3
         {
             boogieErrors = new List<Z3ErrorModelAndLabels>();
             LBool outcome = LBool.Undef;
+            z3.Push();
             while (boogieErrors.Count < this.config.Counterexamples)
             {
                 Model z3Model;
@@ -363,7 +368,7 @@ namespace Microsoft.Boogie.Z3
                 else
                     break;
             }
-
+            z3.Pop();
             if (boogieErrors.Count > 0)
                 return ProverInterface.Outcome.Invalid;
             else if (outcome == LBool.False)

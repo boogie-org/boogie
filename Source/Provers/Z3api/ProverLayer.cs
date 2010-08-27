@@ -72,10 +72,16 @@ namespace Microsoft.Boogie.Z3
             cm.AddConjecture(conjecture, linOptions);
         }
 
-        public override void PushVCExpression(VCExpr vc)
+        public void PushVCExpression(VCExpr vc)
         {
             PushAxiom(vc);
             numAxiomsPushed++;
+        }
+
+        public void CreateBacktrackPoint()
+        {
+            Z3SafeContext cm = ((Z3apiProverContext)context).cm;
+            cm.CreateBacktrackPoint();
         }
 
         public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
@@ -85,17 +91,32 @@ namespace Microsoft.Boogie.Z3
             cm.AddConjecture(vc, linOptions);
             outcome = cm.Check(out z3LabelModels);
         }
+  
+        public void Check()
+        {
+            outcome = cm.Check(out z3LabelModels);
+        }
 
-        public void CreateBacktrackPoint()
+        public void Push()
         {
             Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             cm.CreateBacktrackPoint();
         }
 
-        override public void Pop()
+        public void Pop()
         {
             Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             cm.Backtrack();
+        }
+
+        public void Assert(VCExpr vc, bool polarity)
+        {
+            LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
+            Z3SafeContext cm = ((Z3apiProverContext)context).cm;
+            if (polarity)
+                cm.AddAxiom(vc, linOptions);
+            else
+                cm.AddConjecture(vc, linOptions);
         }
 
         // Number of axioms pushed since the last call to FlushAxioms

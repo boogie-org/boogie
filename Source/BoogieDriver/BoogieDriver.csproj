@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.30729</ProductVersion>
+    <ProductVersion>9.0.21022</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}</ProjectGuid>
     <OutputType>Exe</OutputType>
@@ -121,6 +121,10 @@
     <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj">
       <Project>{9B163AA3-36BC-4AFB-88AB-79BC9E97E401}</Project>
       <Name>SMTLib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Provers\Z3api\Z3api.csproj">
+      <Project>{966DD87B-A29D-4F3C-9406-F680A61DC0E0}</Project>
+      <Name>Z3api</Name>
     </ProjectReference>
     <ProjectReference Include="..\Provers\Z3\Z3.csproj">
       <Project>{BB49B90B-BE21-4BE8-85BA-359FDB55F4DF}</Project>
