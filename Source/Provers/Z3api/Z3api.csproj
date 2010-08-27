@@ -91,6 +91,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="cce.cs" />
     <Compile Include="ContextLayer.cs" />
     <Compile Include="ProverLayer.cs" />
     <Compile Include="SafeContext.cs" />
