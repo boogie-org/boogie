@@ -5,23 +5,24 @@
 //-----------------------------------------------------------------------------
 using System;
 using System.Text;
+using System.Diagnostics.Contracts;
 
 
 namespace Microsoft.Basetypes {
-  using Microsoft.Contracts;
   using BIM = System.Numerics.BigInteger;
-  
+
   /// <summary>
   /// A thin wrapper around System.Numerics.BigInteger
   /// (to be able to define equality, etc. properly)
   /// </summary>
   public struct BigNum {
-    
+
     // the internal representation
-    [Rep] internal readonly System.Numerics.BigInteger val;
-    public static readonly BigNum ZERO = new BigNum (BIM.Zero);
-    public static readonly BigNum ONE  = new BigNum (BIM.One);
-    public static readonly BigNum MINUS_ONE = new BigNum (-BIM.One);
+    [Rep]
+    internal readonly System.Numerics.BigInteger val;
+    public static readonly BigNum ZERO = new BigNum(BIM.Zero);
+    public static readonly BigNum ONE = new BigNum(BIM.One);
+    public static readonly BigNum MINUS_ONE = new BigNum(-BIM.One);
 
     [Pure]
     public static BigNum FromInt(int v) {
@@ -59,11 +60,11 @@ namespace Microsoft.Basetypes {
 
     public static bool TryParse(string v, out BigNum res) {
       try {
-	    res = BigNum.FromString(v);
+        res = BigNum.FromString(v);
         return true;
-	  } catch (FormatException) {
-	    res = ZERO;
-	    return false;
+      } catch (FormatException) {
+        res = ZERO;
+        return false;
       }
     }
 
@@ -77,46 +78,50 @@ namespace Microsoft.Basetypes {
     // Convert to int; assert that no overflows occur
     public int ToIntSafe {
       get {
-        assert this.InInt32;
+        Contract.Assert(this.InInt32);
         return this.ToInt;
       }
     }
 
     public Rational ToRational {
       get {
-        return new Rational (this, BigNum.ONE);
+        return new Rational(this, BigNum.ONE);
       }
-	}
+    }
 
     internal BigNum(System.Numerics.BigInteger val) {
       this.val = val;
     }
-    
-    public static bool operator==(BigNum x, BigNum y) {
+
+    public static bool operator ==(BigNum x, BigNum y) {
       return (x.val == y.val);
     }
 
-    public static bool operator!=(BigNum x, BigNum y) {
+    public static bool operator !=(BigNum x, BigNum y) {
       return !(x.val == y.val);
     }
 
-    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
     public override bool Equals(object obj) {
-      if (obj == null) return false;
-      if (!(obj is BigNum)) return false;
-      
+      if (obj == null)
+        return false;
+      if (!(obj is BigNum))
+        return false;
+
       BigNum other = (BigNum)obj;
       return (this.val == other.val);
     }
-    
+
     [Pure]
     public override int GetHashCode() {
       return this.val.GetHashCode();
     }
-    
+
     [Pure]
-    public override string! ToString() {
-      return (!)val.ToString();
+    public override string/*!*/ ToString() {
+      Contract.Ensures(Contract.Result<string>() != null);
+      return cce.NonNull(val.ToString());
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -126,64 +131,75 @@ namespace Microsoft.Basetypes {
     // int32.ToString(format) does) 
 
     [Pure]
-	public string! ToString(string! format) {
-        if (format.StartsWith("d") || format.StartsWith("D")) {
-            string! res = this.Abs.ToString();
-			return addMinus(this.Signum,
-                            prefixWithZeros(extractPrecision(format), res));
-        } else if (format.StartsWith("x") || format.StartsWith("X")) {
-            string! res = this.toHex(format.Substring(0, 1));
-			return addMinus(this.Signum,
-                            prefixWithZeros(extractPrecision(format), res));
-        } else {
-			throw new FormatException("Format " + format + " is not supported");
-        }
-	}
+    public string/*!*/ ToString(string/*!*/ format) {
+      Contract.Requires(format != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+      if (format.StartsWith("d") || format.StartsWith("D")) {
+        string res = this.Abs.ToString();
+        Contract.Assert(res != null);
+        return addMinus(this.Signum,
+                              prefixWithZeros(extractPrecision(format), res));
+      } else if (format.StartsWith("x") || format.StartsWith("X")) {
+        string res = this.toHex(format.Substring(0, 1));
+        Contract.Assert(res != null);
+        return addMinus(this.Signum,
+                              prefixWithZeros(extractPrecision(format), res));
+      } else {
+        throw new FormatException("Format " + format + " is not supported");
+      }
+    }
 
     private static readonly System.Numerics.BigInteger BI_2_TO_24 = new BIM(0x1000000);
 
     [Pure]
-    private string! toHex(string! format) {
-	    string! res = "";
-        System.Numerics.BigInteger rem = this.Abs.val;
+    private string/*!*/ toHex(string/*!*/ format) {
+      Contract.Requires(format != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+      string res = "";
+      System.Numerics.BigInteger rem = this.Abs.val;
 
-        while (rem > BIM.Zero) {
-          res = ((int)(rem %BI_2_TO_24)).ToString(format) + res;
-          rem = rem / BI_2_TO_24;
-        }
+      while (rem > BIM.Zero) {
+        res = ((int)(rem % BI_2_TO_24)).ToString(format) + res;
+        rem = rem / BI_2_TO_24;
+      }
 
-        return res;
+      return res;
     }
 
     [Pure]
-    private int extractPrecision(string! format) {
-        if (format.Length > 1)
-          // will throw a FormatException if the precision is invalid;
-          // that is ok
-          return Int32.Parse(format.Substring(1));
-        // always output at least one digit
-        return 1;
+    private int extractPrecision(string/*!*/ format) {
+      Contract.Requires(format != null);
+      if (format.Length > 1)
+        // will throw a FormatException if the precision is invalid;
+        // that is ok
+        return Int32.Parse(format.Substring(1));
+      // always output at least one digit
+      return 1;
     }
 
     [Pure]
-    private string! addMinus(int signum, string! suffix) {
-        if (signum < 0)
-          return "-" + suffix;
-        return suffix;
+    private string/*!*/ addMinus(int signum, string/*!*/ suffix) {
+      Contract.Requires(suffix != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+      if (signum < 0)
+        return "-" + suffix;
+      return suffix;
     }
 
     [Pure]
-    private string! prefixWithZeros(int minLength, string! suffix) {
-        StringBuilder res = new StringBuilder();
-        while (res.Length + suffix.Length < minLength)
-          res.Append("0");
-        res.Append(suffix);
-        return res.ToString();
+    private string/*!*/ prefixWithZeros(int minLength, string/*!*/ suffix) {
+      Contract.Requires(suffix != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+      StringBuilder res = new StringBuilder();
+      while (res.Length + suffix.Length < minLength)
+        res.Append("0");
+      res.Append(suffix);
+      return res.ToString();
     }
 
     ////////////////////////////////////////////////////////////////////////////
     // Basic arithmetic operations
-    
+
     public BigNum Abs {
       get {
         return new BigNum(BIM.Abs(this.val));
@@ -197,34 +213,34 @@ namespace Microsoft.Basetypes {
     }
 
     [Pure]
-    public static BigNum operator-(BigNum x) {
+    public static BigNum operator -(BigNum x) {
       return x.Neg;
     }
 
     [Pure]
-    public static BigNum operator+(BigNum x, BigNum y) {
+    public static BigNum operator +(BigNum x, BigNum y) {
       return new BigNum(x.val + y.val);
     }
 
     [Pure]
-    public static BigNum operator-(BigNum x, BigNum y) {
+    public static BigNum operator -(BigNum x, BigNum y) {
       return new BigNum(x.val - y.val);
     }
 
     [Pure]
-    public static BigNum operator*(BigNum x, BigNum y) {
+    public static BigNum operator *(BigNum x, BigNum y) {
       return new BigNum(x.val * y.val);
     }
 
     // TODO: check that this has a proper semantics (which? :-))
     [Pure]
-    public static BigNum operator/(BigNum x, BigNum y) {
+    public static BigNum operator /(BigNum x, BigNum y) {
       return new BigNum(x.val / y.val);
     }
 
     // TODO: check that this has a proper semantics (which? :-))
     [Pure]
-    public static BigNum operator%(BigNum x, BigNum y) {
+    public static BigNum operator %(BigNum x, BigNum y) {
       return new BigNum(x.val - ((x.val / y.val) * y.val));
     }
 
@@ -243,27 +259,20 @@ namespace Microsoft.Basetypes {
     /// </summary>
     /// <param name="_y"></param>
     /// <returns></returns>
-    public BigNum Gcd(BigNum _y)
-        ensures !result.IsNegative;
-    {
+    public BigNum Gcd(BigNum _y) {
+      Contract.Ensures(!Contract.Result<BigNum>().IsNegative);
       BigNum x = this.Abs;
       BigNum y = _y.Abs;
 
-      while (true)
-      {
-        if (x < y)
-        {
+      while (true) {
+        if (x < y) {
           y = y % x;
-          if (y.IsZero)
-          {
+          if (y.IsZero) {
             return x;
           }
-        }
-        else
-        {
+        } else {
           x = x % y;
-          if (x.IsZero)
-          {
+          if (x.IsZero) {
             return y;
           }
         }
@@ -275,9 +284,9 @@ namespace Microsoft.Basetypes {
     // Some basic comparison operations
 
     public int Signum {
-	  get {
-		return this.val.Sign;
-	  }
+      get {
+        return this.val.Sign;
+      }
     }
 
     public bool IsPositive {
@@ -300,37 +309,39 @@ namespace Microsoft.Basetypes {
 
     [Pure]
     public int CompareTo(BigNum that) {
-	  if (this.val == that.val) return 0;
-	  if (this.val < that.val) return -1;
-	  return 1;
+      if (this.val == that.val)
+        return 0;
+      if (this.val < that.val)
+        return -1;
+      return 1;
     }
 
     [Pure]
-    public static bool operator<(BigNum x, BigNum y) {
+    public static bool operator <(BigNum x, BigNum y) {
       return (x.val < y.val);
     }
 
     [Pure]
-    public static bool operator>(BigNum x, BigNum y) {
+    public static bool operator >(BigNum x, BigNum y) {
       return (x.val > y.val);
     }
 
     [Pure]
-    public static bool operator<=(BigNum x, BigNum y) {
+    public static bool operator <=(BigNum x, BigNum y) {
       return (x.val <= y.val);
     }
 
     [Pure]
-    public static bool operator>=(BigNum x, BigNum y) {
+    public static bool operator >=(BigNum x, BigNum y) {
       return (x.val >= y.val);
     }
 
-    
+
     private static readonly System.Numerics.BigInteger MaxInt32 =
       new BIM(Int32.MaxValue);
     private static readonly System.Numerics.BigInteger MinInt32 =
       new BIM(Int32.MinValue);
- 
+
     public bool InInt32 {
       get {
         return (val >= MinInt32) && (val <= MaxInt32);

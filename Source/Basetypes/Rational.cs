@@ -4,31 +4,30 @@
 //
 //-----------------------------------------------------------------------------
 using System;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 
-namespace Microsoft.Basetypes
-{
+namespace Microsoft.Basetypes {
   using BNM = Microsoft.FSharp.Math.BigRational;
 
   /// <summary>
   /// The representation of a rational number.
   /// </summary>
-  public struct Rational 
-  {
-    public static readonly Rational ZERO = new Rational ((!)BNM.Zero);
-    public static readonly Rational ONE  = new Rational ((!)BNM.One);
-    public static readonly Rational MINUS_ONE = new Rational ((!)(-BNM.One));
+  public struct Rational {
+    public static readonly Rational ZERO = new Rational(cce.NonNull(BNM.Zero));
+    public static readonly Rational ONE = new Rational(cce.NonNull(BNM.One));
+    public static readonly Rational MINUS_ONE = new Rational(cce.NonNull(-BNM.One));
 
     private readonly Microsoft.FSharp.Math.BigRational _val;
 
-    private Microsoft.FSharp.Math.BigRational! val {
+    private Microsoft.FSharp.Math.BigRational val {
       get {
-        if (_val == null)
-          return (!)BNM.Zero;
+        Contract.Ensures(Contract.Result<FSharp.Math.BigRational>() != null);
+        if ((object)_val == null)
+          return cce.NonNull(BNM.Zero);
         else
           return _val;
       }
-	}
+    }
 
 
     //    int numerator;
@@ -39,8 +38,7 @@ namespace Microsoft.Basetypes
     // invariant: numerator != 0 ==> gcd(abs(numerator),denominator) == 1;
     // invariant: numerator == 0 ==> denominator == 1 || denominator == 0;
 
-    private Rational(int x)
-    {
+    private Rational(int x) {
       this._val = BNM.FromInt(x);
     }
 
@@ -48,13 +46,14 @@ namespace Microsoft.Basetypes
       return new Rational(x);
     }
 
-    private Rational(Microsoft.FSharp.Math.BigRational! val) {
+    private Rational(Microsoft.FSharp.Math.BigRational/*!*/ val) {
+      Contract.Requires(val != null);
       this._val = val;
     }
 
     public Rational(BigNum num, BigNum den) {
       System.Diagnostics.Debug.Assert(!den.IsZero);
-      
+
       this._val = BNM.FromBigInt(num.val) / BNM.FromBigInt(den.val);
     }
 
@@ -65,14 +64,13 @@ namespace Microsoft.Basetypes
     /// <summary>
     /// Returns the absolute value of the rational.
     /// </summary>
-    public Rational Abs()
-        ensures result.IsNonNegative;
-    {
-        if (IsNonNegative) {
-            return this;
-        } else {
-            return -this;
-        }
+    public Rational Abs() {
+      Contract.Ensures(Contract.Result<Rational>().IsNonNegative);
+      if (IsNonNegative) {
+        return this;
+      } else {
+        return -this;
+      }
     }
 
     /// <summary>
@@ -80,30 +78,27 @@ namespace Microsoft.Basetypes
     /// of the numerators and denominators of r and s.  If one of r and s is 0, the absolute
     /// value of the other is returned.  If both are 0, 1 is returned.
     /// </summary>
-    public static Rational Gcd(Rational r, Rational s)
-        ensures result.IsPositive;
-    {
-        if (r.IsZero) {
-            if (s.IsZero) {
-                return ONE;
-            } else {
-                return s.Abs();
-            }
-        } else if (s.IsZero) {
-            return r.Abs();
+    public static Rational Gcd(Rational r, Rational s) {
+      Contract.Ensures(Contract.Result<Rational>().IsPositive);
+      if (r.IsZero) {
+        if (s.IsZero) {
+          return ONE;
         } else {
-            return new Rational (r.Numerator.Gcd(s.Numerator),
-                                 r.Denominator.Gcd(s.Denominator));
+          return s.Abs();
         }
+      } else if (s.IsZero) {
+        return r.Abs();
+      } else {
+        return new Rational(r.Numerator.Gcd(s.Numerator),
+                             r.Denominator.Gcd(s.Denominator));
+      }
     }
-    
-    public BigNum Numerator
-    {
-      get
-      {
+
+    public BigNum Numerator {
+      get {
         // Better way to obtain the numerator?
         // The FSharp library does not seem to offer any methods for this
-        string! lin = (!)val.ToString();
+        string/*!*/ lin = cce.NonNull(val.ToString());
         int i = lin.IndexOf('/');
         if (i == -1)
           return new BigNum(BNM.ToBigInt(this.val));
@@ -112,188 +107,159 @@ namespace Microsoft.Basetypes
       }
     }
 
-    public BigNum Denominator
-    {
-      get
-      {
+    public BigNum Denominator {
+      get {
         // Better way to obtain the numerator?
         // The FSharp library does not seem to offer any methods for this
-        string! lin = (!)val.ToString();
+        string/*!*/ lin = cce.NonNull(val.ToString());
         int i = lin.IndexOf('/');
         if (i == -1)
           return BigNum.ONE;
         else
-          return BigNum.FromString(lin.Substring(i+1));
+          return BigNum.FromString(lin.Substring(i + 1));
       }
     }
 
-    public override string! ToString()
-    {
+    public override string/*!*/ ToString() {
+      Contract.Ensures(Contract.Result<string>() != null);
       return String.Format("{0}/{1}", Numerator, Denominator);
     }
 
 
-    public static bool operator==(Rational r, Rational s)
-    {
+    public static bool operator ==(Rational r, Rational s) {
       return (r.val == s.val);
     }
 
-    public static bool operator!=(Rational r, Rational s)
-    {
+    public static bool operator !=(Rational r, Rational s) {
       return !(r.val == s.val);
     }
 
-    public override bool Equals(object obj)
-    {
-      if (obj == null) return false;
+    public override bool Equals(object obj) {
+      if (obj == null)
+        return false;
       return obj is Rational && (Rational)obj == this;
     }
 
-    public override int GetHashCode()
-    {
+    public override int GetHashCode() {
       return this.val.GetHashCode();
     }
 
     public int Signum {
-      get { return this.val.Sign; }
+      get {
+        return this.val.Sign;
+      }
     }
 
-    public bool IsZero
-    {
-      get
-      {
+    public bool IsZero {
+      get {
         return Signum == 0;
       }
     }
 
-    public bool IsNonZero
-    {
-      get
-      {
+    public bool IsNonZero {
+      get {
         return Signum != 0;
       }
     }
 
-    public bool IsIntegral
-    {
-      get
-      {
+    public bool IsIntegral {
+      get {
         // better way?
-        return !((!)this.val.ToString()).Contains("/");
+        return !cce.NonNull(this.val.ToString()).Contains("/");
       }
     }
-    
-    
-    [Pure][Reads(ReadsAttribute.Reads.Nothing)]
-    public bool HasValue (int n) { return this == new Rational(n); }
+
+
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public bool HasValue(int n) {
+      return this == new Rational(n);
+    }
 
     /// <summary>
     /// Returns the rational as an integer.  Requires the rational to be integral.
     /// </summary>
-    public int AsInteger
-    {
-      get
-      {
+    public int AsInteger {
+      get {
         System.Diagnostics.Debug.Assert(this.IsIntegral);
         return Numerator.ToIntSafe;
       }
     }
 
     public BigNum AsBigNum {
-      get
-      {
+      get {
         System.Diagnostics.Debug.Assert(this.IsIntegral);
-        return new BigNum (BNM.ToBigInt(this.val));
+        return new BigNum(BNM.ToBigInt(this.val));
       }
     }
 
-    public double AsDouble
-    {
+    public double AsDouble {
       [Pure]
-      get
-      {
-        if (this.IsZero)
-        {
+      get {
+        if (this.IsZero) {
           return 0.0;
-        } 
-        else
-        {
+        } else {
           return (double)Numerator.ToIntSafe / (double)Denominator.ToIntSafe;
         }
       }
     }
 
-    public bool IsNegative
-    {
+    public bool IsNegative {
       [Pure]
-      get
-      {
+      get {
         return Signum < 0;
       }
     }
 
-    public bool IsPositive
-    {
+    public bool IsPositive {
       [Pure]
-      get
-      {
+      get {
         return 0 < Signum;
       }
     }
 
-    public bool IsNonNegative
-    {
+    public bool IsNonNegative {
       [Pure]
-      get
-      {
+      get {
         return 0 <= Signum;
       }
     }
 
 
-    public static Rational operator-(Rational r)
-    {
-      return new Rational ((!)(BNM.Zero -r.val)); // for whatever reason, the Spec# compiler refuses to accept -r.val (unary negation)
+    public static Rational operator -(Rational r) {
+      return new Rational(cce.NonNull(BNM.Zero - r.val)); // for whatever reason, the Spec# compiler refuses to accept -r.val (unary negation)
     }
 
 
-    public static Rational operator+(Rational r, Rational s)
-    {
-      return new Rational ((!)(r.val + s.val));
+    public static Rational operator +(Rational r, Rational s) {
+      return new Rational(cce.NonNull(r.val + s.val));
     }
 
-    public static Rational operator-(Rational r, Rational s)
-    {
-      return new Rational ((!)(r.val - s.val));
+    public static Rational operator -(Rational r, Rational s) {
+      return new Rational(cce.NonNull((r.val - s.val)));
     }
 
-    public static Rational operator*(Rational r, Rational s)
-    {
-      return new Rational ((!)(r.val * s.val));
+    public static Rational operator *(Rational r, Rational s) {
+      return new Rational(cce.NonNull(r.val * s.val));
     }
 
-    public static Rational operator/(Rational r, Rational s)
-    {
-      return new Rational ((!)(r.val / s.val));
+    public static Rational operator /(Rational r, Rational s) {
+      return new Rational(cce.NonNull(r.val / s.val));
     }
 
-    public static bool operator<=(Rational r, Rational s)
-    {
+    public static bool operator <=(Rational r, Rational s) {
       return (r.val <= s.val);
     }
 
-    public static bool operator>=(Rational r, Rational s)
-    {
+    public static bool operator >=(Rational r, Rational s) {
       return (r.val >= s.val);
     }
 
-    public static bool operator<(Rational r, Rational s)
-    {
+    public static bool operator <(Rational r, Rational s) {
       return (r.val < s.val);
     }
 
-    public static bool operator>(Rational r, Rational s)
-    {
+    public static bool operator >(Rational r, Rational s) {
       return (r.val > s.val);
     }
   }
