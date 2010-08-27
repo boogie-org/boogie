@@ -245,7 +245,6 @@ Contract.Ensures(Contract.Result<string>() != null);
     private static void TypeToStringHelper(Type t, StringBuilder sb)
     {
       Contract.Requires(t != null);
-      Contract.Ensures(Contract.Result<string>() != null);
 
       TypeSynonymAnnotation syn = t as TypeSynonymAnnotation;
       if (syn != null) {
