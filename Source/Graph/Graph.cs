@@ -8,14 +8,16 @@ using System.Collections.Generic;
 using Microsoft.SpecSharp.Collections;
 using Microsoft.Contracts;
 using System.Text; // for StringBuilder
+using System.Diagnostics.Contracts;
 namespace Graphing{
 
 internal static class Util{
-  private static string! ListToString<T>(IEnumerable<T> xs){
+  private static string/*!*/ ListToString<T>(IEnumerable<T> xs){
+    Contract.Ensures(Contract.Result<string>() != null);
     StringBuilder sb = new StringBuilder();
     sb.Append("[");
     bool first = true;
-    foreach(T! x in xs){
+    foreach(T/*!*/ x in xs){Contract.Assert(x != null);
       if (!first) sb.Append(", ");
       sb.Append(x.ToString());
       first = false;
@@ -23,13 +25,14 @@ internal static class Util{
     sb.Append("]");
     return sb.ToString();
   }
-  public static string! MapToString<Node>(Dictionary<Node,List<Node>> d){
+  public static string/*!*/ MapToString<Node>(Dictionary<Node,List<Node>> d){
+    Contract.Ensures(Contract.Result<string>() != null);
     StringBuilder sb = new StringBuilder();
     sb.Append("{");
     bool first = true;
     foreach (KeyValuePair<Node,List<Node>> de in d){
       if (!first) sb.Append(", ");
-      sb.Append(((!) de.Key).ToString());
+      sb.Append(cce.NonNull( de.Key).ToString());
       sb.Append("~>");
       sb.Append(ListToString(de.Value));
       first = false;
@@ -45,7 +48,7 @@ public struct Maybe<T> {
   private T Value;
   public bool IsSet;  // initialised with false by the default ctor
   public T Val {
-    get { assume IsSet; return Value; }
+    get { Contract.Assume(IsSet); return Value; }
     set { Value = value; IsSet = true; }
   }
   public void UnSet() {
@@ -56,14 +59,14 @@ public struct Maybe<T> {
 internal class DomRelation<Node>{
   // doms maps (unique) node numbers to the node numbers of the immediate dominator
   // to use it on Nodes, one needs the two way mapping between nodes and their numbers.
-  private int[]? doms; // 0 is unused: means undefined
+  private int[] doms; // 0 is unused: means undefined
   // here are the two mappings
-  private Maybe<Node>[]? postOrderNumberToNode;
-  private Dictionary<Node,int>? nodeToPostOrderNumber;
+  private Maybe<Node>[] postOrderNumberToNode;
+  private Dictionary<Node,int> nodeToPostOrderNumber;
   private int sourceNum; // (number for) root of the graph
   private Node source; // root of the graph
   private Graph<Node> graph;
-  private Dictionary<Node,List<Node>>? immediateDominatorMap;
+  private Dictionary<Node,List<Node>> immediateDominatorMap;
 
   [NotDelayed]
   internal DomRelation(Graph<Node> g, Node source){
@@ -71,15 +74,15 @@ internal class DomRelation<Node>{
     // slot 0 not used: nodes are numbered from 1 to n so zero
     // can represent undefined.
     this.source = source;
-    base();
+    //:base();
     this.NewComputeDominators();
   }
   public Dictionary<Node,List<Node>> ImmediateDominatorMap{
-    get { assume this.immediateDominatorMap != null; return this.immediateDominatorMap; }
+    get { Contract.Assume( this.immediateDominatorMap != null); return this.immediateDominatorMap; }
   }
   public bool DominatedBy(Node dominee, Node dominator){
-    assume this.nodeToPostOrderNumber != null;
-    assume this.doms != null;
+    Contract.Assume( this.nodeToPostOrderNumber != null);
+    Contract.Assume(this.doms != null);
     int domineeNum = this.nodeToPostOrderNumber[dominee];
     int dominatorNum = this.nodeToPostOrderNumber[dominator];
     if (domineeNum == dominatorNum) return true;
@@ -90,12 +93,12 @@ internal class DomRelation<Node>{
     } while (currentNodeNum != this.sourceNum);
     return false;
   }
-  private Dictionary<Node,List<Node>>? domMap = null;
+  private Dictionary<Node,List<Node>> domMap = null;
   [Pure]
   public override string ToString(){
-    assume this.doms != null;
+    Contract.Assume(this.doms != null);
     int[] localDoms = this.doms;
-    assume this.postOrderNumberToNode != null;
+    Contract.Assume(this.postOrderNumberToNode != null);
     if (domMap == null){
       domMap = new Dictionary<Node,List<Node>>();
       for (int i = 1; i < localDoms.Length; i++){ // 0 slot is not used
@@ -115,7 +118,7 @@ internal class DomRelation<Node>{
     bool first = true;
     foreach (KeyValuePair<Node,List<Node>> de in domMap){
       if (!first) sb.Append(", ");
-      sb.Append(((!)de.Key).ToString());
+      sb.Append(cce.NonNull(de.Key).ToString());
       sb.Append("~>");
       sb.Append(ListToString(de.Value));
       first = false;
@@ -134,18 +137,21 @@ internal class DomRelation<Node>{
   public void PrintList<T>(IEnumerable<T> xs){
     Console.Write("[");
     int i = 0;
-    foreach(T! x in xs){
+    foreach(T/*!*/ x in xs){
+Contract.Assert(x != null);
       if (0 < i) Console.Write(", ");
       Console.Write(x.ToString());
       i++;
     }
     Console.WriteLine("]");
   }
-  public string! ListToString<T>(IEnumerable<T> xs){
+  public string/*!*/ ListToString<T>(IEnumerable<T> xs){
+    Contract.Ensures(Contract.Result<string>() != null);
     StringBuilder sb = new StringBuilder();
     sb.Append("[");
     bool first = true;
-    foreach(T! x in xs){
+    foreach(T/*!*/ x in xs){
+Contract.Assert(x != null);
       if (!first) sb.Append(", ");
       sb.Append(x.ToString());
       first = false;
@@ -162,7 +168,7 @@ internal class DomRelation<Node>{
     this.nodeToPostOrderNumber = new Dictionary<Node,int>();
     Dictionary<Node,bool> visited = new Dictionary<Node,bool>(n);
     int currentNumber = 1;
-    assume this.source != null;
+    Contract.Assume(this.source != null);
     this.PostOrderVisit(this.source, visited, ref currentNumber);
     this.sourceNum = this.nodeToPostOrderNumber[source];
 //    for (int i = 1; i <= n; i++){ Console.WriteLine(postOrderNumberToNode[i]); }
@@ -238,14 +244,16 @@ internal class DomRelation<Node>{
     }
     return finger1;
   }
-  private void PostOrderVisit(Node! n, Dictionary<Node,bool> visited, ref int currentNumber){
+  private void PostOrderVisit(Node/*!*/ n, Dictionary<Node,bool> visited, ref int currentNumber){
+    Contract.Requires(n != null);
     if (visited.ContainsKey(n)) return;
     visited[n] = true;
-    foreach(Node! child in this.graph.Successors(n)){
+    foreach(Node/*!*/ child in this.graph.Successors(n)){
+Contract.Assert(child != null);
       PostOrderVisit(child, visited, ref currentNumber);
     }
-    assume this.postOrderNumberToNode != null;
-    assume this.nodeToPostOrderNumber != null;
+    Contract.Assume(this.postOrderNumberToNode != null);
+    Contract.Assume(this.nodeToPostOrderNumber != null);
     this.postOrderNumberToNode[currentNumber].Val = n;
     this.nodeToPostOrderNumber[n] = currentNumber;
     currentNumber++;
@@ -253,30 +261,46 @@ internal class DomRelation<Node>{
   }
 }
 public class Graph<Node> {
-  private Set<Pair<Node!,Node!>> es;
+  private Set<Pair<Node/*!*/,Node/*!*/>> es;
   private Set<Node> ns;
   private Node source;
   private bool reducible;
   private Set<Node> headers;
   private Map<Node,Set<Node>> backEdgeNodes;
-  private Map<Pair<Node!,Node!>,Set<Node>> naturalLoops;
-  private DomRelation<Node>? dominatorMap = null;
+  private Map<Pair<Node/*!*/,Node/*!*/>,Set<Node>> naturalLoops;
+  
+  private DomRelation<Node> dominatorMap = null;
   private Dictionary<Node, Set<Node>> predCache = new Dictionary<Node, Set<Node>>();
   private Dictionary<Node, Set<Node>> succCache = new Dictionary<Node, Set<Node>>();
   private bool predComputed;
+  [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(es == null || Contract.ForAll(es,p=>p.First != null&&p.Second != null));
+    Contract.Invariant(naturalLoops==null||Contract.ForAll(naturalLoops.Keys,p=>p.Second!=null&&p.First!=null));
+}
+
   
   private class PreHeader {
-    Node! myHeader;
-    internal PreHeader(Node! h) { myHeader = h; }
+    Node/*!*/ myHeader;
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(myHeader != null);
+}
+
+    internal PreHeader(Node/*!*/ h) {Contract.Requires(h != null); myHeader = h; }
 
     [Pure]
-    public override string! ToString() { return "#" + myHeader.ToString(); }
+    public override string/*!*/ ToString() {Contract.Ensures(Contract.Result<string>() != null); return "#" + myHeader.ToString(); }
   }
 
-  public Graph(Set<Pair<Node!,Node!>> edges)
+  public Graph(Set<Pair<Node/*!*/,Node/*!*/>> edges)
   {
+    
+    Contract.Requires(cce.NonNullElements(edges)&&Contract.ForAll(edges,p=>p.First!=null&&p.Second!=null));
     es = edges;
-
+    
     // original A#
     //ns = Set<Node>{ x : <x,y> in es } + Set<Node>{ y : <x,y> in es };
 
@@ -285,44 +309,54 @@ public class Graph<Node> {
 
     // 
     Set<Node> temp = new Set<Node>();
-    foreach (Pair<Node!,Node!> p in edges){
+    foreach (Pair<Node/*!*/,Node/*!*/> p in edges){
+      Contract.Assert(p.First != null);
       temp.Add(p.First);
+      Contract.Assert(p.Second != null);
       temp.Add(p.Second);
     }
     ns = temp;
   }
   public Graph()
-  { es = new Set<Pair<Node!,Node!>>(); ns = new Set<Node>(); } 
+  { es = new Set<Pair<Node/*!*/,Node/*!*/>>(); ns = new Set<Node>(); } 
 
   // BUGBUG: Set<T>.ToString() should return a non-null string
   [Pure]
-  public override string! ToString() { return "" + es.ToString(); }
+  public override string/*!*/ ToString() { return "" + es.ToString(); }
 
-  public void AddSource(Node! x)
+  public void AddSource(Node/*!*/ x)
   {
+    Contract.Requires(x != null);
     // BUGBUG: This generates bad code in the compiler
     //ns += new Set<Node>{x};
     ns.Add(x);
     source = x;
   }
 
-  public void AddEdge(Node! source, Node! dest)
+  public void AddEdge(Node/*!*/ source, Node/*!*/ dest)
   {
+    Contract.Requires(source != null);
+    Contract.Requires(dest != null);
     //es += Set<Edge>{<source,dest>};
     //ns += Set<Node>{source, dest};
-    es.Add(new Pair<Node!,Node!>(source,dest));
+    es.Add(new Pair<Node/*!*/,Node/*!*/>(source,dest));
     ns.Add(source);
     ns.Add(dest);
     predComputed = false;
   }
 
   public Set<Node> Nodes { get { return ns; } }
-  public IEnumerable<Pair<Node!,Node!>> Edges { get { return es; } }
+  public IEnumerable<Pair<Node/*!*/,Node/*!*/>> Edges { get {Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Pair<Node,Node>>>())
+    &&Contract.ForAll(Contract.Result<IEnumerable<Pair<Node,Node>>>(),n=>
+      n.First!=null&&n.Second!=null));
+    return es; } }
 
-  public bool Edge(Node! x, Node! y) {
+  public bool Edge(Node/*!*/ x, Node/*!*/ y) {
+    Contract.Requires(x != null);
+    Contract.Requires(y != null);
     // original A#
     // return <x,y> in es;
-    return es.Contains(new Pair<Node!,Node!>(x,y));
+    return es.Contains(new Pair<Node/*!*/,Node/*!*/>(x,y));
   }  
 
   private void ComputePredSuccCaches()
@@ -337,7 +371,9 @@ public class Graph<Node> {
       succCache[n] = new Set<Node>();
     }
 
-    foreach(Pair<Node!,Node!> p in Edges){
+    foreach(Pair<Node/*!*/,Node/*!*/> p in Edges){
+      Contract.Assert(p.First != null);
+      Contract.Assert(p.Second != null);
       Set<Node> tmp;
 
       tmp = predCache[p.Second];
@@ -368,7 +404,7 @@ public class Graph<Node> {
   internal DomRelation<Node> /*Map<Node,Set<Node>>*/ DominatorMap
   {
     get {
-      assert source != null;
+      Contract.Assert(source != null);
       if (this.dominatorMap == null){
         this.dominatorMap = new DomRelation<Node>(this, this.source);
       }
@@ -379,31 +415,32 @@ public class Graph<Node> {
   public Dictionary<Node,List<Node>> ImmediateDominatorMap
   {
     get { 
-      assert source != null;
+      Contract.Assert(source != null);
       if (this.dominatorMap == null){
         this.dominatorMap = new DomRelation<Node>(this, this.source);
       }
       return this.dominatorMap.ImmediateDominatorMap;
     }
   }
-  public List<Node> ImmediatelyDominatedBy(Node! n) { 
-    List<Node>? dominees;
+  public List<Node> ImmediatelyDominatedBy(Node/*!*/ n) { 
+    Contract.Requires(n != null);
+    List<Node> dominees;
     this.ImmediateDominatorMap.TryGetValue(n, out dominees);
     return dominees == null ? new List<Node>() : dominees;
   }
 
-  public IEnumerable<Node?> TopologicalSort()
+  public IEnumerable<Node/*?*/> TopologicalSort()
   {
     bool acyclic;
-    List<Node?> sortedList;
+    List<Node> sortedList;
     this.TarjanTopSort(out acyclic, out sortedList);
-    return  acyclic ? sortedList : new List<Node?>();
+    return  acyclic ? sortedList : new List<Node>();
   }
   // From Tarjan 1972
-  public void TarjanTopSort(out bool acyclic, out List<Node?> sortedNodes)
+  public void TarjanTopSort(out bool acyclic, out List<Node> sortedNodes)
   {
     int n = this.Nodes.Count;
-    if (n == 0) { acyclic = true; sortedNodes = new List<Node?>(); return; }
+    if (n == 0) { acyclic = true; sortedNodes = new List<Node>(); return; }
     int[] incomingEdges = new int[n];
     // need an arbitrary numbering for the nodes to use as indices into
     // the arrays used within this algorithm
@@ -415,11 +452,13 @@ public class Graph<Node> {
       nodeToNumber[node] = counter;
       counter++;
     }
-    foreach (Pair<Node!,Node!> e in this.Edges){
-      Node! target = e.Second;
+    foreach (Pair<Node/*!*/,Node/*!*/> e in this.Edges){
+      Contract.Assert(e.First != null);
+      Contract.Assert(e.Second != null);
+      Node/*!*/ target = e.Second;
       incomingEdges[nodeToNumber[target]]++;
     }
-    List<Node?> sorted = new List<Node?> ();
+    List<Node> sorted = new List<Node> ();
     int sortedIndex = 0;
     while (sortedIndex < n){
       // find a root (i.e., its index)
@@ -431,7 +470,7 @@ public class Graph<Node> {
         }
       }
       if (rootIndex == -1){
-        acyclic = false; sortedNodes = new List<Node?> (); return;
+        acyclic = false; sortedNodes = new List<Node> (); return;
       }
       // mark root so it won't be used again
       incomingEdges[rootIndex] = -1;
@@ -455,17 +494,19 @@ public class Graph<Node> {
     Seq<Node> S = new Seq<Node>();
     Set<Node> V = this.Nodes;
     Set<Node> X = new Set<Node>();
-    foreach (Node! n in V){ X.Add(n); }
+    foreach (Node/*!*/ n in V){Contract.Assert(n != null); X.Add(n); }
     bool change = true;
     while ( change )
       // invariant: X = V - S
     {
       change = false;
       if (X.Count > 0){
-        foreach (Node! n in X){
+        foreach(Node/*!*/ n in X){
+Contract.Assert(n != null);
           // see if n has any incoming edges from any other node in X
           bool inDegreeZero = true;
-          foreach(Node! u in X){
+          foreach(Node/*!*/ u in X){
+Contract.Assert(u != null);
             if (this.Edge(u,n)){
               inDegreeZero = false;
               break; // no point looking further
@@ -490,7 +531,7 @@ public class Graph<Node> {
   public static bool Acyclic(Graph<Node> g, Node source)
   {
     bool acyclic;
-    List<Node?> sortedList;
+    List<Node> sortedList;
     g.TarjanTopSort(out acyclic, out sortedList);
     return acyclic;
   }
@@ -499,25 +540,29 @@ public class Graph<Node> {
   // [Dragon, pp. 670--671]
   // returns map D s.t. d in D(n) iff d dom n
   //
-  static private Map<Node,Set<Node>> OldComputeDominators(Graph<Node> g, Node! source){
-    assert g.source != null;
+  static private Map<Node,Set<Node>> OldComputeDominators(Graph<Node> g, Node/*!*/ source){
+    Contract.Requires(source != null);
+    Contract.Assert(g.source != null);
     Set<Node> N = g.Nodes;
     Set<Node> nonSourceNodes = N - new Set<Node>(source);
     Map<Node,Set<Node>> D = new Map<Node,Set<Node>>();
     D[source] = new Set<Node>(source);
-    foreach (Node! n in nonSourceNodes){
+    foreach(Node/*!*/ n in nonSourceNodes){
+Contract.Assert(n != null);
       D[n] = N;
     }
     bool change = true;
     while ( change ){
       change = false;
-      foreach (Node! n in nonSourceNodes){
+      foreach(Node/*!*/ n in nonSourceNodes){
+Contract.Assert(n != null);
       
         // original A#
         //Set<Set<Node>> allPreds = new Set<Set<Node>>{ Node p in this.Predecessors(n) ; D[p] };
         
         Set<Set<Node>> allPreds = new Set<Set<Node>>();
-        foreach(Node! p in g.Predecessors(n)) allPreds.Add(D[p]);
+        foreach(Node/*!*/ p in g.Predecessors(n)){
+Contract.Assert(p != null); allPreds.Add(D[p]);}
         Set<Node> temp = new Set<Node>(n) + Set<Node>.BigIntersect(allPreds);
         if ( temp != D[n] ){
           change = true;
@@ -529,10 +574,11 @@ public class Graph<Node> {
   }
 
   // [Dragon, Fig. 10.15, p. 604. Algorithm for constructing the natural loop.]
-  static Set<Node> NaturalLoop(Graph<Node> g, Pair<Node!,Node!> backEdge)
+  static Set<Node> NaturalLoop(Graph<Node> g, Pair<Node/*!*/,Node/*!*/> backEdge)
   {
-    Node! n = backEdge.First;
-    Node! d = backEdge.Second;
+    Contract.Requires(backEdge.First != null&&backEdge.Second!=null);
+    Node/*!*/ n = backEdge.First;
+    Node/*!*/ d = backEdge.Second;
     Seq<Node> stack = new Seq<Node>();
     Set<Node> loop = new Set<Node>(d);
     if ( !n.Equals(d) ) // then n is not in loop
@@ -544,8 +590,8 @@ public class Graph<Node> {
     {
       Node m = stack.Head;
       stack = stack.Tail; // pop stack
-      foreach (Node! p in g.Predecessors(m))
-      {
+      foreach(Node/*!*/ p in g.Predecessors(m)){
+Contract.Assert(p != null);
         if ( !(loop.Contains(p)) )
         {
           loop.Add(p);
@@ -560,11 +606,15 @@ public class Graph<Node> {
     internal bool reducible;
     internal Set<Node> headers;
     internal Map<Node,Set<Node>> backEdgeNodes;
-    internal Map<Pair<Node!,Node!>,Set<Node>> naturalLoops;
-    internal ReducibleResult(bool b,
-                             Set<Node> headers,
-                             Map<Node,Set<Node>> backEdgeNodes,
-                             Map<Pair<Node!,Node!>,Set<Node>> naturalLoops){
+    internal Map<Pair<Node/*!*/,Node/*!*/>,Set<Node>> naturalLoops;
+    [ContractInvariantMethod]
+void ObjectInvariant() 
+{
+    Contract.Invariant(Contract.ForAll(naturalLoops.Keys,p=>p.First!=null&&p.Second!=null));
+}
+
+    internal ReducibleResult(bool b, Set<Node> headers, Map<Node,Set<Node>> backEdgeNodes, Map<Pair<Node/*!*/,Node/*!*/>,Set<Node>> naturalLoops){
+    Contract.Requires(naturalLoops ==null || Contract.ForAll(naturalLoops.Keys,Key=> Key.First!=null &&Key.Second!=null));
       this.reducible = b;
       this.headers = headers;
       this.backEdgeNodes = backEdgeNodes;
@@ -583,13 +633,16 @@ public class Graph<Node> {
   // [Dragon, p. 606]
   static ReducibleResult ComputeReducible(Graph<Node> g,
                               Node source,
-                              DomRelation<Node>! DomRelation) {
+                              DomRelation<Node>/*!*/ DomRelation) {Contract.Requires(DomRelation != null);
   
     //Console.WriteLine("[" + DateTime.Now +"]: begin ComputeReducible");
-    IEnumerable<Pair<Node!,Node!>> edges = g.Edges;
-    Set<Pair<Node!,Node!>> backEdges = new Set<Pair<Node!,Node!>>();
-    Set<Pair<Node!,Node!>> nonBackEdges = new Set<Pair<Node!,Node!>>();
-    foreach (Pair<Node!,Node!> e in edges){
+    IEnumerable<Pair<Node/*!*/,Node/*!*/>> edges = g.Edges;
+    Contract.Assert(Contract.ForAll(edges,n=>n.First != null&&n.Second!=null));
+    Set<Pair<Node/*!*/,Node/*!*/>> backEdges = new Set<Pair<Node/*!*/,Node/*!*/>>();
+    Set<Pair<Node/*!*/,Node/*!*/>> nonBackEdges = new Set<Pair<Node/*!*/,Node/*!*/>>();
+    foreach (Pair<Node/*!*/,Node/*!*/> e in edges){
+      Contract.Assert(e.First != null);
+      Contract.Assert(e.Second != null);
       Node x = e.First;
       Node y = e.Second; // so there is an edge from x to y
       if ( DomRelation.DominatedBy(x,y) ){ // y dom x: which means y dominates x
@@ -602,19 +655,25 @@ public class Graph<Node> {
       return new ReducibleResult(false,
                                  new Set<Node>(),
                                  new Map<Node,Set<Node>>(),
-                                 new Map<Pair<Node!,Node!>,Set<Node>>());
+                                 new Map<Pair<Node/*!*/,Node/*!*/>,Set<Node>>());
     }else{
       // original A#:
       //Set<Node> headers = Set{ d : <n,d> in backEdges };
       Set<Node> headers = new Set<Node>();
-      foreach(Pair<Node!,Node!> e in backEdges)
-        headers.Add(e.Second);
+      foreach(Pair<Node/*!*/,Node/*!*/> e in backEdges){
+
+        Contract.Assert(e.First != null);
+        Contract.Assert(e.Second != null);
+        headers.Add(e.Second);}
       // original A#:
       //Map<Node,Set<Node>> backEdgeNodes = Map{ h -> bs  : h in headers, bs = Set<Node>{ b : <b,x> in backEdges, x == h } };
       Map<Node,Set<Node>> backEdgeNodes = new Map<Node,Set<Node>>();
-      foreach(Node! h in headers){
+      foreach(Node/*!*/ h in headers){
+Contract.Assert(h != null);
         Set<Node> bs = new Set<Node>();
-        foreach(Pair<Node!,Node!> backedge in backEdges){
+        foreach(Pair<Node,Node> backedge in backEdges){
+          Contract.Assert(backedge.First != null);
+          Contract.Assert(backedge.Second != null);
           if (backedge.Second.Equals(h)){
             bs.Add(backedge.First);
           }
@@ -624,8 +683,9 @@ public class Graph<Node> {
 
       // original A#:
       //Map<Pair<Node,Node>,Set<Node>> naturalLoops = Map{ e -> NaturalLoop(g,e) : e in backEdges };
-      Map<Pair<Node!,Node!>,Set<Node>> naturalLoops = new Map<Pair<Node!,Node!>,Set<Node>>();
-      foreach (Pair<Node!,Node!> e in backEdges){
+      Map<Pair<Node/*!*/,Node/*!*/>,Set<Node>> naturalLoops = new Map<Pair<Node/*!*/,Node/*!*/>,Set<Node>>();
+      foreach (Pair<Node/*!*/,Node/*!*/> e in backEdges){
+        Contract.Assert(e.First != null&&e.Second!=null);
         naturalLoops.Add(e,NaturalLoop(g,e));
       }
     
@@ -636,14 +696,17 @@ public class Graph<Node> {
 
   public bool Reducible { get { return reducible; } }
   public IEnumerable<Node> Headers { get { return headers; } }
-  public IEnumerable<Node> BackEdgeNodes(Node! h){
+  public IEnumerable<Node> BackEdgeNodes(Node/*!*/ h){
+    Contract.Requires(h != null);
     // original A#:
     //return h in backEdgeNodes ? backEdgeNodes[h] : null;
     return (backEdgeNodes.ContainsKey(h) ? backEdgeNodes[h] : (IEnumerable<Node>)new Seq<Node>());
   }
-  public IEnumerable<Node> NaturalLoops(Node! header, Node! backEdgeNode)
+  public IEnumerable<Node> NaturalLoops(Node/*!*/ header, Node/*!*/ backEdgeNode)
   {  
-    Pair<Node!,Node!> e = new Pair<Node!,Node!>(backEdgeNode,header);
+    Contract.Requires(header != null);
+    Contract.Requires(backEdgeNode!=null);
+    Pair<Node/*!*/,Node/*!*/> e = new Pair<Node/*!*/,Node/*!*/>(backEdgeNode,header);
     return naturalLoops.ContainsKey(e) ? naturalLoops[e] : (IEnumerable<Node>)new Seq<Node>();
   }
 
@@ -662,9 +725,11 @@ public class Graph<Node> {
 
 public class GraphProgram
 {
-  static void TestGraph<T>(T! source, params Pair<T!,T!>[] edges){
-    Set<Pair<T!,T!>> es = new Set<Pair<T!,T!>>();
-    foreach (Pair<T!,T!> e in edges) es.Add(e);
+  static void TestGraph<T>(T/*!*/ source, params Pair<T/*!*/,T/*!*/>[] edges){
+    Contract.Requires(source != null);
+    Contract.Requires(Contract.ForAll(edges,pair=>pair.First!=null&&pair.Second!=null));
+    Set<Pair<T/*!*/,T/*!*/>> es = new Set<Pair<T/*!*/,T/*!*/>>();
+    foreach (Pair<T/*!*/,T/*!*/> e in edges){Contract.Assert(e.First != null &&e.Second!=null); es.Add(e);}
     Graph<T> g = new Graph<T>(es);
     g.AddSource(source);
     Console.WriteLine("G = " + g);
