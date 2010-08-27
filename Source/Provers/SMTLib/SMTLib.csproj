@@ -79,6 +79,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="cce.cs" />
     <Compile Include="ProverInterface.cs" />
     <Compile Include="SMTLibLineariser.cs" />
     <Compile Include="TypeDeclCollector.cs" />

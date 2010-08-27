@@ -87,6 +87,7 @@
   <ItemGroup>
     <Compile Include="BoogieDriver.cs" />
     <Compile Include="..\version.cs" />
+    <Compile Include="cce.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AbsInt\AbsInt.csproj">
@@ -105,8 +106,8 @@
       <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>
       <Name>Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Graph\Graph.sscproj">
-      <Project>{4C28FB90-630E-4B55-A937-11A011B79765}</Project>
+    <ProjectReference Include="..\Graph\Graph.csproj">
+      <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
       <Name>Graph</Name>
     </ProjectReference>
     <ProjectReference Include="..\Provers\Isabelle\Isabelle.csproj">

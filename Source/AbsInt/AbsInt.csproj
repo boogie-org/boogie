@@ -81,6 +81,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AbstractInterpretation.cs" />
+    <Compile Include="cce.cs" />
     <Compile Include="ExprFactories.cs" />
     <Compile Include="LoopInvariantsOnDemand.cs" />
     <Compile Include="Traverse.cs" />

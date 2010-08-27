@@ -75,6 +75,7 @@
   <ItemGroup>
     <Compile Include="BigLiteralAbstracter.cs" />
     <Compile Include="Boogie2VCExpr.cs" />
+    <Compile Include="cce.cs" />
     <Compile Include="Clustering.cs" />
     <Compile Include="LetBindingSorter.cs" />
     <Compile Include="NameClashResolver.cs" />

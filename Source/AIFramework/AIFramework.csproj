@@ -70,7 +70,9 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="cce.cs" />
+    <Compile Include="cce.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="CommonFunctionSymbols.cs" />
     <Compile Include="Expr.cs" />
     <Compile Include="Functional.cs" />

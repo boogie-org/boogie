@@ -92,6 +92,7 @@
     <Compile Include="AbsyExpr.cs" />
     <Compile Include="AbsyQuant.cs" />
     <Compile Include="AbsyType.cs" />
+    <Compile Include="cce.cs" />
     <Compile Include="CommandLineOptions.cs" />
     <Compile Include="DeadVarElim.cs" />
     <Compile Include="Duplicator.cs" />
@@ -121,8 +122,8 @@
       <Project>{0C692837-77EC-415F-BF04-395E3ED06E9A}</Project>
       <Name>Basetypes</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Graph\Graph.sscproj">
-      <Project>{4C28FB90-630E-4B55-A937-11A011B79765}</Project>
+    <ProjectReference Include="..\Graph\Graph.csproj">
+      <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
       <Name>Graph</Name>
     </ProjectReference>
   </ItemGroup>

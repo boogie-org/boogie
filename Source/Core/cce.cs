@@ -3,7 +3,7 @@ using SA=System.Attribute;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Text;
-using Microsoft.Boogie;
+//using Microsoft.Boogie;
 
 /// <summary>
 /// A class containing static methods to extend the functionality of Code Contracts
@@ -27,10 +27,10 @@ public static class cce {
   public static bool NonNullElements<TKey, TValue>(IDictionary<TKey, TValue> collection) {
     return collection != null && Contract.ForAll(collection, pair => NonNullElements(pair));
   }
-  [Pure]
-  public static bool NonNullElements(VariableSeq collection) {
-    return collection != null && Contract.ForAll(0, collection.Length, i => collection[i] != null);
-  }
+  //[Pure]
+  //public static bool NonNullElements(VariableSeq collection) {
+  //  return collection != null && Contract.ForAll(0, collection.Length, i => collection[i] != null);
+  //}
   /// <summary>
   /// For possibly-null lists of non-null elements
   /// </summary>
@@ -123,13 +123,17 @@ public static class cce {
   //public static bool IsValid(Microsoft.Dafny.Expression expression) {
   //  return true;
   //}
-  public static List<T> toList<T>(PureCollections.Sequence s) {
-    List<T> toRet = new List<T>();
-    foreach (T t in s.elems)
-      if(t!=null)
-      toRet.Add(t);
-    return toRet;
-  }
+  //public static List<T> toList<T>(PureCollections.Sequence s) {
+  //  List<T> toRet = new List<T>();
+  //  foreach (T t in s.elems)
+  //    if(t!=null)
+  //    toRet.Add(t);
+  //  return toRet;
+  //}
+
+  //internal static bool NonNullElements(Set set) {
+  //  return set != null && Contract.ForAll(0,set.Count, i => set[i] != null);
+  //}
 }
 
 public class PeerAttribute : SA {
@@ -184,4 +188,6 @@ public class SpecPublicAttribute : SA {
 public class ElementsPeerAttribute : SA {
 }
 public class ResultNotNewlyAllocatedAttribute : SA {
+}
+public class OnceAttribute : SA {
 }
