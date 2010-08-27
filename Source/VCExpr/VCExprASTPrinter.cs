@@ -32,20 +32,30 @@ Contract.Requires(expr != null);
       expr.Accept<bool, TextWriter/*!*/>(this, wr);
     }
 
-    public bool Visit(VCExprLiteral node, TextWriter wr){
-Contract.Requires(wr != null);
-Contract.Requires(node != null);
-      if (node == VCExpressionGenerator.True)
-        wr.Write("true");
-      else if (node == VCExpressionGenerator.False)
-        wr.Write("false");
-      else if (node is VCExprIntLit) {
-        wr.Write(((VCExprIntLit)node).Val);
-      } else
-        Contract.Assert(false); throw new cce.UnreachableException();
-      return true;
+    public bool Visit(VCExprLiteral node, TextWriter wr)
+    {
+        Contract.Requires(wr != null);
+        Contract.Requires(node != null);
+        if (node == VCExpressionGenerator.True)
+        {
+            wr.Write("true");
+        }
+        else if (node == VCExpressionGenerator.False)
+        {
+            wr.Write("false");
+        }
+        else if (node is VCExprIntLit)
+        {
+            wr.Write(((VCExprIntLit)node).Val);
+        }
+        else
+        {
+            Contract.Assert(false); throw new cce.UnreachableException();
+        }
+        return true;
     }
-    public bool Visit(VCExprNAry node, TextWriter wr){
+    public bool Visit(VCExprNAry node, TextWriter wr)
+    {
 Contract.Requires(wr != null);
 Contract.Requires(node != null);
       VCExprOp/*!*/ op = node.Op;
