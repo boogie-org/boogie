@@ -52,6 +52,7 @@ namespace Microsoft.Boogie.Z3
             Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             cm.z3.Dispose();
             cm.config.Config.Dispose();
+            cm.CloseLog();
         }
         private bool z3ContextIsUsed;
 
@@ -72,7 +73,7 @@ namespace Microsoft.Boogie.Z3
             cm.AddConjecture(conjecture, linOptions);
         }
 
-        public void PushVCExpression(VCExpr vc)
+        public override void PushVCExpression(VCExpr vc)
         {
             PushAxiom(vc);
             numAxiomsPushed++;
@@ -88,12 +89,15 @@ namespace Microsoft.Boogie.Z3
         {
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
             Z3SafeContext cm = ((Z3apiProverContext)context).cm;
+            Push();
             cm.AddConjecture(vc, linOptions);
             outcome = cm.Check(out z3LabelModels);
+            Pop();
         }
   
         public void Check()
         {
+            Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             outcome = cm.Check(out z3LabelModels);
         }
 
@@ -103,7 +107,7 @@ namespace Microsoft.Boogie.Z3
             cm.CreateBacktrackPoint();
         }
 
-        public void Pop()
+        public override void Pop()
         {
             Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             cm.Backtrack();
@@ -197,6 +201,11 @@ namespace Microsoft.Boogie.Z3
             if (0 <= timeout)
             {
                 config.SetSoftTimeout(timeout.ToString());
+            }
+
+            if (CommandLineOptions.Clo.SimplifyLogFilePath != null)
+            {
+                config.SetLogFilename(CommandLineOptions.Clo.SimplifyLogFilePath);
             }
 
             config.SetTypeCheck(true);

@@ -95,12 +95,12 @@ namespace Microsoft.Boogie.Z3
         {
             get { return namer; }
         }
-
+        private StreamWriter z3log;
         public Z3SafeContext(Z3apiProverContext ctxt, Z3Config config, VCExpressionGenerator gen)
         {
             Context z3 = new Context(config.Config);
-            if (config.LogFilename != null)
-                z3.OpenLog(config.LogFilename);
+            //if (config.LogFilename != null)
+            //    z3.OpenLog(config.LogFilename);
             foreach (string tag in config.DebugTraces)
                 z3.EnableDebugTrace(tag);
             this.ctxt = ctxt;
@@ -109,10 +109,38 @@ namespace Microsoft.Boogie.Z3
             this.tm = new Z3TypeCachedBuilder(this);
             this.gen = gen;
             this.namer = new UniqueNamer();
-            if (CommandLineOptions.Clo.SimplifyLogFilePath != null)
+            this.z3.SetPrintMode(PrintMode.SmtlibFull);
+            this.z3log = null;
+            try
             {
-                z3.TraceToFile(CommandLineOptions.Clo.SimplifyLogFilePath);
+                if (config.LogFilename != null)
+                {
+                    this.z3log = new StreamWriter(config.LogFilename);
+                    this.z3log.NewLine = "\n";
+                }
             }
+            catch (Exception _)
+            {
+                this.z3log = null;
+            }
+        }
+
+        public void log(string format, params object[] args)
+        {
+            if (z3log != null)
+            {
+                z3log.WriteLine(format, args);
+                z3log.Flush();
+            }
+        }
+
+        public void CloseLog()
+        {
+            if (z3log != null)
+            {
+                z3log.Close();
+            }
+            z3log = null;
         }
 
         public void CreateBacktrackPoint()
@@ -122,6 +150,7 @@ namespace Microsoft.Boogie.Z3
             functions.CreateBacktrackPoint();
             labels.CreateBacktrackPoint();
             z3.Push();
+            log("Push");
         }
 
         public void Backtrack()
@@ -131,6 +160,7 @@ namespace Microsoft.Boogie.Z3
             functions.Backtrack();
             constants.Backtrack();
             symbols.Backtrack();
+            log("Pop");
         }
 
         public void AddAxiom(VCExpr axiom, LineariserOptions linOptions)
@@ -138,6 +168,7 @@ namespace Microsoft.Boogie.Z3
             Z3apiExprLineariser visitor = new Z3apiExprLineariser(this, namer);
             Z3TermAst z3ast = (Z3TermAst)axiom.Accept(visitor, linOptions);
             Term term = Unwrap(z3ast);
+            log("assert {0}", term);
             z3.AssertCnstr(term);
         }
 
@@ -147,6 +178,7 @@ namespace Microsoft.Boogie.Z3
             Z3apiExprLineariser visitor = new Z3apiExprLineariser(this, namer);
             Z3TermAst z3ast = (Z3TermAst)not_vc.Accept(visitor, linOptions);
             Term term = Unwrap(z3ast);
+            log("assert {0}", term);
             z3.AssertCnstr(term);
         }
 
@@ -169,6 +201,7 @@ namespace Microsoft.Boogie.Z3
             }
             foreach (Term assumption in assumptions)
             {
+                log("assert {0}", assumption);
                 z3.AssertCnstr(assumption);
             }
         }
@@ -346,12 +379,12 @@ namespace Microsoft.Boogie.Z3
         {
             boogieErrors = new List<Z3ErrorModelAndLabels>();
             LBool outcome = LBool.Undef;
-            z3.Push();
             while (boogieErrors.Count < this.config.Counterexamples)
             {
                 Model z3Model;
                 //System.Console.WriteLine("Check Begin");
                 outcome = z3.CheckAndGetModel(out z3Model);
+                log("check-and-get-model");
                 //System.Console.WriteLine("Check End");
                 if (outcome != LBool.False)
                 {
@@ -368,7 +401,6 @@ namespace Microsoft.Boogie.Z3
                 else
                     break;
             }
-            z3.Pop();
             if (boogieErrors.Count > 0)
                 return ProverInterface.Outcome.Invalid;
             else if (outcome == LBool.False)
@@ -398,6 +430,7 @@ namespace Microsoft.Boogie.Z3
 
         public void DeclareType(string typeName)
         {
+            log("declare-type: {0}", typeName);
         }
 
         public void DeclareConstant(string constantName, Type boogieType)
@@ -408,6 +441,7 @@ namespace Microsoft.Boogie.Z3
 
             Term constAst = z3.MkConst(symbolAst, unwrapTypeAst);
             constants.Add(constantName, Wrap(constAst));
+            log("declare-const: {0}: {1}", constantName, unwrapTypeAst);
         }
 
         public void DeclareFunction(string functionName, List<Type> domain, Type range)
@@ -426,6 +460,7 @@ namespace Microsoft.Boogie.Z3
             FuncDecl constDeclAst = z3.MkFuncDecl(symbolAst, domainAst.ToArray(), unwrapRangeAst);
             Z3TypeSafeConstDecl typeSafeConstDecl = Wrap(constDeclAst);
             functions.Add(functionName, typeSafeConstDecl);
+            log("declare-fun: {0}: {1}", functionName, constDeclAst);
         }
 
         private List<Symbol> GetSymbols(List<string> symbolNames)
@@ -496,6 +531,7 @@ namespace Microsoft.Boogie.Z3
         public Z3LabeledLiterals GetRelevantLabels()
         {
             Z3SafeLabeledLiterals safeLiterals = new Z3SafeLabeledLiterals(z3.GetRelevantLabels());
+            log("get-relevant-labels");
             return safeLiterals;
         }
 
