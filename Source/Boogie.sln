@@ -29,6 +29,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Graph", "Graph\Graph.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Basetypes", "Basetypes\Basetypes.csproj", "{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeContractsExtender", "CodeContractsExtender\CodeContractsExtender.csproj", "{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|.NET = Debug|.NET
@@ -176,6 +178,16 @@ Global
 		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}.Debug|.NET.ActiveCfg = Debug|Any CPU
+		{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}.Release|.NET.ActiveCfg = Release|Any CPU
+		{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

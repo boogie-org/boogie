@@ -81,9 +81,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BigNum.cs" />
-    <Compile Include="cce.cs" />
     <Compile Include="Rational.cs" />
     <Compile Include="Set.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender.csproj">
+      <Project>{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}</Project>
+      <Name>CodeContractsExtender</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

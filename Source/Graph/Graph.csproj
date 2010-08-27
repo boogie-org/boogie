@@ -76,10 +76,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="cce.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="Graph.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender.csproj">
+      <Project>{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}</Project>
+      <Name>CodeContractsExtender</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

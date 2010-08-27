@@ -69,6 +69,10 @@
       <Project>{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}</Project>
       <Name>Basetypes</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\CodeContractsExtender\CodeContractsExtender.csproj">
+      <Project>{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}</Project>
+      <Name>CodeContractsExtender</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Core\Core.csproj">
       <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>
       <Name>Core</Name>
@@ -91,7 +95,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="cce.cs" />
     <Compile Include="ContextLayer.cs" />
     <Compile Include="ProverLayer.cs" />
     <Compile Include="SafeContext.cs" />
