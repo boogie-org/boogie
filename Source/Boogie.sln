@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Provers", "Provers", "{B758C1E3-824A-439F-AA2F-0BA1143E8C8D}"
 EndProject
-Project("{07C4E3D1-6B67-4060-8A92-940DB82041ED}") = "Basetypes", "Basetypes\Basetypes.sscproj", "{0C692837-77EC-415F-BF04-395E3ED06E9A}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BoogieDriver", "BoogieDriver\BoogieDriver.csproj", "{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Isabelle", "Provers\Isabelle\Isabelle.csproj", "{435D5BD0-6F62-49F8-BB24-33E2257519AD}"
@@ -29,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIFramework", "AIFramework\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Graph", "Graph\Graph.csproj", "{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Basetypes", "Basetypes\Basetypes.csproj", "{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|.NET = Debug|.NET
@@ -39,16 +39,6 @@ Global
 		Release|Mixed Platforms = Release|Mixed Platforms
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Debug|.NET.ActiveCfg = Debug|.NET
-		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Debug|.NET.Build.0 = Debug|.NET
-		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Debug|Any CPU.ActiveCfg = Debug|.NET
-		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Debug|Mixed Platforms.ActiveCfg = Debug|.NET
-		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Debug|Mixed Platforms.Build.0 = Debug|.NET
-		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Release|.NET.ActiveCfg = Release|.NET
-		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Release|.NET.Build.0 = Release|.NET
-		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Release|Any CPU.ActiveCfg = Release|.NET
-		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Release|Mixed Platforms.ActiveCfg = Release|.NET
-		{0C692837-77EC-415F-BF04-395E3ED06E9A}.Release|Mixed Platforms.Build.0 = Release|.NET
 		{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}.Debug|.NET.ActiveCfg = Debug|Any CPU
 		{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}.Debug|.NET.Build.0 = Debug|Any CPU
 		{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -175,6 +165,16 @@ Global
 		{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Debug|.NET.ActiveCfg = Debug|Any CPU
+		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Release|.NET.ActiveCfg = Release|Any CPU
+		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

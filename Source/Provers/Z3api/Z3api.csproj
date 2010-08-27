@@ -65,8 +65,8 @@
       <Project>{39B0658D-C955-41C5-9A43-48C97A1EF5FD}</Project>
       <Name>AIFramework</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\Basetypes\Basetypes.sscproj">
-      <Project>{0C692837-77EC-415F-BF04-395E3ED06E9A}</Project>
+    <ProjectReference Include="..\..\Basetypes\Basetypes.csproj">
+      <Project>{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}</Project>
       <Name>Basetypes</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\Core\Core.csproj">
