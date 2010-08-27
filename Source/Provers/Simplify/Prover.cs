@@ -17,6 +17,8 @@ namespace Microsoft.Boogie.Simplify {
   /// <summary>
   /// An interface to Simplify theorem prover.
   /// </summary>
+  /// 
+  [ContractClass(typeof(ProverProcessContracts))]
   public abstract class ProverProcess {
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -413,7 +415,24 @@ namespace Microsoft.Boogie.Simplify {
       cce.EndExpose();
     }
   }
+  [ContractClassFor(typeof(ProverProcess))]
+  public abstract class ProverProcessContracts : ProverProcess {
+    public override string OptionComments() {
+      Contract.Ensures(Contract.Result<string>() != null);
+      throw new NotImplementedException();
+    }
 
+    public override ProverProcess.ProverOutcome CheckOutcome(ProverInterface.ErrorHandler handler) {
+      Contract.Requires(handler != null);
+      throw new NotImplementedException();
+    }
+
+    protected override void DoBeginCheck(string descriptiveName, string formula) {
+      Contract.Requires(descriptiveName != null);
+      Contract.Requires(formula != null);
+      throw new NotImplementedException();
+    }
+  }
   // derived by Z3ProverProcess
   public class SimplifyProverProcess : ProverProcess {
     public SimplifyProverProcess(string proverPath, bool dummy) :base(getPSI(proverPath),proverPath) {
@@ -630,4 +649,3 @@ namespace Microsoft.Boogie.Simplify {
   }
 
 }
-
