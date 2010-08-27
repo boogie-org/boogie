@@ -519,9 +519,7 @@ namespace Microsoft.Boogie.Z3
                 string funcName = op.Func.Name;
                 Contract.Assert(funcName != null);
                 string bvzName = op.Func.FindStringAttribute("external");
-                string printedName = ExprLineariser.namer.GetName(op.Func, funcName);
-                Contract.Assert(printedName != null);
-                if (bvzName != null) printedName = bvzName;
+                if (bvzName != null) funcName = bvzName;
 
                 List<Z3TermAst> args = new List<Z3TermAst>();
                 foreach (VCExpr e in node)
@@ -529,7 +527,7 @@ namespace Microsoft.Boogie.Z3
                     Contract.Assert(e != null);
                     args.Add(ExprLineariser.Linearise(e, options));
                 }
-                return ExprLineariser.cm.Make(printedName, args);
+                return ExprLineariser.cm.Make(funcName, args);
             }
         }
     }
