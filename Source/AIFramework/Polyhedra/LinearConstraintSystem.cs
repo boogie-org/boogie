@@ -1002,7 +1002,7 @@ Contract.Requires(oldName != null);
       }
       [Pure]
       public object DoVisit(ExprVisitor/*!*/ visitor) {
-        Contract.Requires(visitor != null);
+        //Contract.Requires(visitor != null);
         return visitor.VisitVariable(this);
       }
     }
@@ -1592,7 +1592,7 @@ Contract.Requires(oldName != null);
       }
       [Pure]
       public object DoVisit(ExprVisitor/*!*/ visitor) {
-        Contract.Requires(visitor != null);
+        //Contract.Requires(visitor != null);
         return visitor.VisitVariable(this);
       }
     }

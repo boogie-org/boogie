@@ -55,7 +55,7 @@ namespace Microsoft.AbstractInterpretationFramework {
     /// The paramter is the top?
     /// </summary>
     public override bool IsTop(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       IntervalElement interval = (IntervalElement)element;
 
       return interval.IsTop();
@@ -65,7 +65,7 @@ namespace Microsoft.AbstractInterpretationFramework {
     /// The parameter is the bottom?
     /// </summary>
     public override bool IsBottom(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       IntervalElement interval = (IntervalElement)element;
 
       return interval.IsBottom();
@@ -75,8 +75,8 @@ namespace Microsoft.AbstractInterpretationFramework {
     /// The classic, pointwise, join of intervals
     /// </summary>
     public override Element/*!*/ NontrivialJoin(Element/*!*/ left, Element/*!*/ right) {
-      Contract.Requires(right != null);
-      Contract.Requires(left != null);
+      //Contract.Requires(right != null);
+      //Contract.Requires(left != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       IntervalElement/*!*/ leftInterval = (IntervalElement/*!*/)cce.NonNull(left);
       IntervalElement/*!*/ rightInterval = (IntervalElement/*!*/)cce.NonNull(right);
@@ -93,8 +93,8 @@ namespace Microsoft.AbstractInterpretationFramework {
     /// The classic, pointwise, meet of intervals
     /// </summary>
     public override Element/*!*/ NontrivialMeet(Element/*!*/ left, Element/*!*/ right) {
-      Contract.Requires(right != null);
-      Contract.Requires(left != null);
+      //Contract.Requires(right != null);
+      //Contract.Requires(left != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       IntervalElement/*!*/ leftInterval = (IntervalElement/*!*/)cce.NonNull(left);
       IntervalElement/*!*/ rightInterval = (IntervalElement/*!*/)cce.NonNull(right);
@@ -111,8 +111,8 @@ namespace Microsoft.AbstractInterpretationFramework {
     /// left is the PREVIOUS value in the iterations and right is the NEW one
     /// </summary>
     public override Element/*!*/ Widen(Element/*!*/ left, Element/*!*/ right) {
-      Contract.Requires(right != null);
-      Contract.Requires(left != null);
+      //Contract.Requires(right != null);
+      //Contract.Requires(left != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       IntervalElement/*!*/ prevInterval = (IntervalElement/*!*/)cce.NonNull(left);
       IntervalElement/*!*/ nextInterval = (IntervalElement/*!*/)cce.NonNull(right);
@@ -130,8 +130,8 @@ namespace Microsoft.AbstractInterpretationFramework {
     /// Return true iff the interval left is containted in right
     /// </summary>
     protected override bool AtMost(Element/*!*/ left, Element/*!*/ right) {
-      Contract.Requires(right != null);
-      Contract.Requires(left != null);
+      //Contract.Requires(right != null);
+      //Contract.Requires(left != null);
       IntervalElement/*!*/ leftInterval = (IntervalElement/*!*/)cce.NonNull(left);
       IntervalElement/*!*/ rightInterval = (IntervalElement/*!*/)cce.NonNull(right);
 
@@ -145,50 +145,48 @@ namespace Microsoft.AbstractInterpretationFramework {
     /// Return just null
     /// </summary>
     public override IExpr GetFoldExpr(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       return null;
     }
 
     /// <summary>
     /// return a predicate inf "\leq x and x "\leq" sup (if inf [or sup] is not oo)
     /// </summary>
-    public override IExpr/*!*/ ToPredicate(IVariable/*!*/ var, Element/*!*/ element){
-Contract.Requires(element != null);
-Contract.Requires(var != null);
-Contract.Ensures(Contract.Result<IExpr>() != null);
-IntervalElement/*!*/ interval = (IntervalElement/*!*/)cce.NonNull(element);
+    public override IExpr/*!*/ ToPredicate(IVariable/*!*/ var, Element/*!*/ element) {
+      //Contract.Requires(element != null);
+      //Contract.Requires(var != null);
+      Contract.Ensures(Contract.Result<IExpr>() != null);
+      IntervalElement/*!*/ interval = (IntervalElement/*!*/)cce.NonNull(element);
       IExpr lowerBound = null;
       IExpr upperBound = null;
 
-      if(! (interval.Inf is InfinitaryInt)) 
-      {
+      if (!(interval.Inf is InfinitaryInt)) {
         IExpr constant = this.factory.Const(interval.Inf.Value);
         lowerBound = this.factory.AtMost(constant, var);        // inf <= var 
       }
-      if(! (interval.Sup is InfinitaryInt))
-      {
+      if (!(interval.Sup is InfinitaryInt)) {
         IExpr constant = this.factory.Const(interval.Sup.Value);
         upperBound = this.factory.AtMost(var, constant);       // var <= inf
       }
 
-      if(lowerBound != null && upperBound != null)
+      if (lowerBound != null && upperBound != null)
         return this.factory.And(lowerBound, upperBound);        // inf <= var && var <= sup         
       else
-        if(lowerBound != null)
+        if (lowerBound != null)
           return lowerBound;
-      else 
-        if(upperBound != null)
-          return upperBound;
-      else      // If we reach this point, both lowerBound and upperBound are null, i.e. we have no bounds on var, so we return simply true...
-          return this.factory.True;
+        else
+          if (upperBound != null)
+            return upperBound;
+          else      // If we reach this point, both lowerBound and upperBound are null, i.e. we have no bounds on var, so we return simply true...
+            return this.factory.True;
     }
 
     /// <summary>
     /// For the moment consider just equalities. Other case must be considered
     /// </summary>
     public override bool Understands(IFunctionSymbol/*!*/ f, IList /*<IExpr*//*!*/ args) {
-      Contract.Requires(args != null);
-      Contract.Requires(f != null);
+      //Contract.Requires(args != null);
+      //Contract.Requires(f != null);
       return f.Equals(Microsoft.AbstractInterpretationFramework.Value.Eq);
     }
 
@@ -197,7 +195,7 @@ IntervalElement/*!*/ interval = (IntervalElement/*!*/)cce.NonNull(element);
     /// Evaluate the predicate passed as input according the semantics of intervals
     /// </summary>
     public override Element/*!*/ EvaluatePredicate(IExpr/*!*/ pred) {
-      Contract.Requires(pred != null);
+      //Contract.Requires(pred != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       return this.EvaluatePredicateWithState(pred, null);
     }
@@ -206,14 +204,13 @@ IntervalElement/*!*/ interval = (IntervalElement/*!*/)cce.NonNull(element);
     /// Evaluate the predicate passed as input according the semantics of intervals and the given state.
     /// Right now just basic arithmetic operations are supported. A future extension may consider an implementation of boolean predicates 
     /// </summary>
-    public override Element/*!*/ EvaluatePredicateWithState(IExpr/*!*/ pred, IFunctionalMap/* Var -> Element */ state){
-Contract.Requires(pred != null);
-Contract.Ensures(Contract.Result<Element>() != null);
-      if(pred is IFunApp)
-      {
-        IFunApp fun = (IFunApp) pred;
-        if(fun.FunctionSymbol.Equals(Microsoft.AbstractInterpretationFramework.Value.Eq)) // if it is a symbol of equality
-        {                     
+    public override Element/*!*/ EvaluatePredicateWithState(IExpr/*!*/ pred, IFunctionalMap/* Var -> Element */ state) {
+      //Contract.Requires(pred != null);
+      Contract.Ensures(Contract.Result<Element>() != null);
+      if (pred is IFunApp) {
+        IFunApp fun = (IFunApp)pred;
+        if (fun.FunctionSymbol.Equals(Microsoft.AbstractInterpretationFramework.Value.Eq)) // if it is a symbol of equality
+        {
           IExpr/*!*/ leftArg = (IExpr/*!*/)cce.NonNull(fun.Arguments[0]);
           IExpr/*!*/ rightArg = (IExpr/*!*/)cce.NonNull(fun.Arguments[1]);
           if (leftArg is IVariable) {
@@ -221,7 +218,7 @@ Contract.Ensures(Contract.Result<Element>() != null);
           } else if (rightArg is IVariable) {
             return Eval(leftArg, state);
           }
-        }                
+        }
       }
       // otherwise we simply return Top
       return IntervalElement.Top;
@@ -231,68 +228,62 @@ Contract.Ensures(Contract.Result<Element>() != null);
     /// Evaluate the expression (that is assured to be an arithmetic expression, in the state passed as a parameter
     /// </summary>
     private IntervalElement/*!*/ Eval(IExpr/*!*/ exp, IFunctionalMap/* Var -> Element */ state) {
-Contract.Requires((exp != null));
-Contract.Ensures(Contract.Result<IntervalElement>() != null);  
+      Contract.Requires((exp != null));
+      Contract.Ensures(Contract.Result<IntervalElement>() != null);
 
       IntervalElement/*!*/ retVal = (IntervalElement/*!*/)cce.NonNull(Top);
 
       // Eval the expression by structural induction
 
 
-      if(exp is IVariable && state != null) // A variable
+      if (exp is IVariable && state != null) // A variable
       {
         object lookup = state[exp];
-        if(lookup is IntervalElement)
-          retVal = (IntervalElement) lookup;
-        else
-        {    
-          retVal = (IntervalElement) Top;
+        if (lookup is IntervalElement)
+          retVal = (IntervalElement)lookup;
+        else {
+          retVal = (IntervalElement)Top;
         }
-      }
-      else if(exp is IFunApp)
-      {    
-        IFunApp fun = (IFunApp) exp;
-        
-        if(fun.FunctionSymbol is IntSymbol)   // An integer
+      } else if (exp is IFunApp) {
+        IFunApp fun = (IFunApp)exp;
+
+        if (fun.FunctionSymbol is IntSymbol)   // An integer
         {
-          IntSymbol intSymb =  (IntSymbol) fun.FunctionSymbol;
+          IntSymbol intSymb = (IntSymbol)fun.FunctionSymbol;
           BigNum val = intSymb.Value;
-        
+
           retVal = IntervalElement.Factory(val);
-        } 
-        else if(fun.FunctionSymbol.Equals(Int.Negate)) // An unary minus
+        } else if (fun.FunctionSymbol.Equals(Int.Negate)) // An unary minus
         {
           IExpr/*!*/ arg = (IExpr/*!*/)cce.NonNull(fun.Arguments[0]);
           IntervalElement/*!*/ argEval = Eval(arg, state);
           Contract.Assert(argEval != null);
           IntervalElement/*!*/ zero = IntervalElement.Factory(BigNum.ZERO);
           Contract.Assert(zero != null);
-          
+
           retVal = zero - argEval;
-        }
-        else if(fun.Arguments.Count == 2)
-        {
+        } else if (fun.Arguments.Count == 2) {
           IExpr/*!*/ left = (IExpr/*!*/)cce.NonNull(fun.Arguments[0]);
           IExpr/*!*/ right = (IExpr/*!*/)cce.NonNull(fun.Arguments[1]);
-          
+
           IntervalElement/*!*/ leftVal = Eval(left, state);
           Contract.Assert(leftVal != null);
           IntervalElement/*!*/ rightVal = Eval(right, state);
           Contract.Assert(rightVal != null);
 
-          if(fun.FunctionSymbol.Equals(Int.Add))
+          if (fun.FunctionSymbol.Equals(Int.Add))
             retVal = leftVal + rightVal;
-          else if(fun.FunctionSymbol.Equals(Int.Sub))
+          else if (fun.FunctionSymbol.Equals(Int.Sub))
             retVal = leftVal - rightVal;
-          else if(fun.FunctionSymbol.Equals(Int.Mul))
+          else if (fun.FunctionSymbol.Equals(Int.Mul))
             retVal = leftVal * rightVal;
-          else if(fun.FunctionSymbol.Equals(Int.Div))
+          else if (fun.FunctionSymbol.Equals(Int.Div))
             retVal = leftVal / rightVal;
-          else if(fun.FunctionSymbol.Equals(Int.Mod))
+          else if (fun.FunctionSymbol.Equals(Int.Mod))
             retVal = leftVal % rightVal;
         }
-      }  
-        
+      }
+
       return retVal;
     }
 
@@ -351,8 +342,8 @@ Contract.Ensures(Contract.Result<IntervalElement>() != null);
       // Construct an Interval
       public static IntervalElement/*!*/ Factory(ExtendedInt/*!*/ inf, ExtendedInt/*!*/ sup) {
         Contract.Requires((sup != null));
-Contract.Requires((inf != null));
-Contract.Ensures(Contract.Result<IntervalElement>() != null);
+        Contract.Requires((inf != null));
+        Contract.Ensures(Contract.Result<IntervalElement>() != null);
         if (inf is MinusInfinity && sup is PlusInfinity)
           return Top;
         if (inf > sup)
@@ -367,12 +358,12 @@ Contract.Ensures(Contract.Result<IntervalElement>() != null);
       }
 
       public static IntervalElement/*!*/ Factory(BigNum inf, BigNum sup) {
-Contract.Ensures(Contract.Result<IntervalElement>() != null);
-          ExtendedInt/*!*/ i = ExtendedInt.Factory(inf);
-          ExtendedInt/*!*/ s = ExtendedInt.Factory(sup);
+        Contract.Ensures(Contract.Result<IntervalElement>() != null);
+        ExtendedInt/*!*/ i = ExtendedInt.Factory(inf);
+        ExtendedInt/*!*/ s = ExtendedInt.Factory(sup);
 
-          return Factory(i, s);
-        }
+        return Factory(i, s);
+      }
 
       static public IntervalElement/*!*/ Top {
         get {
@@ -401,103 +392,103 @@ Contract.Ensures(Contract.Result<IntervalElement>() != null);
       #region Below are the arithmetic operations lifted to intervals
 
       // Addition
-      public static IntervalElement/*!*/ operator +(IntervalElement/*!*/ a, IntervalElement/*!*/ b){
-Contract.Requires(b != null);
-Contract.Requires(a != null);
-Contract.Ensures(Contract.Result<IntervalElement>() != null);
-          ExtendedInt/*!*/ inf = a.inf + b.inf;
-          Contract.Assert(inf != null);
-          ExtendedInt/*!*/ sup = a.sup + b.sup;
-          Contract.Assert(sup != null);
+      public static IntervalElement/*!*/ operator +(IntervalElement/*!*/ a, IntervalElement/*!*/ b) {
+        Contract.Requires(b != null);
+        Contract.Requires(a != null);
+        Contract.Ensures(Contract.Result<IntervalElement>() != null);
+        ExtendedInt/*!*/ inf = a.inf + b.inf;
+        Contract.Assert(inf != null);
+        ExtendedInt/*!*/ sup = a.sup + b.sup;
+        Contract.Assert(sup != null);
 
-          return Factory(inf, sup);
-        }
+        return Factory(inf, sup);
+      }
 
       // Subtraction
-      public static IntervalElement/*!*/ operator -(IntervalElement/*!*/ a, IntervalElement/*!*/ b){
-Contract.Requires(b != null);
-Contract.Requires(a != null);             
-          Contract.Ensures(Contract.Result<IntervalElement>() != null);
-          ExtendedInt/*!*/ inf = a.inf - b.sup;
+      public static IntervalElement/*!*/ operator -(IntervalElement/*!*/ a, IntervalElement/*!*/ b) {
+        Contract.Requires(b != null);
+        Contract.Requires(a != null);
+        Contract.Ensures(Contract.Result<IntervalElement>() != null);
+        ExtendedInt/*!*/ inf = a.inf - b.sup;
         Contract.Assert(inf != null);
-        
-          ExtendedInt/*!*/ sup = a.sup - b.inf;
-Contract.Assert(sup != null);
-IntervalElement/*!*/ sub = Factory(inf, sup);
-Contract.Assert(sub != null);
 
-          return sub;
-        }
+        ExtendedInt/*!*/ sup = a.sup - b.inf;
+        Contract.Assert(sup != null);
+        IntervalElement/*!*/ sub = Factory(inf, sup);
+        Contract.Assert(sub != null);
+
+        return sub;
+      }
 
       // Multiplication
-      public static IntervalElement/*!*/ operator *(IntervalElement/*!*/ a, IntervalElement/*!*/ b){
-Contract.Requires(b != null);
-Contract.Requires(a != null);
-Contract.Ensures(Contract.Result<IntervalElement>() != null);
-          ExtendedInt/*!*/ infinf = a.inf * b.inf;
-          Contract.Assert(infinf != null);
-          ExtendedInt/*!*/ infsup = a.inf * b.sup;
-          Contract.Assert(infsup != null);
-          ExtendedInt/*!*/ supinf = a.sup * b.inf;
-          Contract.Assert(supinf != null);
-          ExtendedInt/*!*/ supsup = a.sup * b.sup;
-          Contract.Assert(supsup != null);
+      public static IntervalElement/*!*/ operator *(IntervalElement/*!*/ a, IntervalElement/*!*/ b) {
+        Contract.Requires(b != null);
+        Contract.Requires(a != null);
+        Contract.Ensures(Contract.Result<IntervalElement>() != null);
+        ExtendedInt/*!*/ infinf = a.inf * b.inf;
+        Contract.Assert(infinf != null);
+        ExtendedInt/*!*/ infsup = a.inf * b.sup;
+        Contract.Assert(infsup != null);
+        ExtendedInt/*!*/ supinf = a.sup * b.inf;
+        Contract.Assert(supinf != null);
+        ExtendedInt/*!*/ supsup = a.sup * b.sup;
+        Contract.Assert(supsup != null);
 
-          ExtendedInt/*!*/ inf = ExtendedInt.Inf(infinf, infsup, supinf, supsup);
-          Contract.Assert(inf != null);
-          ExtendedInt/*!*/ sup = ExtendedInt.Sup(infinf, infsup, supinf, supsup);
-          Contract.Assert(sup != null);
+        ExtendedInt/*!*/ inf = ExtendedInt.Inf(infinf, infsup, supinf, supsup);
+        Contract.Assert(inf != null);
+        ExtendedInt/*!*/ sup = ExtendedInt.Sup(infinf, infsup, supinf, supsup);
+        Contract.Assert(sup != null);
 
-          return Factory(inf, sup);
-        }
-
-      // Division
-      public static IntervalElement/*!*/ operator /(IntervalElement/*!*/ a, IntervalElement/*!*/ b){
-Contract.Requires(b != null);
-Contract.Requires(a != null);
-Contract.Ensures(Contract.Result<IntervalElement>() != null);
-          if(b.inf.IsZero && b.sup.IsZero)   //  Check division by zero
-            return IntervalElement.Top;
-
-          ExtendedInt/*!*/ infinf = a.inf / b.inf;
-          Contract.Assert(infinf != null);
-          ExtendedInt/*!*/ infsup = a.inf / b.sup;
-          Contract.Assert(infsup != null);
-          ExtendedInt/*!*/ supinf = a.sup / b.inf;
-          Contract.Assert(supinf != null);
-          ExtendedInt/*!*/ supsup = a.sup / b.sup;
-          Contract.Assert(supsup != null);
-
-          ExtendedInt/*!*/ inf = ExtendedInt.Inf(infinf, infsup, supinf, supsup);
-          Contract.Assert(inf != null);
-          ExtendedInt/*!*/ sup = ExtendedInt.Sup(infinf, infsup, supinf, supsup);
-          Contract.Assert(sup != null);
-
-          return Factory(inf, sup);
-        }
+        return Factory(inf, sup);
+      }
 
       // Division
-      public static IntervalElement/*!*/ operator %(IntervalElement/*!*/ a, IntervalElement/*!*/ b){
-Contract.Requires(b != null);
-Contract.Requires(a != null);
-Contract.Ensures(Contract.Result<IntervalElement>() != null);
-          if(b.inf.IsZero && b.sup.IsZero)   //  Check division by zero
-            return IntervalElement.Top;
+      public static IntervalElement/*!*/ operator /(IntervalElement/*!*/ a, IntervalElement/*!*/ b) {
+        Contract.Requires(b != null);
+        Contract.Requires(a != null);
+        Contract.Ensures(Contract.Result<IntervalElement>() != null);
+        if (b.inf.IsZero && b.sup.IsZero)   //  Check division by zero
+          return IntervalElement.Top;
 
-          ExtendedInt/*!*/ infinf = a.inf % b.inf;
-          Contract.Assert(infinf != null);
-          ExtendedInt/*!*/ infsup = a.inf % b.sup;
-          Contract.Assert(infsup != null);
-          ExtendedInt/*!*/ supinf = a.sup % b.inf;
-          Contract.Assert(supinf != null);
-          ExtendedInt/*!*/ supsup = a.sup % b.sup;
-          Contract.Assert(supsup != null);
+        ExtendedInt/*!*/ infinf = a.inf / b.inf;
+        Contract.Assert(infinf != null);
+        ExtendedInt/*!*/ infsup = a.inf / b.sup;
+        Contract.Assert(infsup != null);
+        ExtendedInt/*!*/ supinf = a.sup / b.inf;
+        Contract.Assert(supinf != null);
+        ExtendedInt/*!*/ supsup = a.sup / b.sup;
+        Contract.Assert(supsup != null);
 
-          ExtendedInt inf = ExtendedInt.Inf(infinf, infsup, supinf, supsup);
-          ExtendedInt sup = ExtendedInt.Sup(infinf, infsup, supinf, supsup);
+        ExtendedInt/*!*/ inf = ExtendedInt.Inf(infinf, infsup, supinf, supsup);
+        Contract.Assert(inf != null);
+        ExtendedInt/*!*/ sup = ExtendedInt.Sup(infinf, infsup, supinf, supsup);
+        Contract.Assert(sup != null);
 
-          return Factory(inf, sup);
-        }
+        return Factory(inf, sup);
+      }
+
+      // Division
+      public static IntervalElement/*!*/ operator %(IntervalElement/*!*/ a, IntervalElement/*!*/ b) {
+        Contract.Requires(b != null);
+        Contract.Requires(a != null);
+        Contract.Ensures(Contract.Result<IntervalElement>() != null);
+        if (b.inf.IsZero && b.sup.IsZero)   //  Check division by zero
+          return IntervalElement.Top;
+
+        ExtendedInt/*!*/ infinf = a.inf % b.inf;
+        Contract.Assert(infinf != null);
+        ExtendedInt/*!*/ infsup = a.inf % b.sup;
+        Contract.Assert(infsup != null);
+        ExtendedInt/*!*/ supinf = a.sup % b.inf;
+        Contract.Assert(supinf != null);
+        ExtendedInt/*!*/ supsup = a.sup % b.sup;
+        Contract.Assert(supsup != null);
+
+        ExtendedInt inf = ExtendedInt.Inf(infinf, infsup, supinf, supsup);
+        ExtendedInt sup = ExtendedInt.Sup(infinf, infsup, supinf, supsup);
+
+        return Factory(inf, sup);
+      }
 
       #endregion
 
@@ -520,9 +511,9 @@ Contract.Ensures(Contract.Result<IntervalElement>() != null);
 
       [Pure]
       public override System.Collections.Generic.ICollection<IVariable/*!*/>/*!*/ FreeVariables() {
-Contract.Ensures(cce.NonNullElements(Contract.Result<System.Collections.Generic.ICollection<IVariable>>()));
-return cce.NonNull(new System.Collections.Generic.List<IVariable/*!*/>()).AsReadOnly();
-        }
+        Contract.Ensures(cce.NonNullElements(Contract.Result<System.Collections.Generic.ICollection<IVariable>>()));
+        return cce.NonNull(new System.Collections.Generic.List<IVariable/*!*/>()).AsReadOnly();
+      }
 
       [Pure]
       public override string/*!*/ ToString() {
@@ -736,13 +727,13 @@ return cce.NonNull(new System.Collections.Generic.List<IVariable/*!*/>()).AsRead
         return sup;
     }
 
-    public static ExtendedInt/*!*/ Inf(ExtendedInt/*!*/ a, ExtendedInt/*!*/ b, ExtendedInt/*!*/ c, ExtendedInt/*!*/ d){
-Contract.Requires(d != null);
-Contract.Requires(c != null);
-Contract.Requires(b != null);
-Contract.Requires(a != null);
-Contract.Ensures(Contract.Result<ExtendedInt>() != null);
-      ExtendedInt/*!*/ infab = Inf(a,b);
+    public static ExtendedInt/*!*/ Inf(ExtendedInt/*!*/ a, ExtendedInt/*!*/ b, ExtendedInt/*!*/ c, ExtendedInt/*!*/ d) {
+      Contract.Requires(d != null);
+      Contract.Requires(c != null);
+      Contract.Requires(b != null);
+      Contract.Requires(a != null);
+      Contract.Ensures(Contract.Result<ExtendedInt>() != null);
+      ExtendedInt/*!*/ infab = Inf(a, b);
       Contract.Assert(infab != null);
       ExtendedInt/*!*/ infcd = Inf(c, d);
       Contract.Assert(infcd != null);
@@ -760,13 +751,13 @@ Contract.Ensures(Contract.Result<ExtendedInt>() != null);
         return sup;
     }
 
-    public static ExtendedInt/*!*/ Sup(ExtendedInt/*!*/ a, ExtendedInt/*!*/ b, ExtendedInt/*!*/ c, ExtendedInt/*!*/ d){
-Contract.Requires(d != null);
-Contract.Requires(c != null);
-Contract.Requires(b != null);
-Contract.Requires(a != null);
-Contract.Ensures(Contract.Result<ExtendedInt>() != null);
-      ExtendedInt/*!*/ supab = Sup(a,b);
+    public static ExtendedInt/*!*/ Sup(ExtendedInt/*!*/ a, ExtendedInt/*!*/ b, ExtendedInt/*!*/ c, ExtendedInt/*!*/ d) {
+      Contract.Requires(d != null);
+      Contract.Requires(c != null);
+      Contract.Requires(b != null);
+      Contract.Requires(a != null);
+      Contract.Ensures(Contract.Result<ExtendedInt>() != null);
+      ExtendedInt/*!*/ supab = Sup(a, b);
       Contract.Assert(supab != null);
       ExtendedInt/*!*/ supcd = Sup(c, d);
       Contract.Assert(supcd != null);
@@ -816,7 +807,7 @@ Contract.Ensures(Contract.Result<ExtendedInt>() != null);
     }
 
     public override int CompareTo(ExtendedInt/*!*/ that) {
-      Contract.Requires(that != null);
+      //Contract.Requires(that != null);
       if (that is PlusInfinity)
         return -1;
       else if (that is PureInteger)
@@ -848,7 +839,7 @@ Contract.Ensures(Contract.Result<ExtendedInt>() != null);
     }
 
     public override int CompareTo(ExtendedInt/*!*/ that) {
-      Contract.Requires(that != null);
+      //Contract.Requires(that != null);
       if (that is PlusInfinity)
         return 0;
       else
@@ -870,7 +861,7 @@ Contract.Ensures(Contract.Result<ExtendedInt>() != null);
     }
 
     public override int CompareTo(ExtendedInt/*!*/ that) {
-      Contract.Requires(that != null);
+      //Contract.Requires(that != null);
       if (that is MinusInfinity)
         return 0;
       else

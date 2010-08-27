@@ -297,7 +297,7 @@ void ObjectInvariant()
     public class Int : Value
     {
         private static readonly AIType/*!*/ inttype = new Int();
-        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return inttype; } }
+        public static new AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return inttype; } }
         
         private static readonly AIType/*!*/ unaryinttype = new FunctionType(Type, Type);
         private static readonly AIType/*!*/ bininttype = new FunctionType(Type, Type, Type);
@@ -341,7 +341,7 @@ Contract.Ensures(Contract.Result<IntSymbol>() != null);
     public class Double : Value
     {
         private static readonly AIType/*!*/ doubletype = new Double();
-        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return doubletype; } }
+        public static new AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return doubletype; } }
         
         public static DoubleSymbol/*!*/ Const(double x) {
 Contract.Ensures(Contract.Result<DoubleSymbol>() != null);
@@ -359,7 +359,7 @@ Contract.Ensures(Contract.Result<DoubleSymbol>() != null);
     public class Bv : Value
     {
         private static readonly AIType/*!*/ bvtype = new Bv();
-        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return bvtype; } }
+        public static new AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return bvtype; } }
         
         private static readonly AIType/*!*/ unaryinttype = new FunctionType(Type, Type);
         private static readonly AIType/*!*/ bininttype = new FunctionType(Type, Type, Type);
@@ -407,7 +407,7 @@ Contract.Ensures(Contract.Result<BvSymbol>() != null);
     public class Ref : Value
     {
         private static readonly AIType/*!*/ reftype = new Ref();
-        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return reftype; } }
+        public static new AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return reftype; } }
 
         private static readonly FunctionSymbol/*!*/ _null = new FunctionSymbol("null", Type);
 
@@ -423,7 +423,7 @@ Contract.Ensures(Contract.Result<BvSymbol>() != null);
     public class HeapStructure : Value
     {
         private static readonly AIType/*!*/ reftype = new HeapStructure();
-        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return reftype; } }
+        public static new AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return reftype; } }
         
 
 
@@ -437,7 +437,7 @@ Contract.Ensures(Contract.Result<BvSymbol>() != null);
     public class FieldName : Value
     {
         private static readonly AIType/*!*/ fieldnametype = new FieldName();
-        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return fieldnametype; } }
+        public static new AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return fieldnametype; } }
 
         private static readonly FunctionSymbol/*!*/ _allocated = new FunctionSymbol("$allocated", FieldName.Type);
         public static FunctionSymbol/*!*/ Allocated { get {Contract.Ensures(Contract.Result<FunctionSymbol>() != null); return _allocated; } }
@@ -460,7 +460,7 @@ Contract.Requires(f != null);
     public class Heap : Value
     {
         private static readonly AIType/*!*/ heaptype = new Heap();
-        public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return heaptype; } }
+        public static new AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return heaptype; } }
 
         // the types in the following, select1, select2, are hard-coded;
         // these types may not always be appropriate

@@ -48,7 +48,7 @@ namespace Microsoft.AbstractInterpretationFramework {
       }
 
       public override void Dump(string/*!*/ msg) {
-        Contract.Requires(msg != null);
+        //Contract.Requires(msg != null);
         System.Console.WriteLine("PolyhedraLatticeElement.Dump({0}):", msg);
         lcs.Dump();
       }
@@ -107,13 +107,13 @@ namespace Microsoft.AbstractInterpretationFramework {
     }
 
     public override bool IsBottom(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       PolyhedraLatticeElement e = (PolyhedraLatticeElement)element;
       return e.lcs.IsBottom();
     }
 
     public override bool IsTop(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       PolyhedraLatticeElement e = (PolyhedraLatticeElement)element;
       return e.lcs.IsTop();
     }
@@ -126,8 +126,8 @@ namespace Microsoft.AbstractInterpretationFramework {
     /// <returns></returns>
     protected override bool AtMost(Element/*!*/ first, Element/*!*/ second)  // this <= that
     {
-      Contract.Requires(first != null);
-      Contract.Requires(second != null);
+      //Contract.Requires(first != null);
+      //Contract.Requires(second != null);
       PolyhedraLatticeElement a = (PolyhedraLatticeElement)first;
       PolyhedraLatticeElement b = (PolyhedraLatticeElement)second;
       return b.lcs.IsSubset(a.lcs);
@@ -135,13 +135,13 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override string/*!*/ ToString(Element/*!*/ e) {
-      Contract.Requires(e != null);
+      //Contract.Requires(e != null);
       Contract.Ensures(Contract.Result<string>() != null);
       return ((PolyhedraLatticeElement)e).lcs.ToString();
     }
 
     public override IExpr/*!*/ ToPredicate(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       Contract.Ensures(Contract.Result<IExpr>() != null);
       PolyhedraLatticeElement e = (PolyhedraLatticeElement)element;
       return e.lcs.ConvertToExpression(factory);
@@ -150,8 +150,8 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override Lattice.Element/*!*/ NontrivialJoin(Element/*!*/ first, Element/*!*/ second) {
-      Contract.Requires(second != null);
-      Contract.Requires(first != null);
+      //Contract.Requires(second != null);
+      //Contract.Requires(first != null);
       Contract.Ensures(Contract.Result<Lattice.Element>() != null);
       log.DbgMsg("Joining ...");
       log.DbgMsgIndent();
@@ -165,8 +165,8 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override Lattice.Element/*!*/ NontrivialMeet(Element/*!*/ first, Element/*!*/ second) {
-      Contract.Requires(second != null);
-      Contract.Requires(first != null);
+      //Contract.Requires(second != null);
+      //Contract.Requires(first != null);
       Contract.Ensures(Contract.Result<Lattice.Element>() != null);
       PolyhedraLatticeElement aa = (PolyhedraLatticeElement)first;
       PolyhedraLatticeElement bb = (PolyhedraLatticeElement)second;
@@ -175,8 +175,8 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override Lattice.Element/*!*/ Widen(Element/*!*/ first, Element/*!*/ second) {
-      Contract.Requires(second != null);
-      Contract.Requires(first != null);
+      //Contract.Requires(second != null);
+      //Contract.Requires(first != null);
       Contract.Ensures(Contract.Result<Lattice.Element>() != null);
       log.DbgMsg("Widening ...");
       log.DbgMsgIndent();
@@ -192,8 +192,8 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override Element/*!*/ Eliminate(Element/*!*/ e, IVariable/*!*/ variable) {
-      Contract.Requires(variable != null);
-      Contract.Requires(e != null);
+      //Contract.Requires(variable != null);
+      //Contract.Requires(e != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       log.DbgMsg(string.Format("Eliminating {0} ...", variable));
 
@@ -206,9 +206,9 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override Element/*!*/ Rename(Element/*!*/ e, IVariable/*!*/ oldName, IVariable/*!*/ newName) {
-      Contract.Requires(newName != null);
-      Contract.Requires(oldName != null);
-      Contract.Requires(e != null);
+      //Contract.Requires(newName != null);
+      //Contract.Requires(oldName != null);
+      //Contract.Requires(e != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       log.DbgMsg(string.Format("Renaming {0} to {1} in {2} ...", oldName, newName, this.ToString(e)));
 
@@ -220,8 +220,8 @@ namespace Microsoft.AbstractInterpretationFramework {
     }
 
     public override bool Understands(IFunctionSymbol/*!*/ f, IList/*<IExpr!>*//*!*/ args) {
-      Contract.Requires(args != null);
-      Contract.Requires(f != null);
+      //Contract.Requires(args != null);
+      //Contract.Requires(f != null);
       return f is IntSymbol ||
           f.Equals(Int.Add) ||
           f.Equals(Int.Sub) ||
@@ -237,9 +237,9 @@ namespace Microsoft.AbstractInterpretationFramework {
     }
 
     public override Answer CheckVariableDisequality(Element/*!*/ e, IVariable/*!*/ var1, IVariable/*!*/ var2) {
-      Contract.Requires(var2 != null);
-      Contract.Requires(var1 != null);
-      Contract.Requires(e != null);
+      //Contract.Requires(var2 != null);
+      //Contract.Requires(var1 != null);
+      //Contract.Requires(e != null);
       PolyhedraLatticeElement/*!*/ ple = (PolyhedraLatticeElement)cce.NonNull(e);
       Contract.Assume(ple.lcs.Constraints != null);
       ArrayList /*LinearConstraint!*//*!*/ clist = (ArrayList /*LinearConstraint!*/)cce.NonNull(ple.lcs.Constraints.Clone());
@@ -257,8 +257,8 @@ namespace Microsoft.AbstractInterpretationFramework {
     }
 
     public override Answer CheckPredicate(Element/*!*/ e, IExpr/*!*/ pred) {
-      Contract.Requires(pred != null);
-      Contract.Requires(e != null);
+      //Contract.Requires(pred != null);
+      //Contract.Requires(e != null);
       PolyhedraLatticeElement/*!*/ ple = (PolyhedraLatticeElement)Constrain(e, pred);
       Contract.Assert(ple != null);
       if (ple.lcs.IsBottom()) {
@@ -295,7 +295,7 @@ namespace Microsoft.AbstractInterpretationFramework {
 
       [Pure]
       public object DoVisit(ExprVisitor/*!*/ visitor) {
-        Contract.Requires(visitor != null);
+        //Contract.Requires(visitor != null);
         return visitor.VisitFunApp(this);
       }
 
@@ -316,7 +316,7 @@ namespace Microsoft.AbstractInterpretationFramework {
       }
 
       public IFunApp/*!*/ CloneWithArguments(IList/*<IExpr!>*//*!*/ args) {
-        Contract.Requires(args != null);
+        //Contract.Requires(args != null);
         Contract.Ensures(Contract.Result<IFunApp>() != null);
         Contract.Assert(args.Count == 1);
         return new PolyhedraLatticeNegation((IExpr/*!*/)cce.NonNull(args[0]));
@@ -324,19 +324,19 @@ namespace Microsoft.AbstractInterpretationFramework {
     }
 
     public override IExpr/*?*/ EquivalentExpr(Element/*!*/ e, IQueryable/*!*/ q, IExpr/*!*/ expr, IVariable/*!*/ var, ISet/*<IVariable!>*//*!*/ prohibitedVars) {
-      Contract.Requires(prohibitedVars != null);
-      Contract.Requires(var != null);
-      Contract.Requires(expr != null);
-      Contract.Requires(q != null);
-      Contract.Requires(e != null);
+      //Contract.Requires(prohibitedVars != null);
+      //Contract.Requires(var != null);
+      //Contract.Requires(expr != null);
+      //Contract.Requires(q != null);
+      //Contract.Requires(e != null);
       // BUGBUG: TODO: this method can be implemented in a more precise way
       return null;
     }
 
 
     public override Element/*!*/ Constrain(Element/*!*/ e, IExpr/*!*/ expr) {
-      Contract.Requires(expr != null);
-      Contract.Requires(e != null);
+      //Contract.Requires(expr != null);
+      //Contract.Requires(e != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       log.DbgMsg(string.Format("Constraining with {0} into {1} ...", expr, this.ToString(e)));
 
@@ -387,7 +387,7 @@ namespace Microsoft.AbstractInterpretationFramework {
 
   class LCBottom : LinearCondition {
     public override void AddToConstraintSystem(ArrayList/*!*/ /*LinearConstraint*/ clist) {
-      Contract.Requires(clist != null);
+      //Contract.Requires(clist != null);
       // make an unsatisfiable constraint
       LinearConstraint lc = new LinearConstraint(LinearConstraint.ConstraintRelation.EQ);
       lc.rhs = Rational.FromInt(1);
@@ -415,7 +415,7 @@ namespace Microsoft.AbstractInterpretationFramework {
       this.constraint = constraint;
     }
     public override void AddToConstraintSystem(ArrayList/*!*/ /*LinearConstraint*/ clist) {
-      Contract.Requires(clist != null);
+      //Contract.Requires(clist != null);
       if (positive) {
         clist.Add(constraint);
       } else {

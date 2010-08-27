@@ -163,100 +163,101 @@ namespace Microsoft.AbstractInterpretationFramework {
     }
 
     public override bool IsTop(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       Elt e = (Elt)element;
       return e.what == What.Bounds && e.ty == null && e.manyBounds == null;
     }
 
     public override bool IsBottom(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       Elt e = (Elt)element;
       return e.what == What.Bottom;
     }
 
-    public override Element/*!*/ NontrivialJoin(Element/*!*/ first, Element/*!*/ second){
-Contract.Requires(second != null);
-Contract.Requires(first != null);
-Contract.Ensures(Contract.Result<Element>() != null);
-            Elt a = (Elt)first;
-            Elt b = (Elt)second;
-            Contract.Assert(a.what != What.Bottom && b.what != What.Bottom);
-            if (a.what == What.Exact && b.what == What.Exact) {
-                Contract.Assert(a.ty != null && b.ty != null);
-                if (factory.IsTypeEqual(a.ty, b.ty)) {
-                    return a;
-                } else {
-                    return new Elt(What.Bounds, factory.JoinTypes(a.ty, b.ty));
-                }
-            }
-
-            // The result is going to be a Bounds, since at least one of the operands is a Bounds.
-            Contract.Assert(1 <= a.BoundsCount && 1 <= b.BoundsCount);  // a preconditions is that neither operand is Top
-            int n = a.BoundsCount + b.BoundsCount;
-
-            // Special case:  a and b each has exactly one bound
-            if (n == 2) {
-                Contract.Assert(a.ty != null && b.ty != null);
-                IExpr join = factory.JoinTypes(a.ty, b.ty);
-              Contract.Assert(join != null);
-                if (join == a.ty && a.what == What.Bounds) {
-                    return a;
-                } else if (join == b.ty && b.what == What.Bounds) {
-                    return b;
-                } else {
-                    return new Elt(What.Bounds, join);
-                }
-            }
-
-            // General case
-            ArrayList /*IExpr*/ allBounds = new ArrayList /*IExpr*/ (n);  // final size
-            ArrayList /*IExpr!*/ result = new ArrayList /*IExpr!*/ (n);  // a guess at the size, but could be as big as size(a)*size(b)
-            if (a.ty != null) {
-                allBounds.Add(a.ty);
-            } else {
-                allBounds.AddRange(cce.NonNull(a.manyBounds));
-            }
-            int bStart = allBounds.Count;
-            if (b.ty != null) {
-                allBounds.Add(b.ty);
-            } else {
-                allBounds.AddRange(cce.NonNull(b.manyBounds));
-            }
-            // compute the join of each pair, putting non-redundant joins into "result"
-            for (int i = 0; i < bStart; i++) {
-                IExpr/*!*/ aBound = cce.NonNull((IExpr/*!*/)allBounds[i]);
-                for (int j = bStart; j < allBounds.Count; j++) {
-                    IExpr/*!*/ bBound = (IExpr/*!*/)cce.NonNull(allBounds[j]);
-                    
-                    IExpr/*!*/ join = factory.JoinTypes(aBound, bBound);
-                  Contract.Assert(join != null);
-
-                    int k = 0;
-                    while (k < result.Count) {
-                      IExpr/*!*/ r = (IExpr/*!*/)cce.NonNull(result[k]);
-                        if (factory.IsSubType(join, r)) {
-                            // "join" is more restrictive than a bound already placed in "result",
-                            // so toss out "join" and compute the join of the next pair
-                            goto NEXT_PAIR;
-                        } else if (factory.IsSubType(r, join)) {
-                            // "join" is less restrictive than a bound already placed in "result",
-                            // so toss out that old bound
-                            result.RemoveAt(k);
-                        } else {
-                            k++;
-                        }
-                    }
-                    result.Add(join);
-                    NEXT_PAIR: {}
-                }
-            }
-            return new Elt(result, result.Count);
+    public override Element/*!*/ NontrivialJoin(Element/*!*/ first, Element/*!*/ second) {
+      //Contract.Requires(second != null);
+      //Contract.Requires(first != null);
+      Contract.Ensures(Contract.Result<Element>() != null);
+      Elt a = (Elt)first;
+      Elt b = (Elt)second;
+      Contract.Assert(a.what != What.Bottom && b.what != What.Bottom);
+      if (a.what == What.Exact && b.what == What.Exact) {
+        Contract.Assert(a.ty != null && b.ty != null);
+        if (factory.IsTypeEqual(a.ty, b.ty)) {
+          return a;
+        } else {
+          return new Elt(What.Bounds, factory.JoinTypes(a.ty, b.ty));
         }
+      }
+
+      // The result is going to be a Bounds, since at least one of the operands is a Bounds.
+      Contract.Assert(1 <= a.BoundsCount && 1 <= b.BoundsCount);  // a preconditions is that neither operand is Top
+      int n = a.BoundsCount + b.BoundsCount;
+
+      // Special case:  a and b each has exactly one bound
+      if (n == 2) {
+        Contract.Assert(a.ty != null && b.ty != null);
+        IExpr join = factory.JoinTypes(a.ty, b.ty);
+        Contract.Assert(join != null);
+        if (join == a.ty && a.what == What.Bounds) {
+          return a;
+        } else if (join == b.ty && b.what == What.Bounds) {
+          return b;
+        } else {
+          return new Elt(What.Bounds, join);
+        }
+      }
+
+      // General case
+      ArrayList /*IExpr*/ allBounds = new ArrayList /*IExpr*/ (n);  // final size
+      ArrayList /*IExpr!*/ result = new ArrayList /*IExpr!*/ (n);  // a guess at the size, but could be as big as size(a)*size(b)
+      if (a.ty != null) {
+        allBounds.Add(a.ty);
+      } else {
+        allBounds.AddRange(cce.NonNull(a.manyBounds));
+      }
+      int bStart = allBounds.Count;
+      if (b.ty != null) {
+        allBounds.Add(b.ty);
+      } else {
+        allBounds.AddRange(cce.NonNull(b.manyBounds));
+      }
+      // compute the join of each pair, putting non-redundant joins into "result"
+      for (int i = 0; i < bStart; i++) {
+        IExpr/*!*/ aBound = cce.NonNull((IExpr/*!*/)allBounds[i]);
+        for (int j = bStart; j < allBounds.Count; j++) {
+          IExpr/*!*/ bBound = (IExpr/*!*/)cce.NonNull(allBounds[j]);
+
+          IExpr/*!*/ join = factory.JoinTypes(aBound, bBound);
+          Contract.Assert(join != null);
+
+          int k = 0;
+          while (k < result.Count) {
+            IExpr/*!*/ r = (IExpr/*!*/)cce.NonNull(result[k]);
+            if (factory.IsSubType(join, r)) {
+              // "join" is more restrictive than a bound already placed in "result",
+              // so toss out "join" and compute the join of the next pair
+              goto NEXT_PAIR;
+            } else if (factory.IsSubType(r, join)) {
+              // "join" is less restrictive than a bound already placed in "result",
+              // so toss out that old bound
+              result.RemoveAt(k);
+            } else {
+              k++;
+            }
+          }
+          result.Add(join);
+        NEXT_PAIR: {
+          }
+        }
+      }
+      return new Elt(result, result.Count);
+    }
 
 
     public override Element/*!*/ NontrivialMeet(Element/*!*/ first, Element/*!*/ second) {
-      Contract.Requires(second != null);
-      Contract.Requires(first != null);
+      //Contract.Requires(second != null);
+      //Contract.Requires(first != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       Elt a = (Elt)first;
       Elt b = (Elt)second;
@@ -359,16 +360,16 @@ Contract.Ensures(Contract.Result<Element>() != null);
     }
 
     public override Element/*!*/ Widen(Element/*!*/ first, Element/*!*/ second) {
-      Contract.Requires(second != null);
-      Contract.Requires(first != null);
+      //Contract.Requires(second != null);
+      //Contract.Requires(first != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       return Join(first, second);
     }
 
     protected override bool AtMost(Element/*!*/ first, Element/*!*/ second) // this <= that
     {
-      Contract.Requires(first != null);
-      Contract.Requires(second != null);
+      //Contract.Requires(first != null);
+      //Contract.Requires(second != null);
       Elt/*!*/ a = (Elt/*!*/)cce.NonNull(first);
       Elt/*!*/ b = (Elt/*!*/)cce.NonNull(second);
       Contract.Assert(a.what != What.Bottom && b.what != What.Bottom);
@@ -403,8 +404,8 @@ Contract.Ensures(Contract.Result<Element>() != null);
     }
 
     public override IExpr/*!*/ ToPredicate(IVariable/*!*/ var, Element/*!*/ element) {
-      Contract.Requires(element != null);
-      Contract.Requires(var != null);
+      //Contract.Requires(element != null);
+      //Contract.Requires(var != null);
       Contract.Ensures(Contract.Result<IExpr>() != null);
       Elt e = (Elt)element;
       switch (e.what) {
@@ -433,14 +434,14 @@ Contract.Ensures(Contract.Result<Element>() != null);
     }
 
     public override IExpr GetFoldExpr(Element/*!*/ e) {
-      Contract.Requires(e != null);
+      //Contract.Requires(e != null);
       // cannot fold into an expression that can be substituted for the variable
       return null;
     }
 
     public override bool Understands(IFunctionSymbol/*!*/ f, IList/*<IExpr!>*//*!*/ args) {
-      Contract.Requires(args != null);
-      Contract.Requires(f != null);
+      //Contract.Requires(args != null);
+      //Contract.Requires(f != null);
       bool isEq = f.Equals(Microsoft.AbstractInterpretationFramework.Value.Eq);
       if (isEq || f.Equals(Microsoft.AbstractInterpretationFramework.Value.Subtype)) {
         Contract.Assert(args.Count == 2);
@@ -470,7 +471,7 @@ Contract.Ensures(Contract.Result<Element>() != null);
     }
 
     public override Element/*!*/ EvaluatePredicate(IExpr/*!*/ e) {
-      Contract.Requires(e != null);
+      //Contract.Requires(e != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       IFunApp nary = e as IFunApp;
       if (nary != null) {

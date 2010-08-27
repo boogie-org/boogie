@@ -69,7 +69,7 @@ namespace Microsoft.AbstractInterpretationFramework {
       }
 
       public override void Dump(string/*!*/ msg) {
-        Contract.Requires(msg != null);
+        //Contract.Requires(msg != null);
         System.Console.WriteLine("MultiLattice.Elt.Dump({0})", msg);
         Element[] epl = this.elementPerLattice;
         if (epl != null) {
@@ -207,7 +207,7 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override bool IsBottom(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       Elt e = (Elt)element;
       // The program is errorneous/nonterminating if any subdomain knows it is.
       //
@@ -223,7 +223,7 @@ namespace Microsoft.AbstractInterpretationFramework {
     }
 
     public override bool IsTop(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       Elt e = (Elt)element;
       if (e.elementPerLattice == null) {
         return false;
@@ -240,8 +240,8 @@ namespace Microsoft.AbstractInterpretationFramework {
     }
 
     protected override bool AtMost(Element/*!*/ first, Element/*!*/ second) {
-      Contract.Requires(second != null);
-      Contract.Requires(first != null);
+      //Contract.Requires(second != null);
+      //Contract.Requires(first != null);
       Elt a = (Elt)first;
       Elt b = (Elt)second;
 
@@ -261,10 +261,10 @@ namespace Microsoft.AbstractInterpretationFramework {
     }
 
     protected override bool AtMost(Element/*!*/ first, ICombineNameMap/*!*/ firstToResult, Element/*!*/ second, ICombineNameMap/*!*/ secondToResult) {
-      Contract.Requires(secondToResult != null);
-      Contract.Requires(second != null);
-      Contract.Requires(firstToResult != null);
-      Contract.Requires(first != null);
+      //Contract.Requires(secondToResult != null);
+      //Contract.Requires(second != null);
+      //Contract.Requires(firstToResult != null);
+      //Contract.Requires(first != null);
       Elt a = (Elt)first;
       Elt b = (Elt)second;
 
@@ -336,48 +336,48 @@ namespace Microsoft.AbstractInterpretationFramework {
     }
 
     public override Element/*!*/ NontrivialJoin(Element/*!*/ a, Element/*!*/ b) {
-      Contract.Requires((b != null));
-      Contract.Requires((a != null));
+      //Contract.Requires((b != null));
+      //Contract.Requires((a != null));
       Contract.Ensures(Contract.Result<Element>() != null);
       return this.Combine(a, null, b, null, CombineOp.Join);
     }
 
     public override Element/*!*/ NontrivialJoin(Element/*!*/ a, ICombineNameMap/*!*/ aToResult, Element/*!*/ b, ICombineNameMap/*!*/ bToResult) {
-      Contract.Requires((bToResult != null));
-      Contract.Requires((b != null));
-      Contract.Requires((aToResult != null));
-      Contract.Requires((a != null));
+      //Contract.Requires((bToResult != null));
+      //Contract.Requires((b != null));
+      //Contract.Requires((aToResult != null));
+      //Contract.Requires((a != null));
       Contract.Ensures(Contract.Result<Element>() != null);
       return this.Combine(a, aToResult, b, bToResult, CombineOp.Join);
     }
 
     public override Element/*!*/ NontrivialMeet(Element/*!*/ a, Element/*!*/ b) {
-      Contract.Requires((b != null));
-      Contract.Requires((a != null));
+      //Contract.Requires((b != null));
+      //Contract.Requires((a != null));
       Contract.Ensures(Contract.Result<Element>() != null);
       return this.Combine(a, null, b, null, CombineOp.Meet);
     }
 
     public override Element/*!*/ Widen(Element/*!*/ a, Element/*!*/ b) {
-      Contract.Requires((b != null));
-      Contract.Requires((a != null));
+      //Contract.Requires((b != null));
+      //Contract.Requires((a != null));
       Contract.Ensures(Contract.Result<Element>() != null);
       return this.Combine(a, null, b, null, CombineOp.Widen);
     }
 
     public override Element/*!*/ Widen(Element/*!*/ a, ICombineNameMap/*!*/ aToResult, Element/*!*/ b, ICombineNameMap/*!*/ bToResult) {
-      Contract.Requires((bToResult != null));
-      Contract.Requires((b != null));
-      Contract.Requires((aToResult != null));
+      //Contract.Requires((bToResult != null));
+      //Contract.Requires((b != null));
+      //Contract.Requires((aToResult != null));
 
-      Contract.Requires(a != null);
+      //Contract.Requires(a != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       return this.Combine(a, aToResult, b, bToResult, CombineOp.Widen);
     }
 
     public override Element/*!*/ Eliminate(Element/*!*/ element, IVariable/*!*/ variable) {
-      Contract.Requires(variable != null);
-      Contract.Requires(element != null);
+      //Contract.Requires(variable != null);
+      //Contract.Requires(element != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       Elt e = (Elt)element;
       if (IsBottom(e)) {
@@ -392,9 +392,9 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override Element/*!*/ Constrain(Element/*!*/ element, IExpr/*!*/ expr) {
-      Contract.Requires(expr != null);
-      Contract.Requires(element != null);
-      Contract.Ensures(Contract.Result<Element>() != null);
+      //Contract.Requires(expr != null);
+      //Contract.Requires(element != null);
+      //Contract.Ensures(Contract.Result<Element>() != null);
       Elt e = (Elt)element;
       if (IsBottom(e)) {
         return e;
@@ -408,9 +408,9 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override Element/*!*/ Rename(Element/*!*/ element, IVariable/*!*/ oldName, IVariable/*!*/ newName) {
-      Contract.Requires(newName != null);
-      Contract.Requires(oldName != null);
-      Contract.Requires(element != null);
+      //Contract.Requires(newName != null);
+      //Contract.Requires(oldName != null);
+      //Contract.Requires(element != null);
       Contract.Ensures(Contract.Result<Element>() != null);
       Elt e = (Elt)element;
       if (IsBottom(e)) {
@@ -425,8 +425,8 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override bool Understands(IFunctionSymbol/*!*/ f, IList/*!*/ args) {
-      Contract.Requires(args != null);
-      Contract.Requires(f != null);
+      //Contract.Requires(args != null);
+      //Contract.Requires(f != null);
       bool result = false;
 
       for (int i = 0; i < this.lattices.Count; i++) {
@@ -438,7 +438,7 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override string/*!*/ ToString(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       Contract.Ensures(Contract.Result<string>() != null);
       Elt e = (Elt)element;
       return e.ToString();
@@ -446,7 +446,7 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override IExpr/*!*/ ToPredicate(Element/*!*/ element) {
-      Contract.Requires(element != null);
+      //Contract.Requires(element != null);
       Contract.Ensures(Contract.Result<IExpr>() != null);
       Elt e = (Elt)element;
 
@@ -476,11 +476,11 @@ namespace Microsoft.AbstractInterpretationFramework {
     /// or null if not possible.
     /// </returns>
     public override IExpr/*?*/ EquivalentExpr(Element/*!*/ element, IQueryable/*!*/ q, IExpr/*!*/ expr, IVariable/*!*/ var, Set/*<IVariable!>*//*!*/ prohibitedVars) {
-      Contract.Requires(prohibitedVars != null);
-      Contract.Requires(var != null);
-      Contract.Requires(expr != null);
-      Contract.Requires(q != null);
-      Contract.Requires(element != null);
+      //Contract.Requires(prohibitedVars != null);
+      //Contract.Requires(var != null);
+      //Contract.Requires(expr != null);
+      //Contract.Requires(q != null);
+      //Contract.Requires(element != null);
       Elt/*!*/ e = (Elt/*!*/)cce.NonNull(element);
 
       for (int i = 0; i < e.Count; i++) {
@@ -495,8 +495,8 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override Answer CheckPredicate(Element/*!*/ element, IExpr/*!*/ pred) {
-      Contract.Requires(pred != null);
-      Contract.Requires(element != null);
+      //Contract.Requires(pred != null);
+      //Contract.Requires(element != null);
       Elt/*!*/ e = (Elt/*!*/)cce.NonNull(element);
 
       for (int i = 0; i < e.Count; i++) {
@@ -511,9 +511,9 @@ namespace Microsoft.AbstractInterpretationFramework {
 
 
     public override Answer CheckVariableDisequality(Element/*!*/ element, IVariable/*!*/ var1, IVariable/*!*/ var2) {
-      Contract.Requires(var2 != null);
-      Contract.Requires(var1 != null);
-      Contract.Requires(element != null);
+      //Contract.Requires(var2 != null);
+      //Contract.Requires(var1 != null);
+      //Contract.Requires(element != null);
       Elt/*!*/ e = (Elt/*!*/)cce.NonNull(element);
 
       for (int i = 0; i < e.Count; i++) {

@@ -246,7 +246,7 @@ namespace VC {
     }
   }
   [ContractClassFor(typeof(ConditionGeneration))]
-  public class ConditionGenerationContracts : ConditionGeneration {
+  public abstract class ConditionGenerationContracts : ConditionGeneration {
     public override Outcome VerifyImplementation(Implementation impl, Program program, VerifierCallback callback) {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
@@ -254,7 +254,8 @@ namespace VC {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       throw new NotImplementedException();
     }
-    public ConditionGenerationContracts(Program p) : base(p) {
+    public ConditionGenerationContracts(Program p)
+      : base(p) {
     }
   }
 
@@ -304,7 +305,7 @@ namespace VC {
     public Outcome VerifyImplementation(Implementation impl, Program program, out List<Counterexample>/*?*/ errors) {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
-      Contract.Requires(Contract.ForAll(Contract.ValueAtReturn(out errors),i=>i!=null));
+      Contract.Requires(Contract.ForAll(Contract.ValueAtReturn(out errors), i => i != null));
 
       Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || errors != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -325,7 +326,7 @@ namespace VC {
     public Outcome StratifiedVerifyImplementation(Implementation impl, Program program, out List<Counterexample>/*?*/ errors) {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
-      Contract.Requires(Contract.ForAll(Contract.ValueAtReturn(out errors),i=>i!=null));
+      Contract.Requires(Contract.ForAll(Contract.ValueAtReturn(out errors), i => i != null));
       Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || errors != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       Helpers.ExtraTraceInformation("Starting implementation verification");
@@ -345,7 +346,7 @@ namespace VC {
     public abstract Outcome VerifyImplementation(Implementation impl, Program program, VerifierCallback callback);
 
     public virtual Outcome StratifiedVerifyImplementation(Implementation impl, Program program, VerifierCallback callback) {
-      
+
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Requires(callback != null);
@@ -1085,7 +1086,7 @@ namespace VC {
       }
       #endregion
       #region x1 := E1, x2 := E2, ... |--> assume x1' = E1[in] & x2' = E2[in], out := in( x |-> x' ) [except as noted below]
-      else if (c is AssignCmd) {
+ else if (c is AssignCmd) {
         AssignCmd assign = ((AssignCmd)c).AsSimpleAssignCmd; // first remove map assignments
         Contract.Assert(assign != null);
         #region Substitute all variables in E with the current map
@@ -1155,7 +1156,7 @@ namespace VC {
       }
       #endregion
       #region havoc w |--> assume whereClauses, out := in( w |-> w' )
-      else if (c is HavocCmd) {
+ else if (c is HavocCmd) {
         if (this.preHavocIncarnationMap == null)      // Save a copy of the incarnation map (at the top of a sequence of havoc statements)
           this.preHavocIncarnationMap = (Hashtable)incarnationMap.Clone();
 
@@ -1186,7 +1187,7 @@ namespace VC {
         }
       }
       #endregion
-      else if (c is CommentCmd) {
+ else if (c is CommentCmd) {
         // comments are just for debugging and don't affect verification
       } else if (c is SugaredCmd) {
         SugaredCmd sug = (SugaredCmd)c;
@@ -1218,7 +1219,7 @@ namespace VC {
         }
       }
       #region There shouldn't be any other types of commands at this point
-      else {
+ else {
         Debug.Fail("Internal Error: Passive transformation handed a command that is not one of assert,assume,havoc,assign.");
       }
       #endregion
