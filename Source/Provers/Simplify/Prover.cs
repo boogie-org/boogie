@@ -417,6 +417,7 @@ namespace Microsoft.Boogie.Simplify {
   }
   [ContractClassFor(typeof(ProverProcess))]
   public abstract class ProverProcessContracts : ProverProcess {
+    private ProverProcessContracts() : base(null, null) { }
     public override string OptionComments() {
       Contract.Ensures(Contract.Result<string>() != null);
       throw new NotImplementedException();
