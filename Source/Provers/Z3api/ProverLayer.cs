@@ -27,7 +27,6 @@ namespace Microsoft.Boogie.Z3
         {
             this.options = opts;
             this.context = (Z3apiProverContext) ctxt;
-            this.z3ContextIsUsed = false;
             this.numAxiomsPushed = 0;
         }
 
@@ -54,7 +53,6 @@ namespace Microsoft.Boogie.Z3
             cm.config.Config.Dispose();
             cm.CloseLog();
         }
-        private bool z3ContextIsUsed;
 
         public void PushAxiom(VCExpr axiom)
         {
@@ -90,6 +88,7 @@ namespace Microsoft.Boogie.Z3
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
             Z3SafeContext cm = ((Z3apiProverContext)context).cm;
             Push();
+            cm.AddAxiom(((Z3apiProverContext)context).Axioms, linOptions);
             cm.AddConjecture(vc, linOptions);
             outcome = cm.Check(out z3LabelModels);
             Pop();

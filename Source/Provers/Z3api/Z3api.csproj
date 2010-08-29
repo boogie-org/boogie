@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.30729</ProductVersion>
+    <ProductVersion>9.0.21022</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{966DD87B-A29D-4F3C-9406-F680A61DC0E0}</ProjectGuid>
     <OutputType>Library</OutputType>
@@ -45,7 +45,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\Binaries\Microsoft.Contracts.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Z3, Version=2.0.3662.37897, Culture=neutral, PublicKeyToken=9c8d792caae602a2, processorArchitecture=x86">
+    <Reference Include="Microsoft.Z3, Version=2.0.40827.2, Culture=neutral, PublicKeyToken=9c8d792caae602a2, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\Binaries\Microsoft.Z3.dll</HintPath>
     </Reference>

@@ -288,12 +288,10 @@ namespace Microsoft.Boogie.Z3
             return z3Types;
         }
 
-        public Z3TermAst MakeForall(uint weight, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body)
+        public Z3TermAst MakeQuantifier(bool isForall, uint weight, string qid, int skolemid, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body)
         {
             List<Pattern> unwrapPatterns = Unwrap(patterns);
-            // List<Term> unwrapNoPatterns = Unwrap(no_patterns);
-            // List<Sort> z3Types = GetTypes(boogieTypes);
-            // List<Symbol> symbols = GetSymbols(varNames);
+            List<Term> unwrapNoPatterns = Unwrap(no_patterns);
             Term unwrapBody = Unwrap(body);
 
             List<Term> bound = new List<Term>();
@@ -302,28 +300,11 @@ namespace Microsoft.Boogie.Z3
                 Z3TermAst t = GetConstant(varNames[i], boogieTypes[i]);
                 bound.Add(Unwrap(t));
             }
-            Term termAst = z3.MkForall(weight, bound.ToArray(), unwrapPatterns.ToArray(), unwrapBody);
+
+            Term termAst = z3.MkQuantifier(isForall, weight, z3.MkSymbol(qid), z3.MkSymbol(skolemid), unwrapPatterns.ToArray(), unwrapNoPatterns.ToArray(), bound.ToArray(), unwrapBody);
             return Wrap(termAst);
         }
-
-        public Z3TermAst MakeExists(uint weight, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body)
-        {
-            List<Pattern> unwrapPatterns = Unwrap(patterns);
-            // List<Term> unwrapNoPatterns = Unwrap(no_patterns);
-            // List<Sort> z3Types = GetTypes(boogieTypes);
-            // List<Symbol> symbols = GetSymbols(varNames);
-            Term unwrapBody = Unwrap(body);
-
-            List<Term> bound = new List<Term>();
-            for (int i = 0; i < varNames.Count; i++)
-            {
-                Z3TermAst t = GetConstant(varNames[i], boogieTypes[i]);
-                bound.Add(Unwrap(t));
-            }
-            Term termAst = z3.MkExists(weight, bound.ToArray(), unwrapPatterns.ToArray(), unwrapBody);
-            return Wrap(termAst);
-        }
-
+   
         private static bool Equals(List<string> l, List<string> r)
         {
             Debug.Assert(l != null);

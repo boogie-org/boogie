@@ -129,27 +129,22 @@ namespace Microsoft.Boogie.Z3
                 Z3TermAst body = Linearise(node.Body, options);
                 Z3TermAst result;
                 uint weight = 1;
+                string qid = "";
+                int skolemid = 0;
 
-                /*
                 if (options.QuantifierIds)
                 {
-                    // only needed for Z3
                     VCQuantifierInfos infos = node.Infos;
                     Contract.Assert(infos != null);
                     if (infos.qid != null)
                     {
-                        wr.Write("(QID ");
-                        wr.Write(infos.qid);
-                        wr.Write(") ");
+                        qid = infos.qid;
                     }
                     if (0 <= infos.uniqueId)
                     {
-                        wr.Write("(SKOLEMID ");
-                        wr.Write(infos.uniqueId);
-                        wr.Write(") ");
+                        skolemid = infos.uniqueId;
                     }
                 }
-                */
 
                 if (options.UseWeights)
                 {
@@ -159,9 +154,9 @@ namespace Microsoft.Boogie.Z3
                 switch (node.Quan)
                 {
                     case Quantifier.ALL:
-                        result = cm.MakeForall(weight, varNames, varTypes, patterns, no_patterns, body); break;
+                        result = cm.MakeQuantifier(true, weight, qid, skolemid, varNames, varTypes, patterns, no_patterns, body); break;
                     case Quantifier.EX:
-                        result = cm.MakeExists(weight, varNames, varTypes, patterns, no_patterns, body); break;
+                        result = cm.MakeQuantifier(false, weight, qid, skolemid, varNames, varTypes, patterns, no_patterns, body); break;
                     default:
                         throw new Exception("unknown quantifier kind " + node.Quan);
                 }

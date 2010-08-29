@@ -28,11 +28,8 @@ namespace Microsoft.Boogie.Z3 {
     public Z3PatternAst MakePattern(List<Z3TermAst> exprs) {
       return new Z3StubPatternAst();
     }
-    public Z3TermAst MakeForall(uint weight, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body) {
-      return new Z3StubTermAst();
-    }
-    public Z3TermAst MakeExists(uint weight, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body) {
-      return new Z3StubTermAst();
+    public Z3TermAst MakeQuantifier(bool isForall, uint weight, string qid, int skolemid, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body) {
+        return new Z3StubTermAst();
     }
     public List<string> BuildConflictClause(Z3LabeledLiterals relevantLabels) {
       return new List<string>();
