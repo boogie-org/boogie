@@ -154,6 +154,7 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public string DafnyPrelude = null;
     public string DafnyPrintFile = null;
     public bool Compile = true;
 
@@ -679,6 +680,14 @@ namespace Microsoft.Boogie {
           case "/print":
             if (ps.ConfirmArgumentCount(1)) {
               PrintFile = args[ps.i];
+            }
+            break;
+
+          case "-dprelude":
+          case "/dprelude":
+            if (ps.ConfirmArgumentCount(1))
+            {
+                DafnyPrelude = args[ps.i];
             }
             break;
 
@@ -1429,6 +1438,7 @@ namespace Microsoft.Boogie {
       // expand macros in filenames, now that LogPrefix is fully determined
       ExpandFilename(ref XmlSinkFilename);
       ExpandFilename(ref PrintFile);
+      ExpandFilename(ref DafnyPrelude);
       ExpandFilename(ref DafnyPrintFile);
       ExpandFilename(ref SimplifyLogFilePath);
       ExpandFilename(ref SMTLibOutputPath);
@@ -2026,6 +2036,7 @@ namespace Microsoft.Boogie {
   Multiple .dfy files supplied on the command line are concatenated into one
   Dafny program.
 
+  /dprelude:<file> : choose Dafny prelude file
   /dprint:<file> : print Dafny program after parsing it
                    (use - as <file> to print to console)
   /compile:<n>   : 0 - do not compile Dafny program
