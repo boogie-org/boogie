@@ -1,14 +1,17 @@
-# Aste started: 2010-08-25 07:00:04
+# Aste started: 2010-08-31 07:00:02
 # Host id: Boogiebox
-# [2010-08-25 07:02:13] SpecSharp revision: 55320
-# [2010-08-25 07:03:18] Boogie revision: 56733
-# [2010-08-25 07:03:40] SscBoogie revision: 56316
-[2010-08-25 07:04:17] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-08-31 07:02:03] SpecSharp revision: 55320
+# [2010-08-31 07:02:47] Boogie revision: 56874
+# [2010-08-31 07:03:09] SscBoogie revision: 56316
+[2010-08-31 07:03:41] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-08-25 07:05:16] [Error] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-08-31 07:04:23] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
+    D:\Temp\aste\Boogie\Source\Basetypes\BigNum.cs(280,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\AIFramework\Polyhedra\LinearConstraintSystem.cs(159,19): warning CS0168: The variable 'ss' is declared but never used
+    D:\Temp\aste\Boogie\Source\AIFramework\Polyhedra\SimplexTableau.cs(367,9): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(825,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2804,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\Absy.cs(3472,9): warning CS0162: Unreachable code detected
@@ -26,72 +29,29 @@
     D:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\Core\Util.cs(21,10): warning CS0414: The field 'Microsoft.Boogie.TokenTextWriter.writerOpenedHere' is assigned but its value is never used
     D:\Temp\aste\Boogie\Source\Core\VCExp.cs(139,16): warning CS0414: The field 'Microsoft.Boogie.ProverOptions.sequenceNumber' is assigned but its value is never used
-    D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(1467,16): warning CS0659: 'Microsoft.Boogie.VCExprAST.VCExprCustomOp' overrides Object.Equals(object o) but does not override Object.GetHashCode()
-    D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(662,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCExpr\VCExprASTPrinter.cs(46,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(1481,16): warning CS0659: 'Microsoft.Boogie.VCExprAST.VCExprCustomOp' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+    D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(667,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1941,56): warning CS0168: The variable 'e' is declared but never used
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4610,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4608,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(715,15): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(741,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(1083,11): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\Wlp.cs(77,8): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(379,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(445,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(380,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(443,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(851,29): warning CS0649: Field 'VC.VCGen.Split.first_assert' is never assigned to, and will always have its default value null
     D:\Temp\aste\Boogie\Source\VCGeneration\DoomCheck.cs(177,22): warning CS0169: The field 'VC.DoomCheck._tmpUseFreshBVars' is never used
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(65,9): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(338,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(363,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(379,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(402,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(67,9): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(340,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(365,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(381,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(404,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(308,7): warning CS0162: Unreachable code detected
-    C:\Windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets : warning MSB3245: Could not resolve this reference. Could not locate the assembly "Microsoft.Z3". Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(11,17): error CS0234: The type or namespace name 'Z3' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(11,17): error CS0234: The type or namespace name 'Z3' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\StubContext.cs(11,17): error CS0234: The type or namespace name 'Z3' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\TypeAdapter.cs(11,17): error CS0234: The type or namespace name 'Z3' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ProverLayer.cs(11,17): error CS0234: The type or namespace name 'Z3' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(18,17): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(19,31): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(23,16): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(31,17): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(32,34): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(36,16): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(44,17): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(45,36): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(49,16): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(57,17): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(58,27): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(62,16): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(70,17): error CS0246: The type or namespace name 'LabeledLiterals' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(71,38): error CS0246: The type or namespace name 'LabeledLiterals' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(75,16): error CS0246: The type or namespace name 'LabeledLiterals' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(83,45): error CS0246: The type or namespace name 'Symbol' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(88,16): error CS0246: The type or namespace name 'Context' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(158,22): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(169,22): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(180,17): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(186,17): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(192,17): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(198,37): error CS0246: The type or namespace name 'Term' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(203,42): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(208,40): error CS0246: The type or namespace name 'Pattern' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(221,22): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(322,57): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(439,22): error CS0246: The type or namespace name 'Symbol' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(447,17): error CS0246: The type or namespace name 'Symbol' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\SafeContext.cs(547,17): error CS0246: The type or namespace name 'FuncDecl' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(18,17): error CS0246: The type or namespace name 'Config' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(53,16): error CS0246: The type or namespace name 'Config' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(201,66): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(233,67): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(244,79): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(315,64): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\ContextLayer.cs(321,46): error CS0246: The type or namespace name 'Model' could not be found (are you missing a using directive or an assembly reference?)
-    D:\Temp\aste\Boogie\Source\Provers\Z3api\TypeAdapter.cs(134,33): error CS0246: The type or namespace name 'Sort' could not be found (are you missing a using directive or an assembly reference?)
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Z3api\bin\Debug\Provers.Z3api.dll' could not be found
+    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
+    warning CS0162
+    warning CS0168
+    warning CS0162
     warning CS0659
     warning CS0659
     warning CS0162
@@ -110,7 +70,6 @@
     warning CS0414
     warning CS0414
     warning CS0659
-    warning CS0162
     warning CS0162
     warning CS0168
     warning CS0162
@@ -130,6 +89,39 @@
     warning CS0162
     warning CS0162
     warning CS0162
-    43 error
-    1 error
-    2 failed
+[2010-08-31 07:04:29] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
+
+    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(760,18): warning CS0168: The variable 's' is declared but never used
+    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1340,72): warning CS0168: The variable 'id' is declared but never used
+    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1352,108): warning CS0168: The variable 'e' is declared but never used
+    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1890,15): warning CS0168: The variable 'tok' is declared but never used
+    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1890,31): warning CS0168: The variable 'e' is declared but never used
+    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1890,48): warning CS0168: The variable 'es' is declared but never used
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(39,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(187,73): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(220,21): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(302,13): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(371,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(426,23): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(457,44): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(572,76): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(617,48): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(735,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0168
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+    warning CS0436
+[2010-08-31 07:30:35] 0 out of 27 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2010-08-31 07:32:13] Released nightly of Boogie
