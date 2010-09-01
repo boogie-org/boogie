@@ -761,7 +761,24 @@ namespace Graphing {
       return;
     }
 
-
+    public IEnumerable<Node> SortHeadersByDominance()
+    {
+        Graph<Node> dag = new Graph<Node>();
+        foreach (Node b in headers)
+        {
+            dag.AddSource(b);
+            foreach (Node c in headers)
+            {
+                if (b.Equals(c)) continue;
+                if (DominatorMap.DominatedBy(b, c))
+                {
+                    Debug.Assert(!DominatorMap.DominatedBy(c, b));
+                    dag.AddEdge(b, c);
+                }
+            }
+        }
+        return dag.TopologicalSort();
+    }
   } // end: class Graph
 
   public class GraphProgram {

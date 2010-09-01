@@ -362,7 +362,6 @@ namespace Microsoft.Boogie {
     void CreateProceduresForLoops(Implementation impl, Graph<Block/*!*/>/*!*/ g, List<Implementation/*!*/>/*!*/ loopImpls) {
       Contract.Requires(impl != null);
       Contract.Requires(cce.NonNullElements(loopImpls));
-      Contract.Requires(cce.NonNullElements(g.TopologicalSort()));
       // Enumerate the headers 
       // for each header h:
       //   create implementation p_h with 
@@ -454,7 +453,9 @@ namespace Microsoft.Boogie {
         loopHeaderToCallCmd[header] = callCmd;
       }
 
-      foreach (Block/*!*/ header in g.Headers) {
+      IEnumerable<Block> sortedHeaders = g.SortHeadersByDominance();
+      foreach (Block/*!*/ header in sortedHeaders)
+      {
         Contract.Assert(header != null);
         LoopProcedure loopProc = loopHeaderToLoopProc[header];
         Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
@@ -608,7 +609,6 @@ namespace Microsoft.Boogie {
         Implementation impl = d as Implementation;
         if (impl != null && impl.Blocks != null && impl.Blocks.Count > 0) {
           Graph<Block/*!*/>/*!*/ g = GraphFromImpl(impl);
-          Contract.Assert(cce.NonNullElements(g.TopologicalSort()));
           g.ComputeLoops();
           if (!g.Reducible) {
             throw new Exception("Irreducible flow graphs are unsupported.");
