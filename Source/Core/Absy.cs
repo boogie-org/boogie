@@ -446,6 +446,7 @@ namespace Microsoft.Boogie {
         LoopProcedure loopProc = new LoopProcedure(impl, header, inputs, outputs, globalMods);
         if (CommandLineOptions.Clo.LazyInlining > 0 || CommandLineOptions.Clo.StratifiedInlining > 0) {
           loopProc.AddAttribute("inline", Expr.Literal(1));
+          loopProc.AddAttribute("verify", Expr.Literal(false));
         }
         loopHeaderToLoopProc[header] = loopProc;
         CallCmd callCmd = new CallCmd(Token.NoToken, loopProc.Name, callInputs, callOutputs);
@@ -457,6 +458,8 @@ namespace Microsoft.Boogie {
         Contract.Assert(header != null);
         LoopProcedure loopProc = loopHeaderToLoopProc[header];
         Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
+        Set<Block> dummyBlocks = new Set<Block>();
+
         CodeCopier codeCopier = new CodeCopier(loopHeaderToSubstMap[header]);  // fix me
         VariableSeq inputs = loopHeaderToInputs[header];
         VariableSeq outputs = loopHeaderToOutputs[header];
@@ -489,6 +492,8 @@ namespace Microsoft.Boogie {
           Block/*!*/ block2 = new Block(Token.NoToken, block1.Label,
                               new CmdSeq(callCmd), new ReturnCmd(Token.NoToken));
           impl.Blocks.Add(block1);
+          dummyBlocks.Add(block1);
+          dummyBlocks.Add(block2);
 
           GotoCmd gotoCmd = source.TransferCmd as GotoCmd;
           Contract.Assert(gotoCmd != null && gotoCmd.labelNames != null && gotoCmd.labelTargets != null && gotoCmd.labelTargets.Length >= 1);
@@ -505,6 +510,7 @@ namespace Microsoft.Boogie {
           gotoCmd.labelNames = newLabels;
           gotoCmd.labelTargets = newTargets;
 
+            
           blockMap[block1] = block2;
         }
         List<Block/*!*/>/*!*/ blocks = new List<Block/*!*/>();
@@ -569,9 +575,10 @@ namespace Microsoft.Boogie {
         Dictionary<Block, Block> reverseBlockMap = new Dictionary<Block, Block>();
         foreach (Block block in blockMap.Keys)
         {
+            if (dummyBlocks.Contains(block)) continue;
             reverseBlockMap[blockMap[block]] = block;
         }
-        loopProc.blockMap = reverseBlockMap;
+        loopProc.setBlockMap(reverseBlockMap);
       }
     }
 
@@ -2110,7 +2117,8 @@ namespace Microsoft.Boogie {
   public class LoopProcedure : Procedure
   {
       public Implementation enclosingImpl;
-      public Dictionary<Block, Block> blockMap;
+      private Dictionary<Block, Block> blockMap;
+      private Dictionary<string, Block> blockLabelMap;
 
       public LoopProcedure(Implementation impl, Block header,
                            VariableSeq inputs, VariableSeq outputs, IdentifierExprSeq globalMods)
@@ -2119,6 +2127,22 @@ namespace Microsoft.Boogie {
                new RequiresSeq(), globalMods, new EnsuresSeq())
       {
           enclosingImpl = impl;
+      }
+
+      public void setBlockMap(Dictionary<Block, Block> bm)
+      {
+          blockMap = bm;
+          blockLabelMap = new Dictionary<string, Block>();
+          foreach (var kvp in bm)
+          {
+              blockLabelMap.Add(kvp.Key.Label, kvp.Value);
+          }
+      }
+
+      public Block getBlock(string label)
+      {
+          if (blockLabelMap.ContainsKey(label)) return blockLabelMap[label];
+          return null;
       }
   }
 

@@ -2932,7 +2932,7 @@ namespace VC {
         Contract.Assert(traceNodes.Contains(entryBlock));
         trace.Add(entryBlock);
 
-        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel, incarnationOriginMap, implName2LazyInliningInfo, context, program, new Dictionary<Absy, CalleeCounterexampleInfo>());
+        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel, incarnationOriginMap, implName2LazyInliningInfo, context, program, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
 
         if (newCounterexample == null)
           return;
@@ -3185,7 +3185,7 @@ namespace VC {
         Contract.Assert(traceNodes.Contains(entryBlock));
         trace.Add(entryBlock);
 
-        Dictionary<Absy, CalleeCounterexampleInfo> calleeCounterexamples = new Dictionary<Absy, CalleeCounterexampleInfo>();
+        var calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
         Counterexample newCounterexample = GenerateTraceRec(labels, errModel, candidateId, entryBlock, traceNodes, trace, calleeCounterexamples);
 
         return newCounterexample;
@@ -3195,7 +3195,7 @@ namespace VC {
       private Counterexample GenerateTraceRec(
                             IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, int candidateId,
                             Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace,
-                            Dictionary<Absy/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples) {
+                            Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples) {
         Contract.Requires(cce.NonNullElements(labels));
         Contract.Requires(errModel != null);
         Contract.Requires(b != null);
@@ -3234,7 +3234,7 @@ namespace VC {
                 Contract.Assert(calls != null);
                 int calleeId = calls.boogieExpr2Id[new BoogieCallExpr(naryExpr, candidateId)];
 
-                calleeCounterexamples[assumeCmd] =
+                calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                     new CalleeCounterexampleInfo(
                         cce.NonNull(GenerateTrace(labels, errModel, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
                         new List<object>());
@@ -3670,6 +3670,173 @@ namespace VC {
       return gotoCmdOrigins;
     }
 
+    public Counterexample extractLoopTrace(Counterexample cex, Program program)
+    {
+        // Sanity checks: we must only be using one of lazy or stratified inlining
+        if (implName2LazyInliningInfo.Count == 0 && implName2StratifiedInliningInfo.Count == 0)
+            return cex;
+
+        Debug.Assert(implName2LazyInliningInfo.Count == 0 || implName2StratifiedInliningInfo.Count == 0);
+
+        // Construct the set of inlined procs in the original program
+        var inlinedProcs = new Dictionary<string, Implementation>();
+        foreach (var decl in program.TopLevelDeclarations)
+        {
+            if (decl is Implementation)
+            {
+                var name = (decl as Implementation).Name;
+                if (!elIsLoop(name))
+                {
+                    inlinedProcs.Add(name, decl as Implementation);
+                }
+            }
+        }
+
+        return extractLoopTraceRec(cex, null, inlinedProcs);
+    }
+
+    private Counterexample extractLoopTraceRec(Counterexample cex, string currProc, Dictionary<string, Implementation> inlinedProcs)
+    {
+        // Go through all blocks in the trace, map them back to blocks in the original programs (if there is one)
+        var ret = cex.Clone();
+        ret.Trace = new BlockSeq();
+        ret.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
+
+        for (int numBlock = 0; numBlock < cex.Trace.Length; numBlock ++ )
+        {
+            Block block = cex.Trace[numBlock];
+            var origBlock = elGetBlock(currProc, block);
+            if (origBlock != null) ret.Trace.Add(origBlock);
+            var callCnt = 1;
+            for (int numInstr = 0; numInstr < block.Cmds.Length; numInstr ++) {
+                Cmd cmd = block.Cmds[numInstr];
+                var loc = new TraceLocation(numBlock, numInstr);
+                if (!cex.calleeCounterexamples.ContainsKey(loc)) continue;
+                string callee = cex.getCalledProcName(cex.getTraceCmd(loc));
+                var calleeTrace = cex.calleeCounterexamples[loc].counterexample as AssertCounterexample;
+                Debug.Assert(calleeTrace != null);
+
+                var origTrace = extractLoopTraceRec(calleeTrace, callee, inlinedProcs);
+
+                if (elIsLoop(callee))
+                {
+                    // Absorb the trace into the current trace
+
+                    // We have to add the new trace at last but one position in case 
+                    // we're not already inside a loop
+
+                    int currLen = 0;
+                    Block last = null;
+                    bool inloop = elIsLoop(currProc);
+
+                    if (!inloop)
+                    {
+                        last = (Block)ret.Trace.Last();
+                        ret.Trace.Remove();
+                    }
+
+                    currLen = ret.Trace.Length;
+                    ret.Trace.AddRange(origTrace.Trace);
+
+                    foreach (var kvp in origTrace.calleeCounterexamples)
+                    {
+                        var newloc = new TraceLocation(kvp.Key.numBlock + currLen, kvp.Key.numInstr);
+                        ret.calleeCounterexamples.Add(newloc, kvp.Value);
+                    }
+
+                    if (!inloop)
+                    {
+                        ret.Trace.Add(last);
+                    }
+
+                }
+                else
+                {
+                    var origLoc = new TraceLocation(ret.Trace.Length - 1, getCallCmdPosition(origBlock, callCnt, inlinedProcs, callee));
+                    ret.calleeCounterexamples.Add(origLoc, new CalleeCounterexampleInfo(origTrace, new List<object>()));
+                    callCnt++;
+                }
+            }
+        }
+        return ret;
+    }
+
+    // return the position of the i^th CallCmd in the block (count only those Calls that call a procedure in inlinedProcs). 
+    // Assert failure if there isn't any.
+    // Assert that the CallCmd found calls "callee"
+    private int getCallCmdPosition(Block block, int i, Dictionary<string, Implementation> inlinedProcs, string callee)
+    {
+        Debug.Assert(i >= 1);
+        for (int pos = 0; pos < block.Cmds.Length; pos++)
+        {
+            Cmd cmd = block.Cmds[pos];
+            if (cmd is CallCmd)
+            {
+                var cc = (CallCmd)cmd;
+                if (inlinedProcs.ContainsKey(cc.Proc.Name))
+                {
+                    if (i == 1)
+                    {
+                        Debug.Assert(cc.Proc.Name == callee);
+                        return pos;
+                    }
+                    i--;
+                }
+            }
+        }
+        Debug.Assert(false, "Didn't find the i^th call cmd");
+        return -1;
+    }
+
+    private bool elIsLoop(string procname)
+    {
+        if (procname == null)
+        {
+            // we're in main
+            return false;
+        }
+
+        LazyInliningInfo info = null;
+        if (implName2LazyInliningInfo.ContainsKey(procname))
+        {
+            info = implName2LazyInliningInfo[procname];
+        }
+        else if (implName2StratifiedInliningInfo.ContainsKey(procname))
+        {
+            info = implName2StratifiedInliningInfo[procname] as LazyInliningInfo;
+        }
+
+        if (info == null) return false;
+
+        var lp = info.impl.Proc as LoopProcedure;
+
+        if (lp == null) return false;
+        return true;
+    }
+
+    private Block elGetBlock(string procname, Block block)
+    {
+        if (!elIsLoop(procname)) return block;
+
+        LazyInliningInfo info = null;
+        if (implName2LazyInliningInfo.ContainsKey(procname))
+        {
+            info = implName2LazyInliningInfo[procname];
+        }
+        else if (implName2StratifiedInliningInfo.ContainsKey(procname))
+        {
+            info = implName2StratifiedInliningInfo[procname] as LazyInliningInfo;
+        }
+
+        if (info == null) return null;
+
+        var lp = info.impl.Proc as LoopProcedure;
+
+        if(lp == null) return null;
+
+        return lp.getBlock(block.Label);
+    }
+
     private static Counterexample LazyCounterexample(
                                        ErrorModel/*!*/ errModel,
                                        Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
@@ -3697,7 +3864,7 @@ namespace VC {
       int cfcPartition = errModel.LookupSkolemFunctionAt(cfcName + "!" + info.uniqueId, values);
       int cfcValue = errModel.LookupPartitionValue(cfcPartition);
       
-      Dictionary<Absy, CalleeCounterexampleInfo> calleeCounterexamples = new Dictionary<Absy, CalleeCounterexampleInfo>();
+      var calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
       while (true) {
         CmdSeq cmds = b.Cmds;Contract.Assert(cmds != null);
         TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
@@ -3787,7 +3954,7 @@ namespace VC {
             name = context.Lookup(exprVar);
             args.Add(errModel.LookupSkolemFunctionAt(name + "!" + info.uniqueId, values));
           }
-          calleeCounterexamples[assumeCmd] = 
+          calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] = 
             new CalleeCounterexampleInfo(
               LazyCounterexample(errModel, implName2LazyInliningInfo, context, program, calleeName, args),
               errModel.PartitionsToValues(args));
@@ -3817,7 +3984,7 @@ namespace VC {
                           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
                           Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
                           ProverContext/*!*/ context, Program/*!*/ program,
-                          Dictionary<Absy/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples)
+                          Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples)
     {
       Contract.Requires(b != null);
       Contract.Requires(traceNodes != null);
@@ -3874,7 +4041,7 @@ namespace VC {
           Contract.Assert(name != null);
           args.Add(errModel.identifierToPartition[name]);
         }
-        calleeCounterexamples[assumeCmd] = 
+        calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] = 
             new CalleeCounterexampleInfo(
                 LazyCounterexample(errModel, implName2LazyInliningInfo, context, program, calleeName, args),
                 errModel.PartitionsToValues(args));

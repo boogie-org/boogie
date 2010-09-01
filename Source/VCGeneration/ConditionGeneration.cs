@@ -36,6 +36,35 @@ namespace Microsoft.Boogie {
     }
   }
 
+  public class TraceLocation : IEquatable<TraceLocation>
+  {
+      public int numBlock;
+      public int numInstr;
+
+      public TraceLocation(int numBlock, int numInstr)
+      {
+          this.numBlock = numBlock;
+          this.numInstr = numInstr;
+      }
+
+      public override bool Equals(object obj)
+      {
+          TraceLocation that = obj as TraceLocation;
+          if (that == null) return false;
+          return (numBlock == that.numBlock && numInstr == that.numInstr);
+      }
+
+      public bool Equals(TraceLocation that)
+      {
+          return (numBlock == that.numBlock && numInstr == that.numInstr);
+      }
+
+      public override int GetHashCode()
+      {
+          return numBlock.GetHashCode() ^ 131 * numInstr.GetHashCode();
+      }
+  }
+
   public abstract class Counterexample {
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -49,32 +78,73 @@ namespace Microsoft.Boogie {
     [Peer]
     public List<string>/*!>!*/ relatedInformation;
 
-    public Dictionary<Absy, CalleeCounterexampleInfo> calleeCounterexamples;
+    public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
     internal Counterexample(BlockSeq trace) {
       Contract.Requires(trace != null);
       this.Trace = trace;
       this.relatedInformation = new List<string>();
-      this.calleeCounterexamples = new Dictionary<Absy, CalleeCounterexampleInfo>();
+      this.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
       // base();
     }
 
-    public void AddCalleeCounterexample(Absy absy, CalleeCounterexampleInfo cex) {
-      Contract.Requires(absy != null);
+    // Create a shallow copy of the counterexample
+    public abstract Counterexample Clone();
+
+    public void AddCalleeCounterexample(TraceLocation loc, CalleeCounterexampleInfo cex)
+    {
       Contract.Requires(cex != null);
-      calleeCounterexamples[absy] = cex;
+      calleeCounterexamples[loc] = cex;
     }
 
-    public void AddCalleeCounterexample(Dictionary<Absy, CalleeCounterexampleInfo> cs) {
+    public void AddCalleeCounterexample(int numBlock, int numInstr, CalleeCounterexampleInfo cex)
+    {
+        Contract.Requires(cex != null);
+        calleeCounterexamples[new TraceLocation(numBlock, numInstr)] = cex;
+    }
+
+    public void AddCalleeCounterexample(Dictionary<TraceLocation, CalleeCounterexampleInfo> cs)
+    {
       Contract.Requires(cce.NonNullElements(cs));
-      foreach (Absy absy in cs.Keys) {
-        AddCalleeCounterexample(absy, cs[absy]);
+      foreach (TraceLocation loc in cs.Keys)
+      {
+          AddCalleeCounterexample(loc, cs[loc]);
       }
     }
 
+    // Looks up the Cmd at a given index into the trace
+    public Cmd getTraceCmd(TraceLocation loc)
+    {
+        Debug.Assert(loc.numBlock < Trace.Length);
+        Block b = Trace[loc.numBlock];
+        Debug.Assert(loc.numInstr < b.Cmds.Length);
+        return b.Cmds[loc.numInstr];
+    }
+
+    // Looks up the name of the called procedure. 
+    // Asserts that the name exists
+    public string getCalledProcName(Cmd cmd)
+    {
+        // There are two options:
+        // 1. cmd is a CallCmd
+        // 2. cmd is an AssumeCmd (passified version of a CallCmd)
+        if(cmd is CallCmd) {
+            return (cmd as CallCmd).Proc.Name;
+        }
+        AssumeCmd assumeCmd = cmd as AssumeCmd;
+        Debug.Assert(assumeCmd != null);
+
+        NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
+        Debug.Assert(naryExpr != null);
+
+        return naryExpr.Fun.FunctionName;
+    }
+
     public void Print(int spaces) {
+      int numBlock = -1;
       foreach (Block b in Trace) {
         Contract.Assert(b != null);
+        numBlock++;
         if (b.tok == null) {
           Console.WriteLine("    <intermediate block>");
         } else {
@@ -85,19 +155,20 @@ namespace Microsoft.Boogie {
             for (int i = 0; i < spaces + 4; i++)
               Console.Write(" ");
             Console.WriteLine("{0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label);
-            foreach (Cmd cmd in b.Cmds) {
-              Contract.Assert(cmd != null);
-              if (calleeCounterexamples.ContainsKey(cmd)) {
-                AssumeCmd assumeCmd = cce.NonNull((AssumeCmd)cmd);
-                NAryExpr naryExpr = (NAryExpr)cce.NonNull(assumeCmd.Expr);
-                for (int i = 0; i < spaces + 4; i++)
-                  Console.Write(" ");
-                Console.WriteLine("Inlined call to procedure {0} begins", naryExpr.Fun.FunctionName);
-                calleeCounterexamples[cmd].counterexample.Print(spaces + 4);
-                for (int i = 0; i < spaces + 4; i++)
-                  Console.Write(" ");
-                Console.WriteLine("Inlined call to procedure {0} ends", naryExpr.Fun.FunctionName);
-              }
+            for (int numInstr = 0; numInstr < b.Cmds.Length; numInstr++)
+            {
+                var loc = new TraceLocation(numBlock, numInstr);
+                if (calleeCounterexamples.ContainsKey(loc))
+                {
+                    var cmd = getTraceCmd(loc);
+                    for (int i = 0; i < spaces + 4; i++)
+                        Console.Write(" ");
+                    Console.WriteLine("Inlined call to procedure {0} begins", getCalledProcName(cmd));
+                    calleeCounterexamples[loc].counterexample.Print(spaces + 4);
+                    for (int i = 0; i < spaces + 4; i++)
+                        Console.Write(" ");
+                    Console.WriteLine("Inlined call to procedure {0} ends", getCalledProcName(cmd));
+                }
             }
           }
         }
@@ -139,6 +210,13 @@ namespace Microsoft.Boogie {
     public override int GetLocation() {
       return FailingAssert.tok.line * 1000 + FailingAssert.tok.col;
     }
+
+    public override Counterexample Clone()
+    {
+        var ret = new AssertCounterexample(Trace, FailingAssert);
+        ret.calleeCounterexamples = calleeCounterexamples;
+        return ret;
+    }
   }
 
   public class CallCounterexample : Counterexample {
@@ -165,6 +243,13 @@ namespace Microsoft.Boogie {
     public override int GetLocation() {
       return FailingCall.tok.line * 1000 + FailingCall.tok.col;
     }
+
+    public override Counterexample Clone()
+    {
+        var ret = new CallCounterexample(Trace, FailingCall, FailingRequires);
+        ret.calleeCounterexamples = calleeCounterexamples;
+        return ret;
+    }
   }
 
   public class ReturnCounterexample : Counterexample {
@@ -190,6 +275,13 @@ namespace Microsoft.Boogie {
 
     public override int GetLocation() {
       return FailingReturn.tok.line * 1000 + FailingReturn.tok.col;
+    }
+
+    public override Counterexample Clone()
+    {
+        var ret = new ReturnCounterexample(Trace, FailingReturn, FailingEnsures);
+        ret.calleeCounterexamples = calleeCounterexamples;
+        return ret;
     }
   }
 

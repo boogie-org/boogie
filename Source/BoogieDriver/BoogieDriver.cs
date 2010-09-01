@@ -656,6 +656,14 @@ namespace Microsoft.Boogie {
                 // BP4xxx: Abstract interpretation errors (Is there such a thing?)
                 // BP5xxx: Verification errors
 
+                if (CommandLineOptions.Clo.ExtractLoops && (vcgen is VCGen))
+                {
+                    for (int i = 0; i < errors.Count; i++)
+                    {
+                        errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], program);
+                    }
+                }
+
                 errors.Sort(new CounterexampleComparer());
                 foreach (Counterexample error in errors) {
                   if (error is CallCounterexample) {
