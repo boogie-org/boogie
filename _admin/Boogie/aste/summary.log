@@ -1,20 +1,20 @@
-# Aste started: 2010-08-31 07:00:02
+# Aste started: 2010-09-01 07:00:04
 # Host id: Boogiebox
-# [2010-08-31 07:02:03] SpecSharp revision: 55320
-# [2010-08-31 07:02:47] Boogie revision: 56874
-# [2010-08-31 07:03:09] SscBoogie revision: 56316
-[2010-08-31 07:03:41] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-09-01 07:02:14] SpecSharp revision: 55320
+# [2010-09-01 07:03:19] Boogie revision: 56910
+# [2010-09-01 07:03:43] SscBoogie revision: 56316
+[2010-09-01 07:04:17] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-08-31 07:04:23] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-09-01 07:05:00] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\Basetypes\BigNum.cs(280,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AIFramework\Polyhedra\LinearConstraintSystem.cs(159,19): warning CS0168: The variable 'ss' is declared but never used
     D:\Temp\aste\Boogie\Source\AIFramework\Polyhedra\SimplexTableau.cs(367,9): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(825,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2804,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(3472,9): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Core\Absy.cs(3488,9): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(783,91): warning CS0168: The variable 'id2' is declared but never used
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(866,98): warning CS0168: The variable 'locals' is declared but never used
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(866,120): warning CS0168: The variable 'blocks' is declared but never used
@@ -89,7 +89,7 @@
     warning CS0162
     warning CS0162
     warning CS0162
-[2010-08-31 07:04:29] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
+[2010-09-01 07:05:07] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(760,18): warning CS0168: The variable 's' is declared but never used
     D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(1340,72): warning CS0168: The variable 'id' is declared but never used
@@ -123,5 +123,5 @@
     warning CS0436
     warning CS0436
     warning CS0436
-[2010-08-31 07:30:35] 0 out of 27 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2010-08-31 07:32:13] Released nightly of Boogie
+[2010-09-01 07:31:44] 0 out of 28 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2010-09-01 07:33:21] Released nightly of Boogie
