@@ -3770,20 +3770,39 @@ namespace VC {
         for (int pos = 0; pos < block.Cmds.Length; pos++)
         {
             Cmd cmd = block.Cmds[pos];
+            string procCalled = null;
             if (cmd is CallCmd)
             {
                 var cc = (CallCmd)cmd;
                 if (inlinedProcs.ContainsKey(cc.Proc.Name))
                 {
-                    if (i == 1)
-                    {
-                        Debug.Assert(cc.Proc.Name == callee);
-                        return pos;
-                    }
-                    i--;
+                    procCalled = cc.Proc.Name;
                 }
             }
+
+            if (cmd is AssumeCmd)
+            {
+                var expr = (cmd as AssumeCmd).Expr as NAryExpr;
+                if (expr != null)
+                {
+                    if (inlinedProcs.ContainsKey(expr.Fun.FunctionName))
+                    {
+                        procCalled = expr.Fun.FunctionName;
+                    }
+                }
+            }
+
+            if (procCalled != null)
+            {
+                if (i == 1)
+                {
+                    Debug.Assert(procCalled == callee);
+                    return pos;
+                }
+                i--;
+            }
         }
+
         Debug.Assert(false, "Didn't find the i^th call cmd");
         return -1;
     }
