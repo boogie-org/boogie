@@ -11,6 +11,7 @@ namespace Demo
       public Grammar() {
         #region 1. Terminals
         NumberLiteral n = TerminalFactory.CreateCSharpNumber("number");
+        StringLiteral stringLiteral = TerminalFactory.CreateCSharpString("String");
 
         IdentifierTerminal ident = new IdentifierTerminal("Identifier");
         this.MarkReservedWords(
@@ -21,7 +22,7 @@ namespace Demo
           "bv20", "bv21", "bv22", "bv23", "bv24", "bv25", "bv26", "bv27", "bv28", "bv29",
           "bv30", "bv31", "bv32",
           "bv64",
-          "call", "complete",
+          "call", "complete", "const",
           "else", "ensures", "exists", "extends",
           "false", "forall", "free", "function",
           "goto",
@@ -240,43 +241,6 @@ namespace Demo
 
         Statement.Rule = Semi
                         | "if" + Condition + Statement
-                        | "if" + Condition + Statement + PreferShiftHere() + "else" + Statement
-                        | "while" + Condition + loopSpec.Star() + Statement
-                        | "for" + LParen + expression.Q() + Semi + expression.Q() + Semi + expression.Q() + RParen + Statement
-                        | "foreach" + LParen + ident + "in" + expression + RParen + Statement
-                        | blockStatement
-                        | expression + Semi
-                        | "break" + Semi
-                        | "continue" + Semi
-                        | "return" + expression + Semi
-                        | QualifiedName + ":=" + Rhs
-
-                        | "var" + localVarStmt
-                        | "const" + localVarStmt
-
-                        | "call" + identList + ":=" + FunctionExpression + Semi
-                        | "call" + FunctionExpression + Semi
-                        | "assert" + expression + Semi
-                        | "assume" + expression + Semi
-                        | "unshare" + expression + Semi
-                        | "acquire" + expression + Semi
-                        | "release" + expression + Semi
-                        | "downgrade" + expression + Semi
-                        | "free" + expression + Semi
-                        | "fold" + expression + Semi
-                        | "unfold" + expression + Semi
-                        | "reorder" + expression + installBounds + Semi
-                        | "reorder" + expression + Semi
-                        | "share" + expression + installBounds + Semi
-                        | "share" + expression + Semi
-                        | "fork" + identList + ":=" + FunctionExpression + Semi
-                        | "fork" + FunctionExpression + Semi
-                        | "join" + identList + ":=" + expression + Semi
-                        | "join" + expression + Semi
-                        | "send" + expression + Semi
-                        | "receive" + identList + ":=" + expression + Semi
-                        | "receive" + expression + Semi
-
                         ;
         Statements.Rule = MakeStarRule(Statements, null, Statement);
         blockStatement.Rule = LCurly + Statements + RCurly;
@@ -288,52 +252,30 @@ namespace Demo
         Prog.Rule = anything.Star() + Eof;
 
         anything.Rule
-          = ToTerm("class")
-          | "ghost"
-          | "static"
-          | "var"
-          | "const"
-          | "method"
-          | "datatype"
-          | "assert"
-          | "assume"
-          | "new"
-          | "this"
-          | "object"
-          | "call"
-          | "if"
-          | "then"
-          | "else"
-          | "while"
-          | "invariant"
-          | "break"
-          | "return"
-          | "foreach"
-          | "match"
-          | "case"
-          | "returns"
-          | "requires"
-          | "ensures"
-          | "modifies"
-          | "reads"
-          | "decreases"
-          | "int"
-          | "bool"
-          | "false"
-          | "true"
-          | "null"
-          | "function"
-          | "free"
-          | "in"
-          | "forall"
-          | "exists"
-          | "seq"
-          | "set"
-          | "array"
-          | "match"
-          | "case"
-          | "fresh"
-          | "old"
+          = ToTerm("assert")
+          | "assume" | "axiom" |
+          "bool" | "break" |
+          "bv0" | "bv1" | "bv2" | "bv3" | "bv4" | "bv5" | "bv6" | "bv7" | "bv8" | "bv9" |
+          "bv10" | "bv11" | "bv12" | "bv13" | "bv14" | "bv15" | "bv16" | "bv17" | "bv18" | "bv19" |
+          "bv20" | "bv21" | "bv22" | "bv23" | "bv24" | "bv25" | "bv26" | "bv27" | "bv28" | "bv29" |
+          "bv30" | "bv31" | "bv32" |
+          "bv64" |
+          "call" | "complete" | "const" |
+          "else" | "ensures" | "exists" | "extends" |
+          "false" | "forall" | "free" | "function" |
+          "goto" |
+          "havoc" |
+          "if" | "implementation" | "int" | "invariant" |
+          "lambda" |
+          "modifies" |
+          "old" |
+          "procedure" |
+          "requires" |
+          "return" | "returns" |
+          "then" | "true" | "type" |
+          "unique" |
+          "var" |
+          "where" | "while"
           | ident
           | "}"
           | "{"
@@ -347,6 +289,7 @@ namespace Demo
           | "."
           | "`"
           | "=="
+          | "="
           | "!="
           | "<"
           | "<="
@@ -367,7 +310,10 @@ namespace Demo
           | "==>"
           | "<==>"
           | "#"
+          | "$"
+          | "^"
           | n
+          | stringLiteral
           ;
 
         idType.Rule
@@ -376,8 +322,7 @@ namespace Demo
           ;
 
         typeDecl.Rule
-          = (ToTerm("int") | "bool" | ident | "seq" | "set" | "array") + (("<" + MakePlusRule(typeDecl, ToTerm(","), typeDecl) + ">") | Empty)
-          | ToTerm("token") + "<" + (typeDecl + ".") + ident + ">"
+          = (ToTerm("int") | "bool" | ident)
           ;
 
         fieldDecl.Rule
@@ -435,7 +380,7 @@ namespace Demo
         RegisterOperators(4, Associativity.Right, "^");
         RegisterOperators(5, "||");
         RegisterOperators(6, "&&");
-        RegisterOperators(7, "==", "!=", ">", "<", ">=", "<=");
+        RegisterOperators(7, "==", "=", "!=", ">", "<", ">=", "<=");
         RegisterOperators(8, "in");
         RegisterOperators(9, "-", "!", "++", "--");
         RegisterOperators(10, "==>");
