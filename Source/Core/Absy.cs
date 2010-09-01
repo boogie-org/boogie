@@ -379,17 +379,14 @@ namespace Microsoft.Boogie {
       //   create a new entry block and a new return block
       //   add edges from entry block to the loop header and the return block
       //   add calls o := p_h(i) at the end of the blocks that are sources of back edges
-      Dictionary<Block/*!*/, string/*!*/>/*!*/ loopHeaderToName = new Dictionary<Block/*!*/, string/*!*/>();
       Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToInputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
       Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToOutputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
       Dictionary<Block/*!*/, Hashtable/*!*/>/*!*/ loopHeaderToSubstMap = new Dictionary<Block/*!*/, Hashtable/*!*/>();
-      Dictionary<Block/*!*/, Procedure/*!*/>/*!*/ loopHeaderToLoopProc = new Dictionary<Block/*!*/, Procedure/*!*/>();
+      Dictionary<Block/*!*/, LoopProcedure/*!*/>/*!*/ loopHeaderToLoopProc = new Dictionary<Block/*!*/, LoopProcedure/*!*/>();
       Dictionary<Block/*!*/, CallCmd/*!*/>/*!*/ loopHeaderToCallCmd = new Dictionary<Block/*!*/, CallCmd/*!*/>();
       foreach (Block/*!*/ header in g.Headers) {
         Contract.Assert(header != null);
         Contract.Assert(header != null);
-        string name = header.ToString();
-        loopHeaderToName[header] = name;
         VariableSeq inputs = new VariableSeq();
         VariableSeq outputs = new VariableSeq();
         ExprSeq callInputs = new ExprSeq();
@@ -446,22 +443,19 @@ namespace Microsoft.Boogie {
         loopHeaderToInputs[header] = inputs;
         loopHeaderToOutputs[header] = outputs;
         loopHeaderToSubstMap[header] = substMap;
-        Procedure/*!*/ proc =
-            new Procedure(Token.NoToken, "loop_" + header.ToString(),
-                          new TypeVariableSeq(), inputs, outputs,
-                          new RequiresSeq(), globalMods, new EnsuresSeq());
+        LoopProcedure loopProc = new LoopProcedure(impl, header, inputs, outputs, globalMods);
         if (CommandLineOptions.Clo.LazyInlining > 0 || CommandLineOptions.Clo.StratifiedInlining > 0) {
-          proc.AddAttribute("inline", Expr.Literal(1));
+          loopProc.AddAttribute("inline", Expr.Literal(1));
         }
-        loopHeaderToLoopProc[header] = proc;
-        CallCmd callCmd = new CallCmd(Token.NoToken, name, callInputs, callOutputs);
-        callCmd.Proc = proc;
+        loopHeaderToLoopProc[header] = loopProc;
+        CallCmd callCmd = new CallCmd(Token.NoToken, loopProc.Name, callInputs, callOutputs);
+        callCmd.Proc = loopProc;
         loopHeaderToCallCmd[header] = callCmd;
       }
 
       foreach (Block/*!*/ header in g.Headers) {
         Contract.Assert(header != null);
-        Procedure loopProc = loopHeaderToLoopProc[header];
+        LoopProcedure loopProc = loopHeaderToLoopProc[header];
         Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
         CodeCopier codeCopier = new CodeCopier(loopHeaderToSubstMap[header]);  // fix me
         VariableSeq inputs = loopHeaderToInputs[header];
@@ -477,7 +471,7 @@ namespace Microsoft.Boogie {
             newBlock.Cmds = codeCopier.CopyCmdSeq(block.Cmds);
             blockMap[block] = newBlock;
           }
-          string callee = loopHeaderToName[header];
+          string callee = loopHeaderToLoopProc[header].Name;
           ExprSeq ins = new ExprSeq();
           IdentifierExprSeq outs = new IdentifierExprSeq();
           for (int i = 0; i < impl.InParams.Length; i++) {
@@ -571,6 +565,13 @@ namespace Microsoft.Boogie {
         cmdSeq.Add(loopHeaderToCallCmd[header]);
         cmdSeq.AddRange(header.Cmds);
         header.Cmds = cmdSeq;
+
+        Dictionary<Block, Block> reverseBlockMap = new Dictionary<Block, Block>();
+        foreach (Block block in blockMap.Keys)
+        {
+            reverseBlockMap[blockMap[block]] = block;
+        }
+        loopProc.blockMap = reverseBlockMap;
       }
     }
 
@@ -2104,6 +2105,21 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitProcedure(this);
     }
+  }
+
+  public class LoopProcedure : Procedure
+  {
+      public Implementation enclosingImpl;
+      public Dictionary<Block, Block> blockMap;
+
+      public LoopProcedure(Implementation impl, Block header,
+                           VariableSeq inputs, VariableSeq outputs, IdentifierExprSeq globalMods)
+          : base(Token.NoToken, impl.Name + "_loop_" + header.ToString(),
+               new TypeVariableSeq(), inputs, outputs,
+               new RequiresSeq(), globalMods, new EnsuresSeq())
+      {
+          enclosingImpl = impl;
+      }
   }
 
   public class Implementation : DeclWithFormals {
