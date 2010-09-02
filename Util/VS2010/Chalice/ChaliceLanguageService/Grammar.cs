@@ -28,7 +28,7 @@ namespace Demo
           "ite", "fold", "unfold", "unfolding", "in", "forall", "exists",
           "seq", "nil", "result", "eval", "token",
           "wait", "signal",
-          "refines", "transforms", "replaces", "by"
+          "refines", "transforms", "replaces", "by", "spec"
         };
 
         string[] delimiters = new string[] {
