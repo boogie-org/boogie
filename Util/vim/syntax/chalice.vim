@@ -10,7 +10,7 @@ syntax keyword chaliceTypeDef class channel module
 syntax keyword chaliceConditional if then else 
 syntax keyword chaliceRepeat foreach while
 syntax keyword chaliceStatement assert assume call reorder share unshare acquire release lock rd downgrade free fold unfold fork join wait signal send receive 
-syntax keyword chaliceKeyword external var ghost returns where const new between and above below waitlevel lockbottom this result holds
+syntax keyword chaliceKeyword external var ghost returns where const new between and above below waitlevel lockbottom this result holds refines replaces spec by transforms
 syntax keyword chaliceType int bool seq token
 syntax keyword chaliceLogic invariant requires ensures lockchange
 syntax keyword chaliceOperator forall exists old fresh old credit acc unfolding in eval ite rd
