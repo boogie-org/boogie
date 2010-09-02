@@ -268,6 +268,7 @@ case class RefinementBlock(con: List[Statement], abs: List[Statement]) extends S
     (a,c)
   }         
   override def Declares = con flatMap {_.Declares}
+  override def Targets = (con ++ abs :\ Set[Variable]()) { (s, vars) => vars ++ s.Targets}
 }
 
 /**

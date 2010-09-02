@@ -321,7 +321,7 @@ object PrintProgram {
     case ExplicitSeq(es) =>
       print("["); ExprList(es); print("]");
     case Range(min, max) =>
-      print("("); Expr(min); print(":"); Expr(max); print(")");
+      print("["); Expr(min); print(":"); Expr(max); print("]");
     case Length(e)=>
       print("|"); Expr(e); print("|");
     case At(s, n) =>

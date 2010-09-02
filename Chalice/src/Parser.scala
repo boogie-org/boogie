@@ -31,7 +31,7 @@ class Parser extends StandardTokenParsers {
                        "ite", "fold", "unfold", "unfolding", "in", "forall", "exists",
                        "seq", "nil", "result", "eval", "token",
                        "wait", "signal", "unlimited", 
-                       "refines", "transforms", "replaces", "by"
+                       "refines", "transforms", "replaces", "by", "spec"
                       )
   // todo: can we remove "nil"?
   lexical.delimiters += ("(", ")", "{", "}", "[[", "]]",
@@ -158,6 +158,7 @@ class Parser extends StandardTokenParsers {
     | "assume" ~> expression <~ Semi ^^ Assume
     | blockStatement ^^ BlockStmt
     | "var" ~> localVarStmt(false, false)
+    | "spec" ~> localVarStmt(false, false)
     | "const" ~> localVarStmt(true, false)
     | "ghost" ~> "const" ~> localVarStmt(true, true)
     | "ghost" ~> "var" ~> localVarStmt(false, true)

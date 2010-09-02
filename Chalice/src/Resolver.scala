@@ -1109,6 +1109,7 @@ object Resolver {
              if (!inv.typ.IsBool) ctx.Error(inv.pos, "loop invariant must be boolean (found " + inv.typ.FullName + ")")
            }
            resolveBody(body.ss, ctx, locals)
+           w.LoopTargets = body.Targets.filter(ctx.IsVariablePresent).toList
          case IfStmt(_, thn, None) =>
            resolveBody(thn.ss, ctx, locals)
          case IfStmt(_, thn, Some(els)) =>
