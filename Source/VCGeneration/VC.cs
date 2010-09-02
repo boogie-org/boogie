@@ -2034,11 +2034,7 @@ namespace VC {
 
                    foreach (int id in calls.currCandidates)
                    {
-                       VCExprNAry vce = calls.id2Candidate[id];
-                       Contract.Assert(vce != null);
-                       VCExpr falseExpr = checker.VCExprGen.Eq(vce, VCExpressionGenerator.False);
-                       Contract.Assert(falseExpr != null);
-                       checker.TheoremProver.PushVCExpression(falseExpr);
+                       checker.TheoremProver.PushVCExpression(calls.getFalseExpr(id));
                    }
                    axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
                    checker.TheoremProver.FlushAxiomsToTheoremProver();
@@ -2109,11 +2105,7 @@ namespace VC {
                        continue;
                    }
 
-                   VCExprNAry vce = calls.id2Candidate[id];
-                   Contract.Assert(vce != null);
-                   VCExpr falseExpr = checker.VCExprGen.Eq(vce, VCExpressionGenerator.False);
-                   Contract.Assert(falseExpr != null);
-                   checker.TheoremProver.PushVCExpression(falseExpr);
+                   checker.TheoremProver.PushVCExpression(calls.getFalseExpr(id));
                    pushedNone = false;
                }
 
@@ -2324,10 +2316,8 @@ namespace VC {
             calls.setCurrProc(procName);
             expansion = calls.Mutate(expansion, true);
 
-            expansion = checker.VCExprGen.Eq(expr, expansion);
+            //expansion = checker.VCExprGen.Eq(expr, expansion);
             exprToPush = checker.VCExprGen.And(exprToPush, expansion);
-            //checker.TheoremProver.PushVCExpression(expansion);
-
         }
         checker.TheoremProver.PushVCExpression(exprToPush);
 
@@ -2563,7 +2553,7 @@ namespace VC {
       public readonly Hashtable/*<int, Absy!>*//*!*/ mainLabel2absy;
       public Dictionary<BoogieCallExpr/*!*/, int>/*!*/ boogieExpr2Id;
       public Dictionary<int, VCExprNAry/*!*/>/*!*/ id2Candidate;
-      public Dictionary<VCExprNAry/*!*/, int>/*!*/ candidate2Id;
+      public Dictionary<int, VCExprVar/*!*/>/*!*/ id2ControlVar;
       public Dictionary<string/*!*/, int>/*!*/ label2Id;
       // Stores the candidate from which this one originated
       
@@ -2576,7 +2566,7 @@ namespace VC {
         Contract.Invariant(mainLabel2absy != null);
         Contract.Invariant(cce.NonNullElements(boogieExpr2Id));
         Contract.Invariant(cce.NonNullElements(id2Candidate));
-        Contract.Invariant(cce.NonNullElements(candidate2Id));
+        Contract.Invariant(cce.NonNullElements(id2ControlVar));
         Contract.Invariant(cce.NonNullElements(label2Id));
       }
 
@@ -2597,7 +2587,7 @@ namespace VC {
         this.implName2StratifiedInliningInfo = implName2StratifiedInliningInfo;
         this.mainLabel2absy = mainLabel2absy;
         id2Candidate = new Dictionary<int, VCExprNAry>();
-        candidate2Id = new Dictionary<VCExprNAry, int>();
+        id2ControlVar = new Dictionary<int, VCExprVar>();
         boogieExpr2Id = new Dictionary<BoogieCallExpr, int>();
         label2Id = new Dictionary<string, int>();
         currCandidates = new Microsoft.SpecSharp.Collections.Set<int>();
@@ -2637,21 +2627,19 @@ namespace VC {
 
           return (id2Candidate[id].Op as VCExprBoogieFunctionOp).Func.Name;
       }
+    
+      private int GetNewId(VCExprNAry vc)
+      {
+          Contract.Requires(vc != null);
+          int id = candidateCount;
 
-      private int GetId(VCExprNAry vc) {
-        Contract.Requires(vc != null);
-        if (candidate2Id.ContainsKey(vc))
-          return candidate2Id[vc];
+          id2Candidate[id] = vc;
+          id2ControlVar[id] = Gen.Variable("si_control_var_bool_" + id.ToString(), Microsoft.Boogie.Type.Bool);
 
+          candidateCount++;
+          currCandidates.Add(id);
 
-        int id = candidateCount;
-        candidate2Id[vc] = id;
-        id2Candidate[id] = vc;
-
-        candidateCount++;
-        currCandidates.Add(id);
-
-        return id;
+          return id;
       }
 
       private string GetLabel(int id) {
@@ -2715,6 +2703,12 @@ namespace VC {
         currProc = "";
       }
 
+      // Return the formula (candidate IFF false)
+      public VCExpr getFalseExpr(int candidateId)
+      {
+          return Gen.Eq(VCExpressionGenerator.False, id2ControlVar[candidateId]);
+      }
+
       private Hashtable/*<int,absy>*/ getLabel2absy() {
         Contract.Ensures(Contract.Result<Hashtable>() != null);
 
@@ -2727,7 +2721,7 @@ namespace VC {
 
       // Finds labels and changes them:
       //   si_fcall_id:  if "id" corresponds to a tracked procedure call, then
-      //                 si_fcall_candidateId
+      //                 si_control_var_candidateId
       //   si_fcall_id:  if "id" does not corresponds to a tracked procedure call, then
       //                 delete
       //   num:          si_inline_num
@@ -2774,11 +2768,13 @@ namespace VC {
            Contract.Assert( callExpr != null);
              
            if(implName2StratifiedInliningInfo.ContainsKey(calleeName)) {
-             int candidateId = GetId(callExpr);
+             int candidateId = GetNewId(callExpr);
              boogieExpr2Id[new BoogieCallExpr(naryExpr, currInlineCount)] = candidateId;
              candidateParent[candidateId] = currInlineCount;
              string label = GetLabel(candidateId);
-             return Gen.LabelPos(label, callExpr);
+               
+             //return Gen.LabelPos(label, callExpr);
+             return Gen.LabelPos(label, id2ControlVar[candidateId]);
            } else {
              return callExpr;
            }
