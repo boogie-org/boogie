@@ -5,9 +5,15 @@ class Node {
   var children: seq<Node>;
   var marked: bool;
   ghost var path: seq<Node>;
+
+  var parent: Node;
 }
 
 class DSW0 {
+  var stack: seq<Node>;
+  var S: seq<Node>;
+  var root: Node;
+
   function Reachable(to: Node, p:seq<Node>, from: Node): bool
     requires acc(p[*].children);    
   {
@@ -15,13 +21,14 @@ class DSW0 {
       (p[0] != null && to in p[0].children && Reachable(p[0], p[1..], from))
   }
 
-  method IterativeMark(root: Node, S: seq<Node>)
-    requires acc(S[*].*);
+  method IterativeMark()
+    requires acc(this.*) && acc(S[*].children) && acc(S[*].marked) && acc(S[*].path);
     requires root in S;
     requires forall n in S :: n != null && (forall ch in n.children :: ch != null && ch in S); 
     requires forall n in S :: ! n.marked;
-    ensures acc(S[*].*);
+    ensures acc(this.*) && acc(S[*].children) && acc(S[*].marked) && acc(S[*].path);
     // graph structure is the same
+    ensures S == old(S) && root == old(root);
     ensures forall n in S :: n.children == old(n.children);
     // all nodes reachable from root are marked
     ensures root.marked;
@@ -32,13 +39,15 @@ class DSW0 {
   {
     var t:Node := root;
     t.marked := true;
-    var stack: seq<Node> := [];
+    stack := nil<Node>;
     t.path := stack;
 
     // no termination check
     var stop := false;
     while(!stop)
-      invariant acc(S[*].*);
+      invariant acc(this.*) && acc(S[*].children) && acc(S[*].marked) && acc(S[*].path);
+      invariant root == old(root);
+      invariant S == old(S);
       invariant root.marked;
       invariant t in S && t.marked && t !in stack;
       // stack well-formed
@@ -88,6 +97,13 @@ class DSW0 {
 }
 
 class DSW1 refines DSW0 {
+  replaces stack by acc(S[*].parent);
+
+  transforms IterativeMark() 
+  {
+    *
+  }
+
   transforms PickUnmarked(p: seq<Node>) returns (x: Node)
   {
     replaces x by {

@@ -1,0 +1,117 @@
+// Schorr-Waite algorithm in Chalice
+// (see Test/dafny1/SchorrWaite.dfy)
+
+// Add arbitrary number of children, not just two.
+// Remove visited field for visited nodes; next node is selected non-deterministically
+// Added parent pointer p (stack remains)
+// Note: the challenge is to update children field of nodes on stack so that we can recover 
+//  parent pointer in pop operation
+// Add parent field to Node and made stack ghost (verification time 80s, limited functions)
+// Add Reachable that existentially quantifies over paths (verification time 23s, limited functions)
+class Node {
+  var children: seq<Node>;
+  var marked: bool;
+  var parent: Node;
+  var visited: int;
+  ghost var path: seq<Node>;
+}
+
+class Main {
+  function Reachable(to: Node, from: Node, S: seq<Node>): bool
+    requires acc(S[*].children);
+  {
+    exists p:seq<Node> :: (forall n in p :: n in S) && Via(to, p, from)
+  }
+
+  function Via(to: Node, p:seq<Node>, from: Node): bool
+    requires acc(p[*].children);
+  {
+    |p| == 0 ? to == from :
+      (p[0] != null && to in p[0].children && Via(p[0], p[1..], from))
+  }
+
+  method SchorrWaite(root: Node, S: seq<Node>)
+    requires acc(S[*].*);
+    requires root in S;
+    requires forall n in S :: n != null && (forall ch in n.children :: ch != null && ch in S); 
+    requires forall n in S :: ! n.marked && n.parent == null && n.visited == 0;
+    ensures acc(S[*].*);
+    // graph structure is the same
+    ensures forall n in S :: n.children == old(n.children);
+    ensures forall n in S :: n.parent == null && n.visited == 0;
+    // all nodes reachable from root are marked
+    ensures root.marked;
+    ensures forall n in S :: n.marked ==> (forall ch in n.children :: ch.marked);      
+    // all marked nodes are reachable from root
+    ensures forall n in S :: n.marked ==> (forall m in n.path :: m in S) && Reachable(n, root, S);
+  {
+    var p:Node := null;
+    var t:Node := root;
+    t.marked := true;
+    ghost var stack: seq<Node> := [];
+    t.path := stack;
+
+    // no termination check
+    var stop := false;
+    while(!stop)
+      invariant acc(S[*].*);
+      invariant root.marked;
+      invariant t in S && t.marked && t !in stack;
+      // stack well-formed
+      invariant forall i in [0..|stack|] :: forall j in [i+1..|stack|] :: stack[i] != stack[j];    
+      invariant forall n in stack :: n in S && n.marked;
+      invariant forall i in [1..|stack|] :: stack[i-1] in stack[i].children;
+      invariant forall i in [1..|stack|] :: stack[i-1].parent == stack[i];
+      invariant 0 < |stack| ==> p == stack[0] && t in p.children && stack[|stack|-1].parent == null;
+      invariant 0 == |stack| <==> p == null;
+      // goal
+      invariant forall n in S :: n.marked && n !in stack && n != t ==> 
+        (forall ch in n.children :: ch in S && ch.marked);
+      invariant forall n in S :: n.marked ==> 
+        (forall m in n.path :: m in S) && Via(n, n.path, root);
+      invariant forall n in S :: n !in stack ==> n.parent == null;
+      // preservation
+      invariant forall n in S :: n.children == old(n.children) && n.visited == 0;      
+      // termination
+      invariant stop ==> |stack| == 0 && (forall ch in t.children :: ch.marked);
+    {  
+      call n := PickUnmarked(t, t.children);
+
+      if (n != null) {
+        // push
+        t.parent := p;
+        p := t;
+        stack := [t] ++ stack;      
+        n.path := [t] ++ t.path;
+        t := n;
+        t.marked := true;
+        assert Via(t.path[0], t.path[1..], root); // limited function
+        assert forall x in S :: x.marked ==> Via(x, x.path, root);
+        assume forall x in S :: x.marked ==> Via(x, x.path, root);
+      } else {    
+        // pop
+        if (p == null) {
+          stop := true;
+        } else {                          
+          t := p;
+          p := t.parent;
+          t.parent := null;
+          stack := stack[1..];
+        }
+      }
+    }
+  }
+
+  method PickUnmarked(n: Node, p: seq<Node>) returns (x: Node)
+    requires rd(p[*].marked, 50);
+    requires rd(n.*, 50);
+    requires forall q in p :: q != null;
+    requires p == n.children;
+    ensures rd(p[*].marked, 50);
+    ensures rd(n.*, 50);
+    ensures x != null ==> x in p && ! x.marked;
+    ensures x == null ==> (forall q in p :: q.marked);
+  {
+    assume false;
+  }
+}

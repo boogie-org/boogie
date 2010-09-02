@@ -1,0 +1,42 @@
+class Duplicates0 {
+  method find(s: seq<int>) returns (b: bool)
+    requires forall i in s :: i in [0..100];
+  {
+    spec b [ b <==> (exists i in [0..|s|] :: s[i] in s[..i]) ];
+  }
+}
+
+class Duplicates1 refines Duplicates0 {
+  refines find(s: seq<int>) returns (b: bool)
+  {
+    var n := 0;
+    b := false;
+    while (n < |s|)
+      invariant 0 <= n && n <= |s|;
+      invariant b <==> (exists i in [0..n] :: s[i] in s[..i]);
+    {
+      spec c: bool [ c <==> s[n] in s[..n] ];
+      b := b || c;
+      n := n + 1;
+    }
+  }
+}
+
+class Duplicates2 refines Duplicates1 {
+  transforms find(s: seq<int>) returns (b: bool)
+  {
+    _
+    var bitset:seq<bool> [ |bitset| == 100 && true !in bitset ];
+    while
+      invariant |bitset| == 100;
+      invariant forall i in [0..100] :: bitset[i] <==> i in s[..n];
+    {
+      replaces c by {
+        var c: bool := bitset[ s[n] ];
+      }
+      bitset := bitset[ .. s[n] ] ++ [true] ++ bitset[ s[n] + 1 ..];
+      _
+    }
+    _
+  }
+}

@@ -1,0 +1,21 @@
+class Counter1 {
+  var y: int;
+  var z: int;
+  method inc()
+    requires acc(y) && acc(z);
+    requires y >= 0 && z >= 0;
+    ensures acc(y) && acc(z);
+    ensures y >= 0 && z >= 0;
+  { 
+    y := y + 1;
+  }
+}
+
+class Counter0 refines Counter1 {
+  var x: int;
+  replaces y,z by acc(x) && x == y - z;
+  refines inc()
+  {
+    this.x := this.x + 1;
+  }
+}
