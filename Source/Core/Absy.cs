@@ -359,7 +359,9 @@ namespace Microsoft.Boogie {
       }
     }
 
-    void CreateProceduresForLoops(Implementation impl, Graph<Block/*!*/>/*!*/ g, List<Implementation/*!*/>/*!*/ loopImpls) {
+    void CreateProceduresForLoops(Implementation impl, Graph<Block/*!*/>/*!*/ g, 
+                                  List<Implementation/*!*/>/*!*/ loopImpls, 
+                                  Dictionary<string, Dictionary<string, Block>> fullMap) {
       Contract.Requires(impl != null);
       Contract.Requires(cce.NonNullElements(loopImpls));
       // Enumerate the headers 
@@ -568,19 +570,28 @@ namespace Microsoft.Boogie {
         loopImpls.Add(loopImpl);
 
         // Finally, add call to the loop in the containing procedure
-        CmdSeq cmdSeq = new CmdSeq();
-        cmdSeq.Add(loopHeaderToCallCmd[header]);
-        cmdSeq.AddRange(header.Cmds);
-        header.Cmds = cmdSeq;
+        string lastIterBlockName = header.Label + "_last";
+        Block lastIterBlock = new Block(Token.NoToken, lastIterBlockName, header.Cmds, header.TransferCmd);
+        header.Cmds = new CmdSeq(loopHeaderToCallCmd[header]);
+        header.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq(lastIterBlockName), new BlockSeq(lastIterBlock));
+        impl.Blocks.Add(lastIterBlock);
+        blockMap[lastIterBlock] = blockMap[header];
+        dummyBlocks.Add(header);
 
-        Dictionary<Block, Block> reverseBlockMap = new Dictionary<Block, Block>();
         foreach (Block block in blockMap.Keys)
         {
             if (dummyBlocks.Contains(block)) continue;
-            reverseBlockMap[blockMap[block]] = block;
+            AddToFullMap(fullMap, impl.Name, block.Label, block);
+            AddToFullMap(fullMap, loopProc.Name, blockMap[block].Label, block);
         }
-        loopProc.setBlockMap(reverseBlockMap);
       }
+    }
+
+    private void AddToFullMap(Dictionary<string, Dictionary<string, Block>> fullMap, string procName, string blockName, Block block)
+    {
+        if (!fullMap.ContainsKey(procName))
+            fullMap[procName] = new Dictionary<string, Block>();
+        fullMap[procName][blockName] = block;
     }
 
     public static Graph<Block/*!*/>/*!*/ GraphFromImpl(Implementation impl) {
@@ -603,8 +614,9 @@ namespace Microsoft.Boogie {
       return g;
     }
 
-    public void ExtractLoops() {
+    public Dictionary<string, Dictionary<string, Block>> ExtractLoops() {
       List<Implementation/*!*/>/*!*/ loopImpls = new List<Implementation/*!*/>();
+      Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
       foreach (Declaration d in this.TopLevelDeclarations) {
         Implementation impl = d as Implementation;
         if (impl != null && impl.Blocks != null && impl.Blocks.Count > 0) {
@@ -613,13 +625,14 @@ namespace Microsoft.Boogie {
           if (!g.Reducible) {
             throw new Exception("Irreducible flow graphs are unsupported.");
           }
-          CreateProceduresForLoops(impl, g, loopImpls);
+          CreateProceduresForLoops(impl, g, loopImpls, fullMap);
         }
       }
       foreach (Implementation/*!*/ loopImpl in loopImpls) {
         Contract.Assert(loopImpl != null);
         TopLevelDeclarations.Add(loopImpl);
       }
+      return fullMap;
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
