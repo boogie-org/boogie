@@ -40,7 +40,15 @@ Contract.Requires(cce.NonNullElements(defines,true));
 
 
   FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+  return Parse(stream, filename, defines, out program);
+}
+
   
+public static int Parse (Stream stream, string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
+Contract.Requires(stream != null);
+Contract.Requires(filename != null);
+Contract.Requires(cce.NonNullElements(defines,true));
+
   if (defines == null) {
     defines = new List<string/*!*/>();
   }
