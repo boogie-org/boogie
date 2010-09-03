@@ -10,6 +10,7 @@ using Microsoft.Boogie;
 using Microsoft.Boogie.Z3;
 using Microsoft.Z3;
 using Microsoft.Boogie.VCExprAST;
+using Microsoft.Basetypes;
 
 namespace Microsoft.Boogie.Z3
 {
@@ -109,28 +110,87 @@ namespace Microsoft.Boogie.Z3
 
     internal class PartitionMap
     {
-        private Dictionary<int, int> partitionToValueHash = new Dictionary<int, int>();
-        private int partitionCounter = FAKE_PARTITION;
-        public int GetPartition(int valueHash)
-        {
-            if (!partitionToValueHash.ContainsKey(valueHash))
-            {
-                partitionCounter++;
-                partitionToValueHash.Add(valueHash, partitionCounter);
-            }
-            int partition;
-            partitionToValueHash.TryGetValue(valueHash, out partition);
-            return partition;
-        }
-        public int GetPartitionCount()
-        {
-            return partitionCounter + 1;
+        private Context ctx;
+        private Dictionary<Term, int> termToPartition = new Dictionary<Term, int>();
+        private Dictionary<object, int> valueToPartition = new Dictionary<object, int>();
+        private List<Object> partitionToValue = new List<Object>();
+        private int partitionCounter = 0;
+        public int PartitionCounter { get { return partitionCounter; } }
+
+        public PartitionMap(Context ctx)
+        { 
+            this.ctx = ctx; 
         }
 
-        private const int FAKE_PARTITION = 0;
-        public int GetFakePartition()
+        public int GetPartition(Term value)
         {
-            return FAKE_PARTITION;
+            int result;
+            if (!termToPartition.TryGetValue(value, out result))
+            {
+                result = partitionCounter++;
+                termToPartition.Add(value, result);
+                object constant = Evaluate(value);
+                valueToPartition.Add(constant, result);
+                partitionToValue.Add(constant);
+            }
+            return result;
+        }
+
+        private object Evaluate(Term v)
+        {
+            Sort s = v.GetSort();
+            Sort boolSort = ctx.MkBoolSort();
+            Sort intSort = ctx.MkIntSort();
+
+            if (s.Equals(boolSort))
+            {
+                return ctx.GetBoolValue(v);
+            }
+            else if (s.Equals(intSort))
+            {
+                int i;
+                if (ctx.TryGetNumeralInt(v, out i))
+                {
+                    return BigNum.FromInt(i);
+                }
+                else
+                {
+                    return BigNum.FromString(ctx.GetNumeralString(v));
+                }
+            }
+            else
+            {
+                ArrayValue av;
+                if (ctx.TryGetArrayValue(v, out av))
+                {
+                    List<List<int>> arrayValue = new List<List<int>>();
+                    List<int> tuple;
+                    for (int i = 0; i < av.Domain.Length; i++)
+                    {
+                        tuple = new List<int>();
+                        tuple.Add(GetPartition(av.Domain[i]));
+                        tuple.Add(GetPartition(av.Range[i]));
+                        arrayValue.Add(tuple);
+                    }
+                    tuple = new List<int>();
+                    tuple.Add(GetPartition(av.ElseCase));
+                    arrayValue.Add(tuple);
+                    return arrayValue;
+                }
+                
+            }
+            Debug.Assert(false);
+            return null;
+        }
+
+        public List<Object> PartitionToValue(Context ctx) 
+        {
+            return partitionToValue;
+        }
+
+        public Dictionary<object, int> ValueToPartition(Context ctx)
+        {
+            return valueToPartition;
         }
     }
 
@@ -194,50 +254,33 @@ namespace Microsoft.Boogie.Z3
         public BoogieErrorModelBuilder(Z3Context container)
         {
             this.container = container;
-            this.partitionMap = new PartitionMap();
+            this.partitionMap = new PartitionMap(((Z3SafeContext)container).z3);
         }
-
-        private Dictionary<string, object> CreateConstantToValue(Model z3Model)
-        {
-            Dictionary<string, object> constantToValue = new Dictionary<string, object>();
-            foreach (FuncDecl c in z3Model.GetModelConstants())
-            {
-                string c_name = container.GetDeclName(new Z3TypeSafeConstDecl(c));
-                Term v = z3Model.Eval(c, new Term[0]);
-                Sort s = v.GetSort();
-                Context ctx = ((Z3SafeContext)container).z3;
-                Sort boolSort = ctx.MkBoolSort();
-                Sort intSort = ctx.MkIntSort();
-
-                if (s == boolSort)
-                {
-                    constantToValue.Add(c_name, ctx.GetBoolValue(v));
-                }
-                else if (s == intSort)
-                {
-                    int i;
-                    if (ctx.TryGetNumeralInt(v, out i))
-                        constantToValue.Add(c_name, i);
-                    // TBD: 
-                    // ctx.GetNumeralValueString(v)?
-                }
-                else
-                {
-                    constantToValue.Add(c_name, null);
-                }
-            }
-            return constantToValue;
-        }
-
+        
         private Dictionary<string, int> CreateConstantToPartition(Model z3Model)
         {
             Dictionary<string, int> constantToPartition = new Dictionary<string, int>();
             foreach (FuncDecl c in z3Model.GetModelConstants())
             {
-                string c_name = container.GetDeclName(new Z3TypeSafeConstDecl(c));
-                constantToPartition.Add(c_name, partitionMap.GetPartition(z3Model.Eval(c, new Term[0]).GetHashCode()));
+                string name = container.GetDeclName(new Z3TypeSafeConstDecl(c));
+                int pid = partitionMap.GetPartition(z3Model.Eval(c, new Term[0]));
+                constantToPartition.Add(name, pid);
             }
             return constantToPartition;
+        }
+
+        private List<List<string>> CreatePartitionToConstant(Dictionary<string, int> constantToPartition)
+        {
+            List<List<string>> partitionToConstant = new List<List<string>>();
+            for (int i = 0; i < partitionMap.PartitionCounter; i++)
+            {
+                partitionToConstant.Add(new List<string>());
+            }
+            foreach (string s in constantToPartition.Keys)
+            {
+                partitionToConstant[constantToPartition[s]].Add(s);
+            }
+            return partitionToConstant;
         }
 
         private Dictionary<string, List<List<int>>> CreateFunctionToPartition(Model z3Model)
@@ -254,85 +297,28 @@ namespace Microsoft.Boogie.Z3
                     List<int> tuple = new List<int>();
                     foreach (Term v in entry.Arguments)
                     {
-                        tuple.Add(partitionMap.GetPartition(z3Model.Eval(v).GetHashCode()));
+                        tuple.Add(partitionMap.GetPartition(z3Model.Eval(v)));
                     }
-                    tuple.Add(partitionMap.GetPartition(z3Model.Eval(entry.Result).GetHashCode()));
+                    tuple.Add(partitionMap.GetPartition(z3Model.Eval(entry.Result)));
                     f_tuples.Add(tuple);
                 }
                 List<int> else_tuple = new List<int>();
-                else_tuple.Add(partitionMap.GetPartition(z3Model.Eval(graph.Else).GetHashCode()));
+                else_tuple.Add(partitionMap.GetPartition(z3Model.Eval(graph.Else)));
                 f_tuples.Add(else_tuple);
                 functionToPartition.Add(f_name, f_tuples);
             }
             return functionToPartition;
         }
 
-        private List<List<string>> ReverseConstantToPartition(Dictionary<string, int> map, int partitionCount)
-        {
-            List<string>[] reverse = new List<string>[partitionCount];
-            foreach (KeyValuePair<string, int> entry in map)
-            {
-                List<string> v = reverse[entry.Value];
-                if (v == null)
-                {
-                    v = new List<string>();
-                    reverse[entry.Value] = v;
-                }
-                v.Add(entry.Key);
-            }
-
-            List<List<string>> result = new List<List<string>>();
-            for (int i = 0; i < reverse.Length; i++)
-            {
-                if (reverse[i] == null)
-                    result.Add(new List<string>());
-                else
-                    result.Add(reverse[i]);
-            }
-            return result;
-        }
-
-        private List<Object> CreatePartitionToValue(Dictionary<string, int> constantToPartition, Dictionary<string, object> constantToValue, int partitionCount)
-        {
-            Object[] partitionToValue = new Object[partitionCount];
-            foreach (string constantName in constantToValue.Keys)
-            {
-                int partition;
-                object objectValue;
-                constantToPartition.TryGetValue(constantName, out partition);
-                constantToValue.TryGetValue(constantName, out objectValue);
-                partitionToValue[partition] = objectValue;
-            }
-            List<Object> result = new List<Object>();
-            for (int j = 0; j < partitionToValue.Length; j++)
-            {
-                result.Add(partitionToValue[j]);
-            }
-            return result;
-        }
-
-        private Dictionary<object, int> CreateValueToPartition(Model z3Model)
-        {
-            // TODO Implement this method
-            return new Dictionary<object, int>();
-        }
-
         public Z3ErrorModel BuildBoogieModel(Model z3Model)
         {
-            partitionMap = new PartitionMap();
-
             Dictionary<string, int> constantToPartition = CreateConstantToPartition(z3Model);
-            Dictionary<string, object> constantToValue = CreateConstantToValue(z3Model);
             Dictionary<string, List<List<int>>> functionToPartition = CreateFunctionToPartition(z3Model);
-            Dictionary<object, int> valueToPartition = CreateValueToPartition(z3Model);
-
-            int partitionCount = partitionMap.GetPartitionCount();
-            List<List<string>> partitionToConstant = ReverseConstantToPartition(constantToPartition, partitionCount);
-            List<Object> partitionToValue = CreatePartitionToValue(constantToPartition, constantToValue, partitionCount);
-
+            List<List<string>> partitionToConstant = CreatePartitionToConstant(constantToPartition);
+            List<Object> partitionToValue = partitionMap.PartitionToValue(((Z3SafeContext)container).z3);
+            Dictionary<object, int> valueToPartition = partitionMap.ValueToPartition(((Z3SafeContext)container).z3);
             return new Z3ErrorModel(constantToPartition, partitionToConstant, partitionToValue, valueToPartition, functionToPartition);
         }
-
     }
 
     public class Z3ErrorModelAndLabels

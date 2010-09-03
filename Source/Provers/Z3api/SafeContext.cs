@@ -301,7 +301,7 @@ namespace Microsoft.Boogie.Z3
                 bound.Add(Unwrap(t));
             }
 
-            Term termAst = z3.MkQuantifier(isForall, weight, z3.MkSymbol(qid), z3.MkSymbol(skolemid), unwrapPatterns.ToArray(), unwrapNoPatterns.ToArray(), bound.ToArray(), unwrapBody);
+            Term termAst = z3.MkQuantifier(isForall, weight, z3.MkSymbol(qid), z3.MkSymbol(skolemid.ToString()), unwrapPatterns.ToArray(), unwrapNoPatterns.ToArray(), bound.ToArray(), unwrapBody);
             return Wrap(termAst);
         }
    
