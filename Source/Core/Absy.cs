@@ -380,6 +380,11 @@ namespace Microsoft.Boogie {
       //   create a new entry block and a new return block
       //   add edges from entry block to the loop header and the return block
       //   add calls o := p_h(i) at the end of the blocks that are sources of back edges
+      foreach (Block block in impl.Blocks)
+      {
+          AddToFullMap(fullMap, impl.Name, block.Label, block);
+      }
+
       Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToInputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
       Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToOutputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
       Dictionary<Block/*!*/, Hashtable/*!*/>/*!*/ loopHeaderToSubstMap = new Dictionary<Block/*!*/, Hashtable/*!*/>();
@@ -461,7 +466,6 @@ namespace Microsoft.Boogie {
         Contract.Assert(header != null);
         LoopProcedure loopProc = loopHeaderToLoopProc[header];
         Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
-        Set<Block> dummyBlocks = new Set<Block>();
 
         CodeCopier codeCopier = new CodeCopier(loopHeaderToSubstMap[header]);  // fix me
         VariableSeq inputs = loopHeaderToInputs[header];
@@ -495,8 +499,6 @@ namespace Microsoft.Boogie {
           Block/*!*/ block2 = new Block(Token.NoToken, block1.Label,
                               new CmdSeq(callCmd), new ReturnCmd(Token.NoToken));
           impl.Blocks.Add(block1);
-          dummyBlocks.Add(block1);
-          dummyBlocks.Add(block2);
 
           GotoCmd gotoCmd = source.TransferCmd as GotoCmd;
           Contract.Assert(gotoCmd != null && gotoCmd.labelNames != null && gotoCmd.labelTargets != null && gotoCmd.labelTargets.Length >= 1);
@@ -576,12 +578,11 @@ namespace Microsoft.Boogie {
         header.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq(lastIterBlockName), new BlockSeq(lastIterBlock));
         impl.Blocks.Add(lastIterBlock);
         blockMap[lastIterBlock] = blockMap[header];
-        dummyBlocks.Add(header);
-
+        blockMap.Remove(header);
+        fullMap[impl.Name].Remove(header.Label);
+        fullMap[impl.Name][lastIterBlockName] = lastIterBlock;
         foreach (Block block in blockMap.Keys)
         {
-            if (dummyBlocks.Contains(block)) continue;
-            AddToFullMap(fullMap, impl.Name, block.Label, block);
             AddToFullMap(fullMap, loopProc.Name, blockMap[block].Label, block);
         }
       }
