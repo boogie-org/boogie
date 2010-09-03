@@ -38,3 +38,7 @@ Boogie program verifier finished with 17 verified, 3 errors
 Processing Calculator.chalice
 
 Boogie program verifier finished with 15 verified, 0 errors
+Processing AngelicExec.chalice
+  14.5: Refinement may produce different value for a declared local variable: x
+
+Boogie program verifier finished with 11 verified, 1 error

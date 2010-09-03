@@ -15,6 +15,7 @@ TESTS="
   Pick.chalice
   TestCoupling.chalice
   Calculator.chalice
+  AngelicExec.chalice
 "
 
 # Switch to test directory
