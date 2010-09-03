@@ -382,6 +382,8 @@ namespace VC {
     protected string/*?*/ logFilePath;
     protected bool appendLogFile;
 
+    public static List<ErrorModel> errorModelList;
+
     public ConditionGeneration(Program p) {
       Contract.Requires(p != null);
       program = p;
@@ -414,6 +416,29 @@ namespace VC {
       Helpers.ExtraTraceInformation("Finished implementation verification");
       return outcome;
     }
+
+    /// <summary>
+    /// Takes an implementation and constructs a verification condition and sends
+    /// it to the theorem prover.
+    /// Returns null if "impl" is correct.  Otherwise, returns a list of counterexamples,
+    /// each counterexample consisting of an array of labels.
+    /// </summary>
+    /// <param name="impl"></param>
+    public Outcome VerifyImplementation(Implementation impl, Program program, out List<Counterexample> errors, out List<ErrorModel> errorsModel)
+    {
+        Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || errors != null);
+        Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+        List<Counterexample> errorsOut;
+
+        Outcome outcome;
+        errorModelList = new List<ErrorModel>();
+        outcome = VerifyImplementation(impl, program, out errorsOut);
+        errors = errorsOut;
+        errorsModel = errorModelList;
+
+        return outcome;
+    }
+  
 
     public Outcome StratifiedVerifyImplementation(Implementation impl, Program program, out List<Counterexample>/*?*/ errors) {
       Contract.Requires(impl != null);

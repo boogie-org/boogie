@@ -2909,6 +2909,10 @@ namespace VC {
       public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel) {
         //Contract.Requires(cce.NonNullElements(labels));
         if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
+            if (VC.ConditionGeneration.errorModelList != null)
+            {
+                VC.ConditionGeneration.errorModelList.Add(errModel);
+            }
           errModel.Print(ErrorReporter.ModelWriter);
           ErrorReporter.ModelWriter.Flush();
         }
