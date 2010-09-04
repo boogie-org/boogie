@@ -460,12 +460,17 @@ namespace Microsoft.Boogie {
         loopHeaderToCallCmd[header] = callCmd;
       }
 
+      // Keep track of the new blocks created: maps a header node to the
+      // header_last block that was created because of splitting header.
+      Dictionary<Block, Block> newBlocksCreated = new Dictionary<Block, Block>();
+
       IEnumerable<Block> sortedHeaders = g.SortHeadersByDominance();
       foreach (Block/*!*/ header in sortedHeaders)
       {
         Contract.Assert(header != null);
         LoopProcedure loopProc = loopHeaderToLoopProc[header];
         Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
+        Set<string> dummyBlocks = new Set<string>();
 
         CodeCopier codeCopier = new CodeCopier(loopHeaderToSubstMap[header]);  // fix me
         VariableSeq inputs = loopHeaderToInputs[header];
@@ -480,6 +485,13 @@ namespace Microsoft.Boogie {
             newBlock.Label = block.Label;
             newBlock.Cmds = codeCopier.CopyCmdSeq(block.Cmds);
             blockMap[block] = newBlock;
+            if (newBlocksCreated.ContainsKey(block))
+            {
+                Block newBlock2 = new Block();
+                newBlock2.Label = newBlocksCreated[block].Label;
+                newBlock2.Cmds = codeCopier.CopyCmdSeq(newBlocksCreated[block].Cmds);
+                blockMap[newBlocksCreated[block]] = newBlock2;
+            }
           }
           string callee = loopHeaderToLoopProc[header].Name;
           ExprSeq ins = new ExprSeq();
@@ -499,6 +511,7 @@ namespace Microsoft.Boogie {
           Block/*!*/ block2 = new Block(Token.NoToken, block1.Label,
                               new CmdSeq(callCmd), new ReturnCmd(Token.NoToken));
           impl.Blocks.Add(block1);
+          dummyBlocks.Add(block1.Label);
 
           GotoCmd gotoCmd = source.TransferCmd as GotoCmd;
           Contract.Assert(gotoCmd != null && gotoCmd.labelNames != null && gotoCmd.labelTargets != null && gotoCmd.labelTargets.Length >= 1);
@@ -571,20 +584,36 @@ namespace Microsoft.Boogie {
         loopImpl.Proc = loopProc;
         loopImpls.Add(loopImpl);
 
+        // Make a (shallow) copy of the header before splitting it
+        Block origHeader = new Block(header.tok, header.Label, header.Cmds, header.TransferCmd);
+
         // Finally, add call to the loop in the containing procedure
         string lastIterBlockName = header.Label + "_last";
         Block lastIterBlock = new Block(Token.NoToken, lastIterBlockName, header.Cmds, header.TransferCmd);
+        newBlocksCreated[header] = lastIterBlock;
         header.Cmds = new CmdSeq(loopHeaderToCallCmd[header]);
         header.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq(lastIterBlockName), new BlockSeq(lastIterBlock));
         impl.Blocks.Add(lastIterBlock);
-        blockMap[lastIterBlock] = blockMap[header];
+        blockMap[origHeader] = blockMap[header];
         blockMap.Remove(header);
-        fullMap[impl.Name].Remove(header.Label);
-        fullMap[impl.Name][lastIterBlockName] = lastIterBlock;
+
+        Contract.Assert(fullMap[impl.Name][header.Label] == header);
+        fullMap[impl.Name][header.Label] = origHeader;
+
         foreach (Block block in blockMap.Keys)
         {
-            AddToFullMap(fullMap, loopProc.Name, blockMap[block].Label, block);
+            // Don't add dummy blocks to the map
+            if (dummyBlocks.Contains(blockMap[block].Label)) continue;
+
+            // Following two statements are for nested loops: compose map
+            if (!fullMap[impl.Name].ContainsKey(block.Label)) continue;
+            var target = fullMap[impl.Name][block.Label];
+
+            AddToFullMap(fullMap, loopProc.Name, blockMap[block].Label, target);
         }
+
+        fullMap[impl.Name].Remove(header.Label);
+        fullMap[impl.Name][lastIterBlockName] = origHeader;
       }
     }
 

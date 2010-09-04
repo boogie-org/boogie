@@ -529,9 +529,10 @@ namespace Microsoft.Boogie {
         program.UnrollLoops(CommandLineOptions.Clo.LoopUnrollCount);
       }
 
+      Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo = null;
       if (CommandLineOptions.Clo.ExtractLoops)
       {
-          program.ExtractLoops();
+          extractLoopMappingInfo = program.ExtractLoops();
       }
 
       if (CommandLineOptions.Clo.PrintInstrumented) {
@@ -660,7 +661,7 @@ namespace Microsoft.Boogie {
                 {
                     for (int i = 0; i < errors.Count; i++)
                     {
-                        errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], program);
+                        errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], impl.Name, program, extractLoopMappingInfo);
                     }
                 }
 
