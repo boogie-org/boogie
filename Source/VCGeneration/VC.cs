@@ -2198,10 +2198,6 @@ namespace VC {
 	      checker.TheoremProver.Pop();
 	   }
 
-       if (!done)
-       {
-           return Outcome.TimedOut;
-       }
 
        #region Coverage reporter
        if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
@@ -2222,6 +2218,11 @@ namespace VC {
            } while (!coverageProcess.HasExited);
        }
        #endregion
+
+       if (!done)
+       {
+           return Outcome.ReachedBound;
+       }
 
        return ret;
     }

@@ -701,6 +701,7 @@ namespace Microsoft.Boogie {
       foreach (Implementation/*!*/ loopImpl in loopImpls) {
         Contract.Assert(loopImpl != null);
         TopLevelDeclarations.Add(loopImpl);
+        TopLevelDeclarations.Add(loopImpl.Proc);
       }
       return fullMap;
     }

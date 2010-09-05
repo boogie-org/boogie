@@ -360,7 +360,8 @@ namespace VC {
       Errors,
       TimedOut,
       OutOfMemory,
-      Inconclusive
+      Inconclusive,
+      ReachedBound
     }
 
     [ContractInvariantMethod]
