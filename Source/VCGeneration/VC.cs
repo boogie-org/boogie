@@ -2089,31 +2089,33 @@ namespace VC {
                // Over-approx query
                reporter.underapproximationMode = false;
 
-               // Push "true" (No-op) for all, except:
+               // Push "true" for all, except:
                // push "false" for all candidates that have reached
                // the recursion bounds
 
-               bool pushedNone = true;
-               bool pushedAll = true;
+               bool allTrue = true;
+               bool allFalse = true;
                prev_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
 
                foreach (int id in calls.currCandidates)
                {
                    if (calls.getRecursionBound(id) <= bound)
                    {
-                       pushedAll = false;
-                       continue;
+                       //checker.TheoremProver.PushVCExpression(calls.getTrueExpr(id));
+                       allFalse = false;
                    }
-
-                   checker.TheoremProver.PushVCExpression(calls.getFalseExpr(id));
-                   pushedNone = false;
+                   else
+                   {
+                       checker.TheoremProver.PushVCExpression(calls.getFalseExpr(id));
+                       allTrue = false;
+                   }
                }
 
                axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
                checker.TheoremProver.FlushAxiomsToTheoremProver();
 
                // Check
-               if (pushedAll)
+               if (allFalse)
                {
                    // If we made all candidates false, then this is the same
                    // as the underapprox query. We already know the answer.
@@ -2136,7 +2138,7 @@ namespace VC {
                if (ret == Outcome.Correct)
                {
                    // If nothing was made false, then we're done
-                   if (pushedNone)
+                   if (allTrue)
                    {
                        done = true;
                        break;
@@ -2316,7 +2318,10 @@ namespace VC {
             calls.setCurrProc(procName);
             expansion = calls.Mutate(expansion, true);
 
+            expansion = checker.VCExprGen.Eq(calls.id2ControlVar[id], expansion);
             //expansion = checker.VCExprGen.Eq(expr, expansion);
+            //checker.TheoremProver.PushVCExpression(calls.getTrueExpr(id));
+
             exprToPush = checker.VCExprGen.And(exprToPush, expansion);
         }
         checker.TheoremProver.PushVCExpression(exprToPush);
@@ -2707,6 +2712,12 @@ namespace VC {
       public VCExpr getFalseExpr(int candidateId)
       {
           return Gen.Eq(VCExpressionGenerator.False, id2ControlVar[candidateId]);
+      }
+
+      // Return the formula (candidate IFF true)
+      public VCExpr getTrueExpr(int candidateId)
+      {
+          return Gen.Eq(VCExpressionGenerator.True, id2ControlVar[candidateId]);
       }
 
       private Hashtable/*<int,absy>*/ getLabel2absy() {
