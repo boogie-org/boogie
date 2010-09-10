@@ -389,63 +389,102 @@ namespace Microsoft.Boogie {
       Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToOutputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
       Dictionary<Block/*!*/, Hashtable/*!*/>/*!*/ loopHeaderToSubstMap = new Dictionary<Block/*!*/, Hashtable/*!*/>();
       Dictionary<Block/*!*/, LoopProcedure/*!*/>/*!*/ loopHeaderToLoopProc = new Dictionary<Block/*!*/, LoopProcedure/*!*/>();
-      Dictionary<Block/*!*/, CallCmd/*!*/>/*!*/ loopHeaderToCallCmd = new Dictionary<Block/*!*/, CallCmd/*!*/>();
+      Dictionary<Block/*!*/, CallCmd/*!*/>/*!*/ loopHeaderToCallCmd1 = new Dictionary<Block/*!*/, CallCmd/*!*/>();
+      Dictionary<Block, CallCmd> loopHeaderToCallCmd2 = new Dictionary<Block, CallCmd>();
+      Dictionary<Block, AssignCmd> loopHeaderToAssignCmd = new Dictionary<Block, AssignCmd>();
+
       foreach (Block/*!*/ header in g.Headers) {
         Contract.Assert(header != null);
         Contract.Assert(header != null);
         VariableSeq inputs = new VariableSeq();
         VariableSeq outputs = new VariableSeq();
-        ExprSeq callInputs = new ExprSeq();
-        IdentifierExprSeq callOutputs = new IdentifierExprSeq();
+        ExprSeq callInputs1 = new ExprSeq();
+        IdentifierExprSeq callOutputs1 = new IdentifierExprSeq();
+        ExprSeq callInputs2 = new ExprSeq();
+        IdentifierExprSeq callOutputs2 = new IdentifierExprSeq();
+        List<AssignLhs> lhss = new List<AssignLhs>();
+        List<Expr> rhss = new List<Expr>();
         Hashtable substMap = new Hashtable(); // Variable -> IdentifierExpr
 
-        foreach (Variable/*!*/ v in impl.InParams) {
-          Contract.Assert(v != null);
-          callInputs.Add(new IdentifierExpr(Token.NoToken, v));
-          Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true);
-          inputs.Add(f);
-          substMap[v] = new IdentifierExpr(Token.NoToken, f);
-        }
-        foreach (Variable/*!*/ v in impl.OutParams) {
-          Contract.Assert(v != null);
-          callInputs.Add(new IdentifierExpr(Token.NoToken, v));
-          inputs.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true));
-          callOutputs.Add(new IdentifierExpr(Token.NoToken, v));
-          Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "out_" + v.Name, v.TypedIdent.Type), false);
-          outputs.Add(f);
-          substMap[v] = new IdentifierExpr(Token.NoToken, f);
-        }
-        foreach (Variable/*!*/ v in impl.LocVars) {
-          Contract.Assert(v != null);
-          callInputs.Add(new IdentifierExpr(Token.NoToken, v));
-          inputs.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true));
-          callOutputs.Add(new IdentifierExpr(Token.NoToken, v));
-          Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "out_" + v.Name, v.TypedIdent.Type), false);
-          outputs.Add(f);
-          substMap[v] = new IdentifierExpr(Token.NoToken, f);
-        }
         VariableSeq/*!*/ targets = new VariableSeq();
-        foreach (Block/*!*/ b in g.BackEdgeNodes(header)) {
-          Contract.Assert(b != null);
-          foreach (Block/*!*/ block in g.NaturalLoops(header, b)) {
-            Contract.Assert(block != null);
-            foreach (Cmd/*!*/ cmd in block.Cmds) {
-              Contract.Assert(cmd != null);
-              cmd.AddAssignedVariables(targets);
+        foreach (Block/*!*/ b in g.BackEdgeNodes(header))
+        {
+            Contract.Assert(b != null);
+            foreach (Block/*!*/ block in g.NaturalLoops(header, b))
+            {
+                Contract.Assert(block != null);
+                foreach (Cmd/*!*/ cmd in block.Cmds)
+                {
+                    Contract.Assert(cmd != null);
+                    cmd.AddAssignedVariables(targets);
+                }
             }
-          }
         }
         IdentifierExprSeq/*!*/ globalMods = new IdentifierExprSeq();
-        Set globalModsSet = new Set();
-        foreach (Variable/*!*/ v in targets) {
-          Contract.Assert(v != null);
-          if (!(v is GlobalVariable))
-            continue;
-          if (globalModsSet.Contains(v))
-            continue;
-          globalModsSet.Add(v);
-          globalMods.Add(new IdentifierExpr(Token.NoToken, v));
+        Set targetSet = new Set();
+        foreach (Variable/*!*/ v in targets)
+        {
+            Contract.Assert(v != null);
+            if (targetSet.Contains(v))
+                continue;
+            targetSet.Add(v);
+            if (v is GlobalVariable)
+                globalMods.Add(new IdentifierExpr(Token.NoToken, v));
         }
+
+        foreach (Variable v in impl.InParams) {
+          Contract.Assert(v != null);
+          callInputs1.Add(new IdentifierExpr(Token.NoToken, v));
+          Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true);
+          inputs.Add(f);
+          callInputs2.Add(new IdentifierExpr(Token.NoToken, f));
+          substMap[v] = new IdentifierExpr(Token.NoToken, f);
+        }
+        foreach (Variable v in impl.OutParams) {
+          Contract.Assert(v != null);
+          callInputs1.Add(new IdentifierExpr(Token.NoToken, v));
+          Formal f1 = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true);
+          inputs.Add(f1);
+          if (targetSet.Contains(v))
+          {
+              callOutputs1.Add(new IdentifierExpr(Token.NoToken, v));
+              Formal f2 = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "out_" + v.Name, v.TypedIdent.Type), false);
+              outputs.Add(f2);
+              callInputs2.Add(new IdentifierExpr(Token.NoToken, f2));
+              callOutputs2.Add(new IdentifierExpr(Token.NoToken, f2));
+              lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, f2)));
+              rhss.Add(new IdentifierExpr(Token.NoToken, f1));
+              substMap[v] = new IdentifierExpr(Token.NoToken, f2);
+          }
+          else
+          {
+              callInputs2.Add(new IdentifierExpr(Token.NoToken, f1));
+              substMap[v] = new IdentifierExpr(Token.NoToken, f1);
+          }
+        }
+        foreach (Variable v in impl.LocVars) {
+          Contract.Assert(v != null);
+          callInputs1.Add(new IdentifierExpr(Token.NoToken, v));
+          Formal f1 = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true);
+          inputs.Add(f1);
+          if (targetSet.Contains(v))
+          {
+              callOutputs1.Add(new IdentifierExpr(Token.NoToken, v));
+              Formal f2 = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "out_" + v.Name, v.TypedIdent.Type), false);
+              outputs.Add(f2);
+              callInputs2.Add(new IdentifierExpr(Token.NoToken, f2));
+              callOutputs2.Add(new IdentifierExpr(Token.NoToken, f2));
+              lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, f2)));
+              rhss.Add(new IdentifierExpr(Token.NoToken, f1));
+              substMap[v] = new IdentifierExpr(Token.NoToken, f2);
+          }
+          else
+          {
+              callInputs2.Add(new IdentifierExpr(Token.NoToken, f1));
+              substMap[v] = new IdentifierExpr(Token.NoToken, f1);
+          }
+        }
+
         loopHeaderToInputs[header] = inputs;
         loopHeaderToOutputs[header] = outputs;
         loopHeaderToSubstMap[header] = substMap;
@@ -455,9 +494,17 @@ namespace Microsoft.Boogie {
           loopProc.AddAttribute("verify", Expr.Literal(false));
         }
         loopHeaderToLoopProc[header] = loopProc;
-        CallCmd callCmd = new CallCmd(Token.NoToken, loopProc.Name, callInputs, callOutputs);
-        callCmd.Proc = loopProc;
-        loopHeaderToCallCmd[header] = callCmd;
+
+        CallCmd callCmd1 = new CallCmd(Token.NoToken, loopProc.Name, callInputs1, callOutputs1);
+        callCmd1.Proc = loopProc;
+        loopHeaderToCallCmd1[header] = callCmd1;
+
+        CallCmd callCmd2 = new CallCmd(Token.NoToken, loopProc.Name, callInputs2, callOutputs2);
+        callCmd2.Proc = loopProc;
+        loopHeaderToCallCmd2[header] = callCmd2;
+
+        AssignCmd assignCmd = new AssignCmd(Token.NoToken, lhss, rhss);
+        loopHeaderToAssignCmd[header] = assignCmd;
       }
 
       // Keep track of the new blocks created: maps a header node to the
@@ -493,19 +540,7 @@ namespace Microsoft.Boogie {
                 blockMap[newBlocksCreated[block]] = newBlock2;
             }
           }
-          string callee = loopHeaderToLoopProc[header].Name;
-          ExprSeq ins = new ExprSeq();
-          IdentifierExprSeq outs = new IdentifierExprSeq();
-          for (int i = 0; i < impl.InParams.Length; i++) {
-            ins.Add(new IdentifierExpr(Token.NoToken, cce.NonNull(inputs[i])));
-          }
-          foreach (Variable/*!*/ v in outputs) {
-            Contract.Assert(v != null);
-            ins.Add(new IdentifierExpr(Token.NoToken, v));
-            outs.Add(new IdentifierExpr(Token.NoToken, v));
-          }
-          CallCmd callCmd = new CallCmd(Token.NoToken, callee, ins, outs);
-          callCmd.Proc = loopProc;
+          CallCmd callCmd = loopHeaderToCallCmd2[header];
           Block/*!*/ block1 = new Block(Token.NoToken, source.Label + "_dummy",
                               new CmdSeq(new AssumeCmd(Token.NoToken, Expr.False)), new ReturnCmd(Token.NoToken));
           Block/*!*/ block2 = new Block(Token.NoToken, block1.Label,
@@ -527,8 +562,6 @@ namespace Microsoft.Boogie {
           newLabels.Add(block1.Label);
           gotoCmd.labelNames = newLabels;
           gotoCmd.labelTargets = newTargets;
-
-            
           blockMap[block1] = block2;
         }
         List<Block/*!*/>/*!*/ blocks = new List<Block/*!*/>();
@@ -537,18 +570,7 @@ namespace Microsoft.Boogie {
                                     new StringSeq(cce.NonNull(blockMap[header]).Label, exit.Label),
                                     new BlockSeq(blockMap[header], exit));
 
-        Debug.Assert(outputs.Length + impl.InParams.Length == inputs.Length);
-        List<AssignLhs/*!*/>/*!*/ lhss = new List<AssignLhs/*!*/>();
-        List<Expr/*!*/>/*!*/ rhss = new List<Expr/*!*/>();
-        for (int i = impl.InParams.Length; i < inputs.Length; i++) {
-          Variable/*!*/ inv = cce.NonNull(inputs[i]);
-          Variable/*!*/ outv = cce.NonNull(outputs[i - impl.InParams.Length]);
-          AssignLhs lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, outv));
-          Expr rhs = new IdentifierExpr(Token.NoToken, inv);
-          lhss.Add(lhs);
-          rhss.Add(rhs);
-        }
-        AssignCmd assignCmd = new AssignCmd(Token.NoToken, lhss, rhss);
+        AssignCmd assignCmd = loopHeaderToAssignCmd[header];
         Block entry = new Block(Token.NoToken, "entry", new CmdSeq(assignCmd), cmd);
         blocks.Add(entry);
         foreach (Block/*!*/ block in blockMap.Keys) {
@@ -591,7 +613,7 @@ namespace Microsoft.Boogie {
         string lastIterBlockName = header.Label + "_last";
         Block lastIterBlock = new Block(Token.NoToken, lastIterBlockName, header.Cmds, header.TransferCmd);
         newBlocksCreated[header] = lastIterBlock;
-        header.Cmds = new CmdSeq(loopHeaderToCallCmd[header]);
+        header.Cmds = new CmdSeq(loopHeaderToCallCmd1[header]);
         header.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq(lastIterBlockName), new BlockSeq(lastIterBlock));
         impl.Blocks.Add(lastIterBlock);
         blockMap[origHeader] = blockMap[header];
