@@ -683,7 +683,7 @@ namespace Microsoft.Boogie {
                     if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingEnsures.ErrorMessage != null) {
                       ReportBplError(err.FailingEnsures, err.FailingEnsures.ErrorMessage, true, false);
                     } else {
-                      ReportBplError(err.FailingReturn, "Error BP5003: A postcondition might not hold at this return statement.", true, true);
+                      ReportBplError(err.FailingReturn, "Error BP5003: A postcondition might not hold on this return path.", true, true);
                       ReportBplError(err.FailingEnsures, "Related location: This is the postcondition that might not hold.", false, true);
                     }
                     if (CommandLineOptions.Clo.XmlSink != null) {

@@ -1,5 +1,5 @@
 ----- Running regression test bar1.bpl
-bar1.bpl(25,1): Error BP5003: A postcondition might not hold at this return statement.
+bar1.bpl(25,1): Error BP5003: A postcondition might not hold on this return path.
 bar1.bpl(21,1): Related location: This is the postcondition that might not hold.
 Execution trace:
         bar1.bpl(24,3): anon0
@@ -31,7 +31,7 @@ Execution trace:
 Boogie program verifier finished with 0 verified, 1 error
 -----
 ----- Running regression test bar3.bpl
-bar3.bpl(41,1): Error BP5003: A postcondition might not hold at this return statement.
+bar3.bpl(41,1): Error BP5003: A postcondition might not hold on this return path.
 bar3.bpl(34,1): Related location: This is the postcondition that might not hold.
 Execution trace:
         bar3.bpl(38,3): anon0

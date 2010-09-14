@@ -13,7 +13,7 @@ Execution trace:
 Boogie program verifier finished with 3 verified, 3 errors
 
 ------------------------------ CodeExpr1.bpl ---------------------
-CodeExpr1.bpl(44,5): Error BP5003: A postcondition might not hold at this return statement.
+CodeExpr1.bpl(44,5): Error BP5003: A postcondition might not hold on this return path.
 CodeExpr1.bpl(40,3): Related location: This is the postcondition that might not hold.
 Execution trace:
         CodeExpr1.bpl(42,3): start
