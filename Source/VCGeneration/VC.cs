@@ -1976,6 +1976,9 @@ namespace VC {
        #region Coverage reporter
        if (coverageProcess != null)
             coverageProcess.StandardInput.WriteLine(impl.Name + " main");
+
+       int vcSize = 0;
+       vcSize += SizeComputingVisitor.ComputeSize(vc);
        #endregion
 
        // Find all procedure calls in vc and put labels on them      
@@ -1993,19 +1996,30 @@ namespace VC {
        for(int i = 1; i < CommandLineOptions.Clo.StratifiedInlining && calls.currCandidates.Count > 0; i ++) 
        {
           List<int> toExpand = new List<int>();
-          foreach(int id in calls.currCandidates) {
-            toExpand.Add(id);
+          foreach (int id in calls.currCandidates)
+          {
+              if (calls.isNonTrivialCandidate(id))
+              {
+                  toExpand.Add(id);
+              }
           }
           expansionCount += toExpand.Count;
           if(incrementalSearch) 
           {
             total_axioms_pushed +=
-              DoExpansion(toExpand, calls, checker, coverageProcess);
+              DoExpansion(toExpand, calls, checker, coverageProcess, ref vcSize);
           } else 
           {
-            vc = DoExpansionAndInline(vc, toExpand, calls, checker, coverageProcess);
+              vc = DoExpansionAndInline(vc, toExpand, calls, checker, coverageProcess, ref vcSize);
           }
        }
+
+       #region Coverage reporter
+       if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
+       {
+           Console.WriteLine("Stratified Inlining: Size of VC after eager inlining: {0}", vcSize);
+       }
+       #endregion
 
        // Number of Z3 queries
        int numqueries = 0;
@@ -2178,11 +2192,11 @@ namespace VC {
                if (incrementalSearch)
                {
                    total_axioms_pushed +=
-                     DoExpansion(reporter.candidatesToExpand, calls, checker, coverageProcess);
+                     DoExpansion(reporter.candidatesToExpand, calls, checker, coverageProcess, ref vcSize);
                }
                else
                {
-                   vc = DoExpansionAndInline(vc, reporter.candidatesToExpand, calls, checker, coverageProcess);
+                   vc = DoExpansionAndInline(vc, reporter.candidatesToExpand, calls, checker, coverageProcess, ref vcSize);
                }
 
                checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
@@ -2205,6 +2219,8 @@ namespace VC {
            Console.WriteLine("Stratified Inlining: Calls to Z3: {0}", numqueries);
            Console.WriteLine("Stratified Inlining: Expansions performed: {0}", expansionCount);
            Console.WriteLine("Stratified Inlining: Candidates left: {0}", calls.currCandidates.Count);
+           Console.WriteLine("Stratified Inlining: Nontrivial Candidates left: {0}", calls.numNonTrivialCandidates());
+           Console.WriteLine("Stratified Inlining: VC Size: {0}", vcSize);
        }
 
        if (coverageProcess != null)
@@ -2233,7 +2249,8 @@ namespace VC {
     // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.
     // Returns the number of axioms pushed.
     private int DoExpansion(List<int>/*!*/ candidates,
-                             FCallHandler/*!*/ calls, Checker/*!*/ checker, Process progress)
+                             FCallHandler/*!*/ calls, Checker/*!*/ checker, Process progress,
+                             ref int vcSize)
     {
         Contract.Requires(candidates != null);
         Contract.Requires(calls != null);
@@ -2326,6 +2343,7 @@ namespace VC {
             exprToPush = checker.VCExprGen.And(exprToPush, expansion);
         }
         checker.TheoremProver.PushVCExpression(exprToPush);
+        vcSize += SizeComputingVisitor.ComputeSize(exprToPush);
 
         int axioms_pushed = checker.TheoremProver.NumAxiomsPushed() - old_axioms_pushed;
         checker.TheoremProver.FlushAxiomsToTheoremProver();
@@ -2337,7 +2355,7 @@ namespace VC {
     private VCExpr DoExpansionAndInline(
                                 VCExpr/*!*/ mainVC, List<int>/*!*/ candidates,
                                 FCallHandler/*!*/ calls, Checker/*!*/ checker,
-                                Process progress)
+                                Process progress, ref int vcSize)
     {
         Contract.Requires(mainVC != null);
         Contract.Requires(candidates != null);
@@ -2427,7 +2445,10 @@ namespace VC {
 
         }
 
-        return inliner.Mutate(mainVC, true);
+        var ret = inliner.Mutate(mainVC, true);
+        vcSize = SizeComputingVisitor.ComputeSize(ret);
+
+        return ret;
     }
 
     // Return the VC for the impl (don't pass it to the theorem prover).
@@ -2729,6 +2750,39 @@ namespace VC {
           return mainLabel2absy;
         }
         return cce.NonNull(implName2StratifiedInliningInfo[currProc].label2absy);
+      }
+
+      // How many of the current candidates represent calls to procedures
+      // with non-trivial mod sets.
+      // This is only used for statistic purposes
+      public bool isNonTrivialCandidate(int id)
+      {
+          string proc = getProc(id);
+          if (proc == "") return false;
+          if (!implName2StratifiedInliningInfo.ContainsKey(proc)) return false;
+          var info = implName2StratifiedInliningInfo[proc];
+          if (info.impl.Proc.Modifies.Length != 0) return true;
+          return false;
+          /*
+          foreach (IdentifierExpr ie in info.impl.Proc.Modifies)
+          {
+              if (ie.Decl.Name.StartsWith("Mem_") || ie.Decl.Name.StartsWith("Res_"))
+              {
+                  return true;
+              }
+          }
+          return false;
+           */
+      }
+
+      public int numNonTrivialCandidates()
+      {
+          int ret = 0;
+          foreach (int id in currCandidates)
+          {
+              if(isNonTrivialCandidate(id)) ret++;
+          }
+          return ret;
       }
 
       // Finds labels and changes them:
