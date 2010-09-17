@@ -1,13 +1,13 @@
-# Aste started: 2010-09-15 07:00:07
+# Aste started: 2010-09-17 07:00:07
 # Host id: Boogiebox
-# [2010-09-15 07:02:12] SpecSharp revision: 55320
-# [2010-09-15 07:03:14] Boogie revision: 57194
-# [2010-09-15 07:03:35] SscBoogie revision: 56316
-[2010-09-15 07:04:09] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-09-17 07:02:10] SpecSharp revision: 55320
+# [2010-09-17 07:03:09] Boogie revision: 57240
+# [2010-09-17 07:03:33] SscBoogie revision: 56316
+[2010-09-17 07:04:06] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-09-15 07:04:51] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-09-17 07:04:47] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\Basetypes\BigNum.cs(280,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AIFramework\Polyhedra\LinearConstraintSystem.cs(159,19): warning CS0168: The variable 'ss' is declared but never used
@@ -32,7 +32,7 @@
     D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(1481,16): warning CS0659: 'Microsoft.Boogie.VCExprAST.VCExprCustomOp' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(667,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1941,56): warning CS0168: The variable 'e' is declared but never used
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4783,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4837,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(715,15): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(741,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(1083,11): warning CS0162: Unreachable code detected
@@ -89,9 +89,8 @@
     warning CS0162
     warning CS0162
     warning CS0162
-[2010-09-15 07:04:58] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
+[2010-09-17 07:04:54] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
 
-    D:\Temp\aste\Boogie\Source\Dafny\Parser.cs(12,7): warning CS0105: The using directive for 'System.Diagnostics.Contracts' appeared previously in this namespace
     D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(39,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
     D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(187,73): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
     D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(220,21): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
@@ -102,7 +101,6 @@
     D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(572,76): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
     D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(617,48): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
     D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(735,7): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
-    warning CS0105
     warning CS0436
     warning CS0436
     warning CS0436
@@ -113,5 +111,5 @@
     warning CS0436
     warning CS0436
     warning CS0436
-[2010-09-15 07:28:32] 0 out of 29 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2010-09-15 07:30:12] Released nightly of Boogie
+[2010-09-17 07:27:59] 0 out of 29 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2010-09-17 07:29:34] Released nightly of Boogie
