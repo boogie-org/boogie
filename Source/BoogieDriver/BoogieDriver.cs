@@ -617,6 +617,11 @@ namespace Microsoft.Boogie {
             default:
               Contract.Assert(false);  // unexpected outcome
               throw new cce.UnreachableException();
+            case VCGen.Outcome.ReachedBound:
+              Inform(String.Format("{0}verified", timeIndication));
+              Console.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
+              verified++;
+              break;
             case VCGen.Outcome.Correct:
               if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
                 Inform(String.Format("{0}credible", timeIndication));

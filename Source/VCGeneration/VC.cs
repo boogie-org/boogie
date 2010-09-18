@@ -2636,7 +2636,7 @@ namespace VC {
       // recursed on proc(id)
       public int getRecursionBound(int id)
       {
-          int ret = 1;
+          int ret = 0;
           var str = getProc(id);
           while (candidateParent.ContainsKey(id))
           {
