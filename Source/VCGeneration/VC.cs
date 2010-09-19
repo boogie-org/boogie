@@ -1921,27 +1921,40 @@ namespace VC {
        // create a process for displaying coverage information
        Process coverageProcess = null;
        ProcessStartInfo coverageProcessInfo = null;
+       bool stopCoverageProcess = true;
        #region Coverage reporter
-       if (CommandLineOptions.Clo.CoverageReporterPath != null)
+       coverageProcess = CommandLineOptions.Clo.coverageReporter;
+       if (coverageProcess != null)
        {
-           coverageProcess = new Process();
-           coverageProcessInfo = new ProcessStartInfo();
-           coverageProcessInfo.CreateNoWindow = true;
-           coverageProcessInfo.FileName = CommandLineOptions.Clo.CoverageReporterPath + @"\CoverageGraph.exe";
-           coverageProcessInfo.RedirectStandardInput = true;
-           coverageProcessInfo.RedirectStandardOutput = true;
-           coverageProcessInfo.RedirectStandardError = false;
-           coverageProcessInfo.UseShellExecute = false;
-
-           coverageProcess.StartInfo = coverageProcessInfo;
-           try
+           stopCoverageProcess = false;
+           if (!coverageProcess.StartInfo.RedirectStandardInput)
            {
-               coverageProcess.Start();
-           }
-           catch (System.ComponentModel.Win32Exception e)
-           {
-               coverageProcess.Dispose();
                coverageProcess = null;
+           }
+       }
+       else
+       {
+           if (CommandLineOptions.Clo.CoverageReporterPath != null)
+           {
+               coverageProcess = new Process();
+               coverageProcessInfo = new ProcessStartInfo();
+               coverageProcessInfo.CreateNoWindow = true;
+               coverageProcessInfo.FileName = CommandLineOptions.Clo.CoverageReporterPath + @"\CoverageGraph.exe";
+               coverageProcessInfo.RedirectStandardInput = true;
+               coverageProcessInfo.RedirectStandardOutput = true;
+               coverageProcessInfo.RedirectStandardError = false;
+               coverageProcessInfo.UseShellExecute = false;
+
+               coverageProcess.StartInfo = coverageProcessInfo;
+               try
+               {
+                   coverageProcess.Start();
+               }
+               catch (System.ComponentModel.Win32Exception e)
+               {
+                   coverageProcess.Dispose();
+                   coverageProcess = null;
+               }
            }
        }
        #endregion
@@ -1973,20 +1986,20 @@ namespace VC {
        Hashtable/*<int, Absy!>*/ mainLabel2absy;
        GetVC(impl, program, callback, out vc, out mainLabel2absy, out reporter);
 
-       #region Coverage reporter
-       if (coverageProcess != null)
-            coverageProcess.StandardInput.WriteLine(impl.Name + " main");
-
-       int vcSize = 0;
-       vcSize += SizeComputingVisitor.ComputeSize(vc);
-       #endregion
-
        // Find all procedure calls in vc and put labels on them      
        FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, mainLabel2absy);
        calls.setCurrProcAsMain();
        vc = calls.Mutate(vc, true);
        reporter.SetCandidateHandler(calls);
-       
+
+       #region Coverage reporter
+       if (coverageProcess != null)
+           coverageProcess.StandardInput.WriteLine("PROGRAM_ENTRY " + calls.getPersistentName(0));
+
+       int vcSize = 0;
+       vcSize += SizeComputingVisitor.ComputeSize(vc);
+       #endregion
+
        Outcome ret = Outcome.Correct;
        
        int expansionCount = 0;
@@ -2037,6 +2050,24 @@ namespace VC {
            while (true)
            {
                int axioms_pushed, prev_axioms_pushed;
+
+               #region Coverage reporter
+               if (coverageProcess != null)
+               {
+                   coverageProcess.StandardInput.WriteLine("reset_graph_round");
+                   // Go through the curr candidates and write down their parents (i.e.,
+                   // those procedures that have an assume false in them)
+                   foreach (var id in calls.currCandidates)
+                   {
+                       if (calls.candidateParent.ContainsKey(id))
+                       {
+                           var pid = calls.candidateParent[id];
+                           var str = calls.getPersistentName(pid);
+                           coverageProcess.StandardInput.WriteLine("color " + str);
+                       }
+                   }
+               }
+               #endregion
 
                // Underapprox query
                if (underApproxNeeded)
@@ -2184,10 +2215,7 @@ namespace VC {
 
                expansionCount += reporter.candidatesToExpand.Count;
 
-               #region Coverage reporter
-               if (coverageProcess != null)
-                   coverageProcess.StandardInput.WriteLine("reset_graph_round");
-               #endregion
+
 
                if (incrementalSearch)
                {
@@ -2223,7 +2251,7 @@ namespace VC {
            Console.WriteLine("Stratified Inlining: VC Size: {0}", vcSize);
        }
 
-       if (coverageProcess != null)
+       if (coverageProcess != null && stopCoverageProcess)
        {
            coverageProcess.StandardInput.WriteLine("Done");
 
@@ -2273,17 +2301,8 @@ namespace VC {
             if (progress != null && calls.candidateParent.ContainsKey(id))
             {
                 var parentId = calls.candidateParent[id];
-                string str = "";
-                if (parentId == 0)
-                {
-                    str = "main";
-                }
-                else
-                {
-                    str = (calls.id2Candidate[parentId].Op as VCExprBoogieFunctionOp).Func.Name;
-                    str += "_" + parentId.ToString();
-                }
-                str = str + " " + procName + "_" + id.ToString();
+                string str =
+                 calls.getPersistentName(parentId) + " " + calls.getPersistentName(id);
                 progress.StandardInput.WriteLine(str);
             }
             #endregion
@@ -2379,17 +2398,8 @@ namespace VC {
             if (progress != null && calls.candidateParent.ContainsKey(id))
             {
                 var parentId = calls.candidateParent[id];
-                string str = "";
-                if (parentId == 0)
-                {
-                    str = "main";
-                }
-                else
-                {
-                    str = (calls.id2Candidate[parentId].Op as VCExprBoogieFunctionOp).Func.Name;
-                    str += "_" + parentId.ToString();
-                }
-                str = str + " " + procName + "_" + id.ToString();
+                string str =
+                 calls.getPersistentName(parentId) + " " + calls.getPersistentName(id);
                 progress.StandardInput.WriteLine(str);
             }
             #endregion
@@ -2654,7 +2664,26 @@ namespace VC {
 
           return (id2Candidate[id].Op as VCExprBoogieFunctionOp).Func.Name;
       }
-    
+
+      // Get a unique name for this candidate (dependent only on the Call
+      // graph of the program). This is used for reporting coverage only.
+      public string getPersistentName(int top_id)
+      {
+          string stack = "";
+          var id = top_id;
+          while (candidateParent.ContainsKey(id))
+          {
+              id = candidateParent[id];
+              var pname = getProc(id);
+              if (pname == "") pname = "main";
+              stack += "_" + getProc(id);
+          }
+
+          var n = getProc(top_id);
+          if (n == "") n = "main";
+          return n + "_cs=" + stack;
+      }
+
       private int GetNewId(VCExprNAry vc)
       {
           Contract.Requires(vc != null);

@@ -351,6 +351,7 @@ namespace Microsoft.Boogie {
     public int StratifiedInliningOption = 0;
     public int RecursionBound = 500;
     public string CoverageReporterPath = null;
+    public Process coverageReporter = null; // used internally for debugging
 
     public enum TypeEncoding {
       None,
