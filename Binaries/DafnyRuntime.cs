@@ -218,19 +218,4 @@ namespace Dafny
       this.Cdr = b;
     }
   }
-  public class Helpers
-  {
-    public static T[] InitNewArray<T>(BigInteger size) {
-      int sz = (int)size;
-      T[] a = new T[sz];
-      BigInteger[] b = a as BigInteger[];
-      if (b != null) {
-        BigInteger z = new BigInteger(0);
-        for (int i = 0; i < sz; i++) {
-          b[i] = z;
-        }
-      }
-      return a;
-    }
-  }
 }
