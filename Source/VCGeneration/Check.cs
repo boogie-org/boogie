@@ -360,7 +360,7 @@ namespace Microsoft.Boogie {
     }
 
     public int LookupPartitionValue(int partition) {
-      BigNum bignum = (BigNum)cce.NonNull(partitionToValue)[partition];
+      BigNum bignum = (BigNum)cce.NonNull(partitionToValue[partition]);
       return bignum.ToInt;
     }
 
@@ -377,7 +377,6 @@ namespace Microsoft.Boogie {
       }
       Contract.Assert(false);
       throw new cce.UnreachableException();
-      return 0;
     }
 
     private string LookupSkolemConstant(string name) {
@@ -440,7 +439,6 @@ namespace Microsoft.Boogie {
       }
       Contract.Assert(false);
       throw new cce.UnreachableException();
-      return 0;
     }
 
     public List<object>/*!>!*/ PartitionsToValues(List<int> args) {

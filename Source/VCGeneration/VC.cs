@@ -216,7 +216,8 @@ namespace VC {
 
       Implementation impl = info.impl;
       ConvertCFG2DAG(impl, program);
-      info.gotoCmdOrigins = PassifyImpl(impl, program);
+      ModelViewInfo mvInfo;
+      info.gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
       Contract.Assert(info.exitIncarnationMap != null);
       Hashtable/*<int, Absy!>*/ label2absy;
       VCExpressionGenerator gen = checker.VCExprGen;
@@ -361,7 +362,8 @@ namespace VC {
       Implementation impl = info.impl;
       Contract.Assert(impl != null);
       ConvertCFG2DAG(impl, program);
-      info.gotoCmdOrigins = PassifyImpl(impl, program);
+      ModelViewInfo mvInfo;
+      info.gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
       Contract.Assert(info.exitIncarnationMap != null);
       Hashtable/*<int, Absy!>*/ label2absy;
       VCExpressionGenerator gen = checker.VCExprGen;
@@ -646,7 +648,8 @@ namespace VC {
           Emit();
         }
         parent.CurrentLocalVariables = impl.LocVars;
-        parent.PassifyImpl(impl, program);
+        ModelViewInfo mvInfo;
+        parent.PassifyImpl(impl, program, out mvInfo);
         Hashtable label2Absy;
         Checker ch = parent.FindCheckerFor(impl, CommandLineOptions.Clo.SmokeTimeout);
         Contract.Assert(ch != null);
@@ -711,9 +714,11 @@ namespace VC {
             if (IsFalse(assrt.Expr))
               return;
 
+#if TURN_ASSERT_INFO_ASSUMES
             if (turnAssertIntoAssumes) {
               cmd = AssertTurnedIntoAssume(assrt);
             }
+#endif
           } else if (assm != null) {
             if (IsFalse(assm.Expr))
               assumeFalse = true;
@@ -848,7 +853,6 @@ namespace VC {
       Block split_block;
       bool assert_to_assume;
       List<Block/*!*/>/*!*/ assumized_branches = new List<Block/*!*/>();
-      public AssertCmd/*?*/ first_assert;
 
       double score;
       bool score_computed;
@@ -1371,7 +1375,7 @@ namespace VC {
           foreach (Cmd c in b.Cmds) {
             Contract.Assert(c != null);
             if (c is AssertCmd) {
-              return AssertCmdToCounterexample((AssertCmd)c, cce.NonNull(b.TransferCmd), trace, null, new Dictionary<Incarnation, Absy>());
+              return AssertCmdToCounterexample((AssertCmd)c, cce.NonNull(b.TransferCmd), trace, null, null, new Dictionary<Incarnation, Absy>());
             }
           }
         }
@@ -1529,7 +1533,7 @@ namespace VC {
         }
       }
 
-      public void BeginCheck(VerifierCallback callback, int no, int timeout) {
+      public void BeginCheck(VerifierCallback callback, ModelViewInfo mvInfo, int no, int timeout) {
         Contract.Requires(callback != null);
         splitNo = no;
 
@@ -1552,7 +1556,8 @@ namespace VC {
 
             vcgen.ComputePredecessors(codeExpr.Blocks);
             vcgen.AddBlocksBetween(codeExpr.Blocks);
-            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq());
+            ModelViewInfo mvInfoCodeExpr;
+            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), out mvInfoCodeExpr);
             VCExpr startCorrect = VCGen.LetVC(
 		      codeExpr.Blocks[0],
               null,
@@ -1585,9 +1590,9 @@ namespace VC {
         Contract.Assert(vc != null);
 
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
-          reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, parent.implName2LazyInliningInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);
+          reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, parent.implName2LazyInliningInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);
         } else {
-          reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, parent.implName2LazyInliningInfo, this.Checker.TheoremProver.Context, parent.program);
+          reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, parent.implName2LazyInliningInfo, this.Checker.TheoremProver.Context, parent.program);
         }
 
         if (CommandLineOptions.Clo.TraceVerify && no >= 0) {
@@ -1743,7 +1748,8 @@ namespace VC {
         smoke_tester.Copy();
       }
 
-      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program);
+      ModelViewInfo mvInfo;
+      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
 
       double max_vc_cost = CommandLineOptions.Clo.VcsMaxCost;
       int tmp_max_vc_cost = -1, max_splits = CommandLineOptions.Clo.VcsMaxSplits, 
@@ -1791,7 +1797,7 @@ namespace VC {
             }
             callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
 
-            s.BeginCheck(callback, no, 
+            s.BeginCheck(callback, mvInfo, no, 
               (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
                 keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
                              CommandLineOptions.Clo.ProverKillTime);
@@ -1950,7 +1956,7 @@ namespace VC {
                {
                    coverageProcess.Start();
                }
-               catch (System.ComponentModel.Win32Exception e)
+               catch (System.ComponentModel.Win32Exception)
                {
                    coverageProcess.Dispose();
                    coverageProcess = null;
@@ -2472,7 +2478,8 @@ namespace VC {
       Contract.Ensures(Contract.ValueAtReturn(out reporter) != null);
 
       ConvertCFG2DAG(impl, program);
-      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program);
+      ModelViewInfo mvInfo;
+      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
       Checker checker = FindCheckerFor(impl, CommandLineOptions.Clo.ProverKillTime);
       Contract.Assert(checker != null);
 
@@ -2488,7 +2495,7 @@ namespace VC {
       */
 
       reporter = new StratifiedInliningErrorReporter(
-         cce.NonNull(implName2StratifiedInliningInfo), checker.TheoremProver, callback,
+         cce.NonNull(implName2StratifiedInliningInfo), checker.TheoremProver, callback, mvInfo,
          checker.TheoremProver.Context, gotoCmdOrigins, program, impl);
 
     }
@@ -2944,6 +2951,7 @@ namespace VC {
       List<Block/*!*/>/*!*/ blocks;
       protected Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap;
       protected VerifierCallback/*!*/ callback;
+      protected ModelViewInfo MvInfo;
       internal string resourceExceededMessage;
       static System.IO.TextWriter modelWriter;
       [ContractInvariantMethod]
@@ -2978,6 +2986,7 @@ namespace VC {
           List<Block/*!*/>/*!*/ blocks,
           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
           VerifierCallback/*!*/ callback,
+          ModelViewInfo mvInfo,
           Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
           ProverContext/*!*/ context,
           Program/*!*/ program) {
@@ -2994,6 +3003,7 @@ namespace VC {
         this.blocks = blocks;
         this.incarnationOriginMap = incarnationOriginMap;
         this.callback = callback;
+        this.MvInfo = mvInfo;
 
         this.implName2LazyInliningInfo = implName2LazyInliningInfo;
         this.context = context;
@@ -3004,10 +3014,10 @@ namespace VC {
       public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel) {
         //Contract.Requires(cce.NonNullElements(labels));
         if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
-            if (VC.ConditionGeneration.errorModelList != null)
-            {
-                VC.ConditionGeneration.errorModelList.Add(errModel);
-            }
+          if (VC.ConditionGeneration.errorModelList != null)
+          {
+            VC.ConditionGeneration.errorModelList.Add(errModel);
+          }
           errModel.Print(ErrorReporter.ModelWriter);
           ErrorReporter.ModelWriter.Flush();
         }
@@ -3027,7 +3037,7 @@ namespace VC {
         Contract.Assert(traceNodes.Contains(entryBlock));
         trace.Add(entryBlock);
 
-        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel, incarnationOriginMap, implName2LazyInliningInfo, context, program, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
+        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel, MvInfo, incarnationOriginMap, implName2LazyInliningInfo, context, program, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
 
         if (newCounterexample == null)
           return;
@@ -3074,10 +3084,11 @@ namespace VC {
           List<Block/*!*/>/*!*/ blocks,
           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
           VerifierCallback/*!*/ callback,
+          ModelViewInfo mvInfo,
           Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
           ProverContext/*!*/ context,
           Program/*!*/ program)
-        : base(gotoCmdOrigins, label2absy, blocks, incarnationOriginMap, callback, implName2LazyInliningInfo, context, program) // here for aesthetic purposes //TODO: Maybe nix?
+        : base(gotoCmdOrigins, label2absy, blocks, incarnationOriginMap, callback, mvInfo, implName2LazyInliningInfo, context, program) // here for aesthetic purposes //TODO: Maybe nix?
       {
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(label2absy != null);
@@ -3122,7 +3133,7 @@ namespace VC {
             if (b.Cmds.Has(a)) {
               BlockSeq trace = new BlockSeq();
               trace.Add(b);
-              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, errModel, incarnationOriginMap);
+              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, errModel, MvInfo, incarnationOriginMap);
               callback.OnCounterexample(newCounterexample, null);
               goto NEXT_ASSERT;
             }
@@ -3139,6 +3150,7 @@ namespace VC {
       Dictionary<string/*!*/, StratifiedInliningInfo/*!*/>/*!*/ implName2StratifiedInliningInfo;
       ProverInterface/*!*/ theoremProver;
       VerifierCallback/*!*/ callback;
+      ModelViewInfo mvInfo;
       FCallHandler calls;
       Program/*!*/ program;
       Implementation/*!*/ mainImpl;
@@ -3161,7 +3173,7 @@ namespace VC {
 
 
       public StratifiedInliningErrorReporter(Dictionary<string/*!*/, StratifiedInliningInfo/*!*/>/*!*/ implName2StratifiedInliningInfo,
-                                             ProverInterface/*!*/ theoremProver, VerifierCallback/*!*/ callback, ProverContext/*!*/ context,
+                                             ProverInterface/*!*/ theoremProver, VerifierCallback/*!*/ callback, ModelViewInfo mvInfo, ProverContext/*!*/ context,
                                              Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins,
                                              Program/*!*/ program, Implementation/*!*/ mainImpl) {
         Contract.Requires(cce.NonNullElements(implName2StratifiedInliningInfo));
@@ -3172,6 +3184,7 @@ namespace VC {
         this.implName2StratifiedInliningInfo = implName2StratifiedInliningInfo;
         this.theoremProver = theoremProver;
         this.callback = callback;
+        this.mvInfo = mvInfo;
         this.context = context;
         this.program = program;
         this.mainImpl = mainImpl;
@@ -3191,7 +3204,7 @@ namespace VC {
         if (underapproximationMode) {
           if (errModel == null)
             return;
-          GenerateTraceMain(labels, errModel);
+          GenerateTraceMain(labels, errModel, mvInfo);
           return;
         }
 
@@ -3212,7 +3225,7 @@ namespace VC {
       }
 
       // Construct the interprocedural trace
-      private void GenerateTraceMain(IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel) {
+      private void GenerateTraceMain(IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, ModelViewInfo mvInfo) {
         Contract.Requires(errModel != null);
         Contract.Requires(cce.NonNullElements(labels));
         if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
@@ -3221,7 +3234,7 @@ namespace VC {
         }
 
         Counterexample newCounterexample =
-          GenerateTrace(labels, errModel, 0, mainImpl);
+          GenerateTrace(labels, errModel, mvInfo, 0, mainImpl);
 
         if (newCounterexample == null)
           return;
@@ -3244,7 +3257,7 @@ namespace VC {
         callback.OnCounterexample(newCounterexample, null);
       }
 
-      private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel,
+      private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, ModelViewInfo mvInfo,
                                            int candidateId, Implementation procImpl) {
         Contract.Requires(errModel != null);
         Contract.Requires(cce.NonNullElements(labels));
@@ -3281,14 +3294,14 @@ namespace VC {
         trace.Add(entryBlock);
 
         var calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
-        Counterexample newCounterexample = GenerateTraceRec(labels, errModel, candidateId, entryBlock, traceNodes, trace, calleeCounterexamples);
+        Counterexample newCounterexample = GenerateTraceRec(labels, errModel, mvInfo, candidateId, entryBlock, traceNodes, trace, calleeCounterexamples);
 
         return newCounterexample;
 
       }
 
       private Counterexample GenerateTraceRec(
-                            IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, int candidateId,
+                            IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, ModelViewInfo mvInfo, int candidateId,
                             Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace,
                             Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples) {
         Contract.Requires(cce.NonNullElements(labels));
@@ -3309,7 +3322,7 @@ namespace VC {
                 // Skip if 'cmd' not contained in the trace or not an assert
                 if (cmd is AssertCmd && traceNodes.Contains(cmd))
                 {
-                    Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, new Dictionary<Incarnation, Absy/*!*/>());
+                    Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, mvInfo, new Dictionary<Incarnation, Absy/*!*/>());
                     newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
                     return newCounterexample;
                 }
@@ -3331,7 +3344,7 @@ namespace VC {
 
                 calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                     new CalleeCounterexampleInfo(
-                        cce.NonNull(GenerateTrace(labels, errModel, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
+                        cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
                         new List<object>());
 
             }
@@ -3602,7 +3615,7 @@ namespace VC {
       #endregion
     }
 
-    protected Hashtable/*TransferCmd->ReturnCmd*/ PassifyImpl(Implementation impl, Program program)
+    protected Hashtable/*TransferCmd->ReturnCmd*/ PassifyImpl(Implementation impl, Program program, out ModelViewInfo mvInfo)
     {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
@@ -3687,7 +3700,7 @@ namespace VC {
         Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(impl);
       }
       
-      Hashtable exitIncarnationMap = Convert2PassiveCmd(impl);
+      Hashtable exitIncarnationMap = Convert2PassiveCmd(impl, out mvInfo);
 
       if (implName2LazyInliningInfo != null && implName2LazyInliningInfo.ContainsKey(impl.Name))
       {
@@ -3929,7 +3942,7 @@ namespace VC {
     }
 
     private static Counterexample LazyCounterexample(
-                                       ErrorModel/*!*/ errModel,
+                                       ErrorModel/*!*/ errModel, ModelViewInfo mvInfo,
                                        Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
                                        ProverContext/*!*/ context,
                                        Program/*!*/ program,
@@ -3966,7 +3979,7 @@ namespace VC {
           if (assertCmd != null && errModel.LookupControlFlowFunctionAt(cfcValue, assertCmd.UniqueId) == 0)
           {
             Counterexample newCounterexample;
-            newCounterexample = AssertCmdToCounterexample(assertCmd, transferCmd, trace, errModel, cce.NonNull(info.incarnationOriginMap));
+            newCounterexample = AssertCmdToCounterexample(assertCmd, transferCmd, trace, errModel, mvInfo, cce.NonNull(info.incarnationOriginMap));
             newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
             return newCounterexample;
           }
@@ -4047,7 +4060,7 @@ namespace VC {
           }
           calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] = 
             new CalleeCounterexampleInfo(
-              LazyCounterexample(errModel, implName2LazyInliningInfo, context, program, calleeName, args),
+              LazyCounterexample(errModel, mvInfo, implName2LazyInliningInfo, context, program, calleeName, args),
               errModel.PartitionsToValues(args));
         }
           
@@ -4071,7 +4084,7 @@ namespace VC {
     }
 
     static Counterexample TraceCounterexample(
-                          Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace, ErrorModel errModel,
+                          Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace, ErrorModel errModel, ModelViewInfo mvInfo,
                           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
                           Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
                           ProverContext/*!*/ context, Program/*!*/ program,
@@ -4097,7 +4110,7 @@ namespace VC {
         // Skip if 'cmd' not contained in the trace or not an assert
         if (cmd is AssertCmd && traceNodes.Contains(cmd))
         {
-          Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, incarnationOriginMap);
+          Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, mvInfo, incarnationOriginMap);
           Contract.Assert(newCounterexample != null);
           newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
           return newCounterexample;
@@ -4134,7 +4147,7 @@ namespace VC {
         }
         calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] = 
             new CalleeCounterexampleInfo(
-                LazyCounterexample(errModel, implName2LazyInliningInfo, context, program, calleeName, args),
+                LazyCounterexample(errModel, mvInfo, implName2LazyInliningInfo, context, program, calleeName, args),
                 errModel.PartitionsToValues(args));
         #endregion
       }
@@ -4147,7 +4160,7 @@ namespace VC {
           Contract.Assert(bb != null);
           if (traceNodes.Contains(bb)){
             trace.Add(bb);
-            return TraceCounterexample(bb, traceNodes, trace, errModel, incarnationOriginMap, implName2LazyInliningInfo, context, program, calleeCounterexamples);
+            return TraceCounterexample(bb, traceNodes, trace, errModel, mvInfo, incarnationOriginMap, implName2LazyInliningInfo, context, program, calleeCounterexamples);
           }
         }
       }
@@ -4646,7 +4659,7 @@ namespace VC {
       Dictionary<Bpl.Expr/*!*/, object>/*!*/ exprToPrintableValue) 
       //modifies exprToPrintableValue.*;
     {
-    Contract.Requires(expr != null);
+      Contract.Requires(expr != null);
       Contract.Requires(incarnationMap != null);
       Contract.Requires(errModel != null);
       Contract.Requires(exprToPrintableValue != null);
@@ -4863,17 +4876,16 @@ namespace VC {
       else {
         Contract.Assert(false);throw new cce.UnreachableException();  // unexpected Bpl.Expr
       }
-      return -1;
     }
 
-    static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, ErrorModel errModel,
+    static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, ErrorModel errModel, ModelViewInfo mvInfo,
       Dictionary<Incarnation, Absy> incarnationOriginMap) 
-  {
-    Contract.Requires(cmd != null);
-    Contract.Requires(transferCmd != null);
-    Contract.Requires(trace != null);
+    {
+      Contract.Requires(cmd != null);
+      Contract.Requires(transferCmd != null);
+      Contract.Requires(trace != null);
       Contract.Requires(cce.NonNullElements(incarnationOriginMap));
-    Contract.Ensures(Contract.Result<Counterexample>() != null);
+      Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       List<string> relatedInformation = new List<string>();
       if (CommandLineOptions.Clo.EnhancedErrorMessages == 1) {
@@ -4892,7 +4904,7 @@ namespace VC {
       {
         AssertRequiresCmd assertCmd = (AssertRequiresCmd)cmd;
         Contract.Assert(assertCmd != null);
-        CallCounterexample cc = new CallCounterexample(trace, assertCmd.Call, assertCmd.Requires);
+        CallCounterexample cc = new CallCounterexample(trace, assertCmd.Call, assertCmd.Requires, errModel, mvInfo);
         cc.relatedInformation = relatedInformation;
         return cc;
       }
@@ -4900,13 +4912,13 @@ namespace VC {
       {
         AssertEnsuresCmd assertCmd = (AssertEnsuresCmd)cmd;
         Contract.Assert(assertCmd != null);
-        ReturnCounterexample rc = new ReturnCounterexample(trace, transferCmd, assertCmd.Ensures);
+        ReturnCounterexample rc = new ReturnCounterexample(trace, transferCmd, assertCmd.Ensures, errModel, mvInfo);
         rc.relatedInformation = relatedInformation;
         return rc;
       }
       else 
       {
-        AssertCounterexample ac = new AssertCounterexample(trace, (AssertCmd)cmd);
+        AssertCounterexample ac = new AssertCounterexample(trace, (AssertCmd)cmd, errModel, mvInfo);
         ac.relatedInformation = relatedInformation;
         return ac;
       }

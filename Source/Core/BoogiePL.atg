@@ -817,10 +817,11 @@ LabelOrCmd<out Cmd c, out IToken label>
   ( LabelOrAssign<out c, out label>
   | "assert"              (. x = t; .)
     { Attribute<ref kv> }
-    Proposition<out e>    (. c = new AssertCmd(x,e, kv); .)
+    Proposition<out e>    (. c = new AssertCmd(x, e, kv); .)
     ";"
   | "assume"              (. x = t; .)
-    Proposition<out e>    (. c = new AssumeCmd(x,e); .)
+    { Attribute<ref kv> }
+    Proposition<out e>    (. c = new AssumeCmd(x, e, kv); .)
     ";"
   | "havoc"               (. x = t; .)
     Idents<out xs> ";"    (. ids = new IdentifierExprSeq();

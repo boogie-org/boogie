@@ -62,12 +62,12 @@ Contract.Requires(cce.NonNullElements(defines,true));
   return Parse(stream, filename, defines, out program);
 }
 
-
-public static int Parse(Stream stream, string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
-    Contract.Requires(stream != null);
-    Contract.Requires(filename != null);
-    Contract.Requires(cce.NonNullElements(defines, true));
   
+public static int Parse (Stream stream, string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
+Contract.Requires(stream != null);
+Contract.Requires(filename != null);
+Contract.Requires(cce.NonNullElements(defines,true));
+
   if (defines == null) {
     defines = new List<string/*!*/>();
   }
@@ -98,7 +98,7 @@ public static int Parse(Stream stream, string/*!*/ filename, /*maybe null*/ List
 private class BvBounds : Expr {
   public BigNum Lower;
   public BigNum Upper;
-  public BvBounds(IToken/*!*/ tok, BigNum lower, BigNum upper) :base(tok){//BASEMOVEA
+  public BvBounds(IToken/*!*/ tok, BigNum lower, BigNum upper) :base(tok){//BASEMOVE
     Contract.Requires(tok != null);
     //:base(tok);
     this.Lower = lower;
@@ -106,15 +106,15 @@ private class BvBounds : Expr {
   }
   public override Type/*!*/ ShallowType { get {Contract.Ensures(Contract.Result<Type>() != null); return Bpl.Type.Int; } }
   public override void Resolve(ResolutionContext/*!*/ rc) {
-  //Contract.Requires(rc != null);
+  Contract.Requires(rc != null);
     rc.Error(this, "bitvector bounds in illegal position");
   }
   public override void Emit(TokenTextWriter/*!*/ stream,
                             int contextBindingStrength, bool fragileContext) {
-    //Contract.Requires(stream != null);
+    Contract.Requires(stream != null);
     {Contract.Assert(false);throw new cce.UnreachableException();}
   }
-  public override void ComputeFreeVariables(Set/*!*/ freeVars) {/*Contract.Requires(freeVars != null);*/ {Contract.Assert(false);throw new cce.UnreachableException();} }
+  public override void ComputeFreeVariables(Set/*!*/ freeVars) {Contract.Requires(freeVars != null); {Contract.Assert(false);throw new cce.UnreachableException();} }
   public override AI.IExpr/*!*/ IExpr { get { Contract.Ensures(Contract.Result<AI.IExpr>()!=null); {Contract.Assert(false);throw new cce.UnreachableException();} } }
 }
 
@@ -979,13 +979,16 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 				Attribute(ref kv);
 			}
 			Proposition(out e);
-			c = new AssertCmd(x,e, kv); 
+			c = new AssertCmd(x, e, kv); 
 			Expect(7);
 		} else if (la.kind == 45) {
 			Get();
 			x = t; 
+			while (la.kind == 25) {
+				Attribute(ref kv);
+			}
 			Proposition(out e);
-			c = new AssumeCmd(x,e); 
+			c = new AssumeCmd(x, e, kv); 
 			Expect(7);
 		} else if (la.kind == 46) {
 			Get();

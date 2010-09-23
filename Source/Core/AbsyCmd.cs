@@ -2379,6 +2379,7 @@ namespace Microsoft.Boogie {
   }
 
   public abstract class PredicateCmd : Cmd {
+    public QKeyValue Attributes;
     public /*readonly--except in StandardVisitor*/ Expr/*!*/ Expr;
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -2390,6 +2391,13 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
       Expr = expr;
+    }
+    public PredicateCmd(IToken/*!*/ tok, Expr/*!*/ expr, QKeyValue kv)
+      : base(tok) {
+      Contract.Requires(tok != null);
+      Contract.Requires(expr != null);
+      Expr = expr;
+      Attributes = kv;
     }
     public override void Resolve(ResolutionContext rc) {
       //Contract.Requires(rc != null);
@@ -2458,8 +2466,6 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public QKeyValue Attributes;
-
     private MiningStrategy errorDataEnhanced;
     public MiningStrategy ErrorDataEnhanced {
       get {
@@ -2478,11 +2484,10 @@ namespace Microsoft.Boogie {
     }
 
     public AssertCmd(IToken/*!*/ tok, Expr/*!*/ expr, QKeyValue kv)
-      : base(tok, expr) {
+      : base(tok, expr, kv) {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
       errorDataEnhanced = GenerateBoundVarMiningStrategy(expr);
-      Attributes = kv;
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
@@ -2639,9 +2644,15 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
     }
+    public AssumeCmd(IToken/*!*/ tok, Expr/*!*/ expr, QKeyValue kv)
+      : base(tok, expr, kv) {
+      Contract.Requires(tok != null);
+      Contract.Requires(expr != null);
+    }
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "assume ");
+      EmitAttributes(stream, Attributes);
       this.Expr.Emit(stream);
       stream.WriteLine(";");
     }

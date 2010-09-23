@@ -192,6 +192,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant(-1 <= LoopFrameConditions && LoopFrameConditions < 3);
       Contract.Invariant(0 <= ModifiesDefault && ModifiesDefault < 7);
       Contract.Invariant((0 <= PrintErrorModel && PrintErrorModel <= 2) || PrintErrorModel == 4);
+      Contract.Invariant(0 <= ModelView && ModelView < 2);
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
       Contract.Invariant(0 <= StepsBeforeWidening && StepsBeforeWidening <= 9);
       Contract.Invariant(-1 <= BracketIdsInVC && BracketIdsInVC <= 1);
@@ -229,6 +230,7 @@ namespace Microsoft.Boogie {
     public int PrintErrorModel = 0;
     public string PrintErrorModelFile = null;
     public bool CEVPrint = false;
+    public int ModelView = 1;
     public int EnhancedErrorMessages = 0;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public enum BvHandling {
@@ -916,6 +918,11 @@ namespace Microsoft.Boogie {
               PrintErrorModelFile = args[ps.i];
             }
             CEVPrint = true;
+            break;
+
+          case "-mv":
+          case "/mv":
+            ps.GetNumericArgument(ref ModelView, 2);
             break;
 
           case "-printModelToFile":
@@ -2029,6 +2036,7 @@ namespace Microsoft.Boogie {
                     4 - print Z3's error model in a more human readable way
   /printModelToFile:<file> : print model to <file> instead of console
   /cev:<file>       Print Z3's error model to <file> and include error message
+  /mv:<n>           0 - model view off, 1 (default) - model view on
   /enhancedErrorMessages:<n> : 0 (default) - no enhanced error messages
                                1 - Z3 error model enhanced error messages
 

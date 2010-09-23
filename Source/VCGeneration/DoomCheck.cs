@@ -174,7 +174,6 @@ void ObjectInvariant()
             #endregion
 
        */ 
-        private bool _tmpUseFreshBVars;
        
         VCExpr GenerateEVC(Implementation impl, out Hashtable label2absy, Checker ch)
         {

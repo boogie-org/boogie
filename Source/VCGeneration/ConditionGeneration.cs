@@ -75,17 +75,20 @@ namespace Microsoft.Boogie {
 
     [Peer]
     public BlockSeq Trace;
+    public ErrorModel Model;
+    public VC.ModelViewInfo MvInfo;
     [Peer]
     public List<string>/*!>!*/ relatedInformation;
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
-    internal Counterexample(BlockSeq trace) {
+    internal Counterexample(BlockSeq trace, ErrorModel model, VC.ModelViewInfo mvInfo) {
       Contract.Requires(trace != null);
       this.Trace = trace;
+      this.Model = model;
+      this.MvInfo = mvInfo;
       this.relatedInformation = new List<string>();
       this.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
-      // base();
     }
 
     // Create a shallow copy of the counterexample
@@ -140,37 +143,64 @@ namespace Microsoft.Boogie {
         return naryExpr.Fun.FunctionName;
     }
 
-    public void Print(int spaces) {
+    public void Print(int indent) {
       int numBlock = -1;
+      string ind = new string(' ', indent);
       foreach (Block b in Trace) {
         Contract.Assert(b != null);
         numBlock++;
         if (b.tok == null) {
-          Console.WriteLine("    <intermediate block>");
+          Console.WriteLine("{0}<intermediate block>", ind);
         } else {
           // for ErrorTrace == 1 restrict the output;
           // do not print tokens with -17:-4 as their location because they have been 
           // introduced in the translation and do not give any useful feedback to the user
           if (!(CommandLineOptions.Clo.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4)) {
-            for (int i = 0; i < spaces + 4; i++)
-              Console.Write(" ");
-            Console.WriteLine("{0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label);
+            Console.WriteLine("{4}{0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label, ind);
             for (int numInstr = 0; numInstr < b.Cmds.Length; numInstr++)
             {
                 var loc = new TraceLocation(numBlock, numInstr);
                 if (calleeCounterexamples.ContainsKey(loc))
                 {
                     var cmd = getTraceCmd(loc);
-                    for (int i = 0; i < spaces + 4; i++)
-                        Console.Write(" ");
-                    Console.WriteLine("Inlined call to procedure {0} begins", getCalledProcName(cmd));
-                    calleeCounterexamples[loc].counterexample.Print(spaces + 4);
-                    for (int i = 0; i < spaces + 4; i++)
-                        Console.Write(" ");
-                    Console.WriteLine("Inlined call to procedure {0} ends", getCalledProcName(cmd));
+                    Console.WriteLine("{1}Inlined call to procedure {0} begins", getCalledProcName(cmd), ind);
+                    calleeCounterexamples[loc].counterexample.Print(indent + 4);
+                    Console.WriteLine("{1}Inlined call to procedure {0} ends", getCalledProcName(cmd), ind);
                 }
             }
           }
+        }
+      }
+    }
+
+    public void PrintModel() {
+      if (Model == null || MvInfo == null) {
+        return;
+      }
+      if (!Model.definedFunctions.ContainsKey("@MV_state")) {
+        return;
+      }
+      Console.WriteLine("Captured states:");
+      List<List<int>> defs = Model.definedFunctions["@MV_state"];
+      List<int> states = new List<int>();
+      foreach (List<int> parameters in defs) {
+        if (parameters.Count == 2) {  // we expect this for all but possibly the last row
+          int argPartition = parameters[0];
+          object val = Model.partitionToValue[argPartition];
+          if (val is BigNum) {
+            BigNum n = (BigNum)val;
+            states.Add(n.ToInt);
+          }
+        }
+      }
+      // we now have the list of states in 'states'
+      states.Sort();
+      foreach (int s in states) {
+        if (0 <= s && s < MvInfo.Info.Count) {
+          VC.ModelViewInfo.Mapping m = MvInfo.Info[s];
+          Console.WriteLine("    {0}", m.Description);
+        } else {
+          Console.WriteLine("    undefined captured-state ID {0}", s);
         }
       }
     }
@@ -199,8 +229,8 @@ namespace Microsoft.Boogie {
     }
 
 
-    public AssertCounterexample(BlockSeq trace, AssertCmd failingAssert)
-      : base(trace) {
+    public AssertCounterexample(BlockSeq trace, AssertCmd failingAssert, ErrorModel model, VC.ModelViewInfo mvInfo)
+      : base(trace, model, mvInfo) {
       Contract.Requires(trace != null);
       Contract.Requires(failingAssert != null);
       this.FailingAssert = failingAssert;
@@ -213,7 +243,7 @@ namespace Microsoft.Boogie {
 
     public override Counterexample Clone()
     {
-        var ret = new AssertCounterexample(Trace, FailingAssert);
+        var ret = new AssertCounterexample(Trace, FailingAssert, Model, MvInfo);
         ret.calleeCounterexamples = calleeCounterexamples;
         return ret;
     }
@@ -229,8 +259,8 @@ namespace Microsoft.Boogie {
     }
 
 
-    public CallCounterexample(BlockSeq trace, CallCmd failingCall, Requires failingRequires)
-      : base(trace) {
+    public CallCounterexample(BlockSeq trace, CallCmd failingCall, Requires failingRequires, ErrorModel model, VC.ModelViewInfo mvInfo)
+      : base(trace, model, mvInfo) {
       Contract.Requires(!failingRequires.Free);
       Contract.Requires(trace != null);
       Contract.Requires(failingCall != null);
@@ -246,7 +276,7 @@ namespace Microsoft.Boogie {
 
     public override Counterexample Clone()
     {
-        var ret = new CallCounterexample(Trace, FailingCall, FailingRequires);
+        var ret = new CallCounterexample(Trace, FailingCall, FailingRequires, Model, MvInfo);
         ret.calleeCounterexamples = calleeCounterexamples;
         return ret;
     }
@@ -262,8 +292,8 @@ namespace Microsoft.Boogie {
     }
 
 
-    public ReturnCounterexample(BlockSeq trace, TransferCmd failingReturn, Ensures failingEnsures)
-      : base(trace) {
+    public ReturnCounterexample(BlockSeq trace, TransferCmd failingReturn, Ensures failingEnsures, ErrorModel model, VC.ModelViewInfo mvInfo)
+      : base(trace, model, mvInfo) {
       Contract.Requires(trace != null);
       Contract.Requires(failingReturn != null);
       Contract.Requires(failingEnsures != null);
@@ -279,7 +309,7 @@ namespace Microsoft.Boogie {
 
     public override Counterexample Clone()
     {
-        var ret = new ReturnCounterexample(Trace, FailingReturn, FailingEnsures);
+        var ret = new ReturnCounterexample(Trace, FailingReturn, FailingEnsures, Model, MvInfo);
         ret.calleeCounterexamples = calleeCounterexamples;
         return ret;
     }
@@ -1081,16 +1111,17 @@ namespace VC {
 
     Hashtable preHavocIncarnationMap = null;     // null = the previous command was not an HashCmd. Otherwise, a *copy* of the map before the havoc statement
 
-    protected void TurnIntoPassiveBlock(Block b, Hashtable /*Variable -> Expr*/ incarnationMap, Substitution oldFrameSubst) {
+    protected void TurnIntoPassiveBlock(Block b, Hashtable /*Variable -> Expr*/ incarnationMap, ModelViewInfo mvInfo, Substitution oldFrameSubst) {
       Contract.Requires(b != null);
       Contract.Requires(incarnationMap != null);
+      Contract.Requires(mvInfo != null);
       Contract.Requires(oldFrameSubst != null);
       #region Walk forward over the commands in this block and convert them to passive commands
 
       CmdSeq passiveCmds = new CmdSeq();
       foreach (Cmd c in b.Cmds) {
         Contract.Assert(c != null); // walk forward over the commands because the map gets modified in a forward direction      
-        TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds);
+        TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
       }
       b.Cmds = passiveCmds;
 
@@ -1103,10 +1134,10 @@ namespace VC {
       #endregion
     }
 
-    protected Hashtable /*Variable -> Expr*/ Convert2PassiveCmd(Implementation impl) {
+    protected Hashtable /*Variable -> Expr*/ Convert2PassiveCmd(Implementation impl, out ModelViewInfo mvInfo) {
       Contract.Requires(impl != null);
 
-      Hashtable r = ConvertBlocks2PassiveCmd(impl.Blocks, impl.Proc.Modifies);
+      Hashtable r = ConvertBlocks2PassiveCmd(impl.Blocks, impl.Proc.Modifies, out mvInfo);
 
       RestoreParamWhereClauses(impl);
 
@@ -1120,7 +1151,7 @@ namespace VC {
       return r;
     }
 
-    protected Hashtable /*Variable -> Expr*/ ConvertBlocks2PassiveCmd(List<Block> blocks, IdentifierExprSeq modifies) {
+    protected Hashtable /*Variable -> Expr*/ ConvertBlocks2PassiveCmd(List<Block> blocks, IdentifierExprSeq modifies, out ModelViewInfo mvInfo) {
       Contract.Requires(blocks != null);
       Contract.Requires(modifies != null);
       #region Convert to Passive Commands
@@ -1155,6 +1186,7 @@ namespace VC {
       // processed all of a node's predecessors before we process the node.
       Hashtable /*Block -> IncarnationMap*/ block2Incarnation = new Hashtable/*Block -> IncarnationMap*/();
       Block exitBlock = null;
+      mvInfo = new ModelViewInfo();
       foreach (Block b in sortedNodes) {
         Contract.Assert(b != null);
         Contract.Assert(!block2Incarnation.Contains(b));
@@ -1164,7 +1196,7 @@ namespace VC {
         block2Incarnation.Add(b, incarnationMap);
         #endregion Each block's map needs to be available to successor blocks
 
-        TurnIntoPassiveBlock(b, incarnationMap, oldFrameSubst);
+        TurnIntoPassiveBlock(b, incarnationMap, mvInfo, oldFrameSubst);
         exitBlock = b;
       }
 
@@ -1177,13 +1209,15 @@ namespace VC {
     }
 
     /// <summary> 
-    /// Turn a command into a passive command, and it remembers the previous step, to see if it is a havoc or not. In the case, it remebers the incarnation map BEFORE the havoc
+    /// Turn a command into a passive command, and it remembers the previous step, to see if it is a havoc or not. In the case, it remembers the incarnation map BEFORE the havoc
+    /// Meanwhile, record any information needed to later reconstruct a model view.
     /// </summary> 
-    protected void TurnIntoPassiveCmd(Cmd c, Hashtable /*Variable -> Expr*/ incarnationMap, Substitution oldFrameSubst, CmdSeq passiveCmds) {
+    protected void TurnIntoPassiveCmd(Cmd c, Hashtable /*Variable -> Expr*/ incarnationMap, Substitution oldFrameSubst, CmdSeq passiveCmds, ModelViewInfo mvInfo) {
       Contract.Requires(c != null);
       Contract.Requires(incarnationMap != null);
       Contract.Requires(oldFrameSubst != null);
       Contract.Requires(passiveCmds != null);
+      Contract.Requires(mvInfo != null);
       Substitution incarnationSubst = Substituter.SubstitutionFromHashtable(incarnationMap);
       #region assert/assume P |--> assert/assume P[x := in(x)], out := in
       if (c is PredicateCmd) {
@@ -1193,6 +1227,14 @@ namespace VC {
         Contract.Assert(pc != null);
 
         Expr copy = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, pc.Expr);
+        if (0 < CommandLineOptions.Clo.ModelView && pc is AssumeCmd) {
+          string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
+          if (description != null) {
+            Expr mv = new NAryExpr(pc.tok, new FunctionCall(mvInfo.MVState), new ExprSeq(Bpl.Expr.Literal(mvInfo.Info.Count)));
+            copy = Bpl.Expr.And(mv, copy);
+            mvInfo.Info.Add(new ModelViewInfo.Mapping(description, incarnationMap));
+          }
+        }
         Contract.Assert(copy != null);
         if (pc is AssertCmd) {
           ((AssertCmd)pc).OrigExpr = pc.Expr;
@@ -1312,7 +1354,7 @@ namespace VC {
         Contract.Assert(sug != null);
         Cmd cmd = sug.Desugaring;
         Contract.Assert(cmd != null);
-        TurnIntoPassiveCmd(cmd, incarnationMap, oldFrameSubst, passiveCmds);
+        TurnIntoPassiveCmd(cmd, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
       } else if (c is StateCmd) {
         this.preHavocIncarnationMap = null;       // we do not need to remeber the previous incarnations
         StateCmd st = (StateCmd)c;
@@ -1328,7 +1370,7 @@ namespace VC {
         // do the sub-commands
         foreach (Cmd s in st.Cmds) {
           Contract.Assert(s != null);
-          TurnIntoPassiveCmd(s, incarnationMap, oldFrameSubst, passiveCmds);
+          TurnIntoPassiveCmd(s, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
         }
         // remove the local variables from the incarnation map
         foreach (Variable v in st.Locals) {
@@ -1343,7 +1385,7 @@ namespace VC {
       #endregion
 
 
-      #region We rember if we have put an havoc statement into a passive form
+      #region We remember if we have put an havoc statement into a passive form
 
       if (!(c is HavocCmd))
         this.preHavocIncarnationMap = null;
@@ -1433,5 +1475,23 @@ namespace VC {
       #endregion
     }
 
+  }
+
+  public class ModelViewInfo
+  {
+    public readonly List<Mapping> Info = new List<Mapping>();
+    public readonly Function MVState = new Function(Token.NoToken, "@MV_state",
+      new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true)),
+      new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Bool), false));
+
+    public class Mapping
+    {
+      public readonly string Description;
+      public readonly Hashtable /*Variable -> Expr*/ IncarnationMap;
+      public Mapping(string description, Hashtable /*Variable -> Expr*/ incarnationMap) {
+        Description = description;
+        IncarnationMap = incarnationMap;
+      }
+    }
   }
 }

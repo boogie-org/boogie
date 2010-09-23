@@ -302,8 +302,6 @@ namespace VC {
       watch.Reset();
       watch.Start();
 
-
-
       #region Transform the Program into loop-free passive form
       variable2SequenceNumber = new Hashtable/*Variable -> int*/();
       incarnationOriginMap = new Dictionary<Incarnation, Absy>();
@@ -329,7 +327,8 @@ namespace VC {
       if (UseItAsDebugger)
         RemoveReachVars(cce.NonNull(firstDebugBlock));
 
-      PassifyProgram(impl);
+      ModelViewInfo mvInfo;
+      PassifyProgram(impl, out mvInfo);
 
       #endregion
       //EmitImpl(impl,false);
@@ -737,8 +736,6 @@ namespace VC {
         b.Cmds = backup;
         return false;
       }
-
-      return false;
     }
 
     void UndoBlockModifications(Implementation impl, Dictionary<Block/*!*/, CmdSeq/*!*/>/*!*/ cmdbackup,
@@ -1079,8 +1076,6 @@ namespace VC {
         Contract.Requires(cutPoint != null);
         Contract.Requires(cce.NonNullElements(loopNodes));
         loopNodes.Add(current);
-        if (false)
-          System.Diagnostics.Debugger.Break();
         foreach (GraphNode g in current.Predecessors) {
           Contract.Assert(g != null);
           if (cutPoint.firstPredecessor == g || g == cutPoint || loopNodes.Contains(g))
@@ -1318,12 +1313,12 @@ namespace VC {
     }
 
 
-    private Hashtable/*TransferCmd->ReturnCmd*/ PassifyProgram(Implementation impl) {
+    private Hashtable/*TransferCmd->ReturnCmd*/ PassifyProgram(Implementation impl, out ModelViewInfo mvInfo) {
       Contract.Requires(impl != null);
       Contract.Ensures(Contract.Result<Hashtable>() != null);
 
       CurrentLocalVariables = impl.LocVars;
-      Convert2PassiveCmd(impl);
+      Convert2PassiveCmd(impl, out mvInfo);
       return new Hashtable();
     }
 

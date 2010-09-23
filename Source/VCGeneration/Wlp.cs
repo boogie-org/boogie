@@ -68,13 +68,16 @@ namespace VC {
       }
       
       int id = b.UniqueId;
-      cce.BeginExpose(ctxt); {
+      try {
+        cce.BeginExpose(ctxt);
         ctxt.Label2absy[id] = b;
         if (ctxt.ControlFlowVariable != null)
           return res;
-        else 
+        else
           return gen.Implies(gen.LabelPos(cce.NonNull(id.ToString()), VCExpressionGenerator.True), res);
-      }cce.EndExpose();
+      } finally {
+        cce.EndExpose();
+      }
     }
 
     /// <summary>
@@ -112,7 +115,7 @@ namespace VC {
               Contract.Assert(false);throw new cce.UnreachableException();  // unexpected case
           }
           
-          // (MSchaef) Hack: This line might be useless, but at least it is not harmfull
+          // (MSchaef) Hack: This line might be useless, but at least it is not harmful
           // need to test it
           if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) 
             return gen.Implies(C, N);

@@ -731,6 +731,9 @@ namespace Microsoft.Boogie {
                     Console.WriteLine("Execution trace:");
                     error.Print(4);
                   }
+                  if (CommandLineOptions.Clo.ModelView == 1) {
+                    error.PrintModel();
+                  }
                   errorCount++;
                 }
                 //}

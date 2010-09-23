@@ -9,8 +9,8 @@ for %%f in (NullInModel IntInModel ModelTest) do (
   echo -------------------- %%f --------------------
   "%BGEXE%" %* %%f.bpl /printModel:2
 )
-for %%f in (InterpretedFunctionTests) do (
+for %%f in (InterpretedFunctionTests CaptureState) do (
   echo.
   echo -------------------- %%f --------------------
-  "%BGEXE%" %* %%f.bpl 
+  "%BGEXE%" %* %%f.bpl
 )

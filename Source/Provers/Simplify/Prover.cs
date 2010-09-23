@@ -55,16 +55,17 @@ namespace Microsoft.Boogie.Simplify {
         //modifies this.*;
       {
         Contract.Requires(cce.IsPeerConsistent(this));
-        cce.BeginExpose(this);
-        {
+        try {
+          cce.BeginExpose(this);
           simplify.Refresh();
 #if WHIDBEY
             return simplify.PeakVirtualMemorySize64;
 #else
           return simplify.PeakPagedMemorySize64;
 #endif
+        } finally {
+          cce.EndExpose();
         }
-        cce.EndExpose();
       }
     }
 
@@ -333,11 +334,12 @@ namespace Microsoft.Boogie.Simplify {
     protected int FromReadChar()
       //modifies this.*;
     {
-      cce.BeginExpose(this);
-      {
+      try {
+        cce.BeginExpose(this);
         return fromSimplify.Read();
+      } finally {
+        cce.EndExpose();
       }
-      cce.EndExpose();
     }
 
     private void KillProver(object state) {
@@ -353,32 +355,34 @@ namespace Microsoft.Boogie.Simplify {
       //modifies this.*;
     {
       Contract.Requires(-1 <= timeout);
-      cce.BeginExpose(this);
-      {
+      try {
+        cce.BeginExpose(this);
         this.readTimedOut = false;
         System.Threading.Timer t = new System.Threading.Timer(this.KillProver, null, timeout, System.Threading.Timeout.Infinite);
         int ch = fromSimplify.Read();
         t.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
         t.Dispose();
         return ch;
+      } finally {
+        cce.EndExpose();
       }
-      cce.EndExpose();
     }
 
     protected string FromReadLine()
       //modifies this.*;
     {
       Contract.Ensures(Contract.Result<string>() != null);
-      cce.BeginExpose(this);
-      {
+      try {
+        cce.BeginExpose(this);
         string s = fromSimplify.ReadLine();
         if (s == null) {
           // this is what ReadLine returns if all characters have been read
           s = "";
         }
         return s;
+      } finally {
+        cce.EndExpose();
       }
-      cce.EndExpose();
     }
 
     protected string FromStdErrorAll()
@@ -386,8 +390,8 @@ namespace Microsoft.Boogie.Simplify {
     {
       Contract.Ensures(Contract.Result<string>() != null);
 
-      cce.BeginExpose(this);
-      {
+      try {
+        cce.BeginExpose(this);
         if (fromStdError != null) {
           string s = fromStdError.ReadToEnd();
           if (s == null) {
@@ -395,13 +399,13 @@ namespace Microsoft.Boogie.Simplify {
             s = "";
           }
           return s;
-        }
+        } else {
           // there is no StdErrorReader available
-        else {
           return "";
         }
+      } finally {
+        cce.EndExpose();
       }
-      cce.EndExpose();
     }
 
     protected void ToWriteLine(string s)
