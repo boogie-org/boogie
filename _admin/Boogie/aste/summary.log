@@ -1,13 +1,13 @@
-# Aste started: 2010-09-20 07:00:07
+# Aste started: 2010-09-23 07:00:07
 # Host id: Boogiebox
-# [2010-09-20 07:02:17] SpecSharp revision: 55320
-# [2010-09-20 07:03:18] Boogie revision: 57268
-# [2010-09-20 07:03:44] SscBoogie revision: 56316
-[2010-09-20 07:04:17] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-09-23 07:02:13] SpecSharp revision: 55320
+# [2010-09-23 07:03:11] Boogie revision: 57358
+# [2010-09-23 07:03:34] SscBoogie revision: 56316
+[2010-09-23 07:04:06] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-09-20 07:04:59] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-09-23 07:04:48] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\Basetypes\BigNum.cs(280,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AIFramework\Polyhedra\LinearConstraintSystem.cs(159,19): warning CS0168: The variable 'ss' is declared but never used
@@ -18,34 +18,19 @@
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(791,91): warning CS0168: The variable 'id2' is declared but never used
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(874,98): warning CS0168: The variable 'locals' is declared but never used
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(874,120): warning CS0168: The variable 'blocks' is declared but never used
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1131,47): warning CS0168: The variable 'e' is declared but never used
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1385,112): warning CS0168: The variable 'op' is declared but never used
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1692,17): warning CS0168: The variable 'ty' is declared but never used
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1815,36): warning CS0168: The variable 'e' is declared but never used
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1815,53): warning CS0168: The variable 'es' is declared but never used
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1816,27): warning CS0168: The variable 'key' is declared but never used
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1816,40): warning CS0168: The variable 'value' is declared but never used
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1923,23): warning CS0168: The variable 'value' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1134,47): warning CS0168: The variable 'e' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1388,112): warning CS0168: The variable 'op' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1695,17): warning CS0168: The variable 'ty' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1818,36): warning CS0168: The variable 'e' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1818,53): warning CS0168: The variable 'es' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1819,27): warning CS0168: The variable 'key' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1819,40): warning CS0168: The variable 'value' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Parser.cs(1926,23): warning CS0168: The variable 'value' is declared but never used
     D:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\Core\Util.cs(21,10): warning CS0414: The field 'Microsoft.Boogie.TokenTextWriter.writerOpenedHere' is assigned but its value is never used
     D:\Temp\aste\Boogie\Source\Core\VCExp.cs(139,16): warning CS0414: The field 'Microsoft.Boogie.ProverOptions.sequenceNumber' is assigned but its value is never used
     D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(1481,16): warning CS0659: 'Microsoft.Boogie.VCExprAST.VCExprCustomOp' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\VCExpr\VCExprAST.cs(667,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1953,60): warning CS0168: The variable 'e' is declared but never used
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(4866,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(715,15): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(741,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VCDoomed.cs(1083,11): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\Wlp.cs(77,8): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(380,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(443,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(851,29): warning CS0649: Field 'VC.VCGen.Split.first_assert' is never assigned to, and will always have its default value null
-    D:\Temp\aste\Boogie\Source\VCGeneration\DoomCheck.cs(177,22): warning CS0169: The field 'VC.DoomCheck._tmpUseFreshBVars' is never used
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(67,9): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(340,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(365,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(381,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Provers\Simplify\Prover.cs(404,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
@@ -71,25 +56,10 @@
     warning CS0414
     warning CS0659
     warning CS0162
-    warning CS0168
     warning CS0162
     warning CS0162
     warning CS0162
-    warning CS0162
-    warning CS0162
-    warning CS0162
-    warning CS0162
-    warning CS0649
-    warning CS0169
-    warning CS0162
-    warning CS0162
-    warning CS0162
-    warning CS0162
-    warning CS0162
-    warning CS0162
-    warning CS0162
-    warning CS0162
-[2010-09-20 07:05:06] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
+[2010-09-23 07:04:55] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(39,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
     D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(187,73): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
@@ -111,5 +81,5 @@
     warning CS0436
     warning CS0436
     warning CS0436
-[2010-09-20 07:28:55] 0 out of 29 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2010-09-20 07:30:35] Released nightly of Boogie
+[2010-09-23 07:28:31] 0 out of 29 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2010-09-23 07:30:12] Released nightly of Boogie
