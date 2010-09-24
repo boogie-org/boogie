@@ -196,12 +196,52 @@ namespace Microsoft.Boogie {
       // we now have the list of states in 'states'
       states.Sort();
       foreach (int s in states) {
-        if (0 <= s && s < MvInfo.Info.Count) {
-          VC.ModelViewInfo.Mapping m = MvInfo.Info[s];
+        if (0 <= s && s < MvInfo.CapturePoints.Count) {
+          VC.ModelViewInfo.Mapping m = MvInfo.CapturePoints[s];
           Console.WriteLine("    {0}", m.Description);
+          PrintCapturedState(8, m.IncarnationMap);
         } else {
           Console.WriteLine("    undefined captured-state ID {0}", s);
         }
+      }
+    }
+
+    void PrintCapturedState(int indent, Hashtable/*Variable -> Expr*/ incarnations) {
+      Contract.Requires(0 <= indent);
+      Contract.Requires(Model != null && MvInfo != null);
+      string ind = new string(' ', indent);
+
+      foreach (Variable v in MvInfo.AllVariables) {
+        string varName = v.Name;
+        string incarnationName = varName;
+        string val = null;
+        if (incarnations.ContainsKey(v)) {
+          Expr e = (Expr)incarnations[v];
+          if (e is IdentifierExpr) {
+            IdentifierExpr ide = (IdentifierExpr)e;
+            incarnationName = ide.Decl.Name;
+          } else if (e is LiteralExpr) {
+            LiteralExpr lit = (LiteralExpr)e;
+            val = lit.Val.ToString();
+          } else {
+            val = e.ToString();  // temporary hack to have something to do in this case
+          }
+        }
+        if (val == null) {
+          // look up the value in the model
+          int partition;
+          if (Model.identifierToPartition.TryGetValue(incarnationName, out partition)) {
+            object pvalue = Model.partitionToValue[partition];
+            if (pvalue != null) {
+              val = pvalue.ToString();
+            } else {
+              val = "*" + partition;  // temporary hack to have something to do in this case
+            }
+          } else {
+            val = incarnationName;  // temporary hack to have something to do in this case
+          }
+        }
+        Console.WriteLine("{0}{1} = {2}", ind, varName, val);
       }
     }
 
@@ -1134,10 +1174,11 @@ namespace VC {
       #endregion
     }
 
-    protected Hashtable /*Variable -> Expr*/ Convert2PassiveCmd(Implementation impl, out ModelViewInfo mvInfo) {
+    protected Hashtable /*Variable -> Expr*/ Convert2PassiveCmd(Implementation impl, ModelViewInfo mvInfo) {
       Contract.Requires(impl != null);
+      Contract.Requires(mvInfo != null);
 
-      Hashtable r = ConvertBlocks2PassiveCmd(impl.Blocks, impl.Proc.Modifies, out mvInfo);
+      Hashtable r = ConvertBlocks2PassiveCmd(impl.Blocks, impl.Proc.Modifies, mvInfo);
 
       RestoreParamWhereClauses(impl);
 
@@ -1151,9 +1192,10 @@ namespace VC {
       return r;
     }
 
-    protected Hashtable /*Variable -> Expr*/ ConvertBlocks2PassiveCmd(List<Block> blocks, IdentifierExprSeq modifies, out ModelViewInfo mvInfo) {
+    protected Hashtable /*Variable -> Expr*/ ConvertBlocks2PassiveCmd(List<Block> blocks, IdentifierExprSeq modifies, ModelViewInfo mvInfo) {
       Contract.Requires(blocks != null);
       Contract.Requires(modifies != null);
+      Contract.Requires(mvInfo != null);
       #region Convert to Passive Commands
 
       #region Topological sort -- need to process in a linearization of the partial order
@@ -1186,7 +1228,6 @@ namespace VC {
       // processed all of a node's predecessors before we process the node.
       Hashtable /*Block -> IncarnationMap*/ block2Incarnation = new Hashtable/*Block -> IncarnationMap*/();
       Block exitBlock = null;
-      mvInfo = new ModelViewInfo();
       foreach (Block b in sortedNodes) {
         Contract.Assert(b != null);
         Contract.Assert(!block2Incarnation.Contains(b));
@@ -1230,9 +1271,9 @@ namespace VC {
         if (0 < CommandLineOptions.Clo.ModelView && pc is AssumeCmd) {
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
           if (description != null) {
-            Expr mv = new NAryExpr(pc.tok, new FunctionCall(mvInfo.MVState), new ExprSeq(Bpl.Expr.Literal(mvInfo.Info.Count)));
+            Expr mv = new NAryExpr(pc.tok, new FunctionCall(mvInfo.MVState_FunctionDef), new ExprSeq(Bpl.Expr.Literal(mvInfo.CapturePoints.Count)));
             copy = Bpl.Expr.And(mv, copy);
-            mvInfo.Info.Add(new ModelViewInfo.Mapping(description, incarnationMap));
+            mvInfo.CapturePoints.Add(new ModelViewInfo.Mapping(description, incarnationMap));
           }
         }
         Contract.Assert(copy != null);
@@ -1479,10 +1520,44 @@ namespace VC {
 
   public class ModelViewInfo
   {
-    public readonly List<Mapping> Info = new List<Mapping>();
-    public readonly Function MVState = new Function(Token.NoToken, "@MV_state",
+    public readonly List<Variable> AllVariables = new List<Variable>();
+    public readonly List<Mapping> CapturePoints = new List<Mapping>();
+    public readonly Function MVState_FunctionDef = new Function(Token.NoToken, "@MV_state",
       new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true)),
       new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Bool), false));
+
+    public ModelViewInfo(Program program, Implementation impl) {
+      Contract.Requires(program != null);
+      Contract.Requires(impl != null);
+
+      // global variables
+      foreach (Declaration d in program.TopLevelDeclarations) {
+        if (d is Variable) {
+          AllVariables.Add((Variable)d);
+        }
+      }
+      // implementation parameters
+      foreach (Variable p in impl.InParams) {
+        AllVariables.Add(p);
+      }
+      foreach (Variable p in impl.OutParams) {
+        AllVariables.Add(p);
+      }
+      // implementation locals
+      foreach (Variable v in impl.LocVars) {
+        AllVariables.Add(v);
+      }
+    }
+
+    public ModelViewInfo(CodeExpr codeExpr) {
+      Contract.Requires(codeExpr != null);
+      // TODO: also need all variables of enclosing scopes (the global variables of the program, the parameters
+      // and perhaps locals of the implementation (if any), any enclosing code expressions).
+
+      foreach (Variable v in codeExpr.LocVars) {
+        AllVariables.Add(v);
+      }
+    }
 
     public class Mapping
     {

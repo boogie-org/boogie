@@ -1556,8 +1556,7 @@ namespace VC {
 
             vcgen.ComputePredecessors(codeExpr.Blocks);
             vcgen.AddBlocksBetween(codeExpr.Blocks);
-            ModelViewInfo mvInfoCodeExpr;
-            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), out mvInfoCodeExpr);
+            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), new ModelViewInfo(codeExpr));
             VCExpr startCorrect = VCGen.LetVC(
 		      codeExpr.Blocks[0],
               null,
@@ -3699,8 +3698,9 @@ namespace VC {
       if (CommandLineOptions.Clo.LiveVariableAnalysis > 0) {
         Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(impl);
       }
-      
-      Hashtable exitIncarnationMap = Convert2PassiveCmd(impl, out mvInfo);
+
+      mvInfo = new ModelViewInfo(program, impl);
+      Hashtable exitIncarnationMap = Convert2PassiveCmd(impl, mvInfo);
 
       if (implName2LazyInliningInfo != null && implName2LazyInliningInfo.ContainsKey(impl.Name))
       {

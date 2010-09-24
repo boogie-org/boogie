@@ -327,8 +327,7 @@ namespace VC {
       if (UseItAsDebugger)
         RemoveReachVars(cce.NonNull(firstDebugBlock));
 
-      ModelViewInfo mvInfo;
-      PassifyProgram(impl, out mvInfo);
+      PassifyProgram(impl, new ModelViewInfo(program, impl));
 
       #endregion
       //EmitImpl(impl,false);
@@ -1313,12 +1312,13 @@ namespace VC {
     }
 
 
-    private Hashtable/*TransferCmd->ReturnCmd*/ PassifyProgram(Implementation impl, out ModelViewInfo mvInfo) {
+    private Hashtable/*TransferCmd->ReturnCmd*/ PassifyProgram(Implementation impl, ModelViewInfo mvInfo) {
       Contract.Requires(impl != null);
+      Contract.Requires(mvInfo != null);
       Contract.Ensures(Contract.Result<Hashtable>() != null);
 
       CurrentLocalVariables = impl.LocVars;
-      Convert2PassiveCmd(impl, out mvInfo);
+      Convert2PassiveCmd(impl, mvInfo);
       return new Hashtable();
     }
 

@@ -200,8 +200,36 @@ Execution trace:
     CaptureState.bpl(24,5): anon3
 Captured states:
     top
+        Heap = *8
+        F = *10
+        this = *9
+        x = x
+        y = y
+        r = r
+        m = -2
     then
+        Heap = *8
+        F = *10
+        this = *9
+        x = x
+        y = y
+        r = r
+        m = -1
     postUpdate0
+        Heap = *8
+        F = *10
+        this = *9
+        x = x
+        y = y
+        r = r
+        m = -1
     end
+        Heap = *8
+        F = *10
+        this = *9
+        x = x
+        y = y
+        r = -2
+        m = -1
 
 Boogie program verifier finished with 0 verified, 1 error
