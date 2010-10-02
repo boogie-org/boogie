@@ -2016,7 +2016,7 @@ namespace VC {
           List<int> toExpand = new List<int>();
           foreach (int id in calls.currCandidates)
           {
-              if (calls.isNonTrivialCandidate(id))
+              if (calls.isNonTrivialCandidate(id) && calls.getRecursionBound(id) <= CommandLineOptions.Clo.RecursionBound)
               {
                   toExpand.Add(id);
               }
@@ -2050,7 +2050,7 @@ namespace VC {
        int bound = 1;
        bool done = false;
 
-       while (bound < CommandLineOptions.Clo.RecursionBound && !done)
+       while (bound <= CommandLineOptions.Clo.RecursionBound && !done)
        {
            while (true)
            {
@@ -2652,7 +2652,7 @@ namespace VC {
       // recursed on proc(id)
       public int getRecursionBound(int id)
       {
-          int ret = 0;
+          int ret = 1;
           var str = getProc(id);
           while (candidateParent.ContainsKey(id))
           {
