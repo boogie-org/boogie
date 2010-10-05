@@ -1127,7 +1127,7 @@ object Resolver {
        }
      }
    }
-   resolveBody(mt.body, context.SetClass(mt.Parent).SetMember(mt), Nil)
+   resolveBody(mt.body, context.SetClass(mt.Parent).SetMember(mt), mt.refines.Outs)
  }
 
  def ResolveCouplingInvariant(ci: CouplingInvariant, cl: Class, context: ProgramContext) {

@@ -9,5 +9,22 @@ class A {
 class B refines C {}
 class C refines D {}
 class D refines A {
-  transforms m(i:int) returns (j:int, k:int) {*} 
+  transforms m(i:int) returns (j:int, k:int) 
+  {
+  *
+  } 
+}
+
+class X {
+  method m() returns (c: bool) 
+  {
+    c := true;
+  }
+}
+
+class Y refines X {
+  refines m() returns (c: bool, d: bool)
+  {
+    c := false;
+  }
 }

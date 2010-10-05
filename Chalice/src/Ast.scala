@@ -260,11 +260,16 @@ case class SeqPat(pats: List[Transform]) extends Transform {
 case class RefinementBlock(con: List[Statement], abs: List[Statement]) extends Statement {
   if (con.size > 0) pos = con.first.pos
   // local variables in context at the beginning of the block
+
   var before: List[Variable] = null
   // shared declared local variables (mapping between abstract and concrete)
+  // should be called after resolution
   lazy val during: (List[Variable], List[Variable]) = {
-    val a = for (v <- abs.flatMap(s => s.Declares)) yield v;
-    val c = for (v <- a) yield con.flatMap(s => s.Declares).find(_ == v).get
+    val a = abs.flatMap(s => s.Declares);
+    val c = for (v <- a) yield con.flatMap(s => s.Declares).find(_ == v) match {
+      case Some(w) => w;
+      case None => v;
+    }
     (a,c)
   }         
   override def Declares = con flatMap {_.Declares}

@@ -17,8 +17,9 @@ Processing TestTransform.chalice
 
 Boogie program verifier finished with 10 verified, 0 errors
 Processing TestRefines.chalice
+  28.5: Refinement may produce different value for pre-state local variable: c
 
-Boogie program verifier finished with 9 verified, 0 errors
+Boogie program verifier finished with 14 verified, 1 error
 Processing RecFiniteDiff.chalice
 
 Boogie program verifier finished with 9 verified, 0 errors
