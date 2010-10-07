@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Provers", "Provers", "{B758C1E3-824A-439F-AA2F-0BA1143E8C8D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BoogieDriver", "BoogieDriver\BoogieDriver.csproj", "{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}"
