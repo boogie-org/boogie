@@ -62,7 +62,7 @@ Binaries/VCExpr.dll
 Binaries/VCExpr.pdb
 Binaries/VCGeneration.dll
 Binaries/VCGeneration.pdb
-Binaries/Boogie.vshost.exe
+Binaries/Boogie.vshost.exe*
 Binaries/CodeContractsExtender.dll
 Binaries/CodeContractsExtender.pdb
 Binaries/Dafny.exe
