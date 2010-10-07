@@ -19,7 +19,6 @@ namespace Microsoft.Boogie {
   using System.Diagnostics.Contracts;
   using System.Diagnostics;
   using VC;
-  using Cci = System.Compiler;
   using AI = Microsoft.AbstractInterpretationFramework;
   using BoogiePL = Microsoft.Boogie;
 
@@ -64,18 +63,7 @@ namespace Microsoft.Boogie {
         Console.WriteLine("--------------------");
       }
 
-      SelectPlatform(CommandLineOptions.Clo);
-
       Helpers.ExtraTraceInformation("Becoming sentient");
-
-      // Make sure the Spec# runtime is initialized.
-      // This happens when the static constructor for the Runtime type is executed.
-      // Otherwise, if a reference happens to get chased to it, it is loaded twice
-      // and then the types in it do not get unique representations.
-      if (System.Type.GetType("Mono.Runtime") == null) {  // MONO
-        Cci.AssemblyNode a = Microsoft.SpecSharp.Runtime.RuntimeAssembly;
-        Contract.Assert(a != null);
-      }
 
       foreach (string file in CommandLineOptions.Clo.Files) {
         Contract.Assert(file != null);
@@ -144,83 +132,12 @@ namespace Microsoft.Boogie {
       Console.ForegroundColor = col;
     }
 
-    public static void SelectPlatform(CommandLineOptions options) {
-      Contract.Requires(options != null);
-      if (options.TargetPlatformLocation != null) {
-        // Make sure static constructor runs before we start setting locations, etc.
-        System.Compiler.SystemTypes.Clear();
-
-        switch (options.TargetPlatform) {
-          case CommandLineOptions.PlatformType.v1:
-            Microsoft.SpecSharp.TargetPlatform.SetToV1(options.TargetPlatformLocation);
-            break;
-          case CommandLineOptions.PlatformType.v11:
-            Microsoft.SpecSharp.TargetPlatform.SetToV1_1(options.TargetPlatformLocation);
-            break;
-          case CommandLineOptions.PlatformType.v2:
-            Microsoft.SpecSharp.TargetPlatform.SetToV2(options.TargetPlatformLocation);
-            break;
-          case CommandLineOptions.PlatformType.cli1:
-            Microsoft.SpecSharp.TargetPlatform.SetToPostV1_1(options.TargetPlatformLocation);
-            break;
-        }
-
-        if (options.StandardLibraryLocation != null && options.StandardLibraryLocation.Length > 0) {
-          System.Compiler.SystemAssemblyLocation.Location = options.StandardLibraryLocation;
-        }
-        System.Compiler.SystemCompilerRuntimeAssemblyLocation.Location = options.TargetPlatformLocation + @"\System.Compiler.Runtime.dll";
-
-        System.Compiler.SystemTypes.Initialize(true, true);
-      }
-    }
-
-    static string GetErrorLine(Cci.ErrorNode node) {
-      Contract.Requires(node != null);
-      Contract.Requires(node.SourceContext.Document == null || (node.SourceContext.Document.Name != null));
-      
-      Contract.Ensures(Contract.Result<string>() != null);
-      string message = node.GetMessage(System.Threading.Thread.CurrentThread.CurrentUICulture);
-      string kind;
-      if (message.Contains("(trace position)")) {
-        kind = "Related information";
-      } else {
-        kind = "Error";
-      }
-      if (node.SourceContext.Document != null) {
-        return string.Format("{0}({1},{2}): {3}: {4}", Path.GetFileName(cce.NonNull(node.SourceContext.Document.Name)), node.SourceContext.StartLine, node.SourceContext.StartColumn, kind, message);
-      } else {
-        return string.Format("{0}: {1}", kind, message);
-      }
-
-
-    }
-
     enum FileType {
       Unknown,
       Cil,
       Bpl,
       Dafny
     };
-
-    class ErrorReporter {
-      public Cci.ErrorNodeList errors = new Cci.ErrorNodeList();
-      [ContractInvariantMethod]
-      void ObjectInvariant() {
-        Contract.Invariant(errors != null);
-      }
-
-      public int errorsReported;
-
-      public void ReportErrors() {
-        //sort the portion of the array that will be reported to make output more deterministic
-        errors.Sort(errorsReported, errors.Count - errorsReported);
-        for (; errorsReported < errors.Count; errorsReported++) {
-          Cci.ErrorNode error = errors[errorsReported];
-          if (error != null)
-            ErrorWriteLine(GetErrorLine(error));
-        }
-      }
-    }
 
     static void ProcessFiles(List<string> fileNames) {
       Contract.Requires(cce.NonNullElements(fileNames));
@@ -242,7 +159,7 @@ namespace Microsoft.Boogie {
         //BoogiePL.Errors.count = 0;
 
         int errorCount, verified, inconclusives, timeOuts, outOfMemories;
-        oc = InferAndVerify(program, null, out errorCount, out verified, out inconclusives, out timeOuts, out outOfMemories);
+        oc = InferAndVerify(program, out errorCount, out verified, out inconclusives, out timeOuts, out outOfMemories);
         switch (oc) {
           case PipelineOutcome.Done:
           case PipelineOutcome.VerificationCompleted:
@@ -513,7 +430,6 @@ namespace Microsoft.Boogie {
     ///    parameters contain meaningful values
     /// </summary>
     static PipelineOutcome InferAndVerify(Program program,
-                                           ErrorReporter errorReporter,
                                            out int errorCount, out int verified, out int inconclusives, out int timeOuts, out int outOfMemories) {
       Contract.Requires(program != null);
       Contract.Ensures(0 <= Contract.ValueAtReturn(out inconclusives) && 0 <= Contract.ValueAtReturn(out timeOuts));
@@ -649,13 +565,8 @@ namespace Microsoft.Boogie {
                 errorCount++;
               } //else {
               Contract.Assert(errors != null);  // guaranteed by postcondition of VerifyImplementation
-              if (errorReporter != null) {
-                //                assert translatedProgram != null;
-                //                ErrorReporting h = new ErrorReporting();
-                //                h.errorReportingWithTrace(translatedProgram, errors, impl);
 
-                errorReporter.ReportErrors();
-              } else {
+              {
                 // BP1xxx: Parsing errors
                 // BP2xxx: Name resolution errors
                 // BP3xxx: Typechecking errors

@@ -594,7 +594,7 @@ namespace Microsoft.Boogie {
       : base(s) {
     }
   }
-  public class UnexpectedProverOutputException : ProverException, Microsoft.Contracts.ICheckedException {
+  public class UnexpectedProverOutputException : ProverException {
     public UnexpectedProverOutputException(string s)
       : base(s) {
     }

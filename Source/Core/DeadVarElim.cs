@@ -4,6 +4,7 @@ using Graphing;
 using PureCollections;
 using System.Diagnostics.Contracts;
 
+
 namespace Microsoft.Boogie {
   public class UnusedVarEliminator : VariableCollector {
     public static void Eliminate(Program program) {
