@@ -355,6 +355,38 @@ namespace Microsoft.Boogie {
       this.definedFunctions = definedFunctions;
     }
 
+    public Model ToModel()
+    {
+      Model m = new Model();
+      Model.Element[] elts = new Model.Element[partitionToValue.Count];
+
+      for (int i = 0; i < partitionToValue.Count; ++i) {
+        var v = partitionToValue[i];
+        if (v == null)
+          elts[i] = m.MkElement(string.Format("*{0}", i));
+        else
+          elts[i] = m.MkElement(v.ToString());
+
+        foreach (var id in partitionToIdentifiers[i]) {
+          var f = m.MkFunc(id, 0);
+          f.SetConstant(elts[i]);
+        }
+      }
+
+      foreach (var t in definedFunctions) {
+        var f = m.MkFunc(t.Key, t.Value.Count - 1);
+        var args = new Model.Element[f.Arity];
+        foreach (var l in t.Value) {
+          if (l.Count == 1) continue;
+          for (int i = 0; i < f.Arity; ++i)
+            args[i] = elts[l[i]];
+          f.AddApp(elts[l[f.Arity]], args);
+        }
+      }
+
+      return m;
+    }
+
     public virtual void Print(TextWriter writer) {
       Contract.Requires(writer != null);
     }
