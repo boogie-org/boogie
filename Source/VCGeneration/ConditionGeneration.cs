@@ -206,6 +206,63 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public Model GetModelWithStates()
+    {
+      if (Model == null) return null;
+
+      Model m = Model.ToModel();
+
+      var mvstates = m.TryGetFunc("@MV_state");
+      if (MvInfo == null || mvstates == null)
+        return m;
+
+      Contract.Assert(mvstates.Arity == 1);
+
+      foreach (Variable v in MvInfo.AllVariables) {
+        var fn = m.TryGetFunc(v.Name);
+        if (fn != null && fn.Arity == 0) {
+          m.InitialState.AddBinding(v.Name, fn.GetConstant());
+        }
+      }
+
+      var states = new List<int>();
+      foreach (var t in mvstates.Apps)
+        states.Add(t.Args[0].AsInt());
+
+      states.Sort();
+
+      foreach (int s in states) {
+        if (0 <= s && s < MvInfo.CapturePoints.Count) {
+          VC.ModelViewInfo.Mapping map = MvInfo.CapturePoints[s];
+          var cs = m.MkState(map.Description);
+
+          foreach (Variable v in MvInfo.AllVariables) {
+            var e = (Expr)map.IncarnationMap[v];
+            if (e == null) continue;
+
+            Model.Element elt;
+
+            if (e is IdentifierExpr) {
+              IdentifierExpr ide = (IdentifierExpr)e;
+              elt = m.GetFunc(ide.Decl.Name).GetConstant();
+            } else if (e is LiteralExpr) {
+              LiteralExpr lit = (LiteralExpr)e;
+              elt = m.MkElement(lit.Val.ToString());
+            } else {
+              elt = m.MkFunc(e.ToString(), 0).GetConstant();
+            }
+
+            cs.AddBinding(v.Name, elt);
+          }
+
+        } else {
+          Contract.Assume(false);
+        }
+      }
+
+      return m;
+    }
+
     void PrintCapturedState(int indent, Hashtable/*Variable -> Expr*/ incarnations) {
       Contract.Requires(0 <= indent);
       Contract.Requires(Model != null && MvInfo != null);
