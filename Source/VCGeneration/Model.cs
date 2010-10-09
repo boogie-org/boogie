@@ -10,7 +10,7 @@ namespace Microsoft.Boogie
 {
   public class Model
   {
-    #region Inner classes
+    #region Elements and functions (inner classes)
     public enum ElementKind
     {
       Integer,
@@ -253,7 +253,6 @@ namespace Microsoft.Boogie
     }
     #endregion
 
-
     #region state management
     public class CapturedState
     {
@@ -344,5 +343,192 @@ namespace Microsoft.Boogie
       else
         throw new KeyNotFoundException("element '" + name + "' undefined in the model");
     }
+
+    public void Write(System.IO.TextWriter wr)
+    {
+      wr.WriteLine("*** MODEL");
+      foreach (var f in Functions)
+        if (f.Arity == 0) {
+          wr.WriteLine("{0} -> {1}", f.Name, f.GetConstant());
+        }
+      foreach (var f in Functions)
+        if (f.Arity != 0) {
+          wr.WriteLine("{0} -> {1}", f.Name, "{");
+          foreach (var app in f.Apps) {
+            wr.Write("  ");
+            foreach (var a in app.Args)
+              wr.Write("{0} ", a);
+            wr.WriteLine("-> {0}", app.Result);
+          }
+          wr.WriteLine("}");
+        }
+      foreach (var s in States) {
+        wr.WriteLine("*** STATE {0}", s.Name);
+        foreach (var v in s.Variables)
+          wr.WriteLine("{0} -> {1}", v, s.TryGet(v));
+        wr.WriteLine("*** END_STATE", s.Name);
+      }
+      wr.WriteLine("*** END_MODEL");
+    }
+
+    class Parser
+    {
+      internal System.IO.TextReader rd;
+      string lastLine = "";
+      bool v1model = false;
+      Dictionary<string, Element> partitionMapping = new Dictionary<string, Element>(); // only used when v1model is true
+      internal List<Model> resModels = new List<Model>();
+      Model currModel;
+
+      void BadModel(string msg)
+      {
+        throw new ArgumentException("Invalid model: " + msg + ", at line '" + lastLine + "'");
+      }
+
+      string[] GetWords(string line)
+      {
+        if (line == null)
+          return null;
+        var words = line.Split(' ');
+        return words;
+      }
+
+      string ReadLine()
+      {
+        var l = rd.ReadLine();
+        if (l != null)
+          lastLine = l;
+        return l;
+      }
+
+      Element GetElt(string name)
+      {
+        Element ret;
+
+        if (v1model) {
+          if (!partitionMapping.TryGetValue(name, out ret))
+            BadModel("undefined partition " + name);
+        } else {
+          ret = currModel.TryMkElement(name);
+          if (ret == null)
+            BadModel("invalid element name " + name);
+        }
+
+        return ret;
+      }
+
+      void NewModel()
+      {
+        v1model = false;
+        partitionMapping.Clear();
+        lastLine = "";
+        currModel = new Model();
+        resModels.Add(currModel);
+      }
+
+      internal void Run()
+      {
+        for (; ; ) {
+          var line = ReadLine();
+          if (line == null) break; // end of model, everything fine
+
+          if (line == "Counterexample:" || line == "Z3 error model:" || line == "*** MODEL")
+            NewModel();
+
+          if (line.EndsWith(": Invalid.") || line.EndsWith(": Valid.")|| line.StartsWith("labels:"))
+            continue;
+          if (line == "END_OF_MODEL" || line == ".")
+            continue;
+          if (line == "partitions:" || line == "function interpretations:") {
+            v1model = true;
+            continue;
+          }
+
+          var words = GetWords(line);
+          if (words.Length == 0) continue;
+          var lastWord = words[words.Length - 1];
+
+          if (currModel == null)
+            BadModel("model begin marker not found");
+
+          if (line.StartsWith("*** STATE ")) {
+            var name = line.Substring(10);
+            CapturedState cs;
+            if (name == "<initial>")
+              cs = currModel.InitialState;
+            else
+              cs = currModel.MkState(name);
+            for (; ; ) {
+              var tmpline = ReadLine();
+              if (tmpline == "*** END_STATE") break;
+              var tuple = GetWords(tmpline);
+              if (tuple == null) BadModel("EOF in state table");
+              if (tuple.Length == 0) continue;
+              if (tuple.Length != 3 || tuple[1] != "->") BadModel("invalid state tuple definition");
+              cs.AddBinding(tuple[0], GetElt(tuple[2]));
+            }
+            continue;
+          }
+
+          if (v1model && words[0][0] == '*') {
+            var partName = words[0];
+            var len = words.Length;
+            Element elt;
+            if (len >= 3 && words[len - 2] == "->") {
+              elt = currModel.TryMkElement(lastWord);
+              if (elt == null) BadModel("bad parition value " + lastWord);
+              len -= 2;
+            } else {
+              elt = currModel.MkElement(words[0]);
+            }
+            partitionMapping.Add(partName, elt);
+            for (int i = 1; i < len; ++i) {
+              var name = words[i];
+              if (i == 1 && name[0] == '{')
+                name = name.Substring(1);
+              if (i == len - 1 && name.EndsWith("}"))
+                name = name.Substring(0, name.Length - 1);
+              var cnst = currModel.MkFunc(name, 0);
+              cnst.SetConstant(elt);
+            }
+
+          } else if (words.Length == 3 && words[1] == "->") {
+            Func fn = null;
+            var funName = words[0];
+
+            if (lastWord == "{") {
+              for (; ; ) {
+                var tuple = GetWords(ReadLine());
+                if (tuple == null) BadModel("EOF in function table");
+                if (tuple.Length == 0) continue;
+                if (tuple.Length == 1 && tuple[0] == "}") break;
+                if (tuple.Length < 3 || tuple[tuple.Length - 2] != "->") BadModel("invalid function tuple definition");
+                if (tuple[0] == "else") continue;
+                if (fn == null)
+                  fn = currModel.MkFunc(funName, tuple.Length - 2);
+                var args = new Element[fn.Arity];
+                for (int i = 0; i < fn.Arity; ++i)
+                  args[i] = GetElt(tuple[i]);
+                fn.AddApp(GetElt(tuple[tuple.Length - 1]), args);
+              }
+            } else {
+              fn = currModel.MkFunc(funName, 0);
+              fn.SetConstant(GetElt(lastWord));
+            }
+          } else {
+            BadModel("unidentified line");
+          }
+        }
+      }
+    }
+
+    public static List<Model> ParseModels(System.IO.TextReader rd)
+    {
+      var p = new Parser();
+      p.rd = rd;
+      p.Run();
+      return p.resModels;
+    }
+
   }
 }
