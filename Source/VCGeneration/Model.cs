@@ -81,7 +81,7 @@ namespace Microsoft.Boogie
       internal BitVector(Model p, string n, int sz) : base(p, n) { Size = sz; }
       public readonly int Size;
       public override ElementKind Kind { get { return ElementKind.BitVector; } }
-      public override string ToString() { return string.Format("{0}:bv{1}", Numeral, Size); }
+      public override string ToString() { return string.Format("{0}bv{1}", Numeral, Size); }
     }
 
     public class Boolean : Element
@@ -375,6 +375,7 @@ namespace Microsoft.Boogie
     {
       internal System.IO.TextReader rd;
       string lastLine = "";
+      int lineNo;
       bool v1model = false;
       Dictionary<string, Element> partitionMapping = new Dictionary<string, Element>(); // only used when v1model is true
       internal List<Model> resModels = new List<Model>();
@@ -382,22 +383,26 @@ namespace Microsoft.Boogie
 
       void BadModel(string msg)
       {
-        throw new ArgumentException("Invalid model: " + msg + ", at line '" + lastLine + "'");
+        throw new ArgumentException(string.Format("Invalid model: {0}, at line {1} ({2})", msg, lineNo, lastLine));
       }
+
+      static char[] seps = new char[] { ' ' };
 
       string[] GetWords(string line)
       {
         if (line == null)
           return null;
-        var words = line.Split(' ');
+        var words = line.Split(seps, StringSplitOptions.RemoveEmptyEntries);
         return words;
       }
 
       string ReadLine()
       {
         var l = rd.ReadLine();
-        if (l != null)
+        if (l != null) {
+          lineNo++;
           lastLine = l;
+        }
         return l;
       }
 
@@ -432,12 +437,14 @@ namespace Microsoft.Boogie
           var line = ReadLine();
           if (line == null) break; // end of model, everything fine
 
-          if (line == "Counterexample:" || line == "Z3 error model:" || line == "*** MODEL")
+          if (line == "Counterexample:" || line == "Z3 error model: " || line == "*** MODEL") {
             NewModel();
+            continue;
+          }
 
           if (line.EndsWith(": Invalid.") || line.EndsWith(": Valid.")|| line.StartsWith("labels:"))
             continue;
-          if (line == "END_OF_MODEL" || line == ".")
+          if (line == "END_OF_MODEL" || line == "." || line == "*** END_MODEL")
             continue;
           if (line == "partitions:" || line == "function interpretations:") {
             v1model = true;
