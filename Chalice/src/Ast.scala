@@ -249,7 +249,8 @@ case class NonDetPat(is: List[String], code: List[Statement]) extends Transform 
   def matches(s: Statement) = s match {
     case _:Call => true
     case _:SpecStmt => true
-    case _:Assign => true // declarative
+    case _:Assign => true // declarative expression on the right
+    case _:LocalVar => true // declarative expression on the right    
     case _ => false
   }
 }
