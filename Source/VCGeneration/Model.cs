@@ -262,6 +262,7 @@ namespace Microsoft.Boogie
       public readonly string Name;
 
       public IEnumerable<string> Variables { get { return vars; } }
+      public int VariableCount { get { return vars.Count; } }
       public Element TryGet(string varname)
       {
         CapturedState curr = this;
@@ -299,6 +300,7 @@ namespace Microsoft.Boogie
     public Model()
     {
       InitialState = new CapturedState("<initial>", null);
+      states.Add(InitialState);
       True = new Boolean(this, true);
       False = new Boolean(this, false);
       elements.Add(True);
@@ -363,6 +365,8 @@ namespace Microsoft.Boogie
           wr.WriteLine("}");
         }
       foreach (var s in States) {
+        if (s == InitialState && s.VariableCount == 0)
+          continue;
         wr.WriteLine("*** STATE {0}", s.Name);
         foreach (var v in s.Variables)
           wr.WriteLine("{0} -> {1}", v, s.TryGet(v));
