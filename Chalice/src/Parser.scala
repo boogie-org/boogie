@@ -274,6 +274,8 @@ class Parser extends StandardTokenParsers {
                          case Some(NewRhs(tid, _, _, _)) => Type(tid, Nil)
                          case Some(BoolLiteral(b)) => Type("bool", Nil)
                          case Some(x:BinaryExpr) if x.ResultType != null => new Type(x.ResultType);
+			 case Some(x:Contains) => Type("bool", Nil)
+			 case Some(x:Quantification) => Type("bool", Nil)
                          case _ => Type("int", Nil)
                        }
                    }, ghost, const)

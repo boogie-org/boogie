@@ -33,6 +33,7 @@
         "class" "ghost" "var" "const" "external" "function" "method"
         "predicate" "returns" "requires" "ensures" "lockchange"
         "invariant" "channel" "condition" "where"
+        "refines" "replaces" "by" "transforms"
         )) . font-lock-builtin-face)
    `(,(chalice-regexp-opt '(
         "above" "acc" "acquire" "and" "assert" "assigned" "assume"

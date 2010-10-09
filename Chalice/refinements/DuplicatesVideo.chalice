@@ -2,7 +2,7 @@ class Duplicates0 {
   method find(s:seq<int>) returns (b: bool)
     requires forall i in s :: i in [0..100];
   {
-    spec b [b <==> (exists i in [0..|s|] :: s[i] in s[..i])];
+    spec b [b <==> exists i in [0..|s|] :: s[i] in s[..i] ];
   }
 }
 
@@ -13,7 +13,7 @@ class Duplicates1 refines Duplicates0 {
     b := false;
     while (n < |s|)
       invariant 0 <= n && n <= |s|;
-      invariant b <==> (exists i in [0..n] :: s[i] in s[..i]);
+      invariant b <==> exists i in [0..n] :: s[i] in s[..i];
     {
       spec c:bool [c <==> s[n] in s[..n] ];
       b := b || c;
