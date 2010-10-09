@@ -249,6 +249,7 @@ case class NonDetPat(is: List[String], code: List[Statement]) extends Transform 
   def matches(s: Statement) = s match {
     case _:Call => true
     case _:SpecStmt => true
+    case _:Assign => true // declarative
     case _ => false
   }
 }
@@ -621,8 +622,7 @@ object AST {
         case _ => Unmatched(wp)
       }
     // non det pat
-    case (l @ List(_: Call), NonDetPat(_, code)) => new Matched(RefinementBlock(code, l))
-    case (l @ List(_: SpecStmt), NonDetPat(_, code)) => new Matched(RefinementBlock(code, l))
+    case (l @ List(s), ndp @ NonDetPat(_, code)) if ndp matches s => new Matched(RefinementBlock(code, l))
     // insert pat
     case (Nil, InsertPat(code)) => new Matched(RefinementBlock(code, Nil))
     // block pattern (greedy matching)
