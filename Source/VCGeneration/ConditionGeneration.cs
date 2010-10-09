@@ -554,7 +554,7 @@ namespace VC {
     /// <param name="impl"></param>
     public Outcome VerifyImplementation(Implementation impl, Program program, out List<Counterexample> errors, out List<ErrorModel> errorsModel)
     {
-        Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || errors != null);
+        Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || Contract.ValueAtReturn(out errors) != null);
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         List<Counterexample> errorsOut;
 
