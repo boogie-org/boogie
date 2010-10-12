@@ -17,6 +17,13 @@ namespace Microsoft.Boogie.ModelViewer
   {
     public string SearchText;
 
+    // TODO this should be dynamically loaded
+    IEnumerable<ILanguageProvider> Providers()
+    {
+      yield return Vcc.Provider.Instance;
+      yield return Base.Provider.Instance;
+    }
+
     public Main()
     {
       InitializeComponent();
@@ -29,11 +36,17 @@ namespace Microsoft.Boogie.ModelViewer
         m = models[0];
       }
 
+      ILanguageProvider prov = null;
+      foreach (var p in Providers()) {
+        if (p.IsMyModel(m)) {
+          prov = p;
+          break;
+        }
+      }
+       
       var items = new List<ListViewItem>();
-      items.Add(new DisplayItem(GenericNodes.Functions(m)));
-      items.Add(new DisplayItem(GenericNodes.Constants(m)));
-      foreach (var s in m.States)
-        items.Add(new DisplayItem(new StateNode(s)));
+      foreach (var i in prov.GetStates(m))
+        items.Add(new DisplayItem(i));
       listView1.Items.AddRange(items.ToArray());
 
       listView1.Columns[1].Width = listView1.Width - listView1.Columns[0].Width - 5;
@@ -53,36 +66,45 @@ namespace Microsoft.Boogie.ModelViewer
     const int plusWidth = 16;
 
     static StringFormat center = new StringFormat() { Alignment = StringAlignment.Center };
+    static Pen plusPen = new Pen(Color.FromArgb(0xaa, 0xaa, 0xaa));
     
     private void listView1_DrawItem(object sender, DrawListViewItemEventArgs e)
     {
       var item = (DisplayItem)e.Item;
       var rect = e.Bounds;
-      rect.Height -= 1;
+      rect.Y += 1;
+      rect.Height -= 2;
 
       var textBrush = Brushes.Black;
-      if ((e.State & ListViewItemStates.Selected) != 0) {
+      if (listView1.SelectedIndices.Count > 0 && listView1.SelectedIndices[0] == e.ItemIndex) {
         // Draw the background and focus rectangle for a selected item.
         e.Graphics.FillRectangle(Brushes.Navy, rect);
-        e.DrawFocusRectangle();
+        // e.DrawFocusRectangle();
         textBrush = Brushes.White;
       } else {
         e.Graphics.FillRectangle(Brushes.White, rect);
       }
 
       var off = levelMult * item.level;
-      var plusRect = rect;
-      plusRect.Width = plusWidth;
-      plusRect.X += off;
-      var plusBorder = plusRect;
-      plusBorder.Height -= 4;
-      plusBorder.Width -= 4;
-      plusBorder.X += 2;
-      plusBorder.Y += 2;
-      e.Graphics.FillRectangle(Brushes.BlueViolet, plusBorder);
-      // TODO these should be icons
-      if (item.displayNode.Expandable)
-        e.Graphics.DrawString(item.expanded ? "-" : "+", listView1.Font, Brushes.Black, plusRect, center);
+
+      {
+        var plusRect = rect;
+        plusRect.Width = plusWidth;
+        plusRect.X += off;
+        var plusBorder = plusRect;
+        plusBorder.Height = 8;
+        plusBorder.Width = 8;
+        plusBorder.X += 4;
+        plusBorder.Y += 3;        
+        e.Graphics.DrawRectangle(plusPen, plusBorder);
+        if (item.displayNode.Expandable) {
+          float midX = plusBorder.X + plusBorder.Width / 2;
+          float midY = plusBorder.Y + plusBorder.Height / 2;
+          e.Graphics.DrawLine(plusPen, plusBorder.X + 2, midY, plusBorder.Right - 2, midY);
+          if (!item.expanded)
+            e.Graphics.DrawLine(plusPen, midX, plusBorder.Y + 2, midX, plusBorder.Bottom - 2);
+        }
+      }
 
       off += plusWidth + 3;
       var nameRect = rect;
@@ -94,7 +116,7 @@ namespace Microsoft.Boogie.ModelViewer
         nameRect.Width = (int)sz.Width + 20;
       nameRect.X += off;
       e.Graphics.DrawString(item.displayNode.Name, font, textBrush, nameRect);
-      
+
       var valRect = rect;
       valRect.X = nameRect.X + nameRect.Width + 4;
       valRect.Width = listView1.Width - valRect.X;
@@ -164,6 +186,11 @@ namespace Microsoft.Boogie.ModelViewer
     }
 
     private void listView1_ColumnWidthChanged(object sender, ColumnWidthChangedEventArgs e)
+    {
+      listView1.Invalidate();
+    }
+
+    private void listView1_Resize(object sender, EventArgs e)
     {
       listView1.Invalidate();
     }

@@ -1559,6 +1559,7 @@ namespace VC {
 
       // global variables
       foreach (Declaration d in program.TopLevelDeclarations) {
+        if (d is Constant) continue;
         if (d is Variable) {
           AllVariables.Add((Variable)d);
         }

@@ -56,6 +56,7 @@
       this.listView1.DrawSubItem += new System.Windows.Forms.DrawListViewSubItemEventHandler(this.listView1_DrawSubItem);
       this.listView1.MouseMove += new System.Windows.Forms.MouseEventHandler(this.listView1_MouseMove);
       this.listView1.MouseUp += new System.Windows.Forms.MouseEventHandler(this.listView1_MouseUp);
+      this.listView1.Resize += new System.EventHandler(this.listView1_Resize);
       // 
       // name
       // 
