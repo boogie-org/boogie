@@ -1,4 +1,4 @@
-﻿namespace ModelViewer
+﻿namespace Microsoft.Boogie.ModelViewer
 {
   partial class Main
   {

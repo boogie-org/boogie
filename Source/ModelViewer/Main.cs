@@ -11,7 +11,7 @@ using System.Windows.Forms;
 using System.IO;
 using Microsoft.Boogie;
 
-namespace ModelViewer
+namespace Microsoft.Boogie.ModelViewer
 {
   public partial class Main : Form
   {
@@ -71,6 +71,7 @@ namespace ModelViewer
       plusRect.Width = plusWidth;
       plusRect.X += off;
       e.Graphics.FillRectangle(Brushes.Gray, plusRect);
+      // TODO these should be icons
       e.Graphics.DrawString(item.expanded ? "[-]" : "[+]", listView1.Font, Brushes.Black, plusRect); // , StringFormat.GenericDefault);
 
       off += plusWidth + 3;
@@ -134,7 +135,7 @@ namespace ModelViewer
             var beg = clickedItem.Index + 1;
             for (int i = beg; i < listView1.Items.Count; ++i) {
               var curr = (DisplayItem)listView1.Items[i];
-              if (curr.level == clickedItem.level) break;
+              if (curr.level <= clickedItem.level) break;
               collapsed.Add(curr);
             }
             clickedItem.collapsedChildren = collapsed.ToArray();
@@ -180,78 +181,5 @@ namespace ModelViewer
 
       this.SubItems.Add(sb.ToString());
     }
-  }
-
-  public interface IDisplayNode
-  {
-    string Name { get; }
-    IEnumerable<string> Values { get; }
-    bool Expandable { get; }
-    IEnumerable<IDisplayNode> Expand();
-    object ViewSync { get; set; }
-  }
-
-  public class StateNode : IDisplayNode
-  {
-    protected Model.CapturedState state;
-
-    public StateNode(Model.CapturedState s)
-    {
-      state = s;
-    }
-
-    public virtual string Name
-    {
-      get { return "State"; }
-    }
-
-    public virtual IEnumerable<string> Values
-    {
-      get { yield return state.Name; }
-    }
-
-    public virtual bool Expandable { get { return state.VariableCount != 0; } }
-    
-    public virtual IEnumerable<IDisplayNode> Expand()
-    {
-      foreach (var v in state.Variables) {
-        yield return new ElementNode(v, state.TryGet(v));
-      }
-    }
-
-    public object ViewSync { get; set; }
-  }
-
-  public class ElementNode : IDisplayNode
-  {
-    protected Model.Element elt;
-    protected string name;
-
-    public ElementNode(string name, Model.Element elt) { 
-      this.name = name; 
-      this.elt = elt; 
-    }
-
-    public virtual string Name
-    {
-      get { return name; }
-    }
-
-    public virtual IEnumerable<string> Values
-    {
-      get {
-        if (!(elt is Model.Uninterpreted))
-          yield return elt.ToString();
-        foreach (var tupl in elt.Names) {
-          if (tupl.Func.Arity == 0)
-            yield return tupl.Func.Name;
-        }
-      }
-    }
-
-    public virtual bool Expandable { get { return false; } }
-    public virtual IEnumerable<IDisplayNode> Expand() { yield break; }
-
-    public object ViewSync { get; set; }
   }
 }

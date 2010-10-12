@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
-namespace ModelViewer
+namespace Microsoft.Boogie.ModelViewer
 {
   public partial class SearchBox : Form
   {
