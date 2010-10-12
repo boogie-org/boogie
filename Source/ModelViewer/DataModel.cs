@@ -25,12 +25,12 @@ namespace Microsoft.Boogie.ModelViewer
 
     public virtual string Name
     {
-      get { return "State"; }
+      get { return state.Name; }
     }
 
     public virtual IEnumerable<string> Values
     {
-      get { yield return state.Name; }
+      get { foreach (var v in state.Variables) yield return v; }
     }
 
     public virtual bool Expandable { get { return state.VariableCount != 0; } }
@@ -79,4 +79,82 @@ namespace Microsoft.Boogie.ModelViewer
 
     public object ViewSync { get; set; }
   }
+
+
+  public class ContainerNode<T> : IDisplayNode
+  {
+    protected string name;
+    protected Func<T, IDisplayNode> convert;
+    protected IEnumerable<T> data;
+
+    public ContainerNode(string name, Func<T, IDisplayNode> convert, IEnumerable<T> data)
+    {
+      this.name = name;
+      this.convert = convert;
+      this.data = data;
+    }
+
+    public virtual string Name
+    {
+      get { return name; }
+    }
+
+    public virtual IEnumerable<string> Values
+    {
+      get { yield break; }
+    }
+
+    public virtual bool Expandable { get { return true; } }
+
+    public virtual IEnumerable<IDisplayNode> Expand()
+    {
+      foreach (var f in data) {
+        var res = convert(f);
+        if (res != null)
+          yield return res;
+      }
+    }
+
+    public object ViewSync { get; set; }
+  }
+
+  public static class GenericNodes
+  {
+    public static IDisplayNode Function(Model.Func f)
+    {
+      return new ContainerNode<Model.FuncTuple>(f.Name, a => new AppNode(a), f.Apps);
+    }
+
+    public static IDisplayNode Functions(Model m)
+    {
+      return new ContainerNode<Model.Func>("Functions", f => f.Arity == 0 ? null : Function(f), m.Functions);
+    }
+
+    public static IDisplayNode Constants(Model m)
+    {
+      return new ContainerNode<Model.Func>("Constants", f => f.Arity != 0 ? null : new AppNode(f.Apps.First()), m.Functions);
+    }
+  }
+
+  public class AppNode : ElementNode
+  {
+    protected Model.FuncTuple tupl;
+
+    public AppNode(Model.FuncTuple t)
+      : base(t.Func.Name, t.Result)
+    {
+      tupl = t;
+      var sb = new StringBuilder();
+      sb.Append(t.Func.Name);
+      if (t.Args.Length > 0) {
+        sb.Append("(");
+        foreach (var a in t.Args)
+          sb.Append(a.ToString()).Append(", ");
+        sb.Length -= 2;
+        sb.Append(")");
+      }
+      name = sb.ToString();
+    }
+  }
+
 }

@@ -30,6 +30,8 @@ namespace Microsoft.Boogie.ModelViewer
       }
 
       var items = new List<ListViewItem>();
+      items.Add(new DisplayItem(GenericNodes.Functions(m)));
+      items.Add(new DisplayItem(GenericNodes.Constants(m)));
       foreach (var s in m.States)
         items.Add(new DisplayItem(new StateNode(s)));
       listView1.Items.AddRange(items.ToArray());
@@ -48,7 +50,9 @@ namespace Microsoft.Boogie.ModelViewer
     }
 
     const int levelMult = 10;
-    const int plusWidth = 17;
+    const int plusWidth = 16;
+
+    static StringFormat center = new StringFormat() { Alignment = StringAlignment.Center };
     
     private void listView1_DrawItem(object sender, DrawListViewItemEventArgs e)
     {
@@ -70,22 +74,31 @@ namespace Microsoft.Boogie.ModelViewer
       var plusRect = rect;
       plusRect.Width = plusWidth;
       plusRect.X += off;
-      e.Graphics.FillRectangle(Brushes.Gray, plusRect);
+      var plusBorder = plusRect;
+      plusBorder.Height -= 4;
+      plusBorder.Width -= 4;
+      plusBorder.X += 2;
+      plusBorder.Y += 2;
+      e.Graphics.FillRectangle(Brushes.BlueViolet, plusBorder);
       // TODO these should be icons
-      e.Graphics.DrawString(item.expanded ? "[-]" : "[+]", listView1.Font, Brushes.Black, plusRect); // , StringFormat.GenericDefault);
+      if (item.displayNode.Expandable)
+        e.Graphics.DrawString(item.expanded ? "-" : "+", listView1.Font, Brushes.Black, plusRect, center);
 
       off += plusWidth + 3;
-      var valRect = rect;
-      valRect.Width = listView1.Columns[0].Width - 1 - off;
-      if (valRect.Width > 10) {
-        valRect.X += off;
-        e.Graphics.DrawString(item.displayNode.Name, listView1.Font, textBrush, valRect); // , StringFormat.GenericDefault);
-      }
-
       var nameRect = rect;
-      nameRect.Width = listView1.Columns[1].Width - 1;
-      nameRect.X += listView1.Columns[0].Width + 1;
-      e.Graphics.DrawString(item.SubItems[1].Text, listView1.Font, textBrush, nameRect); // , StringFormat.GenericDefault);
+      var font = listView1.Font;
+
+      var sz = e.Graphics.MeasureString(item.displayNode.Name, font);
+      nameRect.Width = listView1.Columns[0].Width - 1 - off;
+      if (nameRect.Width < sz.Width + 2)
+        nameRect.Width = (int)sz.Width + 20;
+      nameRect.X += off;
+      e.Graphics.DrawString(item.displayNode.Name, font, textBrush, nameRect);
+      
+      var valRect = rect;
+      valRect.X = nameRect.X + nameRect.Width + 4;
+      valRect.Width = listView1.Width - valRect.X;
+      e.Graphics.DrawString(item.SubItems[1].Text, font, textBrush, valRect); // , StringFormat.GenericDefault);
     }
 
     private void listView1_DrawSubItem(object sender, DrawListViewSubItemEventArgs e)
@@ -110,7 +123,7 @@ namespace Microsoft.Boogie.ModelViewer
         clickedItem.Focused = true;
 
         int plusLoc = clickedItem.level * levelMult;
-        if (e.X >= plusLoc && e.X <= plusLoc + plusWidth) {
+        if (clickedItem.displayNode.Expandable && e.X >= plusLoc && e.X <= plusLoc + plusWidth) {
           clickedItem.expanded = !clickedItem.expanded;
 
           if (clickedItem.expanded) {

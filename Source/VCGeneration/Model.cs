@@ -99,6 +99,7 @@ namespace Microsoft.Boogie
       public readonly int Arity;
       internal readonly List<FuncTuple> apps = new List<FuncTuple>();
       public IEnumerable<FuncTuple> Apps { get { return apps; } }
+      public int AppCount { get { return apps.Count; } }
 
       internal Func(Model p, string n, int a) { Model = p;  Name = n; Arity = a; }
 
