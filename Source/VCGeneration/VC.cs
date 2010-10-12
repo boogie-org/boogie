@@ -3021,6 +3021,7 @@ namespace VC {
           errModel.Print(ErrorReporter.ModelWriter);
           ErrorReporter.ModelWriter.Flush();
         }
+
         Hashtable traceNodes = new Hashtable();
         foreach (string s in labels) {
           Contract.Assert(s != null);

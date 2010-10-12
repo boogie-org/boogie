@@ -1,8 +1,4 @@
-Source/AIFramework/bin/
-Source/AIFramework/obj/
-Source/AbsInt/bin/
-Source/AbsInt/obj/
-Source/Basetypes/bin/
+Source/t
 Source/_ReSharper.Boogie
 Source/Provers/*/*.user
 Source/*/*.user

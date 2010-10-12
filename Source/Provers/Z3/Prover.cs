@@ -70,7 +70,7 @@ namespace Microsoft.Boogie.Z3
     {
       return CommandLineOptions.Clo.PrintErrorModel >= 1 ||
              CommandLineOptions.Clo.EnhancedErrorMessages == 1 ||
-             CommandLineOptions.Clo.ModelView > 0 ||
+             CommandLineOptions.Clo.ModelViewFile != null ||
              CommandLineOptions.Clo.ContractInfer ||
              CommandLineOptions.Clo.LazyInlining > 0 ||
              CommandLineOptions.Clo.StratifiedInlining > 0;

@@ -177,7 +177,26 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public void PrintModel() {
+    static bool firstModelFile = true;
+
+    public void PrintModel()
+    {
+      var filename = CommandLineOptions.Clo.ModelViewFile;
+      if (Model == null || filename == null) return;
+
+      var m = this.GetModelWithStates();
+
+      if (filename == "-") {
+        m.Write(Console.Out);
+        Console.Out.Flush();
+      } else {
+        using (var wr = new StreamWriter(filename, !firstModelFile)) {
+          firstModelFile = false;
+          m.Write(wr);
+        }      
+      }
+
+      /*
       if (Model == null || MvInfo == null) {
         return;
       }
@@ -267,6 +286,7 @@ namespace Microsoft.Boogie {
           Console.WriteLine("    undefined captured-state ID {0}", s);
         }
       }
+      */
     }
 
     public Model GetModelWithStates()
@@ -307,7 +327,12 @@ namespace Microsoft.Boogie {
 
             if (e is IdentifierExpr) {
               IdentifierExpr ide = (IdentifierExpr)e;
-              elt = m.GetFunc(ide.Decl.Name).GetConstant();
+
+              var f = m.TryGetFunc(ide.Decl.Name);
+              if (f == null) {
+                f = m.MkFunc(ide.Decl.Name, 0);
+              }              
+              elt = f.GetConstant();
             } else if (e is LiteralExpr) {
               LiteralExpr lit = (LiteralExpr)e;
               elt = m.MkElement(lit.Val.ToString());
@@ -1397,7 +1422,7 @@ namespace VC {
         Contract.Assert(pc != null);
 
         Expr copy = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, pc.Expr);
-        if (0 < CommandLineOptions.Clo.ModelView && pc is AssumeCmd) {
+        if (CommandLineOptions.Clo.ModelViewFile != null && pc is AssumeCmd) {
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
           if (description != null) {
             Expr mv = new NAryExpr(pc.tok, new FunctionCall(mvInfo.MVState_FunctionDef), new ExprSeq(Bpl.Expr.Literal(mvInfo.CapturePoints.Count)));

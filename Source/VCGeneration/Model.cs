@@ -21,7 +21,7 @@ namespace Microsoft.Boogie
 
     abstract public class Element
     {
-      protected readonly Model parent;
+      public readonly Model Model;
       internal List<FuncTuple> references = new List<FuncTuple>();
       public readonly int Id;
 
@@ -48,7 +48,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      protected Element(Model p) { parent = p; }
+      protected Element(Model p) { Model = p; }
       public abstract ElementKind Kind { get; }
       public virtual int AsInt() { throw new NotImplementedException(); }
     }
@@ -94,13 +94,13 @@ namespace Microsoft.Boogie
 
     public class Func
     {
-      private readonly Model Parent;
+      public readonly Model Model;
       public readonly string Name;
       public readonly int Arity;
       internal readonly List<FuncTuple> apps = new List<FuncTuple>();
       public IEnumerable<FuncTuple> Apps { get { return apps; } }
 
-      internal Func(Model p, string n, int a) { Parent = p;  Name = n; Arity = a; }
+      internal Func(Model p, string n, int a) { Model = p;  Name = n; Arity = a; }
 
       public void SetConstant(Element res)
       {
@@ -116,7 +116,7 @@ namespace Microsoft.Boogie
         if (Arity != 0)
           throw new ArgumentException();
         if (apps.Count == 0)
-          SetConstant(Parent.MkElement("**" + Name));
+          SetConstant(Model.MkElement("**" + Name));
         return apps[0].Result;
       }
 

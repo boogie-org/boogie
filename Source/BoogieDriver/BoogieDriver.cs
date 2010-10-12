@@ -642,7 +642,7 @@ namespace Microsoft.Boogie {
                     Console.WriteLine("Execution trace:");
                     error.Print(4);
                   }
-                  if (CommandLineOptions.Clo.ModelView == 1) {
+                  if (CommandLineOptions.Clo.ModelViewFile != null) {
                     error.PrintModel();
                   }
                   errorCount++;

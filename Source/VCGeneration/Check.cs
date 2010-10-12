@@ -374,9 +374,12 @@ namespace Microsoft.Boogie {
       }
 
       foreach (var t in definedFunctions) {
-        var f = m.MkFunc(t.Key, t.Value.Count - 1);
+        var tuples = t.Value;
+        if (tuples.Count == 0) continue;
+
+        var f = m.MkFunc(t.Key, tuples[0].Count - 1);
         var args = new Model.Element[f.Arity];
-        foreach (var l in t.Value) {
+        foreach (var l in tuples) {
           if (l.Count == 1) continue;
           for (int i = 0; i < f.Arity; ++i)
             args[i] = elts[l[i]];
