@@ -192,29 +192,91 @@ Execution trace:
 Boogie program verifier finished with 0 verified, 3 errors
 
 -------------------- CaptureState --------------------
-CaptureState.bpl(26,1): Error BP5003: A postcondition might not hold on this return path.
+CaptureState.bpl(27,1): Error BP5003: A postcondition might not hold on this return path.
 CaptureState.bpl(8,3): Related location: This is the postcondition that might not hold.
 Execution trace:
     CaptureState.bpl(12,3): anon0
     CaptureState.bpl(16,5): anon4_Then
     CaptureState.bpl(24,5): anon3
-Captured states:
-        Heap = *8
-        F = *10
-        this = *9
-        x = 797
-        y = y@@1
-    top
-        r = r
-        m = -2
-    then
-        r = r
-        m = -1
-    postUpdate0
-        r = r
-        m = -1
-    end
-        r = -2
-        m = -1
+*** MODEL
+@true -> 6
+@false -> 7
+intType -> *4
+boolType -> *5
+RefType -> *6
+FieldNameType -> *7
+Heap -> *8
+this -> *9
+F -> *10
+m@0 -> -2
+r@0 -> -2
+x@@4 -> 797
+m@1 -> -1
+m@3 -> -1
+$pow2 -> {
+  0 -> 1
+}
+tickleBool -> {
+  false -> true
+  true -> true
+}
+Ctor -> {
+  *4 -> 0
+  *5 -> 1
+  *6 -> 3
+  *7 -> 4
+  *18 -> 2
+}
+type -> {
+  *8 -> *18
+  *9 -> *6
+  *10 -> *7
+  *20 -> *4
+}
+MapType0Type -> {
+  *6 *7 *4 -> *18
+}
+MapType0TypeInv2 -> {
+  *18 -> *4
+}
+MapType0TypeInv1 -> {
+  *18 -> *7
+}
+MapType0TypeInv0 -> {
+  *18 -> *6
+}
+@MV_state -> {
+  0 -> true
+  1 -> true
+  2 -> true
+  5 -> true
+}
+MapType0Select -> {
+  *8 *9 *10 -> *20
+}
+U_2_int -> {
+  *20 -> -2
+}
+int_2_U -> {
+  -2 -> *20
+}
+*** STATE <initial>
+  Heap -> *8
+  F -> *10
+  this -> *9
+*** END_STATE
+*** STATE top
+*** END_STATE
+*** STATE then
+  m -> -2
+*** END_STATE
+*** STATE postUpdate0
+  m -> -1
+*** END_STATE
+*** STATE end
+  r -> -2
+  m -> 7
+*** END_STATE
+*** END_MODEL
 
 Boogie program verifier finished with 0 verified, 1 error

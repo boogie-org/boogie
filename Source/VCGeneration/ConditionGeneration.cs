@@ -195,98 +195,6 @@ namespace Microsoft.Boogie {
           m.Write(wr);
         }      
       }
-
-      /*
-      if (Model == null || MvInfo == null) {
-        return;
-      }
-      if (!Model.definedFunctions.ContainsKey("@MV_state")) {
-        return;
-      }
-      Console.WriteLine("Captured states:");
-      List<List<int>> defs = Model.definedFunctions["@MV_state"];
-      List<int> states = new List<int>();
-      foreach (List<int> parameters in defs) {
-        if (parameters.Count == 2) {  // we expect this for all but possibly the last row
-          int argPartition = parameters[0];
-          object val = Model.partitionToValue[argPartition];
-          if (val is BigNum) {
-            BigNum n = (BigNum)val;
-            states.Add(n.ToInt);
-          }
-        }
-      }
-      // we now have the list of states in 'states'
-      states.Sort();
-#if DEBUG_PRINT
-      Console.WriteLine("DEBUG: ---------- start ----------");
-      foreach (Variable v in MvInfo.AllVariables) {
-        List<string> names = new List<string>();
-
-        {
-          string ss = v.Name;
-          VCExprVar vvar = Context.BoogieExprTranslator.TryLookupVariable(v);
-          if (vvar != null) {
-            string uniqueName = Context.Lookup(vvar);
-            ss += " -> " + uniqueName;
-          }
-          names.Add(ss);
-        }
-
-        foreach (int s in states) {
-          if (0 <= s && s < MvInfo.CapturePoints.Count) {
-            VC.ModelViewInfo.Mapping m = MvInfo.CapturePoints[s];
-            var map = m.IncarnationMap;
-            if (map.ContainsKey(v)) {
-              Expr e = (Expr)map[v];
-              var ss = string.Format("[{0}: {1}", m.Description, e.ToString());
-              IdentifierExpr ide = e as IdentifierExpr;
-              if (ide != null) {
-                VCExprVar vvar = Context.BoogieExprTranslator.TryLookupVariable(ide.Decl);
-                if (vvar != null) {
-                  string uniqueName = Context.Lookup(vvar);
-                  ss += " -> " + uniqueName;
-                }
-              }
-              ss += "]";
-              names.Add(ss);
-            }
-          }
-        }
-
-        foreach (var nm in names) {
-          Console.Write("{0} ", nm);
-        }
-        Console.WriteLine();
-      }
-      Console.WriteLine("DEBUG: ---------- end ----------");
-#endif
-      List<Variable> changedVariables;
-      if (states.Count <= 1) {
-        changedVariables = MvInfo.AllVariables;
-      } else {
-        VC.ModelViewInfo.Mapping last = MvInfo.CapturePoints[MvInfo.CapturePoints.Count-1];
-        changedVariables = new List<Variable>();
-        List<Variable> unchangedVariables = new List<Variable>();
-        foreach (Variable v in MvInfo.AllVariables) {
-          if (last.IncarnationMap.ContainsKey(v)) {
-            changedVariables.Add(v);
-          } else {
-            unchangedVariables.Add(v);
-          }
-        }
-        PrintCapturedState(8, unchangedVariables, new Hashtable());
-      }
-      foreach (int s in states) {
-        if (0 <= s && s < MvInfo.CapturePoints.Count) {
-          VC.ModelViewInfo.Mapping m = MvInfo.CapturePoints[s];
-          Console.WriteLine("    {0}", m.Description);
-          PrintCapturedState(8, changedVariables, m.IncarnationMap);
-        } else {
-          Console.WriteLine("    undefined captured-state ID {0}", s);
-        }
-      }
-      */
     }
 
     public Model GetModelWithStates()
@@ -314,23 +222,36 @@ namespace Microsoft.Boogie {
 
       states.Sort();
 
-      foreach (int s in states) {
-        if (0 <= s && s < MvInfo.CapturePoints.Count) {
+      for (int i = 0; i < states.Count; ++i) {
+        var s = states[i];
+        if (0 <= s && s < MvInfo.CapturePoints.Count) {          
           VC.ModelViewInfo.Mapping map = MvInfo.CapturePoints[s];
+          var prevInc = i > 0 ? MvInfo.CapturePoints[states[i - 1]].IncarnationMap : new Hashtable();
           var cs = m.MkState(map.Description);
 
           foreach (Variable v in MvInfo.AllVariables) {
             var e = (Expr)map.IncarnationMap[v];
             if (e == null) continue;
 
+            // if (prevInc[v] == e) continue; // skip unchanged variables
+
             Model.Element elt;
 
             if (e is IdentifierExpr) {
               IdentifierExpr ide = (IdentifierExpr)e;
 
-              var f = m.TryGetFunc(ide.Decl.Name);
+              // first, get the unique name
+              string uniqueName;
+              VCExprVar vvar = Context.BoogieExprTranslator.TryLookupVariable(ide.Decl);
+              if (vvar == null) {
+                uniqueName = ide.Decl.Name;
+              } else {
+                uniqueName = Context.Lookup(vvar);
+              }
+
+              var f = m.TryGetFunc(uniqueName);
               if (f == null) {
-                f = m.MkFunc(ide.Decl.Name, 0);
+                f = m.MkFunc(uniqueName, 0);
               }              
               elt = f.GetConstant();
             } else if (e is LiteralExpr) {
@@ -349,54 +270,6 @@ namespace Microsoft.Boogie {
       }
 
       return m;
-    }
-
-    void PrintCapturedState(int indent, List<Variable> varSet, Hashtable/*Variable -> Expr*/ incarnations) {
-      Contract.Requires(0 <= indent);
-      Contract.Requires(varSet != null);
-      Contract.Requires(Model != null && MvInfo != null);
-      string ind = new string(' ', indent);
-
-      foreach (Variable v in varSet) {
-        string varName = v.Name;
-        Variable incarnation = v;
-        string val = null;
-        if (incarnations.ContainsKey(v)) {
-          Expr e = (Expr)incarnations[v];
-          if (e is IdentifierExpr) {
-            IdentifierExpr ide = (IdentifierExpr)e;
-            incarnation = ide.Decl;
-          } else if (e is LiteralExpr) {
-            LiteralExpr lit = (LiteralExpr)e;
-            val = lit.Val.ToString();
-          } else {
-            val = e.ToString();  // temporary hack to have something to do in this case
-          }
-        }
-        if (val == null) {
-          // first, get the unique name
-          string uniqueName;
-          VCExprVar vvar = Context.BoogieExprTranslator.TryLookupVariable(incarnation);
-          if (vvar == null) {
-            uniqueName = incarnation.Name;
-          } else {
-            uniqueName = Context.Lookup(vvar);
-          }
-          // look up the value in the model
-          int zid;
-          if (Model.identifierToPartition.TryGetValue(uniqueName, out zid)) {
-            object pvalue = Model.partitionToValue[zid];
-            if (pvalue != null) {
-              val = pvalue.ToString();
-            } else {
-              val = "*" + zid;  // temporary hack to have something to do in this case
-            }
-          } else {
-            val = uniqueName;  // temporary hack to have something to do in this case
-          }
-        }
-        Console.WriteLine("{0}{1} = {2}", ind, varName, val);
-      }
     }
 
     public abstract int GetLocation();
@@ -1427,7 +1300,7 @@ namespace VC {
           if (description != null) {
             Expr mv = new NAryExpr(pc.tok, new FunctionCall(mvInfo.MVState_FunctionDef), new ExprSeq(Bpl.Expr.Literal(mvInfo.CapturePoints.Count)));
             copy = Bpl.Expr.And(mv, copy);
-            mvInfo.CapturePoints.Add(new ModelViewInfo.Mapping(description, incarnationMap));
+            mvInfo.CapturePoints.Add(new ModelViewInfo.Mapping(description, (Hashtable)incarnationMap.Clone()));
           }
         }
         Contract.Assert(copy != null);

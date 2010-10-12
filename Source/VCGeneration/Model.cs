@@ -370,7 +370,7 @@ namespace Microsoft.Boogie
           continue;
         wr.WriteLine("*** STATE {0}", s.Name);
         foreach (var v in s.Variables)
-          wr.WriteLine("{0} -> {1}", v, s.TryGet(v));
+          wr.WriteLine("  {0} -> {1}", v, s.TryGet(v));
         wr.WriteLine("*** END_STATE", s.Name);
       }
       wr.WriteLine("*** END_MODEL");

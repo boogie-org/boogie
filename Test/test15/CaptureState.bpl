@@ -22,5 +22,6 @@ procedure P(this: Ref, x: int, y: int) returns (r: int)
     assume {:captureState "postUpdate1"} true;
   }
   r := m + m;
+  m := 7;
   assume {:captureState "end"} true;
 }
