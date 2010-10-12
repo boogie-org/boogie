@@ -156,7 +156,6 @@ namespace Microsoft.AbstractInterpretationFramework {
       FrameVertices = null;
       FrameRays = null;
       FrameLines = null;
-      IMutableSet ss;
       FrameDimensions.Clear();  // no implicit lines
     }
 

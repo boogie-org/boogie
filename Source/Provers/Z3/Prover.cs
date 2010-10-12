@@ -597,13 +597,6 @@ namespace Microsoft.Boogie.Z3
           int k = s.IndexOfAny(new char[] { ' ', '}' }, j);
           Contract.Assume(j <= k);
           string id = s.Substring(j, k - j);
-#if IS_THIS_A_GOOD_IDEA
-          // remove any @@-suffix
-          int doubleAt = id.IndexOf("@@");
-          if (doubleAt != -1) {
-            id = id.Substring(0, doubleAt);
-          }
-#endif
           j = k + 1;
           Contract.Assume(!identifierToPartition.ContainsKey(id));  // an ID is listed only once in this list, and an ID can only belong to one ZID equivalence class
           identifierToPartition.Add(id, zID);

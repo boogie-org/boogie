@@ -277,7 +277,6 @@ namespace Microsoft.Basetypes {
           }
         }
       }
-      return ZERO; // make compiler shut up
     }
 
     ////////////////////////////////////////////////////////////////////////////

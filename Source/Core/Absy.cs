@@ -3611,11 +3611,8 @@ namespace Microsoft.Boogie {
           return new Sequential(new AtomicRE(b), second);
         }
       } else {
-        {
-          Contract.Assume(false);
-          throw new cce.UnreachableException();
-        }
-        return new AtomicRE(b);
+        Contract.Assume(false);
+        throw new cce.UnreachableException();
       }
     }
   }

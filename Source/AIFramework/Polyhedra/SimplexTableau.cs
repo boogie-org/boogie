@@ -364,7 +364,6 @@ namespace Microsoft.AbstractInterpretationFramework {
         START_ANEW:
           ;
         }
-        return false; // make compiler shut up
       }
     }
 

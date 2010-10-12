@@ -87,9 +87,8 @@ public abstract class ProverContextContracts:ProverContext{
     protected List<VCExpr> axiomConjuncts;
 
     [ContractInvariantMethod]
-void ObjectInvariant() 
-{
-    Contract.Invariant(gen!=null);
+    void ObjectInvariant() {
+      Contract.Invariant(gen != null);
       Contract.Invariant(genOptions != null);
       Contract.Invariant(translator != null);
       Contract.Invariant(orderingAxiomBuilder != null);
@@ -97,7 +96,7 @@ void ObjectInvariant()
       Contract.Invariant(incrementalProverCommands != null);
       Contract.Invariant(cce.NonNullElements(distincts));
       Contract.Invariant(cce.NonNullElements(axiomConjuncts));
-}
+    }
 
     public VCExprTranslator/*?*/ exprTranslator;
 

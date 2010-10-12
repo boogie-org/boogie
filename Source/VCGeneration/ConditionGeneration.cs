@@ -69,6 +69,7 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Trace != null);
+      Contract.Invariant(Context != null);
       Contract.Invariant(cce.NonNullElements(relatedInformation));
       Contract.Invariant(cce.NonNullElements(calleeCounterexamples));
     }
@@ -77,16 +78,19 @@ namespace Microsoft.Boogie {
     public BlockSeq Trace;
     public ErrorModel Model;
     public VC.ModelViewInfo MvInfo;
+    public ProverContext Context;
     [Peer]
     public List<string>/*!>!*/ relatedInformation;
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
-    internal Counterexample(BlockSeq trace, ErrorModel model, VC.ModelViewInfo mvInfo) {
+    internal Counterexample(BlockSeq trace, ErrorModel model, VC.ModelViewInfo mvInfo, ProverContext context) {
       Contract.Requires(trace != null);
+      Contract.Requires(context != null);
       this.Trace = trace;
       this.Model = model;
       this.MvInfo = mvInfo;
+      this.Context = context;
       this.relatedInformation = new List<string>();
       this.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
     }
@@ -195,11 +199,70 @@ namespace Microsoft.Boogie {
       }
       // we now have the list of states in 'states'
       states.Sort();
+#if DEBUG_PRINT
+      Console.WriteLine("DEBUG: ---------- start ----------");
+      foreach (Variable v in MvInfo.AllVariables) {
+        List<string> names = new List<string>();
+
+        {
+          string ss = v.Name;
+          VCExprVar vvar = Context.BoogieExprTranslator.TryLookupVariable(v);
+          if (vvar != null) {
+            string uniqueName = Context.Lookup(vvar);
+            ss += " -> " + uniqueName;
+          }
+          names.Add(ss);
+        }
+
+        foreach (int s in states) {
+          if (0 <= s && s < MvInfo.CapturePoints.Count) {
+            VC.ModelViewInfo.Mapping m = MvInfo.CapturePoints[s];
+            var map = m.IncarnationMap;
+            if (map.ContainsKey(v)) {
+              Expr e = (Expr)map[v];
+              var ss = string.Format("[{0}: {1}", m.Description, e.ToString());
+              IdentifierExpr ide = e as IdentifierExpr;
+              if (ide != null) {
+                VCExprVar vvar = Context.BoogieExprTranslator.TryLookupVariable(ide.Decl);
+                if (vvar != null) {
+                  string uniqueName = Context.Lookup(vvar);
+                  ss += " -> " + uniqueName;
+                }
+              }
+              ss += "]";
+              names.Add(ss);
+            }
+          }
+        }
+
+        foreach (var nm in names) {
+          Console.Write("{0} ", nm);
+        }
+        Console.WriteLine();
+      }
+      Console.WriteLine("DEBUG: ---------- end ----------");
+#endif
+      List<Variable> changedVariables;
+      if (states.Count <= 1) {
+        changedVariables = MvInfo.AllVariables;
+      } else {
+        VC.ModelViewInfo.Mapping last = MvInfo.CapturePoints[MvInfo.CapturePoints.Count-1];
+        changedVariables = new List<Variable>();
+        List<Variable> unchangedVariables = new List<Variable>();
+        foreach (Variable v in MvInfo.AllVariables) {
+          if (last.IncarnationMap.ContainsKey(v)) {
+            changedVariables.Add(v);
+          } else {
+            unchangedVariables.Add(v);
+          }
+        }
+        PrintCapturedState(8, unchangedVariables, new Hashtable());
+      }
       foreach (int s in states) {
         if (0 <= s && s < MvInfo.CapturePoints.Count) {
           VC.ModelViewInfo.Mapping m = MvInfo.CapturePoints[s];
           Console.WriteLine("    {0}", m.Description);
-          PrintCapturedState(8, m.IncarnationMap);
+          PrintCapturedState(8, changedVariables, m.IncarnationMap);
         } else {
           Console.WriteLine("    undefined captured-state ID {0}", s);
         }
@@ -263,20 +326,21 @@ namespace Microsoft.Boogie {
       return m;
     }
 
-    void PrintCapturedState(int indent, Hashtable/*Variable -> Expr*/ incarnations) {
+    void PrintCapturedState(int indent, List<Variable> varSet, Hashtable/*Variable -> Expr*/ incarnations) {
       Contract.Requires(0 <= indent);
+      Contract.Requires(varSet != null);
       Contract.Requires(Model != null && MvInfo != null);
       string ind = new string(' ', indent);
 
-      foreach (Variable v in MvInfo.AllVariables) {
+      foreach (Variable v in varSet) {
         string varName = v.Name;
-        string incarnationName = varName;
+        Variable incarnation = v;
         string val = null;
         if (incarnations.ContainsKey(v)) {
           Expr e = (Expr)incarnations[v];
           if (e is IdentifierExpr) {
             IdentifierExpr ide = (IdentifierExpr)e;
-            incarnationName = ide.Decl.Name;
+            incarnation = ide.Decl;
           } else if (e is LiteralExpr) {
             LiteralExpr lit = (LiteralExpr)e;
             val = lit.Val.ToString();
@@ -285,17 +349,25 @@ namespace Microsoft.Boogie {
           }
         }
         if (val == null) {
+          // first, get the unique name
+          string uniqueName;
+          VCExprVar vvar = Context.BoogieExprTranslator.TryLookupVariable(incarnation);
+          if (vvar == null) {
+            uniqueName = incarnation.Name;
+          } else {
+            uniqueName = Context.Lookup(vvar);
+          }
           // look up the value in the model
-          int partition;
-          if (Model.identifierToPartition.TryGetValue(incarnationName, out partition)) {
-            object pvalue = Model.partitionToValue[partition];
+          int zid;
+          if (Model.identifierToPartition.TryGetValue(uniqueName, out zid)) {
+            object pvalue = Model.partitionToValue[zid];
             if (pvalue != null) {
               val = pvalue.ToString();
             } else {
-              val = "*" + partition;  // temporary hack to have something to do in this case
+              val = "*" + zid;  // temporary hack to have something to do in this case
             }
           } else {
-            val = incarnationName;  // temporary hack to have something to do in this case
+            val = uniqueName;  // temporary hack to have something to do in this case
           }
         }
         Console.WriteLine("{0}{1} = {2}", ind, varName, val);
@@ -326,12 +398,12 @@ namespace Microsoft.Boogie {
     }
 
 
-    public AssertCounterexample(BlockSeq trace, AssertCmd failingAssert, ErrorModel model, VC.ModelViewInfo mvInfo)
-      : base(trace, model, mvInfo) {
+    public AssertCounterexample(BlockSeq trace, AssertCmd failingAssert, ErrorModel model, VC.ModelViewInfo mvInfo, ProverContext context)
+      : base(trace, model, mvInfo, context) {
       Contract.Requires(trace != null);
       Contract.Requires(failingAssert != null);
+      Contract.Requires(context != null);
       this.FailingAssert = failingAssert;
-      // base(trace);
     }
 
     public override int GetLocation() {
@@ -340,7 +412,7 @@ namespace Microsoft.Boogie {
 
     public override Counterexample Clone()
     {
-        var ret = new AssertCounterexample(Trace, FailingAssert, Model, MvInfo);
+        var ret = new AssertCounterexample(Trace, FailingAssert, Model, MvInfo, Context);
         ret.calleeCounterexamples = calleeCounterexamples;
         return ret;
     }
@@ -356,15 +428,15 @@ namespace Microsoft.Boogie {
     }
 
 
-    public CallCounterexample(BlockSeq trace, CallCmd failingCall, Requires failingRequires, ErrorModel model, VC.ModelViewInfo mvInfo)
-      : base(trace, model, mvInfo) {
+    public CallCounterexample(BlockSeq trace, CallCmd failingCall, Requires failingRequires, ErrorModel model, VC.ModelViewInfo mvInfo, ProverContext context)
+      : base(trace, model, mvInfo, context) {
       Contract.Requires(!failingRequires.Free);
       Contract.Requires(trace != null);
+      Contract.Requires(context != null);
       Contract.Requires(failingCall != null);
       Contract.Requires(failingRequires != null);
       this.FailingCall = failingCall;
       this.FailingRequires = failingRequires;
-      // base(trace);
     }
 
     public override int GetLocation() {
@@ -373,7 +445,7 @@ namespace Microsoft.Boogie {
 
     public override Counterexample Clone()
     {
-        var ret = new CallCounterexample(Trace, FailingCall, FailingRequires, Model, MvInfo);
+        var ret = new CallCounterexample(Trace, FailingCall, FailingRequires, Model, MvInfo, Context);
         ret.calleeCounterexamples = calleeCounterexamples;
         return ret;
     }
@@ -389,15 +461,15 @@ namespace Microsoft.Boogie {
     }
 
 
-    public ReturnCounterexample(BlockSeq trace, TransferCmd failingReturn, Ensures failingEnsures, ErrorModel model, VC.ModelViewInfo mvInfo)
-      : base(trace, model, mvInfo) {
+    public ReturnCounterexample(BlockSeq trace, TransferCmd failingReturn, Ensures failingEnsures, ErrorModel model, VC.ModelViewInfo mvInfo, ProverContext context)
+      : base(trace, model, mvInfo, context) {
       Contract.Requires(trace != null);
+      Contract.Requires(context != null);
       Contract.Requires(failingReturn != null);
       Contract.Requires(failingEnsures != null);
       Contract.Requires(!failingEnsures.Free);
       this.FailingReturn = failingReturn;
       this.FailingEnsures = failingEnsures;
-      // base(trace);
     }
 
     public override int GetLocation() {
@@ -406,7 +478,7 @@ namespace Microsoft.Boogie {
 
     public override Counterexample Clone()
     {
-        var ret = new ReturnCounterexample(Trace, FailingReturn, FailingEnsures, Model, MvInfo);
+        var ret = new ReturnCounterexample(Trace, FailingReturn, FailingEnsures, Model, MvInfo, Context);
         ret.calleeCounterexamples = calleeCounterexamples;
         return ret;
     }

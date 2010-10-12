@@ -664,7 +664,6 @@ namespace Microsoft.Boogie.VCExprAST {
           return !ib.MoveNext();
         }
       }
-      return true;
     }
 
     public static int PolyHash(int init, int factor, IEnumerable a) {
@@ -1504,6 +1503,14 @@ namespace Microsoft.Boogie.VCExprAST {
       if (t == null)
         return false;
       return this.Name == t.Name && this.arity == t.arity && this.Type == t.Type;
+    }
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public override int GetHashCode() {
+      int h = Name.GetHashCode();
+      h = 7823 * h + arity;
+      h = 7823 * h + Type.GetHashCode();
+      return h;
     }
     public override int Arity {
       get {

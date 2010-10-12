@@ -1362,7 +1362,8 @@ namespace VC {
         impl.Blocks = tmp;
       }
 
-      public Counterexample ToCounterexample() {
+      public Counterexample ToCounterexample(ProverContext context) {
+        Contract.Requires(context != null);
         Contract.Ensures(Contract.Result<Counterexample>() != null);
 
         BlockSeq trace = new BlockSeq();
@@ -1375,7 +1376,7 @@ namespace VC {
           foreach (Cmd c in b.Cmds) {
             Contract.Assert(c != null);
             if (c is AssertCmd) {
-              return AssertCmdToCounterexample((AssertCmd)c, cce.NonNull(b.TransferCmd), trace, null, null, new Dictionary<Incarnation, Absy>());
+              return AssertCmdToCounterexample((AssertCmd)c, cce.NonNull(b.TransferCmd), trace, null, null, context, new Dictionary<Incarnation, Absy>());
             }
           }
         }
@@ -1836,7 +1837,7 @@ namespace VC {
             if (s.reporter != null && s.reporter.resourceExceededMessage != null) {
               msg = s.reporter.resourceExceededMessage;
             }
-            callback.OnCounterexample(s.ToCounterexample(), msg);
+            callback.OnCounterexample(s.ToCounterexample(s.Checker.TheoremProver.Context), msg);
             outcome = Outcome.Errors;
             break;
           }
@@ -2977,7 +2978,7 @@ namespace VC {
       }
 
       Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo;
-      ProverContext/*!*/ context;
+      protected ProverContext/*!*/ context;
       Program/*!*/ program;
 
       public ErrorReporter(Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins,
@@ -3097,7 +3098,6 @@ namespace VC {
         Contract.Requires(cce.NonNullElements(implName2LazyInliningInfo));
         Contract.Requires(context != null);
         Contract.Requires(program != null);
-
       }
 
       public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel) {
@@ -3132,7 +3132,7 @@ namespace VC {
             if (b.Cmds.Has(a)) {
               BlockSeq trace = new BlockSeq();
               trace.Add(b);
-              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, errModel, MvInfo, incarnationOriginMap);
+              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, errModel, MvInfo, context, incarnationOriginMap);
               callback.OnCounterexample(newCounterexample, null);
               goto NEXT_ASSERT;
             }
@@ -3321,7 +3321,7 @@ namespace VC {
                 // Skip if 'cmd' not contained in the trace or not an assert
                 if (cmd is AssertCmd && traceNodes.Contains(cmd))
                 {
-                    Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, mvInfo, new Dictionary<Incarnation, Absy/*!*/>());
+                    Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, mvInfo, context, new Dictionary<Incarnation, Absy/*!*/>());
                     newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
                     return newCounterexample;
                 }
@@ -3979,7 +3979,7 @@ namespace VC {
           if (assertCmd != null && errModel.LookupControlFlowFunctionAt(cfcValue, assertCmd.UniqueId) == 0)
           {
             Counterexample newCounterexample;
-            newCounterexample = AssertCmdToCounterexample(assertCmd, transferCmd, trace, errModel, mvInfo, cce.NonNull(info.incarnationOriginMap));
+            newCounterexample = AssertCmdToCounterexample(assertCmd, transferCmd, trace, errModel, mvInfo, context, cce.NonNull(info.incarnationOriginMap));
             newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
             return newCounterexample;
           }
@@ -4110,7 +4110,7 @@ namespace VC {
         // Skip if 'cmd' not contained in the trace or not an assert
         if (cmd is AssertCmd && traceNodes.Contains(cmd))
         {
-          Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, mvInfo, incarnationOriginMap);
+          Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, mvInfo, context, incarnationOriginMap);
           Contract.Assert(newCounterexample != null);
           newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
           return newCounterexample;
@@ -4878,12 +4878,13 @@ namespace VC {
       }
     }
 
-    static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, ErrorModel errModel, ModelViewInfo mvInfo,
+    static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, ErrorModel errModel, ModelViewInfo mvInfo, ProverContext context,
       Dictionary<Incarnation, Absy> incarnationOriginMap) 
     {
       Contract.Requires(cmd != null);
       Contract.Requires(transferCmd != null);
       Contract.Requires(trace != null);
+      Contract.Requires(context != null);
       Contract.Requires(cce.NonNullElements(incarnationOriginMap));
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
@@ -4904,7 +4905,7 @@ namespace VC {
       {
         AssertRequiresCmd assertCmd = (AssertRequiresCmd)cmd;
         Contract.Assert(assertCmd != null);
-        CallCounterexample cc = new CallCounterexample(trace, assertCmd.Call, assertCmd.Requires, errModel, mvInfo);
+        CallCounterexample cc = new CallCounterexample(trace, assertCmd.Call, assertCmd.Requires, errModel, mvInfo, context);
         cc.relatedInformation = relatedInformation;
         return cc;
       }
@@ -4912,13 +4913,13 @@ namespace VC {
       {
         AssertEnsuresCmd assertCmd = (AssertEnsuresCmd)cmd;
         Contract.Assert(assertCmd != null);
-        ReturnCounterexample rc = new ReturnCounterexample(trace, transferCmd, assertCmd.Ensures, errModel, mvInfo);
+        ReturnCounterexample rc = new ReturnCounterexample(trace, transferCmd, assertCmd.Ensures, errModel, mvInfo, context);
         rc.relatedInformation = relatedInformation;
         return rc;
       }
       else 
       {
-        AssertCounterexample ac = new AssertCounterexample(trace, (AssertCmd)cmd, errModel, mvInfo);
+        AssertCounterexample ac = new AssertCounterexample(trace, (AssertCmd)cmd, errModel, mvInfo, context);
         ac.relatedInformation = relatedInformation;
         return ac;
       }

@@ -277,6 +277,28 @@ namespace Microsoft.Boogie.VCExprAST {
       return cce.NonNull(res);
     }
 
+    /// <summary>
+    /// Unlike LookupVariable, this method does not create a new variable mapping if none is
+    /// found.  Instead, this method returns null in such cases.  Also, this method does not
+    /// look for bound variables.
+    /// </summary>
+    /// <param name="boogieVar"></param>
+    /// <returns></returns>
+    public VCExprVar TryLookupVariable(Variable boogieVar) {
+      Contract.Requires(boogieVar != null);
+
+      VCExprVar res;
+      Formal fml = boogieVar as Formal;
+      if (fml != null && Formals.TryGetValue(fml, out res))
+        return cce.NonNull(res);
+
+      if (UnboundVariables.TryGetValue(boogieVar, out res)) {
+        return cce.NonNull(res);
+      }
+
+      return null;  // not present
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////
 
     internal readonly VCGenerationOptions/*!*/ GenerationOptions;

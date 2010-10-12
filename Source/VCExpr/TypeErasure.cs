@@ -424,13 +424,30 @@ namespace Microsoft.Boogie.TypeErasure {
     public VCExprVar Typed2Untyped(VCExprVar var) {
       Contract.Requires(var != null);
       Contract.Ensures(Contract.Result<VCExprVar>() != null);
-      VCExprVar res;
-      if (!Typed2UntypedVariables.TryGetValue(var, out res)) {
+      VCExprVar res = TryTyped2Untyped(var);
+      if (res == null) {
         res = Gen.Variable(var.Name, TypeAfterErasure(var.Type));
         Typed2UntypedVariables.Add(var, res);
         AddVarTypeAxiom(res, var.Type);
       }
       return cce.NonNull(res);
+    }
+
+    /// <summary>
+    ///  This method is like Typed2Untyped, except in the case where the given variables
+    ///  doesn't exist in the mapping.  For that case, this method returns null whereas
+    ///  Typed2Untyped creates a new variable that it adds to the mapping.
+    /// </summary>
+    /// <param name="var"></param>
+    /// <returns></returns>
+    public VCExprVar TryTyped2Untyped(VCExprVar var) {
+      Contract.Requires(var != null);
+      VCExprVar res;
+      if (Typed2UntypedVariables.TryGetValue(var, out res)) {
+        return res;
+      } else {
+        return null;
+      }
     }
 
     protected abstract void AddVarTypeAxiom(VCExprVar/*!*/ var, Type/*!*/ originalType);

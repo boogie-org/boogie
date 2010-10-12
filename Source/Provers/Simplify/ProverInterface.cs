@@ -757,6 +757,10 @@ namespace Microsoft.Boogie.Simplify {
       //Contract.Requires(var != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
+      VCExprVar v = AxBuilder.TryTyped2Untyped(var);
+      if (v != null) {
+        var = v;
+      }
       return Namer.Lookup(var);
     }
 
