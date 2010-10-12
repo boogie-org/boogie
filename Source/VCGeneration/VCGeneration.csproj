@@ -118,7 +118,6 @@
     <Compile Include="DoomCheck.cs" />
     <Compile Include="DoomErrorHandler.cs" />
     <Compile Include="OrderingAxioms.cs" />
-    <Compile Include="Model.cs" />
     <Compile Include="VC.cs" />
     <Compile Include="VCDoomed.cs" />
     <Compile Include="..\version.cs" />
@@ -144,6 +143,10 @@
     <ProjectReference Include="..\Graph\Graph.csproj">
       <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
       <Name>Graph</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Model\Model.csproj">
+      <Project>{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}</Project>
+      <Name>Model</Name>
     </ProjectReference>
     <ProjectReference Include="..\VCExpr\VCExpr.csproj">
       <Project>{56FFDBCA-7D14-43B8-A6CA-22A20E417EE1}</Project>

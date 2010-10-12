@@ -33,6 +33,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeContractsExtender", "Co
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelViewer", "ModelViewer\ModelViewer.csproj", "{A678C6EB-B329-46A9-BBFC-7585F01ACD7C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Model", "Model\Model.csproj", "{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|.NET = Debug|.NET
@@ -325,6 +327,24 @@ Global
 		{A678C6EB-B329-46A9-BBFC-7585F01ACD7C}.z3apidebug|Mixed Platforms.Build.0 = Release|x86
 		{A678C6EB-B329-46A9-BBFC-7585F01ACD7C}.z3apidebug|x86.ActiveCfg = Release|x86
 		{A678C6EB-B329-46A9-BBFC-7585F01ACD7C}.z3apidebug|x86.Build.0 = Release|x86
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.Debug|.NET.ActiveCfg = Debug|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.Release|.NET.ActiveCfg = Release|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.Release|x86.ActiveCfg = Release|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.z3apidebug|.NET.ActiveCfg = Release|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.z3apidebug|Any CPU.ActiveCfg = Release|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.z3apidebug|Any CPU.Build.0 = Release|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.z3apidebug|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.z3apidebug|Mixed Platforms.Build.0 = Release|Any CPU
+		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.z3apidebug|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

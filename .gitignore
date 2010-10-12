@@ -45,6 +45,8 @@ Binaries/Core.dll
 Binaries/Core.pdb
 Binaries/Graph.dll
 Binaries/Graph.pdb
+Binaries/Model.dll
+Binaries/Model.pdb
 Binaries/Microsoft.Contracts.dll
 Binaries/Provers.Isabelle.dll
 Binaries/Provers.Isabelle.pdb
