@@ -19,7 +19,7 @@ using Microsoft.Boogie.VCExprAST;
 namespace VC {
   public class DCGen : ConditionGeneration {
     #region Attributes
-    private Dictionary<Block, Variable/*!*/>/*!*/ m_BlockReachabilityMap;
+    static private Dictionary<Block, Variable/*!*/>/*!*/ m_BlockReachabilityMap;
     Dictionary<Block/*!*/, Block/*!*/>/*!*/ m_copiedBlocks = new Dictionary<Block/*!*/, Block/*!*/>();
     const string reachvarsuffix = "__ivebeenthere";
     List<Cmd/*!*/>/*!*/ m_doomedCmds = new List<Cmd/*!*/>();
@@ -44,7 +44,10 @@ namespace VC {
       m_BlockReachabilityMap = new Dictionary<Block, Variable>();
     }
 
-
+    /// <summary>
+    /// Debug method that prints a dot file of the 
+    /// current set of blocks in impl to filename. 
+    /// </summary>
     private void Impl2Dot(Implementation impl, string filename) {
       Contract.Requires(impl != null);
       Contract.Requires(filename != null);
@@ -57,15 +60,22 @@ namespace VC {
         Contract.Assert(b != null);
         nodes.Add(string.Format("\"{0}\" {1}", b.Label, nodestyle));
         GotoCmd gc = b.TransferCmd as GotoCmd;
-        if (gc != null) {
-          Contract.Assert(gc.labelTargets != null);
-          foreach (Block b_ in gc.labelTargets) {
-            Contract.Assert(b_ != null);
-            edges.Add(String.Format("\"{0}\" -> \"{1}\";", b.Label, b_.Label));
-          }
+        if (gc != null)
+        {
+            Contract.Assert(gc.labelTargets != null);
+            foreach (Block b_ in gc.labelTargets)
+            {
+                Contract.Assert(b_ != null);
+                edges.Add(String.Format("\"{0}\" -> \"{1}\";", b.Label, b_.Label));
+            }
         }
-      }
 
+        //foreach (Block b_ in b.Predecessors)
+        //{              
+        //    edges.Add(String.Format("\"{0}\" -> \"{1}\";", b.Label, b_.Label));
+        //}
+      }
+        
       using (StreamWriter sw = new StreamWriter(filename)) {
         sw.WriteLine(String.Format("digraph {0} {{", impl.Name));
         //            foreach (string! s in nodes) {
@@ -80,7 +90,7 @@ namespace VC {
       }
     }
 
-    private const string _copyPrefix = "Yeah";
+    private const string _copyPrefix = "CPY__";
 
     private Block CopyImplBlocks(Block b, ref List<Block> blocklist, Block targetBlock, ref Dictionary<Block, Block> alreadySeen) {
       Contract.Requires(b != null);
@@ -159,8 +169,6 @@ namespace VC {
     }
 
     static public bool UseItAsDebugger = false;
-
-    //    public static Implementation _tmpImpl = null; // (MsSchaef) HACK!
 
     public static Block firstNonDebugBlock = null;
     public static Block firstDebugBlock = null;
@@ -274,6 +282,22 @@ namespace VC {
 
     private List<Block> _copiedBlock = new List<Block>();
 
+
+    /// <summary>
+    /// Helperfunction to restore the predecessor relations after loop unrolling
+    /// </summary> 
+    private void ClearPredecessors(List<Block>/*!>!*/ blocks)
+    {
+        Contract.Requires(cce.NonNullElements(blocks));
+        // This code just here to try things out.
+        // Compute the predecessor relation for each block
+        // Store it in the Predecessors field within each block
+        foreach (Block b in blocks)
+        {
+            b.Predecessors = new BlockSeq();
+        }
+    }
+
     /// <summary>
     /// MSchaef: 
     /// - remove loops and add reach variables
@@ -291,8 +315,6 @@ namespace VC {
       UseItAsDebugger = CommandLineOptions.Clo.useDoomDebug;
       Stopwatch watch = new Stopwatch();
 
-      //Impl2Dot(impl, String.Format("c:/dot/{0}_raw.dot", impl.Name) );
-
       if (CommandLineOptions.Clo.TraceVerify) {
         Console.WriteLine(">>> Checking function {0} for doomed points.", impl.Name);
       }
@@ -305,35 +327,34 @@ namespace VC {
       #region Transform the Program into loop-free passive form
       variable2SequenceNumber = new Hashtable/*Variable -> int*/();
       incarnationOriginMap = new Dictionary<Incarnation, Absy>();
-      List<Block> cblocks = new List<Block>();
 
       //List<Block!>! orig_blocks = new List<Block!>(impl.Blocks);
 
-      Dictionary<Block, Block> copiedblocks;
-      impl.Blocks = DCProgramTransformer.Convert2Dag(impl, program, cblocks, out copiedblocks);
-      Contract.Assert(copiedblocks != null);
-
-      //      List<Block!>! blist = new List<Block!>();
-      //      blist.AddRange(impl.Blocks);
+//      Impl2Dot(impl, String.Format("c:/dot/{0}_orig.dot", impl.Name));
+      impl.Blocks = DCProgramTransformer.Convert2Dag(impl, program);
 
       if (UseItAsDebugger)
         ModifyImplForDebugging(impl);
+  //    Impl2Dot(impl, String.Format("c:/dot/{0}_lf.dot", impl.Name));
 
+      ClearPredecessors(impl.Blocks);
       ComputePredecessors(impl.Blocks);
 
+        if (UseItAsDebugger)
+        RemoveReachVars(cce.NonNull(firstDebugBlock));      
+
+      GenerateHelperBlocks(impl);
       m_BlockReachabilityMap = new Dictionary<Block, Variable>();
-      GenerateReachVars(impl);
+      AssumeCmd finalAssume = GenerateReachabilityPredicates(impl);
+      this.exitBlock.Cmds.Add(finalAssume);
 
-      if (UseItAsDebugger)
-        RemoveReachVars(cce.NonNull(firstDebugBlock));
-
+      ClearPredecessors(impl.Blocks);
+      ComputePredecessors(impl.Blocks);
+      
       PassifyProgram(impl, new ModelViewInfo(program, impl));
-
       #endregion
       //EmitImpl(impl,false);
-
-
-      //Impl2Dot(impl, String.Format("c:/dot/{0}_passive.dot", impl.Name) );
+      
 
       // ---------------------------------------------------------------------------
       if (UseItAsDebugger) {
@@ -375,7 +396,9 @@ namespace VC {
         outcome = ProverInterface.Outcome.Undetermined;
         //Console.WriteLine("Checking block {0} ...",b.Label);
         Variable v = null;
-        m_BlockReachabilityMap.TryGetValue(b, out v);
+        if (!m_BlockReachabilityMap.TryGetValue(b, out v)) {
+            
+        }
         Contract.Assert(v != null);
         _totalchecks++;
 
@@ -446,13 +469,13 @@ namespace VC {
       }
       #endregion
 
-      Console.WriteLine("------------------------------ \n\n");
+      //Console.WriteLine("------------------------------ \n\n");
 
       return Outcome.Correct;
     }
 
 
-
+    #region Error message construction
     private void SearchCounterexample(Implementation impl, DoomErrorHandler errh, VerifierCallback callback) {
       Contract.Requires(impl != null);
       Contract.Requires(errh != null);
@@ -792,7 +815,7 @@ namespace VC {
       }
       return false;
     }
-
+#endregion
 
     #region Loop Removal
     /// <summary>
@@ -813,13 +836,10 @@ namespace VC {
       }
 
 
-      public static List<Block> Convert2Dag(Implementation impl, Program program, List<Block> checkableBlocks,
-            out Dictionary<Block, Block> copiedblocks) {
+      public static List<Block> Convert2Dag(Implementation impl, Program program) {
         Contract.Requires(impl != null);
         Contract.Requires(program != null);
-        Contract.Requires(cce.NonNullElements(checkableBlocks));
         Contract.Requires(1 <= impl.Blocks.Count);
-        Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out copiedblocks)));
 
         Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
 
@@ -829,244 +849,217 @@ namespace VC {
         Set/*Block*/ beingVisited = new Set/*Block*/();
         GraphNode gStart = GraphNode.ComputeGraphInfo(null, start, gd, beingVisited);
 
-        DCProgramTransformer pt = new DCProgramTransformer(checkableBlocks);
-        pt.LoopUnrolling(gStart, new Dictionary<GraphNode, Block>(), true, "");
+        DCProgramTransformer pt = new DCProgramTransformer();
+        //pt.LoopUnrolling(gStart, new Dictionary<GraphNode, Block>(), true, "");
+        pt.AbstractLoopUnrolling(gStart, new Dictionary<GraphNode, Block>(), true, "");
         pt.Blocks.Reverse();
-        copiedblocks = pt.m_copyMap;
         return pt.Blocks;
       }
 
 
-      DCProgramTransformer(List<Block> checkableBlocks) {
-        Contract.Requires(cce.NonNullElements(checkableBlocks));
+      DCProgramTransformer() {
         Blocks = new List<Block>();
-        m_checkableBlocks = checkableBlocks;
+        m_checkableBlocks = new List<Block>();
       }
 
 
       #region Loop Unrolling Methods
 
-      private Block LoopUnrolling(GraphNode node, Dictionary<GraphNode, Block> visited, bool unrollable, String prefix) {
-        Contract.Requires(node != null);
-        Contract.Requires(cce.NonNullElements(visited));
-        Contract.Requires(prefix != null);
-        Contract.Ensures(Contract.Result<Block>() != null);
+      private Block AbstractLoopUnrolling(GraphNode node, Dictionary<GraphNode, Block> visited, bool unrollable, String prefix)
+      {
+          Contract.Requires(node != null);
+          Contract.Requires(cce.NonNullElements(visited));
+          Contract.Requires(prefix != null);
+          Contract.Ensures(Contract.Result<Block>() != null);
+          Block newb;
+          if (visited.TryGetValue(node, out newb))
+          {
+              Contract.Assert(newb != null);
+              return newb;
+          }
+          else
+          {
+              if (node.IsCutPoint)
+              {
+                  #region Identify the body of the loop and the set of nodes succeeding the loop
+                  GotoCmd gc = node.Block.TransferCmd as GotoCmd;
+                  Contract.Assert(gc != null);
+                  Contract.Assert(gc.labelTargets != null);
 
-        Block newb;
-        if (visited.TryGetValue(node, out newb)) {
+                  List<GraphNode> loopNodes = new List<GraphNode>();
+                  GatherLoopBodyNodes(node, node, loopNodes);
+                  List<GraphNode> exitNodes = GatherLoopExitNodes(loopNodes);
+                  
+                  GraphNode firstbodynode = null;
+                  foreach (GraphNode g in node.Succecessors)
+                  {
+                      Contract.Assert(g != null);
+                      if (loopNodes.Contains(g))
+                      {
+                          Contract.Assert(firstbodynode == null);
+                          firstbodynode = g;
+                      }
+                  }
+                  loopNodes.Remove(node); // remove the loophead from the loopbody
+                  
+                  #endregion
+                  #region  Continue Unrolling for all nodes after the current loop after the current loop
+                  Dictionary<GraphNode, Block> _visited = new Dictionary<GraphNode, Block>();                  
+
+                  Block exitblock = null;
+                  
+                  foreach (GraphNode g in exitNodes)
+                  {
+                      Contract.Assert(g != null);
+                      Block b_ = AbstractLoopUnrolling(g, visited, unrollable, prefix);
+                      _visited.Add(g, b_);
+                      if (gc.labelTargets.Has(g.Block))
+                      {
+                          Contract.Assert(exitblock == null); // This may only happen once!
+                          exitblock = b_;
+                      }
+                  }
+                  Contract.Assert(exitblock != null); // This may only happen once!
+                  _visited.Add(node, node.Block);
+                  #endregion
+                  #region Apply the abstract loop unrolling to the body of the loop
+                  Block abstractloophead = null;
+                  Block abstractloopexit = exitblock;
+
+                  if (unrollable)
+                  {
+                      Dictionary<GraphNode, Block> visited3 = new Dictionary<GraphNode, Block>(_visited);
+                      Block iterL = AbstractLoopUnrolling(firstbodynode, visited3, false, prefix + "Las_");
+                      EliminateLoopingGotos(node, exitblock, visited3, _visited);
+                      AddHavocCmd(iterL, loopNodes);
+                      abstractloopexit = iterL;
+                  }
+                  else
+                  {
+                      // if the loop is not unrolled create a dummy block which havocs the loop targets before leaving the loop
+                      BlockSeq bseq = new BlockSeq();
+                      bseq.Add(exitblock);
+                      GotoCmd gcmd = new GotoCmd(node.Block.tok, bseq);
+                      abstractloopexit = new Block(exitblock.tok, prefix + "_EXIT_" + exitblock.Label, new CmdSeq(), gcmd);
+                      //UpdateReachabilityVarMap(abstractloopexit, exitblock);
+                      AddHavocCmd(abstractloopexit, loopNodes);
+                      Blocks.Add(abstractloopexit);
+                  }
+                  Dictionary<GraphNode, Block> visited2 = new Dictionary<GraphNode, Block>(_visited);
+                  Block iterA = AbstractLoopUnrolling(firstbodynode, visited2, unrollable, prefix + "Abs_");
+                  EliminateLoopingGotos(node, abstractloopexit, visited2, _visited);
+                  AddHavocCmd(iterA, loopNodes);
+                  abstractloophead = iterA;
+                  if (unrollable)
+                  {
+                      Dictionary<GraphNode, Block> visited1 = new Dictionary<GraphNode, Block>(_visited);
+                      Block iterF = AbstractLoopUnrolling(firstbodynode, visited1, false, prefix + "Fir_");
+                      EliminateLoopingGotos(node, iterA, visited1, _visited);                      
+                      abstractloophead = iterF;
+                  }
+
+                  BlockSeq bs = new BlockSeq();
+                  foreach (GraphNode g in node.Succecessors)
+                  {
+                      if (g != firstbodynode) bs.Add(exitblock);
+                      else bs.Add(abstractloophead);
+                  }
+                  newb = new Block(node.Block.tok, prefix+node.Block.Label, node.Body, new GotoCmd(gc.tok, bs));
+                  Block b;
+                  if (m_copyMap.TryGetValue(node.Block, out b))
+                  {
+                      Console.WriteLine("Duplicate entry for {0}", b.Label);
+                  }
+                  else
+                  {
+                      m_copyMap.Add(node.Block, newb);
+                  }
+                  #endregion
+              }
+              else
+              {
+                  #region If it is not a cut point continue with successors and make a copy
+                  BlockSeq newSuccs = new BlockSeq();
+                  foreach (GraphNode g in node.Succecessors)
+                  {
+                      Contract.Assert(g != null);
+                      newSuccs.Add(AbstractLoopUnrolling(g, visited, unrollable, prefix));
+                  }
+                  newb = new Block(node.Block.tok, prefix+node.Block.Label, node.Body, node.Block.TransferCmd);
+                  Block b;
+                  if (m_copyMap.TryGetValue(node.Block, out b))
+                  {
+                      Contract.Assert(b != null);
+                      m_copyMap.Add(newb, b);
+                  }
+                  else
+                  {
+                      m_copyMap.Add(newb, node.Block);
+                  }
+
+
+                  Contract.Assert(newb != null);
+                  Contract.Assert(newb.TransferCmd != null);
+                  if (newSuccs.Length == 0)
+                      newb.TransferCmd = new ReturnCmd(newb.TransferCmd.tok);
+                  else
+                      newb.TransferCmd = new GotoCmd(newb.TransferCmd.tok, newSuccs);
+                
+                  //TODO replace this by updating the copied reachability variables!
+                  if (unrollable)
+                  {
+                      m_checkableBlocks.Add(newb);
+                  }
+                  #endregion
+              }
+              visited.Add(node, newb);
+              Blocks.Add(newb);
+              //UpdateReachabilityVarMap(newb, node.Block);
+          }
           Contract.Assert(newb != null);
           return newb;
-        } else {
-          if (node.IsCutPoint) {
-            // compute the loop body and the blocks leaving the loop
+      }
 
-            List<GraphNode> loopNodes = new List<GraphNode>();
-            GatherLoopBodyNodes(node, node, loopNodes);
+    void UpdateReachabilityVarMap(Block clonedBlock, Block origBlock) 
+    {
+               Variable v = null;
+               if (!DCGen.m_BlockReachabilityMap.TryGetValue(origBlock, out v))
+              {
+                  Console.WriteLine("no reachability variable for {0}", origBlock.Label);
+              }
+               DCGen.m_BlockReachabilityMap.Add(clonedBlock, v);
+   
+    }
 
-            List<GraphNode> exitNodes = GatherLoopExitNodes(loopNodes);
-
-            // Continue Unrolling after the current loop
-            Dictionary<GraphNode, Block> _visited = new Dictionary<GraphNode, Block>();
-            foreach (GraphNode g in exitNodes) {
-              Contract.Assert(g != null);
-              Block b = LoopUnrolling(g, visited, unrollable, prefix);
-              _visited.Add(g, b);
-            }
-            newb = UnrollCurrentLoop(node, _visited, loopNodes, unrollable, prefix);
-            visited.Add(node, newb);
-          } else {
-            BlockSeq newSuccs = new BlockSeq();
-            foreach (GraphNode g in node.Succecessors) {
-              Contract.Assert(g != null);
-              newSuccs.Add(LoopUnrolling(g, visited, unrollable, prefix));
-            }
-            newb = new Block(node.Block.tok, node.Block.Label + prefix, node.Body, node.Block.TransferCmd);
-            Block b;
-            if (m_copyMap.TryGetValue(node.Block, out b)) {
-              Contract.Assert(b != null);
-              m_copyMap.Add(newb, b);
-            } else {
-              m_copyMap.Add(newb, node.Block);
-            }
-
-
-            Contract.Assert(newb != null);
-            Contract.Assert(newb.TransferCmd != null);
-            if (newSuccs.Length == 0)
-              newb.TransferCmd = new ReturnCmd(newb.TransferCmd.tok);
-            else
-              newb.TransferCmd = new GotoCmd(newb.TransferCmd.tok, newSuccs);
-
-            visited.Add(node, newb);
-            Blocks.Add(newb);
-            if (unrollable) {
-              m_checkableBlocks.Add(newb);
-            }
+      private void EliminateLoopingGotos(GraphNode node, Block nextblock, Dictionary<GraphNode, Block> visited2,
+          Dictionary<GraphNode, Block> _visited)
+      {
+          foreach (KeyValuePair<GraphNode, Block> kvp in visited2)
+          {
+              if (!_visited.ContainsKey(kvp.Key))
+              {
+                  GotoCmd gc = kvp.Value.TransferCmd as GotoCmd;
+                  if (gc != null)
+                  {
+                      bool change = false;
+                      BlockSeq bs = new BlockSeq();
+                      Contract.Assert(gc.labelTargets != null);
+                      foreach (Block b in gc.labelTargets)
+                      {
+                          if (b != node.Block)
+                          {
+                              if (!bs.Has(b)) bs.Add(b);
+                          }
+                          else
+                          {
+                              change = true;
+                              if (!bs.Has(nextblock)) bs.Add(nextblock);
+                          }
+                      }
+                      if (change) gc.labelTargets = bs;
+                  }
+              }
           }
-        }
-        Contract.Assert(newb != null);
-        //newb.checkable = unrollable;
-        return newb;
-      }
-
-      private Block UnrollCurrentLoop(GraphNode/*!*/ cutPoint, Dictionary<GraphNode, Block/*!*/>/*!*/ visited,
-                  List<GraphNode/*!*/>/*!*/ loopNodes, bool unrollable, String/*!*/ prefix) {
-        Contract.Requires(cutPoint != null);
-        Contract.Requires(cce.NonNullElements(visited));
-        Contract.Requires(cce.NonNullElements(loopNodes));
-        Contract.Requires(prefix != null);
-        if (unrollable) {
-          Dictionary<GraphNode, Block> visited1 = new Dictionary<GraphNode, Block>(visited);
-          Dictionary<GraphNode, Block> visited2 = new Dictionary<GraphNode, Block>(visited);
-          Dictionary<GraphNode, Block> visited3 = new Dictionary<GraphNode, Block>(visited);
-
-          Block loopend = ConstructLoopExitBlock(cutPoint, loopNodes, visited, prefix + "#Last");
-          Contract.Assert(loopend != null);
-          Block last = UnrollOnce(cutPoint, loopend, visited1, false, prefix + "#Last");
-          Contract.Assert(last != null);
-          AddHavocCmd(last, loopNodes);
-
-          // You might use true for the unrollable flag as well. 					
-          Block arb = UnrollOnce(cutPoint, last, visited2, false, prefix + "#Arb");
-          Contract.Assert(arb != null);
-          AddHavocCmd(arb, loopNodes);
-
-
-          BlockSeq succ = new BlockSeq();
-          succ.Add(last);
-          succ.Add(arb);
-          Contract.Assert(arb.TransferCmd != null);
-          Block tmp = new Block(arb.tok, arb.Label + prefix + "#Dummy", new CmdSeq(), new GotoCmd(arb.TransferCmd.tok, succ));
-          Contract.Assert(tmp != null);
-          Blocks.Add(tmp);
-          m_checkableBlocks.Add(tmp);
-
-          // check if arb is already a copy of something else
-          // if not then write to m_copyMap that tmp is a copy
-          // of arb
-          Block b = null;
-          if (m_copyMap.TryGetValue(arb, out b)) {
-            Contract.Assert(b != null);
-            m_copyMap.Add(tmp, b);
-          } else {
-            m_copyMap.Add(tmp, arb);
-          }
-
-          Block first = UnrollOnce(cutPoint, tmp, visited3, false, prefix + "#First");
-          Contract.Assert(first != null);
-
-          return first;
-
-        } else {
-          Dictionary<GraphNode, Block> visited_ = new Dictionary<GraphNode, Block>(visited);
-          Block loopend = AbstractIteration(cutPoint, prefix + "#UR");
-          Block ret = UnrollOnce(cutPoint, loopend, visited_, false, prefix);
-          AddHavocCmd(ret, loopNodes);
-          return ret;
-        }
-      }
-
-      private Block UnrollOnce(GraphNode node, Block nextIter, Dictionary<GraphNode, Block> visited, bool unrollable, String prefix) {
-        Contract.Requires(node != null);
-        Contract.Requires(nextIter != null);
-        Contract.Requires(cce.NonNullElements(visited));
-        Contract.Requires(prefix != null);
-
-
-        Contract.Ensures(Contract.Result<Block>() != null);
-
-        visited.Add(node, nextIter);
-        Block newb, b;
-        BlockSeq newSuccs = new BlockSeq();
-        foreach (GraphNode g in node.Succecessors) {
-          Contract.Assert(g != null);
-          newSuccs.Add(LoopUnrolling(g, visited, unrollable, prefix));
-        }
-        newb = new Block(node.Block.tok, node.Block.Label + prefix, node.Body, node.Block.TransferCmd);
-        if (m_copyMap.TryGetValue(node.Block, out b)) {
-          Contract.Assert(b != null);
-          m_copyMap.Add(newb, b);
-        } else {
-          m_copyMap.Add(newb, node.Block);
-        }
-
-        Contract.Assert(newb != null);
-        Contract.Assert(newb.TransferCmd != null);
-        if (newSuccs.Length == 0)
-          newb.TransferCmd = new ReturnCmd(newb.TransferCmd.tok);
-        else
-          newb.TransferCmd = new GotoCmd(newb.TransferCmd.tok, newSuccs);
-
-        Blocks.Add(newb);
-        if (unrollable)
-          m_checkableBlocks.Add(newb);
-        return newb;
-      }
-
-      private Block AbstractIteration(GraphNode node, String prefix) {
-        Contract.Requires(node != null);
-        Contract.Requires(prefix != null);
-        Contract.Ensures(Contract.Result<Block>() != null);
-
-        CmdSeq body = new CmdSeq();
-        foreach (Cmd c in node.Body) {
-          Contract.Assert(c != null);
-          if (c is PredicateCmd || c is CommentCmd)
-            body.Add(c);
-          else
-            break;
-        }
-        body.Add(new AssumeCmd(node.Block.tok, Expr.False));
-        TransferCmd tcmd = new ReturnCmd(node.Block.tok);
-        Contract.Assert(tcmd != null);
-        Block b = new Block(node.Block.tok, node.Block.Label + prefix, body, tcmd);
-        Contract.Assert(b != null);
-        Blocks.Add(b);
-        Block tmp;
-        if (m_copyMap.TryGetValue(node.Block, out tmp)) {
-          Contract.Assert(tmp != null);
-          m_copyMap.Add(b, tmp);
-        } else {
-          m_copyMap.Add(b, node.Block);
-        }
-
-        return b;
-      }
-
-      private Block ConstructLoopExitBlock(GraphNode cutPoint, List<GraphNode> loopNodes,
-                          Dictionary<GraphNode, Block> visited, String prefix) {
-        Contract.Requires(cutPoint != null);
-        Contract.Requires(cce.NonNullElements(loopNodes));
-        Contract.Requires(cce.NonNullElements(visited));
-        Contract.Requires(prefix != null);
-
-        Contract.Ensures(Contract.Result<Block>() != null);
-
-        BlockSeq newSucc = new BlockSeq();
-        Block orig = cutPoint.Block;
-
-        // detect the block after the loop
-        // FixMe: What happens when using break commands?
-        foreach (GraphNode g in cutPoint.Succecessors) {
-          Contract.Assert(g != null);
-          if (!loopNodes.Contains(g)) {
-            Block b;
-            if (visited.TryGetValue(g, out b))
-              newSucc.Add(b);
-          }
-        }
-        TransferCmd tcmd;
-        Contract.Assert(orig.TransferCmd != null);
-        if (newSucc.Length == 0)
-          tcmd = new ReturnCmd(orig.TransferCmd.tok);
-        else
-          tcmd = new GotoCmd(orig.TransferCmd.tok, newSucc);
-        // FixMe: Genertate IToken for counterexample creation
-        Block newb = new Block(orig.tok, orig.Label + prefix + "#Leave", orig.Cmds, tcmd);
-        Contract.Assert(newb != null);
-        Blocks.Add(newb);
-        m_checkableBlocks.Add(newb);
-        return newb;
       }
 
 
@@ -1270,11 +1263,12 @@ namespace VC {
 
     #endregion
 
+    Block exitBlock;
     #region Program Passification
-    private void GenerateReachVars(Implementation impl) {
+    private void GenerateHelperBlocks(Implementation impl) {
       Contract.Requires(impl != null);
       Hashtable gotoCmdOrigins = new Hashtable();
-      Block exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
+      exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
       Contract.Assert(exitBlock != null);
 
       AddBlocksBetween(impl.Blocks);
@@ -1307,8 +1301,7 @@ namespace VC {
         // append postconditions, starting in exitBlock and continuing into other blocks, if needed
         exitBlock = InjectPostConditions(impl, exitBlock, gotoCmdOrigins);
       }
-      #endregion
-      GenerateReachabilityPredicates(impl, exitBlock);
+      #endregion     
     }
 
 
@@ -1316,7 +1309,7 @@ namespace VC {
       Contract.Requires(impl != null);
       Contract.Requires(mvInfo != null);
       Contract.Ensures(Contract.Result<Hashtable>() != null);
-
+      
       CurrentLocalVariables = impl.LocVars;
       Convert2PassiveCmd(impl, mvInfo);
       return new Hashtable();
@@ -1326,79 +1319,74 @@ namespace VC {
     /// Add additional variable to allow checking as described in the paper
     /// "It's doomed; we can prove it"
     /// </summary>
-    private void GenerateReachabilityPredicates(Implementation impl, Block exitBlock) {
-      Contract.Requires(impl != null);
-      Contract.Requires(exitBlock != null);
-      ExprSeq es = new ExprSeq();
-      Cmd eblockcond = null;
+    private AssumeCmd GenerateReachabilityPredicates(Implementation impl)
+    {
+        Contract.Requires(impl != null);
+        ExprSeq es = new ExprSeq();
 
-      foreach (Block b in impl.Blocks) {
-        Contract.Assert(b != null);
-        //if (b.Predecessors.Length==0) continue;
-        //if (b.Cmds.Length == 0 ) continue;
+        foreach (Block b in impl.Blocks)
+        {
+            Contract.Assert(b != null);
+            //if (b.Predecessors.Length==0) continue;
+            //if (b.Cmds.Length == 0 ) continue;
 
-        Variable v_ = new LocalVariable(Token.NoToken,
-                                new TypedIdent(b.tok, b.Label + reachvarsuffix, new BasicType(SimpleType.Bool)));
+            Variable v_ = new LocalVariable(Token.NoToken,
+                                    new TypedIdent(b.tok, b.Label + reachvarsuffix, new BasicType(SimpleType.Bool)));
 
-        impl.LocVars.Add(v_);
+            impl.LocVars.Add(v_);
 
-        m_BlockReachabilityMap[b] = v_;
+            m_BlockReachabilityMap[b] = v_;
 
-        IdentifierExpr lhs = new IdentifierExpr(b.tok, v_);
-        Contract.Assert(lhs != null);
+            IdentifierExpr lhs = new IdentifierExpr(b.tok, v_);
+            Contract.Assert(lhs != null);
 
-        es.Add(new IdentifierExpr(b.tok, v_));
+            es.Add(new IdentifierExpr(b.tok, v_));
 
-        List<AssignLhs> lhsl = new List<AssignLhs>();
-        lhsl.Add(new SimpleAssignLhs(Token.NoToken, lhs));
-        List<Expr> rhsl = new List<Expr>();
-        rhsl.Add(Expr.True);
+            List<AssignLhs> lhsl = new List<AssignLhs>();
+            lhsl.Add(new SimpleAssignLhs(Token.NoToken, lhs));
+            List<Expr> rhsl = new List<Expr>();
+            rhsl.Add(Expr.True);
 
-        if (b != exitBlock) {
-          CmdSeq cs = new CmdSeq(new AssignCmd(Token.NoToken, lhsl, rhsl));
-          cs.AddRange(b.Cmds);
-          b.Cmds = cs;
-        } else {
-          eblockcond = new AssignCmd(Token.NoToken, lhsl, rhsl);
+            CmdSeq cs = new CmdSeq(new AssignCmd(Token.NoToken, lhsl, rhsl));
+            cs.AddRange(b.Cmds);
+            b.Cmds = cs;
+
+            //checkBlocks.Add(new CheckableBlock(v_,b));
         }
+        if (es.Length == 0)
+            return null;
 
-        //checkBlocks.Add(new CheckableBlock(v_,b));
-      }
-      if (es.Length == 0)
-        return;
+        Expr aexp = null;
 
-      Expr aexp = null;
-
-      if (es.Length == 1) {
-        aexp = es[0];
-      } else if (es.Length == 2) {
-        aexp = Expr.Binary(Token.NoToken,
-            BinaryOperator.Opcode.And,
-            cce.NonNull(es[0]),
-            cce.NonNull(es[1]));
-      } else {
-        aexp = Expr.True;
-        foreach (Expr e_ in es) {
-          aexp = Expr.Binary(Token.NoToken,
-              BinaryOperator.Opcode.And,
-              cce.NonNull(e_), aexp);
+        if (es.Length == 1)
+        {
+            aexp = es[0];
         }
-      }
-      Contract.Assert(aexp != null);
-      Contract.Assert(eblockcond != null);
+        else if (es.Length == 2)
+        {
+            aexp = Expr.Binary(Token.NoToken,
+                BinaryOperator.Opcode.And,
+                cce.NonNull(es[0]),
+                cce.NonNull(es[1]));
+        }
+        else
+        {
+            aexp = Expr.True;
+            foreach (Expr e_ in es)
+            {
+                aexp = Expr.Binary(Token.NoToken,
+                    BinaryOperator.Opcode.And,
+                    cce.NonNull(e_), aexp);
+            }
+        }
+        Contract.Assert(aexp != null);
 
-      AssumeCmd ac = new AssumeCmd(Token.NoToken, aexp);
 
-      Contract.Assert(exitBlock != null);
-
-      CmdSeq cseq = new CmdSeq(eblockcond);
-      cseq.AddRange(exitBlock.Cmds);
-      cseq.Add(ac);
-
-      exitBlock.Cmds = cseq;
+        AssumeCmd ac = new AssumeCmd(Token.NoToken, aexp);
+        return ac;
     }
-
     #endregion
+
 
   }
 }

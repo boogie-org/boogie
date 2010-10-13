@@ -323,7 +323,17 @@ void ObjectInvariant()
 }
 
             #endregion
-        
+
+            private void printmap(Dictionary<Block, TraceNode> map)
+            {
+                foreach(KeyValuePair<Block,TraceNode> kvp in map) 
+                {
+                    Console.Write("{0} :", kvp.Key.Label);
+                    foreach (TraceNode t in kvp.Value.Unavoidables) Console.Write("{0}, ", t.block.Label);
+                    Console.WriteLine();
+                }
+            }
+            
             [NotDelayed]
             public InclusionOrder(Block rootblock) {Contract.Requires(rootblock != null);
                 /*
@@ -338,17 +348,20 @@ void ObjectInvariant()
                 
                 Dictionary<Block, List<Block>> unavoidablemap = new Dictionary<Block, List<Block>>();
 
-                Block exitblock = BreadthFirst(rootblock, map2);Contract.Assert(exitblock != null);
+                Block exitblock = BreadthFirst(rootblock, map2);
+                Contract.Assert(exitblock != null);                
                 BreadthFirstBwd(exitblock, map);
 
                 foreach (KeyValuePair<Block, TraceNode> kvp in map) {
                   Contract.Assert(kvp.Key != null);Contract.Assert(kvp.Value != null);
                     List<Block/*!*/>/*!*/ blist = new List<Block/*!*/>();
                     foreach (TraceNode tn in kvp.Value.Unavoidables ) {
-                        blist.Add(tn.block);
+                        if (!blist.Contains(tn.block)) blist.Add(tn.block);
                     }
                     unavoidablemap.Add(kvp.Key, blist);
                 }
+
+
                 foreach (KeyValuePair<Block, List<Block>> kvp in unavoidablemap) {
                   Contract.Assert(kvp.Key != null);
                   Contract.Assert(cce.NonNullElements(kvp.Value));
@@ -364,13 +377,12 @@ void ObjectInvariant()
                     }
                 }
 
-                foreach (KeyValuePair<Block, List<Block>> kvp in unavoidablemap) {
+                 foreach (KeyValuePair<Block, List<Block>> kvp in unavoidablemap) {
                   Contract.Assert(kvp.Key != null);
                   Contract.Assert(cce.NonNullElements(kvp.Value));
                     Insert2Tree(RootNode,kvp);
                 }
                 InitCurrentNode(RootNode);
-                //printtree(RootNode, "",0);
             }
                                   
             void InitCurrentNode(InclusionTree n) {Contract.Requires(n != null);
@@ -600,7 +612,7 @@ void ObjectInvariant()
                   foreach (InclusionTree n0 in next.Children) {
                     Contract.Assert(n0 != null);
                         if (!n0.HasBeenChecked) {
-                            return n0;
+                            return DescendToDeepestUnchecked(n0); ;
                         }
                     }
                     return FindNextNode(next);
@@ -700,7 +712,6 @@ void ObjectInvariant()
                 Contract.Invariant(cce.NonNullElements(PathBlocks));
                 Contract.Invariant(cce.NonNullElements(Children));
 }
-
             }
             
             #region Collect Unavoidable Blocks
@@ -757,7 +768,18 @@ void ObjectInvariant()
                     GotoCmd gc = currentBlock.TransferCmd as GotoCmd;
                     if (gc!=null) {
                         Contract.Assert( gc.labelTargets!=null);
-                        foreach (Block b0 in gc.labelTargets) {Contract.Assert(b0 != null);
+                        foreach (Block b0 in gc.labelTargets) {
+                            Contract.Assert(b0 != null);
+                            bool notready = false;
+                            foreach (Block b1 in b0.Predecessors)
+                            {
+                                if (!JobList.Contains(b1) && !DoneList.Contains(b1))
+                                {
+                                    notready = true;
+                                    break;
+                                }
+                            }
+                            if (notready) continue;
                             if (!JobList.Contains(b0) && !DoneList.Contains(b0)) {
                                 
                                 JobList.Add(b0);
@@ -832,6 +854,22 @@ void ObjectInvariant()
                     if (currentBlock.Predecessors.Length>0) {
                       foreach (Block b0 in currentBlock.Predecessors) {
                         Contract.Assert(b0 != null);
+                        GotoCmd gcmd = b0.TransferCmd as GotoCmd;
+                        if (gcmd != null)
+                        {
+                            bool notready = false;
+                            Contract.Assert(gcmd.labelTargets != null);
+                            foreach (Block b1 in gcmd.labelTargets)
+                            {
+                                Contract.Assert(b1 != null);
+                                if (!JobList.Contains(b1) && !DoneList.Contains(b1))
+                                {
+                                    notready = true;
+                                    break;
+                                }
+                            }
+                            if (notready) continue;
+                        }
                             if (!JobList.Contains(b0) && !DoneList.Contains(b0) ) 
                                 JobList.Add(b0);
                         }

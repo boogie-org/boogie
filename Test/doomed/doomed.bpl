@@ -36,6 +36,22 @@ procedure evilloop(x:int)
   }
 }
 
+procedure evilnested(x:int)
+{
+	 var i : int;
+	 var j : int;
+	 i:=x-1;
+	 j:=1;
+	 while (i>=0) {
+		while (j<=i) {
+			assert j<x;
+			j := j+1;
+		}
+		i := i - 1;
+	 }
+}
+
+
 procedure evilpath(x:int)
 {
   var y : int;
