@@ -54,7 +54,7 @@
       this.currentStateView.Name = "currentStateView";
       this.currentStateView.OwnerDraw = true;
       this.currentStateView.ShowItemToolTips = true;
-      this.currentStateView.Size = new System.Drawing.Size(654, 706);
+      this.currentStateView.Size = new System.Drawing.Size(614, 706);
       this.currentStateView.TabIndex = 0;
       this.currentStateView.UseCompatibleStateImageBehavior = false;
       this.currentStateView.View = System.Windows.Forms.View.Details;
@@ -74,7 +74,7 @@
       // value
       // 
       this.value.Text = "Value";
-      this.value.Width = 463;
+      this.value.Width = 394;
       // 
       // splitContainer1
       // 
@@ -90,7 +90,7 @@
       // 
       this.splitContainer1.Panel2.Controls.Add(this.stateList);
       this.splitContainer1.Size = new System.Drawing.Size(875, 706);
-      this.splitContainer1.SplitterDistance = 654;
+      this.splitContainer1.SplitterDistance = 614;
       this.splitContainer1.TabIndex = 1;
       // 
       // stateList
@@ -106,7 +106,7 @@
       this.stateList.MultiSelect = false;
       this.stateList.Name = "stateList";
       this.stateList.ShowItemToolTips = true;
-      this.stateList.Size = new System.Drawing.Size(217, 706);
+      this.stateList.Size = new System.Drawing.Size(257, 706);
       this.stateList.TabIndex = 0;
       this.stateList.UseCompatibleStateImageBehavior = false;
       this.stateList.View = System.Windows.Forms.View.Details;
@@ -115,7 +115,7 @@
       // columnHeader1
       // 
       this.columnHeader1.Text = "State";
-      this.columnHeader1.Width = 82;
+      this.columnHeader1.Width = 112;
       // 
       // columnHeader2
       // 

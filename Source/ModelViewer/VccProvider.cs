@@ -29,7 +29,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
   class VccModel
   {
     public readonly Model model;
-    public readonly Model.Func f_ptr_to, f_phys_ptr_cast, f_spec_ptr_cast, f_mathint, f_local_value_is, f_spec_ptr_to, f_heap, f_select_field, f_select_value, f_field_type;
+    public readonly Model.Func f_ptr_to, f_phys_ptr_cast, f_spec_ptr_cast, f_mathint, f_local_value_is, f_spec_ptr_to, f_heap, f_select_field, f_select_value, f_field_type, f_int_to_ptr, f_ptr_to_int;
 
     public VccModel(Model m)
     {
@@ -44,6 +44,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_select_field = m.MkFunc("Select_[$field][$ptr]$int", 2);
       f_select_value = m.MkFunc("Select_[$ptr]$int", 2);
       f_field_type = m.MkFunc("$field_type", 1);
+      f_int_to_ptr = m.MkFunc("$int_to_ptr", 1);
+      f_ptr_to_int = m.MkFunc("$ptr_to_int", 1);
     }
 
     public List<StateNode> states = new List<StateNode>();
@@ -89,16 +91,21 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       var deref = Image(tp, f_ptr_to);
       Model.Element casted = null;
 
+      var ptrElt = elt;
+      if (ptrElt.Kind == Model.ElementKind.Integer) {
+        ptrElt = f_int_to_ptr.TryEval(ptrElt);        
+      }
+
       if (deref != null) {
-        casted = f_phys_ptr_cast.TryEval(elt, deref);
+        casted = f_phys_ptr_cast.TryEval(ptrElt, deref);
       } else {
         deref = Image(tp, f_spec_ptr_to);
         if (deref != null)
-          casted = f_spec_ptr_cast.TryEval(elt, deref);
+          casted = f_spec_ptr_cast.TryEval(ptrElt, deref);
       }
 
       if (deref != null && casted == null)
-        casted = elt;
+        casted = ptrElt;
 
       if (casted != null) {
         var heap = state.state.TryGet("$s");
@@ -132,6 +139,16 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       var idx = name.LastIndexOfAny(new char[] { '\\', '/' });
       if (idx > 0)
         name = name.Substring(idx + 1);
+      var limit = 16;
+      if (name.Length > limit) {
+        idx = name.IndexOf('(');
+        if (idx > 0) {
+          var prefLen = limit - (name.Length - idx);
+          if (prefLen > 2) {
+            name = name.Substring(0,prefLen) + ".." + name.Substring(idx);
+          }
+        }
+      }
 
       var names = Util.Empty<string>();
 

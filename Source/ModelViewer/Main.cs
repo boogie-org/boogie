@@ -88,7 +88,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     }
 
-    const int levelMult = 10;
+    const int levelMult = 16;
     const int plusWidth = 16;
 
     static StringFormat center = new StringFormat() { Alignment = StringAlignment.Center };
@@ -246,10 +246,12 @@ namespace Microsoft.Boogie.ModelViewer
     {
       get
       {
-        foreach (var c in children) {
-          yield return c;
-          foreach (var ch in c.RecChildren)
-            yield return ch;
+        if (expanded) {
+          foreach (var c in children) {
+            yield return c;
+            foreach (var ch in c.RecChildren)
+              yield return ch;
+          }
         }
       }
     }
