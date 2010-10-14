@@ -59,6 +59,7 @@ namespace Microsoft.Boogie.ModelViewer
         items.Add(it);
       }
       stateList.Items.AddRange(items.ToArray());
+      unfoldingRoot.Expanded = true;
       SetState(0);
 
       currentStateView.Columns[1].Width = currentStateView.Width - currentStateView.Columns[0].Width - 5;
@@ -67,21 +68,14 @@ namespace Microsoft.Boogie.ModelViewer
     void SetState(int id)
     {
       currentState = id;
-      unfoldingRoot.SetStateId(id);
+      SyncListView();
+
+      /*
 
       SkeletonItem sel = null;
       if (currentStateView.SelectedItems.Count > 0)
         sel = ((DisplayItem)currentStateView.SelectedItems[0]).skel;
-
-      currentStateView.BeginUpdate();
-      currentStateView.Items.Clear();
-      currentStateView.Items.AddRange(unfoldingRoot.DisplayItems().Skip(1).ToArray());
-      if (sel != null && sel.DisplayItem != null) {
-        var it = sel.DisplayItem;
-        it.Selected = true;
-        currentStateView.EnsureVisible(it.Index);
-      }
-      currentStateView.EndUpdate();
+       */
     }
 
     internal void Activate(TreeNode treeNode)
@@ -99,10 +93,12 @@ namespace Microsoft.Boogie.ModelViewer
 
     static StringFormat center = new StringFormat() { Alignment = StringAlignment.Center };
     static Pen plusPen = new Pen(Color.FromArgb(0xaa, 0xaa, 0xaa));
+    static Brush grayedOut = new SolidBrush(Color.FromArgb(0xaa, 0xaa, 0xaa));
     
     private void listView1_DrawItem(object sender, DrawListViewItemEventArgs e)
     {
       var item = (DisplayItem)e.Item;
+      var skel = item.skel;
       var rect = e.Bounds;
       rect.Y += 1;
       rect.Height -= 2;
@@ -129,7 +125,7 @@ namespace Microsoft.Boogie.ModelViewer
         plusBorder.X += 4;
         plusBorder.Y += 3;        
         e.Graphics.DrawRectangle(plusPen, plusBorder);
-        if (item.displayNode.Expandable) {
+        if (skel.Expandable) {
           float midX = plusBorder.X + plusBorder.Width / 2;
           float midY = plusBorder.Y + plusBorder.Height / 2;
           e.Graphics.DrawLine(plusPen, plusBorder.X + 2, midY, plusBorder.Right - 2, midY);
@@ -142,15 +138,17 @@ namespace Microsoft.Boogie.ModelViewer
       var nameRect = rect;
       var font = currentStateView.Font;
 
-      if ((item.displayNode.State & NodeState.Changed) != 0)
+      if ((item.dispNode.State & NodeState.Changed) != 0)
         textBrush = Brushes.Red;
+      if (!item.active)
+        textBrush = grayedOut;
 
-      var sz = e.Graphics.MeasureString(item.displayNode.Name, font);
+      var sz = e.Graphics.MeasureString(item.dispNode.Name, font);
       nameRect.Width = currentStateView.Columns[0].Width - 1 - off;
       if (nameRect.Width < sz.Width + 2)
         nameRect.Width = (int)sz.Width + 20;
       nameRect.X += off;
-      e.Graphics.DrawString(item.displayNode.Name, font, textBrush, nameRect);
+      e.Graphics.DrawString(item.dispNode.Name, font, textBrush, nameRect);
 
       var valRect = rect;
       valRect.X = nameRect.X + nameRect.Width + 4;
@@ -181,39 +179,32 @@ namespace Microsoft.Boogie.ModelViewer
 
         var skel = clickedItem.skel;
         int plusLoc = skel.level * levelMult;
-        if (clickedItem.displayNode.Expandable && e.X >= plusLoc && e.X <= plusLoc + plusWidth) {
-          SetExpansion(clickedItem, !skel.expanded);
+        if (skel.Expandable && e.X >= plusLoc && e.X <= plusLoc + plusWidth) {
+          skel.Expanded = !skel.Expanded;
+          SyncListView();
         }
       }
     }
 
-    private void SetExpansion(DisplayItem clickedItem, bool exp)
+    private void SyncListView()
     {
-      var pos = clickedItem.Index + 1;
-      var skel = clickedItem.skel;
+      var ch = unfoldingRoot.RecChildren.ToArray();
+      var missing = ch.Length - currentStateView.Items.Count;
 
-      if (skel.expanded == exp) return;
-
-      if (!skel.expanded) {
-        skel.Expand(currentState);
-
-        currentStateView.BeginUpdate();
-        foreach (var it in skel.DisplayItems()) {
-          currentStateView.Items.Insert(pos, it);
-          pos++;
+      currentStateView.BeginUpdate();
+      if (missing < 0) {
+        missing = -missing;
+        while (missing-- > 0) {
+          currentStateView.Items.RemoveAt(currentStateView.Items.Count - 1);
         }
-        currentStateView.EndUpdate();
       } else {
-        var cnt = skel.DisplayItems().Count();
-
-        skel.Fold();
-
-        currentStateView.BeginUpdate();
-        for (int i = 0; i < cnt; ++i)
-          currentStateView.Items.RemoveAt(pos);
-        currentStateView.EndUpdate();
+        while (missing-- > 0) {
+          currentStateView.Items.Add(new DisplayItem());
+        }
       }
-
+      for (int i = 0; i < ch.Length; ++i)
+        ((DisplayItem)currentStateView.Items[i]).Set(ch[i], currentState);
+      currentStateView.EndUpdate();
       currentStateView.Invalidate();
     }
 
@@ -238,51 +229,34 @@ namespace Microsoft.Boogie.ModelViewer
   internal class SkeletonItem
   {
     readonly string name;
-    readonly List<SkeletonItem> inactiveChildren = new List<SkeletonItem>();
-    readonly List<SkeletonItem> activeChildren = new List<SkeletonItem>();
-    readonly IDisplayNode[] displayNodes;
-    readonly IDisplayNode[][] displayNodeExpansions;
+    readonly List<SkeletonItem> children = new List<SkeletonItem>();
+    internal readonly IDisplayNode[] displayNodes;
     readonly SkeletonItem parent;
     readonly Main main;
     internal readonly int level;
-    internal bool expanded;
-    DisplayItem currNode; // in the current view
+    internal bool expanded, wasExpanded;
 
     public void Iter(Action<SkeletonItem> handler)
     {
       handler(this);
-      activeChildren.Iter(u => u.Iter(handler));
-      inactiveChildren.Iter(u => u.Iter(handler));
+      children.Iter(u => u.Iter(handler));
     }
 
-    public void SetStateId(int id)
+    public IEnumerable<SkeletonItem> RecChildren
     {
-      expanded = true;
-      Iter(u =>
+      get
       {
-        u.currNode = null;
-        u.inactiveChildren.AddRange(activeChildren);
-        u.activeChildren.Clear();
-      });
-      CreateBacking(id);
-    }
-
-    public DisplayItem DisplayItem { get { return currNode; } }
-
-    public IEnumerable<DisplayItem> DisplayItems()
-    {
-      Util.Assert(currNode != null);
-      yield return currNode;
-      if (expanded) {
-        foreach (var ch in activeChildren)
-          foreach (var d in ch.DisplayItems())
-            yield return d;
+        foreach (var c in children) {
+          yield return c;
+          foreach (var ch in c.RecChildren)
+            yield return ch;
+        }
       }
     }
 
     public void PopulateRoot(IEnumerable<IState> states)
     {
-      var i = 0;
+      var i = 0;      
       foreach(var s in states) {
         displayNodes[i++] = new ContainerNode<IDisplayNode>(this.name, x => x, s.Nodes);
       }
@@ -293,7 +267,6 @@ namespace Microsoft.Boogie.ModelViewer
       name = "<root>";
       main = m;
       displayNodes = new IDisplayNode[stateCount];
-      displayNodeExpansions = new IDisplayNode[stateCount][];
     }
 
     internal SkeletonItem(string n, SkeletonItem par)
@@ -304,77 +277,86 @@ namespace Microsoft.Boogie.ModelViewer
       level = par.level + 1;
     }
 
-    public void Fold()
+    public bool Expandable
     {
-      expanded = false;
+      get { return displayNodes.Any(d => d != null && d.Expandable); }
     }
 
-    public void Expand(int stateId)
+    public bool Expanded
     {
-      if(expanded) return;
-      expanded = true;
-      CreateBacking(stateId);
-    }
-
-    private void CreateBacking(int stateId)
-    {
-      var dn = displayNodes[stateId];
-      if (currNode == null)
-        currNode = new DisplayItem(dn, this);
-
-      if (!expanded || activeChildren.Count > 0)
-        return;
-
-      if (displayNodeExpansions[stateId] == null) {
-        if (dn.Expandable) {
-          displayNodeExpansions[stateId] = dn.Expand().ToArray();
+      get { return expanded; }
+      set
+      {
+        if (!value) { 
+          expanded = false; 
         } else {
-          displayNodeExpansions[stateId] = new DisplayNode[0];
+          if (expanded) return;
+          expanded = true;
+          if (wasExpanded) return;
+          wasExpanded = true;
+
+          var created = new Dictionary<string, SkeletonItem>();
+          for (int i = 0; i < displayNodes.Length; ++i) {
+            var dn = displayNodes[i];
+            if (dn == null || !dn.Expandable) continue;
+            foreach (var child in dn.Expand()) {
+              SkeletonItem skelChild;
+              if (!created.TryGetValue(child.EdgeName, out skelChild)) {
+                skelChild = new SkeletonItem(child.EdgeName, this);
+                created.Add(child.EdgeName, skelChild);
+                children.Add(skelChild);
+              }
+              skelChild.displayNodes[i] = child;
+            }
+          }
         }
       }
-
-      if (activeChildren.Count == displayNodeExpansions[stateId].Length)
-        return;
-
-      var dict = inactiveChildren.ToDictionary(u => u.name);
-
-      foreach (var d in displayNodeExpansions[stateId]) {
-        SkeletonItem child;
-        if (dict.TryGetValue(d.EdgeName, out child)) {
-          dict.Remove(d.EdgeName);
-        } else {
-          child = new SkeletonItem(d.EdgeName, this);
-        }
-        activeChildren.Add(child);
-        child.displayNodes[stateId] = d;
-      }
-      inactiveChildren.Clear();
-      inactiveChildren.AddRange(dict.Values);
-
-      activeChildren.Iter(c => c.CreateBacking(stateId));
     }
   }
 
   internal class DisplayItem : ListViewItem
   {
-    internal readonly IDisplayNode displayNode;
-    internal readonly SkeletonItem skel;
+    internal SkeletonItem skel;
+    internal int stateId;
+    internal bool active;
+    internal IDisplayNode dispNode;
 
-    internal DisplayItem(IDisplayNode d, SkeletonItem s)
-       : base(d.Name)
+    internal void Set(SkeletonItem s, int id)
     {
-      displayNode = d;
+      if (skel == s && stateId == id)
+        return;
       skel = s;
+      stateId = id;
+
+      dispNode = skel.displayNodes[stateId];
+      active = dispNode != null;
+
+      if (dispNode == null) {
+        for (int i = stateId; i < skel.displayNodes.Length; ++i) {
+          dispNode = skel.displayNodes[i];
+          if (dispNode != null) break;
+        }
+        for (int i = stateId; i >= 0; --i) {
+          if (dispNode != null) break;
+          dispNode = skel.displayNodes[i];
+        }
+      }
+
+      this.SubItems[0].Text = dispNode.Name;
 
       var sb = new StringBuilder();
-      foreach (var n in displayNode.Values) {
+      foreach (var n in dispNode.Values) {
         sb.Append(n).Append(", ");
         if (sb.Length > 300)
           break;
       }
       if (sb.Length > 2) sb.Length -= 2;
+      this.SubItems[1].Text = sb.ToString();
+    }
 
-      this.SubItems.Add(sb.ToString());
+    internal DisplayItem()
+       : base(new string[] { "", "" })
+    {
     }
   }
 }
