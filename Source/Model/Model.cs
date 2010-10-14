@@ -35,25 +35,12 @@ namespace Microsoft.Boogie
         } 
       }
 
-      public IEnumerable<FuncTuple> ArgReferences
-      {
-        get
-        {
-          foreach (var f in references) {
-            if (f.Result != this)
-              yield return f;
-            else
-              foreach (var r in f.Args)
-                if (r == this) { yield return f; break; }
-          }
-        }
-      }
-
       protected Element(Model p) { Model = p; }
       public abstract ElementKind Kind { get; }
       public virtual int AsInt() { throw new NotImplementedException(); }
     }
 
+    #region element kinds
     public class Uninterpreted : Element
     {
       public override ElementKind Kind { get { return ElementKind.Uninterpreted; } }
@@ -92,6 +79,7 @@ namespace Microsoft.Boogie
       public override ElementKind Kind { get { return ElementKind.Boolean; } }
       public override string ToString() { return Value ? "true" : "false"; }      
     }
+    #endregion
 
     public class Func
     {
@@ -113,6 +101,36 @@ namespace Microsoft.Boogie
         res.references.Add(t);
       }
 
+      public FuncTuple AppWithArg(int argIdx, Element elt)
+      {
+        foreach (var a in AppsWithArg(argIdx, elt))
+          return a;
+        return null;
+      }
+
+      public FuncTuple AppWithResult(Element elt)
+      {
+        foreach (var a in AppsWithResult(elt))
+          return a;
+        return null;
+      }
+
+      public IEnumerable<FuncTuple> AppsWithArg(int argIdx, Element elt)
+      {
+        foreach (var r in elt.References) {
+          if (r.Func == this && r.Args[argIdx] == elt)
+            yield return r;
+        }
+      }
+
+      public IEnumerable<FuncTuple> AppsWithResult(Element elt)
+      {
+        foreach (var r in elt.References) {
+          if (r.Func == this && r.Result == elt)
+            yield return r;
+        }
+      }
+
       public Element GetConstant()
       {
         if (Arity != 0)
@@ -120,6 +138,20 @@ namespace Microsoft.Boogie
         if (apps.Count == 0)
           SetConstant(Model.MkElement("**" + Name));
         return apps[0].Result;
+      }
+
+      public Element TryEval(params Element[] args)
+      {
+        foreach (var tpl in apps) {
+          bool same = true;
+          for (int i = 0; i < args.Length; ++i)
+            if (tpl.Args[i] != args[i]) {
+              same = false;
+              break;
+            }
+          if (same) return tpl.Result;
+        }
+        return null;
       }
 
       public void AddApp(Element res, params Element[] args)

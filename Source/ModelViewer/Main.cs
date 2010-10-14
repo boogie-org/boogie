@@ -142,6 +142,9 @@ namespace Microsoft.Boogie.ModelViewer
       var nameRect = rect;
       var font = currentStateView.Font;
 
+      if ((item.displayNode.State & NodeState.Changed) != 0)
+        textBrush = Brushes.Red;
+
       var sz = e.Graphics.MeasureString(item.displayNode.Name, font);
       nameRect.Width = currentStateView.Columns[0].Width - 1 - off;
       if (nameRect.Width < sz.Width + 2)

@@ -141,6 +141,8 @@ namespace Microsoft.Boogie.ModelViewer
       if (!cond) throw new System.Exception("assertion violation");
     }
 
+    public static IEnumerable<T> Empty<T>() { yield break; }
+
     public static IEnumerable<T> Map<S, T>(this IEnumerable<S> inp, Func<S, T> conv)
     {
       foreach (var s in inp) yield return conv(s);
