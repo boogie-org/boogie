@@ -16,6 +16,9 @@ namespace Microsoft.Boogie.ModelViewer
   public partial class Main : Form
   {
     public string SearchText;
+    SkeletonItem unfoldingRoot;
+    int currentState;
+    IState[] states;
 
     // TODO this should be dynamically loaded
     IEnumerable<ILanguageProvider> Providers()
@@ -27,6 +30,7 @@ namespace Microsoft.Boogie.ModelViewer
     public Main()
     {
       InitializeComponent();
+
 
       var args = Environment.GetCommandLineArgs();
       Model m;
@@ -43,13 +47,41 @@ namespace Microsoft.Boogie.ModelViewer
           break;
         }
       }
-       
+      
       var items = new List<ListViewItem>();
-      foreach (var i in prov.GetStates(m))
-        items.Add(new DisplayItem(i));
-      listView1.Items.AddRange(items.ToArray());
+      states = prov.GetStates(m).ToArray();
+      unfoldingRoot = new SkeletonItem(this, states.Length);
+      unfoldingRoot.PopulateRoot(states);
 
-      listView1.Columns[1].Width = listView1.Width - listView1.Columns[0].Width - 5;
+      foreach (var i in states) {
+        var it = new ListViewItem(new string[] { i.Name, "" });
+        it.Tag = i;
+        items.Add(it);
+      }
+      stateList.Items.AddRange(items.ToArray());
+      SetState(0);
+
+      currentStateView.Columns[1].Width = currentStateView.Width - currentStateView.Columns[0].Width - 5;
+    }
+
+    void SetState(int id)
+    {
+      currentState = id;
+      unfoldingRoot.SetStateId(id);
+
+      SkeletonItem sel = null;
+      if (currentStateView.SelectedItems.Count > 0)
+        sel = ((DisplayItem)currentStateView.SelectedItems[0]).skel;
+
+      currentStateView.BeginUpdate();
+      currentStateView.Items.Clear();
+      currentStateView.Items.AddRange(unfoldingRoot.DisplayItems().Skip(1).ToArray());
+      if (sel != null && sel.DisplayItem != null) {
+        var it = sel.DisplayItem;
+        it.Selected = true;
+        currentStateView.EnsureVisible(it.Index);
+      }
+      currentStateView.EndUpdate();
     }
 
     internal void Activate(TreeNode treeNode)
@@ -76,7 +108,7 @@ namespace Microsoft.Boogie.ModelViewer
       rect.Height -= 2;
 
       var textBrush = Brushes.Black;
-      if (listView1.SelectedIndices.Count > 0 && listView1.SelectedIndices[0] == e.ItemIndex) {
+      if (currentStateView.SelectedIndices.Count > 0 && currentStateView.SelectedIndices[0] == e.ItemIndex) {
         // Draw the background and focus rectangle for a selected item.
         e.Graphics.FillRectangle(Brushes.Navy, rect);
         // e.DrawFocusRectangle();
@@ -85,7 +117,7 @@ namespace Microsoft.Boogie.ModelViewer
         e.Graphics.FillRectangle(Brushes.White, rect);
       }
 
-      var off = levelMult * item.level;
+      var off = levelMult * item.skel.level;
 
       {
         var plusRect = rect;
@@ -101,17 +133,17 @@ namespace Microsoft.Boogie.ModelViewer
           float midX = plusBorder.X + plusBorder.Width / 2;
           float midY = plusBorder.Y + plusBorder.Height / 2;
           e.Graphics.DrawLine(plusPen, plusBorder.X + 2, midY, plusBorder.Right - 2, midY);
-          if (!item.expanded)
+          if (!item.skel.expanded)
             e.Graphics.DrawLine(plusPen, midX, plusBorder.Y + 2, midX, plusBorder.Bottom - 2);
         }
       }
 
       off += plusWidth + 3;
       var nameRect = rect;
-      var font = listView1.Font;
+      var font = currentStateView.Font;
 
       var sz = e.Graphics.MeasureString(item.displayNode.Name, font);
-      nameRect.Width = listView1.Columns[0].Width - 1 - off;
+      nameRect.Width = currentStateView.Columns[0].Width - 1 - off;
       if (nameRect.Width < sz.Width + 2)
         nameRect.Width = (int)sz.Width + 20;
       nameRect.X += off;
@@ -119,7 +151,7 @@ namespace Microsoft.Boogie.ModelViewer
 
       var valRect = rect;
       valRect.X = nameRect.X + nameRect.Width + 4;
-      valRect.Width = listView1.Width - valRect.X;
+      valRect.Width = currentStateView.Width - valRect.X;
       e.Graphics.DrawString(item.SubItems[1].Text, font, textBrush, valRect); // , StringFormat.GenericDefault);
     }
 
@@ -139,77 +171,197 @@ namespace Microsoft.Boogie.ModelViewer
 
     private void listView1_MouseUp(object sender, MouseEventArgs e)
     {
-      var clickedItem = (DisplayItem)listView1.GetItemAt(5, e.Y);
+      var clickedItem = (DisplayItem)currentStateView.GetItemAt(5, e.Y);
       if (clickedItem != null) {
         clickedItem.Selected = true;
         clickedItem.Focused = true;
 
-        int plusLoc = clickedItem.level * levelMult;
+        var skel = clickedItem.skel;
+        int plusLoc = skel.level * levelMult;
         if (clickedItem.displayNode.Expandable && e.X >= plusLoc && e.X <= plusLoc + plusWidth) {
-          clickedItem.expanded = !clickedItem.expanded;
-
-          if (clickedItem.expanded) {
-            if (clickedItem.collapsedChildren == null) {
-              var items = new List<DisplayItem>();
-              foreach (var ch in clickedItem.displayNode.Expand()) {
-                var it = new DisplayItem(ch);
-                it.level = clickedItem.level + 1;
-                items.Add(it);
-              }
-              clickedItem.collapsedChildren = items.ToArray();
-            }
-            var pos = clickedItem.Index + 1;
-            listView1.BeginUpdate();
-            foreach (var it in clickedItem.collapsedChildren) {
-              listView1.Items.Insert(pos, it);
-              pos++;
-            }
-            listView1.EndUpdate();
-          } else {
-            var collapsed = new List<DisplayItem>();
-            var beg = clickedItem.Index + 1;
-            for (int i = beg; i < listView1.Items.Count; ++i) {
-              var curr = (DisplayItem)listView1.Items[i];
-              if (curr.level <= clickedItem.level) break;
-              collapsed.Add(curr);
-            }
-            clickedItem.collapsedChildren = collapsed.ToArray();
-            listView1.BeginUpdate();
-            for (int i = 0; i < collapsed.Count; ++i)
-              listView1.Items.RemoveAt(beg);
-            listView1.EndUpdate();
-          }
-
-          listView1.Invalidate();
+          SetExpansion(clickedItem, !skel.expanded);
         }
       }
     }
 
+    private void SetExpansion(DisplayItem clickedItem, bool exp)
+    {
+      var pos = clickedItem.Index + 1;
+      var skel = clickedItem.skel;
+
+      if (skel.expanded == exp) return;
+
+      if (!skel.expanded) {
+        skel.Expand(currentState);
+
+        currentStateView.BeginUpdate();
+        foreach (var it in skel.DisplayItems()) {
+          currentStateView.Items.Insert(pos, it);
+          pos++;
+        }
+        currentStateView.EndUpdate();
+      } else {
+        var cnt = skel.DisplayItems().Count();
+
+        skel.Fold();
+
+        currentStateView.BeginUpdate();
+        for (int i = 0; i < cnt; ++i)
+          currentStateView.Items.RemoveAt(pos);
+        currentStateView.EndUpdate();
+      }
+
+      currentStateView.Invalidate();
+    }
+
     private void listView1_ColumnWidthChanged(object sender, ColumnWidthChangedEventArgs e)
     {
-      listView1.Invalidate();
+      currentStateView.Invalidate();
     }
 
     private void listView1_Resize(object sender, EventArgs e)
     {
-      listView1.Invalidate();
+      currentStateView.Invalidate();
     }
 
+    private void stateList_SelectedIndexChanged(object sender, EventArgs e)
+    {
+      if (stateList.SelectedItems.Count == 0) return;
+      var sel = stateList.SelectedItems[0].Index;
+      SetState(sel);
+    }
+  }
+
+  internal class SkeletonItem
+  {
+    readonly string name;
+    readonly List<SkeletonItem> inactiveChildren = new List<SkeletonItem>();
+    readonly List<SkeletonItem> activeChildren = new List<SkeletonItem>();
+    readonly IDisplayNode[] displayNodes;
+    readonly IDisplayNode[][] displayNodeExpansions;
+    readonly SkeletonItem parent;
+    readonly Main main;
+    internal readonly int level;
+    internal bool expanded;
+    DisplayItem currNode; // in the current view
+
+    public void Iter(Action<SkeletonItem> handler)
+    {
+      handler(this);
+      activeChildren.Iter(u => u.Iter(handler));
+      inactiveChildren.Iter(u => u.Iter(handler));
+    }
+
+    public void SetStateId(int id)
+    {
+      expanded = true;
+      Iter(u =>
+      {
+        u.currNode = null;
+        u.inactiveChildren.AddRange(activeChildren);
+        u.activeChildren.Clear();
+      });
+      CreateBacking(id);
+    }
+
+    public DisplayItem DisplayItem { get { return currNode; } }
+
+    public IEnumerable<DisplayItem> DisplayItems()
+    {
+      Util.Assert(currNode != null);
+      yield return currNode;
+      if (expanded) {
+        foreach (var ch in activeChildren)
+          foreach (var d in ch.DisplayItems())
+            yield return d;
+      }
+    }
+
+    public void PopulateRoot(IEnumerable<IState> states)
+    {
+      var i = 0;
+      foreach(var s in states) {
+        displayNodes[i++] = new ContainerNode<IDisplayNode>(this.name, x => x, s.Nodes);
+      }
+    }
+
+    public SkeletonItem(Main m, int stateCount)
+    {
+      name = "<root>";
+      main = m;
+      displayNodes = new IDisplayNode[stateCount];
+      displayNodeExpansions = new IDisplayNode[stateCount][];
+    }
+
+    internal SkeletonItem(string n, SkeletonItem par)
+      : this(par.main, par.displayNodes.Length)
+    {
+      parent = par;
+      name = n;
+      level = par.level + 1;
+    }
+
+    public void Fold()
+    {
+      expanded = false;
+    }
+
+    public void Expand(int stateId)
+    {
+      if(expanded) return;
+      expanded = true;
+      CreateBacking(stateId);
+    }
+
+    private void CreateBacking(int stateId)
+    {
+      var dn = displayNodes[stateId];
+      if (currNode == null)
+        currNode = new DisplayItem(dn, this);
+
+      if (!expanded || activeChildren.Count > 0)
+        return;
+
+      if (displayNodeExpansions[stateId] == null) {
+        if (dn.Expandable) {
+          displayNodeExpansions[stateId] = dn.Expand().ToArray();
+        } else {
+          displayNodeExpansions[stateId] = new DisplayNode[0];
+        }
+      }
+
+      if (activeChildren.Count == displayNodeExpansions[stateId].Length)
+        return;
+
+      var dict = inactiveChildren.ToDictionary(u => u.name);
+
+      foreach (var d in displayNodeExpansions[stateId]) {
+        SkeletonItem child;
+        if (dict.TryGetValue(d.EdgeName, out child)) {
+          dict.Remove(d.EdgeName);
+        } else {
+          child = new SkeletonItem(d.EdgeName, this);
+        }
+        activeChildren.Add(child);
+        child.displayNodes[stateId] = d;
+      }
+      inactiveChildren.Clear();
+      inactiveChildren.AddRange(dict.Values);
+
+      activeChildren.Iter(c => c.CreateBacking(stateId));
+    }
   }
 
   internal class DisplayItem : ListViewItem
   {
-    internal IDisplayNode displayNode;
-    internal bool expanded;
-    internal int level;
-    internal DisplayItem[] collapsedChildren;
+    internal readonly IDisplayNode displayNode;
+    internal readonly SkeletonItem skel;
 
-    internal DisplayItem(IDisplayNode d)
+    internal DisplayItem(IDisplayNode d, SkeletonItem s)
        : base(d.Name)
     {
       displayNode = d;
-      displayNode.ViewSync = this;
-      expanded = false;
+      skel = s;
 
       var sb = new StringBuilder();
       foreach (var n in displayNode.Values) {

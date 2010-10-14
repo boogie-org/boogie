@@ -15,7 +15,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return m.TryGetFunc("$is_ghost_field") != null && m.TryGetFunc("$fk_vol_version") != null;
     }
 
-    public IEnumerable<IDisplayNode> GetStates(Model m)
+    public IEnumerable<IState> GetStates(Model m)
     {
       var vm = new VccModel();
       foreach (var s in m.States) {
@@ -37,22 +37,24 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     }
   }
 
-  class StateNode : DisplayNode
+  class StateNode : IState
   {
     Model.CapturedState state;
+    string name;
     VccModel parent;
     List<VariableNode> vars = new List<VariableNode>();
 
-    public StateNode(VccModel parent, Model.CapturedState s) : base(s.Name)
+    public StateNode(VccModel parent, Model.CapturedState s)
     {
       this.parent = parent;
       state = s;
 
+      name = s.Name;
       var idx = name.LastIndexOfAny(new char[] { '\\', '/' });
       if (idx > 0)
         name = name.Substring(idx + 1);
 
-      var prev = parent.states.Last();
+      // var prev = parent.states.Last();
 
       foreach (var v in state.Variables) {
         var n = parent.GetUserVariableName(v);
@@ -64,15 +66,14 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
     }
 
-    public override IEnumerable<string> Values
+    public string Name
     {
-      get { return vars.Map(v => v.Name); }
+      get { return name; }
     }
 
-    public override bool Expandable { get { return true; } }
-    public override IEnumerable<IDisplayNode> Expand()
+    public IEnumerable<IDisplayNode> Nodes
     {
-      foreach (var v in vars) yield return v;
+      get { return vars; }
     }
   }
 

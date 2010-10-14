@@ -5,6 +5,12 @@ using System.Text;
 
 namespace Microsoft.Boogie.ModelViewer
 {
+  public interface ILanguageProvider
+  {
+    bool IsMyModel(Model m);
+    IEnumerable<IState> GetStates(Model m);
+  }
+
   [Flags]
   public enum NodeState
   {
@@ -14,18 +20,54 @@ namespace Microsoft.Boogie.ModelViewer
 
   public interface IDisplayNode
   {
-    string Name { get; }
-    IEnumerable<string> Values { get; }
+    /// <summary>
+    ///  Used for indexing the state tree.
+    /// </summary>
+    string EdgeName { get; }
+
+    /// <summary>
+    /// Used to determine aliasing. Can be null.
+    /// </summary>
+    Model.Element Element { get; }
+
     bool Expandable { get; }
     IEnumerable<IDisplayNode> Expand();
-    object ViewSync { get; set; }
+
+    // Things displayed to the user.
+    string Name { get; }
     NodeState State { get; }
+    IEnumerable<string> Values { get; }
+
+    object ViewSync { get; set; }
   }
 
-  public interface ILanguageProvider
+  public interface IState
   {
-    bool IsMyModel(Model m);
-    IEnumerable<IDisplayNode> GetStates(Model m);
+    string Name { get; }
+    IEnumerable<IDisplayNode> Nodes { get; }
+  }
+
+
+  public class TopState : IState
+  {
+    protected IDisplayNode[] children;
+    protected string name;
+
+    public TopState(string name, IEnumerable<IDisplayNode> nodes)
+    {
+      this.name = name;
+      children = nodes.ToArray();
+    }
+
+    public string Name
+    {
+      get { return name; }
+    }
+
+    public IEnumerable<IDisplayNode> Nodes
+    {
+      get { return children; }
+    }
   }
 
   public abstract class DisplayNode : IDisplayNode
@@ -57,13 +99,15 @@ namespace Microsoft.Boogie.ModelViewer
     public virtual NodeState State { get { return NodeState.Normal; } }
 
     public object ViewSync { get; set; }
-  }
 
-  public static class SeqExtensions
-  {
-    public static IEnumerable<T> Map<S, T>(this IEnumerable<S> inp, Func<S, T> conv)
+    public virtual string EdgeName
     {
-      foreach (var s in inp) yield return conv(s);
+      get { return name; }
+    }
+
+    public virtual Model.Element Element
+    {
+      get { return null; }
     }
   }
 
@@ -89,5 +133,23 @@ namespace Microsoft.Boogie.ModelViewer
     }
   }
 
+
+  public static class Util
+  {
+    public static void Assert(bool cond)
+    {
+      if (!cond) throw new System.Exception("assertion violation");
+    }
+
+    public static IEnumerable<T> Map<S, T>(this IEnumerable<S> inp, Func<S, T> conv)
+    {
+      foreach (var s in inp) yield return conv(s);
+    }
+
+    public static void Iter<T>(this IEnumerable<T> inp, Action<T> fn)
+    {
+      foreach (var s in inp) fn(s);
+    }
+  }
 
 }

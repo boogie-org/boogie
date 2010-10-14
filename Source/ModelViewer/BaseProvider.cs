@@ -15,12 +15,17 @@ namespace Microsoft.Boogie.ModelViewer.Base
       return true;
     }
 
-    public IEnumerable<IDisplayNode> GetStates(Model m)
+    IEnumerable<IDisplayNode> GetStateNodes(Model m)
     {
       yield return GenericNodes.Functions(m);
       yield return GenericNodes.Constants(m);
       foreach (var s in m.States)
         yield return new StateNode(s);
+    }
+
+    public IEnumerable<IState> GetStates(Model m)
+    {
+      yield return new TopState("TOP", GetStateNodes(m));
     }
   }
 
