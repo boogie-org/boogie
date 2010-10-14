@@ -17,64 +17,77 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
     public IEnumerable<IDisplayNode> GetStates(Model m)
     {
-      foreach (var s in m.States)
-        yield return new StateNode(s);
+      var vm = new VccModel();
+      foreach (var s in m.States) {
+        var sn = new StateNode(vm, s);
+        vm.states.Add(sn);
+      }
+      return vm.states;
     }
   }
 
-  public class StateNode : IDisplayNode
+  class VccModel
   {
-    protected Model.CapturedState state;
-    protected string name;
-
-    public StateNode(Model.CapturedState s)
+    public List<StateNode> states = new List<StateNode>();
+    public string GetUserVariableName(string name)
     {
-      name = s.Name;
+      if (name.StartsWith("L#") || name.StartsWith("P#"))
+        return name.Substring(2);
+      return null;
+    }
+  }
+
+  class StateNode : DisplayNode
+  {
+    Model.CapturedState state;
+    VccModel parent;
+    List<VariableNode> vars = new List<VariableNode>();
+
+    public StateNode(VccModel parent, Model.CapturedState s) : base(s.Name)
+    {
+      this.parent = parent;
+      state = s;
+
       var idx = name.LastIndexOfAny(new char[] { '\\', '/' });
       if (idx > 0)
         name = name.Substring(idx + 1);
-      state = s;
-    }
 
-    public virtual string Name
-    {
-      get { return name; }
-    }
+      var prev = parent.states.Last();
 
-    public virtual IEnumerable<string> Values
-    {
-      get { foreach (var v in state.Variables) yield return v; }
-    }
-
-    public virtual bool Expandable { get { return state.VariableCount != 0; } }
-
-    public virtual IEnumerable<IDisplayNode> Expand()
-    {
       foreach (var v in state.Variables) {
-        yield return new ElementNode(v, state.TryGet(v));
+        var n = parent.GetUserVariableName(v);
+        if (n != null){
+          var vn = new VariableNode(n, state.TryGet(v));
+          vn.realName = n;
+          vars.Add(vn);
+        }
       }
     }
 
-    public object ViewSync { get; set; }
+    public override IEnumerable<string> Values
+    {
+      get { return vars.Map(v => v.Name); }
+    }
+
+    public override bool Expandable { get { return true; } }
+    public override IEnumerable<IDisplayNode> Expand()
+    {
+      foreach (var v in vars) yield return v;
+    }
   }
 
-  public class ElementNode : IDisplayNode
+  public class VariableNode : DisplayNode
   {
     protected Model.Element elt;
-    protected string name;
+    public string realName;
+    public bool updatedHere;
 
-    public ElementNode(string name, Model.Element elt)
+    public VariableNode(string name, Model.Element elt) : base(name)
     {
-      this.name = name;
       this.elt = elt;
     }
 
-    public virtual string Name
-    {
-      get { return name; }
-    }
-
-    public virtual IEnumerable<string> Values
+    public override IEnumerable<string> Values
     {
       get
       {
@@ -86,49 +99,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         }
       }
     }
-
-    public virtual bool Expandable { get { return false; } }
-    public virtual IEnumerable<IDisplayNode> Expand() { yield break; }
-
-    public object ViewSync { get; set; }
   }
 
-
-  public class ContainerNode<T> : IDisplayNode
-  {
-    protected string name;
-    protected Func<T, IDisplayNode> convert;
-    protected IEnumerable<T> data;
-
-    public ContainerNode(string name, Func<T, IDisplayNode> convert, IEnumerable<T> data)
-    {
-      this.name = name;
-      this.convert = convert;
-      this.data = data;
-    }
-
-    public virtual string Name
-    {
-      get { return name; }
-    }
-
-    public virtual IEnumerable<string> Values
-    {
-      get { yield break; }
-    }
-
-    public virtual bool Expandable { get { return true; } }
-
-    public virtual IEnumerable<IDisplayNode> Expand()
-    {
-      foreach (var f in data) {
-        var res = convert(f);
-        if (res != null)
-          yield return res;
-      }
-    }
-
-    public object ViewSync { get; set; }
-  }
   
 }

@@ -265,6 +265,10 @@ namespace Microsoft.Boogie
 
       public IEnumerable<string> Variables { get { return vars; } }
       public int VariableCount { get { return vars.Count; } }
+      public bool HasBinding(string varname)
+      {
+        return valuations.ContainsKey(varname);
+      }
       public Element TryGet(string varname)
       {
         CapturedState curr = this;

@@ -24,54 +24,40 @@ namespace Microsoft.Boogie.ModelViewer.Base
     }
   }
 
-  public class StateNode : IDisplayNode
+  public class StateNode : DisplayNode
   {
     protected Model.CapturedState state;
 
-    public StateNode(Model.CapturedState s)
+    public StateNode(Model.CapturedState s) : base(s.Name)
     {
       state = s;
     }
 
-    public virtual string Name
-    {
-      get { return state.Name; }
-    }
-
-    public virtual IEnumerable<string> Values
+    public override IEnumerable<string> Values
     {
       get { foreach (var v in state.Variables) yield return v; }
     }
 
-    public virtual bool Expandable { get { return state.VariableCount != 0; } }
+    public override bool Expandable { get { return state.VariableCount != 0; } }
 
-    public virtual IEnumerable<IDisplayNode> Expand()
+    public override IEnumerable<IDisplayNode> Expand()
     {
       foreach (var v in state.Variables) {
         yield return new ElementNode(v, state.TryGet(v));
       }
     }
-
-    public object ViewSync { get; set; }
   }
 
-  public class ElementNode : IDisplayNode
+  public class ElementNode : DisplayNode
   {
     protected Model.Element elt;
-    protected string name;
 
-    public ElementNode(string name, Model.Element elt)
+    public ElementNode(string name, Model.Element elt) : base(name)
     {
-      this.name = name;
       this.elt = elt;
     }
 
-    public virtual string Name
-    {
-      get { return name; }
-    }
-
-    public virtual IEnumerable<string> Values
+    public override IEnumerable<string> Values
     {
       get
       {
@@ -83,11 +69,6 @@ namespace Microsoft.Boogie.ModelViewer.Base
         }
       }
     }
-
-    public virtual bool Expandable { get { return false; } }
-    public virtual IEnumerable<IDisplayNode> Expand() { yield break; }
-
-    public object ViewSync { get; set; }
   }
 
   public static class GenericNodes
