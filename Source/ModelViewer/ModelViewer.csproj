@@ -83,6 +83,7 @@
     <Compile Include="SearchBox.Designer.cs">
       <DependentUpon>SearchBox.cs</DependentUpon>
     </Compile>
+    <Compile Include="TreeSkeleton.cs" />
     <Compile Include="VccProvider.cs" />
     <EmbeddedResource Include="Main.resx">
       <DependentUpon>Main.cs</DependentUpon>
