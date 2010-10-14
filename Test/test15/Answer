@@ -262,7 +262,6 @@ int_2_U -> {
 }
 *** STATE <initial>
   Heap -> *8
-  F -> *10
   this -> *9
 *** END_STATE
 *** STATE top

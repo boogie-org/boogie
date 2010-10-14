@@ -233,7 +233,7 @@ namespace Microsoft.Boogie {
             var e = (Expr)map.IncarnationMap[v];
             if (e == null) continue;
 
-            // if (prevInc[v] == e) continue; // skip unchanged variables
+            if (prevInc[v] == e) continue; // skip unchanged variables
 
             Model.Element elt;
 
