@@ -224,6 +224,20 @@ namespace Microsoft.Boogie.ModelViewer
       var sel = stateList.SelectedItems[0].Index;
       SetState(sel);
     }
+
+    private void currentStateView_SelectedIndexChanged(object sender, EventArgs e)
+    {
+      if (currentStateView.SelectedItems.Count == 0) return;
+      var sel = (DisplayItem) currentStateView.SelectedItems[0];
+
+      stateList.BeginUpdate();
+      for (int i = 0; i < sel.skel.displayNodes.Length; ++i) {
+        var dn = sel.skel.displayNodes[i];
+        stateList.Items[i].SubItems[1].Text = DisplayItem.ValuesAsString(dn);
+      }
+      stateList.EndUpdate();
+    }
+
   }
 
   internal class SkeletonItem
@@ -345,20 +359,26 @@ namespace Microsoft.Boogie.ModelViewer
       }
 
       this.SubItems[0].Text = dispNode.Name;
-
-      var sb = new StringBuilder();
-      foreach (var n in dispNode.Values) {
-        sb.Append(n).Append(", ");
-        if (sb.Length > 300)
-          break;
-      }
-      if (sb.Length > 2) sb.Length -= 2;
-      this.SubItems[1].Text = sb.ToString();
+      this.SubItems[1].Text = ValuesAsString(dispNode).ToString();
     }
 
     internal DisplayItem()
        : base(new string[] { "", "" })
     {
+    }
+
+    static internal string ValuesAsString(IDisplayNode dn)
+    {
+      if (dn == null) return "";
+
+      var sb = new StringBuilder();
+      foreach (var n in dn.Values) {
+        sb.Append(n).Append(", ");
+        if (sb.Length > 300)
+          break;
+      }
+      if (sb.Length > 2) sb.Length -= 2;
+      return sb.ToString();
     }
   }
 }

@@ -62,6 +62,7 @@
       this.currentStateView.DrawColumnHeader += new System.Windows.Forms.DrawListViewColumnHeaderEventHandler(this.listView1_DrawColumnHeader);
       this.currentStateView.DrawItem += new System.Windows.Forms.DrawListViewItemEventHandler(this.listView1_DrawItem);
       this.currentStateView.DrawSubItem += new System.Windows.Forms.DrawListViewSubItemEventHandler(this.listView1_DrawSubItem);
+      this.currentStateView.SelectedIndexChanged += new System.EventHandler(this.currentStateView_SelectedIndexChanged);
       this.currentStateView.MouseMove += new System.Windows.Forms.MouseEventHandler(this.listView1_MouseMove);
       this.currentStateView.MouseUp += new System.Windows.Forms.MouseEventHandler(this.listView1_MouseUp);
       this.currentStateView.Resize += new System.EventHandler(this.listView1_Resize);
