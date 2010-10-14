@@ -53,10 +53,12 @@ namespace Microsoft.Boogie.ModelViewer
       unfoldingRoot = new SkeletonItem(this, states.Length);
       unfoldingRoot.PopulateRoot(states);
 
+      var idx = 0;
       foreach (var i in states) {
-        var it = new ListViewItem(new string[] { i.Name, "" });
+        var it = new ListViewItem(new string[] { idx.ToString(), i.Name, "" });
         it.Tag = i;
         items.Add(it);
+        idx++;
       }
       stateList.Items.AddRange(items.ToArray());
       unfoldingRoot.Expanded = true;
@@ -224,7 +226,7 @@ namespace Microsoft.Boogie.ModelViewer
       stateList.BeginUpdate();
       for (int i = 0; i < sel.skel.displayNodes.Length; ++i) {
         var dn = sel.skel.displayNodes[i];
-        stateList.Items[i].SubItems[1].Text = DisplayItem.ValuesAsString(dn);
+        stateList.Items[i].SubItems[2].Text = DisplayItem.ValuesAsString(dn);
       }
       stateList.EndUpdate();
     }
