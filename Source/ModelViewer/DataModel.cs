@@ -37,6 +37,7 @@ namespace Microsoft.Boogie.ModelViewer
     string Name { get; }
     NodeState State { get; }
     IEnumerable<string> Values { get; }
+    string ToolTip { get; }
 
     object ViewSync { get; set; }
   }
@@ -84,6 +85,11 @@ namespace Microsoft.Boogie.ModelViewer
     public virtual IEnumerable<string> Values
     {
       get { yield break; }
+    }
+
+    public virtual string ToolTip
+    {
+      get { return null; }
     }
 
     public virtual bool Expandable
@@ -151,6 +157,13 @@ namespace Microsoft.Boogie.ModelViewer
     public static void Iter<T>(this IEnumerable<T> inp, Action<T> fn)
     {
       foreach (var s in inp) fn(s);
+    }
+
+    public static T OrElse<T>(T a, T b)
+      where T : class
+    {
+      if (a != null) return a;
+      return b;
     }
   }
 

@@ -261,8 +261,16 @@ namespace Microsoft.Boogie.ModelViewer
         }
       }
 
+      var tooltip = dispNode.ToolTip;
+      var values = ValuesAsString(dispNode);
+      if (tooltip != null) {
+        this.ToolTipText = tooltip;
+      } else {
+        this.ToolTipText = values;
+      }
+
       this.SubItems[0].Text = dispNode.Name;
-      this.SubItems[1].Text = ValuesAsString(dispNode).ToString();
+      this.SubItems[1].Text = values;
     }
 
     internal DisplayItem()
