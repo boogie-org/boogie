@@ -407,6 +407,8 @@ namespace Microsoft.Boogie {
         Hashtable substMap = new Hashtable(); // Variable -> IdentifierExpr
 
         VariableSeq/*!*/ targets = new VariableSeq();
+        Set<Variable> footprint = new Set<Variable>();
+
         foreach (Block/*!*/ b in g.BackEdgeNodes(header))
         {
             Contract.Assert(b != null);
@@ -417,9 +419,14 @@ namespace Microsoft.Boogie {
                 {
                     Contract.Assert(cmd != null);
                     cmd.AddAssignedVariables(targets);
+
+                    VariableCollector c = new VariableCollector();
+                    c.Visit(cmd);
+                    footprint.AddRange(c.usedVars);
                 }
             }
         }
+
         IdentifierExprSeq/*!*/ globalMods = new IdentifierExprSeq();
         Set targetSet = new Set();
         foreach (Variable/*!*/ v in targets)
@@ -434,6 +441,7 @@ namespace Microsoft.Boogie {
 
         foreach (Variable v in impl.InParams) {
           Contract.Assert(v != null);
+          if (!footprint.Contains(v)) continue;
           callInputs1.Add(new IdentifierExpr(Token.NoToken, v));
           Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true);
           inputs.Add(f);
@@ -442,6 +450,7 @@ namespace Microsoft.Boogie {
         }
         foreach (Variable v in impl.OutParams) {
           Contract.Assert(v != null);
+          if (!footprint.Contains(v)) continue;
           callInputs1.Add(new IdentifierExpr(Token.NoToken, v));
           Formal f1 = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true);
           inputs.Add(f1);
@@ -464,6 +473,7 @@ namespace Microsoft.Boogie {
         }
         foreach (Variable v in impl.LocVars) {
           Contract.Assert(v != null);
+          if (!footprint.Contains(v)) continue;
           callInputs1.Add(new IdentifierExpr(Token.NoToken, v));
           Formal f1 = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in_" + v.Name, v.TypedIdent.Type), true);
           inputs.Add(f1);
@@ -503,8 +513,12 @@ namespace Microsoft.Boogie {
         callCmd2.Proc = loopProc;
         loopHeaderToCallCmd2[header] = callCmd2;
 
-        AssignCmd assignCmd = new AssignCmd(Token.NoToken, lhss, rhss);
-        loopHeaderToAssignCmd[header] = assignCmd;
+        Debug.Assert(lhss.Count == rhss.Count);
+        if (lhss.Count > 0)
+        {
+            AssignCmd assignCmd = new AssignCmd(Token.NoToken, lhss, rhss);
+            loopHeaderToAssignCmd[header] = assignCmd;
+        }
       }
 
       // Keep track of the new blocks created: maps a header node to the
@@ -570,8 +584,16 @@ namespace Microsoft.Boogie {
                                     new StringSeq(cce.NonNull(blockMap[header]).Label, exit.Label),
                                     new BlockSeq(blockMap[header], exit));
 
-        AssignCmd assignCmd = loopHeaderToAssignCmd[header];
-        Block entry = new Block(Token.NoToken, "entry", new CmdSeq(assignCmd), cmd);
+        Block entry;
+        if (loopHeaderToAssignCmd.ContainsKey(header))
+        {
+            AssignCmd assignCmd = loopHeaderToAssignCmd[header];
+            entry = new Block(Token.NoToken, "entry", new CmdSeq(assignCmd), cmd);
+        }
+        else
+        {
+            entry = new Block(Token.NoToken, "entry", new CmdSeq(), cmd);
+        }
         blocks.Add(entry);
         foreach (Block/*!*/ block in blockMap.Keys) {
           Contract.Assert(block != null);
