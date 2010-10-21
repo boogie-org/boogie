@@ -18,7 +18,7 @@ object Resolver {
  sealed class ProgramContext(val decls: Map[String,TopLevelDecl], val currentClass: Class,
                       val currentMember: Member, val errors: ListBuffer[(Position,String)]) {
    final def AddVariable(v: Variable): ProgramContext = new LProgramContext(v, this);
-   final def Error(pos: Position, msg: String) {errors + (pos, msg)}
+   final def Error(pos: Position, msg: String) {errors.append((pos, msg))}
    final def SetClass(cl: Class): ProgramContext = new MProgramContext(cl, null, this)
    final def SetMember(m: Member): ProgramContext = {
      var ctx:ProgramContext = new MProgramContext(currentClass, m, this)
