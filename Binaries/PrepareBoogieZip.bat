@@ -12,6 +12,7 @@ for %%f in (
   Basetypes.dll         Basetypes.pdb
   Boogie.exe            Boogie.pdb
   Core.dll              Core.pdb
+  CodeContractsExtender.dll CodeContractsExtender.pdb
   Dafny.exe             Dafny.pdb
   DafnyPipeline.dll     DafnyPipeline.pdb
   Graph.dll             Graph.pdb

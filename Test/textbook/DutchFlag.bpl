@@ -1,3 +1,11 @@
+// The partition step of Quick Sort picks a 'pivot' element from a specified subsection
+// of a given integer array.  It then partially sorts the elements of the array so that
+// elements smaller than the pivot end up to the left of the pivot and elements larger
+// than the pivot end up to the right of the pivot.  Finally, the index of the pivot is
+// returned.
+// The procedure below always picks the first element of the subregion as the pivot.
+// The specification of the procedure talks about the ordering of the elements, but
+// does not say anything about keeping the multiset of elements the same.
 
 var A: [int]int;
 const N: int;
@@ -10,22 +18,22 @@ procedure Partition(l: int, r: int) returns (result: int)
   ensures (forall k: int :: l <= k && k < result  ==>  A[k] <= old(A)[l]);
   ensures (forall k: int :: result <= k && k < r  ==>  old(A)[l] <= A[k]);
 {
-  var pv: int;
-  var i: int;
-  var j: int;
-  var tmp: int;
+  var pv, i, j, tmp: int;
 
-  start:
-    pv := A[l];
-    i := l;
-    j := r-1;
-    // swap A[l] and A[j]
-    tmp := A[l];
-    A[l] := A[j];
-    A[j] := tmp;
-    goto LoopHead;
+  pv := A[l];
+  i := l;
+  j := r-1;
+  // swap A[l] and A[j]
+  tmp := A[l];
+  A[l] := A[j];
+  A[j] := tmp;
+  goto LoopHead;
 
+  // The following loop iterates while 'i < j'.  In each iteration,
+  // one of the three alternatives (A, B, or C) is chosen in such
+  // a way that the assume statements will evaluate to true.
   LoopHead:
+    // The following the assert statements give the loop invariant
     assert (forall k: int :: l <= k && k < i  ==>  A[k] <= pv);
     assert (forall k: int :: j <= k && k < r  ==>  pv <= A[k]);
     assert l <= i && i <= j && j < r;
@@ -58,5 +66,4 @@ procedure Partition(l: int, r: int) returns (result: int)
   exit:
     assume i == j;
     result := i;
-    return;
 }

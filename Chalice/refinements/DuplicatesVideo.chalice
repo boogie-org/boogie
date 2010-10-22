@@ -2,7 +2,7 @@ class Duplicates0 {
   method find(s:seq<int>) returns (b: bool)
     requires forall i in s :: i in [0..100];
   {
-    spec b [b <==> exists i in [0..|s|] :: s[i] in s[..i] ];
+    b := exists i in [0..|s|] :: s[i] in s[..i];
   }
 }
 
@@ -22,7 +22,7 @@ class Duplicates1 refines Duplicates0 {
   }
 }
 
-class Dupllcates2 refines Duplicates1 {
+class Duplicates2 refines Duplicates1 {
   transforms find(s: seq<int>) returns (b: bool)
   {
     _;
@@ -36,7 +36,7 @@ class Dupllcates2 refines Duplicates1 {
         var c: bool := bitset[ s[n] ];
       }
       bitset := bitset[..s[n] ] ++ [true] ++ bitset[ s[n] + 1 ..];
-      _
+      _;
     }
   }
 }

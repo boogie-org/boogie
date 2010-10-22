@@ -1,10 +1,24 @@
-// Bubble sort, where specification says the output is a permutation of its input
-// Rustan Leino, 30 April 2009
+// Bubble Sort, where the specification says the output is a permutation of
+// the input.
 
+// Introduce a constant 'N' and postulate that it is non-negative
 const N: int;
 axiom 0 <= N;
 
+// Declare a map from integers to integers.  In the procedure below, 'a' will be
+// treated as an array of 'N' elements, indexed from 0 to less than 'N'.
 var a: [int]int;
+
+// This procedure implements Bubble Sort.  One of the postconditions says that,
+// in the final state of the procedure, the array is sorted.  The other
+// postconditions say that the final array is a permutation of the initial
+// array.  To write that part of the specification, the procedure returns that
+// permutation mapping.  That is, out-parameter 'perm' injectively maps the
+// numbers [0..N) to [0..N), as stated by the second and third postconditions.
+// The final postcondition says that 'perm' describes how the elements in
+// 'a' moved:  what is now at index 'i' used to be at index 'perm[i]'.
+// Note, the specification says nothing about the elements of 'a' outside the
+// range [0..N).  Moreover, Boogie does not prove that the program will terminate.
 
 procedure BubbleSort() returns (perm: [int]int)
   modifies a;

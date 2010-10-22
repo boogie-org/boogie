@@ -33,12 +33,13 @@
         "class" "ghost" "var" "const" "external" "function" "method"
         "predicate" "returns" "requires" "ensures" "lockchange"
         "invariant" "channel" "condition" "where"
-        "refines" "replaces" "by" "transforms"
+        "refines" "transforms"
         )) . font-lock-builtin-face)
    `(,(chalice-regexp-opt '(
         "above" "acc" "acquire" "and" "assert" "assigned" "assume"
         "below" "between" "call" "credit"
         "downgrade" "else" "eval" "exists" "fold" "forall" "fork" "free" "havoc" "holds"
+        "spec" "replaces" "by"
         "if" "in" "ite" "join" "lock" "lockbottom" "waitlevel" "module" "new" "nil"
         "old" "rd" "receive" "release" "reorder" "result" "send" "share"
         "this" "unfold" "unfolding" "unshare" "while"
