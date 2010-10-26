@@ -111,7 +111,7 @@ namespace Microsoft.Boogie.ModelViewer.Base
         sb.Length -= 2;
         sb.Append(")");
       }
-      name = sb.ToString();
+      name = new EdgeName(sb.ToString());
     }
   }
 

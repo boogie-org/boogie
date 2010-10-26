@@ -18,12 +18,21 @@ namespace Microsoft.Boogie.ModelViewer
     Changed = 1
   }
 
+  public interface IEdgeName
+  {
+    int CompareTo(IEdgeName other);
+    string FullName();
+    string ShortName();
+    IEnumerable<Model.Element> Dependencies { get; }
+    int Score { get; }
+  }
+
   public interface IDisplayNode
   {
     /// <summary>
     ///  Used for indexing the state tree.
     /// </summary>
-    string EdgeName { get; }
+    IEdgeName Name { get; }
 
     /// <summary>
     /// Used to determine aliasing. Can be null.
@@ -34,7 +43,6 @@ namespace Microsoft.Boogie.ModelViewer
     IEnumerable<IDisplayNode> Expand();
 
     // Things displayed to the user.
-    string Name { get; }
     NodeState State { get; }
     IEnumerable<string> Values { get; }
     string ToolTip { get; }
@@ -70,16 +78,19 @@ namespace Microsoft.Boogie.ModelViewer
       get { return children; }
     }
   }
-
+  
   public abstract class DisplayNode : IDisplayNode
   {
-    protected string name;
+    protected IEdgeName name;
 
-    public DisplayNode(string n) { name = n; }
+    public DisplayNode(string n)
+    { 
+      name = new EdgeName(n);
+    }
 
-    public virtual string Name
+    public DisplayNode(IEdgeName n)
     {
-      get { return name; }
+      name = n;
     }
 
     public virtual IEnumerable<string> Values
@@ -106,7 +117,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     public object ViewSync { get; set; }
 
-    public virtual string EdgeName
+    public virtual IEdgeName Name
     {
       get { return name; }
     }
@@ -122,10 +133,15 @@ namespace Microsoft.Boogie.ModelViewer
     protected Func<T, IDisplayNode> convert;
     protected IEnumerable<T> data;
 
-    public ContainerNode(string name, Func<T, IDisplayNode> convert, IEnumerable<T> data) : base(name)
+    public ContainerNode(IEdgeName name, Func<T, IDisplayNode> convert, IEnumerable<T> data) : base(name)
     {
       this.convert = convert;
       this.data = data;
+    }
+
+    public ContainerNode(string name, Func<T, IDisplayNode> convert, IEnumerable<T> data)
+      : this(new EdgeName(name), convert, data)
+    {
     }
 
     public override bool Expandable { get { return true; } }
@@ -148,6 +164,8 @@ namespace Microsoft.Boogie.ModelViewer
     }
 
     public static IEnumerable<T> Empty<T>() { yield break; }
+
+    public static IEnumerable<T> Singleton<T>(T e) { yield return e; }
 
     public static IEnumerable<T> Map<S, T>(this IEnumerable<S> inp, Func<S, T> conv)
     {

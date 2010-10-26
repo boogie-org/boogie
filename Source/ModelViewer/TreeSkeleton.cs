@@ -7,7 +7,7 @@ namespace Microsoft.Boogie.ModelViewer
 {
   internal class SkeletonItem
   {
-    readonly string name;
+    readonly IEdgeName name;
     readonly List<SkeletonItem> children = new List<SkeletonItem>();
     internal readonly IDisplayNode[] displayNodes;
     readonly SkeletonItem parent;
@@ -18,7 +18,7 @@ namespace Microsoft.Boogie.ModelViewer
     public void Iter(Action<SkeletonItem> handler)
     {
       handler(this);
-      children.Iter(u => u.Iter(handler));
+      children.ForEach(u => u.Iter(handler));
     }
 
     public IEnumerable<SkeletonItem> RecChildren
@@ -45,12 +45,12 @@ namespace Microsoft.Boogie.ModelViewer
 
     public SkeletonItem(Main m, int stateCount)
     {
-      name = "<root>";
+      name = new EdgeName("<root>");
       main = m;
       displayNodes = new IDisplayNode[stateCount];
     }
 
-    internal SkeletonItem(string n, SkeletonItem par)
+    internal SkeletonItem(IEdgeName n, SkeletonItem par)
       : this(par.main, par.displayNodes.Length)
     {
       parent = par;
@@ -76,15 +76,15 @@ namespace Microsoft.Boogie.ModelViewer
           if (wasExpanded) return;
           wasExpanded = true;
 
-          var created = new Dictionary<string, SkeletonItem>();
+          var created = new Dictionary<IEdgeName, SkeletonItem>();
           for (int i = 0; i < displayNodes.Length; ++i) {
             var dn = displayNodes[i];
             if (dn == null || !dn.Expandable) continue;
             foreach (var child in dn.Expand()) {
               SkeletonItem skelChild;
-              if (!created.TryGetValue(child.EdgeName, out skelChild)) {
-                skelChild = new SkeletonItem(child.EdgeName, this);
-                created.Add(child.EdgeName, skelChild);
+              if (!created.TryGetValue(child.Name, out skelChild)) {
+                skelChild = new SkeletonItem(child.Name, this);
+                created.Add(child.Name, skelChild);
                 children.Add(skelChild);
               }
               skelChild.displayNodes[i] = child;
