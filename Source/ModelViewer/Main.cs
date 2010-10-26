@@ -136,12 +136,13 @@ namespace Microsoft.Boogie.ModelViewer
       if (!item.active)
         textBrush = grayedOut;
 
-      var sz = e.Graphics.MeasureString(item.dispNode.Name.FullName(), font);
+      var dispName = item.dispNode.Name.ShortName();
+      var sz = e.Graphics.MeasureString(dispName, font);
       nameRect.Width = currentStateView.Columns[0].Width - 1 - off;
       if (nameRect.Width < sz.Width + 2)
         nameRect.Width = (int)sz.Width + 20;
       nameRect.X += off;
-      e.Graphics.DrawString(item.dispNode.Name.FullName(), font, textBrush, nameRect);
+      e.Graphics.DrawString(dispName, font, textBrush, nameRect);
 
       var valRect = rect;
       valRect.X = nameRect.X + nameRect.Width + 4;
@@ -269,7 +270,7 @@ namespace Microsoft.Boogie.ModelViewer
         this.ToolTipText = values;
       }
 
-      this.SubItems[0].Text = dispNode.Name.FullName();
+      this.SubItems[0].Text = dispNode.Name.ShortName();
       this.SubItems[1].Text = values;
     }
 

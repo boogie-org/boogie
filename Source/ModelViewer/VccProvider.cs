@@ -22,7 +22,6 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         var sn = new StateNode(vm, s);
         vm.states.Add(sn);
       }
-      vm.ComputeNames();
       return vm.states;
     }
   }
@@ -40,8 +39,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     public readonly Model model;
     public readonly Model.Func f_ptr_to, f_phys_ptr_cast, f_spec_ptr_cast, f_mathint, f_local_value_is, f_spec_ptr_to, f_heap, f_select_field,
                                f_select_value, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t;
-    Dictionary<Model.Element, string> primaryName = new Dictionary<Model.Element, string>();
-    Dictionary<Model.Element, string[]> allNames = new Dictionary<Model.Element, string[]>();
+    Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
     public List<StateNode> states = new List<StateNode>();
 
     public VccModel(Model m)
@@ -61,14 +59,6 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_ptr_to_int = m.MkFunc("$ptr_to_int", 1);
       f_ptr = m.MkFunc("$ptr", 2);
       f_map_t = m.MkFunc("$map_t", 2);
-    }
-
-    public void ComputeNames()
-    {
-      //var namer = new Namer(this);
-      //allNames = namer.ComputeNames();
-      foreach (var e in allNames)
-        primaryName[e.Key] = e.Value[0];
     }
 
     public string GetUserVariableName(string name)
@@ -133,13 +123,15 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     public string TypeName(Model.Element elt)
     {
       string res;
-      if (!primaryName.TryGetValue(elt, out res)) {
-        primaryName[elt] = elt.ToString(); // avoid infinite recursion
+      if (!typeName.TryGetValue(elt, out res)) {
+        typeName[elt] = elt.ToString(); // avoid infinite recursion
         res = TypeNameCore(elt);
-        primaryName[elt] = res;
+        typeName[elt] = res;
       }
       return res;
     }
+
+    public static readonly string[] synthethic_fields = new string[] { "$f_owns", "$f_ref_cnt", "$f_vol_version", "$f_root", "$f_group_root" };
 
     public string ConstantFieldName(Model.Element elt)
     {
@@ -147,19 +139,28 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       string bestName = null;
 
       foreach (var t in elt.Names) {
+        var score = int.MaxValue;
+        string name = null;
         if (t.Args.Length == 0) {
-          var name = t.Func.Name;
-          var score = 0;
-          if (name.Contains('.')) score += 10;
-          if (name.Contains('#')) score -= 1;
-          if (score < bestScore) {
-            bestScore = score;
-            bestName = name;
+          name = t.Func.Name;
+          score = 0;
+          var dotIdx = name.IndexOf('.');
+          if (dotIdx > 0) {
+            score += 10;
+            name = name.Substring(dotIdx + 1);
           }
+          if (name.Contains('#')) score -= 1;
+        } else if (synthethic_fields.Contains(t.Func.Name)) {
+          name = string.Format("{0}<{1}>", t.Func.Name.Substring(3), TypeName(t.Args[0]));
+          score = 5;
+        }
+        if (score < bestScore) {
+          bestScore = score;
+          bestName = name;
         }
       }
 
-      return bestName;    
+      return bestName;
     }
 
     public DataKind GetKind(Model.Element tp, out Model.FuncTuple tpl)
@@ -260,15 +261,6 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
       return result;
     }
-
-    public string[] ElementNames(Model.Element elt)
-    {
-      string[] res;
-      if (allNames.TryGetValue(elt, out res))
-        return res;
-      return new string[] { elt.ToString() };
-    }
-
   }
 
 #if false
@@ -498,7 +490,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
       if (vm.states.Count > 0) {
         var prev = vm.states.Last();
-        names = prev.vars.Map(v => v.Name.FullName());
+        names = prev.vars.Map(v => v.realName);
       }
 
       names = names.Concat(state.Variables).Distinct();
@@ -515,6 +507,16 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         }
       }
 
+      ComputeNames();
+    }
+
+    void ComputeNames()
+    {
+      foreach (var e in vm.model.Elements) {
+        Model.Number n = e as Model.Number;
+        if (n != null)
+          namer.AddName(n, new EdgeName(n.ToString()));
+      }
       namer.ComputeNames(vars);
     }
 
@@ -575,7 +577,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     {
       get
       {
-        return vm.ElementNames(Element);
+        foreach (var edge in stateNode.namer.Aliases(Element))
+          if (edge != Name)
+            yield return edge.FullName();
       }
     }
 
@@ -637,10 +641,12 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
   class VariableNode : ElementNode
   {
     public bool updatedHere;
+    public string realName;
 
     public VariableNode(StateNode par, string realName, Model.Element elt, Model.Element tp)
       : base(par, realName, elt, tp)
     {
+      this.realName = realName;
       name = new EdgeName(vm.GetUserVariableName(realName));
     }
 

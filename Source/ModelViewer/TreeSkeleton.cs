@@ -76,15 +76,15 @@ namespace Microsoft.Boogie.ModelViewer
           if (wasExpanded) return;
           wasExpanded = true;
 
-          var created = new Dictionary<IEdgeName, SkeletonItem>();
+          var created = new Dictionary<string, SkeletonItem>();
           for (int i = 0; i < displayNodes.Length; ++i) {
             var dn = displayNodes[i];
             if (dn == null || !dn.Expandable) continue;
             foreach (var child in dn.Expand()) {
               SkeletonItem skelChild;
-              if (!created.TryGetValue(child.Name, out skelChild)) {
+              if (!created.TryGetValue(child.Name.ShortName(), out skelChild)) {
                 skelChild = new SkeletonItem(child.Name, this);
-                created.Add(child.Name, skelChild);
+                created.Add(child.Name.ShortName(), skelChild);
                 children.Add(skelChild);
               }
               skelChild.displayNodes[i] = child;

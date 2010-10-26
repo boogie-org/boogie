@@ -9,9 +9,9 @@ namespace Microsoft.Boogie.ModelViewer
   {
     internal Model.Element elt;
     internal List<IEdgeName> nodes = new List<IEdgeName>();
-    internal IEdgeName minName;
     internal int score = 10000;
     internal string theName;
+    internal bool unfolded;
 
     internal EltName(Model.Element e)
     {
@@ -38,31 +38,30 @@ namespace Microsoft.Boogie.ModelViewer
 
     int EdgeNameScore(IEdgeName name)
     {
-      return name.Dependencies.Select(e => GetName(e).score).Max() + name.Score;
+      return name.Dependencies.Select(e => GetName(e).score).Concat1(0).Max() + name.Score;
     }
 
     void ComputeBestName()
     {
       while (true) {
         var changes = 0;
-        foreach (var elt in eltNames) {
-          foreach (var edge in elt.nodes) {
-            var newScore = EdgeNameScore(edge);
-            if (newScore < elt.score) {
-              elt.score = newScore;
-              elt.minName = edge;
-              changes++;
-            }
+        var thisElts = eltNames.ToArray();
+        foreach (var elt in thisElts) {
+          var newScore = elt.nodes.Select(EdgeNameScore).Concat1(int.MaxValue).Min();
+          if (newScore < elt.score) {
+            elt.score = newScore;
+            changes++;
           }
         }
-        if (changes == 0)
+        if (changes == 0 && thisElts.Length == eltNames.Count)
           break;
       }
       eltNames.Sort((x,y) => x.score - y.score);
       foreach (var elt in eltNames) {
-        if (elt.minName == null)
-          elt.minName = elt.nodes[0];
-        elt.theName = elt.minName.FullName();
+        if (elt.nodes.Count > 0) {
+          elt.nodes.Sort((x, y) => EdgeNameScore(x) - EdgeNameScore(y));
+          elt.theName = elt.nodes[0].FullName();
+        }
       }
     }
 
@@ -71,8 +70,9 @@ namespace Microsoft.Boogie.ModelViewer
       if (n.Element != null) {
         var prev = GetName(n.Element);
         prev.nodes.Add(n.Name);
-        if (prev.nodes.Count > 1) // we've already been here
+        if (prev.unfolded) // we've already been here
           return;
+        prev.unfolded = true;
       }
 
       if (!n.Expandable) return;
@@ -80,6 +80,12 @@ namespace Microsoft.Boogie.ModelViewer
       foreach (var c in n.Expand()) {
         Unfold(c);
       }
+    }
+
+    public void AddName(Model.Element elt, IEdgeName name)
+    {
+      var e = GetName(elt);
+      e.nodes.Add(name);
     }
 
     public void ComputeNames(IEnumerable<IDisplayNode> n)
@@ -91,6 +97,11 @@ namespace Microsoft.Boogie.ModelViewer
     public virtual string ElementName(Model.Element elt)
     {
       return GetName(elt).theName;
+    }
+
+    public virtual IEnumerable<IEdgeName> Aliases(Model.Element elt)
+    {
+      return GetName(elt).nodes;
     }
   }
 
@@ -116,8 +127,10 @@ namespace Microsoft.Boogie.ModelViewer
     {
       var beg = formatMixed.IndexOf("%(");
       var end = formatMixed.IndexOf("%)");
-      if (beg >= 0 && end > beg)
+      if (beg >= 0 && end > beg) {
         this.formatShort = formatMixed.Substring(0, beg) + formatMixed.Substring(end + 2);
+        this.formatFull = formatMixed.Replace("%(", "").Replace("%)", "");
+      }
     }
 
     public EdgeName(string name) : this(null, name, emptyArgs) { }

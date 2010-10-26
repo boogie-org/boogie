@@ -167,6 +167,8 @@ namespace Microsoft.Boogie.ModelViewer
 
     public static IEnumerable<T> Singleton<T>(T e) { yield return e; }
 
+    public static IEnumerable<T> Concat1<T>(this IEnumerable<T> s, T e) { return s.Concat(Singleton(e)); }
+
     public static IEnumerable<T> Map<S, T>(this IEnumerable<S> inp, Func<S, T> conv)
     {
       foreach (var s in inp) yield return conv(s);
