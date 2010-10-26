@@ -147,7 +147,7 @@ namespace Microsoft.Boogie.ModelViewer
     {
       string res;
       if (canonicalNames.TryGetValue(elt, out res))
-        return res;
+        return res; // +" " + elt.ToString();
       return elt.ToString();
     }
 

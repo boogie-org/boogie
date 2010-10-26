@@ -30,12 +30,12 @@
       this.currentStateView = new System.Windows.Forms.ListView();
       this.name = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.value = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+      this.aliases = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.splitContainer1 = new System.Windows.Forms.SplitContainer();
       this.stateList = new System.Windows.Forms.ListView();
       this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-      this.aliases = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
       this.splitContainer1.Panel1.SuspendLayout();
       this.splitContainer1.Panel2.SuspendLayout();
@@ -80,6 +80,11 @@
       this.value.Text = "Value";
       this.value.Width = 99;
       // 
+      // aliases
+      // 
+      this.aliases.Text = "Aliases";
+      this.aliases.Width = 325;
+      // 
       // splitContainer1
       // 
       this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -107,6 +112,7 @@
       this.stateList.FullRowSelect = true;
       this.stateList.GridLines = true;
       this.stateList.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
+      this.stateList.HideSelection = false;
       this.stateList.Location = new System.Drawing.Point(0, 0);
       this.stateList.MultiSelect = false;
       this.stateList.Name = "stateList";
@@ -131,11 +137,6 @@
       // 
       this.columnHeader2.Text = "Value";
       this.columnHeader2.Width = 116;
-      // 
-      // aliases
-      // 
-      this.aliases.Text = "Aliases";
-      this.aliases.Width = 325;
       // 
       // Main
       // 

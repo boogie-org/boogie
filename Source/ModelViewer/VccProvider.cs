@@ -25,6 +25,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       foreach (var s in vm.states) s.ComputeNames();
       Namer.ComputeCanonicalNames(vm.states.Select(s => s.namer));
       Namer.ComputeCanonicalNames(vm.states.Select(s => s.namer));
+      // Namer.ComputeCanonicalNames(vm.states.Select(s => s.namer));
       return vm.states;
     }
   }
@@ -265,192 +266,6 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return result;
     }
   }
-
-#if false
-  class Namer
-  {
-    VccModel vm;
-    Model model { get { return vm.model; } }
-    List<StateNode> states { get { return vm.states; } }
-
-    internal Namer(VccModel v) { vm = v; }
-
-    public static readonly string[] synthethic_fields = new string[] { "$f_owns", "$f_ref_cnt", "$f_vol_version", "$f_root", "$f_group_root" };
-    Dictionary<Model.Element, List<EltName>> names = new Dictionary<Model.Element, List<EltName>>();
-    Dictionary<Model.Element, EltName> bestNameFor = new Dictionary<Model.Element, EltName>();
-    List<EltName> resolutionOrder = new List<EltName>();
-    Dictionary<Model.Element, string[]> finalNames = new Dictionary<Model.Element, string[]>();
-
-
-    class EltName
-    {
-      public Model.Element For;
-      public int Score;
-      public string Format;
-      public Model.Element[] Arguments;
-      public string Resolved;
-    }
-
-    private void AddName(Model.Element elt, int sc, string fmt, params Model.Element[] args)
-    {
-      List<EltName> l;
-      if (!names.TryGetValue(elt, out l)) {
-        l = new List<EltName>();
-        names.Add(elt, l);
-      }
-      l.Add(new EltName() { Arguments = args, Format = fmt, Score = sc, For = elt });
-    }
-
-    private void AddAnyName(Model.Element elt)
-    {
-      if (names.ContainsKey(elt)) return;
-      var nm = new EltName() { Arguments = new Model.Element[0], Format = string.Format("<{0}>", elt.ToString()), Score = 50, For = elt };
-      var l = new List<EltName>();
-      l.Add(nm);
-      names[elt] = l;
-    }
-
-    private int GetApproxScore(Model.Element e)
-    {
-      EltName n;
-      if (bestNameFor.TryGetValue(e, out n))
-        return n.Score;
-      return 100;
-    }
-
-    private int CompareNames(EltName x, EltName y)
-    {
-      if (x == y) return 0;
-      if (x.Score == y.Score) {
-        if (x.Arguments.Length == y.Arguments.Length)
-          return x.Arguments.Map(GetApproxScore).Sum() - y.Arguments.Map(GetApproxScore).Sum();
-        else
-          return x.Arguments.Length - y.Arguments.Length;
-      } else {
-        return x.Score - y.Score;
-      }
-    }
-
-
-    private void WorkOutBestNameFor(Model.Element e)
-    {
-      if (bestNameFor.ContainsKey(e)) return;
-      if (!names.ContainsKey(e)) AddAnyName(e);
-      var nm = names[e];
-      nm.Sort(CompareNames);
-      var best = nm[0];
-      bestNameFor[e] = best;
-      foreach (var a in best.Arguments)
-        WorkOutBestNameFor(a);
-      resolutionOrder.Add(best);
-    }
-
-    private void ResolveNames()
-    {
-      var keys = names.Keys.ToArray();
-      foreach (var e in keys)
-        WorkOutBestNameFor(e);
-      var res1 = resolutionOrder.ToArray();
-      foreach (var nm in res1) {
-        var nms = names[nm.For];
-        foreach (var subname in nms.Skip(1)) {
-          subname.Arguments.Iter(WorkOutBestNameFor);
-          resolutionOrder.Add(subname);
-        }
-      }
-
-      foreach (var nm in resolutionOrder) {
-        var s = nm.Format;
-        for (int i = nm.Arguments.Length - 1; i >= 0; --i) {
-          var argName = bestNameFor[nm.Arguments[i]];
-          var strName = argName.Resolved;
-          if (strName == null) strName = argName.For.ToString();
-          s = s.Replace("&" + i, strName);
-        }
-        nm.Resolved = s;
-      }
-
-      foreach (var e in names) {
-        finalNames[e.Key] = e.Value.Map(n => n.Resolved).ToArray();
-      }
-    }
-
-    public Dictionary<Model.Element,string[]> ComputeNames()
-    {
-      ComputeFields();
-      ComputeLocals();
-      ComputeLiterals();
-      ComputeFieldRefs();
-
-      ResolveNames();
-
-      return finalNames;
-    }
-
-    private void ComputeFieldRefs()
-    {
-      var fieldStateId = new Dictionary<Model.Element, int>();
-      for (int i = 0; i < states.Count; ++i) {
-        var hp = vm.f_heap.TryEval(states[i].state.TryGet("$s"));
-        foreach (var fld in vm.f_select_field.AppsWithArg(0, hp)) {
-          if (!fieldStateId.ContainsKey(fld.Result)) {
-            fieldStateId[fld.Result] = i;
-            foreach (var sel in vm.f_select_value.AppsWithArg(0, fld.Result)) {
-              var val = sel.Result;
-              var ftp = vm.f_field_type.TryEval(fld.Args[1]);
-              val = vm.WrapForUse(val, ftp);
-              AddName(val, 20, string.Format("&0->&1.{0}", i), sel.Args[1], fld.Args[1]);
-            }
-          }
-        }
-      }
-    }
-
-    private void ComputeLiterals()
-    {
-      foreach (var e in model.Elements) {
-        Model.Number n = e as Model.Number;
-        if (n != null)
-          AddName(n, 5, n.ToString());
-      }
-    }
-
-    private void ComputeLocals()
-    {
-      var defined = new HashSet<Tuple<Model.Element, string>>();
-      for (int i = 0; i < states.Count; ++i) {
-        foreach (var v in states[i].vars) {
-          var t = Tuple.Create(v.Element, v.Name);
-          if (!defined.Contains(t)) {
-            defined.Add(t);
-            AddName(v.Element, 10, string.Format("{0}.{1}", v.Name, i));
-          }
-        }
-      }
-    }
-
-    private void ComputeFields()
-    {
-      var fields = vm.f_select_field.Apps.Map(a => a.Args[1]).Concat(vm.f_ptr.Apps.Map(a => a.Args[0]));
-      foreach (var f in fields) {
-        foreach (var fn in synthethic_fields) {
-          foreach (var tpl in model.MkFunc(fn, 1).AppsWithResult(f))
-            AddName(f, 5, string.Format("{0}<{1}>", fn.Substring(3), vm.TypeName(tpl.Args[0])));
-        }
-        foreach (var nm in f.Names) {
-          if (nm.Func.Arity == 0) {
-            var n = nm.Func.Name;
-            var idx = n.LastIndexOf('.');
-            if (idx > 0) n = n.Substring(idx + 1);
-            AddName(f, 5, n);
-          }
-        }
-        AddAnyName(f);
-      }
-    }
-
-  }
-#endif
   
   class StateNode : IState
   {
@@ -592,7 +407,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           yield break;
         } else {
           foreach (var edge in stateNode.namer.Aliases(Element))
-            if (edge != Name)
+            if (!edge.Equals(Name))
               yield return edge.FullName();
         }
       }

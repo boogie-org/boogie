@@ -223,8 +223,15 @@ namespace Microsoft.Boogie.ModelViewer
 
     private void stateList_SelectedIndexChanged(object sender, EventArgs e)
     {
+
       if (stateList.SelectedItems.Count == 0) return;
       var sel = stateList.SelectedItems[0].Index;
+
+      var normalFont = stateList.Font;
+      var boldFont = new Font(normalFont, FontStyle.Bold);
+      stateList.Items[currentState].Font = normalFont;
+      stateList.Items[sel].Font = boldFont;
+
       SetState(sel);
     }
 
@@ -294,7 +301,10 @@ namespace Microsoft.Boogie.ModelViewer
       if (dn == null) return "";
 
       var sb = new StringBuilder();
+      var canon = dn.CanonicalValue;
       foreach (var n in dn.Aliases) {
+        if (n == canon)
+          continue;
         sb.Append(n).Append(", ");
         if (sb.Length > 300)
           break;
