@@ -19,8 +19,14 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     {
       var vm = new VccModel(m);
       foreach (var s in m.States) {
-        var sn = new StateNode(vm, s);
+        var sn = new StateNode(vm.states.Count, vm, s);
         vm.states.Add(sn);
+      }
+      foreach (var s in vm.states) {
+        s.CopyNames();
+      }
+      foreach (var s in vm.states) {
+        s.ComputeNames();
       }
       return vm.states;
     }
@@ -456,12 +462,14 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     internal VccModel vm;
     internal List<VariableNode> vars;
     internal Namer namer;
+    internal int index;
     
-    public StateNode(VccModel parent, Model.CapturedState s)
+    public StateNode(int i, VccModel parent, Model.CapturedState s)
     {
       this.namer = new Namer();
       this.vm = parent;
       state = s;
+      index = i;
 
       name = s.Name;
       var idx = name.LastIndexOfAny(new char[] { '\\', '/' });
@@ -507,16 +515,43 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         }
       }
 
-      ComputeNames();
-    }
-
-    void ComputeNames()
-    {
       foreach (var e in vm.model.Elements) {
         Model.Number n = e as Model.Number;
         if (n != null)
           namer.AddName(n, new EdgeName(n.ToString()));
       }
+    }
+
+    IEnumerable<StateNode> OtherStates()
+    {
+      var i = index;
+      for (var j = i - 1; j >= 0; j--)
+        yield return vm.states[j];
+      for (var j = i + 1; j < vm.states.Count; j++)
+        yield return vm.states[j];
+    }
+
+    internal void CopyNames()
+    {
+      var named = new HashSet<Tuple<string,Model.Element>>();
+
+      foreach (var v in vars) {
+        named.Add(Tuple.Create(v.Name.ShortName(), v.Element));
+      }
+
+      foreach (var s in OtherStates()) {
+        foreach (var v in s.vars) {
+          var th = Tuple.Create(v.Name.ShortName(), v.Element);
+          if (!named.Contains(th)) {
+            named.Add(th);
+            namer.AddName(v.Element, new EdgeName(v.Name.ShortName() + "." + s.index) { Score = 30 });
+          }
+        }
+      }
+    }
+
+    internal void ComputeNames()
+    {
       namer.ComputeNames(vars);
     }
 
@@ -577,9 +612,15 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     {
       get
       {
-        foreach (var edge in stateNode.namer.Aliases(Element))
-          if (edge != Name)
-            yield return edge.FullName();
+        Model.Boolean b = this.Element as Model.Boolean;
+        if (b != null) {
+          yield return b.ToString();
+        } else {
+          yield return Element.ToString();
+          foreach (var edge in stateNode.namer.Aliases(Element))
+            if (edge != Name)
+              yield return edge.FullName();
+        }
       }
     }
 
