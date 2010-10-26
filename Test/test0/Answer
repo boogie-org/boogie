@@ -2,7 +2,7 @@
 Boogie program verifier finished with 0 verified, 0 errors
 
 Boogie program verifier finished with 0 verified, 0 errors
-Triggers0.bpl(14,31): Error: the 'nopats' quantifier attribute expects a string-literal parameter
+Triggers0.bpl(14,31): error: the 'nopats' quantifier attribute expects a string-literal parameter
 1 parse errors detected in Triggers0.bpl
 Triggers1.bpl(7,17): Error: boolean operators are not allowed in triggers
 Triggers1.bpl(11,21): Error: boolean operators are not allowed in triggers
@@ -86,22 +86,22 @@ Boogie program verifier finished with 0 verified, 0 errors
 Arrays1.bpl(11,11): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: Q
 Arrays1.bpl(14,15): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: Q
 2 type checking errors detected in Arrays1.bpl
-Types0.bpl(6,18): Error: expected identifier before ':'
-Types0.bpl(6,12): Error: expecting an identifier as parameter name
+Types0.bpl(6,18): error: expected identifier before ':'
+Types0.bpl(6,12): error: expecting an identifier as parameter name
 2 parse errors detected in Types0.bpl
 Types1.bpl(6,11): Error: undeclared type: x
 Types1.bpl(7,11): Error: undeclared type: x
 Types1.bpl(7,14): Error: undeclared type: x
 3 name resolution errors detected in Types1.bpl
-WhereParsing.bpl(14,37): Error: where clause not allowed here
-WhereParsing.bpl(15,33): Error: where clause not allowed here
+WhereParsing.bpl(14,37): error: where clause not allowed here
+WhereParsing.bpl(15,33): error: where clause not allowed here
 2 parse errors detected in WhereParsing.bpl
-WhereParsing0.bpl(17,38): Error: where clause not allowed here
-WhereParsing0.bpl(18,38): Error: where clause not allowed here
+WhereParsing0.bpl(17,38): error: where clause not allowed here
+WhereParsing0.bpl(18,38): error: where clause not allowed here
 2 parse errors detected in WhereParsing0.bpl
-WhereParsing1.bpl(14,27): syntax error: ")" expected
+WhereParsing1.bpl(14,27): error: ")" expected
 1 parse errors detected in WhereParsing1.bpl
-WhereParsing2.bpl(1,14): syntax error: ";" expected
+WhereParsing2.bpl(1,14): error: ";" expected
 1 parse errors detected in WhereParsing2.bpl
 WhereResolution.bpl(28,38): Error: undeclared identifier: alpha
 WhereResolution.bpl(32,30): Error: old expressions allowed only in two-state contexts
@@ -109,25 +109,25 @@ WhereResolution.bpl(32,30): Error: old expressions allowed only in two-state con
 BadLabels0.bpl(4,2): Error: more than one declaration of block name: X
 BadLabels0.bpl(11,4): Error: more than one declaration of block name: Y
 2 name resolution errors detected in BadLabels0.bpl
-BadLabels1.bpl(4,3): Error: Error: goto label 'X' is undefined or out of reach
-BadLabels1.bpl(5,3): Error: Error: goto label 'Y' is undefined or out of reach
-BadLabels1.bpl(10,3): Error: Error: goto label 'X' is undefined or out of reach
-BadLabels1.bpl(24,5): Error: Error: goto label 'K' is undefined or out of reach
-BadLabels1.bpl(30,5): Error: Error: goto label 'A' is undefined or out of reach
-BadLabels1.bpl(38,7): Error: Error: goto label 'M' is undefined or out of reach
-BadLabels1.bpl(41,3): Error: Error: goto label 'B' is undefined or out of reach
-BadLabels1.bpl(47,3): Error: Error: break statement is not inside a loop
-BadLabels1.bpl(49,5): Error: Error: break statement is not inside a loop
-BadLabels1.bpl(60,5): Error: Error: break label 'B' must designate an enclosing statement
-BadLabels1.bpl(63,5): Error: Error: break label 'A' must designate an enclosing statement
-BadLabels1.bpl(64,5): Error: Error: break label 'C' must designate an enclosing statement
-BadLabels1.bpl(65,8): Error: Error: break label 'F' must designate an enclosing statement
+BadLabels1.bpl(4,3): error: Error: goto label 'X' is undefined or out of reach
+BadLabels1.bpl(5,3): error: Error: goto label 'Y' is undefined or out of reach
+BadLabels1.bpl(10,3): error: Error: goto label 'X' is undefined or out of reach
+BadLabels1.bpl(24,5): error: Error: goto label 'K' is undefined or out of reach
+BadLabels1.bpl(30,5): error: Error: goto label 'A' is undefined or out of reach
+BadLabels1.bpl(38,7): error: Error: goto label 'M' is undefined or out of reach
+BadLabels1.bpl(41,3): error: Error: goto label 'B' is undefined or out of reach
+BadLabels1.bpl(47,3): error: Error: break statement is not inside a loop
+BadLabels1.bpl(49,5): error: Error: break statement is not inside a loop
+BadLabels1.bpl(60,5): error: Error: break label 'B' must designate an enclosing statement
+BadLabels1.bpl(63,5): error: Error: break label 'A' must designate an enclosing statement
+BadLabels1.bpl(64,5): error: Error: break label 'C' must designate an enclosing statement
+BadLabels1.bpl(65,8): error: Error: break label 'F' must designate an enclosing statement
 13 parse errors detected in BadLabels1.bpl
-LineParse.bpl(1,0): Error: Malformed (#line num [filename]) pragma: #line
-LineParse.bpl(2,0): Error: Malformed (#line num [filename]) pragma: #line
-LineParse.bpl(1,0): Error: Unrecognized pragma: #dontknow what this is    No, I don't    well, it's an error is what it is
-LineParse.bpl(3,0): Error: Unrecognized pragma: #define ASSERT(x) {if (!(x)) { crash(); }}  // error: A B C . txt(12,0)
-LineParse.bpl(6,2): syntax error: EOF expected
+LineParse.bpl(1,0): error: Malformed (#line num [filename]) pragma: #line
+LineParse.bpl(2,0): error: Malformed (#line num [filename]) pragma: #line
+LineParse.bpl(1,0): error: Unrecognized pragma: #dontknow what this is    No, I don't    well, it's an error is what it is
+LineParse.bpl(3,0): error: Unrecognized pragma: #define ASSERT(x) {if (!(x)) { crash(); }}  // error: A B C . txt(12,0)
+LineParse.bpl(6,2): error: EOF expected
 5 parse errors detected in LineParse.bpl
 LineResolve.bpl(5,1): Error: undeclared identifier: a
 LineResolve.bpl(7,2): Error: undeclared identifier: b
@@ -142,15 +142,15 @@ Abc.txt(99,0): Error: undeclared identifier: j
 c:\Users\leino\Documents\Programs\MyClass.ssc(104,0): Error: undeclared identifier: k
 A B C . txt(12,0): Error: undeclared identifier: l
 12 name resolution errors detected in LineResolve.bpl
-AttributeParsingErr.bpl(1,33): Error: only attributes, not triggers, allowed here
-AttributeParsingErr.bpl(3,33): Error: only attributes, not triggers, allowed here
-AttributeParsingErr.bpl(5,52): Error: only attributes, not triggers, allowed here
-AttributeParsingErr.bpl(7,37): Error: only attributes, not triggers, allowed here
-AttributeParsingErr.bpl(9,31): Error: only attributes, not triggers, allowed here
-AttributeParsingErr.bpl(11,29): Error: only attributes, not triggers, allowed here
-AttributeParsingErr.bpl(13,13): Error: only attributes, not triggers, allowed here
-AttributeParsingErr.bpl(15,18): Error: only attributes, not triggers, allowed here
-AttributeParsingErr.bpl(20,26): Error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(1,33): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(3,33): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(5,52): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(7,37): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(9,31): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(11,29): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(13,13): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(15,18): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(20,26): error: only attributes, not triggers, allowed here
 9 parse errors detected in AttributeParsingErr.bpl
 
 type {:sourcefile "test.ssc"} T;
@@ -247,7 +247,7 @@ Orderings.bpl(15,23): Error: c0 occurs more than once as parent
 Orderings.bpl(16,19): Error: constant cannot be its own parent
 Orderings.bpl(18,20): Error: the parent of a constant has to be a constant
 4 name resolution errors detected in Orderings.bpl
-BadQuantifier.bpl(3,15): syntax error: invalid QuantifierBody
+BadQuantifier.bpl(3,15): error: invalid QuantifierBody
 1 parse errors detected in BadQuantifier.bpl
 EmptyCallArgs.bpl(31,2): Error: type variable must occur in types of given arguments: a
 EmptyCallArgs.bpl(32,2): Error: type variable must occur in types of given arguments: a

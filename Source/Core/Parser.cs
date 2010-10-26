@@ -2035,13 +2035,16 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 public class Errors {
 	public int count = 0;                                    // number of errors detected
 	public System.IO.TextWriter/*!*/ errorStream = Console.Out;   // error messages go to this stream
-//  public string errMsgFormat = "-- line {0} col {1}: {2}"; // 0=line, 1=column, 2=text
-  public string/*!*/ errMsgFormat4 = "{0}({1},{2}): Error: {3}"; // 0=line, 1=column, 2=text
-  public string/*!*/ errMsgFormat = "-- line {0} col {1}: {2}"; // 0=line, 1=column, 2=text
+  public string errMsgFormat = "{0}({1},{2}): error: {3}"; // 0=filename, 1=line, 2=column, 3=text
+  public string warningMsgFormat = "{0}({1},{2}): warning: {3}"; // 0=filename, 1=line, 2=column, 3=text
   
-	public void SynErr (string filename, int line, int col, int n) {
+	public virtual void SynErr (string filename, int line, int col, int n) {
+    string s = GetErrorString(n);
+		errorStream.WriteLine(errMsgFormat, filename, line, col, s);
+		count++;
+  }
+  public string GetErrorString(int n) {
 		string s;
-		Console.Write("{0}({1},{2}): syntax error: ", filename, line, col);
 		switch (n) {
 			case 0: s = "EOF expected"; break;
 			case 1: s = "ident expected"; break;
@@ -2175,40 +2178,23 @@ public class Errors {
 
 			default: s = "error " + n; break;
 		}
-		//errorStream.WriteLine(errMsgFormat, line, col, s);
-		errorStream.WriteLine(s);
-		count++;
+    return s;
 	}
 
-	public void SemErr (int line, int col, string/*!*/ s) {
+	public virtual void SemErr (string filename, int line, int col, string/*!*/ s) {
 	  Contract.Requires(s != null);
-		errorStream.WriteLine(errMsgFormat, line, col, s);
+		errorStream.WriteLine(errMsgFormat, filename, line, col, s);
 		count++;
+	}
+	
+	public void SemErr(IToken/*!*/ tok, string/*!*/ msg) {  // semantic errors
+		Contract.Requires(tok != null);
+		Contract.Requires(msg != null);
+		SemErr(tok.filename, tok.line, tok.col, msg);
 	}
 
-	public void SemErr (string filename, int line, int col, string/*!*/ s) {
-	  Contract.Requires(s != null);
-		errorStream.WriteLine(errMsgFormat4, filename, line, col, s);
-		count++;
-	}
-	
-	public void SemErr (string s) {
-		errorStream.WriteLine(s);
-		count++;
-	}
-
-    public void SemErr(IToken/*!*/ tok, string/*!*/ msg) {  // semantic errors
-      Contract.Requires(tok != null);
-      Contract.Requires(msg != null);
-      SemErr(tok.filename, tok.line, tok.col, msg);
-    }
-	
-	public void Warning (int line, int col, string s) {
-		errorStream.WriteLine(errMsgFormat, line, col, s);
-	}
-	
-	public void Warning(string s) {
-		errorStream.WriteLine(s);
+	public virtual void Warning (int line, int col, string s) {
+		errorStream.WriteLine(warningMsgFormat, line, col, s);
 	}
 } // Errors
 
