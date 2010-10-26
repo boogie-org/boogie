@@ -64,7 +64,7 @@ namespace Microsoft.Boogie.ModelViewer
       unfoldingRoot.Expanded = true;
       SetState(0);
 
-      currentStateView.Columns[1].Width = currentStateView.Width - currentStateView.Columns[0].Width - 5;
+      currentStateView.Columns[2].Width = currentStateView.Width - currentStateView.Columns[0].Width - currentStateView.Columns[1].Width - 5;
     }
 
     void SetState(int id)
@@ -136,18 +136,27 @@ namespace Microsoft.Boogie.ModelViewer
       if (!item.active)
         textBrush = grayedOut;
 
-      var dispName = item.dispNode.Name.ShortName();
-      var sz = e.Graphics.MeasureString(dispName, font);
       nameRect.Width = currentStateView.Columns[0].Width - 1 - off;
-      if (nameRect.Width < sz.Width + 2)
-        nameRect.Width = (int)sz.Width + 20;
       nameRect.X += off;
-      e.Graphics.DrawString(dispName, font, textBrush, nameRect);
+      var width = DrawString(e.Graphics, item.dispNode.Name.ShortName(), font, textBrush, nameRect);
 
-      var valRect = rect;
-      valRect.X = nameRect.X + nameRect.Width + 4;
-      valRect.Width = currentStateView.Width - valRect.X;
-      e.Graphics.DrawString(item.SubItems[1].Text, font, textBrush, valRect); // , StringFormat.GenericDefault);
+      nameRect.X += width + 4;
+      nameRect.Width = currentStateView.Columns[0].Width + currentStateView.Columns[1].Width - nameRect.X;
+      width = DrawString(e.Graphics, item.SubItems[1].Text, font, textBrush, nameRect);
+
+      nameRect.X += width + 4;
+      nameRect.Width = currentStateView.Width - nameRect.X;
+      width = DrawString(e.Graphics, item.SubItems[2].Text, font, textBrush, nameRect);
+    }
+
+    private int DrawString(Graphics g, string s, Font font, Brush textBrush, Rectangle minRect)
+    {
+      var sz = g.MeasureString(s, font).Width;
+      if (sz > minRect.Width - 2) {
+        minRect.Width = (int)(sz + 20);
+      }
+      g.DrawString(s, font, textBrush, minRect);
+      return minRect.Width;
     }
 
     private void listView1_DrawSubItem(object sender, DrawListViewSubItemEventArgs e)
@@ -227,7 +236,7 @@ namespace Microsoft.Boogie.ModelViewer
       stateList.BeginUpdate();
       for (int i = 0; i < sel.skel.displayNodes.Length; ++i) {
         var dn = sel.skel.displayNodes[i];
-        stateList.Items[i].SubItems[2].Text = DisplayItem.ValuesAsString(dn);
+        stateList.Items[i].SubItems[2].Text = dn == null ? "" : dn.CanonicalValue;
       }
       stateList.EndUpdate();
     }
@@ -263,28 +272,29 @@ namespace Microsoft.Boogie.ModelViewer
       }
 
       var tooltip = dispNode.ToolTip;
-      var values = ValuesAsString(dispNode);
+      var aliases = AliasesAsString(dispNode);
       if (tooltip != null) {
         this.ToolTipText = tooltip;
       } else {
-        this.ToolTipText = values;
+        this.ToolTipText = aliases;
       }
 
       this.SubItems[0].Text = dispNode.Name.ShortName();
-      this.SubItems[1].Text = values;
+      this.SubItems[1].Text = dispNode.CanonicalValue;
+      this.SubItems[2].Text = aliases;
     }
 
     internal DisplayItem()
-       : base(new string[] { "", "" })
+       : base(new string[] { "", "", "" })
     {
     }
 
-    static internal string ValuesAsString(IDisplayNode dn)
+    static internal string AliasesAsString(IDisplayNode dn)
     {
       if (dn == null) return "";
 
       var sb = new StringBuilder();
-      foreach (var n in dn.Values) {
+      foreach (var n in dn.Aliases) {
         sb.Append(n).Append(", ");
         if (sb.Length > 300)
           break;

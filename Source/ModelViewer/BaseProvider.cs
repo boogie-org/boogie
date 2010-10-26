@@ -38,7 +38,7 @@ namespace Microsoft.Boogie.ModelViewer.Base
       state = s;
     }
 
-    public override IEnumerable<string> Values
+    public override IEnumerable<string> Aliases
     {
       get { foreach (var v in state.Variables) yield return v; }
     }
@@ -62,7 +62,7 @@ namespace Microsoft.Boogie.ModelViewer.Base
       this.elt = elt;
     }
 
-    public override IEnumerable<string> Values
+    public override IEnumerable<string> Aliases
     {
       get
       {

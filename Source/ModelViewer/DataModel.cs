@@ -44,7 +44,8 @@ namespace Microsoft.Boogie.ModelViewer
 
     // Things displayed to the user.
     NodeState State { get; }
-    IEnumerable<string> Values { get; }
+    string CanonicalValue { get; }
+    IEnumerable<string> Aliases { get; }
     string ToolTip { get; }
 
     object ViewSync { get; set; }
@@ -93,7 +94,12 @@ namespace Microsoft.Boogie.ModelViewer
       name = n;
     }
 
-    public virtual IEnumerable<string> Values
+    public virtual string CanonicalValue
+    {
+      get { return name.FullName(); }
+    }
+
+    public virtual IEnumerable<string> Aliases
     {
       get { yield break; }
     }

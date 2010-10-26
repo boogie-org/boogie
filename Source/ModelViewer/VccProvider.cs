@@ -512,21 +512,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         }
       }
 
-      foreach (var e in vm.model.Elements) {
-        Model.Number n = e as Model.Number;
-        if (n != null)
-          namer.AddName(n, new EdgeName(n.ToString()));
+      foreach (var e in vm.model.Elements) {        
+        if (e is Model.Number || e is Model.Boolean)
+          namer.AddName(e, new EdgeName(e.ToString()));
       }
-    }
-
-    IEnumerable<StateNode> OtherStates()
-    {
-      var i = index;
-      for (var j = i - 1; j >= 0; j--)
-        yield return vm.states[j];
-      for (var j = i + 1; j < vm.states.Count; j++)
-        yield return vm.states[j];
-    }
+    } 
 
     internal void ComputeNames()
     {
@@ -586,14 +576,21 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
     }
 
-    public override IEnumerable<string> Values
+    public override string CanonicalValue
+    {
+      get
+      {
+        return stateNode.namer.CanonicalName(Element);
+      }
+    }
+
+    public override IEnumerable<string> Aliases
     {
       get
       {
         if (Element is Model.Boolean) {
-          yield return Element.ToString();
+          yield break;
         } else {
-          yield return stateNode.namer.CanonicalName(Element);
           foreach (var edge in stateNode.namer.Aliases(Element))
             if (edge != Name)
               yield return edge.FullName();
@@ -608,7 +605,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         var sb = new StringBuilder();
         sb.AppendFormat("Type: {0}\n", vm.TypeName(tp));
         int limit = 30;
-        foreach (var n in Values){
+        foreach (var n in Aliases){
           sb.AppendFormat("   = {0}\n", n); 
           if (limit-- < 0) {
             sb.Append("...");

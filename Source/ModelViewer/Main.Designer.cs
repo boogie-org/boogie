@@ -35,6 +35,7 @@
       this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+      this.aliases = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
       this.splitContainer1.Panel1.SuspendLayout();
       this.splitContainer1.Panel2.SuspendLayout();
@@ -45,7 +46,8 @@
       // 
       this.currentStateView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.name,
-            this.value});
+            this.value,
+            this.aliases});
       this.currentStateView.Dock = System.Windows.Forms.DockStyle.Fill;
       this.currentStateView.FullRowSelect = true;
       this.currentStateView.GridLines = true;
@@ -76,7 +78,7 @@
       // value
       // 
       this.value.Text = "Value";
-      this.value.Width = 394;
+      this.value.Width = 99;
       // 
       // splitContainer1
       // 
@@ -130,6 +132,11 @@
       this.columnHeader2.Text = "Value";
       this.columnHeader2.Width = 116;
       // 
+      // aliases
+      // 
+      this.aliases.Text = "Aliases";
+      this.aliases.Width = 325;
+      // 
       // Main
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -156,6 +163,7 @@
     private System.Windows.Forms.ColumnHeader columnHeader1;
     private System.Windows.Forms.ColumnHeader columnHeader2;
     private System.Windows.Forms.ColumnHeader columnHeader3;
+    private System.Windows.Forms.ColumnHeader aliases;
 
 
   }
