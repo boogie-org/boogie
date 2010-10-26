@@ -22,12 +22,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         var sn = new StateNode(vm.states.Count, vm, s);
         vm.states.Add(sn);
       }
-      foreach (var s in vm.states) {
-        s.CopyNames();
-      }
-      foreach (var s in vm.states) {
-        s.ComputeNames();
-      }
+      foreach (var s in vm.states) s.ComputeNames();
+      Namer.ComputeCanonicalNames(vm.states.Select(s => s.namer));
+      Namer.ComputeCanonicalNames(vm.states.Select(s => s.namer));
       return vm.states;
     }
   }
@@ -531,25 +528,6 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         yield return vm.states[j];
     }
 
-    internal void CopyNames()
-    {
-      var named = new HashSet<Tuple<string,Model.Element>>();
-
-      foreach (var v in vars) {
-        named.Add(Tuple.Create(v.Name.ShortName(), v.Element));
-      }
-
-      foreach (var s in OtherStates()) {
-        foreach (var v in s.vars) {
-          var th = Tuple.Create(v.Name.ShortName(), v.Element);
-          if (!named.Contains(th)) {
-            named.Add(th);
-            namer.AddName(v.Element, new EdgeName(v.Name.ShortName() + "." + s.index) { Score = 30 });
-          }
-        }
-      }
-    }
-
     internal void ComputeNames()
     {
       namer.ComputeNames(vars);
@@ -612,11 +590,10 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     {
       get
       {
-        Model.Boolean b = this.Element as Model.Boolean;
-        if (b != null) {
-          yield return b.ToString();
-        } else {
+        if (Element is Model.Boolean) {
           yield return Element.ToString();
+        } else {
+          yield return stateNode.namer.CanonicalName(Element);
           foreach (var edge in stateNode.namer.Aliases(Element))
             if (edge != Name)
               yield return edge.FullName();

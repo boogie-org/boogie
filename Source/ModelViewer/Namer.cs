@@ -9,9 +9,10 @@ namespace Microsoft.Boogie.ModelViewer
   {
     internal Model.Element elt;
     internal List<IEdgeName> nodes = new List<IEdgeName>();
-    internal int score = 10000;
+    internal int score = Namer.maxScore;
     internal string theName;
     internal bool unfolded;
+    internal int stateIdx;
 
     internal EltName(Model.Element e)
     {
@@ -22,8 +23,10 @@ namespace Microsoft.Boogie.ModelViewer
 
   public class Namer
   {
+    internal const int maxScore = 10000;
     List<EltName> eltNames = new List<EltName>();
     Dictionary<Model.Element, EltName> unfoldings = new Dictionary<Model.Element, EltName>();
+    Dictionary<Model.Element, string> canonicalNames;
 
     EltName GetName(Model.Element elt)
     {
@@ -43,6 +46,13 @@ namespace Microsoft.Boogie.ModelViewer
 
     void ComputeBestName()
     {
+      foreach (var n in eltNames) {
+        n.score = maxScore;
+        string s;
+        if (canonicalNames != null && canonicalNames.TryGetValue(n.elt, out s))
+          n.theName = s;
+      }
+
       while (true) {
         var changes = 0;
         var thisElts = eltNames.ToArray();
@@ -92,6 +102,53 @@ namespace Microsoft.Boogie.ModelViewer
     {
       n.Iter(Unfold);
       ComputeBestName();
+    }
+
+    public static void ComputeCanonicalNames(IEnumerable<Namer> namers)
+    {
+      var names = new Dictionary<Model.Element, EltName>();
+      var namersArr = namers.ToArray();
+      for (int i = 0; i < namersArr.Length; ++i) {
+        foreach (var n in namersArr[i].eltNames) {
+          n.stateIdx = i;
+          if (n.nodes.Count == 0) continue;
+          EltName curr;
+          if (names.TryGetValue(n.elt, out curr) && curr.score <= n.score)
+            continue;
+          names[n.elt] = n;
+        }
+      }
+
+      var canonicals = new Dictionary<Model.Element, string>();      
+      foreach (var n in names.Values) {
+        if (n.elt is Model.Boolean || n.elt is Model.Number)
+          canonicals[n.elt] = n.nodes[0].FullName();
+        else
+          canonicals[n.elt] = n.nodes[0].FullName() + "." + n.stateIdx;
+      }
+
+      var unnamedIdx = 1;
+
+      for (int i = 0; i < namersArr.Length; ++i) {
+        namersArr[i].canonicalNames = canonicals;
+        foreach (var n in namersArr[i].eltNames) {
+          if (!canonicals.ContainsKey(n.elt)) {
+            canonicals[n.elt] = string.Format("${0}", unnamedIdx++);
+          }
+        }
+      }
+
+      for (int i = 0; i < namersArr.Length; ++i) {
+        namersArr[i].ComputeBestName();
+      }
+    }
+
+    public virtual string CanonicalName(Model.Element elt)
+    {
+      string res;
+      if (canonicalNames.TryGetValue(elt, out res))
+        return res;
+      return elt.ToString();
     }
 
     public virtual string ElementName(Model.Element elt)
