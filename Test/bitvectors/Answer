@@ -25,8 +25,8 @@ bv3.bpl(2,5): Error: type name: bv16 is registered for bitvectors
 
 Boogie program verifier finished with 1 verified, 0 errors
 -------------------- bv7.bpl --------------------
-bv7.bpl(4,14): Error: arguments of extract need to be integer literals
-bv7.bpl(5,15): Error: parentheses around bitvector bounds are not allowed
+bv7.bpl(4,14): error: arguments of extract need to be integer literals
+bv7.bpl(5,15): error: parentheses around bitvector bounds are not allowed
 2 parse errors detected in bv7.bpl
 -------------------- bv4.bpl - /bv:n --------------------
 bv4.bpl(3,6): Error: no bitvector handling specified, please use /bv:i or /bv:z flag
@@ -37,13 +37,13 @@ bv4.bpl(5,14): Error: no bitvector handling specified, please use /bv:i or /bv:z
 -------------------- bv5.bpl --------------------
 bv5.bpl(10,3): Error BP5001: This assertion might not hold.
 Execution trace:
-        bv5.bpl(5,12): anon0
+    bv5.bpl(5,12): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 -------------------- bv6.bpl --------------------
 bv6.bpl(8,3): Error BP5001: This assertion might not hold.
 Execution trace:
-        bv6.bpl(5,5): anon0
+    bv6.bpl(5,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 -------------------- bv8.bpl --------------------
