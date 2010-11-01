@@ -123,6 +123,13 @@ namespace Microsoft.Boogie
         }
       }
 
+      public IEnumerable<FuncTuple> AppsWithArgs(int argIdx0, Element elt0, int argIdx1, Element elt1) {
+        foreach (var r in elt0.References) {
+          if (r.Func == this && r.Args[argIdx0] == elt0 && r.Args[argIdx1] == elt1)
+            yield return r;
+        }
+      }
+
       public IEnumerable<FuncTuple> AppsWithResult(Element elt)
       {
         foreach (var r in elt.References) {

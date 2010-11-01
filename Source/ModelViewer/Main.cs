@@ -24,6 +24,7 @@ namespace Microsoft.Boogie.ModelViewer
     IEnumerable<ILanguageProvider> Providers()
     {
       yield return Vcc.Provider.Instance;
+      yield return Dafny.Provider.Instance;
       yield return Base.Provider.Instance;
     }
 

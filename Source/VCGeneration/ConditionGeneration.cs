@@ -210,10 +210,7 @@ namespace Microsoft.Boogie {
       Contract.Assert(mvstates.Arity == 1);
 
       foreach (Variable v in MvInfo.AllVariables) {
-        var fn = m.TryGetFunc(v.Name);
-        if (fn != null && fn.Arity == 0) {
-          m.InitialState.AddBinding(v.Name, fn.GetConstant());
-        }
+        m.InitialState.AddBinding(v.Name, GetModelValue(m, v));
       }
 
       var states = new List<int>();
@@ -239,21 +236,7 @@ namespace Microsoft.Boogie {
 
             if (e is IdentifierExpr) {
               IdentifierExpr ide = (IdentifierExpr)e;
-
-              // first, get the unique name
-              string uniqueName;
-              VCExprVar vvar = Context.BoogieExprTranslator.TryLookupVariable(ide.Decl);
-              if (vvar == null) {
-                uniqueName = ide.Decl.Name;
-              } else {
-                uniqueName = Context.Lookup(vvar);
-              }
-
-              var f = m.TryGetFunc(uniqueName);
-              if (f == null) {
-                f = m.MkFunc(uniqueName, 0);
-              }              
-              elt = f.GetConstant();
+              elt = GetModelValue(m, ide.Decl);
             } else if (e is LiteralExpr) {
               LiteralExpr lit = (LiteralExpr)e;
               elt = m.MkElement(lit.Val.ToString());
@@ -270,6 +253,25 @@ namespace Microsoft.Boogie {
       }
 
       return m;
+    }
+
+    private Model.Element GetModelValue(Model m, Variable v) {
+      Model.Element elt;
+      // first, get the unique name
+      string uniqueName;
+      VCExprVar vvar = Context.BoogieExprTranslator.TryLookupVariable(v);
+      if (vvar == null) {
+        uniqueName = v.Name;
+      } else {
+        uniqueName = Context.Lookup(vvar);
+      }
+
+      var f = m.TryGetFunc(uniqueName);
+      if (f == null) {
+        f = m.MkFunc(uniqueName, 0);
+      }
+      elt = f.GetConstant();
+      return elt;
     }
 
     public abstract int GetLocation();
