@@ -213,6 +213,9 @@ r@0 -> -2
 x@@4 -> 797
 m@1 -> -1
 m@3 -> -1
+y@@1 -> **y@@1
+r -> **r
+m -> **m
 $pow2 -> {
   0 -> 1
 }
@@ -263,6 +266,10 @@ int_2_U -> {
 *** STATE <initial>
   Heap -> *8
   this -> *9
+  x -> 797
+  y -> **y@@1
+  r -> **r
+  m -> **m
 *** END_STATE
 *** STATE top
 *** END_STATE
