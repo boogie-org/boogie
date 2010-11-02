@@ -124,7 +124,7 @@ namespace Microsoft.Boogie.ModelViewer
         if (n.elt is Model.Boolean || n.elt is Model.Number)
           canonicals[n.elt] = n.nodes[0].FullName();
         else
-          canonicals[n.elt] = n.nodes[0].FullName() + "." + n.stateIdx;
+          canonicals[n.elt] = "'" + n.nodes[0].FullName() + "-" + n.stateIdx;
       }
 
       var unnamedIdx = 1;

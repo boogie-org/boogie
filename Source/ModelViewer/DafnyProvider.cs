@@ -17,7 +17,6 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
     public IEnumerable<IState> GetStates(Model m)
     {
-      System.Diagnostics.Debugger.Launch();  // KRML DEBUG
       var dm = new DafnyModel(m);
       foreach (var s in m.States) {
         var sn = new StateNode(dm.states.Count, dm, s);
@@ -31,32 +30,21 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     }
   }
 
-  //KRML: todo: make this Dafny specific
-  enum DataKind
-  {
-    Flat,
-    PhysPtr,
-    SpecPtr,
-    Map
-  }
-
   class DafnyModel
   {
     public readonly Model model;
-    public readonly Model.Func f_heap_select, f_class_int, f_class_bool, f_class_set, f_class_seq, f_dtype;
+    public readonly Model.Func f_heap_select, f_set_select, f_seq_length, f_seq_index, f_box;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
     public List<StateNode> states = new List<StateNode>();
 
     public DafnyModel(Model m)
     {
       model = m;
-      f_heap_select = m.MkFunc("MapType1Select", 3);  // todo: this is a hardcoded hack, we need a disciplined way of getting the name of this built-in select function
-
-      f_class_int = m.MkFunc("class.int", 0);
-      f_class_bool = m.MkFunc("class.bool", 0);
-      f_class_set = m.MkFunc("class.set", 0);
-      f_class_seq = m.MkFunc("class.seq", 0);
-      f_dtype = m.MkFunc("dtype", 1);
+      f_heap_select = m.MkFunc("[3]", 3);
+      f_set_select = m.MkFunc("[2]", 2);
+      f_seq_length = m.MkFunc("Seq#Length", 1);
+      f_seq_index = m.MkFunc("Seq#Index", 2);
+      f_box = m.MkFunc("$Box", 1);
     }
 
     public string GetUserVariableName(string name)
@@ -69,19 +57,6 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       return name;
     }
 
-    public Model.Element LocalType(Model.Element e)
-    {
-      if (e is Model.Integer)
-        return f_class_int.GetConstant();
-      if (e is Model.Boolean)
-        return f_class_bool.GetConstant();
-      var className = f_dtype.AppWithArg(0, e);
-      if (className != null)
-        return className.Result;
-      // don't know
-      return f_class_int.GetConstant();
-    }
-
     public Model.Element Image(Model.Element elt, Model.Func f)
     {
       var r = f.AppWithResult(elt);
@@ -90,51 +65,53 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       return null;
     }
 
-    public string TypeName(Model.Element elt)
-    {
-      string res;
-      if (!typeName.TryGetValue(elt, out res)) {
-        if (elt == f_class_bool.GetConstant()) {
-          res = "bool";
-        } else if (elt == f_class_int.GetConstant()) {
-          res = "int";
-        } else if (elt == f_class_set.GetConstant()) {
-          res = "set";  // todo: instantiation?
-        } else if (elt == f_class_seq.GetConstant()) {
-          res = "seq";  // todo: instantiation?
-        } else {
-          res = "object";  // todo: specific class type; also todo: datatypes
-        }
-        typeName[elt] = res;
-      }
-      return res;
-    }
-
-    public IEnumerable<ElementNode> GetExpansion(StateNode state, Model.Element elt, Model.Element tp)
+    public IEnumerable<ElementNode> GetExpansion(StateNode state, Model.Element elt)
     {
       List<ElementNode> result = new List<ElementNode>();
 
-      var heap = state.state.TryGet("$Heap");
-      if (heap != null) {
-        foreach (var tpl in f_heap_select.AppsWithArgs(0, heap, 1, elt)) {
-          var field = tpl.Args[2];
-          var fieldName = field.ToString();
-          foreach (var n in field.Names) {
-            fieldName = n.Func.Name;
-            int dot = fieldName.LastIndexOf('.');
-            if (0 <= dot) {
-              fieldName = fieldName.Substring(dot + 1);
-            }
-            break;
+      if (elt.Kind == Model.ElementKind.Uninterpreted) {
+        var seqLen = f_seq_length.AppWithArg(0, elt);
+        if (seqLen != null) {
+          // elt is a sequence
+          var edgname = new EdgeName(state.namer, "|%0|", "|.|", elt);
+          result.Add(new FieldNode(state, edgname, seqLen.Result));
+          foreach (var tpl in f_seq_index.AppsWithArg(0, elt)) {
+            var fieldName = string.Format("[{0}]", tpl.Args[1].ToString());
+            edgname = new EdgeName(state.namer, "%0" + fieldName, fieldName, elt);
+            result.Add(new FieldNode(state, edgname, Unbox(tpl.Result)));
           }
-          var val = tpl.Result;
-          var ftp = LocalType(val);
-          var edgname = new EdgeName(state.namer, "%0." + fieldName, fieldName, elt);
-          result.Add(new FieldNode(state, edgname, val, ftp));
+        } else {
+
+          var heap = state.state.TryGet("$Heap");
+          if (heap != null) {
+            foreach (var tpl in f_heap_select.AppsWithArgs(0, heap, 1, elt)) {
+              var field = tpl.Args[2];
+              var fieldName = field.ToString();
+              foreach (var n in field.Names) {
+                fieldName = n.Func.Name;
+                int dot = fieldName.LastIndexOf('.');
+                if (0 <= dot) {
+                  fieldName = fieldName.Substring(dot + 1);
+                }
+                break;
+              }
+              var val = tpl.Result;
+              var edgname = new EdgeName(state.namer, "%0." + fieldName, fieldName, elt);
+              result.Add(new FieldNode(state, edgname, val));
+            }
+          }
         }
       }
 
       return result;
+    }
+
+    Model.Element Unbox(Model.Element elt) {
+      var unboxed = f_box.AppWithResult(elt);
+      if (unboxed != null)
+        return unboxed.Args[0];
+      else
+        return elt;
     }
   }
   
@@ -186,9 +163,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       foreach (var v in names) {
         if (dm.GetUserVariableName(v) != null) {
           var val = state.TryGet(v);
-          var tp = dm.LocalType(val);
-          // val = dm.WrapForUse(val, tp);
-          var vn = new VariableNode(this, v, val, tp);
+          var vn = new VariableNode(this, v, val);
           vn.updatedHere = dm.states.Count > 0 && curVars.ContainsKey(v);
           vars.Add(vn);
         }
@@ -222,20 +197,19 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
   class ElementNode : DisplayNode
   {
     protected StateNode stateNode;
-    protected Model.Element elt, tp;
+    protected Model.Element elt;
     protected DafnyModel vm { get { return stateNode.dm; } }
     protected List<ElementNode> children;
 
-    public ElementNode(StateNode st, IEdgeName name, Model.Element elt, Model.Element tp)
+    public ElementNode(StateNode st, IEdgeName name, Model.Element elt)
       : base(name)
     {
       this.stateNode = st;
-      this.tp = tp;
       this.elt = elt;
     }
 
-    public ElementNode(StateNode st, string name, Model.Element elt, Model.Element tp)
-      : this(st, new EdgeName(name), elt, tp) { }
+    public ElementNode(StateNode st, string name, Model.Element elt)
+      : this(st, new EdgeName(name), elt) { }
 
     public override Model.Element Element
     {
@@ -247,7 +221,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
     protected virtual void DoInitChildren()
     {
-      children.AddRange(vm.GetExpansion(stateNode, elt, tp));
+      children.AddRange(vm.GetExpansion(stateNode, elt));
     }
 
     protected void InitChildren()
@@ -285,7 +259,6 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       get
       {
         var sb = new StringBuilder();
-        sb.AppendFormat("Type: {0}\n", vm.TypeName(tp));
         int limit = 30;
         foreach (var n in Aliases){
           sb.AppendFormat("   = {0}\n", n); 
@@ -316,8 +289,8 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
   class FieldNode : ElementNode
   {
-    public FieldNode(StateNode par, IEdgeName realName, Model.Element elt, Model.Element tp)
-      : base(par, realName, elt, tp)
+    public FieldNode(StateNode par, IEdgeName realName, Model.Element elt)
+      : base(par, realName, elt)
     {
       /*
       var idx = realName.LastIndexOf('.');
@@ -329,8 +302,8 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
   class MapletNode : ElementNode
   {
-    public MapletNode(StateNode par, IEdgeName realName, Model.Element elt, Model.Element tp)
-      : base(par, realName, elt, tp)
+    public MapletNode(StateNode par, IEdgeName realName, Model.Element elt)
+      : base(par, realName, elt)
     {
     }
   }
@@ -340,8 +313,8 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     public bool updatedHere;
     public string realName;
 
-    public VariableNode(StateNode par, string realName, Model.Element elt, Model.Element tp)
-      : base(par, realName, elt, tp)
+    public VariableNode(StateNode par, string realName, Model.Element elt)
+      : base(par, realName, elt)
     {
       this.realName = realName;
       name = new EdgeName(vm.GetUserVariableName(realName));

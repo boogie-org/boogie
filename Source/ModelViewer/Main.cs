@@ -32,11 +32,26 @@ namespace Microsoft.Boogie.ModelViewer
     {
       InitializeComponent();
 
-
+      var debugBreak = false;
+      string filename = null;
       var args = Environment.GetCommandLineArgs();
+      for (int i = 1; i < args.Length; i++) {
+        var arg = args[i];
+        if (arg == "/break")
+          debugBreak = true;
+        else
+          filename = arg;
+      }
+      if (debugBreak) {
+        System.Diagnostics.Debugger.Launch();
+      }
+      if (filename == null) {
+        throw new Exception("error: usage:  ModelViewer.exe MyProgram.model");  // (where does this exception go?)
+      }
+
       Model m;
 
-      using (var rd = File.OpenText(args[1])) {
+      using (var rd = File.OpenText(filename)) {
         var models = Model.ParseModels(rd);
         m = models[0];
       }

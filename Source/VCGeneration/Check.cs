@@ -8,6 +8,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.AbstractInterpretation;
@@ -358,8 +359,8 @@ namespace Microsoft.Boogie {
     public Model ToModel()
     {
       Model m = new Model();
+      // create an Element for every partition
       Model.Element[] elts = new Model.Element[partitionToValue.Count];
-
       for (int i = 0; i < partitionToValue.Count; ++i) {
         var v = partitionToValue[i];
         if (v == null)
@@ -372,13 +373,39 @@ namespace Microsoft.Boogie {
           f.SetConstant(elts[i]);
         }
       }
+      // compute and apply redirections
+      foreach (var pr in Redirections(definedFunctions)) {
+        elts[pr.Key] = elts[pr.Value];
+      }
 
+      // create functions
+      var selectFunctions = new Dictionary<int, Model.Func>();
+      var storeFunctions = new Dictionary<int, Model.Func>();
       foreach (var t in definedFunctions) {
         var tuples = t.Value;
         if (tuples.Count == 0) continue;
 
-        var f = m.MkFunc(t.Key, tuples[0].Count - 1);
-        var args = new Model.Element[f.Arity];
+        // get the Func ("it doesn't matter if you get the funk, just as long as the funk gets you", from Ulco Bed's "Get The Funk" on Candy Dulfer's 1990 album Saxuality)
+        var name = t.Key;
+        var arity = tuples[0].Count - 1;
+        Model.Func f;
+        if (Regex.IsMatch(name, "^MapType[0-9]*Select$")) {
+          name = string.Format("[{0}]", arity);
+          if (!selectFunctions.TryGetValue(arity, out f)) {
+            f = m.MkFunc(name, arity);
+            selectFunctions.Add(arity, f);
+          }
+        } else if (Regex.IsMatch(name, "^MapType[0-9]*Store$")) {
+          name = string.Format("[{0}:=]", arity);
+          if (!storeFunctions.TryGetValue(arity, out f)) {
+            f = m.MkFunc(name, arity);
+            storeFunctions.Add(arity, f);
+          }
+        } else {
+          f = m.MkFunc(name, arity);
+        }
+
+        var args = new Model.Element[arity];
         foreach (var l in tuples) {
           if (l.Count == 1) continue;
           for (int i = 0; i < f.Arity; ++i)
@@ -388,6 +415,22 @@ namespace Microsoft.Boogie {
       }
 
       return m;
+    }
+
+    IEnumerable<KeyValuePair<int,int>> Redirections(Dictionary<string, List<List<int>>> functions) {
+      List<List<int>> fn;
+      if (functions.TryGetValue("U_2_bool", out fn)) {
+        foreach (var tpl in fn) {
+          if (tpl.Count == 2)  // the last tuple (the default value) has length 1
+            yield return new KeyValuePair<int,int>(tpl[0], tpl[1]);
+        }
+      }
+      if (functions.TryGetValue("U_2_int", out fn)) {
+        foreach (var tpl in fn) {
+          if (tpl.Count == 2)  // the last tuple (the default value) has length 1
+            yield return new KeyValuePair<int,int>(tpl[0], tpl[1]);
+        }
+      }
     }
 
     public virtual void Print(TextWriter writer) {
