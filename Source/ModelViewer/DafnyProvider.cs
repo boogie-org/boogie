@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.ModelViewer.Dafny
 {
@@ -33,7 +35,8 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
   class DafnyModel
   {
     public readonly Model model;
-    public readonly Model.Func f_heap_select, f_set_select, f_seq_length, f_seq_index, f_box;
+    public readonly Model.Func f_heap_select, f_set_select, f_seq_length, f_seq_index, f_box, f_dim, f_index_field, f_multi_index_field;
+    public readonly Dictionary<Model.Element, Model.Element[]> ArrayLengths = new Dictionary<Model.Element, Model.Element[]>();
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
     public List<StateNode> states = new List<StateNode>();
 
@@ -45,6 +48,29 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       f_seq_length = m.MkFunc("Seq#Length", 1);
       f_seq_index = m.MkFunc("Seq#Index", 2);
       f_box = m.MkFunc("$Box", 1);
+      f_dim = m.MkFunc("FDim", 1);
+      f_index_field = m.MkFunc("IndexField", 1);
+      f_multi_index_field = m.MkFunc("MultiIndexField", 2);
+
+      // collect the array dimensions from the various array.Length functions
+      foreach (var fn in m.Functions) {
+        if (Regex.IsMatch(fn.Name, "^array[0-9]*.Length[0-9]*$")) {
+          int j = fn.Name.IndexOf('.', 5);
+          int dims = j == 5 ? 1 : int.Parse(fn.Name.Substring(5, j - 5));
+          int idx = j == 5 ? 0 : int.Parse(fn.Name.Substring(j + 7));
+          foreach (var tpl in fn.Apps) {
+            var elt = tpl.Args[0];
+            var len = tpl.Result;
+            Model.Element[] ar;
+            if (!ArrayLengths.TryGetValue(elt, out ar)) {
+              ar = new Model.Element[dims];
+              ArrayLengths.Add(elt, ar);
+            }
+            Contract.Assert(ar[idx] == null);
+            ar[idx] = len;
+          }
+        }
+      }
     }
 
     public string GetUserVariableName(string name)
@@ -80,30 +106,79 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
             edgname = new EdgeName(state.namer, "%0" + fieldName, fieldName, elt);
             result.Add(new FieldNode(state, edgname, Unbox(tpl.Result)));
           }
-        } else {
 
+        } else {
+          // it seems elt is an object or array
+          Model.Element[] lengths;
+          if (ArrayLengths.TryGetValue(elt, out lengths)) {
+            int i = 0;
+            foreach (var len in lengths) {
+              var name = lengths.Length == 1 ? "Length" : "Length" + i;
+              var edgname = new EdgeName(state.namer, "%0." + name, name, elt);
+              result.Add(new FieldNode(state, edgname, len));
+              i++;
+            }
+          }
           var heap = state.state.TryGet("$Heap");
           if (heap != null) {
             foreach (var tpl in f_heap_select.AppsWithArgs(0, heap, 1, elt)) {
-              var field = tpl.Args[2];
-              var fieldName = field.ToString();
-              foreach (var n in field.Names) {
-                fieldName = n.Func.Name;
-                int dot = fieldName.LastIndexOf('.');
-                if (0 <= dot) {
-                  fieldName = fieldName.Substring(dot + 1);
-                }
-                break;
-              }
-              var val = tpl.Result;
-              var edgname = new EdgeName(state.namer, "%0." + fieldName, fieldName, elt);
-              result.Add(new FieldNode(state, edgname, val));
+              var field = new FieldName(tpl.Args[2], this);
+              var edgname = new EdgeName(state.namer, "%0" + (field.Dims == 0 ? "." : "") + field.Name, field.Name, elt);
+              result.Add(new FieldNode(state, edgname, Unbox(tpl.Result)));
             }
           }
         }
       }
 
       return result;
+    }
+
+    class FieldName
+    {
+      public readonly Model.Element Field;
+      public readonly int Dims;
+      public readonly int[] dims;  // null if Dims==0
+      public readonly string Name;
+
+      public FieldName(Model.Element elt, DafnyModel dm) {
+        Field = elt;
+        var tpl = dm.f_dim.AppWithArg(0, elt);
+        if (tpl != null) {
+          Dims = tpl.Result.AsInt();
+          if (Dims != 0) {
+            dims = new int[Dims];
+            for (int i = Dims; 0 <= --i; ) {
+              if (i == 0) {
+                tpl = dm.f_index_field.AppWithResult(elt);
+                dims[i] = tpl.Args[0].AsInt();
+              } else {
+                tpl = dm.f_multi_index_field.AppWithResult(elt);
+                dims[i] = tpl.Args[1].AsInt();
+                elt = tpl.Args[0];
+              }
+            }
+          }
+        }
+        // now for the name
+        if (Dims == 0) {
+          Name = Field.ToString();
+          foreach (var n in Field.Names) {
+            Name = n.Func.Name;
+            int dot = Name.LastIndexOf('.');
+            if (0 <= dot)
+              Name = Name.Substring(dot + 1);
+            break;
+          }
+        } else {
+          Name = "[";
+          string sep = "";
+          foreach (var idx in dims) {
+            Name += sep + idx;
+            sep = ",";
+          }
+          Name += "]";
+        }
+      }
     }
 
     Model.Element Unbox(Model.Element elt) {
