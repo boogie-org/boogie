@@ -82,6 +82,7 @@ namespace Microsoft.Boogie.ModelViewer
       stateList.Items.AddRange(items.ToArray());
       unfoldingRoot.Expanded = true;
       SetState(0);
+      stateList.Items[0].Selected = true;
 
       currentStateView.Columns[2].Width = currentStateView.Width - currentStateView.Columns[0].Width - currentStateView.Columns[1].Width - 5;
     }
