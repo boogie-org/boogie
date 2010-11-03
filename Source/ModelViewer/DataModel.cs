@@ -9,6 +9,23 @@ namespace Microsoft.Boogie.ModelViewer
   {
     bool IsMyModel(Model m);
     IEnumerable<IState> GetStates(Model m);
+    IEnumerable<string> SortFields(IEnumerable<string> fields);
+  }
+
+  public interface INamerCallbacks
+  {
+    // Elements (other than integers and Booleans) get canonical names of the form 
+    // "<base>'<idx>", where <base> is returned by this function, and <idx> is given 
+    // starting with 0, and incrementing when they are conflicts between bases.
+    //
+    // This function needs to return an appropriate base name for the element. It is given
+    // the element, and if possible an IEdgeName in a particular stat that seems to be the
+    // best bet to construct the canonical name from.
+    //
+    // A reasonable strategy is to check if it's a name of the local, and if so return it,
+    // and otherwise use the type of element (e.g., return "seq" for elements representing
+    // sequences). It is also possible to return "" in such cases.
+    string CanonicalBaseName(Model.Element elt, IEdgeName edgeName, int stateIdx);
   }
 
   [Flags]

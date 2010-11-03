@@ -77,18 +77,25 @@ namespace Microsoft.Boogie.ModelViewer
           wasExpanded = true;
 
           var created = new Dictionary<string, SkeletonItem>();
+          var names = new List<string>();
           for (int i = 0; i < displayNodes.Length; ++i) {
             var dn = displayNodes[i];
             if (dn == null || !dn.Expandable) continue;
             foreach (var child in dn.Expand()) {
               SkeletonItem skelChild;
-              if (!created.TryGetValue(child.Name.ShortName(), out skelChild)) {
+              var name = child.Name.ShortName();
+              if (!created.TryGetValue(name, out skelChild)) {
                 skelChild = new SkeletonItem(child.Name, this);
-                created.Add(child.Name.ShortName(), skelChild);
-                children.Add(skelChild);
+                created.Add(name, skelChild);
+                names.Add(name);
+                
               }
               skelChild.displayNodes[i] = child;
             }
+          }
+
+          foreach (var name in main.langProvider.SortFields(names)) {
+            children.Add(created[name]);
           }
         }
       }

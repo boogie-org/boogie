@@ -27,6 +27,11 @@ namespace Microsoft.Boogie.ModelViewer.Base
     {
       yield return new TopState("TOP", GetStateNodes(m));
     }
+
+    public IEnumerable<string> SortFields(IEnumerable<string> fields)
+    {
+      return Namer.DefaultSortFields(fields);
+    }
   }
 
   public class StateNode : DisplayNode

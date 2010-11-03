@@ -23,10 +23,16 @@ namespace Microsoft.Boogie.ModelViewer
 
   public class Namer
   {
+    INamerCallbacks cb;
     internal const int maxScore = 10000;
     List<EltName> eltNames = new List<EltName>();
     Dictionary<Model.Element, EltName> unfoldings = new Dictionary<Model.Element, EltName>();
     Dictionary<Model.Element, string> canonicalNames;
+
+    public Namer(INamerCallbacks cb)
+    {
+      this.cb = cb;
+    }
 
     EltName GetName(Model.Element elt)
     {
@@ -104,6 +110,67 @@ namespace Microsoft.Boogie.ModelViewer
       ComputeBestName();
     }
 
+    public static string DefaultCanonicalBaseName(Model.Element elt, IEdgeName edgeName, int stateIdx)
+    {
+      if (edgeName == null)
+        return "";
+      var name = edgeName.FullName();
+      return name;
+    }
+
+    static bool HasAny(string s, string chrs)
+    {
+      foreach (var c in s)
+        if (chrs.Contains(c))
+          return true;
+      return false;
+    }
+
+    static ulong GetNumber(string s, int beg)
+    {
+      var end = beg;
+      while (end < s.Length && char.IsDigit(s[end]))
+        end++;
+      return ulong.Parse(s.Substring(beg, end - beg)); 
+    }
+
+    public static int CompareFields(string f1, string f2)
+    {
+      bool s1 = HasAny(f1, "[<>]");
+      bool s2 = HasAny(f2, "[<>]");
+      if (s1 && !s2)
+        return -1;
+      if (!s1 && s2)
+        return 1;
+      var len = Math.Min(f1.Length, f2.Length);
+      var numberPos = -1;
+      for (int i = 0; i < len; ++i) {
+        if (char.IsDigit(f1[i]) && char.IsDigit(f2[i])) {
+          numberPos = i;
+          break;
+        }
+        if (f1[i] != f2[i])
+          break;
+      }
+
+      if (numberPos >= 0) {
+        var v1 = GetNumber(f1, numberPos);
+        var v2 = GetNumber(f2, numberPos);
+
+        if (v1 < v2) return -1;
+        else if (v1 > v2) return 1;
+      }
+
+      return string.CompareOrdinal(f1, f2);
+    }
+
+    public static IEnumerable<string> DefaultSortFields(IEnumerable<string> fields_)
+    {
+      var fields = new List<string>(fields_);
+      fields.Sort();
+      return fields;
+    }
+
     public static void ComputeCanonicalNames(IEnumerable<Namer> namers)
     {
       var names = new Dictionary<Model.Element, EltName>();
@@ -111,7 +178,7 @@ namespace Microsoft.Boogie.ModelViewer
       for (int i = 0; i < namersArr.Length; ++i) {
         foreach (var n in namersArr[i].eltNames) {
           n.stateIdx = i;
-          if (n.nodes.Count == 0) continue;
+          //if (n.nodes.Count == 0) continue;
           EltName curr;
           if (names.TryGetValue(n.elt, out curr) && curr.score <= n.score)
             continue;
@@ -119,22 +186,32 @@ namespace Microsoft.Boogie.ModelViewer
         }
       }
 
-      var canonicals = new Dictionary<Model.Element, string>();      
+      var canonicals = new Dictionary<Model.Element, string>();
+      var usedNames = new Dictionary<string, int>();
+      Model model = null;
       foreach (var n in names.Values) {
-        if (n.elt is Model.Boolean || n.elt is Model.Number)
-          canonicals[n.elt] = n.nodes[0].FullName();
-        else
-          canonicals[n.elt] = "'" + n.nodes[0].FullName() + "-" + n.stateIdx;
+        string name = "";
+        model = n.elt.Model;
+        if (n.nodes.Count == 0) {
+          name = namersArr[0].cb.CanonicalBaseName(n.elt, null, 0);
+          name = AppendIndex(usedNames, name);
+        } else if (n.elt is Model.Boolean || n.elt is Model.Number)
+          name = n.nodes[0].FullName();
+        else {
+          name = namersArr[0].cb.CanonicalBaseName(n.elt, n.nodes[0], n.stateIdx);
+          name = AppendIndex(usedNames, name);
+        }
+        canonicals[n.elt] = name;
       }
-
-      var unnamedIdx = 1;
 
       for (int i = 0; i < namersArr.Length; ++i) {
         namersArr[i].canonicalNames = canonicals;
-        foreach (var n in namersArr[i].eltNames) {
-          if (!canonicals.ContainsKey(n.elt)) {
-            canonicals[n.elt] = string.Format("${0}", unnamedIdx++);
-          }
+      }
+
+      foreach (var e in model.Elements) {
+        if (!canonicals.ContainsKey(e)) {
+          var name = namersArr[0].cb.CanonicalBaseName(e, null, 0);
+          canonicals[e] = AppendIndex(usedNames, name);
         }
       }
 
@@ -143,10 +220,20 @@ namespace Microsoft.Boogie.ModelViewer
       }
     }
 
+    private static string AppendIndex(Dictionary<string, int> usedNames, string name)
+    {
+      var idx = 0;
+      if (!usedNames.TryGetValue(name, out idx))
+        idx = 0;
+      usedNames[name] = idx + 1;
+      name = name + "'" + idx;
+      return name;
+    }
+
     public virtual string CanonicalName(Model.Element elt)
     {
       string res;
-      if (canonicalNames.TryGetValue(elt, out res))
+      if (canonicalNames != null && canonicalNames.TryGetValue(elt, out res))
         return res; // +" " + elt.ToString();
       return elt.ToString();
     }
@@ -179,15 +266,9 @@ namespace Microsoft.Boogie.ModelViewer
       Score = args.Length * 10;
     }
 
-    public EdgeName(Namer n, string formatMixed, params Model.Element[] args)
-      : this(n, formatMixed, formatMixed, args)
+    public EdgeName(Namer n, string formatBoth, params Model.Element[] args)
+      : this(n, formatBoth, formatBoth, args)
     {
-      var beg = formatMixed.IndexOf("%(");
-      var end = formatMixed.IndexOf("%)");
-      if (beg >= 0 && end > beg) {
-        this.formatShort = formatMixed.Substring(0, beg) + formatMixed.Substring(end + 2);
-        this.formatFull = formatMixed.Replace("%(", "").Replace("%)", "");
-      }
     }
 
     public EdgeName(string name) : this(null, name, emptyArgs) { }
@@ -233,6 +314,15 @@ namespace Microsoft.Boogie.ModelViewer
       var res = new StringBuilder(format.Length);
       for (int i = 0; i < format.Length; ++i) {
         var c = format[i];
+        var canonical = false;
+
+        if (c == '%' && i < format.Length - 1) {
+          if (format[i + 1] == 'c') {
+            ++i;
+            canonical = true;
+          }
+        }
+
         if (c == '%' && i < format.Length - 1) {
           var j = i + 1;
           while (j < format.Length && char.IsDigit(format[j]))
@@ -240,7 +330,7 @@ namespace Microsoft.Boogie.ModelViewer
           var len = j - i - 1;
           if (len > 0) {
             var idx = int.Parse(format.Substring(i + 1, len));
-            res.Append(namer.ElementName(args[idx]));
+            res.Append(canonical ? namer.CanonicalName(args[idx]) : namer.ElementName(args[idx]));
             i = j - 1;
             continue;
           }

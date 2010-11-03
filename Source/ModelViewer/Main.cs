@@ -19,6 +19,7 @@ namespace Microsoft.Boogie.ModelViewer
     SkeletonItem unfoldingRoot;
     int currentState;
     IState[] states;
+    internal ILanguageProvider langProvider;
 
     // TODO this should be dynamically loaded
     IEnumerable<ILanguageProvider> Providers()
@@ -56,16 +57,18 @@ namespace Microsoft.Boogie.ModelViewer
         m = models[0];
       }
 
-      ILanguageProvider prov = null;
+      this.Text = Path.GetFileName(filename) + " - Boogie Model Viewer";
+
+      langProvider = null;
       foreach (var p in Providers()) {
         if (p.IsMyModel(m)) {
-          prov = p;
+          langProvider = p;
           break;
         }
       }
       
       var items = new List<ListViewItem>();
-      states = prov.GetStates(m).ToArray();
+      states = langProvider.GetStates(m).ToArray();
       unfoldingRoot = new SkeletonItem(this, states.Length);
       unfoldingRoot.PopulateRoot(states);
 
@@ -303,8 +306,9 @@ namespace Microsoft.Boogie.ModelViewer
       }
 
       this.SubItems[0].Text = dispNode.Name.ShortName();
-      this.SubItems[1].Text = dispNode.CanonicalValue;
-      this.SubItems[2].Text = aliases;
+      this.SubItems[1].Text = active ? dispNode.CanonicalValue : "";
+      this.SubItems[2].Text = active ? aliases : "";
+      
     }
 
     internal DisplayItem()

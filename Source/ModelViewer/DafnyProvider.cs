@@ -30,6 +30,11 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       // Namer.ComputeCanonicalNames(vm.states.Select(s => s.namer));
       return dm.states;
     }
+
+    public IEnumerable<string> SortFields(IEnumerable<string> fields)
+    {
+      return Namer.DefaultSortFields(fields);
+    }
   }
 
   class DafnyModel
@@ -189,18 +194,19 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
         return elt;
     }
   }
-  
-  class StateNode : IState
+
+  class StateNode : IState, INamerCallbacks
   {
     internal readonly Model.CapturedState state;
     readonly string name;
     internal readonly DafnyModel dm;
     internal readonly List<VariableNode> vars = new List<VariableNode>();
-    internal readonly Namer namer = new Namer();
+    internal readonly Namer namer;
     internal readonly int index;
     
     public StateNode(int i, DafnyModel parent, Model.CapturedState s)
     {
+      namer = new Namer(this);
       dm = parent;
       state = s;
       index = i;
@@ -248,7 +254,12 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
         if (e is Model.Number || e is Model.Boolean)
           namer.AddName(e, new EdgeName(e.ToString()));
       }
-    } 
+    }
+
+    public string CanonicalBaseName(Model.Element elt, IEdgeName edgeName, int stateIdx)
+    {
+      return Namer.DefaultCanonicalBaseName(elt, edgeName, stateIdx);
+    }
 
     internal void ComputeNames()
     {

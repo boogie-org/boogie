@@ -23,11 +23,17 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         vm.states.Add(sn);
       }
       foreach (var s in vm.states) s.ComputeNames();
-      Namer.ComputeCanonicalNames(vm.states.Select(s => s.namer));
-      Namer.ComputeCanonicalNames(vm.states.Select(s => s.namer));
-      // Namer.ComputeCanonicalNames(vm.states.Select(s => s.namer));
+      for (int i = 0; i < 1; i++) {
+        Namer.ComputeCanonicalNames(vm.states.Select(s => s.namer));
+      }
       return vm.states;
     }
+
+    public IEnumerable<string> SortFields(IEnumerable<string> fields)
+    {
+      return Namer.DefaultSortFields(fields);
+    }
+
   }
 
   enum DataKind
@@ -42,7 +48,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
   {
     public readonly Model model;
     public readonly Model.Func f_ptr_to, f_phys_ptr_cast, f_spec_ptr_cast, f_mathint, f_local_value_is, f_spec_ptr_to, f_heap, f_select_field,
-                               f_select_value, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t;
+                               f_select_value, f_field, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
     public List<StateNode> states = new List<StateNode>();
 
@@ -58,6 +64,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_heap = m.MkFunc("$heap", 1);
       f_select_field = m.MkFunc("Select_[$field][$ptr]$int", 2);
       f_select_value = m.MkFunc("Select_[$ptr]$int", 2);
+      f_field = m.MkFunc("$field", 1);
       f_field_type = m.MkFunc("$field_type", 1);
       f_int_to_ptr = m.MkFunc("$int_to_ptr", 1);
       f_ptr_to_int = m.MkFunc("$ptr_to_int", 1);
@@ -245,7 +252,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
               var ftp = f_field_type.TryEval(fld.Args[1]);
               val = WrapForUse(val, ftp);
               var nm = ConstantFieldName(fld.Args[1]);
-              var edgname = nm == null ? new EdgeName(fld.Args[1].ToString()) { Score = 100 } : new EdgeName(state.namer, "%(%0->%)" + nm, elt) { Score = 10 };
+              var edgname = nm == null ? new EdgeName(fld.Args[1].ToString()) { Score = 100 } : new EdgeName(state.namer, "%0->" + nm, nm, elt) { Score = 10 };
               result.Add(new FieldNode(state, edgname, val, ftp));
             }
           }
@@ -257,7 +264,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           if (sel.Arity == 2 && sel.Name.StartsWith("$select.$map_t")) {
             foreach (var app in sel.AppsWithArg(0, elt)) {
               var val = WrapForUse(app.Result, elTp);
-              var edgname = new EdgeName(state.namer, "%(%0%)[%1]", elt, app.Args[1]) { Score = 20 };
+              var edgname = new EdgeName(state.namer, "%0[%c1]", "[%c1]", elt, app.Args[1]) { Score = 20 };
               result.Add(new MapletNode(state, edgname, val, elTp));
             }
           }
@@ -266,8 +273,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return result;
     }
   }
-  
-  class StateNode : IState
+
+  class StateNode : IState, INamerCallbacks
   {
     internal Model.CapturedState state;
     string name;
@@ -278,7 +285,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     
     public StateNode(int i, VccModel parent, Model.CapturedState s)
     {
-      this.namer = new Namer();
+      this.namer = new Namer(this);
       this.vm = parent;
       state = s;
       index = i;
@@ -299,6 +306,36 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
 
       SetupVars();
+    }
+
+    public string CanonicalBaseName(Model.Element elt, IEdgeName edgeName, int stateIdx)
+    {
+      var name = Namer.DefaultCanonicalBaseName(elt, edgeName, stateIdx);
+
+      if (name.Contains("[") || name.Contains("'") || name.Contains("-"))
+        name = "";
+
+      if (name != "")
+        return name;
+
+      foreach (var tpl in elt.References) {
+        var fn = tpl.Func;
+        if (fn.Name.StartsWith("$select.$map_t") && fn.Arity == 2 && tpl.Args[0] == elt)
+          return "map";
+        if (fn.Name.StartsWith("$int_to_map_t") && tpl.Result == elt)
+          return "map";
+      }
+
+      var fld = vm.f_field.TryEval(elt);
+      if (fld != null) {
+        var tp = vm.f_field_type.TryEval(fld);
+        if (tp != null) {
+          return vm.TypeName(tp);
+        }
+      }
+
+      // return elt.ToString(); // for debugging
+      return "";
     }
 
     void SetupVars()
