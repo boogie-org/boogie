@@ -30,7 +30,7 @@ namespace Microsoft.Boogie.ModelViewer.Base
 
     public IEnumerable<string> SortFields(IEnumerable<string> fields)
     {
-      return Namer.DefaultSortFields(fields);
+      return GlobalNamer.DefaultSortFields(fields);
     }
   }
 

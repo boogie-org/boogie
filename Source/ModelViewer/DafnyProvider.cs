@@ -25,20 +25,19 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
         dm.states.Add(sn);
       }
       foreach (var s in dm.states) s.ComputeNames();
-      Namer.ComputeCanonicalNames(dm.states.Select(s => s.namer));
-      Namer.ComputeCanonicalNames(dm.states.Select(s => s.namer));
-      // Namer.ComputeCanonicalNames(vm.states.Select(s => s.namer));
+      dm.gn.ComputeCanonicalNames();
       return dm.states;
     }
 
     public IEnumerable<string> SortFields(IEnumerable<string> fields)
     {
-      return Namer.DefaultSortFields(fields);
+      return GlobalNamer.DefaultSortFields(fields);
     }
   }
 
-  class DafnyModel
+  class DafnyModel : INamerCallbacks
   {
+    public readonly GlobalNamer gn;
     public readonly Model model;
     public readonly Model.Func f_heap_select, f_set_select, f_seq_length, f_seq_index, f_box, f_dim, f_index_field, f_multi_index_field;
     public readonly Dictionary<Model.Element, Model.Element[]> ArrayLengths = new Dictionary<Model.Element, Model.Element[]>();
@@ -47,6 +46,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
     public DafnyModel(Model m)
     {
+      gn = new GlobalNamer(this);
       model = m;
       f_heap_select = m.MkFunc("[3]", 3);
       f_set_select = m.MkFunc("[2]", 2);
@@ -193,21 +193,26 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       else
         return elt;
     }
+
+    public string CanonicalBaseName(Model.Element elt, IEdgeName edgeName, int stateIdx)
+    {
+      return GlobalNamer.DefaultCanonicalBaseName(elt, edgeName, stateIdx);
+    }
   }
 
-  class StateNode : IState, INamerCallbacks
+  class StateNode : IState
   {
     internal readonly Model.CapturedState state;
     readonly string name;
     internal readonly DafnyModel dm;
     internal readonly List<VariableNode> vars = new List<VariableNode>();
-    internal readonly Namer namer;
+    internal readonly StateNamer namer;
     internal readonly int index;
     
     public StateNode(int i, DafnyModel parent, Model.CapturedState s)
     {
-      namer = new Namer(this);
       dm = parent;
+      namer = new StateNamer(dm.gn);
       state = s;
       index = i;
 
@@ -254,11 +259,6 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
         if (e is Model.Number || e is Model.Boolean)
           namer.AddName(e, new EdgeName(e.ToString()));
       }
-    }
-
-    public string CanonicalBaseName(Model.Element elt, IEdgeName edgeName, int stateIdx)
-    {
-      return Namer.DefaultCanonicalBaseName(elt, edgeName, stateIdx);
     }
 
     internal void ComputeNames()

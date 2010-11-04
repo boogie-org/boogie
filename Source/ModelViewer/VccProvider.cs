@@ -23,15 +23,13 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         vm.states.Add(sn);
       }
       foreach (var s in vm.states) s.ComputeNames();
-      for (int i = 0; i < 1; i++) {
-        Namer.ComputeCanonicalNames(vm.states.Select(s => s.namer));
-      }
+      vm.gn.ComputeCanonicalNames();
       return vm.states;
     }
 
     public IEnumerable<string> SortFields(IEnumerable<string> fields)
     {
-      return Namer.DefaultSortFields(fields);
+      return GlobalNamer.DefaultSortFields(fields);
     }
 
   }
@@ -44,8 +42,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     Map
   }
 
-  class VccModel
+  class VccModel : INamerCallbacks
   {
+    public readonly GlobalNamer gn;
     public readonly Model model;
     public readonly Model.Func f_ptr_to, f_phys_ptr_cast, f_spec_ptr_cast, f_mathint, f_local_value_is, f_spec_ptr_to, f_heap, f_select_field,
                                f_select_value, f_field, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t;
@@ -54,6 +53,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
     public VccModel(Model m)
     {
+      gn = new GlobalNamer(this);
       model = m;
       f_ptr_to = m.MkFunc("$ptr_to", 1);
       f_spec_ptr_to = m.MkFunc("$spec_ptr_to", 1);
@@ -272,45 +272,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
       return result;
     }
-  }
-
-  class StateNode : IState, INamerCallbacks
-  {
-    internal Model.CapturedState state;
-    string name;
-    internal VccModel vm;
-    internal List<VariableNode> vars;
-    internal Namer namer;
-    internal int index;
-    
-    public StateNode(int i, VccModel parent, Model.CapturedState s)
-    {
-      this.namer = new Namer(this);
-      this.vm = parent;
-      state = s;
-      index = i;
-
-      name = s.Name;
-      var idx = name.LastIndexOfAny(new char[] { '\\', '/' });
-      if (idx > 0)
-        name = name.Substring(idx + 1);
-      var limit = 16;
-      if (name.Length > limit) {
-        idx = name.IndexOf('(');
-        if (idx > 0) {
-          var prefLen = limit - (name.Length - idx);
-          if (prefLen > 2) {
-            name = name.Substring(0,prefLen) + ".." + name.Substring(idx);
-          }
-        }
-      }
-
-      SetupVars();
-    }
 
     public string CanonicalBaseName(Model.Element elt, IEdgeName edgeName, int stateIdx)
     {
-      var name = Namer.DefaultCanonicalBaseName(elt, edgeName, stateIdx);
+      var vm = this;
+      var name = GlobalNamer.DefaultCanonicalBaseName(elt, edgeName, stateIdx);
 
       if (name.Contains("[") || name.Contains("'") || name.Contains("-"))
         name = "";
@@ -336,6 +302,41 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
       // return elt.ToString(); // for debugging
       return "";
+    }
+  }
+
+  class StateNode : IState
+  {
+    internal Model.CapturedState state;
+    string name;
+    internal VccModel vm;
+    internal List<VariableNode> vars;
+    internal StateNamer namer;
+    internal int index;
+    
+    public StateNode(int i, VccModel parent, Model.CapturedState s)
+    {
+      this.vm = parent;
+      this.namer = new StateNamer(vm.gn);
+      state = s;
+      index = i;
+
+      name = s.Name;
+      var idx = name.LastIndexOfAny(new char[] { '\\', '/' });
+      if (idx > 0)
+        name = name.Substring(idx + 1);
+      var limit = 16;
+      if (name.Length > limit) {
+        idx = name.IndexOf('(');
+        if (idx > 0) {
+          var prefLen = limit - (name.Length - idx);
+          if (prefLen > 2) {
+            name = name.Substring(0,prefLen) + ".." + name.Substring(idx);
+          }
+        }
+      }
+
+      SetupVars();
     }
 
     void SetupVars()

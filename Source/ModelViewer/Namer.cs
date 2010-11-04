@@ -9,7 +9,7 @@ namespace Microsoft.Boogie.ModelViewer
   {
     internal Model.Element elt;
     internal List<IEdgeName> nodes = new List<IEdgeName>();
-    internal int score = Namer.maxScore;
+    internal int score = StateNamer.maxScore;
     internal string theName;
     internal bool unfolded;
     internal int stateIdx;
@@ -21,100 +21,18 @@ namespace Microsoft.Boogie.ModelViewer
     }
   }
 
-  public class Namer
+  public class GlobalNamer
   {
+    internal Dictionary<Model.Element, string> canonicalNames;
     INamerCallbacks cb;
-    internal const int maxScore = 10000;
-    List<EltName> eltNames = new List<EltName>();
-    Dictionary<Model.Element, EltName> unfoldings = new Dictionary<Model.Element, EltName>();
-    Dictionary<Model.Element, string> canonicalNames;
+    internal List<StateNamer> stateNamers = new List<StateNamer>();
 
-    public Namer(INamerCallbacks cb)
+    public GlobalNamer(INamerCallbacks cb)
     {
       this.cb = cb;
     }
 
-    EltName GetName(Model.Element elt)
-    {
-      EltName res;
-      if (unfoldings.TryGetValue(elt, out res))
-        return res;
-      res = new EltName(elt);
-      eltNames.Add(res);
-      unfoldings.Add(elt, res);
-      return res;
-    }
-
-    int EdgeNameScore(IEdgeName name)
-    {
-      return name.Dependencies.Select(e => GetName(e).score).Concat1(0).Max() + name.Score;
-    }
-
-    void ComputeBestName()
-    {
-      foreach (var n in eltNames) {
-        n.score = maxScore;
-        string s;
-        if (canonicalNames != null && canonicalNames.TryGetValue(n.elt, out s))
-          n.theName = s;
-      }
-
-      while (true) {
-        var changes = 0;
-        var thisElts = eltNames.ToArray();
-        foreach (var elt in thisElts) {
-          var newScore = elt.nodes.Select(EdgeNameScore).Concat1(int.MaxValue).Min();
-          if (newScore < elt.score) {
-            elt.score = newScore;
-            changes++;
-          }
-        }
-        if (changes == 0 && thisElts.Length == eltNames.Count)
-          break;
-      }
-      eltNames.Sort((x,y) => x.score - y.score);
-      foreach (var elt in eltNames) {
-        if (elt.nodes.Count > 0) {
-          elt.nodes.Sort((x, y) => EdgeNameScore(x) - EdgeNameScore(y));
-          elt.theName = elt.nodes[0].FullName();
-        }
-      }
-    }
-
-    void Unfold(IEnumerable<IDisplayNode> ns)
-    {
-      var workList = new Queue<IDisplayNode>(); // do BFS
-      ns.Iter(workList.Enqueue);
-
-      while (workList.Count > 0) {
-        var n = workList.Dequeue();
-
-        if (n.Element != null) {
-          var prev = GetName(n.Element);
-          prev.nodes.Add(n.Name);
-          if (prev.unfolded) // we've already been here
-            continue;
-          prev.unfolded = true;
-        }
-
-        if (!n.Expandable) return;
-
-        n.Expand().Iter(workList.Enqueue);
-      }
-    }
-
-    public void AddName(Model.Element elt, IEdgeName name)
-    {
-      var e = GetName(elt);
-      e.nodes.Add(name);
-    }
-
-    public void ComputeNames(IEnumerable<IDisplayNode> n)
-    {
-      Unfold(n);
-      ComputeBestName();
-    }
-
+    #region default namer callback implementations
     public static string DefaultCanonicalBaseName(Model.Element elt, IEdgeName edgeName, int stateIdx)
     {
       if (edgeName == null)
@@ -175,14 +93,21 @@ namespace Microsoft.Boogie.ModelViewer
     public static IEnumerable<string> DefaultSortFields(IEnumerable<string> fields_)
     {
       var fields = new List<string>(fields_);
-      fields.Sort();
+      fields.Sort(CompareFields);
       return fields;
     }
+    #endregion
 
-    public static void ComputeCanonicalNames(IEnumerable<Namer> namers)
+    public void ComputeCanonicalNames()
+    {
+      for (int i = 0; i < 2; i++)
+        ComputeCanonicalNamesCore();
+    }
+
+    void ComputeCanonicalNamesCore()
     {
       var names = new Dictionary<Model.Element, EltName>();
-      var namersArr = namers.ToArray();
+      var namersArr = stateNamers.ToArray();
       for (int i = 0; i < namersArr.Length; ++i) {
         foreach (var n in namersArr[i].eltNames) {
           n.stateIdx = i;
@@ -201,24 +126,22 @@ namespace Microsoft.Boogie.ModelViewer
         string name = "";
         model = n.elt.Model;
         if (n.nodes.Count == 0) {
-          name = namersArr[0].cb.CanonicalBaseName(n.elt, null, 0);
+          name = cb.CanonicalBaseName(n.elt, null, 0);
           name = AppendIndex(usedNames, name);
         } else if (n.elt is Model.Boolean || n.elt is Model.Number)
           name = n.nodes[0].FullName();
         else {
-          name = namersArr[0].cb.CanonicalBaseName(n.elt, n.nodes[0], n.stateIdx);
+          name = cb.CanonicalBaseName(n.elt, n.nodes[0], n.stateIdx);
           name = AppendIndex(usedNames, name);
         }
         canonicals[n.elt] = name;
       }
 
-      for (int i = 0; i < namersArr.Length; ++i) {
-        namersArr[i].canonicalNames = canonicals;
-      }
+      canonicalNames = canonicals;
 
       foreach (var e in model.Elements) {
         if (!canonicals.ContainsKey(e)) {
-          var name = namersArr[0].cb.CanonicalBaseName(e, null, 0);
+          var name = cb.CanonicalBaseName(e, null, 0);
           canonicals[e] = AppendIndex(usedNames, name);
         }
       }
@@ -245,6 +168,102 @@ namespace Microsoft.Boogie.ModelViewer
         return res; // +" " + elt.ToString();
       return elt.ToString();
     }
+  }
+
+  public class StateNamer
+  {
+    GlobalNamer globalNamer;
+    internal const int maxScore = 10000;
+    internal List<EltName> eltNames = new List<EltName>();
+    Dictionary<Model.Element, EltName> unfoldings = new Dictionary<Model.Element, EltName>();
+
+
+    public StateNamer(GlobalNamer gn)
+    {
+      globalNamer = gn;
+      gn.stateNamers.Add(this);
+    }
+
+    EltName GetName(Model.Element elt)
+    {
+      EltName res;
+      if (unfoldings.TryGetValue(elt, out res))
+        return res;
+      res = new EltName(elt);
+      eltNames.Add(res);
+      unfoldings.Add(elt, res);
+      return res;
+    }
+
+    int EdgeNameScore(IEdgeName name)
+    {
+      return name.Dependencies.Select(e => GetName(e).score).Concat1(0).Max() + name.Score;
+    }
+
+    internal void ComputeBestName()
+    {
+      foreach (var n in eltNames) {
+        n.score = maxScore;
+        string s;
+        if (globalNamer.canonicalNames != null && globalNamer.canonicalNames.TryGetValue(n.elt, out s))
+          n.theName = s;
+      }
+
+      while (true) {
+        var changes = 0;
+        var thisElts = eltNames.ToArray();
+        foreach (var elt in thisElts) {
+          var newScore = elt.nodes.Select(EdgeNameScore).Concat1(int.MaxValue).Min();
+          if (newScore < elt.score) {
+            elt.score = newScore;
+            changes++;
+          }
+        }
+        if (changes == 0 && thisElts.Length == eltNames.Count)
+          break;
+      }
+      eltNames.Sort((x,y) => x.score - y.score);
+      foreach (var elt in eltNames) {
+        if (elt.nodes.Count > 0) {
+          elt.nodes.Sort((x, y) => EdgeNameScore(x) - EdgeNameScore(y));
+          elt.theName = elt.nodes[0].FullName();
+        }
+      }
+    }
+
+    void Unfold(IEnumerable<IDisplayNode> ns)
+    {
+      var workList = new Queue<IDisplayNode>(); // do BFS
+      ns.Iter(workList.Enqueue);
+
+      while (workList.Count > 0) {
+        var n = workList.Dequeue();
+
+        if (n.Element != null) {
+          var prev = GetName(n.Element);
+          prev.nodes.Add(n.Name);
+          if (prev.unfolded) // we've already been here
+            continue;
+          prev.unfolded = true;
+        }
+
+        if (!n.Expandable) return;
+
+        n.Expand().Iter(workList.Enqueue);
+      }
+    }
+
+    public void AddName(Model.Element elt, IEdgeName name)
+    {
+      var e = GetName(elt);
+      e.nodes.Add(name);
+    }
+
+    public void ComputeNames(IEnumerable<IDisplayNode> n)
+    {
+      Unfold(n);
+      ComputeBestName();
+    }
 
     public virtual string ElementName(Model.Element elt)
     {
@@ -255,6 +274,11 @@ namespace Microsoft.Boogie.ModelViewer
     {
       return GetName(elt).nodes;
     }
+
+    public virtual string CanonicalName(Model.Element elt)
+    {
+      return globalNamer.CanonicalName(elt);
+    }
   }
 
   public class EdgeName : IEdgeName
@@ -263,9 +287,9 @@ namespace Microsoft.Boogie.ModelViewer
 
     string formatFull, formatShort;
     Model.Element[] args;
-    Namer namer;
+    StateNamer namer;
 
-    public EdgeName(Namer n, string formatFull, string formatShort, params Model.Element[] args)
+    public EdgeName(StateNamer n, string formatFull, string formatShort, params Model.Element[] args)
     {
       this.namer = n;
       this.formatFull = formatFull;
@@ -274,7 +298,7 @@ namespace Microsoft.Boogie.ModelViewer
       Score = args.Length * 10;
     }
 
-    public EdgeName(Namer n, string formatBoth, params Model.Element[] args)
+    public EdgeName(StateNamer n, string formatBoth, params Model.Element[] args)
       : this(n, formatBoth, formatBoth, args)
     {
     }
