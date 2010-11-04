@@ -177,7 +177,6 @@ namespace Microsoft.Boogie.ModelViewer
     internal List<EltName> eltNames = new List<EltName>();
     Dictionary<Model.Element, EltName> unfoldings = new Dictionary<Model.Element, EltName>();
 
-
     public StateNamer(GlobalNamer gn)
     {
       globalNamer = gn;

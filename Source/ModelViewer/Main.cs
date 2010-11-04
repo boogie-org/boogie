@@ -91,7 +91,7 @@ namespace Microsoft.Boogie.ModelViewer
     void SetState(int id)
     {
       currentState = id;
-      SyncCurrentStateView();
+      UpdateMatches(true);
     }
 
     internal void Activate(TreeNode treeNode)
@@ -318,6 +318,7 @@ namespace Microsoft.Boogie.ModelViewer
 
       if (changed) {
         SyncListView(matches, matchesList, (di, _) => { di.IsMatchListItem = true; });
+        SyncCurrentStateView();
       }
     }
 
