@@ -17,6 +17,7 @@ namespace Microsoft.Boogie.ModelViewer
   {
     public string SearchText;
     SkeletonItem unfoldingRoot;
+    SkeletonItem[] allItems;
     int currentState;
     IState[] states;
     internal ILanguageProvider langProvider;
@@ -57,7 +58,7 @@ namespace Microsoft.Boogie.ModelViewer
         m = models[0];
       }
 
-      this.Text = Path.GetFileName(filename) + " - Boogie Model Viewer";
+      this.Text = Path.GetFileName(filename) + " - Boogie Verification Debugger";
 
       langProvider = null;
       foreach (var p in Providers()) {
@@ -70,7 +71,7 @@ namespace Microsoft.Boogie.ModelViewer
       var items = new List<ListViewItem>();
       states = langProvider.GetStates(m).ToArray();
       unfoldingRoot = new SkeletonItem(this, states.Length);
-      unfoldingRoot.PopulateRoot(states);
+      allItems = unfoldingRoot.PopulateRoot(states);
 
       var idx = 0;
       foreach (var i in states) {
@@ -90,7 +91,7 @@ namespace Microsoft.Boogie.ModelViewer
     void SetState(int id)
     {
       currentState = id;
-      SyncListView();
+      SyncCurrentStateView();
     }
 
     internal void Activate(TreeNode treeNode)
@@ -106,27 +107,42 @@ namespace Microsoft.Boogie.ModelViewer
     const int levelMult = 16;
     const int plusWidth = 16;
 
+    static Color Col(int c)
+    {
+      return Color.FromArgb(c >> 16, (c >> 8) & 0xff, c & 0xff);
+    }
+
     static StringFormat center = new StringFormat() { Alignment = StringAlignment.Center };
-    static Pen plusPen = new Pen(Color.FromArgb(0xaa, 0xaa, 0xaa));
-    static Brush grayedOut = new SolidBrush(Color.FromArgb(0xaa, 0xaa, 0xaa));
+    static Pen plusPen = new Pen(Col(0xaaaaaa));
+    static Brush grayedOut = new SolidBrush(Col(0xaaaaaa));
+    static Brush nonPrimary = new SolidBrush(Col(0xeeeeee));
+    static Brush matchBg = new SolidBrush(Col(0xFFFA6F));
     
     private void listView1_DrawItem(object sender, DrawListViewItemEventArgs e)
     {
       var item = (DisplayItem)e.Item;
       var skel = item.skel;
       var rect = e.Bounds;
+      var listView = (ListView)sender;
       rect.Y += 1;
       rect.Height -= 2;
 
       var textBrush = Brushes.Black;
-      if (currentStateView.SelectedIndices.Count > 0 && currentStateView.SelectedIndices[0] == e.ItemIndex) {
+      if (listView.SelectedIndices.Count > 0 && listView.SelectedIndices[0] == e.ItemIndex) {
         e.Graphics.FillRectangle(Brushes.Navy, rect);
         textBrush = Brushes.White;
       } else {
-        e.Graphics.FillRectangle(Brushes.White, rect);
+        var bg = Brushes.White;
+        if (item.active && !skel.isPrimary[currentState])
+          bg = nonPrimary;
+        if (item.skel.isMatch)
+          bg = matchBg;
+        e.Graphics.FillRectangle(bg, rect);
       }
 
       var off = levelMult * item.skel.level;
+      if (item.IsMatchListItem)
+        off = 0;
 
       {
         var plusRect = rect;
@@ -149,23 +165,23 @@ namespace Microsoft.Boogie.ModelViewer
 
       off += plusWidth + 3;
       var nameRect = rect;
-      var font = currentStateView.Font;
+      var font = listView.Font;
 
       if ((item.dispNode.State & NodeState.Changed) != 0)
         textBrush = Brushes.Red;
       if (!item.active)
         textBrush = grayedOut;
 
-      nameRect.Width = currentStateView.Columns[0].Width - 1 - off;
+      nameRect.Width = listView.Columns[0].Width - 1 - off;
       nameRect.X += off;
-      var width = DrawString(e.Graphics, item.dispNode.Name.ShortName(), font, textBrush, nameRect);
+      var width = DrawString(e.Graphics, item.SubItems[0].Text, font, textBrush, nameRect);
 
       nameRect.X += width + 4;
-      nameRect.Width = currentStateView.Columns[0].Width + currentStateView.Columns[1].Width - nameRect.X;
+      nameRect.Width = listView.Columns[0].Width + listView.Columns[1].Width - nameRect.X;
       width = DrawString(e.Graphics, item.SubItems[1].Text, font, textBrush, nameRect);
 
       nameRect.X += width + 4;
-      nameRect.Width = currentStateView.Width - nameRect.X;
+      nameRect.Width = listView.Width - nameRect.X;
       width = DrawString(e.Graphics, item.SubItems[2].Text, font, textBrush, nameRect);
     }
 
@@ -179,18 +195,10 @@ namespace Microsoft.Boogie.ModelViewer
       return minRect.Width;
     }
 
-    private void listView1_DrawSubItem(object sender, DrawListViewSubItemEventArgs e)
-    {
-    }
-
     private void listView1_DrawColumnHeader(object sender, DrawListViewColumnHeaderEventArgs e)
     {
       e.DrawBackground();
       e.DrawText();
-    }
-
-    private void listView1_MouseMove(object sender, MouseEventArgs e)
-    {
     }
 
     private void listView1_MouseUp(object sender, MouseEventArgs e)
@@ -204,31 +212,39 @@ namespace Microsoft.Boogie.ModelViewer
         int plusLoc = skel.level * levelMult;
         if (skel.Expandable && e.X >= plusLoc && e.X <= plusLoc + plusWidth) {
           skel.Expanded = !skel.Expanded;
-          SyncListView();
+          SyncCurrentStateView();
         }
       }
     }
 
-    private void SyncListView()
+    private void SyncCurrentStateView()
     {
-      var ch = unfoldingRoot.RecChildren.ToArray();
-      var missing = ch.Length - currentStateView.Items.Count;
+      SyncListView(unfoldingRoot.RecChildren, currentStateView, (x, y) => { });
+    }
 
-      currentStateView.BeginUpdate();
+    private void SyncListView(IEnumerable<SkeletonItem> items, ListView listView, Action<DisplayItem, SkeletonItem> cb)
+    {
+
+      var ch = items.ToArray();
+      var missing = ch.Length - listView.Items.Count;
+      listView.BeginUpdate();
       if (missing < 0) {
         missing = -missing;
         while (missing-- > 0) {
-          currentStateView.Items.RemoveAt(currentStateView.Items.Count - 1);
+          listView.Items.RemoveAt(listView.Items.Count - 1);
         }
       } else {
         while (missing-- > 0) {
-          currentStateView.Items.Add(new DisplayItem());
+          listView.Items.Add(new DisplayItem());
         }
       }
-      for (int i = 0; i < ch.Length; ++i)
-        ((DisplayItem)currentStateView.Items[i]).Set(ch[i], currentState);
-      currentStateView.EndUpdate();
-      currentStateView.Invalidate();
+      for (int i = 0; i < ch.Length; ++i) {
+        var di = (DisplayItem)listView.Items[i];
+        di.Set(ch[i], currentState);
+        cb(di, ch[i]);
+      }
+      listView.EndUpdate();
+      listView.Invalidate();
     }
 
     private void listView1_ColumnWidthChanged(object sender, ColumnWidthChangedEventArgs e)
@@ -268,6 +284,70 @@ namespace Microsoft.Boogie.ModelViewer
       stateList.EndUpdate();
     }
 
+    private void ExpandParents(SkeletonItem item)
+    {
+      item = item.parent;
+      while (item != null && !item.Expanded) {
+        item.Expanded = true;
+        item = item.parent;
+      }
+    }
+
+    private void textBox1_TextChanged(object sender, EventArgs e)
+    {
+      UpdateMatches(false);
+    }
+
+    private void UpdateMatches(bool force)
+    {
+      var words = textBox1.Text.Split(' ').Where(s => s != "").Select(s => s.ToLower()).ToArray();
+      var changed = force;
+      var matches = new List<SkeletonItem>();
+      foreach (var s in allItems) {
+        var newMatch = false;
+        if (s.isPrimary[currentState] && words.Length > 0) {
+          newMatch = s.MatchesWords(words, currentState);
+        }
+        if (newMatch)
+          matches.Add(s);
+        if (s.isMatch != newMatch) {
+          changed = true;
+          s.isMatch = newMatch;
+        }
+      }
+
+      if (changed) {
+        SyncListView(matches, matchesList, (di, _) => { di.IsMatchListItem = true; });
+      }
+    }
+
+    private void matchesList_Resize(object sender, EventArgs e)
+    {
+      matchesList.Invalidate();
+    }
+
+    private void matchesList_DoubleClick(object sender, EventArgs e)
+    {
+      if (matchesList.SelectedItems.Count == 0) return;
+      var sel = (DisplayItem) matchesList.SelectedItems[0];
+      ExpandParents(sel.skel);
+      SyncCurrentStateView();
+      foreach (DisplayItem it in currentStateView.Items) {
+        if (it.skel == sel.skel) {
+          it.Selected = true;
+          currentStateView.EnsureVisible(it.Index);
+          break;
+        }
+      }
+    }
+
+    private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+    {
+      foreach (DisplayItem it in matchesList.Items) {
+        ExpandParents(it.skel);
+      }
+      SyncCurrentStateView();
+    }
   }
 
   internal class DisplayItem : ListViewItem
@@ -276,6 +356,8 @@ namespace Microsoft.Boogie.ModelViewer
     internal int stateId;
     internal bool active;
     internal IDisplayNode dispNode;
+
+    public bool IsMatchListItem { get; set; }
 
     internal void Set(SkeletonItem s, int id)
     {
@@ -300,16 +382,17 @@ namespace Microsoft.Boogie.ModelViewer
 
       var tooltip = dispNode.ToolTip;
       var aliases = AliasesAsString(dispNode);
+      if (IsMatchListItem)
+        aliases = "";
       if (tooltip != null) {
         this.ToolTipText = tooltip;
       } else {
         this.ToolTipText = aliases;
       }
 
-      this.SubItems[0].Text = dispNode.Name.ShortName();
+      this.SubItems[0].Text = IsMatchListItem ? dispNode.Name.FullName() : dispNode.Name.ShortName();
       this.SubItems[1].Text = active ? dispNode.CanonicalValue : "";
       this.SubItems[2].Text = active ? aliases : "";
-      
     }
 
     internal DisplayItem()

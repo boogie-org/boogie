@@ -10,10 +10,12 @@ namespace Microsoft.Boogie.ModelViewer
     readonly IEdgeName name;
     readonly List<SkeletonItem> children = new List<SkeletonItem>();
     internal readonly IDisplayNode[] displayNodes;
-    readonly SkeletonItem parent;
+    internal bool[] isPrimary;
+    internal readonly SkeletonItem parent;
     readonly Main main;
     internal readonly int level;
     internal bool expanded, wasExpanded;
+    internal bool isMatch;
 
     public void Iter(Action<SkeletonItem> handler)
     {
@@ -35,12 +37,14 @@ namespace Microsoft.Boogie.ModelViewer
       }
     }
 
-    public void PopulateRoot(IEnumerable<IState> states)
+    public SkeletonItem[] PopulateRoot(IEnumerable<IState> states)
     {
       var i = 0;
       foreach (var s in states) {
         displayNodes[i++] = new ContainerNode<IDisplayNode>(this.name, x => x, s.Nodes);
       }
+
+      return BfsExpand(this);
     }
 
     public SkeletonItem(Main m, int stateCount)
@@ -48,6 +52,7 @@ namespace Microsoft.Boogie.ModelViewer
       name = new EdgeName("<root>");
       main = m;
       displayNodes = new IDisplayNode[stateCount];
+      isPrimary = new bool[stateCount];
     }
 
     internal SkeletonItem(IEdgeName n, SkeletonItem par)
@@ -68,37 +73,94 @@ namespace Microsoft.Boogie.ModelViewer
       get { return expanded; }
       set
       {
-        if (!value) {
-          expanded = false;
-        } else {
-          if (expanded) return;
-          expanded = true;
-          if (wasExpanded) return;
-          wasExpanded = true;
+        expanded = value;
+        if (expanded)
+          ComputeChildren();
+      }
+    }
 
-          var created = new Dictionary<string, SkeletonItem>();
-          var names = new List<string>();
-          for (int i = 0; i < displayNodes.Length; ++i) {
-            var dn = displayNodes[i];
-            if (dn == null || !dn.Expandable) continue;
-            foreach (var child in dn.Expand()) {
-              SkeletonItem skelChild;
-              var name = child.Name.ShortName();
-              if (!created.TryGetValue(name, out skelChild)) {
-                skelChild = new SkeletonItem(child.Name, this);
-                created.Add(name, skelChild);
-                names.Add(name);
-                
-              }
-              skelChild.displayNodes[i] = child;
-            }
-          }
+    static SkeletonItem[] BfsExpand(SkeletonItem skel)
+    {
+      for (int i = 0; i < skel.displayNodes.Length; ++i)
+        BfsExpandCore(skel, i);
 
-          foreach (var name in main.langProvider.SortFields(names)) {
-            children.Add(created[name]);
+      var workItems = new Stack<SkeletonItem>();
+      var allNodes = new List<SkeletonItem>();
+      workItems.Push(skel);
+
+      while (workItems.Count > 0) {
+        var s = workItems.Pop();
+        if (!s.isPrimary.Any())
+          continue;
+        allNodes.Add(s);
+        s.children.Iter(workItems.Push);
+      }
+
+      return allNodes.ToArray();
+    }
+
+    static void BfsExpandCore(SkeletonItem skel, int idx)
+    {
+      var visited = new HashSet<Model.Element>();
+      var workItems = new Queue<SkeletonItem>();
+
+      workItems.Enqueue(skel);
+      while (workItems.Count > 0) {
+        var s = workItems.Dequeue();
+        if (s.displayNodes[idx] == null)
+          continue;
+        var e = s.displayNodes[idx].Element;
+        s.isPrimary[idx] = true;
+        if (e != null) {
+          if (visited.Contains(e))
+            continue;
+          visited.Add(e);
+        }
+        s.ComputeChildren();
+        s.children.Iter(workItems.Enqueue);
+      }
+    }
+
+    private void ComputeChildren()
+    {
+      if (wasExpanded) return;
+      wasExpanded = true;
+
+      var created = new Dictionary<string, SkeletonItem>();
+      var names = new List<string>();
+      for (int i = 0; i < displayNodes.Length; ++i) {
+        var dn = displayNodes[i];
+        if (dn == null || !dn.Expandable) continue;
+        foreach (var child in dn.Expand()) {
+          SkeletonItem skelChild;
+          var name = child.Name.ShortName();
+          if (!created.TryGetValue(name, out skelChild)) {
+            skelChild = new SkeletonItem(child.Name, this);
+            created.Add(name, skelChild);
+            names.Add(name);
+
           }
+          skelChild.displayNodes[i] = child;
         }
       }
+
+      foreach (var name in main.langProvider.SortFields(names)) {
+        children.Add(created[name]);
+      }
+    }
+
+    public bool MatchesWords(string[] words, int stateId)
+    {
+      var node = displayNodes[stateId];
+      if (node == null)
+        return false;
+      var s1 = node.Name.FullName().ToLower();
+      var s2 = node.CanonicalValue.ToLower();
+      foreach (var w in words) {
+        if (!s1.Contains(w) && !s2.Contains(w))
+          return false;
+      }
+      return true;
     }
   }
 

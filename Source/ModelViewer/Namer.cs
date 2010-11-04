@@ -81,20 +81,25 @@ namespace Microsoft.Boogie.ModelViewer
       }
     }
 
-    void Unfold(IDisplayNode n)
+    void Unfold(IEnumerable<IDisplayNode> ns)
     {
-      if (n.Element != null) {
-        var prev = GetName(n.Element);
-        prev.nodes.Add(n.Name);
-        if (prev.unfolded) // we've already been here
-          return;
-        prev.unfolded = true;
-      }
+      var workList = new Queue<IDisplayNode>(); // do BFS
+      ns.Iter(workList.Enqueue);
 
-      if (!n.Expandable) return;
+      while (workList.Count > 0) {
+        var n = workList.Dequeue();
 
-      foreach (var c in n.Expand()) {
-        Unfold(c);
+        if (n.Element != null) {
+          var prev = GetName(n.Element);
+          prev.nodes.Add(n.Name);
+          if (prev.unfolded) // we've already been here
+            continue;
+          prev.unfolded = true;
+        }
+
+        if (!n.Expandable) return;
+
+        n.Expand().Iter(workList.Enqueue);
       }
     }
 
@@ -106,7 +111,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     public void ComputeNames(IEnumerable<IDisplayNode> n)
     {
-      n.Iter(Unfold);
+      Unfold(n);
       ComputeBestName();
     }
 
@@ -131,7 +136,10 @@ namespace Microsoft.Boogie.ModelViewer
       var end = beg;
       while (end < s.Length && char.IsDigit(s[end]))
         end++;
-      return ulong.Parse(s.Substring(beg, end - beg)); 
+      ulong res;
+      if (!ulong.TryParse(s.Substring(beg, end - beg), out res))
+        return 0;
+      return res;
     }
 
     public static int CompareFields(string f1, string f2)
@@ -139,9 +147,9 @@ namespace Microsoft.Boogie.ModelViewer
       bool s1 = HasAny(f1, "[<>]");
       bool s2 = HasAny(f2, "[<>]");
       if (s1 && !s2)
-        return -1;
-      if (!s1 && s2)
         return 1;
+      if (!s1 && s2)
+        return -1;
       var len = Math.Min(f1.Length, f2.Length);
       var numberPos = -1;
       for (int i = 0; i < len; ++i) {
