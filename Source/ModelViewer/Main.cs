@@ -91,8 +91,8 @@ namespace Microsoft.Boogie.ModelViewer
 
     private void SetColumnSizes()
     {
-      currentStateView.Columns[0].Width = currentStateView.Width - currentStateView.Columns[1].Width - currentStateView.Columns[2].Width - 5;
-      stateList.Columns[1].Width = stateList.Width - stateList.Columns[0].Width - stateList.Columns[2].Width - 5;
+      currentStateView.Columns[0].Width = currentStateView.Width - currentStateView.Columns[1].Width - currentStateView.Columns[2].Width - 25;
+      stateList.Columns[1].Width = stateList.Width - stateList.Columns[0].Width - stateList.Columns[2].Width - 25;
     }
 
     void SetState(int id)
@@ -414,6 +414,31 @@ namespace Microsoft.Boogie.ModelViewer
       }
     }
 
+    private IEnumerable<SkeletonItem> NamesFor(Model.Element elt)
+    {
+      var words = new string[0];
+      var elts = new Model.Element[0];
+
+      foreach (var s in allItems) {
+        if (s.isPrimary[currentState] && s.MatchesWords(words, elts, elt, currentState)) {
+          yield return s;
+        }
+      }
+    }
+
+    private void AddMenuItems(IEnumerable<SkeletonItem> skels, ToolStripItemCollection items, string pref, int max)
+    {
+      var skelsM = skels.Take(max).ToArray();
+
+      foreach (var s in skelsM) {
+        var tmp = s;
+        items.Add(pref + s.LongName(currentState), null, (x, _) => GotoNode(tmp));
+      }
+
+      if (skelsM.Length == max)
+        items.Add(new ToolStripMenuItem("...") { Enabled = false });
+    }
+
     private void stateViewMenu_Opening(object sender, CancelEventArgs e)
     {
       IDisplayNode sel = null;
@@ -432,23 +457,19 @@ namespace Microsoft.Boogie.ModelViewer
         return;
       }
 
+      foreach (var x in sel.References.Where(q => q != sel.Element)) {
+        var t = new ToolStripMenuItem(langModel.CanonicalName(x));
+        items.Add(t);
+        AddMenuItems(NamesFor(x), t.DropDownItems, "= ", 20);
+      }
+
       var selName = langModel.CanonicalName(sel.Element);
-
       items.Add("Find uses...", null, (s, _) => SetSearch("use:" + selName));
-      items.Add("Aliases...", null, (s, _) => SetSearch("eq:" + selName));
 
-      var words = new string[0];
-      var elts = new Model.Element[0];
-      var max = 10;
-      foreach (var s in allItems) {
-        if (s != skel && s.isPrimary[currentState] && s.MatchesWords(words, elts, sel.Element, currentState)) {
-          if (max-- < 0) {
-            items.Add(new ToolStripMenuItem("...") { Enabled = false });
-            break;
-          }
-          var tmp = s;
-          items.Add("      " + s.LongName(currentState), null, (x, _) => GotoNode(tmp));
-        }
+      var aliases = NamesFor(sel.Element).Where(s => s != skel).ToArray();
+      if (aliases.Length > 0) {
+        items.Add("Aliases...", null, (s, _) => SetSearch("eq:" + selName));
+        AddMenuItems(aliases, items, "   = ", 10);
       }
     }
   }
