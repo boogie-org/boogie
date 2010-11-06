@@ -9,6 +9,7 @@ namespace Microsoft.Boogie.ModelViewer
   {
     protected Dictionary<string, int> baseNameUse = new Dictionary<string, int>();
     protected Dictionary<Model.Element, string> canonicalName = new Dictionary<Model.Element, string>();
+    protected Dictionary<string, Model.Element> invCanonicalName = new Dictionary<string, Model.Element>();
     protected Dictionary<Model.Element, string> localValue = new Dictionary<Model.Element, string>();
 
     // Elements (other than integers and Booleans) get canonical names of the form 
@@ -62,9 +63,18 @@ namespace Microsoft.Boogie.ModelViewer
         baseNameUse[baseName] = cnt;
       }
       canonicalName.Add(elt, res);
+      invCanonicalName.Add(res, elt);
       return res;
     }
 
+    public virtual Model.Element FindElement(string canonicalName)
+    {
+      Model.Element res;
+      if (invCanonicalName.TryGetValue(canonicalName, out res))
+        return res;
+      return null;
+    }
+    
     public virtual string PathName(IEnumerable<IDisplayNode> path)
     {
       return path.Select(n => n.Name).Concat(".");

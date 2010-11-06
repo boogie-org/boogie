@@ -15,6 +15,8 @@ namespace Microsoft.Boogie.ModelViewer
   {
     string CanonicalName(Model.Element elt);
 
+    Model.Element FindElement(string canonicalName);
+
     string PathName(IEnumerable<IDisplayNode> path);
 
     IEnumerable<IState> States { get; }

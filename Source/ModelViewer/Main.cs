@@ -27,7 +27,7 @@ namespace Microsoft.Boogie.ModelViewer
     IEnumerable<ILanguageProvider> Providers()
     {
       yield return Vcc.Provider.Instance;
-      //yield return Dafny.Provider.Instance;
+      yield return Dafny.Provider.Instance;
       yield return Base.Provider.Instance;
     }
 
@@ -302,13 +302,43 @@ namespace Microsoft.Boogie.ModelViewer
 
     private void UpdateMatches(bool force)
     {
-      var words = textBox1.Text.Split(' ').Where(s => s != "").Select(s => s.ToLower()).ToArray();
+      var bad = false;
+      Model.Element eltEq = null;
+      var eltRef = new List<Model.Element>();
+      var words = new List<string>();
+
+      foreach (var w in textBox1.Text.Split(' ')) {
+        if (w == "") continue;
+        if (w.StartsWith("eq:")) {
+          if (eltEq != null) bad = true;
+          else {
+            eltEq = langModel.FindElement(w.Substring(3));
+            if (eltEq == null) bad = true;
+          }
+        } else if (w.StartsWith("ref:")) {
+          var e = langModel.FindElement(w.Substring(4));
+          if (e == null) bad = true;
+          else eltRef.Add(e);
+        } else {
+          words.Add(w.ToLower());
+        }
+      }
+
+      textBox1.ForeColor = bad ? Color.Red : Color.Black;
+      
+      var wordsA = words.ToArray();
+      var refsA = eltRef.ToArray();
+
+      if (eltEq == null && wordsA.Length == 0 && refsA.Length == 0)
+        bad = true;
+
       var changed = force;
       var matches = new List<SkeletonItem>();
+
       foreach (var s in allItems) {
         var newMatch = false;
-        if (s.isPrimary[currentState] && words.Length > 0) {
-          newMatch = s.MatchesWords(words, currentState);
+        if (s.isPrimary[currentState] && !bad) {
+          newMatch = s.MatchesWords(wordsA, refsA, eltEq, currentState);
         }
         if (newMatch)
           matches.Add(s);

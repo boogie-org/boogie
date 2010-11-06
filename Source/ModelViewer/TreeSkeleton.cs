@@ -149,17 +149,27 @@ namespace Microsoft.Boogie.ModelViewer
       }
     }
 
-    public bool MatchesWords(string[] words, int stateId)
+    public bool MatchesWords(string[] words, Model.Element[] elts, Model.Element eq, int stateId)
     {
       var node = displayNodes[stateId];
       if (node == null)
         return false;
       var s1 = node.Name.ToLower();
       var s2 = node.Value.ToLower();
+
+      if (eq != null && node.Element != eq)
+        return false;
+
       foreach (var w in words) {
         if (!s1.Contains(w) && !s2.Contains(w))
           return false;
       }
+
+      foreach (var e in elts) {
+        if (!node.References.Contains(e))
+          return false;
+      }
+
       return true;
     }
   }
