@@ -27,15 +27,14 @@
     /// </summary>
     private void InitializeComponent()
     {
+      this.components = new System.ComponentModel.Container();
       this.currentStateView = new System.Windows.Forms.ListView();
       this.name = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.value = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.aliases = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+      this.stateViewMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
+      this.dummyItemToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-      this.stateList = new System.Windows.Forms.ListView();
-      this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-      this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-      this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.splitContainer2 = new System.Windows.Forms.SplitContainer();
       this.matchesList = new System.Windows.Forms.ListView();
       this.columnHeader4 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -43,6 +42,11 @@
       this.linkLabel1 = new System.Windows.Forms.LinkLabel();
       this.label1 = new System.Windows.Forms.Label();
       this.textBox1 = new System.Windows.Forms.TextBox();
+      this.stateList = new System.Windows.Forms.ListView();
+      this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+      this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+      this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+      this.stateViewMenu.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
       this.splitContainer1.Panel1.SuspendLayout();
       this.splitContainer1.Panel2.SuspendLayout();
@@ -60,6 +64,7 @@
             this.name,
             this.value,
             this.aliases});
+      this.currentStateView.ContextMenuStrip = this.stateViewMenu;
       this.currentStateView.Dock = System.Windows.Forms.DockStyle.Fill;
       this.currentStateView.FullRowSelect = true;
       this.currentStateView.GridLines = true;
@@ -69,7 +74,7 @@
       this.currentStateView.Name = "currentStateView";
       this.currentStateView.OwnerDraw = true;
       this.currentStateView.ShowItemToolTips = true;
-      this.currentStateView.Size = new System.Drawing.Size(721, 612);
+      this.currentStateView.Size = new System.Drawing.Size(761, 612);
       this.currentStateView.TabIndex = 0;
       this.currentStateView.UseCompatibleStateImageBehavior = false;
       this.currentStateView.View = System.Windows.Forms.View.Details;
@@ -95,6 +100,20 @@
       this.aliases.Text = "Aliases";
       this.aliases.Width = 325;
       // 
+      // stateViewMenu
+      // 
+      this.stateViewMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.dummyItemToolStripMenuItem});
+      this.stateViewMenu.Name = "stateViewMenu";
+      this.stateViewMenu.Size = new System.Drawing.Size(145, 26);
+      this.stateViewMenu.Opening += new System.ComponentModel.CancelEventHandler(this.stateViewMenu_Opening);
+      // 
+      // dummyItemToolStripMenuItem
+      // 
+      this.dummyItemToolStripMenuItem.Name = "dummyItemToolStripMenuItem";
+      this.dummyItemToolStripMenuItem.Size = new System.Drawing.Size(119, 22);
+      this.dummyItemToolStripMenuItem.Text = "Dummy item";
+      // 
       // splitContainer1
       // 
       this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -103,50 +122,14 @@
       // 
       // splitContainer1.Panel1
       // 
-      this.splitContainer1.Panel1.Controls.Add(this.currentStateView);
+      this.splitContainer1.Panel1.Controls.Add(this.splitContainer2);
       // 
       // splitContainer1.Panel2
       // 
       this.splitContainer1.Panel2.Controls.Add(this.stateList);
-      this.splitContainer1.Size = new System.Drawing.Size(1028, 612);
-      this.splitContainer1.SplitterDistance = 721;
+      this.splitContainer1.Size = new System.Drawing.Size(1028, 796);
+      this.splitContainer1.SplitterDistance = 761;
       this.splitContainer1.TabIndex = 1;
-      // 
-      // stateList
-      // 
-      this.stateList.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.columnHeader3,
-            this.columnHeader1,
-            this.columnHeader2});
-      this.stateList.Dock = System.Windows.Forms.DockStyle.Fill;
-      this.stateList.FullRowSelect = true;
-      this.stateList.GridLines = true;
-      this.stateList.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
-      this.stateList.HideSelection = false;
-      this.stateList.Location = new System.Drawing.Point(0, 0);
-      this.stateList.MultiSelect = false;
-      this.stateList.Name = "stateList";
-      this.stateList.ShowItemToolTips = true;
-      this.stateList.Size = new System.Drawing.Size(303, 612);
-      this.stateList.TabIndex = 0;
-      this.stateList.UseCompatibleStateImageBehavior = false;
-      this.stateList.View = System.Windows.Forms.View.Details;
-      this.stateList.SelectedIndexChanged += new System.EventHandler(this.stateList_SelectedIndexChanged);
-      // 
-      // columnHeader3
-      // 
-      this.columnHeader3.Text = "#";
-      this.columnHeader3.Width = 22;
-      // 
-      // columnHeader1
-      // 
-      this.columnHeader1.Text = "State";
-      this.columnHeader1.Width = 109;
-      // 
-      // columnHeader2
-      // 
-      this.columnHeader2.Text = "Value";
-      this.columnHeader2.Width = 116;
       // 
       // splitContainer2
       // 
@@ -157,7 +140,7 @@
       // 
       // splitContainer2.Panel1
       // 
-      this.splitContainer2.Panel1.Controls.Add(this.splitContainer1);
+      this.splitContainer2.Panel1.Controls.Add(this.currentStateView);
       // 
       // splitContainer2.Panel2
       // 
@@ -165,7 +148,7 @@
       this.splitContainer2.Panel2.Controls.Add(this.linkLabel1);
       this.splitContainer2.Panel2.Controls.Add(this.label1);
       this.splitContainer2.Panel2.Controls.Add(this.textBox1);
-      this.splitContainer2.Size = new System.Drawing.Size(1028, 796);
+      this.splitContainer2.Size = new System.Drawing.Size(761, 796);
       this.splitContainer2.SplitterDistance = 612;
       this.splitContainer2.TabIndex = 1;
       // 
@@ -185,7 +168,7 @@
       this.matchesList.Name = "matchesList";
       this.matchesList.OwnerDraw = true;
       this.matchesList.ShowItemToolTips = true;
-      this.matchesList.Size = new System.Drawing.Size(1028, 151);
+      this.matchesList.Size = new System.Drawing.Size(761, 151);
       this.matchesList.TabIndex = 4;
       this.matchesList.UseCompatibleStateImageBehavior = false;
       this.matchesList.View = System.Windows.Forms.View.Details;
@@ -203,13 +186,13 @@
       // columnHeader5
       // 
       this.columnHeader5.Text = "Value";
-      this.columnHeader5.Width = 500;
+      this.columnHeader5.Width = 350;
       // 
       // linkLabel1
       // 
       this.linkLabel1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
       this.linkLabel1.AutoSize = true;
-      this.linkLabel1.Location = new System.Drawing.Point(968, 5);
+      this.linkLabel1.Location = new System.Drawing.Point(701, 5);
       this.linkLabel1.Name = "linkLabel1";
       this.linkLabel1.Size = new System.Drawing.Size(57, 13);
       this.linkLabel1.TabIndex = 3;
@@ -234,18 +217,55 @@
                   | System.Windows.Forms.AnchorStyles.Right)));
       this.textBox1.Location = new System.Drawing.Point(53, 3);
       this.textBox1.Name = "textBox1";
-      this.textBox1.Size = new System.Drawing.Size(909, 20);
+      this.textBox1.Size = new System.Drawing.Size(642, 20);
       this.textBox1.TabIndex = 1;
       this.textBox1.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
+      // 
+      // stateList
+      // 
+      this.stateList.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+            this.columnHeader3,
+            this.columnHeader1,
+            this.columnHeader2});
+      this.stateList.Dock = System.Windows.Forms.DockStyle.Fill;
+      this.stateList.FullRowSelect = true;
+      this.stateList.GridLines = true;
+      this.stateList.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
+      this.stateList.HideSelection = false;
+      this.stateList.Location = new System.Drawing.Point(0, 0);
+      this.stateList.MultiSelect = false;
+      this.stateList.Name = "stateList";
+      this.stateList.ShowItemToolTips = true;
+      this.stateList.Size = new System.Drawing.Size(263, 796);
+      this.stateList.TabIndex = 0;
+      this.stateList.UseCompatibleStateImageBehavior = false;
+      this.stateList.View = System.Windows.Forms.View.Details;
+      this.stateList.SelectedIndexChanged += new System.EventHandler(this.stateList_SelectedIndexChanged);
+      // 
+      // columnHeader3
+      // 
+      this.columnHeader3.Text = "#";
+      this.columnHeader3.Width = 22;
+      // 
+      // columnHeader1
+      // 
+      this.columnHeader1.Text = "State";
+      this.columnHeader1.Width = 109;
+      // 
+      // columnHeader2
+      // 
+      this.columnHeader2.Text = "Value";
+      this.columnHeader2.Width = 116;
       // 
       // Main
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
       this.ClientSize = new System.Drawing.Size(1028, 796);
-      this.Controls.Add(this.splitContainer2);
+      this.Controls.Add(this.splitContainer1);
       this.Name = "Main";
       this.Text = "Boogie Verification Debugger";
+      this.stateViewMenu.ResumeLayout(false);
       this.splitContainer1.Panel1.ResumeLayout(false);
       this.splitContainer1.Panel2.ResumeLayout(false);
       ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
@@ -277,6 +297,8 @@
     private System.Windows.Forms.LinkLabel linkLabel1;
     private System.Windows.Forms.Label label1;
     private System.Windows.Forms.TextBox textBox1;
+    private System.Windows.Forms.ContextMenuStrip stateViewMenu;
+    private System.Windows.Forms.ToolStripMenuItem dummyItemToolStripMenuItem;
 
 
   }

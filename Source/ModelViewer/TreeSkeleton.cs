@@ -49,7 +49,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     public SkeletonItem(Main m, int stateCount)
     {
-      name = "<root>";
+      name = "";
       main = m;
       displayNodes = new IDisplayNode[stateCount];
       isPrimary = new bool[stateCount];
@@ -171,6 +171,17 @@ namespace Microsoft.Boogie.ModelViewer
       }
 
       return true;
+    }
+
+    public string LongName(int stateId)
+    {
+      var parents = new List<IDisplayNode>();
+      for (var curr = this; curr != null; curr = curr.parent) {
+        if (curr.parent != null) // skip the root
+          parents.Add(curr.displayNodes[stateId]);
+      }
+      parents.Reverse();
+      return main.langModel.PathName(parents);
     }
   }
 

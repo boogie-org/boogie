@@ -226,7 +226,6 @@ namespace Microsoft.Boogie.ModelViewer
 
     private void SyncListView(IEnumerable<SkeletonItem> items, ListView listView, Action<DisplayItem, SkeletonItem> cb)
     {
-
       var ch = items.ToArray();
       var missing = ch.Length - listView.Items.Count;
       listView.BeginUpdate();
@@ -242,8 +241,8 @@ namespace Microsoft.Boogie.ModelViewer
       }
       for (int i = 0; i < ch.Length; ++i) {
         var di = (DisplayItem)listView.Items[i];
-        di.Set(ch[i], currentState);
         cb(di, ch[i]);
+        di.Set(ch[i], currentState);
       }
       listView.EndUpdate();
       listView.Invalidate();
@@ -315,7 +314,7 @@ namespace Microsoft.Boogie.ModelViewer
             eltEq = langModel.FindElement(w.Substring(3));
             if (eltEq == null) bad = true;
           }
-        } else if (w.StartsWith("ref:")) {
+        } else if (w.StartsWith("use:")) {
           var e = langModel.FindElement(w.Substring(4));
           if (e == null) bad = true;
           else eltRef.Add(e);
@@ -332,7 +331,7 @@ namespace Microsoft.Boogie.ModelViewer
       if (eltEq == null && wordsA.Length == 0 && refsA.Length == 0)
         bad = true;
 
-      var changed = force;
+      var changed = true; // force;
       var matches = new List<SkeletonItem>();
 
       foreach (var s in allItems) {
@@ -363,15 +362,7 @@ namespace Microsoft.Boogie.ModelViewer
     {
       if (matchesList.SelectedItems.Count == 0) return;
       var sel = (DisplayItem) matchesList.SelectedItems[0];
-      ExpandParents(sel.skel);
-      SyncCurrentStateView();
-      foreach (DisplayItem it in currentStateView.Items) {
-        if (it.skel == sel.skel) {
-          it.Selected = true;
-          currentStateView.EnsureVisible(it.Index);
-          break;
-        }
-      }
+      GotoNode(sel.skel);
     }
 
     private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
@@ -380,6 +371,62 @@ namespace Microsoft.Boogie.ModelViewer
         ExpandParents(it.skel);
       }
       SyncCurrentStateView();
+    }
+
+    private void SetSearch(string text)
+    {
+      textBox1.Text = text;
+    }
+
+    private void GotoNode(SkeletonItem skel)
+    {
+      ExpandParents(skel);
+      SyncCurrentStateView();
+      foreach (DisplayItem it in currentStateView.Items) {
+        if (it.skel == skel) {
+          it.Selected = true;
+          currentStateView.EnsureVisible(it.Index);
+          break;
+        }
+      }
+    }
+
+    private void stateViewMenu_Opening(object sender, CancelEventArgs e)
+    {
+      IDisplayNode sel = null;
+      SkeletonItem skel = null;
+      if (currentStateView.SelectedItems.Count > 0) {
+        var it = currentStateView.SelectedItems[0];
+        sel = ((DisplayItem)it).dispNode;
+        skel = ((DisplayItem)it).skel;
+      }
+
+      var items = stateViewMenu.Items;
+      items.Clear();
+
+      if (sel == null) {
+        items.Add(new ToolStripMenuItem("Unavailable") { Enabled = false });
+        return;
+      }
+
+      var selName = langModel.CanonicalName(sel.Element);
+
+      items.Add("Find uses...", null, (s, _) => SetSearch("use:" + selName));
+      items.Add("Aliases...", null, (s, _) => SetSearch("eq:" + selName));
+
+      var words = new string[0];
+      var elts = new Model.Element[0];
+      var max = 10;
+      foreach (var s in allItems) {
+        if (s != skel && s.isPrimary[currentState] && s.MatchesWords(words, elts, sel.Element, currentState)) {
+          if (max-- < 0) {
+            items.Add(new ToolStripMenuItem("...") { Enabled = false });
+            break;
+          }
+          var tmp = s;
+          items.Add("      " + s.LongName(currentState), null, (x, _) => GotoNode(tmp));
+        }
+      }
     }
   }
 
@@ -427,13 +474,7 @@ namespace Microsoft.Boogie.ModelViewer
 
       if (IsMatchListItem) {
         Util.Assert(active);
-        var parents = new List<IDisplayNode>();
-        for (var curr = skel; curr != null; curr = curr.parent) {
-          if (curr.parent != null) // skip the root
-            parents.Add(curr.displayNodes[stateId]);
-        }
-        parents.Reverse();
-        name = skel.main.langModel.PathName(parents);
+       name = skel.LongName(stateId);
       }
 
       this.SubItems[0].Text = name;
