@@ -15,22 +15,39 @@ namespace Microsoft.Boogie.ModelViewer.Base
       return true;
     }
 
-    IEnumerable<IDisplayNode> GetStateNodes(Model m)
+    public ILanguageSpecificModel GetLanguageSpecificModel(Model m)
     {
-      yield return GenericNodes.Functions(m);
-      yield return GenericNodes.Constants(m);
+      return new GenericModel(m);
+    }
+  }
+
+  public class GenericModel : LanguageModel
+  {
+    Model m;
+
+    public GenericModel(Model m)
+    {
+      this.m = m;
+    }
+
+    public IDisplayNode Function(Model.Func f)
+    {
+      return new ContainerNode<Model.FuncTuple>(f.Name, a => new AppNode(this, a), f.Apps);
+    }
+
+    IEnumerable<IDisplayNode> GetStateNodes()
+    {
+      yield return new ContainerNode<Model.Func>("Functions", f => f.Arity == 0 ? null : Function(f), m.Functions);
+      yield return new ContainerNode<Model.Func>("Constants", f => f.Arity != 0 ? null : new AppNode(this, f.Apps.First()), m.Functions);
       foreach (var s in m.States)
-        yield return new StateNode(s);
+        yield return new StateNode(this, s);
     }
 
-    public IEnumerable<IState> GetStates(Model m)
+    public override IEnumerable<IState> States
     {
-      yield return new TopState("TOP", GetStateNodes(m));
-    }
-
-    public IEnumerable<string> SortFields(IEnumerable<string> fields)
-    {
-      return GlobalNamer.DefaultSortFields(fields);
+      get { 
+        yield return new TopState("TOP", GetStateNodes());
+      }
     }
   }
 
@@ -38,73 +55,41 @@ namespace Microsoft.Boogie.ModelViewer.Base
   {
     protected Model.CapturedState state;
 
-    public StateNode(Model.CapturedState s) : base(s.Name)
+    public StateNode(ILanguageSpecificModel p, Model.CapturedState s) : base(p, s.Name, null)
     {
       state = s;
     }
 
-    public override IEnumerable<string> Aliases
+    public override string Value
     {
-      get { foreach (var v in state.Variables) yield return v; }
+      get {
+        return state.Variables.Concat(", ");
+      }
     }
 
-    public override bool Expandable { get { return state.VariableCount != 0; } }
-
-    public override IEnumerable<IDisplayNode> Expand()
+    protected override void ComputeChildren()
     {
       foreach (var v in state.Variables) {
-        yield return new ElementNode(v, state.TryGet(v));
+        children.Add(new ElementNode(langModel, v, state.TryGet(v)));
       }
     }
   }
 
   public class ElementNode : DisplayNode
   {
-    protected Model.Element elt;
-
-    public ElementNode(string name, Model.Element elt) : base(name)
-    {
-      this.elt = elt;
-    }
-
-    public override IEnumerable<string> Aliases
-    {
-      get
-      {
-        if (!(elt is Model.Uninterpreted))
-          yield return elt.ToString();
-        foreach (var tupl in elt.Names) {
-          if (tupl.Func.Arity == 0)
-            yield return tupl.Func.Name;
-        }
-      }
-    }
+    public ElementNode(ILanguageSpecificModel p, string name, Model.Element elt) : base(p, name, elt) {}
   }
 
   public static class GenericNodes
   {
-    public static IDisplayNode Function(Model.Func f)
-    {
-      return new ContainerNode<Model.FuncTuple>(f.Name, a => new AppNode(a), f.Apps);
-    }
-
-    public static IDisplayNode Functions(Model m)
-    {
-      return new ContainerNode<Model.Func>("Functions", f => f.Arity == 0 ? null : Function(f), m.Functions);
-    }
-
-    public static IDisplayNode Constants(Model m)
-    {
-      return new ContainerNode<Model.Func>("Constants", f => f.Arity != 0 ? null : new AppNode(f.Apps.First()), m.Functions);
-    }
   }
 
   public class AppNode : ElementNode
   {
     protected Model.FuncTuple tupl;
 
-    public AppNode(Model.FuncTuple t)
-      : base(t.Func.Name, t.Result)
+    public AppNode(ILanguageSpecificModel m, Model.FuncTuple t)
+      : base(m, t.Func.Name, t.Result)
     {
       tupl = t;
       var sb = new StringBuilder();

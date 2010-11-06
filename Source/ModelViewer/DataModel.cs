@@ -8,24 +8,24 @@ namespace Microsoft.Boogie.ModelViewer
   public interface ILanguageProvider
   {
     bool IsMyModel(Model m);
-    IEnumerable<IState> GetStates(Model m);
+    ILanguageSpecificModel GetLanguageSpecificModel(Model m);
+  }
+
+  public interface ILanguageSpecificModel
+  {
+    string CanonicalName(Model.Element elt);
+
+    string PathName(IEnumerable<IDisplayNode> path);
+
+    IEnumerable<IState> States { get; }
+
     IEnumerable<string> SortFields(IEnumerable<string> fields);
   }
 
-  public interface INamerCallbacks
+  public interface IState
   {
-    // Elements (other than integers and Booleans) get canonical names of the form 
-    // "<base>'<idx>", where <base> is returned by this function, and <idx> is given 
-    // starting with 0, and incrementing when they are conflicts between bases.
-    //
-    // This function needs to return an appropriate base name for the element. It is given
-    // the element, and if possible an IEdgeName in a particular stat that seems to be the
-    // best bet to construct the canonical name from.
-    //
-    // A reasonable strategy is to check if it's a name of the local, and if so return it,
-    // and otherwise use the type of element (e.g., return "seq" for elements representing
-    // sequences). It is also possible to return "" in such cases.
-    string CanonicalBaseName(Model.Element elt, IEdgeName edgeName, int stateIdx);
+    string Name { get; }
+    IEnumerable<IDisplayNode> Nodes { get; }
   }
 
   [Flags]
@@ -35,43 +35,27 @@ namespace Microsoft.Boogie.ModelViewer
     Changed = 1
   }
 
-  public interface IEdgeName
-  {
-    int CompareTo(IEdgeName other);
-    string FullName();
-    string ShortName();
-    IEnumerable<Model.Element> Dependencies { get; }
-    int Score { get; }
-  }
-
   public interface IDisplayNode
   {
     /// <summary>
     ///  Used for indexing the state tree.
     /// </summary>
-    IEdgeName Name { get; }
+    string Name { get; }
+
+    NodeState State { get; }
+    string Value { get; }
+    string ToolTip { get; }
 
     /// <summary>
     /// Used to determine aliasing. Can be null.
     /// </summary>
     Model.Element Element { get; }
 
-    bool Expandable { get; }
-    IEnumerable<IDisplayNode> Expand();
+    IEnumerable<Model.Element> References { get; }
 
-    // Things displayed to the user.
-    NodeState State { get; }
-    string CanonicalValue { get; }
-    IEnumerable<string> Aliases { get; }
-    string ToolTip { get; }
+    IEnumerable<IDisplayNode> Children { get; }
 
     object ViewSync { get; set; }
-  }
-
-  public interface IState
-  {
-    string Name { get; }
-    IEnumerable<IDisplayNode> Nodes { get; }
   }
 
 
@@ -99,26 +83,19 @@ namespace Microsoft.Boogie.ModelViewer
   
   public abstract class DisplayNode : IDisplayNode
   {
-    protected IEdgeName name;
+    protected EdgeName name;
+    protected Model.Element element;
+    protected ILanguageSpecificModel langModel;
+    protected List<IDisplayNode> children;
 
-    public DisplayNode(string n)
-    { 
-      name = new EdgeName(n);
-    }
+    public DisplayNode(ILanguageSpecificModel model, string n, Model.Element elt) 
+      : this(model, new EdgeName(n), elt) {}
 
-    public DisplayNode(IEdgeName n)
+    public DisplayNode(ILanguageSpecificModel model, EdgeName n, Model.Element elt)
     {
+      langModel = model;
       name = n;
-    }
-
-    public virtual string CanonicalValue
-    {
-      get { return name.FullName(); }
-    }
-
-    public virtual IEnumerable<string> Aliases
-    {
-      get { yield break; }
+      element = elt;
     }
 
     public virtual string ToolTip
@@ -126,28 +103,55 @@ namespace Microsoft.Boogie.ModelViewer
       get { return null; }
     }
 
-    public virtual bool Expandable
+    public virtual IEnumerable<IDisplayNode> Children
     {
-      get { return false; }
+      get
+      {
+        if (children == null) {
+          children = new List<IDisplayNode>();
+          ComputeChildren();
+        }
+        return children;
+      }
     }
 
-    public virtual IEnumerable<IDisplayNode> Expand()
+    protected virtual void ComputeChildren()
     {
-      yield break;
     }
 
     public virtual NodeState State { get { return NodeState.Normal; } }
 
     public object ViewSync { get; set; }
 
-    public virtual IEdgeName Name
+    public virtual string Name
     {
-      get { return name; }
+      get { return name.ToString(); }
     }
 
     public virtual Model.Element Element
     {
-      get { return null; }
+      get { return element; }
+    }
+
+    public virtual string Value
+    {
+      get
+      {
+        if (element == null)
+          return "";
+        return langModel.CanonicalName(element);
+      }
+    }
+
+    public IEnumerable<Model.Element> References
+    {
+      get
+      {
+        foreach (var r in name.Dependencies)
+          yield return r;
+        if (element != null)
+          yield return element;
+      }
     }
   }
 
@@ -156,7 +160,7 @@ namespace Microsoft.Boogie.ModelViewer
     protected Func<T, IDisplayNode> convert;
     protected IEnumerable<T> data;
 
-    public ContainerNode(IEdgeName name, Func<T, IDisplayNode> convert, IEnumerable<T> data) : base(name)
+    public ContainerNode(EdgeName name, Func<T, IDisplayNode> convert, IEnumerable<T> data) : base(null, name, null)
     {
       this.convert = convert;
       this.data = data;
@@ -167,13 +171,12 @@ namespace Microsoft.Boogie.ModelViewer
     {
     }
 
-    public override bool Expandable { get { return true; } }
-    public override IEnumerable<IDisplayNode> Expand()
+    protected override void ComputeChildren()
     {
       foreach (var f in data) {
         var res = convert(f);
         if (res != null)
-          yield return res;
+          children.Add(res);
       }
     }
   }
@@ -184,6 +187,16 @@ namespace Microsoft.Boogie.ModelViewer
     public static void Assert(bool cond)
     {
       if (!cond) throw new System.Exception("assertion violation");
+    }
+
+    public static string Concat(this IEnumerable<string> strs, string sep)
+    {
+      var res = new StringBuilder();
+      foreach (var e in strs)
+        res.Append(e).Append(sep);
+      if (res.Length > 0)
+        res.Length -= sep.Length;
+      return res.ToString();
     }
 
     public static IEnumerable<T> Empty<T>() { yield break; }

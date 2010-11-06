@@ -15,23 +15,15 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return m.TryGetFunc("$is_ghost_field") != null && m.TryGetFunc("$fk_vol_version") != null;
     }
 
-    public IEnumerable<IState> GetStates(Model m)
+    public ILanguageSpecificModel GetLanguageSpecificModel(Model m)
     {
       var vm = new VccModel(m);
       foreach (var s in m.States) {
         var sn = new StateNode(vm.states.Count, vm, s);
         vm.states.Add(sn);
       }
-      foreach (var s in vm.states) s.ComputeNames();
-      vm.gn.ComputeCanonicalNames();
-      return vm.states;
+      return vm;
     }
-
-    public IEnumerable<string> SortFields(IEnumerable<string> fields)
-    {
-      return GlobalNamer.DefaultSortFields(fields);
-    }
-
   }
 
   enum DataKind
@@ -42,9 +34,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     Map
   }
 
-  class VccModel : INamerCallbacks
+  class VccModel : LanguageModel
   {
-    public readonly GlobalNamer gn;
     public readonly Model model;
     public readonly Model.Func f_ptr_to, f_phys_ptr_cast, f_spec_ptr_cast, f_mathint, f_local_value_is, f_spec_ptr_to, f_heap, f_select_field,
                                f_select_value, f_field, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t;
@@ -53,7 +44,6 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
     public VccModel(Model m)
     {
-      gn = new GlobalNamer(this);
       model = m;
       f_ptr_to = m.MkFunc("$ptr_to", 1);
       f_spec_ptr_to = m.MkFunc("$spec_ptr_to", 1);
@@ -252,7 +242,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
               var ftp = f_field_type.TryEval(fld.Args[1]);
               val = WrapForUse(val, ftp);
               var nm = ConstantFieldName(fld.Args[1]);
-              var edgname = nm == null ? new EdgeName(fld.Args[1].ToString()) { Score = 100 } : new EdgeName(state.namer, "%0->" + nm, nm, elt) { Score = 10 };
+              var edgname = nm == null ? new EdgeName(fld.Args[1].ToString()) : new EdgeName(this, nm);
               result.Add(new FieldNode(state, edgname, val, ftp));
             }
           }
@@ -264,7 +254,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           if (sel.Arity == 2 && sel.Name.StartsWith("$select.$map_t")) {
             foreach (var app in sel.AppsWithArg(0, elt)) {
               var val = WrapForUse(app.Result, elTp);
-              var edgname = new EdgeName(state.namer, "%0[%c1]", "[%c1]", elt, app.Args[1]) { Score = 20 };
+              var edgname = new EdgeName(this, "[%0]", app.Args[1]);
               result.Add(new MapletNode(state, edgname, val, elTp));
             }
           }
@@ -273,10 +263,18 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return result;
     }
 
-    public string CanonicalBaseName(Model.Element elt, IEdgeName edgeName, int stateIdx)
+    public override IEnumerable<IState> States
+    {
+      get
+      {
+        return states;
+      }
+    }
+
+    protected override string CanonicalBaseName(Model.Element elt)
     {
       var vm = this;
-      var name = GlobalNamer.DefaultCanonicalBaseName(elt, edgeName, stateIdx);
+      var name = base.CanonicalBaseName(elt);
 
       if (name.Contains("[") || name.Contains("'") || name.Contains("-"))
         name = "";
@@ -311,13 +309,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     string name;
     internal VccModel vm;
     internal List<VariableNode> vars;
-    internal StateNamer namer;
     internal int index;
     
     public StateNode(int i, VccModel parent, Model.CapturedState s)
     {
       this.vm = parent;
-      this.namer = new StateNamer(vm.gn);
       state = s;
       index = i;
 
@@ -361,20 +357,14 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           val = vm.WrapForUse(val, tp);
           var vn = new VariableNode(this, v, val, tp);
           vn.updatedHere = vm.states.Count > 0 && curVars.ContainsKey(v);
+          if (curVars.ContainsKey(v))
+            vm.RegisterLocalValue(vn.Name, val);
           vars.Add(vn);
         }
       }
 
-      foreach (var e in vm.model.Elements) {        
-        if (e is Model.Number || e is Model.Boolean)
-          namer.AddName(e, new EdgeName(e.ToString()));
-      }
+      vm.Flush(vars);
     } 
-
-    internal void ComputeNames()
-    {
-      namer.ComputeNames(vars);
-    }
 
     public string Name
     {
@@ -393,62 +383,22 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
   class ElementNode : DisplayNode
   {
     protected StateNode stateNode;
-    protected Model.Element elt, tp;
+    protected Model.Element tp;
     protected VccModel vm { get { return stateNode.vm; } }
-    protected List<ElementNode> children;
 
-    public ElementNode(StateNode st, IEdgeName name, Model.Element elt, Model.Element tp)
-      : base(name)
+    public ElementNode(StateNode st, EdgeName name, Model.Element elt, Model.Element tp)
+      : base(st.vm, name, elt)
     {
       this.stateNode = st;
       this.tp = tp;
-      this.elt = elt;
     }
 
     public ElementNode(StateNode st, string name, Model.Element elt, Model.Element tp)
       : this(st, new EdgeName(name), elt, tp) { }
 
-    public override Model.Element Element
+    protected override void ComputeChildren()
     {
-      get
-      {
-        return elt;
-      }
-    }
-
-    protected virtual void DoInitChildren()
-    {
-      children.AddRange(vm.GetExpansion(stateNode, elt, tp));
-    }
-
-    protected void InitChildren()
-    {
-      if (children == null) {
-        children = new List<ElementNode>();
-        DoInitChildren();
-      }
-    }
-
-    public override string CanonicalValue
-    {
-      get
-      {
-        return stateNode.namer.CanonicalName(Element);
-      }
-    }
-
-    public override IEnumerable<string> Aliases
-    {
-      get
-      {
-        if (Element is Model.Boolean) {
-          yield break;
-        } else {
-          foreach (var edge in stateNode.namer.Aliases(Element))
-            if (!edge.Equals(Name))
-              yield return edge.FullName();
-        }
-      }
+      children.AddRange(vm.GetExpansion(stateNode, element, tp));
     }
 
     public override string ToolTip
@@ -457,6 +407,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       {
         var sb = new StringBuilder();
         sb.AppendFormat("Type: {0}\n", vm.TypeName(tp));
+        /*
         int limit = 30;
         foreach (var n in Aliases){
           sb.AppendFormat("   = {0}\n", n); 
@@ -465,29 +416,15 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             break;
           }
         }
+         */
         return sb.ToString();
       }
-    }
-
-    public override bool Expandable
-    {
-      get
-      {
-        InitChildren();
-        return children.Count > 0;
-      }
-    }
-
-    public override IEnumerable<IDisplayNode> Expand()
-    {
-      InitChildren();
-      return children;
     }
   }
 
   class FieldNode : ElementNode
   {
-    public FieldNode(StateNode par, IEdgeName realName, Model.Element elt, Model.Element tp)
+    public FieldNode(StateNode par, EdgeName realName, Model.Element elt, Model.Element tp)
       : base(par, realName, elt, tp)
     {
       /*
@@ -500,7 +437,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
   class MapletNode : ElementNode
   {
-    public MapletNode(StateNode par, IEdgeName realName, Model.Element elt, Model.Element tp)
+    public MapletNode(StateNode par, EdgeName realName, Model.Element elt, Model.Element tp)
       : base(par, realName, elt, tp)
     {
     }

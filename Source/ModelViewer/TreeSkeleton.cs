@@ -7,12 +7,12 @@ namespace Microsoft.Boogie.ModelViewer
 {
   internal class SkeletonItem
   {
-    readonly IEdgeName name;
+    readonly string name;
     readonly List<SkeletonItem> children = new List<SkeletonItem>();
     internal readonly IDisplayNode[] displayNodes;
     internal bool[] isPrimary;
     internal readonly SkeletonItem parent;
-    readonly Main main;
+    internal readonly Main main;
     internal readonly int level;
     internal bool expanded, wasExpanded;
     internal bool isMatch;
@@ -49,13 +49,13 @@ namespace Microsoft.Boogie.ModelViewer
 
     public SkeletonItem(Main m, int stateCount)
     {
-      name = new EdgeName("<root>");
+      name = "<root>";
       main = m;
       displayNodes = new IDisplayNode[stateCount];
       isPrimary = new bool[stateCount];
     }
 
-    internal SkeletonItem(IEdgeName n, SkeletonItem par)
+    internal SkeletonItem(string n, SkeletonItem par)
       : this(par.main, par.displayNodes.Length)
     {
       parent = par;
@@ -65,7 +65,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     public bool Expandable
     {
-      get { return displayNodes.Any(d => d != null && d.Expandable); }
+      get { return displayNodes.Any(d => d != null && d.Children.Count() > 0); }
     }
 
     public bool Expanded
@@ -130,10 +130,10 @@ namespace Microsoft.Boogie.ModelViewer
       var names = new List<string>();
       for (int i = 0; i < displayNodes.Length; ++i) {
         var dn = displayNodes[i];
-        if (dn == null || !dn.Expandable) continue;
-        foreach (var child in dn.Expand()) {
+        if (dn == null) continue;
+        foreach (var child in dn.Children) {
           SkeletonItem skelChild;
-          var name = child.Name.ShortName();
+          var name = child.Name;
           if (!created.TryGetValue(name, out skelChild)) {
             skelChild = new SkeletonItem(child.Name, this);
             created.Add(name, skelChild);
@@ -144,7 +144,7 @@ namespace Microsoft.Boogie.ModelViewer
         }
       }
 
-      foreach (var name in main.langProvider.SortFields(names)) {
+      foreach (var name in main.langModel.SortFields(names)) {
         children.Add(created[name]);
       }
     }
@@ -154,8 +154,8 @@ namespace Microsoft.Boogie.ModelViewer
       var node = displayNodes[stateId];
       if (node == null)
         return false;
-      var s1 = node.Name.FullName().ToLower();
-      var s2 = node.CanonicalValue.ToLower();
+      var s1 = node.Name.ToLower();
+      var s2 = node.Value.ToLower();
       foreach (var w in words) {
         if (!s1.Contains(w) && !s2.Contains(w))
           return false;

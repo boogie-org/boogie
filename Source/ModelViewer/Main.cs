@@ -21,12 +21,13 @@ namespace Microsoft.Boogie.ModelViewer
     int currentState;
     IState[] states;
     internal ILanguageProvider langProvider;
+    internal ILanguageSpecificModel langModel;
 
     // TODO this should be dynamically loaded
     IEnumerable<ILanguageProvider> Providers()
     {
       yield return Vcc.Provider.Instance;
-      yield return Dafny.Provider.Instance;
+      //yield return Dafny.Provider.Instance;
       yield return Base.Provider.Instance;
     }
 
@@ -69,7 +70,8 @@ namespace Microsoft.Boogie.ModelViewer
       }
       
       var items = new List<ListViewItem>();
-      states = langProvider.GetStates(m).ToArray();
+      langModel = langProvider.GetLanguageSpecificModel(m);
+      states = langModel.States.ToArray();
       unfoldingRoot = new SkeletonItem(this, states.Length);
       allItems = unfoldingRoot.PopulateRoot(states);
 
@@ -279,7 +281,7 @@ namespace Microsoft.Boogie.ModelViewer
       stateList.BeginUpdate();
       for (int i = 0; i < sel.skel.displayNodes.Length; ++i) {
         var dn = sel.skel.displayNodes[i];
-        stateList.Items[i].SubItems[2].Text = dn == null ? "" : dn.CanonicalValue;
+        stateList.Items[i].SubItems[2].Text = dn == null ? "" : dn.Value;
       }
       stateList.EndUpdate();
     }
@@ -382,7 +384,7 @@ namespace Microsoft.Boogie.ModelViewer
       }
 
       var tooltip = dispNode.ToolTip;
-      var aliases = AliasesAsString(dispNode);
+      var aliases = ""; // AliasesAsString(dispNode);
       if (IsMatchListItem)
         aliases = "";
       if (tooltip != null) {
@@ -391,9 +393,22 @@ namespace Microsoft.Boogie.ModelViewer
         this.ToolTipText = aliases;
       }
 
-      this.SubItems[0].Text = IsMatchListItem ? dispNode.Name.FullName() : dispNode.Name.ShortName();
-      this.SubItems[1].Text = active ? dispNode.CanonicalValue : "";
-      this.SubItems[2].Text = active ? aliases : "";
+      var name = dispNode.Name;
+
+      if (IsMatchListItem) {
+        Util.Assert(active);
+        var parents = new List<IDisplayNode>();
+        for (var curr = skel; curr != null; curr = curr.parent) {
+          if (curr.parent != null) // skip the root
+            parents.Add(curr.displayNodes[stateId]);
+        }
+        parents.Reverse();
+        name = skel.main.langModel.PathName(parents);
+      }
+
+      this.SubItems[0].Text = name;
+      this.SubItems[1].Text = active ? dispNode.Value : "";
+      // this.SubItems[2].Text = active ? aliases : "";
     }
 
     internal DisplayItem()
@@ -401,6 +416,7 @@ namespace Microsoft.Boogie.ModelViewer
     {
     }
 
+    /*
     static internal string AliasesAsString(IDisplayNode dn)
     {
       if (dn == null) return "";
@@ -417,5 +433,6 @@ namespace Microsoft.Boogie.ModelViewer
       if (sb.Length > 2) sb.Length -= 2;
       return sb.ToString();
     }
+     */
   }
 }

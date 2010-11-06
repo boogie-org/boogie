@@ -5,42 +5,107 @@ using System.Text;
 
 namespace Microsoft.Boogie.ModelViewer
 {
-  class EltName
+  public abstract class LanguageModel : ILanguageSpecificModel
   {
-    internal Model.Element elt;
-    internal List<IEdgeName> nodes = new List<IEdgeName>();
-    internal int score = StateNamer.maxScore;
-    internal string theName;
-    internal bool unfolded;
-    internal int stateIdx;
+    protected Dictionary<string, int> baseNameUse = new Dictionary<string, int>();
+    protected Dictionary<Model.Element, string> canonicalName = new Dictionary<Model.Element, string>();
+    protected Dictionary<Model.Element, string> localValue = new Dictionary<Model.Element, string>();
 
-    internal EltName(Model.Element e)
+    // Elements (other than integers and Booleans) get canonical names of the form 
+    // "<base>'<idx>", where <base> is returned by this function, and <idx> is given 
+    // starting with 0, and incrementing when there are conflicts between bases.
+    //
+    // This function needs to return an appropriate base name for the element. It is given
+    // the element.
+    //
+    // A reasonable strategy is to check if it's a name of the local, and if so return it,
+    // and otherwise use the type of element (e.g., return "seq" for elements representing
+    // sequences). It is also possible to return "" in such cases.
+    protected virtual string CanonicalBaseName(Model.Element elt)
     {
-      elt = e;
-      theName = e.ToString();
-    }
-  }
-
-  public class GlobalNamer
-  {
-    internal Dictionary<Model.Element, string> canonicalNames;
-    INamerCallbacks cb;
-    internal List<StateNamer> stateNamers = new List<StateNamer>();
-
-    public GlobalNamer(INamerCallbacks cb)
-    {
-      this.cb = cb;
+      string res;
+      if (localValue.TryGetValue(elt, out res))
+        return res;
+      return "";
     }
 
-    #region default namer callback implementations
-    public static string DefaultCanonicalBaseName(Model.Element elt, IEdgeName edgeName, int stateIdx)
+    public virtual void RegisterLocalValue(string name, Model.Element elt)
     {
-      if (edgeName == null)
-        return "";
-      var name = edgeName.FullName();
-      return name;
+      string curr;
+      if (localValue.TryGetValue(elt, out curr) && CompareFields(name, curr) >= 0)
+        return;
+      localValue[elt] = name;
     }
 
+    protected virtual string LiteralName(Model.Element elt)
+    {
+      if (elt is Model.Integer)
+        return elt.ToString();
+      if (elt is Model.Boolean)
+        return elt.ToString();
+      return null;
+    }
+
+    public virtual string CanonicalName(Model.Element elt)
+    {
+      string res;
+      if (canonicalName.TryGetValue(elt, out res)) return res;
+      res = LiteralName(elt);
+      if (res == null) {
+        var baseName = CanonicalBaseName(elt);
+        int cnt;
+        if (!baseNameUse.TryGetValue(baseName, out cnt)) {
+          cnt = -1;
+        }
+        cnt++;
+        res = baseName + "'" + cnt;
+        baseNameUse[baseName] = cnt;
+      }
+      canonicalName.Add(elt, res);
+      return res;
+    }
+
+    public virtual string PathName(IEnumerable<IDisplayNode> path)
+    {
+      return path.Select(n => n.Name).Concat(".");
+    }
+
+    public abstract IEnumerable<IState> States { get; }
+
+    /// <summary>
+    /// Walks each input tree in BFS order, and force evaluation of Name and Value properties
+    /// (to get reasonable numbering of canonical values).
+    /// </summary>
+    public void Flush(IEnumerable<IDisplayNode> roots)
+    {
+      var workList = new Queue<IDisplayNode>();
+
+      Action<IEnumerable<IDisplayNode>> addList = (IEnumerable<IDisplayNode> nodes) =>
+      {
+        var ch = nodes.ToDictionary(x => x.Name);
+        foreach (var k in SortFields(ch.Keys))
+          workList.Enqueue(ch[k]);
+      };
+
+      addList(roots);
+
+      var visited = new HashSet<Model.Element>();
+      while (workList.Count > 0) {
+        var n = workList.Dequeue();
+        
+        var dummy1 = n.Name;
+        var dummy2 = n.Value;
+
+        if (n.Element != null) {
+          if (visited.Contains(n.Element))
+            continue;
+          visited.Add(n.Element);
+        }
+
+        addList(n.Children);
+      }
+    }
+    #region field name sorting
     static bool HasAny(string s, string chrs)
     {
       foreach (var c in s)
@@ -60,7 +125,7 @@ namespace Microsoft.Boogie.ModelViewer
       return res;
     }
 
-    public static int CompareFields(string f1, string f2)
+    public virtual int CompareFields(string f1, string f2)
     {
       bool s1 = HasAny(f1, "[<>]");
       bool s2 = HasAny(f2, "[<>]");
@@ -90,233 +155,40 @@ namespace Microsoft.Boogie.ModelViewer
       return string.CompareOrdinal(f1, f2);
     }
 
-    public static IEnumerable<string> DefaultSortFields(IEnumerable<string> fields_)
+    public virtual IEnumerable<string> SortFields(IEnumerable<string> fields_)
     {
       var fields = new List<string>(fields_);
       fields.Sort(CompareFields);
       return fields;
     }
     #endregion
-
-    public void ComputeCanonicalNames()
-    {
-      for (int i = 0; i < 2; i++)
-        ComputeCanonicalNamesCore();
-    }
-
-    void ComputeCanonicalNamesCore()
-    {
-      var names = new Dictionary<Model.Element, EltName>();
-      var namersArr = stateNamers.ToArray();
-      for (int i = 0; i < namersArr.Length; ++i) {
-        foreach (var n in namersArr[i].eltNames) {
-          n.stateIdx = i;
-          //if (n.nodes.Count == 0) continue;
-          EltName curr;
-          if (names.TryGetValue(n.elt, out curr) && curr.score <= n.score)
-            continue;
-          names[n.elt] = n;
-        }
-      }
-
-      var canonicals = new Dictionary<Model.Element, string>();
-      var usedNames = new Dictionary<string, int>();
-      Model model = null;
-      foreach (var n in names.Values) {
-        string name = "";
-        model = n.elt.Model;
-        if (n.nodes.Count == 0) {
-          name = cb.CanonicalBaseName(n.elt, null, 0);
-          name = AppendIndex(usedNames, name);
-        } else if (n.elt is Model.Boolean || n.elt is Model.Number)
-          name = n.nodes[0].FullName();
-        else {
-          name = cb.CanonicalBaseName(n.elt, n.nodes[0], n.stateIdx);
-          name = AppendIndex(usedNames, name);
-        }
-        canonicals[n.elt] = name;
-      }
-
-      canonicalNames = canonicals;
-
-      foreach (var e in model.Elements) {
-        if (!canonicals.ContainsKey(e)) {
-          var name = cb.CanonicalBaseName(e, null, 0);
-          canonicals[e] = AppendIndex(usedNames, name);
-        }
-      }
-
-      for (int i = 0; i < namersArr.Length; ++i) {
-        namersArr[i].ComputeBestName();
-      }
-    }
-
-    private static string AppendIndex(Dictionary<string, int> usedNames, string name)
-    {
-      var idx = 0;
-      if (!usedNames.TryGetValue(name, out idx))
-        idx = 0;
-      usedNames[name] = idx + 1;
-      name = name + "'" + idx;
-      return name;
-    }
-
-    public virtual string CanonicalName(Model.Element elt)
-    {
-      string res;
-      if (canonicalNames != null && canonicalNames.TryGetValue(elt, out res))
-        return res; // +" " + elt.ToString();
-      return elt.ToString();
-    }
   }
 
-  public class StateNamer
-  {
-    GlobalNamer globalNamer;
-    internal const int maxScore = 10000;
-    internal List<EltName> eltNames = new List<EltName>();
-    Dictionary<Model.Element, EltName> unfoldings = new Dictionary<Model.Element, EltName>();
-
-    public StateNamer(GlobalNamer gn)
-    {
-      globalNamer = gn;
-      gn.stateNamers.Add(this);
-    }
-
-    EltName GetName(Model.Element elt)
-    {
-      EltName res;
-      if (unfoldings.TryGetValue(elt, out res))
-        return res;
-      res = new EltName(elt);
-      eltNames.Add(res);
-      unfoldings.Add(elt, res);
-      return res;
-    }
-
-    int EdgeNameScore(IEdgeName name)
-    {
-      return name.Dependencies.Select(e => GetName(e).score).Concat1(0).Max() + name.Score;
-    }
-
-    internal void ComputeBestName()
-    {
-      foreach (var n in eltNames) {
-        n.score = maxScore;
-        string s;
-        if (globalNamer.canonicalNames != null && globalNamer.canonicalNames.TryGetValue(n.elt, out s))
-          n.theName = s;
-      }
-
-      while (true) {
-        var changes = 0;
-        var thisElts = eltNames.ToArray();
-        foreach (var elt in thisElts) {
-          var newScore = elt.nodes.Select(EdgeNameScore).Concat1(int.MaxValue).Min();
-          if (newScore < elt.score) {
-            elt.score = newScore;
-            changes++;
-          }
-        }
-        if (changes == 0 && thisElts.Length == eltNames.Count)
-          break;
-      }
-      eltNames.Sort((x,y) => x.score - y.score);
-      foreach (var elt in eltNames) {
-        if (elt.nodes.Count > 0) {
-          elt.nodes.Sort((x, y) => EdgeNameScore(x) - EdgeNameScore(y));
-          elt.theName = elt.nodes[0].FullName();
-        }
-      }
-    }
-
-    void Unfold(IEnumerable<IDisplayNode> ns)
-    {
-      var workList = new Queue<IDisplayNode>(); // do BFS
-      ns.Iter(workList.Enqueue);
-
-      while (workList.Count > 0) {
-        var n = workList.Dequeue();
-
-        if (n.Element != null) {
-          var prev = GetName(n.Element);
-          prev.nodes.Add(n.Name);
-          if (prev.unfolded) // we've already been here
-            continue;
-          prev.unfolded = true;
-        }
-
-        if (!n.Expandable) return;
-
-        n.Expand().Iter(workList.Enqueue);
-      }
-    }
-
-    public void AddName(Model.Element elt, IEdgeName name)
-    {
-      var e = GetName(elt);
-      e.nodes.Add(name);
-    }
-
-    public void ComputeNames(IEnumerable<IDisplayNode> n)
-    {
-      Unfold(n);
-      ComputeBestName();
-    }
-
-    public virtual string ElementName(Model.Element elt)
-    {
-      return GetName(elt).theName;
-    }
-
-    public virtual IEnumerable<IEdgeName> Aliases(Model.Element elt)
-    {
-      return GetName(elt).nodes;
-    }
-
-    public virtual string CanonicalName(Model.Element elt)
-    {
-      return globalNamer.CanonicalName(elt);
-    }
-  }
-
-  public class EdgeName : IEdgeName
+  public class EdgeName
   {
     static readonly Model.Element[] emptyArgs = new Model.Element[0];
 
-    string formatFull, formatShort;
+    ILanguageSpecificModel langModel;
+    string format;
     Model.Element[] args;
-    StateNamer namer;
 
-    public EdgeName(StateNamer n, string formatFull, string formatShort, params Model.Element[] args)
+    public EdgeName(ILanguageSpecificModel n, string format, params Model.Element[] args)
     {
-      this.namer = n;
-      this.formatFull = formatFull;
-      this.formatShort = formatShort;
+      this.langModel = n;
+      this.format = format;
       this.args = args;
-      Score = args.Length * 10;
-    }
-
-    public EdgeName(StateNamer n, string formatBoth, params Model.Element[] args)
-      : this(n, formatBoth, formatBoth, args)
-    {
     }
 
     public EdgeName(string name) : this(null, name, emptyArgs) { }
 
-    public virtual int CompareTo(IEdgeName other)
-    {
-      return string.CompareOrdinal(this.FullName(), other.FullName());
-    }
-
     public override string ToString()
     {
-      return FullName();
+      return Format();
     }
 
     public override int GetHashCode()
     {
-      int res = formatFull.GetHashCode() + formatShort.GetHashCode() * 17;
+      int res = format.GetHashCode();
       foreach (var c in args) {
         res += c.GetHashCode();
         res *= 13;
@@ -329,7 +201,7 @@ namespace Microsoft.Boogie.ModelViewer
       EdgeName e = obj as EdgeName;
       if (e == null) return false;
       if (e == this) return true;
-      if (e.formatFull != this.formatFull || e.formatShort != this.formatShort || e.args.Length != this.args.Length)
+      if (e.format != this.format || e.args.Length != this.args.Length)
         return false;
       for (int i = 0; i < this.args.Length; ++i)
         if (this.args[i] != e.args[i])
@@ -337,7 +209,7 @@ namespace Microsoft.Boogie.ModelViewer
       return true;
     }
 
-    protected virtual string Format(string format)
+    protected virtual string Format()
     {
       if (args.Length == 0)
         return format;
@@ -345,14 +217,16 @@ namespace Microsoft.Boogie.ModelViewer
       var res = new StringBuilder(format.Length);
       for (int i = 0; i < format.Length; ++i) {
         var c = format[i];
-        var canonical = false;
 
+        /*
+        var canonical = false;
         if (c == '%' && i < format.Length - 1) {
           if (format[i + 1] == 'c') {
             ++i;
             canonical = true;
           }
         }
+         */
 
         if (c == '%' && i < format.Length - 1) {
           var j = i + 1;
@@ -361,7 +235,7 @@ namespace Microsoft.Boogie.ModelViewer
           var len = j - i - 1;
           if (len > 0) {
             var idx = int.Parse(format.Substring(i + 1, len));
-            res.Append(canonical ? namer.CanonicalName(args[idx]) : namer.ElementName(args[idx]));
+            res.Append(langModel.CanonicalName(args[idx]));
             i = j - 1;
             continue;
           }
@@ -373,22 +247,10 @@ namespace Microsoft.Boogie.ModelViewer
       return res.ToString();
     }
 
-    public virtual string FullName()
-    {
-      return Format(formatFull);
-    }
-
-    public virtual string ShortName()
-    {
-      return Format(formatShort);
-    }
-
     public virtual IEnumerable<Model.Element> Dependencies
     {
       get { return args; }
     }
-
-    public virtual int Score { get; set; }
   }
 
 }
