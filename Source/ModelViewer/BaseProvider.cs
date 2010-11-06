@@ -35,53 +35,25 @@ namespace Microsoft.Boogie.ModelViewer.Base
       return new ContainerNode<Model.FuncTuple>(f.Name, a => new AppNode(this, a), f.Apps);
     }
 
-    IEnumerable<IDisplayNode> GetStateNodes()
+    IEnumerable<IDisplayNode> GetStateNodes(Model.CapturedState st)
     {
-      yield return new ContainerNode<Model.Func>("Functions", f => f.Arity == 0 ? null : Function(f), m.Functions);
-      yield return new ContainerNode<Model.Func>("Constants", f => f.Arity != 0 ? null : new AppNode(this, f.Apps.First()), m.Functions);
-      foreach (var s in m.States)
-        yield return new StateNode(this, s);
+      foreach (var v in st.Variables)
+        yield return new ElementNode(this, v, st.TryGet(v));
+      yield return new ContainerNode<Model.Func>("[Functions]", f => f.Arity == 0 ? null : Function(f), m.Functions);
+      yield return new ContainerNode<Model.Func>("[Constants]", f => f.Arity != 0 ? null : new AppNode(this, f.Apps.First()), m.Functions);
     }
 
     public override IEnumerable<IState> States
     {
-      get { 
-        yield return new TopState("TOP", GetStateNodes());
-      }
-    }
-  }
-
-  public class StateNode : DisplayNode
-  {
-    protected Model.CapturedState state;
-
-    public StateNode(ILanguageSpecificModel p, Model.CapturedState s) : base(p, s.Name, null)
-    {
-      state = s;
-    }
-
-    public override string Value
-    {
       get {
-        return state.Variables.Concat(", ");
-      }
-    }
-
-    protected override void ComputeChildren()
-    {
-      foreach (var v in state.Variables) {
-        children.Add(new ElementNode(langModel, v, state.TryGet(v)));
+        foreach (var s in m.States)
+          yield return new TopState(s.Name, GetStateNodes(s));
       }
     }
   }
-
   public class ElementNode : DisplayNode
   {
     public ElementNode(ILanguageSpecificModel p, string name, Model.Element elt) : base(p, name, elt) {}
-  }
-
-  public static class GenericNodes
-  {
   }
 
   public class AppNode : ElementNode
