@@ -18,7 +18,7 @@ namespace Microsoft.Boogie.ModelViewer
     public string SearchText;
     SkeletonItem unfoldingRoot;
     SkeletonItem[] allItems;
-    int currentState;
+    int currentState, previousState = -1;
     IState[] states;
     internal ILanguageProvider langProvider;
     internal ILanguageSpecificModel langModel;
@@ -86,13 +86,21 @@ namespace Microsoft.Boogie.ModelViewer
       unfoldingRoot.Expanded = true;
       SetState(0);
       stateList.Items[0].Selected = true;
+      SetColumnSizes();
+    }
 
-      currentStateView.Columns[2].Width = currentStateView.Width - currentStateView.Columns[0].Width - currentStateView.Columns[1].Width - 5;
+    private void SetColumnSizes()
+    {
+      currentStateView.Columns[0].Width = currentStateView.Width - currentStateView.Columns[1].Width - currentStateView.Columns[2].Width - 5;
+      stateList.Columns[1].Width = stateList.Width - stateList.Columns[0].Width - stateList.Columns[2].Width - 5;
     }
 
     void SetState(int id)
     {
-      currentState = id;
+      if (currentState != id) {
+        previousState = currentState;
+        currentState = id;
+      }
       UpdateMatches(true);
     }
 
@@ -119,6 +127,10 @@ namespace Microsoft.Boogie.ModelViewer
     static Brush grayedOut = new SolidBrush(Col(0xaaaaaa));
     static Brush nonPrimary = new SolidBrush(Col(0xeeeeee));
     static Brush matchBg = new SolidBrush(Col(0xFFFA6F));
+
+    static SolidBrush regularStateBrush = new SolidBrush(Color.Black);
+    static SolidBrush previousStateBrush = new SolidBrush(Color.Blue);
+    static SolidBrush currentStateBrush = new SolidBrush(Color.Red);
     
     private void listView1_DrawItem(object sender, DrawListViewItemEventArgs e)
     {
@@ -184,7 +196,8 @@ namespace Microsoft.Boogie.ModelViewer
 
       nameRect.X += width + 4;
       nameRect.Width = listView.Width - nameRect.X;
-      width = DrawString(e.Graphics, item.SubItems[2].Text, font, textBrush, nameRect);
+      var t = item.SubItems[2].Text;
+      width = DrawString(e.Graphics, t, font, t == item.SubItems[1].Text ? grayedOut : previousStateBrush, nameRect);
     }
 
     private int DrawString(Graphics g, string s, Font font, Brush textBrush, Rectangle minRect)
@@ -200,7 +213,16 @@ namespace Microsoft.Boogie.ModelViewer
     private void listView1_DrawColumnHeader(object sender, DrawListViewColumnHeaderEventArgs e)
     {
       e.DrawBackground();
-      e.DrawText();
+      var brush = regularStateBrush;
+      if (e.Header.Index == 1)
+        brush = currentStateBrush;
+      else if (e.Header.Index == 2)
+        brush = previousStateBrush;
+
+      Rectangle r = e.Bounds;
+      r.X += 5;
+      r.Y += 4;
+      DrawString(e.Graphics, e.Header.Text, e.Header.ListView.Font, brush, r);
     }
 
     private void listView1_MouseUp(object sender, MouseEventArgs e)
@@ -242,7 +264,7 @@ namespace Microsoft.Boogie.ModelViewer
       for (int i = 0; i < ch.Length; ++i) {
         var di = (DisplayItem)listView.Items[i];
         cb(di, ch[i]);
-        di.Set(ch[i], currentState);
+        di.Set(ch[i], currentState, previousState);
       }
       listView.EndUpdate();
       listView.Invalidate();
@@ -255,6 +277,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     private void listView1_Resize(object sender, EventArgs e)
     {
+      SetColumnSizes();
       currentStateView.Invalidate();
     }
 
@@ -264,10 +287,10 @@ namespace Microsoft.Boogie.ModelViewer
       if (stateList.SelectedItems.Count == 0) return;
       var sel = stateList.SelectedItems[0].Index;
 
-      var normalFont = stateList.Font;
-      var boldFont = new Font(normalFont, FontStyle.Bold);
-      stateList.Items[currentState].Font = normalFont;
-      stateList.Items[sel].Font = boldFont;
+      if (previousState >= 0)
+        stateList.Items[previousState].ForeColor = regularStateBrush.Color;
+      stateList.Items[currentState].ForeColor = previousStateBrush.Color;
+      stateList.Items[sel].ForeColor = currentStateBrush.Color;
 
       SetState(sel);
     }
@@ -439,7 +462,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     public bool IsMatchListItem { get; set; }
 
-    internal void Set(SkeletonItem s, int id)
+    internal void Set(SkeletonItem s, int id, int prevId)
     {
       if (skel == s && stateId == id)
         return;
@@ -474,12 +497,19 @@ namespace Microsoft.Boogie.ModelViewer
 
       if (IsMatchListItem) {
         Util.Assert(active);
-       name = skel.LongName(stateId);
+        name = skel.LongName(stateId);
       }
 
       this.SubItems[0].Text = name;
       this.SubItems[1].Text = active ? dispNode.Value : "";
-      // this.SubItems[2].Text = active ? aliases : "";
+
+      var prev = "";
+
+      if (!IsMatchListItem && prevId > 0 && skel.displayNodes[prevId] != null) {
+        prev = skel.displayNodes[prevId].Value;
+      }
+
+      this.SubItems[2].Text = prev;
     }
 
     internal DisplayItem()

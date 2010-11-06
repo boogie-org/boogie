@@ -74,7 +74,7 @@
       this.currentStateView.Name = "currentStateView";
       this.currentStateView.OwnerDraw = true;
       this.currentStateView.ShowItemToolTips = true;
-      this.currentStateView.Size = new System.Drawing.Size(677, 558);
+      this.currentStateView.Size = new System.Drawing.Size(596, 558);
       this.currentStateView.TabIndex = 0;
       this.currentStateView.UseCompatibleStateImageBehavior = false;
       this.currentStateView.View = System.Windows.Forms.View.Details;
@@ -88,17 +88,17 @@
       // name
       // 
       this.name.Text = "Name";
-      this.name.Width = 174;
+      this.name.Width = 298;
       // 
       // value
       // 
       this.value.Text = "Value";
-      this.value.Width = 99;
+      this.value.Width = 126;
       // 
       // prevValue
       // 
       this.prevValue.Text = "Previous";
-      this.prevValue.Width = 147;
+      this.prevValue.Width = 62;
       // 
       // stateViewMenu
       // 
@@ -128,7 +128,7 @@
       // 
       this.splitContainer1.Panel2.Controls.Add(this.stateList);
       this.splitContainer1.Size = new System.Drawing.Size(915, 726);
-      this.splitContainer1.SplitterDistance = 677;
+      this.splitContainer1.SplitterDistance = 596;
       this.splitContainer1.TabIndex = 1;
       // 
       // splitContainer2
@@ -148,7 +148,7 @@
       this.splitContainer2.Panel2.Controls.Add(this.linkLabel1);
       this.splitContainer2.Panel2.Controls.Add(this.label1);
       this.splitContainer2.Panel2.Controls.Add(this.textBox1);
-      this.splitContainer2.Size = new System.Drawing.Size(677, 726);
+      this.splitContainer2.Size = new System.Drawing.Size(596, 726);
       this.splitContainer2.SplitterDistance = 558;
       this.splitContainer2.TabIndex = 1;
       // 
@@ -168,7 +168,7 @@
       this.matchesList.Name = "matchesList";
       this.matchesList.OwnerDraw = true;
       this.matchesList.ShowItemToolTips = true;
-      this.matchesList.Size = new System.Drawing.Size(677, 135);
+      this.matchesList.Size = new System.Drawing.Size(596, 135);
       this.matchesList.TabIndex = 4;
       this.matchesList.UseCompatibleStateImageBehavior = false;
       this.matchesList.View = System.Windows.Forms.View.Details;
@@ -186,13 +186,13 @@
       // columnHeader5
       // 
       this.columnHeader5.Text = "Value";
-      this.columnHeader5.Width = 350;
+      this.columnHeader5.Width = 250;
       // 
       // linkLabel1
       // 
       this.linkLabel1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
       this.linkLabel1.AutoSize = true;
-      this.linkLabel1.Location = new System.Drawing.Point(617, 5);
+      this.linkLabel1.Location = new System.Drawing.Point(536, 5);
       this.linkLabel1.Name = "linkLabel1";
       this.linkLabel1.Size = new System.Drawing.Size(57, 13);
       this.linkLabel1.TabIndex = 3;
@@ -217,7 +217,7 @@
                   | System.Windows.Forms.AnchorStyles.Right)));
       this.textBox1.Location = new System.Drawing.Point(53, 3);
       this.textBox1.Name = "textBox1";
-      this.textBox1.Size = new System.Drawing.Size(558, 20);
+      this.textBox1.Size = new System.Drawing.Size(477, 20);
       this.textBox1.TabIndex = 1;
       this.textBox1.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
       // 
@@ -231,12 +231,11 @@
       this.stateList.FullRowSelect = true;
       this.stateList.GridLines = true;
       this.stateList.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
-      this.stateList.HideSelection = false;
       this.stateList.Location = new System.Drawing.Point(0, 0);
       this.stateList.MultiSelect = false;
       this.stateList.Name = "stateList";
       this.stateList.ShowItemToolTips = true;
-      this.stateList.Size = new System.Drawing.Size(234, 726);
+      this.stateList.Size = new System.Drawing.Size(315, 726);
       this.stateList.TabIndex = 0;
       this.stateList.UseCompatibleStateImageBehavior = false;
       this.stateList.View = System.Windows.Forms.View.Details;
@@ -250,7 +249,7 @@
       // columnHeader1
       // 
       this.columnHeader1.Text = "State";
-      this.columnHeader1.Width = 109;
+      this.columnHeader1.Width = 169;
       // 
       // columnHeader2
       // 
