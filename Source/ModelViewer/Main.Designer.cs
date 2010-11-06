@@ -31,7 +31,7 @@
       this.currentStateView = new System.Windows.Forms.ListView();
       this.name = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.value = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-      this.aliases = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+      this.prevValue = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.stateViewMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
       this.dummyItemToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.splitContainer1 = new System.Windows.Forms.SplitContainer();
@@ -63,7 +63,7 @@
       this.currentStateView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.name,
             this.value,
-            this.aliases});
+            this.prevValue});
       this.currentStateView.ContextMenuStrip = this.stateViewMenu;
       this.currentStateView.Dock = System.Windows.Forms.DockStyle.Fill;
       this.currentStateView.FullRowSelect = true;
@@ -74,7 +74,7 @@
       this.currentStateView.Name = "currentStateView";
       this.currentStateView.OwnerDraw = true;
       this.currentStateView.ShowItemToolTips = true;
-      this.currentStateView.Size = new System.Drawing.Size(761, 612);
+      this.currentStateView.Size = new System.Drawing.Size(677, 558);
       this.currentStateView.TabIndex = 0;
       this.currentStateView.UseCompatibleStateImageBehavior = false;
       this.currentStateView.View = System.Windows.Forms.View.Details;
@@ -95,10 +95,10 @@
       this.value.Text = "Value";
       this.value.Width = 99;
       // 
-      // aliases
+      // prevValue
       // 
-      this.aliases.Text = "Aliases";
-      this.aliases.Width = 325;
+      this.prevValue.Text = "Previous";
+      this.prevValue.Width = 147;
       // 
       // stateViewMenu
       // 
@@ -111,7 +111,7 @@
       // dummyItemToolStripMenuItem
       // 
       this.dummyItemToolStripMenuItem.Name = "dummyItemToolStripMenuItem";
-      this.dummyItemToolStripMenuItem.Size = new System.Drawing.Size(119, 22);
+      this.dummyItemToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
       this.dummyItemToolStripMenuItem.Text = "Dummy item";
       // 
       // splitContainer1
@@ -127,8 +127,8 @@
       // splitContainer1.Panel2
       // 
       this.splitContainer1.Panel2.Controls.Add(this.stateList);
-      this.splitContainer1.Size = new System.Drawing.Size(1028, 796);
-      this.splitContainer1.SplitterDistance = 761;
+      this.splitContainer1.Size = new System.Drawing.Size(915, 726);
+      this.splitContainer1.SplitterDistance = 677;
       this.splitContainer1.TabIndex = 1;
       // 
       // splitContainer2
@@ -148,8 +148,8 @@
       this.splitContainer2.Panel2.Controls.Add(this.linkLabel1);
       this.splitContainer2.Panel2.Controls.Add(this.label1);
       this.splitContainer2.Panel2.Controls.Add(this.textBox1);
-      this.splitContainer2.Size = new System.Drawing.Size(761, 796);
-      this.splitContainer2.SplitterDistance = 612;
+      this.splitContainer2.Size = new System.Drawing.Size(677, 726);
+      this.splitContainer2.SplitterDistance = 558;
       this.splitContainer2.TabIndex = 1;
       // 
       // matchesList
@@ -168,7 +168,7 @@
       this.matchesList.Name = "matchesList";
       this.matchesList.OwnerDraw = true;
       this.matchesList.ShowItemToolTips = true;
-      this.matchesList.Size = new System.Drawing.Size(761, 151);
+      this.matchesList.Size = new System.Drawing.Size(677, 135);
       this.matchesList.TabIndex = 4;
       this.matchesList.UseCompatibleStateImageBehavior = false;
       this.matchesList.View = System.Windows.Forms.View.Details;
@@ -192,7 +192,7 @@
       // 
       this.linkLabel1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
       this.linkLabel1.AutoSize = true;
-      this.linkLabel1.Location = new System.Drawing.Point(701, 5);
+      this.linkLabel1.Location = new System.Drawing.Point(617, 5);
       this.linkLabel1.Name = "linkLabel1";
       this.linkLabel1.Size = new System.Drawing.Size(57, 13);
       this.linkLabel1.TabIndex = 3;
@@ -217,7 +217,7 @@
                   | System.Windows.Forms.AnchorStyles.Right)));
       this.textBox1.Location = new System.Drawing.Point(53, 3);
       this.textBox1.Name = "textBox1";
-      this.textBox1.Size = new System.Drawing.Size(642, 20);
+      this.textBox1.Size = new System.Drawing.Size(558, 20);
       this.textBox1.TabIndex = 1;
       this.textBox1.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
       // 
@@ -236,7 +236,7 @@
       this.stateList.MultiSelect = false;
       this.stateList.Name = "stateList";
       this.stateList.ShowItemToolTips = true;
-      this.stateList.Size = new System.Drawing.Size(263, 796);
+      this.stateList.Size = new System.Drawing.Size(234, 726);
       this.stateList.TabIndex = 0;
       this.stateList.UseCompatibleStateImageBehavior = false;
       this.stateList.View = System.Windows.Forms.View.Details;
@@ -261,7 +261,7 @@
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-      this.ClientSize = new System.Drawing.Size(1028, 796);
+      this.ClientSize = new System.Drawing.Size(915, 726);
       this.Controls.Add(this.splitContainer1);
       this.Name = "Main";
       this.Text = "Boogie Verification Debugger";
@@ -289,7 +289,7 @@
     private System.Windows.Forms.ColumnHeader columnHeader1;
     private System.Windows.Forms.ColumnHeader columnHeader2;
     private System.Windows.Forms.ColumnHeader columnHeader3;
-    private System.Windows.Forms.ColumnHeader aliases;
+    private System.Windows.Forms.ColumnHeader prevValue;
     private System.Windows.Forms.SplitContainer splitContainer2;
     private System.Windows.Forms.ListView matchesList;
     private System.Windows.Forms.ColumnHeader columnHeader4;

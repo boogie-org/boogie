@@ -223,6 +223,14 @@ namespace Microsoft.Boogie.ModelViewer
       if (a != null) return a;
       return b;
     }
+
+    public static S GetWithDefault<T, S>(this Dictionary<T, S> dict, T key, S defl)
+    {
+      S r;
+      if (dict.TryGetValue(key, out r))
+        return r;
+      return defl;
+    }
   }
 
 }

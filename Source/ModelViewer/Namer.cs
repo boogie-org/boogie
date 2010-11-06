@@ -116,11 +116,15 @@ namespace Microsoft.Boogie.ModelViewer
       }
     }
     #region field name sorting
-    static bool HasAny(string s, string chrs)
+    static bool HasSpecialChars(string s)
     {
-      foreach (var c in s)
-        if (chrs.Contains(c))
-          return true;
+      for (int i = 0; i < s.Length; ++i)
+        switch (s[i]) {
+          case '[':
+          case '<':
+          case '>':
+          case ']': return true;
+        }
       return false;
     }
 
@@ -137,8 +141,8 @@ namespace Microsoft.Boogie.ModelViewer
 
     public virtual int CompareFields(string f1, string f2)
     {
-      bool s1 = HasAny(f1, "[<>]");
-      bool s2 = HasAny(f2, "[<>]");
+      bool s1 = HasSpecialChars(f1);
+      bool s2 = HasSpecialChars(f2);
       if (s1 && !s2)
         return 1;
       if (!s1 && s2)

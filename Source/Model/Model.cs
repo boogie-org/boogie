@@ -5,6 +5,7 @@
 //-----------------------------------------------------------------------------
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 
 namespace Microsoft.Boogie
@@ -303,6 +304,14 @@ namespace Microsoft.Boogie
       public readonly string Name;
 
       public IEnumerable<string> Variables { get { return vars; } }
+      public IEnumerable<string> AllVariables { 
+        get {
+          if (previous != null)
+            return previous.AllVariables.Concat(Variables).Distinct();
+          else
+            return Variables;
+        } 
+      }
       public int VariableCount { get { return vars.Count; } }
       public bool HasBinding(string varname)
       {
