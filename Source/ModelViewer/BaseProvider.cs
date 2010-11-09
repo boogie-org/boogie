@@ -15,7 +15,7 @@ namespace Microsoft.Boogie.ModelViewer.Base
       return true;
     }
 
-    public ILanguageSpecificModel GetLanguageSpecificModel(Model m)
+    public ILanguageSpecificModel GetLanguageSpecificModel(Model m, ViewOptions opts)
     {
       return new GenericModel(m);
     }

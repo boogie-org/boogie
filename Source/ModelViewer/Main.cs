@@ -22,6 +22,9 @@ namespace Microsoft.Boogie.ModelViewer
     IState[] states;
     internal ILanguageProvider langProvider;
     internal ILanguageSpecificModel langModel;
+    ToolStripMenuItem[] viewItems;
+    Model currentModel;
+    internal ViewOptions viewOpts = new ViewOptions();
 
     // TODO this should be dynamically loaded
     IEnumerable<ILanguageProvider> Providers()
@@ -34,6 +37,12 @@ namespace Microsoft.Boogie.ModelViewer
     public Main()
     {
       InitializeComponent();
+
+      viewItems = new ToolStripMenuItem[] {
+        normalToolStripMenuItem,
+        expertToolStripMenuItem,
+        everythingToolStripMenuItem
+      };
 
       var debugBreak = false;
       string filename = null;
@@ -52,26 +61,36 @@ namespace Microsoft.Boogie.ModelViewer
         throw new Exception("error: usage:  ModelViewer.exe MyProgram.model");  // (where does this exception go?)
       }
 
-      Model m;
-
       using (var rd = File.OpenText(filename)) {
         var models = Model.ParseModels(rd);
-        m = models[0];
+        currentModel = models[0];
       }
 
       this.Text = Path.GetFileName(filename) + " - Boogie Verification Debugger";
 
       langProvider = null;
       foreach (var p in Providers()) {
-        if (p.IsMyModel(m)) {
+        if (p.IsMyModel(currentModel)) {
           langProvider = p;
           break;
         }
       }
-      
+
+      BuildModel();
+    }
+
+    private void BuildModel()
+    {
+      stateList.Items.Clear();
+
       var items = new List<ListViewItem>();
-      langModel = langProvider.GetLanguageSpecificModel(m);
+      langModel = langProvider.GetLanguageSpecificModel(currentModel, viewOpts);
       states = langModel.States.ToArray();
+      var oldRoot = unfoldingRoot;
+      SkeletonItem selectedSkel = null;
+      if (oldRoot != null && SelectedNode() != null) {
+        selectedSkel = SelectedNode().skel;
+      }
       unfoldingRoot = new SkeletonItem(this, states.Length);
       allItems = unfoldingRoot.PopulateRoot(states);
 
@@ -84,9 +103,22 @@ namespace Microsoft.Boogie.ModelViewer
       }
       stateList.Items.AddRange(items.ToArray());
       unfoldingRoot.Expanded = true;
-      SetState(0);
-      stateList.Items[0].Selected = true;
-      SetColumnSizes();
+
+      if (oldRoot == null) {
+        SetState(0);
+        stateList.Items[0].Selected = true;
+        SetColumnSizes();
+      } else {
+        var mapping = new Dictionary<SkeletonItem, SkeletonItem>();        
+        unfoldingRoot.SyncWith(mapping, oldRoot);
+        SkeletonItem newIt = null;
+        while (selectedSkel != null) {          
+          if (mapping.TryGetValue(selectedSkel, out newIt)) break;
+          selectedSkel = selectedSkel.parent;
+        }
+        if (newIt != null) GotoNode(newIt);
+        UpdateMatches(true);
+      }
     }
 
     private void SetColumnSizes()
@@ -283,7 +315,6 @@ namespace Microsoft.Boogie.ModelViewer
 
     private void stateList_SelectedIndexChanged(object sender, EventArgs e)
     {
-
       if (stateList.SelectedItems.Count == 0) return;
       var sel = stateList.SelectedItems[0].Index;
 
@@ -295,10 +326,16 @@ namespace Microsoft.Boogie.ModelViewer
       SetState(sel);
     }
 
+    DisplayItem SelectedNode()
+    {
+      if (currentStateView.SelectedItems.Count == 0) return null;
+      return (DisplayItem)currentStateView.SelectedItems[0];
+    }
+
     private void currentStateView_SelectedIndexChanged(object sender, EventArgs e)
     {
-      if (currentStateView.SelectedItems.Count == 0) return;
-      var sel = (DisplayItem) currentStateView.SelectedItems[0];
+      var sel = SelectedNode();
+      if (sel == null) return;
 
       stateList.BeginUpdate();
       for (int i = 0; i < sel.skel.displayNodes.Length; ++i) {
@@ -443,10 +480,9 @@ namespace Microsoft.Boogie.ModelViewer
     {
       IDisplayNode sel = null;
       SkeletonItem skel = null;
-      if (currentStateView.SelectedItems.Count > 0) {
-        var it = currentStateView.SelectedItems[0];
-        sel = ((DisplayItem)it).dispNode;
-        skel = ((DisplayItem)it).skel;
+      if (SelectedNode() != null) {
+        sel = SelectedNode().dispNode;
+        skel = SelectedNode().skel;
       }
 
       var items = stateViewMenu.Items;
@@ -471,6 +507,35 @@ namespace Microsoft.Boogie.ModelViewer
         items.Add("Aliases...", null, (s, _) => SetSearch("eq:" + selName));
         AddMenuItems(aliases, items, "   = ", 10);
       }
+    }
+
+    private void normalToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+      int viewLev = -1;
+      for (int i = 0; i < viewItems.Length; ++i) {
+        if (viewItems[i] == sender) {
+          viewLev = i;
+          viewItems[i].Checked = true;
+        } else {
+          viewItems[i].Checked = false;
+        }
+      }
+      if (viewLev != -1 && viewLev != viewOpts.ViewLevel) {
+        viewOpts.ViewLevel = viewLev;
+        BuildModel();
+      }
+    }
+
+    private void debugToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+      debugToolStripMenuItem.Checked = !debugToolStripMenuItem.Checked;
+      viewOpts.DebugMode = debugToolStripMenuItem.Checked;
+      BuildModel();
+    }
+
+    private void exitToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+      this.Close();
     }
   }
 

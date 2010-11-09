@@ -65,7 +65,11 @@ namespace Microsoft.Boogie.ModelViewer
 
     public bool Expandable
     {
-      get { return displayNodes.Any(d => d != null && d.Children.Count() > 0); }
+      get {
+        if (wasExpanded)
+          return children.Count > 0;
+        return displayNodes.Any(d => d != null && d.Children.Count() > 0); 
+      }
     }
 
     public bool Expanded
@@ -132,6 +136,8 @@ namespace Microsoft.Boogie.ModelViewer
         var dn = displayNodes[i];
         if (dn == null) continue;
         foreach (var child in dn.Children) {
+          if (child.ViewLevel > main.viewOpts.ViewLevel)
+            continue;
           SkeletonItem skelChild;
           var name = child.Name;
           if (!created.TryGetValue(name, out skelChild)) {
@@ -182,6 +188,18 @@ namespace Microsoft.Boogie.ModelViewer
       }
       parents.Reverse();
       return main.langModel.PathName(parents);
+    }
+
+    public void SyncWith(Dictionary<SkeletonItem, SkeletonItem> mapping, SkeletonItem old)
+    {
+      mapping[old] = this;
+      Expanded = old.Expanded;
+      var oldCh = old.children.ToDictionary(c => c.name);
+      foreach (var c in children) {
+        SkeletonItem oc;
+        if (oldCh.TryGetValue(c.name, out oc))
+          c.SyncWith(mapping, oc);
+      }
     }
   }
 

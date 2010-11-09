@@ -17,7 +17,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       return m.TryGetFunc("$$Language$Dafny") != null;
     }
 
-    public ILanguageSpecificModel GetLanguageSpecificModel(Model m)
+    public ILanguageSpecificModel GetLanguageSpecificModel(Model m, ViewOptions opts)
     {
       var dm = new DafnyModel(m);
       foreach (var s in m.States) {

@@ -5,10 +5,16 @@ using System.Text;
 
 namespace Microsoft.Boogie.ModelViewer
 {
+  public class ViewOptions
+  {
+    public int ViewLevel;
+    public bool DebugMode;
+  }
+
   public interface ILanguageProvider
   {
     bool IsMyModel(Model m);
-    ILanguageSpecificModel GetLanguageSpecificModel(Model m);
+    ILanguageSpecificModel GetLanguageSpecificModel(Model m, ViewOptions opts);
   }
 
   public interface ILanguageSpecificModel
@@ -47,6 +53,8 @@ namespace Microsoft.Boogie.ModelViewer
     NodeState State { get; }
     string Value { get; }
     string ToolTip { get; }
+
+    int ViewLevel { get; }
 
     /// <summary>
     /// Used to determine aliasing. Can be null.
@@ -103,6 +111,11 @@ namespace Microsoft.Boogie.ModelViewer
     public virtual string ToolTip
     {
       get { return null; }
+    }
+
+    public virtual int ViewLevel
+    {
+      get; set;
     }
 
     public virtual IEnumerable<IDisplayNode> Children
