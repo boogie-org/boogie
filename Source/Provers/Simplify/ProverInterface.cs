@@ -278,7 +278,7 @@ namespace Microsoft.Boogie.Simplify {
           }
         }
         if (CommandLineOptions.Clo.Trace) {
-          Console.WriteLine("Using prover: " + _proverPath);
+          Console.WriteLine("[TRACE] Using prover: " + _proverPath);
         }
       }
     }
