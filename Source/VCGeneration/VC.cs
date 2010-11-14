@@ -2069,7 +2069,7 @@ namespace VC {
                        {
                            var pid = calls.candidateParent[id];
                            var str = calls.getPersistentName(pid);
-                           coverageProcess.StandardInput.WriteLine("color " + str);
+                           coverageProcess.StandardInput.WriteLine("color green " + str);
                        }
                    }
                }
@@ -2257,9 +2257,46 @@ namespace VC {
            Console.WriteLine("Stratified Inlining: VC Size: {0}", vcSize);
        }
 
+       if (coverageProcess != null)
+       {
+           coverageProcess.StandardInput.WriteLine("reset_graph_round");
+           // Go through the curr candidates and write down their parents (i.e.,
+           // those procedures that have an assume false in them)
+           var colorRed = new Set();
+           var colorOrange = new Set();
+           foreach (var id in calls.currCandidates)
+           {
+               if (calls.candidateParent.ContainsKey(id))
+               {
+                   var pid = calls.candidateParent[id];
+                   var str = calls.getPersistentName(pid);
+                   if (calls.getRecursionBound(id) > CommandLineOptions.Clo.RecursionBound)
+                   {
+                       colorOrange.Remove(str);
+                       colorRed.Add(str);
+                   }
+                   else
+                   {
+                       if (!colorRed.Contains(str)) colorOrange.Add(str);
+                   }
+
+               }
+           }
+
+           foreach (var str in colorOrange)
+           {
+               coverageProcess.StandardInput.WriteLine("color orange " + str.ToString());
+           }
+
+           foreach (var str in colorRed)
+           {
+               coverageProcess.StandardInput.WriteLine("color red " + str.ToString());
+           }
+       }
+
        if (coverageProcess != null && stopCoverageProcess)
        {
-           coverageProcess.StandardInput.WriteLine("Done");
+           coverageProcess.StandardInput.WriteLine("AllDone");
 
            do
            {
