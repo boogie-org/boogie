@@ -15,7 +15,7 @@ class Duplicates1 refines Duplicates0 {
       invariant 0 <= n && n <= |s|;
       invariant b <==> exists i in [0..n] :: s[i] in s[..i];
     {
-	  var c := s[n] in s[..n];
+      var c := s[n] in s[..n];
       b := b || c;
       n := n + 1;
     }
@@ -26,7 +26,7 @@ class Duplicates2 refines Duplicates1 {
   transforms Find(s: seq<int>) returns (b: bool)
   {
     _;
-	// bitset has length 100, initially all false
+    // bitset has length 100, initially all false
     var bitset:seq<bool> [|bitset| == 100 && true !in bitset ];
     while
       invariant |bitset| == 100;
