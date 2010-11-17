@@ -113,7 +113,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       var seqLen = f_seq_length.AppWithArg(0, elt);
       if (seqLen != null) {
         // elt is a sequence
-        return string.Format("[Length {0}]", seqLen.Result.AsInt());
+        return string.Format("[Length {0}]{1}", seqLen.Result.AsInt(), base.CanonicalName(elt));
       }
       return base.CanonicalName(elt);
     }
@@ -153,7 +153,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       foreach (var tpl in f_set_select.AppsWithArg(0, elt)) {
         var setElement = tpl.Args[1];
         var containment = tpl.Result;
-        var edgname = new EdgeName(this, "[%0]", setElement);
+        var edgname = new EdgeName(this, "[%0]", Unbox(setElement));
         result.Add(new FieldNode(state, edgname, containment));
       }
       if (result.Count != 0)
@@ -174,7 +174,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       if (heap != null) {
         foreach (var tpl in f_heap_select.AppsWithArgs(0, heap, 1, elt)) {
           var field = new FieldName(tpl.Args[2], this);
-          var edgname = new EdgeName(this, field.Name, elt);
+          var edgname = new EdgeName(this, field.NameFormat, field.NameArgs);
           result.Add(new FieldNode(state, edgname, Unbox(tpl.Result)));
         }
       }
@@ -185,46 +185,44 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     {
       public readonly Model.Element Field;
       public readonly int Dims;
-      public readonly int[] dims;  // null if Dims==0
-      public readonly string Name;
+      public readonly string NameFormat;
+      public readonly Model.Element[] NameArgs;
 
       public FieldName(Model.Element elt, DafnyModel dm) {
         Field = elt;
         var tpl = dm.f_dim.AppWithArg(0, elt);
         if (tpl != null) {
           Dims = tpl.Result.AsInt();
-          if (Dims != 0) {
-            dims = new int[Dims];
-            for (int i = Dims; 0 <= --i; ) {
-              if (i == 0) {
-                tpl = dm.f_index_field.AppWithResult(elt);
-                dims[i] = tpl.Args[0].AsInt();
-              } else {
-                tpl = dm.f_multi_index_field.AppWithResult(elt);
-                dims[i] = tpl.Args[1].AsInt();
-                elt = tpl.Args[0];
-              }
+          NameArgs = new Model.Element[Dims];
+          for (int i = Dims; 0 <= --i; ) {
+            if (i == 0) {
+              tpl = dm.f_index_field.AppWithResult(elt);
+              NameArgs[i] = tpl.Args[0];
+            } else {
+              tpl = dm.f_multi_index_field.AppWithResult(elt);
+              NameArgs[i] = tpl.Args[1];
+              elt = tpl.Args[0];
             }
           }
         }
         // now for the name
         if (Dims == 0) {
-          Name = Field.ToString();
+          NameFormat = Field.ToString();
           foreach (var n in Field.Names) {
-            Name = n.Func.Name;
-            int dot = Name.LastIndexOf('.');
+            NameFormat = n.Func.Name;
+            int dot = NameFormat.LastIndexOf('.');
             if (0 <= dot)
-              Name = Name.Substring(dot + 1);
+              NameFormat = NameFormat.Substring(dot + 1);
             break;
           }
         } else {
-          Name = "[";
+          NameFormat = "[";
           string sep = "";
-          foreach (var idx in dims) {
-            Name += sep + idx;
+          for (int i = 0; i < Dims; i++) {
+            NameFormat += sep + "%" + i;
             sep = ",";
           }
-          Name += "]";
+          NameFormat += "]";
         }
       }
     }
