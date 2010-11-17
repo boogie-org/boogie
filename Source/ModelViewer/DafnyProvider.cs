@@ -33,6 +33,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     public readonly Model model;
     public readonly Model.Func f_heap_select, f_set_select, f_seq_length, f_seq_index, f_box, f_dim, f_index_field, f_multi_index_field;
     public readonly Dictionary<Model.Element, Model.Element[]> ArrayLengths = new Dictionary<Model.Element, Model.Element[]>();
+    public readonly Dictionary<Model.Element, Model.FuncTuple> DatatypeValues = new Dictionary<Model.Element, Model.FuncTuple>();
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
     public List<StateNode> states = new List<StateNode>();
 
@@ -48,7 +49,8 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       f_index_field = m.MkFunc("IndexField", 1);
       f_multi_index_field = m.MkFunc("MultiIndexField", 2);
 
-      // collect the array dimensions from the various array.Length functions
+      // collect the array dimensions from the various array.Length functions, and
+      // collect all known datatype values
       foreach (var fn in m.Functions) {
         if (Regex.IsMatch(fn.Name, "^array[0-9]*.Length[0-9]*$")) {
           int j = fn.Name.IndexOf('.', 5);
@@ -65,6 +67,11 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
             Contract.Assert(ar[idx] == null);
             ar[idx] = len;
           }
+        } else if (fn.Name.StartsWith("#") && fn.Name.IndexOf('.') != -1 && fn.Name[1] != '#') {
+          foreach (var tpl in fn.Apps) {
+            var elt = tpl.Result;
+            DatatypeValues.Add(elt, tpl);
+          }
         }
       }
     }
@@ -76,7 +83,8 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
     public string GetUserVariableName(string name)
     {
-      if (name == "$Heap" || name == "$_Frame" || name == "#cev_pc")
+      if (name.StartsWith("$") || // this covers $Heap and $_Frame and $nw...
+          name == "#cev_pc")
         return null;
       var hash = name.IndexOf('#');
       if (0 < hash)
@@ -92,44 +100,84 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       return null;
     }
 
+    public override string CanonicalName(Model.Element elt) {
+      Model.FuncTuple fnTuple;
+      if (DatatypeValues.TryGetValue(elt, out fnTuple)) {
+        // elt is s a datatype value, make its name be the name of the datatype constructor
+        string nm = fnTuple.Func.Name;
+        if (fnTuple.Func.Arity == 0)
+          return nm;
+        else
+          return nm + "(...)" + base.CanonicalName(elt);
+      }
+      var seqLen = f_seq_length.AppWithArg(0, elt);
+      if (seqLen != null) {
+        // elt is a sequence
+        return string.Format("[Length {0}]", seqLen.Result.AsInt());
+      }
+      return base.CanonicalName(elt);
+    }
+
     public IEnumerable<ElementNode> GetExpansion(StateNode state, Model.Element elt)
     {
       List<ElementNode> result = new List<ElementNode>();
 
-      if (elt.Kind == Model.ElementKind.Uninterpreted) {
-        var seqLen = f_seq_length.AppWithArg(0, elt);
-        if (seqLen != null) {
-          // elt is a sequence
-          var edgname = new EdgeName(this, "|.|", elt);
-          result.Add(new FieldNode(state, edgname, seqLen.Result));
-          foreach (var tpl in f_seq_index.AppsWithArg(0, elt)) {
-            edgname = new EdgeName(this, "[%0]", tpl.Args[1]);
-            result.Add(new FieldNode(state, edgname, Unbox(tpl.Result)));
-          }
+      if (elt.Kind != Model.ElementKind.Uninterpreted)
+        return result;
 
-        } else {
-          // it seems elt is an object or array
-          Model.Element[] lengths;
-          if (ArrayLengths.TryGetValue(elt, out lengths)) {
-            int i = 0;
-            foreach (var len in lengths) {
-              var name = lengths.Length == 1 ? "Length" : "Length" + i;
-              var edgname = new EdgeName(this, name);
-              result.Add(new FieldNode(state, edgname, len));
-              i++;
-            }
-          }
-          var heap = state.state.TryGet("$Heap");
-          if (heap != null) {
-            foreach (var tpl in f_heap_select.AppsWithArgs(0, heap, 1, elt)) {
-              var field = new FieldName(tpl.Args[2], this);
-              var edgname = new EdgeName(this, field.Name, elt);
-              result.Add(new FieldNode(state, edgname, Unbox(tpl.Result)));
-            }
-          }
+      // Perhaps elt is a known datatype value
+      Model.FuncTuple fnTuple;
+      if (DatatypeValues.TryGetValue(elt, out fnTuple)) {
+        // elt is a datatype value
+        int i = 0;
+        foreach (var arg in fnTuple.Args) {
+          var edgname = new EdgeName(this, i.ToString());
+          result.Add(new FieldNode(state, edgname, arg));
+          i++;
         }
+        return result;
       }
 
+      // Perhaps elt is a sequence
+      var seqLen = f_seq_length.AppWithArg(0, elt);
+      if (seqLen != null) {
+        // elt is a sequence
+        foreach (var tpl in f_seq_index.AppsWithArg(0, elt)) {
+          var edgname = new EdgeName(this, "[%0]", tpl.Args[1]);
+          result.Add(new FieldNode(state, edgname, Unbox(tpl.Result)));
+        }
+        return result;
+      }
+
+      // Perhaps elt is a set
+      foreach (var tpl in f_set_select.AppsWithArg(0, elt)) {
+        var setElement = tpl.Args[1];
+        var containment = tpl.Result;
+        var edgname = new EdgeName(this, "[%0]", setElement);
+        result.Add(new FieldNode(state, edgname, containment));
+      }
+      if (result.Count != 0)
+        return result;  // elt is a set
+
+      // It seems elt is an object or array
+      Model.Element[] lengths;
+      if (ArrayLengths.TryGetValue(elt, out lengths)) {
+        int i = 0;
+        foreach (var len in lengths) {
+          var name = lengths.Length == 1 ? "Length" : "Length" + i;
+          var edgname = new EdgeName(this, name);
+          result.Add(new FieldNode(state, edgname, len));
+          i++;
+        }
+      }
+      var heap = state.state.TryGet("$Heap");
+      if (heap != null) {
+        foreach (var tpl in f_heap_select.AppsWithArgs(0, heap, 1, elt)) {
+          var field = new FieldName(tpl.Args[2], this);
+          var edgname = new EdgeName(this, field.Name, elt);
+          result.Add(new FieldNode(state, edgname, Unbox(tpl.Result)));
+        }
+      }
       return result;
     }
 
