@@ -8,6 +8,7 @@ open Resolver
 open Lexer
 open Parser
 open BoogiePrinter
+
 open Translator
 
 let readAndProcess tracing (filename: string) =
@@ -15,9 +16,13 @@ let readAndProcess tracing (filename: string) =
         if tracing then printfn "Forró: version 1.0" else ()
         // lex
         let f = if filename = null then Console.In else new StreamReader(filename) :> TextReader
-        let lexbuff = LexBuffer<char>.FromTextReader(f)
+        let lexbuf = LexBuffer<char>.FromTextReader(f)
+        lexbuf.EndPos <- { pos_bol = 0;
+                           pos_fname=if filename = null then "stdin" else filename; 
+                           pos_cnum=0;
+                           pos_lnum=1 }
         // parse
-        let prog = Parser.start Lexer.tokenize lexbuff
+        let prog = Parser.start Lexer.tokenize lexbuf
         // print the given Forró program
         if tracing then
             printfn "---------- Given Forró program ----------"

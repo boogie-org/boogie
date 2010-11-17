@@ -8,9 +8,6 @@ exception ResolutionError of string
 let ResolutionError(s: string) =
     raise (ResolutionError s)
 
-let VarName v =
-    match v with Var(x) -> x
-
 type VarKind = InParam | OutParam | Local
 
 type Context(procedures: Collections.Generic.IDictionary<string,Procedure>) =

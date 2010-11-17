@@ -1,4 +1,4 @@
-procedure a b c := P x y z
+procedure a, b, c := P(x, y, z)
   requires 10
   ensures 20
 do
@@ -11,20 +11,20 @@ do
     k := x + 1;
   end;
   (x+5).head := c.tail;
-  a := new 17 18;
+  a := new (17, 18);
   assert a != null;
   m := k + a + null;
   c := m;
-  call Q(x y y);
+  call Q(x, y, y);
   if x then
-    call a c b := P(a b c);
+    call a, c, b := P(a, b, c);
   else
     call R();
   end;
 end;
 
 
-procedure Q x y z
+procedure Q(x, y, z)
   requires 10
   ensures 20
 do
@@ -32,7 +32,7 @@ do
 end;
 
 
-procedure R
+procedure R()
   requires 10
   ensures 20
 do

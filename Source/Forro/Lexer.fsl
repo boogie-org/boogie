@@ -14,7 +14,8 @@ let newline = ('\n' | '\r' '\n')
 
 rule tokenize = parse
 | whitespace    { tokenize lexbuf }
-| newline       { tokenize lexbuf }
+| newline       { // lexbuf.EndPos <- lexbuf.EndPos.AsNewLinePos() ; 
+                  tokenize lexbuf }
 // operators
 | "=="          { EQ }
 | "!="          { NEQ }
@@ -31,7 +32,10 @@ rule tokenize = parse
 // misc
 | "("           { LPAREN }
 | ")"           { RPAREN }
+| "{"           { LCURLY }
+| "}"           { RCURLY }
 | ";"           { SEMI }
+| ","           { COMMA }
 | ":="          { ASSIGN }
 // keywords
 | "procedure"   { PROCEDURE }

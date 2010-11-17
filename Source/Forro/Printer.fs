@@ -3,11 +3,6 @@
 open System
 open Forro
 
-let rec PrintVars xs =
-    match xs with
-    | [] -> ()
-    | Var(x)::rest -> printf " %s" x ; PrintVars rest
-
 let PrintField f =
     printf "."
     match f with
@@ -51,7 +46,7 @@ let rec PrintStmt indent s =
     match s with
     | Assign(Var(x), e) -> printf "%s" x ; printf " := " ; PrintExpr e true
     | Update(obj,f,rhs) -> PrintExpr obj false ; PrintField f ; printf " := " ; PrintExpr rhs true
-    | Alloc(Var(x),hd,tl) -> printf "%s" x ; printf " := new " ; PrintExpr hd false ; printf " " ; PrintExpr tl false
+    | Alloc(Var(x),hd,tl) -> printf "%s" x ; printf " := new (" ; PrintExpr hd false ; printf ", " ; PrintExpr tl false ; printf ")"
     | IfStmt(guard,thn,els) ->
         printf "if " ; PrintExpr guard true ; printfn " then"
         PrintStmtList ind thn
@@ -65,14 +60,15 @@ let rec PrintStmt indent s =
         PrintStmtList ind body
         Indent indent ; printf "end"
     | CallStmt(outs,id,ins) ->
-        printf "call"
-        if outs.IsEmpty then () else PrintVars outs ; printf " :="
+        printf "call "
+        if outs.IsEmpty then () else
+            ignore (List.fold (fun sep v -> printf "%s%s" sep (VarName v) ; ", ") "" outs) ; printf " :="
         printf " %s" id
         printf "("
-        ignore (List.fold (fun sep e -> printf "%s" sep ; PrintExpr e false ; " ") "" ins)
-        printf ");"
+        ignore (List.fold (fun sep e -> printf "%s" sep ; PrintExpr e false ; ", ") "" ins)
+        printf ")"
     | Assert(e) ->
-        printf "assert " ; PrintExpr e ; printfn ";"
+        printf "assert " ; PrintExpr e true
     printfn ";"
 
 and PrintStmtList indent slist =
@@ -83,11 +79,12 @@ let PrintProc p =
     match p with
     | Proc(name, ins, outs, req, ens, body) ->
         // signature
-        printf "procedure"
-        if outs.IsEmpty then () else PrintVars outs ; printf " :="
-        printf " %s" name
-        PrintVars ins
-        printfn ""
+        printf "procedure "
+        if outs.IsEmpty then () else
+            ignore (List.fold (fun sep v -> printf "%s%s" sep (VarName v) ; ", ") "" outs) ; printf " :="
+        printf " %s(" name
+        ignore (List.fold (fun sep v -> printf "%s%s" sep (VarName v) ; ", ") "" ins)
+        printfn ")"
         // specification
         printf "  requires "
         PrintExpr req true

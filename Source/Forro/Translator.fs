@@ -20,9 +20,9 @@ let rec Flatten a =
 let Prelude =
     @"// Forro
 
-var $head: [int]int;
+var $head: [int]int;  // int -> int
 var $tail: [int]int;
-var $valid: [int]bool;
+var $valid: [int]bool;  // array int of bool
 
 const null: int;
 
@@ -91,8 +91,8 @@ let rec DefL expr =
     | Not(e) -> DefL e
     | Binary(op,a,b) ->
         match op with
-        | And -> BBinary(BOr, BNot(MkPred (TrExpr a)), Def b) :: (DefL a)
-        | Or -> BBinary(BOr, MkPred (TrExpr a), Def b) :: (DefL a)
+        | And -> BBinary(BOr, BNot(MkPred (TrExpr a)), Def b) :: (DefL a)   // (Def a) && ((TrExpr a) ==> (Def b))
+        | Or -> BBinary(BOr, MkPred (TrExpr a), Def b) :: (DefL a)  // (Def a) && (!(TrExpr a) ==> (Def b))
         | _ -> Append (DefL b) (DefL a)
     | Select(e,f) ->
         let def = DefL e
@@ -114,7 +114,7 @@ let FreshLocal locals =
     match locals with
     | LB(n, vars) ->
         let name = "nw$" + n.ToString()
-        (BIdentifier(name), LB(n+1, BVar(name, BInt)::vars))
+        (BIdentifier(name), name, LB(n+1, BVar(name, BInt)::vars))
 
 let rec TrStmt stmt locals =
     match stmt with
@@ -130,8 +130,9 @@ let rec TrStmt stmt locals =
                   AssumeGoodState ]
         (s, locals)
     | Alloc(v,hd,tl) ->
-        let nw, locals = FreshLocal locals
+        let nw, name, locals = FreshLocal locals
         let s = [ BAssert (Def hd) ; BAssert (Def tl) ;
+                  BHavoc [name] ;
                   BAssume(BNot(BSelect("$valid", nw))) ;
                   BAssume(BBinary(BEq, BSelect("$head", nw), TrExpr hd)) ;
                   BAssume(BBinary(BEq, BSelect("$tail", nw), TrExpr tl)) ;
@@ -151,13 +152,13 @@ let rec TrStmt stmt locals =
         let s, locals = TrStmtList body locals
         match s with
         | BBlock(slist) ->
-            ([BWhileStmt(MkPred (TrExpr guard), List.rev ii, BBlock(AssumeGoodState::slist))], locals)
+            ([BWhileStmt(MkPred (TrExpr guard), List.rev ii, BBlock(AssumeGoodState::slist)) ; AssumeGoodState], locals)
     | CallStmt(outs,id,ins) ->
         let check = List.map (fun e -> BAssert (Def e)) ins
         let ins = List.map (fun e -> TrExpr e) ins
         let outs = List.map (fun p -> VarName p) outs
-        let s = BCallStmt(outs, id + "#Proc", ins)::check
-        (AssumeGoodState :: List.rev s, locals)
+        let s = BCallStmt(outs, id + "#Proc", ins)
+        (Append check [s ; AssumeGoodState ], locals)
     | Assert(e) ->
         ([ BAssert (Def e) ; BAssert (MkPred (TrExpr e)) ], locals)
 
@@ -190,7 +191,8 @@ let TrProc proc vars =
         let b, locals = TrStmtList body (LB(0,locals))
         match b, locals with
         | BBlock(slist), LB(n, vars) ->
-            BProc(id + "#Proc", bIns, bOuts, pre, AllFields, post, List.rev vars, BBlock(AssumeGoodState::slist))
+            BProc(id + "#Proc", bIns, bOuts, pre, AllFields, post,
+               List.rev vars, BBlock(AssumeGoodState::slist))
 
 // --------------------
 

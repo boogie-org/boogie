@@ -29,7 +29,7 @@ let IdToField id =
 %token STAR
 %token EQ NEQ LESS ATMOST
 %token AND OR
-%token OLD LPAREN RPAREN SEMI ASSIGN
+%token OLD LPAREN RPAREN LCURLY RCURLY SEMI COMMA ASSIGN
 %token PROCEDURE REQUIRES ENSURES DO END
 %token NEW IF THEN ELSE WHILE INVARIANT CALL ASSERT
 %token EOF
@@ -49,17 +49,21 @@ Prog: Proc { [$1] }
     | Prog Proc { $2 :: $1  }
 
 Proc:
-    PROCEDURE Signature
-    REQUIRES Expression ENSURES Expression
+    PROCEDURE Signature ProcedureSpec
     DO StmtList END SEMI
-    { match $2 with outs,id,ins -> Proc(id, StringsToVariables ins, StringsToVariables outs, $4, $6, $8) }
+    { match $2, $3 with (outs,id,ins), (req,ens) -> Proc(id, StringsToVariables ins, StringsToVariables outs, req, ens, $5) }
+
+ProcedureSpec:
+      REQUIRES Expression ENSURES Expression { $2, $4 }
 
 Signature:
-      IdList                  { [], List.head $1, List.tail $1 }
-    | IdList ASSIGN IdList    { $1, List.head $3, List.tail $3 }
+      ID LPAREN IdList RPAREN                { [], $1, $3 }
+    | ID LPAREN RPAREN                       { [], $1, [] }
+    | IdList ASSIGN ID LPAREN IdList RPAREN  { $1, $3, $5 }
+    | IdList ASSIGN ID LPAREN RPAREN         { $1, $3, [] }
 
 IdList: ID      { [$1] }
-    | ID IdList { $1 :: $2 }
+    | ID COMMA IdList { $1 :: $3 }
 
 Expression:
       AtomicExpr { $1 }
@@ -85,13 +89,13 @@ AtomicExpr:
 FieldSelect:
     AtomicExpr DOT ID { $1, IdToField $3 }
 
-ExprList:  // possibly empty
-                          { [] }
-    | Expression ExprList { $1::$2 }
+ExprList:
+    | Expression                { [$1] }
+    | Expression COMMA ExprList { $1::$3 }
 
-VarList:   // nonempty
+VarList:
     | ID ASSIGN        { [Var($1)] }
-    | ID VarList { Var($1)::$2 }
+    | ID COMMA VarList { Var($1)::$3 }
 
 StmtList:
     StmtListX  { Block($1) }
@@ -102,11 +106,14 @@ StmtListX:
 
 Stmt:
       ID ASSIGN Expression SEMI                           { Assign(Var($1), $3) }
-    | ID ASSIGN NEW Expression Expression SEMI            { Alloc(Var($1), $4, $5) }
+    | ID ASSIGN NEW LPAREN Expression COMMA
+                    Expression RPAREN SEMI                { Alloc(Var($1), $5, $7) }
     | FieldSelect ASSIGN Expression SEMI                  { match $1 with e,f -> Update(e, f, $3) }
     | IF Expression THEN StmtList ELSE StmtList END SEMI  { IfStmt($2,$4,$6) }
     | WHILE Expression Invariants DO StmtList END SEMI    { WhileStmt($2,$3,$5) }
+    | CALL ID LPAREN RPAREN SEMI                          { CallStmt([],$2,[]) }
     | CALL ID LPAREN ExprList RPAREN SEMI                 { CallStmt([],$2,$4) }
+    | CALL VarList ID LPAREN RPAREN SEMI                  { CallStmt($2,$3,[]) }
     | CALL VarList ID LPAREN ExprList RPAREN SEMI         { CallStmt($2,$3,$5) }
     | ASSERT Expression SEMI                              { Assert($2) }
 
