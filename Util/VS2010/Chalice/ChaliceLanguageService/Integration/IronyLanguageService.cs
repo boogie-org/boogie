@@ -178,7 +178,7 @@ namespace Demo
                                 continue;
                               if (line.StartsWith("Boogie program verifier")) {
                                 if (!Regex.IsMatch(line, "Boogie program verifier finished with [0-9]* verified, 0 errors"))
-                                  AddErrorBecauseOfToolProblems(req, line);
+                                  AddErrorBecauseOfToolProblems(req, line, false);
                                 continue;
                               }
 
@@ -256,11 +256,14 @@ namespace Demo
         }
 
         private static void AddErrorBecauseOfToolProblems(ParseRequest req, string msg) {
+          AddErrorBecauseOfToolProblems(req, msg, true);
+        }
+        private static void AddErrorBecauseOfToolProblems(ParseRequest req, string msg, bool error) {
           TextSpan span = new TextSpan();
           span.iStartLine = span.iEndLine = 0;
           span.iStartIndex = 0;
           span.iEndIndex = 5;
-          req.Sink.AddError(req.FileName, msg, span, Severity.Error);
+          req.Sink.AddError(req.FileName, msg, span, error ? Severity.Error : Severity.Hint);
         }
 
         /// <summary>
