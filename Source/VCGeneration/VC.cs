@@ -1893,425 +1893,731 @@ namespace VC {
       return outcome;
     }
 
-    public override Outcome StratifiedVerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback){
-      //Contract.Requires(impl != null);
-      //Contract.Requires(program != null);
-      //Contract.Requires(callback != null);
-      Contract.EnsuresOnThrow< UnexpectedProverOutputException>(true);
-       // This flag control the nature of queries made by StratifiedVerifyImplementation
-       // true: incremental search; false: in-place inlining
-       bool incrementalSearch = true;
-       // This flag allows the VCs (and live variable analysis) to be created on-demand
-       bool createVConDemand = true;
-       
-       switch (CommandLineOptions.Clo.StratifiedInliningOption)
-       {
-           case 0:
-               incrementalSearch = true;
-               createVConDemand = true;
-               break;
-           case 1:
-               incrementalSearch = false;
-               createVConDemand = true;
-               break;
-           case 2:
-               incrementalSearch = true;
-               createVConDemand = false;
-               break;
-           case 3:
-               incrementalSearch = false;
-               createVConDemand = false;
-               break;
-       }
+    public class CoverageGraphManager
+    {
+        public static int timeStamp = 0;
+        
 
-       // create a process for displaying coverage information
-       Process coverageProcess = null;
-       ProcessStartInfo coverageProcessInfo = null;
-       bool stopCoverageProcess = true;
-       #region Coverage reporter
-       coverageProcess = CommandLineOptions.Clo.coverageReporter;
-       if (coverageProcess != null)
-       {
-           stopCoverageProcess = false;
-           if (!coverageProcess.StartInfo.RedirectStandardInput)
-           {
-               coverageProcess = null;
-           }
-       }
-       else
-       {
-           if (CommandLineOptions.Clo.CoverageReporterPath != null)
-           {
-               coverageProcess = new Process();
-               coverageProcessInfo = new ProcessStartInfo();
-               coverageProcessInfo.CreateNoWindow = true;
-               coverageProcessInfo.FileName = CommandLineOptions.Clo.CoverageReporterPath + @"\CoverageGraph.exe";
-               coverageProcessInfo.RedirectStandardInput = true;
-               coverageProcessInfo.RedirectStandardOutput = true;
-               coverageProcessInfo.RedirectStandardError = false;
-               coverageProcessInfo.UseShellExecute = false;
+        public class Task
+        {
+            public enum TaskType { NONE, STEP, INLINE, BLOCK, REACHABLE };
 
-               coverageProcess.StartInfo = coverageProcessInfo;
-               try
-               {
-                   coverageProcess.Start();
-               }
-               catch (System.ComponentModel.Win32Exception)
-               {
-                   coverageProcess.Dispose();
-                   coverageProcess = null;
-               }
-           }
-       }
-       #endregion
+            public TaskType type;
+            private string query_string;
+            public List<int> nodes;
+            public int queryNode
+            {
+                get
+                {
+                    Debug.Assert(nodes.Count == 1);
+                    return nodes[0];
+                }
+            }
 
-       // Get the checker
-       Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);Contract.Assert(checker != null);
-       
-       // Run live variable analysis
-       if(CommandLineOptions.Clo.LiveVariableAnalysis == 2) {
-         Microsoft.Boogie.InterProcGenKill.ComputeLiveVars(impl, program);
-       }
-       
-       // Build VCs for all procedures
-       Contract.Assert( implName2StratifiedInliningInfo != null);
-       this.program = program;
+            public Task(string q, FCallHandler calls)
+            {
+                query_string = q;
+                nodes = new List<int>();
+                if (q.StartsWith("step"))
+                {
+                    type = TaskType.STEP;
+                    return;
+                }
+                var split = q.Split(' ');
+                switch (split[0].ToLower())
+                {
+                    case "inline":
+                        type = TaskType.INLINE;
+                        break;
+                    case "block":
+                        type = TaskType.BLOCK;
+                        break;
+                    case "reachable":
+                        type = TaskType.REACHABLE;
+                        break;
+                    default:
+                        Debug.Assert(false);
+                        break;
+                }
+                for (int i = 1; i < split.Length; i++)
+                {
+                    int n;
+                    if (int.TryParse(split[i], out n))
+                    {
+                        n = calls.getCandidateFromGraphNode(n);
+                        if (n != -1)
+                        {
+                            nodes.Add(n);
+                        }
+                    }
+                }
+                // Prune nodes according to which are current candidates
+                var pruned = new List<int>();
+                foreach (var n in nodes)
+                {
+                    if (calls.currCandidates.Contains(n))
+                    {
+                        if (type == TaskType.INLINE || type == TaskType.BLOCK)
+                        {
+                            pruned.Add(n);
+                        }
+                    }
+                    else
+                    {
+                        if (type == TaskType.REACHABLE)
+                        {
+                            pruned.Add(n);
+                        }
+                    }
+                }
 
-       if (!createVConDemand)
-       {
-           foreach (StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
-           {
-               Contract.Assert(info != null);
-               GenerateVCForStratifiedInlining(program, info, checker);
-           }
-       }
+                nodes = pruned;
+                if (type == TaskType.REACHABLE && nodes.Count != 1)
+                {
+                    type = TaskType.NONE;
+                }
+                else if (nodes.Count == 0)
+                {
+                    type = TaskType.NONE;
+                }                           
+            }
 
-       // Get the VC of the current procedure
-       VCExpr vc;
-       StratifiedInliningErrorReporter reporter;
-       Hashtable/*<int, Absy!>*/ mainLabel2absy;
-       GetVC(impl, program, callback, out vc, out mainLabel2absy, out reporter);
+            public bool isStep()
+            {
+                return (type == TaskType.STEP);
+            }
 
-       // Find all procedure calls in vc and put labels on them      
-       FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, mainLabel2absy);
-       calls.setCurrProcAsMain();
-       vc = calls.Mutate(vc, true);
-       reporter.SetCandidateHandler(calls);
+            public override string ToString()
+            {
+                return query_string;
+            }
+        }
 
-       #region Coverage reporter
-       if (coverageProcess != null)
-           coverageProcess.StandardInput.WriteLine("PROGRAM_ENTRY " + calls.getPersistentName(0));
+        class CoverageGraphState
+        {
+            public Queue<string> queries;
+            
+            public CoverageGraphState()
+            {
+                queries = new Queue<string>();
 
-       int vcSize = 0;
-       vcSize += SizeComputingVisitor.ComputeSize(vc);
-       #endregion
+            }
 
-       Outcome ret = Outcome.Correct;
-       
-       int expansionCount = 0;
-       int total_axioms_pushed = 0;
-       
-       // Do eager inlining
-       for(int i = 1; i < CommandLineOptions.Clo.StratifiedInlining && calls.currCandidates.Count > 0; i ++) 
-       {
-          List<int> toExpand = new List<int>();
-          foreach (int id in calls.currCandidates)
-          {
-              if (calls.isNonTrivialCandidate(id) && calls.getRecursionBound(id) <= CommandLineOptions.Clo.RecursionBound)
-              {
-                  toExpand.Add(id);
-              }
-          }
-          expansionCount += toExpand.Count;
-          if(incrementalSearch) 
-          {
-            total_axioms_pushed +=
-              DoExpansion(toExpand, calls, checker, coverageProcess, ref vcSize);
-          } else 
-          {
-              vc = DoExpansionAndInline(vc, toExpand, calls, checker, coverageProcess, ref vcSize);
-          }
-       }
+            public void addQuery(string q)
+            {
+                lock (this)
+                {
+                    queries.Enqueue(q);
+                }
+            }
 
-       #region Coverage reporter
-       if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
-       {
-           Console.WriteLine("Stratified Inlining: Size of VC after eager inlining: {0}", vcSize);
-       }
-       #endregion
+            public string getQuery(int ts)
+            {
+                var ret = "";
+                while (true)
+                {
+                    string str = coverageProcess.StandardOutput.ReadLine();
+                    if (str.StartsWith("query "))
+                    {
+                        var split = str.Split(' ');
+                        if (split.Length < 1) continue;
+                        if (ts.ToString() == split[1])
+                        {
+                            for (int i = 2; i < split.Length; i++) ret = ret + split[i] + " ";
+                            break;
+                        }
+                    }
+                }
+                return ret;
+            }
+        }
 
-       // Number of Z3 queries
-       int numqueries = 0;
+        public static Process coverageProcess;
+        private static CoverageGraphState cgState = null;
+        public bool stopCoverageProcess;
+        //private System.Threading.Thread readerThread;
+        private FCallHandler calls;
 
-       // Under-approx query is only needed if something was inlined since
-       // the last time an under-approx query was made
-       bool underApproxNeeded = true;
+        public CoverageGraphManager(FCallHandler calls)
+        {
+            stopCoverageProcess = true;
+            coverageProcess = null;
+            cgState = new CoverageGraphState();
+            this.calls = calls;
 
-       // Bound is the recursion bound for stratified search
-       int bound = 1;
-       bool done = false;
+            coverageProcess = CommandLineOptions.Clo.coverageReporter;
+            if (coverageProcess != null)
+            {
+                stopCoverageProcess = false;
+                if (!coverageProcess.StartInfo.RedirectStandardInput)
+                {
+                    coverageProcess = null;
+                }
+            }
+            else
+            {
+                if (CommandLineOptions.Clo.CoverageReporterPath != null)
+                {
+                    coverageProcess = new Process();
+                    var coverageProcessInfo = new ProcessStartInfo();
+                    coverageProcessInfo.CreateNoWindow = true;
+                    coverageProcessInfo.FileName = CommandLineOptions.Clo.CoverageReporterPath + @"\CoverageGraph.exe";
+                    coverageProcessInfo.RedirectStandardInput = true;
+                    coverageProcessInfo.RedirectStandardOutput = true;
+                    coverageProcessInfo.RedirectStandardError = false;
+                    coverageProcessInfo.UseShellExecute = false;
+                    coverageProcessInfo.Arguments = "interactive";
 
-       while (bound <= CommandLineOptions.Clo.RecursionBound && !done)
-       {
-           while (true)
-           {
-               int axioms_pushed, prev_axioms_pushed;
+                    coverageProcess.StartInfo = coverageProcessInfo;
+                    try
+                    {
+                        coverageProcess.Start();
+                    }
+                    catch (System.ComponentModel.Win32Exception)
+                    {
+                        coverageProcess.Dispose();
+                        coverageProcess = null;
+                    }
+                    //readerThread = new System.Threading.Thread(new System.Threading.ThreadStart(CoverageGraphInterface));
+                    //readerThread.Start();
+                }
+            }
 
-               #region Coverage reporter
-               if (coverageProcess != null)
-               {
-                   coverageProcess.StandardInput.WriteLine("reset_graph_round");
-                   // Go through the curr candidates and write down their parents (i.e.,
-                   // those procedures that have an assume false in them)
-                   foreach (var id in calls.currCandidates)
-                   {
-                       if (calls.candidateParent.ContainsKey(id))
-                       {
-                           var pid = calls.candidateParent[id];
-                           var str = calls.getPersistentName(pid);
-                           coverageProcess.StandardInput.WriteLine("color green " + str);
-                       }
-                   }
-               }
-               #endregion
+            if (coverageProcess != null)
+            {
+                coverageProcess.StandardInput.WriteLine("clear-all");
+            }
+        }
 
-               // Underapprox query
-               if (underApproxNeeded)
-               {
-                   reporter.underapproximationMode = true;
-                   checker.TheoremProver.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
+        public void addMain()
+        {
+            if (coverageProcess != null)
+            {
+                coverageProcess.StandardInput.WriteLine("declare-node {0} {1}", calls.getPersistentName(0), calls.getProc(0));
+            }
+        }
 
-                   prev_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+        public void addCandidateEdges()
+        {
+            if (coverageProcess == null) return;
 
-                   foreach (int id in calls.currCandidates)
-                   {
-                       checker.TheoremProver.PushVCExpression(calls.getFalseExpr(id));
-                   }
-                   axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
-                   checker.TheoremProver.FlushAxiomsToTheoremProver();
+            coverageProcess.StandardInput.WriteLine("batch-graph-command-begin");
+            coverageProcess.StandardInput.WriteLine("reset-color");
+            // Go through the curr candidates and draw edges
+            var nodes = new Microsoft.SpecSharp.Collections.Set<int>();
+            var greenNodes = new Microsoft.SpecSharp.Collections.Set<int>();
+            var redNodes = new Microsoft.SpecSharp.Collections.Set<int>();
+            var edges = new List<KeyValuePair<int, int>>();
+            foreach (var id in calls.currCandidates)
+            {
+                nodes.Add(id);
+                if (calls.candidateParent.ContainsKey(id))
+                {
+                    var pid = calls.candidateParent[id];
+                    nodes.Add(pid);
 
-                   // Note: axioms_pushed may not be the same as calls.currCandidates.Count 
-                   // because PushVCExpression pushes other stuff too (which always seems 
-                   // to be TRUE)         
+                    var src = calls.getPersistentName(pid);
+                    var tgt = calls.getPersistentName(id);
+                    edges.Add(new KeyValuePair<int, int>(src, tgt));
+                }
+                if (calls.getRecursionBound(id) > CommandLineOptions.Clo.RecursionBound)
+                {
+                    redNodes.Add(id);
+                }
+                else
+                {
+                    greenNodes.Add(id);
+                }
 
-                   // Check!
-                   //Console.Write("Checking with preds == false: "); Console.Out.Flush();
-                   ret = CheckVC(vc, reporter, checker, impl.Name);
-                   //Console.WriteLine(ret.ToString());
-                   numqueries++;
+            }
+            // Send data across
+            var declarenode = "declare-node";
+            foreach (var n in nodes)
+            {
+                declarenode += string.Format(" {0} {1}", calls.getPersistentName(n), calls.getProc(n));
+            }
+            coverageProcess.StandardInput.WriteLine(declarenode);
 
-                   // Pop
-                   for (int i = 0; i < axioms_pushed - prev_axioms_pushed; i++)
-                   {
-                       checker.TheoremProver.Pop();
-                   }
+            var declareedge = "declare-edge";
+            foreach (var e in edges)
+            {
+                declareedge += string.Format(" {0} {1}", e.Key, e.Value);
+            }
+            coverageProcess.StandardInput.WriteLine(declareedge);
 
-                   checker.TheoremProver.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
+            var color = "color green";
+            foreach (var n in greenNodes)
+            {
+                color += string.Format(" {0}", calls.getPersistentName(n));
+            }
+            coverageProcess.StandardInput.WriteLine(color);
 
-                   if (ret == Outcome.Errors)
-                   {
-                       done = true;
-                       break;
-                   }
+            color = "color red";
+            foreach (var n in redNodes)
+            {
+                color += string.Format(" {0}", calls.getPersistentName(n));
+            }
+            coverageProcess.StandardInput.WriteLine(color);
+            coverageProcess.StandardInput.WriteLine("batch-graph-command-end");
+        }
 
-                   if (ret != Outcome.Correct && ret != Outcome.Errors)
-                   {
-                       // The query ran out of memory or time, that's it,
-                       // we cannot do better. Give up!
-                       done = true;
-                       break;
-                   }
+        public void reportBug()
+        {
+            if (coverageProcess == null) return;
+            coverageProcess.StandardInput.WriteLine("set-status bug");
+        }
 
-                   // If we didn't underapproximate, then we're done
-                   if (calls.currCandidates.Count == 0)
-                   {
-                       Contract.Assert(ret == Outcome.Correct);
-                       done = true;
-                       break;
-                   }
+        public void reportCorrect()
+        {
+            if (coverageProcess == null) return;
+            coverageProcess.StandardInput.WriteLine("set-status correct");
+        }
 
-                   Contract.Assert(ret == Outcome.Correct);
-               }
-               
-               underApproxNeeded = true;
+        public void reportCorrect(int bound)
+        {
+            if (coverageProcess == null) return;
+            coverageProcess.StandardInput.WriteLine("set-status bound {0}", bound);
+        }
 
-               checker.TheoremProver.LogComment(";;;;;;;;;;;; Overapprox mode begin ;;;;;;;;;;");
+        public void reportError()
+        {
+            if (coverageProcess == null) return;
+            coverageProcess.StandardInput.WriteLine("set-status error");
+        }
 
-               // Over-approx query
-               reporter.underapproximationMode = false;
+        public Task getNextTask()
+        {
+            if (coverageProcess == null) return new Task("step", calls);
+            if (coverageProcess.HasExited)
+            {
+                coverageProcess = null;
+                return new Task("step", calls);
+            }
 
-               // Push "true" for all, except:
-               // push "false" for all candidates that have reached
-               // the recursion bounds
+            var ts = getNextTimeStamp();
+            coverageProcess.StandardInput.WriteLine("get-input " + ts.ToString());
+            string q = cgState.getQuery(ts);
+            return new Task(q, calls);
+        }
 
-               bool allTrue = true;
-               bool allFalse = true;
-               prev_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+        public void stop()
+        {
+            if (coverageProcess != null)
+            {
+                if (stopCoverageProcess)
+                {
+                    coverageProcess.StandardInput.WriteLine("done");
+                    do
+                    {
+                        coverageProcess.WaitForExit(100);
+                        coverageProcess.StandardInput.WriteLine();
+                    } while (!coverageProcess.HasExited);
+                }
+            }
+        }
 
-               foreach (int id in calls.currCandidates)
-               {
-                   if (calls.getRecursionBound(id) <= bound)
-                   {
-                       //checker.TheoremProver.PushVCExpression(calls.getTrueExpr(id));
-                       allFalse = false;
-                   }
-                   else
-                   {
-                       checker.TheoremProver.PushVCExpression(calls.getFalseExpr(id));
-                       allTrue = false;
-                   }
-               }
+        public int getNextTimeStamp()
+        {
+            timeStamp++;
+            return timeStamp - 1;
+        }
 
-               axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
-               checker.TheoremProver.FlushAxiomsToTheoremProver();
-
-               // Check
-               if (allFalse)
-               {
-                   // If we made all candidates false, then this is the same
-                   // as the underapprox query. We already know the answer.
-                   ret = Outcome.Correct;
-               }
-               else
-               {
-                   //Console.Write("Checking with preds == true: "); Console.Out.Flush();
-                   ret = CheckVC(vc, reporter, checker, impl.Name);
-                   //Console.WriteLine(ret.ToString());
-                   numqueries++;
-               }
-
-               // Pop
-               for (int i = 0; i < axioms_pushed - prev_axioms_pushed; i++)
-               {
-                   checker.TheoremProver.Pop();
-               }
-
-               if (ret == Outcome.Correct)
-               {
-                   // If nothing was made false, then we're done
-                   if (allTrue)
-                   {
-                       done = true;
-                       break;
-                   }
-
-                   // Nothing more can be done with current recursion bound. 
-                   Contract.Assert(done == false);
-                   underApproxNeeded = false;
-                   break;
-               }
-
-               if (ret != Outcome.Correct && ret != Outcome.Errors)
-               {
-                   // The query ran out of memory or time, that's it,
-                   // we cannot do better. Give up!
-                   done = true;
-                   break;
-               }
-
-
-               Contract.Assert(ret == Outcome.Errors);
-
-               checker.TheoremProver.LogComment(";;;;;;;;;;;; Overapprox mode end ;;;;;;;;;;");
-
-               checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
-
-               // Look at the errors to see what to inline
-               Contract.Assert(reporter.candidatesToExpand.Count != 0);
-
-               expansionCount += reporter.candidatesToExpand.Count;
-
-
-
-               if (incrementalSearch)
-               {
-                   total_axioms_pushed +=
-                     DoExpansion(reporter.candidatesToExpand, calls, checker, coverageProcess, ref vcSize);
-               }
-               else
-               {
-                   vc = DoExpansionAndInline(vc, reporter.candidatesToExpand, calls, checker, coverageProcess, ref vcSize);
-               }
-
-               checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
-           }
-
-           // TODO: What is the optimal increment here?
-           bound++;
-       }
-      
-       // Pop off everything that we pushed so that there are no side effects from
-       // this call to VerifyImplementation
-       for(int i = 0; i < total_axioms_pushed; i++) {
-	      checker.TheoremProver.Pop();
-	   }
+        public static void CoverageGraphInterface()
+        {
+            while (true)
+            {
+                var line = coverageProcess.StandardOutput.ReadLine();
+                if (line == "exit") break;
+                cgState.addQuery(line);
+            }
+        }   
+    }
 
 
-       #region Coverage reporter
-       if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
-       {
-           Console.WriteLine("Stratified Inlining: Calls to Z3: {0}", numqueries);
-           Console.WriteLine("Stratified Inlining: Expansions performed: {0}", expansionCount);
-           Console.WriteLine("Stratified Inlining: Candidates left: {0}", calls.currCandidates.Count);
-           Console.WriteLine("Stratified Inlining: Nontrivial Candidates left: {0}", calls.numNonTrivialCandidates());
-           Console.WriteLine("Stratified Inlining: VC Size: {0}", vcSize);
-       }
 
-       if (coverageProcess != null)
-       {
-           coverageProcess.StandardInput.WriteLine("reset_graph_round");
-           // Go through the curr candidates and write down their parents (i.e.,
-           // those procedures that have an assume false in them)
-           var colorRed = new Set();
-           var colorOrange = new Set();
-           foreach (var id in calls.currCandidates)
-           {
-               if (calls.candidateParent.ContainsKey(id))
-               {
-                   var pid = calls.candidateParent[id];
-                   var str = calls.getPersistentName(pid);
-                   if (calls.getRecursionBound(id) > CommandLineOptions.Clo.RecursionBound)
-                   {
-                       colorOrange.Remove(str);
-                       colorRed.Add(str);
-                   }
-                   else
-                   {
-                       if (!colorRed.Contains(str)) colorOrange.Add(str);
-                   }
+    public override Outcome StratifiedVerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback)
+    {
+        //Contract.Requires(impl != null);
+        //Contract.Requires(program != null);
+        //Contract.Requires(callback != null);
+        Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+        // This flag control the nature of queries made by StratifiedVerifyImplementation
+        // true: incremental search; false: in-place inlining
+        bool incrementalSearch = true;
+        // This flag allows the VCs (and live variable analysis) to be created on-demand
+        bool createVConDemand = true;
 
-               }
-           }
+        switch (CommandLineOptions.Clo.StratifiedInliningOption)
+        {
+            case 0:
+                incrementalSearch = true;
+                createVConDemand = true;
+                break;
+            case 1:
+                incrementalSearch = false;
+                createVConDemand = true;
+                break;
+            case 2:
+                incrementalSearch = true;
+                createVConDemand = false;
+                break;
+            case 3:
+                incrementalSearch = false;
+                createVConDemand = false;
+                break;
+        }
 
-           foreach (var str in colorOrange)
-           {
-               coverageProcess.StandardInput.WriteLine("color orange " + str.ToString());
-           }
+        // Get the checker
+        Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime); Contract.Assert(checker != null);
 
-           foreach (var str in colorRed)
-           {
-               coverageProcess.StandardInput.WriteLine("color red " + str.ToString());
-           }
-       }
+        // Run live variable analysis
+        if (CommandLineOptions.Clo.LiveVariableAnalysis == 2)
+        {
+            Microsoft.Boogie.InterProcGenKill.ComputeLiveVars(impl, program);
+        }
 
-       if (coverageProcess != null && stopCoverageProcess)
-       {
-           coverageProcess.StandardInput.WriteLine("AllDone");
+        // Build VCs for all procedures
+        Contract.Assert(implName2StratifiedInliningInfo != null);
+        this.program = program;
 
-           do
-           {
-               coverageProcess.WaitForExit(100);
-               coverageProcess.StandardInput.WriteLine();
-           } while (!coverageProcess.HasExited);
-       }
-       #endregion
+        if (!createVConDemand)
+        {
+            foreach (StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
+            {
+                Contract.Assert(info != null);
+                GenerateVCForStratifiedInlining(program, info, checker);
+            }
+        }
 
-       if (!done)
-       {
-           return Outcome.ReachedBound;
-       }
+        // Get the VC of the current procedure
+        VCExpr vc;
+        StratifiedInliningErrorReporter reporter;
+        Hashtable/*<int, Absy!>*/ mainLabel2absy;
+        GetVC(impl, program, callback, out vc, out mainLabel2absy, out reporter);
 
-       return ret;
+        // Find all procedure calls in vc and put labels on them      
+        FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, mainLabel2absy);
+        calls.setCurrProcAsMain();
+        vc = calls.Mutate(vc, true);
+        reporter.SetCandidateHandler(calls);
+
+        // create a process for displaying coverage information
+        var coverageManager = new CoverageGraphManager(calls);
+        coverageManager.addMain();
+
+        int vcSize = 0;
+        vcSize += SizeComputingVisitor.ComputeSize(vc);
+
+        Outcome ret = Outcome.ReachedBound;
+
+        int expansionCount = 0;
+        int total_axioms_pushed = 0;
+
+        // Do eager inlining
+        for (int i = 1; i < CommandLineOptions.Clo.StratifiedInlining && calls.currCandidates.Count > 0; i++)
+        {
+            List<int> toExpand = new List<int>();
+            foreach (int id in calls.currCandidates)
+            {
+                if (calls.isNonTrivialCandidate(id) && calls.getRecursionBound(id) <= CommandLineOptions.Clo.RecursionBound)
+                {
+                    toExpand.Add(id);
+                }
+            }
+            expansionCount += toExpand.Count;
+            if (incrementalSearch)
+            {
+                total_axioms_pushed +=
+                  DoExpansion(toExpand, calls, checker, ref vcSize);
+            }
+            else
+            {
+                vc = DoExpansionAndInline(vc, toExpand, calls, checker, ref vcSize);
+            }
+        }
+
+        #region Coverage reporter
+        if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
+        {
+            Console.WriteLine("Stratified Inlining: Size of VC after eager inlining: {0}", vcSize);
+        }
+        #endregion
+
+        // Number of Z3 queries
+        int numqueries = 0;
+
+        // Under-approx query is only needed if something was inlined since
+        // the last time an under-approx query was made
+        // TODO: introduce this
+        // bool underApproxNeeded = true;
+
+        // The recursion bound for stratified search
+        int bound = 1;
+
+        int done = 0;
+
+        // Process tasks while not done. We're done when:
+        //   case 1: (correct) We didn't find a bug (either an over-approx query was valid
+        //                     or we reached the recursion bound) and the task is "step"
+        //   case 2: (bug)     We find a bug
+        //   case 3: (internal error)   The theorem prover TimesOut of runs OutOfMemory
+        while (true)
+        {
+            // Note: in the absence of a coverage graph, task is always "step"
+            coverageManager.addCandidateEdges();
+            var task = coverageManager.getNextTask();
+            if (task.type == CoverageGraphManager.Task.TaskType.INLINE)
+            {
+                if (done == 2) continue;
+                foreach (var id in task.nodes)
+                {
+                    calls.setRecursionIncrement(id, 0);
+                }
+                total_axioms_pushed +=
+                    DoExpansion(task.nodes, calls, checker, ref vcSize);
+                coverageManager.addCandidateEdges();
+            }
+            else if (task.type == CoverageGraphManager.Task.TaskType.BLOCK)
+            {
+                if (done == 2) continue;
+                foreach (var id in task.nodes)
+                {
+                    calls.setRecursionIncrement(id, CommandLineOptions.Clo.RecursionBound + 1);
+                }
+                coverageManager.addCandidateEdges();
+            }
+            else if (task.type == CoverageGraphManager.Task.TaskType.STEP)
+            {
+                if (done > 0)
+                {
+                    break;
+                }
+
+                // Stratified Step
+                ret = stratifiedStep(vc, bound, calls, checker, reporter, ref vcSize);
+                numqueries += 2;
+
+                // Sorry, out of luck (time/memory)
+                if (ret == Outcome.Inconclusive || ret == Outcome.OutOfMemory || ret == Outcome.TimedOut)
+                {
+                    done = 3;
+                    coverageManager.reportError();
+                    continue;
+                }
+
+                
+                if (ret == Outcome.Errors && reporter.underapproximationMode)
+                {
+                    // Found a bug
+                    done = 2;
+                    coverageManager.reportBug();
+                }
+                else if (ret == Outcome.Correct)
+                {
+                    // Correct
+                    done = 1;
+                    coverageManager.reportCorrect();
+                }
+                else if (ret == Outcome.ReachedBound && bound > CommandLineOptions.Clo.RecursionBound)
+                {
+                    // Correct under bound
+                    done = 1;
+                    coverageManager.reportCorrect(bound);
+                }
+                else if (ret == Outcome.ReachedBound)
+                {
+                    // Increment bound, is possible
+                    var minRecReached = CommandLineOptions.Clo.RecursionBound + 1;
+                    foreach (var id in calls.currCandidates)
+                    {
+                        var rb = calls.getRecursionBound(id);
+                        if (rb <= bound) continue;
+                        if (rb < minRecReached) minRecReached = rb;
+                    }
+                    bound = minRecReached;
+                }
+                else
+                {
+                    // Do inlining
+                    Debug.Assert(ret == Outcome.Errors && !reporter.underapproximationMode);
+                    #region expand call tree
+                    // Expand and try again
+                    checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
+
+                    // Look at the errors to see what to inline
+                    Contract.Assert(reporter.candidatesToExpand.Count != 0);
+
+                    expansionCount += reporter.candidatesToExpand.Count;
+
+                    if (incrementalSearch)
+                    {
+                        total_axioms_pushed +=
+                          DoExpansion(reporter.candidatesToExpand, calls, checker, ref vcSize);
+                    }
+                    else
+                    {
+                        vc = DoExpansionAndInline(vc, reporter.candidatesToExpand, calls, checker, ref vcSize);
+                    }
+
+                    checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
+                    #endregion
+                }
+            }
+            else
+            {
+                Console.WriteLine("Ignoring task: " + task.ToString());
+            }
+
+        }
+
+        // Pop off everything that we pushed so that there are no side effects from
+        // this call to VerifyImplementation
+        for (int i = 0; i < total_axioms_pushed; i++)
+        {
+            checker.TheoremProver.Pop();
+        }
+
+        #region Coverage reporter
+        if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
+        {
+            Console.WriteLine("Stratified Inlining: Calls to Z3: {0}", numqueries);
+            Console.WriteLine("Stratified Inlining: Expansions performed: {0}", expansionCount);
+            Console.WriteLine("Stratified Inlining: Candidates left: {0}", calls.currCandidates.Count);
+            Console.WriteLine("Stratified Inlining: Nontrivial Candidates left: {0}", calls.numNonTrivialCandidates());
+            Console.WriteLine("Stratified Inlining: VC Size: {0}", vcSize);
+        }
+        #endregion
+        coverageManager.stop();
+
+        return ret;
+    }
+
+    // A step of the stratified inlining algorithm: both under-approx and over-approx queries
+    private Outcome stratifiedStep(VCExpr vc, int bound, FCallHandler/*!*/ calls, Checker/*!*/ checker, StratifiedInliningErrorReporter reporter, ref int vcSize)
+    {
+        int axioms_pushed, prev_axioms_pushed;
+        Outcome ret;
+
+        reporter.underapproximationMode = true;
+        checker.TheoremProver.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
+
+        prev_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+
+        foreach (int id in calls.currCandidates)
+        {
+            checker.TheoremProver.PushVCExpression(calls.getFalseExpr(id));
+        }
+        axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+        checker.TheoremProver.FlushAxiomsToTheoremProver();
+
+        // Note: axioms_pushed may not be the same as calls.currCandidates.Count 
+        // because PushVCExpression pushes other stuff too (which always seems 
+        // to be TRUE)         
+
+        // Check!
+        ret = CheckVC(vc, reporter, checker, "the_main");
+
+        // Pop
+        for (int i = 0; i < axioms_pushed - prev_axioms_pushed; i++)
+        {
+            checker.TheoremProver.Pop();
+        }
+
+        checker.TheoremProver.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
+
+        if (ret == Outcome.Errors)
+        {
+            return ret;
+        }
+
+        if (ret != Outcome.Correct && ret != Outcome.Errors)
+        {
+            // The query ran out of memory or time, that's it,
+            // we cannot do better. Give up!
+            return ret;
+        }
+
+        // If we didn't underapproximate, then we're done
+        if (calls.currCandidates.Count == 0)
+        {
+            Contract.Assert(ret == Outcome.Correct);
+            return ret;
+        }
+
+        Contract.Assert(ret == Outcome.Correct);
+
+        checker.TheoremProver.LogComment(";;;;;;;;;;;; Overapprox mode begin ;;;;;;;;;;");
+
+        // Over-approx query
+        reporter.underapproximationMode = false;
+
+        // Push "true" for all, except:
+        // push "false" for all candidates that have reached
+        // the recursion bounds
+
+        bool allTrue = true;
+        bool allFalse = true;
+        prev_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+
+        foreach (int id in calls.currCandidates)
+        {
+            if (calls.getRecursionBound(id) <= bound)
+            {
+                //checker.TheoremProver.PushVCExpression(calls.getTrueExpr(id));
+                allFalse = false;
+            }
+            else
+            {
+                checker.TheoremProver.PushVCExpression(calls.getFalseExpr(id));
+                allTrue = false;
+            }
+        }
+
+        axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+        checker.TheoremProver.FlushAxiomsToTheoremProver();
+
+        // Check
+        if (allFalse)
+        {
+            // If we made all candidates false, then this is the same
+            // as the underapprox query. We already know the answer.
+            ret = Outcome.Correct;
+        }
+        else
+        {
+            ret = CheckVC(vc, reporter, checker, "the_main");
+        }
+
+        // Pop
+        for (int i = 0; i < axioms_pushed - prev_axioms_pushed; i++)
+        {
+            checker.TheoremProver.Pop();
+        }
+
+        if (ret != Outcome.Correct && ret != Outcome.Errors)
+        {
+            // The query ran out of memory or time, that's it,
+            // we cannot do better. Give up!
+            return ret;
+        }
+
+        if (ret == Outcome.Correct)
+        {
+            // If nothing was made false, then the program is correct
+            if (allTrue)
+            {
+                return ret;
+            }
+
+            // Nothing more can be done with current recursion bound. 
+            return Outcome.ReachedBound;
+        }
+
+        Contract.Assert(ret == Outcome.Errors);
+
+        checker.TheoremProver.LogComment(";;;;;;;;;;;; Overapprox mode end ;;;;;;;;;;");
+
+        return ret;
     }
 
     // A counter for adding new variables
@@ -2320,7 +2626,7 @@ namespace VC {
     // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.
     // Returns the number of axioms pushed.
     private int DoExpansion(List<int>/*!*/ candidates,
-                             FCallHandler/*!*/ calls, Checker/*!*/ checker, Process progress,
+                             FCallHandler/*!*/ calls, Checker/*!*/ checker, 
                              ref int vcSize)
     {
         Contract.Requires(candidates != null);
@@ -2336,19 +2642,6 @@ namespace VC {
             Contract.Assert(expr != null);
             string procName = cce.NonNull(expr.Op as VCExprBoogieFunctionOp).Func.Name;
             if (!implName2StratifiedInliningInfo.ContainsKey(procName)) continue;
-
-            //Console.WriteLine("Expanding: {0}", procName);
-
-            #region Coverage reporter
-            // Get the parent procedure and report progress
-            if (progress != null && calls.candidateParent.ContainsKey(id))
-            {
-                var parentId = calls.candidateParent[id];
-                string str =
-                 calls.getPersistentName(parentId) + " " + calls.getPersistentName(id);
-                progress.StandardInput.WriteLine(str);
-            }
-            #endregion
 
             StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
             if (!info.initialized)
@@ -2417,7 +2710,7 @@ namespace VC {
     private VCExpr DoExpansionAndInline(
                                 VCExpr/*!*/ mainVC, List<int>/*!*/ candidates,
                                 FCallHandler/*!*/ calls, Checker/*!*/ checker,
-                                Process progress, ref int vcSize)
+                                ref int vcSize)
     {
         Contract.Requires(mainVC != null);
         Contract.Requires(candidates != null);
@@ -2435,17 +2728,6 @@ namespace VC {
 
             string procName = (cce.NonNull(expr.Op as VCExprBoogieFunctionOp)).Func.Name;
             if (!implName2StratifiedInliningInfo.ContainsKey(procName)) continue;
-
-            #region Coverage reporter
-            // Get the parent procedure and report progress
-            if (progress != null && calls.candidateParent.ContainsKey(id))
-            {
-                var parentId = calls.candidateParent[id];
-                string str =
-                 calls.getPersistentName(parentId) + " " + calls.getPersistentName(id);
-                progress.StandardInput.WriteLine(str);
-            }
-            #endregion
 
             StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
             if (!info.initialized)
@@ -2571,31 +2853,6 @@ namespace VC {
 
     }
 
-    /*
-    // Collects all function calls in the VCExpr
-    public class FCallCollector : TraversingVCExprVisitor<bool, bool> {
-      Dictionary<string!, StratifiedInliningInfo!>! implName2StratifiedInliningInfo;
-      public List<VCExprNAry!>! fcalls;
-      
-      public FCallCollector(Dictionary<string!, StratifiedInliningInfo!>! implName2StratifiedInliningInfo) {
-        this.implName2StratifiedInliningInfo = implName2StratifiedInliningInfo;
-        fcalls = new List<VCExprNAry!>();
-      }
-      
-      protected override bool StandardResult(VCExpr! node, bool arg) {
-        VCExprNAry vnary = node as VCExprNAry;
-        if(vnary == null) return true;
-        VCExprBoogieFunctionOp bop = vnary.Op as VCExprBoogieFunctionOp;
-        if(bop == null) return true;
-        if(implName2StratifiedInliningInfo.ContainsKey(bop.Func.Name)) {
-           fcalls.Add(vnary);
-        }
-        return true;
-      }
-      
-    }
-    */
-
     // Uniquely identifies a procedure call (the call expr, instance)
     public class BoogieCallExpr : IEquatable<BoogieCallExpr>
     {
@@ -2625,6 +2882,11 @@ namespace VC {
         }
     }
 
+    // Use for storing persistent names for stratified inlining.
+    // For debugging purpose only
+    static Dictionary<string, int> persistentNameMap = new Dictionary<string, int>();
+
+
     // This class is used to traverse VCs and do the following:
     // -- collect the set of FunctionCall nodes and label them with a unique string
     // -- Rename all other labels (so that calling this on the same VC results in 
@@ -2637,9 +2899,13 @@ namespace VC {
       public Dictionary<int, VCExprVar/*!*/>/*!*/ id2ControlVar;
       public Dictionary<string/*!*/, int>/*!*/ label2Id;
       // Stores the candidate from which this one originated
-      
       public Dictionary<int, int> candidateParent;
-        
+
+      // Mapping from call graph nodes to candidates
+      public Dictionary<int, int> callGraphMapping;
+      // User info -- to decrease/increase calculcation of recursion bound
+      public Dictionary<int, int> recursionIncrement;
+
       public Microsoft.SpecSharp.Collections.Set<int> currCandidates;
       [ContractInvariantMethod]
       void ObjectInvariant() {
@@ -2677,6 +2943,8 @@ namespace VC {
         labelRenamer = new Dictionary<string, int>();
         labelRenamerInv = new Dictionary<string, string>();
         candidateParent = new Dictionary<int, int>();
+        callGraphMapping = new Dictionary<int, int>();
+        recursionIncrement = new Dictionary<int, int>();
       }
 
       public void Clear() {
@@ -2692,26 +2960,37 @@ namespace VC {
       {
           int ret = 1;
           var str = getProc(id);
+          
           while (candidateParent.ContainsKey(id))
           {
+              if (recursionIncrement.ContainsKey(id)) ret += recursionIncrement[id];
               id = candidateParent[id];
-              if (getProc(id) == str) ret++;
+              if (getProc(id) == str) ret ++;
           }
           return ret;
       }
 
+      // Set user-define increment/decrement to recursionBound
+      public void setRecursionIncrement(int id, int incr)
+      {
+          if (recursionIncrement.ContainsKey(id))
+              recursionIncrement[id] = incr;
+          else
+              recursionIncrement.Add(id, incr);
+      }
+
       // Returns the name of the procedure corresponding to candidate id
-      private string getProc(int id)
+      public string getProc(int id)
       {
           // We don't have the name of the main procedure
-          if (id == 0) return "";
+          if (id == 0) return "main";
 
           return (id2Candidate[id].Op as VCExprBoogieFunctionOp).Func.Name;
       }
 
       // Get a unique name for this candidate (dependent only on the Call
       // graph of the program). This is used for reporting coverage only.
-      public string getPersistentName(int top_id)
+      public int getPersistentName(int top_id)
       {
           string stack = "";
           var id = top_id;
@@ -2719,13 +2998,35 @@ namespace VC {
           {
               id = candidateParent[id];
               var pname = getProc(id);
-              if (pname == "") pname = "main";
+              //if (pname == "") pname = "main";
               stack += "_" + getProc(id);
           }
 
           var n = getProc(top_id);
-          if (n == "") n = "main";
-          return n + "_cs=" + stack;
+          //if (n == "") n = "main";
+          var ret = n + "_cs=" + stack;
+          if (persistentNameMap.ContainsKey(ret))
+          {
+              callGraphMapping[persistentNameMap[ret]] = top_id;
+              return persistentNameMap[ret];
+          }
+          else
+          {
+              int v = persistentNameMap.Count;
+              persistentNameMap.Add(ret, v);
+              callGraphMapping[v] = top_id;
+              return v;
+          }
+
+      }
+
+      public int getCandidateFromGraphNode(int n)
+      {
+          if (!callGraphMapping.ContainsKey(n))
+          {
+              return -1;
+          }
+          return callGraphMapping[n];
       }
 
       private int GetNewId(VCExprNAry vc)
