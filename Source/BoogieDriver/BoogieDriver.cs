@@ -479,6 +479,8 @@ namespace Microsoft.Boogie {
       try {
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
           vcgen = new DCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+        } else if(CommandLineOptions.Clo.StratifiedInlining > 0) {
+            vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
         } else {
           vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
         }

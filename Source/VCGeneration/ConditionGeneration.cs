@@ -539,37 +539,7 @@ namespace VC {
         return outcome;
     }
   
-
-    public Outcome StratifiedVerifyImplementation(Implementation impl, Program program, out List<Counterexample>/*?*/ errors) {
-      Contract.Requires(impl != null);
-      Contract.Requires(program != null);
-      Contract.Requires(Contract.ForAll(Contract.ValueAtReturn(out errors), i => i != null));
-      Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || errors != null);
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-      Helpers.ExtraTraceInformation("Starting implementation verification");
-
-      CounterexampleCollector collector = new CounterexampleCollector();
-      Outcome outcome = StratifiedVerifyImplementation(impl, program, collector);
-      if (outcome == Outcome.Errors) {
-        errors = collector.examples;
-      } else {
-        errors = null;
-      }
-
-      Helpers.ExtraTraceInformation("Finished implementation verification");
-      return outcome;
-    }
-
     public abstract Outcome VerifyImplementation(Implementation impl, Program program, VerifierCallback callback);
-
-    public virtual Outcome StratifiedVerifyImplementation(Implementation impl, Program program, VerifierCallback callback) {
-
-      Contract.Requires(impl != null);
-      Contract.Requires(program != null);
-      Contract.Requires(callback != null);
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-      return VerifyImplementation(impl, program, callback);
-    }
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
 

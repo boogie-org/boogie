@@ -118,6 +118,7 @@
     <Compile Include="DoomCheck.cs" />
     <Compile Include="DoomErrorHandler.cs" />
     <Compile Include="OrderingAxioms.cs" />
+    <Compile Include="StratifiedVC.cs" />
     <Compile Include="VC.cs" />
     <Compile Include="VCDoomed.cs" />
     <Compile Include="..\version.cs" />
