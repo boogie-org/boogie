@@ -482,6 +482,112 @@ namespace VC
 
         }
 
+        // Unifies the interface between standard checker and z3api-based checker
+        abstract public class StratifiedCheckerInterface
+        {
+            // Underlying checker
+            public Checker underlyingChecker;
+            // Statistics
+            public int numQueries;
+
+            abstract public Outcome CheckVC();
+            abstract public void Push();
+            abstract public void Pop();
+            abstract public void AddAxiom(VCExpr vc);
+            abstract public void LogComment(string str);
+        }
+
+        public class NormalChecker : StratifiedCheckerInterface
+        {
+            // The VC of main
+            public VCExpr vcMain;
+            // Error reporter (stores models)
+            public StratifiedInliningErrorReporter reporter;
+            // The theorem prover interface
+            public Checker checker;
+            // stores the number of axioms pushed since pervious backtracking point
+            private List<int> numAxiomsPushed;
+
+
+            public NormalChecker(VCExpr vcMain, StratifiedInliningErrorReporter reporter, Checker checker)
+            {
+                this.vcMain = vcMain;
+                this.reporter = reporter;
+                this.checker = checker;
+                this.underlyingChecker = checker;
+                numAxiomsPushed = new List<int>();
+                numQueries = 0;
+            }
+
+            public override Outcome CheckVC()
+            {
+                Contract.Requires(vcMain != null);
+                Contract.Requires(reporter != null);
+                Contract.Requires(checker != null);
+                Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+
+                checker.TheoremProver.FlushAxiomsToTheoremProver();
+                checker.BeginCheck("the_main", vcMain, reporter);
+                checker.ProverDone.WaitOne();
+
+                ProverInterface.Outcome outcome = (checker).ReadOutcome();
+                numQueries++;
+
+                switch (outcome)
+                {
+                    case ProverInterface.Outcome.Valid:
+                        return Outcome.Correct;
+                    case ProverInterface.Outcome.Invalid:
+                        return Outcome.Errors;
+                    case ProverInterface.Outcome.OutOfMemory:
+                        return Outcome.OutOfMemory;
+                    case ProverInterface.Outcome.TimeOut:
+                        return Outcome.TimedOut;
+                    case ProverInterface.Outcome.Undetermined:
+                        return Outcome.Inconclusive;
+                    default:
+                        Contract.Assert(false);
+                        throw new cce.UnreachableException();
+                }
+
+            }
+
+            public override void Push()
+            {
+                numAxiomsPushed.Add(0);
+            }
+
+            public override void Pop()
+            {
+                Debug.Assert(numAxiomsPushed.Count > 0);
+                checker.TheoremProver.FlushAxiomsToTheoremProver();
+                var n = numAxiomsPushed.Last();
+                numAxiomsPushed.RemoveAt(numAxiomsPushed.Count - 1);
+
+                for (int i = 0; i < n; i++)
+                {
+                    checker.TheoremProver.Pop();
+                }
+            }
+
+            public override void AddAxiom(VCExpr vc)
+            {
+                Debug.Assert(numAxiomsPushed.Count > 0);
+                int oldnum = checker.TheoremProver.NumAxiomsPushed();
+                
+                checker.TheoremProver.PushVCExpression(vc);
+
+                int newnum = checker.TheoremProver.NumAxiomsPushed();
+                numAxiomsPushed[numAxiomsPushed.Count - 1] += (newnum - oldnum);
+            }
+
+            public override void LogComment(string str)
+            {
+                checker.TheoremProver.LogComment(str);
+            }
+
+        }
+
         // Store important information related to a single VerifyImplementation query
         public class VerificationState
         {
@@ -492,12 +598,29 @@ namespace VC
             // Error reporter (stores models)
             public StratifiedInliningErrorReporter reporter;
             // The theorem prover interface
-            public Checker checker;
-            // Total number of axioms pushed onto the theorem prover
-            public int total_axioms_pushed;
+            //public Checker checker;
+            public StratifiedCheckerInterface checker;
             // For statistics
             public int vcSize;
             public int expansionCount;
+            public int numQueries
+            {
+                get
+                {
+                    return checker.numQueries;
+                }
+            }
+
+            public VerificationState(VCExpr vcMain, FCallHandler calls,
+                StratifiedInliningErrorReporter reporter, Checker checker)
+            {
+                this.vcMain = vcMain;
+                this.calls = calls;
+                this.reporter = reporter;
+                this.checker = new NormalChecker(vcMain, reporter, checker);
+                vcSize = 0;
+                expansionCount = 0;
+            }
         }
 
         public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback)
@@ -571,14 +694,12 @@ namespace VC
             coverageManager.addMain();
 
             // Put all of the necessary state into one object
-            var vState = new VerificationState();
-            vState.calls = calls;
-            vState.checker = checker;
-            vState.reporter = reporter;
-            vState.vcMain = vc;
-            vState.vcSize = SizeComputingVisitor.ComputeSize(vc);
-            vState.total_axioms_pushed = 0;
-            vState.expansionCount = 0;
+            var vState = new VerificationState(vc, calls, reporter, checker);
+            vState.vcSize += SizeComputingVisitor.ComputeSize(vc);
+
+            // We'll restore the original state of the theorem prover at the end
+            // of this procedure
+            vState.checker.Push();
 
             Outcome ret = Outcome.ReachedBound;
 
@@ -586,6 +707,7 @@ namespace VC
             for (int i = 1; i < CommandLineOptions.Clo.StratifiedInlining && calls.currCandidates.Count > 0; i++)
             {
                 List<int> toExpand = new List<int>();
+
                 foreach (int id in calls.currCandidates)
                 {
                     if (calls.isNonTrivialCandidate(id) && calls.getRecursionBound(id) <= CommandLineOptions.Clo.RecursionBound)
@@ -602,9 +724,6 @@ namespace VC
                 Console.WriteLine("Stratified Inlining: Size of VC after eager inlining: {0}", vState.vcSize);
             }
             #endregion
-
-            // Number of Z3 queries
-            int numqueries = 0;
 
             // Under-approx query is only needed if something was inlined since
             // the last time an under-approx query was made
@@ -654,7 +773,6 @@ namespace VC
 
                     // Stratified Step
                     ret = stratifiedStep(bound, vState);
-                    numqueries += 2;
 
                     // Sorry, out of luck (time/memory)
                     if (ret == Outcome.Inconclusive || ret == Outcome.OutOfMemory || ret == Outcome.TimedOut)
@@ -703,9 +821,9 @@ namespace VC
                         #region expand call tree
 
                         // Expand and try again
-                        checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
+                        vState.checker.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
                         DoExpansion(incrementalSearch, reporter.candidatesToExpand, vState);
-                        checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
+                        vState.checker.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
 
                         #endregion
                     }
@@ -719,15 +837,12 @@ namespace VC
 
             // Pop off everything that we pushed so that there are no side effects from
             // this call to VerifyImplementation
-            for (int i = 0; i < vState.total_axioms_pushed; i++)
-            {
-                checker.TheoremProver.Pop();
-            }
+            vState.checker.Pop();
 
             #region Coverage reporter
             if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
             {
-                Console.WriteLine("Stratified Inlining: Calls to Z3: {0}", numqueries);
+                Console.WriteLine("Stratified Inlining: Calls to Z3: {0}", vState.numQueries);
                 Console.WriteLine("Stratified Inlining: Expansions performed: {0}", vState.expansionCount);
                 Console.WriteLine("Stratified Inlining: Candidates left: {0}", calls.currCandidates.Count);
                 Console.WriteLine("Stratified Inlining: Nontrivial Candidates left: {0}", calls.numNonTrivialCandidates());
@@ -742,7 +857,6 @@ namespace VC
         // A step of the stratified inlining algorithm: both under-approx and over-approx queries
         private Outcome stratifiedStep(int bound, VerificationState vState)
         {
-            int axioms_pushed, prev_axioms_pushed;
             Outcome ret;
 
             var reporter = vState.reporter;
@@ -750,31 +864,22 @@ namespace VC
             var checker = vState.checker;
 
             reporter.underapproximationMode = true;
-            checker.TheoremProver.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
+            checker.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
 
-            prev_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+            checker.Push();
 
             foreach (int id in calls.currCandidates)
             {
-                checker.TheoremProver.PushVCExpression(calls.getFalseExpr(id));
+                checker.AddAxiom(calls.getFalseExpr(id));
             }
-            axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
-            checker.TheoremProver.FlushAxiomsToTheoremProver();
-
-            // Note: axioms_pushed may not be the same as calls.currCandidates.Count 
-            // because PushVCExpression pushes other stuff too (which always seems 
-            // to be TRUE)         
 
             // Check!
-            ret = CheckVC(vState);
+            ret = checker.CheckVC();
 
             // Pop
-            for (int i = 0; i < axioms_pushed - prev_axioms_pushed; i++)
-            {
-                checker.TheoremProver.Pop();
-            }
+            checker.Pop();
 
-            checker.TheoremProver.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
+            checker.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
 
             if (ret == Outcome.Errors)
             {
@@ -797,7 +902,7 @@ namespace VC
 
             Contract.Assert(ret == Outcome.Correct);
 
-            checker.TheoremProver.LogComment(";;;;;;;;;;;; Overapprox mode begin ;;;;;;;;;;");
+            checker.LogComment(";;;;;;;;;;;; Overapprox mode begin ;;;;;;;;;;");
 
             // Over-approx query
             reporter.underapproximationMode = false;
@@ -808,7 +913,7 @@ namespace VC
 
             bool allTrue = true;
             bool allFalse = true;
-            prev_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
+            checker.Push();
 
             foreach (int id in calls.currCandidates)
             {
@@ -819,13 +924,10 @@ namespace VC
                 }
                 else
                 {
-                    checker.TheoremProver.PushVCExpression(calls.getFalseExpr(id));
+                    checker.AddAxiom(calls.getFalseExpr(id));
                     allTrue = false;
                 }
             }
-
-            axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
-            checker.TheoremProver.FlushAxiomsToTheoremProver();
 
             // Check
             if (allFalse)
@@ -836,14 +938,11 @@ namespace VC
             }
             else
             {
-                ret = CheckVC(vState);
+                ret = checker.CheckVC();
             }
 
             // Pop
-            for (int i = 0; i < axioms_pushed - prev_axioms_pushed; i++)
-            {
-                checker.TheoremProver.Pop();
-            }
+            checker.Pop();
 
             if (ret != Outcome.Correct && ret != Outcome.Errors)
             {
@@ -866,7 +965,7 @@ namespace VC
 
             Contract.Assert(ret == Outcome.Errors);
 
-            checker.TheoremProver.LogComment(";;;;;;;;;;;; Overapprox mode end ;;;;;;;;;;");
+            checker.LogComment(";;;;;;;;;;;; Overapprox mode end ;;;;;;;;;;");
 
             return ret;
         }
@@ -893,10 +992,9 @@ namespace VC
             Contract.Requires(vState.checker != null);
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-            var checker = vState.checker;
+            var checker = vState.checker.underlyingChecker;
             var calls = vState.calls;
 
-            int old_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
             VCExpr exprToPush = VCExpressionGenerator.True;
             Contract.Assert(exprToPush != null);
             foreach (int id in candidates)
@@ -960,12 +1058,8 @@ namespace VC
 
                 exprToPush = checker.VCExprGen.And(exprToPush, expansion);
             }
-            checker.TheoremProver.PushVCExpression(exprToPush);
+            vState.checker.AddAxiom(exprToPush);
             vState.vcSize += SizeComputingVisitor.ComputeSize(exprToPush);
-
-            int axioms_pushed = checker.TheoremProver.NumAxiomsPushed() - old_axioms_pushed;
-            checker.TheoremProver.FlushAxiomsToTheoremProver();
-            vState.total_axioms_pushed += axioms_pushed;
         }
 
         // Does on-demand inlining -- inlines procedures into the VC of main.
@@ -978,7 +1072,7 @@ namespace VC
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
             Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-            var checker = vState.checker;
+            var checker = vState.checker.underlyingChecker;
             var calls = vState.calls;
 
             FCallInliner inliner = new FCallInliner(checker.VCExprGen);
@@ -1080,43 +1174,6 @@ namespace VC
 
         }
 
-        private Outcome CheckVC(VerificationState vState)
-        {
-            Contract.Requires(vState.vcMain != null);
-            Contract.Requires(vState.reporter != null);
-            Contract.Requires(vState.checker != null);
-            Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-
-            var checker = vState.checker;
-
-            checker.TheoremProver.FlushAxiomsToTheoremProver();
-            checker.BeginCheck("the_main", vState.vcMain, vState.reporter);
-            checker.ProverDone.WaitOne();
-
-            ProverInterface.Outcome outcome = (checker).ReadOutcome();
-
-            //checker.BeginCheck(implName, vc, reporter);
-            //checker.ProverDone.WaitOne();
-            //outcome = (checker).ReadOutcome();
-
-            switch (outcome)
-            {
-                case ProverInterface.Outcome.Valid:
-                    return Outcome.Correct;
-                case ProverInterface.Outcome.Invalid:
-                    return Outcome.Errors;
-                case ProverInterface.Outcome.OutOfMemory:
-                    return Outcome.OutOfMemory;
-                case ProverInterface.Outcome.TimeOut:
-                    return Outcome.TimedOut;
-                case ProverInterface.Outcome.Undetermined:
-                    return Outcome.Inconclusive;
-                default:
-                    Contract.Assert(false);
-                    throw new cce.UnreachableException();
-            }
-
-        }
 
         // Uniquely identifies a procedure call (the call expr, instance)
         public class BoogieCallExpr : IEquatable<BoogieCallExpr>
