@@ -272,47 +272,27 @@ namespace VC
                 }
             }
 
-            class CoverageGraphState
+            public string getQuery(int ts)
             {
-                public Queue<string> queries;
-
-                public CoverageGraphState()
+                var ret = "";
+                while (true)
                 {
-                    queries = new Queue<string>();
-
-                }
-
-                public void addQuery(string q)
-                {
-                    lock (this)
+                    string str = coverageProcess.StandardOutput.ReadLine();
+                    if (str.StartsWith("query "))
                     {
-                        queries.Enqueue(q);
-                    }
-                }
-
-                public string getQuery(int ts)
-                {
-                    var ret = "";
-                    while (true)
-                    {
-                        string str = coverageProcess.StandardOutput.ReadLine();
-                        if (str.StartsWith("query "))
+                        var split = str.Split(' ');
+                        if (split.Length < 1) continue;
+                        if (ts.ToString() == split[1])
                         {
-                            var split = str.Split(' ');
-                            if (split.Length < 1) continue;
-                            if (ts.ToString() == split[1])
-                            {
-                                for (int i = 2; i < split.Length; i++) ret = ret + split[i] + " ";
-                                break;
-                            }
+                            for (int i = 2; i < split.Length; i++) ret = ret + split[i] + " ";
+                            break;
                         }
                     }
-                    return ret;
                 }
+                return ret;
             }
 
             public static Process coverageProcess;
-            private static CoverageGraphState cgState = null;
             public bool stopCoverageProcess;
             //private System.Threading.Thread readerThread;
             private FCallHandler calls;
@@ -321,7 +301,6 @@ namespace VC
             {
                 stopCoverageProcess = true;
                 coverageProcess = null;
-                cgState = new CoverageGraphState();
                 this.calls = calls;
 
                 coverageProcess = CommandLineOptions.Clo.coverageReporter;
@@ -475,7 +454,7 @@ namespace VC
 
                 var ts = getNextTimeStamp();
                 coverageProcess.StandardInput.WriteLine("get-input " + ts.ToString());
-                string q = cgState.getQuery(ts);
+                string q = getQuery(ts);
                 return new Task(q, calls);
             }
 
@@ -501,20 +480,31 @@ namespace VC
                 return timeStamp - 1;
             }
 
-            public static void CoverageGraphInterface()
-            {
-                while (true)
-                {
-                    var line = coverageProcess.StandardOutput.ReadLine();
-                    if (line == "exit") break;
-                    cgState.addQuery(line);
-                }
-            }
+        }
+
+        // Store important information related to a single VerifyImplementation query
+        public class VerificationState
+        {
+            // The VC of main
+            public VCExpr vcMain;
+            // The call tree
+            public FCallHandler calls;
+            // Error reporter (stores models)
+            public StratifiedInliningErrorReporter reporter;
+            // The theorem prover interface
+            public Checker checker;
+            // Total number of axioms pushed onto the theorem prover
+            public int total_axioms_pushed;
+            // For statistics
+            public int vcSize;
+            public int expansionCount;
         }
 
         public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback)
         {
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+
+            #region stratified inlining options
             // This flag control the nature of queries made by Stratified VerifyImplementation
             // true: incremental search; false: in-place inlining
             bool incrementalSearch = true;
@@ -540,6 +530,7 @@ namespace VC
                     createVConDemand = false;
                     break;
             }
+            #endregion
 
             // Get the checker
             Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime); Contract.Assert(checker != null);
@@ -579,13 +570,17 @@ namespace VC
             var coverageManager = new CoverageGraphManager(calls);
             coverageManager.addMain();
 
-            int vcSize = 0;
-            vcSize += SizeComputingVisitor.ComputeSize(vc);
+            // Put all of the necessary state into one object
+            var vState = new VerificationState();
+            vState.calls = calls;
+            vState.checker = checker;
+            vState.reporter = reporter;
+            vState.vcMain = vc;
+            vState.vcSize = SizeComputingVisitor.ComputeSize(vc);
+            vState.total_axioms_pushed = 0;
+            vState.expansionCount = 0;
 
             Outcome ret = Outcome.ReachedBound;
-
-            int expansionCount = 0;
-            int total_axioms_pushed = 0;
 
             // Do eager inlining
             for (int i = 1; i < CommandLineOptions.Clo.StratifiedInlining && calls.currCandidates.Count > 0; i++)
@@ -598,22 +593,13 @@ namespace VC
                         toExpand.Add(id);
                     }
                 }
-                expansionCount += toExpand.Count;
-                if (incrementalSearch)
-                {
-                    total_axioms_pushed +=
-                      DoExpansion(toExpand, calls, checker, ref vcSize);
-                }
-                else
-                {
-                    vc = DoExpansionAndInline(vc, toExpand, calls, checker, ref vcSize);
-                }
+                DoExpansion(incrementalSearch, toExpand, vState);
             }
 
             #region Coverage reporter
             if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
             {
-                Console.WriteLine("Stratified Inlining: Size of VC after eager inlining: {0}", vcSize);
+                Console.WriteLine("Stratified Inlining: Size of VC after eager inlining: {0}", vState.vcSize);
             }
             #endregion
 
@@ -637,7 +623,7 @@ namespace VC
             //   case 3: (internal error)   The theorem prover TimesOut of runs OutOfMemory
             while (true)
             {
-                // Note: in the absence of a coverage graph, task is always "step"
+                // Note: in the absence of a coverage graph process, the task is always "step"
                 coverageManager.addCandidateEdges();
                 var task = coverageManager.getNextTask();
                 if (task.type == CoverageGraphManager.Task.TaskType.INLINE)
@@ -647,8 +633,7 @@ namespace VC
                     {
                         calls.setRecursionIncrement(id, 0);
                     }
-                    total_axioms_pushed +=
-                        DoExpansion(task.nodes, calls, checker, ref vcSize);
+                    DoExpansion(incrementalSearch, task.nodes, vState);
                     coverageManager.addCandidateEdges();
                 }
                 else if (task.type == CoverageGraphManager.Task.TaskType.BLOCK)
@@ -668,7 +653,7 @@ namespace VC
                     }
 
                     // Stratified Step
-                    ret = stratifiedStep(vc, bound, calls, checker, reporter, ref vcSize);
+                    ret = stratifiedStep(bound, vState);
                     numqueries += 2;
 
                     // Sorry, out of luck (time/memory)
@@ -678,7 +663,6 @@ namespace VC
                         coverageManager.reportError();
                         continue;
                     }
-
 
                     if (ret == Outcome.Errors && reporter.underapproximationMode)
                     {
@@ -700,7 +684,7 @@ namespace VC
                     }
                     else if (ret == Outcome.ReachedBound)
                     {
-                        // Increment bound, is possible
+                        // Increment bound
                         var minRecReached = CommandLineOptions.Clo.RecursionBound + 1;
                         foreach (var id in calls.currCandidates)
                         {
@@ -714,26 +698,15 @@ namespace VC
                     {
                         // Do inlining
                         Debug.Assert(ret == Outcome.Errors && !reporter.underapproximationMode);
-                        #region expand call tree
-                        // Expand and try again
-                        checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
-
-                        // Look at the errors to see what to inline
                         Contract.Assert(reporter.candidatesToExpand.Count != 0);
 
-                        expansionCount += reporter.candidatesToExpand.Count;
+                        #region expand call tree
 
-                        if (incrementalSearch)
-                        {
-                            total_axioms_pushed +=
-                              DoExpansion(reporter.candidatesToExpand, calls, checker, ref vcSize);
-                        }
-                        else
-                        {
-                            vc = DoExpansionAndInline(vc, reporter.candidatesToExpand, calls, checker, ref vcSize);
-                        }
-
+                        // Expand and try again
+                        checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
+                        DoExpansion(incrementalSearch, reporter.candidatesToExpand, vState);
                         checker.TheoremProver.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
+
                         #endregion
                     }
                 }
@@ -746,7 +719,7 @@ namespace VC
 
             // Pop off everything that we pushed so that there are no side effects from
             // this call to VerifyImplementation
-            for (int i = 0; i < total_axioms_pushed; i++)
+            for (int i = 0; i < vState.total_axioms_pushed; i++)
             {
                 checker.TheoremProver.Pop();
             }
@@ -755,10 +728,10 @@ namespace VC
             if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
             {
                 Console.WriteLine("Stratified Inlining: Calls to Z3: {0}", numqueries);
-                Console.WriteLine("Stratified Inlining: Expansions performed: {0}", expansionCount);
+                Console.WriteLine("Stratified Inlining: Expansions performed: {0}", vState.expansionCount);
                 Console.WriteLine("Stratified Inlining: Candidates left: {0}", calls.currCandidates.Count);
                 Console.WriteLine("Stratified Inlining: Nontrivial Candidates left: {0}", calls.numNonTrivialCandidates());
-                Console.WriteLine("Stratified Inlining: VC Size: {0}", vcSize);
+                Console.WriteLine("Stratified Inlining: VC Size: {0}", vState.vcSize);
             }
             #endregion
             coverageManager.stop();
@@ -767,10 +740,14 @@ namespace VC
         }
 
         // A step of the stratified inlining algorithm: both under-approx and over-approx queries
-        private Outcome stratifiedStep(VCExpr vc, int bound, FCallHandler/*!*/ calls, Checker/*!*/ checker, StratifiedInliningErrorReporter reporter, ref int vcSize)
+        private Outcome stratifiedStep(int bound, VerificationState vState)
         {
             int axioms_pushed, prev_axioms_pushed;
             Outcome ret;
+
+            var reporter = vState.reporter;
+            var calls = vState.calls;
+            var checker = vState.checker;
 
             reporter.underapproximationMode = true;
             checker.TheoremProver.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
@@ -789,7 +766,7 @@ namespace VC
             // to be TRUE)         
 
             // Check!
-            ret = CheckVC(vc, reporter, checker, "the_main");
+            ret = CheckVC(vState);
 
             // Pop
             for (int i = 0; i < axioms_pushed - prev_axioms_pushed; i++)
@@ -859,7 +836,7 @@ namespace VC
             }
             else
             {
-                ret = CheckVC(vc, reporter, checker, "the_main");
+                ret = CheckVC(vState);
             }
 
             // Pop
@@ -898,15 +875,27 @@ namespace VC
         static int newVarCnt = 0;
 
         // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.
-        // Returns the number of axioms pushed.
-        private int DoExpansion(List<int>/*!*/ candidates,
-                                 FCallHandler/*!*/ calls, Checker/*!*/ checker,
-                                 ref int vcSize)
+        private void DoExpansion(bool incremental, List<int>/*!*/ candidates, VerificationState vState)
+        {
+            vState.expansionCount += candidates.Count;
+
+            if (incremental)
+                DoExpansionAndPush(candidates, vState);
+            else
+                DoExpansionAndInline(candidates, vState);
+        }
+
+        // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.
+        private void DoExpansionAndPush(List<int>/*!*/ candidates, VerificationState vState)
         {
             Contract.Requires(candidates != null);
-            Contract.Requires(calls != null);
-            Contract.Requires(checker != null);
+            Contract.Requires(vState.calls != null);
+            Contract.Requires(vState.checker != null);
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+
+            var checker = vState.checker;
+            var calls = vState.calls;
+
             int old_axioms_pushed = checker.TheoremProver.NumAxiomsPushed();
             VCExpr exprToPush = VCExpressionGenerator.True;
             Contract.Assert(exprToPush != null);
@@ -972,26 +961,25 @@ namespace VC
                 exprToPush = checker.VCExprGen.And(exprToPush, expansion);
             }
             checker.TheoremProver.PushVCExpression(exprToPush);
-            vcSize += SizeComputingVisitor.ComputeSize(exprToPush);
+            vState.vcSize += SizeComputingVisitor.ComputeSize(exprToPush);
 
             int axioms_pushed = checker.TheoremProver.NumAxiomsPushed() - old_axioms_pushed;
             checker.TheoremProver.FlushAxiomsToTheoremProver();
-            return axioms_pushed;
+            vState.total_axioms_pushed += axioms_pushed;
         }
 
-        // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.
-        // Returns the number of axioms pushed.
-        private VCExpr DoExpansionAndInline(
-                                    VCExpr/*!*/ mainVC, List<int>/*!*/ candidates,
-                                    FCallHandler/*!*/ calls, Checker/*!*/ checker,
-                                    ref int vcSize)
+        // Does on-demand inlining -- inlines procedures into the VC of main.
+        private void DoExpansionAndInline(List<int>/*!*/ candidates, VerificationState vState)
         {
-            Contract.Requires(mainVC != null);
+            Contract.Requires(vState.vcMain != null);
             Contract.Requires(candidates != null);
-            Contract.Requires(calls != null);
-            Contract.Requires(checker != null);
+            Contract.Requires(vState.calls != null);
+            Contract.Requires(vState.checker != null);
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
             Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+            var checker = vState.checker;
+            var calls = vState.calls;
 
             FCallInliner inliner = new FCallInliner(checker.VCExprGen);
             Contract.Assert(inliner != null);
@@ -1054,10 +1042,8 @@ namespace VC
 
             }
 
-            var ret = inliner.Mutate(mainVC, true);
-            vcSize = SizeComputingVisitor.ComputeSize(ret);
-
-            return ret;
+            vState.vcMain = inliner.Mutate(vState.vcMain, true);
+            vState.vcSize = SizeComputingVisitor.ComputeSize(vState.vcMain);
         }
 
         // Return the VC for the impl (don't pass it to the theorem prover).
@@ -1094,15 +1080,17 @@ namespace VC
 
         }
 
-        private Outcome CheckVC(VCExpr/*!*/ vc, StratifiedInliningErrorReporter/*!*/ reporter, Checker/*!*/ checker, string/*!*/ implName)
+        private Outcome CheckVC(VerificationState vState)
         {
-            Contract.Requires(vc != null);
-            Contract.Requires(reporter != null);
-            Contract.Requires(checker != null);
-            Contract.Requires(implName != null);
+            Contract.Requires(vState.vcMain != null);
+            Contract.Requires(vState.reporter != null);
+            Contract.Requires(vState.checker != null);
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+
+            var checker = vState.checker;
+
             checker.TheoremProver.FlushAxiomsToTheoremProver();
-            checker.BeginCheck(implName, vc, reporter);
+            checker.BeginCheck("the_main", vState.vcMain, vState.reporter);
             checker.ProverDone.WaitOne();
 
             ProverInterface.Outcome outcome = (checker).ReadOutcome();
