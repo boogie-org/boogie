@@ -253,7 +253,7 @@ namespace Microsoft.Boogie.Simplify {
         }
 
         List<string> attempts = new List<string>();
-        for (int minorVersion = 15; true; minorVersion--) {
+        for (int minorVersion = 20; true; minorVersion--) {
           if (File.Exists(_proverPath)) {
             break;  // all seems good
           }
