@@ -915,6 +915,14 @@ namespace VC
                         #endregion
                     }
                 }
+                else if (task.type == CoverageGraphManager.Task.TaskType.REACHABLE)
+                {
+                    if (done == 2) continue;
+                    var node = task.queryNode;
+                    // assert that any path must pass through this node
+                    var expr = calls.getTrueExpr(node);
+                    vState.checker.AddAxiom(expr);
+                }
                 else
                 {
                     Console.WriteLine("Ignoring task: " + task.ToString());
@@ -1016,7 +1024,7 @@ namespace VC
                     allTrue = false;
                 }
             }
-            Debug.Assert(allTrue == true);
+
             // Check
             if (allFalse)
             {
