@@ -588,6 +588,86 @@ namespace VC
 
         }
 
+
+        public class ApiChecker : StratifiedCheckerInterface
+        {
+            // The VC of main
+            private VCExpr vcMain;
+            // Error reporter (stores models)
+            private StratifiedInliningErrorReporter reporter;
+            // The theorem prover interface
+            public Checker checker;
+            // stores the number of axioms pushed since pervious backtracking point
+            private List<int> numAxiomsPushed;
+            // Api-based theorem prover
+            private ApiProverInterface TheoremProver;
+
+            public ApiChecker(VCExpr vcMain, StratifiedInliningErrorReporter reporter, Checker checker)
+            {
+                this.vcMain = vcMain;
+                this.reporter = reporter;
+                this.checker = checker; 
+                this.underlyingChecker = checker;
+                numAxiomsPushed = new List<int>();
+                numQueries = 0;
+                TheoremProver = checker.TheoremProver as ApiProverInterface;
+                Debug.Assert(TheoremProver != null);
+
+                // Add main to the TP stack
+                TheoremProver.Assert(vcMain, false);
+            }
+
+            public override Outcome CheckVC()
+            {
+                Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+
+                TheoremProver.AssertAxioms();
+                TheoremProver.Check();
+                ProverInterface.Outcome outcome = TheoremProver.CheckOutcome(reporter);
+                numQueries++;
+
+                switch (outcome)
+                {
+                    case ProverInterface.Outcome.Valid:
+                        return Outcome.Correct;
+                    case ProverInterface.Outcome.Invalid:
+                        return Outcome.Errors;
+                    case ProverInterface.Outcome.OutOfMemory:
+                        return Outcome.OutOfMemory;
+                    case ProverInterface.Outcome.TimeOut:
+                        return Outcome.TimedOut;
+                    case ProverInterface.Outcome.Undetermined:
+                        return Outcome.Inconclusive;
+                    default:
+                        Contract.Assert(false);
+                        throw new cce.UnreachableException();
+                }
+
+            }
+
+            public override void Push()
+            {
+                TheoremProver.Push();
+            }
+
+            public override void Pop()
+            {
+                TheoremProver.AssertAxioms();
+                TheoremProver.Pop();
+            }
+
+            public override void AddAxiom(VCExpr vc)
+            {
+                TheoremProver.Assert(vc, true);
+            }
+
+            public override void LogComment(string str)
+            {
+                checker.TheoremProver.LogComment(str);
+            }
+
+        }
+
         // Store important information related to a single VerifyImplementation query
         public class VerificationState
         {
@@ -617,7 +697,14 @@ namespace VC
                 this.vcMain = vcMain;
                 this.calls = calls;
                 this.reporter = reporter;
-                this.checker = new NormalChecker(vcMain, reporter, checker);
+                if (checker.TheoremProver is ApiProverInterface)
+                {
+                    this.checker = new ApiChecker(vcMain, reporter, checker);
+                }
+                else
+                {
+                    this.checker = new NormalChecker(vcMain, reporter, checker);
+                }
                 vcSize = 0;
                 expansionCount = 0;
             }
@@ -913,6 +1000,7 @@ namespace VC
 
             bool allTrue = true;
             bool allFalse = true;
+
             checker.Push();
 
             foreach (int id in calls.currCandidates)
@@ -928,7 +1016,7 @@ namespace VC
                     allTrue = false;
                 }
             }
-
+            Debug.Assert(allTrue == true);
             // Check
             if (allFalse)
             {

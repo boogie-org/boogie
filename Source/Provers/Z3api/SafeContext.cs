@@ -111,6 +111,7 @@ namespace Microsoft.Boogie.Z3
             this.namer = new UniqueNamer();
             this.z3.SetPrintMode(PrintMode.SmtlibFull);
             this.z3log = null;
+            
             try
             {
                 if (config.LogFilename != null)
@@ -358,6 +359,7 @@ namespace Microsoft.Boogie.Z3
 
         public ProverInterface.Outcome Check(out List<Z3ErrorModelAndLabels> boogieErrors)
         {
+            Microsoft.Boogie.Helpers.ExtraTraceInformation("Sending data to the theorem prover");
             boogieErrors = new List<Z3ErrorModelAndLabels>();
             LBool outcome = LBool.Undef;
             while (boogieErrors.Count < this.config.Counterexamples)

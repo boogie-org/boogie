@@ -665,7 +665,14 @@ namespace Microsoft.Boogie {
     }
   }
 
-
+  // Exposes an api in line with z3's api
+  public abstract class ApiProverInterface : ProverInterface
+  {
+      public abstract void Assert(VCExpr vc, bool polarity);
+      public abstract void AssertAxioms();
+      public abstract void Check();
+      public abstract void Push();
+  }
 
   public class ProverException : Exception {
     public ProverException(string s)

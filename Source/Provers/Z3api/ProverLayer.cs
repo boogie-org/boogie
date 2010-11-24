@@ -21,7 +21,7 @@ using PatternAst = System.IntPtr;
 
 namespace Microsoft.Boogie.Z3
 {
-    public class Z3apiProcessTheoremProver : ProverInterface
+    public class Z3apiProcessTheoremProver : ApiProverInterface
     {
         public Z3apiProcessTheoremProver(Z3InstanceOptions opts, DeclFreeProverContext ctxt)
         {
@@ -94,13 +94,13 @@ namespace Microsoft.Boogie.Z3
             Pop();
         }
   
-        public void Check()
+        public override void Check()
         {
             Z3SafeContext cm = context.cm;
             outcome = cm.Check(out z3LabelModels);
         }
 
-        public void Push()
+        public override void Push()
         {
             Z3SafeContext cm = context.cm;
             cm.CreateBacktrackPoint();
@@ -112,7 +112,7 @@ namespace Microsoft.Boogie.Z3
             cm.Backtrack();
         }
 
-        public void Assert(VCExpr vc, bool polarity)
+        public override void Assert(VCExpr vc, bool polarity)
         {
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
             Z3SafeContext cm = context.cm;
@@ -122,7 +122,7 @@ namespace Microsoft.Boogie.Z3
                 cm.AddConjecture(vc, linOptions);
         }
 
-        public void AssertAxioms()
+        public override void AssertAxioms()
         {
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
             Z3SafeContext cm = context.cm;
