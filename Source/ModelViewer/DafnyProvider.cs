@@ -174,8 +174,10 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       if (heap != null) {
         foreach (var tpl in f_heap_select.AppsWithArgs(0, heap, 1, elt)) {
           var field = new FieldName(tpl.Args[2], this);
-          var edgname = new EdgeName(this, field.NameFormat, field.NameArgs);
-          result.Add(new FieldNode(state, edgname, Unbox(tpl.Result)));
+          if (field.NameFormat != "alloc") {
+            var edgname = new EdgeName(this, field.NameFormat, field.NameArgs);
+            result.Add(new FieldNode(state, edgname, Unbox(tpl.Result)));
+          }
         }
       }
       return result;

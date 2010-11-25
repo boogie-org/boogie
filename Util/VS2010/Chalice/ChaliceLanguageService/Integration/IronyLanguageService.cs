@@ -183,13 +183,13 @@ namespace Demo
                               }
 
                               // each line is of the form: "x,y,w,z:arbitrary text"                              
-                              string[] numbersAndText = line.Split(':');
-                              if (numbersAndText.Length != 2) {
+                              int colonIndex = line.IndexOf(':');
+                              if (colonIndex == -1) {
                                 AddErrorBecauseOfToolProblems(req, "Couldn't find colon in '" + line + "'");
                                 continue;
                               }
-                              string numbers = numbersAndText[0];
-                              var message = numbersAndText[1];
+                              string numbers = line.Substring(0, colonIndex);
+                              var message = line.Substring(colonIndex + 1);
                               string[] positions = numbers.Split(',');
                               if (positions.Length != 4) {
                                 AddErrorBecauseOfToolProblems(req, "Couldn't find four numbers in '" + numbers + "'");
