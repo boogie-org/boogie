@@ -140,6 +140,7 @@ namespace Microsoft.Boogie.Z3
             Sort s = v.GetSort();
             Sort boolSort = ctx.MkBoolSort();
             Sort intSort = ctx.MkIntSort();
+            ArrayValue av;
 
             if (s.Equals(boolSort))
             {
@@ -157,29 +158,27 @@ namespace Microsoft.Boogie.Z3
                     return BigNum.FromString(ctx.GetNumeralString(v));
                 }
             }
+            else if (ctx.TryGetArrayValue(v, out av))
+            {
+                List<List<int>> arrayValue = new List<List<int>>();
+                List<int> tuple;
+                for (int i = 0; i < av.Domain.Length; i++)
+                {
+                    tuple = new List<int>();
+                    tuple.Add(GetPartition(av.Domain[i]));
+                    tuple.Add(GetPartition(av.Range[i]));
+                    arrayValue.Add(tuple);
+                }
+                tuple = new List<int>();
+                tuple.Add(GetPartition(av.ElseCase));
+                arrayValue.Add(tuple);
+                return arrayValue;
+            }
             else
             {
-                ArrayValue av;
-                if (ctx.TryGetArrayValue(v, out av))
-                {
-                    List<List<int>> arrayValue = new List<List<int>>();
-                    List<int> tuple;
-                    for (int i = 0; i < av.Domain.Length; i++)
-                    {
-                        tuple = new List<int>();
-                        tuple.Add(GetPartition(av.Domain[i]));
-                        tuple.Add(GetPartition(av.Range[i]));
-                        arrayValue.Add(tuple);
-                    }
-                    tuple = new List<int>();
-                    tuple.Add(GetPartition(av.ElseCase));
-                    arrayValue.Add(tuple);
-                    return arrayValue;
-                }
-                
+                // The term is uninterpreted; just return the partition id.
+                return GetPartition(v);
             }
-            Debug.Assert(false);
-            return null;
         }
 
         public List<Object> PartitionToValue(Context ctx) 
