@@ -90,7 +90,6 @@ namespace Microsoft.Boogie.Z3
         string GetDeclName(Z3ConstDeclAst constDeclAst);
         Z3PatternAst MakePattern(List<Z3TermAst> exprs);
         Z3TermAst MakeQuantifier(bool isForall, uint weight, string qid, int skolemid, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body);
-        List<string> BuildConflictClause(Z3LabeledLiterals relevantLabels);
         ProverInterface.Outcome Check(out List<Z3ErrorModelAndLabels> boogieErrors);
         void TypeCheckBool(Z3TermAst t);
         void TypeCheckInt(Z3TermAst t);

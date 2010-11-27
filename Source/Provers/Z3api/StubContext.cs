@@ -31,9 +31,6 @@ namespace Microsoft.Boogie.Z3 {
     public Z3TermAst MakeQuantifier(bool isForall, uint weight, string qid, int skolemid, List<string> varNames, List<Type> boogieTypes, List<Z3PatternAst> patterns, List<Z3TermAst> no_patterns, Z3TermAst body) {
         return new Z3StubTermAst();
     }
-    public List<string> BuildConflictClause(Z3LabeledLiterals relevantLabels) {
-      return new List<string>();
-    }
     public ProverInterface.Outcome Check(out List<Z3ErrorModelAndLabels> boogieErrors) {
       boogieErrors = new List<Z3ErrorModelAndLabels>();
       return ProverInterface.Outcome.Undetermined;

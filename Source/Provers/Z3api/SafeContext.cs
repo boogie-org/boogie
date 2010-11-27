@@ -321,26 +321,6 @@ namespace Microsoft.Boogie.Z3
             return true;
         }
 
-        public List<string> BuildConflictClause(Z3LabeledLiterals z3relevantLabels)
-        {
-            List<string> lbls = new List<string>();
-            LabeledLiterals relevantLabels = ((Z3SafeLabeledLiterals)z3relevantLabels).LabeledLiterals;
-            uint num_labels = relevantLabels.GetNumLabels();
-            for (uint i = 0; i < num_labels; ++i)
-            {
-                Symbol sym = relevantLabels.GetLabel(i);
-                string labelName = z3.GetSymbolString(sym);
-                if (!labelName.StartsWith("@"))
-                {
-                    relevantLabels.Disable(i);
-                }
-                lbls.Add(labelName);
-            }
-            z3.BlockLiterals(relevantLabels);
-
-            return lbls;
-        }
-
         private Z3ErrorModelAndLabels BuildZ3ErrorModel(Model z3Model, List<string> relevantLabels)
         {
             BoogieErrorModelBuilder boogieErrorBuilder = new BoogieErrorModelBuilder(this);
@@ -362,32 +342,53 @@ namespace Microsoft.Boogie.Z3
             Microsoft.Boogie.Helpers.ExtraTraceInformation("Sending data to the theorem prover");
             boogieErrors = new List<Z3ErrorModelAndLabels>();
             LBool outcome = LBool.Undef;
-            while (boogieErrors.Count < this.config.Counterexamples)
+            Debug.Assert(0 < this.config.Counterexamples);
+            while (true)
             {
                 Model z3Model;
-                //System.Console.WriteLine("Check Begin");
                 outcome = z3.CheckAndGetModel(out z3Model);
                 log("check-and-get-model");
-                //System.Console.WriteLine("Check End");
-                if (outcome != LBool.False)
+                if (outcome == LBool.False)
+                    break;
+
+                Debug.Assert(z3Model != null);
+                LabeledLiterals labels = z3.GetRelevantLabels();
+                Debug.Assert(labels != null);
+
+                List<string> labelStrings = new List<string>();
+                uint numLabels = labels.GetNumLabels();
+                for (uint i = 0; i < numLabels; ++i)
                 {
-                    Debug.Assert(z3Model != null);
-
-                    LabeledLiterals labels = z3.GetRelevantLabels();
-                    List<string> labelStrings = BuildConflictClause(new Z3SafeLabeledLiterals(labels));
-                    boogieErrors.Add(BuildZ3ErrorModel(z3Model, labelStrings));
-                    labels.Dispose();
-
-                    if (z3Model != null)
-                        z3Model.Dispose();
+                    Symbol sym = labels.GetLabel(i);
+                    string labelName = z3.GetSymbolString(sym);
+                    if (!labelName.StartsWith("@"))
+                    {
+                        labels.Disable(i);
+                    }
+                    labelStrings.Add(labelName);
                 }
-                else
+                boogieErrors.Add(BuildZ3ErrorModel(z3Model, labelStrings));
+
+                if (boogieErrors.Count < this.config.Counterexamples)
+                {
+                    z3.BlockLiterals(labels);
+                    log("block-literals {0}", labels.ToString());
+                }
+
+                labels.Dispose();
+                z3Model.Dispose();
+                if (boogieErrors.Count == this.config.Counterexamples)
                     break;
             }
+
             if (boogieErrors.Count > 0)
+            {
                 return ProverInterface.Outcome.Invalid;
+            }
             else if (outcome == LBool.False)
+            {
                 return ProverInterface.Outcome.Valid;
+            }
             else
             {
                 Debug.Assert(outcome == LBool.Undef);
