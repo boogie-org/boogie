@@ -671,6 +671,7 @@ namespace Microsoft.Boogie {
       public abstract void Assert(VCExpr vc, bool polarity);
       public abstract void AssertAxioms();
       public abstract void Check();
+      public abstract void CheckAssumptions(List<VCExpr> assumptions);
       public abstract void Push();
   }
 

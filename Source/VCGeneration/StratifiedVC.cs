@@ -495,6 +495,23 @@ namespace VC
             abstract public void Pop();
             abstract public void AddAxiom(VCExpr vc);
             abstract public void LogComment(string str);
+            virtual public Outcome CheckAssumptions(List<VCExpr> assumptions)
+            {
+                if (assumptions.Count == 0)
+                {
+                    return CheckVC();
+                }
+
+                Push();
+                foreach (var a in assumptions)
+                {
+                    AddAxiom(a);
+                }
+                var ret = CheckVC();
+                Pop();
+
+                return ret;
+            }
         }
 
         public class NormalChecker : StratifiedCheckerInterface
@@ -665,7 +682,32 @@ namespace VC
             {
                 checker.TheoremProver.LogComment(str);
             }
+            /*
+            public override Outcome CheckAssumptions(List<VCExpr> assumptions)
+            {
+                TheoremProver.AssertAxioms();
+                TheoremProver.CheckAssumptions(assumptions);
+                ProverInterface.Outcome outcome = TheoremProver.CheckOutcome(reporter);
+                numQueries++;
 
+                switch (outcome)
+                {
+                    case ProverInterface.Outcome.Valid:
+                        return Outcome.Correct;
+                    case ProverInterface.Outcome.Invalid:
+                        return Outcome.Errors;
+                    case ProverInterface.Outcome.OutOfMemory:
+                        return Outcome.OutOfMemory;
+                    case ProverInterface.Outcome.TimeOut:
+                        return Outcome.TimedOut;
+                    case ProverInterface.Outcome.Undetermined:
+                        return Outcome.Inconclusive;
+                    default:
+                        Contract.Assert(false);
+                        throw new cce.UnreachableException();
+                }
+            }
+             */
         }
 
         // Store important information related to a single VerifyImplementation query
@@ -961,6 +1003,13 @@ namespace VC
             reporter.underapproximationMode = true;
             checker.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
 
+            var assumptions = new List<VCExpr>();
+            foreach (int id in calls.currCandidates)
+            {
+                assumptions.Add(calls.getFalseExpr(id));
+            }
+
+            /*
             checker.Push();
 
             foreach (int id in calls.currCandidates)
@@ -973,6 +1022,9 @@ namespace VC
 
             // Pop
             checker.Pop();
+            */
+
+            ret = checker.CheckAssumptions(assumptions);
 
             checker.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
 
@@ -1009,8 +1061,7 @@ namespace VC
             bool allTrue = true;
             bool allFalse = true;
 
-            checker.Push();
-
+            assumptions = new List<VCExpr>();
             foreach (int id in calls.currCandidates)
             {
                 if (calls.getRecursionBound(id) <= bound)
@@ -1020,10 +1071,22 @@ namespace VC
                 }
                 else
                 {
-                    checker.AddAxiom(calls.getFalseExpr(id));
+                    //checker.AddAxiom(calls.getFalseExpr(id));
+                    assumptions.Add(calls.getFalseExpr(id));
                     allTrue = false;
                 }
             }
+
+            if (allFalse)
+            {
+                ret = Outcome.Correct;
+            }
+            else
+            {
+                ret = checker.CheckAssumptions(assumptions);
+            }
+            /*
+            checker.Push();
 
             // Check
             if (allFalse)
@@ -1039,6 +1102,7 @@ namespace VC
 
             // Pop
             checker.Pop();
+            */
 
             if (ret != Outcome.Correct && ret != Outcome.Errors)
             {
@@ -1105,7 +1169,7 @@ namespace VC
                 {
                     GenerateVCForStratifiedInlining(program, info, checker);
                 }
-
+                //Console.WriteLine("Inlining {0}", procName);
                 VCExpr expansion = cce.NonNull(info.vcexpr);
 
                 // Instantiate the "forall" variables
@@ -1534,7 +1598,8 @@ namespace VC
             // Return the formula (candidate IFF false)
             public VCExpr getFalseExpr(int candidateId)
             {
-                return Gen.Eq(VCExpressionGenerator.False, id2ControlVar[candidateId]);
+                //return Gen.Eq(VCExpressionGenerator.False, id2ControlVar[candidateId]);
+                return Gen.Not(id2ControlVar[candidateId]);
             }
 
             // Return the formula (candidate IFF true)

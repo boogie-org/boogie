@@ -396,6 +396,66 @@ namespace Microsoft.Boogie.Z3
             }
         }
 
+        public ProverInterface.Outcome CheckAssumptions(List<VCExpr> assumptions, LineariserOptions linOptions, out List<Z3ErrorModelAndLabels> boogieErrors)
+        {
+            Microsoft.Boogie.Helpers.ExtraTraceInformation("Sending data to the theorem prover");
+            boogieErrors = new List<Z3ErrorModelAndLabels>();
+            LBool outcome = LBool.Undef;
+
+            Model z3Model;
+            Term proof;
+            Term[] core;
+            Term[] assumption_terms = new Term[assumptions.Count];
+
+            for (int i = 0; i < assumptions.Count; i++)
+            {
+                Z3apiExprLineariser visitor = new Z3apiExprLineariser(this, namer);
+                Z3TermAst z3ast = (Z3TermAst)assumptions[i].Accept(visitor, linOptions);
+                assumption_terms[i] = Unwrap(z3ast);
+            }
+
+            log("check-assumptions ...");
+            outcome = z3.CheckAssumptions(out z3Model, assumption_terms, out proof, out core);
+
+            if (outcome != LBool.False)
+            {
+                Debug.Assert(z3Model != null);
+                LabeledLiterals labels = z3.GetRelevantLabels();
+                Debug.Assert(labels != null);
+
+                List<string> labelStrings = new List<string>();
+                uint numLabels = labels.GetNumLabels();
+                for (uint i = 0; i < numLabels; ++i)
+                {
+                    Symbol sym = labels.GetLabel(i);
+                    string labelName = z3.GetSymbolString(sym);
+                    if (!labelName.StartsWith("@"))
+                    {
+                        labels.Disable(i);
+                    }
+                    labelStrings.Add(labelName);
+                }
+                boogieErrors.Add(BuildZ3ErrorModel(z3Model, labelStrings));
+
+                labels.Dispose();
+                z3Model.Dispose();
+            }
+
+            if (boogieErrors.Count > 0)
+            {
+                return ProverInterface.Outcome.Invalid;
+            }
+            else if (outcome == LBool.False)
+            {
+                return ProverInterface.Outcome.Valid;
+            }
+            else
+            {
+                Debug.Assert(outcome == LBool.Undef);
+                return ProverInterface.Outcome.Undetermined;
+            }
+        }
+
         public void TypeCheckBool(Z3TermAst term)
         {
             Term unwrapTerm = Unwrap(term);
