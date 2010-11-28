@@ -1,16 +1,15 @@
-# Aste started: 2010-11-27 07:00:09
+# Aste started: 2010-11-28 07:00:08
 # Host id: Boogiebox
-# [2010-11-27 07:02:17] SpecSharp revision: 60238
-# [2010-11-27 07:03:25] Boogie revision: 60299
-# [2010-11-27 07:03:51] SscBoogie revision: 60238
-[2010-11-27 07:04:35] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2010-11-28 07:02:32] SpecSharp revision: 60238
+# [2010-11-28 07:03:37] Boogie revision: 60320
+# [2010-11-28 07:04:02] SscBoogie revision: 60238
+[2010-11-28 07:04:44] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2010-11-27 07:05:52] [Error] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2010-11-28 07:06:03] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
     C:\Windows\Microsoft.NET\Framework\v4.0.30319\Microsoft.Common.targets(1360,9): warning MSB3247: Found conflicts between different versions of the same dependent assembly.
-    app.config : error MSB3249: Application Configuration file "app.config" is invalid. Could not find file 'D:\Temp\aste\Boogie\Source\ModelViewer\app.config'.
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(825,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2804,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(791,91): warning CS0168: The variable 'id2' is declared but never used
@@ -31,7 +30,6 @@
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
-    app.config : error MSB3249: Application Configuration file "app.config" is invalid. Could not find file 'D:\Temp\aste\Boogie\Source\BoogieDriver\app.config'.
     warning CS0659
     warning CS0659
     warning CS0168
@@ -51,4 +49,8 @@
     warning CS0162
     warning CS0162
     warning CS0162
-    2 failed
+[2010-11-28 07:06:06] [Error] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
+
+    C:\Windows\Microsoft.NET\Framework\v4.0.30319\Microsoft.Common.targets(1360,9): warning MSB3247: Found conflicts between different versions of the same dependent assembly.
+    app.config : error MSB3249: Application Configuration file "app.config" is invalid. Could not find file 'D:\Temp\aste\Boogie\Source\DafnyDriver\app.config'.
+    1 failed
