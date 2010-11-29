@@ -682,12 +682,19 @@ namespace VC
             {
                 checker.TheoremProver.LogComment(str);
             }
-            /*
+            
             public override Outcome CheckAssumptions(List<VCExpr> assumptions)
             {
+                if (assumptions.Count == 0)
+                {
+                    return CheckVC();
+                }
+
+                //TheoremProver.Push();
                 TheoremProver.AssertAxioms();
                 TheoremProver.CheckAssumptions(assumptions);
                 ProverInterface.Outcome outcome = TheoremProver.CheckOutcome(reporter);
+                //TheoremProver.Pop();
                 numQueries++;
 
                 switch (outcome)
@@ -707,7 +714,7 @@ namespace VC
                         throw new cce.UnreachableException();
                 }
             }
-             */
+             
         }
 
         // Store important information related to a single VerifyImplementation query
@@ -1009,21 +1016,6 @@ namespace VC
                 assumptions.Add(calls.getFalseExpr(id));
             }
 
-            /*
-            checker.Push();
-
-            foreach (int id in calls.currCandidates)
-            {
-                checker.AddAxiom(calls.getFalseExpr(id));
-            }
-
-            // Check!
-            ret = checker.CheckVC();
-
-            // Pop
-            checker.Pop();
-            */
-
             ret = checker.CheckAssumptions(assumptions);
 
             checker.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
@@ -1079,30 +1071,14 @@ namespace VC
 
             if (allFalse)
             {
-                ret = Outcome.Correct;
-            }
-            else
-            {
-                ret = checker.CheckAssumptions(assumptions);
-            }
-            /*
-            checker.Push();
-
-            // Check
-            if (allFalse)
-            {
                 // If we made all candidates false, then this is the same
                 // as the underapprox query. We already know the answer.
                 ret = Outcome.Correct;
             }
             else
             {
-                ret = checker.CheckVC();
+                ret = checker.CheckAssumptions(assumptions);
             }
-
-            // Pop
-            checker.Pop();
-            */
 
             if (ret != Outcome.Correct && ret != Outcome.Errors)
             {

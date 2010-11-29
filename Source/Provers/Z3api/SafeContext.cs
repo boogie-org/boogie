@@ -109,7 +109,8 @@ namespace Microsoft.Boogie.Z3
             this.tm = new Z3TypeCachedBuilder(this);
             this.gen = gen;
             this.namer = new UniqueNamer();
-            this.z3.SetPrintMode(PrintMode.SmtlibFull);
+            this.z3.SetPrintMode(PrintMode.Smtlib2Compliant);
+            this.z3.TraceToFile("trace.c");
             this.z3log = null;
             
             try
@@ -130,7 +131,10 @@ namespace Microsoft.Boogie.Z3
         {
             if (z3log != null)
             {
-                z3log.WriteLine(format, args);
+                var str = string.Format(format, args);
+                // Do standard string replacement
+                str = str.Replace("array", "Array");
+                z3log.WriteLine(str);
                 z3log.Flush();
             }
         }
@@ -151,7 +155,7 @@ namespace Microsoft.Boogie.Z3
             functions.CreateBacktrackPoint();
             labels.CreateBacktrackPoint();
             z3.Push();
-            log("Push");
+            log("(push)");
         }
 
         public void Backtrack()
@@ -161,7 +165,7 @@ namespace Microsoft.Boogie.Z3
             functions.Backtrack();
             constants.Backtrack();
             symbols.Backtrack();
-            log("Pop");
+            log("(pop)");
         }
 
         public void AddAxiom(VCExpr axiom, LineariserOptions linOptions)
@@ -169,7 +173,7 @@ namespace Microsoft.Boogie.Z3
             Z3apiExprLineariser visitor = new Z3apiExprLineariser(this, namer);
             Z3TermAst z3ast = (Z3TermAst)axiom.Accept(visitor, linOptions);
             Term term = Unwrap(z3ast);
-            log("assert {0}", term);
+            log("(assert {0})", term);
             z3.AssertCnstr(term);
         }
 
@@ -179,7 +183,7 @@ namespace Microsoft.Boogie.Z3
             Z3apiExprLineariser visitor = new Z3apiExprLineariser(this, namer);
             Z3TermAst z3ast = (Z3TermAst)not_vc.Accept(visitor, linOptions);
             Term term = Unwrap(z3ast);
-            log("assert {0}", term);
+            log("(assert {0})", term);
             z3.AssertCnstr(term);
         }
 
@@ -202,7 +206,7 @@ namespace Microsoft.Boogie.Z3
             }
             foreach (Term assumption in assumptions)
             {
-                log("assert {0}", assumption);
+                log("(assert {0})", assumption);
                 z3.AssertCnstr(assumption);
             }
         }
@@ -347,7 +351,7 @@ namespace Microsoft.Boogie.Z3
             {
                 Model z3Model;
                 outcome = z3.CheckAndGetModel(out z3Model);
-                log("check-and-get-model");
+                log("(check-sat)");
                 if (outcome == LBool.False)
                     break;
 
@@ -406,17 +410,18 @@ namespace Microsoft.Boogie.Z3
             Term proof;
             Term[] core;
             Term[] assumption_terms = new Term[assumptions.Count];
-
+            var logstring = "";
             for (int i = 0; i < assumptions.Count; i++)
             {
                 Z3apiExprLineariser visitor = new Z3apiExprLineariser(this, namer);
                 Z3TermAst z3ast = (Z3TermAst)assumptions[i].Accept(visitor, linOptions);
                 assumption_terms[i] = Unwrap(z3ast);
+                logstring += string.Format("({0}) ", assumption_terms[i]);
             }
 
-            log("check-assumptions ...");
+            log("(get-core {0})", logstring);
             outcome = z3.CheckAssumptions(out z3Model, assumption_terms, out proof, out core);
-
+            
             if (outcome != LBool.False)
             {
                 Debug.Assert(z3Model != null);
@@ -440,7 +445,7 @@ namespace Microsoft.Boogie.Z3
                 labels.Dispose();
                 z3Model.Dispose();
             }
-
+            
             if (boogieErrors.Count > 0)
             {
                 return ProverInterface.Outcome.Invalid;
@@ -474,7 +479,7 @@ namespace Microsoft.Boogie.Z3
 
         public void DeclareType(string typeName)
         {
-            log("declare-type: {0}", typeName);
+            log("(declare-sort {0})", typeName);
         }
 
         public void DeclareConstant(string constantName, Type boogieType)
@@ -485,26 +490,28 @@ namespace Microsoft.Boogie.Z3
 
             Term constAst = z3.MkConst(symbolAst, unwrapTypeAst);
             constants.Add(constantName, Wrap(constAst));
-            log("declare-const: {0}: {1}", constantName, unwrapTypeAst);
+            log("(declare-funs (({0} {1})))", constAst, unwrapTypeAst);
         }
 
         public void DeclareFunction(string functionName, List<Type> domain, Type range)
         {
             Symbol symbolAst = GetSymbol(functionName);
 
+            var domainStr = "";
             List<Sort> domainAst = new List<Sort>();
             foreach (Type domainType in domain)
             {
                 Z3Type type = tm.GetType(domainType);
                 Sort unwrapType = Unwrap(type);
                 domainAst.Add(unwrapType);
+                domainStr += unwrapType.ToString() + " ";
             }
             Z3Type rangeAst = tm.GetType(range);
             Sort unwrapRangeAst = Unwrap(rangeAst);
             FuncDecl constDeclAst = z3.MkFuncDecl(symbolAst, domainAst.ToArray(), unwrapRangeAst);
             Z3TypeSafeConstDecl typeSafeConstDecl = Wrap(constDeclAst);
             functions.Add(functionName, typeSafeConstDecl);
-            log("declare-fun: {0}: {1}", functionName, constDeclAst);
+            log("(declare-funs (({0} {1} {2})))", functionName, domainStr, unwrapRangeAst);
         }
 
         private List<Symbol> GetSymbols(List<string> symbolNames)
