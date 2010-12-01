@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.IO;
 using System.Diagnostics;
-using Microsoft.Contracts;
 using Microsoft.Boogie.AbstractInterpretation;
 using Microsoft.Boogie;
 using Microsoft.Boogie.Z3;

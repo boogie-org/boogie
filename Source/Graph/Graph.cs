@@ -5,8 +5,6 @@
 //-----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
-using Microsoft.SpecSharp.Collections;
-using Microsoft.Contracts;
 using System.Text; // for StringBuilder
 using System.Diagnostics.Contracts;
 namespace Graphing {
@@ -279,23 +277,24 @@ namespace Graphing {
       return;
     }
   }
+
   public class Graph<Node> {
-    private Set<Pair<Node/*!*/, Node/*!*/>> es;
-    private Set<Node> ns;
+    private HashSet<Tuple<Node/*!*/, Node/*!*/>> es;
+    private HashSet<Node> ns;
     private Node source;
     private bool reducible;
-    private Set<Node> headers;
-    private Map<Node, Set<Node>> backEdgeNodes;
-    private Map<Pair<Node/*!*/, Node/*!*/>, Set<Node>> naturalLoops;
+    private HashSet<Node> headers;
+    private Dictionary<Node, HashSet<Node>> backEdgeNodes;
+    private Dictionary<Tuple<Node/*!*/, Node/*!*/>, HashSet<Node>> naturalLoops;
 
     private DomRelation<Node> dominatorMap = null;
-    private Dictionary<Node, Set<Node>> predCache = new Dictionary<Node, Set<Node>>();
-    private Dictionary<Node, Set<Node>> succCache = new Dictionary<Node, Set<Node>>();
+    private Dictionary<Node, HashSet<Node>> predCache = new Dictionary<Node, HashSet<Node>>();
+    private Dictionary<Node, HashSet<Node>> succCache = new Dictionary<Node, HashSet<Node>>();
     private bool predComputed;
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(es == null || Contract.ForAll(es, p => p.First != null && p.Second != null));
-      Contract.Invariant(naturalLoops == null || Contract.ForAll(naturalLoops.Keys, p => p.Second != null && p.First != null));
+      Contract.Invariant(es == null || Contract.ForAll(es, p => p.Item1 != null && p.Item2 != null));
+      Contract.Invariant(naturalLoops == null || Contract.ForAll(naturalLoops.Keys, p => p.Item2 != null && p.Item1 != null));
     }
 
 
@@ -318,30 +317,30 @@ namespace Graphing {
       }
     }
 
-    public Graph(Set<Pair<Node/*!*/, Node/*!*/>> edges) {
+    public Graph(HashSet<Tuple<Node/*!*/, Node/*!*/>> edges) {
 
-      Contract.Requires(cce.NonNullElements(edges) && Contract.ForAll(edges, p => p.First != null && p.Second != null));
+      Contract.Requires(cce.NonNullElements(edges) && Contract.ForAll(edges, p => p.Item1 != null && p.Item2 != null));
       es = edges;
 
       // original A#
       //ns = Set<Node>{ x : <x,y> in es } + Set<Node>{ y : <x,y> in es };
 
       // closest Spec#
-      //ns = new Set<Node>{ Pair<Node,Node> p in edges; p.First } + new Set<Node>{ Pair<Node,Node> p in edges; p.Second };
+      //ns = new Set<Node>{ Tuple<Node,Node> p in edges; p.Item1 } + new Set<Node>{ Tuple<Node,Node> p in edges; p.Item2 };
 
       // 
-      Set<Node> temp = new Set<Node>();
-      foreach (Pair<Node/*!*/, Node/*!*/> p in edges) {
-        Contract.Assert(p.First != null);
-        temp.Add(p.First);
-        Contract.Assert(p.Second != null);
-        temp.Add(p.Second);
+      HashSet<Node> temp = new HashSet<Node>();
+      foreach (Tuple<Node/*!*/, Node/*!*/> p in edges) {
+        Contract.Assert(p.Item1 != null);
+        temp.Add(p.Item1);
+        Contract.Assert(p.Item2 != null);
+        temp.Add(p.Item2);
       }
       ns = temp;
     }
     public Graph() {
-      es = new Set<Pair<Node/*!*/, Node/*!*/>>();
-      ns = new Set<Node>();
+      es = new HashSet<Tuple<Node/*!*/, Node/*!*/>>();
+      ns = new HashSet<Node>();
     }
 
     // BUGBUG: Set<T>.ToString() should return a non-null string
@@ -363,22 +362,22 @@ namespace Graphing {
       Contract.Requires(dest != null);
       //es += Set<Edge>{<source,dest>};
       //ns += Set<Node>{source, dest};
-      es.Add(new Pair<Node/*!*/, Node/*!*/>(source, dest));
+      es.Add(new Tuple<Node/*!*/, Node/*!*/>(source, dest));
       ns.Add(source);
       ns.Add(dest);
       predComputed = false;
     }
 
-    public Set<Node> Nodes {
+    public HashSet<Node> Nodes {
       get {
         return ns;
       }
     }
-    public IEnumerable<Pair<Node/*!*/, Node/*!*/>> Edges {
+    public IEnumerable<Tuple<Node/*!*/, Node/*!*/>> Edges {
       get {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Pair<Node, Node>>>())
-          && Contract.ForAll(Contract.Result<IEnumerable<Pair<Node, Node>>>(), n =>
-          n.First != null && n.Second != null));
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Tuple<Node, Node>>>())
+          && Contract.ForAll(Contract.Result<IEnumerable<Tuple<Node, Node>>>(), n =>
+          n.Item1 != null && n.Item2 != null));
         return es;
       }
     }
@@ -388,33 +387,33 @@ namespace Graphing {
       Contract.Requires(y != null);
       // original A#
       // return <x,y> in es;
-      return es.Contains(new Pair<Node/*!*/, Node/*!*/>(x, y));
+      return es.Contains(new Tuple<Node/*!*/, Node/*!*/>(x, y));
     }
 
     private void ComputePredSuccCaches() {
       if (predComputed)
         return;
       predComputed = true;
-      predCache = new Dictionary<Node, Set<Node>>();
-      succCache = new Dictionary<Node, Set<Node>>();
+      predCache = new Dictionary<Node, HashSet<Node>>();
+      succCache = new Dictionary<Node, HashSet<Node>>();
 
       foreach (Node n in Nodes) {
-        predCache[n] = new Set<Node>();
-        succCache[n] = new Set<Node>();
+        predCache[n] = new HashSet<Node>();
+        succCache[n] = new HashSet<Node>();
       }
 
-      foreach (Pair<Node/*!*/, Node/*!*/> p in Edges) {
-        Contract.Assert(p.First != null);
-        Contract.Assert(p.Second != null);
-        Set<Node> tmp;
+      foreach (Tuple<Node/*!*/, Node/*!*/> p in Edges) {
+        Contract.Assert(p.Item1 != null);
+        Contract.Assert(p.Item2 != null);
+        HashSet<Node> tmp;
 
-        tmp = predCache[p.Second];
-        tmp.Add(p.First);
-        predCache[p.Second] = tmp;
+        tmp = predCache[p.Item2];
+        tmp.Add(p.Item1);
+        predCache[p.Item2] = tmp;
 
-        tmp = succCache[p.First];
-        tmp.Add(p.Second);
-        succCache[p.First] = tmp;
+        tmp = succCache[p.Item1];
+        tmp.Add(p.Item2);
+        succCache[p.Item1] = tmp;
       }
     }
 
@@ -482,10 +481,10 @@ namespace Graphing {
         nodeToNumber[node] = counter;
         counter++;
       }
-      foreach (Pair<Node/*!*/, Node/*!*/> e in this.Edges) {
-        Contract.Assert(e.First != null);
-        Contract.Assert(e.Second != null);
-        Node/*!*/ target = e.Second;
+      foreach (Tuple<Node/*!*/, Node/*!*/> e in this.Edges) {
+        Contract.Assert(e.Item1 != null);
+        Contract.Assert(e.Item2 != null);
+        Node/*!*/ target = e.Item2;
         incomingEdges[nodeToNumber[target]]++;
       }
       List<Node> sorted = new List<Node>();
@@ -518,14 +517,15 @@ namespace Graphing {
       return;
     }
     private IEnumerable<Node> OldTopologicalSort() {
-      Pair<bool, Seq<Node>> result = this.TopSort();
-      return result.First ? result.Second : (IEnumerable<Node>)new Seq<Node>();
+      Tuple<bool, List<Node>> result = this.TopSort();
+      return result.Item1 ? result.Item2 : (IEnumerable<Node>)new List<Node>();
     }
     // From AsmL distribution example
-    private Pair<bool, Seq<Node>> TopSort() {
-      Seq<Node> S = new Seq<Node>();
-      Set<Node> V = this.Nodes;
-      Set<Node> X = new Set<Node>();
+    private Tuple<bool, List<Node>> TopSort()
+    {
+      List<Node> S = new List<Node>();
+      HashSet<Node> V = this.Nodes;
+      HashSet<Node> X = new HashSet<Node>();
       foreach (Node/*!*/ n in V) {
         Contract.Assert(n != null);
         X.Add(n);
@@ -556,11 +556,11 @@ namespace Graphing {
           }
           // Then we made it all the way through X without finding a source node
           if (!change) {
-            return new Pair<bool, Seq<Node>>(false, new Seq<Node>());
+            return new Tuple<bool, List<Node>>(false, new List<Node>());
           }
         }
       }
-      return new Pair<bool, Seq<Node>>(true, S);
+      return new Tuple<bool, List<Node>>(true, S);
     }
 
     public static bool Acyclic(Graph<Node> g, Node source) {
@@ -570,66 +570,29 @@ namespace Graphing {
       return acyclic;
     }
 
-    //
-    // [Dragon, pp. 670--671]
-    // returns map D s.t. d in D(n) iff d dom n
-    //
-    static private Map<Node, Set<Node>> OldComputeDominators(Graph<Node> g, Node/*!*/ source) {
-      Contract.Requires(source != null);
-      Contract.Assert(g.source != null);
-      Set<Node> N = g.Nodes;
-      Set<Node> nonSourceNodes = N - new Set<Node>(source);
-      Map<Node, Set<Node>> D = new Map<Node, Set<Node>>();
-      D[source] = new Set<Node>(source);
-      foreach (Node/*!*/ n in nonSourceNodes) {
-        Contract.Assert(n != null);
-        D[n] = N;
-      }
-      bool change = true;
-      while (change) {
-        change = false;
-        foreach (Node/*!*/ n in nonSourceNodes) {
-          Contract.Assert(n != null);
-
-          // original A#
-          //Set<Set<Node>> allPreds = new Set<Set<Node>>{ Node p in this.Predecessors(n) ; D[p] };
-
-          Set<Set<Node>> allPreds = new Set<Set<Node>>();
-          foreach (Node/*!*/ p in g.Predecessors(n)) {
-            Contract.Assert(p != null);
-            allPreds.Add(D[p]);
-          }
-          Set<Node> temp = new Set<Node>(n) + Set<Node>.BigIntersect(allPreds);
-          if (temp != D[n]) {
-            change = true;
-            D[n] = temp;
-          }
-        }
-      }
-      return D;
-    }
-
     // [Dragon, Fig. 10.15, p. 604. Algorithm for constructing the natural loop.]
-    static Set<Node> NaturalLoop(Graph<Node> g, Pair<Node/*!*/, Node/*!*/> backEdge) {
-      Contract.Requires(backEdge.First != null && backEdge.Second != null);
-      Node/*!*/ n = backEdge.First;
-      Node/*!*/ d = backEdge.Second;
-      Seq<Node> stack = new Seq<Node>();
-      Set<Node> loop = new Set<Node>(d);
-      if (!n.Equals(d)) // then n is not in loop
+    static HashSet<Node> NaturalLoop(Graph<Node> g, Tuple<Node/*!*/, Node/*!*/> backEdge)
     {
+      Contract.Requires(backEdge.Item1 != null && backEdge.Item2 != null);
+      Node/*!*/ n = backEdge.Item1;
+      Node/*!*/ d = backEdge.Item2;
+      Stack<Node> stack = new Stack<Node>();
+      HashSet<Node> loop = new HashSet<Node>();
+      loop.Add(d);
+      if (!n.Equals(d)) // then n is not in loop
+      {
         loop.Add(n);
-        stack = new Seq<Node>(n) + stack; // push n onto stack
+        stack.Push(n); // push n onto stack
       }
       while (stack.Count > 0) // not empty
-    {
-        Node m = stack.Head;
-        stack = stack.Tail; // pop stack
+      {
+        Node m = stack.Peek();
+        stack.Pop(); // pop stack
         foreach (Node/*!*/ p in g.Predecessors(m)) {
           Contract.Assert(p != null);
           if (!(loop.Contains(p))) {
             loop.Add(p);
-            stack = new Seq<Node>(p) + stack; // push p onto stack
+            stack.Push(p); // push p onto stack
           }
         }
       }
@@ -638,16 +601,17 @@ namespace Graphing {
 
     internal struct ReducibleResult {
       internal bool reducible;
-      internal Set<Node> headers;
-      internal Map<Node, Set<Node>> backEdgeNodes;
-      internal Map<Pair<Node/*!*/, Node/*!*/>, Set<Node>> naturalLoops;
+      internal HashSet<Node> headers;
+      internal Dictionary<Node, HashSet<Node>> backEdgeNodes;
+      internal Dictionary<Tuple<Node/*!*/, Node/*!*/>, HashSet<Node>> naturalLoops;
       [ContractInvariantMethod]
       void ObjectInvariant() {
-        Contract.Invariant(Contract.ForAll(naturalLoops.Keys, p => p.First != null && p.Second != null));
+        Contract.Invariant(Contract.ForAll(naturalLoops.Keys, p => p.Item1 != null && p.Item2 != null));
       }
 
-      internal ReducibleResult(bool b, Set<Node> headers, Map<Node, Set<Node>> backEdgeNodes, Map<Pair<Node/*!*/, Node/*!*/>, Set<Node>> naturalLoops) {
-        Contract.Requires(naturalLoops == null || Contract.ForAll(naturalLoops.Keys, Key => Key.First != null && Key.Second != null));
+      internal ReducibleResult(bool b, HashSet<Node> headers, Dictionary<Node, HashSet<Node>> backEdgeNodes, Dictionary<Tuple<Node/*!*/, Node/*!*/>, HashSet<Node>> naturalLoops)
+      {
+        Contract.Requires(naturalLoops == null || Contract.ForAll(naturalLoops.Keys, Key => Key.Item1 != null && Key.Item2 != null));
         this.reducible = b;
         this.headers = headers;
         this.backEdgeNodes = backEdgeNodes;
@@ -670,15 +634,15 @@ namespace Graphing {
       Contract.Requires(DomRelation != null);
 
       //Console.WriteLine("[" + DateTime.Now +"]: begin ComputeReducible");
-      IEnumerable<Pair<Node/*!*/, Node/*!*/>> edges = g.Edges;
-      Contract.Assert(Contract.ForAll(edges, n => n.First != null && n.Second != null));
-      Set<Pair<Node/*!*/, Node/*!*/>> backEdges = new Set<Pair<Node/*!*/, Node/*!*/>>();
-      Set<Pair<Node/*!*/, Node/*!*/>> nonBackEdges = new Set<Pair<Node/*!*/, Node/*!*/>>();
-      foreach (Pair<Node/*!*/, Node/*!*/> e in edges) {
-        Contract.Assert(e.First != null);
-        Contract.Assert(e.Second != null);
-        Node x = e.First;
-        Node y = e.Second; // so there is an edge from x to y
+      IEnumerable<Tuple<Node/*!*/, Node/*!*/>> edges = g.Edges;
+      Contract.Assert(Contract.ForAll(edges, n => n.Item1 != null && n.Item2 != null));
+      HashSet<Tuple<Node/*!*/, Node/*!*/>> backEdges = new HashSet<Tuple<Node/*!*/, Node/*!*/>>();
+      HashSet<Tuple<Node/*!*/, Node/*!*/>> nonBackEdges = new HashSet<Tuple<Node/*!*/, Node/*!*/>>();
+      foreach (Tuple<Node/*!*/, Node/*!*/> e in edges) {
+        Contract.Assert(e.Item1 != null);
+        Contract.Assert(e.Item2 != null);
+        Node x = e.Item1;
+        Node y = e.Item2; // so there is an edge from x to y
         if (DomRelation.DominatedBy(x, y)) { // y dom x: which means y dominates x
           backEdges.Add(e);
         } else {
@@ -687,40 +651,40 @@ namespace Graphing {
       }
       if (!Acyclic(new Graph<Node>(nonBackEdges), source)) {
         return new ReducibleResult(false,
-                                   new Set<Node>(),
-                                   new Map<Node, Set<Node>>(),
-                                   new Map<Pair<Node/*!*/, Node/*!*/>, Set<Node>>());
+                                   new HashSet<Node>(),
+                                   new Dictionary<Node, HashSet<Node>>(),
+                                   new Dictionary<Tuple<Node/*!*/, Node/*!*/>, HashSet<Node>>());
       } else {
         // original A#:
         //Set<Node> headers = Set{ d : <n,d> in backEdges };
-        Set<Node> headers = new Set<Node>();
-        foreach (Pair<Node/*!*/, Node/*!*/> e in backEdges) {
+        HashSet<Node> headers = new HashSet<Node>();
+        foreach (Tuple<Node/*!*/, Node/*!*/> e in backEdges) {
 
-          Contract.Assert(e.First != null);
-          Contract.Assert(e.Second != null);
-          headers.Add(e.Second);
+          Contract.Assert(e.Item1 != null);
+          Contract.Assert(e.Item2 != null);
+          headers.Add(e.Item2);
         }
         // original A#:
         //Map<Node,Set<Node>> backEdgeNodes = Map{ h -> bs  : h in headers, bs = Set<Node>{ b : <b,x> in backEdges, x == h } };
-        Map<Node, Set<Node>> backEdgeNodes = new Map<Node, Set<Node>>();
+        Dictionary<Node, HashSet<Node>> backEdgeNodes = new Dictionary<Node, HashSet<Node>>();
         foreach (Node/*!*/ h in headers) {
           Contract.Assert(h != null);
-          Set<Node> bs = new Set<Node>();
-          foreach (Pair<Node, Node> backedge in backEdges) {
-            Contract.Assert(backedge.First != null);
-            Contract.Assert(backedge.Second != null);
-            if (backedge.Second.Equals(h)) {
-              bs.Add(backedge.First);
+          HashSet<Node> bs = new HashSet<Node>();
+          foreach (Tuple<Node, Node> backedge in backEdges) {
+            Contract.Assert(backedge.Item1 != null);
+            Contract.Assert(backedge.Item2 != null);
+            if (backedge.Item2.Equals(h)) {
+              bs.Add(backedge.Item1);
             }
           }
           backEdgeNodes.Add(h, bs);
         }
 
         // original A#:
-        //Map<Pair<Node,Node>,Set<Node>> naturalLoops = Map{ e -> NaturalLoop(g,e) : e in backEdges };
-        Map<Pair<Node/*!*/, Node/*!*/>, Set<Node>> naturalLoops = new Map<Pair<Node/*!*/, Node/*!*/>, Set<Node>>();
-        foreach (Pair<Node/*!*/, Node/*!*/> e in backEdges) {
-          Contract.Assert(e.First != null && e.Second != null);
+        //Map<Tuple<Node,Node>,Set<Node>> naturalLoops = Map{ e -> NaturalLoop(g,e) : e in backEdges };
+        Dictionary<Tuple<Node/*!*/, Node/*!*/>, HashSet<Node>> naturalLoops = new Dictionary<Tuple<Node/*!*/, Node/*!*/>, HashSet<Node>>();
+        foreach (Tuple<Node/*!*/, Node/*!*/> e in backEdges) {
+          Contract.Assert(e.Item1 != null && e.Item2 != null);
           naturalLoops.Add(e, NaturalLoop(g, e));
         }
 
@@ -743,13 +707,13 @@ namespace Graphing {
       Contract.Requires(h != null);
       // original A#:
       //return h in backEdgeNodes ? backEdgeNodes[h] : null;
-      return (backEdgeNodes.ContainsKey(h) ? backEdgeNodes[h] : (IEnumerable<Node>)new Seq<Node>());
+      return (backEdgeNodes.ContainsKey(h) ? backEdgeNodes[h] : (IEnumerable<Node>)new List<Node>());
     }
     public IEnumerable<Node> NaturalLoops(Node/*!*/ header, Node/*!*/ backEdgeNode) {
       Contract.Requires(header != null);
       Contract.Requires(backEdgeNode != null);
-      Pair<Node/*!*/, Node/*!*/> e = new Pair<Node/*!*/, Node/*!*/>(backEdgeNode, header);
-      return naturalLoops.ContainsKey(e) ? naturalLoops[e] : (IEnumerable<Node>)new Seq<Node>();
+      Tuple<Node/*!*/, Node/*!*/> e = new Tuple<Node/*!*/, Node/*!*/>(backEdgeNode, header);
+      return naturalLoops.ContainsKey(e) ? naturalLoops[e] : (IEnumerable<Node>)new List<Node>();
     }
 
     public void ComputeLoops() {
@@ -772,7 +736,7 @@ namespace Graphing {
                 if (b.Equals(c)) continue;
                 if (DominatorMap.DominatedBy(b, c))
                 {
-                    Debug.Assert(!DominatorMap.DominatedBy(c, b));
+                    System.Diagnostics.Debug.Assert(!DominatorMap.DominatedBy(c, b));
                     dag.AddEdge(b, c);
                 }
             }
@@ -782,12 +746,12 @@ namespace Graphing {
   } // end: class Graph
 
   public class GraphProgram {
-    static void TestGraph<T>(T/*!*/ source, params Pair<T/*!*/, T/*!*/>[] edges) {
+    static void TestGraph<T>(T/*!*/ source, params Tuple<T/*!*/, T/*!*/>[] edges) {
       Contract.Requires(source != null);
-      Contract.Requires(Contract.ForAll(edges, pair => pair.First != null && pair.Second != null));
-      Set<Pair<T/*!*/, T/*!*/>> es = new Set<Pair<T/*!*/, T/*!*/>>();
-      foreach (Pair<T/*!*/, T/*!*/> e in edges) {
-        Contract.Assert(e.First != null && e.Second != null);
+      Contract.Requires(Contract.ForAll(edges, pair => pair.Item1 != null && pair.Item2 != null));
+      HashSet<Tuple<T/*!*/, T/*!*/>> es = new HashSet<Tuple<T/*!*/, T/*!*/>>();
+      foreach (Tuple<T/*!*/, T/*!*/> e in edges) {
+        Contract.Assert(e.Item1 != null && e.Item2 != null);
         es.Add(e);
       }
       Graph<T> g = new Graph<T>(es);
@@ -804,64 +768,64 @@ namespace Graphing {
     {
       Console.WriteLine("Spec# says hello!");
       // This generates bad IL -- need to fix a bug in the compiler
-      //Graph<int> g = new Graph<int>(new Set<Pair<int,int>>{ new Pair<int,int>(1,2), new Pair<int,int>(1,3), new Pair<int,int>(2,3) });
+      //Graph<int> g = new Graph<int>(new Set<Tuple<int,int>>{ new Tuple<int,int>(1,2), new Tuple<int,int>(1,3), new Tuple<int,int>(2,3) });
 
       Console.WriteLine("");
       TestGraph<char>('a',
-        new Pair<char, char>('a', 'b'),
-        new Pair<char, char>('a', 'c'),
-        new Pair<char, char>('b', 'c')
+        new Tuple<char, char>('a', 'b'),
+        new Tuple<char, char>('a', 'c'),
+        new Tuple<char, char>('b', 'c')
       );
 
       Console.WriteLine("");
       TestGraph<char>('a',
-        new Pair<char, char>('a', 'b'),
-        new Pair<char, char>('a', 'c'),
-        new Pair<char, char>('b', 'd'),
-        new Pair<char, char>('c', 'e'),
-        new Pair<char, char>('c', 'f'),
-        new Pair<char, char>('d', 'e'),
-        new Pair<char, char>('e', 'd'),
-        new Pair<char, char>('e', 'f'),
-        new Pair<char, char>('f', 'e')
+        new Tuple<char, char>('a', 'b'),
+        new Tuple<char, char>('a', 'c'),
+        new Tuple<char, char>('b', 'd'),
+        new Tuple<char, char>('c', 'e'),
+        new Tuple<char, char>('c', 'f'),
+        new Tuple<char, char>('d', 'e'),
+        new Tuple<char, char>('e', 'd'),
+        new Tuple<char, char>('e', 'f'),
+        new Tuple<char, char>('f', 'e')
       );
 
       Console.WriteLine("");
       TestGraph<char>('a',
-        new Pair<char, char>('a', 'b'),
-        new Pair<char, char>('a', 'c'),
-        new Pair<char, char>('b', 'c'),
-        new Pair<char, char>('c', 'b')
+        new Tuple<char, char>('a', 'b'),
+        new Tuple<char, char>('a', 'c'),
+        new Tuple<char, char>('b', 'c'),
+        new Tuple<char, char>('c', 'b')
       );
 
       Console.WriteLine("");
       TestGraph<int>(1,
-        new Pair<int, int>(1, 2),
-        new Pair<int, int>(1, 3),
-        new Pair<int, int>(2, 3)
+        new Tuple<int, int>(1, 2),
+        new Tuple<int, int>(1, 3),
+        new Tuple<int, int>(2, 3)
       );
 
       Console.WriteLine("");
       TestGraph<int>(1,
-        new Pair<int, int>(1, 2),
-        new Pair<int, int>(1, 3),
-        new Pair<int, int>(2, 3),
-        new Pair<int, int>(3, 2)
+        new Tuple<int, int>(1, 2),
+        new Tuple<int, int>(1, 3),
+        new Tuple<int, int>(2, 3),
+        new Tuple<int, int>(3, 2)
       );
 
       Console.WriteLine("");
       TestGraph<int>(2,
-        new Pair<int, int>(2, 3),
-        new Pair<int, int>(2, 4),
-        new Pair<int, int>(3, 2)
+        new Tuple<int, int>(2, 3),
+        new Tuple<int, int>(2, 4),
+        new Tuple<int, int>(3, 2)
       );
 
       Console.WriteLine("");
       TestGraph<char>('a',
-        new Pair<char, char>('a', 'b'),
-        new Pair<char, char>('a', 'c'),
-        new Pair<char, char>('b', 'c'),
-        new Pair<char, char>('b', 'b')
+        new Tuple<char, char>('a', 'b'),
+        new Tuple<char, char>('a', 'c'),
+        new Tuple<char, char>('b', 'c'),
+        new Tuple<char, char>('b', 'b')
       );
 
 

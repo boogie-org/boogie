@@ -78,7 +78,7 @@ namespace Microsoft.Boogie {
     public readonly IToken/*!*/ EndCurly;
     public StmtList ParentContext;
     public BigBlock ParentBigBlock;
-    public Set<string/*!*/>/*!*/ Labels = new Set<string/*!*/>();
+    public HashSet<string/*!*/>/*!*/ Labels = new HashSet<string/*!*/>();
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(EndCurly != null);
@@ -233,7 +233,7 @@ namespace Microsoft.Boogie {
     List<Block/*!*/> blocks;
     string/*!*/ prefix = "anon";
     int anon = 0;
-    Set<string/*!*/> allLabels = new Set<string/*!*/>();
+    HashSet<string/*!*/> allLabels = new HashSet<string/*!*/>();
     Errors/*!*/ errorHandler;
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -784,7 +784,7 @@ namespace Microsoft.Boogie {
     // VC generation and SCC computation
     public BlockSeq/*!*/ Predecessors;
 
-    public Set<Variable/*!*/> liveVarsBefore;
+    public HashSet<Variable/*!*/> liveVarsBefore;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Label != null);

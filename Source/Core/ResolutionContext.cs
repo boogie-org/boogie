@@ -7,7 +7,6 @@ namespace Microsoft.Boogie {
   using System.Collections;
   using System.Collections.Generic;
   using System;
-  using Microsoft.SpecSharp.Collections;
   using System.Diagnostics.Contracts;
 
   [ContractClass(typeof(IErrorSinkContracts))]

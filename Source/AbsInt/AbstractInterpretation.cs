@@ -11,7 +11,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
   using System.Diagnostics;
   using System.Diagnostics.Contracts;
   using Microsoft.Boogie;
-  using Cci = System.Compiler;
+  using System.Linq;
   using AI = Microsoft.AbstractInterpretationFramework;
 
 
@@ -22,7 +22,6 @@ namespace Microsoft.Boogie.AbstractInterpretation {
     private AI.Lattice lattice;
     private Queue<ProcedureWorkItem> procWorkItems;  //PM: changed to generic queue
     private Queue/*<CallSite>*/ callReturnWorkItems;
-    private Cci.IRelation/*<Procedure,Implementation>*/ procedureImplementations;
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -71,120 +70,20 @@ namespace Microsoft.Boogie.AbstractInterpretation {
       this.callReturnWorkItems = new Queue();
     }
 
-    private Cci.IGraphNavigator ComputeCallGraph(Program program) {
+    private Dictionary<Procedure, Implementation[]> ComputeProcImplMap(Program program) {
       Contract.Requires(program != null);
-      Contract.Ensures(this.procedureImplementations != null);
       // Since implementations call procedures (impl. signatures) 
       // rather than directly calling other implementations, we first
       // need to compute which implementations implement which
       // procedures and remember which implementations call which
       // procedures.
 
-      Cci.IMutableRelation/*<Implementation,Procedure>*/ callsProcedure = new Cci.Relation();
-      Cci.IMutableRelation/*<Procedure,Implementation>*/ implementsProcedure = new Cci.Relation();
-      this.procedureImplementations = implementsProcedure;
+      return program
+            .TopLevelDeclarations
+            .Where(d => d is Implementation).Select(i => (Implementation)i)
+            .GroupBy(i => i.Proc).Select(g => g.ToArray()).ToDictionary(a => a[0].Proc);
 
-      //      ArrayList publics = new ArrayList();
-      //      publicImpls = publics;
-
-      foreach (Declaration member in program.TopLevelDeclarations) {
-        Implementation impl = member as Implementation;
-        if (impl != null) {
-          implementsProcedure.Add(impl.Proc, impl);
-          //         if (impl.IsPublic) { publics.Add(impl); }          // PR: what does "IsPublic" stand for?
-
-          foreach (Block block in impl.Blocks) {
-            foreach (Cmd cmd in block.Cmds) {
-              CallCmd call = cmd as CallCmd;
-              if (call != null) {
-                callsProcedure.Add(impl, call.Proc);
-              }
-            }
-          }
-        }
-      }
-
-      // Now compute a graph from implementations to implementations.
-
-      Cci.GraphBuilder callGraph = new Cci.GraphBuilder();
-
-      IEnumerable callerImpls = callsProcedure.GetKeys();
-      Contract.Assume(callerImpls != null);  // because of non-generic collection
-      foreach (Implementation caller in callerImpls) {
-        IEnumerable callerProcs = callsProcedure.GetValues(caller);
-        Contract.Assume(callerProcs != null);  // because of non-generic collection
-        foreach (Procedure callee in callerProcs) {
-          IEnumerable calleeImpls = implementsProcedure.GetValues(callee);
-          Contract.Assume(calleeImpls != null);  // because of non-generic collection
-          foreach (Implementation calleeImpl in calleeImpls) {
-            callGraph.AddEdge(caller, calleeImpl);
-          }
-        }
-      }
-
-      return callGraph;
     }
-
-#if OLDCODE
-    public void ComputeImplementationInvariants (Implementation impl)
-    {
-        // process each procedure implementation by recursively processing the first (entry) block...
-        ComputeBlockInvariants(impl.Blocks[0], lattice.Top);
-
-        // compute the procedure invariant by joining all terminal block invariants...
-        AI.Lattice.Element post = lattice.Bottom;
-        foreach (Block block in impl.Blocks) 
-        {
-            if (block.TransferCmd is ReturnCmd) 
-            {
-                AI.Lattice.Element postValue = block.PostInvariantBuckets[invariantIndex];
-                Debug.Assert(postValue != null);
-                post = post.Join(postValue);
-            }
-        }
-        impl.PostInvariant = post;
-
-        // Now update the procedure to reflect the new properties
-        // of this implementation.
-
-        if (impl.Proc.PreInvariant <= impl.PreInvariant)
-        {
-            // Strengthen the precondition
-            impl.Proc.PreInvariant = impl.PreInvariant;
-            foreach (Implementation otherImpl in this.procedureImplementations.GetValues(impl.Proc))
-            {
-                if (otherImpl == impl) { continue; }
-                if (otherImpl.PreInvariant <= impl.Proc.PreInvariant)
-                {
-                    // If another implementation of the same procedure has
-                    // a weaker precondition, re-do it with the stronger
-                    // precondition.
-                    otherImpl.PreInvariant = impl.Proc.PreInvariant;
-                    this.implWorkItems.Enqueue(otherImpl);
-                }
-            }
-        }
-    }
-#endif
-
-
-#if NOTYET
-    public void ComputeSccInvariants (IEnumerable/*<Implementation>*/ implementations)
-    {
-      Debug.Assert(this.implWorkItems.Count == 0); // no work left over from last SCC
-
-      foreach (Implementation impl in implementations) 
-      { 
-        impl.AbstractFunction = AbstractFunction.Empty.WithPair(this.lattice.Bottom, this.lattice.Bottom);
-        this.implWorkItems.Enqueue(impl);
-      }
-
-      while (this.implWorkItems.Count > 0) // until fixed point reached
-      {
-        Implementation impl = (Implementation)this.implWorkItems.Dequeue();
-      }
-    }
-#endif
 
     public AI.Lattice.Element ApplyProcedureSummary(CallCmd call, Implementation caller, AI.Lattice.Element knownAtCallSite, CallSite callSite) {
       Contract.Requires(call.Proc != null);
@@ -254,12 +153,14 @@ namespace Microsoft.Boogie.AbstractInterpretation {
       return this.lattice.Meet(atReturn, knownAtCallSite);
     }
 
+      /*
     private Cci.IGraphNavigator callGraph;
     public Cci.IGraphNavigator CallGraph {
       get {
         return this.callGraph;
       }
     }
+      */
 
     /// <summary>
     /// Compute the invariants for the program using the underlying abstract domain
@@ -267,29 +168,10 @@ namespace Microsoft.Boogie.AbstractInterpretation {
     public void ComputeProgramInvariants(Program program) {
       Contract.Requires(program != null);
 
-#if NOT_YET
-      Cci.IGraphNavigator callGraph = 
-#endif
-
-      callGraph = this.ComputeCallGraph(program);
-      Contract.Assert(this.procedureImplementations != null);
-      Cci.IRelation procedureImplementations = this.procedureImplementations;//Non-nullability was already asserted in
+      Dictionary<Procedure, Implementation[]> procedureImplementations = ComputeProcImplMap(program);
       //the line above, ergo there is no need for
       //an assert after this statement to maintain
       //the non-null type.
-#if NOT_YET
-      IEnumerable/*<IStronglyConnectedComponent>*/ sccs = 
-          StronglyConnectedComponent.ConstructSCCs(publicImpls, callGraph);
-
-      IList/*<IStronglyConnectedComponent>*/ sortedSccs = 
-          GraphUtil.TopologicallySortComponentGraph(sccs);
-
-      // Go bottom-up through the SCCs of the call graph
-      foreach (IStronglyConnectedComponent scc in sortedSccs)
-      {
-        this.ComputeSccInvariants(scc.Nodes);
-      }
-#endif
       AI.Lattice.Element initialElement = this.lattice.Top;
       Contract.Assert(initialElement != null);
       // Gather all the axioms to create the initial lattice element
@@ -316,8 +198,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
           ProcedureWorkItem workItem = this.procWorkItems.Dequeue();
 
           ProcedureSummaryEntry summaryEntry = cce.NonNull(workItem.Proc.Summary[workItem.Index]);
-
-          if (cce.NonNull(procedureImplementations.GetValues(workItem.Proc)).Count == 0) {
+          if (!procedureImplementations.ContainsKey(workItem.Proc)) {
             // This procedure has no given implementations.  We therefore treat the procedure
             // according to its specification only.
 
@@ -347,7 +228,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
             }
 
             // For each implementation in the procedure...
-            foreach (Implementation impl in cce.NonNull(procedureImplementations.GetValues(workItem.Proc))) {
+            foreach (Implementation impl in cce.NonNull(procedureImplementations[workItem.Proc])) {
               // process each procedure implementation by recursively processing the first (entry) block...
               cce.NonNull(impl.Blocks[0]).Lattice = lattice;
               ComputeBlockInvariants(impl, cce.NonNull(impl.Blocks[0]), summaryEntry.OnEntry, summaryEntry);
@@ -1040,16 +921,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
       Contract.Requires(lattice != null);
       AbstractionEngine engine = new AbstractionEngine(lattice);
       engine.ComputeProgramInvariants(program);
-      callGraph = engine.CallGraph;
     }
-    private static Cci.IGraphNavigator callGraph;
-    public static Cci.IGraphNavigator CallGraph {
-      get {
-        return callGraph;
-      }
-    }
-
-
   }
 
 } // namespace

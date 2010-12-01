@@ -362,9 +362,9 @@ namespace VC
                 coverageProcess.StandardInput.WriteLine("batch-graph-command-begin");
                 coverageProcess.StandardInput.WriteLine("reset-color");
                 // Go through the curr candidates and draw edges
-                var nodes = new Microsoft.SpecSharp.Collections.Set<int>();
-                var greenNodes = new Microsoft.SpecSharp.Collections.Set<int>();
-                var redNodes = new Microsoft.SpecSharp.Collections.Set<int>();
+                var nodes = new HashSet<int>();
+                var greenNodes = new HashSet<int>();
+                var redNodes = new HashSet<int>();
                 var edges = new List<KeyValuePair<int, int>>();
                 foreach (var id in calls.currCandidates)
                 {
@@ -1365,7 +1365,7 @@ namespace VC
             // User info -- to decrease/increase calculcation of recursion bound
             public Dictionary<int, int> recursionIncrement;
 
-            public Microsoft.SpecSharp.Collections.Set<int> currCandidates;
+            public HashSet<int> currCandidates;
             [ContractInvariantMethod]
             void ObjectInvariant()
             {
@@ -1398,7 +1398,7 @@ namespace VC
                 id2ControlVar = new Dictionary<int, VCExprVar>();
                 boogieExpr2Id = new Dictionary<BoogieCallExpr, int>();
                 label2Id = new Dictionary<string, int>();
-                currCandidates = new Microsoft.SpecSharp.Collections.Set<int>();
+                currCandidates = new HashSet<int>();
                 currInlineCount = 0;
                 currProc = null;
                 labelRenamer = new Dictionary<string, int>();
@@ -1410,7 +1410,7 @@ namespace VC
 
             public void Clear()
             {
-                currCandidates = new Microsoft.SpecSharp.Collections.Set<int>();
+                currCandidates = new HashSet<int>();
             }
 
             // Given a candidate "id", let proc(id) be the

@@ -9,8 +9,8 @@
 namespace Microsoft.Boogie.AbstractInterpretation {
   using System.Diagnostics;
   using System.Diagnostics.Contracts;
-  using CCI = System.Compiler;
   using System.Collections;
+  using System.Collections.Generic;
   using AI = Microsoft.AbstractInterpretationFramework;
 
   public class CallSite {
@@ -45,7 +45,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
     public AI.Lattice/*!*/ Lattice;
     public AI.Lattice.Element/*!*/ OnEntry;
     public AI.Lattice.Element/*!*/ OnExit;
-    public CCI.IMutableSet/*<CallSite>*//*!*/ ReturnPoints; // whenever OnExit changes, we start analysis again at all the ReturnPoints
+    public HashSet<CallSite>/*!*/ ReturnPoints; // whenever OnExit changes, we start analysis again at all the ReturnPoints
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Lattice != null);
@@ -61,7 +61,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
       this.Lattice = lattice;
       this.OnEntry = onEntry;
       this.OnExit = lattice.Bottom;
-      this.ReturnPoints = new CCI.HashSet();
+      this.ReturnPoints = new HashSet<CallSite>();
       // base();
     }
 
@@ -407,7 +407,7 @@ namespace Microsoft.Boogie {
         Hashtable substMap = new Hashtable(); // Variable -> IdentifierExpr
 
         VariableSeq/*!*/ targets = new VariableSeq();
-        Set<Variable> footprint = new Set<Variable>();
+        HashSet<Variable> footprint = new HashSet<Variable>();
 
         foreach (Block/*!*/ b in g.BackEdgeNodes(header))
         {
@@ -422,7 +422,7 @@ namespace Microsoft.Boogie {
 
                     VariableCollector c = new VariableCollector();
                     c.Visit(cmd);
-                    footprint.AddRange(c.usedVars);
+                    footprint.UnionWith(c.usedVars);
                 }
             }
         }
@@ -531,7 +531,7 @@ namespace Microsoft.Boogie {
         Contract.Assert(header != null);
         LoopProcedure loopProc = loopHeaderToLoopProc[header];
         Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
-        Set<string> dummyBlocks = new Set<string>();
+        HashSet<string> dummyBlocks = new HashSet<string>();
 
         CodeCopier codeCopier = new CodeCopier(loopHeaderToSubstMap[header]);  // fix me
         VariableSeq inputs = loopHeaderToInputs[header];
@@ -696,7 +696,7 @@ namespace Microsoft.Boogie {
     {
         // Do a BFS to find all reachable blocks
         List<Block> reachableBlocks = new List<Block>();
-        Set<string> visited = new Set<string>();
+        HashSet<string> visited = new HashSet<string>();
         List<Block> worklist = new List<Block>();
 
         visited.Add(impl.Blocks[0].Label);
@@ -2806,7 +2806,7 @@ namespace Microsoft.Boogie {
     public void PruneUnreachableBlocks() {
       ArrayList /*Block!*/ visitNext = new ArrayList /*Block!*/ ();
       List<Block/*!*/> reachableBlocks = new List<Block/*!*/>();
-      System.Compiler.IMutableSet /*Block!*/ reachable = new System.Compiler.HashSet /*Block!*/ ();  // the set of elements in "reachableBlocks"
+      HashSet<Block> reachable = new HashSet<Block>();  // the set of elements in "reachableBlocks"
 
       visitNext.Add(this.Blocks[0]);
       while (visitNext.Count != 0) {

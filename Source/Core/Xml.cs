@@ -8,7 +8,6 @@ using System.IO;
 using System.Xml;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using Cci = System.Compiler;
 namespace Microsoft.Boogie {
 
   public class XmlSink {
@@ -143,6 +142,7 @@ namespace Microsoft.Boogie {
       cce.EndExpose();
     }
 
+#if CCI
     public void WriteError(string message, Cci.Node offendingNode, BlockSeq trace) {
       Contract.Requires(offendingNode != null);
       Contract.Requires(message != null);
@@ -177,6 +177,7 @@ namespace Microsoft.Boogie {
       }
       cce.EndExpose();
     }
+#endif
 
     [Inside]
     private void WriteTokenAttributes(IToken tok) {
@@ -189,6 +190,7 @@ namespace Microsoft.Boogie {
       }
     }
 
+#if CCI
     [Inside]
     private void WriteTokenAttributes(Cci.Node node) {
       Contract.Requires(node != null);
@@ -201,6 +203,7 @@ namespace Microsoft.Boogie {
         wr.WriteAttributeString("column", node.SourceContext.StartColumn.ToString());
       }
     }
+#endif
 
     public void WriteStartInference(string inferenceName) {
       Contract.Requires(inferenceName != null);

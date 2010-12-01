@@ -227,8 +227,8 @@ Contract.Ensures(Contract.ValueAtReturn(out store) != null);
         storeTypes[i] = abstractedType;
       else
         storeTypes[i] = AxBuilder.U;
-      Microsoft.Contracts.NonNullType.AssertInitialized(selectTypes);
-      Microsoft.Contracts.NonNullType.AssertInitialized(storeTypes);
+      Contract.Assert(cce.NonNullElements<Type>(selectTypes));
+      Contract.Assert(cce.NonNullElements<Type>(storeTypes));
 
       select = HelperFuns.BoogieFunction(baseName + "Select", selectTypes);
       store = HelperFuns.BoogieFunction(baseName + "Store", storeTypes);

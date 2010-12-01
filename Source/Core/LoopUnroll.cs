@@ -5,7 +5,6 @@
 //-----------------------------------------------------------------------------
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
-using Cci = System.Compiler;
 using Bpl = Microsoft.Boogie;
 
 namespace Microsoft.Boogie {
@@ -16,7 +15,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(0 <= unrollMaxDepth);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
       Dictionary<Block, GraphNode/*!*/> gd = new Dictionary<Block, GraphNode/*!*/>();
-      Cci.HashSet/*Block*//*!*/ beingVisited = new Cci.HashSet/*Block*/();
+      HashSet<Block> beingVisited = new HashSet<Block>();
       GraphNode gStart = GraphNode.ComputeGraphInfo(null, start, gd, beingVisited);
 
       // Compute SCCs
@@ -106,7 +105,7 @@ namespace Microsoft.Boogie {
         return cmds;
       }
 
-      public static GraphNode ComputeGraphInfo(GraphNode from, Block b, Dictionary<Block/*!*/, GraphNode/*!*/>/*!*/ gd, Cci.HashSet/*Block*/ beingVisited) {
+      public static GraphNode ComputeGraphInfo(GraphNode from, Block b, Dictionary<Block/*!*/, GraphNode/*!*/>/*!*/ gd, HashSet<Block> beingVisited) {
         Contract.Requires(beingVisited != null);
         Contract.Requires(b != null);
         Contract.Requires(cce.NonNullElements(gd));

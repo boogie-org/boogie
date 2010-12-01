@@ -10,7 +10,6 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
-using Cci = System.Compiler;
 
 namespace Microsoft.Boogie {
   public class CommandLineOptions {
@@ -1543,6 +1542,7 @@ namespace Microsoft.Boogie {
       return Contract.Exists(procsToCheck, s => 0 <= methodFullname.IndexOf(s));
     }
 
+#if CCI
     public bool UserWantsToTranslateRoutine(Cci.Method method, string methodFullname) {
       Contract.Requires(methodFullname != null);
       Contract.Requires(method != null);
@@ -1674,6 +1674,7 @@ namespace Microsoft.Boogie {
       }
       return null;
     }
+#endif
 
     class CommandLineParseState {
       public string s;
