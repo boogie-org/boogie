@@ -162,6 +162,12 @@ namespace Microsoft.Boogie
         return null;
       }
 
+      public bool IsTrue(params Element[] args)
+      {
+        var r = TryEval(args) as Boolean;
+        return r != null && r.Value;
+      }
+
       public void AddApp(Element res, params Element[] args)
       {        
         if (Arity == 0)

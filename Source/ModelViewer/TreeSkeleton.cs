@@ -131,7 +131,7 @@ namespace Microsoft.Boogie.ModelViewer
       wasExpanded = true;
 
       var created = new Dictionary<string, SkeletonItem>();
-      var names = new List<string>();
+      var names = new List<IDisplayNode>();
       for (int i = 0; i < displayNodes.Length; ++i) {
         var dn = displayNodes[i];
         if (dn == null) continue;
@@ -143,8 +143,7 @@ namespace Microsoft.Boogie.ModelViewer
           if (!created.TryGetValue(name, out skelChild)) {
             skelChild = new SkeletonItem(child.Name, this);
             created.Add(name, skelChild);
-            names.Add(name);
-
+            names.Add(child);
           }
           skelChild.displayNodes[i] = child;
         }

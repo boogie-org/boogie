@@ -38,7 +38,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     public readonly Model.Func f_ptr_to, f_phys_ptr_cast, f_spec_ptr_cast, f_mathint, f_local_value_is, f_spec_ptr_to, f_heap, f_select_field,
                                f_select_value, f_field, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t, f_select_ptr,
                                f_owners, f_closed, f_roots, f_timestamps, f_select_bool, f_select_int, f_is_null, f_good_state,
-                               f_int_to_version, f_int_to_ptrset, f_set_in0;
+                               f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field;
     public readonly Model.Element tp_object, tp_mathint, tp_bool, tp_state, tp_ptrset;
     public readonly Model.Element elt_me, elt_null;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
@@ -77,6 +77,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_int_to_version = m.MkFunc("$int_to_version", 1);
       f_int_to_ptrset = m.MkFunc("$int_to_ptrset", 1);
       f_set_in0 = m.MkFunc("$set_in0", 2);
+      f_is_ghost_field = m.MkFunc("$is_ghost_field", 1);
+      f_is_phys_field = m.MkFunc("$is_phys_field", 1);
 
       tp_bool = m.GetFunc("^^bool").GetConstant();
       tp_mathint = m.GetFunc("^^mathint").GetConstant();
@@ -450,7 +452,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           tp = tp_mathint;
         }
         if (val != null) {
-          res.Add(new FieldNode(state, new EdgeName(name), val, tp));
+          res.Add(new FieldNode(state, new EdgeName(name), val, tp) { Category = NodeCategory.MethodologyProperty });
         }
       }
     }
@@ -473,7 +475,13 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
               val = WrapForUse(val, ftp);
               var nm = ConstantFieldName(fld.Args[1]);
               var edgname = nm == null ? new EdgeName(fld.Args[1].ToString()) : new EdgeName(this, nm);
-              result.Add(new FieldNode(state, edgname, val, ftp));
+
+              var cat = NodeCategory.PhysField;
+              if (f_is_ghost_field.IsTrue(fld.Args[1]))
+                cat = NodeCategory.SpecField;
+              if (nm != null && nm.Contains("<"))
+                cat = NodeCategory.MethodologyProperty;
+              result.Add(new FieldNode(state, edgname, val, ftp) { Category = cat });
             }
           }
 
@@ -491,13 +499,13 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             foreach (var app in sel.AppsWithArg(0, elt)) {
               var val = WrapForUse(app.Result, elTp);
               var edgname = new EdgeName(this, "[%0]", app.Args[1]);
-              result.Add(new MapletNode(state, edgname, val, elTp));
+              result.Add(new MapletNode(state, edgname, val, elTp) { Category = NodeCategory.Maplet });
             }
           }
       } else if (kind == DataKind.Ptrset) {
         foreach (var sel in f_select_bool.AppsWithArg(0, elt)) {
           var edgname = new EdgeName(this, "[%0]", sel.Args[1]);
-          result.Add(new MapletNode(state, edgname, sel.Result, tp_bool));
+          result.Add(new MapletNode(state, edgname, sel.Result, tp_bool) { Category = NodeCategory.Maplet });
         }
       }
 
@@ -509,6 +517,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             continue;          
           var argsFmt = new StringBuilder();
           var name = tupl.Func.Name;
+          var cat = NodeCategory.MethodologyProperty;
+          if (name.StartsWith("F#")) {
+            name = name.Substring(2);
+            cat = NodeCategory.UserFunction;
+          }
           argsFmt.Append(name).Append("(");
           var args = new List<Model.Element>();
           foreach (var a in tupl.Args) {
@@ -524,7 +537,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           argsFmt.Length -= 2;
           argsFmt.Append(")");
           var edgeName = new EdgeName(this, argsFmt.ToString(), args.ToArray());
-          result.Add(new MapletNode(state, edgeName, tupl.Result, GuessType(tupl.Result)) { ViewLevel = FunctionScore(tupl.Func.Name) });
+          result.Add(new MapletNode(state, edgeName, tupl.Result, GuessType(tupl.Result)) { ViewLevel = FunctionScore(tupl.Func.Name), Category = cat });
         }
       }
 
@@ -581,6 +594,20 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       else
         return "";
     }
+
+    public override string PathName(IEnumerable<IDisplayNode> path)
+    {
+      var sb = new StringBuilder();
+      foreach (var d in path) {
+        var name = d.Name;
+        if (name == "") continue; // can that happen?
+        if (sb.Length > 0 && name[0] != '[')
+          sb.Append("->");
+        sb.Append(d.Name);
+      }
+
+      return sb.ToString();
+    }
   }
 
   class StateNode : IState
@@ -601,7 +628,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       var idx = name.LastIndexOfAny(new char[] { '\\', '/' });
       if (idx > 0)
         name = name.Substring(idx + 1);
-      var limit = 16;
+      var limit = 30;
       if (name.Length > limit) {
         idx = name.IndexOf('(');
         if (idx > 0) {
@@ -733,14 +760,6 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     {
       this.realName = realName;
       name = new EdgeName(vm.GetUserVariableName(realName));
-    }
-
-    public override NodeState State
-    {
-      get
-      {
-        return base.State | (updatedHere ? NodeState.Changed : NodeState.Normal);
-      }
     }
   }
 }

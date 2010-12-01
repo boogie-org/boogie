@@ -108,7 +108,7 @@
       // prevValue
       // 
       this.prevValue.Text = "Previous";
-      this.prevValue.Width = 62;
+      this.prevValue.Width = 100;
       // 
       // stateViewMenu
       // 
@@ -288,7 +288,7 @@
       // exitToolStripMenuItem
       // 
       this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-      this.exitToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+      this.exitToolStripMenuItem.Size = new System.Drawing.Size(92, 22);
       this.exitToolStripMenuItem.Text = "&Exit";
       this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
       // 
@@ -309,33 +309,33 @@
       this.normalToolStripMenuItem.Checked = true;
       this.normalToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
       this.normalToolStripMenuItem.Name = "normalToolStripMenuItem";
-      this.normalToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+      this.normalToolStripMenuItem.Size = new System.Drawing.Size(130, 22);
       this.normalToolStripMenuItem.Text = "&Normal";
       this.normalToolStripMenuItem.Click += new System.EventHandler(this.normalToolStripMenuItem_Click);
       // 
       // expertToolStripMenuItem
       // 
       this.expertToolStripMenuItem.Name = "expertToolStripMenuItem";
-      this.expertToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+      this.expertToolStripMenuItem.Size = new System.Drawing.Size(130, 22);
       this.expertToolStripMenuItem.Text = "E&xpert";
       this.expertToolStripMenuItem.Click += new System.EventHandler(this.normalToolStripMenuItem_Click);
       // 
       // everythingToolStripMenuItem
       // 
       this.everythingToolStripMenuItem.Name = "everythingToolStripMenuItem";
-      this.everythingToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+      this.everythingToolStripMenuItem.Size = new System.Drawing.Size(130, 22);
       this.everythingToolStripMenuItem.Text = "&Everything";
       this.everythingToolStripMenuItem.Click += new System.EventHandler(this.normalToolStripMenuItem_Click);
       // 
       // toolStripMenuItem1
       // 
       this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-      this.toolStripMenuItem1.Size = new System.Drawing.Size(149, 6);
+      this.toolStripMenuItem1.Size = new System.Drawing.Size(127, 6);
       // 
       // debugToolStripMenuItem
       // 
       this.debugToolStripMenuItem.Name = "debugToolStripMenuItem";
-      this.debugToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+      this.debugToolStripMenuItem.Size = new System.Drawing.Size(130, 22);
       this.debugToolStripMenuItem.Text = "Debug";
       this.debugToolStripMenuItem.Click += new System.EventHandler(this.debugToolStripMenuItem_Click);
       // 

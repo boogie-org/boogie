@@ -364,13 +364,5 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       this.realName = realName;
       name = new EdgeName(vm.GetUserVariableName(realName));
     }
-
-    public override NodeState State
-    {
-      get
-      {
-        return base.State | (updatedHere ? NodeState.Changed : NodeState.Normal);
-      }
-    }
   }
 }

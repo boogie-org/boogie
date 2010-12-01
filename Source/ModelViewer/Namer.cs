@@ -33,7 +33,7 @@ namespace Microsoft.Boogie.ModelViewer
     public virtual void RegisterLocalValue(string name, Model.Element elt)
     {
       string curr;
-      if (localValue.TryGetValue(elt, out curr) && CompareFields(name, curr) >= 0)
+      if (localValue.TryGetValue(elt, out curr) && CompareFieldNames(name, curr) >= 0)
         return;
       localValue[elt] = name;
     }
@@ -93,7 +93,7 @@ namespace Microsoft.Boogie.ModelViewer
       Action<IEnumerable<IDisplayNode>> addList = (IEnumerable<IDisplayNode> nodes) =>
       {
         var ch = nodes.ToDictionary(x => x.Name);
-        foreach (var k in SortFields(ch.Keys))
+        foreach (var k in SortFields(nodes))
           workList.Enqueue(ch[k]);
       };
 
@@ -116,6 +116,7 @@ namespace Microsoft.Boogie.ModelViewer
       }
     }
     #region field name sorting
+    /*
     static bool HasSpecialChars(string s)
     {
       for (int i = 0; i < s.Length; ++i)
@@ -123,10 +124,16 @@ namespace Microsoft.Boogie.ModelViewer
           case '[':
           case '<':
           case '>':
-          case ']': return true;
+          case ']': 
+          case '#':
+          case '\\':
+          case '(':
+          case ')':
+            return true;
         }
       return false;
     }
+     */
 
     static ulong GetNumber(string s, int beg)
     {
@@ -139,14 +146,15 @@ namespace Microsoft.Boogie.ModelViewer
       return res;
     }
 
-    public virtual int CompareFields(string f1, string f2)
+    public virtual int CompareFieldNames(string f1, string f2)
     {
+      /*
       bool s1 = HasSpecialChars(f1);
       bool s2 = HasSpecialChars(f2);
       if (s1 && !s2)
         return 1;
       if (!s1 && s2)
-        return -1;
+        return -1; */
       var len = Math.Min(f1.Length, f2.Length);
       var numberPos = -1;
       for (int i = 0; i < len; ++i) {
@@ -169,11 +177,18 @@ namespace Microsoft.Boogie.ModelViewer
       return string.CompareOrdinal(f1, f2);
     }
 
-    public virtual IEnumerable<string> SortFields(IEnumerable<string> fields_)
+    public virtual int CompareFields(IDisplayNode n1, IDisplayNode n2)
     {
-      var fields = new List<string>(fields_);
+      var diff = (int)n1.Category - (int)n2.Category;
+      if (diff != 0) return diff;
+      else return CompareFieldNames(n1.Name, n2.Name);
+    }
+
+    public virtual IEnumerable<string> SortFields(IEnumerable<IDisplayNode> fields_)
+    {
+      var fields = new List<IDisplayNode>(fields_);
       fields.Sort(CompareFields);
-      return fields;
+      return fields.Select(f => f.Name);
     }
     #endregion
   }

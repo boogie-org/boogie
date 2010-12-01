@@ -160,10 +160,19 @@ namespace Microsoft.Boogie.ModelViewer
     static Brush nonPrimary = new SolidBrush(Col(0xeeeeee));
     static Brush matchBg = new SolidBrush(Col(0xFFFA6F));
 
+    static SolidBrush currentStateBrush = new SolidBrush(Color.Red);
     static SolidBrush regularStateBrush = new SolidBrush(Color.Black);
     static SolidBrush previousStateBrush = new SolidBrush(Color.Blue);
-    static SolidBrush currentStateBrush = new SolidBrush(Color.Red);
-    
+
+    static SolidBrush[] categoryBrushes = new SolidBrush[] {
+      new SolidBrush(Color.Black), // Local
+      new SolidBrush(Color.Black), // PhysField
+      new SolidBrush(Color.Green), // SpecField
+      new SolidBrush(Color.Peru), // MethodologyProperty
+      new SolidBrush(Color.Green), // UserFunction
+      new SolidBrush(Color.Black), // Maplet
+    };
+
     private void listView1_DrawItem(object sender, DrawListViewItemEventArgs e)
     {
       var item = (DisplayItem)e.Item;
@@ -175,7 +184,7 @@ namespace Microsoft.Boogie.ModelViewer
 
       var textBrush = Brushes.Black;
       if (listView.SelectedIndices.Count > 0 && listView.SelectedIndices[0] == e.ItemIndex) {
-        e.Graphics.FillRectangle(Brushes.Navy, rect);
+        e.Graphics.FillRectangle(Brushes.Aquamarine, rect);
         textBrush = Brushes.White;
       } else {
         var bg = Brushes.White;
@@ -213,8 +222,8 @@ namespace Microsoft.Boogie.ModelViewer
       var nameRect = rect;
       var font = listView.Font;
 
-      if ((item.dispNode.State & NodeState.Changed) != 0)
-        textBrush = Brushes.Red;
+      textBrush = categoryBrushes[(int)item.dispNode.Category];
+
       if (!item.active)
         textBrush = grayedOut;
 
@@ -222,6 +231,7 @@ namespace Microsoft.Boogie.ModelViewer
       nameRect.X += off;
       var width = DrawString(e.Graphics, item.SubItems[0].Text, font, textBrush, nameRect);
 
+      textBrush = item.active ? Brushes.Black : grayedOut;
       nameRect.X += width + 4;
       nameRect.Width = listView.Columns[0].Width + listView.Columns[1].Width - nameRect.X;
       width = DrawString(e.Graphics, item.SubItems[1].Text, font, textBrush, nameRect);
@@ -229,7 +239,7 @@ namespace Microsoft.Boogie.ModelViewer
       nameRect.X += width + 4;
       nameRect.Width = listView.Width - nameRect.X;
       var t = item.SubItems[2].Text;
-      width = DrawString(e.Graphics, t, font, t == item.SubItems[1].Text ? grayedOut : previousStateBrush, nameRect);
+      width = DrawString(e.Graphics, t, font, t == item.SubItems[1].Text ? grayedOut : Brushes.Black, nameRect);
     }
 
     private int DrawString(Graphics g, string s, Font font, Brush textBrush, Rectangle minRect)

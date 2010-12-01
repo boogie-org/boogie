@@ -11,6 +11,17 @@ namespace Microsoft.Boogie.ModelViewer
     public bool DebugMode;
   }
 
+  // sync with Main.categoryBrushes!
+  public enum NodeCategory
+  {
+    Local,
+    PhysField,
+    SpecField,
+    MethodologyProperty,
+    UserFunction,
+    Maplet
+  }
+
   public interface ILanguageProvider
   {
     bool IsMyModel(Model m);
@@ -27,20 +38,14 @@ namespace Microsoft.Boogie.ModelViewer
 
     IEnumerable<IState> States { get; }
 
-    IEnumerable<string> SortFields(IEnumerable<string> fields);
+    // This function is given IDisplayNode possibly from different states.
+    IEnumerable<string> SortFields(IEnumerable<IDisplayNode> fields);
   }
 
   public interface IState
   {
     string Name { get; }
     IEnumerable<IDisplayNode> Nodes { get; }
-  }
-
-  [Flags]
-  public enum NodeState
-  {
-    Normal = 0,
-    Changed = 1
   }
 
   public interface IDisplayNode
@@ -50,7 +55,7 @@ namespace Microsoft.Boogie.ModelViewer
     /// </summary>
     string Name { get; }
 
-    NodeState State { get; }
+    NodeCategory Category { get; }
     string Value { get; }
     string ToolTip { get; }
 
@@ -113,10 +118,8 @@ namespace Microsoft.Boogie.ModelViewer
       get { return null; }
     }
 
-    public virtual int ViewLevel
-    {
-      get; set;
-    }
+    public virtual int ViewLevel { get; set; }
+    public virtual NodeCategory Category { get; set; }
 
     public virtual IEnumerable<IDisplayNode> Children
     {
@@ -133,8 +136,6 @@ namespace Microsoft.Boogie.ModelViewer
     protected virtual void ComputeChildren()
     {
     }
-
-    public virtual NodeState State { get { return NodeState.Normal; } }
 
     public object ViewSync { get; set; }
 
