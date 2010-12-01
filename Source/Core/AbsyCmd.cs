@@ -2094,6 +2094,12 @@ namespace Microsoft.Boogie {
         Contract.Assert(e != null);
         Expr copy = Substituter.ApplyReplacingOldExprs(s2, s2old, e.Condition);
         AssumeCmd assume = new AssumeCmd(this.tok, copy);
+        #region stratified inlining support
+        if (QKeyValue.FindBoolAttribute(e.Attributes, "si_fcall"))
+        {
+            assume.Attributes = Attributes;
+        }
+        #endregion
         newBlockBody.Add(assume);
       }
       #endregion

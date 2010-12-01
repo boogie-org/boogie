@@ -20,6 +20,8 @@ namespace VC
     public class StratifiedVCGen : VCGen
     {
         private Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
+        public bool PersistCallTree;
+        public static Dictionary<string, int> callTree = null;
 
         [ContractInvariantMethod]
         void ObjectInvariant()
@@ -37,6 +39,7 @@ namespace VC
             Contract.Requires(program != null);
             implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
             this.GenerateVCsForStratifiedInlining(program);
+            PersistCallTree = false;
         }
 
         public class StratifiedInliningInfo : LazyInliningInfo
@@ -110,7 +113,7 @@ namespace VC
                         exprs.Add(ie);
                     }
                     Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(info.function), exprs);
-                    proc.Ensures.Add(new Ensures(true, freePostExpr));
+                    proc.Ensures.Add(new Ensures(Token.NoToken, true, freePostExpr, "", new QKeyValue(Token.NoToken, "si_fcall", new List<object>(), null)));
                 }
             }
 
@@ -220,15 +223,12 @@ namespace VC
                     }
                     for (int i = 1; i < split.Length; i++)
                     {
-                        int n;
-                        if (int.TryParse(split[i], out n))
+                        var node = calls.getCandidateFromGraphNode(split[i]);
+                        if (node != -1)
                         {
-                            n = calls.getCandidateFromGraphNode(n);
-                            if (n != -1)
-                            {
-                                nodes.Add(n);
-                            }
+                            nodes.Add(node);
                         }
+
                     }
                     // Prune nodes according to which are current candidates
                     var pruned = new List<int>();
@@ -296,12 +296,21 @@ namespace VC
             public bool stopCoverageProcess;
             //private System.Threading.Thread readerThread;
             private FCallHandler calls;
+            // Set of edges to send off to the coverageProcess
+            private List<KeyValuePair<int, int>> edges;
+            // Set of nodes to send off to the coverageProcess
+            private HashSet<int> newNodes;
+            // Set of nodes already declared
+            private HashSet<int> declaredNodes;
 
             public CoverageGraphManager(FCallHandler calls)
             {
                 stopCoverageProcess = true;
                 coverageProcess = null;
                 this.calls = calls;
+                this.edges = new List<KeyValuePair<int, int>>();
+                declaredNodes = new HashSet<int>();
+                newNodes = new HashSet<int>();
 
                 coverageProcess = CommandLineOptions.Clo.coverageReporter;
                 if (coverageProcess != null)
@@ -349,74 +358,116 @@ namespace VC
 
             public void addMain()
             {
-                if (coverageProcess != null)
+                if (coverageProcess == null) return;
+                newNodes.Add(0);
+                foreach (var n in calls.currCandidates)
                 {
-                    coverageProcess.StandardInput.WriteLine("declare-node {0} {1}", calls.getPersistentName(0), calls.getProc(0));
+                    addEdge(0, n);
                 }
+                calls.recentlyAddedCandidates = new HashSet<int>();
+                syncGraph();
             }
 
-            public void addCandidateEdges()
+            public void addEdge(int src_id, int tgt_id)
             {
-                if (coverageProcess == null) return;
+                newNodes.Add(src_id);
+                newNodes.Add(tgt_id);
+                edges.Add(new KeyValuePair<int, int>(src_id, tgt_id));
+            }
 
-                coverageProcess.StandardInput.WriteLine("batch-graph-command-begin");
-                coverageProcess.StandardInput.WriteLine("reset-color");
-                // Go through the curr candidates and draw edges
-                var nodes = new HashSet<int>();
-                var greenNodes = new HashSet<int>();
-                var redNodes = new HashSet<int>();
-                var edges = new List<KeyValuePair<int, int>>();
-                foreach (var id in calls.currCandidates)
+            public void addRecentEdges(int src_id)
+            {
+                newNodes.Add(src_id);
+                foreach (var tgt in calls.recentlyAddedCandidates)
                 {
-                    nodes.Add(id);
-                    if (calls.candidateParent.ContainsKey(id))
-                    {
-                        var pid = calls.candidateParent[id];
-                        nodes.Add(pid);
-
-                        var src = calls.getPersistentName(pid);
-                        var tgt = calls.getPersistentName(id);
-                        edges.Add(new KeyValuePair<int, int>(src, tgt));
-                    }
-                    if (calls.getRecursionBound(id) > CommandLineOptions.Clo.RecursionBound)
-                    {
-                        redNodes.Add(id);
-                    }
-                    else
-                    {
-                        greenNodes.Add(id);
-                    }
-
+                    addEdge(src_id, tgt);
                 }
-                // Send data across
+                calls.recentlyAddedCandidates = new HashSet<int>();
+            }
+
+            private void declareNodes()
+            {
+                var send = false;
                 var declarenode = "declare-node";
-                foreach (var n in nodes)
+                foreach (var n in newNodes)
                 {
-                    declarenode += string.Format(" {0} {1}", calls.getPersistentName(n), calls.getProc(n));
+                    if (declaredNodes.Contains(n)) continue;
+                    declaredNodes.Add(n);
+                    send = true;
+                    declarenode += string.Format(" {0} {1}", calls.getPersistentId(n), calls.getProc(n));
                 }
-                coverageProcess.StandardInput.WriteLine(declarenode);
+                if(send)
+                  coverageProcess.StandardInput.WriteLine(declarenode);
+            }
+
+            private void declareEdges()
+            {
+                if (edges.Count == 0) return;
 
                 var declareedge = "declare-edge";
                 foreach (var e in edges)
                 {
-                    declareedge += string.Format(" {0} {1}", e.Key, e.Value);
+                    declareedge += string.Format(" {0} {1}", calls.getPersistentId(e.Key), calls.getPersistentId(e.Value));
                 }
                 coverageProcess.StandardInput.WriteLine(declareedge);
+            }
 
-                var color = "color green";
-                foreach (var n in greenNodes)
+            public void syncGraph()
+            {
+                if (coverageProcess == null || newNodes.Count == 0)
                 {
-                    color += string.Format(" {0}", calls.getPersistentName(n));
+                    edges.Clear();
+                    return;
                 }
-                coverageProcess.StandardInput.WriteLine(color);
 
-                color = "color red";
-                foreach (var n in redNodes)
+                coverageProcess.StandardInput.WriteLine("batch-graph-command-begin");
+                coverageProcess.StandardInput.WriteLine("reset-color");
+
+                // Go through the edges
+                var greenNodes = new HashSet<int>();
+                var redNodes = new HashSet<int>();
+                foreach (var node in newNodes)
                 {
-                    color += string.Format(" {0}", calls.getPersistentName(n));
+                    if (!calls.currCandidates.Contains(node)) continue;
+
+                    if (calls.getRecursionBound(node) > CommandLineOptions.Clo.RecursionBound)
+                    {
+                        redNodes.Add(node);
+                    }
+                    else
+                    {
+                        greenNodes.Add(node);
+                    }
+
                 }
-                coverageProcess.StandardInput.WriteLine(color);
+                // Send data across
+                declareNodes();
+                declareEdges();
+
+                if (greenNodes.Count != 0)
+                {
+                    var color = "color green";
+                    foreach (var n in greenNodes)
+                    {
+                        color += string.Format(" {0}", calls.getPersistentId(n));
+                    }
+                    coverageProcess.StandardInput.WriteLine(color);
+                }
+
+                if (redNodes.Count != 0)
+                {
+                    var color = "color red";
+                    foreach (var n in redNodes)
+                    {
+                        color += string.Format(" {0}", calls.getPersistentId(n));
+                    }
+                    coverageProcess.StandardInput.WriteLine(color);
+                }
+
                 coverageProcess.StandardInput.WriteLine("batch-graph-command-end");
+
+                edges.Clear();
+                newNodes = new HashSet<int>();
             }
 
             public void reportBug()
@@ -497,17 +548,21 @@ namespace VC
             abstract public void LogComment(string str);
             virtual public Outcome CheckAssumptions(List<VCExpr> assumptions)
             {
+                Outcome ret;
+
                 if (assumptions.Count == 0)
                 {
                     return CheckVC();
                 }
 
                 Push();
+
                 foreach (var a in assumptions)
                 {
                     AddAxiom(a);
                 }
-                var ret = CheckVC();
+                ret = CheckVC();
+
                 Pop();
 
                 return ret;
@@ -682,7 +737,7 @@ namespace VC
             {
                 checker.TheoremProver.LogComment(str);
             }
-            
+            /*
             public override Outcome CheckAssumptions(List<VCExpr> assumptions)
             {
                 if (assumptions.Count == 0)
@@ -690,11 +745,11 @@ namespace VC
                     return CheckVC();
                 }
 
-                //TheoremProver.Push();
+                TheoremProver.Push();
                 TheoremProver.AssertAxioms();
                 TheoremProver.CheckAssumptions(assumptions);
                 ProverInterface.Outcome outcome = TheoremProver.CheckOutcome(reporter);
-                //TheoremProver.Pop();
+                TheoremProver.Pop();
                 numQueries++;
 
                 switch (outcome)
@@ -714,7 +769,7 @@ namespace VC
                         throw new cce.UnreachableException();
                 }
             }
-             
+             */
         }
 
         // Store important information related to a single VerifyImplementation query
@@ -729,6 +784,8 @@ namespace VC
             // The theorem prover interface
             //public Checker checker;
             public StratifiedCheckerInterface checker;
+            // The coverage graph reporter
+            public CoverageGraphManager coverageManager;
             // For statistics
             public int vcSize;
             public int expansionCount;
@@ -832,6 +889,7 @@ namespace VC
             // Put all of the necessary state into one object
             var vState = new VerificationState(vc, calls, reporter, checker);
             vState.vcSize += SizeComputingVisitor.ComputeSize(vc);
+            vState.coverageManager = coverageManager;
 
             // We'll restore the original state of the theorem prover at the end
             // of this procedure
@@ -839,7 +897,7 @@ namespace VC
 
             Outcome ret = Outcome.ReachedBound;
 
-            // Do eager inlining
+            #region eager inlining
             for (int i = 1; i < CommandLineOptions.Clo.StratifiedInlining && calls.currCandidates.Count > 0; i++)
             {
                 List<int> toExpand = new List<int>();
@@ -852,7 +910,30 @@ namespace VC
                     }
                 }
                 DoExpansion(incrementalSearch, toExpand, vState);
+                coverageManager.syncGraph();
             }
+            #endregion
+
+            #region Repopulate call tree, if there is one
+            if (PersistCallTree && callTree != null)
+            {
+                bool expand = true;
+                while (expand)
+                {
+                    List<int> toExpand = new List<int>();
+                    foreach (int id in calls.currCandidates)
+                    {
+                        if (callTree.ContainsKey(calls.getPersistentId(id)))
+                        {
+                            toExpand.Add(id);
+                        }
+                    }
+                    if (toExpand.Count == 0) expand = false;
+                    else DoExpansion(incrementalSearch, toExpand, vState);
+                }
+                coverageManager.syncGraph();
+            }
+            #endregion
 
             #region Coverage reporter
             if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
@@ -879,7 +960,7 @@ namespace VC
             while (true)
             {
                 // Note: in the absence of a coverage graph process, the task is always "step"
-                coverageManager.addCandidateEdges();
+                coverageManager.syncGraph();
                 var task = coverageManager.getNextTask();
                 if (task.type == CoverageGraphManager.Task.TaskType.INLINE)
                 {
@@ -889,7 +970,6 @@ namespace VC
                         calls.setRecursionIncrement(id, 0);
                     }
                     DoExpansion(incrementalSearch, task.nodes, vState);
-                    coverageManager.addCandidateEdges();
                 }
                 else if (task.type == CoverageGraphManager.Task.TaskType.BLOCK)
                 {
@@ -898,7 +978,6 @@ namespace VC
                     {
                         calls.setRecursionIncrement(id, CommandLineOptions.Clo.RecursionBound + 1);
                     }
-                    coverageManager.addCandidateEdges();
                 }
                 else if (task.type == CoverageGraphManager.Task.TaskType.STEP)
                 {
@@ -994,6 +1073,16 @@ namespace VC
             }
             #endregion
             coverageManager.stop();
+
+            // Store current call tree
+            if (PersistCallTree)
+            {
+                callTree = new Dictionary<string, int>();
+                foreach (var id in calls.candidateParent.Keys)
+                {
+                    callTree.Add(calls.getPersistentId(id), 0);
+                }
+            }
 
             return ret;
         }
@@ -1187,6 +1276,7 @@ namespace VC
                 calls.currInlineCount = id;
                 calls.setCurrProc(procName);
                 expansion = calls.Mutate(expansion, true);
+                vState.coverageManager.addRecentEdges(id);
 
                 expansion = checker.VCExprGen.Eq(calls.id2ControlVar[id], expansion);
                 //expansion = checker.VCExprGen.Eq(expr, expansion);
@@ -1267,6 +1357,7 @@ namespace VC
                 calls.currInlineCount = id;
                 calls.setCurrProc(procName);
                 expansion = calls.Mutate(expansion, true);
+                vState.coverageManager.addRecentEdges(id);
 
                 inliner.subst.Add(id, expansion);
 
@@ -1340,11 +1431,6 @@ namespace VC
             }
         }
 
-        // Use for storing persistent names for stratified inlining.
-        // For debugging purpose only
-        static Dictionary<string, int> persistentNameMap = new Dictionary<string, int>();
-
-
         // This class is used to traverse VCs and do the following:
         // -- collect the set of FunctionCall nodes and label them with a unique string
         // -- Rename all other labels (so that calling this on the same VC results in 
@@ -1359,9 +1445,17 @@ namespace VC
             public Dictionary<string/*!*/, int>/*!*/ label2Id;
             // Stores the candidate from which this one originated
             public Dictionary<int, int> candidateParent;
+            // Mapping from candidate Id to the "si_unique_call" id that led to 
+            // this candidate. This is useful for getting persistent names for
+            // candidates
+            public Dictionary<int, int> candidate2callId;
+            // A cache for candidate id to its persistent name
+            public Dictionary<int, string> persistentNameCache;
+            // Inverse of the above map
+            public Dictionary<string, int> persistentNameInv;
+            // Used to record candidates recently added
+            public HashSet<int> recentlyAddedCandidates;
 
-            // Mapping from call graph nodes to candidates
-            public Dictionary<int, int> callGraphMapping;
             // User info -- to decrease/increase calculcation of recursion bound
             public Dictionary<int, int> recursionIncrement;
 
@@ -1404,8 +1498,14 @@ namespace VC
                 labelRenamer = new Dictionary<string, int>();
                 labelRenamerInv = new Dictionary<string, string>();
                 candidateParent = new Dictionary<int, int>();
-                callGraphMapping = new Dictionary<int, int>();
+                //callGraphMapping = new Dictionary<int, int>();
                 recursionIncrement = new Dictionary<int, int>();
+                candidate2callId = new Dictionary<int, int>();
+                persistentNameCache = new Dictionary<int, string>();
+                persistentNameInv = new Dictionary<string, int>();
+                persistentNameCache[0] = "0";
+                persistentNameInv["0"] = 0;
+                recentlyAddedCandidates = new HashSet<int>();
             }
 
             public void Clear()
@@ -1450,10 +1550,25 @@ namespace VC
                 return (id2Candidate[id].Op as VCExprBoogieFunctionOp).Func.Name;
             }
 
-            // Get a unique name for this candidate (dependent only on the Call
-            // graph of the program). This is used for reporting coverage only.
-            public int getPersistentName(int top_id)
+            // Get a unique id for this candidate (dependent only on the Call
+            // graph of the program). The persistent id is:
+            // 0: for main
+            // a_b_c: where a is the persistent id of parent, and b is the procedure name
+            //        and c is the unique call id (if any)
+            public string getPersistentId(int top_id)
             {
+                if (top_id == 0) return "0";
+                Debug.Assert(candidateParent.ContainsKey(top_id));
+                if (persistentNameCache.ContainsKey(top_id))
+                    return persistentNameCache[top_id];
+
+                var parent_id = getPersistentId(candidateParent[top_id]);
+                var call_id = candidate2callId.ContainsKey(top_id) ? candidate2callId[top_id] : -1;
+                var ret = string.Format("{0}_131_{1}_131_{2}", parent_id, getProc(top_id), call_id);
+                persistentNameCache[top_id] = ret;
+                persistentNameInv[ret] = top_id;
+                return ret;
+                 /*
                 string stack = "";
                 var id = top_id;
                 while (candidateParent.ContainsKey(id))
@@ -1466,6 +1581,7 @@ namespace VC
 
                 var n = getProc(top_id);
                 //if (n == "") n = "main";
+                
                 var ret = n + "_cs=" + stack;
                 if (persistentNameMap.ContainsKey(ret))
                 {
@@ -1479,16 +1595,16 @@ namespace VC
                     callGraphMapping[v] = top_id;
                     return v;
                 }
-
+                */
             }
 
-            public int getCandidateFromGraphNode(int n)
+            public int getCandidateFromGraphNode(string n)
             {
-                if (!callGraphMapping.ContainsKey(n))
+                if (!persistentNameInv.ContainsKey(n))
                 {
                     return -1;
                 }
-                return callGraphMapping[n];
+                return persistentNameInv[n];
             }
 
             private int GetNewId(VCExprNAry vc)
@@ -1501,6 +1617,7 @@ namespace VC
 
                 candidateCount++;
                 currCandidates.Add(id);
+                recentlyAddedCandidates.Add(id);
 
                 return id;
             }
@@ -1684,6 +1801,9 @@ namespace VC
                         boogieExpr2Id[new BoogieCallExpr(naryExpr, currInlineCount)] = candidateId;
                         candidateParent[candidateId] = currInlineCount;
                         string label = GetLabel(candidateId);
+                        var unique_call_id = QKeyValue.FindIntAttribute(acmd.Attributes, "si_unique_call", -1);
+                        if (unique_call_id != -1)
+                            candidate2callId[candidateId] = unique_call_id;
 
                         //return Gen.LabelPos(label, callExpr);
                         return Gen.LabelPos(label, id2ControlVar[candidateId]);
