@@ -365,7 +365,6 @@ namespace VC
                     addEdge(0, n);
                 }
                 calls.recentlyAddedCandidates = new HashSet<int>();
-                syncGraph();
             }
 
             public void addEdge(int src_id, int tgt_id)
@@ -910,7 +909,6 @@ namespace VC
                     }
                 }
                 DoExpansion(incrementalSearch, toExpand, vState);
-                coverageManager.syncGraph();
             }
             #endregion
 
@@ -931,7 +929,6 @@ namespace VC
                     if (toExpand.Count == 0) expand = false;
                     else DoExpansion(incrementalSearch, toExpand, vState);
                 }
-                coverageManager.syncGraph();
             }
             #endregion
 
@@ -1009,12 +1006,6 @@ namespace VC
                         done = 1;
                         coverageManager.reportCorrect();
                     }
-                    else if (ret == Outcome.ReachedBound && bound > CommandLineOptions.Clo.RecursionBound)
-                    {
-                        // Correct under bound
-                        done = 1;
-                        coverageManager.reportCorrect(bound);
-                    }
                     else if (ret == Outcome.ReachedBound)
                     {
                         // Increment bound
@@ -1026,6 +1017,14 @@ namespace VC
                             if (rb < minRecReached) minRecReached = rb;
                         }
                         bound = minRecReached;
+
+                        if (bound > CommandLineOptions.Clo.RecursionBound)
+                        {
+                            // Correct under bound
+                            done = 1;
+                            coverageManager.reportCorrect(bound);
+                        }
+
                     }
                     else
                     {
@@ -1078,7 +1077,8 @@ namespace VC
             if (PersistCallTree)
             {
                 callTree = new Dictionary<string, int>();
-                foreach (var id in calls.candidateParent.Keys)
+                var persistentNodes = new HashSet<int>(calls.candidateParent.Values);
+                foreach (var id in persistentNodes)
                 {
                     callTree.Add(calls.getPersistentId(id), 0);
                 }
