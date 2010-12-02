@@ -1270,7 +1270,7 @@ namespace VC {
         if (CommandLineOptions.Clo.ModelViewFile != null && pc is AssumeCmd) {
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
           if (description != null) {
-            Expr mv = new NAryExpr(pc.tok, new FunctionCall(mvInfo.MVState_FunctionDef), new ExprSeq(Bpl.Expr.Literal(mvInfo.CapturePoints.Count)));
+            Expr mv = new NAryExpr(pc.tok, new FunctionCall(ModelViewInfo.MVState_FunctionDef), new ExprSeq(Bpl.Expr.Literal(mvInfo.CapturePoints.Count)));
             copy = Bpl.Expr.And(mv, copy);
             mvInfo.CapturePoints.Add(new ModelViewInfo.Mapping(description, (Hashtable)incarnationMap.Clone()));
           }
@@ -1521,7 +1521,7 @@ namespace VC {
   {
     public readonly List<Variable> AllVariables = new List<Variable>();
     public readonly List<Mapping> CapturePoints = new List<Mapping>();
-    public readonly Function MVState_FunctionDef = new Function(Token.NoToken, "@MV_state",
+    public static readonly Function MVState_FunctionDef = new Function(Token.NoToken, "@MV_state",
       new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true)),
       new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Bool), false));
 
