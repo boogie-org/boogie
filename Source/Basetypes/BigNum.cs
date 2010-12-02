@@ -85,7 +85,7 @@ namespace Microsoft.Basetypes {
 
     public Rational ToRational {
       get {
-        return new Rational(this, BigNum.ONE);
+        return Rational.FromBignum(this);
       }
     }
 

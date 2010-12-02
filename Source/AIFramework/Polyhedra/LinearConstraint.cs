@@ -429,14 +429,14 @@ namespace Microsoft.AbstractInterpretationFramework {
       foreach (DictionaryEntry /*IVarianble->Rational*/ e in coefficients) {
         Rational r = (Rational)(cce.NonNull(e.Value));
         if (r.IsNonZero) {
-          newCoefficients.Add(e.Key, new Rational(r.Numerator / gcd.Numerator, r.Denominator / gcd.Denominator));
+          newCoefficients.Add(e.Key, Rational.FromBignums(r.Numerator / gcd.Numerator, r.Denominator / gcd.Denominator));
         } else {
           newCoefficients.Add(e.Key, r);
         }
       }
 
       coefficients = newCoefficients;
-      rhs = rhs.IsNonZero ? (Rational)new Rational(rhs.Numerator / gcd.Numerator, rhs.Denominator / gcd.Denominator) : rhs;
+      rhs = rhs.IsNonZero ? Rational.FromBignums(rhs.Numerator / gcd.Numerator, rhs.Denominator / gcd.Denominator) : rhs;
     }
   }
 

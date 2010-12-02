@@ -7,28 +7,15 @@ using System;
 using System.Diagnostics.Contracts;
 
 namespace Microsoft.Basetypes {
-  using BNM = Microsoft.FSharp.Math.BigRational;
-
   /// <summary>
   /// The representation of a rational number.
   /// </summary>
   public struct Rational {
-    public static readonly Rational ZERO = new Rational(cce.NonNull(BNM.Zero));
-    public static readonly Rational ONE = new Rational(cce.NonNull(BNM.One));
-    public static readonly Rational MINUS_ONE = new Rational(cce.NonNull(-BNM.One));
+    public static readonly Rational ZERO = Rational.FromInts(0, 1);
+    public static readonly Rational ONE = Rational.FromInts(1, 1);
+    public static readonly Rational MINUS_ONE = Rational.FromInts(-1, 1);
 
-    private readonly Microsoft.FSharp.Math.BigRational _val;
-
-    private Microsoft.FSharp.Math.BigRational val {
-      get {
-        Contract.Ensures(Contract.Result<FSharp.Math.BigRational>() != null);
-        if ((object)_val == null)
-          return cce.NonNull(BNM.Zero);
-        else
-          return _val;
-      }
-    }
-
+    private BigNum numerator, denominator;
 
     //    int numerator;
     //    int denominator;
@@ -38,27 +25,41 @@ namespace Microsoft.Basetypes {
     // invariant: numerator != 0 ==> gcd(abs(numerator),denominator) == 1;
     // invariant: numerator == 0 ==> denominator == 1 || denominator == 0;
 
-    private Rational(int x) {
-      this._val = BNM.FromInt(x);
-    }
-
     public static Rational FromInt(int x) {
-      return new Rational(x);
+      return FromBignum(BigNum.FromInt(x));
     }
 
-    private Rational(Microsoft.FSharp.Math.BigRational/*!*/ val) {
-      Contract.Requires(val != null);
-      this._val = val;
+    public static Rational FromBignum(BigNum n)       
+    {
+      return new Rational(n, BigNum.ONE);
     }
 
-    public Rational(BigNum num, BigNum den) {
-      System.Diagnostics.Debug.Assert(!den.IsZero);
+    private Rational(BigNum num, BigNum den)
+    {
+      Contract.Assert(den.Signum > 0);
+      Contract.Assert(num == BigNum.ZERO || num.Gcd(den) == BigNum.ONE);
+      numerator = num;
+      denominator = den;
+    }
 
-      this._val = BNM.FromBigInt(num.val) / BNM.FromBigInt(den.val);
+    public static Rational FromBignums(BigNum num, BigNum den) {
+      Contract.Assert(!den.IsZero);
+      if (num == BigNum.ZERO)
+        return ZERO;
+      if (den.Signum < 0) {
+        den = -den;
+        num = -num;
+      }
+      if (den == BigNum.ONE)
+        return new Rational(num, den);
+      var gcd = num.Gcd(den);
+      if (gcd == BigNum.ONE)
+        return new Rational(num, den);
+      return new Rational(num / gcd, den / gcd);
     }
 
     public static Rational FromInts(int num, int den) {
-      return new Rational(BigNum.FromInt(num), BigNum.FromInt(den));
+      return FromBignums(BigNum.FromInt(num), BigNum.FromInt(den));
     }
 
     /// <summary>
@@ -94,31 +95,8 @@ namespace Microsoft.Basetypes {
       }
     }
 
-    public BigNum Numerator {
-      get {
-        // Better way to obtain the numerator?
-        // The FSharp library does not seem to offer any methods for this
-        string/*!*/ lin = cce.NonNull(val.ToString());
-        int i = lin.IndexOf('/');
-        if (i == -1)
-          return new BigNum(BNM.ToBigInt(this.val));
-        else
-          return BigNum.FromString(lin.Substring(0, i));
-      }
-    }
-
-    public BigNum Denominator {
-      get {
-        // Better way to obtain the numerator?
-        // The FSharp library does not seem to offer any methods for this
-        string/*!*/ lin = cce.NonNull(val.ToString());
-        int i = lin.IndexOf('/');
-        if (i == -1)
-          return BigNum.ONE;
-        else
-          return BigNum.FromString(lin.Substring(i + 1));
-      }
-    }
+    public BigNum Numerator { get { return numerator; } }
+    public BigNum Denominator { get { return denominator == BigNum.ZERO ? BigNum.ONE : denominator; } }
 
     public override string/*!*/ ToString() {
       Contract.Ensures(Contract.Result<string>() != null);
@@ -127,11 +105,11 @@ namespace Microsoft.Basetypes {
 
 
     public static bool operator ==(Rational r, Rational s) {
-      return (r.val == s.val);
+      return r.Numerator == s.Numerator && r.Denominator == s.Denominator;
     }
 
     public static bool operator !=(Rational r, Rational s) {
-      return !(r.val == s.val);
+      return !(r == s);
     }
 
     public override bool Equals(object obj) {
@@ -141,12 +119,12 @@ namespace Microsoft.Basetypes {
     }
 
     public override int GetHashCode() {
-      return this.val.GetHashCode();
+      return this.Numerator.GetHashCode() * 13 + this.Denominator.GetHashCode();
     }
 
     public int Signum {
       get {
-        return this.val.Sign;
+        return this.Numerator.Signum;
       }
     }
 
@@ -164,8 +142,7 @@ namespace Microsoft.Basetypes {
 
     public bool IsIntegral {
       get {
-        // better way?
-        return !cce.NonNull(this.val.ToString()).Contains("/");
+        return Denominator == BigNum.ONE;
       }
     }
 
@@ -173,7 +150,7 @@ namespace Microsoft.Basetypes {
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
     public bool HasValue(int n) {
-      return this == new Rational(n);
+      return this == FromInt(n);
     }
 
     /// <summary>
@@ -181,15 +158,15 @@ namespace Microsoft.Basetypes {
     /// </summary>
     public int AsInteger {
       get {
-        System.Diagnostics.Debug.Assert(this.IsIntegral);
+        Contract.Assert(this.IsIntegral);
         return Numerator.ToIntSafe;
       }
     }
 
     public BigNum AsBigNum {
       get {
-        System.Diagnostics.Debug.Assert(this.IsIntegral);
-        return new BigNum(BNM.ToBigInt(this.val));
+        Contract.Assert(this.IsIntegral);
+        return Numerator;
       }
     }
 
@@ -225,42 +202,47 @@ namespace Microsoft.Basetypes {
       }
     }
 
-
-    public static Rational operator -(Rational r) {
-      return new Rational(cce.NonNull(BNM.Zero - r.val)); // for whatever reason, the Spec# compiler refuses to accept -r.val (unary negation)
+    public static Rational operator -(Rational r)
+    {
+      return new Rational(-r.Numerator, r.Denominator);
     }
 
-
-    public static Rational operator +(Rational r, Rational s) {
-      return new Rational(cce.NonNull(r.val + s.val));
+    public static Rational operator /(Rational r, Rational s)
+    {
+      return FromBignums(r.Numerator * s.Denominator, r.Denominator * s.Numerator);
     }
 
-    public static Rational operator -(Rational r, Rational s) {
-      return new Rational(cce.NonNull((r.val - s.val)));
+    public static Rational operator -(Rational r, Rational s)
+    {
+      return r + (-s);
     }
 
-    public static Rational operator *(Rational r, Rational s) {
-      return new Rational(cce.NonNull(r.val * s.val));
+    public static Rational operator +(Rational r, Rational s)
+    {
+      return FromBignums(r.Numerator * s.Denominator + s.Numerator * r.Denominator, r.Denominator * s.Denominator);
     }
 
-    public static Rational operator /(Rational r, Rational s) {
-      return new Rational(cce.NonNull(r.val / s.val));
+    public static Rational operator *(Rational r, Rational s)
+    {
+      return FromBignums(r.Numerator * s.Numerator, r.Denominator * s.Denominator);
     }
 
-    public static bool operator <=(Rational r, Rational s) {
-      return (r.val <= s.val);
+    public static bool operator <(Rational r, Rational s)
+    {
+      return (r - s).Signum < 0;
+    }
+
+    public static bool operator <=(Rational r, Rational s)
+    {
+      return !(r > s);
     }
 
     public static bool operator >=(Rational r, Rational s) {
-      return (r.val >= s.val);
-    }
-
-    public static bool operator <(Rational r, Rational s) {
-      return (r.val < s.val);
+      return !(r < s);
     }
 
     public static bool operator >(Rational r, Rational s) {
-      return (r.val > s.val);
+      return s < r;
     }
   }
 }
