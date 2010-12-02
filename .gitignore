@@ -39,7 +39,7 @@ Binaries/AbsInt.dll
 Binaries/AbsInt.pdb
 Binaries/Basetypes.dll
 Binaries/Basetypes.pdb
-Binaries/Boogie.exe
+Binaries/Boogie.exe*
 Binaries/Boogie.pdb
 Binaries/Core.dll
 Binaries/Core.pdb
@@ -60,14 +60,15 @@ Binaries/VCExpr.dll
 Binaries/VCExpr.pdb
 Binaries/VCGeneration.dll
 Binaries/VCGeneration.pdb
-Binaries/Boogie.vshost.exe*
 Binaries/CodeContractsExtender.dll
 Binaries/CodeContractsExtender.pdb
-Binaries/Dafny.exe
+Binaries/Dafny.exe*
 Binaries/Dafny.pdb
-Binaries/Dafny.vshost.exe
+Binaries/*.vshost.exe*
 Binaries/DafnyPipeline.dll
 Binaries/DafnyPipeline.pdb
+Binaries/ModelViewer.exe*
+Binaries/ModelViewer.pdb
 Test/*/Output
 Test/*/*.sx
 Test/VSComp2010/out.cs
