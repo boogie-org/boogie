@@ -35,6 +35,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelViewer", "ModelViewer\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Model", "Model\Model.csproj", "{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParserHelper", "ParserHelper\ParserHelper.csproj", "{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|.NET = Debug|.NET
@@ -345,6 +347,24 @@ Global
 		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.z3apidebug|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.z3apidebug|Mixed Platforms.Build.0 = Release|Any CPU
 		{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}.z3apidebug|x86.ActiveCfg = Release|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.Debug|.NET.ActiveCfg = Debug|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.Release|.NET.ActiveCfg = Release|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.Release|x86.ActiveCfg = Release|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.z3apidebug|.NET.ActiveCfg = Release|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.z3apidebug|Any CPU.ActiveCfg = Release|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.z3apidebug|Any CPU.Build.0 = Release|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.z3apidebug|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.z3apidebug|Mixed Platforms.Build.0 = Release|Any CPU
+		{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}.z3apidebug|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
