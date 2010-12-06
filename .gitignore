@@ -69,6 +69,8 @@ Binaries/DafnyPipeline.dll
 Binaries/DafnyPipeline.pdb
 Binaries/ModelViewer.exe*
 Binaries/ModelViewer.pdb
+Binaries/ParserHelper.dll
+Binaries/ParserHelper.pdb
 Test/*/Output
 Test/*/*.sx
 Test/VSComp2010/out.cs
