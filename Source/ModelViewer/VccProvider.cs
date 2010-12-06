@@ -165,6 +165,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       "$set_singleton",
       "$f_owner", "$f_closed", "$f_timestamps",
       "$local_value_is",
+      "$field_arr_ctor",
       },
     };
 
