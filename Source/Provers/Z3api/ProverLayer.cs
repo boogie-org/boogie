@@ -48,9 +48,9 @@ namespace Microsoft.Boogie.Z3
         {
             base.Close();
             Z3SafeContext cm = context.cm;
+            cm.CloseLog();
             cm.z3.Dispose();
             cm.config.Config.Dispose();
-            cm.CloseLog();
         }
 
         public void PushAxiom(VCExpr axiom)
@@ -196,7 +196,7 @@ namespace Microsoft.Boogie.Z3
         public Z3apiProverContext(Z3InstanceOptions opts, VCExpressionGenerator gen)
             : base(gen, new VCGenerationOptions(new List<string>()))
         {
-            Z3Config config = BuildConfig(opts.Timeout, true);
+            Z3Config config = BuildConfig(opts.Timeout * 1000, true);
             this.cm = new Z3SafeContext(this, config, gen);
         }
         private static Z3Config BuildConfig(int timeout, bool nativeBv)

@@ -1512,6 +1512,10 @@ namespace Microsoft.Boogie {
         TypeEncodingMethod = TypeEncoding.Monomorphic;
         UseArrayTheory = true;
         UseAbstractInterpretation = false;
+        if (ProverName == "Z3API")
+        {
+            ProverCCLimit = 1;
+        }
       }
     }
 

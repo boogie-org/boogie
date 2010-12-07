@@ -736,7 +736,7 @@ namespace VC
             {
                 checker.TheoremProver.LogComment(str);
             }
-            /*
+            
             public override Outcome CheckAssumptions(List<VCExpr> assumptions)
             {
                 if (assumptions.Count == 0)
@@ -744,11 +744,11 @@ namespace VC
                     return CheckVC();
                 }
 
-                TheoremProver.Push();
+                //TheoremProver.Push();
                 TheoremProver.AssertAxioms();
                 TheoremProver.CheckAssumptions(assumptions);
                 ProverInterface.Outcome outcome = TheoremProver.CheckOutcome(reporter);
-                TheoremProver.Pop();
+                //TheoremProver.Pop();
                 numQueries++;
 
                 switch (outcome)
@@ -768,7 +768,7 @@ namespace VC
                         throw new cce.UnreachableException();
                 }
             }
-             */
+             
         }
 
         // Store important information related to a single VerifyImplementation query

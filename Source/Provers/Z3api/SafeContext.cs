@@ -98,8 +98,8 @@ namespace Microsoft.Boogie.Z3
         public Z3SafeContext(Z3apiProverContext ctxt, Z3Config config, VCExpressionGenerator gen)
         {
             Context z3 = new Context(config.Config);
-            //if (config.LogFilename != null)
-            //    z3.OpenLog(config.LogFilename);
+            if (config.LogFilename != null)
+                z3.OpenLog(config.LogFilename);
             foreach (string tag in config.DebugTraces)
                 z3.EnableDebugTrace(tag);
             this.ctxt = ctxt;
@@ -109,25 +109,13 @@ namespace Microsoft.Boogie.Z3
             this.gen = gen;
             this.namer = new UniqueNamer();
             this.z3.SetPrintMode(PrintMode.Smtlib2Compliant);
-            this.z3.TraceToFile("trace.c");
             this.z3log = null;
-            
-            try
-            {
-                if (config.LogFilename != null)
-                {
-                    this.z3log = new StreamWriter(config.LogFilename);
-                    this.z3log.NewLine = "\n";
-                }
-            }
-            catch (Exception _)
-            {
-                this.z3log = null;
-            }
         }
 
         public void log(string format, params object[] args)
         {
+            // Currently, this is a no-op because z3log is always null
+            // We use the default (automatic) tracing facility of z3
             if (z3log != null)
             {
                 var str = string.Format(format, args);
@@ -140,6 +128,7 @@ namespace Microsoft.Boogie.Z3
 
         public void CloseLog()
         {
+            z3.CloseLog();
             if (z3log != null)
             {
                 z3log.Close();
@@ -375,7 +364,7 @@ namespace Microsoft.Boogie.Z3
                 if (boogieErrors.Count < this.config.Counterexamples)
                 {
                     z3.BlockLiterals(labels);
-                    log("block-literals {0}", labels.ToString());
+                    log("block-literals {0}", labels);
                 }
 
                 labels.Dispose();
