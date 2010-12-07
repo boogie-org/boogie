@@ -672,6 +672,8 @@ namespace VC
             private List<int> numAxiomsPushed;
             // Api-based theorem prover
             private ApiProverInterface TheoremProver;
+            // Use checkAssumptions?
+            public static bool UseCheckAssumptions = true;
 
             public ApiChecker(VCExpr vcMain, StratifiedInliningErrorReporter reporter, Checker checker)
             {
@@ -739,6 +741,11 @@ namespace VC
             
             public override Outcome CheckAssumptions(List<VCExpr> assumptions)
             {
+                if (!UseCheckAssumptions)
+                {
+                    return base.CheckAssumptions(assumptions);
+                }
+
                 if (assumptions.Count == 0)
                 {
                     return CheckVC();
