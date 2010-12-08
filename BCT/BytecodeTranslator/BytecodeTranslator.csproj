@@ -151,6 +151,10 @@
       <Project>{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}</Project>
       <Name>CodeModel</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\CCICodePlex\Ast\Sources\ContractExtractor\ContractExtractor.csproj">
+      <Project>{0703D916-A881-45E6-A5CD-6BC50E2E30E2}</Project>
+      <Name>ContractExtractor</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\CCICodePlex\Ast\Sources\ILToCodeModel\ILToCodeModel.csproj">
       <Project>{27F2A417-B6ED-43AD-A38E-A0B6142216F6}</Project>
       <Name>ILToCodeModel</Name>

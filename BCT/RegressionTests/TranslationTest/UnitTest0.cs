@@ -62,7 +62,7 @@ namespace TranslationTest {
 
     private string ExecuteTest(string assemblyName) {
 
-      var host = new Microsoft.Cci.ILToCodeModel.CodeContractAwareHostEnvironment();
+      var host = new Microsoft.Cci.MutableContracts.CodeContractAwareHostEnvironment();
       BCT.Host = host;
 
       IModule/*?*/ module = host.LoadUnitFrom(assemblyName) as IModule;
@@ -80,7 +80,7 @@ namespace TranslationTest {
         pdbReader = new PdbReader(pdbStream, host);
       }
 
-      module = Decompiler.GetCodeAndContractModelFromMetadataModel(host, module, pdbReader);
+      module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader);
 
       #region Pass 3: Translate the code model to BPL
       var factory = new CLRSemantics();
