@@ -67,8 +67,8 @@ Binaries/Dafny.pdb
 Binaries/*.vshost.exe*
 Binaries/DafnyPipeline.dll
 Binaries/DafnyPipeline.pdb
-Binaries/ModelViewer.exe*
-Binaries/ModelViewer.pdb
+Binaries/BVD.exe*
+Binaries/BVD.pdb
 Binaries/ParserHelper.dll
 Binaries/ParserHelper.pdb
 Test/*/Output
