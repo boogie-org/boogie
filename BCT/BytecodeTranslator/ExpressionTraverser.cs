@@ -289,9 +289,8 @@ namespace BytecodeTranslator {
       if (buildSelectExpr) {
         List<Bpl.Expr> elist = new List<Bpl.Expr>();
 
-        while (TranslatedExpressions.Count > 0) {
-          elist.Add(TranslatedExpressions.Pop());
-        }
+        elist.Add(TranslatedExpressions.Pop());
+        elist.Add(TranslatedExpressions.Pop());
         TranslatedExpressions.Push(Bpl.Expr.Select(new Bpl.IdentifierExpr(field.Token(), HeapVariable), elist));
       }
     }
@@ -403,14 +402,24 @@ namespace BytecodeTranslator {
 
       this.Visit(assignment.Target);
 
-      Bpl.Expr targetexp = this.TranslatedExpressions.Pop();
-      Bpl.IdentifierExpr idexp = targetexp as Bpl.IdentifierExpr;
-      if (idexp != null) {
-        StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(assignment.Token(),
-          idexp, sourceexp));
-        return;
+      if (this.TranslatedExpressions.Count == 1) { // I think this is defintely the wrong test. there might be other stuff on the stack if the assignment is not a top-level statement!
+        Bpl.Expr targetexp = this.TranslatedExpressions.Pop();
+        Bpl.IdentifierExpr idexp = targetexp as Bpl.IdentifierExpr;
+        if (idexp != null) {
+          StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(assignment.Token(),
+            idexp, sourceexp));
+          return;
+        } else {
+          throw new TranslationException("Trying to create a SimpleAssign with complex/illegal lefthand side");
+        }
       } else {
-        throw new TranslationException("Trying to create a SimpleAssign with complex/illegal lefthand side");
+        // Assume it is always 2? What should we check?
+        Bpl.ExprSeq args = new Bpl.ExprSeq();
+        args.Add(this.TranslatedExpressions.Pop());
+        args.Add(this.TranslatedExpressions.Pop());
+        StmtTraverser.StmtBuilder.Add(
+          Bpl.Cmd.MapAssign(assignment.Token(),
+          new Bpl.IdentifierExpr(assignment.Token(), this.HeapVariable), args, sourceexp));
       }
 
     }

@@ -40,7 +40,7 @@ namespace BytecodeTranslator {
 
       this.underlyingParameter = parameterDefinition;
 
-      Bpl.Type ptype = Bpl.Type.Int;
+      Bpl.Type ptype = TranslationHelper.CciTypeToBoogie(parameterDefinition.Type);
 
       var parameterToken = parameterDefinition.Token();
       var typeToken = parameterDefinition.Type.Token();
@@ -86,7 +86,10 @@ namespace BytecodeTranslator {
     #region Temp Stuff that must be replaced as soon as there is real code to deal with this
 
     public static Bpl.Type CciTypeToBoogie(ITypeReference type) {
-      return Bpl.Type.Int;
+      if (TypeHelper.IsPrimitiveInteger(type))
+        return Bpl.Type.Int;
+      else
+        return Bpl.Type.Int; // BUG! This is where we need to return "ref" for a reference type
     }
 
     public static Bpl.Variable TempHeapVar() {

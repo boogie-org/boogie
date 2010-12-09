@@ -91,7 +91,7 @@ namespace BytecodeTranslator {
         int in_count = 0;
         int out_count = 0;
         MethodParameter mp;
-        foreach (IParameterDefinition formal in method.ResolvedMethod.Parameters) {
+        foreach (IParameterDefinition formal in method.Parameters) {
 
           mp = new MethodParameter(formal);
           if (mp.inParameterCopy != null) in_count++;
