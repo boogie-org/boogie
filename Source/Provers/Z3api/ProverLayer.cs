@@ -259,7 +259,7 @@ namespace Microsoft.Boogie.Z3
 
         public override string Lookup(VCExprVar var)
         {
-            return cm.Namer.Lookup(var);
+            return cm.Namer.GetLocalName(var, var.Name);
         }
     }
 }

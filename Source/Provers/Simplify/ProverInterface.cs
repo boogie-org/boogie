@@ -761,7 +761,7 @@ namespace Microsoft.Boogie.Simplify {
       if (v != null) {
         var = v;
       }
-      return Namer.Lookup(var);
+      return Namer.GetLocalName(var, var.Name);
     }
 
     public override string translate(VCExpr expr, int polarity) {
