@@ -380,6 +380,20 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       if (element is Model.Boolean)
         return tp_bool;
 
+      var fld = f_field.TryEval(element);
+      if (fld != null) {
+        var tp = f_field_type.TryEval(fld);
+        if (tp != null) {
+          var ptp = f_ptr_to.TryEval(tp);
+          if (ptp != null)
+            return ptp;
+          ptp = f_spec_ptr_to.TryEval(tp);
+          if (ptp != null)
+            return ptp;          
+        }
+        return tp_object;
+      }
+
       foreach (var tpl in element.References) {
         if (element == tpl.Result) {
           if (tpl.Func == f_ptr)
@@ -390,6 +404,12 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           if (tpl.Func == f_heap || tpl.Func == f_closed || tpl.Func == f_good_state)
             return tp_state;
         }
+
+        if (tpl.Func == f_select_bool)
+          if (tpl.Args[0] == element)
+            return tp_ptrset;
+          else if (tpl.Args[1] == element)
+            return tp_object;
       }
 
       return tp_mathint;
@@ -617,11 +637,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
     }
 
-    protected override string CanonicalBaseName(Model.Element elt)
+    private string CanonicalBaseNameCore(string name, Model.Element elt)
     {
       var vm = this;
-
-      var name = base.CanonicalBaseName(elt);
 
       if (name.Contains("[") || name.Contains("'") || name.Contains("-"))
         name = "";
@@ -654,10 +672,16 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         }
       }
 
+      return "";
+    }
+
+    protected override string CanonicalBaseName(Model.Element elt)
+    {
+      var name = base.CanonicalBaseName(elt);
+      name = CanonicalBaseNameCore(name, elt);
       if (viewOpts.DebugMode)
-        return elt.ToString();
-      else
-        return "";
+        name += string.Format("({0})", elt);
+      return name;
     }
 
     public override string PathName(IEnumerable<IDisplayNode> path)
