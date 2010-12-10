@@ -7,6 +7,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Microsoft.Boogie
 {
@@ -92,6 +93,11 @@ namespace Microsoft.Boogie
       public int AppCount { get { return apps.Count; } }
 
       internal Func(Model p, string n, int a) { Model = p;  Name = n; Arity = a; }
+
+      public override string ToString()
+      {
+        return string.Format("{0}/{1}", Name, Arity);
+      }
 
       public void SetConstant(Element res)
       {
@@ -203,6 +209,18 @@ namespace Microsoft.Boogie
         else Args = args;
         Func = func;
         Result = res;
+      }
+
+      public override string ToString()
+      {
+        var res = new StringBuilder();
+        res.Append(Func.Name).Append("(");
+        for (int i = 0; i < Args.Length; ++i) {
+          if (i != 0) res.Append(", ");
+          res.Append(Args[i]);
+        }
+        res.Append(" -> ").Append(Result);
+        return res.ToString();
       }
     }
     #endregion

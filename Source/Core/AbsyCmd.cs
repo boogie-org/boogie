@@ -1018,6 +1018,17 @@ namespace Microsoft.Boogie {
         kv.Typecheck(tc);
       }
     }
+
+    [Pure]
+    public override string ToString()
+    {
+      Contract.Ensures(Contract.Result<string>() != null);
+      System.IO.StringWriter buffer = new System.IO.StringWriter();
+      using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
+        this.Emit(stream, 0);
+      }
+      return buffer.ToString();
+    }
   }
 
   public class CommentCmd : Cmd // just a convenience for debugging
