@@ -208,7 +208,10 @@ namespace Microsoft.Boogie.ModelViewer
       this.args = args;
     }
 
-    public EdgeName(string name) : this(null, name, emptyArgs) { }
+    public EdgeName(string name) : this(null, name, emptyArgs) 
+    {
+      Util.Assert(name != null);
+    }
 
     public override string ToString()
     {

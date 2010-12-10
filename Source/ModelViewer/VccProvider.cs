@@ -46,6 +46,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     public List<StateNode> states = new List<StateNode>();
     public readonly ViewOptions viewOpts;
 
+    Dictionary<int, string> fileNameMapping = new Dictionary<int, string>();
+
     public VccModel(Model m, ViewOptions opts)
     {
       viewOpts = opts;
@@ -111,6 +113,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           literalName[elt] = "\\state'" + idx;
         idx++;
       }
+
+      DecodeFileNames();
 
       foreach (var s in m.States) {
         var sn = new StateNode(states.Count, this, s);
@@ -205,6 +209,39 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return res;
     }
     #endregion
+
+    private void DecodeFileNames()
+    {
+      var fis = model.GetFunc("$file_name_is");
+      foreach (var f in model.Functions) {
+        if (f.Arity == 0 && f.Name.StartsWith("#file^")) {
+          var sb = new StringBuilder();
+          var idx = 6;
+          var name = f.Name;
+          while (idx < name.Length) {
+            if (name[idx] == '?') {
+              var c = (char)Int32.Parse(name.Substring(idx + 1, 2), System.Globalization.NumberStyles.HexNumber);
+              sb.Append(c);
+              idx += 3;
+            } else {
+              sb.Append(name[idx++]);
+            }
+          }
+          name = sb.ToString();
+
+          foreach (var app in fis.AppsWithArg(1, f.GetConstant()))
+            fileNameMapping[app.Args[0].AsInt()] = name;
+        }
+      }
+    }
+
+    private string DecodeToken(string name)
+    {
+      var idx = name.IndexOf("^$");
+      if (idx < 0) return null;
+      var words = name.Substring(idx + 2).Split('.', '^', '!');
+      return string.Format("{0}({1},{2})", fileNameMapping[int.Parse(words[0])], words[1], words[2]);
+    }
 
     public string GetUserVariableName(string name)
     {
@@ -458,6 +495,33 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
     }
 
+    string SkolemName(Model.Func f)
+    {
+      if (f.Name.IndexOf('!') > 0) {
+        var tok = DecodeToken(f.Name);
+        if (tok != null) {
+          var baseName = f.Name.Substring(0, f.Name.IndexOf('^'));
+          return string.Format("{0}@{1}", baseName, ShortenToken(tok, 10));
+        }
+      }
+      return null;
+    }
+
+    public IEnumerable<ElementNode> CommonNodes(StateNode state)
+    {
+      var skolems = new List<ElementNode>();
+
+      foreach (var f in model.Functions) {
+        if (f.Arity != 0) continue;
+        var s = SkolemName(f);
+        if (s != null) {
+          skolems.Add(new VariableNode(state, s, s, f.GetConstant(), GuessType(f.GetConstant())));
+        }
+      }
+
+      return skolems;
+    }
+
     public IEnumerable<ElementNode> GetExpansion(StateNode state, Model.Element elt, Model.Element tp)
     {
       List<ElementNode> result = new List<ElementNode>();
@@ -609,6 +673,24 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
       return sb.ToString();
     }
+
+    internal string ShortenToken(string name, int limit)
+    {
+      var idx = name.LastIndexOfAny(new char[] { '\\', '/' });
+      if (idx > 0)
+        name = name.Substring(idx + 1);
+      if (name.Length > limit) {
+        idx = name.IndexOf('(');
+        if (idx > 0) {
+          var prefLen = limit - (name.Length - idx);
+          if (prefLen > 2) {
+            name = name.Substring(0, prefLen) + ".." + name.Substring(idx);
+          }
+        }
+      }
+      return name;
+    }
+
   }
 
   class StateNode : IState
@@ -617,6 +699,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     string name;
     internal VccModel vm;
     internal List<VariableNode> vars;
+    internal List<ElementNode> commons;
     internal int index;
     
     public StateNode(int i, VccModel parent, Model.CapturedState s)
@@ -624,21 +707,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       this.vm = parent;
       state = s;
       index = i;
-
-      name = s.Name;
-      var idx = name.LastIndexOfAny(new char[] { '\\', '/' });
-      if (idx > 0)
-        name = name.Substring(idx + 1);
-      var limit = 30;
-      if (name.Length > limit) {
-        idx = name.IndexOf('(');
-        if (idx > 0) {
-          var prefLen = limit - (name.Length - idx);
-          if (prefLen > 2) {
-            name = name.Substring(0,prefLen) + ".." + name.Substring(idx);
-          }
-        }
-      }
+      name = parent.ShortenToken(s.Name, 30);
 
       SetupVars();
     }
@@ -672,6 +741,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
 
       vm.Flush(vars);
+
+      commons = new List<ElementNode>();
+      commons.AddRange(vm.CommonNodes(this));
     } 
 
     public string Name
@@ -682,7 +754,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     public IEnumerable<IDisplayNode> Nodes
     {
       get {
-        return vars; 
+        return vars.Concat(commons);
       }
     }
 
@@ -761,6 +833,13 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     {
       this.realName = realName;
       name = new EdgeName(vm.GetUserVariableName(realName));
+    }
+
+    public VariableNode(StateNode par, string realName, string name, Model.Element elt, Model.Element tp)
+      : base(par, realName, elt, tp)
+    {
+      this.realName = realName;
+      this.name = new EdgeName(name);
     }
   }
 }
