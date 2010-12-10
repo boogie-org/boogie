@@ -219,7 +219,7 @@ namespace Microsoft.Boogie
           if (i != 0) res.Append(", ");
           res.Append(Args[i]);
         }
-        res.Append(" -> ").Append(Result);
+        res.Append(") -> ").Append(Result);
         return res.ToString();
       }
     }
