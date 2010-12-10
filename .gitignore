@@ -71,6 +71,11 @@ Binaries/BVD.exe*
 Binaries/BVD.pdb
 Binaries/ParserHelper.dll
 Binaries/ParserHelper.pdb
+Binaries/BytecodeTranslator*
+BCT/Binaries/BytecodeTranslator*
+BCT/*/obj
+BCT/*/*/bin
+BCT/*/*/obj
 Test/*/Output
 Test/*/*.sx
 Test/VSComp2010/out.cs
