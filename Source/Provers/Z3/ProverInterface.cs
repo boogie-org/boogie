@@ -299,7 +299,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
       if (v != null) {
         var = v;
       }
-      return Namer.GetLocalName(var, var.Name);
+      return Namer.Lookup(var);
     }
     
     public override string translate(VCExpr expr, int polarity) {

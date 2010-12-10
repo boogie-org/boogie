@@ -169,7 +169,10 @@ namespace Microsoft.Boogie.VCExprAST {
     public string Lookup(Object thingie) {
       Contract.Requires(thingie != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      return GlobalPlusLocalNames[thingie];
+      string name;
+      if (GlobalPlusLocalNames.TryGetValue(thingie, out name))
+        return name;
+      return "@@undefined@@" + thingie.GetHashCode() + "@@";
     }
   }
 }
