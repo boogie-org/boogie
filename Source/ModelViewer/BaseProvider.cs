@@ -17,7 +17,7 @@ namespace Microsoft.Boogie.ModelViewer.Base
 
     public ILanguageSpecificModel GetLanguageSpecificModel(Model m, ViewOptions opts)
     {
-      return new GenericModel(m);
+      return new GenericModel(m, opts);
     }
   }
 
@@ -26,7 +26,8 @@ namespace Microsoft.Boogie.ModelViewer.Base
     internal Model m;
     List<BaseState> states = new List<BaseState>();
 
-    public GenericModel(Model m)
+    public GenericModel(Model m, ViewOptions opts)
+        : base(opts)
     {
       this.m = m;
       foreach (var s in m.States)

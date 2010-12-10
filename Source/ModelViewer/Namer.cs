@@ -5,6 +5,13 @@ using System.Text;
 
 namespace Microsoft.Boogie.ModelViewer
 {
+  public enum NameSeqSuffix
+  {
+    None,
+    WhenNonZero,
+    Always
+  }
+
   public abstract class LanguageModel : ILanguageSpecificModel
   {
     protected Dictionary<string, int> baseNameUse = new Dictionary<string, int>();
@@ -12,6 +19,12 @@ namespace Microsoft.Boogie.ModelViewer
     protected Dictionary<string, Model.Element> invCanonicalName = new Dictionary<string, Model.Element>();
     protected Dictionary<Model.Element, string> localValue = new Dictionary<Model.Element, string>();
 
+    public readonly ViewOptions viewOpts;
+    public LanguageModel(ViewOptions opts)
+    {
+      viewOpts = opts;
+    }
+    
     // Elements (other than integers and Booleans) get canonical names of the form 
     // "<base>'<idx>", where <base> is returned by this function, and <idx> is given 
     // starting with 0, and incrementing when there are conflicts between bases.
@@ -22,9 +35,17 @@ namespace Microsoft.Boogie.ModelViewer
     // A reasonable strategy is to check if it's a name of the local, and if so return it,
     // and otherwise use the type of element (e.g., return "seq" for elements representing
     // sequences). It is also possible to return "" in such cases.
-    protected virtual string CanonicalBaseName(Model.Element elt)
+    //
+    // The suff output parameter specifies whether the number sequence suffix should be 
+    // always added, only when it's non-zero, or never.
+    protected virtual string CanonicalBaseName(Model.Element elt, out NameSeqSuffix suff)
     {
       string res;
+      if (elt is Model.Integer || elt is Model.Boolean) {
+       suff = NameSeqSuffix.None;
+       return elt.ToString();
+      }
+      suff = NameSeqSuffix.Always;
       if (localValue.TryGetValue(elt, out res))
         return res;
       return "";
@@ -38,39 +59,45 @@ namespace Microsoft.Boogie.ModelViewer
       localValue[elt] = name;
     }
 
-    protected virtual string LiteralName(Model.Element elt)
+    protected virtual string AppendSuffix(string baseName, int id)
     {
-      if (elt is Model.Integer)
-        return elt.ToString();
-      if (elt is Model.Boolean)
-        return elt.ToString();
-      return null;
+      return baseName + "'" + id.ToString();
     }
 
     public virtual string CanonicalName(Model.Element elt)
     {
       string res;
       if (canonicalName.TryGetValue(elt, out res)) return res;
-      res = LiteralName(elt);
-      if (res == null) {
-        var baseName = CanonicalBaseName(elt);
-        int cnt;
-        if (!baseNameUse.TryGetValue(baseName, out cnt)) {
-          cnt = -1;
-        }
-        cnt++;
-        res = baseName + "'" + cnt;
-        baseNameUse[baseName] = cnt;
+      NameSeqSuffix suff;
+      var baseName = CanonicalBaseName(elt, out suff);
+      if (baseName == "")
+        suff = NameSeqSuffix.Always;
+
+      if (viewOpts.DebugMode && !(elt is Model.Boolean) && !(elt is Model.Number)) {
+        baseName += string.Format("({0})", elt);
+        suff = NameSeqSuffix.WhenNonZero;
       }
+      
+      int cnt;
+      if (!baseNameUse.TryGetValue(baseName, out cnt))
+        cnt = -1;
+      cnt++;
+
+      if (suff == NameSeqSuffix.Always || (cnt > 0 && suff == NameSeqSuffix.WhenNonZero))
+        res = AppendSuffix(baseName, cnt);
+      else
+        res = baseName;
+ 
+      baseNameUse[baseName] = cnt;
       canonicalName.Add(elt, res);
-      invCanonicalName.Add(res, elt);
+      invCanonicalName[res.Replace(" ", "")] = elt;
       return res;
     }
 
     public virtual Model.Element FindElement(string canonicalName)
     {
       Model.Element res;
-      if (invCanonicalName.TryGetValue(canonicalName, out res))
+      if (invCanonicalName.TryGetValue(canonicalName.Replace(" ", ""), out res))
         return res;
       return null;
     }
@@ -92,6 +119,7 @@ namespace Microsoft.Boogie.ModelViewer
 
       Action<IEnumerable<IDisplayNode>> addList = (IEnumerable<IDisplayNode> nodes) =>
       {
+        var tmp = nodes.Select(x => x.Name).ToArray();
         var ch = nodes.ToDictionary(x => x.Name);
         foreach (var k in SortFields(nodes))
           workList.Enqueue(ch[k]);

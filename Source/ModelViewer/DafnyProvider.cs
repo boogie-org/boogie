@@ -19,7 +19,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
     public ILanguageSpecificModel GetLanguageSpecificModel(Model m, ViewOptions opts)
     {
-      var dm = new DafnyModel(m);
+      var dm = new DafnyModel(m, opts);
       foreach (var s in m.States) {
         var sn = new StateNode(dm.states.Count, dm, s);
         dm.states.Add(sn);
@@ -37,7 +37,8 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
     public List<StateNode> states = new List<StateNode>();
 
-    public DafnyModel(Model m)
+    public DafnyModel(Model m, ViewOptions opts)
+      : base(opts)
     {
       model = m;
       f_heap_select = m.MkFunc("[3]", 3);
@@ -100,22 +101,25 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       return null;
     }
 
-    public override string CanonicalName(Model.Element elt) {
+    protected override string CanonicalBaseName(Model.Element elt, out NameSeqSuffix suff)
+    {
       Model.FuncTuple fnTuple;
+      suff = NameSeqSuffix.WhenNonZero;
       if (DatatypeValues.TryGetValue(elt, out fnTuple)) {
         // elt is s a datatype value, make its name be the name of the datatype constructor
         string nm = fnTuple.Func.Name;
         if (fnTuple.Func.Arity == 0)
           return nm;
         else
-          return nm + "(...)" + base.CanonicalName(elt);
+          return nm + "(...)";
       }
       var seqLen = f_seq_length.AppWithArg(0, elt);
       if (seqLen != null) {
         // elt is a sequence
-        return string.Format("[Length {0}]{1}", seqLen.Result.AsInt(), base.CanonicalName(elt));
+        return string.Format("[Length {0}]", seqLen.Result.AsInt());
       }
-      return base.CanonicalName(elt);
+      
+      return base.CanonicalBaseName(elt, out suff);
     }
 
     public IEnumerable<ElementNode> GetExpansion(StateNode state, Model.Element elt)

@@ -44,13 +44,12 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
     Dictionary<Model.Element, string> literalName = new Dictionary<Model.Element, string>();
     public List<StateNode> states = new List<StateNode>();
-    public readonly ViewOptions viewOpts;
 
     Dictionary<int, string> fileNameMapping = new Dictionary<int, string>();
 
     public VccModel(Model m, ViewOptions opts)
+      : base(opts)
     {
-      viewOpts = opts;
       model = m;
       f_ptr_to = m.MkFunc("$ptr_to", 1);
       f_spec_ptr_to = m.MkFunc("$spec_ptr_to", 1);
@@ -250,7 +249,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return null;
     }
 
-    protected override string LiteralName(Model.Element elt)
+    private string LiteralName(Model.Element elt)
     {
       string r;
 
@@ -263,7 +262,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         return r;
       }
 
-      return base.LiteralName(elt);
+      return null;
     }
 
     public Model.Element LocalType(string localName)
@@ -668,19 +667,26 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       if (fld != null) {
         var tp = vm.f_field_type.TryEval(fld);
         if (tp != null) {
-          return vm.TypeName(tp);
+          var n = vm.TryTypeName(tp);
+          if (n != null)
+            return n;
         }
       }
 
       return "";
     }
 
-    protected override string CanonicalBaseName(Model.Element elt)
+    protected override string CanonicalBaseName(Model.Element elt, out NameSeqSuffix suff)
     {
-      var name = base.CanonicalBaseName(elt);
+      var lit = this.LiteralName(elt);
+      if (lit != null) {
+        suff = NameSeqSuffix.None;
+        return lit;
+      }
+      
+      var name = base.CanonicalBaseName(elt, out suff);
       name = CanonicalBaseNameCore(name, elt);
-      if (viewOpts.DebugMode)
-        name += string.Format("({0})", elt);
+     
       return name;
     }
 
