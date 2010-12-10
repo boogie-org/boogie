@@ -55,6 +55,7 @@
       this.everythingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
       this.debugToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+      this.modelsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.stateViewMenu.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
       this.splitContainer1.Panel1.SuspendLayout();
@@ -270,7 +271,8 @@
       // 
       this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.fileToolStripMenuItem,
-            this.viewToolStripMenuItem});
+            this.viewToolStripMenuItem,
+            this.modelsToolStripMenuItem});
       this.menuStrip1.Location = new System.Drawing.Point(0, 0);
       this.menuStrip1.Name = "menuStrip1";
       this.menuStrip1.Size = new System.Drawing.Size(915, 24);
@@ -339,6 +341,12 @@
       this.debugToolStripMenuItem.Text = "Debug";
       this.debugToolStripMenuItem.Click += new System.EventHandler(this.debugToolStripMenuItem_Click);
       // 
+      // modelsToolStripMenuItem
+      // 
+      this.modelsToolStripMenuItem.Name = "modelsToolStripMenuItem";
+      this.modelsToolStripMenuItem.Size = new System.Drawing.Size(58, 20);
+      this.modelsToolStripMenuItem.Text = "&Models";
+      // 
       // Main
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -394,6 +402,7 @@
     private System.Windows.Forms.ToolStripMenuItem everythingToolStripMenuItem;
     private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
     private System.Windows.Forms.ToolStripMenuItem debugToolStripMenuItem;
+    private System.Windows.Forms.ToolStripMenuItem modelsToolStripMenuItem;
 
 
   }

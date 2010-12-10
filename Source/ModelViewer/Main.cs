@@ -24,6 +24,7 @@ namespace Microsoft.Boogie.ModelViewer
     internal ILanguageSpecificModel langModel;
     ToolStripMenuItem[] viewItems;
     Model currentModel;
+    Model[] allModels;
     internal ViewOptions viewOpts = new ViewOptions();
 
     // TODO this should be dynamically loaded
@@ -46,25 +47,36 @@ namespace Microsoft.Boogie.ModelViewer
 
       var debugBreak = false;
       string filename = null;
+
       var args = Environment.GetCommandLineArgs();
       for (int i = 1; i < args.Length; i++) {
         var arg = args[i];
-        if (arg == "/break")
+        if (arg == "/break" || arg == "-break")
           debugBreak = true;
         else
           filename = arg;
       }
+
       if (debugBreak) {
         System.Diagnostics.Debugger.Launch();
       }
       if (filename == null) {
-        throw new Exception("error: usage:  ModelViewer.exe MyProgram.model");  // (where does this exception go?)
+        throw new Exception("error: usage:  ModelViewer.exe MyProgram.model[:N]");  // (where does this exception go?)
+      }
+
+      var modelId = 0;
+      {
+        var idx = filename.IndexOf(':');
+        if (idx > 0) {
+          modelId = int.Parse(filename.Substring(idx + 1));
+          filename = filename.Substring(0, idx);
+        }
       }
 
       using (var rd = File.OpenText(filename)) {
-        var models = Model.ParseModels(rd);
-        currentModel = models[0];
+        allModels = Model.ParseModels(rd).ToArray();
       }
+      currentModel = allModels[modelId];
 
       this.Text = Path.GetFileName(filename) + " - Boogie Verification Debugger";
 
@@ -76,7 +88,27 @@ namespace Microsoft.Boogie.ModelViewer
         }
       }
 
+      AddModelMenu();
+      LoadModel(modelId);
+    }
+
+    private void LoadModel(int idx)
+    {
+      var i = 0;
+      foreach (ToolStripMenuItem it in modelsToolStripMenuItem.DropDownItems) {
+        it.Checked = i++ == idx;
+      }
+      currentModel = allModels[idx];
       BuildModel();
+    }
+
+    private void AddModelMenu()
+    {
+      var idx = 0;
+      foreach (var m in allModels) {
+        var currIdx = idx++; // this local needs to be in this block
+        modelsToolStripMenuItem.DropDownItems.Add(string.Format("Model #{0}", currIdx), null, (s, a) => LoadModel(currIdx));
+      }
     }
 
     private void BuildModel()
