@@ -28,6 +28,7 @@
     private void InitializeComponent()
     {
       this.components = new System.ComponentModel.Container();
+      System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Main));
       this.currentStateView = new System.Windows.Forms.ListView();
       this.name = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.value = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -354,6 +355,7 @@
       this.ClientSize = new System.Drawing.Size(915, 726);
       this.Controls.Add(this.splitContainer1);
       this.Controls.Add(this.menuStrip1);
+      this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
       this.Name = "Main";
       this.Text = "Boogie Verification Debugger";
       this.stateViewMenu.ResumeLayout(false);
