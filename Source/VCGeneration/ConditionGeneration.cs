@@ -128,7 +128,7 @@ namespace Microsoft.Boogie {
         return b.Cmds[loc.numInstr];
     }
 
-    // Looks up the name of the called procedure. 
+    // Looks up the name of the called procedure.
     // Asserts that the name exists
     public string getCalledProcName(Cmd cmd)
     {
@@ -157,7 +157,7 @@ namespace Microsoft.Boogie {
           Console.WriteLine("{0}<intermediate block>", ind);
         } else {
           // for ErrorTrace == 1 restrict the output;
-          // do not print tokens with -17:-4 as their location because they have been 
+          // do not print tokens with -17:-4 as their location because they have been
           // introduced in the translation and do not give any useful feedback to the user
           if (!(CommandLineOptions.Clo.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4)) {
             Console.WriteLine("{4}{0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label, ind);
@@ -193,7 +193,7 @@ namespace Microsoft.Boogie {
         using (var wr = new StreamWriter(filename, !firstModelFile)) {
           firstModelFile = false;
           m.Write(wr);
-        }      
+        }
       }
     }
 
@@ -221,7 +221,7 @@ namespace Microsoft.Boogie {
 
       for (int i = 0; i < states.Count; ++i) {
         var s = states[i];
-        if (0 <= s && s < MvInfo.CapturePoints.Count) {          
+        if (0 <= s && s < MvInfo.CapturePoints.Count) {
           VC.ModelViewInfo.Mapping map = MvInfo.CapturePoints[s];
           var prevInc = i > 0 ? MvInfo.CapturePoints[states[i - 1]].IncarnationMap : new Hashtable();
           var cs = m.MkState(map.Description);
@@ -538,7 +538,7 @@ namespace VC {
 
         return outcome;
     }
-  
+
     public abstract Outcome VerifyImplementation(Implementation impl, Program program, VerifierCallback callback);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
@@ -613,14 +613,13 @@ namespace VC {
       }
 
       Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
-      string LabelPrefix = "PreconditionGeneratedEntry";
-      int k = 0;
+      string blockLabel = "PreconditionGeneratedEntry";
 
       Block origStartBlock = impl.Blocks[0];
       Block insertionPoint = new Block(
-        new Token(-17, -4), LabelPrefix + k, startCmds,
+        new Token(-17, -4), blockLabel, startCmds,
         new GotoCmd(Token.NoToken, new StringSeq(origStartBlock.Label), new BlockSeq(origStartBlock)));
-      k++;
+
       impl.Blocks[0] = insertionPoint;  // make insertionPoint the start block
       impl.Blocks.Add(origStartBlock);  // and put the previous start block at the end of the list
 
@@ -977,7 +976,7 @@ namespace VC {
 
     /// <summary>
     /// Helperfunction to restore the predecessor relations after loop unrolling
-    /// </summary> 
+    /// </summary>
     protected void ComputePredecessors(List<Block>/*!>!*/ blocks) {
       Contract.Requires(cce.NonNullElements(blocks));
       #region Compute and store the Predecessor Relation on the blocks
@@ -1045,7 +1044,7 @@ namespace VC {
     /// <summary>
     /// Compute the incarnation map at the beginning of block "b" from the incarnation blocks of the
     /// predecessors of "b".
-    /// 
+    ///
     /// The predecessor map b.map for block "b" is defined as follows:
     ///   b.map.Domain == Union{Block p in b.predecessors; p.map.Domain}
     ///   Forall{Variable v in b.map.Domain;
@@ -1159,7 +1158,7 @@ namespace VC {
 
       CmdSeq passiveCmds = new CmdSeq();
       foreach (Cmd c in b.Cmds) {
-        Contract.Assert(c != null); // walk forward over the commands because the map gets modified in a forward direction      
+        Contract.Assert(c != null); // walk forward over the commands because the map gets modified in a forward direction
         TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
       }
       b.Cmds = passiveCmds;
@@ -1248,10 +1247,10 @@ namespace VC {
       return (Hashtable)block2Incarnation[exitBlock];
     }
 
-    /// <summary> 
+    /// <summary>
     /// Turn a command into a passive command, and it remembers the previous step, to see if it is a havoc or not. In the case, it remembers the incarnation map BEFORE the havoc
     /// Meanwhile, record any information needed to later reconstruct a model view.
-    /// </summary> 
+    /// </summary>
     protected void TurnIntoPassiveCmd(Cmd c, Hashtable /*Variable -> Expr*/ incarnationMap, Substitution oldFrameSubst, CmdSeq passiveCmds, ModelViewInfo mvInfo) {
       Contract.Requires(c != null);
       Contract.Requires(incarnationMap != null);
@@ -1429,7 +1428,7 @@ namespace VC {
 
       if (!(c is HavocCmd))
         this.preHavocIncarnationMap = null;
-      // else: it has already been set by the case for the HavocCmd    
+      // else: it has already been set by the case for the HavocCmd
       #endregion
     }
 
@@ -1470,7 +1469,7 @@ namespace VC {
           new GotoCmd(Token.NoToken, ls, bs)
           );
 
-      // predecessors of newBlock           
+      // predecessors of newBlock
       BlockSeq ps = new BlockSeq();
       ps.Add(pred);
       newBlock.Predecessors = ps;
