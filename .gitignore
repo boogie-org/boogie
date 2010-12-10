@@ -72,7 +72,8 @@ Binaries/BVD.pdb
 Binaries/ParserHelper.dll
 Binaries/ParserHelper.pdb
 Binaries/BytecodeTranslator*
-BCT/Binaries/BytecodeTranslator*
+BCT/Binaries/*
+BCT/*.suo
 BCT/*/obj
 BCT/*/*/bin
 BCT/*/*/obj
