@@ -367,6 +367,11 @@ namespace VC
                 calls.recentlyAddedCandidates = new HashSet<int>();
             }
 
+            public void addNode(int src)
+            {
+                newNodes.Add(src);
+            }
+
             public void addEdge(int src_id, int tgt_id)
             {
                 newNodes.Add(src_id);
@@ -425,10 +430,8 @@ namespace VC
                 // Go through the edges
                 var greenNodes = new HashSet<int>();
                 var redNodes = new HashSet<int>();
-                foreach (var node in newNodes)
+                foreach (var node in calls.currCandidates)
                 {
-                    if (!calls.currCandidates.Contains(node)) continue;
-
                     if (calls.getRecursionBound(node) > CommandLineOptions.Clo.RecursionBound)
                     {
                         redNodes.Add(node);
@@ -972,6 +975,7 @@ namespace VC
                     foreach (var id in task.nodes)
                     {
                         calls.setRecursionIncrement(id, 0);
+                        coverageManager.addNode(id);
                     }
                     DoExpansion(incrementalSearch, task.nodes, vState);
                 }
@@ -981,6 +985,7 @@ namespace VC
                     foreach (var id in task.nodes)
                     {
                         calls.setRecursionIncrement(id, CommandLineOptions.Clo.RecursionBound + 1);
+                        coverageManager.addNode(id);
                     }
                 }
                 else if (task.type == CoverageGraphManager.Task.TaskType.STEP)
