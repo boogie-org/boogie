@@ -108,6 +108,9 @@ namespace Microsoft.Boogie
         res.references.Add(t);
       }
 
+      /// <summary>
+      /// Return the first application where the argument at position argIdx is elt.
+      /// </summary>
       public FuncTuple AppWithArg(int argIdx, Element elt)
       {
         foreach (var a in AppsWithArg(argIdx, elt))
@@ -115,6 +118,9 @@ namespace Microsoft.Boogie
         return null;
       }
 
+      /// <summary>
+      /// Return the first application with the result elt.
+      /// </summary>
       public FuncTuple AppWithResult(Element elt)
       {
         foreach (var a in AppsWithResult(elt))
@@ -122,6 +128,9 @@ namespace Microsoft.Boogie
         return null;
       }
 
+      /// <summary>
+      /// Return all applications where the argument at position argIdx is elt.
+      /// </summary>
       public IEnumerable<FuncTuple> AppsWithArg(int argIdx, Element elt)
       {
         foreach (var r in elt.References) {
@@ -130,13 +139,20 @@ namespace Microsoft.Boogie
         }
       }
 
-      public IEnumerable<FuncTuple> AppsWithArgs(int argIdx0, Element elt0, int argIdx1, Element elt1) {
+      /// <summary>
+      /// Return all applications where the argument at position argIdx0 is elt0 and argument at argIdx1 is elt1.
+      /// </summary>
+      public IEnumerable<FuncTuple> AppsWithArgs(int argIdx0, Element elt0, int argIdx1, Element elt1)
+      {
         foreach (var r in elt0.References) {
           if (r.Func == this && r.Args[argIdx0] == elt0 && r.Args[argIdx1] == elt1)
             yield return r;
         }
       }
 
+      /// <summary>
+      /// Return all the applications with the result elt.
+      /// </summary>
       public IEnumerable<FuncTuple> AppsWithResult(Element elt)
       {
         foreach (var r in elt.References) {
@@ -145,6 +161,9 @@ namespace Microsoft.Boogie
         }
       }
 
+      /// <summary>
+      /// For a nullary function, return its value.
+      /// </summary>
       public Element GetConstant()
       {
         if (Arity != 0)
@@ -154,6 +173,18 @@ namespace Microsoft.Boogie
         return apps[0].Result;
       }
 
+      /// <summary>
+      /// If all arguments are non-null, and function application for them exists return the value, otherwise return null.
+      /// </summary>
+      public Element OptEval(params Element[] args)
+      {
+        if (args.Any(a => a == null)) return null;
+        return TryEval(args);
+      }
+
+      /// <summary>
+      /// Look for function application with given arguments and return its value or null if no such application exists.
+      /// </summary>
       public Element TryEval(params Element[] args)
       {
         foreach (var tpl in apps) {
@@ -168,6 +199,9 @@ namespace Microsoft.Boogie
         return null;
       }
 
+      /// <summary>
+      /// Short for TryEval(args) == (Element)true
+      /// </summary>
       public bool IsTrue(params Element[] args)
       {
         var r = TryEval(args) as Boolean;
