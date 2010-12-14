@@ -452,6 +452,7 @@ namespace BytecodeTranslator {
       // Second, generate the call to the appropriate ctor
       Bpl.ExprSeq inexpr = new Bpl.ExprSeq();
       Dictionary<IParameterDefinition, Bpl.Expr> p2eMap = new Dictionary<IParameterDefinition, Bpl.Expr>();
+      inexpr.Add(Bpl.Expr.Ident(a));
       IEnumerator<IParameterDefinition> penum = createObjectInstance.MethodToCall.ResolvedMethod.Parameters.GetEnumerator();
       penum.MoveNext();
       foreach (IExpression exp in createObjectInstance.Arguments) {
