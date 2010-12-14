@@ -541,13 +541,15 @@ namespace Microsoft.Boogie.ModelViewer
         AddMenuItems(NamesFor(x), t.DropDownItems, "= ", 20);
       }
 
-      var selName = langModel.CanonicalName(sel.Element);
-      items.Add("Find uses...", null, (s, _) => SetSearch("use:" + selName));
+      if (sel.Element != null) {
+        var selName = langModel.CanonicalName(sel.Element);
+        items.Add("Find uses...", null, (s, _) => SetSearch("use:" + selName));
 
-      var aliases = NamesFor(sel.Element).Where(s => s != skel).ToArray();
-      if (aliases.Length > 0) {
-        items.Add("Aliases...", null, (s, _) => SetSearch("eq:" + selName));
-        AddMenuItems(aliases, items, "   = ", 10);
+        var aliases = NamesFor(sel.Element).Where(s => s != skel).ToArray();
+        if (aliases.Length > 0) {
+          items.Add("Aliases...", null, (s, _) => SetSearch("eq:" + selName));
+          AddMenuItems(aliases, items, "   = ", 10);
+        }
       }
     }
 
