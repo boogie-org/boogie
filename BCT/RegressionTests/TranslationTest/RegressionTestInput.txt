@@ -23,6 +23,23 @@ axiom (forall h: HeapType, c: TName :: { h[ClassRepr(c), $allocated] } IsHeap(h)
 
 var RegressionTestInput.Class0.StaticInt: int;
 
+procedure RegressionTestInput.Class0.StaticMethod$System.Int32(this: int, x$in: int) returns ($result: int);
+
+
+
+implementation RegressionTestInput.Class0.StaticMethod$System.Int32(this: int, x$in: int) returns ($result: int)
+{
+  var x: int;
+  var local_0: int;
+
+    x := x$in;
+    local_0 := x + 1;
+    $result := local_0;
+    return;
+}
+
+
+
 procedure RegressionTestInput.Class0.M$System.Void(this: int, x$in: int);
 
 
@@ -59,8 +76,10 @@ procedure RegressionTestInput.Class0.NonVoid$System.Int32(this: int) returns ($r
 implementation RegressionTestInput.Class0.NonVoid$System.Int32(this: int) returns ($result: int)
 {
   var local_0: int;
+  var $tmp1: int;
 
-    local_0 := 3 + RegressionTestInput.Class0.StaticInt;
+    call $tmp1 := RegressionTestInput.Class0.StaticMethod$System.Int32(3);
+    local_0 := 3 + RegressionTestInput.Class0.StaticInt + $tmp1;
     $result := local_0;
     return;
 }

@@ -334,8 +334,10 @@ namespace BytecodeTranslator {
       Bpl.ExprSeq inexpr = new Bpl.ExprSeq();
 
       #region Create the 'this' argument for the function call
-      this.Visit(methodCall.ThisArgument);
-      inexpr.Add(this.TranslatedExpressions.Pop());
+      if (!methodCall.IsStaticCall) {
+        this.Visit(methodCall.ThisArgument);
+        inexpr.Add(this.TranslatedExpressions.Pop());
+      }
       #endregion
 
       Dictionary<IParameterDefinition, Bpl.Expr> p2eMap = new Dictionary<IParameterDefinition, Bpl.Expr>();

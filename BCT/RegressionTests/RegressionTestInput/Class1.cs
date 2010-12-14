@@ -9,6 +9,10 @@ namespace RegressionTestInput {
 
     static int StaticInt;
 
+    static int StaticMethod(int x) {
+      return x + 1;
+    }
+
     void M(int x) {
       int y = (5 / x) + (x = 3);
       Contract.Assert(x == 3 && y <= 8);
@@ -17,7 +21,7 @@ namespace RegressionTestInput {
     }
 
     int NonVoid() {
-      return 3 + StaticInt;
+      return 3 + StaticInt + StaticMethod(3);
     }
 
     int OutParam(out int x) {
