@@ -328,10 +328,11 @@ namespace BytecodeTranslator {
     /// <remarks>Stub, This one really needs comments!</remarks>
     public override void Visit(IMethodCall methodCall) {
 
+      var resolvedMethod = methodCall.MethodToCall.ResolvedMethod;
+
       #region Translate In Parameters
 
-
-      Bpl.ExprSeq inexpr = new Bpl.ExprSeq();
+      var inexpr = new List<Bpl.Expr>();
 
       #region Create the 'this' argument for the function call
       if (!methodCall.IsStaticCall) {
@@ -341,7 +342,7 @@ namespace BytecodeTranslator {
       #endregion
 
       Dictionary<IParameterDefinition, Bpl.Expr> p2eMap = new Dictionary<IParameterDefinition, Bpl.Expr>();
-      IEnumerator<IParameterDefinition> penum = methodCall.MethodToCall.ResolvedMethod.Parameters.GetEnumerator();
+      IEnumerator<IParameterDefinition> penum = resolvedMethod.Parameters.GetEnumerator();
       penum.MoveNext();
       foreach (IExpression exp in methodCall.Arguments) {
         if (penum.Current == null) {
@@ -362,13 +363,13 @@ namespace BytecodeTranslator {
       Bpl.IToken cloc = methodCall.Token();
 
       // meeting a constructor is always something special
-      if (methodCall.MethodToCall.ResolvedMethod.IsConstructor) {
+      if (resolvedMethod.IsConstructor) {
         // Todo: do something with the constructor call
       } else {
         // Todo: if there is no stmttraverser we are visiting a contract and should use a boogie function instead of procedure!
 
         #region Translate Out vars
-        Bpl.IdentifierExprSeq outvars = new Bpl.IdentifierExprSeq();
+        var outvars = new List<Bpl.IdentifierExpr>();
 
         foreach (KeyValuePair<IParameterDefinition, Bpl.Expr> kvp in p2eMap) {
           if (kvp.Key.IsOut || kvp.Key.IsByReference) {
@@ -386,9 +387,21 @@ namespace BytecodeTranslator {
           outvars.Add(new Bpl.IdentifierExpr(cloc, v));
           TranslatedExpressions.Push(new Bpl.IdentifierExpr(cloc, v));
         }
-        string methodname = TranslationHelper.CreateUniqueMethodName(methodCall.MethodToCall.ResolvedMethod);
+        string methodname = TranslationHelper.CreateUniqueMethodName(resolvedMethod);
 
-        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, methodname, inexpr, outvars));
+
+        Bpl.QKeyValue attrib = null;
+        foreach (var a in resolvedMethod.Attributes) {
+          if (TypeHelper.GetTypeName(a.Type).EndsWith("AsyncAttribute")) {
+            attrib = new Bpl.QKeyValue(cloc, "async", new List<object>(), null);
+          }
+        }
+        Bpl.CallCmd call;
+        if (attrib != null)
+          call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars, attrib);
+        else
+          call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars);
+        this.StmtTraverser.StmtBuilder.Add(call);
 
       }
 
@@ -443,10 +456,18 @@ namespace BytecodeTranslator {
     /// "a" is a fresh local.
     /// </summary>
     public override void Visit(ICreateObjectInstance createObjectInstance) {
+      TranslateCreation(createObjectInstance.MethodToCall, createObjectInstance.Arguments, createObjectInstance.Type, createObjectInstance);
+    }
 
-      Bpl.IToken cloc = createObjectInstance.Token();
+    public override void Visit(ICreateDelegateInstance createDelegateInstance) {
+     // TranslateCreation(createDelegateInstance.MethodToCallViaDelegate, createDelegateInstance.Arguments, createDelegateInstance.Type, createDelegateInstance);
+      base.Visit(createDelegateInstance);
+    }
 
-      var a = this.sink.CreateFreshLocal(createObjectInstance.Type);
+    private void TranslateCreation(IMethodReference ctor, IEnumerable<IExpression> arguments, ITypeReference ctorType, IExpression creationAST) {
+      Bpl.IToken cloc = creationAST.Token();
+
+      var a = this.sink.CreateFreshLocal(creationAST.Type);
 
       // First generate an Alloc() call
       this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
@@ -455,9 +476,9 @@ namespace BytecodeTranslator {
       Bpl.ExprSeq inexpr = new Bpl.ExprSeq();
       Dictionary<IParameterDefinition, Bpl.Expr> p2eMap = new Dictionary<IParameterDefinition, Bpl.Expr>();
       inexpr.Add(Bpl.Expr.Ident(a));
-      IEnumerator<IParameterDefinition> penum = createObjectInstance.MethodToCall.ResolvedMethod.Parameters.GetEnumerator();
+      IEnumerator<IParameterDefinition> penum = ctor.ResolvedMethod.Parameters.GetEnumerator();
       penum.MoveNext();
-      foreach (IExpression exp in createObjectInstance.Arguments) {
+      foreach (IExpression exp in arguments) {
         if (penum.Current == null) {
           throw new TranslationException("More Arguments than Parameters in functioncall");
         }
@@ -473,13 +494,13 @@ namespace BytecodeTranslator {
       }
 
       Bpl.IdentifierExprSeq outvars = new Bpl.IdentifierExprSeq();
-      string methodname = TranslationHelper.CreateUniqueMethodName(createObjectInstance.MethodToCall.ResolvedMethod);
+      string methodname = TranslationHelper.CreateUniqueMethodName(ctor.ResolvedMethod);
 
       this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, methodname, inexpr, outvars));
 
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
-
     }
+
     #endregion
     
     #region Translate Binary Operators

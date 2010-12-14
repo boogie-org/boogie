@@ -116,13 +116,15 @@ namespace BytecodeTranslator {
 
         #endregion
 
+        Bpl.Formal/*?*/ self = null;
         #region Create 'this' parameter
-        in_count++;
-        Bpl.Type selftype = Bpl.Type.Int;
-        Bpl.Formal self = new Bpl.Formal(method.Token(),
-            new Bpl.TypedIdent(method.Type.Token(),
-                "this", selftype), true);
-
+        if (!method.IsStatic) {
+          in_count++;
+          Bpl.Type selftype = Bpl.Type.Int;
+          self = new Bpl.Formal(method.Token(),
+              new Bpl.TypedIdent(method.Type.Token(),
+                  "this", selftype), true);
+        }
         #endregion
 
         Bpl.Variable[] invars = new Bpl.Formal[in_count];
@@ -132,7 +134,8 @@ namespace BytecodeTranslator {
         int j = 0;
 
         #region Add 'this' parameter as first in parameter
-        invars[i++] = self;
+        if (!method.IsStatic)
+          invars[i++] = self;
         #endregion
 
         foreach (MethodParameter mparam in formalMap.Values) {

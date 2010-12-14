@@ -5,6 +5,10 @@ using System.Text;
 using System.Diagnostics.Contracts;
 
 namespace RegressionTestInput {
+
+  [AttributeUsage(AttributeTargets.Method)]
+  public class AsyncAttribute : Attribute { }
+
   public class Class0 {
 
     static int StaticInt;
@@ -40,6 +44,16 @@ namespace RegressionTestInput {
       StaticInt = x;
       return x;
     }
+
+    [Async]
+    int MethodThatRepresentsAnAynchronousMethod(int x) {
+      return x;
+    }
+
+    int CallAsyncMethod(int y) {
+      return MethodThatRepresentsAnAynchronousMethod(y);
+    }
+
 
   }
 }
