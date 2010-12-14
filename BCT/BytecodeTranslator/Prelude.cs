@@ -12,12 +12,22 @@ namespace BytecodeTranslator {
 type Ref;
 const null: Ref;
 
-type Field alpha;
+type Field;
 
-type HeapType = <alpha>[Ref, Field alpha]alpha;
+type TName;
+
+type HeapType = [Ref, Field] Ref;
 function IsGoodHeap(HeapType): bool;
 
 var $Heap: HeapType where IsGoodHeap($Heap);
+
+// Static Fields:
+//  An object for each class C is used to reference the static fields of C in the heap.
+//  That object is encoded as the value of a function.
+function ClassRepr(class: TName) returns (ref);
+axiom (forall T: TName :: !($typeof(ClassRepr(T)) <: System.Object));
+axiom (forall T: TName :: ClassRepr(T) != null);
+axiom (forall h: HeapType, c: TName :: { h[ClassRepr(c), $allocated] } IsHeap(h) ==> h[ClassRepr(c), $allocated]);
 
 ");
     }

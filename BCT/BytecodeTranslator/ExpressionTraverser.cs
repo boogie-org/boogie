@@ -216,12 +216,8 @@ namespace BytecodeTranslator {
       #region FieldDefinition
       IFieldReference field = boundExpression.Definition as IFieldReference;
       if (field != null) {
-        if (boundExpression.Instance != null) {
-          ProcessFieldVariable(field, boundExpression.Instance,true);
-          return;
-        } else {
-          throw new NotImplementedException(String.Format("Field {0} with Instance NULL.", boundExpression.ToString()));
-        }
+        ProcessFieldVariable(field, boundExpression.Instance, true);
+        return;
       }
       #endregion
 
@@ -276,17 +272,25 @@ namespace BytecodeTranslator {
     #endregion
 
     #region Variable Access Helpers
-    private void ProcessFieldVariable(IFieldReference field, IExpression instance, bool buildSelectExpr) {
+    private void ProcessFieldVariable(IFieldReference field, IExpression/*?*/ instance, bool buildSelectExpr) {
 
-      //TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MethodTraverser.ClassTraverser.FindOrCreateFieldVariable(field.ResolvedField))
       TranslatedExpressions.Push( Bpl.Expr.Ident( 
         this.sink.FindOrCreateFieldVariable(field.ResolvedField) ) );
 
-      this.Visit(instance);
+      if (instance != null) {
+        this.Visit(instance);
+      } else {
+        //TranslatedExpressions.Push(
+        //  TranslationHelper.FunctionCall(
+        //    this.sink.StaticFieldFunction,
+        //    TranslationHelper.CciTypeToBoogie(field.Type),
+        //    new List<Bpl.Expr>{ new Bpl.IdentifierExpr(Bpl.Token.NoToken, new Bpl.Constant(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, TypeHelper.GetTypeName(field.Type), ))) }
+        //    ));
+      }
 
       // if the field access is not a targetexpression we build a select expression
       // otherwise the assignment visitor will build a mapassignment later on
-      if (buildSelectExpr) {
+      if (instance != null && buildSelectExpr) {
         List<Bpl.Expr> elist = new List<Bpl.Expr>();
 
         elist.Add(TranslatedExpressions.Pop());
@@ -383,10 +387,14 @@ namespace BytecodeTranslator {
         string methodname = TranslationHelper.CreateUniqueMethodName(methodCall.MethodToCall.ResolvedMethod);
 
         this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, methodname, inexpr, outvars));
-        
+
       }
 
     }
+
+    #endregion
+
+    #region Translate Assignments
 
     /// <summary>
     /// 
@@ -424,9 +432,53 @@ namespace BytecodeTranslator {
 
     }
 
-
     #endregion
 
+    #region Translate Object Creation
+
+    /// <summary>
+    /// For "new A(...)" generate "{ A a = Alloc(); A..ctor(a); return a; }" where
+    /// "a" is a fresh local.
+    /// </summary>
+    public override void Visit(ICreateObjectInstance createObjectInstance) {
+
+      Bpl.IToken cloc = createObjectInstance.Token();
+
+      var a = this.sink.CreateFreshLocal(createObjectInstance.Type);
+
+      // First generate an Alloc() call
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
+
+      // Second, generate the call to the appropriate ctor
+      Bpl.ExprSeq inexpr = new Bpl.ExprSeq();
+      Dictionary<IParameterDefinition, Bpl.Expr> p2eMap = new Dictionary<IParameterDefinition, Bpl.Expr>();
+      IEnumerator<IParameterDefinition> penum = createObjectInstance.MethodToCall.ResolvedMethod.Parameters.GetEnumerator();
+      penum.MoveNext();
+      foreach (IExpression exp in createObjectInstance.Arguments) {
+        if (penum.Current == null) {
+          throw new TranslationException("More Arguments than Parameters in functioncall");
+        }
+        this.Visit(exp);
+        Bpl.Expr e = this.TranslatedExpressions.Pop();
+
+        p2eMap.Add(penum.Current, e);
+        if (!penum.Current.IsOut) {
+          inexpr.Add(e);
+        }
+
+        penum.MoveNext();
+      }
+
+      Bpl.IdentifierExprSeq outvars = new Bpl.IdentifierExprSeq();
+      string methodname = TranslationHelper.CreateUniqueMethodName(createObjectInstance.MethodToCall.ResolvedMethod);
+
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, methodname, inexpr, outvars));
+
+      TranslatedExpressions.Push(Bpl.Expr.Ident(a));
+
+    }
+    #endregion
+    
     #region Translate Binary Operators
 
     public override void Visit(IAddition addition) {

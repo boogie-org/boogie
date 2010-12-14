@@ -4,12 +4,24 @@
 type Ref;
 const null: Ref;
 
-type Field alpha;
+type Field;
 
-type HeapType = <alpha>[Ref, Field alpha]alpha;
+type TName;
+
+type HeapType = [Ref, Field] Ref;
 function IsGoodHeap(HeapType): bool;
 
 var $Heap: HeapType where IsGoodHeap($Heap);
+
+// Static Fields:
+//  An object for each class C is used to reference the static fields of C in the heap.
+//  That object is encoded as the value of a function.
+function ClassRepr(class: TName) returns (ref);
+axiom (forall T: TName :: !($typeof(ClassRepr(T)) <: System.Object));
+axiom (forall T: TName :: ClassRepr(T) != null);
+axiom (forall h: HeapType, c: TName :: { h[ClassRepr(c), $allocated] } IsHeap(h) ==> h[ClassRepr(c), $allocated]);
+
+var RegressionTestInput.Class0.StaticInt: int;
 
 procedure RegressionTestInput.Class0.M$System.Void(this: int, x$in: int);
 
@@ -33,6 +45,8 @@ implementation RegressionTestInput.Class0.M$System.Void(this: int, x$in: int)
     x := __temp_3;
     local_0 := __temp_1 + __temp_2;
     assert x == 3 && local_0 <= 8;
+    RegressionTestInput.Class0.StaticInt := local_0;
+    assert local_0 == RegressionTestInput.Class0.StaticInt;
     return;
 }
 
@@ -44,7 +58,10 @@ procedure RegressionTestInput.Class0.NonVoid$System.Int32(this: int) returns ($r
 
 implementation RegressionTestInput.Class0.NonVoid$System.Int32(this: int) returns ($result: int)
 {
-    $result := 3;
+  var local_0: int;
+
+    local_0 := 3 + RegressionTestInput.Class0.StaticInt;
+    $result := local_0;
     return;
 }
 
@@ -58,7 +75,7 @@ implementation RegressionTestInput.Class0.OutParam$System.Int32(this: int) retur
 {
   var local_0: int;
 
-    x$out := 3;
+    x$out := 3 + RegressionTestInput.Class0.StaticInt;
     local_0 := x$out;
     $result := local_0;
     return;
@@ -76,6 +93,7 @@ implementation RegressionTestInput.Class0.RefParam$System.Int32(this: int, x$in:
 
     x$out := x$in;
     x$out := x$out + 1;
+    RegressionTestInput.Class0.StaticInt := x$out;
     local_0 := x$out;
     $result := local_0;
     return;
@@ -94,6 +112,7 @@ implementation RegressionTestInput.Class0.AssignToInParam$System.Int32(this: int
 
     x := x$in;
     x := x + 1;
+    RegressionTestInput.Class0.StaticInt := x;
     local_0 := x;
     $result := local_0;
     return;

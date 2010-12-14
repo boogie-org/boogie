@@ -37,6 +37,11 @@ namespace BytecodeTranslator {
 
     public Bpl.Variable ThisVariable = TranslationHelper.TempThisVar();
     public Bpl.Variable RetVariable;
+
+    public readonly string AllocationMethodName = "Alloc";
+    public readonly string StaticFieldFunction = "ClassRepr";
+    public readonly string ReferenceTypeName = "Ref";
+
     public readonly Bpl.Program TranslatedProgram = new Bpl.Program();
 
     /// <summary>
@@ -100,7 +105,11 @@ namespace BytecodeTranslator {
 
         v = new Bpl.GlobalVariable(tok, tident);
         fieldVarMap.Add(field, v);
-        this.TranslatedProgram.TopLevelDeclarations.Add(new Bpl.Constant(tok, tident, true));
+        if (field.IsStatic) {
+          this.TranslatedProgram.TopLevelDeclarations.Add(new Bpl.GlobalVariable(tok, tident));
+        } else {
+          this.TranslatedProgram.TopLevelDeclarations.Add(new Bpl.Constant(tok, tident, true));
+        }
       }
       return v;
     }
