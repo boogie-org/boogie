@@ -38,7 +38,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     public readonly Model.Func f_ptr_to, f_phys_ptr_cast, f_spec_ptr_cast, f_mathint, f_local_value_is, f_spec_ptr_to, f_heap, f_select_field,
                                f_select_value, f_field, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t, f_select_ptr,
                                f_owners, f_closed, f_roots, f_timestamps, f_select_bool, f_select_int, f_is_null, f_good_state,
-                               f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, f_field_plus;
+                               f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, f_field_plus,
+                               f_is_sequential_field, f_is_volatile_field;
     public readonly Model.Element tp_object, tp_mathint, tp_bool, tp_state, tp_ptrset;
     public readonly Model.Element elt_me, elt_null;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
@@ -82,6 +83,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_is_phys_field = m.MkFunc("$is_phys_field", 1);
       f_idx = m.MkFunc("$idx", 2);
       f_field_plus = m.MkFunc("$field_plus", 2);
+      f_is_sequential_field = m.MkFunc("$is_sequential_field", 1);
+      f_is_volatile_field = m.MkFunc("$is_volatile_field", 1);
 
       tp_bool = m.GetFunc("^^bool").GetConstant();
       tp_mathint = m.GetFunc("^^mathint").GetConstant();
@@ -522,10 +525,25 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     void AddPtrType(StateNode state, Model.Element elt, List<ElementNode> res)
     {
       var f = f_field.TryEval(elt);
-      if (f != null)
-        f = f_field_type.TryEval(f);
-      if (f != null) {
-        res.Add(new FieldNode(state, new EdgeName("\\typeof"), f, tp_mathint) { Category = NodeCategory.MethodologyProperty });
+      if (f == null) return;
+
+      var tp = f_field_type.TryEval(f);
+      
+      var seq = "";
+
+      var is_seq = f_is_sequential_field.TryEval(f) as Model.Boolean;
+      var is_vol = f_is_volatile_field.TryEval(f) as Model.Boolean;
+
+      if (is_seq != null && is_vol != null && is_seq.Value == is_vol.Value) {
+        seq = " (volatile/sequential mismatch)";
+      } else if ((is_seq != null && is_seq.Value) || (is_vol != null && !is_vol.Value)) {
+          seq = " (sequential)";
+      } else if ((is_seq != null && !is_seq.Value) || (is_vol != null && is_vol.Value)) {
+          seq = " (volatile)";
+      }
+      
+      if (tp != null || seq != "") {
+        res.Add(new FieldNode(state, new EdgeName("\\typeof" + seq), tp, tp_mathint) { Category = NodeCategory.MethodologyProperty });
       }
     }
 
