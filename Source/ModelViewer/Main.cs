@@ -42,7 +42,8 @@ namespace Microsoft.Boogie.ModelViewer
       viewItems = new ToolStripMenuItem[] {
         normalToolStripMenuItem,
         expertToolStripMenuItem,
-        everythingToolStripMenuItem
+        everythingToolStripMenuItem,
+        includeTheKitchenSinkToolStripMenuItem
       };
 
       var debugBreak = false;

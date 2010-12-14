@@ -54,6 +54,7 @@
       this.normalToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.expertToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.everythingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+      this.includeTheKitchenSinkToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
       this.debugToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.modelsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -301,6 +302,7 @@
             this.normalToolStripMenuItem,
             this.expertToolStripMenuItem,
             this.everythingToolStripMenuItem,
+            this.includeTheKitchenSinkToolStripMenuItem,
             this.toolStripMenuItem1,
             this.debugToolStripMenuItem});
       this.viewToolStripMenuItem.Name = "viewToolStripMenuItem";
@@ -312,33 +314,40 @@
       this.normalToolStripMenuItem.Checked = true;
       this.normalToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
       this.normalToolStripMenuItem.Name = "normalToolStripMenuItem";
-      this.normalToolStripMenuItem.Size = new System.Drawing.Size(130, 22);
+      this.normalToolStripMenuItem.Size = new System.Drawing.Size(199, 22);
       this.normalToolStripMenuItem.Text = "&Normal";
       this.normalToolStripMenuItem.Click += new System.EventHandler(this.normalToolStripMenuItem_Click);
       // 
       // expertToolStripMenuItem
       // 
       this.expertToolStripMenuItem.Name = "expertToolStripMenuItem";
-      this.expertToolStripMenuItem.Size = new System.Drawing.Size(130, 22);
+      this.expertToolStripMenuItem.Size = new System.Drawing.Size(199, 22);
       this.expertToolStripMenuItem.Text = "E&xpert";
       this.expertToolStripMenuItem.Click += new System.EventHandler(this.normalToolStripMenuItem_Click);
       // 
       // everythingToolStripMenuItem
       // 
       this.everythingToolStripMenuItem.Name = "everythingToolStripMenuItem";
-      this.everythingToolStripMenuItem.Size = new System.Drawing.Size(130, 22);
+      this.everythingToolStripMenuItem.Size = new System.Drawing.Size(199, 22);
       this.everythingToolStripMenuItem.Text = "&Everything";
       this.everythingToolStripMenuItem.Click += new System.EventHandler(this.normalToolStripMenuItem_Click);
+      // 
+      // includeTheKitchenSinkToolStripMenuItem
+      // 
+      this.includeTheKitchenSinkToolStripMenuItem.Name = "includeTheKitchenSinkToolStripMenuItem";
+      this.includeTheKitchenSinkToolStripMenuItem.Size = new System.Drawing.Size(199, 22);
+      this.includeTheKitchenSinkToolStripMenuItem.Text = "&Include the kitchen sink";
+      this.includeTheKitchenSinkToolStripMenuItem.Click += new System.EventHandler(this.normalToolStripMenuItem_Click);
       // 
       // toolStripMenuItem1
       // 
       this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-      this.toolStripMenuItem1.Size = new System.Drawing.Size(127, 6);
+      this.toolStripMenuItem1.Size = new System.Drawing.Size(196, 6);
       // 
       // debugToolStripMenuItem
       // 
       this.debugToolStripMenuItem.Name = "debugToolStripMenuItem";
-      this.debugToolStripMenuItem.Size = new System.Drawing.Size(130, 22);
+      this.debugToolStripMenuItem.Size = new System.Drawing.Size(199, 22);
       this.debugToolStripMenuItem.Text = "Debug";
       this.debugToolStripMenuItem.Click += new System.EventHandler(this.debugToolStripMenuItem_Click);
       // 
@@ -405,6 +414,7 @@
     private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
     private System.Windows.Forms.ToolStripMenuItem debugToolStripMenuItem;
     private System.Windows.Forms.ToolStripMenuItem modelsToolStripMenuItem;
+    private System.Windows.Forms.ToolStripMenuItem includeTheKitchenSinkToolStripMenuItem;
 
 
   }

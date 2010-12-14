@@ -252,6 +252,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     {
       if (name.StartsWith("L#") || name.StartsWith("P#"))
         return name.Substring(2);
+      if (name.StartsWith("res__") && viewOpts.ViewLevel >= 1)
+        return name;
       return null;
     }
 
