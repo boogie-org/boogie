@@ -923,7 +923,7 @@ namespace Microsoft.Boogie {
         Contract.Assert(v != null);
         if (!v.IsMutable) {
           tc.Error(this, "command assigns to an immutable variable: {0}", v.Name);
-        } else if (v is GlobalVariable && !tc.InFrame(v)) {
+        } else if (!CommandLineOptions.Clo.DoModSetAnalysis && v is GlobalVariable && !tc.InFrame(v)) {
           tc.Error(this, "command assigns to a global variable that is not in the enclosing method's modifies clause: {0}", v.Name);
         }
       }

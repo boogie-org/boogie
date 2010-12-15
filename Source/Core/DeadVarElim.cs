@@ -52,13 +52,20 @@ namespace Microsoft.Boogie {
 
     public static void DoModSetAnalysis(Program program) {
       Contract.Requires(program != null);
-      int procCount = 0;
-      foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
-        Contract.Assert(decl != null);
-        if (decl is Procedure)
-          procCount++;
+
+      if (CommandLineOptions.Clo.Trace)
+      {
+          Console.WriteLine();
+          Console.WriteLine("Running modset analysis ...");
+          int procCount = 0;
+          foreach (Declaration/*!*/ decl in program.TopLevelDeclarations)
+          {
+              Contract.Assert(decl != null);
+              if (decl is Procedure)
+                  procCount++;
+          }
+          Console.WriteLine("Number of procedures = {0}", procCount);
       }
-      Console.WriteLine("Number of procedures = {0}", procCount);
 
       modSets = new Dictionary<Procedure/*!*/, HashSet<Variable/*!*/>/*!*/>();
 
@@ -90,18 +97,35 @@ namespace Microsoft.Boogie {
         modSetCollector.Visit(program);
       }
 
-      procCount = 0;
-      foreach (Procedure/*!*/ x in modSets.Keys) {
-        Contract.Assert(x != null);
-        procCount++;
-        Console.Write("{0} : ", x.Name);
-        foreach (Variable/*!*/ y in modSets[x]) {
-          Contract.Assert(y != null);
-          Console.Write("{0}, ", y.Name);
-        }
-        Console.WriteLine("");
+      foreach (Procedure x in modSets.Keys)
+      {
+          x.Modifies = new IdentifierExprSeq();
+          foreach (Variable v in modSets[x])
+          {
+              x.Modifies.Add(new IdentifierExpr(v.tok, v));
+          }
       }
-      Console.WriteLine("Number of procedures with nonempty modsets = {0}", procCount);
+
+      if (CommandLineOptions.Clo.Trace)
+      {
+          Console.WriteLine("Number of procedures with nonempty modsets = {0}", modSets.Keys.Count);
+          foreach (Procedure/*!*/ x in modSets.Keys)
+          {
+              Contract.Assert(x != null);
+              Console.Write("{0} : ", x.Name);
+              bool first = true;
+              foreach (Variable/*!*/ y in modSets[x])
+              {
+                  Contract.Assert(y != null);
+                  if (first)
+                      first = false;
+                  else
+                      Console.Write(", ");
+                  Console.Write("{0}", y.Name);
+              }
+              Console.WriteLine("");
+          }
+      }
     }
 
     public override Implementation VisitImplementation(Implementation node) {
