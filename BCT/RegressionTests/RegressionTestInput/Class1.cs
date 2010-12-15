@@ -45,7 +45,7 @@ namespace RegressionTestInput {
       return x;
     }
 
-    [Async]
+    [AsyncAttribute]
     int MethodThatRepresentsAnAynchronousMethod(int x) {
       return x;
     }

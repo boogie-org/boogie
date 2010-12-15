@@ -10,7 +10,7 @@ namespace BytecodeTranslator {
 // Bytecode Translator prelude
 
 const null: int;
-type HeapType = [int, int] int;
+type HeapType = [int,int]int;
 function IsGoodHeap(HeapType): bool;
 var $Heap: HeapType where IsGoodHeap($Heap);
 ");

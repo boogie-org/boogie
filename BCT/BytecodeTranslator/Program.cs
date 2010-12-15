@@ -13,22 +13,62 @@ using System.Collections.Generic;
 using Microsoft.Cci.Contracts;
 using Microsoft.Cci.ILToCodeModel;
 
+using Bpl = Microsoft.Boogie;
+
 namespace BytecodeTranslator {
+  public class CommandLineOptions
+  {
+    public static bool SplitFields = false;
+  }
+
   public class BCT {
 
     public static IMetadataHost Host;
 
-    static int Main(string[] args) {
+    public static bool Parse(string[] args, out string assemblyName)
+    {
+        assemblyName = "";
+        
+        foreach (string arg in args)
+        {
+            if (arg.StartsWith("/"))
+            {
+                if (arg == "/splitFields")
+                {
+                    CommandLineOptions.SplitFields = true;
+                }
+                else
+                {
+                    Console.WriteLine("Illegal option.");
+                    return false;
+                }
+            }
+            else if (assemblyName == "")
+            {
+                assemblyName = arg;
+            }
+            else
+            {
+                Console.WriteLine("Must specify only one input assembly.");
+                return false;
+            }
+        }
+        if (assemblyName == "")
+        {
+            Console.WriteLine("Must specify an input assembly.");
+            return false;
+        }
+        return true;
+    }
 
+    static int Main(string[] args)
+    {
       int result = 0;
-
-      if (args.Length < 1) {
-        Console.WriteLine("Must specify an input file.");
-        return result;
-      }
-
+      string assemblyName;
+      if (!Parse(args, out assemblyName))
+          return result;
       try {
-        result = DoRealWork(args[0]);
+        result = DoRealWork(assemblyName);
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed with uncaught exception: {0}", e.Message);
         Console.WriteLine("Stack trace: {0}", e.StackTrace);

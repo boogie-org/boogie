@@ -273,9 +273,7 @@ namespace BytecodeTranslator {
 
     #region Variable Access Helpers
     private void ProcessFieldVariable(IFieldReference field, IExpression/*?*/ instance, bool buildSelectExpr) {
-
-      TranslatedExpressions.Push( Bpl.Expr.Ident( 
-        this.sink.FindOrCreateFieldVariable(field.ResolvedField) ) );
+      TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(field.ResolvedField)));
 
       if (instance != null) {
         this.Visit(instance);
@@ -291,14 +289,18 @@ namespace BytecodeTranslator {
       // if the field access is not a targetexpression we build a select expression
       // otherwise the assignment visitor will build a mapassignment later on
       if (instance != null && buildSelectExpr) {
-        List<Bpl.Expr> elist = new List<Bpl.Expr>();
-
-        elist.Add(TranslatedExpressions.Pop());
-        elist.Add(TranslatedExpressions.Pop());
-        TranslatedExpressions.Push(Bpl.Expr.Select(new Bpl.IdentifierExpr(field.Token(), HeapVariable), elist));
+        Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
+        Bpl.Expr fieldExpr = TranslatedExpressions.Pop();
+        if (CommandLineOptions.SplitFields)
+        {
+            TranslatedExpressions.Push(Bpl.Expr.Select(fieldExpr, instanceExpr));
+        }
+        else
+        {
+            TranslatedExpressions.Push(Bpl.Expr.Select(new Bpl.IdentifierExpr(field.Token(), HeapVariable), new Bpl.Expr[] { instanceExpr, fieldExpr }));
+        }
       }
     }
-
 
     #endregion
 
@@ -437,12 +439,20 @@ namespace BytecodeTranslator {
         }
       } else {
         // Assume it is always 2? What should we check?
-        Bpl.ExprSeq args = new Bpl.ExprSeq();
-        args.Add(this.TranslatedExpressions.Pop());
-        args.Add(this.TranslatedExpressions.Pop());
-        StmtTraverser.StmtBuilder.Add(
-          Bpl.Cmd.MapAssign(assignment.Token(),
-          new Bpl.IdentifierExpr(assignment.Token(), this.HeapVariable), args, sourceexp));
+        Debug.Assert(TranslatedExpressions.Count == 2);
+        Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
+        Bpl.IdentifierExpr fieldExpr = (Bpl.IdentifierExpr) TranslatedExpressions.Pop();
+        if (CommandLineOptions.SplitFields)
+        {
+            StmtTraverser.StmtBuilder.Add(
+              Bpl.Cmd.MapAssign(assignment.Token(), fieldExpr, new Bpl.ExprSeq(instanceExpr), sourceexp));
+        }
+        else
+        {
+            StmtTraverser.StmtBuilder.Add(
+              Bpl.Cmd.MapAssign(assignment.Token(),
+              new Bpl.IdentifierExpr(assignment.Token(), this.HeapVariable), new Bpl.ExprSeq(instanceExpr, fieldExpr), sourceexp));
+        }
       }
 
     }

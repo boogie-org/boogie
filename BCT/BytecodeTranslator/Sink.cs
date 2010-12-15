@@ -93,23 +93,34 @@ namespace BytecodeTranslator {
     }
     public Dictionary<IParameterDefinition, MethodParameter> FormalMap = null;
 
-    private Dictionary<IFieldDefinition, Bpl.GlobalVariable> fieldVarMap = new Dictionary<IFieldDefinition,Bpl.GlobalVariable>();
+    private Dictionary<IFieldDefinition, Bpl.Variable> fieldVarMap = new Dictionary<IFieldDefinition,Bpl.Variable>();
 
     public Bpl.Variable FindOrCreateFieldVariable(IFieldDefinition field) {
-      Bpl.GlobalVariable v;
+      Bpl.Variable v;
       if (!fieldVarMap.TryGetValue(field, out v)) {
         string fieldname = field.ContainingTypeDefinition.ToString() + "." + field.Name.Value;
         Bpl.IToken tok = field.Token();
         Bpl.Type t = TranslationHelper.CciTypeToBoogie(field.Type.ResolvedType);
-        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
-
-        v = new Bpl.GlobalVariable(tok, tident);
-        fieldVarMap.Add(field, v);
+        
         if (field.IsStatic) {
-          this.TranslatedProgram.TopLevelDeclarations.Add(new Bpl.GlobalVariable(tok, tident));
+          Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
+          v = new Bpl.GlobalVariable(tok, tident);
         } else {
-          this.TranslatedProgram.TopLevelDeclarations.Add(new Bpl.Constant(tok, tident, true));
+            if (CommandLineOptions.SplitFields)
+            {
+                Bpl.Type mt = new Bpl.MapType(tok, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Bpl.Type.Int), t);
+                Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, mt);
+                v = new Bpl.GlobalVariable(tok, tident);
+            }
+            else
+            {
+                Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
+                v = new Bpl.Constant(tok, tident, true);
+            }
         }
+
+        this.TranslatedProgram.TopLevelDeclarations.Add(v);
+        fieldVarMap.Add(field, v);
       }
       return v;
     }
