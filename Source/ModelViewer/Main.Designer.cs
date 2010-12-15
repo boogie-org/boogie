@@ -58,6 +58,7 @@
       this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
       this.debugToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.modelsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+      this.reloadModelFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.stateViewMenu.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
       this.splitContainer1.Panel1.SuspendLayout();
@@ -284,6 +285,7 @@
       // fileToolStripMenuItem
       // 
       this.fileToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.reloadModelFileToolStripMenuItem,
             this.exitToolStripMenuItem});
       this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
       this.fileToolStripMenuItem.Size = new System.Drawing.Size(37, 20);
@@ -292,7 +294,7 @@
       // exitToolStripMenuItem
       // 
       this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-      this.exitToolStripMenuItem.Size = new System.Drawing.Size(92, 22);
+      this.exitToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
       this.exitToolStripMenuItem.Text = "&Exit";
       this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
       // 
@@ -357,6 +359,13 @@
       this.modelsToolStripMenuItem.Size = new System.Drawing.Size(58, 20);
       this.modelsToolStripMenuItem.Text = "&Models";
       // 
+      // reloadModelFileToolStripMenuItem
+      // 
+      this.reloadModelFileToolStripMenuItem.Name = "reloadModelFileToolStripMenuItem";
+      this.reloadModelFileToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
+      this.reloadModelFileToolStripMenuItem.Text = "&Reload model file";
+      this.reloadModelFileToolStripMenuItem.Click += new System.EventHandler(this.reloadModelFileToolStripMenuItem_Click);
+      // 
       // Main
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -415,6 +424,7 @@
     private System.Windows.Forms.ToolStripMenuItem debugToolStripMenuItem;
     private System.Windows.Forms.ToolStripMenuItem modelsToolStripMenuItem;
     private System.Windows.Forms.ToolStripMenuItem includeTheKitchenSinkToolStripMenuItem;
+    private System.Windows.Forms.ToolStripMenuItem reloadModelFileToolStripMenuItem;
 
 
   }

@@ -25,6 +25,8 @@ namespace Microsoft.Boogie.ModelViewer
     ToolStripMenuItem[] viewItems;
     Model currentModel;
     Model[] allModels;
+    int modelId;
+    string modelFileName;
     internal ViewOptions viewOpts = new ViewOptions();
 
     // TODO this should be dynamically loaded
@@ -65,7 +67,6 @@ namespace Microsoft.Boogie.ModelViewer
         throw new Exception("error: usage:  ModelViewer.exe MyProgram.model[:N]");  // (where does this exception go?)
       }
 
-      var modelId = 0;
       {
         var idx = filename.IndexOf(':');
         if (idx > 0) {
@@ -74,10 +75,8 @@ namespace Microsoft.Boogie.ModelViewer
         }
       }
 
-      using (var rd = File.OpenText(filename)) {
-        allModels = Model.ParseModels(rd).ToArray();
-      }
-      currentModel = allModels[modelId];
+      modelFileName = filename;
+      ReadModels();
 
       this.Text = Path.GetFileName(filename) + " - Boogie Verification Debugger";
 
@@ -89,22 +88,44 @@ namespace Microsoft.Boogie.ModelViewer
         }
       }
 
-      AddModelMenu();
       LoadModel(modelId);
+    }
+
+    private void ReadModels()
+    {
+      using (var rd = File.OpenText(modelFileName)) {
+        allModels = Model.ParseModels(rd).ToArray();
+      }
+      if (modelId >= allModels.Length)
+        modelId = 0;
+
+      currentModel = allModels[modelId];
+      AddModelMenu();      
     }
 
     private void LoadModel(int idx)
     {
       var i = 0;
+      
+      //var stateIdx = stateList.SelectedIndices.Count == 0 ? 0 : stateList.SelectedIndices[0];
+
+      modelId = idx;
       foreach (ToolStripMenuItem it in modelsToolStripMenuItem.DropDownItems) {
         it.Checked = i++ == idx;
       }
       currentModel = allModels[idx];
       BuildModel();
+
+      /*
+      if (stateList.Items.Count <= stateIdx)
+        stateIdx = 0;
+      stateList.Items[stateIdx].Selected = true;      
+       */
     }
 
     private void AddModelMenu()
     {
+      modelsToolStripMenuItem.DropDownItems.Clear();
       var idx = 0;
       foreach (var m in allModels) {
         var currIdx = idx++; // this local needs to be in this block
@@ -149,7 +170,12 @@ namespace Microsoft.Boogie.ModelViewer
           if (mapping.TryGetValue(selectedSkel, out newIt)) break;
           selectedSkel = selectedSkel.parent;
         }
+        if (currentState >= stateList.Items.Count)
+          currentState = 0;
+        if (previousState >= stateList.Items.Count)
+          previousState = -1;
         if (newIt != null) GotoNode(newIt);
+        SyncStateListValues();
         UpdateMatches(true);
       }
     }
@@ -363,8 +389,6 @@ namespace Microsoft.Boogie.ModelViewer
 
       if (previousState >= 0)
         stateList.Items[previousState].ForeColor = regularStateBrush.Color;
-      stateList.Items[currentState].ForeColor = previousStateBrush.Color;
-      stateList.Items[sel].ForeColor = currentStateBrush.Color;
 
       SetState(sel);
     }
@@ -376,6 +400,11 @@ namespace Microsoft.Boogie.ModelViewer
     }
 
     private void currentStateView_SelectedIndexChanged(object sender, EventArgs e)
+    {
+      SyncStateListValues();
+    }
+
+    private void SyncStateListValues()
     {
       var sel = SelectedNode();
       if (sel == null) return;
@@ -449,6 +478,10 @@ namespace Microsoft.Boogie.ModelViewer
           s.isMatch = newMatch;
         }
       }
+      
+      if (previousState >= 0)
+        stateList.Items[previousState].ForeColor = previousStateBrush.Color;
+      stateList.Items[currentState].ForeColor = currentStateBrush.Color;
 
       if (changed) {
         SyncListView(matches, matchesList, (di, _) => { di.IsMatchListItem = true; });
@@ -581,6 +614,12 @@ namespace Microsoft.Boogie.ModelViewer
     private void exitToolStripMenuItem_Click(object sender, EventArgs e)
     {
       this.Close();
+    }
+
+    private void reloadModelFileToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+      ReadModels();
+      LoadModel(modelId);
     }
   }
 
