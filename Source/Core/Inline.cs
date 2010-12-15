@@ -222,26 +222,17 @@ namespace Microsoft.Boogie {
             newCmds.Add(codeCopier.CopyCmd(cmd));
           } else {
             Contract.Assert(callCmd.Proc != null);
-            Procedure proc = null;
-            Implementation impl = null;
-            string calleeName = callCmd.Proc.Name;
-
+            Procedure proc = callCmd.Proc;
             int inline = -1;
 
-            // *** now we do not allow constructors to be inlined
-            if (!calleeName.Contains("..ctor")) {
-              // FIXME why on earth are we searching by name?!
-              bool implExists = FindProcImpl(program, calleeName, out proc, out impl);
-              Contract.Assume(!implExists || (proc != null && impl != null));
-              if (implExists) {
-                inline = GetInlineCount(cce.NonNull(impl));
-              }
+            Implementation impl = FindProcImpl(program, proc);
+            if (impl != null) {
+              inline = GetInlineCount(impl);
+              Contract.Assert(0 <= inline);
             }
 
-            Contract.Assert(inline == -1 || impl != null);
-
             if (inline > 0) { // at least one block should exist
-              Contract.Assume(impl != null && proc != null);
+              Contract.Assume(impl != null);
               Contract.Assert(cce.NonNull(impl.OriginalBlocks).Count > 0);
               inlinedSomething = true;
 
@@ -527,37 +518,15 @@ namespace Microsoft.Boogie {
       return newTransferCmd;
     }
 
-    protected static bool FindProcImpl(Program program, string procName, out Procedure outProc, out Implementation outImpl) {
-      Contract.Requires(procName != null);
+    protected static Implementation FindProcImpl(Program program, Procedure proc) {
       Contract.Requires(program != null);
-      // this assumes that there is at most one procedure and only one associated implementation in the current context
-
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Implementation impl = decl as Implementation;
-        if (impl != null) {
-          if (impl.Name.Equals(procName)) {
-            Contract.Assert(impl.Proc != null);
-            outProc = impl.Proc;
-            outImpl = impl;
-            return true;
-          }
+        if (impl != null && impl.Proc == proc) {
+          return impl;
         }
       }
-
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        Procedure proc = decl as Procedure;
-        if (proc != null) {
-          if (proc.Name.Equals(procName)) {
-            outProc = proc;
-            outImpl = null;
-            return false;
-          }
-        }
-      }
-
-      outProc = null;
-      outImpl = null;
-      return false;
+      return null;
     }
   }
 
