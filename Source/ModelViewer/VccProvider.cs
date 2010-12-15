@@ -252,6 +252,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     {
       if (name.StartsWith("L#") || name.StartsWith("P#"))
         return name.Substring(2);
+      if (name.StartsWith("SL#") || name.StartsWith("SP#"))
+        return name.Substring(3);
       if (name.StartsWith("res__") && viewOpts.ViewLevel >= 1)
         return name;
       return null;
@@ -582,7 +584,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       if (p != null) return p;
       p = f_spec_ptr_to.TryEval(tp);
       if (p != null) return p;
-      f_ptr_to.AddApp(model.GetElement("*ptr_" + tp.ToString()), tp);
+      var nm = model.MkFunc("*ptrto_" + TypeName(tp), 0).GetConstant();
+      f_ptr_to.AddApp(nm, tp);
       return f_ptr_to.TryEval(tp);
     }
 
