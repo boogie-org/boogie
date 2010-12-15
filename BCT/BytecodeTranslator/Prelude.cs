@@ -13,6 +13,15 @@ const null: int;
 type HeapType = [int,int]int;
 function IsGoodHeap(HeapType): bool;
 var $Heap: HeapType where IsGoodHeap($Heap);
+
+var $Alloc: [int] bool;
+procedure Alloc() returns (x: int)
+modifies $Alloc;
+{
+  assume $Alloc[x] == false;
+  $Alloc[x] := true;
+}
+
 ");
     }
   }

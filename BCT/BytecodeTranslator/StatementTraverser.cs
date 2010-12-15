@@ -67,7 +67,7 @@ namespace BytecodeTranslator
 
     public override void Visit(IAssumeStatement assumeStatement) {
       StmtBuilder.Add(
-        new Bpl.AssertCmd(assumeStatement.Token(), ExpressionFor(assumeStatement.Condition))
+        new Bpl.AssumeCmd(assumeStatement.Token(), ExpressionFor(assumeStatement.Condition))
         );
     }
 

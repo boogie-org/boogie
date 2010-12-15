@@ -80,6 +80,18 @@ namespace BytecodeTranslator {
     }
 
     public static string CreateUniqueMethodName(IMethodDefinition method) {
+      if (method.ContainingType.ToString() == "Poirot.Poirot")
+      {
+          string name = method.Name.Value;
+          if (name == "BeginAtomic")
+              return "corral_atomic_begin";
+          else if (name == "EndAtomic")
+              return "corral_atomic_end";
+          else if (name == "CurrentThreadId")
+              return "corral_getThreadID";
+          else if (name == "Nondet")
+              return "poirot_nondet";
+      }
       return method.ContainingType.ToString() + "." + method.Name.Value + "$" + method.Type.ResolvedType.ToString();
     }
 
