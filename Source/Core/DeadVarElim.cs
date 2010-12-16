@@ -163,10 +163,16 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Cmd ret = base.VisitCallCmd(callCmd);
       Procedure callee = callCmd.Proc;
-      if (callee != null && modSets.ContainsKey(callee)) {
+      if (callee == null)
+          return ret;
+      if (modSets.ContainsKey(callee)) {
         foreach (Variable var in modSets[callee]) {
           ProcessVariable(var);
         }
+      }
+      foreach (IdentifierExpr ie in callCmd.Outs)
+      {
+        ProcessVariable(ie.Decl);
       }
       return ret;
     }
@@ -175,8 +181,6 @@ namespace Microsoft.Boogie {
       if (var == null)
         return;
       if (!(var is GlobalVariable))
-        return;
-      if (var.Name == "alloc")
         return;
       if (!modSets.ContainsKey(localProc)) {
         modSets[localProc] = new HashSet<Variable/*!*/>();
