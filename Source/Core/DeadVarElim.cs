@@ -80,13 +80,22 @@ namespace Microsoft.Boogie {
       }
       foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
         Contract.Assert(decl != null);
-        if (decl is Procedure && !implementedProcs.Contains(cce.NonNull((Procedure)decl))) {
-          proc = (Procedure)decl;
-          foreach (IdentifierExpr/*!*/ expr in proc.Modifies) {
-            Contract.Assert(expr != null);
-            ProcessVariable(expr.Decl);
-          }
-          proc = null;
+        if (decl is Procedure)
+        {
+            if (!implementedProcs.Contains(cce.NonNull((Procedure)decl)))
+            {
+                proc = (Procedure)decl;
+                foreach (IdentifierExpr/*!*/ expr in proc.Modifies)
+                {
+                    Contract.Assert(expr != null);
+                    ProcessVariable(expr.Decl);
+                }
+                proc = null;
+            }
+            else
+            {
+                modSets.Add(decl as Procedure, new HashSet<Variable>());
+            }
         }
       }
 
@@ -162,6 +171,11 @@ namespace Microsoft.Boogie {
       //Contract.Requires(callCmd != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Cmd ret = base.VisitCallCmd(callCmd);
+      foreach (IdentifierExpr ie in callCmd.Outs)
+      {
+          if(ie != null) ProcessVariable(ie.Decl);
+      }
+
       Procedure callee = callCmd.Proc;
       if (callee == null)
           return ret;
@@ -169,10 +183,6 @@ namespace Microsoft.Boogie {
         foreach (Variable var in modSets[callee]) {
           ProcessVariable(var);
         }
-      }
-      foreach (IdentifierExpr ie in callCmd.Outs)
-      {
-        ProcessVariable(ie.Decl);
       }
       return ret;
     }
