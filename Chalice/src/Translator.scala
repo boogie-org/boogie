@@ -682,7 +682,10 @@ class Translator {
         // create a new token
         BLocal(tokenV) :: Havoc(tokenId) :: bassume(nonNull(tokenId)) ::
         // the following assumes help in proving that the token is fresh
-        bassume(etran.Heap.select(tokenId, "joinable") ==@ 0) ::
+        // the first statement used to be an assume, but this caused an unsoundness in combination with the storing of a heap snapshot
+        // in the location of a predicate. The assume constrained both the current heap and the snapshot, whereas the assignment
+        // changes only the current heap (which is then different from a previously stored snapshot.
+        etran.Heap.store(tokenId, "joinable", 0) ::
         bassume(new Boogie.MapSelect(etran.Mask, tokenId, "joinable", "perm$N")==@ 0) ::
         bassume(new Boogie.MapSelect(etran.Mask, tokenId, "joinable", "perm$R")==@ 0) ::
         etran.IncPermission(tokenId, "joinable", 100) ::
