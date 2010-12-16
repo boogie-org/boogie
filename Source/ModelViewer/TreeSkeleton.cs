@@ -159,7 +159,7 @@ namespace Microsoft.Boogie.ModelViewer
       var node = displayNodes[stateId];
       if (node == null)
         return false;
-      var s1 = node.Name.ToLower();
+      var s1 = LongName(stateId).ToLower();
       var s2 = node.Value.ToLower();
 
       if (eq != null && node.Element != eq)
