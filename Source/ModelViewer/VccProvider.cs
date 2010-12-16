@@ -39,7 +39,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
                                f_select_value, f_field, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t, f_select_ptr,
                                f_owners, f_closed, f_roots, f_timestamps, f_select_bool, f_select_int, f_is_null, f_good_state,
                                f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, f_field_plus,
-                               f_is_sequential_field, f_is_volatile_field;
+                               f_is_sequential_field, f_is_volatile_field, f_type_project_0;
     public readonly Model.Element tp_object, tp_mathint, tp_bool, tp_state, tp_ptrset;
     public readonly Model.Element elt_me, elt_null;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
@@ -85,6 +85,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_field_plus = m.MkFunc("$field_plus", 2);
       f_is_sequential_field = m.MkFunc("$is_sequential_field", 1);
       f_is_volatile_field = m.MkFunc("$is_volatile_field", 1);
+      f_type_project_0 = m.MkFunc("$type_project_0", 1);
 
       tp_bool = m.GetFunc("^^bool").GetConstant();
       tp_mathint = m.GetFunc("^^mathint").GetConstant();
@@ -240,11 +241,21 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
     }
 
-    private string DecodeToken(string name)
+    private string DecodeToken(string name, ref Model.Element tp)
     {
-      var idx = name.IndexOf("^$");
+      var idx = name.LastIndexOf("$");
       if (idx < 0) return null;
-      var words = name.Substring(idx + 2).Split('.', '^', '!');
+      var words = name.Substring(idx + 1).Split('.', '^', '!', '#', '@');
+      if (words.Length > 3 && words[3].StartsWith("dt")) {
+        var tpName = words[3].Replace("dt", "#distTp");
+        var f = model.TryGetFunc(tpName);
+        if (f != null) {
+          tp = f.GetConstant();
+          //var res = f_type_project_0.TryEval(ptr);
+          //if (res != null)
+          //  tp = res;
+        }
+      }
       return string.Format("{0}({1},{2})", fileNameMapping[int.Parse(words[0])], words[1], words[2]);
     }
 
@@ -551,12 +562,14 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
     }
 
-    string SkolemName(Model.Func f)
+    string SkolemName(Model.Func f, ref Model.Element tp)
     {
       if (f.Name.IndexOf('!') > 0) {
-        var tok = DecodeToken(f.Name);
+        var tok = DecodeToken(f.Name, ref tp);
         if (tok != null) {
-          var baseName = f.Name.Substring(0, f.Name.IndexOf('^'));
+          var baseName = f.Name.Substring(0, f.Name.LastIndexOf('$'));
+          if (baseName.StartsWith("Q#"))
+            baseName = baseName.Substring(2);
           return string.Format("{0}@{1}", baseName, ShortenToken(tok, 10));
         }
       }
@@ -567,11 +580,16 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     {
       var skolems = new List<ElementNode>();
 
+      Model.Element tp = null;
+
       foreach (var f in model.Functions) {
         if (f.Arity != 0) continue;
-        var s = SkolemName(f);
+        var s = SkolemName(f, ref tp);        
         if (s != null) {
-          skolems.Add(new VariableNode(state, s, f.GetConstant(), GuessType(f.GetConstant())));
+          if (tp == null)
+            tp = GuessType(f.GetConstant());
+          var val = WrapForUse(f.GetConstant(), tp);
+          skolems.Add(new VariableNode(state, s, val, tp));
         }
       }
 
