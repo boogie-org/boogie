@@ -362,11 +362,24 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
     public string ConstantFieldName(Model.Element elt)
     {
-      var bestScore = int.MaxValue;
+      string res;
+      IsConstantField(elt, out res);
+      return res;
+    }
+
+    public bool IsConstantField(Model.Element elt)
+    {
+      string dummy;
+      return IsConstantField(elt, out dummy);
+    }
+
+    public bool IsConstantField(Model.Element elt, out string theName)
+    {
+      var bestScore = int.MinValue;
       string bestName = null;
 
       foreach (var t in elt.Names) {
-        var score = int.MaxValue;
+        var score = int.MinValue;
         string name = null;
         if (t.Args.Length == 0) {
           name = t.Func.Name;
@@ -381,13 +394,14 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           name = string.Format("{0}<{1}>", t.Func.Name.Substring(3), TypeName(t.Args[0]));
           score = 5;
         }
-        if (score < bestScore) {
+        if (score > bestScore) {
           bestScore = score;
           bestName = name;
         }
       }
 
-      return bestName;
+      theName = bestName;
+      return bestScore >= 5;
     }
 
     bool IsState(Model.Element elt)
@@ -607,6 +621,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return f_ptr_to.TryEval(tp);
     }
 
+    private bool IsArrayField(Model.Element ptr)
+    {
+      return ptr != null && f_idx.TryEval(ptr, model.TryMkElement("0")) != null;
+    }
+
     public IEnumerable<ElementNode> GetExpansion(StateNode state, Model.Element elt, Model.Element tp, Model.Element addrOf)
     {
       List<ElementNode> result = new List<ElementNode>();
@@ -627,19 +646,12 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           foreach (var fld in f_select_field.AppsWithArg(0, heap)) {
             var val = f_select_value.TryEval(fld.Result, elt);
             if (val != null) {
-              var ftp = f_field_type.TryEval(fld.Args[1]);
-              val = WrapForUse(val, ftp);
-              var nm = ConstantFieldName(fld.Args[1]);
-              var edgname = nm == null ? new EdgeName(fld.Args[1].ToString()) : new EdgeName(this, nm);
-
-              var cat = NodeCategory.PhysField;
-              if (f_is_ghost_field.IsTrue(fld.Args[1]))
-                cat = NodeCategory.SpecField;
-              if (nm != null && nm.Contains("<"))
-                cat = NodeCategory.MethodologyProperty;
-              var addr = f_ptr.TryEval(fld.Args[1], elt);
+              var field = fld.Args[1];
+              if (!IsConstantField(field) && viewOpts.ViewLevel <= 2)
+                continue;              
+              var addr = f_ptr.TryEval(field, elt);
               if (addr != null) addresses.Add(addr);
-              result.Add(new FieldNode(state, edgname, val, ftp) { Category = cat, AddrOf = addr });
+              result.Add(BuildFieldNode(state, addr, field, val, addr));
             }
           }
           //result.Sort(CompareFields);
@@ -649,6 +661,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           foreach (var app in f_idx.AppsWithArg(0, elt)) {
             var addr = app.Result;
             Model.Element val = null, atp = tp;
+
+            addresses.Add(app.Result);
 
             foreach (var papp in f_ptr.AppsWithResult(addr)) {
               var tmp = f_select_value.OptEval(f_select_field.OptEval(heap, papp.Args[0]), papp.Args[1]);
@@ -662,6 +676,14 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             if (val != null)
               val = WrapForUse(val, atp);
             result.Add(new MapletNode(state, new EdgeName(this, "[%0]", app.Args[1]), val, atp) { Category = NodeCategory.Maplet, AddrOf = addr });
+          }
+        }
+
+        if (elt != null) {
+          foreach (var ptr in f_ptr.AppsWithArg(1, elt)) {
+            if (addresses.Contains(ptr.Result)) continue;
+            if (!IsConstantField(ptr.Args[0])) continue;
+            result.Add(BuildFieldNode(state, ptr.Result, ptr.Args[0], null, ptr.Result));
           }
         }
 
@@ -726,6 +748,31 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return result;
     }
 
+    private FieldNode BuildFieldNode(StateNode state, Model.Element ptr, Model.Element field, Model.Element val, Model.Element addr)
+    {
+      var ftp = f_field_type.TryEval(field);
+      if (val != null)
+        val = WrapForUse(val, ftp);
+
+      if (IsArrayField(ptr)) {
+        val = addr;
+        addr = null;
+        ftp = PtrTo(ftp);
+      }
+
+      var nm = ConstantFieldName(field);
+      var edgname = nm == null ? new EdgeName(field.ToString()) : new EdgeName(this, nm);
+
+      var cat = NodeCategory.PhysField;
+      if (f_is_ghost_field.IsTrue(field))
+        cat = NodeCategory.SpecField;
+      if (nm != null && nm.Contains("<"))
+        cat = NodeCategory.MethodologyProperty;
+
+      var fieldNode = new FieldNode(state, edgname, val, ftp) { Category = cat, AddrOf = addr };
+      return fieldNode;
+    }
+
     public override IEnumerable<IState> States
     {
       get
@@ -738,7 +785,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     {
       var vm = this;
 
-      if (name.Contains("[") || name.Contains("'") || name.Contains("-"))
+      if (name.Contains("[") || name.Contains("'"))
         name = "";
 
       if (name != "")
