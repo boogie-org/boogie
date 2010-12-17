@@ -489,7 +489,9 @@ namespace Microsoft.Boogie {
         return PipelineOutcome.FatalError;
       }
 
-      foreach (Declaration decl in program.TopLevelDeclarations) {
+      // operate on a stable copy, in case it gets updated while we're running
+      var decls = program.TopLevelDeclarations.ToArray();
+      foreach (Declaration decl in decls) {
         Contract.Assert(decl != null);
         Implementation impl = decl as Implementation;
         if (impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification) {

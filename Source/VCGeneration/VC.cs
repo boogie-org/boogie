@@ -2270,7 +2270,7 @@ namespace VC {
         List<Expr> axioms;
         List<Function> functions;
         LambdaHelper.Desugar(impl, out axioms, out functions);
-        // TODO: do something with functions (Z3 currently doesn't need them)
+        program.TopLevelDeclarations.AddRange(functions);
 
         if (axioms.Count > 0) {
           CmdSeq cmds = new CmdSeq();
