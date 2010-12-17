@@ -16,7 +16,6 @@ using System.Diagnostics.Contracts;
 using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;
 
-
 namespace VC {
   using Bpl = Microsoft.Boogie;
 
@@ -2274,7 +2273,8 @@ namespace VC {
 
         if (axioms.Count > 0) {
           CmdSeq cmds = new CmdSeq();
-          foreach (Expr ax in axioms) {Contract.Assert(ax != null);
+          foreach (Expr ax in axioms) {
+            Contract.Assert(ax != null);
             cmds.Add(new AssumeCmd(ax.tok, ax));
           }
           Block entryBlock = cce.NonNull( impl.Blocks[0]);
@@ -2283,6 +2283,7 @@ namespace VC {
         }
       }
 
+      HandleSelectiveChecking(impl);
 
 
 //      #region Constant Folding
@@ -2296,6 +2297,59 @@ namespace VC {
 //      #endregion
 
       return gotoCmdOrigins;
+    }
+
+    private static void HandleSelectiveChecking(Implementation impl)
+    {
+      if (QKeyValue.FindBoolAttribute(impl.Attributes, "selective_checking") ||
+          QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "selective_checking")) {
+
+        var startPoints = new List<Block>();
+        foreach (var b in impl.Blocks) {
+          foreach (Cmd c in b.Cmds) {
+            var p = c as PredicateCmd;
+            if (p != null && QKeyValue.FindBoolAttribute(p.Attributes, "start_checking_here")) {
+              startPoints.Add(b);
+              break;
+            }
+          }
+        }
+
+        var blocksToCheck = new HashSet<Block>();
+        foreach (var b in startPoints) {
+          var todo = new Stack<Block>();
+          var wasThere = blocksToCheck.Contains(b);
+          todo.Push(b);
+          while (todo.Count > 0) {
+            var x = todo.Pop();
+            if (blocksToCheck.Contains(x)) continue;
+            blocksToCheck.Add(x);
+            var ex = x.TransferCmd as GotoCmd;
+            if (ex != null)
+              foreach (Block e in ex.labelTargets)
+                todo.Push(e);
+          }
+          if (!wasThere) blocksToCheck.Remove(b);
+        }
+
+        foreach (var b in impl.Blocks) {
+          if (blocksToCheck.Contains(b)) continue;
+          var newCmds = new CmdSeq();
+          var copyMode = false;
+          foreach (Cmd c in b.Cmds) {
+            var p = c as PredicateCmd;
+            if (p != null && QKeyValue.FindBoolAttribute(p.Attributes, "start_checking_here"))
+              copyMode = true;
+            var asrt = c as AssertCmd;
+            if (copyMode || asrt == null)
+              newCmds.Add(c);
+            else
+              newCmds.Add(AssertTurnedIntoAssume(asrt));
+          }
+
+          b.Cmds = newCmds;
+        }
+      }
     }
 
     // Used by lazy/stratified inlining
