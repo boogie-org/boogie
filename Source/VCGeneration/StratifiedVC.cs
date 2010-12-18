@@ -886,7 +886,7 @@ namespace VC
             GetVC(impl, program, callback, out vc, out mainLabel2absy, out reporter);
 
             // Find all procedure calls in vc and put labels on them      
-            FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, mainLabel2absy);
+            FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
             calls.setCurrProcAsMain();
             vc = calls.Mutate(vc, true);
             reporter.SetCandidateHandler(calls);
@@ -1467,6 +1467,8 @@ namespace VC
             public Dictionary<string, int> persistentNameInv;
             // Used to record candidates recently added
             public HashSet<int> recentlyAddedCandidates;
+            // Name of main procedure
+            private string mainProcName;
 
             // User info -- to decrease/increase calculcation of recursion bound
             public Dictionary<int, int> recursionIncrement;
@@ -1492,13 +1494,14 @@ namespace VC
 
             public FCallHandler(VCExpressionGenerator/*!*/ gen,
                                   Dictionary<string/*!*/, StratifiedInliningInfo/*!*/>/*!*/ implName2StratifiedInliningInfo,
-                                  Hashtable/*<int, Absy!>*//*!*/ mainLabel2absy)
+                                  string mainProcName, Hashtable/*<int, Absy!>*//*!*/ mainLabel2absy)
                 : base(gen)
             {
                 Contract.Requires(gen != null);
                 Contract.Requires(cce.NonNullElements(implName2StratifiedInliningInfo));
                 Contract.Requires(mainLabel2absy != null);
                 this.implName2StratifiedInliningInfo = implName2StratifiedInliningInfo;
+                this.mainProcName = mainProcName;
                 this.mainLabel2absy = mainLabel2absy;
                 id2Candidate = new Dictionary<int, VCExprNAry>();
                 id2ControlVar = new Dictionary<int, VCExprVar>();
@@ -1556,8 +1559,7 @@ namespace VC
             // Returns the name of the procedure corresponding to candidate id
             public string getProc(int id)
             {
-                // We don't have the name of the main procedure
-                if (id == 0) return "main";
+                if (id == 0) return mainProcName;
 
                 return (id2Candidate[id].Op as VCExprBoogieFunctionOp).Func.Name;
             }
@@ -1580,34 +1582,6 @@ namespace VC
                 persistentNameCache[top_id] = ret;
                 persistentNameInv[ret] = top_id;
                 return ret;
-                 /*
-                string stack = "";
-                var id = top_id;
-                while (candidateParent.ContainsKey(id))
-                {
-                    id = candidateParent[id];
-                    var pname = getProc(id);
-                    //if (pname == "") pname = "main";
-                    stack += "_" + getProc(id);
-                }
-
-                var n = getProc(top_id);
-                //if (n == "") n = "main";
-                
-                var ret = n + "_cs=" + stack;
-                if (persistentNameMap.ContainsKey(ret))
-                {
-                    callGraphMapping[persistentNameMap[ret]] = top_id;
-                    return persistentNameMap[ret];
-                }
-                else
-                {
-                    int v = persistentNameMap.Count;
-                    persistentNameMap.Add(ret, v);
-                    callGraphMapping[v] = top_id;
-                    return v;
-                }
-                */
             }
 
             public int getCandidateFromGraphNode(string n)
