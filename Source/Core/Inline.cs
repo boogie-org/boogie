@@ -228,7 +228,6 @@ namespace Microsoft.Boogie {
             Implementation impl = FindProcImpl(program, proc);
             if (impl != null) {
               inline = GetInlineCount(impl);
-              Contract.Assert(0 <= inline);
             }
 
             if (inline > 0) { // at least one block should exist
