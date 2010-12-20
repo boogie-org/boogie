@@ -56,4 +56,23 @@ namespace RegressionTestInput {
 
 
   }
+  class ClassWithBoolTypes {
+    static bool staticB;
+    bool b;
+
+    static bool M(int x, int y) {
+      return x < y;
+    }
+
+    public ClassWithBoolTypes(bool z) {
+      this.b = z;
+      if (z) ClassWithBoolTypes.staticB = z;
+    }
+
+    public static void Main() {
+      ClassWithBoolTypes.M(3, 4);
+    }
+
+  }
+
 }

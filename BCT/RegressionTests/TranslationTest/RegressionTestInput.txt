@@ -25,6 +25,66 @@ implementation RegressionTestInput.AsyncAttribute..ctor$System.Void(this: int)
 
 
 
+var RegressionTestInput.ClassWithBoolTypes.staticB: bool;
+
+const unique RegressionTestInput.ClassWithBoolTypes.b: bool;
+
+procedure RegressionTestInput.ClassWithBoolTypes.M$System.Boolean(x$in: int, y$in: int) returns ($result: bool);
+
+
+
+implementation RegressionTestInput.ClassWithBoolTypes.M$System.Boolean(x$in: int, y$in: int) returns ($result: bool)
+{
+  var x: int;
+  var y: int;
+  var local_0: bool;
+
+    x := x$in;
+    y := y$in;
+    local_0 := x < y;
+    $result := local_0;
+    return;
+}
+
+
+
+procedure RegressionTestInput.ClassWithBoolTypes..ctor$System.Void(this: int, z$in: bool);
+
+
+
+implementation RegressionTestInput.ClassWithBoolTypes..ctor$System.Void(this: int, z$in: bool)
+{
+  var z: bool;
+
+    z := z$in;
+    $Heap[this, RegressionTestInput.ClassWithBoolTypes.b] := z;
+    if (z)
+    {
+        RegressionTestInput.ClassWithBoolTypes.staticB := z;
+    }
+    else
+    {
+    }
+
+    return;
+}
+
+
+
+procedure RegressionTestInput.ClassWithBoolTypes.Main$System.Void();
+
+
+
+implementation RegressionTestInput.ClassWithBoolTypes.Main$System.Void()
+{
+  var $tmp0: bool;
+
+    call $tmp0 := RegressionTestInput.ClassWithBoolTypes.M$System.Boolean(3, 4);
+    return;
+}
+
+
+
 var RegressionTestInput.Class0.StaticInt: int;
 
 procedure RegressionTestInput.Class0.StaticMethod$System.Int32(x$in: int) returns ($result: int);
@@ -52,15 +112,15 @@ implementation RegressionTestInput.Class0.M$System.Void(this: int, x$in: int)
 {
   var x: int;
   var __temp_1: int;
-  var $tmp0: int;
+  var $tmp1: int;
   var __temp_2: int;
   var __temp_3: int;
   var local_0: int;
 
     x := x$in;
-    $tmp0 := x;
-    assert $tmp0 != 0;
-    __temp_1 := 5 / $tmp0;
+    $tmp1 := x;
+    assert $tmp1 != 0;
+    __temp_1 := 5 / $tmp1;
     __temp_2 := 3;
     __temp_3 := __temp_2;
     x := __temp_3;
@@ -80,10 +140,10 @@ procedure RegressionTestInput.Class0.NonVoid$System.Int32(this: int) returns ($r
 implementation RegressionTestInput.Class0.NonVoid$System.Int32(this: int) returns ($result: int)
 {
   var local_0: int;
-  var $tmp1: int;
+  var $tmp2: int;
 
-    call $tmp1 := RegressionTestInput.Class0.StaticMethod$System.Int32(3);
-    local_0 := 3 + RegressionTestInput.Class0.StaticInt + $tmp1;
+    call $tmp2 := RegressionTestInput.Class0.StaticMethod$System.Int32(3);
+    local_0 := 3 + RegressionTestInput.Class0.StaticInt + $tmp2;
     $result := local_0;
     return;
 }
@@ -168,11 +228,11 @@ implementation RegressionTestInput.Class0.CallAsyncMethod$System.Int32(this: int
 {
   var y: int;
   var local_0: int;
-  var $tmp2: int;
+  var $tmp3: int;
 
     y := y$in;
-    call {:async} $tmp2 := RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this, y);
-    local_0 := $tmp2;
+    call {:async} $tmp3 := RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this, y);
+    local_0 := $tmp3;
     $result := local_0;
     return;
 }

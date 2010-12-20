@@ -103,9 +103,8 @@ namespace BytecodeTranslator {
 
         #region Look for Returnvalue
 
-        // This is just a hack, should be replaced with something more robust
         if (method.Type.TypeCode != PrimitiveTypeCode.Void) {
-          Bpl.Type rettype = Bpl.Type.Int;
+          Bpl.Type rettype = TranslationHelper.CciTypeToBoogie(method.Type);
           out_count++;
           this.sink.RetVariable = new Bpl.Formal(method.Token(),
               new Bpl.TypedIdent(method.Type.Token(),

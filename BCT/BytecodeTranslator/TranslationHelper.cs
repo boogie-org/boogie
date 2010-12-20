@@ -98,7 +98,9 @@ namespace BytecodeTranslator {
     #region Temp Stuff that must be replaced as soon as there is real code to deal with this
 
     public static Bpl.Type CciTypeToBoogie(ITypeReference type) {
-      if (TypeHelper.IsPrimitiveInteger(type))
+      if (TypeHelper.TypesAreEquivalent(type, type.PlatformType.SystemBoolean))
+        return Bpl.Type.Bool;
+      else if (TypeHelper.IsPrimitiveInteger(type))
         return Bpl.Type.Int;
       else
         return Bpl.Type.Int; // BUG! This is where we need to return "ref" for a reference type
