@@ -31,14 +31,17 @@ namespace BytecodeTranslator {
 
     public readonly IContractProvider ContractProvider;
 
-    public Bpl.Variable HeapVariable;
-    
+    public readonly ISourceLocationProvider/*?*/ SourceLocationProvider;
 
-    public MetadataTraverser(Sink sink, IContractProvider cp)
+    public Bpl.Variable HeapVariable;
+
+
+    public MetadataTraverser(Sink sink, IContractProvider cp, ISourceLocationProvider/*?*/ sourceLocationProvider)
       : base() {
       this.sink = sink;
       this.factory = sink.Factory;
       ContractProvider = cp;
+      this.SourceLocationProvider = sourceLocationProvider;
     }
 
     public Bpl.Program TranslatedProgram {
@@ -223,7 +226,7 @@ namespace BytecodeTranslator {
           throw new NotImplementedException("abstract methods are not yet implemented");
         }
 
-        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink);
+        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.SourceLocationProvider);
 
         #region Add assignements from In-Params to local-Params
 

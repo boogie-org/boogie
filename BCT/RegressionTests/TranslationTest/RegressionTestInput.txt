@@ -41,7 +41,9 @@ implementation RegressionTestInput.ClassWithBoolTypes.M$System.Boolean(x$in: int
 
     x := x$in;
     y := y$in;
+    assume {:filename "Class1.cs"} {:line 64} true;
     local_0 := x < y;
+    assume {:filename "Class1.cs"} {:line 65} true;
     $result := local_0;
     return;
 }
@@ -57,9 +59,13 @@ implementation RegressionTestInput.ClassWithBoolTypes..ctor$System.Void(this: in
   var z: bool;
 
     z := z$in;
+    assume {:filename "Class1.cs"} {:line 67} true;
+    assume {:filename "Class1.cs"} {:line 68} true;
     $Heap[this, RegressionTestInput.ClassWithBoolTypes.b] := z;
+    assume {:filename "Class1.cs"} {:line 16707566} true;
     if (z)
     {
+        assume {:filename "Class1.cs"} {:line 69} true;
         RegressionTestInput.ClassWithBoolTypes.staticB := z;
     }
     else
@@ -79,7 +85,9 @@ implementation RegressionTestInput.ClassWithBoolTypes.Main$System.Void()
 {
   var $tmp0: bool;
 
+    assume {:filename "Class1.cs"} {:line 73} true;
     call $tmp0 := RegressionTestInput.ClassWithBoolTypes.M$System.Boolean(3, 4);
+    assume {:filename "Class1.cs"} {:line 74} true;
     return;
 }
 
@@ -97,7 +105,9 @@ implementation RegressionTestInput.Class0.StaticMethod$System.Int32(x$in: int) r
   var local_0: int;
 
     x := x$in;
+    assume {:filename "Class1.cs"} {:line 17} true;
     local_0 := x + 1;
+    assume {:filename "Class1.cs"} {:line 18} true;
     $result := local_0;
     return;
 }
@@ -122,12 +132,15 @@ implementation RegressionTestInput.Class0.M$System.Void(this: int, x$in: int)
     assert $tmp1 != 0;
     __temp_1 := 5 / $tmp1;
     __temp_2 := 3;
+    assume {:filename "Class1.cs"} {:line 21} true;
     __temp_3 := __temp_2;
     x := __temp_3;
     local_0 := __temp_1 + __temp_2;
     assert x == 3 && local_0 <= 8;
+    assume {:filename "Class1.cs"} {:line 23} true;
     RegressionTestInput.Class0.StaticInt := local_0;
     assert local_0 == RegressionTestInput.Class0.StaticInt;
+    assume {:filename "Class1.cs"} {:line 25} true;
     return;
 }
 
@@ -142,8 +155,10 @@ implementation RegressionTestInput.Class0.NonVoid$System.Int32(this: int) return
   var local_0: int;
   var $tmp2: int;
 
+    assume {:filename "Class1.cs"} {:line 28} true;
     call $tmp2 := RegressionTestInput.Class0.StaticMethod$System.Int32(3);
     local_0 := 3 + RegressionTestInput.Class0.StaticInt + $tmp2;
+    assume {:filename "Class1.cs"} {:line 29} true;
     $result := local_0;
     return;
 }
@@ -158,8 +173,11 @@ implementation RegressionTestInput.Class0.OutParam$System.Int32(this: int) retur
 {
   var local_0: int;
 
+    assume {:filename "Class1.cs"} {:line 32} true;
     x$out := 3 + RegressionTestInput.Class0.StaticInt;
+    assume {:filename "Class1.cs"} {:line 33} true;
     local_0 := x$out;
+    assume {:filename "Class1.cs"} {:line 34} true;
     $result := local_0;
     return;
 }
@@ -175,9 +193,13 @@ implementation RegressionTestInput.Class0.RefParam$System.Int32(this: int, x$in:
   var local_0: int;
 
     x$out := x$in;
+    assume {:filename "Class1.cs"} {:line 37} true;
     x$out := x$out + 1;
+    assume {:filename "Class1.cs"} {:line 38} true;
     RegressionTestInput.Class0.StaticInt := x$out;
+    assume {:filename "Class1.cs"} {:line 39} true;
     local_0 := x$out;
+    assume {:filename "Class1.cs"} {:line 40} true;
     $result := local_0;
     return;
 }
@@ -194,9 +216,13 @@ implementation RegressionTestInput.Class0.AssignToInParam$System.Int32(this: int
   var local_0: int;
 
     x := x$in;
+    assume {:filename "Class1.cs"} {:line 43} true;
     x := x + 1;
+    assume {:filename "Class1.cs"} {:line 44} true;
     RegressionTestInput.Class0.StaticInt := x;
+    assume {:filename "Class1.cs"} {:line 45} true;
     local_0 := x;
+    assume {:filename "Class1.cs"} {:line 46} true;
     $result := local_0;
     return;
 }
@@ -213,7 +239,9 @@ implementation RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMetho
   var local_0: int;
 
     x := x$in;
+    assume {:filename "Class1.cs"} {:line 50} true;
     local_0 := x;
+    assume {:filename "Class1.cs"} {:line 51} true;
     $result := local_0;
     return;
 }
@@ -231,8 +259,10 @@ implementation RegressionTestInput.Class0.CallAsyncMethod$System.Int32(this: int
   var $tmp3: int;
 
     y := y$in;
+    assume {:filename "Class1.cs"} {:line 54} true;
     call {:async} $tmp3 := RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this, y);
     local_0 := $tmp3;
+    assume {:filename "Class1.cs"} {:line 55} true;
     $result := local_0;
     return;
 }
