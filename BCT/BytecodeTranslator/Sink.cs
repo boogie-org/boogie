@@ -35,6 +35,18 @@ namespace BytecodeTranslator {
     }
     readonly Bpl.Variable heapVariable = TranslationHelper.TempHeapVar();
 
+    public Bpl.Variable ArrayContentsVariable
+    {
+        get { return this.arrayContentsVariable; }
+    }
+    readonly Bpl.Variable arrayContentsVariable = TranslationHelper.TempArrayContentsVar();
+
+    public Bpl.Variable ArrayLengthVariable
+    {
+        get { return this.arrayLengthVariable; }
+    }
+    readonly Bpl.Variable arrayLengthVariable = TranslationHelper.TempArrayLengthVar();
+
     public Bpl.Variable ThisVariable = TranslationHelper.TempThisVar();
     public Bpl.Variable RetVariable;
 

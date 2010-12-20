@@ -14,8 +14,11 @@ type HeapType = [int,int]int;
 function IsGoodHeap(HeapType): bool;
 var $Heap: HeapType where IsGoodHeap($Heap);
 
+var $ArrayContents: [int][int]int;
+var $ArrayLength: [int]int;
+
 var $Alloc: [int] bool;
-procedure Alloc() returns (x: int)
+procedure {:inline 1} Alloc() returns (x: int)
 modifies $Alloc;
 {
   assume $Alloc[x] == false;

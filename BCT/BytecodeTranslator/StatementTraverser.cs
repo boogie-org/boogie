@@ -29,6 +29,8 @@ namespace BytecodeTranslator
     public readonly ISourceLocationProvider/*?*/ SourceLocationProvider;
 
     private readonly Bpl.Variable HeapVariable;
+    private readonly Bpl.Variable ArrayContentsVariable;
+    private readonly Bpl.Variable ArrayLengthVariable;
 
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
 
@@ -37,7 +39,10 @@ namespace BytecodeTranslator
       this.sink = sink;
       this.factory = sink.Factory;
       HeapVariable = sink.HeapVariable;
-      this.SourceLocationProvider = sourceLocationProvider;
+      SourceLocationProvider = sourceLocationProvider;
+
+      ArrayContentsVariable = sink.ArrayContentsVariable;
+      ArrayLengthVariable = sink.ArrayLengthVariable;
     }
     #endregion
 

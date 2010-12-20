@@ -114,6 +114,14 @@ namespace BytecodeTranslator {
       return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "this", Bpl.Type.Int));
     }
 
+    public static Bpl.Variable TempArrayContentsVar()
+    {
+        return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$ArrayContents", Bpl.Type.Int));
+    }
+    public static Bpl.Variable TempArrayLengthVar()
+    {
+        return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$ArrayLength", Bpl.Type.Int));
+    }
     #endregion
 
   }
