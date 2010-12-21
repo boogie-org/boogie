@@ -26,7 +26,7 @@ namespace BytecodeTranslator
 
     readonly Sink sink;
 
-    public readonly ISourceLocationProvider/*?*/ SourceLocationProvider;
+    public readonly PdbReader/*?*/ PdbReader;
 
     private readonly Bpl.Variable HeapVariable;
     private readonly Bpl.Variable ArrayContentsVariable;
@@ -35,11 +35,11 @@ namespace BytecodeTranslator
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
 
     #region Constructors
-    public StatementTraverser(Sink sink, ISourceLocationProvider/*?*/ sourceLocationProvider) {
+    public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader) {
       this.sink = sink;
       this.factory = sink.Factory;
       HeapVariable = sink.HeapVariable;
-      SourceLocationProvider = sourceLocationProvider;
+      PdbReader = pdbReader;
 
       ArrayContentsVariable = sink.ArrayContentsVariable;
       ArrayLengthVariable = sink.ArrayLengthVariable;
@@ -66,11 +66,16 @@ namespace BytecodeTranslator
     }
 
     public override void Visit(IStatement statement) {
+      EmitSourceContext(statement);
+      base.Visit(statement);
+    }
+
+    private void EmitSourceContext(IStatement statement) {
       var tok = statement.Token();
       string fileName = null;
       int lineNumber = 0;
-      if (this.SourceLocationProvider != null) {
-        var slocs = this.SourceLocationProvider.GetPrimarySourceLocationsFor(statement.Locations);
+      if (this.PdbReader != null) {
+        var slocs = this.PdbReader.GetClosestPrimarySourceLocationsFor(statement.Locations);
         foreach (var sloc in slocs) {
           fileName = sloc.Document.Name.Value;
           lineNumber = sloc.StartLine;
@@ -84,8 +89,6 @@ namespace BytecodeTranslator
             );
         }
       }
-
-      base.Visit(statement);
     }
 
     #region Basic Statements
@@ -108,8 +111,8 @@ namespace BytecodeTranslator
     /// <remarks>(mschaef) Works, but still a stub</remarks>
     /// <param name="conditionalStatement"></param>
     public override void Visit(IConditionalStatement conditionalStatement) {
-      StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.sink, this.SourceLocationProvider);
-      StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.sink, this.SourceLocationProvider);
+      StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader);
+      StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader);
 
       ExpressionTraverser condTraverser = this.factory.MakeExpressionTraverser(this.sink, null);
       condTraverser.Visit(conditionalStatement.Condition);

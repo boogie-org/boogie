@@ -6,8 +6,11 @@ type HeapType = [int,int]int;
 function IsGoodHeap(HeapType): bool;
 var $Heap: HeapType where IsGoodHeap($Heap);
 
+var $ArrayContents: [int][int]int;
+var $ArrayLength: [int]int;
+
 var $Alloc: [int] bool;
-procedure Alloc() returns (x: int)
+procedure {:inline 1} Alloc() returns (x: int)
 modifies $Alloc;
 {
   assume $Alloc[x] == false;
@@ -136,9 +139,11 @@ implementation RegressionTestInput.Class0.M$System.Void(this: int, x$in: int)
     __temp_3 := __temp_2;
     x := __temp_3;
     local_0 := __temp_1 + __temp_2;
+    assume {:filename "Class1.cs"} {:line 22} true;
     assert x == 3 && local_0 <= 8;
     assume {:filename "Class1.cs"} {:line 23} true;
     RegressionTestInput.Class0.StaticInt := local_0;
+    assume {:filename "Class1.cs"} {:line 24} true;
     assert local_0 == RegressionTestInput.Class0.StaticInt;
     assume {:filename "Class1.cs"} {:line 25} true;
     return;
