@@ -72,7 +72,43 @@ namespace RegressionTestInput {
     public static void Main() {
       ClassWithBoolTypes.M(3, 4);
     }
-
   }
 
+  class ClassWithArrayTypes
+  {
+    public static void Main1()
+    {
+      int[] s = new int[5];
+      s[0] = 2;
+      Contract.Assert(s[0] == 2);
+
+      int[] t = new int[4];
+      t[0] = 1;
+      Contract.Assert(t[0] == 1);
+
+      Contract.Assert(s[0] == 2);
+    }
+
+    public static int[] s;
+    public static void Main2()
+    {
+      s = new int[5];
+      s[0] = 2;
+      Contract.Assert(s[0] == 2);
+
+      int[] t = new int[4];
+      t[0] = 1;
+      Contract.Assert(t[0] == 1);
+
+      Contract.Assert(s[0] == 2);
+    }
+
+    public int[] a;
+    public void Main3(int x)
+    {
+      a[x] = 42;
+      a[x + 1] = 43;
+      Contract.Assert(a[x + 1] == a[x] + 1);
+    }
+  }
 }
