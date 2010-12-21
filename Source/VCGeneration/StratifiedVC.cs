@@ -1089,7 +1089,11 @@ namespace VC
             if (PersistCallTree)
             {
                 callTree = new Dictionary<string, int>();
-                var persistentNodes = new HashSet<int>(calls.candidateParent.Values);
+                //var persistentNodes = new HashSet<int>(calls.candidateParent.Values);
+                var persistentNodes = new HashSet<int>(calls.candidateParent.Keys);
+                persistentNodes.Add(0);
+                persistentNodes.ExceptWith(calls.currCandidates);
+
                 foreach (var id in persistentNodes)
                 {
                     callTree.Add(calls.getPersistentId(id), 0);
