@@ -610,13 +610,22 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return skolems;
     }
 
-    private Model.Element PtrTo(Model.Element tp)
+    private Model.Element GuessPtrTo(Model.Element tp)
     {
       var p = f_ptr_to.TryEval(tp);
       if (p != null) return p;
       p = f_spec_ptr_to.TryEval(tp);
       if (p != null) return p;
       var nm = model.MkFunc("*ptrto_" + TypeName(tp), 0).GetConstant();
+      f_ptr_to.AddApp(nm, tp);
+      return f_ptr_to.TryEval(tp);
+    }
+
+    private Model.Element PtrTo(Model.Element tp, Model.Func f_ptr_to)
+    {
+      var p = f_ptr_to.TryEval(tp);
+      if (p != null) return p;
+      var nm = model.MkFunc("*" + f_ptr_to.Name + "_" + TypeName(tp), 0).GetConstant();
       f_ptr_to.AddApp(nm, tp);
       return f_ptr_to.TryEval(tp);
     }
@@ -632,7 +641,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       Model.FuncTuple tpl;
 
       if (addrOf != null) {
-        result.Add(new FieldNode(state, new EdgeName("&"), addrOf, PtrTo(tp)));
+        result.Add(new FieldNode(state, new EdgeName("&"), addrOf, GuessPtrTo(tp)));
       }
 
       var kind = GetKind(tp, out tpl);
@@ -692,8 +701,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         AddSpecialField(state, elt, result, "\\root", f_roots);
         AddSpecialField(state, elt, result, "\\timestamp", f_timestamps);
 
-        if (viewOpts.ViewLevel >= 1) {
+        if (viewOpts.ViewLevel >= 1 && elt != null) {
           AddPtrType(state, elt, result);
+          AddCasts(state, elt, result);
         }
 
       } else if (kind == DataKind.Map) {
@@ -748,6 +758,18 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return result;
     }
 
+    private void AddCasts(StateNode state, Model.Element elt, List<ElementNode> result)
+    {
+      foreach (var app in f_phys_ptr_cast.AppsWithArg(0, elt)) {
+        if (app.Result != elt)
+          result.Add(new MapletNode(state, new EdgeName(this, "(" + TypeName(app.Args[1]) + "*)..."), app.Result, PtrTo(app.Args[1], f_ptr_to)));
+      }
+      foreach (var app in f_spec_ptr_cast.AppsWithArg(0, elt)) {
+        if (app.Result != elt)
+          result.Add(new MapletNode(state, new EdgeName(this, "(" + TypeName(app.Args[1]) + "^)..."), app.Result, PtrTo(app.Args[1], f_spec_ptr_to)));
+      }
+    }
+
     private FieldNode BuildFieldNode(StateNode state, Model.Element ptr, Model.Element field, Model.Element val, Model.Element addr)
     {
       var ftp = f_field_type.TryEval(field);
@@ -757,7 +779,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       if (IsArrayField(ptr)) {
         val = addr;
         addr = null;
-        ftp = PtrTo(ftp);
+        ftp = GuessPtrTo(ftp);
       }
 
       var nm = ConstantFieldName(field);
