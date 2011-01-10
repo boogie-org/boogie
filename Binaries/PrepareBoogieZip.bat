@@ -28,9 +28,6 @@ for %%f in (
   TypedUnivBackPred2.sx
   UnivBackPred2.smt
   UnivBackPred2.sx
-  FSharp.Core.dll
-  FSharp.PowerPack.dll
-  Microsoft.Contracts.dll
 ) do (
   copy %%f %DEST_DIR%
 )
