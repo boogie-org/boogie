@@ -1,13 +1,13 @@
-# Aste started: 2011-01-10 16:55:05
+# Aste started: 2011-01-11 11:41:52
 # Host id: Boogiebox
-# [2011-01-10 16:57:15] SpecSharp revision: 61497
-# [2011-01-10 16:58:18] Boogie revision: 61502
-# [2011-01-10 16:58:51] SscBoogie revision: 61497
-[2011-01-10 16:59:16] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2011-01-11 11:44:02] SpecSharp revision: 61530
+# [2011-01-11 11:45:11] Boogie revision: 61504
+# [2011-01-11 11:45:46] SscBoogie revision: 61530
+[2011-01-11 11:46:24] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2011-01-10 17:00:03] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2011-01-11 11:47:30] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(825,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2804,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -47,7 +47,7 @@
     warning CS0162
     warning CS0162
     warning CS0162
-[2011-01-10 17:00:09] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
+[2011-01-11 11:47:39] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Dafny.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(38,24): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
     D:\Temp\aste\Boogie\Source\DafnyDriver\DafnyDriver.cs(141,25): warning CS0436: The type 'cce' in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs' conflicts with the imported type 'cce' in 'd:\temp\aste\Boogie\Source\Dafny\bin\Debug\DafnyPipeline.dll'. Using the type defined in 'D:\Temp\aste\Boogie\Source\DafnyDriver\cce.cs'.
@@ -67,6 +67,6 @@
     warning CS0436
     warning CS0436
     warning CS0436
-[2011-01-10 17:16:09] 1 out of 29 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-['test2']
-# [2011-01-10 17:17:05] Released nightly of Boogie
+[2011-01-11 12:04:17] 5 out of 29 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+['test2', 'test15', 'lazyinline', 'stratifiedinline', 'extractloops']
+# [2011-01-11 12:05:11] Released nightly of Boogie
