@@ -333,7 +333,7 @@ case class CallAsync(declaresLocal: Boolean, lhs: VariableExpr, obj: Expression,
   var local: Variable = null
   var m: Method = null
   override def Declares = if (local != null) List(local) else Nil
-  override def Targets = if (lhs.v != null) Set(lhs.v) else Set()
+  override def Targets = if (lhs != null && lhs.v != null) Set(lhs.v) else Set()
 }
 case class JoinAsync(lhs: List[VariableExpr], token: Expression) extends Statement {
   var m: Method = null
