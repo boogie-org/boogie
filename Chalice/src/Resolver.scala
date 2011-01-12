@@ -71,7 +71,7 @@ object Resolver {
                if (ids contains m.Id) {
                  return Errors(List((m.pos, "duplicate member name " + m.Id + " in class " + cl.id)))
                } else {
-                 ids + m.Id
+                 ids += m.Id
                }
            }
          case ch: Channel =>
