@@ -1,11 +1,3 @@
-/*
-In functions marked with {:selective_checking} all asserts are turned into assumes,
-except for the ones reachable from the commands marked with {:start_checking_here}.
-Thus, "assume {:start_checking_here} whatever;" is an inverse of "assume false;".
-The first one disables all verification before it, and the second one disables
-all verification after.
-*/
-
 procedure {:selective_checking} foo()
 {
   var x, y, z : int;

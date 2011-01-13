@@ -1906,6 +1906,13 @@ namespace Microsoft.Boogie {
        Per-implementation versions of 
        /vcsMaxCost, /vcsMaxSplits and /vcsMaxKeepGoingSplits.
 
+     {:selective_checking true}
+       Turn all asserts into assumes except for the ones reachable from
+       assumptions marked with the attribute {:start_checking_here}.
+       Thus, ""assume {:start_checking_here} something;"" becomes an inverse 
+       of ""assume false;"": the first one disables all verification before
+       it, and the second one disables all verification after.
+
   ---- On functions ----------------------------------------------------------
 
      {:bvbuiltin ""spec""}
