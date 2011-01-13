@@ -241,21 +241,28 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
     }
 
-    private string DecodeToken(string name, ref Model.Element tp)
+    private Model.Element DecodeDT(string dt)
     {
-      var idx = name.LastIndexOf("$");
-      if (idx < 0) return null;
-      var words = name.Substring(idx + 1).Split('.', '^', '!', '#', '@');
-      if (words.Length > 3 && words[3].StartsWith("dt")) {
-        var tpName = words[3].Replace("dt", "#distTp");
+      if (dt.StartsWith("dt")) {
+        var tpName = dt.Replace("dt", "#distTp");
         var f = model.TryGetFunc(tpName);
         if (f != null) {
-          tp = f.GetConstant();
+          return f.GetConstant();
           //var res = f_type_project_0.TryEval(ptr);
           //if (res != null)
           //  tp = res;
         }
       }
+      return null;
+    }
+
+    private string DecodeToken(string name, ref Model.Element tp)
+    {
+      var idx = name.LastIndexOf("$");
+      if (idx < 0) return null;
+      var words = name.Substring(idx + 1).Split('.', '^', '!', '#', '@');
+      if (words.Length > 3)
+        tp = DecodeDT(words[3]);
       return string.Format("{0}({1},{2})", fileNameMapping[int.Parse(words[0])], words[1], words[2]);
     }
 
@@ -586,6 +593,12 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             baseName = baseName.Substring(2);
           return string.Format("{0}@{1}", baseName, ShortenToken(tok, 10));
         }
+      } else if (f.Name.StartsWith("G#")) {
+        var idx = f.Name.LastIndexOf("#dt");
+        if (idx < 0) return null;
+        var name = f.Name.Substring(2, idx - 2);
+        tp = DecodeDT(f.Name.Substring(idx + 1));
+        return string.Format("::{0}", name);
       }
       return null;
     }
@@ -863,9 +876,15 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       foreach (var d in path) {
         var name = d.Name;
         if (name == "") continue; // can that happen?
-        if (sb.Length > 0 && name[0] != '[')
-          sb.Append("->");
-        sb.Append(d.Name);
+        if (name.Contains("(") && name.Contains("*")) {
+          var repl = name.Replace("*", sb.ToString());
+          sb.Length = 0;
+          sb.Append(repl);
+        } else {
+          if (sb.Length > 0 && name[0] != '[')
+            sb.Append("->");
+          sb.Append(d.Name);
+        }
       }
 
       return sb.ToString();
@@ -983,7 +1002,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       get
       {
         var sb = new StringBuilder();
-        sb.AppendFormat("Type: {0}\n", vm.TypeName(tp));
+        sb.AppendFormat("Type: {0}\n", vm.TypeName(tp));        
         return sb.ToString();
       }
     }
