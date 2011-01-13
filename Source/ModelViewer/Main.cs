@@ -642,32 +642,35 @@ namespace Microsoft.Boogie.ModelViewer
       dispNode = skel.displayNodes[stateId];
       active = dispNode != null;
 
+      var closeStateId = stateId;
+
       if (dispNode == null) {
-        for (int i = stateId; i < skel.displayNodes.Length; ++i) {
-          dispNode = skel.displayNodes[i];
-          if (dispNode != null) break;
+        while (closeStateId < skel.displayNodes.Length && skel.displayNodes[closeStateId] == null)
+          closeStateId++;
+        if (closeStateId >= skel.displayNodes.Length) {
+          closeStateId = stateId;
+          while (closeStateId >= 0 && skel.displayNodes[closeStateId] == null)
+            closeStateId--;
         }
-        for (int i = stateId; i >= 0; --i) {
-          if (dispNode != null) break;
-          dispNode = skel.displayNodes[i];
-        }
+        dispNode = skel.displayNodes[closeStateId];
       }
 
+      var fullName = skel.LongName(closeStateId);
       var tooltip = dispNode.ToolTip;
-      var aliases = ""; // AliasesAsString(dispNode);
-      if (IsMatchListItem)
-        aliases = "";
+      if (tooltip == null)
+        tooltip = "";
+      if(tooltip.Length > 0 && tooltip[tooltip.Length - 1] != '\n')
+        tooltip += "\n";
+      tooltip += "Full name: " + fullName;
       if (tooltip != null) {
         this.ToolTipText = tooltip;
-      } else {
-        this.ToolTipText = aliases;
       }
 
       var name = dispNode.Name;
 
       if (IsMatchListItem) {
         Util.Assert(active);
-        name = skel.LongName(stateId);
+        name = fullName;
       }
 
       this.SubItems[0].Text = name;
