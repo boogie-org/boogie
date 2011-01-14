@@ -260,7 +260,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       var idx = name.LastIndexOfAny(new char[] { '\\', '/' });
       if (0 <= idx)
         name = name.Substring(idx + 1);
-      var limit = 16;
+      var limit = 30;
       if (name.Length > limit) {
         idx = name.IndexOf('(');
         if (idx > 0) {
