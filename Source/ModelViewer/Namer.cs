@@ -19,6 +19,11 @@ namespace Microsoft.Boogie.ModelViewer
     protected Dictionary<string, Model.Element> invCanonicalName = new Dictionary<string, Model.Element>();
     protected Dictionary<Model.Element, string> localValue = new Dictionary<Model.Element, string>();
 
+    protected virtual bool UseLocalsForCanonicalNames
+    {
+      get { return false; }
+    }
+
     public readonly ViewOptions viewOpts;
     public LanguageModel(ViewOptions opts)
     {
@@ -46,8 +51,10 @@ namespace Microsoft.Boogie.ModelViewer
        return elt.ToString();
       }
       suff = NameSeqSuffix.Always;
-      if (localValue.TryGetValue(elt, out res))
-        return res;
+      if (UseLocalsForCanonicalNames) {
+        if (localValue.TryGetValue(elt, out res))
+          return res;
+      }
       return "";
     }
 
