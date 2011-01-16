@@ -398,9 +398,15 @@ namespace BytecodeTranslator
     {
       if (constant.Value == null)
       {
-        // TODO: (mschaef) hack
-        TranslatedExpressions.Push(Bpl.Expr.False);
-      }
+        var bplType = TranslationHelper.CciTypeToBoogie(constant.Type);
+        if (bplType == Bpl.Type.Int) {
+          TranslatedExpressions.Push(Bpl.Expr.Literal(0));
+        } else if (bplType == Bpl.Type.Bool) {
+          TranslatedExpressions.Push(Bpl.Expr.False);
+        } else {
+          throw new NotImplementedException("Don't know how to translate type");
+        }
+     }
       else if (constant.Value is bool)
       {
         TranslatedExpressions.Push(((bool)constant.Value) ? Bpl.Expr.True : Bpl.Expr.False);

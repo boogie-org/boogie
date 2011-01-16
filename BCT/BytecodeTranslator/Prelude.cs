@@ -19,7 +19,8 @@ var $ArrayLength: [int]int;
 
 var $Alloc: [int] bool;
 procedure {:inline 1} Alloc() returns (x: int)
-modifies $Alloc;
+  free ensures x != 0;
+  modifies $Alloc;
 {
   assume $Alloc[x] == false;
   $Alloc[x] := true;
