@@ -31,7 +31,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
   class DafnyModel : LanguageModel
   {
     public readonly Model model;
-    public readonly Model.Func f_heap_select, f_set_select, f_seq_length, f_seq_index, f_box, f_dim, f_index_field, f_multi_index_field;
+    public readonly Model.Func f_heap_select, f_set_select, f_seq_length, f_seq_index, f_box, f_dim, f_index_field, f_multi_index_field, f_dtype, f_null;
     public readonly Dictionary<Model.Element, Model.Element[]> ArrayLengths = new Dictionary<Model.Element, Model.Element[]>();
     public readonly Dictionary<Model.Element, Model.FuncTuple> DatatypeValues = new Dictionary<Model.Element, Model.FuncTuple>();
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
@@ -49,6 +49,8 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       f_dim = m.MkFunc("FDim", 1);
       f_index_field = m.MkFunc("IndexField", 1);
       f_multi_index_field = m.MkFunc("MultiIndexField", 2);
+      f_dtype = m.MkFunc("dtype", 1);
+      f_null = m.MkFunc("null", 0);
 
       // collect the array dimensions from the various array.Length functions, and
       // collect all known datatype values
@@ -118,7 +120,20 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
         // elt is a sequence
         return string.Format("[Length {0}]", seqLen.Result.AsInt());
       }
-      
+
+      if (elt == f_null.GetConstant())
+        return "null";
+
+      var tp = f_dtype.TryEval(elt);
+      if (tp != null) {
+        foreach (var app in tp.References) {
+          if (app.Args.Length == 0 && app.Func.Name.StartsWith("class.")) {
+            suff = NameSeqSuffix.Always;
+            return app.Func.Name.Substring(6);
+          }
+        }
+      }
+
       return base.CanonicalBaseName(elt, out suff);
     }
 

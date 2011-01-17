@@ -40,7 +40,7 @@ namespace Microsoft.Boogie.ModelViewer
     // A reasonable strategy is to check if it's a name of the local, and if so return it,
     // and otherwise use the type of element (e.g., return "seq" for elements representing
     // sequences). It is also possible to return "" in such cases.
-    //
+    // 
     // The suff output parameter specifies whether the number sequence suffix should be 
     // always added, only when it's non-zero, or never.
     protected virtual string CanonicalBaseName(Model.Element elt, out NameSeqSuffix suff)
