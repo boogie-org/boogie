@@ -218,7 +218,7 @@ namespace BytecodeTranslator
       }
       #endregion
 
-      #region LocalDefinition
+      #region Local
       ILocalDefinition/*?*/ local = targetExpression.Definition as ILocalDefinition;
       if (local != null)
       {
@@ -227,7 +227,7 @@ namespace BytecodeTranslator
       }
       #endregion
 
-      #region ParameterDefenition
+      #region Parameter
       IParameterDefinition param = targetExpression.Definition as IParameterDefinition;
       if (param != null)
       {
@@ -236,22 +236,23 @@ namespace BytecodeTranslator
       }
       #endregion
 
-      #region FieldReference
+      #region Field
       IFieldReference field = targetExpression.Definition as IFieldReference;
       if (field != null)
       {
-        ProcessFieldVariable(field, targetExpression.Instance, false);
+        //ProcessFieldVariable(field, targetExpression.Instance, false);
+        //return;
+        var f = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(field.ResolvedField));
+        TranslatedExpressions.Push(f);
+        var instance = targetExpression.Instance;
+        if (instance != null) {
+          this.Visit(instance);
+        }
         return;
+
       }
       #endregion
 
-      #region PropertyDefiniton
-      IPropertyDefinition prop = targetExpression.Definition as IPropertyDefinition;
-      if (prop != null)
-      {
-        throw new NotImplementedException("targetExpr->Property");
-      }
-      #endregion
     }
 
     public override void Visit(IThisReference thisReference)
@@ -267,7 +268,7 @@ namespace BytecodeTranslator
       //    this.Visit(boundExpression.Instance);
       //    // TODO: (mschaef) look where it's bound and do something
       //}
-      #region LocalDefinition
+      #region Local
       ILocalDefinition local = boundExpression.Definition as ILocalDefinition;
       if (local != null)
       {
@@ -276,7 +277,7 @@ namespace BytecodeTranslator
       }
       #endregion
 
-      #region ParameterDefiniton
+      #region Parameter
       IParameterDefinition param = boundExpression.Definition as IParameterDefinition;
       if (param != null)
       {
@@ -285,20 +286,19 @@ namespace BytecodeTranslator
       }
       #endregion
 
-      #region FieldDefinition
+      #region Field
       IFieldReference field = boundExpression.Definition as IFieldReference;
-      if (field != null)
-      {
-        ProcessFieldVariable(field, boundExpression.Instance, true);
+      if (field != null) {
+        var f = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(field.ResolvedField));
+        var instance = boundExpression.Instance;
+        if (instance == null) {
+          TranslatedExpressions.Push(f);
+        } else {
+          this.Visit(instance);
+          Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
+          TranslatedExpressions.Push(this.sink.Heap.ReadHeap(instanceExpr, f));
+        }
         return;
-      }
-      #endregion
-
-      #region PropertyDefinition
-      IPropertyDefinition prop = boundExpression.Definition as IPropertyDefinition;
-      if (prop != null)
-      {
-        throw new NotImplementedException("Properties are not implemented");
       }
       #endregion
 
@@ -352,44 +352,6 @@ namespace BytecodeTranslator
     {
       Visit(addressOf.Expression);
     }
-    #endregion
-
-    #region Variable Access Helpers
-    private void ProcessFieldVariable(IFieldReference field, IExpression/*?*/ instance, bool buildSelectExpr)
-    {
-      TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(field.ResolvedField)));
-
-      if (instance != null)
-      {
-        this.Visit(instance);
-      }
-      else
-      {
-        //TranslatedExpressions.Push(
-        //  TranslationHelper.FunctionCall(
-        //    this.sink.StaticFieldFunction,
-        //    TranslationHelper.CciTypeToBoogie(field.Type),
-        //    new List<Bpl.Expr>{ new Bpl.IdentifierExpr(Bpl.Token.NoToken, new Bpl.Constant(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, TypeHelper.GetTypeName(field.Type), ))) }
-        //    ));
-      }
-
-      // if the field access is not a targetexpression we build a select expression
-      // otherwise the assignment visitor will build a mapassignment later on
-      if (instance != null && buildSelectExpr)
-      {
-        Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
-        Bpl.Expr fieldExpr = TranslatedExpressions.Pop();
-        if (CommandLineOptions.SplitFields)
-        {
-          TranslatedExpressions.Push(Bpl.Expr.Select(fieldExpr, instanceExpr));
-        }
-        else
-        {
-          TranslatedExpressions.Push(Bpl.Expr.Select(new Bpl.IdentifierExpr(field.Token(), HeapVariable), new Bpl.Expr[] { instanceExpr, fieldExpr }));
-        }
-      }
-    }
-
     #endregion
 
     #region Translate Constant Access
@@ -534,8 +496,7 @@ namespace BytecodeTranslator
     /// </summary>
     /// <remarks>(mschaef) Works, but still a stub </remarks>
     /// <param name="assignment"></param>
-    public override void Visit(IAssignment assignment)
-    {
+    public override void Visit(IAssignment assignment) {
       Debug.Assert(TranslatedExpressions.Count == 0);
 
       #region Transform Right Hand Side ...
@@ -543,50 +504,61 @@ namespace BytecodeTranslator
       Bpl.Expr sourceexp = this.TranslatedExpressions.Pop();
       #endregion
 
+      var target = assignment.Target;
+
       this.assignmentSourceExpr = sourceexp;
-      this.Visit(assignment.Target);
+      this.Visit(target);
       this.assignmentSourceExpr = null;
 
-      if (assignment.Target.Definition is IArrayIndexer)
-      {
+      if (target.Definition is IArrayIndexer) {
         StmtTraverser.StmtBuilder.Add(
           Bpl.Cmd.SimpleAssign(assignment.Token(),
                             new Bpl.IdentifierExpr(assignment.Token(), ArrayContentsVariable),
                             TranslatedExpressions.Pop()));
+        return;
       }
-      else if (this.TranslatedExpressions.Count == 1)
-      { // I think this is defintely the wrong test. there might be other stuff on the stack if the assignment is not a top-level statement!
-        Bpl.Expr targetexp = this.TranslatedExpressions.Pop();
-        Bpl.IdentifierExpr idexp = targetexp as Bpl.IdentifierExpr;
-        if (idexp != null)
-        {
+
+      var fieldReference = target.Definition as IFieldReference;
+      if (fieldReference != null) {
+        Bpl.IdentifierExpr f = this.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
+        Bpl.Expr o = null;
+        if (target.Instance != null)
+          o = TranslatedExpressions.Pop();
+        var c = this.sink.Heap.WriteHeap(assignment.Token(), o, f, sourceexp);
+        StmtTraverser.StmtBuilder.Add(c);
+        return;
+      }
+
+      var parameterDefinition = target.Definition as IParameterDefinition;
+      if (parameterDefinition != null) {
+        Bpl.IdentifierExpr idexp = this.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
+        if (idexp != null) {
           StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(assignment.Token(), idexp, sourceexp));
-          return;
+        } else {
+          throw new TranslationException("Trying to create a SimpleAssign with complex/illegal lefthand side");
         }
-        else
-        {
+        return;
+      }
+
+      // Not sure what else can appear as a target, but whatever it is, if it didn't translate as an
+      // identifier expression, then it is an error because we don't know what to do with it.
+      // TODO: Create an exhaustive test of what the target expression can be.
+      if (target.Instance != null) {
+        throw new TranslationException("Unknown target expression in assignment.");
+      }
+      {
+        Bpl.IdentifierExpr idexp = this.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
+        if (idexp != null) {
+          StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(assignment.Token(), idexp, sourceexp));
+        } else {
           throw new TranslationException("Trying to create a SimpleAssign with complex/illegal lefthand side");
         }
       }
-      else
-      {
-        // Assume it is always 2? What should we check?
-        Debug.Assert(TranslatedExpressions.Count == 2);
+      return;
 
-        Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
-        Bpl.IdentifierExpr fieldExpr = (Bpl.IdentifierExpr)TranslatedExpressions.Pop();
-        if (CommandLineOptions.SplitFields)
-        {
-          StmtTraverser.StmtBuilder.Add(
-            Bpl.Cmd.MapAssign(assignment.Token(), fieldExpr, instanceExpr, sourceexp));
-        }
-        else
-        {
-          StmtTraverser.StmtBuilder.Add(
-            Bpl.Cmd.MapAssign(assignment.Token(),
-            new Bpl.IdentifierExpr(assignment.Token(), this.HeapVariable), new Bpl.ExprSeq(instanceExpr, fieldExpr), sourceexp));
-        }
-      }
+      // Above type tests should be exhaustive.
+      Debug.Assert(false);
+
     }
 
     #endregion

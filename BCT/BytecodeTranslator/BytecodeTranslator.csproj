@@ -112,6 +112,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CLRSemantics.cs" />
+    <Compile Include="Heap.cs" />
     <Compile Include="MetadataTraverser.cs" />
     <Compile Include="Prelude.cs" />
     <Compile Include="ExpressionTraverser.cs" />

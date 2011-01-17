@@ -106,10 +106,6 @@ namespace BytecodeTranslator {
         return Bpl.Type.Int; // BUG! This is where we need to return "ref" for a reference type
     }
 
-    public static Bpl.Variable TempHeapVar() {
-      return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$Heap", Bpl.Type.Int)); 
-    }
-
     public static Bpl.Variable TempThisVar() {
       return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "this", Bpl.Type.Int));
     }
