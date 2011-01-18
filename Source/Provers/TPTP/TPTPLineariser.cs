@@ -106,30 +106,6 @@ void ObjectInvariant()
 
     /////////////////////////////////////////////////////////////////////////////////////
 
-    internal static string TypeToString(Type t) {
-      Contract.Requires(t != null);
-      Contract.Ensures(Contract.Result<string>() != null);
-
-      if (t.IsBool)
-        return "TermBool";
-      else if (t.IsInt)
-        return "Int";
-      else if (t.IsBv) {
-        Contract.Assert(false);
-        throw new cce.UnreachableException();
-      } // bitvectors are currently not handled for SMT-Lib solvers
-      else {
-        // at this point, only the types U, T should be left
-        System.IO.StringWriter buffer = new System.IO.StringWriter();
-        using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
-          t.Emit(stream);
-        }
-        return "boogie" + buffer.ToString();
-      }
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////////
-
     public static string MakeIdPrintable(string s) {
       Contract.Requires(s != null);
       Contract.Ensures(Contract.Result<string>() != null);
@@ -150,41 +126,40 @@ void ObjectInvariant()
         break;
       }
 
-      string newS = "";
+      var res = new StringBuilder();
+      
       foreach (char ch in s) {
-        if (Char.IsLetterOrDigit(ch) || ch == '.' || ch == '\'' || ch == '_')
-          newS = newS + ch;
+        if (Char.IsLetterOrDigit(ch))
+          res.Append(ch);
         else
-          // replace everything else with a .
-          newS = newS + '.';
+          // replace everything else with a _
+          res.Append('_');
       }
 
-      // ensure that the first character is not . or _ (some SMT-solvers do
-      // not like that, e.g., yices and cvc3)
-      if (newS[0] == '.' || newS[0] == '_')
-        newS = "x" + newS;
+      return res.ToString();
+    }
 
-      return newS;
+    public static string Lowercase(string s)
+    {
+      if (char.IsLower(s[0])) return MakeIdPrintable(s);
+      else return MakeIdPrintable("x" + s);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////
 
-    /// <summary>
-    /// The name for logical conjunction in Simplify
-    /// </summary>
-    internal const string andName = "and"; // conjunction
-    internal const string orName = "or"; // disjunction
-    internal const string notName = "not"; // negation
-    internal const string impliesName = "implies"; // implication
-    internal const string iteName = "ite"; // if-then-else
-    internal const string iffName = "iff"; // logical equivalence
+    internal const string andName = "&"; // conjunction
+    internal const string orName = "|"; // disjunction
+    internal const string notName = "~"; // negation
+    internal const string impliesName = "=>"; // implication
+    internal const string iteName = "$itef"; // if-then-else
+    internal const string iffName = "<=>"; // logical equivalence
     internal const string eqName = "="; // equality
-    internal const string lessName = "<";
-    internal const string greaterName = ">";
-    internal const string atmostName = "<=";
-    internal const string atleastName = ">=";
-    internal const string TRUEName = "true"; // nullary predicate that is always true
-    internal const string FALSEName = "false"; // nullary predicate that is always false
+    internal const string lessName = "lt";
+    internal const string greaterName = "gt";
+    internal const string atmostName = "le";
+    internal const string atleastName = "ge";
+    internal const string TRUEName = "$true"; // nullary predicate that is always true
+    internal const string FALSEName = "$false"; // nullary predicate that is always false
     internal const string subtypeName = "UOrdering2";
     internal const string subtypeArgsName = "UOrdering3";
 
@@ -192,22 +167,10 @@ void ObjectInvariant()
 
     internal const string boolTrueName = "boolTrue";
     internal const string boolFalseName = "boolFalse";
-    internal const string boolAndName = "boolAnd";
-    internal const string boolOrName = "boolOr";
-    internal const string boolNotName = "boolNot";
-    internal const string boolIffName = "boolIff";
-    internal const string boolImpliesName = "boolImplies";
     internal const string boolIteName = "ite";
-    internal const string termUEqual = "UEqual";
-    internal const string termTEqual = "TEqual";
-    internal const string termIntEqual = "IntEqual";
-    internal const string termLessName = "intLess";
-    internal const string termGreaterName = "intGreater";
-    internal const string termAtmostName = "intAtMost";
-    internal const string termAtleastName = "intAtLeast";
-    internal const string intAddName = "+";
-    internal const string intSubName = "-";
-    internal const string intMulName = "*";
+    internal const string intAddName = "intAdd";
+    internal const string intSubName = "intSub";
+    internal const string intMulName = "intMul";
     internal const string intDivName = "boogieIntDiv";
     internal const string intModName = "boogieIntMod";
 
@@ -237,13 +200,8 @@ void ObjectInvariant()
         else if (node == VCExpressionGenerator.False)
           wr.Write("{0}", boolFalseName);
         else if (node is VCExprIntLit) {
-          // some SMT-solvers do not understand negative literals
-          // (e.g., yices)
           BigNum lit = ((VCExprIntLit)node).Val;
-          if (lit.IsNegative)
-            wr.Write("({0} 0 {1})", intSubName, lit.Abs);
-          else
-            wr.Write(lit);
+          wr.Write(lit);
         } else {
           Contract.Assert(false);
           throw new cce.UnreachableException();
@@ -279,14 +237,17 @@ void ObjectInvariant()
            op.Equals(VCExpressionGenerator.OrOp))) {
         // handle these operators without recursion
 
-        wr.Write("({0}",
-                 op.Equals(VCExpressionGenerator.AndOp) ? andName : orName);
+        var sop = op.Equals(VCExpressionGenerator.AndOp) ? andName : orName;
+        wr.Write("(");
         IEnumerator enumerator = new VCExprNAryUniformOpEnumerator (node);
         Contract.Assert(enumerator!=null);
+        var cnt = 0;
         while (enumerator.MoveNext()) {
           VCExprNAry naryExpr = enumerator.Current as VCExprNAry;
           if (naryExpr == null || !naryExpr.Op.Equals(op)) {
-            wr.Write(" ");
+            if (cnt > 0)
+              wr.Write(" {0} ", sop);
+            cnt++;
             Linearise(cce.NonNull((VCExpr)enumerator.Current), options);
           }
         }
@@ -304,7 +265,7 @@ void ObjectInvariant()
     public bool Visit(VCExprVar node, LineariserOptions options) {
       //Contract.Requires(node != null);
       //Contract.Requires(options != null);
-      string printedName = Namer.GetName(node, MakeIdPrintable(node.Name));
+      string printedName = Namer.GetName(node, MakeIdPrintable(Lowercase(node.Name)));
       Contract.Assert(printedName!=null);
 
       if (options.AsTerm ||
@@ -312,7 +273,7 @@ void ObjectInvariant()
           printedName[0] == '$')
         wr.Write("{0}", printedName);
       else
-        wr.Write("({0} {1} {2})", eqName, printedName, boolTrueName);
+        wr.Write("({0} = {1})", printedName, boolTrueName);
 
       return true;
     }
@@ -327,19 +288,22 @@ void ObjectInvariant()
 
       Namer.PushScope(); try {
 
-      string kind = node.Quan == Quantifier.ALL ? "forall" : "exists";
-      wr.Write("({0} ", kind);
+      string kind = node.Quan == Quantifier.ALL ? "!" : "?";
+      wr.Write("{0} [", kind);
 
       for (int i = 0; i < node.BoundVars.Count; i++) 
         {
           VCExprVar var = node.BoundVars[i];
           Contract.Assert(var!=null);
           // ensure that the variable name starts with ?
-          string printedName = Namer.GetLocalName(var, "?" + MakeIdPrintable(var.Name));
+          string printedName = Namer.GetLocalName(var, "V" + MakeIdPrintable(var.Name));
         Contract.Assert(printedName!=null);
-         Contract.Assert(printedName[0] == '?');
-          wr.Write("({0} {1}) ", printedName, TypeToString(var.Type));
+         Contract.Assert(printedName[0] == 'V');
+         if (i > 0) wr.Write(",");
+          wr.Write("{0}", printedName);
         }
+
+      wr.Write("] : (");
         
       /*      if (options.QuantifierIds) {
         // only needed for Z3
@@ -358,7 +322,7 @@ void ObjectInvariant()
 
       Linearise(node.Body, options);
 
-      WriteTriggers(node.Triggers, options);
+      // WriteTriggers(node.Triggers, options);
       wr.Write(")");
 
       return true;
@@ -368,80 +332,12 @@ void ObjectInvariant()
       }
     }
 
-    private void WriteTriggers(List<VCTrigger/*!>!*/> triggers, LineariserOptions options) {
-      Contract.Requires(options != null);
-      Contract.Requires(triggers != null);
-      // first, count how many neg/pos triggers there are
-      int negTriggers = 0;
-      int posTriggers = 0;
-      foreach (VCTrigger vcTrig in triggers) {
-        Contract.Assert(vcTrig!=null);
-        if (vcTrig.Pos) {
-          posTriggers++;
-        } else {
-          negTriggers++;
-        }
-      }
-
-      if (posTriggers > 0) {
-        foreach (VCTrigger vcTrig in triggers) {
-          Contract.Assert(vcTrig!=null);
-          if (vcTrig.Pos) {
-            wr.Write(" :pat {");
-            foreach (VCExpr e in vcTrig.Exprs) {
-              Contract.Assert(e!=null);
-              wr.Write(" ");
-              LineariseAsTerm(e, options);
-            }
-            wr.Write(" } ");
-          }
-        }
-      } else if (negTriggers > 0) {
-        // if also positive triggers are given, the SMT solver (at least Z3)
-        // will ignore the negative patterns and output a warning. Therefore
-        // we never specify both negative and positive triggers
-        foreach (VCTrigger vcTrig in triggers) {
-          Contract.Assert(vcTrig!=null);
-          if (!vcTrig.Pos) {
-            wr.Write(" :nopat { ");
-           Contract.Assert(vcTrig.Exprs.Count == 1);
-            wr.Write(" ");
-            LineariseAsTerm(vcTrig.Exprs[0], options);
-            wr.Write(" } ");
-          }
-        }
-      }
-    }
+    
 
     /////////////////////////////////////////////////////////////////////////////////////
 
     public bool Visit(VCExprLet node, LineariserOptions options) {
-      //Contract.Requires(node != null);
-      //Contract.Requires(options != null);
-      Namer.PushScope(); try {
-
-      foreach (VCExprLetBinding b in node) {
-        Contract.Assert(b != null);
-        bool formula = b.V.Type.IsBool;
-
-        wr.Write("({0} (", formula ? "flet" : "let");
-        string printedName = Namer.GetLocalName(b.V, "$" + MakeIdPrintable(b.V.Name));
-       Contract.Assert(printedName[0] == '$');
-        
-        wr.Write("{0} ", printedName);
-        Linearise(b.E, options.SetAsTerm(!formula));
-        wr.Write(") ");
-      }
-      Linearise(node.Body, options);
-
-      for (int i = 0; i < node.Length; ++i)
-        wr.Write(")");
-
-      return true;
-
-      } finally {
-        Namer.PopScope();
-      }
+      throw new NotImplementedException();
     }
 
     /////////////////////////////////////////////////////////////////////////////////////
@@ -466,22 +362,13 @@ void ObjectInvariant()
       }
 
       ///////////////////////////////////////////////////////////////////////////////////
-
-      private void WriteApplication(string op, IEnumerable<VCExpr/*!>!*/> args,
-                                    LineariserOptions options,
-                                    bool argsAsTerms) {
-      Contract.Requires(op != null);
-      Contract.Requires(cce.NonNullElements(args ));
-      Contract.Requires(options != null);
-        WriteApplication(op, op, args, options, argsAsTerms);
-      }
-
+     
       private void WriteApplication(string op, IEnumerable<VCExpr/*!>!*/> args,
                                     LineariserOptions options) {
       Contract.Requires(op != null);
       Contract.Requires(cce.NonNullElements(args ));
       Contract.Requires(options != null);
-        WriteApplication(op, op, args, options, options.AsTerm);
+        WriteApplication(op, args, options, options.AsTerm);
       }
 
       private void WriteTermApplication(string op, IEnumerable<VCExpr/*!>!*/> args,
@@ -490,45 +377,55 @@ void ObjectInvariant()
       Contract.Requires(cce.NonNullElements(args ));
       Contract.Requires(options != null);
         ExprLineariser.AssertAsTerm(op, options);
-        WriteApplication(op, op, args, options, options.AsTerm);
+        WriteApplication(op, args, options, options.AsTerm);
       }
 
-      private void WriteApplication(string termOp, string predOp,
-                                    IEnumerable<VCExpr/*!>!*/> args, LineariserOptions options) {
-        Contract.Requires(predOp != null);
-        Contract.Requires(termOp != null);
-      Contract.Requires(cce.NonNullElements(args ));
-      Contract.Requires(options != null);
-        WriteApplication(termOp, predOp, args, options, options.AsTerm);
-      }
-
-      private void WriteApplication(string termOp, string predOp,
+   
+      private void WriteApplication(string termOp,
                                     IEnumerable<VCExpr>/*!>!*/ args, LineariserOptions options,
                                     // change the AsTerm option for the arguments?
                                     bool argsAsTerms) {
-      Contract.Requires(predOp != null);
         Contract.Requires(termOp != null);
       Contract.Requires(cce.NonNullElements(args ));
       Contract.Requires(options != null);
-        string opName = options.AsTerm ? termOp : predOp;
-        Contract.Assert(opName!=null);
         LineariserOptions newOptions = options.SetAsTerm(argsAsTerms);
         Contract.Assert(newOptions!=null);
 
-        bool hasArgs = false;
-        foreach (VCExpr e in args) {
-          Contract.Assert(e!=null);
-          if (!hasArgs)
-            wr.Write("({0}", opName);
-          wr.Write(" ");
-          ExprLineariser.Linearise(e, newOptions);
-          hasArgs = true;
-        }
-        
-        if (hasArgs)
+        var argCnt = 0;
+        if (termOp == "~") {
+          wr.Write("(~ ");
+          foreach (var e in args) {
+            ExprLineariser.Linearise(e, newOptions);
+            argCnt++;
+          }
+          Contract.Assert(argCnt == 1);
           wr.Write(")");
-        else
-          wr.Write("{0}", opName);
+        } else if ("&|~=><".IndexOf(termOp[0]) >= 0) {
+          wr.Write("(");
+          foreach (var e in args) {
+            ExprLineariser.Linearise(e, newOptions);
+            argCnt++;
+            if (argCnt == 1) {
+              wr.Write(" {0} ", termOp);
+            }
+          }
+          Contract.Assert(argCnt == 2);
+          wr.Write(")");
+        } else {
+          wr.Write(termOp);
+          foreach (var e in args) {
+            Contract.Assert(e != null);
+            if (argCnt == 0)
+              wr.Write("(");
+            else
+              wr.Write(", ");
+            argCnt++;
+            ExprLineariser.Linearise(e, newOptions);            
+          }
+
+          if (argCnt > 0)
+            wr.Write(")");
+        }
       }
 
       // write an application that can only be a term.
@@ -542,12 +439,12 @@ void ObjectInvariant()
         if (!options.AsTerm)
           // Write: (EQ (f args) |@true|)
           // where "args" are written as terms
-          wr.Write("({0} ", eqName);
+          wr.Write("(", eqName);
 
         WriteApplication(termOp, args, options, true);
 
         if (!options.AsTerm)
-          wr.Write(" {0})", boolTrueName);
+          wr.Write(" = {0})", boolTrueName);
       }
 
       ///////////////////////////////////////////////////////////////////////////////////
@@ -555,7 +452,7 @@ void ObjectInvariant()
       public bool VisitNotOp      (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-        WriteApplication(boolNotName, notName, node, options);      // arguments can be both terms and formulas
+        WriteApplication(notName, node, options);      // arguments can be both terms and formulas
         return true;
       }
 
@@ -563,23 +460,7 @@ void ObjectInvariant()
         Contract.Requires(node != null);
         Contract.Requires(options != null);
         if (options.AsTerm) {
-          // use equality on terms, also if the arguments have type bool
-         Contract.Assert(node[0].Type.Equals(node[1].Type));
-          if (node[0].Type.IsBool) {
-            WriteApplication(boolIffName, node, options);
-          } else if (node[0].Type.IsInt) {
-            WriteApplication(termIntEqual, node, options);
-          } else {
-            // TODO: make this less hackish
-            CtorType t = node[0].Type as CtorType;
-            if (t != null && t.Decl.Name.Equals("U")) {
-              WriteApplication(termUEqual, node, options);
-            } else if (t != null && t.Decl.Name.Equals("T")) {
-              WriteApplication(termTEqual, node, options);
-            } else {
-             {Contract.Assert(false);  throw new cce.UnreachableException();}   // unknown type
-            }
-          }
+          throw new NotImplementedException();
         } else {
           if (node[0].Type.IsBool) {
            Contract.Assert(node[1].Type.IsBool);
@@ -603,7 +484,7 @@ void ObjectInvariant()
       public bool VisitNeqOp      (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-        wr.Write("({0} ", options.AsTerm ? boolNotName : notName);
+        wr.Write("(~ ");
         PrintEq(node, options);
         wr.Write(")");
         return true;
@@ -613,7 +494,7 @@ void ObjectInvariant()
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
        Contract.Assert(options.AsTerm);
-        WriteApplication(boolAndName, andName, node, options);
+        WriteApplication(andName, node, options);
         return true;
       }
 
@@ -622,7 +503,7 @@ void ObjectInvariant()
         //Contract.Requires(options != null);
         
         Contract.Assert(options.AsTerm);
-        WriteApplication(boolOrName, orName, node, options);
+        WriteApplication(orName, node, options);
         return true;
       }
 
@@ -630,16 +511,14 @@ void ObjectInvariant()
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
        
-        WriteApplication(boolImpliesName, impliesName, node, options);
+        WriteApplication(impliesName, node, options);
         return true;
       }
 
       public bool VisitIfThenElseOp  (VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
-       
-        WriteApplication(boolIteName, iteName, node, options);
-        return true;
+        throw new NotImplementedException();
       }
 
       public bool VisitCustomOp(VCExprNAry node, LineariserOptions options) {
@@ -660,11 +539,23 @@ void ObjectInvariant()
         if (node.Length < 2) {
           ExprLineariser.Linearise(VCExpressionGenerator.True, options);
         } else {
-          wr.Write("({0}", distinctName);
+          var bits = 0;
+          var cnt = node.Length;
+          while (cnt > 0) {
+            cnt >>= 1;
+            bits++;
+          }
+
+          wr.Write("($true ");
           foreach (VCExpr e in node) {
-            Contract.Assert(e!=null);
-            wr.Write(" ");
-            ExprLineariser.LineariseAsTerm(e, options);
+            for (var i = 0; i < bits; ++i) {
+              var neg = (cnt & (1 >> i)) != 0 ? "~" : "";
+              wr.Write(" & {0}distinct__f__{1}(", neg, i);
+              ExprLineariser.LineariseAsTerm(e, options);
+              wr.Write(")");
+            }
+            wr.WriteLine();
+            cnt++;
           }
           wr.Write(")");
         }
@@ -684,18 +575,38 @@ void ObjectInvariant()
         return true;
       }
 
-      public bool VisitSelectOp   (VCExprNAry node, LineariserOptions options) {
-        //Contract.Requires(node != null);
+      public bool VisitSelectOp(VCExprNAry node, LineariserOptions options)
+      {
         //Contract.Requires(options != null);
-       
-       {Contract.Assert(false);  throw new cce.UnreachableException();}      // should not occur in the output
+        //Contract.Requires(node != null);
+        var name = Lowercase(SimplifyLikeExprLineariser.SelectOpName(node));
+        wr.Write(name + "(");
+        var cnt = 0;
+        foreach (VCExpr/*!*/ e in node) {
+          Contract.Assert(e != null);
+          if (cnt++ > 0)
+            wr.Write(", ");
+          ExprLineariser.Linearise(e, options.SetAsTerm(!e.Type.IsBool));
+        }
+        wr.Write(")");
+        return true;
       }
 
-      public bool VisitStoreOp    (VCExprNAry node, LineariserOptions options) {
-        //Contract.Requires(node != null);
+      public bool VisitStoreOp(VCExprNAry node, LineariserOptions options)
+      {
         //Contract.Requires(options != null);
-       
-       {Contract.Assert(false);  throw new cce.UnreachableException();}       // should not occur in the output
+        //Contract.Requires(node != null);
+        var name = Lowercase(SimplifyLikeExprLineariser.StoreOpName(node));
+        wr.Write(name + "(");
+        var cnt = 0;
+        foreach (VCExpr e in node) {
+          Contract.Assert(e != null);
+          if (cnt++ > 0)
+            wr.Write(", ");
+          ExprLineariser.Linearise(e, options.SetAsTerm(!e.Type.IsBool));
+        }
+        wr.Write(")");
+        return true;
       }
 
       public bool VisitBvOp       (VCExprNAry node, LineariserOptions options) {
@@ -763,7 +674,7 @@ void ObjectInvariant()
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
        
-        WriteApplication(termLessName, lessName, node, options, true);  // arguments are always terms
+        WriteApplication(lessName, node, options, true);  // arguments are always terms
         return true;
       }
 
@@ -771,7 +682,7 @@ void ObjectInvariant()
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
        
-        WriteApplication(termAtmostName, atmostName, node, options, true);  // arguments are always terms
+        WriteApplication(atmostName, node, options, true);  // arguments are always terms
         return true;
       }
 
@@ -779,7 +690,7 @@ void ObjectInvariant()
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
        
-        WriteApplication(termGreaterName, greaterName, node, options, true);  // arguments are always terms
+        WriteApplication(greaterName, node, options, true);  // arguments are always terms
         return true;
       }
 
@@ -787,7 +698,7 @@ void ObjectInvariant()
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
        
-        WriteApplication(termAtleastName, atleastName, node, options, true);  // arguments are always terms
+        WriteApplication(atleastName, node, options, true);  // arguments are always terms
         return true;
       }
 
@@ -813,7 +724,7 @@ void ObjectInvariant()
        
         VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)node.Op;
         Contract.Assert(op!=null);
-        string printedName = ExprLineariser.Namer.GetName(op.Func, MakeIdPrintable(op.Func.Name));
+        string printedName = ExprLineariser.Namer.GetName(op.Func, Lowercase(op.Func.Name));
         Contract.Assert(printedName!=null);
 
         // arguments are always terms

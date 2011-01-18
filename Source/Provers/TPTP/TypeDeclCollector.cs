@@ -17,6 +17,9 @@ namespace Microsoft.Boogie.TPTP
 
   public class TypeDeclCollector : BoundVarTraversingVCExprVisitor<bool, bool> {
 
+    private readonly Dictionary<string/*!*/, bool>/*!*/ KnownStoreFunctions = new Dictionary<string, bool>();
+    private readonly Dictionary<string/*!*/, bool>/*!*/ KnownSelectFunctions = new Dictionary<string, bool>();
+
     private readonly UniqueNamer Namer;
     [ContractInvariantMethod]
 void ObjectInvariant() 
@@ -77,55 +80,57 @@ void ObjectInvariant()
 
     ///////////////////////////////////////////////////////////////////////////
 
-    private static string TypeToString(Type t) {
-      Contract.Requires(t != null);
-      Contract.Ensures(Contract.Result<string>() != null);
-
-      return TPTPExprLineariser.TypeToString(t);
-    }
-
+  
     public override bool Visit(VCExprNAry node, bool arg) {
       Contract.Requires(node != null);
-      // there are a couple of cases where operators have to be
-      // registered by generating appropriate statements
 
-      VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
-      if (op != null && !KnownFunctions.ContainsKey(op.Func)) {
-        Function f = op.Func;
-        Contract.Assert(f!=null);
-        string printedName = Namer.GetName(f, TPTPExprLineariser.MakeIdPrintable(f.Name));
-        Contract.Assert(printedName!=null);
-        string decl = ":extrafuns ((" + printedName;
+      if (node.Op is VCExprStoreOp) {
+        string name = TPTPExprLineariser.Lowercase(SimplifyLikeExprLineariser.StoreOpName(node));
+        if (!KnownStoreFunctions.ContainsKey(name)) {
+          var id = KnownStoreFunctions.Count;
 
-        foreach (Variable v in f.InParams) {
-          Contract.Assert(v!=null);
-          decl += " " + TypeToString(v.TypedIdent.Type);
+          if (CommandLineOptions.Clo.MonomorphicArrays) {
+            var sel = TPTPExprLineariser.Lowercase(SimplifyLikeExprLineariser.SelectOpName(node));
+
+            var eq = "=";
+            if (node[node.Arity - 1].Type.IsBool)
+              eq = "<=>";
+
+            string xS = "", yS = "";
+            string dist = "";
+
+            for (int i = 0; i < node.Arity - 2; i++) {
+              if (i != 0) {
+                dist += " | ";
+                xS += ",";
+                yS += ",";
+              }
+              var x = "X" + i;
+              var y = "Y" + i;
+              xS += x;
+              yS += y;
+              dist += string.Format("({0} != {1})", x, y);
+            }
+
+            string ax1 = "fof(selectEq" + id + ", axiom, ! [M,V," + xS + "] : (" +
+                             string.Format("{0}({1}(M,{2},V),{2}) = V", sel, name, xS) + ")).";
+            string ax2 = "fof(selectNeq" + id + ", axiom, ! [M,V," + xS + "," + yS + "] : (" +
+                             string.Format("( {0} ) => ", dist) +
+                             string.Format("{0}({1}(M,{2},V),{3}) = {0}(M,{3})", sel, name, xS, yS) + ")).";
+
+            AddDeclaration(ax1);
+            AddDeclaration(ax2);
+          }
+
+          KnownStoreFunctions.Add(name, true);
         }
-       Contract.Assert(f.OutParams.Length == 1);
-        foreach (Variable v in f.OutParams) {
-          Contract.Assert(v!=null);
-          decl += " " + TypeToString(v.TypedIdent.Type);
-        }
-
-        decl += "))";
-        
-        AddDeclaration(decl);
-        KnownFunctions.Add(f, true);
+        //
       }
 
       return base.Visit(node, arg);
     }
 
     public override bool Visit(VCExprVar node, bool arg) {
-      Contract.Requires(node != null);
-      if (!BoundTermVars.Contains(node) && !KnownVariables.ContainsKey(node)) {
-        string printedName = Namer.GetName(node, TPTPExprLineariser.MakeIdPrintable(node.Name));
-        Contract.Assert(printedName!=null);
-        string decl =
-          ":extrafuns ((" + printedName + " " + TypeToString(node.Type) + "))";
-        AddDeclaration(decl);
-        KnownVariables.Add(node, true);
-      }
 
       return base.Visit(node, arg);
     }

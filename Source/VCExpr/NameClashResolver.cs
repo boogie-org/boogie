@@ -20,6 +20,7 @@ namespace Microsoft.Boogie.VCExprAST {
   using TEHelperFuns = Microsoft.Boogie.TypeErasure.HelperFuns;
 
   public class UniqueNamer : ICloneable {
+    public string Spacer = "@@";
 
     public UniqueNamer() {
       GlobalNames = new Dictionary<Object, string>();
@@ -32,6 +33,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
     private UniqueNamer(UniqueNamer namer) {
       Contract.Requires(namer != null);
+      Spacer = namer.Spacer;
       GlobalNames = new Dictionary<Object, string>(namer.GlobalNames);
 
       List<IDictionary<Object/*!*/, string/*!*/>/*!*/>/*!*/ localNames =
@@ -102,7 +104,7 @@ namespace Microsoft.Boogie.VCExprAST {
       int counter;
 
       if (CurrentCounters.TryGetValue(baseName, out counter)) {
-        candidate = baseName + "@@" + counter;
+        candidate = baseName + Spacer + counter;
         counter = counter + 1;
       } else {
         candidate = baseName;
@@ -111,7 +113,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
       bool dummy;
       while (UsedNames.TryGetValue(candidate, out dummy)) {
-        candidate = baseName + "@@" + counter;
+        candidate = baseName + Spacer + counter;
         counter = counter + 1;
       }
 
@@ -172,7 +174,7 @@ namespace Microsoft.Boogie.VCExprAST {
       string name;
       if (GlobalPlusLocalNames.TryGetValue(thingie, out name))
         return name;
-      return "@@undefined@@" + thingie.GetHashCode() + "@@";
+      return Spacer + "undefined" + Spacer + thingie.GetHashCode() + Spacer;
     }
   }
 }

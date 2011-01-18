@@ -148,6 +148,10 @@
       <Project>{9B163AA3-36BC-4AFB-88AB-79BC9E97E401}</Project>
       <Name>SMTLib</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Provers\TPTP\TPTP.csproj">
+      <Project>{A598ED5A-93AD-4125-A555-3921A2F936FA}</Project>
+      <Name>TPTP</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Provers\Z3\Z3.csproj">
       <Project>{BB49B90B-BE21-4BE8-85BA-359FDB55F4DF}</Project>
       <Name>Z3</Name>

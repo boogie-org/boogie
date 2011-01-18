@@ -23,6 +23,7 @@ namespace Microsoft.Boogie.TPTP
   public class TPTPProcessTheoremProver : LogProverInterface
   {
     private readonly DeclFreeProverContext ctx;
+    private readonly VCExpressionGenerator Gen;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -31,7 +32,6 @@ namespace Microsoft.Boogie.TPTP
       Contract.Invariant(AxBuilder != null);
       Contract.Invariant(Namer != null);
       Contract.Invariant(DeclCollector != null);
-      Contract.Invariant(BadBenchmarkWords != null);
       Contract.Invariant(cce.NonNullElements(Axioms));
       Contract.Invariant(cce.NonNullElements(TypeDecls));
       Contract.Invariant(_backgroundPredicates != null);
@@ -47,23 +47,31 @@ namespace Microsoft.Boogie.TPTP
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
-      InitializeGlobalInformation("UnivBackPred2.smt");
+
+      // No bg predicate at the moment
+      // InitializeGlobalInformation("UnivBackPred.tptp");
 
       this.ctx = ctx;
+      this.Gen = gen;
 
       TypeAxiomBuilder axBuilder;
       switch (CommandLineOptions.Clo.TypeEncodingMethod) {
         case CommandLineOptions.TypeEncoding.Arguments:
           axBuilder = new TypeAxiomBuilderArguments(gen);
+          axBuilder.Setup();
+          break;
+        case CommandLineOptions.TypeEncoding.Monomorphic:
+          axBuilder = new TypeAxiomBuilderPremisses(gen);
           break;
         default:
           axBuilder = new TypeAxiomBuilderPremisses(gen);
+          axBuilder.Setup();
           break;
       }
-      axBuilder.Setup();
       AxBuilder = axBuilder;
-      UniqueNamer namer = new UniqueNamer();
+      UniqueNamer namer = new UniqueNamer();      
       Namer = namer;
+      Namer.Spacer = "__";
       this.DeclCollector = new TypeDeclCollector(namer);
 
     }
@@ -98,10 +106,10 @@ namespace Microsoft.Boogie.TPTP
       TextWriter output = OpenOutputFile(descriptiveName);
       Contract.Assert(output != null);
 
-      string name =
-        MakeBenchmarkNameSafe(TPTPExprLineariser.MakeIdPrintable(descriptiveName));
-      Contract.Assert(name != null);
-      WriteLineAndLog(output, "(benchmark " + name);
+      WriteLineAndLog(output, "%------------------------------------------------------------------------------");
+      WriteLineAndLog(output, "% Boogie benchmark: " + descriptiveName);
+      WriteLineAndLog(output, "%------------------------------------------------------------------------------");
+
       WriteLineAndLog(output, _backgroundPredicates);
 
       if (!AxiomsAreSetup) {
@@ -109,7 +117,7 @@ namespace Microsoft.Boogie.TPTP
         AxiomsAreSetup = true;
       }
 
-      string vcString = ":formula (not " + VCExpr2String(vc, 1) + ")";
+      string vcString = "fof(vc, conjecture, " + VCExpr2String(vc, 1) + ").";
       string prelude = ctx.GetProverCommands(true);
       Contract.Assert(prelude != null);
       WriteLineAndLog(output, prelude);
@@ -118,34 +126,17 @@ namespace Microsoft.Boogie.TPTP
         Contract.Assert(s != null);
         WriteLineAndLog(output, s);
       }
+      int id = 0;
       foreach (string s in Axioms) {
         Contract.Assert(s != null);
-        WriteLineAndLog(output, ":assumption");
+        WriteLineAndLog(output, "fof(ax" + id++ + ", axiom,");
         WriteLineAndLog(output, s);
+        WriteLineAndLog(output, ").");
       }
 
       WriteLineAndLog(output, vcString);
-      WriteLineAndLog(output, ")");
 
       output.Close();
-    }
-
-    // certain words that should not occur in the name of a benchmark
-    // because some solvers don't like them
-    private readonly static List<string/*!>!*/> BadBenchmarkWords = new List<string/*!*/>();
-    static TPTPProcessTheoremProver()
-    {
-      BadBenchmarkWords.Add("Array"); BadBenchmarkWords.Add("Arrray");
-    }
-
-    private string MakeBenchmarkNameSafe(string name)
-    {
-      Contract.Requires(name != null);
-      Contract.Ensures(Contract.Result<string>() != null);
-
-      for (int i = 0; i < BadBenchmarkWords.Count; i = i + 2)
-        name = name.Replace(BadBenchmarkWords[i], BadBenchmarkWords[i + 1]);
-      return name;
     }
 
     private TextWriter OpenOutputFile(string descriptiveName)
@@ -188,27 +179,30 @@ namespace Microsoft.Boogie.TPTP
         case CommandLineOptions.TypeEncoding.Arguments:
           eraser = new TypeEraserArguments((TypeAxiomBuilderArguments)AxBuilder, gen);
           break;
+        case CommandLineOptions.TypeEncoding.Monomorphic:
+          eraser = null;
+          break;
         default:
           eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses)AxBuilder, gen);
           break;
-      }
-      Contract.Assert(eraser != null);
-      VCExpr exprWithoutTypes = eraser.Erase(expr, polarity);
+      }      
+      VCExpr exprWithoutTypes = eraser == null ? expr : eraser.Erase(expr, polarity);
       Contract.Assert(exprWithoutTypes != null);
 
-      LetBindingSorter letSorter = new LetBindingSorter(gen);
-      Contract.Assert(letSorter != null);
-      VCExpr sortedExpr = letSorter.Mutate(exprWithoutTypes, true);
-      Contract.Assert(sortedExpr != null);
-      VCExpr sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
-      Contract.Assert(sortedAxioms != null);
+      var letImplier = new Let2ImpliesMutator(Gen);
+      var flattener = new TermFormulaFlattener(Gen);
+      var exprWithLet = flattener.Flatten(exprWithoutTypes);
+      var exprWithoutLet = letImplier.Mutate(exprWithLet);
 
-      DeclCollector.Collect(sortedAxioms);
-      DeclCollector.Collect(sortedExpr);
+      var axiomsWithLet = flattener.Flatten(AxBuilder.GetNewAxioms());
+      var axiomsWithoutLet = letImplier.Mutate(axiomsWithLet);
+
+      DeclCollector.Collect(axiomsWithoutLet);
+      DeclCollector.Collect(exprWithoutLet);
       FeedTypeDeclsToProver();
 
-      AddAxiom(TPTPExprLineariser.ToString(sortedAxioms, Namer));
-      string res = TPTPExprLineariser.ToString(sortedExpr, Namer);
+      AddAxiom(TPTPExprLineariser.ToString(axiomsWithoutLet, Namer));
+      string res = TPTPExprLineariser.ToString(exprWithoutLet, Namer);
       Contract.Assert(res != null);
 
       if (CommandLineOptions.Clo.Trace) {
@@ -252,7 +246,7 @@ namespace Microsoft.Boogie.TPTP
 
     ////////////////////////////////////////////////////////////////////////////
 
-    private static string _backgroundPredicates;
+    private static string _backgroundPredicates = "";
 
     static void InitializeGlobalInformation(string backgroundPred)
     {
