@@ -38,9 +38,9 @@ namespace BytecodeTranslator {
     /// Creates a fresh BPL variable to represent <paramref name="field"/>, deciding
     /// on its type based on the heap representation.
     /// </summary>
-    public Bpl.Variable CreateFieldVariable(IFieldDefinition field) {
+    public Bpl.Variable CreateFieldVariable(IFieldReference field) {
       Bpl.Variable v;
-      string fieldname = field.ContainingTypeDefinition.ToString() + "." + field.Name.Value;
+      string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
       Bpl.IToken tok = field.Token();
       Bpl.Type t = TranslationHelper.CciTypeToBoogie(field.Type.ResolvedType);
 
