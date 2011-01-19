@@ -25,7 +25,7 @@ namespace BytecodeTranslator {
     public Heap(){
     }
 
-    public Bpl.Variable HeapVariable {
+    private Bpl.Variable HeapVariable {
       get { 
         if (this.heapVariable == null)
           this.heapVariable = new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$Heap", Bpl.Type.Int));

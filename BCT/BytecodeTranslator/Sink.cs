@@ -36,10 +36,6 @@ namespace BytecodeTranslator {
     }
     readonly Heap heap;
 
-    public Bpl.Variable HeapVariable {
-      get { return this.Heap.HeapVariable; }
-    }
-
     public Bpl.Variable ArrayContentsVariable
     {
         get { return this.arrayContentsVariable; }

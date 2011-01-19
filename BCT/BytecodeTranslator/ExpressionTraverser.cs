@@ -23,8 +23,6 @@ namespace BytecodeTranslator
   public class ExpressionTraverser : BaseCodeTraverser
   {
 
-    // warning! this has to be replaced by a HeapVariable from outside
-    public readonly Bpl.Variable HeapVariable;
     public readonly Bpl.Variable ArrayContentsVariable;
     public readonly Bpl.Variable ArrayLengthVariable;
 
@@ -53,7 +51,6 @@ namespace BytecodeTranslator
     public ExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser)
     {
       this.sink = sink;
-      HeapVariable = sink.HeapVariable;
       ArrayContentsVariable = sink.ArrayContentsVariable;
       ArrayLengthVariable = sink.ArrayLengthVariable;
       this.StmtTraverser = statementTraverser;

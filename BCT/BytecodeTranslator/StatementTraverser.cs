@@ -28,7 +28,6 @@ namespace BytecodeTranslator
 
     public readonly PdbReader/*?*/ PdbReader;
 
-    private readonly Bpl.Variable HeapVariable;
     private readonly Bpl.Variable ArrayContentsVariable;
     private readonly Bpl.Variable ArrayLengthVariable;
 
@@ -38,7 +37,6 @@ namespace BytecodeTranslator
     public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader) {
       this.sink = sink;
       this.factory = sink.Factory;
-      HeapVariable = sink.HeapVariable;
       PdbReader = pdbReader;
 
       ArrayContentsVariable = sink.ArrayContentsVariable;
