@@ -549,7 +549,7 @@ void ObjectInvariant()
           wr.Write("($true ");
           foreach (VCExpr e in node) {
             for (var i = 0; i < bits; ++i) {
-              var neg = (cnt & (1 >> i)) != 0 ? "~" : "";
+              var neg = (cnt & (1 << i)) != 0 ? "~" : "";
               wr.Write(" & {0}distinct__f__{1}(", neg, i);
               ExprLineariser.LineariseAsTerm(e, options);
               wr.Write(")");

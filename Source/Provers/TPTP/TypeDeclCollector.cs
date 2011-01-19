@@ -113,10 +113,10 @@ void ObjectInvariant()
             }
 
             string ax1 = "fof(selectEq" + id + ", axiom, ! [M,V," + xS + "] : (" +
-                             string.Format("{0}({1}(M,{2},V),{2}) = V", sel, name, xS) + ")).";
+                             string.Format("{0}({1}(M,{2},V),{2}) {3} V", sel, name, xS, eq) + ")).";
             string ax2 = "fof(selectNeq" + id + ", axiom, ! [M,V," + xS + "," + yS + "] : (" +
                              string.Format("( {0} ) => ", dist) +
-                             string.Format("{0}({1}(M,{2},V),{3}) = {0}(M,{3})", sel, name, xS, yS) + ")).";
+                             string.Format("{0}({1}(M,{2},V),{3}) {4} {0}(M,{3})", sel, name, xS, yS, eq) + ")).";
 
             AddDeclaration(ax1);
             AddDeclaration(ax2);
