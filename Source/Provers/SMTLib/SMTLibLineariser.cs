@@ -9,6 +9,7 @@ using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;
 
@@ -124,7 +125,7 @@ void ObjectInvariant()
         using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
           t.Emit(stream);
         }
-        return "boogie" + buffer.ToString();
+        return MakeIdPrintable("boogie" + buffer.ToString());
       }
     }
 
@@ -656,17 +657,27 @@ void ObjectInvariant()
         //Contract.Requires(options != null);
        
         ExprLineariser.AssertAsFormula(distinctName, options);
-        
+
         if (node.Length < 2) {
           ExprLineariser.Linearise(VCExpressionGenerator.True, options);
         } else {
-          wr.Write("({0}", distinctName);
-          foreach (VCExpr e in node) {
-            Contract.Assert(e!=null);
-            wr.Write(" ");
-            ExprLineariser.LineariseAsTerm(e, options);
+          var groupings = node.GroupBy(e => e.Type).Where(g => g.Count() > 1).ToArray();
+
+          if (groupings.Length > 1)
+            wr.Write("(and ");
+
+          foreach (var g in groupings) {
+            wr.Write("({0}", distinctName);
+            foreach (VCExpr e in g) {
+              Contract.Assert(e != null);
+              wr.Write(" ");
+              ExprLineariser.LineariseAsTerm(e, options);
+            }
+            wr.Write(")");
           }
-          wr.Write(")");
+
+          if (groupings.Length > 1)
+            wr.Write(")");
         }
 
         return true;
@@ -684,18 +695,38 @@ void ObjectInvariant()
         return true;
       }
 
-      public bool VisitSelectOp   (VCExprNAry node, LineariserOptions options) {
-        //Contract.Requires(node != null);
+      public bool VisitSelectOp(VCExprNAry node, LineariserOptions options)
+      {
         //Contract.Requires(options != null);
-       
-       {Contract.Assert(false);  throw new cce.UnreachableException();}      // should not occur in the output
+        //Contract.Requires(node != null);
+        var name = SimplifyLikeExprLineariser.SelectOpName(node);
+        name = ExprLineariser.Namer.GetName(name, MakeIdPrintable(name));
+
+        wr.Write("(" + name);
+        foreach (VCExpr/*!*/ e in node) {
+          Contract.Assert(e != null);
+          wr.Write(" ");
+          ExprLineariser.Linearise(e, options.SetAsTerm(!e.Type.IsBool));
+        }
+        wr.Write(")");
+        return true;
       }
 
-      public bool VisitStoreOp    (VCExprNAry node, LineariserOptions options) {
-        //Contract.Requires(node != null);
+      public bool VisitStoreOp(VCExprNAry node, LineariserOptions options)
+      {
         //Contract.Requires(options != null);
-       
-       {Contract.Assert(false);  throw new cce.UnreachableException();}       // should not occur in the output
+        //Contract.Requires(node != null);
+        var name = SimplifyLikeExprLineariser.StoreOpName(node);
+        name = ExprLineariser.Namer.GetName(name, MakeIdPrintable(name));
+
+        wr.Write("(" + name);
+        foreach (VCExpr e in node) {
+          Contract.Assert(e != null);
+          wr.Write(" ");
+          ExprLineariser.Linearise(e, options.SetAsTerm(!e.Type.IsBool));
+        }
+        wr.Write(")");
+        return true;
       }
 
       public bool VisitBvOp       (VCExprNAry node, LineariserOptions options) {

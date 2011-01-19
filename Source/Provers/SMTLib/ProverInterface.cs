@@ -54,15 +54,21 @@ void ObjectInvariant()
       switch (CommandLineOptions.Clo.TypeEncodingMethod) {
         case CommandLineOptions.TypeEncoding.Arguments:
           axBuilder = new TypeAxiomBuilderArguments (gen);
+          axBuilder.Setup();
+          break;
+        case CommandLineOptions.TypeEncoding.Monomorphic:
+          axBuilder = new TypeAxiomBuilderPremisses(gen);
           break;
         default:
           axBuilder = new TypeAxiomBuilderPremisses (gen);
+          axBuilder.Setup();
           break;
       }
-      axBuilder.Setup();
+      
       AxBuilder = axBuilder;
       UniqueNamer namer = new UniqueNamer ();
       Namer = namer;
+      Namer.Spacer = "__";
       this.DeclCollector = new TypeDeclCollector (namer);
       
     }
@@ -176,12 +182,14 @@ void ObjectInvariant()
         case CommandLineOptions.TypeEncoding.Arguments:
           eraser = new TypeEraserArguments((TypeAxiomBuilderArguments)AxBuilder, gen);
           break;
+        case CommandLineOptions.TypeEncoding.Monomorphic:
+          eraser = null;
+          break;
         default:
           eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses)AxBuilder, gen);
           break;
       }
-      Contract.Assert(eraser!=null);
-      VCExpr exprWithoutTypes = eraser.Erase(expr, polarity);
+      VCExpr exprWithoutTypes = eraser == null ? expr : eraser.Erase(expr, polarity);
       Contract.Assert(exprWithoutTypes!=null);
 
       LetBindingSorter letSorter = new LetBindingSorter(gen);

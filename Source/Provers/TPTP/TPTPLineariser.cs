@@ -118,7 +118,6 @@ void ObjectInvariant()
       case impliesName:
       case iffName:
       case eqName:
-      case distinctName:
       case TRUEName:
       case FALSEName:
       case "Array":
@@ -162,8 +161,6 @@ void ObjectInvariant()
     internal const string FALSEName = "$false"; // nullary predicate that is always false
     internal const string subtypeName = "UOrdering2";
     internal const string subtypeArgsName = "UOrdering3";
-
-    internal const string distinctName = "distinct";
 
     internal const string boolTrueName = "boolTrue";
     internal const string boolFalseName = "boolFalse";
@@ -534,7 +531,7 @@ void ObjectInvariant()
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
        
-        ExprLineariser.AssertAsFormula(distinctName, options);
+        ExprLineariser.AssertAsFormula("distinct", options);
         
         if (node.Length < 2) {
           ExprLineariser.Linearise(VCExpressionGenerator.True, options);
