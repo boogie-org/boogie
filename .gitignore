@@ -50,6 +50,8 @@ Binaries/Model.pdb
 Binaries/Microsoft.Contracts.dll
 Binaries/Provers.Isabelle.dll
 Binaries/Provers.Isabelle.pdb
+Binaries/Provers.TPTP.dll
+Binaries/Provers.TPTP.pdb
 Binaries/Provers.SMTLib.dll
 Binaries/Provers.SMTLib.pdb
 Binaries/Provers.Simplify.dll
