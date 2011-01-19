@@ -26,15 +26,15 @@ namespace BytecodeTranslator {
     }
     readonly TraverserFactory factory;
 
-    public Sink(TraverserFactory factory, Heap heap) {
+    public Sink(TraverserFactory factory, HeapFactory heapFactory) {
       this.factory = factory;
-      this.heap = heap;
+      this.heap = heapFactory.MakeHeap(this);
     }
 
-    public Heap Heap {
+    public IHeap Heap {
       get { return this.heap; }
     }
-    readonly Heap heap;
+    readonly IHeap heap;
 
     public Bpl.Variable ArrayContentsVariable
     {

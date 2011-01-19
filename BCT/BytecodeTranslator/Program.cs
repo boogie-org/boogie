@@ -102,7 +102,11 @@ namespace BytecodeTranslator {
       #region Pass 3: Translate the code model to BPL
       //tmp_BPLGenerator translator = new tmp_BPLGenerator(host, acp);
       var factory = new CLRSemantics();
-      var heap = new Heap();
+      HeapFactory heap;
+      if (CommandLineOptions.SplitFields)
+        heap = new SplitFieldsHeap();
+      else
+        heap = new TwoDIntHeap();
       MetadataTraverser translator = factory.MakeMetadataTraverser(host.GetContractExtractor(module.ModuleIdentity), pdbReader, heap);
       assembly = module as IAssembly;
       if (assembly != null)

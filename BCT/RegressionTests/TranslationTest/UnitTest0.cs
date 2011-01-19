@@ -84,7 +84,7 @@ namespace TranslationTest {
 
       #region Pass 3: Translate the code model to BPL
       var factory = new CLRSemantics();
-      var heap = new Heap();
+      var heap = new TwoDIntHeap();
       MetadataTraverser translator = factory.MakeMetadataTraverser(host.GetContractExtractor(module.ModuleIdentity), pdbReader, heap);
       assembly = module as IAssembly;
       if (assembly != null)

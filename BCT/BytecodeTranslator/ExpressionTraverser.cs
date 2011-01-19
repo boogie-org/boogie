@@ -551,11 +551,8 @@ namespace BytecodeTranslator
           throw new TranslationException("Trying to create a SimpleAssign with complex/illegal lefthand side");
         }
       }
+
       return;
-
-      // Above type tests should be exhaustive.
-      Debug.Assert(false);
-
     }
 
     #endregion
