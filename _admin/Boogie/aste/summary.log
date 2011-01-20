@@ -1,13 +1,13 @@
-# Aste started: 2011-01-19 13:06:35
+# Aste started: 2011-01-20 07:00:10
 # Host id: Boogiebox
-# [2011-01-19 13:08:45] SpecSharp revision: 61530
-# [2011-01-19 13:09:39] Boogie revision: 61745
-# [2011-01-19 13:10:09] SscBoogie revision: 61530
-[2011-01-19 13:10:45] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2011-01-20 07:02:18] SpecSharp revision: 61530
+# [2011-01-20 07:03:24] Boogie revision: 61791
+# [2011-01-20 07:03:57] SscBoogie revision: 61530
+[2011-01-20 07:04:37] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2011-01-19 13:12:05] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2011-01-20 07:05:58] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(825,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2804,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -28,7 +28,6 @@
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Provers\TPTP\TypeDeclCollector.cs(95,17): warning CS0219: The variable 'eq' is assigned but its value is never used
     warning CS0659
     warning CS0659
     warning CS0168
@@ -48,7 +47,6 @@
     warning CS0162
     warning CS0162
     warning CS0162
-    warning CS0219
-[2011-01-19 13:28:31] 4 out of 29 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+[2011-01-20 07:22:37] 4 out of 29 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
 ['test15', 'lazyinline', 'stratifiedinline', 'extractloops']
-# [2011-01-19 13:29:21] Released nightly of Boogie
+# [2011-01-20 07:23:27] Released nightly of Boogie
