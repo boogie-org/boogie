@@ -56,12 +56,18 @@ namespace BytecodeTranslator {
   public abstract class HeapFactory {
 
     /// <summary>
-    /// Returns an object that determines the heap representation.
+    /// Returns two things: an object that determines the heap representation,
+    /// and (optionally) an initial program that contains declarations needed
+    /// for the heap representation.
     /// </summary>
     /// <param name="sink">
     /// The heap might need to generate declarations so it needs access to the Sink.
     /// </param>
-    public abstract IHeap MakeHeap(Sink sink);
+    /// <returns>
+    /// false if and only if an error occurrs and the heap and/or program are not in a
+    /// good state to be used.
+    /// </returns>
+    public abstract bool MakeHeap(Sink sink, out IHeap heap, out Bpl.Program/*?*/ program);
   }
 
 }

@@ -28,7 +28,9 @@ namespace BytecodeTranslator {
 
     public Sink(TraverserFactory factory, HeapFactory heapFactory) {
       this.factory = factory;
-      this.heap = heapFactory.MakeHeap(this);
+      var b = heapFactory.MakeHeap(this, out this.heap, out this.TranslatedProgram); // TODO: what if it returns false?
+      if (this.TranslatedProgram == null)
+        this.TranslatedProgram = new Bpl.Program();
     }
 
     public IHeap Heap {
@@ -55,7 +57,7 @@ namespace BytecodeTranslator {
     public readonly string StaticFieldFunction = "ClassRepr";
     public readonly string ReferenceTypeName = "Ref";
 
-    public readonly Bpl.Program TranslatedProgram = new Bpl.Program();
+    public readonly Bpl.Program TranslatedProgram;
 
     /// <summary>
     /// Creates a fresh local var of the given Type and adds it to the

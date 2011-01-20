@@ -2,21 +2,32 @@
 // Bytecode Translator prelude
 
 const null: int;
+
 type HeapType = [int,int]int;
-function IsGoodHeap(HeapType): bool;
-var $Heap: HeapType where IsGoodHeap($Heap);
+
+function IsGoodHeap(HeapType) : bool;
 
 var $ArrayContents: [int][int]int;
+
 var $ArrayLength: [int]int;
 
-var $Alloc: [int] bool;
-procedure {:inline 1} Alloc() returns (x: int)
-  free ensures x != 0;
+var $Alloc: [int]bool;
+
+procedure {:inline 1} Alloc() returns (x: int);
   modifies $Alloc;
+  free ensures x != 0;
+
+
+
+implementation Alloc() returns (x: int)
 {
-  assume $Alloc[x] == false;
-  $Alloc[x] := true;
+    assume $Alloc[x] == false;
+    $Alloc[x] := true;
 }
+
+
+
+var $Heap: HeapType where IsGoodHeap($Heap);
 
 procedure RegressionTestInput.AsyncAttribute..ctor$System.Void(this: int);
 
