@@ -68,7 +68,12 @@ namespace BytecodeTranslator {
       if (!Parse(args, out assemblyName))
           return result;
       try {
-        result = DoRealWork(assemblyName);
+        HeapFactory heap;
+        if (CommandLineOptions.SplitFields)
+          heap = new SplitFieldsHeap();
+        else
+          heap = new TwoDIntHeap();
+        result = TranslateAssembly(assemblyName, heap);
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed with uncaught exception: {0}", e.Message);
         Console.WriteLine("Stack trace: {0}", e.StackTrace);
@@ -77,7 +82,7 @@ namespace BytecodeTranslator {
       return result;
     }
 
-    static int DoRealWork(string assemblyName) {
+    public static int TranslateAssembly(string assemblyName, HeapFactory heapFactory) {
 
       var host = new Microsoft.Cci.MutableContracts.CodeContractAwareHostEnvironment();
       Host = host;
@@ -102,12 +107,8 @@ namespace BytecodeTranslator {
       #region Pass 3: Translate the code model to BPL
       //tmp_BPLGenerator translator = new tmp_BPLGenerator(host, acp);
       var factory = new CLRSemantics();
-      HeapFactory heap;
-      if (CommandLineOptions.SplitFields)
-        heap = new SplitFieldsHeap();
-      else
-        heap = new TwoDIntHeap();
-      MetadataTraverser translator = factory.MakeMetadataTraverser(host.GetContractExtractor(module.ModuleIdentity), pdbReader, heap);
+      MetadataTraverser translator = factory.MakeMetadataTraverser(host.GetContractExtractor(module.ModuleIdentity), pdbReader, heapFactory);
+      TranslationHelper.tmpVarCounter = 0;
       assembly = module as IAssembly;
       if (assembly != null)
         translator.Visit(assembly);
@@ -128,7 +129,6 @@ namespace BytecodeTranslator {
       else
         return name.Substring(0, i);
     }
-
 
   }
 

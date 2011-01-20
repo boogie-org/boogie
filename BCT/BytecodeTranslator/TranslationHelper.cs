@@ -74,7 +74,7 @@ namespace BytecodeTranslator {
       return tok;
     }
 
-    private static int tmpVarCounter = 0;
+    internal static int tmpVarCounter = 0;
     public static string GenerateTempVarName() {
       return "$tmp" + (tmpVarCounter++).ToString();
     }

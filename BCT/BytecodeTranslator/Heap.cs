@@ -42,7 +42,7 @@ namespace BytecodeTranslator {
     /// <summary>
     /// Prelude text for which access to the ASTs is not needed
     /// </summary>
-    private string InitialPreludeText =
+    private readonly string InitialPreludeText =
       @"const null: int;
 type HeapType = [int,int]int;
 function IsGoodHeap(HeapType): bool;
@@ -62,73 +62,11 @@ procedure {:inline 1} Alloc() returns (x: int)
     #endregion
 
     public override bool MakeHeap(Sink sink, out IHeap heap, out Bpl.Program/*?*/ program) {
-
       heap = this;
       program = null;
-
-      var flags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
-      FieldInfo/*?*/[] fields = typeof(TwoDIntHeap).GetFields(flags);
-      RepresentationFor[] rfs = new RepresentationFor[fields.Length];
-      for (int i = 0; i < fields.Length; i++) {
-        var field = fields[i];
-        object[] cas = field.GetCustomAttributes(typeof(RepresentationFor), false);
-        if (cas == null || cas.Length == 0) // only look at fields that have the attribute
-          fields[i] = null;
-        else {
-          foreach (var a in cas) { // should be exactly one
-            RepresentationFor rf = a as RepresentationFor;
-            if (rf != null) {
-              rfs[i] = rf;
-              break;
-            }
-          }
-        }
-      }
-
-      #region Gather all of the Boogie declarations from the fields of this class
-      var preludeText = new StringBuilder(InitialPreludeText);
-      for (int i = 0; i < fields.Length; i++) {
-        var field = fields[i];
-        if (field == null) continue;
-        preludeText.AppendLine(rfs[i].declaration);
-      }
-      #endregion
-
-      #region Parse the declarations
-      var ms = new MemoryStream(ASCIIEncoding.UTF8.GetBytes(preludeText.ToString()));
-      Bpl.Program prelude;
-      int errorCount = Bpl.Parser.Parse(ms, "foo", new List<string>(), out prelude);
-      if (prelude == null || errorCount > 0) { // TODO: Signal error
-        prelude = null;
-        return false;
-      }
-      #endregion
-
-      program = prelude;
-
-      #region Use the compiled program to get the ASTs
-      for (int i = 0; i < fields.Length; i++) {
-        var field = fields[i];
-        if (field == null) continue;
-        if (!rfs[i].required) continue;
-        var val = program.TopLevelDeclarations.First(d => { Bpl.NamedDeclaration nd = d as Bpl.NamedDeclaration; return nd != null && nd.Name.Equals(rfs[i].name); });
-        field.SetValue(this, val);
-      }
-      #endregion
-
-      #region Check that every field in this class has been set
-      for (int i = 0; i < fields.Length; i++) {
-        var field = fields[i];
-        if (field == null) continue;
-        if (!rfs[i].required) continue;
-        if (field.GetValue(this) == null) {
-          return false;
-        }
-      }
-      #endregion Check that every field in this class has been set
-
+      var b = RepresentationFor.ParsePrelude(this.InitialPreludeText, this, out program);
+      if (!b) return false;
       heap = this;
-      program = prelude;
       return true;
     }
 
@@ -246,6 +184,9 @@ procedure {:inline 1} Alloc() returns (x: int)
       /// field.
       /// </summary>
       public Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value) {
+        if (o == null)
+          return Bpl.Cmd.SimpleAssign(tok, f, value);
+        else
           return Bpl.Cmd.MapAssign(tok, f, o, value);
       }
     }
@@ -258,6 +199,72 @@ procedure {:inline 1} Alloc() returns (x: int)
     internal bool required;
     internal RepresentationFor(string name, string declaration) { this.name = name; this.declaration = declaration;  this.required = true; }
     internal RepresentationFor(string name, string declaration, bool required) { this.name = name; this.declaration = declaration; this.required = required; }
+
+    internal static bool ParsePrelude(string initialPreludeText, object instance, out Bpl.Program/*?*/ prelude) {
+
+      prelude = null;
+
+      var flags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
+      var type = instance.GetType();
+      FieldInfo/*?*/[] fields = type.GetFields(flags);
+      RepresentationFor[] rfs = new RepresentationFor[fields.Length];
+      for (int i = 0; i < fields.Length; i++) {
+        var field = fields[i];
+        object[] cas = field.GetCustomAttributes(typeof(RepresentationFor), false);
+        if (cas == null || cas.Length == 0) { // only look at fields that have the attribute
+          fields[i] = null;
+        } else {
+          foreach (var a in cas) { // should be exactly one
+            RepresentationFor rf = a as RepresentationFor;
+            if (rf != null) {
+              rfs[i] = rf;
+              break;
+            }
+          }
+        }
+      }
+
+      #region Gather all of the Boogie declarations from the fields of this class
+      var preludeText = new StringBuilder(initialPreludeText);
+      for (int i = 0; i < fields.Length; i++) {
+        var field = fields[i];
+        if (field == null) continue;
+        preludeText.AppendLine(rfs[i].declaration);
+      }
+      #endregion
+
+      #region Parse the declarations
+      var ms = new MemoryStream(ASCIIEncoding.UTF8.GetBytes(preludeText.ToString()));
+      int errorCount = Bpl.Parser.Parse(ms, "foo", new List<string>(), out prelude);
+      if (prelude == null || errorCount > 0) {
+        prelude = null;
+        return false;
+      }
+      #endregion
+
+      #region Use the compiled program to get the ASTs
+      for (int i = 0; i < fields.Length; i++) {
+        var field = fields[i];
+        if (field == null) continue;
+        if (!rfs[i].required) continue;
+        var val = prelude.TopLevelDeclarations.First(d => { Bpl.NamedDeclaration nd = d as Bpl.NamedDeclaration; return nd != null && nd.Name.Equals(rfs[i].name); });
+        field.SetValue(instance, val);
+      }
+      #endregion
+
+      #region Check that every field in this class has been set
+      for (int i = 0; i < fields.Length; i++) {
+        var field = fields[i];
+        if (field == null) continue;
+        if (!rfs[i].required) continue;
+        if (field.GetValue(instance) == null) {
+          return false;
+        }
+      }
+      #endregion Check that every field in this class has been set
+
+      return true;
+    }
   }
 
 }

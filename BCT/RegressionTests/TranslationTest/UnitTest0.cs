@@ -60,59 +60,40 @@ namespace TranslationTest {
     //
     #endregion
 
-    private string ExecuteTest(string assemblyName) {
-
-      var host = new Microsoft.Cci.MutableContracts.CodeContractAwareHostEnvironment();
-      BCT.Host = host;
-
-      IModule/*?*/ module = host.LoadUnitFrom(assemblyName) as IModule;
-      if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
-        Console.WriteLine(assemblyName + " is not a PE file containing a CLR module or assembly, or an error occurred when loading it.");
-        Assert.Fail("Failed to read in test assembly for regression test");
-      }
-
-      IAssembly/*?*/ assembly = null;
-
-      PdbReader/*?*/ pdbReader = null;
-      string pdbFile = Path.ChangeExtension(module.Location, "pdb");
-      if (File.Exists(pdbFile)) {
-        Stream pdbStream = File.OpenRead(pdbFile);
-        pdbReader = new PdbReader(pdbStream, host);
-      }
-
-      module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader);
-
-      #region Pass 3: Translate the code model to BPL
-      var factory = new CLRSemantics();
-      var heap = new TwoDIntHeap();
-      MetadataTraverser translator = factory.MakeMetadataTraverser(host.GetContractExtractor(module.ModuleIdentity), pdbReader, heap);
-      assembly = module as IAssembly;
-      if (assembly != null)
-        translator.Visit(assembly);
-      else
-        translator.Visit(module);
-      #endregion Pass 3: Translate the code model to BPL
-      Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(module.Name + ".bpl");
-      Prelude.Emit(writer);
-      translator.TranslatedProgram.Emit(writer);
-      writer.Close();
+    private string ExecuteTest(string assemblyName, HeapFactory heapFactory) {
+      BCT.TranslateAssembly(assemblyName, heapFactory);
       var fileName = Path.ChangeExtension(assemblyName, "bpl");
       var s = File.ReadAllText(fileName);
       return s;
     }
 
     [TestMethod]
-    public void TranslationTest() {
+    public void TwoDIntHeap() {
       string dir = TestContext.DeploymentDirectory;
       var fullPath = Path.Combine(dir, "RegressionTestInput.dll");
-      Stream resource = typeof(UnitTest0).Assembly.GetManifestResourceStream("TranslationTest.RegressionTestInput.txt");
+      Stream resource = typeof(UnitTest0).Assembly.GetManifestResourceStream("TranslationTest.TwoDIntHeapInput.txt");
       StreamReader reader = new StreamReader(resource);
       string expected = reader.ReadToEnd();
-      var result = ExecuteTest(fullPath);
+      var result = ExecuteTest(fullPath, new TwoDIntHeap());
       if (result != expected) {
-        string resultFile = Path.GetFullPath("RegressionTestOutput.txt");
+        string resultFile = Path.GetFullPath("TwoDIntHeapOutput.txt");
         File.WriteAllText(resultFile, result);
-        Assert.Fail("Output didn't match RegressionTestInput.txt: " + resultFile);
+        Assert.Fail("Output didn't match TwoDIntHeapInput.txt: " + resultFile);
+      }
+    }
+
+    [TestMethod]
+    public void SplitFieldsHeap() {
+      string dir = TestContext.DeploymentDirectory;
+      var fullPath = Path.Combine(dir, "RegressionTestInput.dll");
+      Stream resource = typeof(UnitTest0).Assembly.GetManifestResourceStream("TranslationTest.SplitFieldsHeapInput.txt");
+      StreamReader reader = new StreamReader(resource);
+      string expected = reader.ReadToEnd();
+      var result = ExecuteTest(fullPath, new SplitFieldsHeap());
+      if (result != expected) {
+        string resultFile = Path.GetFullPath("SplitFieldsHeapOutput.txt");
+        File.WriteAllText(resultFile, result);
+        Assert.Fail("Output didn't match SplitFieldsHeapInput.txt: " + resultFile);
       }
     }
   }
