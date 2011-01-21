@@ -76,7 +76,7 @@ implementation RegressionTestInput.ClassWithBoolTypes..ctor$System.Void(this: in
     z := z$in;
     assert {:sourceFile "Class1.cs"} {:sourceLine 67} true;
     assert {:sourceFile "Class1.cs"} {:sourceLine 68} true;
-    this[RegressionTestInput.ClassWithBoolTypes.b] := z;
+    RegressionTestInput.ClassWithBoolTypes.b[this] := z;
     if (z)
     {
         assert {:sourceFile "Class1.cs"} {:sourceLine 69} true;

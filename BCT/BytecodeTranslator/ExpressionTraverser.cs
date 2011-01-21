@@ -517,10 +517,10 @@ namespace BytecodeTranslator
 
       var fieldReference = target.Definition as IFieldReference;
       if (fieldReference != null) {
-        Bpl.IdentifierExpr f = this.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
         Bpl.Expr o = null;
         if (target.Instance != null)
           o = TranslatedExpressions.Pop();
+        Bpl.IdentifierExpr f = this.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
         var c = this.sink.Heap.WriteHeap(assignment.Token(), o, f, sourceexp);
         StmtTraverser.StmtBuilder.Add(c);
         return;

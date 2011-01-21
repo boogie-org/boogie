@@ -115,7 +115,7 @@ procedure {:inline 1} Alloc() returns (x: int)
       else
         return
           Bpl.Cmd.MapAssign(tok,
-          new Bpl.IdentifierExpr(tok, this.HeapVariable), new Bpl.ExprSeq(f, o), value);
+          new Bpl.IdentifierExpr(tok, this.HeapVariable), new Bpl.ExprSeq(o, f), value);
     }
 
 
