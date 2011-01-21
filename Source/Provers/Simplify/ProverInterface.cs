@@ -15,6 +15,7 @@ using Microsoft.Boogie.AbstractInterpretation;
 using Microsoft.Boogie.Simplify;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.TypeErasure;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Boogie.Simplify {
   public abstract class LogProverInterface : ProverInterface {
@@ -106,7 +107,7 @@ namespace Microsoft.Boogie.Simplify {
     /// Write "comment" to logfile, if any, formatted as a comment for the theorem prover at hand.
     /// Assumes that "comment" does not contain any characters that would prematurely terminate
     /// the comment (like, perhaps, a newline or "*/").
-    /// </summary>    
+    /// </summary>
     public override void LogComment(string comment) {
       //Contract.Requires(comment != null);
       LogComment(comment, false);
@@ -233,53 +234,86 @@ namespace Microsoft.Boogie.Simplify {
     }
 
     static void InitializeGlobalInformation(string proverExe)
-
-      //throws ProverException, System.IO.FileNotFoundException;
+      // throws ProverException, System.IO.FileNotFoundException;
     {
-
       Contract.Requires(proverExe != null);
       Contract.Ensures(_proverPath != null);
-      if (_proverPath == null) {
-        // Initialize '_proverPath'
-        _proverPath = Path.Combine(CodebaseString(), proverExe);
-        string firstTry = _proverPath;
 
-        string programFiles = Environment.GetEnvironmentVariable("ProgramFiles");
-        Contract.Assert(programFiles != null);
-        string programFilesX86 = Environment.GetEnvironmentVariable("ProgramFiles(x86)");
-        if (programFiles.Equals(programFilesX86)) {
-          // If both %ProgramFiles% and %ProgramFiles(x86)% point to "ProgramFiles (x86)", use %ProgramW6432% instead.
-          programFiles = Environment.GetEnvironmentVariable("ProgramW6432");
-        }
+      if (_proverPath == null)
+      {
+          // Initialize '_proverPath'
+          _proverPath = Path.Combine(CodebaseString(), proverExe);
+          string firstTry = _proverPath;
 
-        List<string> attempts = new List<string>();
-        for (int minorVersion = 20; true; minorVersion--) {
-          if (File.Exists(_proverPath)) {
-            break;  // all seems good
+          string programFiles = Environment.GetEnvironmentVariable("ProgramFiles");
+          Contract.Assert(programFiles != null);
+          string programFilesX86 = Environment.GetEnvironmentVariable("ProgramFiles(x86)");
+          if (programFiles.Equals(programFilesX86))
+          {
+              // If both %ProgramFiles% and %ProgramFiles(x86)% point to "ProgramFiles (x86)", use %ProgramW6432% instead.
+              programFiles = Environment.GetEnvironmentVariable("ProgramW6432");
           }
-          attempts.Add(_proverPath);
-          if (minorVersion < 0) {
-            if (CommandLineOptions.Clo.Trace) {
-              Console.WriteLine("Failed to find prover.  Looked in these places:");
-              foreach (string a in attempts) {
-                Console.WriteLine("    {0}", a);
+
+          string msrDir = null;
+          if (Directory.Exists(programFiles + @"\Microsoft Research\"))
+          {
+              msrDir = programFiles + @"\Microsoft Research\";
+          }
+          else if (Directory.Exists(programFilesX86 + @"\Microsoft Research\"))
+          {
+              msrDir = programFilesX86 + @"\Microsoft Research\";
+          }
+          else
+          {
+              if (CommandLineOptions.Clo.Trace)
+              {
+                  Console.WriteLine("Failed to find the 'Microsoft Research' directory.");
               }
-            }
-            throw new ProverException("Cannot find executable: " + firstTry);
+              throw new ProverException("Cannot find executable: " + firstTry);
           }
-          _proverPath = Path.Combine(programFiles + @"\Microsoft Research\Z3-2." + minorVersion + @"\bin", proverExe);
 
-          if (File.Exists(_proverPath)) {
-            break;  // all seems good
+          // Look for the most recent version of Z3.
+          string[] z3Dirs = Directory.GetDirectories(msrDir, "Z3-*");
+          int minor = 0, major = 0;
+          Regex r = new Regex(@"^Z3-(\d+)\.(\d+)$");
+          foreach (string d in z3Dirs)
+          {
+              string name = new DirectoryInfo(d).Name;
+              foreach (Match m in r.Matches(name))
+              {
+                  int ma, mi;
+                  ma = int.Parse(m.Groups[1].ToString());
+                  mi = int.Parse(m.Groups[2].ToString());
+                  if (major < ma)
+                  {
+                      major = ma;
+                      minor = mi;
+                  }
+                  if (minor < mi)
+                  {
+                      minor = mi;
+                  }
+              }
           }
-          attempts.Add(_proverPath);
-          if (programFilesX86 != null) {
-            _proverPath = Path.Combine(programFilesX86 + @"\Microsoft Research\Z3-2." + minorVersion + @"\bin", proverExe);
+
+          if (0 < major || 0 < minor)
+          {
+              _proverPath = Path.Combine(Path.Combine(Path.Combine(msrDir, "Z3-" + major + "." + minor), "bin"), proverExe);
+              Debug.Assert(File.Exists(_proverPath));
           }
-        }
-        if (CommandLineOptions.Clo.Trace) {
-          Console.WriteLine("[TRACE] Using prover: " + _proverPath);
-        }
+          else
+          {
+              if (CommandLineOptions.Clo.Trace)
+              {
+                  Console.WriteLine("Failed to find prover in this directory:   " + msrDir);
+              }
+              throw new ProverException("Cannot find executable: " + firstTry);
+          }
+
+          if (CommandLineOptions.Clo.Trace)
+          {
+              Console.WriteLine("[TRACE] Using prover: " + _proverPath);
+          }
       }
     }
 
