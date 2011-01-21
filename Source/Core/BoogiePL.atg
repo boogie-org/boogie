@@ -530,7 +530,7 @@ UserDefinedTypes<.out List<Declaration/*!*/>/*!*/ ts.>
   .
 
 UserDefinedType<out Declaration/*!*/ decl, QKeyValue kv>
-= (. Contract.Ensures(Contract.ValueAtReturn(out decl) != null); IToken/*!*/ id; IToken/*!*/ id2; TokenSeq/*!*/ paramTokens = new TokenSeq ();
+= (. Contract.Ensures(Contract.ValueAtReturn(out decl) != null); IToken/*!*/ id; TokenSeq/*!*/ paramTokens = new TokenSeq ();
      Type/*!*/ body = dummyType; bool synonym = false; .)
   Ident<out id>
   [ WhiteSpaceIdents<out paramTokens> ]
@@ -627,7 +627,7 @@ Contract.Assert(m != null);
   .
 
 SpecPrePost<bool free, RequiresSeq/*!*/ pre, EnsuresSeq/*!*/ post>
-= (. Contract.Requires(pre != null); Contract.Requires(post != null); Expr/*!*/ e; VariableSeq/*!*/ locals; BlockSeq/*!*/ blocks; Token tok = null; QKeyValue kv = null; .)
+= (. Contract.Requires(pre != null); Contract.Requires(post != null); Expr/*!*/ e; Token tok = null; QKeyValue kv = null; .)
   ( "requires"              (. tok = t; .)
     { Attribute<ref kv> }
     Proposition<out e> ";"  (. pre.Add(new Requires(tok, free, e, null, kv)); .)
@@ -839,7 +839,7 @@ Contract.Assert(y != null);
 
 LabelOrAssign<out Cmd c, out IToken label>
 /* ensures (c == null) != (label != null) */
-= (. IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e, e0;
+= (. IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e0;
      c = dummyCmd;  label = null;
      AssignLhs/*!*/ lhs;
      List<AssignLhs/*!*/>/*!*/ lhss;
@@ -1052,7 +1052,7 @@ ExpliesOp = "<==" | '\u21d0'.
 
 /*------------------------------------------------------------------------*/
 LogicalExpression<out Expr/*!*/ e0>
-= (. Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; .)
+= (. Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; .)
   RelationalExpression<out e0>
   [ AndOp          (. x = t; .)
     RelationalExpression<out e1>
@@ -1240,7 +1240,6 @@ AtomExpression<out Expr/*!*/ e>
      ExprSeq/*!*/ es;  VariableSeq/*!*/ ds;  Trigger trig;
      TypeVariableSeq/*!*/ typeParams;
      IdentifierExpr/*!*/ id;
-     Bpl.Type/*!*/ ty;
      QKeyValue kv;
      e = dummyExpr;
      VariableSeq/*!*/ locals;
@@ -1339,7 +1338,7 @@ Attribute<ref QKeyValue kv>
 
 AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
 = (. IToken/*!*/ tok;  Expr/*!*/ e;  ExprSeq/*!*/ es;
-     string key;  string value;
+     string key;
      List<object/*!*/> parameters;  object/*!*/ param;
   .)
   "{"                                         (. tok = t; .)
@@ -1405,8 +1404,8 @@ QuantifierBody<IToken/*!*/ q, out TypeVariableSeq/*!*/ typeParams, out VariableS
                out QKeyValue kv, out Trigger trig, out Expr/*!*/ body>
 = (. Contract.Requires(q != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ds) != null); Contract.Ensures(Contract.ValueAtReturn(out body) != null);
 trig = null; typeParams = new TypeVariableSeq ();
-     IToken/*!*/ tok;  Expr/*!*/ e;  ExprSeq/*!*/ es;
-     kv = null;  string key;  string value;
+     IToken/*!*/ tok;
+     kv = null;
      ds = new VariableSeq ();
   .)
   (
