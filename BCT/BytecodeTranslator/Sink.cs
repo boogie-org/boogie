@@ -112,7 +112,7 @@ namespace BytecodeTranslator {
       // The Heap has to decide how to represent the field (i.e., its type),
       // all the Sink cares about is adding a declaration for it.
       Bpl.Variable v;
-      var key = Tuple.Create(field.ContainingType.InternedKey, field.Name);
+      var key = field.InternedKey;
       if (!this.declaredFields.TryGetValue(key, out v)) {
         v = this.Heap.CreateFieldVariable(field);
         this.declaredFields.Add(key, v);
@@ -124,7 +124,7 @@ namespace BytecodeTranslator {
     /// The keys to the table are tuples of the containing type (its interned key) and the name of the field. That
     /// should uniquely identify each field.
     /// </summary>
-    private Dictionary<Tuple<uint, IName>, Bpl.Variable> declaredFields = new Dictionary<Tuple<uint, IName>, Bpl.Variable>();
+    private Dictionary<uint, Bpl.Variable> declaredFields = new Dictionary<uint, Bpl.Variable>();
 
     public void BeginMethod() {
       this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
