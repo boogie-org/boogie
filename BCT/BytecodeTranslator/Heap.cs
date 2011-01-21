@@ -65,9 +65,7 @@ procedure {:inline 1} Alloc() returns (x: int)
       heap = this;
       program = null;
       var b = RepresentationFor.ParsePrelude(this.InitialPreludeText, this, out program);
-      if (!b) return false;
-      heap = this;
-      return true;
+      return b;
     }
 
     /// <summary>
@@ -130,10 +128,32 @@ procedure {:inline 1} Alloc() returns (x: int)
   /// </summary>
   public class SplitFieldsHeap : HeapFactory {
 
+    /// <summary>
+    /// Prelude text for which access to the ASTs is not needed
+    /// </summary>
+    private readonly string InitialPreludeText =
+      @"const null: int;
+type HeapType = [int,int]int;
+var $Heap: HeapType where IsGoodHeap($Heap);
+function IsGoodHeap(HeapType): bool;
+var $ArrayContents: [int][int]int;
+var $ArrayLength: [int]int;
+
+var $Alloc: [int] bool;
+procedure {:inline 1} Alloc() returns (x: int)
+  free ensures x != 0;
+  modifies $Alloc;
+{
+  assume $Alloc[x] == false;
+  $Alloc[x] := true;
+}
+";
+
     public override bool MakeHeap(Sink sink, out IHeap heap, out Bpl.Program/*?*/ program) {
       heap = new HeapRepresentation(sink);
       program = null;
-      return true;
+      var b = RepresentationFor.ParsePrelude(this.InitialPreludeText, this, out program);
+      return b;
     }
 
     private class HeapRepresentation : IHeap {
