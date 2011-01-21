@@ -79,8 +79,9 @@ namespace BytecodeTranslator {
       return "$tmp" + (tmpVarCounter++).ToString();
     }
 
-    public static string CreateUniqueMethodName(IMethodDefinition method) {
-      if (method.ContainingType.ToString() == "Poirot.Poirot")
+    public static string CreateUniqueMethodName(IMethodReference method) {
+      var containingTypeName = TypeHelper.GetTypeName(method.ContainingType, NameFormattingOptions.None);
+      if (containingTypeName == "Poirot.Poirot")
       {
           string name = method.Name.Value;
           if (name == "BeginAtomic")
@@ -92,7 +93,12 @@ namespace BytecodeTranslator {
           else if (name == "Nondet")
               return "poirot_nondet";
       }
-      return method.ContainingType.ToString() + "." + method.Name.Value + "$" + method.Type.ResolvedType.ToString();
+      var s = MemberHelper.GetMethodSignature(method, NameFormattingOptions.DocumentationId);
+      s = s.Substring(2);
+      s = s.Replace('(', '$');
+      s = s.Replace(',', '$');
+      s = s.TrimEnd(')');
+      return s;
     }
 
     #region Temp Stuff that must be replaced as soon as there is real code to deal with this

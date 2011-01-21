@@ -462,7 +462,7 @@ namespace BytecodeTranslator
           outvars.Add(new Bpl.IdentifierExpr(cloc, v));
           TranslatedExpressions.Push(new Bpl.IdentifierExpr(cloc, v));
         }
-        string methodname = TranslationHelper.CreateUniqueMethodName(resolvedMethod);
+        string methodname = TranslationHelper.CreateUniqueMethodName(methodCall.MethodToCall);
 
 
         Bpl.QKeyValue attrib = null;
@@ -626,7 +626,7 @@ namespace BytecodeTranslator
       }
 
       Bpl.IdentifierExprSeq outvars = new Bpl.IdentifierExprSeq();
-      string methodname = TranslationHelper.CreateUniqueMethodName(ctor.ResolvedMethod);
+      string methodname = TranslationHelper.CreateUniqueMethodName(ctor);
 
       this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, methodname, inexpr, outvars));
 

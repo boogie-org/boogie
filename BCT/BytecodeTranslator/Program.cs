@@ -16,64 +16,58 @@ using Microsoft.Cci.ILToCodeModel;
 using Bpl = Microsoft.Boogie;
 
 namespace BytecodeTranslator {
-  public class CommandLineOptions
-  {
-    public static bool SplitFields = false;
+
+  class Options : OptionParsing {
+
+    [OptionDescription("The name of the assembly to use as input", ShortForm = "a")]
+    public string assembly = null;
+
+    [OptionDescription("Search paths for assembly dependencies.", ShortForm = "lib")]
+    public List<string> libpaths = new List<string>();
+
+    public enum HeapRepresentation { splitFields, twoDInt, twoDBox }
+    [OptionDescription("Heap representation to use", ShortForm = "heap")]
+    public HeapRepresentation heapRepresentation = HeapRepresentation.twoDInt;
+
   }
 
   public class BCT {
 
     public static IMetadataHost Host;
 
-    public static bool Parse(string[] args, out string assemblyName)
-    {
-        assemblyName = "";
-        
-        foreach (string arg in args)
-        {
-            if (arg.StartsWith("/"))
-            {
-                if (arg == "/splitFields")
-                {
-                    CommandLineOptions.SplitFields = true;
-                }
-                else
-                {
-                    Console.WriteLine("Illegal option.");
-                    return false;
-                }
-            }
-            else if (assemblyName == "")
-            {
-                assemblyName = arg;
-            }
-            else
-            {
-                Console.WriteLine("Must specify only one input assembly.");
-                return false;
-            }
-        }
-        if (assemblyName == "")
-        {
-            Console.WriteLine("Must specify an input assembly.");
-            return false;
-        }
-        return true;
-    }
-
     static int Main(string[] args)
     {
       int result = 0;
-      string assemblyName;
-      if (!Parse(args, out assemblyName))
-          return result;
+
+      #region Parse options
+      var options = new Options();
+      options.Parse(args);
+      if (options.HasErrors) {
+        if (options.HelpRequested)
+          options.PrintOptions("");
+        return 1;
+      }
+      #endregion
+
+      var assemblyName = String.IsNullOrEmpty(options.assembly) ? options.GeneralArguments[0] : options.assembly;
+
       try {
         HeapFactory heap;
-        if (CommandLineOptions.SplitFields)
-          heap = new SplitFieldsHeap();
-        else
-          heap = new TwoDIntHeap();
-        result = TranslateAssembly(assemblyName, heap);
+        switch (options.heapRepresentation) {
+          case Options.HeapRepresentation.splitFields:
+            heap = new SplitFieldsHeap();
+            break;
+          case Options.HeapRepresentation.twoDInt:
+            heap = new TwoDIntHeap();
+            break;
+          case Options.HeapRepresentation.twoDBox:
+            heap = new TwoDBoxHeap();
+            break;
+          default:
+            Console.WriteLine("Unknown setting for /heap");
+            return 1;
+        }
+        result = TranslateAssembly(assemblyName, heap, options.libpaths);
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed with uncaught exception: {0}", e.Message);
         Console.WriteLine("Stack trace: {0}", e.StackTrace);
@@ -82,9 +76,9 @@ namespace BytecodeTranslator {
       return result;
     }
 
-    public static int TranslateAssembly(string assemblyName, HeapFactory heapFactory) {
+    public static int TranslateAssembly(string assemblyName, HeapFactory heapFactory, List<string>/*?*/ libPaths) {
 
-      var host = new Microsoft.Cci.MutableContracts.CodeContractAwareHostEnvironment();
+      var host = new Microsoft.Cci.MutableContracts.CodeContractAwareHostEnvironment(libPaths != null ? libPaths : IteratorHelper.GetEmptyEnumerable<string>(), true, true);
       Host = host;
 
       IModule/*?*/ module = host.LoadUnitFrom(assemblyName) as IModule;

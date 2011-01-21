@@ -213,6 +213,147 @@ procedure {:inline 1} Alloc() returns (x: int)
 
   }
 
+  /// <summary>
+  /// A heap representation that uses a global variable, $Heap, which is
+  /// a two-dimensional array indexed by objects and fields. Objects
+  /// are values of type "int", fields are unique constants, and the
+  /// elements of the heap are of type "box". Each value that is read/written
+  /// from/to the heap is wrapped in a type conversion function.
+  /// </summary>
+  public class TwoDBoxHeap : HeapFactory, IHeap {
+
+    #region Fields
+    [RepresentationFor("$Heap", "var $Heap: HeapType where IsGoodHeap($Heap);", true)]
+    private Bpl.Variable HeapVariable = null;
+
+    [RepresentationFor("Box2Int", "function Box2Int(box): int;")]
+    private Bpl.Function Box2Int = null;
+
+    [RepresentationFor("Box2Bool", "function Box2Bool(box): bool;")]
+    private Bpl.Function Box2Bool = null;
+
+    [RepresentationFor("Int2Box", "function Int2Box(int): box;")]
+    private Bpl.Function Int2Box = null;
+
+    [RepresentationFor("Bool2Box", "function Bool2Box(bool): box;")]
+    private Bpl.Function Bool2Box = null;
+
+    /// <summary>
+    /// Prelude text for which access to the ASTs is not needed
+    /// </summary>
+    private readonly string InitialPreludeText =
+      @"const null: int;
+type box;
+type HeapType = [int,int]box;
+function IsGoodHeap(HeapType): bool;
+var $ArrayContents: [int][int]int;
+var $ArrayLength: [int]int;
+
+var $Alloc: [int] bool;
+procedure {:inline 1} Alloc() returns (x: int)
+  free ensures x != 0;
+  modifies $Alloc;
+{
+  assume $Alloc[x] == false;
+  $Alloc[x] := true;
+}
+";
+    private Sink sink;
+
+    #endregion
+
+    public override bool MakeHeap(Sink sink, out IHeap heap, out Bpl.Program/*?*/ program) {
+      this.sink = sink;
+      heap = this;
+      program = null;
+      var b = RepresentationFor.ParsePrelude(this.InitialPreludeText, this, out program);
+      return b;
+    }
+
+    /// <summary>
+    /// Creates a fresh BPL variable to represent <paramref name="field"/>, deciding
+    /// on its type based on the heap representation.
+    /// </summary>
+    public Bpl.Variable CreateFieldVariable(IFieldReference field) {
+      Bpl.Variable v;
+      string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
+      Bpl.IToken tok = field.Token();
+      Bpl.Type t = TranslationHelper.CciTypeToBoogie(field.Type.ResolvedType);
+
+      if (field.IsStatic) {
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
+        v = new Bpl.GlobalVariable(tok, tident);
+      } else {
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
+        v = new Bpl.Constant(tok, tident, true);
+      }
+      return v;
+    }
+
+    /// <summary>
+    /// Returns the (typed) BPL expression that corresponds to the value of the field
+    /// <paramref name="f"/> belonging to the object <paramref name="o"/> (when
+    /// <paramref name="o"/> is non-null, otherwise the value of the static field.
+    /// </summary>
+    /// <param name="o">The expression that represents the object to be dereferenced.
+    /// Null if <paramref name="f"/> is a static field.
+    /// </param>
+    /// <param name="f">The field that is used to dereference the object <paramref name="o"/>, when
+    /// it is not null. Otherwise the static field whose value should be read.
+    /// </param>
+    public Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f) {
+      // $Heap[o,f]
+      var selectExpr = Bpl.Expr.Select(new Bpl.IdentifierExpr(f.tok, HeapVariable), new Bpl.Expr[] { o, f });
+      // wrap it in the right conversion function
+      Bpl.Function conversion;
+      if (f.Type == Bpl.Type.Bool)
+        conversion = this.Box2Bool;
+      else if (f.Type == Bpl.Type.Int)
+        conversion = this.Box2Int;
+      else
+        throw new InvalidOperationException("Unknown Boogie type");
+      var callExpr = new Bpl.NAryExpr(
+        f.tok,
+        new Bpl.FunctionCall(conversion),
+        new Bpl.ExprSeq(selectExpr)
+        );
+      return callExpr;
+
+    }
+
+    /// <summary>
+    /// Returns the BPL command that corresponds to assigning the value <paramref name="value"/>
+    /// to the field <paramref name="f"/> of the object <paramref name="o"/> (when
+    /// <paramref name="o"/> is non-null, otherwise it is an assignment to the static
+    /// field.
+    /// </summary>
+    public Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value) {
+      if (o == null) {
+        return Bpl.Cmd.SimpleAssign(tok, f, value);
+      } else {
+        // wrap it in the right conversion function
+        Bpl.Function conversion;
+        if (f.Type == Bpl.Type.Bool)
+          conversion = this.Bool2Box;
+        else if (f.Type == Bpl.Type.Int)
+          conversion = this.Int2Box;
+        else
+          throw new InvalidOperationException("Unknown Boogie type");
+
+        // $Heap[o,f] := conversion(value)
+        var callExpr = new Bpl.NAryExpr(
+          f.tok,
+          new Bpl.FunctionCall(conversion),
+          new Bpl.ExprSeq(value)
+          );
+        return
+          Bpl.Cmd.MapAssign(tok,
+          new Bpl.IdentifierExpr(tok, this.HeapVariable), new Bpl.ExprSeq(o, f), callExpr);
+      }
+    }
+
+  }
+
   internal class RepresentationFor : Attribute {
     internal string name;
     internal string declaration;

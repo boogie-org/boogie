@@ -24,6 +24,11 @@ namespace RegressionTestInput {
       Contract.Assert(y == StaticInt);
     }
 
+    // Test to make sure we generate unique procedure names
+    void M(int x, int y) { }
+    void M(bool b) { }
+    void M(Class0 c) { }
+
     int NonVoid() {
       return 3 + StaticInt + StaticMethod(3);
     }
