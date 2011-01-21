@@ -25,7 +25,7 @@ namespace BytecodeTranslator {
     [OptionDescription("Search paths for assembly dependencies.", ShortForm = "lib")]
     public List<string> libpaths = new List<string>();
 
-    public enum HeapRepresentation { splitFields, twoDInt, twoDBox }
+    public enum HeapRepresentation { splitFields, twoDInt, twoDBox, general }
     [OptionDescription("Heap representation to use", ShortForm = "heap")]
     public HeapRepresentation heapRepresentation = HeapRepresentation.twoDInt;
 
@@ -62,6 +62,9 @@ namespace BytecodeTranslator {
             break;
           case Options.HeapRepresentation.twoDBox:
             heap = new TwoDBoxHeap();
+            break;
+          case Options.HeapRepresentation.general:
+            heap = new GeneralHeap();
             break;
           default:
             Console.WriteLine("Unknown setting for /heap");

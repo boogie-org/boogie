@@ -1,0 +1,469 @@
+﻿// Copyright (c) 2010, Microsoft Corp.
+// Bytecode Translator prelude
+
+const null: ref;
+
+type box;
+
+type ref = int;
+
+type HeapType = [ref,Field]box;
+
+function IsGoodHeap(HeapType) : bool;
+
+var $ArrayContents: [int][int]int;
+
+var $ArrayLength: [int]int;
+
+var $Alloc: [ref]bool;
+
+procedure {:inline 1} Alloc() returns (x: ref);
+  modifies $Alloc;
+  free ensures x != null;
+
+
+
+implementation Alloc() returns (x: ref)
+{
+    assume $Alloc[x] == false;
+    $Alloc[x] := true;
+}
+
+
+
+type Field;
+
+var $Heap: HeapType where IsGoodHeap($Heap);
+
+function Box2Int(box) : int;
+
+function Box2Bool(box) : bool;
+
+function Int2Box(int) : box;
+
+function Bool2Box(bool) : box;
+
+function {:inline true} Read(H: HeapType, o: ref, f: Field) : box
+{
+  H[o, f]
+}
+
+function {:inline true} Write(H: HeapType, o: ref, f: Field, v: box) : HeapType
+{
+  H[o, f := v]
+}
+
+procedure RegressionTestInput.AsyncAttribute.#ctor(this: int);
+
+
+
+implementation RegressionTestInput.AsyncAttribute.#ctor(this: int)
+{
+    return;
+}
+
+
+
+var RegressionTestInput.ClassWithBoolTypes.staticB: bool;
+
+const unique RegressionTestInput.ClassWithBoolTypes.b: Field;
+
+procedure RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int32(x$in: int, y$in: int) returns ($result: bool);
+
+
+
+implementation RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int32(x$in: int, y$in: int) returns ($result: bool)
+{
+  var x: int;
+  var y: int;
+  var local_0: bool;
+
+    x := x$in;
+    y := y$in;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 69} true;
+    local_0 := x < y;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 70} true;
+    $result := local_0;
+    return;
+}
+
+
+
+procedure RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean(this: int, z$in: bool);
+
+
+
+implementation RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean(this: int, z$in: bool)
+{
+  var z: bool;
+
+    z := z$in;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 72} true;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 73} true;
+    $Heap := Write($Heap, this, RegressionTestInput.ClassWithBoolTypes.b, Bool2Box(z));
+    if (z)
+    {
+        assert {:sourceFile "Class1.cs"} {:sourceLine 74} true;
+        RegressionTestInput.ClassWithBoolTypes.staticB := z;
+    }
+    else
+    {
+    }
+
+    return;
+}
+
+
+
+procedure RegressionTestInput.ClassWithBoolTypes.Main();
+
+
+
+implementation RegressionTestInput.ClassWithBoolTypes.Main()
+{
+  var $tmp0: bool;
+
+    assert {:sourceFile "Class1.cs"} {:sourceLine 78} true;
+    call $tmp0 := RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int32(3, 4);
+    assert {:sourceFile "Class1.cs"} {:sourceLine 79} true;
+    return;
+}
+
+
+
+var RegressionTestInput.ClassWithArrayTypes.s: int;
+
+const unique RegressionTestInput.ClassWithArrayTypes.a: Field;
+
+procedure RegressionTestInput.ClassWithArrayTypes.Main1();
+
+
+
+implementation RegressionTestInput.ClassWithArrayTypes.Main1()
+{
+  var local_0: int;
+  var $tmp1: int;
+  var local_1: int;
+  var $tmp2: int;
+
+    assert {:sourceFile "Class1.cs"} {:sourceLine 86} true;
+    call $tmp1 := Alloc();
+    local_0 := $tmp1;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 87} true;
+    $ArrayContents := $ArrayContents[local_0 := $ArrayContents[local_0][0 := 2]];
+    assert {:sourceFile "Class1.cs"} {:sourceLine 88} true;
+    assert $ArrayContents[local_0][0] == 2;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 90} true;
+    call $tmp2 := Alloc();
+    local_1 := $tmp2;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 91} true;
+    $ArrayContents := $ArrayContents[local_1 := $ArrayContents[local_1][0 := 1]];
+    assert {:sourceFile "Class1.cs"} {:sourceLine 92} true;
+    assert $ArrayContents[local_1][0] == 1;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 94} true;
+    assert $ArrayContents[local_0][0] == 2;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 95} true;
+    return;
+}
+
+
+
+procedure RegressionTestInput.ClassWithArrayTypes.Main2();
+
+
+
+implementation RegressionTestInput.ClassWithArrayTypes.Main2()
+{
+  var $tmp3: int;
+  var local_0: int;
+  var $tmp4: int;
+
+    assert {:sourceFile "Class1.cs"} {:sourceLine 100} true;
+    call $tmp3 := Alloc();
+    RegressionTestInput.ClassWithArrayTypes.s := $tmp3;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 101} true;
+    $ArrayContents := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.s := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.s][0 := 2]];
+    assert {:sourceFile "Class1.cs"} {:sourceLine 102} true;
+    assert $ArrayContents[RegressionTestInput.ClassWithArrayTypes.s][0] == 2;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 104} true;
+    call $tmp4 := Alloc();
+    local_0 := $tmp4;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 105} true;
+    $ArrayContents := $ArrayContents[local_0 := $ArrayContents[local_0][0 := 1]];
+    assert {:sourceFile "Class1.cs"} {:sourceLine 106} true;
+    assert $ArrayContents[local_0][0] == 1;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 108} true;
+    assert $ArrayContents[RegressionTestInput.ClassWithArrayTypes.s][0] == 2;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 109} true;
+    return;
+}
+
+
+
+procedure RegressionTestInput.ClassWithArrayTypes.Main3$System.Int32(this: int, x$in: int);
+
+
+
+implementation RegressionTestInput.ClassWithArrayTypes.Main3$System.Int32(this: int, x$in: int)
+{
+  var x: int;
+
+    x := x$in;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 114} true;
+    $ArrayContents := $ArrayContents[Box2Int(Read($Heap, this, RegressionTestInput.ClassWithArrayTypes.a)) := $ArrayContents[Box2Int(Read($Heap, this, RegressionTestInput.ClassWithArrayTypes.a))][x := 42]];
+    assert {:sourceFile "Class1.cs"} {:sourceLine 115} true;
+    $ArrayContents := $ArrayContents[Box2Int(Read($Heap, this, RegressionTestInput.ClassWithArrayTypes.a)) := $ArrayContents[Box2Int(Read($Heap, this, RegressionTestInput.ClassWithArrayTypes.a))][x + 1 := 43]];
+    assert {:sourceFile "Class1.cs"} {:sourceLine 116} true;
+    assert $ArrayContents[Box2Int(Read($Heap, this, RegressionTestInput.ClassWithArrayTypes.a))][x + 1] == $ArrayContents[Box2Int(Read($Heap, this, RegressionTestInput.ClassWithArrayTypes.a))][x] + 1;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 117} true;
+    return;
+}
+
+
+
+procedure RegressionTestInput.ClassWithArrayTypes.#ctor(this: int);
+
+
+
+implementation RegressionTestInput.ClassWithArrayTypes.#ctor(this: int)
+{
+    return;
+}
+
+
+
+var RegressionTestInput.Class0.StaticInt: int;
+
+procedure RegressionTestInput.Class0.StaticMethod$System.Int32(x$in: int) returns ($result: int);
+
+
+
+implementation RegressionTestInput.Class0.StaticMethod$System.Int32(x$in: int) returns ($result: int)
+{
+  var x: int;
+  var local_0: int;
+
+    x := x$in;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 17} true;
+    local_0 := x + 1;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 18} true;
+    $result := local_0;
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.M$System.Int32(this: int, x$in: int);
+
+
+
+implementation RegressionTestInput.Class0.M$System.Int32(this: int, x$in: int)
+{
+  var x: int;
+  var __temp_1: int;
+  var $tmp5: int;
+  var __temp_2: int;
+  var __temp_3: int;
+  var local_0: int;
+
+    x := x$in;
+    $tmp5 := x;
+    assert $tmp5 != 0;
+    __temp_1 := 5 / $tmp5;
+    __temp_2 := 3;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 21} true;
+    __temp_3 := __temp_2;
+    x := __temp_3;
+    local_0 := __temp_1 + __temp_2;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 22} true;
+    assert x == 3 && local_0 <= 8;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 23} true;
+    RegressionTestInput.Class0.StaticInt := local_0;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 24} true;
+    assert local_0 == RegressionTestInput.Class0.StaticInt;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 25} true;
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.M$System.Int32$System.Int32(this: int, x$in: int, y$in: int);
+
+
+
+implementation RegressionTestInput.Class0.M$System.Int32$System.Int32(this: int, x$in: int, y$in: int)
+{
+  var x: int;
+  var y: int;
+
+    x := x$in;
+    y := y$in;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 28} true;
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.M$System.Boolean(this: int, b$in: bool);
+
+
+
+implementation RegressionTestInput.Class0.M$System.Boolean(this: int, b$in: bool)
+{
+  var b: bool;
+
+    b := b$in;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 29} true;
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.M$RegressionTestInput.Class0(this: int, c$in: int);
+
+
+
+implementation RegressionTestInput.Class0.M$RegressionTestInput.Class0(this: int, c$in: int)
+{
+  var c: int;
+
+    c := c$in;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 30} true;
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.NonVoid(this: int) returns ($result: int);
+
+
+
+implementation RegressionTestInput.Class0.NonVoid(this: int) returns ($result: int)
+{
+  var local_0: int;
+  var $tmp6: int;
+
+    assert {:sourceFile "Class1.cs"} {:sourceLine 33} true;
+    call $tmp6 := RegressionTestInput.Class0.StaticMethod$System.Int32(3);
+    local_0 := 3 + RegressionTestInput.Class0.StaticInt + $tmp6;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 34} true;
+    $result := local_0;
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.OutParam$System.Int32@(this: int) returns (x$out: int, $result: int);
+
+
+
+implementation RegressionTestInput.Class0.OutParam$System.Int32@(this: int) returns (x$out: int, $result: int)
+{
+  var local_0: int;
+
+    assert {:sourceFile "Class1.cs"} {:sourceLine 37} true;
+    x$out := 3 + RegressionTestInput.Class0.StaticInt;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 38} true;
+    local_0 := x$out;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 39} true;
+    $result := local_0;
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.RefParam$System.Int32@(this: int, x$in: int) returns (x$out: int, $result: int);
+
+
+
+implementation RegressionTestInput.Class0.RefParam$System.Int32@(this: int, x$in: int) returns (x$out: int, $result: int)
+{
+  var local_0: int;
+
+    x$out := x$in;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 42} true;
+    x$out := x$out + 1;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 43} true;
+    RegressionTestInput.Class0.StaticInt := x$out;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 44} true;
+    local_0 := x$out;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 45} true;
+    $result := local_0;
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.AssignToInParam$System.Int32(this: int, x$in: int) returns ($result: int);
+
+
+
+implementation RegressionTestInput.Class0.AssignToInParam$System.Int32(this: int, x$in: int) returns ($result: int)
+{
+  var x: int;
+  var local_0: int;
+
+    x := x$in;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 48} true;
+    x := x + 1;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 49} true;
+    RegressionTestInput.Class0.StaticInt := x;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 50} true;
+    local_0 := x;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 51} true;
+    $result := local_0;
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this: int, x$in: int) returns ($result: int);
+
+
+
+implementation RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this: int, x$in: int) returns ($result: int)
+{
+  var x: int;
+  var local_0: int;
+
+    x := x$in;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 55} true;
+    local_0 := x;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 56} true;
+    $result := local_0;
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.CallAsyncMethod$System.Int32(this: int, y$in: int) returns ($result: int);
+
+
+
+implementation RegressionTestInput.Class0.CallAsyncMethod$System.Int32(this: int, y$in: int) returns ($result: int)
+{
+  var y: int;
+  var local_0: int;
+  var $tmp7: int;
+
+    y := y$in;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 59} true;
+    call {:async} $tmp7 := RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this, y);
+    local_0 := $tmp7;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 60} true;
+    $result := local_0;
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.#ctor(this: int);
+
+
+
+implementation RegressionTestInput.Class0.#ctor(this: int)
+{
+    return;
+}
+
+

@@ -354,6 +354,173 @@ procedure {:inline 1} Alloc() returns (x: int)
 
   }
 
+  /// <summary>
+  /// A heap representation that uses Boogie (in-line) functions
+  /// for all heap reads and writes. That way the decision about
+  /// how to exactly represent the heap is made in the Prelude.
+  /// </summary>
+  public class GeneralHeap : HeapFactory, IHeap {
+
+    #region Fields
+
+    [RepresentationFor("Field", "type Field;")]
+    private Bpl.TypeCtorDecl FieldTypeDecl = null;
+    private Bpl.CtorType FieldType;
+
+    [RepresentationFor("$Heap", "var $Heap: HeapType where IsGoodHeap($Heap);", true)]
+    private Bpl.Variable HeapVariable = null;
+
+    [RepresentationFor("Box2Int", "function Box2Int(box): int;")]
+    private Bpl.Function Box2Int = null;
+
+    [RepresentationFor("Box2Bool", "function Box2Bool(box): bool;")]
+    private Bpl.Function Box2Bool = null;
+
+    [RepresentationFor("Int2Box", "function Int2Box(int): box;")]
+    private Bpl.Function Int2Box = null;
+
+    [RepresentationFor("Bool2Box", "function Bool2Box(bool): box;")]
+    private Bpl.Function Bool2Box = null;
+
+    [RepresentationFor("Read", "function {:inline true} Read(H:HeapType, o:ref, f:Field): box { H[o, f] }")]
+    private Bpl.Function Read = null;
+
+    [RepresentationFor("Write", "function {:inline true} Write(H:HeapType, o:ref, f:Field, v:box): HeapType { H[o,f := v] }")]
+    private Bpl.Function Write = null; 
+
+    /// <summary>
+    /// Prelude text for which access to the ASTs is not needed
+    /// </summary>
+    private readonly string InitialPreludeText =
+      @"const null: ref;
+type box;
+type ref = int;
+type HeapType = [ref,Field]box;
+function IsGoodHeap(HeapType): bool;
+var $ArrayContents: [int][int]int;
+var $ArrayLength: [int]int;
+
+var $Alloc: [ref] bool;
+procedure {:inline 1} Alloc() returns (x: ref)
+  free ensures x != null;
+  modifies $Alloc;
+{
+  assume $Alloc[x] == false;
+  $Alloc[x] := true;
+}
+";
+    private Sink sink;
+
+    #endregion
+
+    public override bool MakeHeap(Sink sink, out IHeap heap, out Bpl.Program/*?*/ program) {
+      this.sink = sink;
+      heap = this;
+      program = null;
+      var b = RepresentationFor.ParsePrelude(this.InitialPreludeText, this, out program);
+      if (b) {
+        this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
+      }
+      return b;
+    }
+
+    /// <summary>
+    /// Creates a fresh BPL variable to represent <paramref name="field"/>, deciding
+    /// on its type based on the heap representation.
+    /// </summary>
+    public Bpl.Variable CreateFieldVariable(IFieldReference field) {
+      Bpl.Variable v;
+      string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
+      Bpl.IToken tok = field.Token();
+
+      if (field.IsStatic) {
+        Bpl.Type t = TranslationHelper.CciTypeToBoogie(field.Type.ResolvedType);
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
+        v = new Bpl.GlobalVariable(tok, tident);
+      } else {
+        Bpl.Type t = this.FieldType;
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
+        v = new Bpl.Constant(tok, tident, true);
+      }
+      this.underlyingTypes.Add(v, field.Type);
+      return v;
+    }
+    private Dictionary<Bpl.Variable, ITypeReference> underlyingTypes = new Dictionary<Bpl.Variable, ITypeReference>();
+
+    /// <summary>
+    /// Returns the (typed) BPL expression that corresponds to the value of the field
+    /// <paramref name="f"/> belonging to the object <paramref name="o"/> (when
+    /// <paramref name="o"/> is non-null, otherwise the value of the static field.
+    /// </summary>
+    /// <param name="o">The expression that represents the object to be dereferenced.
+    /// Null if <paramref name="f"/> is a static field.
+    /// </param>
+    /// <param name="f">The field that is used to dereference the object <paramref name="o"/>, when
+    /// it is not null. Otherwise the static field whose value should be read.
+    /// </param>
+    public Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f) {
+      // $Read($Heap, o, f)
+      var callRead = new Bpl.NAryExpr(
+        f.tok,
+        new Bpl.FunctionCall(this.Read),
+        new Bpl.ExprSeq(new Bpl.IdentifierExpr(f.tok, this.HeapVariable), o, f)
+        );
+      // wrap it in the right conversion function
+      Bpl.Function conversion;
+      var originalType = this.underlyingTypes[f.Decl];
+      var boogieType = TranslationHelper.CciTypeToBoogie(originalType);
+      if (boogieType == Bpl.Type.Bool)
+        conversion = this.Box2Bool;
+      else if (boogieType == Bpl.Type.Int)
+        conversion = this.Box2Int;
+      else
+        throw new InvalidOperationException("Unknown Boogie type");
+      var callExpr = new Bpl.NAryExpr(
+        f.tok,
+        new Bpl.FunctionCall(conversion),
+        new Bpl.ExprSeq(callRead)
+        );
+      return callExpr;
+
+    }
+
+    /// <summary>
+    /// Returns the BPL command that corresponds to assigning the value <paramref name="value"/>
+    /// to the field <paramref name="f"/> of the object <paramref name="o"/> (when
+    /// <paramref name="o"/> is non-null, otherwise it is an assignment to the static
+    /// field.
+    /// </summary>
+    public Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value) {
+      if (o == null) {
+        return Bpl.Cmd.SimpleAssign(tok, f, value);
+      } else {
+        // wrap it in the right conversion function
+        Bpl.Function conversion;
+        if (value.Type == Bpl.Type.Bool)
+          conversion = this.Bool2Box;
+        else if (value.Type == Bpl.Type.Int)
+          conversion = this.Int2Box;
+        else
+          throw new InvalidOperationException("Unknown Boogie type");
+
+        var callConversion = new Bpl.NAryExpr(
+          f.tok,
+          new Bpl.FunctionCall(conversion),
+          new Bpl.ExprSeq(value)
+          );
+        // $Write($Heap, o, f)
+        var h = new Bpl.IdentifierExpr(f.tok, this.HeapVariable);
+        var callWrite = new Bpl.NAryExpr(
+          f.tok,
+          new Bpl.FunctionCall(this.Write),
+          new Bpl.ExprSeq(h, o, f, callConversion)
+          );
+        return Bpl.Cmd.SimpleAssign(f.tok, h, callWrite);
+      }
+    }
+
+  }
+
   internal class RepresentationFor : Attribute {
     internal string name;
     internal string declaration;

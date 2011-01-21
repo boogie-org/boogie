@@ -108,10 +108,25 @@ namespace TranslationTest {
       if (result != expected) {
         string resultFile = Path.GetFullPath("TwoDBoxHeapOutput.txt");
         File.WriteAllText(resultFile, result);
-        Assert.Fail("Output didn't match TwoDBoxHeapHeapInput.txt: " + resultFile);
+        Assert.Fail("Output didn't match TwoDBoxHeapInput.txt: " + resultFile);
       }
     }
-  
+
+    [TestMethod]
+    public void GeneralHeap() {
+      string dir = TestContext.DeploymentDirectory;
+      var fullPath = Path.Combine(dir, "RegressionTestInput.dll");
+      Stream resource = typeof(UnitTest0).Assembly.GetManifestResourceStream("TranslationTest.GeneralHeapInput.txt");
+      StreamReader reader = new StreamReader(resource);
+      string expected = reader.ReadToEnd();
+      var result = ExecuteTest(fullPath, new GeneralHeap());
+      if (result != expected) {
+        string resultFile = Path.GetFullPath("GeneralHeapOutput.txt");
+        File.WriteAllText(resultFile, result);
+        Assert.Fail("Output didn't match GeneralHeapInput.txt: " + resultFile);
+      }
+    }
+
   }
 }
  
