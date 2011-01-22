@@ -27,7 +27,7 @@ namespace BytecodeTranslator {
 
     public enum HeapRepresentation { splitFields, twoDInt, twoDBox, general }
     [OptionDescription("Heap representation to use", ShortForm = "heap")]
-    public HeapRepresentation heapRepresentation = HeapRepresentation.twoDInt;
+    public HeapRepresentation heapRepresentation = HeapRepresentation.general;
 
   }
 

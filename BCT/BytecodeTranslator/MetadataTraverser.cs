@@ -173,7 +173,7 @@ namespace BytecodeTranslator {
 
               Bpl.Requires req
                   = new Bpl.Requires(pre.Token(),
-                      true, exptravers.TranslatedExpressions.Pop(), "");
+                      false, exptravers.TranslatedExpressions.Pop(), "");
               boogiePrecondition.Add(req);
             }
 
@@ -185,7 +185,7 @@ namespace BytecodeTranslator {
 
               Bpl.Ensures ens =
                   new Bpl.Ensures(post.Token(),
-                      true, exptravers.TranslatedExpressions.Pop(), "");
+                      false, exptravers.TranslatedExpressions.Pop(), "");
               boogiePostcondition.Add(ens);
             }
 
