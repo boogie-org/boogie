@@ -40,7 +40,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
                                f_owners, f_closed, f_roots, f_timestamps, f_select_bool, f_select_int, f_is_null, f_good_state,
                                f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, f_field_plus,
                                f_is_sequential_field, f_is_volatile_field, f_type_project_0;
-    public readonly Model.Element tp_object, tp_mathint, tp_bool, tp_state, tp_ptrset;
+    public readonly Model.Element tp_object, tp_mathint, tp_bool, tp_state, tp_ptrset, tp_heaptp;
     public readonly Model.Element elt_me, elt_null;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
     Dictionary<Model.Element, string> literalName = new Dictionary<Model.Element, string>();
@@ -92,6 +92,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       tp_object = m.GetFunc("^^object").GetConstant();
       tp_state = m.GetFunc("^$#state_t").GetConstant();
       tp_ptrset = m.GetFunc("^$#ptrset").GetConstant();
+
+      tp_heaptp = m.MkFunc("$heap_type", 0).GetConstant();
 
       elt_me = m.GetFunc("$me").GetConstant();
       elt_null = m.GetFunc("$null").GetConstant();
@@ -198,6 +200,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       res = -1;
       if (name[0] == '$' && name.EndsWith("_to_int"))
         res = 1;
+      else if (name.EndsWith("#frame"))
+        res = 2;
       else {
         for (int i = 0; i < prefixes.Length; ++i)
           foreach (var p in prefixes[i])
@@ -411,9 +415,15 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return bestScore >= 5;
     }
 
-    bool IsState(Model.Element elt)
+    bool IsSomeState(Model.Element elt)
     {
-      return GuessType(elt) == tp_state;
+      var tp = GuessType(elt);
+      return tp == tp_state || tp == tp_heaptp;
+    }
+
+    bool IsThisState(Model.Element st, Model.Element elt)
+    {
+      return elt == st || elt == f_heap.TryEval(st);
     }
 
     Model.Element GuessType(Model.Element element)
@@ -439,6 +449,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         if (element == tpl.Result) {
           if (tpl.Func == f_ptr)
             return tp_object;
+          if (tpl.Func == f_heap)
+            return tp_heaptp;
         }
 
         if (tpl.Args.Length >= 1 && tpl.Args[0] == element) {
@@ -738,9 +750,10 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
       if (elt != null && !(elt is Model.Boolean)) {
         var curState = state.state.TryGet("$s");
+        
         foreach (var tupl in elt.References) {
           if (!tupl.Args.Contains(elt)) continue; // not looking for aliases (maybe we should?)
-          if (tupl.Args.Any(IsState) && !tupl.Args.Contains(curState))
+          if (tupl.Args.Any(IsSomeState) && !tupl.Args.Any(s => IsThisState(curState, s)))
             continue;          
           var argsFmt = new StringBuilder();
           var name = tupl.Func.Name;
@@ -752,7 +765,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           argsFmt.Append(name).Append("(");
           var args = new List<Model.Element>();
           foreach (var a in tupl.Args) {
-            if (a == curState)
+            if (IsThisState(curState, a))
               argsFmt.Append("\\now, ");
             else if (a == elt)
               argsFmt.Append("*, ");
