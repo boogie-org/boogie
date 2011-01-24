@@ -660,14 +660,10 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return ptr != null && f_idx.TryEval(ptr, model.TryMkElement("0")) != null;
     }
 
-    public IEnumerable<ElementNode> GetExpansion(StateNode state, Model.Element elt, Model.Element tp, Model.Element addrOf)
+    public IEnumerable<ElementNode> GetExpansion(StateNode state, Model.Element elt, Model.Element tp)
     {
       List<ElementNode> result = new List<ElementNode>();
       Model.FuncTuple tpl;
-
-      if (addrOf != null) {
-        result.Add(new FieldNode(state, new EdgeName("&"), addrOf, GuessPtrTo(tp)));
-      }
 
       var kind = GetKind(tp, out tpl);
       if (kind == DataKind.PhysPtr || kind == DataKind.SpecPtr || kind == DataKind.Object) {
@@ -685,7 +681,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
                 continue;              
               var addr = f_ptr.TryEval(field, elt);
               if (addr != null) addresses.Add(addr);
-              result.Add(BuildFieldNode(state, addr, field, val, addr));
+              BuildFieldNode(result, state, addr, field, val, addr);
             }
           }
           //result.Sort(CompareFields);
@@ -709,7 +705,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
             if (val != null)
               val = WrapForUse(val, atp);
-            result.Add(new MapletNode(state, new EdgeName(this, "[%0]", app.Args[1]), val, atp) { Category = NodeCategory.Maplet, AddrOf = addr });
+            result.Add(new MapletNode(state, new EdgeName(this, "[%0]", app.Args[1]), val, atp) { Category = NodeCategory.Maplet });
+            if (addr != null)
+              result.Add(new MapletNode(state, new EdgeName(this, "&[%0]", app.Args[1]), addr, GuessPtrTo(atp)) { Category = NodeCategory.Maplet });
           }
         }
 
@@ -717,7 +715,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           foreach (var ptr in f_ptr.AppsWithArg(1, elt)) {
             if (addresses.Contains(ptr.Result)) continue;
             if (!IsConstantField(ptr.Args[0])) continue;
-            result.Add(BuildFieldNode(state, ptr.Result, ptr.Args[0], null, ptr.Result));
+            BuildFieldNode(result, state, ptr.Result, ptr.Args[0], null, ptr.Result);
           }
         }
 
@@ -796,7 +794,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
     }
 
-    private FieldNode BuildFieldNode(StateNode state, Model.Element ptr, Model.Element field, Model.Element val, Model.Element addr)
+    private void BuildFieldNode(List<ElementNode> result, StateNode state, Model.Element ptr, Model.Element field, Model.Element val, Model.Element addr)
     {
       var ftp = f_field_type.TryEval(field);
       if (val != null)
@@ -809,7 +807,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
 
       var nm = ConstantFieldName(field);
-      var edgname = nm == null ? new EdgeName(field.ToString()) : new EdgeName(this, nm);
+      var edgname = nm == null ? field.ToString() : nm;
 
       var cat = NodeCategory.PhysField;
       if (f_is_ghost_field.IsTrue(field))
@@ -817,8 +815,12 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       if (nm != null && nm.Contains("<"))
         cat = NodeCategory.MethodologyProperty;
 
-      var fieldNode = new FieldNode(state, edgname, val, ftp) { Category = cat, AddrOf = addr };
-      return fieldNode;
+      var fieldNode = new FieldNode(state, new EdgeName(edgname), val, ftp) { Category = cat};
+      result.Add(fieldNode);
+
+      if (addr != null) {
+        result.Add(new FieldNode(state, new EdgeName("&" + edgname), addr, GuessPtrTo(ftp)) { Category = cat });
+      }
     }
 
     public override IEnumerable<IState> States
@@ -1005,10 +1007,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
     protected override void ComputeChildren()
     {
-      children.AddRange(vm.GetExpansion(stateNode, element, tp, AddrOf));
+      children.AddRange(vm.GetExpansion(stateNode, element, tp));
     }
-
-    public Model.Element AddrOf { get; set; }
 
     public override string ToolTip
     {
