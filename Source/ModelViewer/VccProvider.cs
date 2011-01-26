@@ -124,22 +124,19 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       states.Clear();
       var i = 0;
       while (i < allStates.Length) {
-        var bestState = allStates[i];
-        var bestName = TryParseSourceLocation(bestState.State.Name);
+        var lastGoodName = allStates[i].State.Name;
         i++;
         while (i < allStates.Length) {          
           if (allStates[i].State.Variables.Contains("$s"))
             break;          
           var curName = TryParseSourceLocation(allStates[i].State.Name);
-          if (CompareNames(curName, bestName) < 0) {
-            bestName = curName;
-            bestState = allStates[i];
-          }
+          if (!IsBadName(curName))
+            lastGoodName = allStates[i].State.Name;
           i++;
         }
 
         var lastState = allStates[i - 1];
-        lastState.capturedStateName = bestState.CapturedStateName;
+        lastState.capturedStateName = lastGoodName;
         lastState.index = states.Count;
         states.Add(lastState);
         lastState.SetupVars();
@@ -154,26 +151,10 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       GenerateSourceLocations(states);
     }
     
-    int NameBadness(SourceLocation l)
+
+    bool IsBadName(SourceLocation l)
     {
-      if (l == null) return 5;
-      if (l.Filename.StartsWith("<")) return 4;
-      if (l.AddInfo == "") return 3;
-      return 0;
-    }
-
-    int CompareNames(SourceLocation l1, SourceLocation l2)
-    {
-      if (l1 == l2) return 0;
-
-      var res = NameBadness(l1) - NameBadness(l2);
-      if (res != 0)
-        return res;
-
-      res = l1.Line - l2.Line;
-      if (res == 0)
-        res = l1.Column - l2.Column;
-      return res;
+      return l == null || l.Filename.StartsWith("<");
     }
 
     private void ComputeLocalVariableNames()
