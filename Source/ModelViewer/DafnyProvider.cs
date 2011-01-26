@@ -24,6 +24,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
         var sn = new StateNode(dm.states.Count, dm, s);
         dm.states.Add(sn);
       }
+      dm.FinishStates();
       return dm;
     }
   }
@@ -75,6 +76,11 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
           }
         }
       }
+    }
+
+    internal void FinishStates()
+    {
+      GenerateSourceLocations(states);
     }
 
     public override IEnumerable<IState> States

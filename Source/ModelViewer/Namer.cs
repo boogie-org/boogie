@@ -18,7 +18,7 @@ namespace Microsoft.Boogie.ModelViewer
     protected Dictionary<Model.Element, string> canonicalName = new Dictionary<Model.Element, string>();
     protected Dictionary<string, Model.Element> invCanonicalName = new Dictionary<string, Model.Element>();
     protected Dictionary<Model.Element, string> localValue = new Dictionary<Model.Element, string>();
-    protected Dictionary<string, SourceLocation> sourceLocations; // initialized lazily by GetSourceLocation()
+    protected Dictionary<string, SourceLocation> sourceLocations = new Dictionary<string, SourceLocation>();
     public readonly Model model;
 
     protected virtual bool UseLocalsForCanonicalNames
@@ -248,10 +248,6 @@ namespace Microsoft.Boogie.ModelViewer
 
     public SourceLocation GetSourceLocation(Model.CapturedState s)
     {
-      if (sourceLocations == null) {
-        GenerateSourceLocations();
-      }
-
       SourceLocation res;
       sourceLocations.TryGetValue(s.Name, out res);
       return res;
@@ -329,7 +325,7 @@ namespace Microsoft.Boogie.ModelViewer
       sb.Append(@"{\cf6 ").Append(n).Append("}");
     }
 
-    protected virtual void GenerateSourceLocations()
+    protected virtual void GenerateSourceLocations(IEnumerable<NamedState> states)
     {
       sourceLocations = new Dictionary<string, SourceLocation>();
 

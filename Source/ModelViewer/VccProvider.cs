@@ -125,6 +125,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         var sn = new StateNode(states.Count, this, s);
         states.Add(sn);
       }
+
+      GenerateSourceLocations(states);
     }
 
     #region Function name scoring
