@@ -30,7 +30,6 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
   class DafnyModel : LanguageModel
   {
-    public readonly Model model;
     public readonly Model.Func f_heap_select, f_set_select, f_seq_length, f_seq_index, f_box, f_dim, f_index_field, f_multi_index_field, f_dtype, f_null;
     public readonly Dictionary<Model.Element, Model.Element[]> ArrayLengths = new Dictionary<Model.Element, Model.Element[]>();
     public readonly Dictionary<Model.Element, Model.FuncTuple> DatatypeValues = new Dictionary<Model.Element, Model.FuncTuple>();
@@ -38,9 +37,8 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     public List<StateNode> states = new List<StateNode>();
 
     public DafnyModel(Model m, ViewOptions opts)
-      : base(opts)
+      : base(m, opts)
     {
-      model = m;
       f_heap_select = m.MkFunc("[3]", 3);
       f_set_select = m.MkFunc("[2]", 2);
       f_seq_length = m.MkFunc("Seq#Length", 1);
@@ -325,6 +323,11 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       get {
         return vars; 
       }
+    }
+
+    public SourceLocation ShowSource()
+    {
+      return dm.GetSourceLocation(state);
     }
 
   }

@@ -621,6 +621,22 @@ namespace Microsoft.Boogie.ModelViewer
       ReadModels();
       LoadModel(modelId);
     }
+
+    private SourceView sourceView;
+    private void showSourceToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+      if (stateList.SelectedItems.Count == 0) return;
+      var li = stateList.SelectedItems[0] as ListViewItem;
+      if (li != null) {
+        var r = ((IState)li.Tag).ShowSource();
+        if (r != null) {
+          if (sourceView == null) {
+            sourceView = new SourceView();
+          }
+          sourceView.SetSourceLocation(r);
+        }        
+      }
+    }
   }
 
   internal class DisplayItem : ListViewItem

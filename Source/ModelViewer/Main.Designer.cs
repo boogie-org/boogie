@@ -49,6 +49,7 @@
       this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.menuStrip1 = new System.Windows.Forms.MenuStrip();
       this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+      this.reloadModelFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.viewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.normalToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -58,7 +59,8 @@
       this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
       this.debugToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.modelsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-      this.reloadModelFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+      this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
+      this.showSourceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.stateViewMenu.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
       this.splitContainer1.Panel1.SuspendLayout();
@@ -69,6 +71,7 @@
       this.splitContainer2.Panel2.SuspendLayout();
       this.splitContainer2.SuspendLayout();
       this.menuStrip1.SuspendLayout();
+      this.contextMenuStrip1.SuspendLayout();
       this.SuspendLayout();
       // 
       // currentStateView
@@ -241,6 +244,7 @@
             this.columnHeader3,
             this.columnHeader1,
             this.columnHeader2});
+      this.stateList.ContextMenuStrip = this.contextMenuStrip1;
       this.stateList.Dock = System.Windows.Forms.DockStyle.Fill;
       this.stateList.FullRowSelect = true;
       this.stateList.GridLines = true;
@@ -290,6 +294,13 @@
       this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
       this.fileToolStripMenuItem.Size = new System.Drawing.Size(37, 20);
       this.fileToolStripMenuItem.Text = "&File";
+      // 
+      // reloadModelFileToolStripMenuItem
+      // 
+      this.reloadModelFileToolStripMenuItem.Name = "reloadModelFileToolStripMenuItem";
+      this.reloadModelFileToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
+      this.reloadModelFileToolStripMenuItem.Text = "&Reload model file";
+      this.reloadModelFileToolStripMenuItem.Click += new System.EventHandler(this.reloadModelFileToolStripMenuItem_Click);
       // 
       // exitToolStripMenuItem
       // 
@@ -359,12 +370,19 @@
       this.modelsToolStripMenuItem.Size = new System.Drawing.Size(58, 20);
       this.modelsToolStripMenuItem.Text = "&Models";
       // 
-      // reloadModelFileToolStripMenuItem
+      // contextMenuStrip1
       // 
-      this.reloadModelFileToolStripMenuItem.Name = "reloadModelFileToolStripMenuItem";
-      this.reloadModelFileToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
-      this.reloadModelFileToolStripMenuItem.Text = "&Reload model file";
-      this.reloadModelFileToolStripMenuItem.Click += new System.EventHandler(this.reloadModelFileToolStripMenuItem_Click);
+      this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.showSourceToolStripMenuItem});
+      this.contextMenuStrip1.Name = "contextMenuStrip1";
+      this.contextMenuStrip1.Size = new System.Drawing.Size(153, 48);
+      // 
+      // showSourceToolStripMenuItem
+      // 
+      this.showSourceToolStripMenuItem.Name = "showSourceToolStripMenuItem";
+      this.showSourceToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+      this.showSourceToolStripMenuItem.Text = "Show source";
+      this.showSourceToolStripMenuItem.Click += new System.EventHandler(this.showSourceToolStripMenuItem_Click);
       // 
       // Main
       // 
@@ -388,6 +406,7 @@
       this.splitContainer2.ResumeLayout(false);
       this.menuStrip1.ResumeLayout(false);
       this.menuStrip1.PerformLayout();
+      this.contextMenuStrip1.ResumeLayout(false);
       this.ResumeLayout(false);
       this.PerformLayout();
 
@@ -425,6 +444,8 @@
     private System.Windows.Forms.ToolStripMenuItem modelsToolStripMenuItem;
     private System.Windows.Forms.ToolStripMenuItem includeTheKitchenSinkToolStripMenuItem;
     private System.Windows.Forms.ToolStripMenuItem reloadModelFileToolStripMenuItem;
+    private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
+    private System.Windows.Forms.ToolStripMenuItem showSourceToolStripMenuItem;
 
 
   }

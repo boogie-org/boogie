@@ -23,13 +23,11 @@ namespace Microsoft.Boogie.ModelViewer.Base
 
   public class GenericModel : LanguageModel
   {
-    internal Model m;
     List<BaseState> states = new List<BaseState>();
 
     public GenericModel(Model m, ViewOptions opts)
-        : base(opts)
+        : base(m, opts)
     {
-      this.m = m;
       foreach (var s in m.States)
         states.Add(new BaseState(this, s) { Name = s.Name });
       foreach (var s in states)
@@ -69,8 +67,13 @@ namespace Microsoft.Boogie.ModelViewer.Base
         }
       }
 
-      nodes.Add(new ContainerNode<Model.Func>("[Functions]", f => f.Arity == 0 ? null : Function(f), m.m.Functions));
-      nodes.Add(new ContainerNode<Model.Func>("[Constants]", f => f.Arity != 0 ? null : new AppNode(this, f.Apps.First()), m.m.Functions));
+      nodes.Add(new ContainerNode<Model.Func>("[Functions]", f => f.Arity == 0 ? null : Function(f), m.model.Functions));
+      nodes.Add(new ContainerNode<Model.Func>("[Constants]", f => f.Arity != 0 ? null : new AppNode(this, f.Apps.First()), m.model.Functions));
+    }
+
+    public virtual SourceLocation ShowSource()
+    {
+      return null;
     }
 
     IDisplayNode Function(Model.Func f)

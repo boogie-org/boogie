@@ -34,7 +34,6 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
   class VccModel : LanguageModel
   {
-    public readonly Model model;
     public readonly Model.Func f_ptr_to, f_phys_ptr_cast, f_spec_ptr_cast, f_mathint, f_local_value_is, f_spec_ptr_to, f_heap, f_select_field,
                                f_select_value, f_field, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t, f_select_ptr,
                                f_owners, f_closed, f_roots, f_timestamps, f_select_bool, f_select_int, f_is_null, f_good_state,
@@ -49,9 +48,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     Dictionary<int, string> fileNameMapping = new Dictionary<int, string>();
 
     public VccModel(Model m, ViewOptions opts)
-      : base(opts)
+      : base(m, opts)
     {
-      model = m;
       f_ptr_to = m.MkFunc("$ptr_to", 1);
       f_spec_ptr_to = m.MkFunc("$spec_ptr_to", 1);
       f_phys_ptr_cast = m.MkFunc("$phys_ptr_cast", 2);
@@ -931,7 +929,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     internal VccModel vm;
     internal List<VariableNode> vars;
     internal List<ElementNode> commons;
-    internal int index;
+    internal int index;    
     
     public StateNode(int i, VccModel parent, Model.CapturedState s)
     {
@@ -988,6 +986,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       get {
         return vars.Concat(commons);
       }
+    }
+
+    public SourceLocation ShowSource()
+    {
+      return vm.GetSourceLocation(state);
     }
 
   }

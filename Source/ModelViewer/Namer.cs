@@ -18,6 +18,8 @@ namespace Microsoft.Boogie.ModelViewer
     protected Dictionary<Model.Element, string> canonicalName = new Dictionary<Model.Element, string>();
     protected Dictionary<string, Model.Element> invCanonicalName = new Dictionary<string, Model.Element>();
     protected Dictionary<Model.Element, string> localValue = new Dictionary<Model.Element, string>();
+    protected Dictionary<string, SourceLocation> sourceLocations; // initialized lazily by GetSourceLocation()
+    public readonly Model model;
 
     protected virtual bool UseLocalsForCanonicalNames
     {
@@ -25,8 +27,9 @@ namespace Microsoft.Boogie.ModelViewer
     }
 
     public readonly ViewOptions viewOpts;
-    public LanguageModel(ViewOptions opts)
+    public LanguageModel(Model model, ViewOptions opts)
     {
+      this.model = model;
       viewOpts = opts;
     }
     
@@ -224,6 +227,118 @@ namespace Microsoft.Boogie.ModelViewer
       var fields = new List<IDisplayNode>(fields_);
       fields.Sort(CompareFields);
       return fields.Select(f => f.Name);
+    }
+    #endregion
+
+
+
+    #region Displaying source code
+    class Position : IComparable<Position>
+    {
+      public int Line, Column, Index;
+      public int CharPos;
+      public string Name;
+
+      public int CompareTo(Position other)
+      {
+        if (this.Line == other.Line)
+          return this.Column - other.Column;
+        return this.Line - other.Line;
+      }
+    }
+
+    public SourceLocation GetSourceLocation(Model.CapturedState s)
+    {
+      if (sourceLocations == null) {
+        GenerateSourceLocations();
+      }
+
+      SourceLocation res;
+      sourceLocations.TryGetValue(s.Name, out res);
+      return res;
+    }
+
+    protected virtual bool TryParseSourceLocation(string name, out string filename, out int line, out int column)
+    {
+      filename = name;
+      line = 0;
+      column = 0;
+
+      var par = name.LastIndexOf('(');      
+      if (par <= 0) return false;
+
+      filename = name.Substring(0, par);
+      var words = name.Substring(par + 1).Split(',', ')').Where(x => x != "").ToArray();
+      if (words.Length != 2) return false;
+      if (!int.TryParse(words[0], out line) || !int.TryParse(words[1], out column)) return false;
+
+      return true;
+    }
+
+    protected virtual void GenerateSourceLocations()
+    {
+      sourceLocations = new Dictionary<string, SourceLocation>();
+
+      var files = new Dictionary<string, List<Position>>();
+      var sIdx = -1;
+      foreach (var s in model.States) {
+        sIdx++;
+        int line, col;
+        string fn;
+        if (!TryParseSourceLocation(s.Name, out fn, out line, out col))
+          continue;
+
+        List<Position> positions;
+        if (!files.TryGetValue(fn, out positions)) {
+          positions = new List<Position>();
+          files[fn] = positions;
+        }
+        positions.Add(new Position() { Name = s.Name, Line = line, Column = col, Index = sIdx });
+      }
+
+      foreach (var kv in files) {
+        var positions = kv.Value;
+        positions.Sort();
+
+        string content = "";
+        try {
+          content = System.IO.File.ReadAllText(kv.Key);
+        } catch {
+          continue;
+        }
+
+        var currPosIdx = 0;
+        var currLine = 1;
+        var currColumn = 1;
+        var output = new StringBuilder();
+        var charPos = 0;
+
+        foreach (var c in content) {
+          if (c == '\n') {
+            currColumn = int.MaxValue; // flush remaining positions in this line
+          }
+
+          while (currPosIdx < positions.Count && positions[currPosIdx].Line <= currLine && positions[currPosIdx].Column <= currColumn) {
+            positions[currPosIdx].CharPos = charPos;
+            SourceLocation.RtfAppendStateIdx(output, positions[currPosIdx].Index.ToString(), ref charPos);
+            currPosIdx++;
+          }
+
+          SourceLocation.RtfAppend(output, c, ref charPos);
+
+          if (c == '\n') {
+            currLine++;
+            currColumn = 1;
+          } else {
+            currColumn++;
+          }
+        }
+
+        var resStr = output.ToString();
+        foreach (var pos in positions) {
+          sourceLocations[pos.Name] = new SourceLocation() { Header = pos.Name, Location = pos.CharPos, RichTextContent = resStr };
+        }
+      }
     }
     #endregion
   }
