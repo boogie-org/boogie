@@ -623,7 +623,7 @@ namespace Microsoft.Boogie.ModelViewer
     }
 
     private SourceView sourceView;
-    private void showSourceToolStripMenuItem_Click(object sender, EventArgs e)
+    private void ShowSource()
     {
       if (stateList.SelectedItems.Count == 0) return;
       var li = stateList.SelectedItems[0] as ListViewItem;
@@ -634,8 +634,18 @@ namespace Microsoft.Boogie.ModelViewer
             sourceView = new SourceView();
           }
           sourceView.SetSourceLocation(r);
-        }        
+        }
       }
+    }
+
+    private void showSourceToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+      ShowSource();
+    }
+
+    private void stateList_DoubleClick(object sender, EventArgs e)
+    {
+      ShowSource();
     }
   }
 

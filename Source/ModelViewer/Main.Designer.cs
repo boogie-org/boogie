@@ -47,6 +47,8 @@
       this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
       this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+      this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
+      this.showSourceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.menuStrip1 = new System.Windows.Forms.MenuStrip();
       this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.reloadModelFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -59,8 +61,6 @@
       this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
       this.debugToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.modelsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-      this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
-      this.showSourceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.stateViewMenu.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
       this.splitContainer1.Panel1.SuspendLayout();
@@ -70,8 +70,8 @@
       this.splitContainer2.Panel1.SuspendLayout();
       this.splitContainer2.Panel2.SuspendLayout();
       this.splitContainer2.SuspendLayout();
-      this.menuStrip1.SuspendLayout();
       this.contextMenuStrip1.SuspendLayout();
+      this.menuStrip1.SuspendLayout();
       this.SuspendLayout();
       // 
       // currentStateView
@@ -258,6 +258,7 @@
       this.stateList.UseCompatibleStateImageBehavior = false;
       this.stateList.View = System.Windows.Forms.View.Details;
       this.stateList.SelectedIndexChanged += new System.EventHandler(this.stateList_SelectedIndexChanged);
+      this.stateList.DoubleClick += new System.EventHandler(this.stateList_DoubleClick);
       // 
       // columnHeader3
       // 
@@ -273,6 +274,20 @@
       // 
       this.columnHeader2.Text = "Value";
       this.columnHeader2.Width = 116;
+      // 
+      // contextMenuStrip1
+      // 
+      this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.showSourceToolStripMenuItem});
+      this.contextMenuStrip1.Name = "contextMenuStrip1";
+      this.contextMenuStrip1.Size = new System.Drawing.Size(153, 48);
+      // 
+      // showSourceToolStripMenuItem
+      // 
+      this.showSourceToolStripMenuItem.Name = "showSourceToolStripMenuItem";
+      this.showSourceToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+      this.showSourceToolStripMenuItem.Text = "Show source";
+      this.showSourceToolStripMenuItem.Click += new System.EventHandler(this.showSourceToolStripMenuItem_Click);
       // 
       // menuStrip1
       // 
@@ -370,20 +385,6 @@
       this.modelsToolStripMenuItem.Size = new System.Drawing.Size(58, 20);
       this.modelsToolStripMenuItem.Text = "&Models";
       // 
-      // contextMenuStrip1
-      // 
-      this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.showSourceToolStripMenuItem});
-      this.contextMenuStrip1.Name = "contextMenuStrip1";
-      this.contextMenuStrip1.Size = new System.Drawing.Size(153, 48);
-      // 
-      // showSourceToolStripMenuItem
-      // 
-      this.showSourceToolStripMenuItem.Name = "showSourceToolStripMenuItem";
-      this.showSourceToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-      this.showSourceToolStripMenuItem.Text = "Show source";
-      this.showSourceToolStripMenuItem.Click += new System.EventHandler(this.showSourceToolStripMenuItem_Click);
-      // 
       // Main
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -404,9 +405,9 @@
       this.splitContainer2.Panel2.PerformLayout();
       ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).EndInit();
       this.splitContainer2.ResumeLayout(false);
+      this.contextMenuStrip1.ResumeLayout(false);
       this.menuStrip1.ResumeLayout(false);
       this.menuStrip1.PerformLayout();
-      this.contextMenuStrip1.ResumeLayout(false);
       this.ResumeLayout(false);
       this.PerformLayout();
 
