@@ -221,6 +221,30 @@ implementation RegressionTestInput.ClassWithArrayTypes.Main3$System.Int32(this: 
 
 
 
+procedure RegressionTestInput.ClassWithArrayTypes.Main4$System.Int32array(this: int, xs$in: int);
+
+
+
+implementation RegressionTestInput.ClassWithArrayTypes.Main4$System.Int32array(this: int, xs$in: int)
+{
+  var xs: int;
+
+    xs := xs$in;
+    if (!(!(xs != 0) || $ArrayLength[xs] <= 0))
+    {
+        assert {:sourceFile "Class1.cs"} {:sourceLine 121} true;
+        $ArrayContents := $ArrayContents[Box2Int(Read($Heap, this, RegressionTestInput.ClassWithArrayTypes.a)) := $ArrayContents[Box2Int(Read($Heap, this, RegressionTestInput.ClassWithArrayTypes.a))][0 := $ArrayContents[xs][0]]];
+    }
+    else
+    {
+    }
+
+    assert {:sourceFile "Class1.cs"} {:sourceLine 123} true;
+    return;
+}
+
+
+
 procedure RegressionTestInput.ClassWithArrayTypes.#ctor(this: int);
 
 

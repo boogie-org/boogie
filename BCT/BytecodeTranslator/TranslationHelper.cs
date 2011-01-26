@@ -98,6 +98,7 @@ namespace BytecodeTranslator {
       s = s.Replace('(', '$');
       s = s.Replace(',', '$');
       s = s.TrimEnd(')');
+      s = s.Replace("[]", "array");
       return s;
     }
 

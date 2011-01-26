@@ -115,5 +115,11 @@ namespace RegressionTestInput {
       a[x + 1] = 43;
       Contract.Assert(a[x + 1] == a[x] + 1);
     }
+
+    public void Main4(int[] xs) {
+      if (xs != null && xs.Length > 0) {
+        a[0] = xs[0];
+      }
+    }
   }
 }

@@ -381,6 +381,17 @@ namespace BytecodeTranslator
       }
     }
 
+    public override void Visit(IDefaultValue defaultValue) {
+      var bplType = TranslationHelper.CciTypeToBoogie(defaultValue.Type);
+      if (bplType == Bpl.Type.Int) {
+        TranslatedExpressions.Push(Bpl.Expr.Literal(0));
+      } else if (bplType == Bpl.Type.Bool) {
+        TranslatedExpressions.Push(Bpl.Expr.False);
+      } else {
+        throw new NotImplementedException("Don't know how to translate type");
+      }
+    }
+
     #endregion
 
     #region Translate Method Calls
@@ -738,8 +749,7 @@ namespace BytecodeTranslator
       if (ctc != null && ctc.Type == BCT.Host.PlatformType.SystemInt32)
       {
         int v = (int)ctc.Value;
-        if (v == 0)
-        {
+        if (v == 0) { // x ? y : 0 == x && y
           Visit(conditional.Condition);
           Bpl.Expr x = TranslatedExpressions.Pop();
           Visit(conditional.ResultIfTrue);
@@ -747,13 +757,21 @@ namespace BytecodeTranslator
           TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.And, x, y));
           return;
         }
+        if (v == 1) { // x ? y : 1 == !x || y
+          Visit(conditional.Condition);
+          Bpl.Expr x = TranslatedExpressions.Pop();
+          Visit(conditional.ResultIfTrue);
+          Bpl.Expr y = TranslatedExpressions.Pop();
+          var notX = Bpl.Expr.Unary(conditional.Token(), Bpl.UnaryOperator.Opcode.Not, x);
+          TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or, notX, y));
+          return;
+        }
       }
       ctc = conditional.ResultIfTrue as CompileTimeConstant;
       if (ctc != null && ctc.Type == BCT.Host.PlatformType.SystemInt32)
       {
         int v = (int)ctc.Value;
-        if (v == 1)
-        {
+        if (v == 1) { // x ? 1 : y == x || y
           Visit(conditional.Condition);
           Bpl.Expr x = TranslatedExpressions.Pop();
           Visit(conditional.ResultIfFalse);
@@ -761,8 +779,25 @@ namespace BytecodeTranslator
           TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or, x, y));
           return;
         }
+        if (v == 0) { // x ? 0 : y == !x && y
+          Visit(conditional.Condition);
+          Bpl.Expr x = TranslatedExpressions.Pop();
+          Visit(conditional.ResultIfFalse);
+          Bpl.Expr y = TranslatedExpressions.Pop();
+          var notX = Bpl.Expr.Unary(conditional.Token(), Bpl.UnaryOperator.Opcode.Not, x);
+          TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.And, notX, y));
+          return;
+        }
       }
       base.Visit(conditional);
+      var ifFalse = TranslatedExpressions.Pop();
+      var ifTrue = TranslatedExpressions.Pop();
+      var c = TranslatedExpressions.Pop();
+      var tok = conditional.Token();
+      TranslatedExpressions.Push(
+        new Bpl.NAryExpr(tok, new Bpl.IfThenElse(tok), new Bpl.ExprSeq(c, ifTrue, ifFalse))
+          ); 
+
     }
 
     #endregion
@@ -779,13 +814,21 @@ namespace BytecodeTranslator
 
     public override void Visit(ILogicalNot logicalNot)
     {
-      base.Visit(logicalNot);
+      base.Visit(logicalNot.Operand);
       Bpl.Expr exp = TranslatedExpressions.Pop();
       TranslatedExpressions.Push(Bpl.Expr.Unary(
           logicalNot.Token(),
           Bpl.UnaryOperator.Opcode.Not, exp));
-
     }
+
+    public override void Visit(IVectorLength vectorLength) {
+      base.Visit(vectorLength.Vector);
+      var e = TranslatedExpressions.Pop();
+      TranslatedExpressions.Push(
+        Bpl.Expr.Select(new Bpl.IdentifierExpr(vectorLength.Token(), this.sink.ArrayLengthVariable), new Bpl.Expr[] { e })
+        );
+    }
+
     #endregion
 
     #region CodeContract Expressions
