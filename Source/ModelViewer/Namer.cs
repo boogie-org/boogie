@@ -18,7 +18,7 @@ namespace Microsoft.Boogie.ModelViewer
     protected Dictionary<Model.Element, string> canonicalName = new Dictionary<Model.Element, string>();
     protected Dictionary<string, Model.Element> invCanonicalName = new Dictionary<string, Model.Element>();
     protected Dictionary<Model.Element, string> localValue = new Dictionary<Model.Element, string>();
-    protected Dictionary<string, SourceLocation> sourceLocations = new Dictionary<string, SourceLocation>();
+    protected Dictionary<string, SourceViewState> sourceLocations = new Dictionary<string, SourceViewState>();
     public readonly Model model;
 
     protected virtual bool UseLocalsForCanonicalNames
@@ -246,53 +246,61 @@ namespace Microsoft.Boogie.ModelViewer
       }
     }
 
-    public SourceLocation GetSourceLocation(Model.CapturedState s)
+    public class SourceLocation
     {
-      SourceLocation res;
-      sourceLocations.TryGetValue(s.Name, out res);
+      public string Filename;
+      public string AddInfo;
+      public int Line;
+      public int Column;
+    }
+
+    public SourceViewState GetSourceLocation(string name)
+    {
+      SourceViewState res;
+      sourceLocations.TryGetValue(name, out res);
       return res;
     }
 
     // example parsed token: @"c:\users\foo\bar.c(12,10) : random string"
     // the ": random string" part is optional
-    public virtual bool TryParseSourceLocation(string name, out string filename, out int line, out int column, out string addInfo)
+    public virtual SourceLocation TryParseSourceLocation(string name)
     {
-      filename = name;
-      line = 0;
-      column = 0;
-      addInfo = "";
+      var par = name.LastIndexOf('(');
+      if (par <= 0) return null;
 
-      var par = name.LastIndexOf('(');      
-      if (par <= 0) return false;
+      var res = new SourceLocation() { Filename = name.Substring(0, par) };
 
-      filename = name.Substring(0, par);
       var words = name.Substring(par + 1).Split(',', ')', ':').Where(x => x != "").ToArray();
-      if (words.Length < 2) return false;
-      if (!int.TryParse(words[0], out line) || !int.TryParse(words[1], out column)) return false;
+      if (words.Length < 2) return null;
+
+      if (!int.TryParse(words[0], out res.Line) || !int.TryParse(words[1], out res.Column)) return null;
 
       var colon = name.IndexOf(':', par);
       if (colon > 0)
-        addInfo = name.Substring(colon).Trim();
+        res.AddInfo = name.Substring(colon + 1).Trim();
+      else
+        res.AddInfo = "";
 
-      return true;
+      return res;
     }
 
     static char[] dirSeps = new char[] { '\\', '/' };
     public virtual string ShortenToken(string tok, int fnLimit, bool addAddInfo)
     {
-      string fn, addInfo;
-      int line, col;
-      if (TryParseSourceLocation(tok, out fn, out line, out col, out addInfo)) {
+      var loc = TryParseSourceLocation(tok);
+
+      if (loc != null) {
+        var fn = loc.Filename;
         var idx = fn.LastIndexOfAny(dirSeps);
         if (idx > 0)
           fn = fn.Substring(idx + 1);
         if (fn.Length > fnLimit) {
           fn = fn.Substring(0, fnLimit) + "..";
         }
-        if (!addAddInfo) addInfo = "";
+        var addInfo = addAddInfo ? loc.AddInfo : "";
         if (addInfo != "")
           addInfo = ":" + addInfo;
-        return string.Format("{0}({1},{2}){3}", fn, line, col, addInfo);
+        return string.Format("{0}({1},{2}){3}", fn, loc.Line, loc.Column, addInfo);
       } else {
         return tok;
       }
@@ -327,23 +335,23 @@ namespace Microsoft.Boogie.ModelViewer
 
     protected virtual void GenerateSourceLocations(IEnumerable<NamedState> states)
     {
-      sourceLocations = new Dictionary<string, SourceLocation>();
+      sourceLocations = new Dictionary<string, SourceViewState>();
 
       var files = new Dictionary<string, List<Position>>();
       var sIdx = -1;
-      foreach (var s in model.States) {
+      
+      foreach (var s in states) {
+        var sn = s.CapturedStateName;
         sIdx++;
-        int line, col;
-        string fn, addInfo;
-        if (!TryParseSourceLocation(s.Name, out fn, out line, out col, out addInfo))
-          continue;
+        var loc = TryParseSourceLocation(sn);
+        if (loc == null) continue;
 
         List<Position> positions;
-        if (!files.TryGetValue(fn, out positions)) {
+        if (!files.TryGetValue(loc.Filename, out positions)) {
           positions = new List<Position>();
-          files[fn] = positions;
+          files[loc.Filename] = positions;
         }
-        positions.Add(new Position() { Name = s.Name, Line = line, Column = col, Index = sIdx });
+        positions.Add(new Position() { Name = sn, Line = loc.Line, Column = loc.Column, Index = sIdx });
       }
 
       foreach (var kv in files) {
@@ -357,38 +365,36 @@ namespace Microsoft.Boogie.ModelViewer
           continue;
         }
 
+        var pos = new Position() { Line = 1, Column = 1 };
         var currPosIdx = 0;
-        var currLine = 1;
-        var currColumn = 1;
-        var output = new StringBuilder();
-        var charPos = 0;
-        RtfAppendLineNo(output, currLine, ref charPos);
+        var output = new StringBuilder();        
+        RtfAppendLineNo(output, pos.Line, ref pos.CharPos);
 
         foreach (var c in content) {
           if (c == '\n') {
-            currColumn = int.MaxValue; // flush remaining positions in this line
+            pos.Column = int.MaxValue; // flush remaining positions in this line
           }
 
-          while (currPosIdx < positions.Count && positions[currPosIdx].Line <= currLine && positions[currPosIdx].Column <= currColumn) {
-            positions[currPosIdx].CharPos = charPos;
-            RtfAppendStateIdx(output, positions[currPosIdx].Index.ToString(), ref charPos);
+          while (currPosIdx < positions.Count && pos.CompareTo(positions[currPosIdx]) >= 0) {
+            positions[currPosIdx].CharPos = pos.CharPos;
+            RtfAppendStateIdx(output, positions[currPosIdx].Index.ToString(), ref pos.CharPos);
             currPosIdx++;
           }
 
-          RtfAppend(output, c, ref charPos);
+          RtfAppend(output, c, ref pos.CharPos);
 
           if (c == '\n') {
-            currLine++;
-            currColumn = 1;
-            RtfAppendLineNo(output, currLine, ref charPos);
+            pos.Line++;
+            pos.Column = 1;
+            RtfAppendLineNo(output, pos.Line, ref pos.CharPos);
           } else {
-            currColumn++;
+            pos.Column++;
           }
         }
 
         var resStr = output.ToString();
-        foreach (var pos in positions) {
-          sourceLocations[pos.Name] = new SourceLocation() { Header = pos.Name, Location = pos.CharPos, RichTextContent = resStr };
+        foreach (var p in positions) {
+          sourceLocations[p.Name] = new SourceViewState() { Header = p.Name, Location = p.CharPos, RichTextContent = resStr };
         }
       }
     }
@@ -419,9 +425,15 @@ namespace Microsoft.Boogie.ModelViewer
       }
     }
 
-    public virtual SourceLocation ShowSource()
+    // by overriding this, one state can masqureade another
+    public virtual string CapturedStateName
     {
-      return langModel.GetSourceLocation(state);
+      get { return State.Name; }
+    }
+
+    public virtual SourceViewState ShowSource()
+    {
+      return langModel.GetSourceLocation(CapturedStateName);
     }
 
     public abstract IEnumerable<IDisplayNode> Nodes { get; }

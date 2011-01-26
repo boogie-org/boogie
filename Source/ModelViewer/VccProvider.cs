@@ -44,6 +44,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
     Dictionary<Model.Element, string> literalName = new Dictionary<Model.Element, string>();
     public List<StateNode> states = new List<StateNode>();
+    public Dictionary<string, string> localVariableNames = new Dictionary<string, string>();
 
     Dictionary<int, string> fileNameMapping = new Dictionary<int, string>();
 
@@ -111,22 +112,116 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           literalName[fn.GetConstant()] = ":" + fn.Name.Substring(2);
       }
 
-      var idx = 0;
+      DecodeFileNames();
+      ComputeLocalVariableNames();
+
       foreach (var s in m.States) {
-        var elt = s.TryGet("$s");
-        if (elt != null)
-          literalName[elt] = "\\state'" + idx;
-        idx++;
+        var sn = new StateNode(this, s);
+        sn.SetupVars();
+        states.Add(sn);
+      }
+      var allStates = states.ToArray();
+      states.Clear();
+      var i = 0;
+      while (i < allStates.Length) {
+        var bestState = allStates[i];
+        var bestName = TryParseSourceLocation(bestState.State.Name);
+        i++;
+        while (i < allStates.Length) {          
+          if (allStates[i].State.Variables.Contains("$s"))
+            break;          
+          var curName = TryParseSourceLocation(allStates[i].State.Name);
+          if (CompareNames(curName, bestName) < 0) {
+            bestName = curName;
+            bestState = allStates[i];
+          }
+          i++;
+        }
+
+        var lastState = allStates[i - 1];
+        lastState.capturedStateName = bestState.CapturedStateName;
+        lastState.index = states.Count;
+        states.Add(lastState);
+        lastState.SetupVars();
       }
 
-      DecodeFileNames();
-
-      foreach (var s in m.States) {
-        var sn = new StateNode(states.Count, this, s);
-        states.Add(sn);
+      foreach (var s in states) {
+        var elt = s.State.TryGet("$s");
+        if (elt != null)
+          literalName[elt] = "\\state'" + s.index;
       }
 
       GenerateSourceLocations(states);
+    }
+    
+    int NameBadness(SourceLocation l)
+    {
+      if (l == null) return 5;
+      if (l.Filename.StartsWith("<")) return 4;
+      if (l.AddInfo == "") return 3;
+      return 0;
+    }
+
+    int CompareNames(SourceLocation l1, SourceLocation l2)
+    {
+      if (l1 == l2) return 0;
+
+      var res = NameBadness(l1) - NameBadness(l2);
+      if (res != 0)
+        return res;
+
+      res = l1.Line - l2.Line;
+      if (res == 0)
+        res = l1.Column - l2.Column;
+      return res;
+    }
+
+    private void ComputeLocalVariableNames()
+    {
+      var vars = model.States.SelectMany(s => s.Variables).Where(v => v != null).Distinct();
+      Func<string, string> simpleName = s => { string dummy; return GetUserVariableNameCore(s, out dummy); };
+      var userVars = vars.Where(s => simpleName(s) != null);
+      var conflictsName = Conflicts(userVars, simpleName).ToArray();
+      Func<string, string> qName = s => { string kind, n = GetUserVariableNameCore(s, out kind); return n + " (" + kind + ")"; };
+      var conflictsKind = Conflicts(conflictsName, qName).ToArray();
+
+      var conflictsNameH = new HashSet<string>(conflictsName);
+      var conflictsKindH = new HashSet<string>(conflictsKind);
+
+      foreach (var v in userVars) {
+        if (conflictsKindH.Contains(v)) continue;
+        if (conflictsNameH.Contains(v))
+          localVariableNames[v] = qName(v);
+        else
+          localVariableNames[v] = simpleName(v);
+      }
+
+      var idx = 0;
+      foreach (var v in conflictsKind) {
+        localVariableNames[v] = string.Format("{0} #{1}", qName(v), idx++);
+      }
+    }
+
+    static IEnumerable<A> Conflicts<A, B>(IEnumerable<A> input, Func<A, B> f)
+    {
+      var revMap = new Dictionary<B, A>();
+      var reported = new HashSet<A>();
+
+      foreach (var k in input) {
+        if (reported.Contains(k)) continue;
+        var v = f(k);
+        A tmp;
+        if (revMap.TryGetValue(v, out tmp) && !tmp.Equals(k)) {
+          if (!reported.Contains(tmp)) {
+            yield return tmp;
+            reported.Add(tmp);
+          }
+          yield return k;
+          reported.Add(k);
+        } else {
+          revMap[v] = k;
+        }
+      }
     }
 
     #region Function name scoring
@@ -272,14 +367,48 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
     public string GetUserVariableName(string name)
     {
-      if (name.StartsWith("L#") || name.StartsWith("P#"))
+      string res;
+      localVariableNames.TryGetValue(name, out res);
+      return res;
+    }
+
+
+    string GetUserVariableNameCore(string name, out string kind)
+    {
+      if (name.StartsWith("L#")) {
+        kind = "local";
         return name.Substring(2);
-      if (name.StartsWith("SL#") || name.StartsWith("SP#"))
+      }
+
+      if (name.StartsWith("P#")) {
+        kind = "in-param";
+        return name.Substring(2);
+      }
+
+      if (name.StartsWith("SL#")) {
+        kind = "spec local";
         return name.Substring(3);
-      if (name.StartsWith("res__") && viewOpts.ViewLevel >= 1)
-        return name;
+      }
+
+      if (name.StartsWith("SP#")) {
+        kind = "spec in-param";
+        return name.Substring(3);
+      }
+
+      if (name.StartsWith("local.")) {
+        kind = "param copied to local";
+        return name.Substring(6);
+      }
+
+      if (name.StartsWith("res__") && viewOpts.ViewLevel >= 1) {
+        kind = "call result";
+        return name; 
+      }
+
+      kind = null;
       return null;
     }
+    
 
     private string LiteralName(Model.Element elt)
     {
@@ -299,7 +428,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
     public Model.Element LocalType(string localName)
     {
-      var v = GetUserVariableName(localName);
+      string dummy;
+      var v = GetUserVariableNameCore(localName, out dummy);
       if (v == null) v = localName;
       var c = model.TryGetFunc("#loc." + v);
       if (c != null) {
@@ -307,7 +437,13 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         if (localIs != null)
           return localIs.Args[4];
       }
-      return f_mathint.GetConstant();
+      foreach (var s in model.States.Reverse()) {
+        var val = s.TryGet(localName);
+        var tp = GuessType(val);
+        if (tp != tp_mathint)
+          return tp;
+      }
+      return tp_mathint;
     }
 
     public Model.Element Image(Model.Element elt, Model.Func f)
@@ -911,18 +1047,17 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     internal VccModel vm;
     internal List<VariableNode> vars;
     internal List<ElementNode> commons;
-    internal int index;    
+    internal int index;
+    internal string capturedStateName;
     
-    public StateNode(int i, VccModel parent, Model.CapturedState s)
+    public StateNode(VccModel parent, Model.CapturedState s)
       : base(s, parent)
     {
+      this.capturedStateName = s.Name;
       this.vm = parent;
-      index = i;
-
-      SetupVars();
     }
 
-    void SetupVars()
+    internal void SetupVars()
     {
       if (vars != null) return;
       vars = new List<VariableNode>();
@@ -941,7 +1076,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         var localName = vm.GetUserVariableName(v);
         if (localName != null) {
           var tp = vm.LocalType(v);
-          var val = state.TryGet(v);
+          var val = state.TryGet(v);          
           val = vm.WrapForUse(val, tp);
           var vn = new VariableNode(this, v, val, tp) { ShortName = localName };
           vn.updatedHere = vm.states.Count > 0 && curVars.ContainsKey(v);
@@ -961,6 +1096,14 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     {
       get {
         return vars.Concat(commons);
+      }
+    }
+
+    public override string CapturedStateName
+    {
+      get
+      {
+        return this.capturedStateName;
       }
     }
   }

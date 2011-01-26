@@ -23,7 +23,7 @@ namespace Microsoft.Boogie.ModelViewer
         @"{\colortbl;\red0\green0\blue0;\red255\green0\blue0;\red0\green255\blue0;\red0\green0\blue255;\red255\green255\blue255;\red100\green100\blue100;}" +
         @"\viewkind4\uc1\pard\f0\fs17 ";
 
-    internal void SetSourceLocation(SourceLocation r)
+    internal void SetSourceLocation(SourceViewState r)
     {      
       if (r.RichTextContent != prevRtf) {
         richTextBox1.Rtf = prefix + r.RichTextContent + "\r\n}\r\n";

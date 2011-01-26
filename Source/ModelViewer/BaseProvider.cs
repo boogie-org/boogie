@@ -71,7 +71,7 @@ namespace Microsoft.Boogie.ModelViewer.Base
       nodes.Add(new ContainerNode<Model.Func>("[Constants]", f => f.Arity != 0 ? null : new AppNode(this, f.Apps.First()), m.model.Functions));
     }
 
-    public virtual SourceLocation ShowSource()
+    public virtual SourceViewState ShowSource()
     {
       return null;
     }

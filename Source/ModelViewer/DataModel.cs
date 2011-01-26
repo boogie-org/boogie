@@ -42,7 +42,7 @@ namespace Microsoft.Boogie.ModelViewer
     IEnumerable<string> SortFields(IEnumerable<IDisplayNode> fields);
   }
 
-  public class SourceLocation
+  public class SourceViewState
   {
     public string Header;
     public string RichTextContent;
@@ -52,7 +52,7 @@ namespace Microsoft.Boogie.ModelViewer
   public interface IState
   {
     string Name { get; }
-    SourceLocation ShowSource();
+    SourceViewState ShowSource();
     IEnumerable<IDisplayNode> Nodes { get; }
   }
 
@@ -104,7 +104,7 @@ namespace Microsoft.Boogie.ModelViewer
     }
 
 
-    public SourceLocation ShowSource()
+    public SourceViewState ShowSource()
     {
       return null;
     }
