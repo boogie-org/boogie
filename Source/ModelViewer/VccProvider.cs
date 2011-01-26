@@ -547,7 +547,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     {
       if (elt == null) return;
 
-      var map = state.state.TryGet("$s");
+      var map = state.State.TryGet("$s");
       if (map != null)
         map = select_map.TryEval(map);
       if (map != null) {
@@ -601,7 +601,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           var baseName = f.Name.Substring(0, f.Name.LastIndexOf('$'));
           if (baseName.StartsWith("Q#"))
             baseName = baseName.Substring(2);
-          return string.Format("{0}@{1}", baseName, ShortenToken(tok, 10));
+          return string.Format("{0}@{1}", baseName, ShortenToken(tok, 10, false));
         }
       } else if (f.Name.StartsWith("G#")) {
         var idx = f.Name.LastIndexOf("#dt");
@@ -665,7 +665,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
       var kind = GetKind(tp, out tpl);
       if (kind == DataKind.PhysPtr || kind == DataKind.SpecPtr || kind == DataKind.Object) {
-        var heap = state.state.TryGet("$s");
+        var heap = state.State.TryGet("$s");
         if (heap != null)
           heap = f_heap.TryEval(heap);
         var addresses = new HashSet<Model.Element>();
@@ -745,7 +745,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
 
       if (elt != null && !(elt is Model.Boolean)) {
-        var curState = state.state.TryGet("$s");
+        var curState = state.State.TryGet("$s");
         
         foreach (var tupl in elt.References) {
           if (!tupl.Args.Contains(elt)) continue; // not looking for aliases (maybe we should?)
@@ -902,41 +902,20 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
       return sb.ToString();
     }
-
-    internal string ShortenToken(string name, int limit)
-    {
-      var idx = name.LastIndexOfAny(new char[] { '\\', '/' });
-      if (idx > 0)
-        name = name.Substring(idx + 1);
-      if (name.Length > limit) {
-        idx = name.IndexOf('(');
-        if (idx > 0) {
-          var prefLen = limit - (name.Length - idx);
-          if (prefLen > 2) {
-            name = name.Substring(0, prefLen) + ".." + name.Substring(idx);
-          }
-        }
-      }
-      return name;
-    }
-
   }
 
-  class StateNode : IState
+  class StateNode : NamedState
   {
-    internal Model.CapturedState state;
-    string name;
     internal VccModel vm;
     internal List<VariableNode> vars;
     internal List<ElementNode> commons;
     internal int index;    
     
     public StateNode(int i, VccModel parent, Model.CapturedState s)
+      : base(s, parent)
     {
       this.vm = parent;
-      state = s;
       index = i;
-      name = parent.ShortenToken(s.Name, 30);
 
       SetupVars();
     }
@@ -976,23 +955,12 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       commons.AddRange(vm.CommonNodes(this));
     } 
 
-    public string Name
-    {
-      get { return name; }
-    }
-
-    public IEnumerable<IDisplayNode> Nodes
+    public override IEnumerable<IDisplayNode> Nodes
     {
       get {
         return vars.Concat(commons);
       }
     }
-
-    public SourceLocation ShowSource()
-    {
-      return vm.GetSourceLocation(state);
-    }
-
   }
 
   class ElementNode : DisplayNode

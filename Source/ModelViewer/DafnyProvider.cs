@@ -187,7 +187,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
           i++;
         }
       }
-      var heap = state.state.TryGet("$Heap");
+      var heap = state.State.TryGet("$Heap");
       if (heap != null) {
         foreach (var tpl in f_heap_select.AppsWithArgs(0, heap, 1, elt)) {
           var field = new FieldName(tpl.Args[2], this);
@@ -255,34 +255,18 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     }
   }
 
-  class StateNode : IState
+  class StateNode : NamedState
   {
-    internal readonly Model.CapturedState state;
-    readonly string name;
     internal readonly DafnyModel dm;
     internal readonly List<VariableNode> vars = new List<VariableNode>();
     internal readonly int index;
     
     public StateNode(int i, DafnyModel parent, Model.CapturedState s)
+       : base(s, parent)
     {
       dm = parent;
       state = s;
       index = i;
-
-      name = s.Name;
-      var idx = name.LastIndexOfAny(new char[] { '\\', '/' });
-      if (0 <= idx)
-        name = name.Substring(idx + 1);
-      var limit = 30;
-      if (name.Length > limit) {
-        idx = name.IndexOf('(');
-        if (idx > 0) {
-          var prefLen = limit - (name.Length - idx);
-          if (prefLen > 2) {
-            name = name.Substring(0,prefLen) + ".." + name.Substring(idx);
-          }
-        }
-      }
 
       SetupVars();
     }
@@ -313,23 +297,12 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       dm.Flush(vars);
     }
 
-    public string Name
-    {
-      get { return name; }
-    }
-
-    public IEnumerable<IDisplayNode> Nodes
+    public override IEnumerable<IDisplayNode> Nodes
     {
       get {
         return vars; 
       }
     }
-
-    public SourceLocation ShowSource()
-    {
-      return dm.GetSourceLocation(state);
-    }
-
   }
 
   class ElementNode : DisplayNode

@@ -153,6 +153,7 @@ namespace Microsoft.Boogie.ModelViewer
         addList(n.Children);
       }
     }
+
     #region field name sorting
     /*
     static bool HasSpecialChars(string s)
@@ -230,8 +231,6 @@ namespace Microsoft.Boogie.ModelViewer
     }
     #endregion
 
-
-
     #region Displaying source code
     class Position : IComparable<Position>
     {
@@ -258,23 +257,50 @@ namespace Microsoft.Boogie.ModelViewer
       return res;
     }
 
-    protected virtual bool TryParseSourceLocation(string name, out string filename, out int line, out int column)
+    // example parsed token: @"c:\users\foo\bar.c(12,10) : random string"
+    // the ": random string" part is optional
+    public virtual bool TryParseSourceLocation(string name, out string filename, out int line, out int column, out string addInfo)
     {
       filename = name;
       line = 0;
       column = 0;
+      addInfo = "";
 
       var par = name.LastIndexOf('(');      
       if (par <= 0) return false;
 
       filename = name.Substring(0, par);
-      var words = name.Substring(par + 1).Split(',', ')').Where(x => x != "").ToArray();
-      if (words.Length != 2) return false;
+      var words = name.Substring(par + 1).Split(',', ')', ':').Where(x => x != "").ToArray();
+      if (words.Length < 2) return false;
       if (!int.TryParse(words[0], out line) || !int.TryParse(words[1], out column)) return false;
+
+      var colon = name.IndexOf(':', par);
+      if (colon > 0)
+        addInfo = name.Substring(colon).Trim();
 
       return true;
     }
 
+    static char[] dirSeps = new char[] { '\\', '/' };
+    public virtual string ShortenToken(string tok, int fnLimit, bool addAddInfo)
+    {
+      string fn, addInfo;
+      int line, col;
+      if (TryParseSourceLocation(tok, out fn, out line, out col, out addInfo)) {
+        var idx = fn.LastIndexOfAny(dirSeps);
+        if (idx > 0)
+          fn = fn.Substring(idx + 1);
+        if (fn.Length > fnLimit) {
+          fn = fn.Substring(0, fnLimit) + "..";
+        }
+        if (!addAddInfo) addInfo = "";
+        if (addInfo != "")
+          addInfo = ":" + addInfo;
+        return string.Format("{0}({1},{2}){3}", fn, line, col, addInfo);
+      } else {
+        return tok;
+      }
+    }
 
     protected virtual void RtfAppend(StringBuilder sb, char c, ref int pos)
     {
@@ -312,8 +338,8 @@ namespace Microsoft.Boogie.ModelViewer
       foreach (var s in model.States) {
         sIdx++;
         int line, col;
-        string fn;
-        if (!TryParseSourceLocation(s.Name, out fn, out line, out col))
+        string fn, addInfo;
+        if (!TryParseSourceLocation(s.Name, out fn, out line, out col, out addInfo))
           continue;
 
         List<Position> positions;
@@ -371,6 +397,38 @@ namespace Microsoft.Boogie.ModelViewer
       }
     }
     #endregion
+  }
+
+  public abstract class NamedState : IState
+  {
+    protected Model.CapturedState state;
+    private LanguageModel langModel; // no point making it protected - they will need VccModel, DafnyModel
+
+    public NamedState(Model.CapturedState s, LanguageModel lm)
+    {
+      this.state = s;
+      this.langModel = lm;
+    }
+
+    public Model.CapturedState State
+    {
+      get { return state; }
+    }
+
+    public virtual string Name
+    {
+      get
+      {
+        return langModel.ShortenToken(state.Name, 20, true);
+      }
+    }
+
+    public virtual SourceLocation ShowSource()
+    {
+      return langModel.GetSourceLocation(state);
+    }
+
+    public abstract IEnumerable<IDisplayNode> Nodes { get; }
   }
 
   public class EdgeName
