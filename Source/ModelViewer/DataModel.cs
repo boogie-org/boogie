@@ -47,27 +47,6 @@ namespace Microsoft.Boogie.ModelViewer
     public string Header;
     public string RichTextContent;
     public int Location;
-
-    public static void RtfAppend(StringBuilder sb, char c, ref int pos)
-    {
-      pos++;
-      switch (c) {
-        case '\r': pos--;  break;
-        case '\\': sb.Append("\\\\"); break;
-        case '\n': sb.Append("\\par\n"); break;
-        case '{': sb.Append("\\{"); break;
-        case '}': sb.Append("\\}"); break;
-        default: sb.Append(c); break;
-      }
-    }
-
-    public static void RtfAppendStateIdx(StringBuilder sb, string label, ref int pos)
-    {
-      label += ".";
-      pos += label.Length;
-      sb.Append(@"{\sub\cf5\highlight4 ").Append(label).Append("}");
-    }
-
   }
 
   public interface IState

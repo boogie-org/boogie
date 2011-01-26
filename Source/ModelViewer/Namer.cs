@@ -275,6 +275,34 @@ namespace Microsoft.Boogie.ModelViewer
       return true;
     }
 
+
+    protected virtual void RtfAppend(StringBuilder sb, char c, ref int pos)
+    {
+      pos++;
+      switch (c) {
+        case '\r': pos--; break;
+        case '\\': sb.Append("\\\\"); break;
+        case '\n': sb.Append("\\par\n"); break;
+        case '{': sb.Append("\\{"); break;
+        case '}': sb.Append("\\}"); break;
+        default: sb.Append(c); break;
+      }
+    }
+
+    protected virtual void RtfAppendStateIdx(StringBuilder sb, string label, ref int pos)
+    {
+      label += ".";
+      pos += label.Length;
+      sb.Append(@"{\sub\cf5\highlight4 ").Append(label).Append("}");
+    }
+
+    protected virtual void RtfAppendLineNo(StringBuilder sb, int num, ref int pos)
+    {
+      string n = string.Format("{0:0000}: ", num);
+      pos += n.Length;
+      sb.Append(@"{\cf6 ").Append(n).Append("}");
+    }
+
     protected virtual void GenerateSourceLocations()
     {
       sourceLocations = new Dictionary<string, SourceLocation>();
@@ -312,6 +340,7 @@ namespace Microsoft.Boogie.ModelViewer
         var currColumn = 1;
         var output = new StringBuilder();
         var charPos = 0;
+        RtfAppendLineNo(output, currLine, ref charPos);
 
         foreach (var c in content) {
           if (c == '\n') {
@@ -320,15 +349,16 @@ namespace Microsoft.Boogie.ModelViewer
 
           while (currPosIdx < positions.Count && positions[currPosIdx].Line <= currLine && positions[currPosIdx].Column <= currColumn) {
             positions[currPosIdx].CharPos = charPos;
-            SourceLocation.RtfAppendStateIdx(output, positions[currPosIdx].Index.ToString(), ref charPos);
+            RtfAppendStateIdx(output, positions[currPosIdx].Index.ToString(), ref charPos);
             currPosIdx++;
           }
 
-          SourceLocation.RtfAppend(output, c, ref charPos);
+          RtfAppend(output, c, ref charPos);
 
           if (c == '\n') {
             currLine++;
             currColumn = 1;
+            RtfAppendLineNo(output, currLine, ref charPos);
           } else {
             currColumn++;
           }

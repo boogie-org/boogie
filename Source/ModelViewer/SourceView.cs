@@ -20,7 +20,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     string prefix =
         @"{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Lucida Sans Typewriter;}}\r\n" +
-        @"{\colortbl;\red0\green0\blue0;\red255\green0\blue0;\red0\green255\blue0;\red0\green0\blue255;\red255\green255\blue255;}" +
+        @"{\colortbl;\red0\green0\blue0;\red255\green0\blue0;\red0\green255\blue0;\red0\green0\blue255;\red255\green255\blue255;\red100\green100\blue100;}" +
         @"\viewkind4\uc1\pard\f0\fs17 ";
 
     internal void SetSourceLocation(SourceLocation r)
