@@ -46,7 +46,7 @@ namespace Microsoft.Boogie.ModelViewer
         neg = true;
       }
 
-      while (k < 70) {
+      while (k < 150) {
         var diff = pow / 1000;
         if (pow - diff < n && n < pow + diff) {
           diff = n - pow;
@@ -54,6 +54,7 @@ namespace Microsoft.Boogie.ModelViewer
           if (neg) res = "-(" + res + ")";
           return res;
         }
+        if (n < pow) break;
         k++;
         pow *= 2;
       }
