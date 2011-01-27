@@ -1116,7 +1116,12 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       get
       {
         var sb = new StringBuilder();
-        sb.AppendFormat("Type: {0}\n", vm.TypeName(tp));        
+        sb.AppendFormat("Type: {0}\n", vm.TypeName(tp));
+        var i = element as Model.Integer;
+        if (i != null) {
+          var n = System.Numerics.BigInteger.Parse(i.Numeral);          
+          sb.AppendFormat("Value: {0} (0x{1:x})\n", n, n);
+        }
         return sb.ToString();
       }
     }
