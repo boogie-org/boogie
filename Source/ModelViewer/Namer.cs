@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Numerics;
 
 namespace Microsoft.Boogie.ModelViewer
 {
@@ -24,13 +25,40 @@ namespace Microsoft.Boogie.ModelViewer
     protected virtual bool UseLocalsForCanonicalNames
     {
       get { return false; }
-    }
+    }    
 
     public readonly ViewOptions viewOpts;
     public LanguageModel(Model model, ViewOptions opts)
     {
       this.model = model;
       viewOpts = opts;
+    }
+
+    public string AsPow2(Model.Integer elt)
+    {      
+      var n = BigInteger.Parse(elt.Numeral);
+      var pow = new BigInteger(4096*4);
+      var k = 14;
+      var neg = false;
+      
+      if (n < 0) {
+        n = -n;
+        neg = true;
+      }
+
+      while (k < 70) {
+        var diff = pow / 1000;
+        if (pow - diff < n && n < pow + diff) {
+          diff = n - pow;
+          var res = string.Format("2^{0}{1}{2}", k, diff >= 0 ? "+" : "", diff);
+          if (neg) res = "-(" + res + ")";
+          return res;
+        }
+        k++;
+        pow *= 2;
+      }
+
+      return elt.ToString();
     }
     
     // Elements (other than integers and Booleans) get canonical names of the form 

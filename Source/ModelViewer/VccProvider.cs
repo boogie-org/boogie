@@ -404,6 +404,10 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         return r;
       }
 
+      var i = elt as Model.Integer;
+      if (i != null)
+        return AsPow2(i);
+
       return null;
     }
 
