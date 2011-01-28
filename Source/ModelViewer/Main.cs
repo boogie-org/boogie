@@ -704,7 +704,7 @@ namespace Microsoft.Boogie.ModelViewer
 
       var prev = "";
 
-      if (!IsMatchListItem && prevId > 0 && skel.displayNodes[prevId] != null) {
+      if (!IsMatchListItem && prevId >= 0 && skel.displayNodes[prevId] != null) {
         prev = skel.displayNodes[prevId].Value;
       }
 
