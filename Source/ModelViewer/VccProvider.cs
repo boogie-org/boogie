@@ -38,7 +38,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
                                f_select_value, f_field, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t, f_select_ptr,
                                f_owners, f_closed, f_roots, f_timestamps, f_select_bool, f_select_int, f_is_null, f_good_state,
                                f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, f_field_plus,
-                               f_is_sequential_field, f_is_volatile_field, f_type_project_0;
+                               f_is_sequential_field, f_is_volatile_field, f_type_project_0, f_array;
     public readonly Model.Element tp_object, tp_mathint, tp_bool, tp_state, tp_ptrset, tp_heaptp;
     public readonly Model.Element elt_me, elt_null;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
@@ -85,6 +85,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_is_sequential_field = m.MkFunc("$is_sequential_field", 1);
       f_is_volatile_field = m.MkFunc("$is_volatile_field", 1);
       f_type_project_0 = m.MkFunc("$type_project_0", 1);
+      f_array = m.MkFunc("$array", 2);
 
       tp_bool = m.GetFunc("^^bool").GetConstant();
       tp_mathint = m.GetFunc("^^mathint").GetConstant();
@@ -381,6 +382,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         return name.Substring(6);
       }
 
+      if (name.StartsWith("addr.")) {
+        kind = "stack-allocated struct";
+        return name.Substring(5);
+      }
+
       if (name.StartsWith("res__") && viewOpts.ViewLevel >= 1) {
         kind = "call result";
         return name; 
@@ -450,6 +456,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       var mapt = f_map_t.AppWithResult(elt);
       if (mapt != null)
         return string.Format("{1}[{0}]", TypeName(mapt.Args[0]), TypeName(mapt.Args[1]));
+
+      var arr = f_array.AppWithResult(elt);
+      if (arr != null) {
+        return string.Format("{0}[{1}]", TypeName(arr.Args[0]), arr.Args[1].ToString());
+      }
 
       foreach (var app in elt.Names)
         if (app.Func.Arity == 0 && app.Func.Name.StartsWith("^")) {
@@ -1119,8 +1130,10 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         sb.AppendFormat("Type: {0}\n", vm.TypeName(tp));
         var i = element as Model.Integer;
         if (i != null) {
-          var n = System.Numerics.BigInteger.Parse(i.Numeral);          
+          var n = System.Numerics.BigInteger.Parse(i.Numeral);
           sb.AppendFormat("Value: {0} (0x{1:x})\n", n, n);
+        } else if (element != null) {
+          sb.AppendFormat("Value: {0}\n", element);
         }
         return sb.ToString();
       }
