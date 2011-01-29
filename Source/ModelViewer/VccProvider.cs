@@ -48,6 +48,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
     Dictionary<int, string> fileNameMapping = new Dictionary<int, string>();
 
+    public const string selfMarker = "\\self";
+
     public VccModel(Model m, ViewOptions opts)
       : base(m, opts)
     {
@@ -390,6 +392,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       if (name.StartsWith("res__") && viewOpts.ViewLevel >= 1) {
         kind = "call result";
         return name; 
+      }
+
+      if (name == "$s" && viewOpts.ViewLevel >= 1) {
+        kind = "current state";
+        return "\\now";
       }
 
       kind = null;
@@ -859,6 +866,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         if (viewOpts.ViewLevel >= 1 && elt != null) {
           AddPtrType(state, elt, result);
           AddCasts(state, elt, result);
+          var sets = new SetsNode(state, elt);
+          if (!sets.IsEmpty)
+            result.Add(sets);
         }
 
       } else if (kind == DataKind.Map) {
@@ -887,6 +897,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             continue;          
           var argsFmt = new StringBuilder();
           var name = tupl.Func.Name;
+          var score = FunctionScore(name);
+          if (score >= viewOpts.ViewLevel)
+            continue;
           var cat = NodeCategory.MethodologyProperty;
           if (name.StartsWith("F#")) {
             name = name.Substring(2);
@@ -898,7 +911,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             if (IsThisState(curState, a))
               argsFmt.Append("\\now, ");
             else if (a == elt)
-              argsFmt.Append("*, ");
+              argsFmt.Append(selfMarker + ", ");
             else {
               argsFmt.AppendFormat("%{0}, ", args.Count);
               args.Add(a);
@@ -907,7 +920,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           argsFmt.Length -= 2;
           argsFmt.Append(")");
           var edgeName = new EdgeName(this, argsFmt.ToString(), args.ToArray());
-          result.Add(new MapletNode(state, edgeName, tupl.Result, GuessType(tupl.Result)) { ViewLevel = FunctionScore(tupl.Func.Name), Category = cat });
+          result.Add(new MapletNode(state, edgeName, tupl.Result, GuessType(tupl.Result)) { ViewLevel = score, Category = cat });
         }
       }
 
@@ -1023,8 +1036,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       foreach (var d in path) {
         var name = d.Name;
         if (name == "") continue; // can that happen?
-        if (name.Contains("(") && name.Contains("*")) {
-          var repl = name.Replace("*", sb.ToString());
+        if (name.Contains("(") && name.Contains(selfMarker)) {
+          var repl = name.Replace(selfMarker, sb.ToString());
           sb.Length = 0;
           sb.Append(repl);
         } else {
@@ -1127,7 +1140,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       get
       {
         var sb = new StringBuilder();
-        sb.AppendFormat("Type: {0}\n", vm.TypeName(tp));
+        if (tp != null) 
+          sb.AppendFormat("Type: {0}\n", vm.TypeName(tp));
         var i = element as Model.Integer;
         if (i != null) {
           var n = System.Numerics.BigInteger.Parse(i.Numeral);
@@ -1139,6 +1153,34 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
     }
   }
+
+  class SetsNode : ElementNode
+  {
+    List<Model.Element> refs = new List<Model.Element>();
+
+    public SetsNode(StateNode par, Model.Element elt)
+      : base(par, new EdgeName("\\in ..."), null, null)
+    {
+      children = new List<IDisplayNode>();
+      foreach (var app in vm.f_select_bool.AppsWithArg(1, elt)) {
+        children.Add(
+          new MapletNode(par, new EdgeName(vm, VccModel.selfMarker + " \\in %0", app.Args[0]), app.Result, vm.tp_bool) { Category = NodeCategory.MethodologyProperty });
+        refs.Add(app.Args[0]);
+      }
+      Category = NodeCategory.MethodologyProperty;
+    }
+
+    public override IEnumerable<Model.Element> References
+    {
+      get
+      {
+        return refs;
+      }
+    }
+
+    public bool IsEmpty { get { return children.Count == 0; } }   
+  }
+
 
   class FieldNode : ElementNode
   {

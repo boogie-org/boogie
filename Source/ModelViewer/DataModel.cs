@@ -174,7 +174,7 @@ namespace Microsoft.Boogie.ModelViewer
       }
     }
 
-    public IEnumerable<Model.Element> References
+    public virtual IEnumerable<Model.Element> References
     {
       get
       {
