@@ -158,7 +158,6 @@ namespace Microsoft.Boogie.ModelViewer
 
       Action<IEnumerable<IDisplayNode>> addList = (IEnumerable<IDisplayNode> nodes) =>
       {
-        var tmp = nodes.Select(x => x.Name).ToArray();
         var ch = nodes.ToDictionary(x => x.Name);
         foreach (var k in SortFields(nodes))
           workList.Enqueue(ch[k]);

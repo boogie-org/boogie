@@ -265,6 +265,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
   {
     internal readonly DafnyModel dm;
     internal readonly List<VariableNode> vars = new List<VariableNode>();
+    internal readonly List<VariableNode> skolems;
     internal readonly int index;
     
     public StateNode(int i, DafnyModel parent, Model.CapturedState s)
@@ -274,6 +275,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       state = s;
       index = i;
 
+      skolems = new List<VariableNode>(SkolemVars());
       SetupVars();
     }
 
@@ -300,13 +302,24 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
         }
       }
 
-      dm.Flush(vars);
+      dm.Flush(Nodes);
+    }
+
+    IEnumerable<VariableNode> SkolemVars() {
+      foreach (var f in dm.model.Functions) {
+        if (f.Arity != 0) continue;
+        int n = f.Name.IndexOf('!');
+        if (n == -1) continue;
+        string name = f.Name.Substring(0, n);
+        if (!name.Contains('#')) continue;
+        yield return new VariableNode(this, name, f.GetConstant());
+      }
     }
 
     public override IEnumerable<IDisplayNode> Nodes
     {
       get {
-        return vars; 
+        return vars.Concat(skolems);
       }
     }
   }
