@@ -245,6 +245,9 @@ namespace Microsoft.Boogie.Simplify {
           _proverPath = Path.Combine(CodebaseString(), proverExe);
           string firstTry = _proverPath;
 
+          if (File.Exists(firstTry))
+              return;
+
           string programFiles = Environment.GetEnvironmentVariable("ProgramFiles");
           Contract.Assert(programFiles != null);
           string programFilesX86 = Environment.GetEnvironmentVariable("ProgramFiles(x86)");
