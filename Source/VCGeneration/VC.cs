@@ -1380,7 +1380,6 @@ namespace VC {
               cur_outcome = Outcome.TimedOut;
             return;
           case ProverInterface.Outcome.Undetermined:
-            prover_failed = true;
             if (cur_outcome != Outcome.Errors)
               cur_outcome = Outcome.Inconclusive;
             return;
@@ -1694,7 +1693,7 @@ namespace VC {
             break;
           }
 
-          Contract.Assert( prover_failed || outcome == Outcome.Correct || outcome == Outcome.Errors);
+          Contract.Assert( prover_failed || outcome == Outcome.Correct || outcome == Outcome.Errors || outcome == Outcome.Inconclusive);
         }
 
         if (prover_failed) { 
