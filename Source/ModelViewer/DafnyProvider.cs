@@ -90,8 +90,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
     public string GetUserVariableName(string name)
     {
-      if (name.StartsWith("$") || // this covers $Heap and $_Frame and $nw...
-          name == "#cev_pc")
+      if (name.StartsWith("$")) // this covers $Heap and $_Frame and $nw...
         return null;
       var hash = name.IndexOf('#');
       if (0 < hash)

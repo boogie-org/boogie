@@ -227,7 +227,6 @@ namespace Microsoft.Boogie {
     public OwnershipModelOption OwnershipModelEncoding = OwnershipModelOption.Standard;
     public int PrintErrorModel = 0;
     public string PrintErrorModelFile = null;
-    public bool CEVPrint = false;
     public string/*?*/ ModelViewFile = null;
     public int EnhancedErrorMessages = 0;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
@@ -910,14 +909,6 @@ namespace Microsoft.Boogie {
             break;
 
 
-          case "-cev":
-          case "/cev":
-            if (ps.ConfirmArgumentCount(1)) {
-              PrintErrorModelFile = args[ps.i];
-            }
-            CEVPrint = true;
-            break;
-
           case "-mv":
           case "/mv":
             if (ps.ConfirmArgumentCount(1)) {
@@ -1477,10 +1468,6 @@ namespace Microsoft.Boogie {
         } else {
           LoopFrameConditions = 2;
         }
-      }
-
-      if (CEVPrint && PrintErrorModel == 0) {
-        PrintErrorModel = 1;
       }
 
       switch (InductiveMinMax) {
@@ -2044,11 +2031,10 @@ namespace Microsoft.Boogie {
                               e = experimental
                               t = trivial (implied by /methodology:vs)
   /printModel:<n> : 0 (default) - do not print Z3's error model
-                    1 - print Z3's error model (default with /cev)
+                    1 - print Z3's error model
                     2 - print Z3's error model plus reverse mappings         
                     4 - print Z3's error model in a more human readable way
   /printModelToFile:<file> : print model to <file> instead of console
-  /cev:<file>       Print Z3's error model to <file> and include error message
   /mv:<n>           0 - model view off, 1 (default) - model view on
   /enhancedErrorMessages:<n> : 0 (default) - no enhanced error messages
                                1 - Z3 error model enhanced error messages
