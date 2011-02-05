@@ -1107,7 +1107,7 @@ namespace VC
         private Outcome stratifiedStep(int bound, VerificationState vState)
         {
             Outcome ret;
-
+            bound = 500;
             var reporter = vState.reporter;
             var calls = vState.calls;
             var checker = vState.checker;
@@ -1936,19 +1936,24 @@ namespace VC
 
             public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel)
             {
+                candidatesToExpand = new List<int>();
+
                 //Contract.Requires(cce.NonNullElements(labels));
                 if (underapproximationMode)
                 {
                     if (errModel == null)
                         return;
-                    GenerateTraceMain(labels, errModel, mvInfo);
+                    var cex = GenerateTraceMain(labels, errModel, mvInfo);
+                    Debug.Assert(candidatesToExpand.Count == 0);
+                    if(cex != null) callback.OnCounterexample(cex, null);
                     return;
                 }
-
+                
                 Contract.Assert(calls != null);
                 Contract.Assert(errModel != null);
 
-                candidatesToExpand = new List<int>();
+                GenerateTraceMain(labels, errModel, mvInfo);
+                /*
                 foreach (string lab in labels)
                 {
                     Contract.Assert(lab != null);
@@ -1959,11 +1964,11 @@ namespace VC
                         continue;
                     candidatesToExpand.Add(id);
                 }
-
+                */
             }
 
             // Construct the interprocedural trace
-            private void GenerateTraceMain(IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, ModelViewInfo mvInfo)
+            private Counterexample GenerateTraceMain(IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, ModelViewInfo mvInfo)
             {
                 Contract.Requires(errModel != null);
                 Contract.Requires(cce.NonNullElements(labels));
@@ -1977,7 +1982,7 @@ namespace VC
                   GenerateTrace(labels, errModel, mvInfo, 0, mainImpl);
 
                 if (newCounterexample == null)
-                    return;
+                    return null;
 
                 #region Map passive program errors back to original program errors
                 ReturnCounterexample returnExample = newCounterexample as ReturnCounterexample;
@@ -1997,7 +2002,7 @@ namespace VC
                 }
                 #endregion
 
-                callback.OnCounterexample(newCounterexample, null);
+                return newCounterexample;
             }
 
             private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, ModelViewInfo mvInfo,
@@ -2090,12 +2095,17 @@ namespace VC
 
                         Contract.Assert(calls != null);
                         int calleeId = calls.boogieExpr2Id[new BoogieCallExpr(naryExpr, candidateId)];
-
-                        calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
-                            new CalleeCounterexampleInfo(
-                                cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
-                                new List<object>());
-
+                        if (calls.currCandidates.Contains(calleeId))
+                        {
+                            candidatesToExpand.Add(calleeId);
+                        }
+                        else
+                        {
+                            calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
+                                new CalleeCounterexampleInfo(
+                                    cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
+                                    new List<object>());
+                        }
                     }
 
                     GotoCmd gotoCmd = transferCmd as GotoCmd;
