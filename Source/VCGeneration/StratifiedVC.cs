@@ -1107,7 +1107,7 @@ namespace VC
         private Outcome stratifiedStep(int bound, VerificationState vState)
         {
             Outcome ret;
-            bound = 500;
+            
             var reporter = vState.reporter;
             var calls = vState.calls;
             var checker = vState.checker;
