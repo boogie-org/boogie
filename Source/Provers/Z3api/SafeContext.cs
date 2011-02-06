@@ -388,10 +388,13 @@ namespace Microsoft.Boogie.Z3
             }
         }
 
-        public ProverInterface.Outcome CheckAssumptions(List<VCExpr> assumptions, LineariserOptions linOptions, out List<Z3ErrorModelAndLabels> boogieErrors)
+        public ProverInterface.Outcome CheckAssumptions(List<VCExpr> assumptions, LineariserOptions linOptions, 
+            out List<Z3ErrorModelAndLabels> boogieErrors,
+            out List<int> unsatCore)
         {
             Microsoft.Boogie.Helpers.ExtraTraceInformation("Sending data to the theorem prover");
             boogieErrors = new List<Z3ErrorModelAndLabels>();
+            unsatCore = new List<int>();
             LBool outcome = LBool.Undef;
 
             Model z3Model;
@@ -440,6 +443,14 @@ namespace Microsoft.Boogie.Z3
             }
             else if (outcome == LBool.False)
             {
+                foreach (Term t in core)
+                {
+                    for (int i = 0; i < assumption_terms.Length; i++)
+                    {
+                        if (t.Equals(assumption_terms[i]))
+                            unsatCore.Add(i);
+                    }
+                }
                 return ProverInterface.Outcome.Valid;
             }
             else

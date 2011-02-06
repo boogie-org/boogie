@@ -348,6 +348,7 @@ namespace Microsoft.Boogie {
     public int LazyInlining = 0;
     public int StratifiedInlining = 0;
     public int StratifiedInliningOption = 0;
+    public bool UseUnsatCoreForInlining = false;
     public int RecursionBound = 500;
     public string CoverageReporterPath = null;
     public Process coverageReporter = null; // used internally for debugging
@@ -1152,11 +1153,15 @@ namespace Microsoft.Boogie {
               CoverageReporterPath = args[ps.i];
             }
             break;
-          case "-stratifiedInilneOption":
+          case "-stratifiedInlineOption":
           case "/stratifiedInlineOption":
             if (ps.ConfirmArgumentCount(1)) {
               StratifiedInliningOption=Int32.Parse(cce.NonNull(args[ps.i]));
             }
+            break;
+          case "-useUnsatCoreForInlining":
+          case "/useUnsatCoreForInlining":
+            UseUnsatCoreForInlining = true;
             break;
           case "-typeEncoding":
           case "/typeEncoding":

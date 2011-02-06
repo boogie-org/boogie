@@ -548,9 +548,13 @@ namespace VC
             abstract public void Pop();
             abstract public void AddAxiom(VCExpr vc);
             abstract public void LogComment(string str);
-            virtual public Outcome CheckAssumptions(List<VCExpr> assumptions)
+            virtual public Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
             {
                 Outcome ret;
+
+                unsatCore = new List<int>();
+                for (int i = 0; i < assumptions.Count; i++)
+                    unsatCore.Add(i);
 
                 if (assumptions.Count == 0)
                 {
@@ -742,21 +746,22 @@ namespace VC
                 checker.TheoremProver.LogComment(str);
             }
             
-            public override Outcome CheckAssumptions(List<VCExpr> assumptions)
+            public override Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
             {
                 if (!UseCheckAssumptions)
                 {
-                    return base.CheckAssumptions(assumptions);
+                    return base.CheckAssumptions(assumptions, out unsatCore);
                 }
 
                 if (assumptions.Count == 0)
                 {
+                    unsatCore = new List<int>();
                     return CheckVC();
                 }
 
                 //TheoremProver.Push();
                 TheoremProver.AssertAxioms();
-                TheoremProver.CheckAssumptions(assumptions);
+                TheoremProver.CheckAssumptions(assumptions, out unsatCore);
                 ProverInterface.Outcome outcome = TheoremProver.CheckOutcome(reporter);
                 //TheoremProver.Pop();
                 numQueries++;
@@ -1036,7 +1041,6 @@ namespace VC
                             done = 1;
                             coverageManager.reportCorrect(bound);
                         }
-
                     }
                     else
                     {
@@ -1107,21 +1111,45 @@ namespace VC
         private Outcome stratifiedStep(int bound, VerificationState vState)
         {
             Outcome ret;
-            
+            List<int> unsatCore;
+
             var reporter = vState.reporter;
             var calls = vState.calls;
             var checker = vState.checker;
 
             reporter.underapproximationMode = true;
             checker.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
+            List<VCExpr> assumptions;
+            List<int> ids;
 
-            var assumptions = new List<VCExpr>();
-            foreach (int id in calls.currCandidates)
+            while (true)
             {
-                assumptions.Add(calls.getFalseExpr(id));
-            }
+                assumptions = new List<VCExpr>();
+                ids = new List<int>();
+                foreach (int id in calls.currCandidates)
+                {
+                    assumptions.Add(calls.getFalseExpr(id));
+                    ids.Add(id);
+                }
 
-            ret = checker.CheckAssumptions(assumptions);
+                ret = checker.CheckAssumptions(assumptions, out unsatCore);
+                if (!CommandLineOptions.Clo.UseUnsatCoreForInlining) break;
+                if (ret != Outcome.Correct) break;
+                Debug.Assert(unsatCore.Count <= assumptions.Count);
+                if (unsatCore.Count == assumptions.Count)
+                    break;
+
+                var unsatCoreIds = new List<int>();
+                foreach (int i in unsatCore)
+                    unsatCoreIds.Add(ids[i]);
+                vState.checker.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
+                bool incrementalSearch = 
+                    CommandLineOptions.Clo.StratifiedInliningOption == 0 ||
+                    CommandLineOptions.Clo.StratifiedInliningOption == 2;
+                DoExpansion(incrementalSearch, unsatCoreIds, vState);
+                vState.calls.forcedCandidates.UnionWith(unsatCoreIds);
+                vState.checker.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
+            }
 
             checker.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
 
@@ -1182,7 +1210,7 @@ namespace VC
             }
             else
             {
-                ret = checker.CheckAssumptions(assumptions);
+                ret = checker.CheckAssumptions(assumptions, out unsatCore);
             }
 
             if (ret != Outcome.Correct && ret != Outcome.Errors)
@@ -1474,7 +1502,9 @@ namespace VC
             // Name of main procedure
             private string mainProcName;
 
-            // User info -- to decrease/increase calculcation of recursion bound
+            public HashSet<int> forcedCandidates;
+
+            // User info -- to decrease/increase calculation of recursion bound
             public Dictionary<int, int> recursionIncrement;
 
             public HashSet<int> currCandidates;
@@ -1525,6 +1555,8 @@ namespace VC
                 persistentNameCache[0] = "0";
                 persistentNameInv["0"] = 0;
                 recentlyAddedCandidates = new HashSet<int>();
+
+                forcedCandidates = new HashSet<int>();
             }
 
             public void Clear()
@@ -1546,7 +1578,7 @@ namespace VC
                 {
                     if (recursionIncrement.ContainsKey(id)) ret += recursionIncrement[id];
                     id = candidateParent[id];
-                    if (getProc(id) == str) ret++;
+                    if (getProc(id) == str && !forcedCandidates.Contains(id)) ret++;
                 }
                 return ret;
             }

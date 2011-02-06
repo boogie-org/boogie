@@ -99,11 +99,11 @@ namespace Microsoft.Boogie.Z3
             outcome = cm.Check(out z3LabelModels);
         }
 
-        public override void CheckAssumptions(List<VCExpr> assumptions)
+        public override void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
         {
             Z3SafeContext cm = context.cm;
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            outcome = cm.CheckAssumptions(assumptions, linOptions, out z3LabelModels);
+            outcome = cm.CheckAssumptions(assumptions, linOptions, out z3LabelModels, out unsatCore);
         }
 
         public override void Push()
