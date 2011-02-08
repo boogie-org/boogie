@@ -130,6 +130,20 @@ namespace BytecodeTranslator {
       this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
     }
 
+    public Dictionary<ITypeDefinition, HashSet<Bpl.Constant>> delegateTypeToDelegates =
+      new Dictionary<ITypeDefinition, HashSet<Bpl.Constant>>();
+
+    public void AddDelegate(ITypeDefinition type, Bpl.Constant constant)
+    {
+      if (!delegateTypeToDelegates.ContainsKey(type))
+        delegateTypeToDelegates[type] = new HashSet<Bpl.Constant>();
+      delegateTypeToDelegates[type].Add(constant);
+    }
+
+    public void AddDelegateType(ITypeDefinition type) {
+      if (!delegateTypeToDelegates.ContainsKey(type))
+        delegateTypeToDelegates[type] = new HashSet<Bpl.Constant>();
+    }
   }
 
 }

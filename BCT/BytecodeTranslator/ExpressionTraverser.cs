@@ -402,7 +402,6 @@ namespace BytecodeTranslator
     /// <remarks>Stub, This one really needs comments!</remarks>
     public override void Visit(IMethodCall methodCall)
     {
-
       var resolvedMethod = methodCall.MethodToCall.ResolvedMethod;
 
       #region Translate In Parameters
@@ -474,7 +473,6 @@ namespace BytecodeTranslator
           TranslatedExpressions.Push(new Bpl.IdentifierExpr(cloc, v));
         }
         string methodname = TranslationHelper.CreateUniqueMethodName(methodCall.MethodToCall);
-
 
         Bpl.QKeyValue attrib = null;
         foreach (var a in resolvedMethod.Attributes)
@@ -583,11 +581,11 @@ namespace BytecodeTranslator
     {
       TranslateArrayCreation(createArrayInstance);
     }
-
+    
     public override void Visit(ICreateDelegateInstance createDelegateInstance)
     {
-      // TranslateCreation(createDelegateInstance.MethodToCallViaDelegate, createDelegateInstance.Arguments, createDelegateInstance.Type, createDelegateInstance);
-      base.Visit(createDelegateInstance);
+      TranslateDelegateCreation(createDelegateInstance.MethodToCallViaDelegate, createDelegateInstance.Type);
+      //base.Visit(createDelegateInstance);
     }
 
     private void TranslateArrayCreation(IExpression creationAST)
@@ -644,6 +642,16 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
 
+    private void TranslateDelegateCreation(IMethodReference methodToCall, ITypeReference type)
+    {
+      string methodName = TranslationHelper.CreateUniqueMethodName(methodToCall);
+      var typedIdent = new Bpl.TypedIdent(Bpl.Token.NoToken, methodName, Bpl.Type.Int);
+      var constant = new Bpl.Constant(Bpl.Token.NoToken, typedIdent, true);
+      sink.TranslatedProgram.TopLevelDeclarations.Add(constant);
+      TranslatedExpressions.Push(Bpl.Expr.Ident(constant));
+      sink.AddDelegate(type.ResolvedType, constant);
+    }
+    
     #endregion
 
     #region Translate Binary Operators
