@@ -580,14 +580,13 @@ namespace VC
             // The VC of main
             public VCExpr vcMain;
             // Error reporter (stores models)
-            public StratifiedInliningErrorReporter reporter;
+            public ProverInterface.ErrorHandler reporter;
             // The theorem prover interface
             public Checker checker;
             // stores the number of axioms pushed since pervious backtracking point
             private List<int> numAxiomsPushed;
 
-
-            public NormalChecker(VCExpr vcMain, StratifiedInliningErrorReporter reporter, Checker checker)
+            public NormalChecker(VCExpr vcMain, ProverInterface.ErrorHandler reporter, Checker checker)
             {
                 this.vcMain = vcMain;
                 this.reporter = reporter;
@@ -672,7 +671,7 @@ namespace VC
             // The VC of main
             private VCExpr vcMain;
             // Error reporter (stores models)
-            private StratifiedInliningErrorReporter reporter;
+            private ProverInterface.ErrorHandler reporter;
             // The theorem prover interface
             public Checker checker;
             // stores the number of axioms pushed since pervious backtracking point
@@ -682,7 +681,7 @@ namespace VC
             // Use checkAssumptions?
             public static bool UseCheckAssumptions = true;
 
-            public ApiChecker(VCExpr vcMain, StratifiedInliningErrorReporter reporter, Checker checker)
+            public ApiChecker(VCExpr vcMain, ProverInterface.ErrorHandler reporter, Checker checker)
             {
                 this.vcMain = vcMain;
                 this.reporter = reporter;
@@ -819,7 +818,7 @@ namespace VC
                 this.reporter = reporter;
                 if (checker.TheoremProver is ApiProverInterface)
                 {
-                    this.checker = new ApiChecker(vcMain, reporter, checker);
+                    this.checker = new ApiChecker(vcMain, reporter , checker);
                 }
                 else
                 {
@@ -829,6 +828,143 @@ namespace VC
                 expansionCount = 0;
             }
         }
+
+        public Outcome FindLeastToVerify(Implementation impl, Program program, ref HashSet<string> allBoolVars)
+        {
+            Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+
+            // Get the checker
+            Checker checker = FindCheckerFor(impl, CommandLineOptions.Clo.ProverKillTime); Contract.Assert(checker != null);
+
+            Contract.Assert(implName2StratifiedInliningInfo != null);
+            this.program = program;
+
+            // Get the VC of the current procedure
+            VCExpr vcMain;
+            Hashtable/*<int, Absy!>*/ mainLabel2absy;
+            ModelViewInfo mvInfo;
+
+            ConvertCFG2DAG(impl, program);
+            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
+            vcMain = GenerateVC(impl, null, out mainLabel2absy, checker);
+
+            StratifiedCheckerInterface apiChecker = null;
+
+            if (checker.TheoremProver is ApiProverInterface)
+            {
+                apiChecker = new ApiChecker(vcMain, new EmptyErrorHandler(), checker);
+            }
+            else
+            {
+                apiChecker = new NormalChecker(vcMain, new EmptyErrorHandler(), checker);
+            }
+
+            // Find all the boolean constants
+            var allConsts = new HashSet<VCExprVar>();
+            foreach (var decl in program.TopLevelDeclarations)
+            {
+                var constant = decl as Constant;
+                if (constant == null) continue;
+                if (!allBoolVars.Contains(constant.Name)) continue;
+                allConsts.Add(checker.TheoremProver.Context.BoogieExprTranslator.LookupVariable(constant));
+            }
+
+            // Now, lets start the algo
+            var min = refinementLoop(apiChecker, new HashSet<VCExprVar>(), allConsts, allConsts);
+
+            var ret = new HashSet<string>();
+            foreach (var v in min)
+            {
+                //Console.WriteLine(v.Name);
+                ret.Add(v.Name);
+            }
+            allBoolVars = ret;
+            return Outcome.Correct;
+        }
+
+        private HashSet<VCExprVar> refinementLoop(StratifiedCheckerInterface apiChecker, HashSet<VCExprVar> trackedVars, HashSet<VCExprVar> trackedVarsUpperBound, HashSet<VCExprVar> allVars)
+        {
+            Debug.Assert(trackedVars.IsSubsetOf(trackedVarsUpperBound));
+
+            // If we already know the fate of all vars, then we're done.
+            if (trackedVars.Count == trackedVarsUpperBound.Count)
+                return new HashSet<VCExprVar>(trackedVars);
+
+            // See if we already have enough variables tracked
+            var success = refinementLoopCheckPath(apiChecker, trackedVars, allVars);
+            if (success)
+            {
+                // We have enough
+                return new HashSet<VCExprVar>(trackedVars);
+            }
+
+            // If all that remains is 1 variable, then we know that we must track it
+            if (trackedVars.Count + 1 == trackedVarsUpperBound.Count)
+                return new HashSet<VCExprVar>(trackedVarsUpperBound);
+
+            // Partition the remaining set of variables
+            HashSet<VCExprVar> part1, part2;
+            var temp = new HashSet<VCExprVar>(trackedVarsUpperBound);
+            temp.ExceptWith(trackedVars);
+            Partition<VCExprVar>(temp, out part1, out part2);
+            
+            // First half
+            var fh = new HashSet<VCExprVar>(trackedVars); fh.UnionWith(part2);
+            var s1 = refinementLoop(apiChecker, fh, trackedVarsUpperBound, allVars);
+
+            var a = new HashSet<VCExprVar>(part1); a.IntersectWith(s1);
+            var b = new HashSet<VCExprVar>(part1); b.ExceptWith(s1);
+            var c = new HashSet<VCExprVar>(trackedVarsUpperBound); c.ExceptWith(b);
+            a.UnionWith(trackedVars);
+
+            // Second half
+            return refinementLoop(apiChecker, a, c, allVars);
+        }
+
+        private bool refinementLoopCheckPath(StratifiedCheckerInterface apiChecker, HashSet<VCExprVar> varsToSet, HashSet<VCExprVar> allVars)
+        {
+            var assumptions = new List<VCExpr>();
+            List<int> temp = null;
+
+            //Console.Write("Query: ");
+            foreach (var c in allVars)
+            {
+                if (varsToSet.Contains(c))
+                {
+                    //Console.Write(c.Name + " ");
+                    assumptions.Add(c); //apiChecker.underlyingChecker.VCExprGen.Eq(c, VCExpressionGenerator.True));
+                }
+                else
+                {
+                    assumptions.Add(apiChecker.underlyingChecker.VCExprGen.Not(c));
+                }
+            }
+            //Console.WriteLine();
+
+            var o = apiChecker.CheckAssumptions(assumptions, out temp);
+            Debug.Assert(o == Outcome.Correct || o == Outcome.Errors);
+            //Console.WriteLine("Result = " + o.ToString());
+
+            if (o == Outcome.Correct) return true;
+            return false;
+        }
+
+        public static void Partition<T>(HashSet<T> values, out HashSet<T> part1, out HashSet<T> part2)
+        {
+            part1 = new HashSet<T>();
+            part2 = new HashSet<T>();
+            var size = values.Count;
+            var crossed = false;
+            var curr = 0;
+            foreach (var s in values)
+            {
+                if (crossed) part2.Add(s);
+                else part1.Add(s);
+                curr++;
+                if (!crossed && curr >= size / 2) crossed = true;
+            }
+        }
+
 
         public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback)
         {
@@ -864,7 +1000,7 @@ namespace VC
 
             // Get the checker
             Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime); Contract.Assert(checker != null);
-
+            
             // Run live variable analysis
             if (CommandLineOptions.Clo.LiveVariableAnalysis == 2)
             {
@@ -1427,7 +1563,7 @@ namespace VC
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
             Checker checker = FindCheckerFor(impl, CommandLineOptions.Clo.ProverKillTime);
             Contract.Assert(checker != null);
-
+            
             vc = GenerateVC(impl, null, out label2absy, checker);
 
             /*
@@ -1908,6 +2044,13 @@ namespace VC
 
         } // end FCallInliner
 
+        public class EmptyErrorHandler : ProverInterface.ErrorHandler
+        {
+            public override void OnModel(IList<string> labels, ErrorModel errModel)
+            {
+                
+            }
+        }
 
         public class StratifiedInliningErrorReporter : ProverInterface.ErrorHandler
         {

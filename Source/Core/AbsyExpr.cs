@@ -1941,6 +1941,10 @@ namespace Microsoft.Boogie {
       Contract.Invariant(name != null);
     }
 
+    public FunctionCall createUnresolvedCopy()
+    {
+        return new FunctionCall(new IdentifierExpr(name.tok, name.Name, name.Type));
+    }
 
     public AI.IFunctionSymbol/*!*/ AIFunctionSymbol {
       get {
