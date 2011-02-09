@@ -859,18 +859,17 @@ namespace Microsoft.Boogie {
       return true;
     }
 
-    public void AddAttribute(string name, object val) {
-      Contract.Requires(val != null);
+    public void AddAttribute(string name, params object[] vals) {
       Contract.Requires(name != null);
       QKeyValue kv;
       for (kv = this.Attributes; kv != null; kv = kv.Next) {
         if (kv.Key == name) {
-          kv.Params.Add(val);
+          kv.Params.AddRange(vals);
           break;
         }
       }
       if (kv == null) {
-        Attributes = new QKeyValue(tok, name, new List<object/*!*/>(new object/*!*/[] { val }), Attributes);
+        Attributes = new QKeyValue(tok, name, new List<object/*!*/>(vals), Attributes);
       }
     }
 
