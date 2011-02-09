@@ -379,6 +379,37 @@ namespace BytecodeTranslator {
             boogieModifies,
             boogiePostcondition);
 
+        // Don't need an expression translator because there is a limited set of things
+        // that can appear as arguments to custom attributes
+        foreach (var a in method.Attributes) {
+          var attrName = TypeHelper.GetTypeName(a.Type);
+          if (attrName.EndsWith("Attribute"))
+            attrName = attrName.Substring(0, attrName.Length - 9);
+          var args = new object[IteratorHelper.EnumerableCount(a.Arguments)];
+          int argIndex = 0;
+          foreach (var c in a.Arguments) {
+            var mdc = c as IMetadataConstant;
+            if (mdc != null) {
+              object o;
+              switch (mdc.Type.TypeCode) {
+                case PrimitiveTypeCode.Boolean:
+                  o = (bool)mdc.Value ? Bpl.Expr.True : Bpl.Expr.False;
+                  break;
+                case PrimitiveTypeCode.Int32:
+                  o = Bpl.Expr.Literal((int)mdc.Value);
+                  break;
+                case PrimitiveTypeCode.String:
+                  o = mdc.Value;
+                  break;
+                default:
+                  throw new InvalidCastException("Invalid metadata constant type");
+              }
+              args[argIndex++] = o;
+            }
+          }
+          proc.AddAttribute(attrName, args);
+        }
+
         this.sink.TranslatedProgram.TopLevelDeclarations.Add(proc);
 
         if (method.IsAbstract) {
