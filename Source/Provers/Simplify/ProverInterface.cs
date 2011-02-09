@@ -239,84 +239,64 @@ namespace Microsoft.Boogie.Simplify {
       Contract.Requires(proverExe != null);
       Contract.Ensures(_proverPath != null);
 
-      if (_proverPath == null)
-      {
-          // Initialize '_proverPath'
-          _proverPath = Path.Combine(CodebaseString(), proverExe);
-          string firstTry = _proverPath;
+      if (_proverPath == null) {
+        // Initialize '_proverPath'
+        _proverPath = Path.Combine(CodebaseString(), proverExe);
+        string firstTry = _proverPath;
 
-          if (File.Exists(firstTry))
-              return;
+        if (File.Exists(firstTry))
+          return;
 
-          string programFiles = Environment.GetEnvironmentVariable("ProgramFiles");
-          Contract.Assert(programFiles != null);
-          string programFilesX86 = Environment.GetEnvironmentVariable("ProgramFiles(x86)");
-          if (programFiles.Equals(programFilesX86))
-          {
-              // If both %ProgramFiles% and %ProgramFiles(x86)% point to "ProgramFiles (x86)", use %ProgramW6432% instead.
-              programFiles = Environment.GetEnvironmentVariable("ProgramW6432");
-          }
+        string programFiles = Environment.GetEnvironmentVariable("ProgramFiles");
+        Contract.Assert(programFiles != null);
+        string programFilesX86 = Environment.GetEnvironmentVariable("ProgramFiles(x86)");
+        if (programFiles.Equals(programFilesX86)) {
+          // If both %ProgramFiles% and %ProgramFiles(x86)% point to "ProgramFiles (x86)", use %ProgramW6432% instead.
+          programFiles = Environment.GetEnvironmentVariable("ProgramW6432");
+        }
 
-          string msrDir = null;
-          if (Directory.Exists(programFiles + @"\Microsoft Research\"))
-          {
-              msrDir = programFiles + @"\Microsoft Research\";
-          }
-          else if (Directory.Exists(programFilesX86 + @"\Microsoft Research\"))
-          {
-              msrDir = programFilesX86 + @"\Microsoft Research\";
-          }
-          else
-          {
-              if (CommandLineOptions.Clo.Trace)
-              {
-                  Console.WriteLine("Failed to find the 'Microsoft Research' directory.");
-              }
-              throw new ProverException("Cannot find executable: " + firstTry);
-          }
 
-          // Look for the most recent version of Z3.
-          string[] z3Dirs = Directory.GetDirectories(msrDir, "Z3-*");
-          int minor = 0, major = 0;
-          Regex r = new Regex(@"^Z3-(\d+)\.(\d+)$");
-          foreach (string d in z3Dirs)
-          {
-              string name = new DirectoryInfo(d).Name;
-              foreach (Match m in r.Matches(name))
-              {
-                  int ma, mi;
-                  ma = int.Parse(m.Groups[1].ToString());
-                  mi = int.Parse(m.Groups[2].ToString());
-                  if (major < ma)
-                  {
-                      major = ma;
-                      minor = mi;
-                  }
-                  if (minor < mi)
-                  {
-                      minor = mi;
-                  }
-              }
-          }
+        List<string> z3Dirs = new List<string>();
+        if (Directory.Exists(programFiles + @"\Microsoft Research\")) {
+          string msrDir = programFiles + @"\Microsoft Research\";
+          z3Dirs.AddRange(Directory.GetDirectories(msrDir, "Z3-*"));
+        }
+        if (Directory.Exists(programFilesX86 + @"\Microsoft Research\")) {
+          string msrDir = programFilesX86 + @"\Microsoft Research\";
+          z3Dirs.AddRange(Directory.GetDirectories(msrDir, "Z3-*"));
+        }
 
-          if (0 < major || 0 < minor)
-          {
-              _proverPath = Path.Combine(Path.Combine(Path.Combine(msrDir, "Z3-" + major + "." + minor), "bin"), proverExe);
-              Debug.Assert(File.Exists(_proverPath));
+        // Look for the most recent version of Z3.
+        int minor = 0, major = 0;
+        string winner = null;
+        Regex r = new Regex(@"^Z3-(\d+)\.(\d+)$");
+        foreach (string d in z3Dirs) {
+          string name = new DirectoryInfo(d).Name;
+          foreach (Match m in r.Matches(name)) {
+            int ma, mi;
+            ma = int.Parse(m.Groups[1].ToString());
+            mi = int.Parse(m.Groups[2].ToString());
+            if (major < ma || (major == ma && minor < mi)) {
+              major = ma;
+              minor = mi;
+              winner = d;
+            }
           }
-          else
-          {
-              if (CommandLineOptions.Clo.Trace)
-              {
-                  Console.WriteLine("Failed to find prover in this directory:   " + msrDir);
-              }
-              throw new ProverException("Cannot find executable: " + firstTry);
-          }
+        }
 
-          if (CommandLineOptions.Clo.Trace)
-          {
-              Console.WriteLine("[TRACE] Using prover: " + _proverPath);
-          }
+        if (major == 0 && minor == 0) {
+          throw new ProverException("Cannot find executable: " + firstTry);
+        }
+        Contract.Assert(winner != null);
+
+        _proverPath = Path.Combine(Path.Combine(winner, "bin"), proverExe);
+        if (!File.Exists(_proverPath)) {
+          throw new ProverException("Cannot find prover: " + _proverPath);
+        }
+
+        if (CommandLineOptions.Clo.Trace) {
+          Console.WriteLine("[TRACE] Using prover: " + _proverPath);
+        }
       }
     }
 
