@@ -20,6 +20,33 @@ using Microsoft.Boogie.Simplify;
 
 namespace Microsoft.Boogie.SMTLib
 {
+  class SMTLibProverOptions : ProverOptions
+  {
+    public string Output = "boogie-vc-@PROC@.smt";
+
+    protected override bool Parse(string opt)
+    {
+      return
+        ParseString(opt, "OUTPUT", ref Output) ||
+        base.Parse(opt);
+    }
+
+    public override string Help
+    {
+      get
+      {
+        return
+@"
+SMT-specific options:
+~~~~~~~~~~~~~~~~~~~~~
+OUTPUT=<string>           Store VC in named file. Defaults to boogie-vc-@PROC@.smt.
+
+" + base.Help;
+        // DIST requires non-public binaries
+      }
+    }
+  }
+
   public class SMTLibProcessTheoremProver : LogProverInterface
   {
     private readonly DeclFreeProverContext ctx;
@@ -149,7 +176,7 @@ void ObjectInvariant()
       Contract.Requires(descriptiveName != null);
       Contract.Ensures(Contract.Result<TextWriter>() != null);
 
-        string filename = CommandLineOptions.Clo.SMTLibOutputPath;
+        string filename = ((SMTLibProverOptions)options).Output;
         filename = Helpers.SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
         return new StreamWriter(filename, false);
     }
@@ -298,6 +325,11 @@ void ObjectInvariant()
       Contract.Assert(genOptions!=null);
 
       return new DeclFreeProverContext(gen, genOptions);
+    }
+
+    public override ProverOptions BlankProverOptions()
+    {
+      return new SMTLibProverOptions();
     }
 
     protected virtual SMTLibProcessTheoremProver SpawnProver(ProverOptions options,

@@ -57,6 +57,29 @@ namespace Microsoft.Boogie {
       // || base.Parse(opt)
     }
 
+    public virtual string Help
+    {
+      get
+      {
+        return
+@"
+Generic prover options :
+~~~~~~~~~~~~~~~~~~~~~~~
+LOG_FILE=<string>         Log input for the theorem prover. The string @PROC@ in the filename
+                          causes there to be one prover log file per verification condition, 
+                          and is expanded to the name of the procedure that the verification 
+                          condition is for.
+APPEND_LOG_FILE=<bool>    Append, rather than overwrite the log file.
+MEMORY_LIMIT=<int>        Memory limit of the prover in megabytes.
+VERBOSITY=<int>           The higher, the more verbose.
+TIME_LIMIT=<int>          Time limit per verification condition in miliseconds.
+
+The generic options may or may not be used by the prover plugin.
+";
+
+      }
+    }
+
     public virtual void Parse(List<string/*!*/>/*!*/ opts) {
       Contract.Requires(cce.NonNullElements(opts));
       StringBuilder sb = new StringBuilder(stringRepr);
@@ -72,7 +95,7 @@ namespace Microsoft.Boogie {
       PostParse();
     }
 
-    protected virtual void PostParse() {
+    public virtual void PostParse() {
       if (LogFilename != null && LogFilename.Contains("@PROC@")) {
         SeparateLogFiles = true;
       }
@@ -80,7 +103,7 @@ namespace Microsoft.Boogie {
 
     protected void ReportError(string msg) {
       Contract.Requires(msg != null);
-      throw new OptionException(msg);
+      throw new OptionException(msg + "\n\n" + Help);
     }
 
     protected virtual bool ParseString(string opt, string name, ref string field) {
@@ -136,7 +159,6 @@ namespace Microsoft.Boogie {
       return false;
     }
 
-    static int sequenceNumber = 0;
     public virtual TextWriter OpenLog(string/*?*/ descName) {
       if (LogFilename != null) {
         string filename = LogFilename;

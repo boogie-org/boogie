@@ -113,7 +113,6 @@ namespace Microsoft.Boogie {
 
     public bool PrintDesugarings = false;
     public string SimplifyLogFilePath = null;
-    public string SMTLibOutputPath = "boogie-vc-@PROC@.smt";
     public string/*!*/ LogPrefix = "";
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
@@ -735,13 +734,6 @@ namespace Microsoft.Boogie {
           case "-proverShutdownLimit":
           case "/proverShutdownLimit":
             ps.GetNumericArgument(ref ProverShutdownLimit);
-            break;
-
-          case "-smtOutput":
-          case "/smtOutput":
-            if (ps.ConfirmArgumentCount(1)) {
-              SMTLibOutputPath = args[ps.i];
-            }
             break;
 
           case "-errorTrace":
@@ -1445,7 +1437,6 @@ namespace Microsoft.Boogie {
       ExpandFilename(ref DafnyPrelude);
       ExpandFilename(ref DafnyPrintFile);
       ExpandFilename(ref SimplifyLogFilePath);
-      ExpandFilename(ref SMTLibOutputPath);
       ExpandFilename(ref PrintErrorModelFile);
 
       Contract.Assume(XmlSink == null);  // XmlSink is to be set here
@@ -2238,7 +2229,7 @@ namespace Microsoft.Boogie {
   /proverLog:<file> : Log input for the theorem prover.  Like filenames
                    supplied as arguments to other options, <file> can use the
                    following macros:
-                     @TIME@'   expands to the current time
+                     @TIME@    expands to the current time
                      @PREFIX@  expands to the concatenation of strings given
                                by /logPrefix options
                      @FILE@    expands to the last filename specified on the
@@ -2271,11 +2262,6 @@ namespace Microsoft.Boogie {
   /useArrayTheory : use Z3's native theory (as opposed to axioms).  Currently
                     implies /monomorphize.
 
-  SMT-Lib specific options:
-  /smtOutput:<file>     : Path and basename to which the prover output is
-                          written (default: boogie-vc-@PROC@.smt). The same
-                          macros as in /proverLog can be used.
-  
   /z3types       : generate multi-sorted VC that make use of Z3 types
   /z3lets:<n>    : 0 - no LETs, 1 - only LET TERM, 2 - only LET FORMULA,
                    3 - (default) any

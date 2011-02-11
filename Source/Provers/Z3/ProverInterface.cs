@@ -123,7 +123,7 @@ void ObjectInvariant()
              base.Parse(opt);
     }
 
-    protected override void PostParse()
+    public override void PostParse()
     {
       base.PostParse();
 
@@ -133,12 +133,11 @@ void ObjectInvariant()
       }     
     }
 
-    public string Help
+    public override string Help
     {
       get
       {
-          return
-              // base.Help +
+        return
 @"
 Z3-specific options:
 ~~~~~~~~~~~~~~~~~~~~
@@ -149,7 +148,8 @@ Obscure options:
 ~~~~~~~~~~~~~~~~
 DIST=<bool>               Use z3-dist.exe binary.
 REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
-";
+
+" + base.Help;
           // DIST requires non-public binaries
       }
     }

@@ -57,7 +57,7 @@ namespace Microsoft.Boogie.Isabelle {
 
 
 
-    protected override void PostParse() {
+    public override void PostParse() {
       base.PostParse();
 
       if (filename == null) {

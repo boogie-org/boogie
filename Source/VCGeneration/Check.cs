@@ -134,6 +134,7 @@ namespace Microsoft.Boogie {
         options.LogFilename = logFilePath;
         if (appendLogFile)
           options.AppendLogFile = appendLogFile;
+        options.PostParse();
       }
 
       options.Parse(CommandLineOptions.Clo.ProverOptions);

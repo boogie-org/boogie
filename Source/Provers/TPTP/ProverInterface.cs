@@ -20,6 +20,33 @@ using Microsoft.Boogie.Simplify;
 
 namespace Microsoft.Boogie.TPTP
 {
+  class TPTPProverOptions : ProverOptions
+  {
+    public string Output = "boogie-vc-@PROC@.tptp";
+
+    protected override bool Parse(string opt)
+    {
+      return
+        ParseString(opt, "OUTPUT", ref Output) ||
+        base.Parse(opt);
+    }
+
+    public override string Help
+    {
+      get
+      {
+        return
+@"
+TPTP-specific options:
+~~~~~~~~~~~~~~~~~~~~~~
+OUTPUT=<string>           Store VC in named file. Defaults to boogie-vc-@PROC@.tptp.
+
+" + base.Help;
+        // DIST requires non-public binaries
+      }
+    }
+  }
+
   public class TPTPProcessTheoremProver : LogProverInterface
   {
     private readonly DeclFreeProverContext ctx;
@@ -144,7 +171,7 @@ namespace Microsoft.Boogie.TPTP
       Contract.Requires(descriptiveName != null);
       Contract.Ensures(Contract.Result<TextWriter>() != null);
 
-      string filename = CommandLineOptions.Clo.SMTLibOutputPath;
+      string filename = ((TPTPProverOptions)options).Output;
       filename = Helpers.SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
       return new StreamWriter(filename, false);
     }
@@ -299,6 +326,11 @@ namespace Microsoft.Boogie.TPTP
       Contract.Assert(genOptions != null);
 
       return new DeclFreeProverContext(gen, genOptions);
+    }
+
+    public override ProverOptions BlankProverOptions()
+    {
+      return new TPTPProverOptions();
     }
 
     protected virtual TPTPProcessTheoremProver SpawnProver(ProverOptions options,
