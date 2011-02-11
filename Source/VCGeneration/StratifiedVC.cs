@@ -1458,9 +1458,8 @@ namespace VC
                 expansion = calls.Mutate(expansion, true);
                 vState.coverageManager.addRecentEdges(id);
 
-                expansion = checker.VCExprGen.Eq(calls.id2ControlVar[id], expansion);
-                //expansion = checker.VCExprGen.Eq(expr, expansion);
-                //checker.TheoremProver.PushVCExpression(calls.getTrueExpr(id));
+                //expansion = checker.VCExprGen.Eq(calls.id2ControlVar[id], expansion);
+                expansion = checker.VCExprGen.Implies(calls.id2ControlVar[id], expansion);
 
                 exprToPush = checker.VCExprGen.And(exprToPush, expansion);
             }
@@ -2128,17 +2127,18 @@ namespace VC
                 Contract.Assert(errModel != null);
 
                 GenerateTraceMain(labels, errModel, mvInfo);
+
                 /*
-                foreach (string lab in labels)
-                {
-                    Contract.Assert(lab != null);
-                    int id = calls.GetId(lab);
-                    if (id < 0)
-                        continue;
-                    if (!calls.currCandidates.Contains(id))
-                        continue;
-                    candidatesToExpand.Add(id);
-                }
+                    foreach (string lab in labels)
+                    {
+                        Contract.Assert(lab != null);
+                        int id = calls.GetId(lab);
+                        if (id < 0)
+                            continue;
+                        if (!calls.currCandidates.Contains(id))
+                            continue;
+                        candidatesToExpand.Add(id);
+                    }
                 */
             }
 
