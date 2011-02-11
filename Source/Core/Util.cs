@@ -18,7 +18,6 @@ namespace Microsoft.Boogie {
       Contract.Invariant(writer != null);
     }
 
-    bool writerOpenedHere = false;
     bool setTokens = true;
     int line = 1;
     int col;
@@ -111,7 +110,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(filename != null);
       this.filename = filename;
       this.writer = new StreamWriter(filename);
-      this.writerOpenedHere = true;
       //base();
     }
 
