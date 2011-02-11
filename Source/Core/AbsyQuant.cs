@@ -390,7 +390,7 @@ namespace Microsoft.Boogie {
           if (innerquant.arg.dummyIndex > 0) {
             realquant = innerquant.arg.RealQuantifier;
           } else {
-            realquant = (QuantifierExpr)RealQuantifier.Clone();
+            realquant = (BinderExpr)RealQuantifier.Clone();
             VariableSeq/*!*/ newdummies = new VariableSeq();
             newdummies.Add(Param);
             newdummies.AddRange(innerquant.arg.RealQuantifier.Dummies);

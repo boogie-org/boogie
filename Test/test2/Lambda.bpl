@@ -55,3 +55,11 @@ procedure a()
   assert diff(a,b)[1];
   assert !diff(a,b)[2];
 }
+
+procedure nestedLambda()
+{
+  var a: [int][int]int;
+
+  a := (lambda x: int :: (lambda y: int :: x+y));
+}
+

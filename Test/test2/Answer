@@ -363,7 +363,7 @@ Lambda.bpl(38,3): Error BP5001: This assertion might not hold.
 Execution trace:
     Lambda.bpl(36,5): anon0
 
-Boogie program verifier finished with 4 verified, 2 errors
+Boogie program verifier finished with 5 verified, 2 errors
 
 -------------------- LambdaPoly.bpl --------------------
 LambdaPoly.bpl(28,5): Error BP5001: This assertion might not hold.
@@ -419,7 +419,7 @@ Lambda.bpl(38,3): Error BP5001: This assertion might not hold.
 Execution trace:
     Lambda.bpl(36,5): anon0
 
-Boogie program verifier finished with 4 verified, 2 errors
+Boogie program verifier finished with 5 verified, 2 errors
 
 -------------------- TypeEncodingM.bpl /typeEncoding:m --------------------
 TypeEncodingM.bpl(24,3): Error BP5001: This assertion might not hold.
