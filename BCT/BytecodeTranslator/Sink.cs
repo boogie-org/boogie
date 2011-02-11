@@ -25,10 +25,12 @@ namespace BytecodeTranslator {
       get { return this.factory; }
     }
     readonly TraverserFactory factory;
+    public readonly IContractProvider ContractProvider;
 
-    public Sink(TraverserFactory factory, HeapFactory heapFactory) {
+    public Sink(TraverserFactory factory, HeapFactory heapFactory, IContractProvider contractProvider) {
       this.factory = factory;
       var b = heapFactory.MakeHeap(this, out this.heap, out this.TranslatedProgram); // TODO: what if it returns false?
+      this.ContractProvider = contractProvider;
       if (this.TranslatedProgram == null)
         this.TranslatedProgram = new Bpl.Program();
     }
@@ -121,13 +123,160 @@ namespace BytecodeTranslator {
       return v;
     }
     /// <summary>
-    /// The keys to the table are tuples of the containing type (its interned key) and the name of the field. That
-    /// should uniquely identify each field.
+    /// The keys to the table are the interned key of the field.
     /// </summary>
     private Dictionary<uint, Bpl.Variable> declaredFields = new Dictionary<uint, Bpl.Variable>();
 
+    public Bpl.Procedure FindOrCreateProcedure(IMethodReference method, bool isStatic) {
+      Bpl.Procedure proc;
+      var key = method.InternedKey;
+      if (!this.declaredMethods.TryGetValue(key, out proc)) {
+        #region Create in- and out-parameters
+
+        int in_count = 0;
+        int out_count = 0;
+        MethodParameter mp;
+        var formalMap = new Dictionary<IParameterDefinition, MethodParameter>();
+        foreach (IParameterDefinition formal in method.Parameters) {
+
+          mp = new MethodParameter(formal);
+          if (mp.inParameterCopy != null) in_count++;
+          if (mp.outParameterCopy != null && (formal.IsByReference || formal.IsOut))
+            out_count++;
+          formalMap.Add(formal, mp);
+        }
+        this.FormalMap = formalMap;
+
+        #region Look for Returnvalue
+
+        if (method.Type.TypeCode != PrimitiveTypeCode.Void) {
+          Bpl.Type rettype = TranslationHelper.CciTypeToBoogie(method.Type);
+          out_count++;
+          this.RetVariable = new Bpl.Formal(method.Token(),
+              new Bpl.TypedIdent(method.Type.Token(),
+                  "$result", rettype), false);
+        } else {
+          this.RetVariable = null;
+        }
+
+        #endregion
+
+        Bpl.Formal/*?*/ self = null;
+        #region Create 'this' parameter
+        if (!isStatic) {
+          in_count++;
+          Bpl.Type selftype = Bpl.Type.Int;
+          self = new Bpl.Formal(method.Token(),
+              new Bpl.TypedIdent(method.Type.Token(),
+                  "this", selftype), true);
+        }
+        #endregion
+
+        Bpl.Variable[] invars = new Bpl.Formal[in_count];
+        Bpl.Variable[] outvars = new Bpl.Formal[out_count];
+
+        int i = 0;
+        int j = 0;
+
+        #region Add 'this' parameter as first in parameter
+        if (!isStatic)
+          invars[i++] = self;
+        #endregion
+
+        foreach (MethodParameter mparam in formalMap.Values) {
+          if (mparam.inParameterCopy != null) {
+            invars[i++] = mparam.inParameterCopy;
+          }
+          if (mparam.outParameterCopy != null) {
+            if (mparam.underlyingParameter.IsByReference || mparam.underlyingParameter.IsOut)
+              outvars[j++] = mparam.outParameterCopy;
+          }
+        }
+
+        #region add the returnvalue to out if there is one
+        if (this.RetVariable != null) outvars[j] = this.RetVariable;
+        #endregion
+
+        #endregion
+
+        #region Check The Method Contracts
+        Bpl.RequiresSeq boogiePrecondition = new Bpl.RequiresSeq();
+        Bpl.EnsuresSeq boogiePostcondition = new Bpl.EnsuresSeq();
+        Bpl.IdentifierExprSeq boogieModifies = new Bpl.IdentifierExprSeq();
+
+        IMethodContract contract = ContractProvider.GetMethodContractFor(method);
+
+        if (contract != null) {
+          try {
+            foreach (IPrecondition pre in contract.Preconditions) {
+              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, null);
+              exptravers.Visit(pre.Condition); // TODO
+              // Todo: Deal with Descriptions
+
+
+              Bpl.Requires req
+                  = new Bpl.Requires(pre.Token(),
+                      false, exptravers.TranslatedExpressions.Pop(), "");
+              boogiePrecondition.Add(req);
+            }
+
+            foreach (IPostcondition post in contract.Postconditions) {
+              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, null);
+
+              exptravers.Visit(post.Condition);
+              // Todo: Deal with Descriptions
+
+              Bpl.Ensures ens =
+                  new Bpl.Ensures(post.Token(),
+                      false, exptravers.TranslatedExpressions.Pop(), "");
+              boogiePostcondition.Add(ens);
+            }
+
+            foreach (IAddressableExpression mod in contract.ModifiedVariables) {
+              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, null);
+              exptravers.Visit(mod);
+
+              Bpl.IdentifierExpr idexp = exptravers.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
+
+              if (idexp == null) {
+                throw new TranslationException(String.Format("Cannot create IdentifierExpr for Modifyed Variable {0}", mod.ToString()));
+              }
+              boogieModifies.Add(idexp);
+            }
+          } catch (TranslationException te) {
+            throw new NotImplementedException("Cannot Handle Errors in Method Contract: " + te.ToString());
+          } catch {
+            throw;
+          }
+        }
+
+        #endregion
+
+        string MethodName = TranslationHelper.CreateUniqueMethodName(method);
+
+        proc = new Bpl.Procedure(method.Token(),
+            MethodName,
+            new Bpl.TypeVariableSeq(),
+            new Bpl.VariableSeq(invars), // in
+            new Bpl.VariableSeq(outvars), // out
+            boogiePrecondition,
+            boogieModifies,
+            boogiePostcondition);
+
+
+        this.TranslatedProgram.TopLevelDeclarations.Add(proc);
+        this.declaredMethods.Add(key, proc);
+      }
+      return proc;
+    }
+    /// <summary>
+    /// The keys to the table are the interned key of the field.
+    /// </summary>
+    private Dictionary<uint, Bpl.Procedure> declaredMethods = new Dictionary<uint, Bpl.Procedure>();
+
     public void BeginMethod() {
       this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
+      this.FormalMap = new Dictionary<IParameterDefinition, MethodParameter>();
     }
 
     public Dictionary<ITypeDefinition, HashSet<Bpl.Constant>> delegateTypeToDelegates =

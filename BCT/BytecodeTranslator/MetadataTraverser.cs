@@ -29,18 +29,15 @@ namespace BytecodeTranslator {
 
     public readonly TraverserFactory factory;
 
-    public readonly IContractProvider ContractProvider;
-
     public readonly PdbReader/*?*/ PdbReader;
 
     public Bpl.Variable HeapVariable;
 
 
-    public MetadataTraverser(Sink sink, IContractProvider cp, PdbReader/*?*/ pdbReader)
+    public MetadataTraverser(Sink sink, PdbReader/*?*/ pdbReader)
       : base() {
       this.sink = sink;
       this.factory = sink.Factory;
-      ContractProvider = cp;
       this.PdbReader = pdbReader;
     }
 
@@ -244,140 +241,62 @@ namespace BytecodeTranslator {
     /// </summary>
     public override void Visit(IMethodDefinition method) {
 
-      Dictionary<IParameterDefinition, MethodParameter> formalMap = new Dictionary<IParameterDefinition, MethodParameter>();
       this.sink.BeginMethod();
 
+      var proc = this.sink.FindOrCreateProcedure(method, method.IsStatic);
+
       try {
-        #region Create in- and out-parameters
 
-        int in_count = 0;
-        int out_count = 0;
-        MethodParameter mp;
-        foreach (IParameterDefinition formal in method.Parameters) {
-
-          mp = new MethodParameter(formal);
-          if (mp.inParameterCopy != null) in_count++;
-          if (mp.outParameterCopy != null && (formal.IsByReference || formal.IsOut))
-            out_count++;
-          formalMap.Add(formal, mp);
-        }
-        this.sink.FormalMap = formalMap;
-
-        #region Look for Returnvalue
-
-        if (method.Type.TypeCode != PrimitiveTypeCode.Void) {
-          Bpl.Type rettype = TranslationHelper.CciTypeToBoogie(method.Type);
-          out_count++;
-          this.sink.RetVariable = new Bpl.Formal(method.Token(),
-              new Bpl.TypedIdent(method.Type.Token(),
-                  "$result", rettype), false);
-        } else {
-          this.sink.RetVariable = null;
+        if (method.IsAbstract) {
+          throw new NotImplementedException("abstract methods are not yet implemented");
         }
 
-        #endregion
+        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader);
 
-        Bpl.Formal/*?*/ self = null;
-        #region Create 'this' parameter
-        if (!method.IsStatic) {
-          in_count++;
-          Bpl.Type selftype = Bpl.Type.Int;
-          self = new Bpl.Formal(method.Token(),
-              new Bpl.TypedIdent(method.Type.Token(),
-                  "this", selftype), true);
-        }
-        #endregion
+        #region Add assignements from In-Params to local-Params
 
-        Bpl.Variable[] invars = new Bpl.Formal[in_count];
-        Bpl.Variable[] outvars = new Bpl.Formal[out_count];
-
-        int i = 0;
-        int j = 0;
-
-        #region Add 'this' parameter as first in parameter
-        if (!method.IsStatic)
-          invars[i++] = self;
-        #endregion
-
-        foreach (MethodParameter mparam in formalMap.Values) {
+        foreach (MethodParameter mparam in this.sink.FormalMap.Values) {
           if (mparam.inParameterCopy != null) {
-            invars[i++] = mparam.inParameterCopy;
-          }
-          if (mparam.outParameterCopy != null) {
-            if (mparam.underlyingParameter.IsByReference || mparam.underlyingParameter.IsOut)
-              outvars[j++] = mparam.outParameterCopy;
-          }
-        }
-
-        #region add the returnvalue to out if there is one
-        if (this.sink.RetVariable != null) outvars[j] = this.sink.RetVariable;
-        #endregion
-
-        #endregion
-
-        #region Check The Method Contracts
-        Bpl.RequiresSeq boogiePrecondition = new Bpl.RequiresSeq();
-        Bpl.EnsuresSeq boogiePostcondition = new Bpl.EnsuresSeq();
-        Bpl.IdentifierExprSeq boogieModifies = new Bpl.IdentifierExprSeq();
-
-        IMethodContract contract = ContractProvider.GetMethodContractFor(method);
-
-        if (contract != null) {
-          try {
-            foreach (IPrecondition pre in contract.Preconditions) {
-              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this.sink, null);
-              exptravers.Visit(pre.Condition); // TODO
-              // Todo: Deal with Descriptions
-
-
-              Bpl.Requires req
-                  = new Bpl.Requires(pre.Token(),
-                      false, exptravers.TranslatedExpressions.Pop(), "");
-              boogiePrecondition.Add(req);
-            }
-
-            foreach (IPostcondition post in contract.Postconditions) {
-              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this.sink, null);
-
-              exptravers.Visit(post.Condition);
-              // Todo: Deal with Descriptions
-
-              Bpl.Ensures ens =
-                  new Bpl.Ensures(post.Token(),
-                      false, exptravers.TranslatedExpressions.Pop(), "");
-              boogiePostcondition.Add(ens);
-            }
-
-            foreach (IAddressableExpression mod in contract.ModifiedVariables) {
-              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this.sink, null);
-              exptravers.Visit(mod);
-
-              Bpl.IdentifierExpr idexp = exptravers.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
-
-              if (idexp == null) {
-                throw new TranslationException(String.Format("Cannot create IdentifierExpr for Modifyed Variable {0}", mod.ToString()));
-              }
-              boogieModifies.Add(idexp);
-            }
-          } catch (TranslationException te) {
-            throw new NotImplementedException("Cannot Handle Errors in Method Contract: " + te.ToString());
-          } catch {
-            throw;
+            Bpl.IToken tok = method.Token();
+            stmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
+              new Bpl.IdentifierExpr(tok, mparam.outParameterCopy),
+              new Bpl.IdentifierExpr(tok, mparam.inParameterCopy)));
           }
         }
 
         #endregion
 
-        string MethodName = TranslationHelper.CreateUniqueMethodName(method);
+        try {
+          method.Body.Dispatch(stmtTraverser);
+        } catch (TranslationException te) {
+          throw new NotImplementedException("No Errorhandling in Methodvisitor / " + te.ToString());
+        } catch {
+          throw;
+        }
 
-        Bpl.Procedure proc = new Bpl.Procedure(method.Token(),
-            MethodName, // make it unique!
-            new Bpl.TypeVariableSeq(),
-            new Bpl.VariableSeq(invars), // in
-            new Bpl.VariableSeq(outvars), // out
-            boogiePrecondition,
-            boogieModifies,
-            boogiePostcondition);
+        #region Create Local Vars For Implementation
+        List<Bpl.Variable> vars = new List<Bpl.Variable>();
+        foreach (MethodParameter mparam in this.sink.FormalMap.Values) {
+          if (!(mparam.underlyingParameter.IsByReference || mparam.underlyingParameter.IsOut))
+            vars.Add(mparam.outParameterCopy);
+        }
+        foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
+          vars.Add(v);
+        }
+
+        Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
+        #endregion
+
+        Bpl.Implementation impl =
+            new Bpl.Implementation(method.Token(),
+                proc.Name,
+                new Microsoft.Boogie.TypeVariableSeq(),
+                proc.InParams,
+                proc.OutParams,
+                vseq,
+                stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken));
+
+        impl.Proc = proc;
 
         // Don't need an expression translator because there is a limited set of things
         // that can appear as arguments to custom attributes
@@ -407,62 +326,11 @@ namespace BytecodeTranslator {
               args[argIndex++] = o;
             }
           }
-          proc.AddAttribute(attrName, args);
+          impl.AddAttribute(attrName, args);
         }
 
-        this.sink.TranslatedProgram.TopLevelDeclarations.Add(proc);
-
-        if (method.IsAbstract) {
-          throw new NotImplementedException("abstract methods are not yet implemented");
-        }
-
-        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader);
-
-        #region Add assignements from In-Params to local-Params
-
-        foreach (MethodParameter mparam in formalMap.Values) {
-          if (mparam.inParameterCopy != null) {
-            Bpl.IToken tok = method.Token();
-            stmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
-              new Bpl.IdentifierExpr(tok, mparam.outParameterCopy),
-              new Bpl.IdentifierExpr(tok, mparam.inParameterCopy)));
-          }
-        }
-
-        #endregion
-
-        try {
-          method.ResolvedMethod.Body.Dispatch(stmtTraverser);
-        } catch (TranslationException te) {
-          throw new NotImplementedException("No Errorhandling in Methodvisitor / " + te.ToString());
-        } catch {
-          throw;
-        }
-
-        #region Create Local Vars For Implementation
-        List<Bpl.Variable> vars = new List<Bpl.Variable>();
-        foreach (MethodParameter mparam in formalMap.Values) {
-          if (!(mparam.underlyingParameter.IsByReference || mparam.underlyingParameter.IsOut))
-            vars.Add(mparam.outParameterCopy);
-        }
-        foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
-          vars.Add(v);
-        }
-
-        Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
-        #endregion
-
-        Bpl.Implementation impl =
-            new Bpl.Implementation(method.Token(),
-                MethodName, // make unique
-                new Microsoft.Boogie.TypeVariableSeq(),
-                new Microsoft.Boogie.VariableSeq(invars),
-                new Microsoft.Boogie.VariableSeq(outvars),
-                vseq,
-                stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken));
-
-        impl.Proc = proc;
         this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
+
       } catch (TranslationException te) {
         throw new NotImplementedException(te.ToString());
       } catch {

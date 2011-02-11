@@ -85,8 +85,8 @@ namespace BytecodeTranslator
       IFieldReference/*?*/ field = addressableExpression.Definition as IFieldReference;
       if (field != null)
       {
-        //TranslatedExpressions.Push(Bpl.Expr.Ident(this.StmtTraverser.MethodTraverser.ClassTraverser.FindOrCreateFieldVariable(field.ResolvedField)));
-        throw new NotImplementedException();
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(field.ResolvedField)));
+        return;
       }
       IArrayIndexer/*?*/ arrayIndexer = addressableExpression.Definition as IArrayIndexer;
       if (arrayIndexer != null)
