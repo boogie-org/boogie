@@ -54,13 +54,13 @@ void ObjectInvariant()
   // Lineariser for expressions. The result (bool) is currently not used for anything
   public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions/*!*/> {
 
-    public static string ToString(VCExpr e, UniqueNamer namer) {
+    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts) {
     Contract.Requires(e != null);
     Contract.Requires(namer != null);
     Contract.Ensures(Contract.Result<string>() != null);
 
       StringWriter sw = new StringWriter();
-      SMTLibExprLineariser lin = new SMTLibExprLineariser (sw, namer);
+      SMTLibExprLineariser lin = new SMTLibExprLineariser (sw, namer, opts);
       Contract.Assert(lin!=null);
       lin.Linearise(e, LineariserOptions.Default);
       return cce.NonNull(sw.ToString());
@@ -86,11 +86,13 @@ void ObjectInvariant()
     } }
 
     internal readonly UniqueNamer Namer;
+    internal readonly SMTLibProverOptions ProverOptions;
 
-    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer) {
+    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibProverOptions opts) {
       Contract.Requires(wr != null);Contract.Requires(namer != null);
       this.wr = wr;
       this.Namer = namer;
+      this.ProverOptions = opts;
     }
 
     public void Linearise(VCExpr expr, LineariserOptions options) {
@@ -847,8 +849,13 @@ void ObjectInvariant()
         string printedName = ExprLineariser.Namer.GetName(op.Func, MakeIdPrintable(op.Func.Name));
         Contract.Assert(printedName!=null);
 
-        // arguments are always terms
-        WriteApplicationTermOnly(printedName, node, options);
+        if (ExprLineariser.ProverOptions.UsePredicates && op.Func.OutParams[0].TypedIdent.Type.IsBool) {
+          WriteApplication(printedName, node, options, true);
+        } else {
+          // arguments are always terms
+          WriteApplicationTermOnly(printedName, node, options);
+        }
+
         return true;
       }
       

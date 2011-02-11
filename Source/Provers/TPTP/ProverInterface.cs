@@ -20,14 +20,16 @@ using Microsoft.Boogie.Simplify;
 
 namespace Microsoft.Boogie.TPTP
 {
-  class TPTPProverOptions : ProverOptions
+  public class TPTPProverOptions : ProverOptions
   {
     public string Output = "boogie-vc-@PROC@.tptp";
+    public bool UsePredicates = false;
 
     protected override bool Parse(string opt)
     {
       return
         ParseString(opt, "OUTPUT", ref Output) ||
+        ParseBool(opt, "USE_PREDICATES", ref UsePredicates) ||
         base.Parse(opt);
     }
 
@@ -40,6 +42,7 @@ namespace Microsoft.Boogie.TPTP
 TPTP-specific options:
 ~~~~~~~~~~~~~~~~~~~~~~
 OUTPUT=<string>           Store VC in named file. Defaults to boogie-vc-@PROC@.tptp.
+USE_PREDICATES=<bool>     Try to use SMT predicates for functions returning bool.
 
 " + base.Help;
         // DIST requires non-public binaries
@@ -166,12 +169,17 @@ OUTPUT=<string>           Store VC in named file. Defaults to boogie-vc-@PROC@.t
       output.Close();
     }
 
+    public TPTPProverOptions Options
+    {
+      get { return (TPTPProverOptions)this.options; } 
+    }
+
     private TextWriter OpenOutputFile(string descriptiveName)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Ensures(Contract.Result<TextWriter>() != null);
 
-      string filename = ((TPTPProverOptions)options).Output;
+      string filename = Options.Output;
       filename = Helpers.SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
       return new StreamWriter(filename, false);
     }
@@ -228,8 +236,8 @@ OUTPUT=<string>           Store VC in named file. Defaults to boogie-vc-@PROC@.t
       DeclCollector.Collect(exprWithoutLet);
       FeedTypeDeclsToProver();
 
-      AddAxiom(TPTPExprLineariser.ToString(axiomsWithoutLet, Namer));
-      string res = TPTPExprLineariser.ToString(exprWithoutLet, Namer);
+      AddAxiom(TPTPExprLineariser.ToString(axiomsWithoutLet, Namer, Options));
+      string res = TPTPExprLineariser.ToString(exprWithoutLet, Namer, Options);
       Contract.Assert(res != null);
 
       if (CommandLineOptions.Clo.Trace) {

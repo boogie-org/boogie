@@ -53,13 +53,13 @@ void ObjectInvariant()
   // Lineariser for expressions. The result (bool) is currently not used for anything
   public class TPTPExprLineariser : IVCExprVisitor<bool, LineariserOptions/*!*/> {
 
-    public static string ToString(VCExpr e, UniqueNamer namer) {
+    public static string ToString(VCExpr e, UniqueNamer namer, TPTPProverOptions opts) {
     Contract.Requires(e != null);
     Contract.Requires(namer != null);
     Contract.Ensures(Contract.Result<string>() != null);
 
       StringWriter sw = new StringWriter();
-      TPTPExprLineariser lin = new TPTPExprLineariser (sw, namer);
+      TPTPExprLineariser lin = new TPTPExprLineariser (sw, namer, opts);
       Contract.Assert(lin!=null);
       lin.Linearise(e, LineariserOptions.Default);
       return cce.NonNull(sw.ToString());
@@ -85,11 +85,13 @@ void ObjectInvariant()
     } }
 
     internal readonly UniqueNamer Namer;
+    internal readonly TPTPProverOptions Options;
 
-    public TPTPExprLineariser(TextWriter wr, UniqueNamer namer) {
+    public TPTPExprLineariser(TextWriter wr, UniqueNamer namer, TPTPProverOptions opts) {
       Contract.Requires(wr != null);Contract.Requires(namer != null);
       this.wr = wr;
       this.Namer = namer;
+      this.Options = opts;
     }
 
     public void Linearise(VCExpr expr, LineariserOptions options) {
@@ -724,8 +726,11 @@ void ObjectInvariant()
         string printedName = ExprLineariser.Namer.GetName(op.Func, Lowercase(op.Func.Name));
         Contract.Assert(printedName!=null);
 
-        // arguments are always terms
-        WriteApplicationTermOnly(printedName, node, options);
+        if (ExprLineariser.Options.UsePredicates && op.Func.OutParams[0].TypedIdent.Type.IsBool)
+          WriteApplication(printedName, node, options, true);
+        else
+          // arguments are always terms
+          WriteApplicationTermOnly(printedName, node, options);
         return true;
       }
       

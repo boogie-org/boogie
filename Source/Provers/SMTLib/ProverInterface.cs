@@ -20,14 +20,16 @@ using Microsoft.Boogie.Simplify;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  class SMTLibProverOptions : ProverOptions
+  public class SMTLibProverOptions : ProverOptions
   {
     public string Output = "boogie-vc-@PROC@.smt";
+    public bool UsePredicates = false;
 
     protected override bool Parse(string opt)
     {
       return
         ParseString(opt, "OUTPUT", ref Output) ||
+        ParseBool(opt, "USE_PREDICATES", ref UsePredicates) ||
         base.Parse(opt);
     }
 
@@ -40,6 +42,7 @@ namespace Microsoft.Boogie.SMTLib
 SMT-specific options:
 ~~~~~~~~~~~~~~~~~~~~~
 OUTPUT=<string>           Store VC in named file. Defaults to boogie-vc-@PROC@.smt.
+USE_PREDICATES=<bool>     Try to use SMT predicates for functions returning bool.
 
 " + base.Help;
         // DIST requires non-public binaries
@@ -96,7 +99,7 @@ void ObjectInvariant()
       UniqueNamer namer = new UniqueNamer ();
       Namer = namer;
       Namer.Spacer = "__";
-      this.DeclCollector = new TypeDeclCollector (namer);
+      this.DeclCollector = new TypeDeclCollector ((SMTLibProverOptions)options, namer);
       
     }
     
@@ -195,6 +198,11 @@ void ObjectInvariant()
       return Outcome.Undetermined;
     }
 
+    protected SMTLibProverOptions Options
+    {
+      get { return (SMTLibProverOptions)this.options; }
+    }
+
     protected string VCExpr2String(VCExpr expr, int polarity) {
       Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<string>() != null);
@@ -230,8 +238,8 @@ void ObjectInvariant()
       DeclCollector.Collect(sortedExpr);
       FeedTypeDeclsToProver();
 
-      AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer));
-      string res = SMTLibExprLineariser.ToString(sortedExpr, Namer);
+      AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, Options));
+      string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, Options);
       Contract.Assert(res!=null);
 
       if (CommandLineOptions.Clo.Trace) {

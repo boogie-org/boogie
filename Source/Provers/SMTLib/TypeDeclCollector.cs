@@ -18,6 +18,8 @@ namespace Microsoft.Boogie.SMTLib
   public class TypeDeclCollector : BoundVarTraversingVCExprVisitor<bool, bool> {
 
     private readonly UniqueNamer Namer;
+    private readonly SMTLibProverOptions Options;
+
     [ContractInvariantMethod]
 void ObjectInvariant() 
 {
@@ -29,9 +31,10 @@ void ObjectInvariant()
 }
 
 
-    public TypeDeclCollector(UniqueNamer namer) {
+    public TypeDeclCollector(SMTLibProverOptions opts, UniqueNamer namer) {
       Contract.Requires(namer != null);
       this.Namer = namer;
+      this.Options = opts;
     }
 
     // not used
@@ -102,19 +105,24 @@ void ObjectInvariant()
           Contract.Assert(f != null);
           string printedName = Namer.GetName(f, SMTLibExprLineariser.MakeIdPrintable(f.Name));
           Contract.Assert(printedName != null);
-          string decl = ":extrafuns ((" + printedName;
+
+          bool isPred = Options.UsePredicates && f.OutParams[0].TypedIdent.Type.IsBool;
+          string decl = (isPred ? ":extrapreds" : ":extrafuns") + " ((" + printedName;
 
           foreach (Variable v in f.InParams) {
             Contract.Assert(v != null);
             RegisterType(v.TypedIdent.Type);
             decl += " " + TypeToString(v.TypedIdent.Type);
           }
+
+
           Contract.Assert(f.OutParams.Length == 1);
-          foreach (Variable v in f.OutParams) {
-            Contract.Assert(v != null);
-            RegisterType(v.TypedIdent.Type);
-            decl += " " + TypeToString(v.TypedIdent.Type);
-          }
+          if (!isPred)
+            foreach (Variable v in f.OutParams) {
+              Contract.Assert(v != null);
+              RegisterType(v.TypedIdent.Type);
+              decl += " " + TypeToString(v.TypedIdent.Type);
+            }
 
           decl += "))";
 
