@@ -343,6 +343,12 @@ namespace Microsoft.Boogie.Z3
                 if (outcome == LBool.False)
                     break;
 
+                if (outcome == LBool.Undef && z3Model == null)
+                {
+                    // Blame this on timeout
+                    return ProverInterface.Outcome.TimeOut;
+                }
+
                 Debug.Assert(z3Model != null);
                 LabeledLiterals labels = z3.GetRelevantLabels();
                 Debug.Assert(labels != null);

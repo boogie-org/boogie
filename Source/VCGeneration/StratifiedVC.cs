@@ -833,6 +833,9 @@ namespace VC
         {
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
+            // Record current time
+            var startTime = DateTime.Now;
+
             // Get the checker
             Checker checker = FindCheckerFor(impl, CommandLineOptions.Clo.ProverKillTime); Contract.Assert(checker != null);
 
@@ -1001,6 +1004,9 @@ namespace VC
             // Get the checker
             Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime); Contract.Assert(checker != null);
             
+            // Record current time
+            var startTime = DateTime.Now;
+
             // Run live variable analysis
             if (CommandLineOptions.Clo.LiveVariableAnalysis == 2)
             {
@@ -1107,6 +1113,16 @@ namespace VC
             //   case 3: (internal error)   The theorem prover TimesOut of runs OutOfMemory
             while (true)
             {
+                // Check timeout
+                if (CommandLineOptions.Clo.ProverKillTime != -1)
+                {
+                    if ((DateTime.Now - startTime).TotalSeconds > CommandLineOptions.Clo.ProverKillTime)
+                    {
+                        ret = Outcome.TimedOut;
+                        break;
+                    }
+                }
+
                 // Note: in the absence of a coverage graph process, the task is always "step"
                 coverageManager.syncGraph();
                 var task = coverageManager.getNextTask();
