@@ -1242,7 +1242,7 @@ namespace VC
             coverageManager.stop();
 
             // Store current call tree
-            if (PersistCallTree)
+            if (PersistCallTree && (ret == Outcome.Correct || ret == Outcome.Errors || ret == Outcome.ReachedBound))
             {
                 callTree = new Dictionary<string, int>();
                 //var persistentNodes = new HashSet<int>(calls.candidateParent.Values);
