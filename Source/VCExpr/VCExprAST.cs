@@ -915,6 +915,19 @@ namespace Microsoft.Boogie.VCExprAST {
     internal static readonly List<Type/*!*/>/*!*/ EMPTY_TYPE_LIST = new List<Type/*!*/>();
     internal static readonly List<VCExpr/*!*/>/*!*/ EMPTY_VCEXPR_LIST = new List<VCExpr/*!*/>();
 
+    public IEnumerable<VCExpr> UniformArguments
+    {
+      get
+      {
+        var enumerator = new VCExprNAryUniformOpEnumerator(this);
+        while (enumerator.MoveNext()) {
+          VCExprNAry naryExpr = enumerator.Current as VCExprNAry;
+          if (naryExpr == null || !naryExpr.Op.Equals(this.Op)) {
+            yield return (VCExpr)enumerator.Current;
+          }
+        }
+      }
+    }
   }
 
   // We give specialised implementations for nullary, unary and binary expressions
