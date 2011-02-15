@@ -63,7 +63,6 @@ void ObjectInvariant()
       Contract.Invariant(AxBuilder != null);
       Contract.Invariant(Namer != null);
       Contract.Invariant(DeclCollector != null);
-      Contract.Invariant(BadBenchmarkWords != null);
       Contract.Invariant(cce.NonNullElements(Axioms));
       Contract.Invariant(cce.NonNullElements(TypeDecls));
       Contract.Invariant(_backgroundPredicates != null);
@@ -78,7 +77,7 @@ void ObjectInvariant()
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
-      InitializeGlobalInformation("UnivBackPred2.smt");
+      InitializeGlobalInformation("UnivBackPred2.smt2");
 
       this.ctx = ctx;
 
@@ -98,10 +97,8 @@ void ObjectInvariant()
       }
       
       AxBuilder = axBuilder;
-      UniqueNamer namer = new UniqueNamer ();
-      Namer = namer;
-      Namer.Spacer = "__";
-      this.DeclCollector = new TypeDeclCollector ((SMTLibProverOptions)options, namer);
+      Namer = new SMTLibNamer();
+      this.DeclCollector = new TypeDeclCollector ((SMTLibProverOptions)options, Namer);
       
     }
     
@@ -129,18 +126,22 @@ void ObjectInvariant()
       TextWriter output = OpenOutputFile(descriptiveName);
       Contract.Assert(output!=null);
 
-      string name =
-        MakeBenchmarkNameSafe(SMTLibNamer.QuoteId(descriptiveName));
-      Contract.Assert(name!=null);
-      WriteLineAndLog(output, "(benchmark " + name);
       WriteLineAndLog(output, _backgroundPredicates);
+      string name = SMTLibNamer.QuoteId(descriptiveName);
+      WriteLineAndLog(output, "(set-info :boogie-vc-id " + name + ")");
 
       if (!AxiomsAreSetup) {
-        AddAxiom(VCExpr2String(ctx.Axioms, -1));
+        var axioms = ctx.Axioms;
+        var nary = axioms as VCExprNAry;
+        if (nary != null && nary.Op == VCExpressionGenerator.AndOp)
+          foreach(var expr in nary.UniformArguments)
+            AddAxiom(VCExpr2String(expr, -1));
+        else
+          AddAxiom(VCExpr2String(axioms, -1));
         AxiomsAreSetup = true;
       }
 
-      string vcString = ":formula (not " + VCExpr2String(vc, 1) + ")";
+      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
       string prelude = ctx.GetProverCommands(true);
       Contract.Assert(prelude!=null);
       WriteLineAndLog(output, prelude);
@@ -151,30 +152,13 @@ void ObjectInvariant()
       }
       foreach (string s in Axioms) {
         Contract.Assert(s!=null);
-        WriteLineAndLog(output, ":assumption");
-        WriteLineAndLog(output, s);
+        WriteLineAndLog(output, "(assert " + s + ")");
       }
 
       WriteLineAndLog(output, vcString);
-      WriteLineAndLog(output, ")");
+      WriteLineAndLog(output, "(check-sat)");
 
       output.Close();
-    }
-
-    // certain words that should not occur in the name of a benchmark
-    // because some solvers don't like them
-    private readonly static List<string/*!>!*/> BadBenchmarkWords = new List<string/*!*/> ();
-    static SMTLibProcessTheoremProver() {
-      BadBenchmarkWords.Add("Array"); BadBenchmarkWords.Add("Arrray");
-    }
-
-    private string MakeBenchmarkNameSafe(string name) {
-      Contract.Requires(name != null);
-      Contract.Ensures(Contract.Result<string>() != null);
-
-      for (int i = 0; i < BadBenchmarkWords.Count; i = i + 2)
-        name = name.Replace(BadBenchmarkWords[i], BadBenchmarkWords[i+1]);
-      return name;
     }
 
     private TextWriter OpenOutputFile(string descriptiveName) {
@@ -189,6 +173,10 @@ void ObjectInvariant()
     private void WriteLineAndLog(TextWriter output, string msg) {
       Contract.Requires(output != null);
       Contract.Requires(msg != null);
+      var idx = msg.IndexOf('\n');
+      if (idx > 0) {
+        msg = msg.Replace("\r", "").Replace("\n", "\r\n");
+      }
       LogActivity(msg);
       output.WriteLine(msg);
     }

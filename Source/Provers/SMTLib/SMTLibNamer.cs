@@ -11,6 +11,7 @@ namespace Microsoft.Boogie.SMTLib
     // The following Boogie ID characters are not SMT ID characters: `'\#
     const string idCharacters = "~!@$%^&*_-+=<>.?/";
 
+
     static string[] reservedSmtWordsList = 
     { // Basic symbols:
       "", "!", "_", "as", "DECIMAL", "exists", "forall", "let", "NUMERAL", "par", "STRING", 
@@ -38,10 +39,8 @@ namespace Microsoft.Boogie.SMTLib
 
     static void InitSymbolLists()
     {
-      if (symbolListsInitilized)
-        return;
-
       lock (reservedSmtWordsList) {
+        // don't move out, c.f. http://en.wikipedia.org/wiki/Double-checked_locking
         if (symbolListsInitilized)
           return;
         reservedSmtWords = new Dictionary<string, bool>();
@@ -50,15 +49,12 @@ namespace Microsoft.Boogie.SMTLib
         validIdChar = new bool[255];
         for (int i = 0; i < validIdChar.Length; ++i)
           validIdChar[i] = char.IsLetterOrDigit((char)i) || idCharacters.IndexOf((char)i) >= 0;
-        System.Threading.Thread.MemoryBarrier(); // c.f. http://en.wikipedia.org/wiki/Double-checked_locking
         symbolListsInitilized = true;
       }
     }
 
     static string AddQuotes(string s)
     {
-      InitSymbolLists();
-
       var allGood = true;
 
       foreach (char ch in s) {
@@ -77,17 +73,15 @@ namespace Microsoft.Boogie.SMTLib
 
     static string NonKeyword(string s)
     {
-      InitSymbolLists();
-
       if (reservedSmtWords.ContainsKey(s) || char.IsDigit(s[0]))
         s = "q@" + s;
 
       // | and \ are illegal even in quoted identifiers
       if (s.IndexOf('|') >= 0)
-        s = s.Replace("|", "");
+        s = s.Replace("|", "_");
 
       if (s.IndexOf('\\') >= 0)
-        s = s.Replace("\\", "");
+        s = s.Replace("\\", "_");
 
       return s;
     }
@@ -110,6 +104,7 @@ namespace Microsoft.Boogie.SMTLib
     public SMTLibNamer()
     {
       this.Spacer = "@@";
+      InitSymbolLists();
     }
   }
 }

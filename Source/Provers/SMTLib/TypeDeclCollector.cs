@@ -6,6 +6,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
@@ -93,6 +94,12 @@ void ObjectInvariant()
       return SMTLibExprLineariser.TypeToString(t);
     }
 
+    private string TypeToStringReg(Type t)
+    {
+      RegisterType(t);
+      return TypeToString(t);
+    }
+
     public override bool Visit(VCExprNAry node, bool arg) {
       Contract.Requires(node != null);
 
@@ -106,26 +113,9 @@ void ObjectInvariant()
           string printedName = Namer.GetQuotedName(f, f.Name);
           Contract.Assert(printedName != null);
 
-          bool isPred = Options.UsePredicates && f.OutParams[0].TypedIdent.Type.IsBool;
-          string decl = (isPred ? ":extrapreds" : ":extrafuns") + " ((" + printedName;
-
-          foreach (Variable v in f.InParams) {
-            Contract.Assert(v != null);
-            RegisterType(v.TypedIdent.Type);
-            decl += " " + TypeToString(v.TypedIdent.Type);
-          }
-
-
           Contract.Assert(f.OutParams.Length == 1);
-          if (!isPred)
-            foreach (Variable v in f.OutParams) {
-              Contract.Assert(v != null);
-              RegisterType(v.TypedIdent.Type);
-              decl += " " + TypeToString(v.TypedIdent.Type);
-            }
-
-          decl += "))";
-
+          var argTypes = f.InParams.Cast<Variable>().MapConcat(p => TypeToStringReg(p.TypedIdent.Type), " ");
+          string decl = "(declare-fun " + printedName + " (" + argTypes + ") " + TypeToStringReg(f.OutParams[0].TypedIdent.Type) + ")";
           AddDeclaration(decl);
           KnownFunctions.Add(f, true);
         }
@@ -141,7 +131,7 @@ void ObjectInvariant()
         Contract.Assert(printedName!=null);
         RegisterType(node.Type);
         string decl =
-          ":extrafuns ((" + printedName + " " + TypeToString(node.Type) + "))";
+          "(declare-fun " + printedName + " () " + TypeToString(node.Type) + ")";
         AddDeclaration(decl);
         KnownVariables.Add(node, true);
       }
@@ -179,7 +169,7 @@ void ObjectInvariant()
         }
         RegisterType(mapType.Result);
 
-        declString += ":extrasorts ( " + TypeToString(type);
+        declString += "(declare-sort " + TypeToString(type) + " 0";
 
         /*
         if (CommandLineOptions.Clo.UseArrayTheory) {
@@ -201,7 +191,7 @@ void ObjectInvariant()
         return;
 
       if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
-        AddDeclaration(":extrasorts ( " + TypeToString(type) + " )");
+        AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
         KnownTypes.Add(type, true);
         return;
       }
@@ -214,14 +204,7 @@ void ObjectInvariant()
       name = Namer.GetQuotedName(name, name);
 
       if (!KnownSelectFunctions.ContainsKey(name)) {
-        string decl = ":extrafuns (( " + name;
-
-        foreach (VCExpr ch in node) {
-          decl += " " + TypeToString(ch.Type);
-        }
-        decl += " " + TypeToString(node.Type);
-
-        decl += " ))";
+        string decl = "(declare-fun " + name + " (" + node.MapConcat(n => TypeToString(n.Type), " ") + ") " + TypeToString(node.Type) + ")";
         AddDeclaration(decl);
         KnownSelectFunctions.Add(name, true);
       }
@@ -234,14 +217,7 @@ void ObjectInvariant()
       name = Namer.GetQuotedName(name, name);
 
       if (!KnownStoreFunctions.ContainsKey(name)) {
-        string decl = ":extrafuns (( " + name;
-
-        foreach (VCExpr ch in node) {
-          decl += " " + TypeToString(ch.Type);
-        }
-        decl += " " + TypeToString(node.Type);
-
-        decl += "))";
+        string decl = "(declare-fun " + name + " (" + node.MapConcat(n => TypeToString(n.Type), " ") + ") " + TypeToString(node.Type) + ")";
         AddDeclaration(decl);
 
         if (CommandLineOptions.Clo.MonomorphicArrays && !CommandLineOptions.Clo.UseArrayTheory) {
@@ -250,20 +226,15 @@ void ObjectInvariant()
           
           if (!KnownSelectFunctions.ContainsKey(sel)) {
             // need to declare it before reference
-            string seldecl = ":extrafuns (( " + sel;
-            foreach (VCExpr ch in node) {
-              seldecl += " " + TypeToString(ch.Type);
-            }
-            AddDeclaration(seldecl + "))");
+            var args = node.SkipEnd(1);
+            var ret = node.Last();
+            string seldecl = "(declare-fun " + sel + " (" + args.MapConcat(n => TypeToString(n.Type), " ") + ") " + TypeToString(ret.Type) + ")";
+            AddDeclaration(seldecl);
             KnownSelectFunctions.Add(sel, true);
           }
 
-          var eq = "=";
-          if (node[node.Arity - 1].Type.IsBool)
-            eq = "iff";
-
-          string ax1 = ":assumption (forall ";
-          string ax2 = ":assumption (forall ";
+          string ax1 = "(assert (forall ";
+          string ax2 = "(assert (forall ";
 
           string argX = "", argY = "";
           string dist = "";
@@ -281,10 +252,10 @@ void ObjectInvariant()
             }
           }
           string v = " ?x" + (node.Arity - 1);
-          ax1 += "(" + eq + " (" + sel + " (" + name + " ?x0" + argX + v + ")" + argX + ") " + v + ")";
+          ax1 += "(= (" + sel + " (" + name + " ?x0" + argX + v + ")" + argX + ") " + v + ")";
           ax1 += ")";
 
-          ax2 += "(implies (or " + dist + ") (" + eq + " (" + sel + " (" + name + " ?x0" + argX + v + ")" + argY + ") (" + sel + " ?x0" + argY + ")))";
+          ax2 += "(=> (or " + dist + ") (= (" + sel + " (" + name + " ?x0" + argX + v + ")" + argY + ") (" + sel + " ?x0" + argY + ")))";
           ax2 += ")";
 
           AddDeclaration(ax1);
