@@ -186,12 +186,12 @@ namespace Microsoft.Boogie.SMTLib
         for (int i = 0; i < node.BoundVars.Count; i++) {
           VCExprVar var = node.BoundVars[i];
           Contract.Assert(var != null);
-          string printedName = Namer.GetLocalName(var, var.Name);
+          string printedName = Namer.GetQuotedLocalName(var, var.Name);
           Contract.Assert(printedName != null);
           wr.Write("({0} {1}) ", printedName, TypeToString(var.Type));
         }
 
-        wr.Write(")");
+        wr.Write(") ");
 
         VCQuantifierInfos infos = node.Infos;
         var weight = QKeyValue.FindIntAttribute(infos.attributes, "weight", 1);
@@ -275,16 +275,17 @@ namespace Microsoft.Boogie.SMTLib
     {
       Namer.PushScope();
       try {
-        wr.Write("(let (");
+        
         foreach (VCExprLetBinding b in node) {
+          wr.Write("(let (");
           Contract.Assert(b != null);
           wr.Write("({0} ", Namer.GetQuotedName(b.V, b.V.Name));
           Linearise(b.E, options);
-          wr.Write(")\n");
-        }
-        wr.Write(") ");
+          wr.Write("))\n");
+        }        
         Linearise(node.Body, options);
-        wr.Write(")");
+        foreach (VCExprLetBinding b in node)
+          wr.Write(")");
         return true;
       } finally {
         Namer.PopScope();
