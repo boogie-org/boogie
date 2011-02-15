@@ -152,15 +152,10 @@ namespace Microsoft.Boogie.SMTLib
 
         wr.Write("({0}",
           op.Equals(VCExpressionGenerator.AndOp) ? "and" : "or");
-        IEnumerator enumerator = new VCExprNAryUniformOpEnumerator(node);
-        while (enumerator.MoveNext()) {
-          VCExprNAry naryExpr = enumerator.Current as VCExprNAry;
-          if (naryExpr == null || !naryExpr.Op.Equals(op)) {
-            wr.Write(" ");
-            Linearise(cce.NonNull((VCExpr)enumerator.Current), options);
-          }
+        foreach (var ch in node.UniformArguments) {
+          wr.Write("\n");
+          Linearise(ch, options);
         }
-
         wr.Write(")");
 
         return true;
@@ -186,7 +181,7 @@ namespace Microsoft.Boogie.SMTLib
       Namer.PushScope(); try {
 
         string kind = node.Quan == Quantifier.ALL ? "forall" : "exists";
-        wr.Write("\n({0} (", kind);
+        wr.Write("({0} (", kind);
 
         for (int i = 0; i < node.BoundVars.Count; i++) {
           VCExprVar var = node.BoundVars[i];
@@ -220,7 +215,7 @@ namespace Microsoft.Boogie.SMTLib
           wr.Write(")");
         }
         
-        wr.Write(")\n");
+        wr.Write(")");
 
         return true;
 
