@@ -128,7 +128,7 @@ void ObjectInvariant()
       Contract.Assert(output!=null);
 
       string name =
-        MakeBenchmarkNameSafe(SMTLibExprLineariser.MakeIdPrintable(descriptiveName));
+        MakeBenchmarkNameSafe(SMTLibNamer.QuoteId(descriptiveName));
       Contract.Assert(name!=null);
       WriteLineAndLog(output, "(benchmark " + name);
       WriteLineAndLog(output, _backgroundPredicates);

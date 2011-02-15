@@ -103,7 +103,7 @@ void ObjectInvariant()
         if (op != null && !KnownFunctions.ContainsKey(op.Func)) {
           Function f = op.Func;
           Contract.Assert(f != null);
-          string printedName = Namer.GetName(f, SMTLibExprLineariser.MakeIdPrintable(f.Name));
+          string printedName = Namer.GetQuotedName(f, f.Name);
           Contract.Assert(printedName != null);
 
           bool isPred = Options.UsePredicates && f.OutParams[0].TypedIdent.Type.IsBool;
@@ -137,7 +137,7 @@ void ObjectInvariant()
     public override bool Visit(VCExprVar node, bool arg) {
       Contract.Requires(node != null);
       if (!BoundTermVars.Contains(node) && !KnownVariables.ContainsKey(node)) {
-        string printedName = Namer.GetName(node, SMTLibExprLineariser.MakeIdPrintable(node.Name));
+        string printedName = Namer.GetQuotedName(node, node.Name);
         Contract.Assert(printedName!=null);
         RegisterType(node.Type);
         string decl =
@@ -211,7 +211,7 @@ void ObjectInvariant()
     {
       RegisterType(node[0].Type);
       string name = SimplifyLikeExprLineariser.SelectOpName(node);
-      name = Namer.GetName(name, SMTLibExprLineariser.MakeIdPrintable(name));
+      name = Namer.GetQuotedName(name, name);
 
       if (!KnownSelectFunctions.ContainsKey(name)) {
         string decl = ":extrafuns (( " + name;
@@ -231,7 +231,7 @@ void ObjectInvariant()
     {
       RegisterType(node.Type);        // this is the map type, registering it should register also the index and value types
       string name = SimplifyLikeExprLineariser.StoreOpName(node);
-      name = Namer.GetName(name, SMTLibExprLineariser.MakeIdPrintable(name));
+      name = Namer.GetQuotedName(name, name);
 
       if (!KnownStoreFunctions.ContainsKey(name)) {
         string decl = ":extrafuns (( " + name;
@@ -246,7 +246,7 @@ void ObjectInvariant()
 
         if (CommandLineOptions.Clo.MonomorphicArrays && !CommandLineOptions.Clo.UseArrayTheory) {
           var sel = SimplifyLikeExprLineariser.SelectOpName(node);
-          sel = Namer.GetName(sel, SMTLibExprLineariser.MakeIdPrintable(sel));
+          sel = Namer.GetQuotedName(sel, sel);
           
           if (!KnownSelectFunctions.ContainsKey(sel)) {
             // need to declare it before reference

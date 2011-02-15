@@ -168,6 +168,16 @@ namespace Microsoft.Boogie.VCExprAST {
       return res;
     }
 
+    public virtual string GetQuotedName(Object thingie, string inherentName)
+    {
+      return GetName(thingie, inherentName);
+    }
+
+    public virtual string GetQuotedLocalName(Object thingie, string inherentName)
+    {
+      return GetLocalName(thingie, inherentName);
+    }
+
     public string Lookup(Object thingie) {
       Contract.Requires(thingie != null);
       Contract.Ensures(Contract.Result<string>() != null);

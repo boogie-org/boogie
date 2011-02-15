@@ -114,7 +114,7 @@ void ObjectInvariant()
       Contract.Ensures(Contract.Result<string>() != null);
 
       if (t.IsBool)
-        return "TermBool";
+        return "Bool";
       else if (t.IsInt)
         return "Int";
       else if (t.IsBv) {
@@ -127,49 +127,11 @@ void ObjectInvariant()
         using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
           t.Emit(stream);
         }
-        return MakeIdPrintable("boogie" + buffer.ToString());
+        return SMTLibNamer.QuoteId("T@" + buffer.ToString());
       }
     }
 
     /////////////////////////////////////////////////////////////////////////////////////
-
-    public static string MakeIdPrintable(string s) {
-      Contract.Requires(s != null);
-      Contract.Ensures(Contract.Result<string>() != null);
-
-      // make sure that no keywords are used as identifiers
-      switch(s) {
-      case andName:
-      case orName:
-      case notName:
-      case impliesName:
-      case iffName:
-      case eqName:
-      case distinctName:
-      case TRUEName:
-      case FALSEName:
-      case "Array":
-        s = "nonkeyword_" + s;
-        break;
-      }
-
-      string newS = "";
-      foreach (char ch in s) {
-        if (Char.IsLetterOrDigit(ch) || ch == '.' || ch == '\'' || ch == '_')
-          newS = newS + ch;
-        else
-          // replace everything else with a .
-          newS = newS + '.';
-      }
-
-      // ensure that the first character is not . or _ (some SMT-solvers do
-      // not like that, e.g., yices and cvc3)
-      if (newS[0] == '.' || newS[0] == '_')
-        newS = "x" + newS;
-
-      return newS;
-    }
-
     /////////////////////////////////////////////////////////////////////////////////////
 
     /// <summary>
@@ -307,7 +269,7 @@ void ObjectInvariant()
     public bool Visit(VCExprVar node, LineariserOptions options) {
       //Contract.Requires(node != null);
       //Contract.Requires(options != null);
-      string printedName = Namer.GetName(node, MakeIdPrintable(node.Name));
+      string printedName = Namer.GetQuotedName(node, node.Name);
       Contract.Assert(printedName!=null);
 
       if (options.AsTerm ||
@@ -336,11 +298,9 @@ void ObjectInvariant()
       for (int i = 0; i < node.BoundVars.Count; i++) 
         {
           VCExprVar var = node.BoundVars[i];
-          Contract.Assert(var!=null);
-          // ensure that the variable name starts with ?
-          string printedName = Namer.GetLocalName(var, "?" + MakeIdPrintable(var.Name));
-        Contract.Assert(printedName!=null);
-         Contract.Assert(printedName[0] == '?');
+          Contract.Assert(var!=null);          
+          string printedName = Namer.GetLocalName(var, var.Name);
+        Contract.Assert(printedName!=null);         
           wr.Write("({0} {1}) ", printedName, TypeToString(var.Type));
         }
         
@@ -427,9 +387,8 @@ void ObjectInvariant()
         Contract.Assert(b != null);
         bool formula = b.V.Type.IsBool;
 
-        wr.Write("({0} (", formula ? "flet" : "let");
-        string printedName = Namer.GetLocalName(b.V, "$" + MakeIdPrintable(b.V.Name));
-       Contract.Assert(printedName[0] == '$');
+        wr.Write("({0} (let");
+        string printedName = Namer.GetQuotedName(b.V, b.V.Name);
         
         wr.Write("{0} ", printedName);
         Linearise(b.E, options.SetAsTerm(!formula));
@@ -702,7 +661,7 @@ void ObjectInvariant()
         //Contract.Requires(options != null);
         //Contract.Requires(node != null);
         var name = SimplifyLikeExprLineariser.SelectOpName(node);
-        name = ExprLineariser.Namer.GetName(name, MakeIdPrintable(name));
+        name = ExprLineariser.Namer.GetQuotedName(name, name);
 
         wr.Write("(" + name);
         foreach (VCExpr/*!*/ e in node) {
@@ -719,7 +678,7 @@ void ObjectInvariant()
         //Contract.Requires(options != null);
         //Contract.Requires(node != null);
         var name = SimplifyLikeExprLineariser.StoreOpName(node);
-        name = ExprLineariser.Namer.GetName(name, MakeIdPrintable(name));
+        name = ExprLineariser.Namer.GetQuotedName(name, name);
 
         wr.Write("(" + name);
         foreach (VCExpr e in node) {
@@ -846,7 +805,7 @@ void ObjectInvariant()
        
         VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)node.Op;
         Contract.Assert(op!=null);
-        string printedName = ExprLineariser.Namer.GetName(op.Func, MakeIdPrintable(op.Func.Name));
+        string printedName = ExprLineariser.Namer.GetQuotedName(op.Func, op.Func.Name);
         Contract.Assert(printedName!=null);
 
         if (ExprLineariser.ProverOptions.UsePredicates && op.Func.OutParams[0].TypedIdent.Type.IsBool) {

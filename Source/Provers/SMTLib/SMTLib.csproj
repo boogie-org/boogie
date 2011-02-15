@@ -109,6 +109,7 @@
   <ItemGroup>
     <Compile Include="ProverInterface.cs" />
     <Compile Include="SMTLibLineariser.cs" />
+    <Compile Include="SMTLibNamer.cs" />
     <Compile Include="TypeDeclCollector.cs" />
     <Compile Include="..\..\version.cs" />
   </ItemGroup>
