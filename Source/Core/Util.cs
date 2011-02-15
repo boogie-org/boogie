@@ -8,6 +8,47 @@ namespace Microsoft.Boogie {
   using System.IO;
   using System.Collections;
   using System.Diagnostics.Contracts;
+  using System.Collections.Generic;
+  using System.Linq;
+  using System.Text;
+
+  public static class LinqExtender
+  {
+    public static string Concat(this IEnumerable<string> strings, string separator)
+    {
+      var sb = new StringBuilder();
+      var first = true;
+      foreach (var s in strings) {
+        if (!first)
+          sb.Append(separator);
+        first = false;
+        sb.Append(s);
+      }
+      return sb.ToString();
+    }
+
+    public static string MapConcat<T>(this IEnumerable<T> objects, Func<T,string> toString, string separator)
+    {
+      var sb = new StringBuilder();
+      var first = true;
+      foreach (var s in objects) {
+        if (!first)
+          sb.Append(separator);
+        first = false;
+        sb.Append(toString(s));
+      }
+      return sb.ToString();
+    }
+
+    public static IEnumerable<T> SkipEnd<T>(this IEnumerable<T> source, int count)
+    {
+      var l = source.ToList();
+      if (count >= l.Count)
+        return Enumerable.Empty<T>();
+      l.RemoveRange(l.Count - count, count);
+      return l;
+    }
+  }
 
   public class TokenTextWriter : IDisposable {
     string/*!*/ filename;
