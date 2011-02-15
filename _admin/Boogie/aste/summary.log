@@ -1,13 +1,13 @@
-# Aste started: 2011-02-15 07:00:09
+# Aste started: 2011-02-15 09:27:25
 # Host id: Boogiebox
-# [2011-02-15 07:02:13] SpecSharp revision: 61530
-# [2011-02-15 07:03:17] Boogie revision: 62485
-# [2011-02-15 07:03:48] SscBoogie revision: 61530
-[2011-02-15 07:04:26] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
+# [2011-02-15 09:29:27] SpecSharp revision: 61530
+# [2011-02-15 09:30:29] Boogie revision: 62527
+# [2011-02-15 09:31:01] SscBoogie revision: 61530
+[2011-02-15 09:31:33] C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.com SpecSharp.sln /Build DebugCommandLine
 
     warning CS1668
     warning CS1668
-[2011-02-15 07:05:38] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+[2011-02-15 09:32:33] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(825,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2804,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -21,6 +21,6 @@
     warning CS0162
     warning CS0162
     warning CS0162
-[2011-02-15 07:18:35] 26 out of 29 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-['sanity', 'test2', 'test7', 'test20', 'test21', 'aitest1', 'aitest9', 'lock', 'test13', 'inline', 'textbook', 'test15', 'bitvectors', 'smoke', 'test16', 'codeexpr', 'dafny0', 'dafny1', 'havoc0', 'VSI-Benchmarks', 'vacid0', 'livevars', 'lazyinline', 'stratifiedinline', 'extractloops', 'VSComp2010']
-# [2011-02-15 07:19:23] Released nightly of Boogie
+[2011-02-15 09:48:13] 4 out of 29 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+['test15', 'lazyinline', 'stratifiedinline', 'extractloops']
+# [2011-02-15 09:49:02] Released nightly of Boogie
