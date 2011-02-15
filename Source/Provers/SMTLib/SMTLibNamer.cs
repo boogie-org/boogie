@@ -28,6 +28,8 @@ namespace Microsoft.Boogie.SMTLib
       // Z3 extensions
       "lblneg", "lblpos", "lbl-lit",
       "if", "&&", "||", "equals", "equiv", "bool",
+      // Boogie-defined
+      "int_mod", "int_div", "UOrdering2", "UOrdering3", 
     };
 
     static Dictionary<string, bool> reservedSmtWords;

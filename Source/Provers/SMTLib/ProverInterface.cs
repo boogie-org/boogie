@@ -24,6 +24,8 @@ namespace Microsoft.Boogie.SMTLib
   {
     public string Output = "boogie-vc-@PROC@.smt";
     public bool UsePredicates = false;
+    public bool UseWeights = true;
+    public bool UseLabels = false;
 
     protected override bool Parse(string opt)
     {
