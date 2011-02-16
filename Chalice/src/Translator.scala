@@ -1250,15 +1250,16 @@ class Translator {
     val (heldV, held) = NewBVar("isHeld", IntClass, true)
     val (rdheldV, rdheld) = NewBVar("isRdHeld", BoolClass, true)
     BLocal(heldV) :: BLocal(rdheldV) ::
-    List.flatten (for (o <- locks) yield {  // todo: somewhere we should worry about Df(l)
+    (for (o <- locks) yield {  // todo: somewhere we should worry about Df(l)
       Havoc(held) :: Havoc(rdheld) ::
       bassume(rdheld ==> (0 < held)) ::
       new MapUpdate(etran.Heap, o, VarExpr("held"), held) ::
       new MapUpdate(etran.Heap, o, VarExpr("rdheld"), rdheld) })
+    .flatten
   }
   def NumberOfLocksHeldIsInvariant(oldLocks: List[Boogie.Expr], newLocks: List[Boogie.Expr],
                                    etran: ExpressionTranslator) = {
-    List.flatten (for ((o,n) <- oldLocks zip newLocks) yield {
+    (for ((o,n) <- oldLocks zip newLocks) yield {
       // oo.held == nn.held && oo.rdheld == nn.rdheld
       (((0 < new Boogie.MapSelect(etran.oldEtran.Heap, o, "held")) ==@
         (0 < new Boogie.MapSelect(etran.Heap, n, "held"))) &&
@@ -1276,6 +1277,7 @@ class Translator {
          (! new Boogie.MapSelect(etran.Heap, o, "rdheld"))))) ::
       Nil
     })
+    .flatten
   }
 
   implicit def lift(s: Stmt): List[Stmt] = List(s)
@@ -1676,7 +1678,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     Comment("inhale (" + occasion + ")") ::
     BLocal(ihV) :: Boogie.Havoc(ih) ::
     bassume(IsGoodInhaleState(ih, Heap, Mask)) ::
-    List.flatten (for (p <- predicates) yield Inhale(p, ih, check)) :::
+    (for (p <- predicates) yield Inhale(p, ih, check)).flatten :::
     bassume(IsGoodMask(Mask)) ::
     bassume(wf(Heap, Mask)) ::
     Comment("end inhale")
@@ -1689,7 +1691,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     Comment("inhale (" + occasion + ")") ::
     BLocal(ihV) :: Boogie.Assign(ih, useHeap) ::
     bassume(IsGoodInhaleState(ih, Heap, Mask)) ::
-    List.flatten (for (p <- predicates) yield Inhale(p,ih, check)) :::
+    (for (p <- predicates) yield Inhale(p,ih, check)).flatten :::
     bassume(IsGoodMask(Mask)) ::
     bassume(wf(Heap, Mask)) ::
     Comment("end inhale")
@@ -1830,7 +1832,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     val (emV, em) = NewBVar("exhaleMask", tmask, true)
     Comment("begin exhale (" + occasion + ")") ::
     BLocal(emV) :: (em := Mask) ::
-    (List.flatten (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check))) :::
+    (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check)).flatten :::
     (Mask := em) ::
     bassume(wf(Heap, Mask)) ::
     Comment("end exhale")

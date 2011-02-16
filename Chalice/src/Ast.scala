@@ -14,7 +14,7 @@ trait ASTNode extends Positional
  * Classes and types
  */
 
-case class TopLevelDecl(id: String) extends ASTNode
+sealed abstract class TopLevelDecl(val id: String) extends ASTNode
 
 sealed case class Class(classId: String, parameters: List[Class], module: String, members: List[Member]) extends TopLevelDecl(classId) {
   def IsInt: Boolean = false
@@ -241,7 +241,7 @@ case class BlockPat() extends Transform {
 case class SkipPat() extends Transform
 /** Replacement pattern for arbitrary block */
 case class ProgramPat(code: List[Statement]) extends Transform {
-  if (code.size > 0) pos = code.first.pos
+  if (code.size > 0) pos = code.head.pos
 }
 case class IfPat(thn: Transform, els: Option[Transform]) extends Transform
 case class WhilePat(invs: List[Expression], body: Transform) extends Transform
@@ -257,10 +257,10 @@ case class NonDetPat(is: List[String], code: List[Statement]) extends Transform 
 case class InsertPat(code: List[Statement]) extends Transform
 case class SeqPat(pats: List[Transform]) extends Transform {
   assert(pats.size > 0)
-  pos = pats.first.pos;
+  pos = pats.head.pos;
 }
 case class RefinementBlock(con: List[Statement], abs: List[Statement]) extends Statement {
-  if (con.size > 0) pos = con.first.pos
+  if (con.size > 0) pos = con.head.pos
   // local variables in context at the beginning of the block
 
   var before: List[Variable] = null
@@ -525,7 +525,7 @@ case class Range(min: Expression, max: Expression /* non-inclusive*/) extends Ex
 case class Append(s0: Expression, s1: Expression) extends SeqAccess(s0, s1) {
   override val OpName = "++"
 }
-sealed abstract case class SeqAccess(e0: Expression, e1: Expression) extends BinaryExpr(e0, e1) {
+sealed abstract class SeqAccess(e0: Expression, e1: Expression) extends BinaryExpr(e0, e1) {
   override val ExpectedLhsType = null
   override val ExpectedRhsType = null
   override val ResultType = null

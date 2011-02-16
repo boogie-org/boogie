@@ -31,15 +31,14 @@ class Parser extends StandardTokenParsers {
                        "ite", "fold", "unfold", "unfolding", "in", "forall", "exists",
                        "seq", "nil", "result", "eval", "token",
                        "wait", "signal", "unlimited", 
-                       "refines", "transforms", "replaces", "by", "spec"
+                       "refines", "transforms", "replaces", "by", "spec", "_", "*"
                       )
   // todo: can we remove "nil"?
   lexical.delimiters += ("(", ")", "{", "}", "[[", "]]",
                          "<==>", "==>", "&&", "||",
                          "==", "!=", "<", "<=", ">=", ">", "<<", "in", "!in",
                          "+", "-", "*", "/", "%", "!", ".", "..",
-                         ";", ":", ":=", ",", "?", "|", "[", "]", "++", "::",
-                         "_"
+                         ";", ":", ":=", ",", "?", "|", "[", "]", "++", "::"
                         )
 
   def programUnit = (classDecl | channelDecl)*

@@ -97,9 +97,9 @@ class DiGraph[T] {
       for (w <- v.children) {
         if (w.index == -1) {
           tarjan(w);
-          v.lowlink = Math.min(v.lowlink, w.lowlink);
+          v.lowlink = scala.math.min(v.lowlink, w.lowlink);
         } else if (w.onstack)
-          v.lowlink = Math.min(v.lowlink, w.index);
+          v.lowlink = scala.math.min(v.lowlink, w.index);
       }
 
       if (v.lowlink == v.index) {

@@ -126,8 +126,10 @@ object Chalice {
          if (doTranslate) {
            // checking if Boogie.exe exists
            val boogieFile = new File(boogiePath);
-           if(! boogieFile.exists() || ! boogieFile.isFile()) {
-             CommandLineError("Boogie.exe not found at " + boogiePath, help); return
+           if (System.getProperty("os.name").toLowerCase.indexOf("win") >= 0) {
+             if(! boogieFile.exists() || ! boogieFile.isFile()) {
+               CommandLineError("Boogie.exe not found at " + boogiePath, help); return
+             }
            }
            // translate program to Boogie
            val translator = new Translator();
