@@ -233,8 +233,8 @@ void ObjectInvariant()
             KnownSelectFunctions.Add(sel, true);
           }
 
-          string ax1 = "(assert (forall ";
-          string ax2 = "(assert (forall ";
+          string ax1 = "(assert (forall (";
+          string ax2 = "(assert (forall (";
 
           string argX = "", argY = "";
           string dist = "";
@@ -252,11 +252,13 @@ void ObjectInvariant()
             }
           }
           string v = " ?x" + (node.Arity - 1);
-          ax1 += "(= (" + sel + " (" + name + " ?x0" + argX + v + ")" + argX + ") " + v + ")";
-          ax1 += ")";
+          ax1 += ") (= (" + sel + " (" + name + " ?x0" + argX + v + ")" + argX + ") " + v + ")";
+          ax1 += "))";
 
-          ax2 += "(=> (or " + dist + ") (= (" + sel + " (" + name + " ?x0" + argX + v + ")" + argY + ") (" + sel + " ?x0" + argY + ")))";
-          ax2 += ")";
+          if (node.Arity > 3)
+            dist = "(or " + dist + ")";
+          ax2 += ") (=> " + dist + " (= (" + sel + " (" + name + " ?x0" + argX + v + ")" + argY + ") (" + sel + " ?x0" + argY + ")))";
+          ax2 += "))";
 
           AddDeclaration(ax1);
           AddDeclaration(ax2);
