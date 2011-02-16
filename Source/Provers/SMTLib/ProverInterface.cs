@@ -134,8 +134,11 @@ void ObjectInvariant()
         var axioms = ctx.Axioms;
         var nary = axioms as VCExprNAry;
         if (nary != null && nary.Op == VCExpressionGenerator.AndOp)
-          foreach(var expr in nary.UniformArguments)
-            AddAxiom(VCExpr2String(expr, -1));
+          foreach (var expr in nary.UniformArguments) {
+            var str = VCExpr2String(expr, -1); 
+            if (str != "true")
+              AddAxiom(str);
+          }
         else
           AddAxiom(VCExpr2String(axioms, -1));
         AxiomsAreSetup = true;
@@ -152,7 +155,8 @@ void ObjectInvariant()
       }
       foreach (string s in Axioms) {
         Contract.Assert(s!=null);
-        WriteLineAndLog(output, "(assert " + s + ")");
+        if (s != "true")
+          WriteLineAndLog(output, "(assert " + s + ")");
       }
 
       WriteLineAndLog(output, vcString);
@@ -198,8 +202,8 @@ void ObjectInvariant()
       Contract.Ensures(Contract.Result<string>() != null);
 
       DateTime start = DateTime.Now;
-      if (CommandLineOptions.Clo.Trace)
-        Console.Write("Linearising ... ");
+      //if (CommandLineOptions.Clo.Trace)
+      //  Console.Write("Linearising ... ");
 
       // handle the types in the VCExpr
       TypeEraser eraser;
@@ -235,7 +239,8 @@ void ObjectInvariant()
       if (CommandLineOptions.Clo.Trace) {
         DateTime end = DateTime.Now;
         TimeSpan elapsed = end - start;
-        Console.WriteLine("finished   [{0} s]  ", elapsed.TotalSeconds);
+        if (elapsed.TotalSeconds > 0.5)
+          Console.WriteLine("Linearising   [{0} s]", elapsed.TotalSeconds);
       }
       return res;
     }
