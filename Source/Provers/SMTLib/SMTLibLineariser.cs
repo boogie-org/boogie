@@ -89,7 +89,39 @@ namespace Microsoft.Boogie.SMTLib
 
     /////////////////////////////////////////////////////////////////////////////////////
 
-    internal static string TypeToString(Type t)
+    private static void TypeToStringHelper(Type t, StringBuilder sb)
+    {
+      Contract.Requires(t != null);
+
+      TypeSynonymAnnotation syn = t as TypeSynonymAnnotation;
+      if (syn != null) {
+        TypeToStringHelper(syn.ExpandedType, sb);
+      } else {
+        if (t.IsMap) {
+          MapType m = t.AsMap;
+          sb.Append('[');
+          for (int i = 0; i < m.MapArity; ++i) {
+            if (i != 0)
+              sb.Append(',');
+            TypeToStringHelper(m.Arguments[i], sb);
+          }
+          sb.Append(']');
+          TypeToStringHelper(m.Result, sb);
+        } else if (t.IsBool || t.IsInt || t.IsBv) {
+          sb.Append(TypeToString(t));
+        } else {
+          System.IO.StringWriter buffer = new System.IO.StringWriter();
+          using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
+            t.Emit(stream);
+          }
+          sb.Append(buffer.ToString());
+        }
+      }
+
+    }
+
+
+    public static string TypeToString(Type t)
     {
       Contract.Requires(t != null);
       Contract.Ensures(Contract.Result<string>() != null);
@@ -100,17 +132,16 @@ namespace Microsoft.Boogie.SMTLib
         return "Int";
       else if (t.IsBv) {
         Contract.Assert(false);
-        throw new cce.UnreachableException();
-      } // bitvectors are currently not handled for SMT-Lib solvers
-      else {
-        // at this point, only the types U, T should be left (except when /typeEncoding:m is used)
-        System.IO.StringWriter buffer = new System.IO.StringWriter();
-        using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
-          t.Emit(stream);
-        }
-        return SMTLibNamer.QuoteId("T@" + buffer.ToString());
+        return "$bv" + t.BvBits;
+      } else {
+        StringBuilder sb = new StringBuilder();
+        sb.Append("T@");
+        TypeToStringHelper(t, sb);
+        return SMTLibNamer.QuoteId(sb.ToString());
       }
     }
+
+
 
     /////////////////////////////////////////////////////////////////////////////////////
 

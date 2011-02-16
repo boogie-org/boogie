@@ -104,7 +104,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public SMTLibNamer()
     {
-      this.Spacer = "@@";
+      this.Spacer = "__";
       InitSymbolLists();
     }
   }
