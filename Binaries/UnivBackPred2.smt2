@@ -1,4 +1,3 @@
-; -------------------------------------------------------------------------
 ; Boogie universal background predicate
 ; Copyright (c) 2004-2010, Microsoft Corp.
 

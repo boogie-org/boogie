@@ -114,6 +114,7 @@
     <Compile Include="SMTLibProcess.cs" />
     <Compile Include="TypeDeclCollector.cs" />
     <Compile Include="..\..\version.cs" />
+    <Compile Include="Z3.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\AIFramework\AIFramework.csproj">

@@ -17,12 +17,12 @@ using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.Clustering;
 using Microsoft.Boogie.TypeErasure;
 using Microsoft.Boogie.Simplify;
+using System.Text;
 
 namespace Microsoft.Boogie.SMTLib
 {
   public class SMTLibProverOptions : ProverOptions
   {
-    public string Output = "boogie-vc-@PROC@.smt2";
     public bool UseWeights = true;
     public bool UseLabels { get { return UseZ3; } }
     public bool UseZ3 = true;
@@ -30,7 +30,6 @@ namespace Microsoft.Boogie.SMTLib
     protected override bool Parse(string opt)
     {
       return
-        ParseString(opt, "OUTPUT", ref Output) ||
         ParseBool(opt, "USE_WEIGHTS", ref UseWeights) ||
         ParseBool(opt, "USE_Z3", ref UseZ3) ||
         base.Parse(opt);
@@ -44,11 +43,10 @@ namespace Microsoft.Boogie.SMTLib
 @"
 SMT-specific options:
 ~~~~~~~~~~~~~~~~~~~~~
-OUTPUT=<string>           Store VC in named file (default: boogie-vc-@PROC@.smt2)
-USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (default: true)
 USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (default: true)
+USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (default: true)
+VERBOSITY=<int>           1 - print prover output (default: 0)
 " + base.Help;
-        // DIST requires non-public binaries
       }
     }
   }
@@ -105,6 +103,11 @@ USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (defau
       Namer = new SMTLibNamer();
       this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions)options, Namer);
 
+      if (this.options.UseZ3) {
+        var psi = SMTLibProcess.ComputerProcessStartInfo(Z3.Z3ExecutablePath(), "AUTO_CONFIG=false -smt2 -in");
+        Process = new SMTLibProcess(psi, this.options);
+        Process.ErrorHandler += this.HandleProverError;
+      }
     }
 
     public override ProverContext Context
@@ -117,10 +120,14 @@ USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (defau
       }
     }
 
-    private readonly TypeAxiomBuilder AxBuilder;
-    private readonly UniqueNamer Namer;
-    private readonly TypeDeclCollector DeclCollector;
-    private readonly SMTLibProcess Process;
+    readonly TypeAxiomBuilder AxBuilder;
+    readonly UniqueNamer Namer;
+    readonly TypeDeclCollector DeclCollector;
+    readonly SMTLibProcess Process;
+    readonly List<string> proverErrors = new List<string>();
+    readonly StringBuilder common = new StringBuilder();
+    TextWriter currentLogFile;
+    ErrorHandler currentErrorHandler;
 
     private void FeedTypeDeclsToProver()
     {
@@ -130,17 +137,41 @@ USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (defau
       }
     }
 
-    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
+    private string Sanitize(string msg)
     {
-      //Contract.Requires(descriptiveName != null);
-      //Contract.Requires(vc != null);
-      //Contract.Requires(handler != null);
-      TextWriter output = OpenOutputFile(descriptiveName);
-      Contract.Assert(output != null);
+      var idx = msg.IndexOf('\n');
+      if (idx > 0)
+        msg = msg.Replace("\r", "").Replace("\n", "\r\n");
+      return msg;
+    }
 
-      WriteLineAndLog(output, _backgroundPredicates);
-      string name = SMTLibNamer.QuoteId(descriptiveName);
-      WriteLineAndLog(output, "(set-info :boogie-vc-id " + name + ")");
+    private void SendCommon(string s)
+    {
+      Send(s, true);
+    }
+
+    private void SendThisVC(string s)
+    {
+      Send(s, false);
+    }
+
+    private void Send(string s, bool isCommon)
+    {
+      s = Sanitize(s);
+
+      if (isCommon)
+        common.Append(s).Append("\r\n");
+
+      if (Process != null)
+        Process.Send(s);
+      if (currentLogFile != null)
+        currentLogFile.WriteLine(s);
+    }
+
+    private void PrepareCommon()
+    {
+      if (common.Length == 0)
+        SendCommon(_backgroundPredicates);
 
       if (!AxiomsAreSetup) {
         var axioms = ctx.Axioms;
@@ -154,26 +185,56 @@ USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (defau
           AddAxiom(VCExpr2String(axioms, -1));
         AxiomsAreSetup = true;
       }
+    }
 
-      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
-      string prelude = ctx.GetProverCommands(true);
-      Contract.Assert(prelude != null);
-      WriteLineAndLog(output, prelude);
-
-      foreach (string s in TypeDecls) {
-        Contract.Assert(s != null);
-        WriteLineAndLog(output, s);
-      }
+    private void FlushAxioms()
+    {
+      TypeDecls.Iter(SendCommon);
+      TypeDecls.Clear();
       foreach (string s in Axioms) {
         Contract.Assert(s != null);
         if (s != "true")
-          WriteLineAndLog(output, "(assert " + s + ")");
+          SendCommon("(assert " + s + ")");
+      }
+      Axioms.Clear();
+    }
+
+    private void CloseLogFile()
+    {
+      if (currentLogFile != null) {
+        currentLogFile.Close();
+        currentLogFile = null;
+      }
+    }
+
+    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
+    {
+      //Contract.Requires(descriptiveName != null);
+      //Contract.Requires(vc != null);
+      //Contract.Requires(handler != null);
+
+      currentErrorHandler = handler;
+
+      if (options.SeparateLogFiles) CloseLogFile(); // shouldn't really happen
+
+      if (options.LogFilename != null && currentLogFile == null) {
+        currentLogFile = OpenOutputFile(descriptiveName);
+        currentLogFile.Write(common.ToString());
       }
 
-      WriteLineAndLog(output, vcString);
-      WriteLineAndLog(output, "(check-sat)");
+      PrepareCommon();
+      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+      FlushAxioms();
 
-      output.Close();
+      SendThisVC("(push)");
+      SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
+      SendThisVC(vcString);
+
+      if (Process != null)
+        Process.PingPong(); // flush any errors
+
+      SendThisVC("(check-sat)");
+      SendThisVC("(pop 1)");
     }
 
     private TextWriter OpenOutputFile(string descriptiveName)
@@ -181,27 +242,52 @@ USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (defau
       Contract.Requires(descriptiveName != null);
       Contract.Ensures(Contract.Result<TextWriter>() != null);
 
-      string filename = ((SMTLibProverOptions)options).Output;
+      string filename = options.LogFilename;
       filename = Helpers.SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
       return new StreamWriter(filename, false);
     }
 
-    private void WriteLineAndLog(TextWriter output, string msg)
+    private void HandleProverError(string s)
     {
-      Contract.Requires(output != null);
-      Contract.Requires(msg != null);
-      var idx = msg.IndexOf('\n');
-      if (idx > 0) {
-        msg = msg.Replace("\r", "").Replace("\n", "\r\n");
+      lock (proverErrors) {
+        proverErrors.Add(s);
+        Console.Error.WriteLine("Prover error: " + s);
       }
-      output.WriteLine(msg);
     }
 
     [NoDefaultContract]
     public override Outcome CheckOutcome(ErrorHandler handler)
     {  //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-      return Outcome.Undetermined;
+
+      var result = Outcome.Undetermined;
+
+      if (Process == null)
+        return result;
+
+      Process.Ping();
+      
+
+      while (true) {
+        var resp = Process.GetProverResponse();
+        if (resp == null || Process.IsPong(resp))
+          break;
+
+        switch (resp.Name) {
+          case "unsat":
+            result = Outcome.Valid;
+            break;
+          case "sat":
+          case "unknown":
+            result = Outcome.Invalid;
+            break;
+          default:
+            HandleProverError("Unexpected prover response: " + resp.ToString());
+            break;
+        }
+      }
+
+      return result;
     }
 
     protected string VCExpr2String(VCExpr expr, int polarity)

@@ -18,6 +18,7 @@ namespace Microsoft.Boogie.SMTLib
   public class SMTLibProcess
   {
     readonly Process prover;
+    readonly SMTLibProverOptions options;
     readonly Queue<string> proverOutput = new Queue<string>();
     readonly Queue<string> proverErrors = new Queue<string>();
     readonly TextWriter toProver;    
@@ -34,12 +35,14 @@ namespace Microsoft.Boogie.SMTLib
       };
     }
 
-    public SMTLibProcess(ProcessStartInfo psi)
+    public SMTLibProcess(ProcessStartInfo psi, SMTLibProverOptions options)
     {
+      this.options = options;
+
       try {
-        prover.ErrorDataReceived += prover_ErrorDataReceived;
-        prover.OutputDataReceived += prover_OutputDataReceived;
         prover = Process.Start(psi);
+        prover.ErrorDataReceived += prover_ErrorDataReceived;
+        prover.OutputDataReceived += prover_OutputDataReceived;        
         prover.BeginErrorReadLine();
         prover.BeginOutputReadLine();
         toProver = prover.StandardInput;
@@ -50,6 +53,13 @@ namespace Microsoft.Boogie.SMTLib
 
     public void Send(string cmd)
     {
+      if (options.Verbosity >= 2) {
+        var log = cmd;
+        if (log.Length > 50)
+          log = log.Substring(0, 50) + "...";
+        log = log.Replace("\r", "").Replace("\n", " ");
+        Console.WriteLine("[SMT-INP] {0}", log);
+      }
       toProver.WriteLine(cmd);
     }
 
@@ -78,6 +88,8 @@ namespace Microsoft.Boogie.SMTLib
 
     public SExpr GetProverResponse()
     {
+      toProver.Flush();
+
       while (true) {
         var exprs = ParseSExprs(true).ToArray();
         Contract.Assert(exprs.Length <= 1);
@@ -114,8 +126,10 @@ namespace Microsoft.Boogie.SMTLib
 
         if (linePos < currLine.Length)
           return currLine[linePos];
-        else
+        else {
           currLine = null;
+          linePos = 0;
+        }
       }
     }
 
@@ -138,6 +152,7 @@ namespace Microsoft.Boogie.SMTLib
           if (quoted) {
             sb.Append("\n");
             currLine = ReadProver();
+            linePos = 0;
             if (currLine == null)
               break;
           } else break;
@@ -176,6 +191,7 @@ namespace Microsoft.Boogie.SMTLib
         if (c == ')') {
           if (top)
             ParseError("stray ')'");
+          break;
         }
 
         string id;
@@ -245,6 +261,8 @@ namespace Microsoft.Boogie.SMTLib
     void prover_OutputDataReceived(object sender, DataReceivedEventArgs e)
     {
       lock (this) {
+        if (options.Verbosity >= 1)
+          Console.WriteLine("[SMT-OUT] {0}", e.Data);
         proverOutput.Enqueue(e.Data);
         Monitor.Pulse(this);
       }
@@ -253,6 +271,8 @@ namespace Microsoft.Boogie.SMTLib
     void prover_ErrorDataReceived(object sender, DataReceivedEventArgs e)
     {
       lock (this) {
+        if (options.Verbosity >= 1)
+          Console.WriteLine("[SMT-ERR] {0}", e.Data);
         proverErrors.Enqueue(e.Data);
         Monitor.Pulse(this);
       }
