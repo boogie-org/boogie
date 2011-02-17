@@ -2089,7 +2089,7 @@ namespace Microsoft.Boogie {
       stream.SetToken(ref this.tok);
       Contract.Assert(args.Length == 1);
       // determine if parens are needed
-      int opBindingStrength = 0x90;
+      int opBindingStrength = 0x70;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
         (fragileContext && opBindingStrength == contextBindingStrength);
 
@@ -2365,7 +2365,7 @@ namespace Microsoft.Boogie {
                             bool withRhs) {
       Contract.Requires(args != null);
       Contract.Requires(stream != null);
-      const int opBindingStrength = 0x70;
+      const int opBindingStrength = 0x80;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
         (fragileContext && opBindingStrength == contextBindingStrength);
 
@@ -2938,7 +2938,7 @@ namespace Microsoft.Boogie {
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       stream.SetToken(this);
-      int opBindingStrength = 0x70;
+      int opBindingStrength = 0x80;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
         (fragileContext && opBindingStrength == contextBindingStrength);
 
