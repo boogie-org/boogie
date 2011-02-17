@@ -22,16 +22,17 @@ namespace Microsoft.Boogie.SMTLib
 {
   public class SMTLibProverOptions : ProverOptions
   {
-    public string Output = "boogie-vc-@PROC@.smt";
-    public bool UsePredicates = false;
+    public string Output = "boogie-vc-@PROC@.smt2";
     public bool UseWeights = true;
-    public bool UseLabels = false;
+    public bool UseLabels { get { return UseZ3; } }
+    public bool UseZ3 = true;
 
     protected override bool Parse(string opt)
     {
       return
         ParseString(opt, "OUTPUT", ref Output) ||
-        ParseBool(opt, "USE_PREDICATES", ref UsePredicates) ||
+        ParseBool(opt, "USE_WEIGHTS", ref UseWeights) ||
+        ParseBool(opt, "USE_Z3", ref UseZ3) ||
         base.Parse(opt);
     }
 
@@ -43,9 +44,9 @@ namespace Microsoft.Boogie.SMTLib
 @"
 SMT-specific options:
 ~~~~~~~~~~~~~~~~~~~~~
-OUTPUT=<string>           Store VC in named file. Defaults to boogie-vc-@PROC@.smt.
-USE_PREDICATES=<bool>     Try to use SMT predicates for functions returning bool.
-
+OUTPUT=<string>           Store VC in named file (default: boogie-vc-@PROC@.smt2)
+USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (default: true)
+USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (default: true)
 " + base.Help;
         // DIST requires non-public binaries
       }
@@ -111,6 +112,7 @@ void ObjectInvariant()
     private readonly TypeAxiomBuilder AxBuilder;
     private readonly UniqueNamer Namer;
     private readonly TypeDeclCollector DeclCollector;
+    private readonly SMTLibProcess Process;
 
     private void FeedTypeDeclsToProver() {
       foreach (string s in DeclCollector.GetNewDeclarations())
@@ -313,10 +315,6 @@ void ObjectInvariant()
     public override object NewProverContext(ProverOptions options) {
       //Contract.Requires(options != null);
       Contract.Ensures(Contract.Result<object>() != null);
-
-      if (CommandLineOptions.Clo.BracketIdsInVC < 0) {
-        CommandLineOptions.Clo.BracketIdsInVC = 0;
-      }
 
       VCExpressionGenerator gen = new VCExpressionGenerator ();
       List<string>/*!>!*/ proverCommands = new List<string/*!*/> ();

@@ -108,8 +108,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ProverInterface.cs" />
+    <Compile Include="SExpr.cs" />
     <Compile Include="SMTLibLineariser.cs" />
     <Compile Include="SMTLibNamer.cs" />
+    <Compile Include="SMTLibProcess.cs" />
     <Compile Include="TypeDeclCollector.cs" />
     <Compile Include="..\..\version.cs" />
   </ItemGroup>
