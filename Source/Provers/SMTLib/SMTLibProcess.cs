@@ -21,7 +21,8 @@ namespace Microsoft.Boogie.SMTLib
     readonly SMTLibProverOptions options;
     readonly Queue<string> proverOutput = new Queue<string>();
     readonly Queue<string> proverErrors = new Queue<string>();
-    readonly TextWriter toProver;    
+    readonly TextWriter toProver;
+    ConsoleCancelEventHandler cancelEvent;
 
     public static ProcessStartInfo ComputerProcessStartInfo(string executable, string options)
     {
@@ -39,6 +40,11 @@ namespace Microsoft.Boogie.SMTLib
     {
       this.options = options;
 
+      if (cancelEvent == null && CommandLineOptions.Clo.RunningBoogieFromCommandLine) {
+        cancelEvent = new ConsoleCancelEventHandler(ControlCHandler);
+        Console.CancelKeyPress += cancelEvent;
+      }
+
       try {
         prover = Process.Start(psi);
         prover.ErrorDataReceived += prover_ErrorDataReceived;
@@ -48,6 +54,14 @@ namespace Microsoft.Boogie.SMTLib
         toProver = prover.StandardInput;
       } catch (System.ComponentModel.Win32Exception e) {
         throw new ProverException(string.Format("Unable to start the process {0}: {1}", psi.FileName, e.Message));
+      }
+    }
+
+    [NoDefaultContract]  // important, since we have no idea what state the object might be in when this handler is invoked
+    void ControlCHandler(object o, ConsoleCancelEventArgs a)
+    {
+      if (prover != null) {
+        prover.Kill();
       }
     }
 
@@ -257,9 +271,19 @@ namespace Microsoft.Boogie.SMTLib
             return proverOutput.Dequeue();
           }
 
-          if (prover.HasExited)
+          if (prover.HasExited) {
+            DisposeProver();
             return null;
+          }
         }
+      }
+    }
+
+    void DisposeProver()
+    {
+      if (cancelEvent != null) {
+        Console.CancelKeyPress -= cancelEvent;
+        cancelEvent = null;
       }
     }
 
@@ -288,7 +312,6 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
     #endregion
-
   }
 }
 
