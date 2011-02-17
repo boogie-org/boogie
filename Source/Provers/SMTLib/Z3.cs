@@ -104,6 +104,9 @@ namespace Microsoft.Boogie.SMTLib
 
     public static void SetupOptions(SMTLibProverOptions options)
     {
+      // don't bother with auto-config - it would disable explicit settings for eager threshold and so on
+      options.AddWeakSmtOption("AUTO_CONFIG", "false");
+
       options.AddWeakSmtOption("MODEL_PARTIAL", "true");
       //options.WeakAddSmtOption("MODEL_VALUE_COMPLETION", "false");
       options.AddWeakSmtOption("MODEL_HIDE_UNUSED_PARTITIONS", "false");
@@ -132,6 +135,9 @@ namespace Microsoft.Boogie.SMTLib
       // This is used by VCC, but could be also useful for others, if sk_hack(foo(x)) is included as trigger,
       // the foo(x0) will be activated for e-matching when x is skolemized to x0.
       options.AddWeakSmtOption("NNF_SK_HACK", "true");
+
+      // don't use model-based quantifier instantiation; it never finishes on non-trivial Boogie problems
+      options.AddWeakSmtOption("MBQI", "false");      
 
       // More or less like MAM=0.
       options.AddWeakSmtOption("QI_EAGER_THRESHOLD", "100");
