@@ -53,9 +53,11 @@ USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (defau
     }
   }
 
-  public class SMTLibProcessTheoremProver : LogProverInterface
+  public class SMTLibProcessTheoremProver : ProverInterface
   {
     private readonly DeclFreeProverContext ctx;
+    private readonly VCExpressionGenerator gen;
+    private readonly SMTLibProverOptions options;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -74,14 +76,15 @@ USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (defau
     [NotDelayed]
     public SMTLibProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
                                       DeclFreeProverContext ctx)
-      : base(options, "", "", "", "", gen)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
       InitializeGlobalInformation("UnivBackPred2.smt2");
 
+      this.options = (SMTLibProverOptions)options;
       this.ctx = ctx;
+      this.gen = gen;
 
       TypeAxiomBuilder axBuilder;
       switch (CommandLineOptions.Clo.TypeEncodingMethod) {
@@ -191,7 +194,6 @@ USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (defau
       if (idx > 0) {
         msg = msg.Replace("\r", "").Replace("\n", "\r\n");
       }
-      LogActivity(msg);
       output.WriteLine(msg);
     }
 
@@ -200,11 +202,6 @@ USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (defau
     {  //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       return Outcome.Undetermined;
-    }
-
-    protected SMTLibProverOptions Options
-    {
-      get { return (SMTLibProverOptions)this.options; }
     }
 
     protected string VCExpr2String(VCExpr expr, int polarity)
@@ -243,8 +240,8 @@ USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (defau
       DeclCollector.Collect(sortedExpr);
       FeedTypeDeclsToProver();
 
-      AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, Options));
-      string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, Options);
+      AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options));
+      string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options);
       Contract.Assert(res != null);
 
       if (CommandLineOptions.Clo.Trace) {
@@ -306,6 +303,11 @@ USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (defau
           _backgroundPredicates = reader.ReadToEnd();
         }
       }
+    }
+
+    public override VCExpressionGenerator VCExprGen
+    {
+      get { return this.gen; }
     }
   }
 
