@@ -58,9 +58,9 @@ USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (defau
     private readonly DeclFreeProverContext ctx;
 
     [ContractInvariantMethod]
-void ObjectInvariant() 
-{
-    Contract.Invariant(ctx!=null);
+    void ObjectInvariant()
+    {
+      Contract.Invariant(ctx != null);
       Contract.Invariant(AxBuilder != null);
       Contract.Invariant(Namer != null);
       Contract.Invariant(DeclCollector != null);
@@ -68,12 +68,13 @@ void ObjectInvariant()
       Contract.Invariant(cce.NonNullElements(TypeDecls));
       Contract.Invariant(_backgroundPredicates != null);
 
-}
+    }
 
-    
+
     [NotDelayed]
     public SMTLibProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
-                                      DeclFreeProverContext ctx):base(options, "", "", "", "", gen)
+                                      DeclFreeProverContext ctx)
+      : base(options, "", "", "", "", gen)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
@@ -85,48 +86,54 @@ void ObjectInvariant()
       TypeAxiomBuilder axBuilder;
       switch (CommandLineOptions.Clo.TypeEncodingMethod) {
         case CommandLineOptions.TypeEncoding.Arguments:
-          axBuilder = new TypeAxiomBuilderArguments (gen);
+          axBuilder = new TypeAxiomBuilderArguments(gen);
           axBuilder.Setup();
           break;
         case CommandLineOptions.TypeEncoding.Monomorphic:
           axBuilder = new TypeAxiomBuilderPremisses(gen);
           break;
         default:
-          axBuilder = new TypeAxiomBuilderPremisses (gen);
+          axBuilder = new TypeAxiomBuilderPremisses(gen);
           axBuilder.Setup();
           break;
       }
-      
+
       AxBuilder = axBuilder;
       Namer = new SMTLibNamer();
-      this.DeclCollector = new TypeDeclCollector ((SMTLibProverOptions)options, Namer);
-      
-    }
-    
-    public override ProverContext Context { get {
-      Contract.Ensures(Contract.Result<ProverContext>() != null);
+      this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions)options, Namer);
 
-      return ctx;
-    } }
+    }
+
+    public override ProverContext Context
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<ProverContext>() != null);
+
+        return ctx;
+      }
+    }
 
     private readonly TypeAxiomBuilder AxBuilder;
     private readonly UniqueNamer Namer;
     private readonly TypeDeclCollector DeclCollector;
     private readonly SMTLibProcess Process;
 
-    private void FeedTypeDeclsToProver() {
-      foreach (string s in DeclCollector.GetNewDeclarations())
-      {
-        Contract.Assert(s!=null);
+    private void FeedTypeDeclsToProver()
+    {
+      foreach (string s in DeclCollector.GetNewDeclarations()) {
+        Contract.Assert(s != null);
         AddTypeDecl(s);
-    }}
+      }
+    }
 
-    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler) {
+    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
+    {
       //Contract.Requires(descriptiveName != null);
       //Contract.Requires(vc != null);
       //Contract.Requires(handler != null);
       TextWriter output = OpenOutputFile(descriptiveName);
-      Contract.Assert(output!=null);
+      Contract.Assert(output != null);
 
       WriteLineAndLog(output, _backgroundPredicates);
       string name = SMTLibNamer.QuoteId(descriptiveName);
@@ -137,26 +144,25 @@ void ObjectInvariant()
         var nary = axioms as VCExprNAry;
         if (nary != null && nary.Op == VCExpressionGenerator.AndOp)
           foreach (var expr in nary.UniformArguments) {
-            var str = VCExpr2String(expr, -1); 
+            var str = VCExpr2String(expr, -1);
             if (str != "true")
               AddAxiom(str);
-          }
-        else
+          } else
           AddAxiom(VCExpr2String(axioms, -1));
         AxiomsAreSetup = true;
       }
 
       string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
       string prelude = ctx.GetProverCommands(true);
-      Contract.Assert(prelude!=null);
+      Contract.Assert(prelude != null);
       WriteLineAndLog(output, prelude);
 
       foreach (string s in TypeDecls) {
-        Contract.Assert(s!=null);
+        Contract.Assert(s != null);
         WriteLineAndLog(output, s);
       }
       foreach (string s in Axioms) {
-        Contract.Assert(s!=null);
+        Contract.Assert(s != null);
         if (s != "true")
           WriteLineAndLog(output, "(assert " + s + ")");
       }
@@ -167,16 +173,18 @@ void ObjectInvariant()
       output.Close();
     }
 
-    private TextWriter OpenOutputFile(string descriptiveName) {
+    private TextWriter OpenOutputFile(string descriptiveName)
+    {
       Contract.Requires(descriptiveName != null);
       Contract.Ensures(Contract.Result<TextWriter>() != null);
 
-        string filename = ((SMTLibProverOptions)options).Output;
-        filename = Helpers.SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
-        return new StreamWriter(filename, false);
+      string filename = ((SMTLibProverOptions)options).Output;
+      filename = Helpers.SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
+      return new StreamWriter(filename, false);
     }
 
-    private void WriteLineAndLog(TextWriter output, string msg) {
+    private void WriteLineAndLog(TextWriter output, string msg)
+    {
       Contract.Requires(output != null);
       Contract.Requires(msg != null);
       var idx = msg.IndexOf('\n');
@@ -189,7 +197,7 @@ void ObjectInvariant()
 
     [NoDefaultContract]
     public override Outcome CheckOutcome(ErrorHandler handler)
-   {  //Contract.Requires(handler != null);
+    {  //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       return Outcome.Undetermined;
     }
@@ -199,7 +207,8 @@ void ObjectInvariant()
       get { return (SMTLibProverOptions)this.options; }
     }
 
-    protected string VCExpr2String(VCExpr expr, int polarity) {
+    protected string VCExpr2String(VCExpr expr, int polarity)
+    {
       Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
@@ -221,14 +230,14 @@ void ObjectInvariant()
           break;
       }
       VCExpr exprWithoutTypes = eraser == null ? expr : eraser.Erase(expr, polarity);
-      Contract.Assert(exprWithoutTypes!=null);
+      Contract.Assert(exprWithoutTypes != null);
 
       LetBindingSorter letSorter = new LetBindingSorter(gen);
-      Contract.Assert(letSorter!=null);
+      Contract.Assert(letSorter != null);
       VCExpr sortedExpr = letSorter.Mutate(exprWithoutTypes, true);
-      Contract.Assert(sortedExpr!=null);
+      Contract.Assert(sortedExpr != null);
       VCExpr sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
-      Contract.Assert(sortedAxioms!=null);
+      Contract.Assert(sortedAxioms != null);
 
       DeclCollector.Collect(sortedAxioms);
       DeclCollector.Collect(sortedExpr);
@@ -236,7 +245,7 @@ void ObjectInvariant()
 
       AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, Options));
       string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, Options);
-      Contract.Assert(res!=null);
+      Contract.Assert(res != null);
 
       if (CommandLineOptions.Clo.Trace) {
         DateTime end = DateTime.Now;
@@ -249,31 +258,33 @@ void ObjectInvariant()
 
     // the list of all known axioms, where have to be included in each
     // verification condition
-    private readonly List<string/*!>!*/> Axioms = new List<string/*!*/> ();
+    private readonly List<string/*!>!*/> Axioms = new List<string/*!*/>();
     private bool AxiomsAreSetup = false;
-    
+
 
 
 
     // similarly, a list of function/predicate declarations
-    private readonly List<string/*!>!*/> TypeDecls = new List<string/*!*/> ();
+    private readonly List<string/*!>!*/> TypeDecls = new List<string/*!*/>();
 
-    protected void AddAxiom(string axiom) {
+    protected void AddAxiom(string axiom)
+    {
       Contract.Requires(axiom != null);
       Axioms.Add(axiom);
-//      if (thmProver != null) {
-//        LogActivity(":assume " + axiom);
-//        thmProver.AddAxioms(axiom);
-//      }
+      //      if (thmProver != null) {
+      //        LogActivity(":assume " + axiom);
+      //        thmProver.AddAxioms(axiom);
+      //      }
     }
 
-    protected void AddTypeDecl(string decl) {
+    protected void AddTypeDecl(string decl)
+    {
       Contract.Requires(decl != null);
       TypeDecls.Add(decl);
- //     if (thmProver != null) {
- //       LogActivity(decl);
- //       thmProver.Feed(decl, 0);
- //     }
+      //     if (thmProver != null) {
+      //       LogActivity(decl);
+      //       thmProver.Feed(decl, 0);
+      //     }
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -281,8 +292,9 @@ void ObjectInvariant()
     private static string _backgroundPredicates;
 
     static void InitializeGlobalInformation(string backgroundPred)
-    {Contract.Requires(backgroundPred != null);
-     Contract.Ensures(_backgroundPredicates != null);
+    {
+      Contract.Requires(backgroundPred != null);
+      Contract.Ensures(_backgroundPredicates != null);
       //throws ProverException, System.IO.FileNotFoundException;
       if (_backgroundPredicates == null) {
         string codebaseString =
@@ -290,8 +302,7 @@ void ObjectInvariant()
 
         // Initialize '_backgroundPredicates'
         string univBackPredPath = Path.Combine(codebaseString, backgroundPred);
-        using (StreamReader reader = new System.IO.StreamReader(univBackPredPath))
-        {
+        using (StreamReader reader = new System.IO.StreamReader(univBackPredPath)) {
           _backgroundPredicates = reader.ReadToEnd();
         }
       }
@@ -303,27 +314,28 @@ void ObjectInvariant()
 
     public override object SpawnProver(ProverOptions options, object ctxt)
     {
-    //Contract.Requires(ctxt != null);
-    //Contract.Requires(options != null);
-    Contract.Ensures(Contract.Result<object>() != null);
+      //Contract.Requires(ctxt != null);
+      //Contract.Requires(options != null);
+      Contract.Ensures(Contract.Result<object>() != null);
 
       return this.SpawnProver(options,
                               cce.NonNull((DeclFreeProverContext)ctxt).ExprGen,
                               cce.NonNull((DeclFreeProverContext)ctxt));
     }
 
-    public override object NewProverContext(ProverOptions options) {
+    public override object NewProverContext(ProverOptions options)
+    {
       //Contract.Requires(options != null);
       Contract.Ensures(Contract.Result<object>() != null);
 
-      VCExpressionGenerator gen = new VCExpressionGenerator ();
-      List<string>/*!>!*/ proverCommands = new List<string/*!*/> ();
-// TODO: what is supported?
-//      proverCommands.Add("all");
-//      proverCommands.Add("simplify");
-//      proverCommands.Add("simplifyLike");
+      VCExpressionGenerator gen = new VCExpressionGenerator();
+      List<string>/*!>!*/ proverCommands = new List<string/*!*/>();
+      // TODO: what is supported?
+      //      proverCommands.Add("all");
+      //      proverCommands.Add("simplify");
+      //      proverCommands.Add("simplifyLike");
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
-      Contract.Assert(genOptions!=null);
+      Contract.Assert(genOptions != null);
 
       return new DeclFreeProverContext(gen, genOptions);
     }
@@ -335,7 +347,8 @@ void ObjectInvariant()
 
     protected virtual SMTLibProcessTheoremProver SpawnProver(ProverOptions options,
                                                               VCExpressionGenerator gen,
-                                                              DeclFreeProverContext ctx) {
+                                                              DeclFreeProverContext ctx)
+    {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
