@@ -112,7 +112,6 @@ void ObjectInvariant()
       Contract.Invariant(ExeName!=null);
     }
 
-
     protected override bool Parse(string opt)
     {
       //Contract.Requires(opt!=null);

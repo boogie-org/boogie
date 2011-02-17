@@ -24,14 +24,14 @@ namespace Microsoft.Boogie.SMTLib
       return Path.GetDirectoryName(cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location));
     }
 
-    public static string Z3ExecutablePath()
+    public static string ExecutablePath()
     {
       if (_proverPath == null)
-        FindZ3Executable();
+        FindExecutable();
       return _proverPath;
     }
 
-    static void FindZ3Executable()
+    static void FindExecutable()
     // throws ProverException, System.IO.FileNotFoundException;
     {      
       Contract.Ensures(_proverPath != null);
@@ -95,6 +95,69 @@ namespace Microsoft.Boogie.SMTLib
 
         if (CommandLineOptions.Clo.Trace) {
           Console.WriteLine("[TRACE] Using prover: " + _proverPath);
+        }
+      }
+    }
+
+    // options that work only on the command line
+    static string[] commandLineOnly = { "TRACE" };
+
+    public static void SetupOptions(SMTLibProverOptions options)
+    {
+      options.AddWeakSmtOption("MODEL_PARTIAL", "true");
+      //options.WeakAddSmtOption("MODEL_VALUE_COMPLETION", "false");
+      options.AddWeakSmtOption("MODEL_HIDE_UNUSED_PARTITIONS", "false");
+      //options.WeakAddSmtOption("MODEL_V1", "true");
+      options.AddWeakSmtOption("ASYNC_COMMANDS", "false");
+
+      if (!options.OptimizeForBv) {
+        // Phase selection means to always try the negative literal polarity first, seems to be good for Boogie.
+        // The restart parameters change the restart behavior to match Z3 v1, which also seems to be good.
+        options.AddWeakSmtOption("PHASE_SELECTION", "0");
+        options.AddWeakSmtOption("RESTART_STRATEGY", "0");
+        options.AddWeakSmtOption("RESTART_FACTOR", "|1.5|");
+
+        // Make the integer model more diverse by default, speeds up some benchmarks a lot.
+        options.AddWeakSmtOption("ARITH_RANDOM_INITIAL_VALUE", "true");
+
+        // The left-to-right structural case-splitting strategy.
+        options.AddWeakSmtOption("SORT_AND_OR", "false");
+        options.AddWeakSmtOption("CASE_SPLIT", "3");
+
+        // In addition delay adding unit conflicts.
+        options.AddWeakSmtOption("DELAY_UNITS", "true");
+        options.AddWeakSmtOption("DELAY_UNITS_THRESHOLD", "16");
+      }
+
+      // This is used by VCC, but could be also useful for others, if sk_hack(foo(x)) is included as trigger,
+      // the foo(x0) will be activated for e-matching when x is skolemized to x0.
+      options.AddWeakSmtOption("NNF_SK_HACK", "true");
+
+      // More or less like MAM=0.
+      options.AddWeakSmtOption("QI_EAGER_THRESHOLD", "100");
+      // Complex proof attempts in VCC (and likely elsewhere) require matching depth of 20 or more.
+
+      // the following will make the :weight option more usable
+      options.AddWeakSmtOption("QI_COST", "|\"(+ weight generation)\"|");
+
+      //if (options.Inspector != null)
+      //  options.WeakAddSmtOption("PROGRESS_SAMPLING_FREQ", "100");
+
+      options.AddWeakSmtOption("TYPE_CHECK", "true");
+      options.AddWeakSmtOption("BV_REFLECT", "true");
+
+      if (CommandLineOptions.Clo.LazyInlining == 2)
+        options.AddWeakSmtOption("MACRO_EXPANSION", "true");
+
+      // legacy option handling
+      foreach (string opt in CommandLineOptions.Clo.Z3Options) {
+        Contract.Assert(opt != null);
+        int eq = opt.IndexOf("=");
+        var optName = opt.Substring(0, eq);
+        if (eq > 0 && 'A' <= opt[0] && opt[0] <= 'Z' && !commandLineOnly.Contains(optName)) {
+          options.AddSmtOption(optName, opt.Substring(eq + 1));
+        } else {
+          options.AddSolverArgument(opt);
         }
       }
     }

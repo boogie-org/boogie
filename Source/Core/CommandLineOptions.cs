@@ -1063,6 +1063,8 @@ namespace Microsoft.Boogie {
             }
             break;
 
+          case "-p":
+          case "/p":
           case "-proverOpt":
           case "/proverOpt":
             if (ps.ConfirmArgumentCount(1)) {
@@ -2242,7 +2244,7 @@ namespace Microsoft.Boogie {
                    SMTLib (only writes to a file)
                    ContractInference (uses Z3)
                    Z3api (Z3 using Managed .NET API)
-  /proverOpt:KEY[=VALUE] : Provide a prover-specific option.
+  /proverOpt:KEY[=VALUE] : Provide a prover-specific option (short form /p).
   /proverLog:<file> : Log input for the theorem prover.  Like filenames
                    supplied as arguments to other options, <file> can use the
                    following macros:

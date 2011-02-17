@@ -1,9 +1,7 @@
 ; Boogie universal background predicate
 ; Copyright (c) 2004-2010, Microsoft Corp.
-
-(set-logic UFNIA)
-(set-info :smt-lib-version 2.0)
 (set-info :category "industrial")
+(set-logic UFNIA)
 (declare-sort |T@U| 0)
 (declare-sort |T@T| 0)
 (declare-fun int_div (Int Int) Int)

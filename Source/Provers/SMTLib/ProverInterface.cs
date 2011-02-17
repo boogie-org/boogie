@@ -22,36 +22,6 @@ using System.Text;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  public class SMTLibProverOptions : ProverOptions
-  {
-    public bool UseWeights = true;
-    public bool UseLabels { get { return UseZ3; } }
-    public bool UseZ3 = true;
-
-    protected override bool Parse(string opt)
-    {
-      return
-        ParseBool(opt, "USE_WEIGHTS", ref UseWeights) ||
-        ParseBool(opt, "USE_Z3", ref UseZ3) ||
-        base.Parse(opt);
-    }
-
-    public override string Help
-    {
-      get
-      {
-        return
-@"
-SMT-specific options:
-~~~~~~~~~~~~~~~~~~~~~
-USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (default: true)
-USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (default: true)
-VERBOSITY=<int>           1 - print prover output (default: 0)
-" + base.Help;
-      }
-    }
-  }
-
   public class SMTLibProcessTheoremProver : ProverInterface
   {
     private readonly DeclFreeProverContext ctx;
@@ -105,7 +75,7 @@ VERBOSITY=<int>           1 - print prover output (default: 0)
       this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions)options, Namer);
 
       if (this.options.UseZ3) {
-        var psi = SMTLibProcess.ComputerProcessStartInfo(Z3.Z3ExecutablePath(), "AUTO_CONFIG=false -smt2 -in");
+        var psi = SMTLibProcess.ComputerProcessStartInfo(Z3.ExecutablePath(), "AUTO_CONFIG=false -smt2 -in");
         Process = new SMTLibProcess(psi, this.options);
         Process.ErrorHandler += this.HandleProverError;
       }
@@ -171,8 +141,15 @@ VERBOSITY=<int>           1 - print prover output (default: 0)
 
     private void PrepareCommon()
     {
-      if (common.Length == 0)
+      if (common.Length == 0) {
+        SendCommon("(set-option :print-success false)");
+        SendCommon("(set-info :smt-lib-version 2.0)");
+        foreach (var opt in options.SmtOptions) {
+          SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
+        }
+        SendCommon("; done setting options\n");
         SendCommon(_backgroundPredicates);
+      }
 
       if (!AxiomsAreSetup) {
         var axioms = ctx.Axioms;
@@ -275,6 +252,9 @@ VERBOSITY=<int>           1 - print prover output (default: 0)
         return result;
 
       var errorsLeft = CommandLineOptions.Clo.ProverCCLimit;
+      if (errorsLeft < 1)
+        errorsLeft = 1;
+
       var globalResult = Outcome.Undetermined;
 
       while (errorsLeft-- > 0) {
