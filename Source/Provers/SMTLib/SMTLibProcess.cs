@@ -71,7 +71,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public bool IsPong(SExpr sx)
     {
-      return sx.Name == "" && sx.Arguments.Length == 1 && sx.Arguments[0].Name.Contains("name");
+      return sx.Name == ":name";
     }
 
     public void PingPong()
@@ -261,8 +261,9 @@ namespace Microsoft.Boogie.SMTLib
     void prover_OutputDataReceived(object sender, DataReceivedEventArgs e)
     {
       lock (this) {
-        if (options.Verbosity >= 1)
+        if (options.Verbosity >= 2 || (options.Verbosity >= 1 && !e.Data.StartsWith("(:name"))) {
           Console.WriteLine("[SMT-OUT] {0}", e.Data);
+        }
         proverOutput.Enqueue(e.Data);
         Monitor.Pulse(this);
       }

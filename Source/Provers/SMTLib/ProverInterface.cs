@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.IO;
 //using ExternalProver;
+using System.Linq;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.AbstractInterpretation;
@@ -207,6 +208,13 @@ VERBOSITY=<int>           1 - print prover output (default: 0)
       }
     }
 
+    private void FlushLogFile()
+    {
+      if (currentLogFile != null) {
+        currentLogFile.Flush();
+      }
+    }
+
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       //Contract.Requires(descriptiveName != null);
@@ -229,12 +237,13 @@ VERBOSITY=<int>           1 - print prover output (default: 0)
       SendThisVC("(push)");
       SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
       SendThisVC(vcString);
+      FlushLogFile();
 
       if (Process != null)
         Process.PingPong(); // flush any errors
 
       SendThisVC("(check-sat)");
-      SendThisVC("(pop 1)");
+      FlushLogFile();
     }
 
     private TextWriter OpenOutputFile(string descriptiveName)
@@ -259,14 +268,53 @@ VERBOSITY=<int>           1 - print prover output (default: 0)
     public override Outcome CheckOutcome(ErrorHandler handler)
     {  //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-
+      
       var result = Outcome.Undetermined;
 
       if (Process == null)
         return result;
 
+      var errorsLeft = CommandLineOptions.Clo.ProverCCLimit;
+      var globalResult = Outcome.Undetermined;
+
+      while (errorsLeft-- > 0) {
+        var seenLabels = false;
+
+        result = GetResponse();
+        if (globalResult == Outcome.Undetermined)
+          globalResult = result;
+
+        if (result == Outcome.Invalid && options.UseZ3) {
+          SendThisVC("(get-info :labels)");
+          Process.Ping();
+
+          while (true) {
+            var resp = Process.GetProverResponse();
+            if (resp == null || Process.IsPong(resp))
+              break;
+            if (resp.Name == ":labels" && resp.ArgCount >= 1) {
+              var labels = resp[0].Arguments.Select(a => a.Name.Replace("|", "").Replace("@", "").Replace("+", "")).ToList();
+              handler.OnModel(labels, null);
+              seenLabels = true;
+            }
+          }
+        }
+
+        if (!seenLabels) break;
+        SendThisVC("(next-sat)");
+      }
+
+      SendThisVC("(pop 1)");
+      FlushLogFile();
+
+      return globalResult;
+    }
+
+    private Outcome GetResponse()
+    {
+      var result = Outcome.Undetermined;
+
       Process.Ping();
-      
 
       while (true) {
         var resp = Process.GetProverResponse();
@@ -286,7 +334,6 @@ VERBOSITY=<int>           1 - print prover output (default: 0)
             break;
         }
       }
-
       return result;
     }
 

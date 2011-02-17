@@ -37,6 +37,11 @@ namespace Microsoft.Boogie
       }
     }
 
+    public int ArgCount
+    {
+      get { return arguments.Length; }
+    }
+
     public bool IsId
     {
       get { return Arguments.Length == 0; }
