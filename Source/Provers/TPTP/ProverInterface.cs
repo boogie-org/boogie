@@ -148,9 +148,6 @@ USE_PREDICATES=<bool>     Try to use SMT predicates for functions returning bool
       }
 
       string vcString = "fof(vc, conjecture, " + VCExpr2String(vc, 1) + ").";
-      string prelude = ctx.GetProverCommands(true);
-      Contract.Assert(prelude != null);
-      WriteLineAndLog(output, prelude);
 
       foreach (string s in TypeDecls) {
         Contract.Assert(s != null);

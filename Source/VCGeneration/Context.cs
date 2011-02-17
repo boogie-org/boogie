@@ -80,9 +80,6 @@ public abstract class ProverContextContracts:ProverContext{
     
     protected OrderingAxiomBuilder orderingAxiomBuilder;
 
-    StringBuilder proverCommands;
-    StringBuilder incrementalProverCommands;
-    
     protected List<Variable> distincts;
     protected List<VCExpr> axiomConjuncts;
 
@@ -92,8 +89,6 @@ public abstract class ProverContextContracts:ProverContext{
       Contract.Invariant(genOptions != null);
       Contract.Invariant(translator != null);
       Contract.Invariant(orderingAxiomBuilder != null);
-      Contract.Invariant(proverCommands != null);
-      Contract.Invariant(incrementalProverCommands != null);
       Contract.Invariant(cce.NonNullElements(distincts));
       Contract.Invariant(cce.NonNullElements(axiomConjuncts));
     }
@@ -113,9 +108,6 @@ public abstract class ProverContextContracts:ProverContext{
       oab.Setup();
       this.orderingAxiomBuilder = oab;
 
-      proverCommands = new StringBuilder();
-      incrementalProverCommands = new StringBuilder();
-    
       distincts = new List<Variable>();
       axiomConjuncts = new List<VCExpr>();
 
@@ -133,12 +125,6 @@ public abstract class ProverContextContracts:ProverContext{
 
       StringBuilder cmds = new StringBuilder ();
       
-      cmds.Append(ctxt.proverCommands);
-      proverCommands = cmds;
-      StringBuilder incCmds = new StringBuilder ();
-      incCmds.Append(ctxt.incrementalProverCommands);
-      incrementalProverCommands = incCmds;
-    
       distincts = new List<Variable>(ctxt.distincts);
       axiomConjuncts = new List<VCExpr>(ctxt.axiomConjuncts);
 
@@ -154,32 +140,6 @@ public abstract class ProverContextContracts:ProverContext{
       return new DeclFreeProverContext(this);
     }
 
-    internal protected void SayToProver(string msg)
-    {
-      Contract.Requires(msg != null);
-      msg = msg + "\r\n";
-      proverCommands.Append(msg);
-      incrementalProverCommands.Append(msg);
-    }
-
-    protected override void ProcessDeclaration(Declaration decl)
-    {
-      //Contract.Requires(decl != null);
-      for (QKeyValue a = decl.Attributes; a != null; a = a.Next) {
-        if (a.Key == "prover" && a.Params.Count == 1) {
-          string cmd = a.Params[0] as string;
-          if (cmd != null) {
-            int pos = cmd.IndexOf(':');
-            if (pos <= 0)
-              throw new ProverException("Invalid syntax of :prover string: `" + cmd + "'");
-            string kind = cmd.Substring(0, pos);
-            if (genOptions.IsAnyProverCommandSupported(kind))
-              SayToProver(cmd.Substring(pos + 1));
-          }
-        }
-      }
-    }
-    
     public override void DeclareFunction(Function f, string attributes) {//Contract.Requires(f != null);
       base.ProcessDeclaration(f);
     }
@@ -223,13 +183,6 @@ public abstract class ProverContextContracts:ProverContext{
           axioms = gen.AndSimp(orderingAxiomBuilder.Axioms, axioms);
         return axioms;
       }
-    }
-
-    public string GetProverCommands(bool full) {Contract.Ensures(Contract.Result<string>() != null);
-
-      string res = (full ? proverCommands : incrementalProverCommands).ToString();
-      incrementalProverCommands.Length = 0;
-      return res;
     }
 
     public override string Lookup(VCExprVar var)

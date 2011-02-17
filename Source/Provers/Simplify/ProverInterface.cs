@@ -415,9 +415,6 @@ namespace Microsoft.Boogie.Simplify {
         int num_axioms_pushed =
            FeedNewAxiomsDecls2Prover();
 
-        string prelude = ctx.GetProverCommands(false);
-        Contract.Assert(prelude != null);
-        vcString = prelude + vcString;
         LogActivity(vcString);
 
         Contract.Assert(thmProver != null);
@@ -557,19 +554,11 @@ namespace Microsoft.Boogie.Simplify {
         thmProver.Feed(parmsetting, 0);
       }
       thmProver.Feed(GetBackgroundPredicate(BackgroundPredFilename), 3);
-      string incProverCommands = ctx.GetProverCommands(false);
-      Contract.Assert(incProverCommands != null);
-      string proverCommands = ctx.GetProverCommands(true);
-      Contract.Assert(proverCommands != null);
-      string prelude = ctx.GetProverCommands(false);
-      Contract.Assert(prelude != null);
 
       if (restarts == 0) {
         // log the stuff before feeding it into the prover, so when it dies
         // and takes Boogie with it, we know what happened
         LogCommon(GetBackgroundPredicate(BackgroundPredFilename));
-        LogCommon(prelude);
-        LogCommon(proverCommands);
 
         foreach (string s in vcExprTranslator.AllTypeDecls){Contract.Assert(s != null);
           LogCommon(s);}
@@ -577,12 +566,7 @@ namespace Microsoft.Boogie.Simplify {
           LogBgPush(s);}
 
         LogCommonComment("Initialized all axioms.");
-      } else {
-        LogCommon(incProverCommands);
       }
-
-      thmProver.Feed(prelude, 0);
-      thmProver.Feed(proverCommands, 0);
 
       foreach (string s in vcExprTranslator.AllTypeDecls){Contract.Assert(s != null);
         thmProver.Feed(s, 0);}
