@@ -349,6 +349,7 @@ namespace Microsoft.Boogie {
     public int StratifiedInliningOption = 0;
     public bool UseUnsatCoreForInlining = false;
     public int RecursionBound = 500;
+    public string inferLeastForUnsat = null;
     public string CoverageReporterPath = null;
     public Process coverageReporter = null; // used internally for debugging
 
@@ -1155,6 +1156,13 @@ namespace Microsoft.Boogie {
           case "/useUnsatCoreForInlining":
             UseUnsatCoreForInlining = true;
             break;
+          case "-inferLeastForUnsat":
+          case "/inferLeastForUnsat":
+            if (ps.ConfirmArgumentCount(1))
+            {
+                inferLeastForUnsat = args[ps.i];
+            }
+            break;
           case "-typeEncoding":
           case "/typeEncoding":
             if (ps.ConfirmArgumentCount(1)) {
@@ -1489,6 +1497,11 @@ namespace Microsoft.Boogie {
         TypeEncodingMethod = TypeEncoding.Monomorphic;
         UseArrayTheory = true;
         UseAbstractInterpretation = false;
+      }
+
+      if (inferLeastForUnsat != null)
+      {
+          StratifiedInlining = 1;
       }
 
       if (StratifiedInlining > 0) {
@@ -2149,6 +2162,10 @@ namespace Microsoft.Boogie {
   /stratifiedInline:1 : Use the stratified inlining algorithm
   /recursionBound:<n> : Set the recursion bound for stratified inlining to 
                         be n (default 500)
+  /inferLeastForUnsat:<str> : Infer the least number of constants (whose names
+                              are prefixed by <str>) that need to be set to 
+                              true for the program to be correct. This turns
+                              on stratified inlining.
   /smoke         : Soundness Smoke Test: try to stick assert false; in some 
                    places in the BPL and see if we can still prove it
   /smokeTimeout:<n> : Timeout, in seconds, for a single theorem prover 

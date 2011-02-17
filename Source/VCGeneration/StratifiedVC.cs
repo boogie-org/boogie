@@ -1440,6 +1440,11 @@ namespace VC
                 {
                     substForallDict.Add(info.interfaceExprVars[i], expr[i]);
                 }
+                if (procName == "boogie_si_record_int")
+                {
+                    Contract.Assert(expr.Length > program.GlobalVariables().Count);
+                    calls.argExprMap.Add(id, expr[program.GlobalVariables().Count]);
+                }
                 VCExprSubstitution substForall = new VCExprSubstitution(substForallDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
 
                 SubstitutingVCExprVisitor subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
@@ -1521,6 +1526,12 @@ namespace VC
                 {
                     substForallDict.Add(info.interfaceExprVars[i], expr[i]);
                 }
+                if (procName == "boogie_si_record_int")
+                {
+                    Contract.Assert(expr.Length > program.GlobalVariables().Count);
+                    calls.argExprMap.Add(id, expr[program.GlobalVariables().Count]);
+                }
+
                 VCExprSubstitution substForall = new VCExprSubstitution(substForallDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
 
                 SubstitutingVCExprVisitor subst = new SubstitutingVCExprVisitor(checker.VCExprGen); Contract.Assert(subst != null);
@@ -1652,6 +1663,9 @@ namespace VC
             public HashSet<int> recentlyAddedCandidates;
             // Name of main procedure
             private string mainProcName;
+            // A map from candidate id to the VCExpr that represents its
+            // first argument (used for obtaining concrete values in error trace)
+            public Dictionary<int, VCExpr> argExprMap;
 
             public HashSet<int> forcedCandidates;
 
@@ -1706,6 +1720,7 @@ namespace VC
                 persistentNameCache[0] = "0";
                 persistentNameInv["0"] = 0;
                 recentlyAddedCandidates = new HashSet<int>();
+                argExprMap = new Dictionary<int, VCExpr>();
 
                 forcedCandidates = new HashSet<int>();
             }
@@ -2292,10 +2307,34 @@ namespace VC
                         }
                         else
                         {
+                            var values = new List<object>();
+                            if (calleeName == "boogie_si_record_int")
+                            {
+                                // Record concrete value of the argument to this procedure
+                                var args = new List<int>();
+                                var expr = calls.argExprMap[calleeId];
+                                if (expr is VCExprIntLit)
+                                {
+                                    args.Add(errModel.valueToPartition[(expr as VCExprIntLit).Val.ToInt]);
+                                }
+                                else if (expr is VCExprVar)
+                                {
+                                    var idExpr = expr as VCExprVar;
+                                    string name = context.Lookup(idExpr);
+                                    Contract.Assert(name != null);
+                                    args.Add(errModel.identifierToPartition[name]);
+                                }
+                                else
+                                {
+                                    Contract.Assert(false);
+                                }
+                                values = errModel.PartitionsToValues(args);
+                            }
+
                             calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                 new CalleeCounterexampleInfo(
                                     cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
-                                    new List<object>());
+                                    values);
                         }
                     }
 

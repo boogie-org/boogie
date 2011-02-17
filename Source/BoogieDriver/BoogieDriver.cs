@@ -497,7 +497,24 @@ namespace Microsoft.Boogie {
 
           VCGen.Outcome outcome;
           try {
-            outcome = vcgen.VerifyImplementation(impl, program, out errors);
+              if (CommandLineOptions.Clo.inferLeastForUnsat != null)
+              {
+                  var svcgen = vcgen as VC.StratifiedVCGen;
+                  Debug.Assert(svcgen != null);
+                  var ss = new HashSet<string>();
+                  foreach (var tdecl in program.TopLevelDeclarations)
+                  {
+                      var c = tdecl as Constant;
+                      if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
+                      ss.Add(c.Name);
+                  }
+                  outcome = svcgen.FindLeastToVerify(impl, program, ref ss);
+                  errors = new List<Counterexample>();
+              }
+              else
+              {
+                  outcome = vcgen.VerifyImplementation(impl, program, out errors);
+              }
           } catch (VCGenException e) {
             ReportBplError(impl, String.Format("Error BP5010: {0}  Encountered in implementation {1}.", e.Message, impl.Name), true, true);
             errors = null;
