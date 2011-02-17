@@ -48,6 +48,11 @@ namespace Microsoft.Boogie {
       l.RemoveRange(l.Count - count, count);
       return l;
     }
+
+    public static void Iter<T>(this IEnumerable<T> coll, Action<T> fn)
+    {
+      foreach (var e in coll) fn(e);
+    }
   }
 
   public class TokenTextWriter : IDisposable {
