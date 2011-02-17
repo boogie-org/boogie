@@ -87,6 +87,11 @@ namespace Microsoft.Boogie.SMTLib
       return s;
     }
 
+    public static string BlockedLabel(string s)
+    {
+      return "%block%" + s;
+    }
+
     public static string QuoteId(string s)
     {
       return AddQuotes(NonKeyword(s));

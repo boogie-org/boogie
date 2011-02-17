@@ -52,10 +52,10 @@ void ObjectInvariant()
     private readonly IDictionary<VCExprVar/*!*/, bool>/*!*/ KnownVariables =
       new Dictionary<VCExprVar/*!*/, bool> ();
 
-
     private readonly Dictionary<Type/*!*/, bool>/*!*/ KnownTypes = new Dictionary<Type, bool>();
     private readonly Dictionary<string/*!*/, bool>/*!*/ KnownStoreFunctions = new Dictionary<string, bool>();
     private readonly Dictionary<string/*!*/, bool>/*!*/ KnownSelectFunctions = new Dictionary<string, bool>();
+    private readonly HashSet<string> KnownLBLNEG = new HashSet<string>();
 
 
     public List<string/*!>!*/> AllDeclarations { get {
@@ -118,6 +118,13 @@ void ObjectInvariant()
           string decl = "(declare-fun " + printedName + " (" + argTypes + ") " + TypeToStringReg(f.OutParams[0].TypedIdent.Type) + ")";
           AddDeclaration(decl);
           KnownFunctions.Add(f, true);
+        } else {
+          var lab = node.Op as VCExprLabelOp;
+          if (lab != null && !lab.pos && !KnownLBLNEG.Contains(lab.label)) {
+            KnownLBLNEG.Add(lab.label);
+            var name = SMTLibNamer.QuoteId(SMTLibNamer.BlockedLabel(lab.label));
+            AddDeclaration("(declare-fun " + name + " () Bool)");
+          }
         }
       }
 
@@ -138,8 +145,6 @@ void ObjectInvariant()
 
       return base.Visit(node, arg);
     }
-
-
 
     public override bool Visit(VCExprQuantifier node, bool arg)
     {

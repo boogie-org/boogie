@@ -258,7 +258,7 @@ namespace Microsoft.Boogie.SMTLib
       var globalResult = Outcome.Undetermined;
 
       while (errorsLeft-- > 0) {
-        var seenLabels = false;
+        string negLabel = null;
 
         result = GetResponse();
         if (globalResult == Outcome.Undetermined)
@@ -273,15 +273,19 @@ namespace Microsoft.Boogie.SMTLib
             if (resp == null || Process.IsPong(resp))
               break;
             if (resp.Name == ":labels" && resp.ArgCount >= 1) {
-              var labels = resp[0].Arguments.Select(a => a.Name.Replace("|", "").Replace("@", "").Replace("+", "")).ToList();
-              handler.OnModel(labels, null);
-              seenLabels = true;
+              var labels = resp[0].Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
+              negLabel = labels.FirstOrDefault(l => l.StartsWith("@"));
+              var labelNums = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
+              handler.OnModel(labelNums, null);
+              if (negLabel == null)
+                HandleProverError("No negative label in: " + labels.Concat(" "));
             }
           }
         }
 
-        if (!seenLabels) break;
-        SendThisVC("(next-sat)");
+        if (negLabel == null) break;
+        SendThisVC("(assert " + SMTLibNamer.QuoteId(SMTLibNamer.BlockedLabel(negLabel)) + ")");
+        SendThisVC("(check-sat)");
       }
 
       SendThisVC("(pop 1)");

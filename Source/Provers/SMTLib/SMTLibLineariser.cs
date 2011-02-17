@@ -477,11 +477,18 @@ namespace Microsoft.Boogie.SMTLib
         if (ExprLineariser.ProverOptions.UseLabels) {
           // Z3 extension
           wr.Write("({0} {1} ", op.pos ? "lblpos" : "lblneg", SMTLibNamer.QuoteId(op.label));
-          ExprLineariser.Linearise(node[0], options);
-          wr.Write(")");
-        } else {
-          ExprLineariser.Linearise(node[0], options);
         }
+
+        if (!op.pos)
+          wr.Write("(or {0} ", SMTLibNamer.QuoteId(SMTLibNamer.BlockedLabel(op.label)));
+            
+        ExprLineariser.Linearise(node[0], options);
+
+        if (!op.pos) wr.Write(")");
+
+        if (ExprLineariser.ProverOptions.UseLabels)
+          wr.Write(")");
+
         return true;
       }
 
