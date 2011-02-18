@@ -96,9 +96,10 @@ namespace Microsoft.Boogie.SMTLib
     readonly TypeDeclCollector DeclCollector;
     readonly SMTLibProcess Process;
     readonly List<string> proverErrors = new List<string>();
+    readonly List<string> proverWarnings = new List<string>();
     readonly StringBuilder common = new StringBuilder();
     TextWriter currentLogFile;
-    ErrorHandler currentErrorHandler;
+    volatile ErrorHandler currentErrorHandler;
 
     private void FeedTypeDeclsToProver()
     {
@@ -198,8 +199,6 @@ namespace Microsoft.Boogie.SMTLib
       //Contract.Requires(vc != null);
       //Contract.Requires(handler != null);
 
-      currentErrorHandler = handler;
-
       if (options.SeparateLogFiles) CloseLogFile(); // shouldn't really happen
 
       if (options.LogFilename != null && currentLogFile == null) {
@@ -233,8 +232,39 @@ namespace Microsoft.Boogie.SMTLib
       return new StreamWriter(filename, false);
     }
 
+    private void FlushProverWarnings()
+    {
+      var handler = currentErrorHandler;
+      if (handler != null) {
+        lock (proverWarnings) {
+          proverWarnings.Iter(handler.OnProverWarning);
+          proverWarnings.Clear();
+        }
+      }
+    }
+
     private void HandleProverError(string s)
     {
+      s = s.Replace("\r", "");
+      lock (proverWarnings) {
+        while (s.StartsWith("WARNING: ")) {
+          var idx = s.IndexOf('\n');
+          var warn = s;
+          if (idx > 0) {
+            warn = s.Substring(0, idx);
+            s = s.Substring(idx + 1);
+          } else {
+            s = "";
+          }
+          warn = warn.Substring(9);
+          proverWarnings.Add(warn);
+        }
+      }
+
+      FlushProverWarnings();
+
+      if (s == "") return;
+
       lock (proverErrors) {
         proverErrors.Add(s);
         Console.Error.WriteLine("Prover error: " + s);
@@ -251,47 +281,55 @@ namespace Microsoft.Boogie.SMTLib
       if (Process == null)
         return result;
 
-      var errorsLeft = CommandLineOptions.Clo.ProverCCLimit;
-      if (errorsLeft < 1)
-        errorsLeft = 1;
+      try {
+        currentErrorHandler = handler;
+        FlushProverWarnings();
 
-      var globalResult = Outcome.Undetermined;
+        var errorsLeft = CommandLineOptions.Clo.ProverCCLimit;
+        if (errorsLeft < 1)
+          errorsLeft = 1;
 
-      while (errorsLeft-- > 0) {
-        string negLabel = null;
+        var globalResult = Outcome.Undetermined;
 
-        result = GetResponse();
-        if (globalResult == Outcome.Undetermined)
-          globalResult = result;
+        while (errorsLeft-- > 0) {
+          string negLabel = null;
 
-        if (result == Outcome.Invalid && options.UseZ3) {
-          SendThisVC("(get-info :labels)");
-          Process.Ping();
+          result = GetResponse();
+          if (globalResult == Outcome.Undetermined)
+            globalResult = result;
 
-          while (true) {
-            var resp = Process.GetProverResponse();
-            if (resp == null || Process.IsPong(resp))
-              break;
-            if (resp.Name == ":labels" && resp.ArgCount >= 1) {
-              var labels = resp[0].Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
-              negLabel = labels.FirstOrDefault(l => l.StartsWith("@"));
-              var labelNums = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
-              handler.OnModel(labelNums, null);
-              if (negLabel == null)
-                HandleProverError("No negative label in: " + labels.Concat(" "));
+          if (result == Outcome.Invalid && options.UseZ3) {
+            SendThisVC("(get-info :labels)");
+            Process.Ping();
+
+            while (true) {
+              var resp = Process.GetProverResponse();
+              if (resp == null || Process.IsPong(resp))
+                break;
+              if (resp.Name == ":labels" && resp.ArgCount >= 1) {
+                var labels = resp[0].Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
+                negLabel = labels.FirstOrDefault(l => l.StartsWith("@"));
+                var labelNums = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
+                handler.OnModel(labelNums, null);
+                if (negLabel == null)
+                  HandleProverError("No negative label in: " + labels.Concat(" "));
+              }
             }
           }
+
+          if (negLabel == null) break;
+          SendThisVC("(assert " + SMTLibNamer.QuoteId(SMTLibNamer.BlockedLabel(negLabel)) + ")");
+          SendThisVC("(check-sat)");
         }
 
-        if (negLabel == null) break;
-        SendThisVC("(assert " + SMTLibNamer.QuoteId(SMTLibNamer.BlockedLabel(negLabel)) + ")");
-        SendThisVC("(check-sat)");
+        SendThisVC("(pop 1)");
+        FlushLogFile();
+
+        return globalResult;
+
+      } finally {
+        currentErrorHandler = null;
       }
-
-      SendThisVC("(pop 1)");
-      FlushLogFile();
-
-      return globalResult;
     }
 
     private Outcome GetResponse()
