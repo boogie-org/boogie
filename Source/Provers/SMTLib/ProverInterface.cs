@@ -269,7 +269,7 @@ namespace Microsoft.Boogie.SMTLib
 
       lock (proverErrors) {
         proverErrors.Add(s);
-        Console.Error.WriteLine("Prover error: " + s);
+        Console.WriteLine("Prover error: " + s);
       }
     }
 
