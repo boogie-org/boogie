@@ -3,7 +3,9 @@ LONG = $(shell awk '{ if (tolower($$2) ~ /^long$$/) print $$1 }' $(TESTS_FILE))
 NORMAL = $(shell awk '{ if (tolower($$2) ~ /^use$$/) print $$1 }' $(TESTS_FILE))
 TESTS = $(NORMAL)
 
-all: $(addprefix run-, $(TESTS))
+all: boogie dafny
+
+boogie: $(addprefix run-, $(TESTS))
 
 dafny: $(addprefix rundfy-, $(TESTS))
 
