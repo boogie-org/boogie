@@ -6,6 +6,8 @@ TESTS = $(NORMAL)
 all: $(addprefix run-, $(TESTS))
 	@echo ALL OK
 
+dafny: $(addprefix rundfy-, $(TESTS))
+	@echo ALL OK
 
 show:
 	@echo $(TESTS)
@@ -14,4 +16,7 @@ long:
 	$(MAKE) TESTS="$(NORMAL) $(LONG)" all
 
 run-%:
-	@./runtest.bat $* $(FLAGS)
+	@if ls -f $*/*.dfy >/dev/null 2>&1 ; then true ; else ./runtest.bat $* $(FLAGS) ; fi
+
+rundfy-%:
+	@if ls -f $*/*.dfy >/dev/null 2>&1 ; then ./runtest.bat $* $(FLAGS) ; fi
