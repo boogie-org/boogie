@@ -14,4 +14,4 @@ long:
 	$(MAKE) TESTS="$(NORMAL) $(LONG)" all
 
 run-%:
-	@./runtest.bat $*
+	@./runtest.bat $* $(FLAGS)
