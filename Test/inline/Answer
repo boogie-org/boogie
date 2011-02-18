@@ -1,8 +1,8 @@
 -------------------- test0.bpl --------------------
 test0.bpl(30,5): Error BP5001: This assertion might not hold.
 Execution trace:
-        test0.bpl(26,3): anon0
-        test0.bpl(30,5): anon3_Then
+    test0.bpl(26,3): anon0
+    test0.bpl(30,5): anon3_Then
 
 Boogie program verifier finished with 1 verified, 1 error
 -------------------- test1.bpl --------------------
@@ -822,41 +822,41 @@ implementation find(A: [int]int, size: int, x: int) returns (ret: int, found: bo
 <console>(68,4): Error BP5003: A postcondition might not hold on this return path.
 <console>(78,2): Related location: This is the postcondition that might not hold.
 Execution trace:
-        <console>(19,0): anon0
-        <console>(28,0): inline$find$0$anon0
-        <console>(38,0): inline$find$0$anon4_LoopBody
-        <console>(42,0): inline$check$0$Entry
-        <console>(57,0): inline$check$0$anon4_Else
-        <console>(62,0): inline$check$0$anon3
-        <console>(65,0): inline$check$0$Return
+    <console>(19,0): anon0
+    <console>(28,0): inline$find$0$anon0
+    <console>(38,0): inline$find$0$anon4_LoopBody
+    <console>(42,0): inline$check$0$Entry
+    <console>(57,0): inline$check$0$anon4_Else
+    <console>(62,0): inline$check$0$anon3
+    <console>(65,0): inline$check$0$Return
 <console>(100,4): Error BP5001: This assertion might not hold.
 Execution trace:
-        <console>(19,0): anon0
-        <console>(28,0): inline$find$0$anon0
-        <console>(38,0): inline$find$0$anon4_LoopBody
-        <console>(42,0): inline$check$0$Entry
-        <console>(52,0): inline$check$0$anon4_Then
-        <console>(65,0): inline$check$0$Return
-        <console>(73,0): inline$find$0$anon5_Then
-        <console>(87,0): inline$find$0$anon3
-        <console>(90,0): inline$find$0$Return
-        <console>(95,0): anon0$1
-        <console>(98,0): anon3_Then
+    <console>(19,0): anon0
+    <console>(28,0): inline$find$0$anon0
+    <console>(38,0): inline$find$0$anon4_LoopBody
+    <console>(42,0): inline$check$0$Entry
+    <console>(52,0): inline$check$0$anon4_Then
+    <console>(65,0): inline$check$0$Return
+    <console>(73,0): inline$find$0$anon5_Then
+    <console>(87,0): inline$find$0$anon3
+    <console>(90,0): inline$find$0$Return
+    <console>(95,0): anon0$1
+    <console>(98,0): anon3_Then
 <console>(50,4): Error BP5003: A postcondition might not hold on this return path.
 <console>(78,2): Related location: This is the postcondition that might not hold.
 Execution trace:
-        <console>(10,0): anon0
-        <console>(20,0): anon4_LoopBody
-        <console>(24,0): inline$check$0$Entry
-        <console>(39,0): inline$check$0$anon4_Else
-        <console>(44,0): inline$check$0$anon3
-        <console>(47,0): inline$check$0$Return
+    <console>(10,0): anon0
+    <console>(20,0): anon4_LoopBody
+    <console>(24,0): inline$check$0$Entry
+    <console>(39,0): inline$check$0$anon4_Else
+    <console>(44,0): inline$check$0$anon3
+    <console>(47,0): inline$check$0$Return
 <console>(99,0): Error BP5003: A postcondition might not hold on this return path.
 <console>(78,2): Related location: This is the postcondition that might not hold.
 Execution trace:
-        <console>(85,0): anon0
-        <console>(93,0): anon4_Else
-        <console>(98,0): anon3
+    <console>(85,0): anon0
+    <console>(93,0): anon4_Else
+    <console>(98,0): anon3
 
 Boogie program verifier finished with 0 verified, 4 errors
 -------------------- test6.bpl --------------------
@@ -1442,10 +1442,10 @@ Boogie program verifier finished with 5 verified, 0 errors
 -------------------- test5.bpl --------------------
 test5.bpl(37,3): Error BP5001: This assertion might not hold.
 Execution trace:
-        test5.bpl(34,10): anon0
-        test5.bpl(28,10): inline$P$0$anon0
-        test5.bpl(28,10): inline$P$1$anon0
-        test5.bpl(34,10): anon0$2
+    test5.bpl(34,10): anon0
+    test5.bpl(28,10): inline$P$0$anon0
+    test5.bpl(28,10): inline$P$1$anon0
+    test5.bpl(34,10): anon0$2
 
 Boogie program verifier finished with 4 verified, 1 error
 -------------------- expansion.bpl --------------------
@@ -1465,37 +1465,37 @@ expansion.bpl(33,22): Error: expansion: an identifier was used more than once
 *** more than one possible expansion for x1
 expansion3.bpl(18,3): Error BP5001: This assertion might not hold.
 Execution trace:
-        expansion3.bpl(18,3): anon0
+    expansion3.bpl(18,3): anon0
 
 Boogie program verifier finished with 1 verified, 1 error
 -------------------- Elevator.bpl --------------------
 Elevator.bpl(17,5): Error BP5005: This loop invariant might not be maintained by the loop.
 Execution trace:
-        Elevator.bpl(15,3): anon0
-        Elevator.bpl(15,3): anon0$1
-        Elevator.bpl(16,3): anon10_LoopHead
-        Elevator.bpl(19,5): anon10_LoopBody
-        Elevator.bpl(99,3): inline$MoveDown_Error$0$anon0
-        Elevator.bpl(24,7): anon13_Then$1
+    Elevator.bpl(15,3): anon0
+    Elevator.bpl(15,3): anon0$1
+    Elevator.bpl(16,3): anon10_LoopHead
+    Elevator.bpl(19,5): anon10_LoopBody
+    Elevator.bpl(99,3): inline$MoveDown_Error$0$anon0
+    Elevator.bpl(24,7): anon13_Then$1
 
 Boogie program verifier finished with 1 verified, 1 error
 -------------------- Elevator.bpl with empty blocks --------------------
 Elevator.bpl(17,5): Error BP5005: This loop invariant might not be maintained by the loop.
 Execution trace:
-        Elevator.bpl(15,3): anon0
-        Elevator.bpl(68,23): inline$Initialize$0$Entry
-        Elevator.bpl(71,13): inline$Initialize$0$anon0
-        Elevator.bpl(68,23): inline$Initialize$0$Return
-        Elevator.bpl(15,3): anon0$1
-        Elevator.bpl(16,3): anon10_LoopHead
-        Elevator.bpl(19,5): anon10_LoopBody
-        Elevator.bpl(19,5): anon11_Else
-        Elevator.bpl(19,5): anon12_Else
-        Elevator.bpl(24,7): anon13_Then
-        Elevator.bpl(94,23): inline$MoveDown_Error$0$Entry
-        Elevator.bpl(99,3): inline$MoveDown_Error$0$anon0
-        Elevator.bpl(94,23): inline$MoveDown_Error$0$Return
-        Elevator.bpl(24,7): anon13_Then$1
+    Elevator.bpl(15,3): anon0
+    Elevator.bpl(68,23): inline$Initialize$0$Entry
+    Elevator.bpl(71,13): inline$Initialize$0$anon0
+    Elevator.bpl(68,23): inline$Initialize$0$Return
+    Elevator.bpl(15,3): anon0$1
+    Elevator.bpl(16,3): anon10_LoopHead
+    Elevator.bpl(19,5): anon10_LoopBody
+    Elevator.bpl(19,5): anon11_Else
+    Elevator.bpl(19,5): anon12_Else
+    Elevator.bpl(24,7): anon13_Then
+    Elevator.bpl(94,23): inline$MoveDown_Error$0$Entry
+    Elevator.bpl(99,3): inline$MoveDown_Error$0$anon0
+    Elevator.bpl(94,23): inline$MoveDown_Error$0$Return
+    Elevator.bpl(24,7): anon13_Then$1
 
 Boogie program verifier finished with 1 verified, 1 error
 -------------------- expansion2.bpl --------------------
@@ -1505,9 +1505,6 @@ Boogie program verifier finished with 1 verified, 0 errors
 ---------- EXPANSION2.SX: 0
 
 ---------- EXPANSION2.SX: 0
--------------------- expansion4.bpl --------------------
-
-Boogie program verifier finished with 3 verified, 0 errors
 -------------------- fundef.bpl --------------------
 
 function {:inline true} foo(x: int) : bool
@@ -1528,7 +1525,7 @@ axiom (forall x: int :: { foo3(x): bool } foo3(x): bool == (x > 0));
 Boogie program verifier finished with 0 verified, 0 errors
 fundef2.bpl(6,3): Error BP5001: This assertion might not hold.
 Execution trace:
-        fundef2.bpl(5,3): anon0
+    fundef2.bpl(5,3): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 -------------------- polyInline.bpl --------------------
@@ -1537,10 +1534,10 @@ polyInline.bpl(31,9): Warning: type parameter alpha is ambiguous, instantiating 
 polyInline.bpl(35,9): Warning: type parameter alpha is ambiguous, instantiating to int
 polyInline.bpl(23,3): Error BP5001: This assertion might not hold.
 Execution trace:
-        polyInline.bpl(20,3): anon0
+    polyInline.bpl(20,3): anon0
 polyInline.bpl(39,3): Error BP5001: This assertion might not hold.
 Execution trace:
-        polyInline.bpl(27,3): anon0
+    polyInline.bpl(27,3): anon0
 
 Boogie program verifier finished with 0 verified, 2 errors
 polyInline.bpl(27,9): Warning: type parameter alpha is ambiguous, instantiating to int
@@ -1548,9 +1545,9 @@ polyInline.bpl(31,9): Warning: type parameter alpha is ambiguous, instantiating 
 polyInline.bpl(35,9): Warning: type parameter alpha is ambiguous, instantiating to int
 polyInline.bpl(23,3): Error BP5001: This assertion might not hold.
 Execution trace:
-        polyInline.bpl(20,3): anon0
+    polyInline.bpl(20,3): anon0
 polyInline.bpl(39,3): Error BP5001: This assertion might not hold.
 Execution trace:
-        polyInline.bpl(27,3): anon0
+    polyInline.bpl(27,3): anon0
 
 Boogie program verifier finished with 0 verified, 2 errors

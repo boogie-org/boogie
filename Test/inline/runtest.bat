@@ -30,9 +30,6 @@ echo -------------------- expansion2.bpl --------------------
 %SystemRoot%\system32\find.exe /C "xxgz" expansion2.sx
 %SystemRoot%\system32\find.exe /C "xxf1" expansion2.sx
 
-echo -------------------- expansion4.bpl --------------------
-%BGEXE% %* /bv:i expansion4.bpl
-
 echo -------------------- fundef.bpl --------------------
 %BGEXE% %* /print:- /env:0 fundef.bpl
 %BGEXE% %* fundef2.bpl
