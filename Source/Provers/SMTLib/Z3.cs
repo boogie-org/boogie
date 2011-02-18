@@ -100,7 +100,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     // options that work only on the command line
-    static string[] commandLineOnly = { "TRACE" };
+    static string[] commandLineOnly = { "TRACE", "PROOF_MODE" };
 
     public static void SetupOptions(SMTLibProverOptions options)
     {
@@ -110,7 +110,7 @@ namespace Microsoft.Boogie.SMTLib
       options.AddWeakSmtOption("MODEL_PARTIAL", "true");
       //options.WeakAddSmtOption("MODEL_VALUE_COMPLETION", "false");
       options.AddWeakSmtOption("MODEL_HIDE_UNUSED_PARTITIONS", "false");
-      //options.WeakAddSmtOption("MODEL_V1", "true");
+      options.AddWeakSmtOption("MODEL_V2", "true");
       options.AddWeakSmtOption("ASYNC_COMMANDS", "false");
 
       if (!options.OptimizeForBv) {
@@ -152,16 +152,17 @@ namespace Microsoft.Boogie.SMTLib
       options.AddWeakSmtOption("TYPE_CHECK", "true");
       options.AddWeakSmtOption("BV_REFLECT", "true");
 
-      if (CommandLineOptions.Clo.LazyInlining == 2)
+      if (CommandLineOptions.Clo.LazyInlining == 2) {
         options.AddWeakSmtOption("MACRO_EXPANSION", "true");
+        options.AddWeakSmtOption("WARNING", "false");
+      }
 
       // legacy option handling
       foreach (string opt in CommandLineOptions.Clo.Z3Options) {
         Contract.Assert(opt != null);
         int eq = opt.IndexOf("=");
-        var optName = opt.Substring(0, eq);
-        if (eq > 0 && 'A' <= opt[0] && opt[0] <= 'Z' && !commandLineOnly.Contains(optName)) {
-          options.AddSmtOption(optName, opt.Substring(eq + 1));
+        if (eq > 0 && 'A' <= opt[0] && opt[0] <= 'Z' && !commandLineOnly.Contains(opt.Substring(0, eq))) {
+          options.AddSmtOption(opt.Substring(0, eq), opt.Substring(eq + 1));
         } else {
           options.AddSolverArgument(opt);
         }

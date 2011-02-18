@@ -145,6 +145,8 @@ namespace Microsoft.Boogie.SMTLib
       if (common.Length == 0) {
         SendCommon("(set-option :print-success false)");
         SendCommon("(set-info :smt-lib-version 2.0)");
+        if (options.ExpectingModel())
+          SendCommon("(set-option :produce-proofs true)");
         foreach (var opt in options.SmtOptions) {
           SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
         }
@@ -487,13 +489,12 @@ namespace Microsoft.Boogie.SMTLib
 
       VCExpressionGenerator gen = new VCExpressionGenerator();
       List<string>/*!>!*/ proverCommands = new List<string/*!*/>();
-      // TODO: what is supported?
-      //      proverCommands.Add("all");
-      //      proverCommands.Add("simplify");
-      //      proverCommands.Add("simplifyLike");
+      proverCommands.Add("all");
+      proverCommands.Add("smtlib");
+      var opts = (SMTLibProverOptions)options ;
+      if (opts.UseZ3)
+        proverCommands.Add("z3");
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
-      Contract.Assert(genOptions != null);
-
       return new DeclFreeProverContext(gen, genOptions);
     }
 

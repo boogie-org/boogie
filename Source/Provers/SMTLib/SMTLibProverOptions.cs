@@ -39,6 +39,16 @@ namespace Microsoft.Boogie.SMTLib
     public string Inspector = null;
     public bool OptimizeForBv = false;
 
+    public bool ExpectingModel()
+    {
+      return CommandLineOptions.Clo.PrintErrorModel >= 1 ||
+             CommandLineOptions.Clo.EnhancedErrorMessages == 1 ||
+             CommandLineOptions.Clo.ModelViewFile != null ||
+             CommandLineOptions.Clo.ContractInfer ||
+             CommandLineOptions.Clo.LazyInlining > 0 ||
+             CommandLineOptions.Clo.StratifiedInlining > 0;
+    }
+
     public void AddSolverArgument(string s)
     {
       SolverArguments.Add(s);
