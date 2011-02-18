@@ -180,7 +180,7 @@ namespace Microsoft.Boogie.SMTLib
         var c = currLine[linePos++];
         if (quoted && c == beg)
           break;
-        if (!quoted && char.IsWhiteSpace(c)) {
+        if (!quoted && (char.IsWhiteSpace(c) || c == '(' || c == ')')) {
           linePos--;
           break;
         }
