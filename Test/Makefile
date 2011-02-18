@@ -4,10 +4,8 @@ NORMAL = $(shell awk '{ if (tolower($$2) ~ /^use$$/) print $$1 }' $(TESTS_FILE))
 TESTS = $(NORMAL)
 
 all: $(addprefix run-, $(TESTS))
-	@echo ALL OK
 
 dafny: $(addprefix rundfy-, $(TESTS))
-	@echo ALL OK
 
 show:
 	@echo $(TESTS)
@@ -16,7 +14,7 @@ long:
 	$(MAKE) TESTS="$(NORMAL) $(LONG)" all
 
 run-%:
-	@if ls -f $*/*.dfy >/dev/null 2>&1 ; then true ; else ./runtest.bat $* $(FLAGS) ; fi
+	@if ls -f $*/*.dfy >/dev/null 2>&1 ; then true ; else ./runtest.bat $* $(FLAGS) ; fi || :
 
 rundfy-%:
-	@if ls -f $*/*.dfy >/dev/null 2>&1 ; then ./runtest.bat $* $(FLAGS) ; fi
+	@if ls -f $*/*.dfy >/dev/null 2>&1 ; then ./runtest.bat $* $(FLAGS) ; fi || :
