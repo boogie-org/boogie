@@ -89,6 +89,11 @@ namespace Microsoft.Basetypes {
       }
     }
 
+    public byte[] ToByteArray()
+    {
+      return this.val.ToByteArray();
+    }
+
     internal BigNum(System.Numerics.BigInteger val) {
       this.val = val;
     }
