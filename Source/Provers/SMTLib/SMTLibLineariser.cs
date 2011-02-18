@@ -159,10 +159,9 @@ namespace Microsoft.Boogie.SMTLib
       else if (node == VCExpressionGenerator.False)
         wr.Write("false");
       else if (node is VCExprIntLit) {
-        // some SMT-solvers do not understand negative literals
-        // (e.g., yices)
         BigNum lit = ((VCExprIntLit)node).Val;
         if (lit.IsNegative)
+          // In SMT2 "-42" is an identifier (SMT2, Sect. 3.2 "Symbols")
           wr.Write("(- 0 {0})", lit.Abs);
         else
           wr.Write(lit);

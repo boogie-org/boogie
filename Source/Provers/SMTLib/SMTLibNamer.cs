@@ -8,9 +8,8 @@ namespace Microsoft.Boogie.SMTLib
 {
   public class SMTLibNamer : UniqueNamer
   {
-    // The following Boogie ID characters are not SMT ID characters: `'\#
-    // Accomodate Z3 SMT2 lexer bug - it doesn't like @ and such in identifiers    
-    const string idCharacters = "_"; // "~!@$%^&*_-+=<>.?/";    
+    // The following Boogie ID characters are not SMT ID characters: `'\#    
+    const string idCharacters = "~!@$%^&*_-+=<>.?/";
 
 
     static string[] reservedSmtWordsList = 
@@ -118,7 +117,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public SMTLibNamer()
     {
-      this.Spacer = "__";
+      this.Spacer = "@@";
       InitSymbolLists();
     }
   }
