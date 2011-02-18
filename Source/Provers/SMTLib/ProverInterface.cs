@@ -146,7 +146,7 @@ namespace Microsoft.Boogie.SMTLib
         SendCommon("(set-option :print-success false)");
         SendCommon("(set-info :smt-lib-version 2.0)");
         if (options.ExpectingModel())
-          SendCommon("(set-option :produce-proofs true)");
+          SendCommon("(set-option :produce-models true)");
         foreach (var opt in options.SmtOptions) {
           SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
         }
@@ -301,25 +301,11 @@ namespace Microsoft.Boogie.SMTLib
             globalResult = result;
 
           if (result == Outcome.Invalid && options.UseZ3) {
-            SendThisVC("(get-info :labels)");
-            Process.Ping();
-
-            while (true) {
-              var resp = Process.GetProverResponse();
-              if (resp == null || Process.IsPong(resp))
-                break;
-              if (resp.Name == ":labels" && resp.ArgCount >= 1) {
-                var labels = resp[0].Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
-                negLabel = labels.FirstOrDefault(l => l.StartsWith("@"));
-                var labelNums = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
-                handler.OnModel(labelNums, null);
-                if (negLabel == null)
-                  HandleProverError("No negative label in: " + labels.Concat(" "));
-              }
-            }
+            negLabel = GetLabelsInfo(handler);
           }
 
           if (negLabel == null) break;
+
           SendThisVC("(assert " + SMTLibNamer.QuoteId(SMTLibNamer.BlockedLabel(negLabel)) + ")");
           SendThisVC("(check-sat)");
         }
@@ -332,6 +318,58 @@ namespace Microsoft.Boogie.SMTLib
       } finally {
         currentErrorHandler = null;
       }
+    }
+
+    private string GetLabelsInfo(ErrorHandler handler)
+    {
+      SendThisVC("(get-info :labels)");
+      if (options.ExpectingModel())
+        SendThisVC("(get-info :model)");
+      Process.Ping();
+
+      string negLabel = null;
+      List<string> labelNums = null;
+      Model theModel = null;
+
+      while (true) {
+        var resp = Process.GetProverResponse();
+        if (resp == null || Process.IsPong(resp))
+          break;
+        if (resp.Name == ":labels" && resp.ArgCount >= 1) {
+          var labels = resp[0].Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
+          negLabel = labels.FirstOrDefault(l => l.StartsWith("@"));
+          if (labelNums != null) HandleProverError("Got multiple :labels responses");
+          labelNums = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();          
+          if (negLabel == null)
+            HandleProverError("No negative label in: " + labels.Concat(" "));
+        } else if (resp.Name == ":model" && resp.ArgCount >= 1) {
+          var modelStr = resp[0].Name;
+          List<Model> models = null;
+          try {
+            models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelStr));
+          } catch (ArgumentException exn) {
+            HandleProverError("Model parsing error: " + exn.Message);
+          }
+
+          if (models != null) {
+            if (models.Count == 0) HandleProverError("Could not parse any models");
+            else {
+              if (models.Count > 1) HandleProverError("Expecting only one model, got multiple");
+              if (theModel != null) HandleProverError("Got multiple :model responses");
+              theModel = models[0];
+            }
+          }
+        }
+      }
+
+      if (labelNums != null) {
+        ErrorModel m = null;
+        if (theModel != null)
+          m = new ErrorModel(theModel);
+        handler.OnModel(labelNums, m);
+      }
+
+      return negLabel;
     }
 
     private Outcome GetResponse()

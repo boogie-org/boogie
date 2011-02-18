@@ -325,12 +325,14 @@ namespace Microsoft.Boogie {
   // -----------------------------------------------------------------------------------------------
   // -----------------------------------------------------------------------------------------------
 
+  // This class will go away soon. Use Model class instead.
   public class ErrorModel {
     public Dictionary<string/*!*/, int>/*!*/ identifierToPartition;
     public List<List<string/*!>>!*/>> partitionToIdentifiers;
     public List<Object>/*!*/ partitionToValue;
     public Dictionary<object, int>/*!*/ valueToPartition;
     public Dictionary<string/*!*/, List<List<int>>/*!*/>/*!*/ definedFunctions;
+    public Model comesFrom;
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -357,8 +359,20 @@ namespace Microsoft.Boogie {
       this.definedFunctions = definedFunctions;
     }
 
+    public ErrorModel(Model m)
+    {
+      this.comesFrom = m;
+      this.identifierToPartition = new Dictionary<string, int>();
+      this.partitionToIdentifiers = new List<List<string>>();
+      this.valueToPartition = new Dictionary<object, int>();
+      this.definedFunctions = new Dictionary<string, List<List<int>>>();
+    }
+
     public Model ToModel()
     {
+      if (comesFrom != null)
+        return comesFrom;
+
       Model m = new Model();
       // create an Element for every partition
       Model.Element[] elts = new Model.Element[partitionToValue.Count];
