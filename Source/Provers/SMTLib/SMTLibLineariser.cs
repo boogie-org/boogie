@@ -120,7 +120,6 @@ namespace Microsoft.Boogie.SMTLib
 
     }
 
-
     public static string TypeToString(Type t)
     {
       Contract.Requires(t != null);
@@ -131,8 +130,7 @@ namespace Microsoft.Boogie.SMTLib
       else if (t.IsInt)
         return "Int";
       else if (t.IsBv) {
-        Contract.Assert(false);
-        return "$bv" + t.BvBits;
+        return "(_ BitVec " + t.BvBits + ")";
       } else {
         StringBuilder sb = new StringBuilder();
         sb.Append("T@");
@@ -141,7 +139,16 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-
+    public static string ExtractBuiltin(Function f)
+    {
+      Contract.Requires(f != null);
+      string retVal = null;
+      retVal = f.FindStringAttribute("bvbuiltin");
+      if (retVal == null) {
+        retVal = f.FindStringAttribute("builtin");
+      }
+      return retVal;
+    }
 
     /////////////////////////////////////////////////////////////////////////////////////
 
@@ -508,19 +515,42 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
+      static char[] hex = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
       public bool VisitBvOp(VCExprNAry node, LineariserOptions options)
       {
-       { Contract.Assert(false); throw new NotImplementedException(); }       // TODO
+        var lit = (VCExprIntLit)node[0];
+        var bytes = lit.Val.ToByteArray();
+        if (node.Type.BvBits % 8 == 0) {
+          wr.Write("#x");
+          for (var pos = node.Type.BvBits / 8 - 1; pos >= 0; pos--) {
+            var k = pos < bytes.Length ? bytes[pos] : 0;
+            wr.Write(hex[k >> 4]);
+            wr.Write(hex[k & 0xf]);
+          }
+        } else {
+          wr.Write("#b");
+          for (var pos = node.Type.BvBits - 1; pos >= 0; pos--) {
+            var i = pos >> 3;
+            var k = i < bytes.Length ? bytes[i] : 0;
+            wr.Write((k & (1 << (pos & 7))) == 0 ? '0' : '1');
+          }
+        }
+        return true;
       }
 
       public bool VisitBvExtractOp(VCExprNAry node, LineariserOptions options)
       {
-       { Contract.Assert(false); throw new NotImplementedException(); }       // TODO
+        var op = (VCExprBvExtractOp)node.Op;
+        wr.Write("((_ extract {0} {1}) ", op.End - 1, op.Start);
+        ExprLineariser.Linearise(node[0], options);
+        wr.Write(")");
+        return true;
       }
 
       public bool VisitBvConcatOp(VCExprNAry node, LineariserOptions options)
       {
-       { Contract.Assert(false); throw new NotImplementedException(); }       // TODO
+        WriteApplication("concat", node, options);
+        return true;
       }
 
       public bool VisitAddOp(VCExprNAry node, LineariserOptions options)
@@ -593,7 +623,13 @@ namespace Microsoft.Boogie.SMTLib
       {
         VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)node.Op;
         Contract.Assert(op != null);
-        string printedName = ExprLineariser.Namer.GetQuotedName(op.Func, op.Func.Name);
+        string printedName;
+
+        var builtin = ExtractBuiltin(op.Func);
+        if (builtin != null)
+          printedName = builtin;
+        else
+          printedName = ExprLineariser.Namer.GetQuotedName(op.Func, op.Func.Name);
         Contract.Assert(printedName != null);
 
         WriteApplication(printedName, node, options);

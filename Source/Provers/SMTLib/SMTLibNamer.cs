@@ -25,6 +25,15 @@ namespace Microsoft.Boogie.SMTLib
       "=>", // implies (sic!)
       // Integers
       "Int", "*", "/", "-", "+", "<", "<=", ">", ">=",
+      // Bitvectors
+      "extract", "concat", 
+      "bvnot", "bvneg", "bvand", "bvor", "bvadd", "bvmul", "bvudiv", "bvurem", "bvshl", "bvlshr", "bvult",
+      // Z3 (and not only?) extensions to bitvectors
+      "bit1", "bit0", "bvsub", "bvsdiv", "bvsrem", "bvsmod", "bvsdiv0", "bvudiv0", "bvsrem0", "bvurem0",
+      "bvsmod0", "bvsdiv_i", "bvudiv_i", "bvsrem_i", "bvurem_i", "bvumod_i", "bvule", "bvsle", "bvuge",
+      "bvsge", "bvslt", "bvugt", "bvsgt", "bvxor", "bvnand", "bvnor", "bvxnor", "sign_extend", "zero_extend", 
+      "repeat", "bvredor", "bvredand", "bvcomp", "bvumul_noovfl", "bvsmul_noovfl", "bvsmul_noudfl", "bvashr",
+      "rotate_left", "rotate_right", "ext_rotate_left", "ext_rotate_right", "int2bv", "bv2int",
       // SMT v1 stuff
       "flet", "implies", "!=", "if_then_else",
       // Z3 extensions

@@ -110,13 +110,17 @@ void ObjectInvariant()
         if (op != null && !KnownFunctions.ContainsKey(op.Func)) {
           Function f = op.Func;
           Contract.Assert(f != null);
-          string printedName = Namer.GetQuotedName(f, f.Name);
-          Contract.Assert(printedName != null);
+          
+          var builtin = SMTLibExprLineariser.ExtractBuiltin(f);
+          if (builtin == null) {
+            string printedName = Namer.GetQuotedName(f, f.Name);
+            Contract.Assert(printedName != null);
 
-          Contract.Assert(f.OutParams.Length == 1);
-          var argTypes = f.InParams.Cast<Variable>().MapConcat(p => TypeToStringReg(p.TypedIdent.Type), " ");
-          string decl = "(declare-fun " + printedName + " (" + argTypes + ") " + TypeToStringReg(f.OutParams[0].TypedIdent.Type) + ")";
-          AddDeclaration(decl);
+            Contract.Assert(f.OutParams.Length == 1);
+            var argTypes = f.InParams.Cast<Variable>().MapConcat(p => TypeToStringReg(p.TypedIdent.Type), " ");
+            string decl = "(declare-fun " + printedName + " (" + argTypes + ") " + TypeToStringReg(f.OutParams[0].TypedIdent.Type) + ")";
+            AddDeclaration(decl);
+          }
           KnownFunctions.Add(f, true);
         } else {
           var lab = node.Op as VCExprLabelOp;
