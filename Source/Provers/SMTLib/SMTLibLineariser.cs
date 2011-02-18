@@ -97,7 +97,15 @@ namespace Microsoft.Boogie.SMTLib
       if (syn != null) {
         TypeToStringHelper(syn.ExpandedType, sb);
       } else {
-        if (t.IsMap) {
+        if (t.IsMap && CommandLineOptions.Clo.UseArrayTheory) {
+          MapType m = t.AsMap;
+          Contract.Assert(m.MapArity == 1);
+          sb.Append("(Array ");
+          TypeToStringHelper(m.Arguments[0], sb);
+          sb.Append(" ");
+          TypeToStringHelper(m.Result, sb);
+          sb.Append(")");
+        } else if (t.IsMap) {
           MapType m = t.AsMap;
           sb.Append('[');
           for (int i = 0; i < m.MapArity; ++i) {
@@ -132,10 +140,13 @@ namespace Microsoft.Boogie.SMTLib
       else if (t.IsBv) {
         return "(_ BitVec " + t.BvBits + ")";
       } else {
-        StringBuilder sb = new StringBuilder();
-        sb.Append("T@");
+        StringBuilder sb = new StringBuilder();        
         TypeToStringHelper(t, sb);
-        return SMTLibNamer.QuoteId(sb.ToString());
+        var s = sb.ToString();
+        if (s[0] == '(')
+          return s;
+        else
+          return SMTLibNamer.QuoteId("T@" + s);
       }
     }
 

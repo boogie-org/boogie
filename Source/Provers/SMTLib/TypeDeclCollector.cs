@@ -168,7 +168,6 @@ void ObjectInvariant()
 
       if (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays) {
         KnownTypes.Add(type, true);
-        string declString = "";
         MapType mapType = type.AsMap;
         Contract.Assert(mapType != null);
 
@@ -178,21 +177,9 @@ void ObjectInvariant()
         }
         RegisterType(mapType.Result);
 
-        declString += "(declare-sort " + TypeToString(type) + " 0";
+        if (!CommandLineOptions.Clo.UseArrayTheory)
+          AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
 
-        /*
-        if (CommandLineOptions.Clo.UseArrayTheory) {
-          declString += " :BUILTIN Array ";
-          foreach (Type t in mapType.Arguments) {
-            declString += TypeToString(t);
-            declString += " ";
-          }
-          declString += TypeToString(mapType.Result);
-        }
-         */
-
-        declString += ")";
-        AddDeclaration(declString);
         return;
       }
 
