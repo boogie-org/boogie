@@ -313,7 +313,7 @@ namespace Microsoft.Boogie
           return new BitVector(this, name, szi);
         else
           return new Integer(this, name);
-      } else if (name[0] == '*' || name.StartsWith("val!")) {
+      } else if (name[0] == '*' || name.StartsWith("val!") || name.Contains("!val!")) {
         return new Uninterpreted(this, name);
       } else {
         return null;
@@ -635,7 +635,12 @@ namespace Microsoft.Boogie
                 if (tuple.Length == 0) continue;
                 if (tuple.Length == 1 && tuple[0] == "}") break;
                 if (tuple.Length < 3 || tuple[tuple.Length - 2] != "->") BadModel("invalid function tuple definition");
-                if (tuple[0] == "else") continue;
+                if (tuple[0] == "else") {
+                  if (tuple[tuple.Length - 1].EndsWith("}"))
+                    break;
+                  else
+                    continue;
+                }
                 if (fn == null)
                   fn = currModel.MkFunc(funName, tuple.Length - 2);
                 var args = new Element[fn.Arity];
