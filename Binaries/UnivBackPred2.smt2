@@ -8,4 +8,5 @@
 (declare-fun int_mod (Int Int) Int)
 (declare-fun UOrdering2 (|T@U| |T@U|) Bool)
 (declare-fun UOrdering3 (|T@T| |T@U| |T@U|) Bool)
-
+(declare-fun tickleBool (Bool) Bool)
+(assert (and (tickleBool true) (tickleBool false)))
