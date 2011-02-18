@@ -2046,7 +2046,7 @@ namespace Microsoft.Boogie {
                     2 - print Z3's error model plus reverse mappings         
                     4 - print Z3's error model in a more human readable way
   /printModelToFile:<file> : print model to <file> instead of console
-  /mv:<n>           0 - model view off, 1 (default) - model view on
+  /mv:<file>        Specify file where to save the model in BVD format
   /enhancedErrorMessages:<n> : 0 (default) - no enhanced error messages
                                1 - Z3 error model enhanced error messages
 
