@@ -3,6 +3,9 @@
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
 //-----------------------------------------------------------------------------
+
+//#define RECENT_Z3 // 2.20 or newer
+
 using System;
 using System.IO;
 using System.Diagnostics;
@@ -109,10 +112,17 @@ namespace Microsoft.Boogie.Z3
       List<OptionValue/*!*/>/*!*/ result = new List<OptionValue/*!*/>();
 
       AddOption(result, "MODEL_PARTIAL", "true");
-      AddOption(result, "MODEL_VALUE_COMPLETION", "false");
+      
       AddOption(result, "MODEL_HIDE_UNUSED_PARTITIONS", "false");
       AddOption(result, "MODEL_V1", "true");
       AddOption(result, "ASYNC_COMMANDS", "false");
+
+#if RECENT_Z3
+      AddOption(result, "AUTO_CONFIG", "false");
+      AddOption(result, "MBQI", "false");
+#else
+      AddOption(result, "MODEL_VALUE_COMPLETION", "false");
+#endif
 
       if (!opts.OptimizeForBv) {
         // Phase selection means to always try the negative literal polarity first, seems to be good for Boogie.
