@@ -212,7 +212,7 @@ namespace Microsoft.Boogie.SMTLib
       string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
       FlushAxioms();
 
-      SendThisVC("(push)");
+      SendThisVC("(push 1)");
       SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
       SendThisVC(vcString);
       FlushLogFile();
