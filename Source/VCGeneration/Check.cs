@@ -360,12 +360,62 @@ namespace Microsoft.Boogie {
     }
 
     public ErrorModel(Model m)
-    {
-      this.comesFrom = m;
+    {      
+      // this.comesFrom = m;
+
       this.identifierToPartition = new Dictionary<string, int>();
+      this.partitionToValue = new List<object>();
       this.partitionToIdentifiers = new List<List<string>>();
       this.valueToPartition = new Dictionary<object, int>();
       this.definedFunctions = new Dictionary<string, List<List<int>>>();
+
+      foreach (var e in m.Elements) {
+        Contract.Assert(e.Id == this.partitionToValue.Count);
+        object val;
+        switch (e.Kind) {
+          case Model.ElementKind.Uninterpreted:
+            val = null;            
+            break;
+          case Model.ElementKind.Integer:
+            val = BigNum.FromString(((Model.Integer)e).Numeral);            
+            break;
+          case Model.ElementKind.BitVector:
+            val = new BvConst(BigNum.FromString(((Model.BitVector)e).Numeral), ((Model.BitVector)e).Size);
+            break;
+          case Model.ElementKind.Boolean:
+            val = ((Model.Boolean)e).Value;
+            break;
+          default:
+            Contract.Assert(false);
+            val = null;
+            break;
+        }
+        this.partitionToValue.Add(val);
+        if (val != null)
+          this.valueToPartition[val] = e.Id;
+
+        var names = new List<string>();
+        this.partitionToIdentifiers.Add(names);
+        foreach (var app in e.Names) {
+          if (app.Func.Arity == 0) {
+            names.Add(app.Func.Name);
+            this.identifierToPartition[app.Func.Name] = e.Id;
+          }
+        }
+      }
+
+      foreach (var f in m.Functions) {
+        if (f.Arity > 0) {
+          var tuples = new List<List<int>>();
+          this.definedFunctions[f.Name] = tuples;
+          foreach (var app in f.Apps) {
+            var tpl = new List<int>(f.Arity + 1);
+            foreach (var a in app.Args) tpl.Add(a.Id);
+            tpl.Add(app.Result.Id);
+            tuples.Add(tpl);
+          }
+        }
+      }
     }
 
     public Model ToModel()
@@ -448,9 +498,99 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public virtual void Print(TextWriter writer) {
+    public virtual void Print(TextWriter writer)
+    {
       Contract.Requires(writer != null);
+
+      writer.WriteLine("Z3 error model: ");
+
+      writer.WriteLine("partitions:");
+      Contract.Assert(partitionToIdentifiers.Count == partitionToValue.Count);
+      for (int i = 0; i < partitionToIdentifiers.Count; i++) {
+        writer.Write("*" + i);
+        List<string> pti = partitionToIdentifiers[i];
+        if (pti != null && pti.Count != 0) {
+          writer.Write(" {");
+          for (int k = 0; k < pti.Count - 1; k++) {
+            writer.Write(pti[k] + " ");
+          }
+          //extra work to make sure no " " is at the end of the list of identifiers
+          if (pti.Count != 0) {
+            writer.Write(pti[pti.Count - 1]);
+          }
+          writer.Write("}");
+        }
+        // temp object needed for non-null checking
+        object tempPTVI = partitionToValue[i];
+        if (tempPTVI != null) {
+          if (tempPTVI.ToString() == "True") {
+            writer.Write(" -> " + "true" + "");
+          } else if (tempPTVI.ToString() == "False") {
+            writer.Write(" -> " + "false" + "");
+          } else if (tempPTVI is BigNum) {
+            writer.Write(" -> " + tempPTVI + ":int");
+          } else if (tempPTVI is List<List<int>>) {
+            List<List<int>> array = tempPTVI as List<List<int>>;
+            Contract.Assume(array != null);
+            writer.Write(" -> {");
+            foreach (List<int> l in array) {
+              if (l.Count == 2) {
+                writer.Write("*" + l[0] + " -> " + "*" + l[1] + "; ");
+              } else {
+                Contract.Assert((l.Count == 1));
+                writer.Write("else -> *" + l[0] + "}");
+              }
+            }
+          } else {
+            writer.Write(" -> " + tempPTVI + "");
+          }
+        } else {
+          writer.Write(" ");
+        }
+        writer.WriteLine();
+      }
+
+      writer.WriteLine("function interpretations:");
+      foreach (KeyValuePair<string, List<List<int>>> kvp in definedFunctions) {
+        Contract.Assert(kvp.Key != null);
+        writer.WriteLine(kvp.Key + " -> {");
+        List<List<int>> kvpValue = kvp.Value;
+        if (kvpValue != null) {
+          foreach (List<int> l in kvpValue) {
+            writer.Write("  ");
+            if (l != null) {
+              for (int i = 0; i < l.Count - 1; i++) {
+                writer.Write("*" + l[i] + " ");
+              }
+              if (l.Count == 1) {
+                writer.WriteLine("else -> #unspecified");
+              } else {
+                writer.WriteLine("-> " + "*" + l[l.Count - 1]);
+              }
+            }
+          }
+        }
+        writer.WriteLine("}");
+      }
+      writer.WriteLine("END_OF_MODEL");
+      writer.WriteLine(".");
+
+      if (CommandLineOptions.Clo.PrintErrorModel >= 2) {
+        writer.WriteLine("identifierToPartition:");
+        foreach (KeyValuePair<string, int> kvp in identifierToPartition) {
+          Contract.Assert(kvp.Key != null);
+          writer.WriteLine(kvp.Key + " : " + "*" + kvp.Value);
+        }
+
+        writer.WriteLine("valueToPartition:");
+        foreach (KeyValuePair<object, int> kvp in valueToPartition) {
+          writer.WriteLine(kvp.Key + " : " + "*" + kvp.Value);
+        }
+        writer.WriteLine("End of model.");
+      }
     }
+  
+
 
     public int LookupPartitionValue(int partition) {
       BigNum bignum = (BigNum)cce.NonNull(partitionToValue[partition]);
