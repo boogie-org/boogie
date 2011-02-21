@@ -4,6 +4,31 @@
 //
 //-----------------------------------------------------------------------------
 
+/*
+An instance of the Model class represents a single model returned from the SMT solver. This usually 
+corresponds to a single verification error. The model consists of elements and function interpretations.
+Additionally the model may contain a number of captured states, each consisting of a user-supplied name
+a mapping from Boogie variable names to model elements.
+
+Model elements (which used to be called “partitions” in Z3) are represented by instances of the 
+Model.Element class. Each element has an integer identity. The Element class has subclasses
+Uninterpreted, Boolean, Integer, and BitVector. The classes correspond to different sorts of 
+elements that the SMT solver may use. Each of these has properties for returning the actual 
+value (true/false or a number; for bitvectors also size). 
+
+A function interpretation is represented by Model.Func class. It consists of a name, arity, and 
+a list of defining tuples. A defining tuple (Model.FuncTuple) for a function of arity N has 
+N model elements as arguments and a single element as the result. A constant is a function 
+of arity 0, with just one defining tuple. Given a constant function f, the result element of 
+the defining tuple is retrieved with f.GetConstant().
+
+The Model.Element class exposes methods to look up all the functions that reference it in their 
+defining tuples. Additionally Model.Func allows lookup of specific tuples, based on the elements.
+
+An instance of the Model class represents a single model returned from the SMT solver.
+ 
+ */
+
 using System;
 using System.Linq;
 using System.Collections.Generic;
@@ -37,7 +62,11 @@ namespace Microsoft.Boogie
         } 
       }
 
-      protected Element(Model p) { Model = p; }
+      protected Element(Model p) 
+      { 
+        Model = p;
+        Id = Model.elements.Count;
+      }
       public abstract ElementKind Kind { get; }
       public virtual int AsInt() { throw new NotImplementedException(); }
     }
@@ -423,10 +452,10 @@ namespace Microsoft.Boogie
       InitialState = new CapturedState("<initial>", null);
       states.Add(InitialState);
       True = new Boolean(this, true);
-      False = new Boolean(this, false);
       elements.Add(True);
-      elements.Add(False);
       elementsByName.Add("true", True);
+      False = new Boolean(this, false);      
+      elements.Add(False);
       elementsByName.Add("false", False);
     }
 
