@@ -225,6 +225,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       "$is_claimable", 
       "$set_cardinality", "$set_difference", "$set_union",
       "$thread_local", "$unchecked", "$writes_at", 
+      "$array_range", "$arrays_disjoint",
+      "$byte_ptr_subtraction",
       },
 
       new string[] {
