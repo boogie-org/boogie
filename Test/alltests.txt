@@ -17,6 +17,7 @@ bitvectors       Use    Smoke tests for bitvectors
 smoke            Use    Soundness smoke testing
 test16           Use    Tests loop unrolling
 codeexpr         Use    Tests code expressions
+prover           Use    Tests checking various prover options
 test17           Postponed    Tests inference of parameterized contracts
 z3api            Postponed    Test for Z3 Managed .NET API prover
 houdini          Postponed    Test for Houdini decision procedure
