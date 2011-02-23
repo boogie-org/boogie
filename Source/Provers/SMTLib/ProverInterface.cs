@@ -72,7 +72,7 @@ namespace Microsoft.Boogie.SMTLib
 
       AxBuilder = axBuilder;
       Namer = new SMTLibNamer();
-      ctx.Namer = Namer;
+      ctx.parent = this;
       this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions)options, Namer);
 
       if (this.options.UseZ3) {
@@ -92,8 +92,8 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    readonly TypeAxiomBuilder AxBuilder;
-    readonly UniqueNamer Namer;
+    internal readonly TypeAxiomBuilder AxBuilder;
+    internal readonly UniqueNamer Namer;
     readonly TypeDeclCollector DeclCollector;
     readonly SMTLibProcess Process;
     readonly List<string> proverErrors = new List<string>();
@@ -567,7 +567,7 @@ namespace Microsoft.Boogie.SMTLib
 
   public class SMTLibProverContext : DeclFreeProverContext
   {
-    internal UniqueNamer Namer;
+    internal SMTLibProcessTheoremProver parent;
 
     public SMTLibProverContext(VCExpressionGenerator gen,
                                VCGenerationOptions genOptions)
@@ -578,8 +578,6 @@ namespace Microsoft.Boogie.SMTLib
     protected SMTLibProverContext(SMTLibProverContext par)
       : base(par)
     {
-      if (par.Namer != null)
-        this.Namer = (UniqueNamer)par.Namer; // .Clone();
     }
 
     public override object Clone()
@@ -589,7 +587,11 @@ namespace Microsoft.Boogie.SMTLib
 
     public override string Lookup(VCExprVar var)
     {
-      return Namer.Lookup(var);
+      VCExprVar v = parent.AxBuilder.TryTyped2Untyped(var);
+      if (v != null) {
+        var = v;
+      }
+      return parent.Namer.Lookup(var);
     }
   }
 
