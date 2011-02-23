@@ -403,6 +403,7 @@ namespace Microsoft.Boogie.SMTLib
     private Outcome GetResponse()
     {
       var result = Outcome.Undetermined;
+      var wasUnknown = false;
 
       Process.Ping();
 
@@ -416,14 +417,48 @@ namespace Microsoft.Boogie.SMTLib
             result = Outcome.Valid;
             break;
           case "sat":
+            result = Outcome.Invalid;
+            break;
           case "unknown":
             result = Outcome.Invalid;
+            wasUnknown = true;
             break;
           default:
             HandleProverError("Unexpected prover response: " + resp.ToString());
             break;
         }
       }
+
+      if (wasUnknown) {
+        if (options.UseZ3)
+          SendThisVC("(get-info :last-failure)");
+        else
+          SendThisVC("(get-info :reason-unknown)");
+        Process.Ping();
+
+        while (true) {
+          var resp = Process.GetProverResponse();
+          if (resp == null || Process.IsPong(resp))
+            break;
+
+          if (resp.ArgCount == 1 && (resp.Name == ":reason-unknown" || resp.Name == ":last-failure")) {
+            switch (resp[0].Name) {
+              case "memout":
+                result = Outcome.OutOfMemory;
+                break;
+              case "timeout":
+                result = Outcome.TimeOut;
+                break;
+              default:
+                break;
+            }
+          } else {
+            HandleProverError("Unexpected prover response (getting info about 'unknown' response): " + resp.ToString());
+          }
+        }
+
+      }
+
       return result;
     }
 
