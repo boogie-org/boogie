@@ -70,6 +70,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     internal readonly UniqueNamer Namer;
+    internal int UnderQuantifier = 0;
     internal readonly SMTLibProverOptions ProverOptions;
 
     public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibProverOptions opts)
@@ -231,6 +232,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       Contract.Assert(node.TypeParameters.Count == 0);
 
+      UnderQuantifier++;
       Namer.PushScope(); try {
 
         string kind = node.Quan == Quantifier.ALL ? "forall" : "exists";
@@ -275,6 +277,7 @@ namespace Microsoft.Boogie.SMTLib
         return true;
 
       } finally {
+        UnderQuantifier--;
         Namer.PopScope();
       }
     }
@@ -505,6 +508,11 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitLabelOp(VCExprNAry node, LineariserOptions options)
       {
+        if (ExprLineariser.UnderQuantifier > 0) {
+          ExprLineariser.Linearise(node[0], options);
+          return true;
+        }
+
         var op = (VCExprLabelOp)node.Op;
         if (ExprLineariser.ProverOptions.UseLabels) {
           // Z3 extension
