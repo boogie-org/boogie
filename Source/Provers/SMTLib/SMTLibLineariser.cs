@@ -298,7 +298,15 @@ namespace Microsoft.Boogie.SMTLib
             foreach (VCExpr e in vcTrig.Exprs) {
               Contract.Assert(e != null);
               wr.Write(" ");
-              Linearise(e, options);
+              var subPat = e;
+              var nary = e as VCExprNAry;
+              if (nary != null && (nary.Op == VCExpressionGenerator.NeqOp || nary.Op == VCExpressionGenerator.EqOp)) {
+                if (nary[0] is VCExprLiteral)
+                  subPat = nary[1];
+                else if (nary[1] is VCExprLiteral)
+                  subPat = nary[0];
+              }
+              Linearise(subPat, options);
             }
             wr.Write(")\n");
           }
