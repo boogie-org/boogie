@@ -196,6 +196,10 @@ void ObjectInvariant()
     private void RegisterSelect(VCExprNAry node)
     {
       RegisterType(node[0].Type);
+
+      if (CommandLineOptions.Clo.UseArrayTheory)
+        return;
+
       string name = SimplifyLikeExprLineariser.SelectOpName(node);
       name = Namer.GetQuotedName(name, name);
 
@@ -209,6 +213,10 @@ void ObjectInvariant()
     private void RegisterStore(VCExprNAry node)
     {
       RegisterType(node.Type);        // this is the map type, registering it should register also the index and value types
+
+      if (CommandLineOptions.Clo.UseArrayTheory)
+        return;
+
       string name = SimplifyLikeExprLineariser.StoreOpName(node);
       name = Namer.GetQuotedName(name, name);
 
@@ -216,7 +224,7 @@ void ObjectInvariant()
         string decl = "(declare-fun " + name + " (" + node.MapConcat(n => TypeToString(n.Type), " ") + ") " + TypeToString(node.Type) + ")";
         AddDeclaration(decl);
 
-        if (CommandLineOptions.Clo.MonomorphicArrays && !CommandLineOptions.Clo.UseArrayTheory) {
+        if (CommandLineOptions.Clo.MonomorphicArrays) {
           var sel = SimplifyLikeExprLineariser.SelectOpName(node);
           sel = Namer.GetQuotedName(sel, sel);
           

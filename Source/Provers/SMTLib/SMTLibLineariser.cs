@@ -512,9 +512,11 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       public bool VisitSelectOp(VCExprNAry node, LineariserOptions options)
-      {
+      {        
         var name = SimplifyLikeExprLineariser.SelectOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
+        if (CommandLineOptions.Clo.UseArrayTheory)
+          name = "select";
         WriteApplication(name, node, options);
         return true;
       }
@@ -523,6 +525,8 @@ namespace Microsoft.Boogie.SMTLib
       {
         var name = SimplifyLikeExprLineariser.StoreOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
+        if (CommandLineOptions.Clo.UseArrayTheory)
+          name = "store";
         WriteApplication(name, node, options);
         return true;
       }
