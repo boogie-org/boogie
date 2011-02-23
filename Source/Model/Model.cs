@@ -12,9 +12,10 @@ a mapping from Boogie variable names to model elements.
 
 Model elements (which used to be called “partitions” in Z3) are represented by instances of the 
 Model.Element class. Each element has an integer identity. The Element class has subclasses
-Uninterpreted, Boolean, Integer, and BitVector. The classes correspond to different sorts of 
+Uninterpreted, Boolean, Integer, BitVector, and Array. The classes correspond to different sorts of 
 elements that the SMT solver may use. Each of these has properties for returning the actual 
-value (true/false or a number; for bitvectors also size). 
+value (true/false or a number; for bitvectors also size). For an array the interpretation is a
+particular function defined elsewhere in the model.
 
 A function interpretation is represented by Model.Func class. It consists of a name, arity, and 
 a list of defining tuples. A defining tuple (Model.FuncTuple) for a function of arity N has 
@@ -44,7 +45,8 @@ namespace Microsoft.Boogie
       Integer,
       BitVector,
       Boolean,
-      Uninterpreted
+      Uninterpreted,
+      Array
     }
 
     abstract public class Element
@@ -109,6 +111,14 @@ namespace Microsoft.Boogie
       internal Boolean(Model p, bool v) : base(p) { Value = v; }
       public override ElementKind Kind { get { return ElementKind.Boolean; } }
       public override string ToString() { return Value ? "true" : "false"; }      
+    }
+
+    public class Array : Element
+    {
+      public Func Value;
+      internal Array(Model p, Func v) : base(p) { Value = v; }
+      public override ElementKind Kind { get { return ElementKind.Array; } }
+      public override string ToString() { return string.Format("as-array[{0}]", Value.Name); }
     }
     #endregion
 
@@ -359,6 +369,9 @@ namespace Microsoft.Boogie
           return new Integer(this, name);
       } else if (name[0] == '*' || name.StartsWith("val!") || name.Contains("!val!")) {
         return new Uninterpreted(this, name);
+      } else if (name.StartsWith("as-array[") && name.EndsWith("]")) {
+        var fnName = name.Substring(9, name.Length - 10);
+        return new Array(this, MkFunc(fnName, 1));
       } else {
         return null;
       }

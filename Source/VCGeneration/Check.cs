@@ -386,6 +386,9 @@ namespace Microsoft.Boogie {
             break;
           case Model.ElementKind.Boolean:
             val = ((Model.Boolean)e).Value;
+            break;     
+          case Model.ElementKind.Array:
+            val = null;
             break;
           default:
             Contract.Assert(false);
@@ -424,6 +427,15 @@ namespace Microsoft.Boogie {
           tuples.Add(elseTpl);
         }
       }
+
+      foreach (var e in m.Elements) {
+        var arr = e as Model.Array;
+        if (arr != null) {
+          var tuples = this.definedFunctions[arr.Value.Name];
+          this.partitionToValue[arr.Id] = tuples;
+          this.valueToPartition[tuples] = arr.Id;
+        }
+      }
     }
 
     public Model ToModel()
@@ -434,12 +446,21 @@ namespace Microsoft.Boogie {
       Model m = new Model();
       // create an Element for every partition
       Model.Element[] elts = new Model.Element[partitionToValue.Count];
+      var asArrayIdx = 0;
       for (int i = 0; i < partitionToValue.Count; ++i) {
         var v = partitionToValue[i];
         if (v == null)
           elts[i] = m.MkElement(string.Format("*{0}", i));
-        else
-          elts[i] = m.MkElement(v.ToString());
+        else {
+          var ll = v as List<List<int>>;
+          if (ll != null) {
+            var arrName = "boogie-array#" + asArrayIdx++;
+            this.definedFunctions[arrName] = ll;
+            elts[i] = m.MkElement("as-array[" + arrName + "]");
+          }
+          else
+            elts[i] = m.MkElement(v.ToString());
+        }
 
         foreach (var id in partitionToIdentifiers[i]) {
           var f = m.MkFunc(id, 0);
