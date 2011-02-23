@@ -417,7 +417,10 @@ namespace Microsoft.Boogie {
             tuples.Add(tpl);
           }
           var elseTpl = new List<int>();
-          elseTpl.Add(elseElt.Id);
+          if (f.Else != null)
+            elseTpl.Add(f.Else.Id);
+          else
+            elseTpl.Add(elseElt.Id);
           tuples.Add(elseTpl);
         }
       }
@@ -458,6 +461,11 @@ namespace Microsoft.Boogie {
         // get the Func ("it doesn't matter if you get the funk, just as long as the funk gets you", from Ulco Bed's "Get The Funk" on Candy Dulfer's 1990 album Saxuality)
         var name = t.Key;
         var arity = tuples[0].Count - 1;
+
+        // this may happen if the function only has the else clause; the 1 is just the best guess in such case
+        if (arity == 0)
+          arity = 1; 
+
         Model.Func f;
         if (Regex.IsMatch(name, "^MapType[0-9]*Select$")) {
           name = string.Format("[{0}]", arity);
@@ -477,10 +485,13 @@ namespace Microsoft.Boogie {
 
         var args = new Model.Element[arity];
         foreach (var l in tuples) {
-          if (l.Count == 1) continue;
-          for (int i = 0; i < f.Arity; ++i)
-            args[i] = elts[l[i]];
-          f.AddApp(elts[l[f.Arity]], args);
+          if (l.Count == 1) {
+            f.Else = elts[l[0]];
+          } else {
+            for (int i = 0; i < f.Arity; ++i)
+              args[i] = elts[l[i]];
+            f.AddApp(elts[l[f.Arity]], args);
+          }
         }
       }
 

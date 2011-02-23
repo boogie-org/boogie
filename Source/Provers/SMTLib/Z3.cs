@@ -107,7 +107,7 @@ namespace Microsoft.Boogie.SMTLib
       // don't bother with auto-config - it would disable explicit settings for eager threshold and so on
       options.AddWeakSmtOption("AUTO_CONFIG", "false");
 
-      options.AddWeakSmtOption("MODEL_PARTIAL", "true");
+      //options.AddWeakSmtOption("MODEL_PARTIAL", "true");
       //options.WeakAddSmtOption("MODEL_VALUE_COMPLETION", "false");
       options.AddWeakSmtOption("MODEL_HIDE_UNUSED_PARTITIONS", "false");
       options.AddWeakSmtOption("MODEL_V2", "true");

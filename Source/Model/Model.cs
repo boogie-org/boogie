@@ -120,12 +120,27 @@ namespace Microsoft.Boogie
       internal readonly List<FuncTuple> apps = new List<FuncTuple>();
       public IEnumerable<FuncTuple> Apps { get { return apps; } }
       public int AppCount { get { return apps.Count; } }
+      private Element @else;
 
       internal Func(Model p, string n, int a) { Model = p;  Name = n; Arity = a; }
 
       public override string ToString()
       {
         return string.Format("{0}/{1}", Name, Arity);
+      }
+
+      public Element Else
+      {
+        get
+        {
+          return @else;
+        }
+        set
+        {
+          if (@else != null)
+            throw new ArgumentException();
+          @else = value;
+        }
       }
 
       public void SetConstant(Element res)
@@ -512,6 +527,8 @@ namespace Microsoft.Boogie
               wr.Write("{0} ", a);
             wr.WriteLine("-> {0}", app.Result);
           }
+          if (f.Else != null)
+            wr.WriteLine("  else -> {0}", f.Else);
           wr.WriteLine("}");
         }
       foreach (var s in States) {
@@ -663,19 +680,42 @@ namespace Microsoft.Boogie
                 if (tuple == null) BadModel("EOF in function table");
                 if (tuple.Length == 0) continue;
                 if (tuple.Length == 1 && tuple[0] == "}") break;
-                if (tuple.Length < 3 || tuple[tuple.Length - 2] != "->") BadModel("invalid function tuple definition");
-                if (tuple[0] == "else") {
-                  if (tuple[tuple.Length - 1].EndsWith("}"))
+
+                var resultName = tuple[tuple.Length - 1];
+                var isElse = false;
+
+                if (tuple.Length == 1 && fn == null)
+                  isElse = true;
+
+                if (!isElse && (tuple.Length < 3 || tuple[tuple.Length - 2] != "->")) BadModel("invalid function tuple definition");
+
+                if (isElse || tuple[0] == "else") {
+                  var hasBrace = false;
+                  if (resultName.EndsWith("}")) {
+                    hasBrace = true;
+                    resultName = resultName.Substring(0, resultName.Length - 1);
+                  }
+                  if (!resultName.StartsWith("#unspec")) {
+                    if (fn == null)
+                      fn = currModel.TryGetFunc(funName);
+                    // if it's still null, we don't know the arity, so just skip it
+                    if (fn != null) {
+                      fn.Else = GetElt(resultName);
+                    }
+                  }
+
+                  if (hasBrace)                  
                     break;
                   else
                     continue;
                 }
+
                 if (fn == null)
                   fn = currModel.MkFunc(funName, tuple.Length - 2);
                 var args = new Element[fn.Arity];
                 for (int i = 0; i < fn.Arity; ++i)
                   args[i] = GetElt(tuple[i]);
-                fn.AddApp(GetElt(tuple[tuple.Length - 1]), args);
+                fn.AddApp(GetElt(resultName), args);
               }
             } else {
               fn = currModel.MkFunc(funName, 0);
