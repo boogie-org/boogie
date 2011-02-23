@@ -40,6 +40,9 @@ namespace Microsoft.Boogie.SMTLib
     {
       this.options = options;
 
+      foreach (var arg in options.SolverArguments)
+        psi.Arguments += " " + arg;
+
       if (cancelEvent == null && CommandLineOptions.Clo.RunningBoogieFromCommandLine) {
         cancelEvent = new ConsoleCancelEventHandler(ControlCHandler);
         Console.CancelKeyPress += cancelEvent;
