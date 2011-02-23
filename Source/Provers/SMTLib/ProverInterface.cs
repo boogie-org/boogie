@@ -169,6 +169,12 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    public override int FlushAxiomsToTheoremProver()
+    {
+      // we feed the axioms when begincheck is called.
+      return 0;
+    }
+
     private void FlushAxioms()
     {
       TypeDecls.Iter(SendCommon);
