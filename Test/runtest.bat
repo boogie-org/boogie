@@ -6,6 +6,9 @@ echo ----- Running regression test %1
 pushd %1
 if not exist runtest.bat goto noRunTest
 call runtest.bat -nologo -logPrefix:%1 %2 %3 %4 %5 %6 %7 %8 %9 > Output
+rem There seem to be some race between finishing writing to the Output file, and running fc.
+rem Calling fc twice seems to fix (or at least alleviate) the problem.
+fc /W Answer Output > nul
 fc /W Answer Output > nul
 if not errorlevel 1 goto passTest
 echo %1 FAILED
