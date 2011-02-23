@@ -27,6 +27,14 @@ namespace Microsoft.Boogie {
       return sb.ToString();
     }
 
+    public static IEnumerable<T> Concat1<T>(this IEnumerable<T> objects, T final)
+    {
+      foreach (var s in objects) {
+        yield return s;
+      }
+      yield return final;
+    }
+
     public static string MapConcat<T>(this IEnumerable<T> objects, Func<T,string> toString, string separator)
     {
       var sb = new StringBuilder();
