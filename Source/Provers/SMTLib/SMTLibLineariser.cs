@@ -155,6 +155,11 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(f != null);
       string retVal = null;
       retVal = f.FindStringAttribute("bvbuiltin");
+      
+      // It used to be "sign_extend 12" in Simplify, and is "sign_extend[12]" with SMT
+      if (retVal != null && retVal.StartsWith("sign_extend "))
+        return retVal.Replace(" ", "[") + "]";
+
       if (retVal == null) {
         retVal = f.FindStringAttribute("builtin");
       }
