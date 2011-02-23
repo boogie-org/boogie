@@ -336,19 +336,13 @@ namespace Microsoft.Boogie.SMTLib
 
           var negLabels = labels.Where(l => l.StartsWith("@")).ToArray();
           var posLabels = labels.Where(l => !l.StartsWith("@"));
-          Func<string,string> lbl = (s) => SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(s));
-          if (negLabels.Length != 1) {
-            HandleProverError("Wrong number of negative labels: " + negLabels.Length);
-            break;
-          } else {
-            if (!options.MultiTraces)
-              posLabels = Enumerable.Empty<string>();
-            var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat1(lbl(negLabels[0])).ToArray();
-            var expr = conjuncts.Length == 1 ? conjuncts[0] : ("(or " + conjuncts.Concat(" ") + ")");
-            SendThisVC("(assert " + expr + ")");
-            SendThisVC("(check-sat)");
-          }
-          
+          Func<string, string> lbl = (s) => SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(s));
+          if (!options.MultiTraces)
+            posLabels = Enumerable.Empty<string>();
+          var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat(negLabels.Select(lbl)).ToArray();
+          var expr = conjuncts.Length == 1 ? conjuncts[0] : ("(or " + conjuncts.Concat(" ") + ")");
+          SendThisVC("(assert " + expr + ")");
+          SendThisVC("(check-sat)");
         }
 
         SendThisVC("(pop 1)");
