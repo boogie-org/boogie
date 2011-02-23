@@ -128,6 +128,15 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    public void Close()
+    {
+      try {
+        prover.Kill();
+      } catch {
+      }
+      DisposeProver();
+    }
+
     public event Action<string> ErrorHandler;
     int errorCnt;
 

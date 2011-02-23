@@ -203,6 +203,14 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    public override void Close()
+    {
+      base.Close();
+      CloseLogFile();
+      if (Process != null)
+        Process.Close();
+    }
+
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       //Contract.Requires(descriptiveName != null);
