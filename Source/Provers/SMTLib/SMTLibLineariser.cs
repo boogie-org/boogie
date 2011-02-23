@@ -245,7 +245,7 @@ namespace Microsoft.Boogie.SMTLib
         var weight = QKeyValue.FindIntAttribute(infos.attributes, "weight", 1);
         if (!ProverOptions.UseWeights)
           weight = 1;
-        var hasAttrs = node.Triggers.Count > 0 || infos.qid != null || weight != 1;
+        var hasAttrs = node.Triggers.Count > 0 || infos.qid != null || weight != 1 || infos.uniqueId != -1;
 
         if (hasAttrs)
           wr.Write("(! ");
@@ -258,6 +258,8 @@ namespace Microsoft.Boogie.SMTLib
             wr.Write(" :named {0}\n", SMTLibNamer.QuoteId(infos.qid));
           if (weight != 1)
             wr.Write(" :weight {0}\n", weight);
+          if (infos.uniqueId != -1)
+            wr.Write(" :skolemid {0}\n", infos.uniqueId);
           WriteTriggers(node.Triggers, options);
           
           wr.Write(")");
