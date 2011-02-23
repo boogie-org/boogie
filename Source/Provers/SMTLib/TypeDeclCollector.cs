@@ -183,7 +183,7 @@ void ObjectInvariant()
         return;
       }
 
-      if (type.IsBool || type.IsInt)
+      if (type.IsBool || type.IsInt || type.IsBv)
         return;
 
       if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
