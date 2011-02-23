@@ -114,7 +114,7 @@ public abstract class ProverContextContracts:ProverContext{
       exprTranslator = null;
     }
 
-    private DeclFreeProverContext(DeclFreeProverContext ctxt) {
+    protected DeclFreeProverContext(DeclFreeProverContext ctxt) {
       Contract.Requires(ctxt != null);
       this.gen = ctxt.gen;
       this.genOptions = ctxt.genOptions;

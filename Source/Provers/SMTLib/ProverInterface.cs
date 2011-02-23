@@ -24,7 +24,7 @@ namespace Microsoft.Boogie.SMTLib
 {
   public class SMTLibProcessTheoremProver : ProverInterface
   {
-    private readonly DeclFreeProverContext ctx;
+    private readonly SMTLibProverContext ctx;
     private readonly VCExpressionGenerator gen;
     private readonly SMTLibProverOptions options;
 
@@ -44,7 +44,7 @@ namespace Microsoft.Boogie.SMTLib
 
     [NotDelayed]
     public SMTLibProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
-                                      DeclFreeProverContext ctx)
+                                      SMTLibProverContext ctx)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
@@ -72,6 +72,7 @@ namespace Microsoft.Boogie.SMTLib
 
       AxBuilder = axBuilder;
       Namer = new SMTLibNamer();
+      ctx.Namer = Namer;
       this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions)options, Namer);
 
       if (this.options.UseZ3) {
@@ -178,6 +179,7 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(assert " + s + ")");
       }
       Axioms.Clear();
+      FlushPushedAssertions();
     }
 
     private void CloseLogFile()
@@ -224,6 +226,8 @@ namespace Microsoft.Boogie.SMTLib
       FlushLogFile();
     }
 
+    private static Dictionary<string, bool> usedLogNames = new Dictionary<string, bool>();
+
     private TextWriter OpenOutputFile(string descriptiveName)
     {
       Contract.Requires(descriptiveName != null);
@@ -231,7 +235,17 @@ namespace Microsoft.Boogie.SMTLib
 
       string filename = options.LogFilename;
       filename = Helpers.SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
-      return new StreamWriter(filename, false);
+      var curFilename = filename;
+
+      lock (usedLogNames) {
+        int n = 1;
+        while (usedLogNames.ContainsKey(curFilename)) {
+          curFilename = filename + "." + n++;
+        }
+        usedLogNames[curFilename] = true;
+      }
+
+      return new StreamWriter(curFilename, false);
     }
 
     private void FlushProverWarnings()
@@ -504,11 +518,77 @@ namespace Microsoft.Boogie.SMTLib
     {
       get { return this.gen; }
     }
+
+    //// Push/pop interface
+    List<string> pushedAssertions = new List<string>();
+    int numRealPushes;
+    public override string VCExpressionToString(VCExpr vc)
+    {
+      return VCExpr2String(vc, 1);
+    }
+
+    public override void PushVCExpression(VCExpr vc)
+    {
+      pushedAssertions.Add(VCExpressionToString(vc));
+    }
+
+    public override void Pop()
+    {
+      if (pushedAssertions.Count > 0) {
+        pushedAssertions.RemoveRange(pushedAssertions.Count - 1, 1);
+      } else {
+        Contract.Assert(numRealPushes > 0);
+        numRealPushes--;
+        SendThisVC("(pop 1)");
+      }
+    }
+
+    public override int NumAxiomsPushed()
+    {
+      return numRealPushes + pushedAssertions.Count;
+    }
+
+    private void FlushPushedAssertions()
+    {
+      foreach (var a in pushedAssertions) {
+        SendThisVC("(push 1)");
+        SendThisVC("(assert " + a + ")");
+        numRealPushes++;
+      }
+      pushedAssertions.Clear();
+    }
+  }
+
+  public class SMTLibProverContext : DeclFreeProverContext
+  {
+    internal UniqueNamer Namer;
+
+    public SMTLibProverContext(VCExpressionGenerator gen,
+                               VCGenerationOptions genOptions)
+      : base(gen, genOptions)
+    {
+    }
+
+    protected SMTLibProverContext(SMTLibProverContext par)
+      : base(par)
+    {
+      if (par.Namer != null)
+        this.Namer = (UniqueNamer)par.Namer; // .Clone();
+    }
+
+    public override object Clone()
+    {
+      return new SMTLibProverContext(this);
+    }
+
+    public override string Lookup(VCExprVar var)
+    {
+      return Namer.Lookup(var);
+    }
   }
 
   public class Factory : ProverFactory
   {
-
     public override object SpawnProver(ProverOptions options, object ctxt)
     {
       //Contract.Requires(ctxt != null);
@@ -516,8 +596,8 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Ensures(Contract.Result<object>() != null);
 
       return this.SpawnProver(options,
-                              cce.NonNull((DeclFreeProverContext)ctxt).ExprGen,
-                              cce.NonNull((DeclFreeProverContext)ctxt));
+                              cce.NonNull((SMTLibProverContext)ctxt).ExprGen,
+                              cce.NonNull((SMTLibProverContext)ctxt));
     }
 
     public override object NewProverContext(ProverOptions options)
@@ -533,7 +613,7 @@ namespace Microsoft.Boogie.SMTLib
       if (opts.UseZ3)
         proverCommands.Add("z3");
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
-      return new DeclFreeProverContext(gen, genOptions);
+      return new SMTLibProverContext(gen, genOptions);
     }
 
     public override ProverOptions BlankProverOptions()
@@ -543,7 +623,7 @@ namespace Microsoft.Boogie.SMTLib
 
     protected virtual SMTLibProcessTheoremProver SpawnProver(ProverOptions options,
                                                               VCExpressionGenerator gen,
-                                                              DeclFreeProverContext ctx)
+                                                              SMTLibProverContext ctx)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
