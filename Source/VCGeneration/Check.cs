@@ -369,6 +369,8 @@ namespace Microsoft.Boogie {
       this.valueToPartition = new Dictionary<object, int>();
       this.definedFunctions = new Dictionary<string, List<List<int>>>();
 
+      var elseElt = m.MkElement("*#unspecified");
+
       foreach (var e in m.Elements) {
         Contract.Assert(e.Id == this.partitionToValue.Count);
         object val;
@@ -414,6 +416,9 @@ namespace Microsoft.Boogie {
             tpl.Add(app.Result.Id);
             tuples.Add(tpl);
           }
+          var elseTpl = new List<int>();
+          elseTpl.Add(elseElt.Id);
+          tuples.Add(elseTpl);
         }
       }
     }
@@ -767,21 +772,23 @@ namespace Microsoft.Boogie {
     /// </summary>    
     public virtual void PushVCExpression(VCExpr vc) {
       Contract.Requires(vc != null);
+      throw new NotImplementedException();
     }
     public virtual string VCExpressionToString(VCExpr vc) {
       Contract.Requires(vc != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      return "";
+      throw new NotImplementedException();
     }
     public virtual void Pop() {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+      throw new NotImplementedException();
     }
     public virtual int NumAxiomsPushed() {
-      return 0;
+      throw new NotImplementedException();
     }
     public virtual int FlushAxiomsToTheoremProver() {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-      return 0;
+      throw new NotImplementedException();
     }
 
 
