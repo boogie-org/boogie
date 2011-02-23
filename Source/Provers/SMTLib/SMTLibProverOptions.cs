@@ -33,6 +33,7 @@ namespace Microsoft.Boogie.SMTLib
     public bool UseLabels { get { return UseZ3; } }
     public List<OptionValue> SmtOptions = new List<OptionValue>();
     public List<string> SolverArguments = new List<string>();
+    public bool MultiTraces = false;
 
     // Z3 specific (at the moment; some of them make sense also for other provers)
     public bool UseZ3 = true;
@@ -86,6 +87,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       return
+        ParseBool(opt, "MULTI_TRACES", ref MultiTraces) ||
         ParseBool(opt, "USE_WEIGHTS", ref UseWeights) ||
         ParseBool(opt, "USE_Z3", ref UseZ3) ||
         ParseString(opt, "INSPECTOR", ref Inspector) ||
@@ -115,6 +117,7 @@ C:<string>                Pass <string> to the SMT on the command line.
 
 Z3-specific options:
 ~~~~~~~~~~~~~~~~~~~~
+MULTI_TRACES=<bool>       Report errors with multiple paths leading to the same assertion.
 INSPECTOR=<string>        Use the specified Z3Inspector binary.
 OPTIMIZE_FOR_BV=<bool>    Optimize Z3 options for bitvector reasoning, and not quantifier instantiation. Defaults to false.
 USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (default: true)

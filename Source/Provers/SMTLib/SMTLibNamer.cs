@@ -95,9 +95,9 @@ namespace Microsoft.Boogie.SMTLib
       return s;
     }
 
-    public static string BlockedLabel(string s)
+    public static string LabelVar(string s)
     {
-      return "%block%" + s;
+      return "%lbl%" + s;
     }
 
     public static string QuoteId(string s)

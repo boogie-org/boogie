@@ -511,12 +511,11 @@ namespace Microsoft.Boogie.SMTLib
           wr.Write("({0} {1} ", op.pos ? "lblpos" : "lblneg", SMTLibNamer.QuoteId(op.label));
         }
 
-        if (!op.pos)
-          wr.Write("(or {0} ", SMTLibNamer.QuoteId(SMTLibNamer.BlockedLabel(op.label)));
+        wr.Write("({0} {1} ", op.pos ? "and" : "or", SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(op.label)));
             
         ExprLineariser.Linearise(node[0], options);
 
-        if (!op.pos) wr.Write(")");
+        wr.Write(")");
 
         if (ExprLineariser.ProverOptions.UseLabels)
           wr.Write(")");

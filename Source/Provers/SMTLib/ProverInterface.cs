@@ -322,20 +322,33 @@ namespace Microsoft.Boogie.SMTLib
         var globalResult = Outcome.Undetermined;
 
         while (errorsLeft-- > 0) {
-          string negLabel = null;
+          string[] labels = null;
 
           result = GetResponse();
           if (globalResult == Outcome.Undetermined)
             globalResult = result;
 
           if (result == Outcome.Invalid && options.UseZ3) {
-            negLabel = GetLabelsInfo(handler);
+            labels = GetLabelsInfo(handler);
           }
 
-          if (negLabel == null) break;
+          if (labels == null) break;
 
-          SendThisVC("(assert " + SMTLibNamer.QuoteId(SMTLibNamer.BlockedLabel(negLabel)) + ")");
-          SendThisVC("(check-sat)");
+          var negLabels = labels.Where(l => l.StartsWith("@")).ToArray();
+          var posLabels = labels.Where(l => !l.StartsWith("@"));
+          Func<string,string> lbl = (s) => SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(s));
+          if (negLabels.Length != 1) {
+            HandleProverError("Wrong number of negative labels: " + negLabels.Length);
+            break;
+          } else {
+            if (!options.MultiTraces)
+              posLabels = Enumerable.Empty<string>();
+            var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat1(lbl(negLabels[0])).ToArray();
+            var expr = conjuncts.Length == 1 ? conjuncts[0] : ("(or " + conjuncts.Concat(" ") + ")");
+            SendThisVC("(assert " + expr + ")");
+            SendThisVC("(check-sat)");
+          }
+          
         }
 
         SendThisVC("(pop 1)");
@@ -348,16 +361,16 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private string GetLabelsInfo(ErrorHandler handler)
+    private string[] GetLabelsInfo(ErrorHandler handler)
     {
       SendThisVC("(get-info :labels)");
       if (options.ExpectingModel())
         SendThisVC("(get-info :model)");
       Process.Ping();
 
-      string negLabel = null;
       List<string> labelNums = null;
       Model theModel = null;
+      string[] res = null;
 
       while (true) {
         var resp = Process.GetProverResponse();
@@ -365,11 +378,9 @@ namespace Microsoft.Boogie.SMTLib
           break;
         if (resp.Name == ":labels" && resp.ArgCount >= 1) {
           var labels = resp[0].Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
-          negLabel = labels.FirstOrDefault(l => l.StartsWith("@"));
+          res = labels;
           if (labelNums != null) HandleProverError("Got multiple :labels responses");
-          labelNums = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();          
-          if (negLabel == null)
-            HandleProverError("No negative label in: " + labels.Concat(" "));
+          labelNums = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
         } else if (resp.Name == ":model" && resp.ArgCount >= 1) {
           var modelStr = resp[0].Name;
           List<Model> models = null;
@@ -397,7 +408,7 @@ namespace Microsoft.Boogie.SMTLib
         handler.OnModel(labelNums, m);
       }
 
-      return negLabel;
+      return res;
     }
 
     private Outcome GetResponse()

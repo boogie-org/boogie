@@ -55,7 +55,7 @@ void ObjectInvariant()
     private readonly Dictionary<Type/*!*/, bool>/*!*/ KnownTypes = new Dictionary<Type, bool>();
     private readonly Dictionary<string/*!*/, bool>/*!*/ KnownStoreFunctions = new Dictionary<string, bool>();
     private readonly Dictionary<string/*!*/, bool>/*!*/ KnownSelectFunctions = new Dictionary<string, bool>();
-    private readonly HashSet<string> KnownLBLNEG = new HashSet<string>();
+    private readonly HashSet<string> KnownLBL = new HashSet<string>();
 
 
     public List<string/*!>!*/> AllDeclarations { get {
@@ -124,9 +124,9 @@ void ObjectInvariant()
           KnownFunctions.Add(f, true);
         } else {
           var lab = node.Op as VCExprLabelOp;
-          if (lab != null && !lab.pos && !KnownLBLNEG.Contains(lab.label)) {
-            KnownLBLNEG.Add(lab.label);
-            var name = SMTLibNamer.QuoteId(SMTLibNamer.BlockedLabel(lab.label));
+          if (lab != null && !KnownLBL.Contains(lab.label)) {
+            KnownLBL.Add(lab.label);
+            var name = SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(lab.label));
             AddDeclaration("(declare-fun " + name + " () Bool)");
           }
         }
