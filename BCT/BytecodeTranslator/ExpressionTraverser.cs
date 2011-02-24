@@ -16,6 +16,7 @@ using Microsoft.Cci.Contracts;
 using Microsoft.Cci.ILToCodeModel;
 
 using Bpl = Microsoft.Boogie;
+using System.Diagnostics.Contracts;
 
 
 namespace BytecodeTranslator
@@ -107,7 +108,7 @@ namespace BytecodeTranslator
         //TODO
         throw new NotImplementedException();
       }
-      Debug.Assert(addressableExpression.Definition is IThisReference);
+      Contract.Assert(addressableExpression.Definition is IThisReference);
     }
 
     public override void Visit(IAddressDereference addressDereference)
@@ -148,7 +149,7 @@ namespace BytecodeTranslator
           selectExprs.Add(currSelectExpr);
           currIndexExpr = e;
         }
-        Debug.Assert(selectExprs.Count == indexExprs.Count);
+        Contract.Assert(selectExprs.Count == indexExprs.Count);
         Bpl.Expr currentStoreExpr = assignmentSourceExpr;
         for (int i = selectExprs.Count - 1; i >= 0; i--)
         {
@@ -482,6 +483,7 @@ namespace BytecodeTranslator
             attrib = new Bpl.QKeyValue(cloc, "async", new List<object>(), null);
           }
         }
+
         Bpl.CallCmd call;
         if (attrib != null)
           call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars, attrib);
@@ -503,7 +505,7 @@ namespace BytecodeTranslator
     /// <remarks>(mschaef) Works, but still a stub </remarks>
     /// <param name="assignment"></param>
     public override void Visit(IAssignment assignment) {
-      Debug.Assert(TranslatedExpressions.Count == 0);
+      Contract.Assert(TranslatedExpressions.Count == 0);
 
       #region Transform Right Hand Side ...
       this.Visit(assignment.Source);

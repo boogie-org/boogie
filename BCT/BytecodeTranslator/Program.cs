@@ -29,6 +29,9 @@ namespace BytecodeTranslator {
     [OptionDescription("Heap representation to use", ShortForm = "heap")]
     public HeapRepresentation heapRepresentation = HeapRepresentation.general;
 
+    [OptionDescription("Translate using whole-program assumptions", ShortForm = "whole")]
+    public bool wholeProgram = false;
+
   }
 
   public class BCT {
@@ -52,6 +55,7 @@ namespace BytecodeTranslator {
       var assemblyName = String.IsNullOrEmpty(options.assembly) ? options.GeneralArguments[0] : options.assembly;
 
       try {
+
         HeapFactory heap;
         switch (options.heapRepresentation) {
           case Options.HeapRepresentation.splitFields:
@@ -70,7 +74,9 @@ namespace BytecodeTranslator {
             Console.WriteLine("Unknown setting for /heap");
             return 1;
         }
-        result = TranslateAssembly(assemblyName, heap, options.libpaths);
+
+        result = TranslateAssembly(assemblyName, heap, options.libpaths, options.wholeProgram);
+
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed with uncaught exception: {0}", e.Message);
         Console.WriteLine("Stack trace: {0}", e.StackTrace);
@@ -79,7 +85,7 @@ namespace BytecodeTranslator {
       return result;
     }
 
-    public static int TranslateAssembly(string assemblyName, HeapFactory heapFactory, List<string>/*?*/ libPaths) {
+    public static int TranslateAssembly(string assemblyName, HeapFactory heapFactory, List<string> libPaths, bool wholeProgram) {
 
       var host = new Microsoft.Cci.MutableContracts.CodeContractAwareHostEnvironment(libPaths != null ? libPaths : IteratorHelper.GetEmptyEnumerable<string>(), true, true);
       Host = host;
@@ -101,9 +107,12 @@ namespace BytecodeTranslator {
 
       module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader);
 
-      #region Pass 3: Translate the code model to BPL
-      //tmp_BPLGenerator translator = new tmp_BPLGenerator(host, acp);
-      var factory = new CLRSemantics();
+      #region Translate the code model to BPL
+      TraverserFactory factory;
+      if (wholeProgram)
+        factory = new WholeProgram();
+      else
+        factory = new CLRSemantics();
       MetadataTraverser translator = factory.MakeMetadataTraverser(host.GetContractExtractor(module.ModuleIdentity), pdbReader, heapFactory);
       TranslationHelper.tmpVarCounter = 0;
       assembly = module as IAssembly;
@@ -111,7 +120,8 @@ namespace BytecodeTranslator {
         translator.Visit(assembly);
       else
         translator.Visit(module);
-      #endregion Pass 3: Translate the code model to BPL
+      #endregion
+
       Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(module.Name + ".bpl");
       Prelude.Emit(writer);
       translator.TranslatedProgram.Emit(writer);

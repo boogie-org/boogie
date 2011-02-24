@@ -77,6 +77,7 @@ implementation RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean(this:
     assert {:sourceFile "Class1.cs"} {:sourceLine 72} true;
     assert {:sourceFile "Class1.cs"} {:sourceLine 73} true;
     RegressionTestInput.ClassWithBoolTypes.b[this] := z;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 74} true;
     if (z)
     {
         assert {:sourceFile "Class1.cs"} {:sourceLine 74} true;
@@ -421,7 +422,7 @@ procedure RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$Sys
 
 
 
-implementation RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this: int, x$in: int) returns ($result: int)
+implementation {:RegressionTestInput.Async} RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this: int, x$in: int) returns ($result: int)
 {
   var x: int;
   var local_0: int;

@@ -15,6 +15,7 @@ using Microsoft.Cci.Contracts;
 using Microsoft.Cci.ILToCodeModel;
 
 using Bpl = Microsoft.Boogie;
+using System.Diagnostics.Contracts;
 
 
 namespace BytecodeTranslator {
@@ -61,7 +62,7 @@ namespace BytecodeTranslator {
 
     private void CreateDispatchMethod(ITypeDefinition type)
     {
-      System.Diagnostics.Debug.Assert(type.IsDelegate);
+      Contract.Assert(type.IsDelegate);
       IMethodDefinition method = null;
       foreach (IMethodDefinition m in type.Methods)
       {

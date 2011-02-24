@@ -123,6 +123,7 @@
     <Compile Include="TranslationException.cs" />
     <Compile Include="TranslationHelper.cs" />
     <Compile Include="TraverserFactory.cs" />
+    <Compile Include="WholeProgram.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Readme.txt" />

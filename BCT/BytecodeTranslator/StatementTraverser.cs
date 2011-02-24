@@ -69,6 +69,7 @@ namespace BytecodeTranslator
     }
 
     private void EmitSourceContext(IStatement statement) {
+      if (statement is IEmptyStatement) return;
       var tok = statement.Token();
       string fileName = null;
       int lineNumber = 0;
