@@ -31,6 +31,13 @@ namespace BytecodeTranslator {
     Bpl.Variable CreateFieldVariable(IFieldReference field);
 
     /// <summary>
+    /// Creates a fresh BPL variable to represent <paramref name="type"/>, deciding
+    /// on its type based on the heap representation. I.e., the value of this
+    /// variable represents the value of the expression "typeof(type)".
+    /// </summary>
+    Bpl.Variable CreateTypeVariable(ITypeReference type);
+
+    /// <summary>
     /// Returns the (typed) BPL expression that corresponds to the value of the field
     /// <paramref name="f"/> belonging to the object <paramref name="o"/> (when
     /// <paramref name="o"/> is non-null, otherwise the value of the static field.
@@ -50,6 +57,12 @@ namespace BytecodeTranslator {
     /// field.
     /// </summary>
     Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value);
+
+    /// <summary>
+    /// Returns the BPL expression that corresponds to the value of the dynamic type
+    /// of the object represented by the expression <paramref name="o"/>.
+    /// </summary>
+    Bpl.Expr DynamicType(Bpl.Expr o);
 
   }
 

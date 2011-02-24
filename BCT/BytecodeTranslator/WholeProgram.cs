@@ -182,7 +182,9 @@ namespace BytecodeTranslator {
 
         var elseBranch = new Bpl.StmtListBuilder();
 
-        var methodname = TranslationHelper.CreateUniqueMethodName(methodCall.MethodToCall);
+        var proc = this.sink.FindOrCreateProcedure(resolvedMethod, resolvedMethod.IsStatic);
+        var methodname = proc.Name;
+
         Bpl.CallCmd call;
         if (attrib != null)
           call = new Bpl.CallCmd(token, methodname, inexpr, outvars, attrib);
@@ -202,7 +204,10 @@ namespace BytecodeTranslator {
             call = new Bpl.CallCmd(token, methodname, inexpr, outvars);
           thenBranch.Add(call);
           ifcmd = new Bpl.IfCmd(token,
-            Bpl.LiteralExpr.True,
+            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
+            this.sink.Heap.DynamicType(inexpr[0]),
+            Bpl.Expr.Ident(this.sink.FindOrCreateType(m.ContainingType))
+            ),
             thenBranch.Collect(token),
             null,
             elseBranch.Collect(token)

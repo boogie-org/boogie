@@ -31,6 +31,8 @@ implementation Alloc() returns (x: ref)
 
 
 
+type Type;
+
 type Field;
 
 var $Heap: HeapType where IsGoodHeap($Heap);
@@ -53,6 +55,10 @@ function {:inline true} Write(H: HeapType, o: ref, f: Field, v: box) : HeapType
   H[o, f := v]
 }
 
+function $DynamicType(ref) : Type;
+
+const unique RegressionTestInput.AsyncAttribute: Type;
+
 procedure RegressionTestInput.AsyncAttribute.#ctor(this: int);
 
 
@@ -63,6 +69,8 @@ implementation RegressionTestInput.AsyncAttribute.#ctor(this: int)
 }
 
 
+
+const unique RegressionTestInput.ClassWithBoolTypes: Type;
 
 var RegressionTestInput.ClassWithBoolTypes.staticB: bool;
 
@@ -131,6 +139,8 @@ implementation RegressionTestInput.ClassWithBoolTypes.Main()
 }
 
 
+
+const unique RegressionTestInput.ClassWithArrayTypes: Type;
 
 var RegressionTestInput.ClassWithArrayTypes.s: int;
 
@@ -256,6 +266,8 @@ implementation RegressionTestInput.ClassWithArrayTypes.#ctor(this: int)
 }
 
 
+
+const unique RegressionTestInput.Class0: Type;
 
 var RegressionTestInput.Class0.StaticInt: int;
 

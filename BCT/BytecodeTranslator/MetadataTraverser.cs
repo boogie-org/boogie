@@ -224,6 +224,7 @@ namespace BytecodeTranslator {
     public override void Visit(ITypeDefinition typeDefinition) {
 
       if (typeDefinition.IsClass) {
+        sink.FindOrCreateType(typeDefinition);
         base.Visit(typeDefinition);
       } else if (typeDefinition.IsDelegate) {
         sink.AddDelegateType(typeDefinition);

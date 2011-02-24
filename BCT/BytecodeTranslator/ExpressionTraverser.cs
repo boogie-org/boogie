@@ -473,7 +473,8 @@ namespace BytecodeTranslator
           outvars.Add(new Bpl.IdentifierExpr(cloc, v));
           TranslatedExpressions.Push(new Bpl.IdentifierExpr(cloc, v));
         }
-        string methodname = TranslationHelper.CreateUniqueMethodName(methodCall.MethodToCall);
+        var proc = this.sink.FindOrCreateProcedure(resolvedMethod, resolvedMethod.IsStatic);
+        string methodname = proc.Name;
 
         Bpl.QKeyValue attrib = null;
         foreach (var a in resolvedMethod.Attributes)
@@ -605,12 +606,12 @@ namespace BytecodeTranslator
 
     private void TranslateObjectCreation(IMethodReference ctor, IEnumerable<IExpression> arguments, ITypeReference ctorType, IExpression creationAST)
     {
-      Bpl.IToken cloc = creationAST.Token();
+      Bpl.IToken token = creationAST.Token();
 
       var a = this.sink.CreateFreshLocal(creationAST.Type);
 
       // First generate an Alloc() call
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
 
       // Second, generate the call to the appropriate ctor
       Bpl.ExprSeq inexpr = new Bpl.ExprSeq();
@@ -639,7 +640,17 @@ namespace BytecodeTranslator
       Bpl.IdentifierExprSeq outvars = new Bpl.IdentifierExprSeq();
       string methodname = TranslationHelper.CreateUniqueMethodName(ctor);
 
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, methodname, inexpr, outvars));
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, methodname, inexpr, outvars));
+
+      // Generate assumption about the dynamic type of the just allocated object
+      this.StmtTraverser.StmtBuilder.Add(
+        new Bpl.AssumeCmd(token, 
+          Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
+          this.sink.Heap.DynamicType(inexpr[0]),
+          Bpl.Expr.Ident(this.sink.FindOrCreateType(creationAST.Type))
+          )
+          )
+        );
 
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }

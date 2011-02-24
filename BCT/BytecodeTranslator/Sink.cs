@@ -127,7 +127,7 @@ namespace BytecodeTranslator {
     /// </summary>
     private Dictionary<uint, Bpl.Variable> declaredFields = new Dictionary<uint, Bpl.Variable>();
 
-    public Bpl.Procedure FindOrCreateProcedure(IMethodReference method, bool isStatic) {
+    public Bpl.Procedure FindOrCreateProcedure(IMethodDefinition method, bool isStatic) {
       Bpl.Procedure proc;
       var key = method.InternedKey;
       if (!this.declaredMethods.TryGetValue(key, out proc)) {
@@ -269,6 +269,29 @@ namespace BytecodeTranslator {
       }
       return proc;
     }
+
+    /// <summary>
+    /// Creates a fresh variable that represents the type of
+    /// <paramref name="type"/> in the Bpl program. I.e., its
+    /// value represents the expression "typeof(type)".
+    /// </summary>
+    public Bpl.Variable FindOrCreateType(ITypeReference type) {
+      // The Heap has to decide how to represent the field (i.e., its type),
+      // all the Sink cares about is adding a declaration for it.
+      Bpl.Variable t;
+      var key = type.InternedKey;
+      if (!this.declaredTypes.TryGetValue(key, out t)) {
+        t = this.Heap.CreateTypeVariable(type);
+        this.declaredTypes.Add(key, t);
+        this.TranslatedProgram.TopLevelDeclarations.Add(t);
+      }
+      return t;
+    }
+    /// <summary>
+    /// The keys to the table are the interned key of the type.
+    /// </summary>
+    private Dictionary<uint, Bpl.Variable> declaredTypes = new Dictionary<uint, Bpl.Variable>();
+
     /// <summary>
     /// The keys to the table are the interned key of the field.
     /// </summary>
