@@ -492,17 +492,25 @@ namespace BytecodeTranslator
         bool isEventRemove = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("remove_");
         if (isEventAdd || isEventRemove)
         {
-          Bpl.Variable eventVar = null;
-          Bpl.Variable local = null;
+          IEventDefinition ed = null;
           foreach (var e in resolvedMethod.ContainingTypeDefinition.Events)
           {
             if (e.Adder != null && e.Adder.ResolvedMethod == resolvedMethod)
             {
-              eventVar = this.sink.FindOrCreateEventVariable(e);
-              local = this.sink.CreateFreshLocal(e.Type);
+              ed = e;
               break;
             }
           }
+          Bpl.Variable eventVar = null;
+          Bpl.Variable local = null;
+          foreach (var f in resolvedMethod.ContainingTypeDefinition.Fields) {
+            if (ed.Name == f.Name) {
+              eventVar = this.sink.FindOrCreateFieldVariable(f);
+              local = this.sink.CreateFreshLocal(f.Type);
+              break;
+            }
+          }
+
           if (methodCall.IsStaticCall)
           {
             this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), Bpl.Expr.Ident(eventVar)));

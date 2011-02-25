@@ -57,9 +57,9 @@ namespace BytecodeTranslator {
       }
     }
 
-    private Bpl.IfCmd BuildBreakCmd(Bpl.Expr b) {
+    private Bpl.IfCmd BuildReturnCmd(Bpl.Expr b) {
       Bpl.StmtListBuilder ifStmtBuilder = new Bpl.StmtListBuilder();
-      ifStmtBuilder.Add(new Bpl.BreakCmd(b.tok, ""));
+      ifStmtBuilder.Add(new Bpl.ReturnCmd(b.tok));
       return new Bpl.IfCmd(b.tok, b, ifStmtBuilder.Collect(b.tok), null, null);
     }
 
@@ -170,7 +170,7 @@ namespace BytecodeTranslator {
 
         Bpl.StmtListBuilder whileStmtBuilder = new Bpl.StmtListBuilder();
         whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(niter), this.sink.ReadNext(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(iter))));
-        whileStmtBuilder.Add(BuildBreakCmd(Bpl.Expr.Eq(Bpl.Expr.Ident(niter), this.sink.ReadHead(Bpl.Expr.Ident(invars[0])))));
+        whileStmtBuilder.Add(BuildReturnCmd(Bpl.Expr.Eq(Bpl.Expr.Ident(niter), this.sink.ReadHead(Bpl.Expr.Ident(invars[0])))));
         whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(method), this.sink.ReadMethod(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(niter))));
         whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(receiver), this.sink.ReadReceiver(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(niter))));
         Bpl.IfCmd ifCmd = BuildIfCmd(Bpl.Expr.True, new Bpl.AssumeCmd(token, Bpl.Expr.False), null);
