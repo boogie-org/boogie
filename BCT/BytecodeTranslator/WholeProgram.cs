@@ -114,8 +114,7 @@ namespace BytecodeTranslator {
         Contract.Assert(!methodCall.IsStaticCall);
         var resolvedMethod = methodCall.MethodToCall.ResolvedMethod;
         Contract.Assert(!resolvedMethod.IsConstructor);
-        List<IMethodReference> overrides = new List<IMethodReference>();
-        FindOverrides(containingType, resolvedMethod, overrides);
+        var overrides = FindOverrides(containingType, resolvedMethod);
         if (0 == overrides.Count) {
           base.Visit(methodCall);
           return;
@@ -195,9 +194,11 @@ namespace BytecodeTranslator {
         Bpl.IfCmd ifcmd = null;
 
         Contract.Assume(1 <= overrides.Count);
-        foreach (var m in overrides) {
+        foreach (var typeMethodPair in overrides) {
+          var t = typeMethodPair.Item1;
+          var m = typeMethodPair.Item2;
           var thenBranch = new Bpl.StmtListBuilder();
-          methodname = TranslationHelper.CreateUniqueMethodName(m); 
+          methodname = TranslationHelper.CreateUniqueMethodName(m); // REVIEW: Shouldn't this be call to FindOrCreateProcedure?
           if (attrib != null)
             call = new Bpl.CallCmd(token, methodname, inexpr, outvars, attrib);
           else
@@ -206,7 +207,7 @@ namespace BytecodeTranslator {
           ifcmd = new Bpl.IfCmd(token,
             Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
             this.sink.Heap.DynamicType(inexpr[0]),
-            Bpl.Expr.Ident(this.sink.FindOrCreateType(m.ContainingType))
+            Bpl.Expr.Ident(this.sink.FindOrCreateType(t))
             ),
             thenBranch.Collect(token),
             null,
@@ -224,17 +225,21 @@ namespace BytecodeTranslator {
       /// <summary>
       /// Modifies <paramref name="overrides"/> as side-effect.
       /// </summary>
-      private void FindOverrides(ITypeReference type, IMethodDefinition resolvedMethod, List<IMethodReference> overrides) {
+      private List<Tuple<ITypeReference, IMethodReference>> FindOverrides(ITypeReference type, IMethodDefinition resolvedMethod) {
         Contract.Requires(type != null);
         Contract.Requires(resolvedMethod != null);
-        Contract.Requires(overrides != null);
+        var overrides = new List<Tuple<ITypeReference, IMethodReference>>();
         foreach (var subType in this.subTypes[type]) {
           var overriddenMethod = MemberHelper.GetImplicitlyOverridingDerivedClassMethod(resolvedMethod, subType.ResolvedType);
-          if (overriddenMethod != Dummy.Method)
-            overrides.Add(overriddenMethod);
-          if (this.subTypes.ContainsKey(subType))
-            FindOverrides(subType, resolvedMethod, overrides);
+          if (overriddenMethod != Dummy.Method) {
+            resolvedMethod = overriddenMethod;
+          }
+          overrides.Add(Tuple.Create<ITypeReference, IMethodReference>(subType, resolvedMethod));
+          if (this.subTypes.ContainsKey(subType)) {
+            overrides.AddRange(FindOverrides(subType, resolvedMethod));
+          }
         }
+        return overrides;
       }
 
     }
