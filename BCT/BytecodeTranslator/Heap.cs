@@ -27,7 +27,7 @@ namespace BytecodeTranslator {
   /// a two-dimensional array indexed by objects and fields, each of which
   /// are represented as an integer.
   /// </summary>
-  public class TwoDIntHeap : HeapFactory, IHeap {
+  public class TwoDIntHeap : Heap {
 
     #region Fields
     [RepresentationFor("$Heap", "var $Heap: HeapType where IsGoodHeap($Heap);", true)]
@@ -57,14 +57,16 @@ procedure {:inline 1} Alloc() returns (x: int)
   assume $Alloc[x] == false;
   $Alloc[x] := true;
 }
+
 ";
-    
+
     #endregion
 
-    public override bool MakeHeap(Sink sink, out IHeap heap, out Bpl.Program/*?*/ program) {
+    public override bool MakeHeap(Sink sink, out Heap heap, out Bpl.Program/*?*/ program) {
       heap = this;
       program = null;
-      var b = RepresentationFor.ParsePrelude(this.InitialPreludeText, this, out program);
+      string prelude = this.InitialPreludeText + this.DelegateEncodingText;
+      var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       return b;
     }
 
@@ -72,7 +74,7 @@ procedure {:inline 1} Alloc() returns (x: int)
     /// Creates a fresh BPL variable to represent <paramref name="field"/>, deciding
     /// on its type based on the heap representation.
     /// </summary>
-    public Bpl.Variable CreateFieldVariable(IFieldReference field) {
+    public override Bpl.Variable CreateFieldVariable(IFieldReference field) {
       Bpl.Variable v;
       string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
       Bpl.IToken tok = field.Token();
@@ -81,8 +83,26 @@ procedure {:inline 1} Alloc() returns (x: int)
       if (field.IsStatic) {
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.GlobalVariable(tok, tident);
-      } else {
+      }
+      else {
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
+        v = new Bpl.Constant(tok, tident, true);
+      }
+      return v;
+    }
+
+    public override Bpl.Variable CreateEventVariable(IEventDefinition e) {
+      Bpl.Variable v;
+      string eventName = TypeHelper.GetTypeName(e.ContainingType) + "." + e.Name.Value;
+      Bpl.IToken tok = e.Token();
+      Bpl.Type t = TranslationHelper.CciTypeToBoogie(e.Type.ResolvedType);
+
+      if (e.Adder.ResolvedMethod.IsStatic) {
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, eventName, t);
+        v = new Bpl.GlobalVariable(tok, tident);
+      }
+      else {
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, eventName, t);
         v = new Bpl.Constant(tok, tident, true);
       }
       return v;
@@ -93,7 +113,7 @@ procedure {:inline 1} Alloc() returns (x: int)
     /// on its type based on the heap representation. I.e., the value of this
     /// variable represents the value of the expression "typeof(type)".
     /// </summary>
-    public Bpl.Variable CreateTypeVariable(ITypeReference type) {
+    public override Bpl.Variable CreateTypeVariable(ITypeReference type) {
       return null;
     }
 
@@ -108,7 +128,7 @@ procedure {:inline 1} Alloc() returns (x: int)
     /// <param name="f">The field that is used to dereference the object <paramref name="o"/>, when
     /// it is not null. Otherwise the static field whose value should be read.
     /// </param>
-    public Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f) {
+    public override Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f) {
       return Bpl.Expr.Select(new Bpl.IdentifierExpr(f.tok, HeapVariable), new Bpl.Expr[] { o, f });
     }
 
@@ -118,7 +138,7 @@ procedure {:inline 1} Alloc() returns (x: int)
     /// <paramref name="o"/> is non-null, otherwise it is an assignment to the static
     /// field.
     /// </summary>
-    public Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value) {
+    public override Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value) {
       if (o == null)
         return Bpl.Cmd.SimpleAssign(tok, f, value);
       else
@@ -131,7 +151,7 @@ procedure {:inline 1} Alloc() returns (x: int)
     /// Returns the BPL expression that corresponds to the value of the dynamic type
     /// of the object represented by the expression <paramref name="o"/>.
     /// </summary>
-    public Bpl.Expr DynamicType(Bpl.Expr o) {
+    public override Bpl.Expr DynamicType(Bpl.Expr o) {
       // $DymamicType(o)
       return null;
     }
@@ -143,7 +163,7 @@ procedure {:inline 1} Alloc() returns (x: int)
   /// field. Each global variable is a map from int to T where T is the
   /// type of the field.
   /// </summary>
-  public class SplitFieldsHeap : HeapFactory {
+  public class SplitFieldsHeap : Heap {
 
     /// <summary>
     /// Prelude text for which access to the ASTs is not needed
@@ -166,85 +186,98 @@ procedure {:inline 1} Alloc() returns (x: int)
 }
 ";
 
-    public override bool MakeHeap(Sink sink, out IHeap heap, out Bpl.Program/*?*/ program) {
-      heap = new HeapRepresentation(sink);
+    public override bool MakeHeap(Sink sink, out Heap heap, out Bpl.Program/*?*/ program) {
+      heap = this;
       program = null;
-      var b = RepresentationFor.ParsePrelude(this.InitialPreludeText, this, out program);
+      string prelude = this.InitialPreludeText + this.DelegateEncodingText;
+      var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       return b;
     }
 
-    private class HeapRepresentation : IHeap {
+    /// <summary>
+    /// Creates a fresh BPL variable to represent <paramref name="field"/>, deciding
+    /// on its type based on the heap representation.
+    /// </summary>
+    public override Bpl.Variable CreateFieldVariable(IFieldReference field) {
+      Bpl.Variable v;
+      string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
+      Bpl.IToken tok = field.Token();
+      Bpl.Type t = TranslationHelper.CciTypeToBoogie(field.Type.ResolvedType);
 
-      public HeapRepresentation(Sink sink) {
+      if (field.IsStatic) {
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
+        v = new Bpl.GlobalVariable(tok, tident);
       }
-
-      /// <summary>
-      /// Creates a fresh BPL variable to represent <paramref name="field"/>, deciding
-      /// on its type based on the heap representation.
-      /// </summary>
-      public Bpl.Variable CreateFieldVariable(IFieldReference field) {
-        Bpl.Variable v;
-        string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
-        Bpl.IToken tok = field.Token();
-        Bpl.Type t = TranslationHelper.CciTypeToBoogie(field.Type.ResolvedType);
-
-        if (field.IsStatic) {
-          Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
-          v = new Bpl.GlobalVariable(tok, tident);
-        } else {
-          Bpl.Type mt = new Bpl.MapType(tok, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Bpl.Type.Int), t);
-          Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, mt);
-          v = new Bpl.GlobalVariable(tok, tident);
-        }
-        return v;
+      else {
+        Bpl.Type mt = new Bpl.MapType(tok, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Bpl.Type.Int), t);
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, mt);
+        v = new Bpl.GlobalVariable(tok, tident);
       }
+      return v;
+    }
 
-      /// <summary>
-      /// Creates a fresh BPL variable to represent <paramref name="type"/>, deciding
-      /// on its type based on the heap representation. I.e., the value of this
-      /// variable represents the value of the expression "typeof(type)".
-      /// </summary>
-      public Bpl.Variable CreateTypeVariable(ITypeReference type) {
-        return null;
+    public override Bpl.Variable CreateEventVariable(IEventDefinition e) {
+      Bpl.Variable v;
+      string eventName = TypeHelper.GetTypeName(e.ContainingType) + "." + e.Name.Value;
+      Bpl.IToken tok = e.Token();
+      Bpl.Type t = TranslationHelper.CciTypeToBoogie(e.Type.ResolvedType);
+
+      if (e.Adder.ResolvedMethod.IsStatic) {
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, eventName, t);
+        v = new Bpl.GlobalVariable(tok, tident);
       }
-
-      /// <summary>
-      /// Returns the (typed) BPL expression that corresponds to the value of the field
-      /// <paramref name="f"/> belonging to the object <paramref name="o"/> (when
-      /// <paramref name="o"/> is non-null, otherwise the value of the static field.
-      /// </summary>
-      /// <param name="o">The expression that represents the object to be dereferenced.
-      /// Null if <paramref name="f"/> is a static field.
-      /// </param>
-      /// <param name="f">The field that is used to dereference the object <paramref name="o"/>, when
-      /// it is not null. Otherwise the static field whose value should be read.
-      /// </param>
-      public Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f) {
-        return Bpl.Expr.Select(f, o);
+      else {
+        Bpl.Type mt = new Bpl.MapType(tok, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Bpl.Type.Int), t);
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, eventName, mt);
+        v = new Bpl.GlobalVariable(tok, tident);
       }
+      return v;
+    }
 
-      /// <summary>
-      /// Returns the BPL command that corresponds to assigning the value <paramref name="value"/>
-      /// to the field <paramref name="f"/> of the object <paramref name="o"/> (when
-      /// <paramref name="o"/> is non-null, otherwise it is an assignment to the static
-      /// field.
-      /// </summary>
-      public Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value) {
-        if (o == null)
-          return Bpl.Cmd.SimpleAssign(tok, f, value);
-        else
-          return Bpl.Cmd.MapAssign(tok, f, o, value);
-      }
+    /// <summary>
+    /// Creates a fresh BPL variable to represent <paramref name="type"/>, deciding
+    /// on its type based on the heap representation. I.e., the value of this
+    /// variable represents the value of the expression "typeof(type)".
+    /// </summary>
+    public override Bpl.Variable CreateTypeVariable(ITypeReference type) {
+      return null;
+    }
 
-      /// <summary>
-      /// Returns the BPL expression that corresponds to the value of the dynamic type
-      /// of the object represented by the expression <paramref name="o"/>.
-      /// </summary>
-      public Bpl.Expr DynamicType(Bpl.Expr o) {
-        // $DymamicType(o)
-        return null;
-      }
+    /// <summary>
+    /// Returns the (typed) BPL expression that corresponds to the value of the field
+    /// <paramref name="f"/> belonging to the object <paramref name="o"/> (when
+    /// <paramref name="o"/> is non-null, otherwise the value of the static field.
+    /// </summary>
+    /// <param name="o">The expression that represents the object to be dereferenced.
+    /// Null if <paramref name="f"/> is a static field.
+    /// </param>
+    /// <param name="f">The field that is used to dereference the object <paramref name="o"/>, when
+    /// it is not null. Otherwise the static field whose value should be read.
+    /// </param>
+    public override Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f) {
+      return Bpl.Expr.Select(f, o);
+    }
 
+    /// <summary>
+    /// Returns the BPL expression that corresponds to the value of the dynamic type
+    /// of the object represented by the expression <paramref name="o"/>.
+    /// </summary>
+    public override Bpl.Expr DynamicType(Bpl.Expr o) {
+      // $DymamicType(o)
+      return null;
+    }
+
+    /// <summary>
+    /// Returns the BPL command that corresponds to assigning the value <paramref name="value"/>
+    /// to the field <paramref name="f"/> of the object <paramref name="o"/> (when
+    /// <paramref name="o"/> is non-null, otherwise it is an assignment to the static
+    /// field.
+    /// </summary>
+    public override Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value) {
+      if (o == null)
+        return Bpl.Cmd.SimpleAssign(tok, f, value);
+      else
+        return Bpl.Cmd.MapAssign(tok, f, o, value);
     }
 
   }
@@ -256,7 +289,7 @@ procedure {:inline 1} Alloc() returns (x: int)
   /// elements of the heap are of type "box". Each value that is read/written
   /// from/to the heap is wrapped in a type conversion function.
   /// </summary>
-  public class TwoDBoxHeap : HeapFactory, IHeap {
+  public class TwoDBoxHeap : Heap {
 
     #region Fields
     [RepresentationFor("$Heap", "var $Heap: HeapType where IsGoodHeap($Heap);", true)]
@@ -298,11 +331,12 @@ procedure {:inline 1} Alloc() returns (x: int)
 
     #endregion
 
-    public override bool MakeHeap(Sink sink, out IHeap heap, out Bpl.Program/*?*/ program) {
+    public override bool MakeHeap(Sink sink, out Heap heap, out Bpl.Program/*?*/ program) {
       this.sink = sink;
       heap = this;
       program = null;
-      var b = RepresentationFor.ParsePrelude(this.InitialPreludeText, this, out program);
+      string prelude = this.InitialPreludeText + this.DelegateEncodingText;
+      var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       return b;
     }
 
@@ -310,7 +344,7 @@ procedure {:inline 1} Alloc() returns (x: int)
     /// Creates a fresh BPL variable to represent <paramref name="field"/>, deciding
     /// on its type based on the heap representation.
     /// </summary>
-    public Bpl.Variable CreateFieldVariable(IFieldReference field) {
+    public override Bpl.Variable CreateFieldVariable(IFieldReference field) {
       Bpl.Variable v;
       string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
       Bpl.IToken tok = field.Token();
@@ -319,7 +353,25 @@ procedure {:inline 1} Alloc() returns (x: int)
       if (field.IsStatic) {
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.GlobalVariable(tok, tident);
-      } else {
+      }
+      else {
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
+        v = new Bpl.Constant(tok, tident, true);
+      }
+      return v;
+    }
+
+    public override Bpl.Variable CreateEventVariable(IEventDefinition e) {
+      Bpl.Variable v;
+      string fieldname = TypeHelper.GetTypeName(e.ContainingType) + "." + e.Name.Value;
+      Bpl.IToken tok = e.Token();
+      Bpl.Type t = TranslationHelper.CciTypeToBoogie(e.Type.ResolvedType);
+
+      if (e.Adder.ResolvedMethod.IsStatic) {
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
+        v = new Bpl.GlobalVariable(tok, tident);
+      }
+      else {
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.Constant(tok, tident, true);
       }
@@ -331,7 +383,7 @@ procedure {:inline 1} Alloc() returns (x: int)
     /// on its type based on the heap representation. I.e., the value of this
     /// variable represents the value of the expression "typeof(type)".
     /// </summary>
-    public Bpl.Variable CreateTypeVariable(ITypeReference type) {
+    public override Bpl.Variable CreateTypeVariable(ITypeReference type) {
       return null;
     }
 
@@ -346,7 +398,7 @@ procedure {:inline 1} Alloc() returns (x: int)
     /// <param name="f">The field that is used to dereference the object <paramref name="o"/>, when
     /// it is not null. Otherwise the static field whose value should be read.
     /// </param>
-    public Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f) {
+    public override Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f) {
       // $Heap[o,f]
       var selectExpr = Bpl.Expr.Select(new Bpl.IdentifierExpr(f.tok, HeapVariable), new Bpl.Expr[] { o, f });
       // wrap it in the right conversion function
@@ -372,10 +424,11 @@ procedure {:inline 1} Alloc() returns (x: int)
     /// <paramref name="o"/> is non-null, otherwise it is an assignment to the static
     /// field.
     /// </summary>
-    public Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value) {
+    public override Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value) {
       if (o == null) {
         return Bpl.Cmd.SimpleAssign(tok, f, value);
-      } else {
+      }
+      else {
         // wrap it in the right conversion function
         Bpl.Function conversion;
         if (f.Type == Bpl.Type.Bool)
@@ -401,7 +454,7 @@ procedure {:inline 1} Alloc() returns (x: int)
     /// Returns the BPL expression that corresponds to the value of the dynamic type
     /// of the object represented by the expression <paramref name="o"/>.
     /// </summary>
-    public Bpl.Expr DynamicType(Bpl.Expr o) {
+    public override Bpl.Expr DynamicType(Bpl.Expr o) {
       // $DymamicType(o)
       return null;
     }
@@ -413,7 +466,7 @@ procedure {:inline 1} Alloc() returns (x: int)
   /// for all heap reads and writes. That way the decision about
   /// how to exactly represent the heap is made in the Prelude.
   /// </summary>
-  public class GeneralHeap : HeapFactory, IHeap {
+  public class GeneralHeap : Heap {
 
     #region Fields
 
@@ -474,11 +527,12 @@ procedure {:inline 1} Alloc() returns (x: ref)
 
     #endregion
 
-    public override bool MakeHeap(Sink sink, out IHeap heap, out Bpl.Program/*?*/ program) {
+    public override bool MakeHeap(Sink sink, out Heap heap, out Bpl.Program/*?*/ program) {
       this.sink = sink;
       heap = this;
       program = null;
-      var b = RepresentationFor.ParsePrelude(this.InitialPreludeText, this, out program);
+      string prelude = this.InitialPreludeText + this.DelegateEncodingText;
+      var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       if (b) {
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
         this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
@@ -490,7 +544,7 @@ procedure {:inline 1} Alloc() returns (x: ref)
     /// Creates a fresh BPL variable to represent <paramref name="field"/>, deciding
     /// on its type based on the heap representation.
     /// </summary>
-    public Bpl.Variable CreateFieldVariable(IFieldReference field) {
+    public override Bpl.Variable CreateFieldVariable(IFieldReference field) {
       Bpl.Variable v;
       string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
       Bpl.IToken tok = field.Token();
@@ -499,7 +553,8 @@ procedure {:inline 1} Alloc() returns (x: ref)
         Bpl.Type t = TranslationHelper.CciTypeToBoogie(field.Type.ResolvedType);
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.GlobalVariable(tok, tident);
-      } else {
+      }
+      else {
         Bpl.Type t = this.FieldType;
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.Constant(tok, tident, true);
@@ -509,12 +564,31 @@ procedure {:inline 1} Alloc() returns (x: ref)
     }
     private Dictionary<Bpl.Variable, ITypeReference> underlyingTypes = new Dictionary<Bpl.Variable, ITypeReference>();
 
+    public override Bpl.Variable CreateEventVariable(IEventDefinition e) {
+      Bpl.Variable v;
+      string fieldname = TypeHelper.GetTypeName(e.ContainingType) + "." + e.Name.Value;
+      Bpl.IToken tok = e.Token();
+
+      if (e.Adder.ResolvedMethod.IsStatic) {
+        Bpl.Type t = TranslationHelper.CciTypeToBoogie(e.Type.ResolvedType);
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
+        v = new Bpl.GlobalVariable(tok, tident);
+      }
+      else {
+        Bpl.Type t = this.FieldType;
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
+        v = new Bpl.Constant(tok, tident, true);
+      }
+      this.underlyingTypes.Add(v, e.Type);
+      return v;
+    }
+
     /// <summary>
     /// Creates a fresh BPL variable to represent <paramref name="type"/>, deciding
     /// on its type based on the heap representation. I.e., the value of this
     /// variable represents the value of the expression "typeof(type)".
     /// </summary>
-    public Bpl.Variable CreateTypeVariable(ITypeReference type) {
+    public override Bpl.Variable CreateTypeVariable(ITypeReference type) {
       Bpl.Variable v;
       string typename = TypeHelper.GetTypeName(type);
       Bpl.IToken tok = type.Token();
@@ -535,7 +609,7 @@ procedure {:inline 1} Alloc() returns (x: ref)
     /// <param name="f">The field that is used to dereference the object <paramref name="o"/>, when
     /// it is not null. Otherwise the static field whose value should be read.
     /// </param>
-    public Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f) {
+    public override Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f) {
       // $Read($Heap, o, f)
       var callRead = new Bpl.NAryExpr(
         f.tok,
@@ -567,10 +641,11 @@ procedure {:inline 1} Alloc() returns (x: ref)
     /// <paramref name="o"/> is non-null, otherwise it is an assignment to the static
     /// field.
     /// </summary>
-    public Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value) {
+    public override Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value) {
       if (o == null) {
         return Bpl.Cmd.SimpleAssign(tok, f, value);
-      } else {
+      }
+      else {
         // wrap it in the right conversion function
         Bpl.Function conversion;
         if (value.Type == Bpl.Type.Bool)
@@ -600,7 +675,7 @@ procedure {:inline 1} Alloc() returns (x: ref)
     /// Returns the BPL expression that corresponds to the value of the dynamic type
     /// of the object represented by the expression <paramref name="o"/>.
     /// </summary>
-    public Bpl.Expr DynamicType(Bpl.Expr o) {
+    public override Bpl.Expr DynamicType(Bpl.Expr o) {
       // $DymamicType(o)
       var callDynamicType = new Bpl.NAryExpr(
         o.tok,
@@ -616,7 +691,7 @@ procedure {:inline 1} Alloc() returns (x: ref)
     internal string name;
     internal string declaration;
     internal bool required;
-    internal RepresentationFor(string name, string declaration) { this.name = name; this.declaration = declaration;  this.required = true; }
+    internal RepresentationFor(string name, string declaration) { this.name = name; this.declaration = declaration; this.required = true; }
     internal RepresentationFor(string name, string declaration, bool required) { this.name = name; this.declaration = declaration; this.required = required; }
 
     internal static bool ParsePrelude(string initialPreludeText, object instance, out Bpl.Program/*?*/ prelude) {
@@ -632,7 +707,8 @@ procedure {:inline 1} Alloc() returns (x: ref)
         object[] cas = field.GetCustomAttributes(typeof(RepresentationFor), false);
         if (cas == null || cas.Length == 0) { // only look at fields that have the attribute
           fields[i] = null;
-        } else {
+        }
+        else {
           foreach (var a in cas) { // should be exactly one
             RepresentationFor rf = a as RepresentationFor;
             if (rf != null) {

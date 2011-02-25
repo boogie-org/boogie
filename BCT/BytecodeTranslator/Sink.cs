@@ -13,6 +13,7 @@ using Microsoft.Cci.MetadataReader;
 using Microsoft.Cci.MutableCodeModel;
 using Microsoft.Cci.Contracts;
 using Microsoft.Cci.ILToCodeModel;
+using System.Diagnostics.Contracts;
 
 using Bpl = Microsoft.Boogie;
 
@@ -35,10 +36,10 @@ namespace BytecodeTranslator {
         this.TranslatedProgram = new Bpl.Program();
     }
 
-    public IHeap Heap {
+    public Heap Heap {
       get { return this.heap; }
     }
-    readonly IHeap heap;
+    readonly Heap heap;
 
     public Bpl.Variable ArrayContentsVariable
     {
@@ -59,6 +60,30 @@ namespace BytecodeTranslator {
     public readonly string StaticFieldFunction = "ClassRepr";
     public readonly string ReferenceTypeName = "Ref";
 
+    public readonly string DelegateAddHelperName = "DelegateAddHelper";
+    public readonly string DelegateAddName = "DelegateAdd";
+    public readonly string DelegateRemoveName = "DelegateRemove";
+
+    public Bpl.Expr ReadHead(Bpl.Expr delegateReference)
+    {
+      return Bpl.Expr.Select(new Bpl.IdentifierExpr(delegateReference.tok, this.heap.DelegateHead), delegateReference);
+    }
+
+    public Bpl.Expr ReadNext(Bpl.Expr delegateReference, Bpl.Expr listNodeReference)
+    {
+      return Bpl.Expr.Select(Bpl.Expr.Select(new Bpl.IdentifierExpr(delegateReference.tok, this.heap.DelegateNext), delegateReference), listNodeReference);
+    }
+
+    public Bpl.Expr ReadMethod(Bpl.Expr delegateReference, Bpl.Expr listNodeReference)
+    {
+      return Bpl.Expr.Select(Bpl.Expr.Select(new Bpl.IdentifierExpr(delegateReference.tok, this.heap.DelegateMethod), delegateReference), listNodeReference);
+    }
+
+    public Bpl.Expr ReadReceiver(Bpl.Expr delegateReference, Bpl.Expr listNodeReference)
+    {
+      return Bpl.Expr.Select(Bpl.Expr.Select(new Bpl.IdentifierExpr(delegateReference.tok, this.heap.DelegateReceiver), delegateReference), listNodeReference);
+    }
+    
     public readonly Bpl.Program TranslatedProgram;
 
     /// <summary>
@@ -127,7 +152,28 @@ namespace BytecodeTranslator {
     /// </summary>
     private Dictionary<uint, Bpl.Variable> declaredFields = new Dictionary<uint, Bpl.Variable>();
 
-    public Bpl.Procedure FindOrCreateProcedure(IMethodDefinition method, bool isStatic) {
+    public Bpl.Variable FindOrCreateEventVariable(IEventDefinition e)
+    {
+      Bpl.Variable v;
+      if (!this.declaredEvents.TryGetValue(e, out v))
+      {
+        v = this.Heap.CreateEventVariable(e);
+        this.declaredEvents.Add(e, v);
+        this.TranslatedProgram.TopLevelDeclarations.Add(v);
+      }
+      return v;
+    }
+
+    private Dictionary<IEventDefinition, Bpl.Variable> declaredEvents = new Dictionary<IEventDefinition, Bpl.Variable>();
+
+    public Bpl.Variable FindOrCreatePropertyVariable(IPropertyDefinition p)
+    {
+      return null;
+    }
+
+    private Dictionary<IPropertyDefinition, Bpl.Variable> declaredProperties = new Dictionary<IPropertyDefinition, Bpl.Variable>();
+
+    public Bpl.Procedure FindOrCreateProcedure(IMethodReference method, bool isStatic) {
       Bpl.Procedure proc;
       var key = method.InternedKey;
       if (!this.declaredMethods.TryGetValue(key, out proc)) {
@@ -302,19 +348,32 @@ namespace BytecodeTranslator {
       this.FormalMap = new Dictionary<IParameterDefinition, MethodParameter>();
     }
 
-    public Dictionary<ITypeDefinition, HashSet<Bpl.Constant>> delegateTypeToDelegates =
-      new Dictionary<ITypeDefinition, HashSet<Bpl.Constant>>();
+    public Dictionary<ITypeDefinition, HashSet<IMethodDefinition>> delegateTypeToDelegates = new Dictionary<ITypeDefinition, HashSet<IMethodDefinition>>();
 
-    public void AddDelegate(ITypeDefinition type, Bpl.Constant constant)
+    public void AddDelegate(ITypeDefinition type, IMethodDefinition defn)
     {
       if (!delegateTypeToDelegates.ContainsKey(type))
-        delegateTypeToDelegates[type] = new HashSet<Bpl.Constant>();
-      delegateTypeToDelegates[type].Add(constant);
+        delegateTypeToDelegates[type] = new HashSet<IMethodDefinition>();
+      delegateTypeToDelegates[type].Add(defn);
     }
 
     public void AddDelegateType(ITypeDefinition type) {
       if (!delegateTypeToDelegates.ContainsKey(type))
-        delegateTypeToDelegates[type] = new HashSet<Bpl.Constant>();
+        delegateTypeToDelegates[type] = new HashSet<IMethodDefinition>();
+    }
+
+    private Dictionary<IMethodDefinition, Bpl.Constant> delegateMethods = new Dictionary<IMethodDefinition, Bpl.Constant>();
+
+    public Bpl.Constant FindOrAddDelegateMethodConstant(IMethodDefinition defn)
+    {
+      if (delegateMethods.ContainsKey(defn))
+        return delegateMethods[defn];
+      string methodName = TranslationHelper.CreateUniqueMethodName(defn);
+      var typedIdent = new Bpl.TypedIdent(Bpl.Token.NoToken, methodName, Bpl.Type.Int);
+      var constant = new Bpl.Constant(Bpl.Token.NoToken, typedIdent, true);
+      this.TranslatedProgram.TopLevelDeclarations.Add(constant);
+      delegateMethods[defn] = constant;
+      return constant;
     }
   }
 

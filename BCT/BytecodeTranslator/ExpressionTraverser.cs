@@ -404,16 +404,18 @@ namespace BytecodeTranslator
     public override void Visit(IMethodCall methodCall)
     {
       var resolvedMethod = methodCall.MethodToCall.ResolvedMethod;
-
+        
       #region Translate In Parameters
 
       var inexpr = new List<Bpl.Expr>();
 
       #region Create the 'this' argument for the function call
+      Bpl.Expr thisExpr = null;
       if (!methodCall.IsStaticCall)
       {
         this.Visit(methodCall.ThisArgument);
-        inexpr.Add(this.TranslatedExpressions.Pop());
+        thisExpr = this.TranslatedExpressions.Pop();
+        inexpr.Add(thisExpr);
       }
       #endregion
 
@@ -486,12 +488,55 @@ namespace BytecodeTranslator
         }
 
         Bpl.CallCmd call;
-        if (attrib != null)
-          call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars, attrib);
-        else
-          call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars);
-        this.StmtTraverser.StmtBuilder.Add(call);
+        bool isEventAdd = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("add_");
+        bool isEventRemove = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("remove_");
+        if (isEventAdd || isEventRemove)
+        {
+          Bpl.Variable eventVar = null;
+          Bpl.Variable local = null;
+          foreach (var e in resolvedMethod.ContainingTypeDefinition.Events)
+          {
+            if (e.Adder != null && e.Adder.ResolvedMethod == resolvedMethod)
+            {
+              eventVar = this.sink.FindOrCreateEventVariable(e);
+              local = this.sink.CreateFreshLocal(e.Type);
+              break;
+            }
+          }
+          if (methodCall.IsStaticCall)
+          {
+            this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), Bpl.Expr.Ident(eventVar)));
+            inexpr.Insert(0, Bpl.Expr.Ident(local));
+          }
+          else 
+          { 
+            this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), this.sink.Heap.ReadHeap(thisExpr, Bpl.Expr.Ident(eventVar))));
+            inexpr[0] = Bpl.Expr.Ident(local);
+          }
 
+          System.Diagnostics.Debug.Assert(outvars.Count == 0);
+          outvars.Add(Bpl.Expr.Ident(local));
+          string methodName = isEventAdd ? this.sink.DelegateAddName : this.sink.DelegateRemoveName;
+          call = new Bpl.CallCmd(methodCall.Token(), methodName, inexpr, outvars);
+          this.StmtTraverser.StmtBuilder.Add(call);
+          if (methodCall.IsStaticCall)
+          {
+            this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local)));
+          }
+          else
+          {
+            this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(methodCall.Token(), thisExpr, Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local)));
+          }
+        }
+        else
+        {
+          string methodName = TranslationHelper.CreateUniqueMethodName(methodCall.MethodToCall);
+          if (attrib != null)
+            call = new Bpl.CallCmd(cloc, methodName, inexpr, outvars, attrib);
+          else
+            call = new Bpl.CallCmd(cloc, methodName, inexpr, outvars);
+          this.StmtTraverser.StmtBuilder.Add(call);
+        }
       }
 
     }
@@ -587,8 +632,14 @@ namespace BytecodeTranslator
     
     public override void Visit(ICreateDelegateInstance createDelegateInstance)
     {
-      TranslateDelegateCreation(createDelegateInstance.MethodToCallViaDelegate, createDelegateInstance.Type);
-      //base.Visit(createDelegateInstance);
+      if (createDelegateInstance.Instance == null) {
+        TranslatedExpressions.Push(Bpl.Expr.Literal(0));
+      }
+      else {
+        this.Visit(createDelegateInstance.Instance);
+      }
+
+      TranslateDelegateCreation(createDelegateInstance.MethodToCallViaDelegate, createDelegateInstance.Type, createDelegateInstance);
     }
 
     private void TranslateArrayCreation(IExpression creationAST)
@@ -602,7 +653,6 @@ namespace BytecodeTranslator
 
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
-
 
     private void TranslateObjectCreation(IMethodReference ctor, IEnumerable<IExpression> arguments, ITypeReference ctorType, IExpression creationAST)
     {
@@ -655,14 +705,20 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
 
-    private void TranslateDelegateCreation(IMethodReference methodToCall, ITypeReference type)
+    private void TranslateDelegateCreation(IMethodReference methodToCall, ITypeReference type, IExpression creationAST)
     {
-      string methodName = TranslationHelper.CreateUniqueMethodName(methodToCall);
-      var typedIdent = new Bpl.TypedIdent(Bpl.Token.NoToken, methodName, Bpl.Type.Int);
-      var constant = new Bpl.Constant(Bpl.Token.NoToken, typedIdent, true);
-      sink.TranslatedProgram.TopLevelDeclarations.Add(constant);
-      TranslatedExpressions.Push(Bpl.Expr.Ident(constant));
-      sink.AddDelegate(type.ResolvedType, constant);
+      Bpl.IToken cloc = creationAST.Token();
+      var a = this.sink.CreateFreshLocal(creationAST.Type);
+
+      sink.AddDelegate(type.ResolvedType, methodToCall.ResolvedMethod);
+      Bpl.Constant constant = sink.FindOrAddDelegateMethodConstant(methodToCall.ResolvedMethod);
+      Bpl.Expr methodExpr = Bpl.Expr.Ident(constant);
+      Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
+
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.DelegateAddHelperName, 
+                                                         new Bpl.ExprSeq(Bpl.Expr.Literal(0), Bpl.Expr.Ident(constant), instanceExpr), 
+                                                         new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
+      TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
     
     #endregion

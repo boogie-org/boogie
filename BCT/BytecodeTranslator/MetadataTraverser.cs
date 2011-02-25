@@ -32,9 +32,6 @@ namespace BytecodeTranslator {
 
     public readonly PdbReader/*?*/ PdbReader;
 
-    public Bpl.Variable HeapVariable;
-
-
     public MetadataTraverser(Sink sink, PdbReader/*?*/ pdbReader)
       : base() {
       this.sink = sink;
@@ -60,18 +57,33 @@ namespace BytecodeTranslator {
       }
     }
 
+    private Bpl.IfCmd BuildBreakCmd(Bpl.Expr b) {
+      Bpl.StmtListBuilder ifStmtBuilder = new Bpl.StmtListBuilder();
+      ifStmtBuilder.Add(new Bpl.BreakCmd(b.tok, ""));
+      return new Bpl.IfCmd(b.tok, b, ifStmtBuilder.Collect(b.tok), null, null);
+    }
+
+    private Bpl.IfCmd BuildIfCmd(Bpl.Expr b, Bpl.Cmd cmd, Bpl.IfCmd ifCmd)
+    {
+      Bpl.StmtListBuilder ifStmtBuilder;
+      ifStmtBuilder = new Bpl.StmtListBuilder();
+      ifStmtBuilder.Add(cmd);
+      return new Bpl.IfCmd(b.tok, b, ifStmtBuilder.Collect(b.tok), ifCmd, null);
+    }
+
     private void CreateDispatchMethod(ITypeDefinition type)
     {
       Contract.Assert(type.IsDelegate);
-      IMethodDefinition method = null;
+      IMethodDefinition invokeMethod = null;
       foreach (IMethodDefinition m in type.Methods)
       {
         if (m.Name.Value == "Invoke")
         {
-          method = m;
+          invokeMethod = m;
           break;
         }
       }
+      Bpl.IToken token = invokeMethod.Token();
 
       Dictionary<IParameterDefinition, MethodParameter> formalMap = new Dictionary<IParameterDefinition, MethodParameter>();
       this.sink.BeginMethod();
@@ -83,7 +95,7 @@ namespace BytecodeTranslator {
         int in_count = 0;
         int out_count = 0;
         MethodParameter mp;
-        foreach (IParameterDefinition formal in method.Parameters)
+        foreach (IParameterDefinition formal in invokeMethod.Parameters)
         {
           mp = new MethodParameter(formal);
           if (mp.inParameterCopy != null) in_count++;
@@ -94,13 +106,11 @@ namespace BytecodeTranslator {
         this.sink.FormalMap = formalMap;
 
         #region Look for Returnvalue
-        if (method.Type.TypeCode != PrimitiveTypeCode.Void)
+        if (invokeMethod.Type.TypeCode != PrimitiveTypeCode.Void)
         {
-          Bpl.Type rettype = TranslationHelper.CciTypeToBoogie(method.Type);
+          Bpl.Type rettype = TranslationHelper.CciTypeToBoogie(invokeMethod.Type);
           out_count++;
-          this.sink.RetVariable = new Bpl.Formal(method.Token(),
-              new Bpl.TypedIdent(method.Token(),
-                  "$result", rettype), false);
+          this.sink.RetVariable = new Bpl.Formal(token, new Bpl.TypedIdent(token, "$result", rettype), false);
         }
         else
         {
@@ -109,7 +119,7 @@ namespace BytecodeTranslator {
 
         #endregion
 
-        in_count++; // for the function pointer parameter
+        in_count++; // for the delegate instance
 
         Bpl.Variable[] invars = new Bpl.Formal[in_count];
         Bpl.Variable[] outvars = new Bpl.Formal[out_count];
@@ -117,8 +127,7 @@ namespace BytecodeTranslator {
         int i = 0;
         int j = 0;
 
-        // Create function pointer parameter
-        invars[i++] = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Token(), "this", Bpl.Type.Int), true);
+        invars[i++] = new Bpl.Formal(token, new Bpl.TypedIdent(token, "this", Bpl.Type.Int), true);
 
         foreach (MethodParameter mparam in formalMap.Values)
         {
@@ -139,10 +148,9 @@ namespace BytecodeTranslator {
 
         #endregion
 
-        string MethodName = TranslationHelper.CreateUniqueMethodName(method);
-
-        Bpl.Procedure proc = new Bpl.Procedure(method.Token(),
-            MethodName, // make it unique!
+        string invokeMethodName = TranslationHelper.CreateUniqueMethodName(invokeMethod);
+        Bpl.Procedure proc = new Bpl.Procedure(token,
+            invokeMethodName, // make it unique!
             new Bpl.TypeVariableSeq(),
             new Bpl.VariableSeq(invars), // in
             new Bpl.VariableSeq(outvars), // out
@@ -152,22 +160,26 @@ namespace BytecodeTranslator {
 
         this.sink.TranslatedProgram.TopLevelDeclarations.Add(proc);
 
-        List<Bpl.Block> blocks = new List<Bpl.Block>();
-        Bpl.StringSeq labelTargets = new Bpl.StringSeq();
-        Bpl.BlockSeq blockTargets = new Bpl.BlockSeq();
-        string l = "blocked";
-        Bpl.Block b = new Bpl.Block(method.Token(), l, 
-          new Bpl.CmdSeq(new Bpl.AssumeCmd(method.Token(), Bpl.Expr.False)), 
-          new Bpl.ReturnCmd(method.Token()));
-        labelTargets.Add(l);
-        blockTargets.Add(b);
-        blocks.Add(b);
-        foreach (Bpl.Constant c in sink.delegateTypeToDelegates[type])
+        Bpl.LocalVariable method = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "method", Bpl.Type.Int));
+        Bpl.LocalVariable receiver = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "receiver", Bpl.Type.Int));
+        Bpl.LocalVariable iter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "iter", Bpl.Type.Int));
+        Bpl.LocalVariable niter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "niter", Bpl.Type.Int));
+
+        Bpl.StmtListBuilder implStmtBuilder = new Bpl.StmtListBuilder();
+        implStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(iter), this.sink.ReadHead(Bpl.Expr.Ident(invars[0]))));
+
+        Bpl.StmtListBuilder whileStmtBuilder = new Bpl.StmtListBuilder();
+        whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(niter), this.sink.ReadNext(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(iter))));
+        whileStmtBuilder.Add(BuildBreakCmd(Bpl.Expr.Eq(Bpl.Expr.Ident(niter), this.sink.ReadHead(Bpl.Expr.Ident(invars[0])))));
+        whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(method), this.sink.ReadMethod(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(niter))));
+        whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(receiver), this.sink.ReadReceiver(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(niter))));
+        Bpl.IfCmd ifCmd = BuildIfCmd(Bpl.Expr.True, new Bpl.AssumeCmd(token, Bpl.Expr.False), null);
+        foreach (IMethodDefinition defn in sink.delegateTypeToDelegates[type])
         {
-          Bpl.Expr bexpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(c));
-          Bpl.AssumeCmd assumeCmd = new Bpl.AssumeCmd(method.Token(), bexpr);
           Bpl.ExprSeq ins = new Bpl.ExprSeq();
           Bpl.IdentifierExprSeq outs = new Bpl.IdentifierExprSeq();
+          if (!defn.IsStatic)
+            ins.Add(Bpl.Expr.Ident(receiver));
           int index;
           for (index = 1; index < invars.Length; index++)
           {
@@ -177,25 +189,25 @@ namespace BytecodeTranslator {
           {
             outs.Add(Bpl.Expr.Ident(outvars[index]));
           }
-          Bpl.CallCmd callCmd = new Bpl.CallCmd(method.Token(), c.Name, ins, outs);
-          l = "label_" + c.Name;
-          b = new Bpl.Block(method.Token(), l, new Bpl.CmdSeq(assumeCmd, callCmd), new Bpl.ReturnCmd(method.Token()));
-          labelTargets.Add(l);
-          blockTargets.Add(b);
-          blocks.Add(b);
+          Bpl.Constant c = sink.FindOrAddDelegateMethodConstant(defn);
+          Bpl.Expr bexpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, Bpl.Expr.Ident(method), Bpl.Expr.Ident(c)); 
+          Bpl.CallCmd callCmd = new Bpl.CallCmd(token, c.Name, ins, outs);
+          ifCmd = BuildIfCmd(bexpr, callCmd, ifCmd);
         }
-        Bpl.GotoCmd gotoCmd = new Bpl.GotoCmd(method.Token(), labelTargets, blockTargets);
-        Bpl.Block initialBlock = new Bpl.Block(method.Token(), "start", new Bpl.CmdSeq(), gotoCmd);
-        blocks.Insert(0, initialBlock);
+        whileStmtBuilder.Add(ifCmd);
+        whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(iter), Bpl.Expr.Ident(niter)));
+        Bpl.WhileCmd whileCmd = new Bpl.WhileCmd(token, Bpl.Expr.True, new List<Bpl.PredicateCmd>(), whileStmtBuilder.Collect(token));
+
+        implStmtBuilder.Add(whileCmd);
 
         Bpl.Implementation impl =
-            new Bpl.Implementation(method.Token(),
-                MethodName, // make unique
-                new Microsoft.Boogie.TypeVariableSeq(),
-                new Microsoft.Boogie.VariableSeq(invars),
-                new Microsoft.Boogie.VariableSeq(outvars),
-                new Bpl.VariableSeq(),
-                blocks
+            new Bpl.Implementation(token,
+                invokeMethodName, // make unique
+                new Bpl.TypeVariableSeq(),
+                new Bpl.VariableSeq(invars),
+                new Bpl.VariableSeq(outvars),
+                new Bpl.VariableSeq(iter, niter, method, receiver),
+                implStmtBuilder.Collect(token)
                 );
 
         impl.Proc = proc;
@@ -242,6 +254,9 @@ namespace BytecodeTranslator {
     /// 
     /// </summary>
     public override void Visit(IMethodDefinition method) {
+      bool isEventAddOrRemove = method.IsSpecialName && (method.Name.Value.StartsWith("add_") || method.Name.Value.StartsWith("remove_"));
+      if (isEventAddOrRemove)
+        return;
 
       this.sink.BeginMethod();
 

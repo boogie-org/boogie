@@ -29,6 +29,163 @@ implementation Alloc() returns (x: int)
 
 
 
+procedure DelegateAdd(a: int, b: int) returns (c: int);
+
+
+
+implementation DelegateAdd(a: int, b: int) returns (c: int)
+{
+  var m: int;
+  var o: int;
+
+    if (a == 0)
+    {
+        c := b;
+        return;
+    }
+    else if (b == 0)
+    {
+        c := a;
+        return;
+    }
+
+    call m, o := GetFirstElement(b);
+    call c := Alloc();
+    $Head[c] := $Head[a];
+    $Next[c] := $Next[a];
+    $Method[c] := $Method[a];
+    $Receiver[c] := $Receiver[a];
+    call c := DelegateAddHelper(c, m, o);
+}
+
+
+
+procedure DelegateRemove(a: int, b: int) returns (c: int);
+
+
+
+implementation DelegateRemove(a: int, b: int) returns (c: int)
+{
+  var m: int;
+  var o: int;
+
+    if (a == 0)
+    {
+        c := 0;
+        return;
+    }
+    else if (b == 0)
+    {
+        c := a;
+        return;
+    }
+
+    call m, o := GetFirstElement(b);
+    call c := Alloc();
+    $Head[c] := $Head[a];
+    $Next[c] := $Next[a];
+    $Method[c] := $Method[a];
+    $Receiver[c] := $Receiver[a];
+    call c := DelegateRemoveHelper(c, m, o);
+}
+
+
+
+procedure GetFirstElement(i: int) returns (m: int, o: int);
+
+
+
+implementation GetFirstElement(i: int) returns (m: int, o: int)
+{
+  var first: int;
+
+    first := $Next[i][$Head[i]];
+    m := $Method[i][first];
+    o := $Receiver[i][first];
+}
+
+
+
+procedure DelegateAddHelper(oldi: int, m: int, o: int) returns (i: int);
+
+
+
+implementation DelegateAddHelper(oldi: int, m: int, o: int) returns (i: int)
+{
+  var x: int;
+  var h: int;
+
+    if (oldi == 0)
+    {
+        call i := Alloc();
+        call x := Alloc();
+        $Head[i] := x;
+        $Next[i] := $Next[i][x := x];
+    }
+    else
+    {
+        i := oldi;
+    }
+
+    h := $Head[i];
+    $Method[i] := $Method[i][h := m];
+    $Receiver[i] := $Receiver[i][h := o];
+    call x := Alloc();
+    $Next[i] := $Next[i][x := $Next[i][h]];
+    $Next[i] := $Next[i][h := x];
+    $Head[i] := x;
+}
+
+
+
+procedure DelegateRemoveHelper(oldi: int, m: int, o: int) returns (i: int);
+
+
+
+implementation DelegateRemoveHelper(oldi: int, m: int, o: int) returns (i: int)
+{
+  var prev: int;
+  var iter: int;
+  var niter: int;
+
+    i := oldi;
+    if (i == 0)
+    {
+        return;
+    }
+
+    prev := 0;
+    iter := $Head[i];
+    while (true)
+    {
+        niter := $Next[i][iter];
+        if (niter == $Head[i])
+        {
+            break;
+        }
+
+        if ($Method[i][niter] == m && $Receiver[i][niter] == o)
+        {
+            prev := iter;
+        }
+
+        iter := niter;
+    }
+
+    if (prev == 0)
+    {
+        return;
+    }
+
+    $Next[i] := $Next[i][prev := $Next[i][$Next[i][prev]]];
+    if ($Next[i][$Head[i]] == $Head[i])
+    {
+        i := 0;
+    }
+}
+
+
+
 var $Heap: HeapType where IsGoodHeap($Heap);
 
 function Box2Int(box) : int;
@@ -38,6 +195,14 @@ function Box2Bool(box) : bool;
 function Int2Box(int) : box;
 
 function Bool2Box(bool) : box;
+
+var $Head: [int]int;
+
+var $Next: [int][int]int;
+
+var $Method: [int][int]int;
+
+var $Receiver: [int][int]int;
 
 procedure RegressionTestInput.AsyncAttribute.#ctor(this: int);
 

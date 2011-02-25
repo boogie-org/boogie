@@ -68,6 +68,15 @@ namespace BytecodeTranslator {
     /// </summary>
   static class TranslationHelper {
 
+    public static Bpl.AssignCmd BuildAssignCmd(Bpl.IdentifierExpr lhs, Bpl.Expr rhs)
+    {
+      List<Bpl.AssignLhs> lhss = new List<Bpl.AssignLhs>();
+      lhss.Add(new Bpl.SimpleAssignLhs(lhs.tok, lhs));
+      List<Bpl.Expr> rhss = new List<Bpl.Expr>();
+      rhss.Add(rhs);
+      return new Bpl.AssignCmd(lhs.tok, lhss, rhss);
+    }
+
     public static Bpl.IToken Token(this IObjectWithLocations objectWithLocations) {
       //TODO: use objectWithLocations.Locations!
       Bpl.IToken tok = Bpl.Token.NoToken;
