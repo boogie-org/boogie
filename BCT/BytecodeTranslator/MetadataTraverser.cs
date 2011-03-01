@@ -103,7 +103,7 @@ namespace BytecodeTranslator {
             out_count++;
           formalMap.Add(formal, mp);
         }
-        this.sink.FormalMap = formalMap;
+//        this.sink.FormalMap = formalMap;
 
         #region Look for Returnvalue
         if (invokeMethod.Type.TypeCode != PrimitiveTypeCode.Void)
@@ -240,9 +240,15 @@ namespace BytecodeTranslator {
         base.Visit(typeDefinition);
       } else if (typeDefinition.IsDelegate) {
         sink.AddDelegateType(typeDefinition);
+      } else if (typeDefinition.IsInterface) {
+        sink.FindOrCreateType(typeDefinition);
+        base.Visit(typeDefinition);
+      } else if (typeDefinition.IsEnum) {
+        return; // enums just are translated as ints
       } else {
-        Console.WriteLine("Non-Class {0} was found", typeDefinition);
-        throw new NotImplementedException(String.Format("Non-Class Type {0} is not yet supported.", typeDefinition.ToString()));
+        Console.WriteLine("Unknown kind of type definition '{0}' was found",
+          TypeHelper.GetTypeName(typeDefinition));
+        throw new NotImplementedException(String.Format("Unknown kind of type definition '{0}'.", TypeHelper.GetTypeName(typeDefinition)));
       }
     }
 
@@ -260,19 +266,22 @@ namespace BytecodeTranslator {
 
       this.sink.BeginMethod();
 
-      var proc = this.sink.FindOrCreateProcedure(method, method.IsStatic);
+      var procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(method, method.IsStatic);
+
+      if (method.IsAbstract) { // we're done, just define the procedure
+        return;
+      }
+
+      var proc = procAndFormalMap.Item1;
+      var formalMap = procAndFormalMap.Item2;
 
       try {
 
-        if (method.IsAbstract) {
-          throw new NotImplementedException("abstract methods are not yet implemented");
-        }
-
         StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader);
 
-        #region Add assignements from In-Params to local-Params
+        #region Add assignments from In-Params to local-Params
 
-        foreach (MethodParameter mparam in this.sink.FormalMap.Values) {
+        foreach (MethodParameter mparam in formalMap.Values) {
           if (mparam.inParameterCopy != null) {
             Bpl.IToken tok = method.Token();
             stmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
@@ -281,6 +290,26 @@ namespace BytecodeTranslator {
           }
         }
 
+        #endregion
+
+        #region For non-deferring ctors, initialize all fields to null-equivalent values
+        if (method.IsConstructor) {
+          var smb = method.Body as ISourceMethodBody;
+          if (smb != null && !FindCtorCall.IsDeferringCtor(method, smb.Block)) {
+
+            var inits = new List<IStatement>();
+            var thisExp = new ThisReference() { Type = method.ContainingTypeDefinition, };
+            foreach (var f in method.ContainingTypeDefinition.Fields) {
+              var a = new Assignment() {
+                Source = new DefaultValue() { Type = f.Type, },
+                Target = new TargetExpression() { Definition = f, Instance = thisExp, Type = f.Type },
+                Type = f.Type,
+              };
+              inits.Add(new ExpressionStatement() { Expression = a, });
+            }
+            new BlockStatement() { Statements = inits, }.Dispatch(stmtTraverser);
+          }
+        }
         #endregion
 
         try {
@@ -293,7 +322,7 @@ namespace BytecodeTranslator {
 
         #region Create Local Vars For Implementation
         List<Bpl.Variable> vars = new List<Bpl.Variable>();
-        foreach (MethodParameter mparam in this.sink.FormalMap.Values) {
+        foreach (MethodParameter mparam in formalMap.Values) {
           if (!(mparam.underlyingParameter.IsByReference || mparam.underlyingParameter.IsOut))
             vars.Add(mparam.outParameterCopy);
         }
@@ -315,6 +344,7 @@ namespace BytecodeTranslator {
 
         impl.Proc = proc;
 
+        #region Translate method attributes
         // Don't need an expression translator because there is a limited set of things
         // that can appear as arguments to custom attributes
         foreach (var a in method.Attributes) {
@@ -332,7 +362,9 @@ namespace BytecodeTranslator {
                   o = (bool)mdc.Value ? Bpl.Expr.True : Bpl.Expr.False;
                   break;
                 case PrimitiveTypeCode.Int32:
-                  o = Bpl.Expr.Literal((int)mdc.Value);
+                  var lit = Bpl.Expr.Literal((int)mdc.Value);
+                  lit.Type = Bpl.Type.Int;
+                  o = lit;
                   break;
                 case PrimitiveTypeCode.String:
                   o = mdc.Value;
@@ -345,6 +377,7 @@ namespace BytecodeTranslator {
           }
           impl.AddAttribute(attrName, args);
         }
+        #endregion
 
         this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
 
@@ -363,5 +396,26 @@ namespace BytecodeTranslator {
 
     #endregion
 
+    private class FindCtorCall : BaseCodeTraverser {
+      private bool isDeferringCtor = false;
+      public ITypeReference containingType;
+      public static bool IsDeferringCtor(IMethodDefinition method, IBlockStatement body) {
+        var fcc = new FindCtorCall(method.ContainingType);
+        fcc.Visit(body);
+        return fcc.isDeferringCtor;
+      }
+      private FindCtorCall(ITypeReference containingType) {
+        this.containingType = containingType;
+      }
+      public override void Visit(IMethodCall methodCall) {
+        var md = methodCall.MethodToCall.ResolvedMethod;
+        if (md != null && md.IsConstructor && methodCall.ThisArgument is IThisReference) {
+          this.isDeferringCtor = TypeHelper.TypesAreEquivalent(md.ContainingType, containingType);
+          this.stopTraversal = true;
+          return;
+        }
+        base.Visit(methodCall);
+      }
+    }
   }
 }

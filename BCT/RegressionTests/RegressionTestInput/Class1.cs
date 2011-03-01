@@ -122,4 +122,12 @@ namespace RegressionTestInput {
       }
     }
   }
+
+  public class WriteToTheHeapAValueReadFromTheHeap {
+    int x;
+    int y;
+    public void M() {
+      this.y = this.x;
+    }
+  }
 }

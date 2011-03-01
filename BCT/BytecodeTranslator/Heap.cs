@@ -414,6 +414,7 @@ procedure {:inline 1} Alloc() returns (x: int)
         new Bpl.FunctionCall(conversion),
         new Bpl.ExprSeq(selectExpr)
         );
+      callExpr.Type = f.Type;
       return callExpr;
 
     }
@@ -631,6 +632,7 @@ procedure {:inline 1} Alloc() returns (x: ref)
         new Bpl.FunctionCall(conversion),
         new Bpl.ExprSeq(callRead)
         );
+      callExpr.Type = boogieType;
       return callExpr;
 
     }

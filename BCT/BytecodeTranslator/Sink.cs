@@ -130,10 +130,12 @@ namespace BytecodeTranslator {
     /// <returns></returns>
     public Bpl.Variable FindParameterVariable(IParameterDefinition param) {
       MethodParameter mp;
-      this.FormalMap.TryGetValue(param, out mp);
+      Tuple<Bpl.Procedure, Dictionary<IParameterDefinition, MethodParameter>> procAndFormalMap;
+      this.declaredMethods.TryGetValue(param.ContainingSignature, out procAndFormalMap);
+      var formalMap = procAndFormalMap.Item2;
+      formalMap.TryGetValue(param, out mp);
       return mp.outParameterCopy;
     }
-    public Dictionary<IParameterDefinition, MethodParameter> FormalMap = null;
 
     public Bpl.Variable FindOrCreateFieldVariable(IFieldReference field) {
       // The Heap has to decide how to represent the field (i.e., its type),
@@ -172,11 +174,10 @@ namespace BytecodeTranslator {
     }
 
     private Dictionary<IPropertyDefinition, Bpl.Variable> declaredProperties = new Dictionary<IPropertyDefinition, Bpl.Variable>();
-
     public Bpl.Procedure FindOrCreateProcedure(IMethodReference method, bool isStatic) {
-      Bpl.Procedure proc;
-      var key = method.InternedKey;
-      if (!this.declaredMethods.TryGetValue(key, out proc)) {
+      Tuple<Bpl.Procedure, Dictionary<IParameterDefinition, MethodParameter>> procAndFormalMap;
+      var key = method; //.InternedKey;
+      if (!this.declaredMethods.TryGetValue(key, out procAndFormalMap)) {
         #region Create in- and out-parameters
 
         int in_count = 0;
@@ -191,7 +192,6 @@ namespace BytecodeTranslator {
             out_count++;
           formalMap.Add(formal, mp);
         }
-        this.FormalMap = formalMap;
 
         #region Look for Returnvalue
 
@@ -300,7 +300,7 @@ namespace BytecodeTranslator {
 
         string MethodName = TranslationHelper.CreateUniqueMethodName(method);
 
-        proc = new Bpl.Procedure(method.Token(),
+        var proc = new Bpl.Procedure(method.Token(),
             MethodName,
             new Bpl.TypeVariableSeq(),
             new Bpl.VariableSeq(invars), // in
@@ -311,10 +311,16 @@ namespace BytecodeTranslator {
 
 
         this.TranslatedProgram.TopLevelDeclarations.Add(proc);
-        this.declaredMethods.Add(key, proc);
+        procAndFormalMap = Tuple.Create(proc, formalMap);
+        this.declaredMethods.Add(key, procAndFormalMap);
       }
-      return proc;
+      return procAndFormalMap.Item1;
     }
+    public Tuple<Bpl.Procedure,Dictionary<IParameterDefinition, MethodParameter>> FindOrCreateProcedureAndReturnProcAndFormalMap(IMethodDefinition method, bool isStatic) {
+      this.FindOrCreateProcedure(method, isStatic);
+      return this.declaredMethods[method];
+    }
+
 
     /// <summary>
     /// Creates a fresh variable that represents the type of
@@ -339,13 +345,14 @@ namespace BytecodeTranslator {
     private Dictionary<uint, Bpl.Variable> declaredTypes = new Dictionary<uint, Bpl.Variable>();
 
     /// <summary>
-    /// The keys to the table are the interned key of the field.
+    /// The keys to the table are the signatures of the methods.
+    /// The values are pairs: first element is the procedure,
+    /// second element is the formal map for the procedure
     /// </summary>
-    private Dictionary<uint, Bpl.Procedure> declaredMethods = new Dictionary<uint, Bpl.Procedure>();
+    private Dictionary<ISignature, Tuple<Bpl.Procedure, Dictionary<IParameterDefinition, MethodParameter>>> declaredMethods = new Dictionary<ISignature, Tuple<Bpl.Procedure, Dictionary<IParameterDefinition, MethodParameter>>>();
 
     public void BeginMethod() {
       this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
-      this.FormalMap = new Dictionary<IParameterDefinition, MethodParameter>();
     }
 
     public Dictionary<ITypeDefinition, HashSet<IMethodDefinition>> delegateTypeToDelegates = new Dictionary<ITypeDefinition, HashSet<IMethodDefinition>>();

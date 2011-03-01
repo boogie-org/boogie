@@ -360,7 +360,9 @@ namespace BytecodeTranslator
       {
         var bplType = TranslationHelper.CciTypeToBoogie(constant.Type);
         if (bplType == Bpl.Type.Int) {
-          TranslatedExpressions.Push(Bpl.Expr.Literal(0));
+          var lit = Bpl.Expr.Literal(0);
+          lit.Type = Bpl.Type.Int;
+          TranslatedExpressions.Push(lit);
         } else if (bplType == Bpl.Type.Bool) {
           TranslatedExpressions.Push(Bpl.Expr.False);
         } else {
@@ -374,20 +376,24 @@ namespace BytecodeTranslator
       else if (constant.Value is string)
       {
         throw new NotImplementedException("Strings are not translated");
-      }
-      else
-      {
+      } else {
         // TODO: (mschaef) hack
-        TranslatedExpressions.Push(Bpl.Expr.Literal((int)constant.Value));
+        var lit = Bpl.Expr.Literal((int)constant.Value);
+        lit.Type = Bpl.Type.Int;
+        TranslatedExpressions.Push(lit);
       }
     }
 
     public override void Visit(IDefaultValue defaultValue) {
       var bplType = TranslationHelper.CciTypeToBoogie(defaultValue.Type);
       if (bplType == Bpl.Type.Int) {
-        TranslatedExpressions.Push(Bpl.Expr.Literal(0));
+        var lit = Bpl.Expr.Literal(0);
+        lit.Type = Bpl.Type.Int;
+        TranslatedExpressions.Push(lit);
       } else if (bplType == Bpl.Type.Bool) {
-        TranslatedExpressions.Push(Bpl.Expr.False);
+        var lit = Bpl.Expr.False;
+        lit.Type = Bpl.Type.Bool;
+        TranslatedExpressions.Push(lit);
       } else {
         throw new NotImplementedException("Don't know how to translate type");
       }
@@ -444,7 +450,7 @@ namespace BytecodeTranslator
       Bpl.IToken cloc = methodCall.Token();
 
       // meeting a constructor is always something special
-      if (resolvedMethod.IsConstructor)
+      if (false && resolvedMethod.IsConstructor)
       {
         // Todo: do something with the constructor call
       }
