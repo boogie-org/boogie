@@ -174,6 +174,7 @@ namespace BytecodeTranslator {
     }
 
     private Dictionary<IPropertyDefinition, Bpl.Variable> declaredProperties = new Dictionary<IPropertyDefinition, Bpl.Variable>();
+
     public Bpl.Procedure FindOrCreateProcedure(IMethodReference method, bool isStatic) {
       Tuple<Bpl.Procedure, Dictionary<IParameterDefinition, MethodParameter>> procAndFormalMap;
       var key = method; //.InternedKey;

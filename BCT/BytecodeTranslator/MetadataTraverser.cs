@@ -83,82 +83,19 @@ namespace BytecodeTranslator {
           break;
         }
       }
+
+      var procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(invokeMethod, invokeMethod.IsStatic);
+      var proc = procAndFormalMap.Item1;
+      var invars = proc.InParams;
+      var outvars = proc.OutParams;
+
       Bpl.IToken token = invokeMethod.Token();
 
-      Dictionary<IParameterDefinition, MethodParameter> formalMap = new Dictionary<IParameterDefinition, MethodParameter>();
       this.sink.BeginMethod();
 
       try
       {
-        #region Create in- and out-parameters
 
-        int in_count = 0;
-        int out_count = 0;
-        MethodParameter mp;
-        foreach (IParameterDefinition formal in invokeMethod.Parameters)
-        {
-          mp = new MethodParameter(formal);
-          if (mp.inParameterCopy != null) in_count++;
-          if (mp.outParameterCopy != null && (formal.IsByReference || formal.IsOut))
-            out_count++;
-          formalMap.Add(formal, mp);
-        }
-//        this.sink.FormalMap = formalMap;
-
-        #region Look for Returnvalue
-        if (invokeMethod.Type.TypeCode != PrimitiveTypeCode.Void)
-        {
-          Bpl.Type rettype = TranslationHelper.CciTypeToBoogie(invokeMethod.Type);
-          out_count++;
-          this.sink.RetVariable = new Bpl.Formal(token, new Bpl.TypedIdent(token, "$result", rettype), false);
-        }
-        else
-        {
-          this.sink.RetVariable = null;
-        }
-
-        #endregion
-
-        in_count++; // for the delegate instance
-
-        Bpl.Variable[] invars = new Bpl.Formal[in_count];
-        Bpl.Variable[] outvars = new Bpl.Formal[out_count];
-
-        int i = 0;
-        int j = 0;
-
-        invars[i++] = new Bpl.Formal(token, new Bpl.TypedIdent(token, "this", Bpl.Type.Int), true);
-
-        foreach (MethodParameter mparam in formalMap.Values)
-        {
-          if (mparam.inParameterCopy != null)
-          {
-            invars[i++] = mparam.inParameterCopy;
-          }
-          if (mparam.outParameterCopy != null)
-          {
-            if (mparam.underlyingParameter.IsByReference || mparam.underlyingParameter.IsOut)
-              outvars[j++] = mparam.outParameterCopy;
-          }
-        }
-
-        #region add the returnvalue to out if there is one
-        if (this.sink.RetVariable != null) outvars[j] = this.sink.RetVariable;
-        #endregion
-
-        #endregion
-
-        string invokeMethodName = TranslationHelper.CreateUniqueMethodName(invokeMethod);
-        Bpl.Procedure proc = new Bpl.Procedure(token,
-            invokeMethodName, // make it unique!
-            new Bpl.TypeVariableSeq(),
-            new Bpl.VariableSeq(invars), // in
-            new Bpl.VariableSeq(outvars), // out
-            new Bpl.RequiresSeq(),
-            new Bpl.IdentifierExprSeq(),
-            new Bpl.EnsuresSeq());
-
-        this.sink.TranslatedProgram.TopLevelDeclarations.Add(proc);
 
         Bpl.LocalVariable method = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "method", Bpl.Type.Int));
         Bpl.LocalVariable receiver = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "receiver", Bpl.Type.Int));
@@ -202,10 +139,10 @@ namespace BytecodeTranslator {
 
         Bpl.Implementation impl =
             new Bpl.Implementation(token,
-                invokeMethodName, // make unique
+                proc.Name,
                 new Bpl.TypeVariableSeq(),
-                new Bpl.VariableSeq(invars),
-                new Bpl.VariableSeq(outvars),
+                proc.InParams,
+                proc.OutParams,
                 new Bpl.VariableSeq(iter, niter, method, receiver),
                 implStmtBuilder.Collect(token)
                 );
