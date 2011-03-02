@@ -165,16 +165,20 @@ namespace BytecodeTranslator {
     }
 
     /// <summary>
-    /// Visits only classes: throws an exception for all other type definitions.
+    /// Translate the type definition.
     /// </summary>
     /// 
-
-
     public override void Visit(ITypeDefinition typeDefinition) {
 
       if (typeDefinition.IsClass) {
+        bool savedSawCctor = this.sawCctor;
+        this.sawCctor = false;
         sink.FindOrCreateType(typeDefinition);
         base.Visit(typeDefinition);
+        if (!this.sawCctor) {
+          CreateStaticConstructor(typeDefinition);
+        }
+        this.sawCctor = savedSawCctor;
       } else if (typeDefinition.IsDelegate) {
         sink.AddDelegateType(typeDefinition);
       } else if (typeDefinition.IsInterface) {
@@ -189,9 +193,59 @@ namespace BytecodeTranslator {
       }
     }
 
-    #region Local state for each method
+    private bool sawCctor = false;
 
-    #endregion
+    private void CreateStaticConstructor(ITypeDefinition typeDefinition) {
+      var proc = new Bpl.Procedure(Bpl.Token.NoToken,
+          TypeHelper.GetTypeName(typeDefinition) + ".#cctor",
+          new Bpl.TypeVariableSeq(),
+          new Bpl.VariableSeq(), // in
+          new Bpl.VariableSeq(), // out
+          new Bpl.RequiresSeq(),
+          new Bpl.IdentifierExprSeq(), // modifies
+          new Bpl.EnsuresSeq()
+          );
+
+      this.sink.TranslatedProgram.TopLevelDeclarations.Add(proc);
+
+      var stmtBuilder = new Bpl.StmtListBuilder();
+      foreach (var f in typeDefinition.Fields) {
+        if (f.IsStatic) {
+
+          Bpl.Expr e;
+          var bplType = TranslationHelper.CciTypeToBoogie(f.Type);
+          if (bplType == Bpl.Type.Int) {
+            e = Bpl.Expr.Literal(0);
+            e.Type = Bpl.Type.Int;
+          } else if (bplType == Bpl.Type.Bool) {
+            e = Bpl.Expr.False;
+            e.Type = Bpl.Type.Bool;
+          } else {
+            throw new NotImplementedException("Don't know how to translate type");
+          }
+
+          stmtBuilder.Add(
+            TranslationHelper.BuildAssignCmd(
+            Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f)), 
+            e
+            ));
+        }
+      }
+      Bpl.Implementation impl =
+        new Bpl.Implementation(Bpl.Token.NoToken,
+        proc.Name,
+        new Bpl.TypeVariableSeq(),
+        proc.InParams,
+        proc.OutParams,
+        new Bpl.VariableSeq(),
+        stmtBuilder.Collect(Bpl.Token.NoToken)
+        );
+
+      impl.Proc = proc;
+      this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
+
+
+    }
 
     /// <summary>
     /// 
@@ -229,23 +283,10 @@ namespace BytecodeTranslator {
 
         #endregion
 
-        #region For non-deferring ctors, initialize all fields to null-equivalent values
-        if (method.IsConstructor) {
-          var smb = method.Body as ISourceMethodBody;
-          if (smb != null && !FindCtorCall.IsDeferringCtor(method, smb.Block)) {
-
-            var inits = new List<IStatement>();
-            var thisExp = new ThisReference() { Type = method.ContainingTypeDefinition, };
-            foreach (var f in method.ContainingTypeDefinition.Fields) {
-              var a = new Assignment() {
-                Source = new DefaultValue() { Type = f.Type, },
-                Target = new TargetExpression() { Definition = f, Instance = thisExp, Type = f.Type },
-                Type = f.Type,
-              };
-              inits.Add(new ExpressionStatement() { Expression = a, });
-            }
-            new BlockStatement() { Statements = inits, }.Dispatch(stmtTraverser);
-          }
+        #region For non-deferring ctors and all cctors, initialize all fields to null-equivalent values
+        var inits = InitializeFieldsInConstructor(method);
+        if (0 < inits.Count) {
+          new BlockStatement() { Statements = inits, }.Dispatch(stmtTraverser);
         }
         #endregion
 
@@ -325,6 +366,28 @@ namespace BytecodeTranslator {
       } finally {
         // Maybe this is a good place to add the procedure to the toplevel declarations
       }
+    }
+
+    private static List<IStatement> InitializeFieldsInConstructor(IMethodDefinition method) {
+      Contract.Ensures(Contract.Result<List<IStatement>>() != null);
+      var inits = new List<IStatement>();
+      if (method.IsConstructor || method.IsStaticConstructor) {
+        var smb = method.Body as ISourceMethodBody;
+        if (method.IsStaticConstructor || (smb != null && !FindCtorCall.IsDeferringCtor(method, smb.Block))) {
+          var thisExp = new ThisReference() { Type = method.ContainingTypeDefinition, };
+          foreach (var f in method.ContainingTypeDefinition.Fields) {
+            if (f.IsStatic == method.IsStatic) {
+              var a = new Assignment() {
+                Source = new DefaultValue() { Type = f.Type, },
+                Target = new TargetExpression() { Definition = f, Instance = method.IsConstructor ? thisExp : null, Type = f.Type },
+                Type = f.Type,
+              };
+              inits.Add(new ExpressionStatement() { Expression = a, });
+            }
+          }
+        }
+      }
+      return inits;
     }
 
     public override void Visit(IFieldDefinition fieldDefinition) {
