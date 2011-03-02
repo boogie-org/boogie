@@ -71,11 +71,26 @@ namespace BytecodeTranslator {
   {
     public abstract Bpl.Variable CreateFieldVariable(IFieldReference field);
 
+    [RepresentationFor("Type", "type Type;")]
+    protected Bpl.TypeCtorDecl TypeTypeDecl = null;
+    protected Bpl.CtorType TypeType;
+    
+    /// <summary>
     /// Creates a fresh BPL variable to represent <paramref name="type"/>, deciding
     /// on its type based on the heap representation. I.e., the value of this
     /// variable represents the value of the expression "typeof(type)".
     /// </summary>
-    public abstract Bpl.Variable CreateTypeVariable(ITypeReference type);
+    public Bpl.Variable CreateTypeVariable(ITypeReference type)
+    {
+        Bpl.Variable v;
+        string typename = TypeHelper.GetTypeName(type);
+        Bpl.IToken tok = type.Token();
+        Bpl.Type t = this.TypeType;
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, typename, t);
+        tident.Type = this.TypeType;
+        v = new Bpl.Constant(tok, tident, true);
+        return v;
+    }
 
     public abstract Bpl.Variable CreateEventVariable(IEventDefinition e);
 
@@ -83,11 +98,22 @@ namespace BytecodeTranslator {
 
     public abstract Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr o, Bpl.IdentifierExpr f, Bpl.Expr value);
 
+    [RepresentationFor("$DynamicType", "function $DynamicType(ref): Type;")]
+    protected Bpl.Function DynamicTypeFunction = null;
+
     /// <summary>
     /// Returns the BPL expression that corresponds to the value of the dynamic type
     /// of the object represented by the expression <paramref name="o"/>.
     /// </summary>
-    public abstract Bpl.Expr DynamicType(Bpl.Expr o);
+    public Bpl.Expr DynamicType(Bpl.Expr o) {
+      // $DymamicType(o)
+      var callDynamicType = new Bpl.NAryExpr(
+        o.tok,
+        new Bpl.FunctionCall(this.DynamicTypeFunction),
+        new Bpl.ExprSeq(o)
+        );
+      return callDynamicType;
+    }
 
     protected readonly string DelegateEncodingText =
       @"procedure DelegateAdd(a: int, b: int) returns (c: int)

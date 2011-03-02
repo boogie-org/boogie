@@ -109,15 +109,6 @@ procedure {:inline 1} Alloc() returns (x: int)
     }
 
     /// <summary>
-    /// Creates a fresh BPL variable to represent <paramref name="type"/>, deciding
-    /// on its type based on the heap representation. I.e., the value of this
-    /// variable represents the value of the expression "typeof(type)".
-    /// </summary>
-    public override Bpl.Variable CreateTypeVariable(ITypeReference type) {
-      return null;
-    }
-
-    /// <summary>
     /// Returns the (typed) BPL expression that corresponds to the value of the field
     /// <paramref name="f"/> belonging to the object <paramref name="o"/> (when
     /// <paramref name="o"/> is non-null, otherwise the value of the static field.
@@ -146,16 +137,6 @@ procedure {:inline 1} Alloc() returns (x: int)
           Bpl.Cmd.MapAssign(tok,
           new Bpl.IdentifierExpr(tok, this.HeapVariable), new Bpl.ExprSeq(o, f), value);
     }
-
-    /// <summary>
-    /// Returns the BPL expression that corresponds to the value of the dynamic type
-    /// of the object represented by the expression <paramref name="o"/>.
-    /// </summary>
-    public override Bpl.Expr DynamicType(Bpl.Expr o) {
-      // $DymamicType(o)
-      return null;
-    }
-
   }
 
   /// <summary>
@@ -191,6 +172,9 @@ procedure {:inline 1} Alloc() returns (x: int)
       program = null;
       string prelude = this.InitialPreludeText + this.DelegateEncodingText;
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
+      if (b) {
+        this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
+      }
       return b;
     }
 
@@ -235,15 +219,6 @@ procedure {:inline 1} Alloc() returns (x: int)
     }
 
     /// <summary>
-    /// Creates a fresh BPL variable to represent <paramref name="type"/>, deciding
-    /// on its type based on the heap representation. I.e., the value of this
-    /// variable represents the value of the expression "typeof(type)".
-    /// </summary>
-    public override Bpl.Variable CreateTypeVariable(ITypeReference type) {
-      return null;
-    }
-
-    /// <summary>
     /// Returns the (typed) BPL expression that corresponds to the value of the field
     /// <paramref name="f"/> belonging to the object <paramref name="o"/> (when
     /// <paramref name="o"/> is non-null, otherwise the value of the static field.
@@ -256,15 +231,6 @@ procedure {:inline 1} Alloc() returns (x: int)
     /// </param>
     public override Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f) {
       return Bpl.Expr.Select(f, o);
-    }
-
-    /// <summary>
-    /// Returns the BPL expression that corresponds to the value of the dynamic type
-    /// of the object represented by the expression <paramref name="o"/>.
-    /// </summary>
-    public override Bpl.Expr DynamicType(Bpl.Expr o) {
-      // $DymamicType(o)
-      return null;
     }
 
     /// <summary>
@@ -379,15 +345,6 @@ procedure {:inline 1} Alloc() returns (x: int)
     }
 
     /// <summary>
-    /// Creates a fresh BPL variable to represent <paramref name="type"/>, deciding
-    /// on its type based on the heap representation. I.e., the value of this
-    /// variable represents the value of the expression "typeof(type)".
-    /// </summary>
-    public override Bpl.Variable CreateTypeVariable(ITypeReference type) {
-      return null;
-    }
-
-    /// <summary>
     /// Returns the (typed) BPL expression that corresponds to the value of the field
     /// <paramref name="f"/> belonging to the object <paramref name="o"/> (when
     /// <paramref name="o"/> is non-null, otherwise the value of the static field.
@@ -451,15 +408,6 @@ procedure {:inline 1} Alloc() returns (x: int)
       }
     }
 
-    /// <summary>
-    /// Returns the BPL expression that corresponds to the value of the dynamic type
-    /// of the object represented by the expression <paramref name="o"/>.
-    /// </summary>
-    public override Bpl.Expr DynamicType(Bpl.Expr o) {
-      // $DymamicType(o)
-      return null;
-    }
-
   }
 
   /// <summary>
@@ -470,10 +418,6 @@ procedure {:inline 1} Alloc() returns (x: int)
   public class GeneralHeap : Heap {
 
     #region Fields
-
-    [RepresentationFor("Type", "type Type;")]
-    private Bpl.TypeCtorDecl TypeTypeDecl = null;
-    private Bpl.CtorType TypeType;
 
     [RepresentationFor("Field", "type Field;")]
     private Bpl.TypeCtorDecl FieldTypeDecl = null;
@@ -499,9 +443,6 @@ procedure {:inline 1} Alloc() returns (x: int)
 
     [RepresentationFor("Write", "function {:inline true} Write(H:HeapType, o:ref, f:Field, v:box): HeapType { H[o,f := v] }")]
     private Bpl.Function Write = null;
-
-    [RepresentationFor("$DynamicType", "function $DynamicType(ref): Type;")]
-    public Bpl.Function DymamicType = null;
 
     /// <summary>
     /// Prelude text for which access to the ASTs is not needed
@@ -585,21 +526,6 @@ procedure {:inline 1} Alloc() returns (x: ref)
     }
 
     /// <summary>
-    /// Creates a fresh BPL variable to represent <paramref name="type"/>, deciding
-    /// on its type based on the heap representation. I.e., the value of this
-    /// variable represents the value of the expression "typeof(type)".
-    /// </summary>
-    public override Bpl.Variable CreateTypeVariable(ITypeReference type) {
-      Bpl.Variable v;
-      string typename = TypeHelper.GetTypeName(type);
-      Bpl.IToken tok = type.Token();
-      Bpl.Type t = this.TypeType;
-      Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, typename, t);
-      v = new Bpl.Constant(tok, tident, true);
-      return v;
-    }
-
-    /// <summary>
     /// Returns the (typed) BPL expression that corresponds to the value of the field
     /// <paramref name="f"/> belonging to the object <paramref name="o"/> (when
     /// <paramref name="o"/> is non-null, otherwise the value of the static field.
@@ -671,20 +597,6 @@ procedure {:inline 1} Alloc() returns (x: ref)
           );
         return Bpl.Cmd.SimpleAssign(f.tok, h, callWrite);
       }
-    }
-
-    /// <summary>
-    /// Returns the BPL expression that corresponds to the value of the dynamic type
-    /// of the object represented by the expression <paramref name="o"/>.
-    /// </summary>
-    public override Bpl.Expr DynamicType(Bpl.Expr o) {
-      // $DymamicType(o)
-      var callDynamicType = new Bpl.NAryExpr(
-        o.tok,
-        new Bpl.FunctionCall(this.DymamicType),
-        new Bpl.ExprSeq(o)
-        );
-      return callDynamicType;
     }
 
   }
