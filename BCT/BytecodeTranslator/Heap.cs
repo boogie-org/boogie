@@ -165,6 +165,8 @@ procedure {:inline 1} Alloc() returns (x: int)
   assume $Alloc[x] == false;
   $Alloc[x] := true;
 }
+
+type ref = int;
 ";
 
     public override bool MakeHeap(Sink sink, out Heap heap, out Bpl.Program/*?*/ program) {
