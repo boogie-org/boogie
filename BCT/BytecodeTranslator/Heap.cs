@@ -67,6 +67,9 @@ procedure {:inline 1} Alloc() returns (x: int)
       program = null;
       string prelude = this.InitialPreludeText + this.DelegateEncodingText;
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
+      if (b) {
+        this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
+      }
       return b;
     }
 
@@ -305,6 +308,9 @@ procedure {:inline 1} Alloc() returns (x: int)
       program = null;
       string prelude = this.InitialPreludeText + this.DelegateEncodingText;
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
+      if (b) {
+        this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
+      }
       return b;
     }
 

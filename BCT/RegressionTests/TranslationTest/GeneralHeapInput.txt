@@ -188,8 +188,6 @@ implementation DelegateRemoveHelper(oldi: int, m: int, o: int) returns (i: int)
 
 
 
-type Type;
-
 type Field;
 
 var $Heap: HeapType where IsGoodHeap($Heap);
@@ -211,6 +209,8 @@ function {:inline true} Write(H: HeapType, o: ref, f: Field, v: box) : HeapType
 {
   H[o, f := v]
 }
+
+type Type;
 
 function $DynamicType(ref) : Type;
 
@@ -260,6 +260,16 @@ implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#ctor(thi
 
 
 
+procedure RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#cctor();
+
+
+
+implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#cctor()
+{
+}
+
+
+
 const unique RegressionTestInput.AsyncAttribute: Type;
 
 procedure RegressionTestInput.AsyncAttribute.#ctor(this: int);
@@ -274,6 +284,16 @@ implementation RegressionTestInput.AsyncAttribute.#ctor(this: int)
 {
     call System.Attribute.#ctor(this);
     return;
+}
+
+
+
+procedure RegressionTestInput.AsyncAttribute.#cctor();
+
+
+
+implementation RegressionTestInput.AsyncAttribute.#cctor()
+{
 }
 
 
@@ -314,7 +334,6 @@ implementation RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean(this:
   var z: bool;
 
     z := z$in;
-    $Heap := Write($Heap, this, RegressionTestInput.ClassWithBoolTypes.staticB, Bool2Box(false));
     $Heap := Write($Heap, this, RegressionTestInput.ClassWithBoolTypes.b, Bool2Box(false));
     assert {:sourceFile "Class1.cs"} {:sourceLine 72} true;
     call System.Object.#ctor(this);
@@ -347,6 +366,17 @@ implementation RegressionTestInput.ClassWithBoolTypes.Main()
     call $tmp0 := RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int32(3, 4);
     assert {:sourceFile "Class1.cs"} {:sourceLine 79} true;
     return;
+}
+
+
+
+procedure RegressionTestInput.ClassWithBoolTypes.#cctor();
+
+
+
+implementation RegressionTestInput.ClassWithBoolTypes.#cctor()
+{
+    RegressionTestInput.ClassWithBoolTypes.staticB := false;
 }
 
 
@@ -473,10 +503,20 @@ procedure RegressionTestInput.ClassWithArrayTypes.#ctor(this: int);
 
 implementation RegressionTestInput.ClassWithArrayTypes.#ctor(this: int)
 {
-    $Heap := Write($Heap, this, RegressionTestInput.ClassWithArrayTypes.s, Int2Box(0));
     $Heap := Write($Heap, this, RegressionTestInput.ClassWithArrayTypes.a, Int2Box(0));
     call System.Object.#ctor(this);
     return;
+}
+
+
+
+procedure RegressionTestInput.ClassWithArrayTypes.#cctor();
+
+
+
+implementation RegressionTestInput.ClassWithArrayTypes.#cctor()
+{
+    RegressionTestInput.ClassWithArrayTypes.s := 0;
 }
 
 
@@ -709,9 +749,19 @@ procedure RegressionTestInput.Class0.#ctor(this: int);
 
 implementation RegressionTestInput.Class0.#ctor(this: int)
 {
-    $Heap := Write($Heap, this, RegressionTestInput.Class0.StaticInt, Int2Box(0));
     call System.Object.#ctor(this);
     return;
+}
+
+
+
+procedure RegressionTestInput.Class0.#cctor();
+
+
+
+implementation RegressionTestInput.Class0.#cctor()
+{
+    RegressionTestInput.Class0.StaticInt := 0;
 }
 
 

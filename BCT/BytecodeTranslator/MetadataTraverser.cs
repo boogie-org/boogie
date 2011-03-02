@@ -171,9 +171,14 @@ namespace BytecodeTranslator {
     public override void Visit(ITypeDefinition typeDefinition) {
 
       if (typeDefinition.IsClass) {
+        bool savedSawCctor = this.sawCctor;
+        this.sawCctor = false;
         sink.FindOrCreateType(typeDefinition);
-        CreateStaticConstructor(typeDefinition);
         base.Visit(typeDefinition);
+        if (!this.sawCctor) {
+          CreateStaticConstructor(typeDefinition);
+        }
+        this.sawCctor = savedSawCctor;
       } else if (typeDefinition.IsDelegate) {
         sink.AddDelegateType(typeDefinition);
       } else if (typeDefinition.IsInterface) {
@@ -187,6 +192,8 @@ namespace BytecodeTranslator {
         throw new NotImplementedException(String.Format("Unknown kind of type definition '{0}'.", TypeHelper.GetTypeName(typeDefinition)));
       }
     }
+
+    private bool sawCctor = false;
 
     private void CreateStaticConstructor(ITypeDefinition typeDefinition) {
       var proc = new Bpl.Procedure(Bpl.Token.NoToken,
@@ -244,6 +251,9 @@ namespace BytecodeTranslator {
     /// 
     /// </summary>
     public override void Visit(IMethodDefinition method) {
+
+      if (method.IsStaticConstructor) this.sawCctor = true;
+
       bool isEventAddOrRemove = method.IsSpecialName && (method.Name.Value.StartsWith("add_") || method.Name.Value.StartsWith("remove_"));
       if (isEventAddOrRemove)
         return;

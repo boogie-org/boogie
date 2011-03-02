@@ -29,6 +29,8 @@ implementation Alloc() returns (x: int)
 
 
 
+type ref = int;
+
 procedure DelegateAdd(a: int, b: int) returns (c: int);
 
 
@@ -186,6 +188,10 @@ implementation DelegateRemoveHelper(oldi: int, m: int, o: int) returns (i: int)
 
 
 
+type Type;
+
+function $DynamicType(ref) : Type;
+
 var $Head: [int]int;
 
 var $Next: [int][int]int;
@@ -193,6 +199,8 @@ var $Next: [int][int]int;
 var $Method: [int][int]int;
 
 var $Receiver: [int][int]int;
+
+const unique RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap: Type;
 
 var RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.x: [int]int;
 
@@ -230,6 +238,18 @@ implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#ctor(thi
 
 
 
+procedure RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#cctor();
+
+
+
+implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#cctor()
+{
+}
+
+
+
+const unique RegressionTestInput.AsyncAttribute: Type;
+
 procedure RegressionTestInput.AsyncAttribute.#ctor(this: int);
 
 
@@ -245,6 +265,18 @@ implementation RegressionTestInput.AsyncAttribute.#ctor(this: int)
 }
 
 
+
+procedure RegressionTestInput.AsyncAttribute.#cctor();
+
+
+
+implementation RegressionTestInput.AsyncAttribute.#cctor()
+{
+}
+
+
+
+const unique RegressionTestInput.ClassWithBoolTypes: Type;
 
 var RegressionTestInput.ClassWithBoolTypes.staticB: bool;
 
@@ -280,7 +312,6 @@ implementation RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean(this:
   var z: bool;
 
     z := z$in;
-    RegressionTestInput.ClassWithBoolTypes.staticB[this] := false;
     RegressionTestInput.ClassWithBoolTypes.b[this] := false;
     assert {:sourceFile "Class1.cs"} {:sourceLine 72} true;
     call System.Object.#ctor(this);
@@ -316,6 +347,19 @@ implementation RegressionTestInput.ClassWithBoolTypes.Main()
 }
 
 
+
+procedure RegressionTestInput.ClassWithBoolTypes.#cctor();
+
+
+
+implementation RegressionTestInput.ClassWithBoolTypes.#cctor()
+{
+    RegressionTestInput.ClassWithBoolTypes.staticB := false;
+}
+
+
+
+const unique RegressionTestInput.ClassWithArrayTypes: Type;
 
 var RegressionTestInput.ClassWithArrayTypes.s: int;
 
@@ -437,13 +481,25 @@ procedure RegressionTestInput.ClassWithArrayTypes.#ctor(this: int);
 
 implementation RegressionTestInput.ClassWithArrayTypes.#ctor(this: int)
 {
-    RegressionTestInput.ClassWithArrayTypes.s[this] := 0;
     RegressionTestInput.ClassWithArrayTypes.a[this] := 0;
     call System.Object.#ctor(this);
     return;
 }
 
 
+
+procedure RegressionTestInput.ClassWithArrayTypes.#cctor();
+
+
+
+implementation RegressionTestInput.ClassWithArrayTypes.#cctor()
+{
+    RegressionTestInput.ClassWithArrayTypes.s := 0;
+}
+
+
+
+const unique RegressionTestInput.Class0: Type;
 
 var RegressionTestInput.Class0.StaticInt: int;
 
@@ -671,9 +727,19 @@ procedure RegressionTestInput.Class0.#ctor(this: int);
 
 implementation RegressionTestInput.Class0.#ctor(this: int)
 {
-    RegressionTestInput.Class0.StaticInt[this] := 0;
     call System.Object.#ctor(this);
     return;
+}
+
+
+
+procedure RegressionTestInput.Class0.#cctor();
+
+
+
+implementation RegressionTestInput.Class0.#cctor()
+{
+    RegressionTestInput.Class0.StaticInt := 0;
 }
 
 
