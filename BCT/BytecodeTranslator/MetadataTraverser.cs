@@ -186,6 +186,8 @@ namespace BytecodeTranslator {
         base.Visit(typeDefinition);
       } else if (typeDefinition.IsEnum) {
         return; // enums just are translated as ints
+      } else if (typeDefinition.IsStruct) {
+        Console.WriteLine("Skipping definition of '" + TypeHelper.GetTypeName(typeDefinition) + "' because it is a struct!");
       } else {
         Console.WriteLine("Unknown kind of type definition '{0}' was found",
           TypeHelper.GetTypeName(typeDefinition));
@@ -196,8 +198,9 @@ namespace BytecodeTranslator {
     private bool sawCctor = false;
 
     private void CreateStaticConstructor(ITypeDefinition typeDefinition) {
-      var proc = new Bpl.Procedure(Bpl.Token.NoToken,
-          TypeHelper.GetTypeName(typeDefinition) + ".#cctor",
+      var typename = TypeHelper.GetTypeName(typeDefinition);
+      typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
+      var proc = new Bpl.Procedure(Bpl.Token.NoToken, typename + ".#cctor",
           new Bpl.TypeVariableSeq(),
           new Bpl.VariableSeq(), // in
           new Bpl.VariableSeq(), // out

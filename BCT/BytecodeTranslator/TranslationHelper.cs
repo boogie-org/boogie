@@ -104,13 +104,30 @@ namespace BytecodeTranslator {
       }
       var s = MemberHelper.GetMethodSignature(method, NameFormattingOptions.DocumentationId);
       s = s.Substring(2);
-      s = s.Replace('(', '$');
-      s = s.Replace(',', '$');
       s = s.TrimEnd(')');
+      s = TurnStringIntoValidIdentifier(s);
+      return s;
+    }
+
+    public static string TurnStringIntoValidIdentifier(string s) {
+      s = s.Replace('(', '$');
+      s = s.Replace(')', '$');
+      s = s.Replace(',', '$');
       s = s.Replace("[]", "array");
       s = s.Replace('<', '$');
       s = s.Replace('>', '$');
       s = s.Replace(':', '$');
+      s = s.Replace(' ', '$');
+      s = s.Replace('{', '$');
+      s = s.Replace('}', '$');
+      s = s.Replace('-', '$');
+      s = s.Replace(' ', '$');
+      s = s.Replace('\t', '$');
+      s = s.Replace('\n', '$');
+      s = s.Replace('/', '$');
+      s = s.Replace('\\', '$');
+      s = s.Replace('=', '$');
+      s = s.Replace('@', '$');
       return s;
     }
 

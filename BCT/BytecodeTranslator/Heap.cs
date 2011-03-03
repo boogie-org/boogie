@@ -497,6 +497,7 @@ procedure {:inline 1} Alloc() returns (x: ref)
     public override Bpl.Variable CreateFieldVariable(IFieldReference field) {
       Bpl.Variable v;
       string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
+      fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
       Bpl.IToken tok = field.Token();
 
       if (field.IsStatic) {
@@ -584,9 +585,11 @@ procedure {:inline 1} Alloc() returns (x: ref)
       else {
         // wrap it in the right conversion function
         Bpl.Function conversion;
-        if (value.Type == Bpl.Type.Bool)
+        var originalType = this.underlyingTypes[f.Decl];
+        var boogieType = TranslationHelper.CciTypeToBoogie(originalType);
+        if (boogieType == Bpl.Type.Bool)
           conversion = this.Bool2Box;
-        else if (value.Type == Bpl.Type.Int)
+        else if (boogieType == Bpl.Type.Int)
           conversion = this.Int2Box;
         else
           throw new InvalidOperationException("Unknown Boogie type");

@@ -375,7 +375,10 @@ namespace BytecodeTranslator
       }
       else if (constant.Value is string)
       {
-        throw new NotImplementedException("Strings are not translated");
+        var c = this.sink.FindOrCreateConstant((string)(constant.Value));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(c));
+
+        //throw new NotImplementedException("Strings are not translated");
       } else {
         // TODO: (mschaef) hack
         var lit = Bpl.Expr.Literal((int)constant.Value);

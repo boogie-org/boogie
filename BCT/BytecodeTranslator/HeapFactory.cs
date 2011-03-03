@@ -84,6 +84,7 @@ namespace BytecodeTranslator {
     {
         Bpl.Variable v;
         string typename = TypeHelper.GetTypeName(type);
+        typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
         Bpl.IToken tok = type.Token();
         Bpl.Type t = this.TypeType;
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, typename, t);

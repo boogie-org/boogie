@@ -173,6 +173,21 @@ namespace BytecodeTranslator {
       return null;
     }
 
+    public Bpl.Constant FindOrCreateConstant(string str) {
+      Bpl.Constant c;
+      if (!this.declaredStringConstants.TryGetValue(str, out c)) {
+        var tok = Bpl.Token.NoToken;
+        var t = Bpl.Type.Int;
+        var name = "$string_literal_" + TranslationHelper.TurnStringIntoValidIdentifier(str);
+        var tident = new Bpl.TypedIdent(tok, name, t);
+        c = new Bpl.Constant(tok, tident, true);
+        this.declaredStringConstants.Add(str, c);
+        this.TranslatedProgram.TopLevelDeclarations.Add(c);
+      }
+      return c;
+    }
+    private Dictionary<string, Bpl.Constant> declaredStringConstants = new Dictionary<string, Bpl.Constant>();
+
     private Dictionary<IPropertyDefinition, Bpl.Variable> declaredProperties = new Dictionary<IPropertyDefinition, Bpl.Variable>();
 
     public struct ProcedureInfo {
@@ -268,7 +283,8 @@ namespace BytecodeTranslator {
         Bpl.EnsuresSeq boogiePostcondition = new Bpl.EnsuresSeq();
         Bpl.IdentifierExprSeq boogieModifies = new Bpl.IdentifierExprSeq();
 
-        IMethodContract contract = ContractProvider.GetMethodContractFor(method);
+        var possiblyUnspecializedMethod = Unspecialize(method);
+        IMethodContract contract = ContractProvider.GetMethodContractFor(possiblyUnspecializedMethod);
 
         if (contract != null) {
           try {
@@ -338,6 +354,24 @@ namespace BytecodeTranslator {
       this.FindOrCreateProcedure(method, isStatic);
       return this.declaredMethods[method];
     }
+    private static IMethodReference Unspecialize(IMethodReference method) {
+      IMethodReference result = method;
+      var gmir = result as IGenericMethodInstanceReference;
+      if (gmir != null) {
+        result = gmir.GenericMethod;
+      }
+      var smr = result as ISpecializedMethodReference;
+      if (smr != null) {
+        result = smr.UnspecializedVersion;
+      }
+      // Temporary hack until ISpecializedMethodDefinition implements ISpecializedMethodReference
+      var smd = result as ISpecializedMethodDefinition;
+      if (smd != null) {
+        result = smd.UnspecializedVersion;
+      }
+      return result;
+    }
+
 
 
     /// <summary>

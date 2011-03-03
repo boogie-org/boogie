@@ -113,7 +113,7 @@ namespace BytecodeTranslator
       StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader);
       StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader);
 
-      ExpressionTraverser condTraverser = this.factory.MakeExpressionTraverser(this.sink, null);
+      ExpressionTraverser condTraverser = this.factory.MakeExpressionTraverser(this.sink, this);
       condTraverser.Visit(conditionalStatement.Condition);
       thenTraverser.Visit(conditionalStatement.TrueBranch);
       elseTraverser.Visit(conditionalStatement.FalseBranch);

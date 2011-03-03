@@ -617,11 +617,11 @@ implementation RegressionTestInput.Class0.NonVoid(this: int) returns ($result: i
 
 
 
-procedure RegressionTestInput.Class0.OutParam$System.Int32@(this: int) returns (x$out: int, $result: int);
+procedure RegressionTestInput.Class0.OutParam$System.Int32$(this: int) returns (x$out: int, $result: int);
 
 
 
-implementation RegressionTestInput.Class0.OutParam$System.Int32@(this: int) returns (x$out: int, $result: int)
+implementation RegressionTestInput.Class0.OutParam$System.Int32$(this: int) returns (x$out: int, $result: int)
 {
   var local_0: int;
 
@@ -636,11 +636,11 @@ implementation RegressionTestInput.Class0.OutParam$System.Int32@(this: int) retu
 
 
 
-procedure RegressionTestInput.Class0.RefParam$System.Int32@(this: int, x$in: int) returns (x$out: int, $result: int);
+procedure RegressionTestInput.Class0.RefParam$System.Int32$(this: int, x$in: int) returns (x$out: int, $result: int);
 
 
 
-implementation RegressionTestInput.Class0.RefParam$System.Int32@(this: int, x$in: int) returns (x$out: int, $result: int)
+implementation RegressionTestInput.Class0.RefParam$System.Int32$(this: int, x$in: int) returns (x$out: int, $result: int)
 {
   var local_0: int;
 
