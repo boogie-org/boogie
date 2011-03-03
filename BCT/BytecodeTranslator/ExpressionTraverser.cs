@@ -681,8 +681,8 @@ namespace BytecodeTranslator
       this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
 
       // Second, generate the call to the appropriate ctor
+      var proc = this.sink.FindOrCreateProcedure(ctor, false);
       Bpl.ExprSeq inexpr = new Bpl.ExprSeq();
-      Dictionary<IParameterDefinition, Bpl.Expr> p2eMap = new Dictionary<IParameterDefinition, Bpl.Expr>();
       inexpr.Add(Bpl.Expr.Ident(a));
       IEnumerator<IParameterDefinition> penum = ctor.ResolvedMethod.Parameters.GetEnumerator();
       penum.MoveNext();
@@ -695,7 +695,6 @@ namespace BytecodeTranslator
         this.Visit(exp);
         Bpl.Expr e = this.TranslatedExpressions.Pop();
 
-        p2eMap.Add(penum.Current, e);
         if (!penum.Current.IsOut)
         {
           inexpr.Add(e);
@@ -705,9 +704,8 @@ namespace BytecodeTranslator
       }
 
       Bpl.IdentifierExprSeq outvars = new Bpl.IdentifierExprSeq();
-      string methodname = TranslationHelper.CreateUniqueMethodName(ctor);
 
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, methodname, inexpr, outvars));
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, proc.Name, inexpr, outvars));
 
       // Generate assumption about the dynamic type of the just allocated object
       this.StmtTraverser.StmtBuilder.Add(
