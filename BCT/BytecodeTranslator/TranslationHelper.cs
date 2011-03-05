@@ -90,6 +90,7 @@ namespace BytecodeTranslator {
 
     public static string CreateUniqueMethodName(IMethodReference method) {
       var containingTypeName = TypeHelper.GetTypeName(method.ContainingType, NameFormattingOptions.None);
+      /*
       if (containingTypeName == "Poirot.Poirot")
       {
           string name = method.Name.Value;
@@ -99,9 +100,10 @@ namespace BytecodeTranslator {
               return "corral_atomic_end";
           else if (name == "CurrentThreadId")
               return "corral_getThreadID";
-          else if (name == "Nondet")
+          else if (name == "Nondet_int" || name == "Nondet_string")
               return "poirot_nondet";
       }
+      */ 
       var s = MemberHelper.GetMethodSignature(method, NameFormattingOptions.DocumentationId);
       s = s.Substring(2);
       s = s.TrimEnd(')');

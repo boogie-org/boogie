@@ -83,22 +83,75 @@ namespace BytecodeTranslator {
           break;
         }
       }
-
-      var procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(invokeMethod, invokeMethod.IsStatic);
-      var proc = procAndFormalMap.Procedure;
-      var invars = proc.InParams;
-      var outvars = proc.OutParams;
-
-      Bpl.IToken token = invokeMethod.Token();
-
-      this.sink.BeginMethod();
-
+      
       try
       {
+        var procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(invokeMethod, invokeMethod.IsStatic);
+        var proc = procAndFormalMap.Procedure;
+        var invars = proc.InParams;
+        var outvars = proc.OutParams;
 
+        Bpl.IToken token = invokeMethod.Token();
+        
+        Bpl.Formal method = new Bpl.Formal(token, new Bpl.TypedIdent(token, "method", Bpl.Type.Int), true);
+        Bpl.Formal receiver = new Bpl.Formal(token, new Bpl.TypedIdent(token, "receiver", Bpl.Type.Int), true);
 
-        Bpl.LocalVariable method = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "method", Bpl.Type.Int));
-        Bpl.LocalVariable receiver = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "receiver", Bpl.Type.Int));
+        Bpl.VariableSeq dispatchProcInvars = new Bpl.VariableSeq();
+        dispatchProcInvars.Add(method);
+        dispatchProcInvars.Add(receiver);
+        for (int i = 1; i < invars.Length; i++) {
+          Bpl.Variable f = invars[i];
+          dispatchProcInvars.Add(new Bpl.Formal(token, new Bpl.TypedIdent(token, f.Name, f.TypedIdent.Type), true));
+        }
+
+        Bpl.VariableSeq dispatchProcOutvars = new Bpl.VariableSeq();
+        foreach (Bpl.Formal f in outvars) {
+          dispatchProcOutvars.Add(new Bpl.Formal(token, new Bpl.TypedIdent(token, f.Name, f.TypedIdent.Type), false));
+        }
+
+        Bpl.Procedure dispatchProc = 
+          new Bpl.Procedure(token, 
+            "DispatchOne." + proc.Name, 
+            new Bpl.TypeVariableSeq(), 
+            dispatchProcInvars, 
+            dispatchProcOutvars, 
+            new Bpl.RequiresSeq(), 
+            new Bpl.IdentifierExprSeq(), 
+            new Bpl.EnsuresSeq());
+        this.sink.TranslatedProgram.TopLevelDeclarations.Add(dispatchProc);
+
+        Bpl.IfCmd ifCmd = BuildIfCmd(Bpl.Expr.True, new Bpl.AssumeCmd(token, Bpl.Expr.False), null);
+        foreach (IMethodDefinition defn in sink.delegateTypeToDelegates[type]) {
+          Bpl.ExprSeq ins = new Bpl.ExprSeq();
+          Bpl.IdentifierExprSeq outs = new Bpl.IdentifierExprSeq();
+          if (!defn.IsStatic)
+            ins.Add(Bpl.Expr.Ident(receiver));
+          int index;
+          for (index = 2; index < dispatchProcInvars.Length; index++) {
+            ins.Add(Bpl.Expr.Ident(dispatchProcInvars[index]));
+          }
+          for (index = 0; index < dispatchProcOutvars.Length; index++) {
+            outs.Add(Bpl.Expr.Ident(dispatchProcOutvars[index]));
+          }
+          Bpl.Constant c = sink.FindOrAddDelegateMethodConstant(defn);
+          Bpl.Expr bexpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, Bpl.Expr.Ident(method), Bpl.Expr.Ident(c));
+          Bpl.CallCmd callCmd = new Bpl.CallCmd(token, c.Name, ins, outs);
+          ifCmd = BuildIfCmd(bexpr, callCmd, ifCmd);
+        }
+        Bpl.StmtListBuilder ifStmtBuilder = new Bpl.StmtListBuilder();
+        ifStmtBuilder.Add(ifCmd);
+        Bpl.Implementation dispatchImpl =
+            new Bpl.Implementation(token,
+                dispatchProc.Name,
+                new Bpl.TypeVariableSeq(),
+                dispatchProc.InParams,
+                dispatchProc.OutParams,
+                new Bpl.VariableSeq(), 
+                ifStmtBuilder.Collect(token)
+                );
+        dispatchImpl.Proc = dispatchProc;
+        this.sink.TranslatedProgram.TopLevelDeclarations.Add(dispatchImpl);
+
         Bpl.LocalVariable iter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "iter", Bpl.Type.Int));
         Bpl.LocalVariable niter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "niter", Bpl.Type.Int));
 
@@ -108,30 +161,18 @@ namespace BytecodeTranslator {
         Bpl.StmtListBuilder whileStmtBuilder = new Bpl.StmtListBuilder();
         whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(niter), this.sink.ReadNext(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(iter))));
         whileStmtBuilder.Add(BuildReturnCmd(Bpl.Expr.Eq(Bpl.Expr.Ident(niter), this.sink.ReadHead(Bpl.Expr.Ident(invars[0])))));
-        whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(method), this.sink.ReadMethod(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(niter))));
-        whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(receiver), this.sink.ReadReceiver(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(niter))));
-        Bpl.IfCmd ifCmd = BuildIfCmd(Bpl.Expr.True, new Bpl.AssumeCmd(token, Bpl.Expr.False), null);
-        foreach (IMethodDefinition defn in sink.delegateTypeToDelegates[type])
-        {
-          Bpl.ExprSeq ins = new Bpl.ExprSeq();
-          Bpl.IdentifierExprSeq outs = new Bpl.IdentifierExprSeq();
-          if (!defn.IsStatic)
-            ins.Add(Bpl.Expr.Ident(receiver));
-          int index;
-          for (index = 1; index < invars.Length; index++)
-          {
-            ins.Add(Bpl.Expr.Ident(invars[index]));
-          }
-          for (index = 0; index < outvars.Length; index++)
-          {
-            outs.Add(Bpl.Expr.Ident(outvars[index]));
-          }
-          Bpl.Constant c = sink.FindOrAddDelegateMethodConstant(defn);
-          Bpl.Expr bexpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, Bpl.Expr.Ident(method), Bpl.Expr.Ident(c)); 
-          Bpl.CallCmd callCmd = new Bpl.CallCmd(token, c.Name, ins, outs);
-          ifCmd = BuildIfCmd(bexpr, callCmd, ifCmd);
+        Bpl.ExprSeq inExprs = new Bpl.ExprSeq();
+        inExprs.Add(this.sink.ReadMethod(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(niter)));
+        inExprs.Add(this.sink.ReadReceiver(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(niter)));
+        for (int i = 1; i < invars.Length; i++) {
+          Bpl.Variable f = invars[i];
+          inExprs.Add(Bpl.Expr.Ident(f));
         }
-        whileStmtBuilder.Add(ifCmd);
+        Bpl.IdentifierExprSeq outExprs = new Bpl.IdentifierExprSeq();
+        foreach (Bpl.Formal f in outvars) {
+          outExprs.Add(Bpl.Expr.Ident(f));
+        }
+        whileStmtBuilder.Add(new Bpl.CallCmd(token, dispatchProc.Name, inExprs, outExprs));
         whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(iter), Bpl.Expr.Ident(niter)));
         Bpl.WhileCmd whileCmd = new Bpl.WhileCmd(token, Bpl.Expr.True, new List<Bpl.PredicateCmd>(), whileStmtBuilder.Collect(token));
 
@@ -141,12 +182,11 @@ namespace BytecodeTranslator {
             new Bpl.Implementation(token,
                 proc.Name,
                 new Bpl.TypeVariableSeq(),
-                proc.InParams,
-                proc.OutParams,
-                new Bpl.VariableSeq(iter, niter, method, receiver),
+                invars,
+                outvars,
+                new Bpl.VariableSeq(iter, niter),
                 implStmtBuilder.Collect(token)
                 );
-
         impl.Proc = proc;
         this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
       }
