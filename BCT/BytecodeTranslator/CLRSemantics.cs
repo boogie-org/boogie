@@ -20,14 +20,14 @@ namespace BytecodeTranslator {
 
   public class CLRSemantics : TraverserFactory {
 
-    public override ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser) {
-      return new CLRExpressionSemantics(sink, statementTraverser);
+    public override ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext) {
+      return new CLRExpressionSemantics(sink, statementTraverser, contractContext);
     }
 
     public class CLRExpressionSemantics : ExpressionTraverser {
 
-      public CLRExpressionSemantics(Sink sink, StatementTraverser/*?*/ statementTraverser)
-        : base(sink, statementTraverser) { }
+      public CLRExpressionSemantics(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext)
+        : base(sink, statementTraverser, contractContext) { }
 
       public override void Visit(IDivision division) {
         this.Visit(division.LeftOperand);

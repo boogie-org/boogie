@@ -34,22 +34,23 @@ namespace BytecodeTranslator
     protected readonly StatementTraverser StmtTraverser;
 
     private Bpl.Expr assignmentSourceExpr;
+    private bool contractContext;
 
     #region Constructors
 
-    /// <summary>
-    /// Use this constructor for translating expressions that do *not* occur
-    /// within the context of the statements in a method body.
-    /// </summary>
-    public ExpressionTraverser(Sink sink)
-      : this(sink, null)
-    { }
+    ///// <summary>
+    ///// Use this constructor for translating expressions that do *not* occur
+    ///// within the context of the statements in a method body.
+    ///// </summary>
+    //public ExpressionTraverser(Sink sink)
+    //  : this(sink, null)
+    //{ }
 
     /// <summary>
     /// Use this constructor for translating expressions that do occur within
     /// the context of the statements in a method body.
     /// </summary>
-    public ExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser)
+    public ExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext)
     {
       this.sink = sink;
       ArrayContentsVariable = sink.ArrayContentsVariable;
@@ -58,6 +59,7 @@ namespace BytecodeTranslator
       TranslatedExpressions = new Stack<Bpl.Expr>();
 
       assignmentSourceExpr = null;
+      this.contractContext = contractContext;
     }
 
     #endregion
@@ -80,7 +82,7 @@ namespace BytecodeTranslator
       IParameterDefinition/*?*/ param = addressableExpression.Definition as IParameterDefinition;
       if (param != null)
       {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindParameterVariable(param)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindParameterVariable(param, this.contractContext)));
         return;
       }
       IFieldReference/*?*/ field = addressableExpression.Definition as IFieldReference;
@@ -119,7 +121,7 @@ namespace BytecodeTranslator
         IParameterDefinition pd = be.Definition as IParameterDefinition;
         if (pd != null)
         {
-          var pv = this.sink.FindParameterVariable(pd);
+          var pv = this.sink.FindParameterVariable(pd, this.contractContext);
           TranslatedExpressions.Push(Bpl.Expr.Ident(pv));
           return;
         }
@@ -198,7 +200,7 @@ namespace BytecodeTranslator
             IParameterDefinition pd = be.Definition as IParameterDefinition;
             if (pd != null)
             {
-              var pv = this.sink.FindParameterVariable(pd);
+              var pv = this.sink.FindParameterVariable(pd, this.contractContext);
               TranslatedExpressions.Push(Bpl.Expr.Ident(pv));
               return;
             }
@@ -229,7 +231,7 @@ namespace BytecodeTranslator
       IParameterDefinition param = targetExpression.Definition as IParameterDefinition;
       if (param != null)
       {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindParameterVariable(param)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindParameterVariable(param, this.contractContext)));
         return;
       }
       #endregion
@@ -279,7 +281,7 @@ namespace BytecodeTranslator
       IParameterDefinition param = boundExpression.Definition as IParameterDefinition;
       if (param != null)
       {
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindParameterVariable(param)));
+        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindParameterVariable(param, this.contractContext)));
         return;
       }
       #endregion

@@ -128,13 +128,13 @@ namespace BytecodeTranslator {
     /// <param name="param"></param>
     /// <remarks>STUB</remarks>
     /// <returns></returns>
-    public Bpl.Variable FindParameterVariable(IParameterDefinition param) {
+    public Bpl.Variable FindParameterVariable(IParameterDefinition param, bool contractContext) {
       MethodParameter mp;
       ProcedureInfo procAndFormalMap;
       this.declaredMethods.TryGetValue(param.ContainingSignature, out procAndFormalMap);
       var formalMap = procAndFormalMap.FormalMap;
       formalMap.TryGetValue(param, out mp);
-      return mp.outParameterCopy;
+      return contractContext ? mp.inParameterCopy : mp.outParameterCopy;
     }
 
     public Bpl.Variable FindOrCreateFieldVariable(IFieldReference field) {
@@ -288,32 +288,27 @@ namespace BytecodeTranslator {
 
         if (contract != null) {
           try {
+
             foreach (IPrecondition pre in contract.Preconditions) {
-              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, null);
+              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true);
+              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, stmtTraverser, true);
               exptravers.Visit(pre.Condition); // TODO
               // Todo: Deal with Descriptions
-
-
-              Bpl.Requires req
-                  = new Bpl.Requires(pre.Token(),
-                      false, exptravers.TranslatedExpressions.Pop(), "");
+              var req = new Bpl.Requires(pre.Token(), false, exptravers.TranslatedExpressions.Pop(), "");
               boogiePrecondition.Add(req);
             }
 
             foreach (IPostcondition post in contract.Postconditions) {
-              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, null);
-
+              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true);
+              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, stmtTraverser, true);
               exptravers.Visit(post.Condition);
               // Todo: Deal with Descriptions
-
-              Bpl.Ensures ens =
-                  new Bpl.Ensures(post.Token(),
-                      false, exptravers.TranslatedExpressions.Pop(), "");
+              var ens = new Bpl.Ensures(post.Token(), false, exptravers.TranslatedExpressions.Pop(), "");
               boogiePostcondition.Add(ens);
             }
 
             foreach (IAddressableExpression mod in contract.ModifiedVariables) {
-              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, null);
+              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, null, true);
               exptravers.Visit(mod);
 
               Bpl.IdentifierExpr idexp = exptravers.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;

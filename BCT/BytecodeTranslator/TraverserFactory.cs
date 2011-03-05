@@ -22,11 +22,11 @@ namespace BytecodeTranslator {
     {
       return new MetadataTraverser(new Sink(this, heapFactory, contractProvider), pdbReader);
     }
-    public virtual StatementTraverser MakeStatementTraverser(Sink sink, PdbReader/*?*/ pdbReader) {
-      return new StatementTraverser(sink, pdbReader);
+    public virtual StatementTraverser MakeStatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
+      return new StatementTraverser(sink, pdbReader, contractContext);
     }
-    public virtual ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser) {
-      return new ExpressionTraverser(sink, statementTraverser);
+    public virtual ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext) {
+      return new ExpressionTraverser(sink, statementTraverser, contractContext);
     }
   }
 }

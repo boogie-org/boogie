@@ -32,12 +32,14 @@ namespace BytecodeTranslator
     private readonly Bpl.Variable ArrayLengthVariable;
 
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
+    private bool contractContext;
 
     #region Constructors
-    public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader) {
+    public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
       this.sink = sink;
       this.factory = sink.Factory;
       PdbReader = pdbReader;
+      this.contractContext = contractContext;
 
       ArrayContentsVariable = sink.ArrayContentsVariable;
       ArrayLengthVariable = sink.ArrayLengthVariable;
@@ -47,7 +49,7 @@ namespace BytecodeTranslator
     #region Helper Methods
 
     Bpl.Expr ExpressionFor(IExpression expression) {
-      ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this);
+      ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
       etrav.Visit(expression);
       Contract.Assert(etrav.TranslatedExpressions.Count == 1);
       return etrav.TranslatedExpressions.Pop();
@@ -110,10 +112,10 @@ namespace BytecodeTranslator
     /// <remarks>(mschaef) Works, but still a stub</remarks>
     /// <param name="conditionalStatement"></param>
     public override void Visit(IConditionalStatement conditionalStatement) {
-      StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader);
-      StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader);
+      StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
+      StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
 
-      ExpressionTraverser condTraverser = this.factory.MakeExpressionTraverser(this.sink, this);
+      ExpressionTraverser condTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
       condTraverser.Visit(conditionalStatement.Condition);
       thenTraverser.Visit(conditionalStatement.TrueBranch);
       elseTraverser.Visit(conditionalStatement.FalseBranch);
@@ -136,7 +138,7 @@ namespace BytecodeTranslator
     /// <remarks> TODO: might be wrong for the general case</remarks>
     public override void Visit(IExpressionStatement expressionStatement) {
 
-      ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this);
+      ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
       etrav.Visit(expressionStatement.Expression);
     }
 
@@ -171,7 +173,7 @@ namespace BytecodeTranslator
       Bpl.IToken tok = returnStatement.Token();
 
       if (returnStatement.Expression != null) {
-        ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this);
+        ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
         etrav.Visit(returnStatement.Expression);
 
         if (this.sink.RetVariable == null || etrav.TranslatedExpressions.Count < 1) {

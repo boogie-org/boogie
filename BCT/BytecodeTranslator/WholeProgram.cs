@@ -78,8 +78,8 @@ namespace BytecodeTranslator {
 
     }
 
-    public override ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser) {
-      return new WholeProgramExpressionSemantics(this, sink, statementTraverser);
+    public override ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext) {
+      return new WholeProgramExpressionSemantics(this, sink, statementTraverser, contractContext);
     }
 
     /// <summary>
@@ -92,8 +92,8 @@ namespace BytecodeTranslator {
       readonly WholeProgram parent;
       readonly public Dictionary<ITypeReference, List<ITypeReference>> subTypes;
 
-      public WholeProgramExpressionSemantics(WholeProgram parent, Sink sink, StatementTraverser/*?*/ statementTraverser)
-        : base(sink, statementTraverser) {
+      public WholeProgramExpressionSemantics(WholeProgram parent, Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext)
+        : base(sink, statementTraverser, contractContext) {
         this.parent = parent;
         this.subTypes = parent.subTypes;
       }
