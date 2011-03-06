@@ -32,8 +32,16 @@ namespace BytecodeTranslator {
       this.factory = factory;
       var b = heapFactory.MakeHeap(this, out this.heap, out this.TranslatedProgram); // TODO: what if it returns false?
       this.ContractProvider = contractProvider;
-      if (this.TranslatedProgram == null)
+      if (this.TranslatedProgram == null) {
         this.TranslatedProgram = new Bpl.Program();
+      } else {
+        foreach (var d in this.TranslatedProgram.TopLevelDeclarations) {
+          var p = d as Bpl.Procedure;
+          if (p != null) {
+            this.initiallyDeclaredProcedures.Add(p.Name, p);
+          }
+        }
+      }
     }
 
     public Heap Heap {
@@ -211,6 +219,12 @@ namespace BytecodeTranslator {
 
       var key = method; //.InternedKey;
       if (!this.declaredMethods.TryGetValue(key, out procAndFormalMap)) {
+
+        string MethodName = TranslationHelper.CreateUniqueMethodName(method);
+        
+        Bpl.Procedure p;
+        if (this.initiallyDeclaredProcedures.TryGetValue(MethodName, out p)) return p;
+
         #region Create in- and out-parameters
 
         int in_count = 0;
@@ -327,13 +341,12 @@ namespace BytecodeTranslator {
 
         #endregion
 
-        string MethodName = TranslationHelper.CreateUniqueMethodName(method);
 
         var proc = new Bpl.Procedure(method.Token(),
             MethodName,
             new Bpl.TypeVariableSeq(),
-            new Bpl.VariableSeq(invars), // in
-            new Bpl.VariableSeq(outvars), // out
+            new Bpl.VariableSeq(invars),
+            new Bpl.VariableSeq(outvars),
             boogiePrecondition,
             boogieModifies,
             boogiePostcondition);
@@ -345,6 +358,7 @@ namespace BytecodeTranslator {
       }
       return procAndFormalMap.Procedure;
     }
+
     public ProcedureInfo FindOrCreateProcedureAndReturnProcAndFormalMap(IMethodDefinition method, bool isStatic) {
       this.FindOrCreateProcedure(method, isStatic);
       return this.declaredMethods[method];
@@ -397,6 +411,11 @@ namespace BytecodeTranslator {
     /// second element is the formal map for the procedure
     /// </summary>
     private Dictionary<ISignature, ProcedureInfo> declaredMethods = new Dictionary<ISignature, ProcedureInfo>();
+    /// <summary>
+    /// The values in this table are the procedures
+    /// defined in the program created by the heap in the Sink's ctor.
+    /// </summary>
+    private Dictionary<string, Bpl.Procedure> initiallyDeclaredProcedures = new Dictionary<string, Bpl.Procedure>();
 
     public void BeginMethod() {
       this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();

@@ -315,7 +315,7 @@ namespace BytecodeTranslator {
 
       try {
 
-        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader);
+        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
 
         #region Add assignments from In-Params to local-Params
 
