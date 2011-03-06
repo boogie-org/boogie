@@ -549,11 +549,10 @@ namespace BytecodeTranslator
         }
         else
         {
-          string methodName = TranslationHelper.CreateUniqueMethodName(methodCall.MethodToCall);
           if (attrib != null)
-            call = new Bpl.CallCmd(cloc, methodName, inexpr, outvars, attrib);
+            call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars, attrib);
           else
-            call = new Bpl.CallCmd(cloc, methodName, inexpr, outvars);
+            call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars);
           this.StmtTraverser.StmtBuilder.Add(call);
         }
       }

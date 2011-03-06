@@ -352,11 +352,38 @@ namespace BytecodeTranslator {
             boogiePostcondition);
 
 
-        this.TranslatedProgram.TopLevelDeclarations.Add(proc);
+        string newName = null;
+        if (IsStubMethod(method, out newName)) {
+          if (newName != null) {
+            proc.Name = newName;
+          }
+        } else {
+          this.TranslatedProgram.TopLevelDeclarations.Add(proc);
+        }
         procAndFormalMap = new ProcedureInfo(proc, formalMap, this.RetVariable);
         this.declaredMethods.Add(key, procAndFormalMap);
       }
       return procAndFormalMap.Procedure;
+    }
+
+    // TODO: check method's containing type in case the entire type is a stub type.
+    // TODO: do a type test, not a string test for the attribute
+    private bool IsStubMethod(IMethodReference method, out string newName) {
+      newName = null;
+      var methodDefinition = method.ResolvedMethod;
+      foreach (var a in methodDefinition.Attributes) {
+        if (TypeHelper.GetTypeName(a.Type).EndsWith("StubAttribute")) {
+          foreach (var c in a.Arguments) {
+            var mdc = c as IMetadataConstant;
+            if (mdc != null && mdc.Type.TypeCode == PrimitiveTypeCode.String) {
+              newName = (string) (mdc.Value);
+              break;
+            }
+          }
+          return true;
+        }
+      }
+      return false;
     }
 
     public ProcedureInfo FindOrCreateProcedureAndReturnProcAndFormalMap(IMethodDefinition method, bool isStatic) {
