@@ -86,7 +86,7 @@ namespace BytecodeTranslator {
       
       try
       {
-        var procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(invokeMethod, invokeMethod.IsStatic);
+        var procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(invokeMethod);
         var proc = procAndFormalMap.Procedure;
         var invars = proc.InParams;
         var outvars = proc.OutParams;
@@ -303,7 +303,7 @@ namespace BytecodeTranslator {
 
       this.sink.BeginMethod();
 
-      var procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(method, method.IsStatic);
+      var procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(method);
 
       if (method.IsAbstract) { // we're done, just define the procedure
         return;

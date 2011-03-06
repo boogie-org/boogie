@@ -181,7 +181,7 @@ namespace BytecodeTranslator {
 
         var elseBranch = new Bpl.StmtListBuilder();
 
-        var proc = this.sink.FindOrCreateProcedure(resolvedMethod, resolvedMethod.IsStatic);
+        var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
         var methodname = proc.Name;
 
         Bpl.CallCmd call;

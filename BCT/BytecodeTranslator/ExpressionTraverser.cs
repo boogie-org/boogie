@@ -486,7 +486,7 @@ namespace BytecodeTranslator
           outvars.Add(new Bpl.IdentifierExpr(cloc, v));
           TranslatedExpressions.Push(new Bpl.IdentifierExpr(cloc, v));
         }
-        var proc = this.sink.FindOrCreateProcedure(resolvedMethod, resolvedMethod.IsStatic);
+        var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
         string methodname = proc.Name;
 
         Bpl.QKeyValue attrib = null;
@@ -682,7 +682,7 @@ namespace BytecodeTranslator
       this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
 
       // Second, generate the call to the appropriate ctor
-      var proc = this.sink.FindOrCreateProcedure(ctor, false);
+      var proc = this.sink.FindOrCreateProcedure(ctor.ResolvedMethod);
       Bpl.ExprSeq inexpr = new Bpl.ExprSeq();
       inexpr.Add(Bpl.Expr.Ident(a));
       IEnumerator<IParameterDefinition> penum = ctor.ResolvedMethod.Parameters.GetEnumerator();

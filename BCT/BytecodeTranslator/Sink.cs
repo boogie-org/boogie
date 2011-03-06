@@ -214,7 +214,7 @@ namespace BytecodeTranslator {
       public Bpl.Variable ReturnVariable { get { return returnVariable; } }
     }
 
-    public Bpl.Procedure FindOrCreateProcedure(IMethodReference method, bool isStatic) {
+    public Bpl.Procedure FindOrCreateProcedure(IMethodDefinition method) {
       ProcedureInfo procAndFormalMap;
 
       var key = method; //.InternedKey;
@@ -256,7 +256,7 @@ namespace BytecodeTranslator {
 
         Bpl.Formal/*?*/ self = null;
         #region Create 'this' parameter
-        if (!isStatic) {
+        if (!method.IsStatic) {
           in_count++;
           Bpl.Type selftype = Bpl.Type.Int;
           self = new Bpl.Formal(method.Token(),
@@ -272,7 +272,7 @@ namespace BytecodeTranslator {
         int j = 0;
 
         #region Add 'this' parameter as first in parameter
-        if (!isStatic)
+        if (!method.IsStatic)
           invars[i++] = self;
         #endregion
 
@@ -386,8 +386,8 @@ namespace BytecodeTranslator {
       return false;
     }
 
-    public ProcedureInfo FindOrCreateProcedureAndReturnProcAndFormalMap(IMethodDefinition method, bool isStatic) {
-      this.FindOrCreateProcedure(method, isStatic);
+    public ProcedureInfo FindOrCreateProcedureAndReturnProcAndFormalMap(IMethodDefinition method) {
+      this.FindOrCreateProcedure(method);
       return this.declaredMethods[method];
     }
     private static IMethodReference Unspecialize(IMethodReference method) {
