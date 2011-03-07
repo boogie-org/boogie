@@ -1,12 +1,12 @@
-# Aste started: 2011-03-01 07:00:14
+# Aste started: 2011-03-07 09:08:24
 # Host id: Boogiebox
-# [2011-03-01 07:03:06] SpecSharp revision: 62643
-# [2011-03-01 07:04:14] Boogie revision: 62984
-# [2011-03-01 07:04:46] SscBoogie revision: 62594
-[2011-03-01 07:07:25] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
+# [2011-03-07 09:11:10] SpecSharp revision: 63112
+# [2011-03-07 09:12:18] Boogie revision: 63206
+# [2011-03-07 09:12:50] SscBoogie revision: 63105
+[2011-03-07 09:14:28] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Debug
 
-    D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(825,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
-    D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2804,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+    D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+    D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
@@ -17,6 +17,6 @@
     warning CS0162
     warning CS0162
     warning CS0162
-[2011-03-01 07:21:50] 4 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+[2011-03-07 09:29:15] 4 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
 ['test15', 'lazyinline', 'stratifiedinline', 'extractloops']
-# [2011-03-01 07:22:41] Released nightly of Boogie
+# [2011-03-07 09:30:09] Released nightly of Boogie
