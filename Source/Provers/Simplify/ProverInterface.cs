@@ -66,7 +66,7 @@ namespace Microsoft.Boogie.Simplify {
     [StrictReadonly]
     protected readonly ProverOptions options;
     [StrictReadonly]
-    private readonly List<string> commonPrefix;
+    private readonly List<string>/*?*/ commonPrefix;
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -75,6 +75,7 @@ namespace Microsoft.Boogie.Simplify {
       Contract.Invariant(openActivityString != null);
       Contract.Invariant(closeActivityString != null);
       Contract.Invariant(options != null);
+      Contract.Invariant(commonPrefix == null || cce.NonNullElements(commonPrefix));
     }
 
 

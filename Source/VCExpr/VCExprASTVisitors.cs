@@ -623,7 +623,7 @@ namespace Microsoft.Boogie.VCExprAST {
     public readonly List<TypeVariable/*!*/>/*!*/ FreeTypeVars = new List<TypeVariable/*!*/>();
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(FreeTermVars));
+      Contract.Invariant(FreeTermVars != null && Contract.ForAll(FreeTermVars, entry => entry.Key != null));
       Contract.Invariant(cce.NonNullElements(FreeTypeVars));
     }
 
