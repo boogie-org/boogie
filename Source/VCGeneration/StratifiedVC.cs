@@ -1496,7 +1496,6 @@ namespace VC
             Contract.Requires(vState.calls != null);
             Contract.Requires(vState.checker != null);
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-            Contract.Ensures(Contract.Result<VCExpr>() != null);
 
             var checker = vState.checker.underlyingChecker;
             var calls = vState.calls;

@@ -633,7 +633,7 @@ namespace Microsoft.Boogie.TypeErasure {
     protected VCExpr GenReverseCastEq(Function castToU, Function castFromU, out VCExprVar var, out List<VCTrigger/*!*/>/*!*/ triggers) {
       Contract.Requires((castFromU != null));
       Contract.Requires((castToU != null));
-      Contract.Requires((cce.NonNullElements(Contract.ValueAtReturn(out triggers))));
+      Contract.Ensures((cce.NonNullElements(Contract.ValueAtReturn(out triggers))));
       Contract.Ensures(Contract.ValueAtReturn(out var) != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       var = Gen.Variable("x", U);
@@ -1588,7 +1588,7 @@ namespace Microsoft.Boogie.TypeErasure {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(varsInCasts));
-      Contract.Invariant(cce.NonNullElements(varsOutsideCasts));
+      Contract.Invariant(varsOutsideCasts != null && Contract.ForAll(varsOutsideCasts, voc => voc.Key != null));
       Contract.Invariant(AxBuilder != null);
 
     }

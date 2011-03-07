@@ -515,7 +515,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(formalIns != null);
       Contract.Requires(formalOuts != null);
       Contract.Requires(actualIns != null);
-      Contract.Requires(actualOuts != null);
       Contract.Requires(typeCheckingSubject != null);
       Contract.Requires(opName != null);Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out actualTypeParams)));
       actualTypeParams = new List<Type/*!*/>();
@@ -679,7 +678,6 @@ namespace Microsoft.Boogie {
     public static TypeVariableSeq/*!*/ SortTypeParams(TypeVariableSeq/*!*/ typeParams, TypeSeq/*!*/ argumentTypes, Type resultType) {
       Contract.Requires(typeParams != null);
       Contract.Requires(argumentTypes != null);
-      Contract.Requires(resultType != null);
       Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
 
       Contract.Ensures(Contract.Result<TypeVariableSeq>().Length == typeParams.Length);
@@ -3586,11 +3584,6 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
     public static readonly TypeParamInstantiation EMPTY =
       new SimpleTypeParamInstantiation(new List<TypeVariable/*!*/>(),
                                         new Dictionary<TypeVariable/*!*/, Type/*!*/>());
-    [ContractInvariantMethod]
-    void EMPTYInvariant() {
-      Contract.Invariant(EMPTY != null);
-    }
-
 
     // return what formal type parameters there are
     public List<TypeVariable/*!*/>/*!*/ FormalTypeParams {
@@ -3626,7 +3619,7 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
     void ObjectInvariant() {
       Contract.Invariant(Proxy != null);
       Contract.Invariant(ArgumentsResult != null);
-      Contract.Invariant(cce.NonNullElements(Instantiations));
+      Contract.Invariant(Instantiations == null || cce.NonNullElements(Instantiations));
     }
 
 

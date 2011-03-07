@@ -64,13 +64,8 @@ namespace Microsoft.AbstractInterpretationFramework {
         return s + "]";
       }
 
-      public static Elt/*!*/ Top = new Elt(true);
-      public static Elt/*!*/ Bottom = new Elt(false);
-      [ContractInvariantMethod]
-      void ObjectInvariant() {
-        Contract.Invariant(Top != null);
-        Contract.Invariant(Bottom != null);
-      }
+      public static readonly Elt/*!*/ Top = new Elt(true);
+      public static readonly Elt/*!*/ Bottom = new Elt(false);
 
 
       public Elt(IFunctionalMap constraints) {

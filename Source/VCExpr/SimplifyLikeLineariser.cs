@@ -335,14 +335,14 @@ namespace Microsoft.Boogie.VCExprAST {
 
     public static string StoreOpName(VCExprNAry node) {
       Contract.Requires(node != null);
-      Contract.Requires((node.Op is VCExprStoreOp));
+      Contract.Requires((node.Op is VCExprSelectOp) || (node.Op is VCExprStoreOp));
       Contract.Ensures(Contract.Result<string>() != null);
       return "Store_" + TypeToString(node[0].Type);
     }
 
     public static string SelectOpName(VCExprNAry node) {
       Contract.Requires(node != null);
-      Contract.Requires((node.Op is VCExprSelectOp));
+      Contract.Requires((node.Op is VCExprSelectOp) || (node.Op is VCExprStoreOp));
       Contract.Ensures(Contract.Result<string>() != null);
       return "Select_" + TypeToString(node[0].Type);
     }

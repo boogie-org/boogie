@@ -111,7 +111,7 @@ namespace Microsoft.AbstractInterpretationFramework.Collections {
 
     object IFunctionalMap.this[object key] {
       get {
-        Contract.Ensures(Contract.Result<object>() != null);
+        Contract.Requires(key != null);
         throw new System.NotImplementedException();
       }
     }

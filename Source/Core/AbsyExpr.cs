@@ -1063,12 +1063,7 @@ namespace Microsoft.Boogie {
       }
     }
     private sealed class OldFunctionSymbol : AI.IFunctionSymbol {
-      private static AI.AIType/*!*/ aitype = new AI.FunctionType(AI.Value.Type, AI.Value.Type);
-      [ContractInvariantMethod]
-      void ObjectInvariant() {
-        Contract.Invariant(aitype != null);
-        Contract.Invariant(Sym != null);
-      }
+      private static readonly AI.AIType/*!*/ aitype = new AI.FunctionType(AI.Value.Type, AI.Value.Type);
 
       public AI.AIType/*!*/ AIType {
         get {
@@ -1078,7 +1073,7 @@ namespace Microsoft.Boogie {
       }
       private OldFunctionSymbol() {
       }
-      internal static OldFunctionSymbol/*!*/ Sym = new OldFunctionSymbol();
+      internal static readonly OldFunctionSymbol/*!*/ Sym = new OldFunctionSymbol();
 
       [Pure]
       public override string ToString() {

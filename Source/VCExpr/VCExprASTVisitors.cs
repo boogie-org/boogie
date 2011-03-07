@@ -634,9 +634,10 @@ namespace Microsoft.Boogie.VCExprAST {
       return true;
     }
 
-    public static Dictionary<VCExprVar/*!*/, object/*!*/>/*!*/ FreeTermVariables(VCExpr node) {
+    public static Dictionary<VCExprVar/*!*/, object>/*!*/ FreeTermVariables(VCExpr node) {
       Contract.Requires(node != null);
-      Contract.Ensures(cce.NonNullElements(Contract.Result<Dictionary<VCExprVar, object>>()));
+      Contract.Ensures(Contract.Result<Dictionary<VCExprVar, object>>() != null);
+      Contract.Ensures(Contract.ForAll(Contract.Result<Dictionary<VCExprVar, object>>(), ftv => ftv.Key != null));
       FreeVariableCollector collector = new FreeVariableCollector();
       collector.Traverse(node, true);
       return collector.FreeTermVars;

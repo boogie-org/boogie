@@ -220,15 +220,6 @@ Contract.Ensures(Contract.Result<FunctionType>() != null);
         }
 
         [Once] private static AIType/*!*/ binreltype;
-      [ContractInvariantMethod]
-void ObjectInvariant() 
-{
-    Contract.Invariant(binreltype != null);
-        Contract.Invariant(_eq != null);
-        Contract.Invariant(_neq != null);
-        Contract.Invariant(_subtype != null);
-        Contract.Invariant(_typeof != null);
-}
 
         private static AIType/*!*/ BinrelType {
           get {Contract.Ensures(Contract.Result<AIType>() != null);
@@ -626,11 +617,6 @@ Contract.Requires(f != null);
     public sealed class Prop : AIType
     {
         private static readonly AIType/*!*/ proptype = new Prop();
-      [ContractInvariantMethod]
-void ObjectInvariant() 
-{
-    Contract.Invariant(proptype != null);
-}
 
         public static AIType/*!*/ Type { get {Contract.Ensures(Contract.Result<AIType>() != null); return proptype; } }
 

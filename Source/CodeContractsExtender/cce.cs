@@ -16,7 +16,8 @@ public static class cce {
   //}
   [Pure]
   public static T NonNull<T>(T t) {
-    Contract.Assert(t != null);
+    Contract.Requires(t != null);
+    Contract.Ensures(Contract.Result<T>() != null);
     return t;
   }
   [Pure]

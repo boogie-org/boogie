@@ -73,7 +73,7 @@ namespace VC {
         Contract.Invariant(controlFlowVariable != null);
         Contract.Invariant(assertExpr != null);
         Contract.Invariant(cce.NonNullElements(interfaceVars));
-        Contract.Invariant(cce.NonNullElements(incarnationOriginMap));
+        Contract.Invariant(incarnationOriginMap == null || cce.NonNullElements(incarnationOriginMap));
       }
 
       public Implementation impl;
@@ -145,7 +145,7 @@ namespace VC {
     }
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(implName2LazyInliningInfo));
+      Contract.Invariant(implName2LazyInliningInfo == null || cce.NonNullElements(implName2LazyInliningInfo));
     }
 
     private Dictionary<string, LazyInliningInfo> implName2LazyInliningInfo;
@@ -2678,7 +2678,6 @@ namespace VC {
       Contract.Requires(b != null);
       Contract.Requires(traceNodes != null);
       Contract.Requires(trace != null);
-      Contract.Requires(errModel != null);
       Contract.Requires(cce.NonNullElements(incarnationOriginMap));
       Contract.Requires(cce.NonNullElements(implName2LazyInliningInfo));
       Contract.Requires(context != null);
@@ -3525,7 +3524,6 @@ namespace VC {
                         Hashtable/*<int, Absy!>*/ label2absy,
                         ProverContext proverCtxt) {
       Contract.Requires(startBlock != null);
-      Contract.Requires(controlFlowVariable != null);
       Contract.Requires(label2absy != null);
       Contract.Requires(proverCtxt != null);
 
@@ -3545,7 +3543,6 @@ namespace VC {
                         ProverContext proverCtxt)
     {
       Contract.Requires(block != null);
-      Contract.Requires(controlFlowVariable != null);
       Contract.Requires(label2absy != null);
       Contract.Requires(blockVariables!= null);
       Contract.Requires(cce.NonNullElements(bindings));
@@ -3833,7 +3830,6 @@ namespace VC {
         Microsoft.Boogie.VCExpressionGenerator gen) {
       Contract.Requires(b != null);
       Contract.Requires(BlkCorrect != null);
-      Contract.Requires(BlkReached != null);
       Contract.Requires(totalOrder != null);
       Contract.Requires(g != null);
       Contract.Requires(context != null);

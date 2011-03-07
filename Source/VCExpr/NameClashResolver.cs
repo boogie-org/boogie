@@ -146,7 +146,6 @@ namespace Microsoft.Boogie.VCExprAST {
     public string this[Object/*!*/ thingie] {
       get {
         Contract.Requires(thingie != null);
-        Contract.Ensures(Contract.Result<String>() != null);
 
         string res;
         for (int i = LocalNames.Count - 1; i >= 0; --i) {

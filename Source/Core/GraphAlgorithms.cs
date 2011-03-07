@@ -72,10 +72,10 @@ namespace Microsoft.Boogie {
   }
 
   public sealed class StronglyConnectedComponents<Node> : IEnumerable<SCC<Node>/*!*/> {
-    private readonly IDictionary<Node/*!*/, object/*!*/>/*!*/ graph;
+    private readonly IDictionary<Node/*!*/, object>/*!*/ graph;
     [ContractInvariantMethod]
     void graphInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(graph));
+      Contract.Invariant(Contract.ForAll(graph, entry => entry.Key != null));
       Contract.Invariant(preds != null);
       Contract.Invariant(succs != null);
     }

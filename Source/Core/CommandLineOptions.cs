@@ -52,7 +52,6 @@ namespace Microsoft.Boogie {
     void ObjectInvariant() {
       Contract.Invariant(_toolname != null);
       Contract.Invariant(_version != null);
-      Contract.Invariant(Clo != null);
       Contract.Invariant(Environment != null);
       Contract.Invariant(FileName != null);
       Contract.Invariant(cce.NonNullElements(Files));
@@ -73,7 +72,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public static CommandLineOptions/*!*/ Clo = new CommandLineOptions();  // singleton to access all global data
+    public static readonly CommandLineOptions/*!*/ Clo = new CommandLineOptions();  // singleton to access all global data
 
     public string/*!*/ Environment = "";
     public string/*!*/ FileName = "unknown";

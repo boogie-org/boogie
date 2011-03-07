@@ -47,12 +47,7 @@ namespace Microsoft.Boogie {
     public string/*!*/ _val;  // token value
     public Token next;  // ML 2005-03-11 Tokens are kept in linked list
 
-    public static IToken/*!*/ NoToken = new Token();
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(NoToken != null);
-    }
-
+    public static readonly IToken/*!*/ NoToken = new Token();
 
     public Token() {
       this._val = "anything so that it is nonnull";

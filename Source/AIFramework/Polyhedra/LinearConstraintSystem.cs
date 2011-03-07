@@ -1273,7 +1273,7 @@ Contract.Requires(oldName != null);
     static void SimplifyFrameElements(ArrayList/*!*/ /*FrameElement*/ ff, bool vertices, ArrayList/*!*/ /*LinearConstraint*/ constraints, out SimplificationStatus[]/*!*/ status) {
       Contract.Requires(ff != null);
       Contract.Requires(constraints != null);
-      Contract.Requires(Contract.ValueAtReturn(out status) != null);
+      Contract.Ensures(Contract.ValueAtReturn(out status) != null);
       status = new SimplificationStatus[ff.Count];
       bool[,] sat = new bool[ff.Count, constraints.Count];
       for (int i = 0; i < ff.Count; i++) {
