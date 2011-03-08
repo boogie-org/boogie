@@ -39,10 +39,6 @@ namespace BytecodeTranslator {
       this.PdbReader = pdbReader;
     }
 
-    public Bpl.Program TranslatedProgram {
-      get { return this.sink.TranslatedProgram; }
-    }
-
     #region Overrides
 
     public override void Visit(IModule module) {
@@ -86,8 +82,7 @@ namespace BytecodeTranslator {
       
       try
       {
-        var procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(invokeMethod);
-        var proc = procAndFormalMap.Procedure;
+        var proc = this.sink.FindOrCreateProcedure(invokeMethod);
         var invars = proc.InParams;
         var outvars = proc.OutParams;
 
@@ -303,7 +298,13 @@ namespace BytecodeTranslator {
 
       this.sink.BeginMethod();
 
-      var procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(method);
+      Sink.ProcedureInfo procAndFormalMap;
+      IMethodDefinition stubMethod = null;
+      if (IsStubMethod(method, out stubMethod)) {
+        procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(stubMethod);
+      } else {
+        procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(method);
+      }
 
       if (method.IsAbstract) { // we're done, just define the procedure
         return;
@@ -435,6 +436,41 @@ namespace BytecodeTranslator {
         }
       }
       return inits;
+    }
+    // TODO: do a type test, not a string test for the attribute
+    private bool IsStubMethod(IMethodDefinition methodDefinition, out IMethodDefinition/*?*/ stubMethod) {
+      stubMethod = null;
+      var td = GetTypeDefinitionFromAttribute(methodDefinition.Attributes, "BytecodeTranslator.StubAttribute");
+      if (td == null)
+        td = GetTypeDefinitionFromAttribute(methodDefinition.ContainingTypeDefinition.Attributes, "BytecodeTranslator.StubAttribute");
+      if (td != null) {
+        foreach (var mem in td.GetMatchingMembersNamed(methodDefinition.Name, false,
+          tdm => {
+            var md = tdm as IMethodDefinition;
+            return md != null && MemberHelper.MethodsAreEquivalent(methodDefinition, md);
+          })) {
+          stubMethod = mem as IMethodDefinition;
+          return true;
+        }
+      }
+      return false;
+    }
+    public static ITypeDefinition/*?*/ GetTypeDefinitionFromAttribute(IEnumerable<ICustomAttribute> attributes, string attributeName) {
+      ICustomAttribute foundAttribute = null;
+      foreach (ICustomAttribute attribute in attributes) {
+        if (TypeHelper.GetTypeName(attribute.Type) == attributeName) {
+          foundAttribute = attribute;
+          break;
+        }
+      }
+      if (foundAttribute == null) return null;
+      List<IMetadataExpression> args = new List<IMetadataExpression>(foundAttribute.Arguments);
+      if (args.Count < 1) return null;
+      IMetadataTypeOf abstractTypeMD = args[0] as IMetadataTypeOf;
+      if (abstractTypeMD == null) return null;
+      ITypeReference referencedTypeReference = Microsoft.Cci.MutableContracts.ContractHelper.Unspecialized(abstractTypeMD.TypeToGet);
+      ITypeDefinition referencedTypeDefinition = referencedTypeReference.ResolvedType;
+      return referencedTypeDefinition;
     }
 
     public override void Visit(IFieldDefinition fieldDefinition) {

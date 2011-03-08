@@ -25,8 +25,8 @@ namespace BytecodeTranslator {
     /// </summary>
     readonly public Dictionary<ITypeReference, List<ITypeReference>> subTypes = new Dictionary<ITypeReference, List<ITypeReference>>();
 
-    public override MetadataTraverser MakeMetadataTraverser(IContractProvider contractProvider, PdbReader pdbReader, HeapFactory heapFactory) {
-      return new WholeProgramMetadataSemantics(this, new Sink(this, heapFactory, contractProvider), pdbReader);
+    public override MetadataTraverser MakeMetadataTraverser(Sink sink, IContractProvider contractProvider, PdbReader pdbReader) {
+      return new WholeProgramMetadataSemantics(this, sink, pdbReader);
     }
 
     public class WholeProgramMetadataSemantics : MetadataTraverser {

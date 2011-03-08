@@ -12,15 +12,17 @@ using Microsoft.Cci.MutableCodeModel;
 using System.Collections.Generic;
 using Microsoft.Cci.Contracts;
 using Microsoft.Cci.ILToCodeModel;
+using Microsoft.Cci.MutableContracts;
 
 using Bpl = Microsoft.Boogie;
+using System.Diagnostics.Contracts;
 
 namespace BytecodeTranslator {
 
   class Options : OptionParsing {
 
-    [OptionDescription("The name of the assembly to use as input", ShortForm = "a")]
-    public string assembly = null;
+    [OptionDescription("The names of the assemblies to use as input", ShortForm = "a")]
+    public List<string> assemblies = null;
 
     [OptionDescription("Search paths for assembly dependencies.", ShortForm = "lib")]
     public List<string> libpaths = new List<string>();
@@ -52,7 +54,13 @@ namespace BytecodeTranslator {
       }
       #endregion
 
-      var assemblyName = String.IsNullOrEmpty(options.assembly) ? options.GeneralArguments[0] : options.assembly;
+      var assemblyNames = options.assemblies;
+      if (assemblyNames == null || assemblyNames.Count == 0) {
+        assemblyNames = new List<string>();
+        foreach (var g in options.GeneralArguments) {
+          assemblyNames.Add(g);
+        }
+      }
 
       try {
 
@@ -75,7 +83,7 @@ namespace BytecodeTranslator {
             return 1;
         }
 
-        result = TranslateAssembly(assemblyName, heap, options.libpaths, options.wholeProgram);
+        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram);
 
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed with uncaught exception: {0}", e.Message);
@@ -85,46 +93,63 @@ namespace BytecodeTranslator {
       return result;
     }
 
-    public static int TranslateAssembly(string assemblyName, HeapFactory heapFactory, List<string> libPaths, bool wholeProgram) {
+    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, List<string>/*?*/ libPaths, bool wholeProgram) {
+      Contract.Requires(assemblyNames != null);
+      Contract.Requires(heapFactory != null);
 
-      var host = new Microsoft.Cci.MutableContracts.CodeContractAwareHostEnvironment(libPaths != null ? libPaths : IteratorHelper.GetEmptyEnumerable<string>(), true, true);
+      var host = new CodeContractAwareHostEnvironment(libPaths != null ? libPaths : IteratorHelper.GetEmptyEnumerable<string>(), true, true);
       Host = host;
 
-      IModule/*?*/ module = host.LoadUnitFrom(assemblyName) as IModule;
-      if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
-        Console.WriteLine(assemblyName + " is not a PE file containing a CLR module or assembly, or an error occurred when loading it.");
-        return 1;
+      var modules = new List<Tuple<IModule,PdbReader/*?*/>>();
+      foreach (var a in assemblyNames) {
+        var module = host.LoadUnitFrom(a) as IModule;
+        if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
+          Console.WriteLine(a + " is not a PE file containing a CLR module or assembly, or an error occurred when loading it.");
+          Console.WriteLine("Skipping it, continuing with other input assemblies");
+        }
+        PdbReader/*?*/ pdbReader = null;
+        string pdbFile = Path.ChangeExtension(module.Location, "pdb");
+        if (File.Exists(pdbFile)) {
+          Stream pdbStream = File.OpenRead(pdbFile);
+          pdbReader = new PdbReader(pdbStream, host);
+        }
+        module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader) as IModule;
+        modules.Add(Tuple.Create(module, pdbReader));
+      }
+      if (modules.Count == 0) {
+        Console.WriteLine("No input assemblies to translate.");
+        return -1;
       }
 
-      IAssembly/*?*/ assembly = null;
+      var primaryModule = modules[0].Item1;
 
-      PdbReader/*?*/ pdbReader = null;
-      string pdbFile = Path.ChangeExtension(module.Location, "pdb");
-      if (File.Exists(pdbFile)) {
-        Stream pdbStream = File.OpenRead(pdbFile);
-        pdbReader = new PdbReader(pdbStream, host);
-      }
-
-      module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader);
-
-      #region Translate the code model to BPL
-      TraverserFactory factory;
+      TraverserFactory traverserFactory;
       if (wholeProgram)
-        factory = new WholeProgram();
+        traverserFactory = new WholeProgram();
       else
-        factory = new CLRSemantics();
-      MetadataTraverser translator = factory.MakeMetadataTraverser(host.GetContractExtractor(module.ModuleIdentity), pdbReader, heapFactory);
-      TranslationHelper.tmpVarCounter = 0;
-      assembly = module as IAssembly;
-      if (assembly != null)
-        translator.Visit(assembly);
-      else
-        translator.Visit(module);
-      #endregion
+        traverserFactory = new CLRSemantics();
 
-      Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(module.Name + ".bpl");
+      var sink = new Sink(host, traverserFactory, heapFactory);
+      TranslationHelper.tmpVarCounter = 0;
+
+      foreach (var tup in modules) {
+
+        var module = tup.Item1;
+        var pdbReader = tup.Item2;
+
+        IAssembly/*?*/ assembly = null;
+        MetadataTraverser translator = traverserFactory.MakeMetadataTraverser(sink, host.GetContractExtractor(module.ModuleIdentity), pdbReader);
+        assembly = module as IAssembly;
+        if (assembly != null)
+          translator.Visit(assembly);
+        else
+          translator.Visit(module);
+
+      }
+
+      Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(primaryModule.Name + ".bpl");
       Prelude.Emit(writer);
-      translator.TranslatedProgram.Emit(writer);
+      sink.TranslatedProgram.Emit(writer);
       writer.Close();
       return 0; // success
     }

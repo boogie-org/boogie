@@ -26,12 +26,15 @@ namespace BytecodeTranslator {
       get { return this.factory; }
     }
     readonly TraverserFactory factory;
-    public readonly IContractProvider ContractProvider;
 
-    public Sink(TraverserFactory factory, HeapFactory heapFactory, IContractProvider contractProvider) {
+    public Sink(IContractAwareHost host, TraverserFactory factory, HeapFactory heapFactory) {
+      Contract.Requires(host != null);
+      Contract.Requires(factory != null);
+      Contract.Requires(heapFactory != null);
+
+      this.host = host;
       this.factory = factory;
       var b = heapFactory.MakeHeap(this, out this.heap, out this.TranslatedProgram); // TODO: what if it returns false?
-      this.ContractProvider = contractProvider;
       if (this.TranslatedProgram == null) {
         this.TranslatedProgram = new Bpl.Program();
       } else {
@@ -139,7 +142,11 @@ namespace BytecodeTranslator {
     public Bpl.Variable FindParameterVariable(IParameterDefinition param, bool contractContext) {
       MethodParameter mp;
       ProcedureInfo procAndFormalMap;
-      this.declaredMethods.TryGetValue(param.ContainingSignature, out procAndFormalMap);
+      var sig = param.ContainingSignature;
+      // BUGBUG: If param's signature is not a method reference, then it doesn't have an interned
+      // key. The declaredMethods table needs to use ISignature for its keys.
+      var key = ((IMethodReference)sig).InternedKey;
+      this.declaredMethods.TryGetValue(key, out procAndFormalMap);
       var formalMap = procAndFormalMap.FormalMap;
       formalMap.TryGetValue(param, out mp);
       return contractContext ? mp.inParameterCopy : mp.outParameterCopy;
@@ -217,7 +224,7 @@ namespace BytecodeTranslator {
     public Bpl.Procedure FindOrCreateProcedure(IMethodDefinition method) {
       ProcedureInfo procAndFormalMap;
 
-      var key = method; //.InternedKey;
+      var key = method.InternedKey;
       if (!this.declaredMethods.TryGetValue(key, out procAndFormalMap)) {
 
         string MethodName = TranslationHelper.CreateUniqueMethodName(method);
@@ -298,7 +305,8 @@ namespace BytecodeTranslator {
         Bpl.IdentifierExprSeq boogieModifies = new Bpl.IdentifierExprSeq();
 
         var possiblyUnspecializedMethod = Unspecialize(method);
-        IMethodContract contract = ContractProvider.GetMethodContractFor(possiblyUnspecializedMethod);
+
+        var contract = Microsoft.Cci.MutableContracts.ContractHelper.GetMethodContractFor(this.host, possiblyUnspecializedMethod.ResolvedMethod);
 
         if (contract != null) {
           try {
@@ -368,7 +376,7 @@ namespace BytecodeTranslator {
 
     // TODO: check method's containing type in case the entire type is a stub type.
     // TODO: do a type test, not a string test for the attribute
-    private bool IsStubMethod(IMethodReference method, out string newName) {
+    private bool IsStubMethod(IMethodReference method, out string/*?*/ newName) {
       newName = null;
       var methodDefinition = method.ResolvedMethod;
       foreach (var a in methodDefinition.Attributes) {
@@ -388,7 +396,7 @@ namespace BytecodeTranslator {
 
     public ProcedureInfo FindOrCreateProcedureAndReturnProcAndFormalMap(IMethodDefinition method) {
       this.FindOrCreateProcedure(method);
-      return this.declaredMethods[method];
+      return this.declaredMethods[method.InternedKey];
     }
     private static IMethodReference Unspecialize(IMethodReference method) {
       IMethodReference result = method;
@@ -433,11 +441,11 @@ namespace BytecodeTranslator {
     private Dictionary<uint, Bpl.Variable> declaredTypes = new Dictionary<uint, Bpl.Variable>();
 
     /// <summary>
-    /// The keys to the table are the signatures of the methods.
+    /// The keys to the table are the interned keys of the methods.
     /// The values are pairs: first element is the procedure,
     /// second element is the formal map for the procedure
     /// </summary>
-    private Dictionary<ISignature, ProcedureInfo> declaredMethods = new Dictionary<ISignature, ProcedureInfo>();
+    private Dictionary<uint, ProcedureInfo> declaredMethods = new Dictionary<uint, ProcedureInfo>();
     /// <summary>
     /// The values in this table are the procedures
     /// defined in the program created by the heap in the Sink's ctor.
@@ -463,6 +471,7 @@ namespace BytecodeTranslator {
     }
 
     private Dictionary<IMethodDefinition, Bpl.Constant> delegateMethods = new Dictionary<IMethodDefinition, Bpl.Constant>();
+    private IContractAwareHost host;
 
     public Bpl.Constant FindOrAddDelegateMethodConstant(IMethodDefinition defn)
     {
