@@ -249,6 +249,8 @@ namespace BytecodeTranslator {
 
         #region Look for Returnvalue
 
+        Bpl.Variable savedRetVariable = this.RetVariable;
+
         if (method.Type.TypeCode != PrimitiveTypeCode.Void) {
           Bpl.Type rettype = TranslationHelper.CciTypeToBoogie(method.Type);
           out_count++;
@@ -370,6 +372,7 @@ namespace BytecodeTranslator {
         }
         procAndFormalMap = new ProcedureInfo(proc, formalMap, this.RetVariable);
         this.declaredMethods.Add(key, procAndFormalMap);
+        this.RetVariable = savedRetVariable;
       }
       return procAndFormalMap.Procedure;
     }

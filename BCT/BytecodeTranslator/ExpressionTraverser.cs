@@ -914,6 +914,12 @@ namespace BytecodeTranslator
           Bpl.UnaryOperator.Opcode.Not, exp));
     }
 
+    public override void Visit(ITypeOf typeOf) {
+      var v = this.sink.FindOrCreateType(typeOf.TypeToGet);
+      TranslatedExpressions.Push(new Bpl.IdentifierExpr(typeOf.Token(), v));
+      return;
+    }
+
     public override void Visit(IVectorLength vectorLength) {
       base.Visit(vectorLength.Vector);
       var e = TranslatedExpressions.Pop();
