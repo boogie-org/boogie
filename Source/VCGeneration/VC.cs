@@ -284,7 +284,7 @@ namespace VC {
         Contract.Invariant(initial != null);
         Contract.Invariant(program != null);
         Contract.Invariant(cce.NonNullDictionaryAndValues(copies));
-        Contract.Invariant(visited != null);
+        Contract.Invariant(cce.NonNull(visited));
         Contract.Invariant(callback != null);
       }
 
@@ -294,7 +294,7 @@ namespace VC {
       Program program;
       int id;
       Dictionary<Block, Block> copies = new Dictionary<Block, Block>();
-      Dictionary<Block, bool> visited = new Dictionary<Block, bool>();
+      HashSet<Block> visited = new HashSet<Block>();
       VerifierCallback callback;
 
       internal SmokeTester(VCGen par, Implementation i, Program prog, VerifierCallback callback) {
@@ -548,9 +548,9 @@ namespace VC {
       void DFS(Block cur) {
         Contract.Requires(cur != null);
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-        if (visited.ContainsKey(cur))
+        if (visited.Contains(cur))
           return;
-        visited[cur] = true;
+        visited.Add(cur);
 
         CmdSeq seq = new CmdSeq();
         foreach (Cmd cmd_ in cur.Cmds) {
@@ -668,13 +668,13 @@ namespace VC {
         public double incomming_paths;
         public List<Block>/*!>!*/ virtual_successors = new List<Block>();
         public List<Block>/*!>!*/ virtual_predecesors = new List<Block>();
-        public Dictionary<Block, bool> reachable_blocks;
+        public HashSet<Block> reachable_blocks;
         public readonly Block block;
         [ContractInvariantMethod]
         void ObjectInvariant() {
           Contract.Invariant(cce.NonNullElements(virtual_successors));
           Contract.Invariant(cce.NonNullElements(virtual_predecesors));
-          Contract.Invariant(cce.NonNullElements(reachable_blocks.Keys));
+          Contract.Invariant(cce.NonNull(reachable_blocks));
           Contract.Invariant(block != null);
         }
 
@@ -696,8 +696,8 @@ namespace VC {
         Contract.Invariant(parent != null);
         Contract.Invariant(impl != null);
         Contract.Invariant(copies != null);
-        Contract.Invariant(protected_from_assert_to_assume != null);
-        Contract.Invariant(keep_at_all != null);
+        Contract.Invariant(cce.NonNull(protected_from_assert_to_assume));
+        Contract.Invariant(cce.NonNull(keep_at_all));
       }
 
 
@@ -724,8 +724,8 @@ namespace VC {
       double slice_initial_limit;
       double slice_limit;
       bool slice_pos;
-      Dictionary<Block/*!*/, bool>/*!*/ protected_from_assert_to_assume = new Dictionary<Block/*!*/, bool>();
-      Dictionary<Block/*!*/, bool>/*!*/ keep_at_all = new Dictionary<Block/*!*/, bool>();
+      HashSet<Block/*!*/>/*!*/ protected_from_assert_to_assume = new HashSet<Block/*!*/>();
+      HashSet<Block/*!*/>/*!*/ keep_at_all = new HashSet<Block/*!*/>();
 
       // async interface
       private Checker checker;
@@ -861,21 +861,21 @@ namespace VC {
         }
       }
 
-      Dictionary<Block/*!*/, bool>/*!*/ ComputeReachableNodes(Block/*!*/ b) {
+      HashSet<Block/*!*/>/*!*/ ComputeReachableNodes(Block/*!*/ b) {
         Contract.Requires(b != null);
-        Contract.Ensures(Contract.Result<Dictionary<Block, bool>>() != null);
+        Contract.Ensures(cce.NonNull(Contract.Result<HashSet<Block/*!*/>>()));
         BlockStats s = GetBlockStats(b);
         if (s.reachable_blocks != null) {
           return s.reachable_blocks;
         }
-        Dictionary<Block/*!*/, bool> blocks = new Dictionary<Block/*!*/, bool>();
+        HashSet<Block/*!*/> blocks = new HashSet<Block/*!*/>();
         s.reachable_blocks = blocks;
-        blocks[b] = true;
+        blocks.Add(b);
         foreach (Block/*!*/ succ in Exits(b)) {
           Contract.Assert(succ != null);
-          foreach (Block r in ComputeReachableNodes(succ).Keys) {
+          foreach (Block r in ComputeReachableNodes(succ)) {
             Contract.Assert(r != null);
-            blocks[r] = true;
+            blocks.Add(r);
           }
         }
         return blocks;
@@ -979,7 +979,7 @@ namespace VC {
         if (s.incomming_paths < 0.0) {
           int count = 0;
           s.incomming_paths = 0.0;
-          if (!keep_at_all.ContainsKey(s.block))
+          if (!keep_at_all.Contains(s.block))
             return;
           foreach (Block b in s.virtual_predecesors) {
             Contract.Assert(b != null);
@@ -999,9 +999,9 @@ namespace VC {
 
       void ComputeBlockSetsHelper(Block b, bool allow_small) {
         Contract.Requires(b != null);
-        if (keep_at_all.ContainsKey(b))
+        if (keep_at_all.Contains(b))
           return;
-        keep_at_all[b] = true;
+        keep_at_all.Add(b);
 
         if (allow_small) {
           foreach (Block ch in Exits(b)) {
@@ -1030,18 +1030,18 @@ namespace VC {
         if (assert_to_assume) {
           foreach (Block b in allow_small ? blocks : big_blocks) {
             Contract.Assert(b != null);
-            if (ComputeReachableNodes(b).ContainsKey(cce.NonNull(split_block))) {
-              keep_at_all[b] = true;
+            if (ComputeReachableNodes(b).Contains(cce.NonNull(split_block))) {
+              keep_at_all.Add(b);
             }
           }
 
           foreach (Block b in assumized_branches) {
             Contract.Assert(b != null);
-            foreach (Block r in ComputeReachableNodes(b).Keys) {
+            foreach (Block r in ComputeReachableNodes(b)) {
               Contract.Assert(r != null);
               if (allow_small || GetBlockStats(r).big_block) {
-                keep_at_all[r] = true;
-                protected_from_assert_to_assume[r] = true;
+                keep_at_all.Add(r);
+                protected_from_assert_to_assume.Add(r);
               }
             }
           }
@@ -1052,7 +1052,7 @@ namespace VC {
 
       bool ShouldAssumize(Block b) {
         Contract.Requires(b != null);
-        return assert_to_assume && !protected_from_assert_to_assume.ContainsKey(b);
+        return assert_to_assume && !protected_from_assert_to_assume.Contains(b);
       }
 
       double DoComputeScore(bool aa) {
@@ -1069,7 +1069,7 @@ namespace VC {
         double cost = 0.0;
         foreach (Block b in big_blocks) {
           Contract.Assert(b != null);
-          if (keep_at_all.ContainsKey(b)) {
+          if (keep_at_all.Contains(b)) {
             BlockStats s = GetBlockStats(b);
             UpdateIncommingPaths(s);
             double local = s.assertion_cost;
@@ -1140,10 +1140,10 @@ namespace VC {
           foreach (Block ch in cce.NonNull(gt.labelTargets)) {
             Contract.Assert(ch != null);
             Contract.Assert(doing_slice ||
-                   (assert_to_assume || (keep_at_all.ContainsKey(ch) || assumized_branches.Contains(ch))));
+                   (assert_to_assume || (keep_at_all.Contains(ch) || assumized_branches.Contains(ch))));
             if (doing_slice ||
                 ((b != split_block || assumized_branches.Contains(ch) == assert_to_assume) &&
-                 keep_at_all.ContainsKey(ch))) {
+                 keep_at_all.Contains(ch))) {
               newGoto.AddTarget(CloneBlock(ch));
             }
             pos++;
@@ -1304,7 +1304,7 @@ namespace VC {
             ss.Add(s0.blocks[0]);
             ss.Add(s1.blocks[0]);
             try {
-              best.SoundnessCheck(new Dictionary<PureCollections.Tuple, bool>(), best.blocks[0], ss);
+              best.SoundnessCheck(new HashSet<PureCollections.Tuple>(), best.blocks[0], ss);
             } catch (System.Exception e) {
               Console.WriteLine(e);
               best.DumpDot(-1);
@@ -1461,8 +1461,8 @@ namespace VC {
         checker.BeginCheck(desc, vc, reporter);
       }
 
-      private void SoundnessCheck(Dictionary<PureCollections.Tuple/*!*/, bool>/*!*/ cache, Block/*!*/ orig, List<Block/*!*/>/*!*/ copies) {
-        Contract.Requires(cache != null);
+      private void SoundnessCheck(HashSet<PureCollections.Tuple/*!*/>/*!*/ cache, Block/*!*/ orig, List<Block/*!*/>/*!*/ copies) {
+        Contract.Requires(cce.NonNull(cache));
         Contract.Requires(orig != null);
         Contract.Requires(copies != null);
         {
@@ -1473,10 +1473,10 @@ namespace VC {
             Contract.Assert(b != null);
             t[i++] = b;
           }
-          if (cache.ContainsKey(t)) {
+          if (cache.Contains(t)) {
             return;
           }
-          cache[t] = true;
+          cache.Add(t);
         }
 
         for (int i = 0; i < orig.Cmds.Length; ++i) {
@@ -3997,7 +3997,7 @@ namespace VC {
 
         // recursively call this method on each successor
         // merge result into a *set* of blocks
-        Dictionary<Block,bool> mergedSuccessors = new Dictionary<Block,bool>();
+        HashSet<Block> mergedSuccessors = new HashSet<Block>();
         int m = 0;  // in the following loop, set renameInfoForStartBlock to the value that all recursive calls agree on, if possible; otherwise, null
         foreach (Block dest in gtc.labelTargets){Contract.Assert(dest != null);
           Block renameInfo;
@@ -4009,15 +4009,15 @@ namespace VC {
             renameInfoForStartBlock = null;
           }
           foreach (Block successor in ys){
-            if (!mergedSuccessors.ContainsKey(successor))
-              mergedSuccessors.Add(successor,true);
+            if (!mergedSuccessors.Contains(successor))
+              mergedSuccessors.Add(successor);
           }
           m++;
         }
         b.TraversingStatus = Block.VisitState.AlreadyVisited;
 
         BlockSeq setOfSuccessors = new BlockSeq();
-        foreach (Block d in mergedSuccessors.Keys)
+        foreach (Block d in mergedSuccessors)
           setOfSuccessors.Add(d);
         if (b.Cmds.Length == 0 && !startNode) {
           // b is about to become extinct

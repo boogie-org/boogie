@@ -26,7 +26,7 @@ namespace Microsoft.Boogie.VCExprAST {
       GlobalNames = new Dictionary<Object, string>();
       LocalNames = TEHelperFuns.ToList(new Dictionary<Object/*!*/, string/*!*/>()
                                          as IDictionary<Object/*!*/, string/*!*/>);
-      UsedNames = new Dictionary<string, bool>();
+      UsedNames = new HashSet<string>();
       CurrentCounters = new Dictionary<string, int>();
       GlobalPlusLocalNames = new Dictionary<Object, string>();
     }
@@ -43,7 +43,7 @@ namespace Microsoft.Boogie.VCExprAST {
       foreach (IDictionary<Object/*!*/, string/*!*/>/*!*/ d in namer.LocalNames)
         localNames.Add(new Dictionary<Object/*!*/, string/*!*/>(d));
 
-      UsedNames = new Dictionary<string, bool>(namer.UsedNames);
+      UsedNames = new HashSet<string>(namer.UsedNames);
       CurrentCounters = new Dictionary<string, int>(namer.CurrentCounters);
       GlobalPlusLocalNames = new Dictionary<Object, string>(namer.GlobalPlusLocalNames);
     }
@@ -68,10 +68,10 @@ namespace Microsoft.Boogie.VCExprAST {
 
     // dictionary of all names that have already been used
     // (locally or globally)
-    private readonly IDictionary<string/*!*/, bool/*!*/>/*!*/ UsedNames;
+    private readonly HashSet<string/*!*/>/*!*/ UsedNames;
     [ContractInvariantMethod]
     void UsedNamesInvariantMethod() {
-      Contract.Invariant(UsedNames != null);
+      Contract.Invariant(cce.NonNull(UsedNames));
     }
     private readonly IDictionary<string/*!*/, int/*!*/>/*!*/ CurrentCounters;
     [ContractInvariantMethod]
@@ -111,13 +111,12 @@ namespace Microsoft.Boogie.VCExprAST {
         counter = 0;
       }
 
-      bool dummy;
-      while (UsedNames.TryGetValue(candidate, out dummy)) {
+      while (UsedNames.Contains(candidate)) {
         candidate = baseName + Spacer + counter;
         counter = counter + 1;
       }
 
-      UsedNames.Add(candidate, true);
+      UsedNames.Add(candidate);
       CurrentCounters[baseName] = counter;
       GlobalPlusLocalNames[thingie] = candidate;
       return candidate;

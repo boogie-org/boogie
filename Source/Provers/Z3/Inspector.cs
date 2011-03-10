@@ -18,17 +18,16 @@ using Microsoft.Boogie.VCExprAST;
 namespace Microsoft.Boogie.Z3
 {
   internal class FindLabelsVisitor : TraversingVCExprVisitor<bool, bool> {
-    public Dictionary<string/*!*/,bool>/*!*/ Labels = new Dictionary<string/*!*/,bool>();
+    public HashSet<string/*!*/>/*!*/ Labels = new HashSet<string/*!*/>();
     [ContractInvariantMethod]
-void ObjectInvariant() 
-{
-    Contract.Invariant(Labels!=null&&cce.NonNullElements(Labels.Keys));
-}
+    void ObjectInvariant() {
+      Contract.Invariant(cce.NonNull(Labels));
+    }
 
 
-    public static Dictionary<string/*!*/,bool>/*!*/ FindLabels(VCExpr/*!*/ expr) {
+    public static HashSet<string/*!*/>/*!*/ FindLabels(VCExpr/*!*/ expr) {
       Contract.Requires(expr != null);
-      Contract.Ensures(Contract.Result<Dictionary<string/*!*/,bool>/*!*/>() != null&&cce.NonNullElements(Contract.Result<Dictionary<string/*!*/,bool>/*!*/>().Keys));
+      Contract.Ensures(cce.NonNull(Contract.Result<HashSet<string/*!*/>/*!*/>()));
 
       FindLabelsVisitor visitor = new FindLabelsVisitor();
       visitor.Traverse(expr, true);
@@ -41,7 +40,7 @@ void ObjectInvariant()
       if (nary != null) {
         VCExprLabelOp lab = nary.Op as VCExprLabelOp;
         if (lab != null) {
-          Labels[lab.label] = lab.pos;
+          Labels.Add(lab.label);
         }
       }
       return true;
@@ -94,11 +93,11 @@ void ObjectInvariant()
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
       Contract.Requires(handler != null);
-      Dictionary<string/*!*/,bool>/*!*/ labels = FindLabelsVisitor.FindLabels(vc);
+      HashSet<string/*!*/>/*!*/ labels = FindLabelsVisitor.FindLabels(vc);
       Contract.Assert(labels!=null);
       toInspector.WriteLine("PROBLEM " + descriptiveName);
       toInspector.WriteLine("TOKEN BEGIN");
-      foreach (string lab in labels.Keys) {
+      foreach (string lab in labels) {
         Contract.Assert(lab!=null);
         string no = lab.Substring(1);
         Absy absy = handler.Label2Absy(no);

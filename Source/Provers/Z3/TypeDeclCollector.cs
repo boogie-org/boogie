@@ -29,12 +29,12 @@ void ObjectInvariant()
     Contract.Invariant(Namer!=null);
       Contract.Invariant(AllDecls != null);
       Contract.Invariant(IncDecls != null);
-      Contract.Invariant(KnownFunctions != null);
-      Contract.Invariant(KnownVariables != null);
-      Contract.Invariant(KnownTypes != null);
-      Contract.Invariant(KnownBvOps != null);
-      Contract.Invariant(KnownSelectFunctions != null);
-      Contract.Invariant(KnownStoreFunctions != null);
+      Contract.Invariant(cce.NonNull(KnownFunctions));
+      Contract.Invariant(cce.NonNull(KnownVariables));
+      Contract.Invariant(cce.NonNull(KnownTypes));
+      Contract.Invariant(cce.NonNull(KnownBvOps));
+      Contract.Invariant(cce.NonNull(KnownSelectFunctions));
+      Contract.Invariant(cce.NonNull(KnownStoreFunctions));
 }
 
 
@@ -46,13 +46,13 @@ void ObjectInvariant()
       this.NativeBv = nativeBv;
       AllDecls = new List<string/*!*/> ();
       IncDecls = new List<string/*!*/> ();
-      KnownFunctions = new Dictionary<Function/*!*/, bool> ();
-      KnownVariables = new Dictionary<VCExprVar/*!*/, bool> ();
-      KnownTypes = new Dictionary<Type/*!*/, bool> ();
-      KnownBvOps = new Dictionary<string/*!*/, bool> ();
-      
-      KnownStoreFunctions = new Dictionary<string/*!*/, bool>();
-      KnownSelectFunctions = new Dictionary<string/*!*/, bool>();
+      KnownFunctions = new HashSet<Function/*!*/>();
+      KnownVariables = new HashSet<VCExprVar/*!*/>();
+      KnownTypes = new HashSet<Type/*!*/>();
+      KnownBvOps = new HashSet<string/*!*/>();
+
+      KnownStoreFunctions = new HashSet<string/*!*/>();
+      KnownSelectFunctions = new HashSet<string/*!*/>();
     }
 
     internal TypeDeclCollector(UniqueNamer namer, TypeDeclCollector coll) {
@@ -62,13 +62,13 @@ void ObjectInvariant()
       this.NativeBv = coll.NativeBv;
       AllDecls = new List<string/*!*/> (coll.AllDecls);
       IncDecls = new List<string/*!*/> (coll.IncDecls);
-      KnownFunctions = new Dictionary<Function/*!*/, bool> (coll.KnownFunctions);
-      KnownVariables = new Dictionary<VCExprVar/*!*/, bool> (coll.KnownVariables);
-      KnownTypes = new Dictionary<Type/*!*/, bool> (coll.KnownTypes);
-      KnownBvOps = new Dictionary<string/*!*/, bool> (coll.KnownBvOps);
-      
-      KnownStoreFunctions = new Dictionary<string/*!*/, bool> (coll.KnownStoreFunctions);
-      KnownSelectFunctions = new Dictionary<string/*!*/, bool> (coll.KnownSelectFunctions);
+      KnownFunctions = new HashSet<Function/*!*/>(coll.KnownFunctions);
+      KnownVariables = new HashSet<VCExprVar/*!*/>(coll.KnownVariables);
+      KnownTypes = new HashSet<Type/*!*/>(coll.KnownTypes);
+      KnownBvOps = new HashSet<string/*!*/>(coll.KnownBvOps);
+
+      KnownStoreFunctions = new HashSet<string/*!*/>(coll.KnownStoreFunctions);
+      KnownSelectFunctions = new HashSet<string/*!*/>(coll.KnownSelectFunctions);
     }
 
     // not used
@@ -80,17 +80,17 @@ void ObjectInvariant()
     private readonly List<string/*!>!*/> AllDecls;
     private readonly List<string/*!>!*/> IncDecls;
 
-    private readonly IDictionary<Function/*!*/, bool>/*!*/ KnownFunctions;
-    private readonly IDictionary<VCExprVar/*!*/, bool>/*!*/ KnownVariables;
+    private readonly HashSet<Function/*!*/>/*!*/ KnownFunctions;
+    private readonly HashSet<VCExprVar/*!*/>/*!*/ KnownVariables;
 
     // bitvector types have to be registered as well
-    private readonly IDictionary<Type/*!*/, bool>/*!*/ KnownTypes;
+    private readonly HashSet<Type/*!*/>/*!*/ KnownTypes;
 
     // the names of registered BvConcatOps and BvExtractOps
-    private readonly IDictionary<string/*!*/, bool>/*!*/ KnownBvOps;
+    private readonly HashSet<string/*!*/>/*!*/ KnownBvOps;
 
-    private readonly IDictionary<string/*!*/, bool>/*!*/ KnownStoreFunctions;
-    private readonly IDictionary<string/*!*/, bool>/*!*/ KnownSelectFunctions;
+    private readonly HashSet<string/*!*/>/*!*/ KnownStoreFunctions;
+    private readonly HashSet<string/*!*/>/*!*/ KnownSelectFunctions;
 
     public List<string/*!>!*/> AllDeclarations { get {
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<string>>()));
@@ -131,10 +131,10 @@ void ObjectInvariant()
     private void RegisterType(Type type)
     {
       Contract.Requires(type != null);
-      if (KnownTypes.ContainsKey(type)) return;
+      if (KnownTypes.Contains(type)) return;
 
       if (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays) {
-        KnownTypes.Add(type, true);
+        KnownTypes.Add(type);
         string declString = "";
         MapType mapType = type.AsMap;
         Contract.Assert(mapType != null);
@@ -173,7 +173,7 @@ void ObjectInvariant()
         AddDeclaration("(BG_PUSH (FORALL (x :TYPE " + name + ") (PATS "
                        + expr + ") (QID bvconv" + bits + ") (EQ " + expr + " x)))");
 
-        KnownTypes.Add(type, true);
+        KnownTypes.Add(type);
         return;
       }
 
@@ -182,7 +182,7 @@ void ObjectInvariant()
 
       if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
         AddDeclaration("(DEFTYPE " + TypeToString(type) + ")");
-        KnownTypes.Add(type, true);
+        KnownTypes.Add(type);
         return;
       }
 
@@ -201,13 +201,13 @@ void ObjectInvariant()
           RegisterType(node.Type);
 
           string name = SimplifyLikeExprLineariser.BvConcatOpName(node);
-          if (!KnownBvOps.ContainsKey(name)) {
+          if (!KnownBvOps.Contains(name)) {
             AddDeclaration("(DEFOP " + name +
                            " " + TypeToString(node[0].Type) +
                            " " + TypeToString(node[1].Type) +
                            " " + TypeToString(node.Type) +
                            " :BUILTIN concat)");
-            KnownBvOps.Add(name, true);
+            KnownBvOps.Add(name);
           }
         }
         //
@@ -220,20 +220,20 @@ void ObjectInvariant()
           VCExprBvExtractOp op = (VCExprBvExtractOp)node.Op;
           Contract.Assert(op!=null);
           string name = SimplifyLikeExprLineariser.BvExtractOpName(node);
-          if (!KnownBvOps.ContainsKey(name)) {
+          if (!KnownBvOps.Contains(name)) {
             AddDeclaration("(DEFOP " + name +
                            " " + TypeToString(node[0].Type) +
                            " " + TypeToString(node.Type) + 
                            " :BUILTIN extract " +
                            (op.End - 1) + " " + op.Start + ")");
-            KnownBvOps.Add(name, true);
+            KnownBvOps.Add(name);
           }
         }
         //
       } else if (node.Op is VCExprStoreOp) {
         RegisterType(node.Type);        // this is the map type, registering it should register also the index and value types
         string name = SimplifyLikeExprLineariser.StoreOpName(node);
-        if (!KnownStoreFunctions.ContainsKey(name)) {
+        if (!KnownStoreFunctions.Contains(name)) {
           string decl = "(DEFOP " + name;
 
           foreach (VCExpr ch in node) {
@@ -249,14 +249,14 @@ void ObjectInvariant()
           if (CommandLineOptions.Clo.MonomorphicArrays && !CommandLineOptions.Clo.UseArrayTheory) {
             var sel = SimplifyLikeExprLineariser.SelectOpName(node);
 
-            if (!KnownSelectFunctions.ContainsKey(name)) {
+            if (!KnownSelectFunctions.Contains(name)) {
               // need to declare it before reference
               string seldecl = "(DEFOP " + sel;
               foreach (VCExpr ch in node) {
                 seldecl += " " + TypeToString(ch.Type);
               }
               AddDeclaration(seldecl + ")");
-              KnownSelectFunctions.Add(name, true);
+              KnownSelectFunctions.Add(name);
             }
 
             var eq = "EQ";
@@ -293,14 +293,14 @@ void ObjectInvariant()
             AddDeclaration(ax2);
           }
           
-          KnownStoreFunctions.Add(name, true);
+          KnownStoreFunctions.Add(name);
         }
         //
       } else if (node.Op is VCExprSelectOp) {
         //
         RegisterType(node[0].Type);
         string name = SimplifyLikeExprLineariser.SelectOpName(node);
-        if (!KnownSelectFunctions.ContainsKey(name)) {
+        if (!KnownSelectFunctions.Contains(name)) {
           string decl = "(DEFOP " + name;
 
           foreach (VCExpr ch in node) {
@@ -312,13 +312,13 @@ void ObjectInvariant()
             decl += " :BUILTIN select";
           decl += ")";
           AddDeclaration(decl);
-          KnownSelectFunctions.Add(name, true);
+          KnownSelectFunctions.Add(name);
         }
         //
       } else {
         //
         VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
-        if (op != null && !KnownFunctions.ContainsKey(op.Func)) {
+        if (op != null && !KnownFunctions.Contains(op.Func)) {
           Function f = op.Func;
           Contract.Assert(f!=null);
           string printedName = Namer.GetName(f, f.Name);
@@ -344,7 +344,7 @@ void ObjectInvariant()
           decl += ")";
         
           AddDeclaration(decl);
-          KnownFunctions.Add(f, true);
+          KnownFunctions.Add(f);
         }
         //
       }
@@ -366,7 +366,7 @@ void ObjectInvariant()
 
     public override bool Visit(VCExprVar node, bool arg) {
       Contract.Requires(node != null);
-      if (!BoundTermVars.Contains(node) && !KnownVariables.ContainsKey(node)) {
+      if (!BoundTermVars.Contains(node) && !KnownVariables.Contains(node)) {
         RegisterType(node.Type);
         string printedName = Namer.GetName(node, node.Name);
         Contract.Assert(printedName!=null);
@@ -374,7 +374,7 @@ void ObjectInvariant()
           "(DEFOP " + SimplifyLikeExprLineariser.MakeIdPrintable(printedName)
           + " " + TypeToString(node.Type) + ")";
         AddDeclaration(decl);
-        KnownVariables.Add(node, true);
+        KnownVariables.Add(node);
       }
 
       return base.Visit(node, arg);

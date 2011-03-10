@@ -240,7 +240,7 @@ namespace Microsoft.Boogie.SMTLib
       FlushLogFile();
     }
 
-    private static Dictionary<string, bool> usedLogNames = new Dictionary<string, bool>();
+    private static HashSet<string> usedLogNames = new HashSet<string>();
 
     private TextWriter OpenOutputFile(string descriptiveName)
     {
@@ -253,10 +253,10 @@ namespace Microsoft.Boogie.SMTLib
 
       lock (usedLogNames) {
         int n = 1;
-        while (usedLogNames.ContainsKey(curFilename)) {
+        while (usedLogNames.Contains(curFilename)) {
           curFilename = filename + "." + n++;
         }
-        usedLogNames[curFilename] = true;
+        usedLogNames.Add(curFilename);
       }
 
       return new StreamWriter(curFilename, false);

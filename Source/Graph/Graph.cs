@@ -184,7 +184,7 @@ namespace Graphing {
       int n = this.graph.Nodes.Count;
       this.postOrderNumberToNode = new Maybe<Node>[n + 1];
       this.nodeToPostOrderNumber = new Dictionary<Node, int>();
-      Dictionary<Node, bool> visited = new Dictionary<Node, bool>(n);
+      HashSet<Node> visited = new HashSet<Node>();
       int currentNumber = 1;
       Contract.Assume(this.source != null);
       this.PostOrderVisit(this.source, visited, ref currentNumber);
@@ -262,11 +262,11 @@ namespace Graphing {
       }
       return finger1;
     }
-    private void PostOrderVisit(Node/*!*/ n, Dictionary<Node, bool> visited, ref int currentNumber) {
+    private void PostOrderVisit(Node/*!*/ n, HashSet<Node> visited, ref int currentNumber) {
       Contract.Requires(n != null);
-      if (visited.ContainsKey(n))
+      if (visited.Contains(n))
         return;
-      visited[n] = true;
+      visited.Add(n);
       foreach (Node/*!*/ child in this.graph.Successors(n)) {
         Contract.Assert(child != null);
         PostOrderVisit(child, visited, ref currentNumber);

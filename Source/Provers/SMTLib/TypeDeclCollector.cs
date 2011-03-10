@@ -47,14 +47,12 @@ void ObjectInvariant()
     private readonly List<string/*!>!*/> AllDecls = new List<string/*!*/> ();
     private readonly List<string/*!>!*/> IncDecls = new List<string/*!*/> ();
 
-    private readonly IDictionary<Function/*!*/, bool>/*!*/ KnownFunctions =
-      new Dictionary<Function/*!*/, bool> ();
-    private readonly IDictionary<VCExprVar/*!*/, bool>/*!*/ KnownVariables =
-      new Dictionary<VCExprVar/*!*/, bool> ();
+    private readonly HashSet<Function/*!*/>/*!*/ KnownFunctions = new HashSet<Function/*!*/>();
+    private readonly HashSet<VCExprVar/*!*/>/*!*/ KnownVariables = new HashSet<VCExprVar/*!*/>();
 
-    private readonly Dictionary<Type/*!*/, bool>/*!*/ KnownTypes = new Dictionary<Type, bool>();
-    private readonly Dictionary<string/*!*/, bool>/*!*/ KnownStoreFunctions = new Dictionary<string, bool>();
-    private readonly Dictionary<string/*!*/, bool>/*!*/ KnownSelectFunctions = new Dictionary<string, bool>();
+    private readonly HashSet<Type/*!*/>/*!*/ KnownTypes = new HashSet<Type>();
+    private readonly HashSet<string/*!*/>/*!*/ KnownStoreFunctions = new HashSet<string>();
+    private readonly HashSet<string/*!*/>/*!*/ KnownSelectFunctions = new HashSet<string>();
     private readonly HashSet<string> KnownLBL = new HashSet<string>();
 
 
@@ -107,7 +105,7 @@ void ObjectInvariant()
       else if (node.Op is VCExprSelectOp) RegisterSelect(node);
       else {
         VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
-        if (op != null && !KnownFunctions.ContainsKey(op.Func)) {
+        if (op != null && !KnownFunctions.Contains(op.Func)) {
           Function f = op.Func;
           Contract.Assert(f != null);
           
@@ -121,7 +119,7 @@ void ObjectInvariant()
             string decl = "(declare-fun " + printedName + " (" + argTypes + ") " + TypeToStringReg(f.OutParams[0].TypedIdent.Type) + ")";
             AddDeclaration(decl);
           }
-          KnownFunctions.Add(f, true);
+          KnownFunctions.Add(f);
         } else {
           var lab = node.Op as VCExprLabelOp;
           if (lab != null && !KnownLBL.Contains(lab.label)) {
@@ -137,14 +135,14 @@ void ObjectInvariant()
 
     public override bool Visit(VCExprVar node, bool arg) {
       Contract.Requires(node != null);
-      if (!BoundTermVars.Contains(node) && !KnownVariables.ContainsKey(node)) {
+      if (!BoundTermVars.Contains(node) && !KnownVariables.Contains(node)) {
         string printedName = Namer.GetQuotedName(node, node.Name);
         Contract.Assert(printedName!=null);
         RegisterType(node.Type);
         string decl =
           "(declare-fun " + printedName + " () " + TypeToString(node.Type) + ")";
         AddDeclaration(decl);
-        KnownVariables.Add(node, true);
+        KnownVariables.Add(node);
       }
 
       return base.Visit(node, arg);
@@ -164,10 +162,10 @@ void ObjectInvariant()
     private void RegisterType(Type type)
     {
       Contract.Requires(type != null);
-      if (KnownTypes.ContainsKey(type)) return;
+      if (KnownTypes.Contains(type)) return;
 
       if (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays) {
-        KnownTypes.Add(type, true);
+        KnownTypes.Add(type);
         MapType mapType = type.AsMap;
         Contract.Assert(mapType != null);
 
@@ -188,7 +186,7 @@ void ObjectInvariant()
 
       if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
         AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
-        KnownTypes.Add(type, true);
+        KnownTypes.Add(type);
         return;
       }
     }
@@ -203,10 +201,10 @@ void ObjectInvariant()
       string name = SimplifyLikeExprLineariser.SelectOpName(node);
       name = Namer.GetQuotedName(name, name);
 
-      if (!KnownSelectFunctions.ContainsKey(name)) {
+      if (!KnownSelectFunctions.Contains(name)) {
         string decl = "(declare-fun " + name + " (" + node.MapConcat(n => TypeToString(n.Type), " ") + ") " + TypeToString(node.Type) + ")";
         AddDeclaration(decl);
-        KnownSelectFunctions.Add(name, true);
+        KnownSelectFunctions.Add(name);
       }
     }
 
@@ -220,7 +218,7 @@ void ObjectInvariant()
       string name = SimplifyLikeExprLineariser.StoreOpName(node);
       name = Namer.GetQuotedName(name, name);
 
-      if (!KnownStoreFunctions.ContainsKey(name)) {
+      if (!KnownStoreFunctions.Contains(name)) {
         string decl = "(declare-fun " + name + " (" + node.MapConcat(n => TypeToString(n.Type), " ") + ") " + TypeToString(node.Type) + ")";
         AddDeclaration(decl);
 
@@ -228,13 +226,13 @@ void ObjectInvariant()
           var sel = SimplifyLikeExprLineariser.SelectOpName(node);
           sel = Namer.GetQuotedName(sel, sel);
           
-          if (!KnownSelectFunctions.ContainsKey(sel)) {
+          if (!KnownSelectFunctions.Contains(sel)) {
             // need to declare it before reference
             var args = node.SkipEnd(1);
             var ret = node.Last();
             string seldecl = "(declare-fun " + sel + " (" + args.MapConcat(n => TypeToString(n.Type), " ") + ") " + TypeToString(ret.Type) + ")";
             AddDeclaration(seldecl);
-            KnownSelectFunctions.Add(sel, true);
+            KnownSelectFunctions.Add(sel);
           }
 
           string ax1 = "(assert (forall (";
@@ -268,7 +266,7 @@ void ObjectInvariant()
           AddDeclaration(ax2);
         }
 
-        KnownStoreFunctions.Add(name, true);
+        KnownStoreFunctions.Add(name);
       }
       //
     }

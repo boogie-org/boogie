@@ -671,7 +671,7 @@ namespace Microsoft.Boogie {
                                           new TypeVariableSeq(),
                                           new Variable[func.Args.Length]);
             int pos = 0;
-            Dictionary<Declaration, bool> parms = new Dictionary<Declaration, bool>();
+            HashSet<Declaration> parms = new HashSet<Declaration>();
             foreach (Expr/*!*/ e in func.Args) {
               Contract.Assert(e != null);
               IdentifierExpr id = e as IdentifierExpr;
@@ -680,11 +680,11 @@ namespace Microsoft.Boogie {
                 return;
               }
               exp.formals[pos++] = id.Decl;
-              if (parms.ContainsKey(id.Decl)) {
+              if (parms.Contains(id.Decl)) {
                 Error(all.tok, "an identifier was used more than once");
                 return;
               }
-              parms[id.Decl] = true;
+              parms.Add(id.Decl);
               if (!all.Dummies.Has(id.Decl)) {
                 Error(all.tok, "identifier was not quantified over");
                 return;
@@ -695,7 +695,7 @@ namespace Microsoft.Boogie {
               return;
             }
 
-            Dictionary<TypeVariable/*!*/, bool> typeVars = new Dictionary<TypeVariable/*!*/, bool>();
+            HashSet<TypeVariable/*!*/> typeVars = new HashSet<TypeVariable/*!*/>();
             foreach (TypeVariable/*!*/ v in cce.NonNull(func.TypeParameters).FormalTypeParams) {
               Contract.Assert(v != null);
               if (!func.TypeParameters[v].IsVariable) {
@@ -705,11 +705,11 @@ namespace Microsoft.Boogie {
               TypeVariable/*!*/ formal = func.TypeParameters[v].AsVariable;
               Contract.Assert(formal != null);
               exp.TypeParameters.Add(formal);
-              if (typeVars.ContainsKey(formal)) {
+              if (typeVars.Contains(formal)) {
                 Error(all.tok, "an identifier was used more than once");
                 return;
               }
-              typeVars[formal] = true;
+              typeVars.Add(formal);
               if (!all.TypeParameters.Has(formal)) {
                 Error(all.tok, "identifier was not quantified over");
                 return;

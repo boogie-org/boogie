@@ -1076,16 +1076,16 @@ namespace Microsoft.Boogie.VCExprAST {
     public IEnumerable<VCExprVar/*!*/>/*!*/ TermDomain {
       get {
         Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<VCExprVar>>()));
-        Dictionary<VCExprVar/*!*/, bool>/*!*/ domain = new Dictionary<VCExprVar/*!*/, bool>();
+        HashSet<VCExprVar/*!*/>/*!*/ domain = new HashSet<VCExprVar/*!*/>();
         foreach (IDictionary<VCExprVar/*!*/, VCExpr/*!*/>/*!*/ dict in TermSubsts) {
           Contract.Assert(dict != null);
           foreach (VCExprVar/*!*/ var in dict.Keys) {
             Contract.Assert(var != null);
             if (!var.Equals(this[var]))
-              domain.Add(var, true);
+              domain.Add(var);
           }
         }
-        return domain.Keys;
+        return domain;
       }
     }
 
@@ -1093,16 +1093,16 @@ namespace Microsoft.Boogie.VCExprAST {
     public IEnumerable<TypeVariable/*!*/>/*!*/ TypeDomain {
       get {
         Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<TypeVariable>>()));
-        Dictionary<TypeVariable/*!*/, bool>/*!*/ domain = new Dictionary<TypeVariable/*!*/, bool>();
+        HashSet<TypeVariable/*!*/>/*!*/ domain = new HashSet<TypeVariable/*!*/>();
         foreach (IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ dict in TypeSubsts) {
           Contract.Assert(dict != null);
           foreach (TypeVariable/*!*/ var in dict.Keys) {
             Contract.Assert(var != null);
             if (!var.Equals(this[var]))
-              domain.Add(var, true);
+              domain.Add(var);
           }
         }
-        return domain.Keys;
+        return domain;
       }
     }
 

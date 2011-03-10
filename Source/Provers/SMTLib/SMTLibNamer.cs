@@ -42,7 +42,7 @@ namespace Microsoft.Boogie.SMTLib
       "int_mod", "int_div", "UOrdering2", "UOrdering3", 
     };
 
-    static Dictionary<string, bool> reservedSmtWords;
+    static HashSet<string> reservedSmtWords;
     static bool[] validIdChar;
     static bool symbolListsInitilized;
 
@@ -52,9 +52,9 @@ namespace Microsoft.Boogie.SMTLib
         // don't move out, c.f. http://en.wikipedia.org/wiki/Double-checked_locking
         if (symbolListsInitilized)
           return;
-        reservedSmtWords = new Dictionary<string, bool>();
+        reservedSmtWords = new HashSet<string>();
         foreach (var w in reservedSmtWordsList)
-          reservedSmtWords.Add(w, true);
+          reservedSmtWords.Add(w);
         validIdChar = new bool[255];
         for (int i = 0; i < validIdChar.Length; ++i)
           validIdChar[i] = char.IsLetterOrDigit((char)i) || idCharacters.IndexOf((char)i) >= 0;
@@ -82,7 +82,7 @@ namespace Microsoft.Boogie.SMTLib
 
     static string NonKeyword(string s)
     {
-      if (reservedSmtWords.ContainsKey(s) || char.IsDigit(s[0]))
+      if (reservedSmtWords.Contains(s) || char.IsDigit(s[0]))
         s = "q@" + s;
 
       // | and \ are illegal even in quoted identifiers

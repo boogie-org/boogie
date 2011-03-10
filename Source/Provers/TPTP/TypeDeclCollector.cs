@@ -17,19 +17,18 @@ namespace Microsoft.Boogie.TPTP
 
   public class TypeDeclCollector : BoundVarTraversingVCExprVisitor<bool, bool> {
 
-    private readonly Dictionary<string/*!*/, bool>/*!*/ KnownStoreFunctions = new Dictionary<string, bool>();
-    private readonly Dictionary<string/*!*/, bool>/*!*/ KnownSelectFunctions = new Dictionary<string, bool>();
+    private readonly HashSet<string/*!*/>/*!*/ KnownStoreFunctions = new HashSet<string>();
+    private readonly HashSet<string/*!*/>/*!*/ KnownSelectFunctions = new HashSet<string>();
 
     private readonly UniqueNamer Namer;
     [ContractInvariantMethod]
-void ObjectInvariant() 
-{
-    Contract.Invariant(Namer!=null);
+    void ObjectInvariant() {
+      Contract.Invariant(Namer != null);
       Contract.Invariant(AllDecls != null);
       Contract.Invariant(IncDecls != null);
-      Contract.Invariant(KnownFunctions != null);
-      Contract.Invariant(KnownVariables != null);
-}
+      Contract.Invariant(cce.NonNull(KnownFunctions));
+      Contract.Invariant(cce.NonNull(KnownVariables));
+    }
 
 
     public TypeDeclCollector(UniqueNamer namer) {
@@ -46,10 +45,8 @@ void ObjectInvariant()
     private readonly List<string/*!>!*/> AllDecls = new List<string/*!*/> ();
     private readonly List<string/*!>!*/> IncDecls = new List<string/*!*/> ();
 
-    private readonly IDictionary<Function/*!*/, bool>/*!*/ KnownFunctions =
-      new Dictionary<Function/*!*/, bool> ();
-    private readonly IDictionary<VCExprVar/*!*/, bool>/*!*/ KnownVariables =
-      new Dictionary<VCExprVar/*!*/, bool> ();
+    private readonly HashSet<Function/*!*/>/*!*/ KnownFunctions = new HashSet<Function/*!*/>();
+    private readonly HashSet<VCExprVar/*!*/>/*!*/ KnownVariables = new HashSet<VCExprVar/*!*/>();
 
     public List<string/*!>!*/> AllDeclarations { get {
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<string>>() ));
@@ -86,7 +83,7 @@ void ObjectInvariant()
 
       if (node.Op is VCExprStoreOp) {
         string name = TPTPExprLineariser.Lowercase(SimplifyLikeExprLineariser.StoreOpName(node));
-        if (!KnownStoreFunctions.ContainsKey(name)) {
+        if (!KnownStoreFunctions.Contains(name)) {
           var id = KnownStoreFunctions.Count;
 
           if (CommandLineOptions.Clo.MonomorphicArrays) {
@@ -122,7 +119,7 @@ void ObjectInvariant()
             AddDeclaration(ax2);
           }
 
-          KnownStoreFunctions.Add(name, true);
+          KnownStoreFunctions.Add(name);
         }
         //
       }

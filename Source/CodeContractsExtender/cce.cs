@@ -57,6 +57,10 @@ public static class cce {
   public static bool NonNullElements<T>(IEnumerator<T> iEnumerator) where T : class {
     return iEnumerator != null;
   }
+  [Pure]
+  public static bool NonNull<T>(HashSet<T> set) where T : class {
+    return set != null && !set.Contains(null);
+  }
   //[Pure]
   //public static bool NonNullElements<T>(Graphing.Graph<T> graph) {
   //  return cce.NonNullElements(graph.TopologicalSort());
