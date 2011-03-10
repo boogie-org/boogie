@@ -80,7 +80,7 @@ namespace Microsoft.Boogie.Simplify
     [ContractInvariantMethod]
 void ObjectInvariant() 
 {
-    Contract.Invariant(cce.NonNullElements(VarOccurrences));
+    Contract.Invariant(VarOccurrences != null);
 }
 
     ////////////////////////////////////////////////////////////////////////////

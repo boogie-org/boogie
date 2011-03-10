@@ -26,7 +26,7 @@ namespace VC
         [ContractInvariantMethod]
         void ObjectInvariant()
         {
-            Contract.Invariant(cce.NonNullElements(implName2StratifiedInliningInfo));
+            Contract.Invariant(cce.NonNullDictionaryAndValues(implName2StratifiedInliningInfo));
         }
 
         /// <summary>
@@ -1675,12 +1675,12 @@ namespace VC
             [ContractInvariantMethod]
             void ObjectInvariant()
             {
-                Contract.Invariant(cce.NonNullElements(implName2StratifiedInliningInfo));
+                Contract.Invariant(cce.NonNullDictionaryAndValues(implName2StratifiedInliningInfo));
                 Contract.Invariant(mainLabel2absy != null);
-                Contract.Invariant(cce.NonNullElements(boogieExpr2Id));
-                Contract.Invariant(cce.NonNullElements(id2Candidate));
-                Contract.Invariant(cce.NonNullElements(id2ControlVar));
-                Contract.Invariant(cce.NonNullElements(label2Id));
+                Contract.Invariant(boogieExpr2Id != null);
+                Contract.Invariant(cce.NonNullDictionaryAndValues(id2Candidate));
+                Contract.Invariant(cce.NonNullDictionaryAndValues(id2ControlVar));
+                Contract.Invariant(label2Id != null);
             }
 
             // Name of the procedure whose VC we're mutating
@@ -1696,7 +1696,7 @@ namespace VC
                 : base(gen)
             {
                 Contract.Requires(gen != null);
-                Contract.Requires(cce.NonNullElements(implName2StratifiedInliningInfo));
+                Contract.Requires(cce.NonNullDictionaryAndValues(implName2StratifiedInliningInfo));
                 Contract.Requires(mainLabel2absy != null);
                 this.implName2StratifiedInliningInfo = implName2StratifiedInliningInfo;
                 this.mainProcName = mainProcName;
@@ -2023,7 +2023,7 @@ namespace VC
             [ContractInvariantMethod]
             void ObjectInvariant()
             {
-                Contract.Invariant(cce.NonNullElements(subst));
+                Contract.Invariant(cce.NonNullDictionaryAndValues(subst));
             }
 
 
@@ -2105,7 +2105,7 @@ namespace VC
                 Contract.Invariant(program != null);
                 Contract.Invariant(callback != null);
                 Contract.Invariant(theoremProver != null);
-                Contract.Invariant(cce.NonNullElements(implName2StratifiedInliningInfo));
+                Contract.Invariant(cce.NonNullDictionaryAndValues(implName2StratifiedInliningInfo));
             }
 
 
@@ -2114,7 +2114,7 @@ namespace VC
                                                    Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins,
                                                    Program/*!*/ program, Implementation/*!*/ mainImpl)
             {
-                Contract.Requires(cce.NonNullElements(implName2StratifiedInliningInfo));
+                Contract.Requires(cce.NonNullDictionaryAndValues(implName2StratifiedInliningInfo));
                 Contract.Requires(theoremProver != null);
                 Contract.Requires(callback != null);
                 Contract.Requires(context != null);
@@ -2268,7 +2268,7 @@ namespace VC
                 Contract.Requires(b != null);
                 Contract.Requires(traceNodes != null);
                 Contract.Requires(trace != null);
-                Contract.Requires(cce.NonNullElements(calleeCounterexamples));
+                Contract.Requires(cce.NonNullDictionaryAndValues(calleeCounterexamples));
                 // After translation, all potential errors come from asserts.
                 while (true)
                 {

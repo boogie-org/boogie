@@ -73,7 +73,7 @@ namespace VC {
         Contract.Invariant(controlFlowVariable != null);
         Contract.Invariant(assertExpr != null);
         Contract.Invariant(cce.NonNullElements(interfaceVars));
-        Contract.Invariant(incarnationOriginMap == null || cce.NonNullElements(incarnationOriginMap));
+        Contract.Invariant(incarnationOriginMap == null || cce.NonNullDictionaryAndValues(incarnationOriginMap));
       }
 
       public Implementation impl;
@@ -145,7 +145,7 @@ namespace VC {
     }
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(implName2LazyInliningInfo == null || cce.NonNullElements(implName2LazyInliningInfo));
+      Contract.Invariant(implName2LazyInliningInfo == null || cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
     }
 
     private Dictionary<string, LazyInliningInfo> implName2LazyInliningInfo;
@@ -283,8 +283,8 @@ namespace VC {
         Contract.Invariant(impl != null);
         Contract.Invariant(initial != null);
         Contract.Invariant(program != null);
-        Contract.Invariant(cce.NonNullElements(copies));
-        Contract.Invariant(cce.NonNullElements(visited));
+        Contract.Invariant(cce.NonNullDictionaryAndValues(copies));
+        Contract.Invariant(visited != null);
         Contract.Invariant(callback != null);
       }
 
@@ -690,14 +690,14 @@ namespace VC {
       void ObjectInvariant() {
         Contract.Invariant(cce.NonNullElements(blocks));
         Contract.Invariant(cce.NonNullElements(big_blocks));
-        Contract.Invariant(cce.NonNullElements(stats));
+        Contract.Invariant(cce.NonNullDictionaryAndValues(stats));
         Contract.Invariant(cce.NonNullElements(assumized_branches));
         Contract.Invariant(gotoCmdOrigins != null);
         Contract.Invariant(parent != null);
         Contract.Invariant(impl != null);
         Contract.Invariant(copies != null);
-        Contract.Invariant(cce.NonNullElements(protected_from_assert_to_assume));
-        Contract.Invariant(cce.NonNullElements(keep_at_all));
+        Contract.Invariant(protected_from_assert_to_assume != null);
+        Contract.Invariant(keep_at_all != null);
       }
 
 
@@ -863,7 +863,7 @@ namespace VC {
 
       Dictionary<Block/*!*/, bool>/*!*/ ComputeReachableNodes(Block/*!*/ b) {
         Contract.Requires(b != null);
-        Contract.Ensures(cce.NonNullElements(Contract.Result<Dictionary<Block, bool>>()));
+        Contract.Ensures(Contract.Result<Dictionary<Block, bool>>() != null);
         BlockStats s = GetBlockStats(b);
         if (s.reachable_blocks != null) {
           return s.reachable_blocks;
@@ -1462,7 +1462,7 @@ namespace VC {
       }
 
       private void SoundnessCheck(Dictionary<PureCollections.Tuple/*!*/, bool>/*!*/ cache, Block/*!*/ orig, List<Block/*!*/>/*!*/ copies) {
-        Contract.Requires(cce.NonNullElements(cache));
+        Contract.Requires(cache != null);
         Contract.Requires(orig != null);
         Contract.Requires(copies != null);
         {
@@ -1758,9 +1758,9 @@ namespace VC {
         Contract.Invariant(gotoCmdOrigins != null);
         Contract.Invariant(label2absy != null);
         Contract.Invariant(cce.NonNullElements(blocks));
-        Contract.Invariant(cce.NonNullElements(incarnationOriginMap));
+        Contract.Invariant(cce.NonNullDictionaryAndValues(incarnationOriginMap));
         Contract.Invariant(callback != null);
-        Contract.Invariant(cce.NonNullElements(implName2LazyInliningInfo));
+        Contract.Invariant(cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
         Contract.Invariant(context != null);
         Contract.Invariant(program != null);
       }
@@ -1792,9 +1792,9 @@ namespace VC {
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(label2absy != null);
         Contract.Requires(cce.NonNullElements(blocks));
-        Contract.Requires(cce.NonNullElements(incarnationOriginMap));
+        Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
         Contract.Requires(callback != null);
-        Contract.Requires(cce.NonNullElements(implName2LazyInliningInfo));
+        Contract.Requires(cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
         Contract.Requires(context!=null);
         Contract.Requires(program!=null);
         this.gotoCmdOrigins = gotoCmdOrigins;
@@ -1893,9 +1893,9 @@ namespace VC {
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(label2absy != null);
         Contract.Requires(cce.NonNullElements(blocks));
-        Contract.Requires(cce.NonNullElements(incarnationOriginMap));
+        Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
         Contract.Requires(callback != null);
-        Contract.Requires(cce.NonNullElements(implName2LazyInliningInfo));
+        Contract.Requires(cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
         Contract.Requires(context != null);
         Contract.Requires(program != null);
       }
@@ -2534,7 +2534,7 @@ namespace VC {
                                        string/*!*/ implName, List<int>/*!*/ values)
     {
       Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullElements(implName2LazyInliningInfo));
+      Contract.Requires(cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
       Contract.Requires(context != null);
       Contract.Requires(program != null);
       Contract.Requires(implName != null);
@@ -2662,7 +2662,7 @@ namespace VC {
       Contract.Requires(b != null);
       Contract.Requires(trace != null);
       Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullElements(incarnationOriginMap));
+      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
       // After translation, all potential errors come from asserts.
 
       return null;
@@ -2678,11 +2678,11 @@ namespace VC {
       Contract.Requires(b != null);
       Contract.Requires(traceNodes != null);
       Contract.Requires(trace != null);
-      Contract.Requires(cce.NonNullElements(incarnationOriginMap));
-      Contract.Requires(cce.NonNullElements(implName2LazyInliningInfo));
+      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
+      Contract.Requires(cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
       Contract.Requires(context != null);
       Contract.Requires(program != null);
-      Contract.Requires(cce.NonNullElements(calleeCounterexamples));
+      Contract.Requires(cce.NonNullDictionaryAndValues(calleeCounterexamples));
       // After translation, all potential errors come from asserts.
       CmdSeq cmds = b.Cmds;
       Contract.Assert(cmds != null);
@@ -2762,9 +2762,9 @@ namespace VC {
       Contract.Requires(expr != null);
       Contract.Requires(incarnationMap != null);
       Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullElements(exprToPrintableValue));
+      Contract.Requires(cce.NonNullDictionaryAndValues(exprToPrintableValue));
       Contract.Requires(cce.NonNullElements(relatedInformation));
-      Contract.Requires(cce.NonNullElements(incarnationOriginMap));
+      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
       if (errorDataEnhanced is ListOfMiningStrategies) {
         ListOfMiningStrategies loms = (ListOfMiningStrategies)errorDataEnhanced;
         List < MiningStrategy > l = loms.msList;
@@ -2842,7 +2842,7 @@ namespace VC {
       Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap, List<string/*!*/>/*!*/ relatedInformation) {
       Contract.Requires(incarnationMap != null);
       Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullElements(incarnationOriginMap));
+      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
       Contract.Requires(cce.NonNullElements(relatedInformation));
       List<int> heapSuccList = ComputeHeapSuccessions(incarnationMap, errModel);
       TreatHeapSuccessions(heapSuccList, incarnationMap, errModel, incarnationOriginMap, relatedInformation);
@@ -2971,7 +2971,7 @@ namespace VC {
       Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap, List<string/*!*/>/*!*/ relatedInformation) {
       Contract.Requires(incarnationMap != null);
       Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullElements(incarnationOriginMap));
+      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
       Contract.Requires(cce.NonNullElements(relatedInformation));
       if (heapSuccessionList == null) {
         // empty list of heap successions, nothing we can do!
@@ -3469,7 +3469,7 @@ namespace VC {
       Contract.Requires(transferCmd != null);
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
-      Contract.Requires(cce.NonNullElements(incarnationOriginMap));
+      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       List<string> relatedInformation = new List<string>();

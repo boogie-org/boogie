@@ -58,12 +58,12 @@ namespace Microsoft.Boogie.VCExprAST {
     private readonly IDictionary<Object/*!*/, string/*!*/>/*!*/ GlobalNames;
     [ContractInvariantMethod]
     void GlobalNamesInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(GlobalNames));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(GlobalNames));
     }
     private readonly List<IDictionary<Object/*!*/, string/*!*/>/*!*/>/*!*/ LocalNames;
     [ContractInvariantMethod]
     void LocalNamesInvariantMethod() {
-      Contract.Invariant(Contract.ForAll(LocalNames, i => i != null && cce.NonNullElements(i)));
+      Contract.Invariant(Contract.ForAll(LocalNames, i => i != null && cce.NonNullDictionaryAndValues(i)));
     }
 
     // dictionary of all names that have already been used
@@ -71,17 +71,17 @@ namespace Microsoft.Boogie.VCExprAST {
     private readonly IDictionary<string/*!*/, bool/*!*/>/*!*/ UsedNames;
     [ContractInvariantMethod]
     void UsedNamesInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(UsedNames));
+      Contract.Invariant(UsedNames != null);
     }
     private readonly IDictionary<string/*!*/, int/*!*/>/*!*/ CurrentCounters;
     [ContractInvariantMethod]
     void CurrentCountersInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(CurrentCounters));
+      Contract.Invariant(CurrentCounters != null);
     }
     private readonly IDictionary<Object/*!*/, string/*!*/>/*!*/ GlobalPlusLocalNames;
     [ContractInvariantMethod]
     void GlobalPlusLocalNamesInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(GlobalPlusLocalNames));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(GlobalPlusLocalNames));
     }
 
     ////////////////////////////////////////////////////////////////////////////

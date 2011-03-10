@@ -131,7 +131,7 @@ namespace Microsoft.Boogie.VCExprAST {
       private readonly List<Dictionary<VarKind/*!*/, VCExprVar/*!*/>/*!*/>/*!*/ Mapping;
       [ContractInvariantMethod]
       void ObjectInvariant() {
-        Contract.Invariant(Mapping != null && Contract.ForAll(Mapping, i => cce.NonNullElements(i)));
+        Contract.Invariant(Mapping != null && Contract.ForAll(Mapping, i => cce.NonNullDictionaryAndValues(i)));
       }
 
 
@@ -147,7 +147,7 @@ namespace Microsoft.Boogie.VCExprAST {
         List<Dictionary<VarKind/*!*/, VCExprVar/*!*/>/*!*/>/*!*/ mapping =
           new List<Dictionary<VarKind/*!*/, VCExprVar/*!*/>/*!*/>();
         foreach (Dictionary<VarKind/*!*/, VCExprVar/*!*/>/*!*/ d in vm.Mapping) {
-          Contract.Assert(cce.NonNullElements(d));
+          Contract.Assert(cce.NonNullDictionaryAndValues(d));
           mapping.Add(new Dictionary<VarKind/*!*/, VCExprVar/*!*/>(d));
         }
         this.Mapping = mapping;

@@ -1904,7 +1904,7 @@ namespace Microsoft.Boogie {
     }
 
     private IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ TypeParamSubstitution() {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<IDictionary<TypeVariable, Type>>()));
+      Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
       Contract.Assume(TypeParameters != null);
       IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ res = new Dictionary<TypeVariable/*!*/, Type/*!*/>();
       foreach (TypeVariable/*!*/ v in TypeParameters.FormalTypeParams) {
@@ -2244,7 +2244,7 @@ namespace Microsoft.Boogie {
           Type.MatchArgumentTypes(Proc.TypeParameters,
                                   formalTypes, actualArgs, null, null,
                                   "call forall to " + callee, tc);
-        Contract.Assert(cce.NonNullElements(subst));
+        Contract.Assert(cce.NonNullDictionaryAndValues(subst));
 
         InstantiatedTypes = new TypeSeq();
         foreach (Variable/*!*/ var in Proc.InParams) {

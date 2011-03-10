@@ -71,7 +71,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant(Trace != null);
       Contract.Invariant(Context != null);
       Contract.Invariant(cce.NonNullElements(relatedInformation));
-      Contract.Invariant(cce.NonNullElements(calleeCounterexamples));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(calleeCounterexamples));
     }
 
     [Peer]
@@ -112,7 +112,7 @@ namespace Microsoft.Boogie {
 
     public void AddCalleeCounterexample(Dictionary<TraceLocation, CalleeCounterexampleInfo> cs)
     {
-      Contract.Requires(cce.NonNullElements(cs));
+      Contract.Requires(cce.NonNullDictionaryAndValues(cs));
       foreach (TraceLocation loc in cs.Keys)
       {
           AddCalleeCounterexample(loc, cs[loc]);
@@ -474,7 +474,7 @@ namespace VC {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(checkers));
-      Contract.Invariant(cce.NonNullElements(incarnationOriginMap));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(incarnationOriginMap));
       Contract.Invariant(program != null);
     }
 

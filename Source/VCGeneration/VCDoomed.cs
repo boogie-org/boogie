@@ -25,8 +25,8 @@ namespace VC {
     List<Cmd/*!*/>/*!*/ m_doomedCmds = new List<Cmd/*!*/>();
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(m_BlockReachabilityMap));
-      Contract.Invariant(cce.NonNullElements(m_copiedBlocks));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(m_BlockReachabilityMap));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(m_copiedBlocks));
       Contract.Invariant(cce.NonNullElements(m_doomedCmds));
       Contract.Invariant(cce.NonNullElements(_copiedBlock));
     }
@@ -95,10 +95,10 @@ namespace VC {
     private Block CopyImplBlocks(Block b, ref List<Block> blocklist, Block targetBlock, ref Dictionary<Block, Block> alreadySeen) {
       Contract.Requires(b != null);
       Contract.Requires(targetBlock != null);
-      Contract.Requires(cce.NonNullElements(alreadySeen));
+      Contract.Requires(cce.NonNullDictionaryAndValues(alreadySeen));
       Contract.Requires(blocklist != null);
       Contract.Ensures(Contract.ValueAtReturn(out blocklist) != null);
-      Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out alreadySeen)));
+      Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.ValueAtReturn(out alreadySeen)));
       Contract.Ensures(Contract.Result<Block>() != null);
 
       Block seen;
@@ -635,7 +635,7 @@ namespace VC {
       Contract.Requires(reachvar != null);
       Contract.Requires(impl != null);
       Contract.Requires(callback != null);
-      Contract.Requires(cce.NonNullElements(cmdbackup));
+      Contract.Requires(cce.NonNullDictionaryAndValues(cmdbackup));
       #region Modify implementation
       for (int i = startidx; i <= endidx; i++) {
         if (_copiedBlock.Contains(impl.Blocks[i]))
@@ -762,7 +762,7 @@ namespace VC {
 
     void UndoBlockModifications(Implementation impl, Dictionary<Block/*!*/, CmdSeq/*!*/>/*!*/ cmdbackup,
                                 int startidx, int endidx) {
-      Contract.Requires(cce.NonNullElements(cmdbackup));
+      Contract.Requires(cce.NonNullDictionaryAndValues(cmdbackup));
       Contract.Requires(impl != null);
       for (int i = startidx; i <= endidx; i++) {
         CmdSeq cs = null;
@@ -832,7 +832,7 @@ namespace VC {
       void ObjectInvariant() {
         Contract.Invariant(cce.NonNullElements(Blocks));
         Contract.Invariant(cce.NonNullElements(m_checkableBlocks));
-        Contract.Invariant(cce.NonNullElements(m_copyMap));
+        Contract.Invariant(cce.NonNullDictionaryAndValues(m_copyMap));
       }
 
 
@@ -868,7 +868,7 @@ namespace VC {
       private Block AbstractLoopUnrolling(GraphNode node, Dictionary<GraphNode, Block> visited, bool unrollable, String prefix)
       {
           Contract.Requires(node != null);
-          Contract.Requires(cce.NonNullElements(visited));
+          Contract.Requires(cce.NonNullDictionaryAndValues(visited));
           Contract.Requires(prefix != null);
           Contract.Ensures(Contract.Result<Block>() != null);
           Block newb;
@@ -1207,7 +1207,7 @@ namespace VC {
         public static GraphNode ComputeGraphInfo(GraphNode from, Block b, Dictionary<Block, GraphNode> gd, Set /*Block*/ beingVisited) {
           Contract.Requires(b != null);
           Contract.Requires(beingVisited != null);
-          Contract.Requires(cce.NonNullElements(gd));
+          Contract.Requires(cce.NonNullDictionaryAndValues(gd));
 
           Contract.Ensures(Contract.Result<GraphNode>() != null);
 

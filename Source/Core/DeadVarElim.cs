@@ -44,7 +44,7 @@ namespace Microsoft.Boogie {
     static Dictionary<Procedure/*!*/, HashSet<Variable/*!*/>/*!*/>/*!*/ modSets;
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(modSets));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(modSets));
       Contract.Invariant(Contract.ForAll(modSets.Values, v => cce.NonNullElements(v)));
     }
 
@@ -663,17 +663,17 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(graph.TopologicalSort()));
-      Contract.Invariant(cce.NonNullElements(procsCalled));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(procsCalled));
       Contract.Invariant(cce.NonNullElements(nodes));
-      Contract.Invariant(cce.NonNullElements(succEdges));
-      Contract.Invariant(cce.NonNullElements(predEdges));
-      Contract.Invariant(cce.NonNullElements(priority));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(succEdges));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(predEdges));
+      Contract.Invariant(priority != null);
       Contract.Invariant(cce.NonNullElements(srcNodes));
       Contract.Invariant(cce.NonNullElements(exitNodes));
-      Contract.Invariant(cce.NonNullElements(weightBefore));
-      Contract.Invariant(cce.NonNullElements(weightAfter));
-      Contract.Invariant(cce.NonNullElements(liveVarsAfter));
-      Contract.Invariant(cce.NonNullElements(liveVarsBefore));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(weightBefore));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(weightAfter));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(liveVarsAfter));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(liveVarsBefore));
       Contract.Invariant(summary != null);
       Contract.Invariant(impl != null);
     }
@@ -830,18 +830,18 @@ namespace Microsoft.Boogie {
       Contract.Invariant(workList != null);
       Contract.Invariant(mainImpl != null);
       Contract.Invariant(program != null);
-      Contract.Invariant(cce.NonNullElements(procICFG));
-      Contract.Invariant(cce.NonNullElements(name2Proc));
-      Contract.Invariant(cce.NonNullElements(callers) &&
+      Contract.Invariant(cce.NonNullDictionaryAndValues(procICFG));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(name2Proc));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(callers) &&
         Contract.ForAll(callers.Values, v => cce.NonNullElements(v)));
       Contract.Invariant(cce.NonNullElements(callGraph.TopologicalSort()));
-      Contract.Invariant(cce.NonNullElements(procPriority));
-      Contract.Invariant(cce.NonNullElements(varsLiveAtEntry));
-      Contract.Invariant(cce.NonNullElements(varsLiveAtExit) &&
+      Contract.Invariant(procPriority != null);
+      Contract.Invariant(cce.NonNullDictionaryAndValues(varsLiveAtEntry));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(varsLiveAtExit) &&
         Contract.ForAll(varsLiveAtExit.Values, v => cce.NonNullElements(v)));
-      Contract.Invariant(cce.NonNullElements(varsLiveSummary));
-      Contract.Invariant(cce.NonNullElements(weightCacheAfterCall));
-      Contract.Invariant(cce.NonNullElements(weightCacheBeforeCall));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(varsLiveSummary));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(weightCacheAfterCall));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(weightCacheBeforeCall));
     }
 
 
@@ -1081,7 +1081,7 @@ namespace Microsoft.Boogie {
       void ObjectInvariant() {
         Contract.Invariant(priorities != null);
         Contract.Invariant(cce.NonNullElements(labels));
-        Contract.Invariant(cce.NonNullElements(workList) &&
+        Contract.Invariant(cce.NonNullDictionaryAndValues(workList) &&
           Contract.ForAll(workList.Values, v => cce.NonNullElements(v)));
       }
 

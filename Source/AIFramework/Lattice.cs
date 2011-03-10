@@ -489,8 +489,8 @@ namespace Microsoft.AbstractInterpretationFramework {
       [ContractInvariantMethod]
       void ObjectInvariant() {
         Contract.Invariant(Map != null);
-        Contract.Invariant(cce.NonNullElements(emptyDictionary1) && Contract.ForAll(emptyDictionary1.Values, set =>/*cce.NonNullElements(set)*/set != null));
-        Contract.Invariant(cce.NonNullElements(emptyDictionary2));
+        Contract.Invariant(cce.NonNullDictionaryAndValues(emptyDictionary1) && Contract.ForAll(emptyDictionary1.Values, set =>/*cce.NonNullElements(set)*/set != null));
+        Contract.Invariant(cce.NonNullDictionaryAndValues(emptyDictionary2));
         Contract.Invariant(indexMap != null);
         Contract.Invariant(reverseIndexMap != null);
 

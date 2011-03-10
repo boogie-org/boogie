@@ -332,7 +332,7 @@ namespace Microsoft.Boogie.TypeErasure
     private readonly IDictionary<Function/*!*/, UntypedFunction/*!*/>/*!*/ Typed2UntypedFunctions;
     [ContractInvariantMethod]
     void Typed2UntypedFunctionsInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(Typed2UntypedFunctions));
+      Contract.Invariant(Typed2UntypedFunctions != null);
     }
 
     // distinguish between implicit and explicit type parameters
@@ -509,7 +509,7 @@ namespace Microsoft.Boogie.TypeErasure
     public VCExpr GenVarTypeAxiom(VCExprVar var, Type originalType, IDictionary<TypeVariable/*!*/, VCExpr/*!*/>/*!*/ varMapping) {
       Contract.Requires(var != null);
       Contract.Requires(originalType != null);
-      Contract.Requires(cce.NonNullElements(varMapping));
+      Contract.Requires(cce.NonNullDictionaryAndValues(varMapping));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (!var.Type.Equals(originalType)) {
@@ -583,7 +583,7 @@ namespace Microsoft.Boogie.TypeErasure
       new Dictionary<MapType/*!*/, List<int>/*!*/>();
     [ContractInvariantMethod]
     void ObjectInvarant() {
-      Contract.Invariant(cce.NonNullElements(explicitSelectTypeParamsCache));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(explicitSelectTypeParamsCache));
     }
 
 
@@ -1039,7 +1039,7 @@ namespace Microsoft.Boogie.TypeErasure
                                      out List<VCTrigger/*!*/>/*!*/ triggers) {
       Contract.Requires(cce.NonNullElements(oldBoundVars));
       Contract.Requires(cce.NonNullElements(newBoundVars));
-      Contract.Requires(cce.NonNullElements(typeVarTranslation));
+      Contract.Requires(cce.NonNullDictionaryAndValues(typeVarTranslation));
       Contract.Requires(cce.NonNullElements(typeVarBindings));
       Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out triggers)));
       Contract.Ensures(Contract.Result<VCExpr>() != null);

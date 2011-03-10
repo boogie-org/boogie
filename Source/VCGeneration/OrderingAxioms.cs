@@ -24,7 +24,7 @@ namespace Microsoft.Boogie {
     void ObjectInvariant() {
       Contract.Invariant(Gen != null);
       Contract.Invariant(Translator != null);
-      Contract.Invariant(cce.NonNullElements(OneStepFuns));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(OneStepFuns));
       Contract.Invariant(cce.NonNullElements(Constants));
       Contract.Invariant(cce.NonNullElements(CompleteConstantsOpen));
       Contract.Invariant(cce.NonNullElements(AllAxioms));

@@ -74,7 +74,7 @@ namespace Microsoft.Boogie.TypeErasure {
       return arguments;
     }
 
-    public static List<T/*!*/>/*!*/ ToList<T>(params T[] args) {
+    public static List<T/*!*/>/*!*/ ToList<T>(params T[] args) where T : class{
       Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<T>>()));
       return new List<T>(args);
@@ -335,7 +335,7 @@ namespace Microsoft.Boogie.TypeErasure {
     private readonly IDictionary<Type/*!*/, VCExpr/*!*/>/*!*/ BasicTypeReprs;
     [ContractInvariantMethod]
     void BasicTypeReprsInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(BasicTypeReprs));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(BasicTypeReprs));
     }
 
     private VCExpr GetBasicTypeRepr(Type type) {
@@ -354,7 +354,7 @@ namespace Microsoft.Boogie.TypeErasure {
     private readonly IDictionary<TypeCtorDecl/*!*/, TypeCtorRepr/*!*/>/*!*/ TypeCtorReprs;
     [ContractInvariantMethod]
     void TypeCtorReprsInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(TypeCtorReprs));
+      Contract.Invariant(TypeCtorReprs != null);
     }
 
     internal TypeCtorRepr GetTypeCtorReprStruct(TypeCtorDecl decl) {
@@ -395,7 +395,7 @@ namespace Microsoft.Boogie.TypeErasure {
     private readonly IDictionary<TypeVariable/*!*/, VCExprVar/*!*/>/*!*/ TypeVariableMapping;
     [ContractInvariantMethod]
     void TypeVariableMappingInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(TypeVariableMapping));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(TypeVariableMapping));
     }
 
     public VCExprVar Typed2Untyped(TypeVariable var) {
@@ -417,7 +417,7 @@ namespace Microsoft.Boogie.TypeErasure {
     private readonly IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ Typed2UntypedVariables;
     [ContractInvariantMethod]
     void Typed2UntypedVariablesInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(Typed2UntypedVariables));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(Typed2UntypedVariables));
     }
 
     // This method must only be used for free (unbound) variables
@@ -457,7 +457,7 @@ namespace Microsoft.Boogie.TypeErasure {
 
     public VCExpr Type2Term(Type type, IDictionary<TypeVariable/*!*/, VCExpr/*!*/>/*!*/ varMapping) {
       Contract.Requires(type != null);
-      Contract.Requires(cce.NonNullElements(varMapping));
+      Contract.Requires(cce.NonNullDictionaryAndValues(varMapping));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       //
       if (type.IsBasic || type.IsBv) {
@@ -654,7 +654,7 @@ namespace Microsoft.Boogie.TypeErasure {
     private readonly IDictionary<Type/*!*/, TypeCastSet/*!*/>/*!*/ TypeCasts;
     [ContractInvariantMethod]
     void TypeCastsInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(TypeCasts));
+      Contract.Invariant(TypeCasts != null);
     }
 
     private TypeCastSet GetTypeCasts(Type type) {
@@ -911,7 +911,7 @@ namespace Microsoft.Boogie.TypeErasure {
     private readonly IDictionary<MapType/*!*/, MapTypeClassRepresentation/*!*/>/*!*/ ClassRepresentations;
     [ContractInvariantMethod]
     void ClassRepresentationsInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(ClassRepresentations));
+      Contract.Invariant(ClassRepresentations != null);
     }
 
     protected MapTypeClassRepresentation GetClassRepresentation(MapType abstractedType) {
@@ -1062,15 +1062,15 @@ namespace Microsoft.Boogie.TypeErasure {
     public readonly IDictionary<TypeVariable/*!*/, VCExpr/*!*/>/*!*/ TypeVariableBindings;
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(VCExprVarBindings));
-      Contract.Invariant(cce.NonNullElements(TypeVariableBindings));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(VCExprVarBindings));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(TypeVariableBindings));
     }
 
 
     public VariableBindings(IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ vcExprVarBindings,
                             IDictionary<TypeVariable/*!*/, VCExpr/*!*/>/*!*/ typeVariableBindings) {
-      Contract.Requires(cce.NonNullElements(vcExprVarBindings));
-      Contract.Requires(cce.NonNullElements(typeVariableBindings));
+      Contract.Requires(cce.NonNullDictionaryAndValues(vcExprVarBindings));
+      Contract.Requires(cce.NonNullDictionaryAndValues(typeVariableBindings));
       this.VCExprVarBindings = vcExprVarBindings;
       this.TypeVariableBindings = typeVariableBindings;
     }

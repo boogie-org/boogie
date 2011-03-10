@@ -717,7 +717,7 @@ void ObjectInvariant()
             #region Collect Unavoidable Blocks
             private Block BreadthFirst(Block start, Dictionary<Block, TraceNode> blockmap) {
               Contract.Requires(start != null);
-              Contract.Requires(cce.NonNullElements(blockmap));
+              Contract.Requires(cce.NonNullDictionaryAndValues(blockmap));
               Contract.Ensures(Contract.Result<Block>() != null);
 
                 List<Block> JobList = new List<Block>();
@@ -800,7 +800,7 @@ void ObjectInvariant()
             // it should be implemented using one function later on.
             private void BreadthFirstBwd(Block start, Dictionary<Block, TraceNode> blockmap) {
               Contract.Requires(start != null);
-              Contract.Requires(cce.NonNullElements(blockmap));
+              Contract.Requires(cce.NonNullDictionaryAndValues(blockmap));
 
                 List<Block> JobList = new List<Block>();
                 List<Block> DoneList = new List<Block>();

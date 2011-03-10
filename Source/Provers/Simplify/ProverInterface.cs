@@ -209,7 +209,7 @@ namespace Microsoft.Boogie.Simplify {
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(BackgroundPredicates));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(BackgroundPredicates));
       Contract.Invariant(BackgroundPredFilename != null);
       Contract.Invariant(ctx != null);
     }

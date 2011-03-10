@@ -336,22 +336,22 @@ namespace Microsoft.Boogie {
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(identifierToPartition));
+      Contract.Invariant(identifierToPartition != null);
       Contract.Invariant(partitionToIdentifiers != null);
       Contract.Invariant(Contract.ForAll(partitionToIdentifiers, i => cce.NonNullElements(i)));
       Contract.Invariant(partitionToValue != null);
       Contract.Invariant(valueToPartition != null);
-      Contract.Invariant(cce.NonNullElements(definedFunctions));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(definedFunctions));
     }
 
 
     public ErrorModel(Dictionary<string, int> identifierToPartition, List<List<string>> partitionToIdentifiers, List<Object> partitionToValue, Dictionary<object, int> valueToPartition, Dictionary<string, List<List<int>>> definedFunctions) {
-      Contract.Requires(cce.NonNullElements(identifierToPartition));
+      Contract.Requires(identifierToPartition != null);
       Contract.Requires(partitionToIdentifiers != null);
       Contract.Requires(Contract.ForAll(partitionToIdentifiers, i => cce.NonNullElements(i)));
       Contract.Requires(partitionToValue != null);
       Contract.Requires(valueToPartition != null);
-      Contract.Requires(cce.NonNullElements(definedFunctions));
+      Contract.Requires(cce.NonNullDictionaryAndValues(definedFunctions));
       this.identifierToPartition = identifierToPartition;
       this.partitionToIdentifiers = partitionToIdentifiers;
       this.partitionToValue = partitionToValue;

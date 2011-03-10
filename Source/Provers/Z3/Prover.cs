@@ -456,7 +456,7 @@ namespace Microsoft.Boogie.Z3
     {
       Contract.Requires(partitionToValue != null);
       Contract.Requires(valueToPartition != null);
-      Contract.Requires(cce.NonNullElements(identifierToPartition));
+      Contract.Requires(identifierToPartition != null);
       Contract.Requires(cce.NonNullElements(partitionToIdentifiers));
       Contract.Requires(cce.Owner.Same(cce.Owner.ElementProxy(partitionToValue), cce.Owner.ElementProxy(valueToPartition)));
       string s = FromReadLine();
@@ -511,7 +511,7 @@ namespace Microsoft.Boogie.Z3
       } else if (s[j] == '{') {
         // array
         List<List<int>/*!*/> arrayModel = new List<List<int>/*!*/>();
-        Contract.Assert(Contract.ForAll(arrayModel, a => cce.NonNullElements(a)));
+        Contract.Assert(Contract.ForAll(arrayModel, a => a != null));
         string array = s.Substring(j + 1);
         int index1, index2;
         string from, to;

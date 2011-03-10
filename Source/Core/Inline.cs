@@ -29,8 +29,8 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(codeCopier != null);
-      Contract.Invariant(cce.NonNullElements(recursiveProcUnrollMap));
-      Contract.Invariant(cce.NonNullElements(inlinedProcLblMap));
+      Contract.Invariant(recursiveProcUnrollMap != null);
+      Contract.Invariant(inlinedProcLblMap != null);
     }
 
 

@@ -71,7 +71,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class StronglyConnectedComponents<Node> : IEnumerable<SCC<Node>/*!*/> {
+  public sealed class StronglyConnectedComponents<Node> : IEnumerable<SCC<Node>/*!*/> where Node : class {
     private readonly IDictionary<Node/*!*/, object>/*!*/ graph;
     [ContractInvariantMethod]
     void graphInvariantMethod() {
@@ -175,7 +175,7 @@ namespace Microsoft.Boogie {
     private readonly Stack<Node/*!*/>/*!*/ postOrder = new Stack<Node/*!*/>();
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(seen != null && cce.NonNullElements(seen.Keys));
+      Contract.Invariant(seen != null);
       Contract.Invariant(cce.NonNullElements(postOrder));
     }
 

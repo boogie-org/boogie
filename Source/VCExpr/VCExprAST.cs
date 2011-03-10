@@ -371,7 +371,7 @@ namespace Microsoft.Boogie {
     internal static Dictionary<VCExprOp/*!*/, SingletonOp>/*!*/ SingletonOpDict;
     [ContractInvariantMethod]
     void MiscInvariant() {
-      Contract.Invariant(cce.NonNullElements(SingletonOpDict));
+      Contract.Invariant(SingletonOpDict != null);
     }
 
 
@@ -693,7 +693,7 @@ namespace Microsoft.Boogie.VCExprAST {
       return res;
     }
 
-    public static List<T/*!*/>/*!*/ ToNonNullList<T>(params T[] args) {
+    public static List<T/*!*/>/*!*/ ToNonNullList<T>(params T[] args) where T : class {
       Contract.Requires(args != null);
       List<T/*!*/>/*!*/ res = new List<T>(args.Length);
       foreach (T t in args)

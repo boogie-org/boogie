@@ -33,7 +33,8 @@ namespace Graphing {
       foreach (KeyValuePair<Node, List<Node>> de in d) {
         if (!first)
           sb.Append(", ");
-        sb.Append(cce.NonNull(de.Key).ToString());
+        Contract.Assert(!object.Equals(de.Key,default(Node)));
+        sb.Append(de.Key.ToString());
         sb.Append("~>");
         sb.Append(ListToString(de.Value));
         first = false;
@@ -131,7 +132,8 @@ namespace Graphing {
       foreach (KeyValuePair<Node, List<Node>> de in domMap) {
         if (!first)
           sb.Append(", ");
-        sb.Append(cce.NonNull(de.Key).ToString());
+        Contract.Assert(!object.Equals(de.Key, default(Node)));
+        sb.Append(de.Key.ToString());
         sb.Append("~>");
         sb.Append(ListToString(de.Value));
         first = false;

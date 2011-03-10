@@ -29,12 +29,12 @@ void ObjectInvariant()
     Contract.Invariant(Namer!=null);
       Contract.Invariant(AllDecls != null);
       Contract.Invariant(IncDecls != null);
-      Contract.Invariant(cce.NonNullElements(KnownFunctions));
-      Contract.Invariant(cce.NonNullElements(KnownVariables));
-      Contract.Invariant(cce.NonNullElements(KnownTypes));
-      Contract.Invariant(cce.NonNullElements(KnownBvOps));
-      Contract.Invariant(cce.NonNullElements(KnownSelectFunctions));
-      Contract.Invariant(cce.NonNullElements(KnownStoreFunctions));
+      Contract.Invariant(KnownFunctions != null);
+      Contract.Invariant(KnownVariables != null);
+      Contract.Invariant(KnownTypes != null);
+      Contract.Invariant(KnownBvOps != null);
+      Contract.Invariant(KnownSelectFunctions != null);
+      Contract.Invariant(KnownStoreFunctions != null);
 }
 
 

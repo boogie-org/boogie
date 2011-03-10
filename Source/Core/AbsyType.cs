@@ -114,7 +114,7 @@ namespace Microsoft.Boogie {
 
     [Pure]
     public static bool IsIdempotent(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier) {
-      Contract.Requires(cce.NonNullElements(unifier));
+      Contract.Requires(cce.NonNullDictionaryAndValues(unifier));
       return Contract.ForAll(unifier.Values, t => Contract.ForAll(0, t.FreeVariables.Length, var =>
                                    !unifier.ContainsKey(t.FreeVariables[var])));
     }
@@ -446,7 +446,7 @@ namespace Microsoft.Boogie {
       Contract.Requires((formalOuts == null) == (actualOuts == null));
       Contract.Requires(formalOuts == null || formalOuts.Length == cce.NonNull(actualOuts).Length);
       Contract.Requires(tc == null || opName != null);//Redundant
-      Contract.Ensures(cce.NonNullElements(Contract.Result<IDictionary<TypeVariable, Type>>()));
+      Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
 
       // requires "actualArgs" and "actualOuts" to have been type checked
 
@@ -538,7 +538,7 @@ namespace Microsoft.Boogie {
       IDictionary<TypeVariable/*!*/, Type/*!*/> subst =
         MatchArgumentTypes(typeParams, formalIns, actualIns,
                            actualOuts != null ? formalOuts : null, actualOuts, opName, tc);
-      Contract.Assert(cce.NonNullElements(subst));
+      Contract.Assert(cce.NonNullDictionaryAndValues(subst));
       foreach (TypeVariable/*!*/ var in typeParams) {
         Contract.Assert(var != null);
         actualTypeParams.Add(subst[var]);
@@ -583,7 +583,7 @@ namespace Microsoft.Boogie {
 
       IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst =
         InferTypeParameters(typeParams, formalArgs, actualArgs);
-      Contract.Assert(cce.NonNullElements(subst));
+      Contract.Assert(cce.NonNullDictionaryAndValues(subst));
 
       Type/*!*/ res = formalResult.Substitute(subst);
       Contract.Assert(res != null);
@@ -634,7 +634,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(typeParams != null);
       Contract.Requires(formalArgs != null);
       Contract.Requires(actualArgs != null);Contract.Requires(formalArgs.Length == actualArgs.Length);
-      Contract.Ensures(cce.NonNullElements(Contract.Result<IDictionary<TypeVariable, Type>>()));
+      Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
 
       
       TypeSeq proxies = new TypeSeq();
@@ -773,7 +773,7 @@ namespace Microsoft.Boogie {
       }
     }
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap) {
-      Contract.Requires(cce.NonNullElements(varMap));
+      Contract.Requires(cce.NonNullDictionaryAndValues(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
 
       throw new NotImplementedException();
@@ -796,13 +796,13 @@ namespace Microsoft.Boogie {
     public override bool Unify(Type that, TypeVariableSeq unifiableVariables, IDictionary<TypeVariable, Type> unifier) {
       Contract.Requires(that != null);
       Contract.Requires(unifiableVariables != null);
-      Contract.Requires(cce.NonNullElements(unifier));
+      Contract.Requires(cce.NonNullDictionaryAndValues(unifier));
       Contract.Requires(Contract.ForAll(unifier.Keys, key => unifiableVariables.Has(key)));
       Contract.Requires(IsIdempotent(unifier));
       throw new NotImplementedException();
     }
     public override Type Substitute(IDictionary<TypeVariable, Type> subst) {
-      Contract.Requires(cce.NonNullElements(subst));
+      Contract.Requires(cce.NonNullDictionaryAndValues(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
 
       throw new NotImplementedException();
@@ -1501,7 +1501,7 @@ Contract.Requires(that != null);
     private bool addSubstitution(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ oldSolution,
       // the type that "this" is instantiated with
                                  Type/*!*/ newSubst) {
-      Contract.Requires(cce.NonNullElements(oldSolution));
+      Contract.Requires(cce.NonNullDictionaryAndValues(oldSolution));
       Contract.Requires(newSubst != null);
       Contract.Requires(!oldSolution.ContainsKey(this));
 
@@ -2276,7 +2276,7 @@ Contract.Requires(that != null);
       }
 
       public Constraint Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
-        Contract.Requires(cce.NonNullElements(varMap));
+        Contract.Requires(cce.NonNullDictionaryAndValues(varMap));
         TypeSeq/*!*/ args = new TypeSeq();
         foreach (Type/*!*/ t in Arguments) {
           Contract.Assert(t != null);
@@ -2291,7 +2291,7 @@ Contract.Requires(that != null);
                         TypeVariableSeq/*!*/ unifiableVariables,
                         IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ result) {
         Contract.Requires(unifiableVariables != null);
-        Contract.Requires(cce.NonNullElements(result));
+        Contract.Requires(cce.NonNullDictionaryAndValues(result));
         Contract.Requires(that != null);
         Contract.Requires(Arguments.Length == that.Arguments.Length);
         Dictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst = new Dictionary<TypeVariable/*!*/, Type/*!*/>();
@@ -3296,7 +3296,7 @@ Contract.Assert(var != null);
 
     [Pure]
     private bool collisionsPossible(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
-      Contract.Requires(cce.NonNullElements(subst));
+      Contract.Requires(cce.NonNullDictionaryAndValues(subst));
       // PR: could be written more efficiently
       return Contract.Exists(0, TypeParameters.Length, i => subst.ContainsKey(TypeParameters[i]) || Contract.Exists(subst.Values, t => t.FreeVariables.Has(TypeParameters[i])));
     }
@@ -3552,13 +3552,13 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
     private readonly IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ Instantiations;
     [ContractInvariantMethod]
     void InstantiationsInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(Instantiations));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(Instantiations));
     }
 
     public SimpleTypeParamInstantiation(List<TypeVariable/*!*/>/*!*/ typeParams,
                                         IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ instantiations) {
       Contract.Requires(cce.NonNullElements(typeParams));
-      Contract.Requires(cce.NonNullElements(instantiations));
+      Contract.Requires(cce.NonNullDictionaryAndValues(instantiations));
       this.TypeParams = typeParams;
       this.Instantiations = instantiations;
     }
@@ -3619,7 +3619,7 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
     void ObjectInvariant() {
       Contract.Invariant(Proxy != null);
       Contract.Invariant(ArgumentsResult != null);
-      Contract.Invariant(Instantiations == null || cce.NonNullElements(Instantiations));
+      Contract.Invariant(Instantiations == null || cce.NonNullDictionaryAndValues(Instantiations));
     }
 
 

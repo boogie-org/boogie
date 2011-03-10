@@ -419,8 +419,8 @@ namespace Microsoft.Boogie.VCExprAST {
       new Dictionary<VCExprVar/*!*/, int>();
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(BoundTermVarsDict));
-      Contract.Invariant(cce.NonNullElements(BoundTypeVarsDict));
+      Contract.Invariant(BoundTermVarsDict != null);
+      Contract.Invariant(BoundTypeVarsDict != null);
     }
 
     private readonly IDictionary<TypeVariable/*!*/, int>/*!*/ BoundTypeVarsDict =
@@ -441,7 +441,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
     private void AddBoundVar<T>(IDictionary<T, int> dict, T sym) {
       Contract.Requires(sym != null);
-      Contract.Requires(cce.NonNullElements(dict));
+      Contract.Requires(dict != null);
       int n;
       if (dict.TryGetValue(sym, out n))
         dict[sym] = n + 1;
@@ -451,7 +451,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
     private void RemoveBoundVar<T>(IDictionary<T/*!*/, int/*!*/>/*!*/ dict, T sym) {
       Contract.Requires(sym != null);
-      Contract.Requires(cce.NonNullElements(dict));
+      Contract.Requires(dict != null);
       int n;
       bool b = dict.TryGetValue(sym, out n);
       Contract.Assert(b && n > 0);
@@ -969,17 +969,17 @@ namespace Microsoft.Boogie.VCExprAST {
     private readonly List<IDictionary<VCExprVar/*!*/, VCExpr/*!*/>/*!*/>/*!*/ TermSubsts;
     [ContractInvariantMethod]
     void TermSubstsInvariantMethod() {
-      Contract.Invariant(TermSubsts != null && Contract.ForAll(TermSubsts, i => cce.NonNullElements(i)));
+      Contract.Invariant(TermSubsts != null && Contract.ForAll(TermSubsts, i => cce.NonNullDictionaryAndValues(i)));
     }
     private readonly List<IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/>/*!*/ TypeSubsts;
     [ContractInvariantMethod]
     void TypeSubstsInvariantMethod() {
-      Contract.Invariant(TermSubsts != null && Contract.ForAll(TypeSubsts, i => cce.NonNullElements(i)));
+      Contract.Invariant(TermSubsts != null && Contract.ForAll(TypeSubsts, i => cce.NonNullDictionaryAndValues(i)));
     }
 
     public VCExprSubstitution(IDictionary<VCExprVar/*!*/, VCExpr/*!*/>/*!*/ termSubst, IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ typeSubst) {
-      Contract.Requires(cce.NonNullElements(termSubst));
-      Contract.Requires(cce.NonNullElements(typeSubst));
+      Contract.Requires(cce.NonNullDictionaryAndValues(termSubst));
+      Contract.Requires(cce.NonNullDictionaryAndValues(typeSubst));
       List<IDictionary<VCExprVar/*!*/, VCExpr/*!*/>/*!*/>/*!*/ termSubsts =
         new List<IDictionary<VCExprVar/*!*/, VCExpr/*!*/>/*!*/>();
       termSubsts.Add(termSubst);
@@ -1059,7 +1059,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
     public IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ ToTypeSubst {
       get {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IDictionary<TypeVariable, Type>>()));
+        Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
         IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ res = new Dictionary<TypeVariable/*!*/, Type/*!*/>();
         foreach (IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ dict in TypeSubsts) {
           foreach (KeyValuePair<TypeVariable/*!*/, Type/*!*/> pair in dict) {
@@ -1232,7 +1232,7 @@ namespace Microsoft.Boogie.VCExprAST {
           // right types
           boundVars = new List<VCExprVar/*!*/>();
           IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ typeSubst = substitution.ToTypeSubst;
-          Contract.Assert(cce.NonNullElements(typeSubst));
+          Contract.Assert(cce.NonNullDictionaryAndValues(typeSubst));
           foreach (VCExprVar/*!*/ var in node.BoundVars) {
             Contract.Assert(var != null);
             VCExprVar/*!*/ freshVar =
@@ -1302,7 +1302,7 @@ namespace Microsoft.Boogie.VCExprAST {
           // right types
           newBoundVars = new List<VCExprVar/*!*/>();
           IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ typeSubst = substitution.ToTypeSubst;
-          Contract.Assert(cce.NonNullElements(typeSubst));
+          Contract.Assert(cce.NonNullDictionaryAndValues(typeSubst));
           foreach (VCExprVar/*!*/ var in node.BoundVars) {
             Contract.Assert(var != null);
             VCExprVar/*!*/ freshVar =

@@ -108,7 +108,7 @@ namespace Microsoft.Boogie {
       public static GraphNode ComputeGraphInfo(GraphNode from, Block b, Dictionary<Block/*!*/, GraphNode/*!*/>/*!*/ gd, HashSet<Block> beingVisited) {
         Contract.Requires(beingVisited != null);
         Contract.Requires(b != null);
-        Contract.Requires(cce.NonNullElements(gd));
+        Contract.Requires(cce.NonNullDictionaryAndValues(gd));
         Contract.Ensures(Contract.Result<GraphNode>() != null);
         GraphNode g;
         if (gd.TryGetValue(b, out g)) {
@@ -173,7 +173,7 @@ namespace Microsoft.Boogie {
     private LoopUnroll(int unrollMaxDepth, Dictionary<GraphNode/*!*/, SCC<GraphNode/*!*/>>/*!*/ scc, List<Block/*!*/>/*!*/ newBlockSeqGlobal)
       : base() {//BASEMOVE DANGER
       Contract.Requires(cce.NonNullElements(newBlockSeqGlobal));
-      Contract.Requires(cce.NonNullElements(scc) && Contract.ForAll(scc.Values, v => cce.NonNullElements(v)));
+      Contract.Requires(cce.NonNullDictionaryAndValues(scc) && Contract.ForAll(scc.Values, v => cce.NonNullElements(v)));
       Contract.Requires(0 <= unrollMaxDepth);
       this.newBlockSeqGlobal = newBlockSeqGlobal;
       this.c = unrollMaxDepth;
@@ -187,7 +187,7 @@ namespace Microsoft.Boogie {
 
     private LoopUnroll(int unrollMaxDepth, Dictionary<GraphNode/*!*/, SCC<GraphNode/*!*/>> scc, List<Block/*!*/>/*!*/ newBlockSeqGlobal, LoopUnroll head) {
       Contract.Requires(head != null);
-      Contract.Requires(cce.NonNullElements(scc));
+      Contract.Requires(cce.NonNullDictionaryAndValues(scc));
       Contract.Requires(cce.NonNullElements(newBlockSeqGlobal));
       Contract.Requires(0 <= unrollMaxDepth);
       this.newBlockSeqGlobal = newBlockSeqGlobal;

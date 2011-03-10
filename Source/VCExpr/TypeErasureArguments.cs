@@ -96,7 +96,7 @@ namespace Microsoft.Boogie.TypeErasure {
     private readonly IDictionary<Function/*!*/, Function/*!*/>/*!*/ Typed2UntypedFunctions;
     [ContractInvariantMethod]
     void Typed2UntypedFunctionsInvariantMethod() {
-      Contract.Invariant(cce.NonNullElements(Typed2UntypedFunctions));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(Typed2UntypedFunctions));
     }
 
     public Function Typed2Untyped(Function fun) {

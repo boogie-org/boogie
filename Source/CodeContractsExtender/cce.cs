@@ -15,18 +15,18 @@ public static class cce {
   //  return collection != null && cce.NonNullElements(collection.TopologicallySortedComponents());
   //}
   [Pure]
-  public static T NonNull<T>(T t) {
+  public static T NonNull<T>(T t)  where T : class {
     Contract.Requires(t != null);
     Contract.Ensures(Contract.Result<T>() != null);
     return t;
   }
   [Pure]
-  public static bool NonNullElements<T>(IEnumerable<T> collection) {
+  public static bool NonNullElements<T>(IEnumerable<T> collection) where T : class {
     return collection != null && Contract.ForAll(collection, c => c != null);
   }
   [Pure]
-  public static bool NonNullElements<TKey, TValue>(IDictionary<TKey, TValue> collection) {
-    return collection != null && Contract.ForAll(collection, pair => NonNullElements(pair));
+  public static bool NonNullDictionaryAndValues<TKey, TValue>(IDictionary<TKey, TValue> collection) where TValue : class {
+    return collection != null && cce.NonNullElements(collection.Values);
   }
   //[Pure]
   //public static bool NonNullElements(VariableSeq collection) {
@@ -40,7 +40,7 @@ public static class cce {
   /// <param name="nullability">If true, the collection is treated as an IEnumerable&lt;T!&gt;?, rather than an IEnumerable&lt;T!&gt;!</param>
   /// <returns></returns>
   [Pure]
-  public static bool NonNullElements<T>(IEnumerable<T> collection, bool nullability) {
+  public static bool NonNullElements<T>(IEnumerable<T> collection, bool nullability) where T : class {
     return (nullability && collection == null) || cce.NonNullElements(collection);
     //Should be the same as:
     /*if(nullability&&collection==null)
@@ -50,11 +50,11 @@ public static class cce {
 
   }
   [Pure]
-  public static bool NonNullElements<TKey, TValue>(KeyValuePair<TKey, TValue> kvp) {
+  public static bool NonNullElements<TKey, TValue>(KeyValuePair<TKey, TValue> kvp) where TKey : class where TValue : class {
     return kvp.Key != null && kvp.Value != null;
   }
   [Pure]
-  public static bool NonNullElements<T>(IEnumerator<T> iEnumerator) {
+  public static bool NonNullElements<T>(IEnumerator<T> iEnumerator) where T : class {
     return iEnumerator != null;
   }
   //[Pure]
@@ -135,6 +135,7 @@ public static class cce {
   //internal static bool NonNullElements(Set set) {
   //  return set != null && Contract.ForAll(0,set.Count, i => set[i] != null);
   //}
+
 }
 
 public class PeerAttribute : SA {
