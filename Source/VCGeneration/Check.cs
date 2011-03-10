@@ -507,7 +507,8 @@ namespace Microsoft.Boogie {
         var args = new Model.Element[arity];
         foreach (var l in tuples) {
           if (l.Count == 1) {
-            f.Else = elts[l[0]];
+            if (f.Else == null)
+              f.Else = elts[l[0]];
           } else {
             for (int i = 0; i < f.Arity; ++i)
               args[i] = elts[l[i]];
