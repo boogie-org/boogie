@@ -1,9 +1,9 @@
-# Aste started: 2011-03-08 14:45:00
+# Aste started: 2011-03-12 07:00:11
 # Host id: Boogiebox
-# [2011-03-08 14:47:53] SpecSharp revision: 63224
-# [2011-03-08 14:49:07] Boogie revision: 63229
-# [2011-03-08 14:49:40] SscBoogie revision: 63221
-[2011-03-08 14:51:52] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Checked
+# [2011-03-12 07:03:24] SpecSharp revision: 63224
+# [2011-03-12 07:04:33] Boogie revision: 63394
+# [2011-03-12 07:05:05] SscBoogie revision: 63221
+[2011-03-12 07:07:39] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -24,6 +24,5 @@
     warning CS0162
     warning CS0162
     warning CS0162
-[2011-03-08 15:57:15] 4 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-['test15', 'lazyinline', 'stratifiedinline', 'extractloops']
-# [2011-03-08 15:58:13] Released nightly of Boogie
+[2011-03-12 07:48:27] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2011-03-12 07:49:27] Released nightly of Boogie
