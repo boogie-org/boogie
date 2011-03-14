@@ -536,6 +536,7 @@ namespace Microsoft.Boogie {
         CodeCopier codeCopier = new CodeCopier(loopHeaderToSubstMap[header]);  // fix me
         VariableSeq inputs = loopHeaderToInputs[header];
         VariableSeq outputs = loopHeaderToOutputs[header];
+        int si_unique_loc = 1; // Added by AL: to distinguish the back edges
         foreach (Block/*!*/ source in g.BackEdgeNodes(header)) {
           Contract.Assert(source != null);
           foreach (Block/*!*/ block in g.NaturalLoops(header, source)) {
@@ -554,7 +555,11 @@ namespace Microsoft.Boogie {
                 blockMap[newBlocksCreated[block]] = newBlock2;
             }
           }
-          CallCmd callCmd = loopHeaderToCallCmd2[header];
+
+          CallCmd callCmd = (CallCmd) (loopHeaderToCallCmd2[header]).Clone();
+          addUniqueCallAttr(si_unique_loc, callCmd);
+          si_unique_loc++;
+
           Block/*!*/ block1 = new Block(Token.NoToken, source.Label + "_dummy",
                               new CmdSeq(new AssumeCmd(Token.NoToken, Expr.False)), new ReturnCmd(Token.NoToken));
           Block/*!*/ block2 = new Block(Token.NoToken, block1.Label,
@@ -659,6 +664,14 @@ namespace Microsoft.Boogie {
         fullMap[impl.Name].Remove(header.Label);
         fullMap[impl.Name][lastIterBlockName] = origHeader;
       }
+    }
+
+    private void addUniqueCallAttr(int val, CallCmd cmd)
+    {
+        var a = new List<object>();
+        a.Add(new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(val)));
+
+        cmd.Attributes = new QKeyValue(Token.NoToken, "si_unique_call", a, cmd.Attributes);
     }
 
     private void AddToFullMap(Dictionary<string, Dictionary<string, Block>> fullMap, string procName, string blockName, Block block)
