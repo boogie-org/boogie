@@ -185,6 +185,22 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Function(AndOp, e0, e1);
     }
+    public VCExpr/*!*/ Gt(VCExpr/*!*/ e0, VCExpr/*!*/ e1)
+    {
+        Contract.Requires(e0 != null);
+        Contract.Requires(e1 != null);
+        Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+        return Function(GtOp, e0, e1);
+    }
+    public VCExpr/*!*/ Add(VCExpr/*!*/ e0, VCExpr/*!*/ e1)
+    {
+        Contract.Requires(e0 != null);
+        Contract.Requires(e1 != null);
+        Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+        return Function(AddOp, e0, e1);
+    }
     public VCExpr/*!*/ Or(VCExpr/*!*/ e0, VCExpr/*!*/ e1) {
       Contract.Requires(e0 != null);
       Contract.Requires(e1 != null);

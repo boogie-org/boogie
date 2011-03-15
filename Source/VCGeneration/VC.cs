@@ -20,7 +20,7 @@ namespace VC {
   using Bpl = Microsoft.Boogie;
 
   public class VCGen : ConditionGeneration {
-
+      private const bool _print_time = false;
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
@@ -1587,10 +1587,17 @@ namespace VC {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       if (impl.SkipVerification) {
         return Outcome.Inconclusive; // not sure about this one
-      } 
-      
-      callback.OnProgress("VCgen", 0, 0, 0.0);
+      }
 
+      callback.OnProgress("VCgen", 0, 0, 0.0);
+      
+      Stopwatch watch = new Stopwatch();
+      if (_print_time)
+      {
+          Console.WriteLine("Checking function {0}", impl.Name);
+          watch.Reset();
+          watch.Start();
+      }
       ConvertCFG2DAG(impl, program);
 
       SmokeTester smoke_tester = null;
@@ -1740,6 +1747,12 @@ namespace VC {
       }
 
       callback.OnProgress("done", 0, 0, 1.0);
+
+      if (_print_time)
+      {
+          watch.Stop();
+          Console.WriteLine("Total time for this method: {0}", watch.Elapsed.ToString());
+      }
 
       return outcome;
     }

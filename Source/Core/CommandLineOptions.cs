@@ -109,7 +109,7 @@ namespace Microsoft.Boogie {
 
     public string PrintFile = null;
     public int PrintUnstructured = 0;
-
+    public int DoomStrategy = -1;
     public bool PrintDesugarings = false;
     public string SimplifyLogFilePath = null;
     public string/*!*/ LogPrefix = "";
@@ -258,7 +258,6 @@ namespace Microsoft.Boogie {
       Unspecified
     }
     public VCVariety vcVariety = VCVariety.Unspecified;  // will not be Unspecified after command line has been parsed
-    public bool useDoomDebug = false; // Will use doomed analysis to search for errors if set
 
     public bool RemoveEmptyBlocks = true;
     public bool CoalesceBlocks = true;
@@ -1009,11 +1008,6 @@ namespace Microsoft.Boogie {
               break;
             }
 
-          case "/DoomDebug":
-            vcVariety = VCVariety.Doomed;
-            useDoomDebug = true;
-            break;
-
           case "-vc":
           case "/vc":
             if (ps.ConfirmArgumentCount(1)) {
@@ -1069,6 +1063,11 @@ namespace Microsoft.Boogie {
             if (ps.ConfirmArgumentCount(1)) {
               ProverOptions.Add(cce.NonNull(args[ps.i]));
             }
+            break;
+
+          case "-DoomStrategy":
+          case "/DoomStrategy":
+            ps.GetNumericArgument(ref DoomStrategy);
             break;
 
           case "-extractLoops":
@@ -2139,7 +2138,6 @@ namespace Microsoft.Boogie {
                    b = flat block, r = flat block reach,
                    s = structured, l = local, d = dag (default with /prover:z3)
                    doomed = doomed
-  /DoomDebug     : Use Doom detection to debug (experimental)               
   /traceverify   : print debug output during verification condition generation
   /subsumption:<c> : apply subsumption to asserted conditions:
                     0 - never, 1 - not for quantifiers, 2 (default) - always

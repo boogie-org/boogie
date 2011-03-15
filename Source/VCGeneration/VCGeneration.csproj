@@ -148,7 +148,10 @@
     <Compile Include="ConditionGeneration.cs" />
     <Compile Include="Context.cs" />
     <Compile Include="DoomCheck.cs" />
+    <Compile Include="DoomedLoopUnrolling.cs" />
+    <Compile Include="DoomedStrategy.cs" />
     <Compile Include="DoomErrorHandler.cs" />
+    <Compile Include="HasseDiagram.cs" />
     <Compile Include="OrderingAxioms.cs" />
     <Compile Include="StratifiedVC.cs" />
     <Compile Include="VC.cs" />
