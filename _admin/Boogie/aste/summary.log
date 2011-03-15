@@ -1,14 +1,14 @@
-# Aste started: 2011-03-12 07:00:11
+# Aste started: 2011-03-15 09:59:24
 # Host id: Boogiebox
-# [2011-03-12 07:03:24] SpecSharp revision: 63224
-# [2011-03-12 07:04:33] Boogie revision: 63394
-# [2011-03-12 07:05:05] SscBoogie revision: 63221
-[2011-03-12 07:07:39] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Checked
+# [2011-03-15 10:02:01] SpecSharp revision: 63224
+# [2011-03-15 10:03:00] Boogie revision: 63758
+# [2011-03-15 10:03:29] SscBoogie revision: 63221
+[2011-03-15 10:05:22] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(673,7): warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
+    D:\Temp\aste\Boogie\Source\Core\Absy.cs(686,7): warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(109,3): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(114,5): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)' overrides 'Microsoft.Boogie.Expr.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(117,65): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.ComputeFreeVariables(Microsoft.Boogie.Set)' overrides 'Microsoft.Boogie.Expr.ComputeFreeVariables(Microsoft.Boogie.Set)', thus cannot add Requires.
@@ -16,6 +16,9 @@
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1597,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1753,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\DoomCheck.cs(232,30): warning CS0649: Field 'VC.DoomCheck.__tmpHack' is never assigned to, and will always have its default value null
     D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(601,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(2422,13): warning CC1032: Method 'VC.StratifiedVCGen.elIsLoop(System.String)' overrides 'VC.VCGen.elIsLoop(System.String)', thus cannot add Requires.
     warning CS0659
@@ -24,5 +27,8 @@
     warning CS0162
     warning CS0162
     warning CS0162
-[2011-03-12 07:48:27] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2011-03-12 07:49:27] Released nightly of Boogie
+    warning CS0162
+    warning CS0162
+    warning CS0649
+[2011-03-15 10:46:28] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2011-03-15 10:47:30] Released nightly of Boogie
