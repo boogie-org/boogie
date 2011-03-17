@@ -22,6 +22,8 @@ namespace VC
         private Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
         public bool PersistCallTree;
         public static Dictionary<string, int> callTree = null;
+        public readonly static string recordArgProcName = "boogie_si_record_int";
+        private Function recordArgFunc;
 
         [ContractInvariantMethod]
         void ObjectInvariant()
@@ -38,6 +40,7 @@ namespace VC
         {
             Contract.Requires(program != null);
             implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
+            recordArgFunc = null;
             this.GenerateVCsForStratifiedInlining(program);
             PersistCallTree = false;
         }
@@ -82,6 +85,8 @@ namespace VC
                 Implementation impl = decl as Implementation;
                 if (impl == null)
                     continue;
+                Contract.Assert(impl.Name != recordArgProcName, "Not allowed to have an implementation for this guy");
+
                 Procedure proc = cce.NonNull(impl.Proc);
                 if (proc.FindExprAttribute("inline") != null)
                 {
@@ -117,6 +122,32 @@ namespace VC
                 }
             }
 
+            foreach (var decl in program.TopLevelDeclarations)
+            {
+                var proc = decl as Procedure;
+                if (proc == null) continue;
+                if (proc.Name != recordArgProcName) continue;
+                Contract.Assert(proc.InParams.Length == 1);
+
+                // Make a new function
+                TypedIdent ti = new TypedIdent(Token.NoToken, "", Bpl.Type.Bool);
+                Contract.Assert(ti != null);
+                Formal returnVar = new Formal(Token.NoToken, ti, false);
+                Contract.Assert(returnVar != null);
+
+                var ins = new VariableSeq();
+                ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", Bpl.Type.Int), true));
+
+                recordArgFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
+                checker.TheoremProver.Context.DeclareFunction(recordArgFunc, "");
+
+                var exprs = new ExprSeq();
+                exprs.Add(new IdentifierExpr(Token.NoToken, proc.InParams[0]));
+
+                Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(recordArgFunc), exprs);
+                proc.Ensures.Add(new Ensures(true, freePostExpr));
+                break;
+            }
         }
 
         private void GenerateVCForStratifiedInlining(Program program, StratifiedInliningInfo info, Checker checker)
@@ -1440,11 +1471,6 @@ namespace VC
                 {
                     substForallDict.Add(info.interfaceExprVars[i], expr[i]);
                 }
-                if (procName == "boogie_si_record_int")
-                {
-                    Contract.Assert(expr.Length > program.GlobalVariables().Count);
-                    calls.argExprMap.Add(id, expr[program.GlobalVariables().Count]);
-                }
                 VCExprSubstitution substForall = new VCExprSubstitution(substForallDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
 
                 SubstitutingVCExprVisitor subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
@@ -1524,11 +1550,6 @@ namespace VC
                 for (int i = 0; i < info.interfaceExprVars.Count; i++)
                 {
                     substForallDict.Add(info.interfaceExprVars[i], expr[i]);
-                }
-                if (procName == "boogie_si_record_int")
-                {
-                    Contract.Assert(expr.Length > program.GlobalVariables().Count);
-                    calls.argExprMap.Add(id, expr[program.GlobalVariables().Count]);
                 }
 
                 VCExprSubstitution substForall = new VCExprSubstitution(substForallDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
@@ -1645,6 +1666,7 @@ namespace VC
             Dictionary<string/*!*/, StratifiedInliningInfo/*!*/>/*!*/ implName2StratifiedInliningInfo;
             public readonly Hashtable/*<int, Absy!>*//*!*/ mainLabel2absy;
             public Dictionary<BoogieCallExpr/*!*/, int>/*!*/ boogieExpr2Id;
+            public Dictionary<BoogieCallExpr/*!*/, VCExpr>/*!*/ recordExpr2Var;
             public Dictionary<int, VCExprNAry/*!*/>/*!*/ id2Candidate;
             public Dictionary<int, VCExprVar/*!*/>/*!*/ id2ControlVar;
             public Dictionary<string/*!*/, int>/*!*/ label2Id;
@@ -1720,6 +1742,7 @@ namespace VC
                 persistentNameInv["0"] = 0;
                 recentlyAddedCandidates = new HashSet<int>();
                 argExprMap = new Dictionary<int, VCExpr>();
+                recordExpr2Var = new Dictionary<BoogieCallExpr, VCExpr>();
 
                 forcedCandidates = new HashSet<int>();
             }
@@ -1994,6 +2017,13 @@ namespace VC
 
                         //return Gen.LabelPos(label, callExpr);
                         return Gen.LabelPos(label, id2ControlVar[candidateId]);
+                    }
+                    else if (calleeName == recordArgProcName)
+                    {
+                        Debug.Assert(callExpr.Length == 1);
+                        Debug.Assert(callExpr[0] != null);
+                        recordExpr2Var[new BoogieCallExpr(naryExpr, currInlineCount)] = callExpr[0];
+                        return callExpr;
                     }
                     else
                     {
@@ -2295,6 +2325,37 @@ namespace VC
                             continue;
                         string calleeName = naryExpr.Fun.FunctionName;
                         Contract.Assert(calleeName != null);
+
+                        if (calleeName == recordArgProcName)
+                        {
+                            var expr = calls.recordExpr2Var[new BoogieCallExpr(naryExpr, candidateId)];
+
+                            // Record concrete value of the argument to this procedure
+                            var args = new List<int>();
+                            if (expr is VCExprIntLit)
+                            {
+                                args.Add(errModel.valueToPartition[(expr as VCExprIntLit).Val.ToInt]);
+                            }
+                            else if (expr is VCExprVar)
+                            {
+                                var idExpr = expr as VCExprVar;
+                                string name = context.Lookup(idExpr);
+                                Contract.Assert(name != null);
+                                if (errModel.identifierToPartition.ContainsKey(name))
+                                {
+                                    args.Add(errModel.identifierToPartition[name]);
+                                }
+                            }
+                            else
+                            {
+                                Contract.Assert(false);
+                            }
+                            var values = errModel.PartitionsToValues(args);
+                            calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
+                                 new CalleeCounterexampleInfo(null, values);
+                            continue;
+                        }
+
                         if (!implName2StratifiedInliningInfo.ContainsKey(calleeName))
                             continue;
 
@@ -2306,34 +2367,11 @@ namespace VC
                         }
                         else
                         {
-                            var values = new List<object>();
-                            if (calleeName == "boogie_si_record_int")
-                            {
-                                // Record concrete value of the argument to this procedure
-                                var args = new List<int>();
-                                var expr = calls.argExprMap[calleeId];
-                                if (expr is VCExprIntLit)
-                                {
-                                    args.Add(errModel.valueToPartition[(expr as VCExprIntLit).Val.ToInt]);
-                                }
-                                else if (expr is VCExprVar)
-                                {
-                                    var idExpr = expr as VCExprVar;
-                                    string name = context.Lookup(idExpr);
-                                    Contract.Assert(name != null);
-                                    args.Add(errModel.identifierToPartition[name]);
-                                }
-                                else
-                                {
-                                    Contract.Assert(false);
-                                }
-                                values = errModel.PartitionsToValues(args);
-                            }
 
                             calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                 new CalleeCounterexampleInfo(
                                     cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
-                                    values);
+                                    null);
                         }
                     }
 

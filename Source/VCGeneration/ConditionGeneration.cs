@@ -168,16 +168,18 @@ namespace Microsoft.Boogie {
                 {
                     var cmd = getTraceCmd(loc);
                     var calleeName = getCalledProcName(cmd);
-                    if (calleeName == "boogie_si_record_int" && CommandLineOptions.Clo.StratifiedInlining > 0)
+                    if (calleeName == VC.StratifiedVCGen.recordArgProcName && CommandLineOptions.Clo.StratifiedInlining > 0)
                     {
                         Contract.Assert(calleeCounterexamples[loc].args.Count == 1);
                         var arg = calleeCounterexamples[loc].args[0];
                         Console.WriteLine("{0}value = {1}", ind, arg.ToString());
                     }
-                    Console.WriteLine("{1}Inlined call to procedure {0} begins", calleeName, ind);
-                    calleeCounterexamples[loc].counterexample.Print(indent + 4);
-                    Console.WriteLine("{1}Inlined call to procedure {0} ends", calleeName, ind);
-                    
+                    else
+                    {
+                        Console.WriteLine("{1}Inlined call to procedure {0} begins", calleeName, ind);
+                        calleeCounterexamples[loc].counterexample.Print(indent + 4);
+                        Console.WriteLine("{1}Inlined call to procedure {0} ends", calleeName, ind);
+                    }
                 }
             }
           }
