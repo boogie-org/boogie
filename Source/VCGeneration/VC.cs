@@ -2413,6 +2413,7 @@ namespace VC {
         Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
         Contract.Requires(currProc != null);
+        if (cexInfo.counterexample == null) return cexInfo;
 
         var cex = cexInfo.counterexample;
         // Go through all blocks in the trace, map them back to blocks in the original program (if there is one)
