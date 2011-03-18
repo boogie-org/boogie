@@ -127,9 +127,10 @@ namespace Microsoft.Boogie.Z3
             {
                 result = partitionCounter++;
                 termToPartition.Add(value, result);
+                partitionToValue.Add(null);
                 object constant = Evaluate(value);
                 valueToPartition.Add(constant, result);
-                partitionToValue.Add(constant);
+                partitionToValue[result] = constant;
             }
             return result;
         }
