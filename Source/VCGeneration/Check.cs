@@ -731,7 +731,7 @@ namespace Microsoft.Boogie {
 
             List<object> tupleVal = new List<object>();
             foreach (int j in tuple) {
-              tupleVal.Add(cce.NonNull(partitionToValue[i]));
+              tupleVal.Add(cce.NonNull(partitionToValue[j]));
             }
             arrayVal.Add(tupleVal);
           }
