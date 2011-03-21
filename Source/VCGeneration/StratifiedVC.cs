@@ -17,13 +17,15 @@ namespace VC
 {
     using Bpl = Microsoft.Boogie;
 
+    // Types whose values can be recorded
+    public enum RECORD_TYPES { INT, BOOL, INT_INT, INT_BOOL };
+
     public class StratifiedVCGen : VCGen
     {
         private Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
         public bool PersistCallTree;
         public static Dictionary<string, int> callTree = null;
-        public readonly static string recordArgProcName = "boogie_si_record_int";
-        private Function recordArgFunc;
+        public readonly static string recordProcName = "boogie_si_record";
 
         [ContractInvariantMethod]
         void ObjectInvariant()
@@ -40,11 +42,37 @@ namespace VC
         {
             Contract.Requires(program != null);
             implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
-            recordArgFunc = null;
+
             this.GenerateVCsForStratifiedInlining(program);
             PersistCallTree = false;
         }
 
+        public static RECORD_TYPES getRecordType(Bpl.Type type)
+        {
+            if (type.IsInt) return RECORD_TYPES.INT;
+            if (type.IsBool) return RECORD_TYPES.BOOL;
+            Contract.Assert(type.IsMap);
+            var mt = type.AsMap;
+            Contract.Assert(mt.MapArity == 1);
+            Contract.Assert(mt.Result.IsInt || mt.Result.IsBool);
+            Contract.Assert(mt.Arguments[0].IsInt);
+            if (mt.Result.IsInt) return RECORD_TYPES.INT_INT;
+            return RECORD_TYPES.INT_BOOL;
+        }
+        /*
+        public static string printValue(object val, RECORD_TYPES type)
+        {
+            switch (type)
+            {
+                case RECORD_TYPES.BOOL:
+                    return ((bool)val).ToString();
+                case RECORD_TYPES.INT:
+                    return ((int)val).ToString();
+                case RECORD_TYPES.INT_BOOL:
+                case RECORD_TYPES.INT_INT:
+            }
+        }
+        */
         public class StratifiedInliningInfo : LazyInliningInfo
         {
             [ContractInvariantMethod]
@@ -85,7 +113,7 @@ namespace VC
                 Implementation impl = decl as Implementation;
                 if (impl == null)
                     continue;
-                Contract.Assert(impl.Name != recordArgProcName, "Not allowed to have an implementation for this guy");
+                Contract.Assert(!impl.Name.StartsWith(recordProcName), "Not allowed to have an implementation for this guy");
 
                 Procedure proc = cce.NonNull(impl.Proc);
                 if (proc.FindExprAttribute("inline") != null)
@@ -126,7 +154,7 @@ namespace VC
             {
                 var proc = decl as Procedure;
                 if (proc == null) continue;
-                if (proc.Name != recordArgProcName) continue;
+                if (!proc.Name.StartsWith(recordProcName)) continue;
                 Contract.Assert(proc.InParams.Length == 1);
 
                 // Make a new function
@@ -135,18 +163,20 @@ namespace VC
                 Formal returnVar = new Formal(Token.NoToken, ti, false);
                 Contract.Assert(returnVar != null);
 
-                var ins = new VariableSeq();
-                ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", Bpl.Type.Int), true));
+                // Get record type
+                var argtype = proc.InParams[0].TypedIdent.Type;
 
-                recordArgFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
-                checker.TheoremProver.Context.DeclareFunction(recordArgFunc, "");
+                var ins = new VariableSeq();
+                ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", argtype), true));
+
+                var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
+                checker.TheoremProver.Context.DeclareFunction(recordFunc, "");
 
                 var exprs = new ExprSeq();
                 exprs.Add(new IdentifierExpr(Token.NoToken, proc.InParams[0]));
 
-                Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(recordArgFunc), exprs);
+                Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(recordFunc), exprs);
                 proc.Ensures.Add(new Ensures(true, freePostExpr));
-                break;
             }
         }
 
@@ -2018,7 +2048,7 @@ namespace VC
                         //return Gen.LabelPos(label, callExpr);
                         return Gen.LabelPos(label, id2ControlVar[candidateId]);
                     }
-                    else if (calleeName == recordArgProcName)
+                    else if (calleeName.StartsWith(recordProcName))
                     {
                         Debug.Assert(callExpr.Length == 1);
                         Debug.Assert(callExpr[0] != null);
@@ -2326,7 +2356,7 @@ namespace VC
                         string calleeName = naryExpr.Fun.FunctionName;
                         Contract.Assert(calleeName != null);
 
-                        if (calleeName == recordArgProcName)
+                        if (calleeName.StartsWith(recordProcName))
                         {
                             var expr = calls.recordExpr2Var[new BoogieCallExpr(naryExpr, candidateId)];
 
