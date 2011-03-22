@@ -1,9 +1,9 @@
-# Aste started: 2011-03-22 17:12:36
+# Aste started: 2011-03-22 18:05:19
 # Host id: Boogiebox
-# [2011-03-22 17:16:01] SpecSharp revision: e14d752fb0ea
-# [2011-03-22 17:16:01] SscBoogie revision: e14d752fb0ea
-# [2011-03-22 17:17:12] Boogie revision: 64223
-[2011-03-22 17:19:21] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+# [2011-03-22 18:07:44] SpecSharp revision: e14d752fb0ea
+# [2011-03-22 18:07:44] SscBoogie revision: e14d752fb0ea
+# [2011-03-22 18:08:43] Boogie revision: 64224
+[2011-03-22 18:10:50] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -37,5 +37,6 @@
     warning CS0649: Field 'VC.DoomCheck.__tmpHack' is never assigned to, and will always have its default value null
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     warning CC1032: Method 'VC.StratifiedVCGen.elIsLoop(System.String)' overrides 'VC.VCGen.elIsLoop(System.String)', thus cannot add Requires.
-[2011-03-22 18:00:20] 2 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+[2011-03-22 18:51:49] 2 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
 ['stratifiedinline', 'extractloops']
+# [2011-03-22 18:52:49] Released nightly of Boogie
