@@ -1,11 +1,9 @@
-# Aste started: 2011-03-22 15:15:56
+# Aste started: 2011-03-22 15:32:57
 # Host id: Boogiebox
-# [2011-03-22 15:15:56] SpecSharp revision: be16864f62f1+
-
-# [2011-03-22 15:15:56] SscBoogie revision: be16864f62f1+
-
-# [2011-03-22 15:15:59] Boogie revision: 64186
-[2011-03-22 15:16:56] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Checked
+# [2011-03-22 15:32:57] SpecSharp revision: be16864f62f1+
+# [2011-03-22 15:32:57] SscBoogie revision: be16864f62f1+
+# [2011-03-22 15:33:00] Boogie revision: 64216
+[2011-03-22 15:33:59] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Checked
 
     C:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     C:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
