@@ -1,30 +1,32 @@
-# Aste started: 2011-03-21 17:20:38
+# Aste started: 2011-03-22 15:15:56
 # Host id: Boogiebox
-# [2011-03-21 17:28:46] SpecSharp revision: 64035
-# [2011-03-21 17:28:46] SscBoogie revision: 64035
-# [2011-03-21 17:29:54] Boogie revision: 64175
-[2011-03-21 17:32:08] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Checked
+# [2011-03-22 15:15:56] SpecSharp revision: be16864f62f1+
 
-    D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
-    D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
-    D:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(686,7): warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(109,3): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(114,5): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)' overrides 'Microsoft.Boogie.Expr.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)', thus cannot add Requires.
-    D:\Temp\aste\Boogie\Source\Core\Parser.cs(117,65): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.ComputeFreeVariables(Microsoft.Boogie.Set)' overrides 'Microsoft.Boogie.Expr.ComputeFreeVariables(Microsoft.Boogie.Set)', thus cannot add Requires.
-    D:\Temp\aste\Boogie\Source\VCExpr\TypeErasure.cs(679,7): warning CC1036: Detected call to method 'Microsoft.Boogie.TypeErasure.TypeAxiomBuilder.UnchangedType(Microsoft.Boogie.Type)' without [Pure] in contracts of method 'Microsoft.Boogie.TypeErasure.TypeAxiomBuilderIntBoolU.CastTo(Microsoft.Boogie.Type)'.
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1597,11): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1753,11): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\DoomCheck.cs(232,30): warning CS0649: Field 'VC.DoomCheck.__tmpHack' is never assigned to, and will always have its default value null
-    D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(662,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-    D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(2490,13): warning CC1032: Method 'VC.StratifiedVCGen.elIsLoop(System.String)' overrides 'VC.VCGen.elIsLoop(System.String)', thus cannot add Requires.
+# [2011-03-22 15:15:56] SscBoogie revision: be16864f62f1+
+
+# [2011-03-22 15:15:59] Boogie revision: 64186
+[2011-03-22 15:16:56] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Build Checked
+
+    C:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+    C:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+    C:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
+    C:\Temp\aste\Boogie\Source\Core\DeadVarElim.cs(665,7): warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.ICFG.ObjectInvariant'.
+    C:\Temp\aste\Boogie\Source\Core\Parser.cs(109,3): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
+    C:\Temp\aste\Boogie\Source\Core\Parser.cs(114,5): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)' overrides 'Microsoft.Boogie.Expr.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)', thus cannot add Requires.
+    C:\Temp\aste\Boogie\Source\Core\Parser.cs(117,65): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.ComputeFreeVariables(Microsoft.Boogie.Set)' overrides 'Microsoft.Boogie.Expr.ComputeFreeVariables(Microsoft.Boogie.Set)', thus cannot add Requires.
+    C:\Temp\aste\Boogie\Source\VCExpr\TypeErasure.cs(679,7): warning CC1036: Detected call to method 'Microsoft.Boogie.TypeErasure.TypeAxiomBuilder.UnchangedType(Microsoft.Boogie.Type)' without [Pure] in contracts of method 'Microsoft.Boogie.TypeErasure.TypeAxiomBuilderIntBoolU.CastTo(Microsoft.Boogie.Type)'.
+    C:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
+    C:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
+    C:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
+    C:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1597,11): warning CS0162: Unreachable code detected
+    C:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1753,11): warning CS0162: Unreachable code detected
+    C:\Temp\aste\Boogie\Source\VCGeneration\DoomCheck.cs(232,30): warning CS0649: Field 'VC.DoomCheck.__tmpHack' is never assigned to, and will always have its default value null
+    C:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(662,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
+    C:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(2490,13): warning CC1032: Method 'VC.StratifiedVCGen.elIsLoop(System.String)' overrides 'VC.VCGen.elIsLoop(System.String)', thus cannot add Requires.
     warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0162: Unreachable code detected
-    warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
+    warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.ICFG.ObjectInvariant'.
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)' overrides 'Microsoft.Boogie.Expr.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.ComputeFreeVariables(Microsoft.Boogie.Set)' overrides 'Microsoft.Boogie.Expr.ComputeFreeVariables(Microsoft.Boogie.Set)', thus cannot add Requires.
@@ -37,6 +39,3 @@
     warning CS0649: Field 'VC.DoomCheck.__tmpHack' is never assigned to, and will always have its default value null
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     warning CC1032: Method 'VC.StratifiedVCGen.elIsLoop(System.String)' overrides 'VC.VCGen.elIsLoop(System.String)', thus cannot add Requires.
-[2011-03-21 18:12:53] 2 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-['stratifiedinline', 'extractloops']
-# [2011-03-21 18:13:53] Released nightly of Boogie
