@@ -2398,10 +2398,10 @@ namespace VC
                         else
                         {
 
-                            calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
-                                new CalleeCounterexampleInfo(
-                                    cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
-                                    null);
+                          calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
+                              new CalleeCounterexampleInfo(
+                                  cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
+                                  new List<object>());
                         }
                     }
 
@@ -2487,8 +2487,6 @@ namespace VC
 
         protected override bool elIsLoop(string procname)
         {
-            Contract.Requires(procname != null);
-
             LazyInliningInfo info = null;
             if (implName2StratifiedInliningInfo.ContainsKey(procname))
             {
