@@ -218,4 +218,31 @@ namespace Dafny
       this.Cdr = b;
     }
   }
+  public partial class Helpers {
+    public static bool QuantBool(bool frall, System.Predicate<bool> pred) {
+      if (frall) {
+        return pred(false) && pred(true);
+      } else {
+        return pred(false) || pred(true);
+      }
+    }
+    public static bool QuantInt(BigInteger lo, BigInteger hi, bool frall, System.Predicate<BigInteger> pred) {
+      for (BigInteger i = lo; i < hi; i++) {
+        if (pred(i) != frall) { return !frall; }
+      }
+      return frall;
+    }
+    public static bool QuantSet<T>(Dafny.Set<T> set, bool frall, System.Predicate<T> pred) {
+      foreach (var t in set.Elements) {
+        if (pred(t) != frall) { return !frall; }
+      }
+      return frall;
+    }
+    public static bool QuantSeq<T>(Dafny.Sequence<T> seq, bool frall, System.Predicate<T> pred) {
+      foreach (var t in seq.Elements) {
+        if (pred(t) != frall) { return !frall; }
+      }
+      return frall;
+    }
+  }
 }

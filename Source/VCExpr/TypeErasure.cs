@@ -327,6 +327,7 @@ namespace Microsoft.Boogie.TypeErasure {
     public readonly Type/*!*/ T;
 
     public abstract Type/*!*/ TypeAfterErasure(Type/*!*/ type);
+    [Pure]
     public abstract bool UnchangedType(Type/*!*/ type);
 
     ///////////////////////////////////////////////////////////////////////////

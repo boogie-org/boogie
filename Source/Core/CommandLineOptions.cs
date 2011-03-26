@@ -25,7 +25,7 @@ namespace Microsoft.Boogie {
     public static string/*!*/ VersionSuffix {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
-        return " version " + VersionNumber + ", Copyright (c) 2003-2010, Microsoft.";
+        return " version " + VersionNumber + ", Copyright (c) 2003-2011, Microsoft.";
       }
     }
     public string/*!*/ InputFileExtension {

@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Microsoft")]
 [assembly: AssemblyProduct("ModelViewer")]
-[assembly: AssemblyCopyright("Copyright © Microsoft 2010")]
+[assembly: AssemblyCopyright("Copyright © Microsoft 2010-2011")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
