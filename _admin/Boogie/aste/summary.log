@@ -1,9 +1,9 @@
-# Aste started: 2011-03-24 07:00:15
+# Aste started: 2011-03-26 07:00:14
 # Host id: Boogiebox
-# [2011-03-24 07:02:42] SpecSharp revision: a033d13a9f2e
-# [2011-03-24 07:02:42] SscBoogie revision: a033d13a9f2e
-# [2011-03-24 07:03:54] Boogie revision: 64298
-[2011-03-24 07:06:23] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+# [2011-03-26 07:02:50] SpecSharp revision: afb64d256616
+# [2011-03-26 07:02:50] SscBoogie revision: afb64d256616
+# [2011-03-26 07:04:00] Boogie revision: 64443
+[2011-03-26 07:06:30] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -12,7 +12,6 @@
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(109,3): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(114,5): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)' overrides 'Microsoft.Boogie.Expr.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(117,65): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.ComputeFreeVariables(Microsoft.Boogie.Set)' overrides 'Microsoft.Boogie.Expr.ComputeFreeVariables(Microsoft.Boogie.Set)', thus cannot add Requires.
-    D:\Temp\aste\Boogie\Source\VCExpr\TypeErasure.cs(679,7): warning CC1036: Detected call to method 'Microsoft.Boogie.TypeErasure.TypeAxiomBuilder.UnchangedType(Microsoft.Boogie.Type)' without [Pure] in contracts of method 'Microsoft.Boogie.TypeErasure.TypeAxiomBuilderIntBoolU.CastTo(Microsoft.Boogie.Type)'.
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
@@ -27,7 +26,6 @@
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)' overrides 'Microsoft.Boogie.Expr.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.ComputeFreeVariables(Microsoft.Boogie.Set)' overrides 'Microsoft.Boogie.Expr.ComputeFreeVariables(Microsoft.Boogie.Set)', thus cannot add Requires.
-    warning CC1036: Detected call to method 'Microsoft.Boogie.TypeErasure.TypeAxiomBuilder.UnchangedType(Microsoft.Boogie.Type)' without [Pure] in contracts of method 'Microsoft.Boogie.TypeErasure.TypeAxiomBuilderIntBoolU.CastTo(Microsoft.Boogie.Type)'.
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
@@ -35,5 +33,5 @@
     warning CS0162: Unreachable code detected
     warning CS0649: Field 'VC.DoomCheck.__tmpHack' is never assigned to, and will always have its default value null
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-[2011-03-24 07:46:59] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2011-03-24 07:47:19] Released nightly of Boogie
+[2011-03-26 07:47:02] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2011-03-26 07:48:03] Released nightly of Boogie
