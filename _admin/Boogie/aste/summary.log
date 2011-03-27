@@ -1,9 +1,9 @@
-# Aste started: 2011-03-26 07:00:14
+# Aste started: 2011-03-27 07:00:16
 # Host id: Boogiebox
-# [2011-03-26 07:02:50] SpecSharp revision: afb64d256616
-# [2011-03-26 07:02:50] SscBoogie revision: afb64d256616
-# [2011-03-26 07:04:00] Boogie revision: 64443
-[2011-03-26 07:06:30] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+# [2011-03-27 07:02:50] SpecSharp revision: a822d3db0af6
+# [2011-03-27 07:02:50] SscBoogie revision: a822d3db0af6
+# [2011-03-27 07:04:00] Boogie revision: 64448
+[2011-03-27 07:06:34] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -33,5 +33,6 @@
     warning CS0162: Unreachable code detected
     warning CS0649: Field 'VC.DoomCheck.__tmpHack' is never assigned to, and will always have its default value null
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-[2011-03-26 07:47:02] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2011-03-26 07:48:03] Released nightly of Boogie
+[2011-03-27 07:46:49] 1 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+['sanity']
+# [2011-03-27 07:47:51] Released nightly of Boogie
