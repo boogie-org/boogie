@@ -122,21 +122,17 @@ namespace VC {
       //Contract.Requires(callback != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       
-      Stopwatch watch = new Stopwatch();
-
       Console.WriteLine();
       Console.WriteLine("Checking function {0}", impl.Name);
       callback.OnProgress("doomdetector", 0, 0, 0);
 
-      watch.Reset();
-      watch.Start();
+      bool restartTP = CommandLineOptions.Clo.DoomRestartTP ;
 
-      //Impl2Dot(impl, String.Format("c:/dot/{0}_orig.dot", impl.Name));
+      //Impl2Dot(impl, String.Format("c:/dot/{0}_orig.dot", impl.Name));      
 
       Transform4DoomedCheck(impl, program);
-      
-      //Impl2Dot(impl, String.Format("c:/dot/{0}_fin.dot", impl.Name));
 
+      //Impl2Dot(impl, String.Format("c:/dot/{0}_fin.dot", impl.Name));
     
       Checker checker = FindCheckerFor(impl, 1000);
       Contract.Assert(checker != null);
@@ -149,10 +145,7 @@ namespace VC {
       ProverInterface.Outcome outcome;
       dc.ErrorHandler = new DoomErrorHandler(dc.Label2Absy, callback);
 
-      watch.Stop();
-      watch.Reset();
-
-      System.TimeSpan ts = watch.Elapsed;
+      System.TimeSpan ts = new TimeSpan();
       
       if (_print_time) Console.WriteLine("Total number of blocks {0}", impl.Blocks.Count);
 
@@ -189,15 +182,18 @@ namespace VC {
         _totalchecks++;
 
 
-        watch.Start();        
         if (!dc.CheckLabel(lv,finalreachvars, out outcome)) {
           return Outcome.Inconclusive;
         }
-        watch.Stop();
-        ts += watch.Elapsed;
-        //if (__debug)
-        //  Console.WriteLine(" Time for Block {0}: {1} elapsed", b.Label, watch.Elapsed.ToString());
-        watch.Reset();
+        ts += dc.DEBUG_ProverTime.Elapsed;
+
+        if (restartTP)
+        {
+            checker.Close();
+            checker = FindCheckerFor(impl, 1000);
+            dc.RespawnChecker(impl, checker);
+            dc.ErrorHandler = new DoomErrorHandler(dc.Label2Absy, callback);
+        }
 
       }
       checker.Close();
@@ -720,7 +716,7 @@ namespace VC {
         impl.PruneUnreachableBlocks();
         AddBlocksBetween(impl.Blocks);
         ClearPredecessors(impl.Blocks);
-        ComputePredecessors(impl.Blocks);
+        ComputePredecessors(impl.Blocks);        
 
         GraphAnalyzer ga = new GraphAnalyzer(impl.Blocks);
         LoopRemover lr = new LoopRemover(ga);
@@ -758,15 +754,16 @@ namespace VC {
 
         m_BlockReachabilityMap = new Dictionary<Block, Variable>();       
         CmdSeq cs = GenerateReachabilityPredicates(impl);
-
-        foreach (Block test in getTheFFinalBlock(impl.Blocks[0]))
-        {
-            test.Cmds.AddRange(cs);
-        }
-
+        
+        //foreach (Block test in getTheFFinalBlock(impl.Blocks[0]))
+        //{
+        //    test.Cmds.AddRange(cs);
+        //}
+        
         ClearPredecessors(impl.Blocks);
         ComputePredecessors(impl.Blocks);
         //EmitImpl(impl,false);
+
         Hashtable/*Variable->Expr*/ htbl = PassifyProgram(impl, new ModelViewInfo(program, impl));
 
         // Collect the last incarnation of each reachability variable in the passive program

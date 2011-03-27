@@ -144,8 +144,11 @@ namespace VC
         readonly public Dictionary<Block, List<Block>> PostDominators = new Dictionary<Block, List<Block>>();
         readonly public List<BlockHierachyNode> Leaves = new List<BlockHierachyNode>();
 
+        private Implementation m_Impl;
+
         public BlockHierachy(Implementation impl, Block unifiedExit)
         {
+            m_Impl = impl;
             List<Block> blocks = impl.Blocks;
             List<BlockHierachyNode> tmp_hnodes = new List<BlockHierachyNode>();
             Dictionary<Block, List<Block>> unavoidable = new Dictionary<Block, List<Block>>();
@@ -180,6 +183,60 @@ namespace VC
 
             HasseDiagram hd = new HasseDiagram(tmp_hnodes);
             Leaves = hd.Leaves;            
+        }
+
+        public int GetMaxK(List<Block> blocks)
+        {
+            m_GetMaxK(blocks);
+            return (m_MaxK>0) ? m_MaxK : 1;
+        }
+
+        private int m_MaxK = 0;
+        private void m_GetMaxK(List<Block> blocks)
+        {
+            m_MaxK = 0;
+            Dictionary<Block, int> kstore = new Dictionary<Block, int>();
+            List<Block> todo = new List<Block>();
+            List<Block> done = new List<Block>();
+            todo.Add(m_Impl.Blocks[0]);
+            kstore[m_Impl.Blocks[0]] = 0;
+            int localmax;
+            Block current = null;
+            while (todo.Count > 0)
+            {
+                current = todo[0];
+                todo.Remove(current);
+                bool ready = true;
+                localmax = 0;
+                if (current.Predecessors!=null) {
+                    foreach (Block p in current.Predecessors)
+                    {
+                        if (!done.Contains(p))
+                        {
+                            ready = false; break;
+                        }
+                        else localmax = (localmax > kstore[p]) ? localmax : kstore[p];
+                    }
+                }
+                if (!ready)
+                {
+                    todo.Add(current); continue;
+                }
+                done.Add(current);
+                kstore[current] =  (blocks.Contains(current)) ? localmax +1 : localmax;
+
+                m_MaxK = (kstore[current] > m_MaxK) ? kstore[current] : m_MaxK;
+
+                GotoCmd gc = current.TransferCmd as GotoCmd;
+                if (gc != null)
+                {
+                    foreach (Block s in gc.labelTargets)
+                    {
+                        if (!todo.Contains(s)) todo.Add(s);
+                    }
+                }
+            }
+
         }
 
         public List<Block> GetOtherDoomedBlocks(List<Block> doomedblocks)

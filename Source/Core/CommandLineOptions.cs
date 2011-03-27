@@ -110,6 +110,7 @@ namespace Microsoft.Boogie {
     public string PrintFile = null;
     public int PrintUnstructured = 0;
     public int DoomStrategy = -1;
+    public bool DoomRestartTP = false;
     public bool PrintDesugarings = false;
     public string SimplifyLogFilePath = null;
     public string/*!*/ LogPrefix = "";
@@ -1068,6 +1069,13 @@ namespace Microsoft.Boogie {
           case "-DoomStrategy":
           case "/DoomStrategy":
             ps.GetNumericArgument(ref DoomStrategy);
+            break;
+          case "-DoomRestartTP":
+          case "/DoomRestartTP":
+            if (ps.ConfirmArgumentCount(0))
+            {
+                DoomRestartTP = true;
+            }
             break;
 
           case "-extractLoops":

@@ -320,8 +320,13 @@ namespace VC
                     foreach (Block suc in gc.labelTargets) GraphMap[b].Suc.Add(GraphMap[suc]);
                 }
             }
-            m_DetectCutPoints(GraphMap[blocks[0]], null, new List<GraphNode>());
-            Graphloops = m_CollectLoops(GraphMap[blocks[0]], null);            
+
+            
+            m_DetectCutPoints(GraphMap[blocks[0]]);
+            
+            //m_DetectCutPoints(GraphMap[blocks[0]], null, new List<GraphNode>());  
+            Graphloops = m_CollectLoops(GraphMap[blocks[0]], null);
+            
         }
 
         public List<Block> ToImplementation(out List<Block> uncheckables)
@@ -379,13 +384,14 @@ namespace VC
                 GraphMap.Remove(b);
             }
         }
-
+/*
         private void m_DetectCutPoints(GraphNode gn, GraphNode pred, List<GraphNode> visited )
         {
             if (visited.Contains(gn) )
             {
                 if (pred != null && !gn.LoopingPred.Contains(pred)) gn.LoopingPred.Add(pred);
                 gn.IsCutpoint = true;
+                Console.WriteLine("Normal RootNode {0}", gn.Label.Label);
                 return;
             }
             else
@@ -400,10 +406,70 @@ namespace VC
             }
 
         }
+*/
+
+
+        private void m_DetectCutPoints(GraphNode gn)
+        {
+            List<GraphNode> todo = new List<GraphNode>();
+            List<GraphNode> done = new List<GraphNode>();
+            todo.Add(gn);
+
+            GraphNode current = null;
+            todo[0].Index = 0;
+
+            while (todo.Count > 0)
+            {
+                current = todo[0];
+                todo.Remove(current);
+
+                bool ready = true;
+                foreach (GraphNode p in current.Pre)
+                {                    
+                    if (!done.Contains(p) )
+                    {
+                        _loopbacktracking.Clear();
+                        if (!m_isLoop(current, p, todo, done))
+                        {
+                            todo.Add(current);
+                            ready = false;
+                            break;
+                        }
+                        else
+                        {
+                            if (!current.LoopingPred.Contains(p)) current.LoopingPred.Add(p);
+                            current.IsCutpoint = true;
+                        }
+                    } 
+                }
+                if (!ready) continue;
+                done.Add(current);
+                foreach (GraphNode s in current.Suc)
+                {
+                    if (!todo.Contains(s) && !done.Contains(s)) todo.Add(s);
+                }
+            }
+
+        }
+
+        List<GraphNode> _loopbacktracking = new List<GraphNode>();
+        private bool m_isLoop(GraphNode loophead, GraphNode gn, List<GraphNode> l1, List<GraphNode> l2)
+        {
+            if (loophead == gn) return true;
+            if (l1.Contains(gn) || l2.Contains(gn) || _loopbacktracking.Contains(gn)) return false;
+            _loopbacktracking.Add(gn);
+            foreach (GraphNode p in gn.Pre)
+            {
+                if (m_isLoop(loophead, p, l1, l2)) return true;
+            }
+            return false;
+        }
 
         private List<Loop> m_CollectLoops(GraphNode gn, Loop lastLoop)
         {
             List<Loop> ret = new List<Loop>();
+            if (gn.Visited) return ret;
+            gn.Visited = true;
             List<GraphNode> loopingSucs = new List<GraphNode>();
             if (gn.IsCutpoint)
             {                
@@ -416,11 +482,12 @@ namespace VC
                 loopingSucs = l.LoopNodes;
                 lastLoop = l;
                 ret.Add(lastLoop);
-            }            
+            }
             foreach (GraphNode suc in gn.Suc)
             {
                 if (!loopingSucs.Contains(suc)) ret.AddRange(m_CollectLoops(suc, lastLoop));                
             }
+            //Debugger.Break();
             return ret;
         }
     }
@@ -429,6 +496,9 @@ namespace VC
     #region GraphNodeStructure
     internal class GraphNode
     {
+        public int Index = -1; // Used for scc detection
+        public int LowLink = -1;  // Used for scc detection
+
         public GraphNode(Block b)
         {
             Label = b; IsCutpoint = false;

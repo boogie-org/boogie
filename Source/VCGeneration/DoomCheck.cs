@@ -4,11 +4,6 @@
 //
 //-----------------------------------------------------------------------------
 
-/* 
-    Todo:
-       - Inject Pre- and Postcondition
-*/
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -72,7 +67,7 @@ void ObjectInvariant()
               }
               //Console.WriteLine("TPQuery k={0}, l={1}, |Sp|={2}", k, l, finalreachvars.Count);
 
-              VCExpr vc21 = m_Checker.VCExprGen.Integer(BigNum.ZERO);
+              VCExpr vc21 = m_Checker.VCExprGen.Integer(BigNum.ZERO); // Ask: is the necessary or can we use the same instance term in two inequalities?
               VCExpr vc22 = m_Checker.VCExprGen.Integer(BigNum.ZERO);
 
                   foreach (KeyValuePair<Expr, int> kvp in finalreachvars)
@@ -82,11 +77,14 @@ void ObjectInvariant()
                       vc22 = m_Checker.VCExprGen.Add(vc22, m_Checker.TheoremProver.Context.BoogieExprTranslator.Translate(kvp.Key));
                   }                  
 
-              VCExpr post = m_Checker.VCExprGen.Or( 
-                    m_Checker.VCExprGen.Gt(m_Checker.VCExprGen.Integer(BigNum.FromInt(l)), vc21) ,
-                    m_Checker.VCExprGen.Gt(vc22, m_Checker.VCExprGen.Integer(BigNum.FromInt(k))) 
-                    );
+              VCExpr post = m_Checker.VCExprGen.Gt(m_Checker.VCExprGen.Integer(BigNum.FromInt(l)), vc21);
 
+              if (k != -1)
+              {
+                  post = m_Checker.VCExprGen.Or(
+                        post, m_Checker.VCExprGen.Gt(vc22, m_Checker.VCExprGen.Integer(BigNum.FromInt(k)))
+                        );
+              }
               vc = (m_Checker.VCExprGen.Or(vc, (post) ));
 
           }
@@ -178,40 +176,38 @@ void ObjectInvariant()
           Contract.Requires(uncheckable != null);
             m_Check = check;            
 
-            //@Cristiano: Plug your own optimizer here.
             int replaceThisByCmdLineOption = CommandLineOptions.Clo.DoomStrategy ;
-            Console.Write("Running experiments using {0} /", replaceThisByCmdLineOption);
+            if (CommandLineOptions.Clo.DoomStrategy!=-1) Console.Write("Running experiments using {0} /", replaceThisByCmdLineOption);
             switch (replaceThisByCmdLineOption)
             {
                 default:
-                    {                        
-                        Console.WriteLine("Path Cover specialK Strategy");
-                        m_Order = new PathCoverStrategy(passive_impl, unifiedExit, uncheckable, true);
-
+                    {
+                        if (CommandLineOptions.Clo.DoomStrategy != -1) Console.WriteLine("Path Cover specialK Strategy");
+                        m_Order = new PathCoverStrategyK(passive_impl, unifiedExit, uncheckable);
                         break;
                     }
                 case 1:
                     {
-                        Console.WriteLine("Path Cover Strategy");
+                        if (CommandLineOptions.Clo.DoomStrategy != -1) Console.WriteLine("Path Cover L Strategy");
                         m_Order = new PathCoverStrategy(passive_impl, unifiedExit, uncheckable);
                         break;
                     }
                 case 2:
                     {
-                        Console.WriteLine("hasse strategy");
+                        if (CommandLineOptions.Clo.DoomStrategy != -1) Console.WriteLine("hasse strategy");
                         m_Order = new HierachyStrategy(passive_impl, unifiedExit, uncheckable);
 
                         break;
                     }
                 case 3:
                     {
-                        Console.WriteLine("hasse+ce strategy");
+                        if (CommandLineOptions.Clo.DoomStrategy != -1) Console.WriteLine("hasse+ce strategy");
                         m_Order = new HierachyCEStrategy(passive_impl, unifiedExit, uncheckable);
                         break;
                     }
                 case 4:
                     {
-                        Console.WriteLine("no strategy");
+                        if (CommandLineOptions.Clo.DoomStrategy != -1) Console.WriteLine("no strategy");
                         m_Order = new NoStrategy(passive_impl, unifiedExit, uncheckable);
                         break;
                     }
@@ -226,10 +222,24 @@ void ObjectInvariant()
             Contract.Assert( l2a!=null);
             Label2Absy = l2a;
           
-            m_Evc.Initialize(vce);            
+            m_Evc.Initialize(vce);
         }
 
-        public static VCExpr __tmpHack;
+
+        public void RespawnChecker(Implementation passive_impl, Checker check)
+        {
+            Contract.Requires(check != null);
+            m_Check = check;
+            Label2Absy = new Hashtable(); // This is only a dummy
+            m_Evc = new Evc(check);
+            Hashtable l2a = null;
+            VCExpr vce = this.GenerateEVC(passive_impl, out l2a, check);
+            Contract.Assert(vce != null);
+            Contract.Assert(l2a != null);
+            Label2Absy = l2a;
+
+            m_Evc.Initialize(vce);            
+        }
 
         /* - Set b to the next block that needs to be checked.
            - Returns false and set b to null if all blocks are checked.           
@@ -239,7 +249,9 @@ void ObjectInvariant()
         {
             return m_Order.GetNextBlock(out lb);
         }
-        
+
+        public Stopwatch DEBUG_ProverTime = new Stopwatch();
+
         /*  - Checking a label means to ask the prover if |= ( rvar=false -> vc ) holds.            
             - outcome is set to Outcome.Invalid if the Block denoted by reachvar is doomed.            
             - returns false if the theorem prover throws an exception, otherwise true.            
@@ -247,12 +259,17 @@ void ObjectInvariant()
         public bool CheckLabel(List<Variable> lv,Dictionary<Expr, int> finalreachvars, out ProverInterface.Outcome outcome) {
            Contract.Requires(lv != null);
             outcome = ProverInterface.Outcome.Undetermined;
+            DEBUG_ProverTime.Reset();
+            DEBUG_ProverTime.Start();
             if (m_Evc.CheckReachvar(lv,finalreachvars,m_Order.MaxBlocks,m_Order.MinBlocks,m_Order.HACK_NewCheck,  out outcome) ) {
+                DEBUG_ProverTime.Stop();
                 if (!m_Order.SetCurrentResult(lv, outcome, m_ErrHandler)) {
                     outcome = ProverInterface.Outcome.Undetermined;
                 }
                 return true;
             } else {
+                DEBUG_ProverTime.Stop();
+                Console.WriteLine(outcome);
                 m_Order.SetCurrentResult(lv, ProverInterface.Outcome.Undetermined, m_ErrHandler);
                 return false;
             }
