@@ -1,9 +1,9 @@
-# Aste started: 2011-03-27 07:00:16
+# Aste started: 2011-03-28 07:00:15
 # Host id: Boogiebox
-# [2011-03-27 07:02:50] SpecSharp revision: a822d3db0af6
-# [2011-03-27 07:02:50] SscBoogie revision: a822d3db0af6
-# [2011-03-27 07:04:00] Boogie revision: 64448
-[2011-03-27 07:06:34] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+# [2011-03-28 07:02:52] SpecSharp revision: a31f63854fe6
+# [2011-03-28 07:02:52] SscBoogie revision: a31f63854fe6
+# [2011-03-28 07:04:00] Boogie revision: 64484
+[2011-03-28 07:06:31] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -17,7 +17,6 @@
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1597,11): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1753,11): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\DoomCheck.cs(232,30): warning CS0649: Field 'VC.DoomCheck.__tmpHack' is never assigned to, and will always have its default value null
     D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(662,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -31,8 +30,6 @@
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
-    warning CS0649: Field 'VC.DoomCheck.__tmpHack' is never assigned to, and will always have its default value null
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-[2011-03-27 07:46:49] 1 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-['sanity']
-# [2011-03-27 07:47:51] Released nightly of Boogie
+[2011-03-28 07:46:51] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2011-03-28 07:47:49] Released nightly of Boogie
