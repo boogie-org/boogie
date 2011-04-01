@@ -72,8 +72,12 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public static readonly CommandLineOptions/*!*/ Clo = new CommandLineOptions();  // singleton to access all global data
-
+    private static CommandLineOptions clo = new CommandLineOptions(); 
+    public static CommandLineOptions/*!*/ Clo
+    {
+      get { return clo; }
+    }
+    
     public string/*!*/ Environment = "";
     public string/*!*/ FileName = "unknown";
 
@@ -441,8 +445,14 @@ namespace Microsoft.Boogie {
     public HoudiniFlags/*!*/ houdiniFlags = new HoudiniFlags();
 
     [Verify(false)]
-    public CommandLineOptions() {
+    private CommandLineOptions() {
       // this is just to suppress verification. 
+    }
+
+    [Verify(false)]
+    public static void ResetClo()
+    {
+      clo = new CommandLineOptions();
     }
 
 
