@@ -51,6 +51,8 @@
       this.showSourceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.menuStrip1 = new System.Windows.Forms.MenuStrip();
       this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+      this.openModelMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+      this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
       this.reloadModelFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.viewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -61,6 +63,7 @@
       this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
       this.debugToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.modelsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+      this.openModelFileDialog = new System.Windows.Forms.OpenFileDialog();
       this.stateViewMenu.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
       this.splitContainer1.Panel1.SuspendLayout();
@@ -171,9 +174,9 @@
       // 
       // matchesList
       // 
-      this.matchesList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                  | System.Windows.Forms.AnchorStyles.Left)
-                  | System.Windows.Forms.AnchorStyles.Right)));
+      this.matchesList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
       this.matchesList.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.columnHeader4,
             this.columnHeader5});
@@ -229,9 +232,9 @@
       // 
       // textBox1
       // 
-      this.textBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                  | System.Windows.Forms.AnchorStyles.Left)
-                  | System.Windows.Forms.AnchorStyles.Right)));
+      this.textBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
       this.textBox1.Location = new System.Drawing.Point(53, 3);
       this.textBox1.Name = "textBox1";
       this.textBox1.Size = new System.Drawing.Size(477, 20);
@@ -280,12 +283,12 @@
       this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.showSourceToolStripMenuItem});
       this.contextMenuStrip1.Name = "contextMenuStrip1";
-      this.contextMenuStrip1.Size = new System.Drawing.Size(153, 48);
+      this.contextMenuStrip1.Size = new System.Drawing.Size(142, 26);
       // 
       // showSourceToolStripMenuItem
       // 
       this.showSourceToolStripMenuItem.Name = "showSourceToolStripMenuItem";
-      this.showSourceToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+      this.showSourceToolStripMenuItem.Size = new System.Drawing.Size(141, 22);
       this.showSourceToolStripMenuItem.Text = "Show source";
       this.showSourceToolStripMenuItem.Click += new System.EventHandler(this.showSourceToolStripMenuItem_Click);
       // 
@@ -304,23 +307,41 @@
       // fileToolStripMenuItem
       // 
       this.fileToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.openModelMenuItem,
+            this.toolStripSeparator1,
             this.reloadModelFileToolStripMenuItem,
             this.exitToolStripMenuItem});
       this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
+      this.fileToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Alt | System.Windows.Forms.Keys.F4)));
       this.fileToolStripMenuItem.Size = new System.Drawing.Size(37, 20);
       this.fileToolStripMenuItem.Text = "&File";
+      // 
+      // openModelMenuItem
+      // 
+      this.openModelMenuItem.Name = "openModelMenuItem";
+      this.openModelMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
+      this.openModelMenuItem.Size = new System.Drawing.Size(213, 22);
+      this.openModelMenuItem.Text = "&Open model file...";
+      this.openModelMenuItem.Click += new System.EventHandler(this.openModelMenuItem_Click);
+      // 
+      // toolStripSeparator1
+      // 
+      this.toolStripSeparator1.Name = "toolStripSeparator1";
+      this.toolStripSeparator1.Size = new System.Drawing.Size(210, 6);
       // 
       // reloadModelFileToolStripMenuItem
       // 
       this.reloadModelFileToolStripMenuItem.Name = "reloadModelFileToolStripMenuItem";
-      this.reloadModelFileToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
+      this.reloadModelFileToolStripMenuItem.ShortcutKeys = System.Windows.Forms.Keys.F5;
+      this.reloadModelFileToolStripMenuItem.Size = new System.Drawing.Size(213, 22);
       this.reloadModelFileToolStripMenuItem.Text = "&Reload model file";
       this.reloadModelFileToolStripMenuItem.Click += new System.EventHandler(this.reloadModelFileToolStripMenuItem_Click);
       // 
       // exitToolStripMenuItem
       // 
       this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-      this.exitToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
+      this.exitToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Alt | System.Windows.Forms.Keys.F4)));
+      this.exitToolStripMenuItem.Size = new System.Drawing.Size(213, 22);
       this.exitToolStripMenuItem.Text = "&Exit";
       this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
       // 
@@ -342,40 +363,44 @@
       this.normalToolStripMenuItem.Checked = true;
       this.normalToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
       this.normalToolStripMenuItem.Name = "normalToolStripMenuItem";
-      this.normalToolStripMenuItem.Size = new System.Drawing.Size(199, 22);
+      this.normalToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.N)));
+      this.normalToolStripMenuItem.Size = new System.Drawing.Size(242, 22);
       this.normalToolStripMenuItem.Text = "&Normal";
       this.normalToolStripMenuItem.Click += new System.EventHandler(this.normalToolStripMenuItem_Click);
       // 
       // expertToolStripMenuItem
       // 
       this.expertToolStripMenuItem.Name = "expertToolStripMenuItem";
-      this.expertToolStripMenuItem.Size = new System.Drawing.Size(199, 22);
+      this.expertToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.X)));
+      this.expertToolStripMenuItem.Size = new System.Drawing.Size(242, 22);
       this.expertToolStripMenuItem.Text = "E&xpert";
       this.expertToolStripMenuItem.Click += new System.EventHandler(this.normalToolStripMenuItem_Click);
       // 
       // everythingToolStripMenuItem
       // 
       this.everythingToolStripMenuItem.Name = "everythingToolStripMenuItem";
-      this.everythingToolStripMenuItem.Size = new System.Drawing.Size(199, 22);
+      this.everythingToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.E)));
+      this.everythingToolStripMenuItem.Size = new System.Drawing.Size(242, 22);
       this.everythingToolStripMenuItem.Text = "&Everything";
       this.everythingToolStripMenuItem.Click += new System.EventHandler(this.normalToolStripMenuItem_Click);
       // 
       // includeTheKitchenSinkToolStripMenuItem
       // 
       this.includeTheKitchenSinkToolStripMenuItem.Name = "includeTheKitchenSinkToolStripMenuItem";
-      this.includeTheKitchenSinkToolStripMenuItem.Size = new System.Drawing.Size(199, 22);
+      this.includeTheKitchenSinkToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.K)));
+      this.includeTheKitchenSinkToolStripMenuItem.Size = new System.Drawing.Size(242, 22);
       this.includeTheKitchenSinkToolStripMenuItem.Text = "&Include the kitchen sink";
       this.includeTheKitchenSinkToolStripMenuItem.Click += new System.EventHandler(this.normalToolStripMenuItem_Click);
       // 
       // toolStripMenuItem1
       // 
       this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-      this.toolStripMenuItem1.Size = new System.Drawing.Size(196, 6);
+      this.toolStripMenuItem1.Size = new System.Drawing.Size(239, 6);
       // 
       // debugToolStripMenuItem
       // 
       this.debugToolStripMenuItem.Name = "debugToolStripMenuItem";
-      this.debugToolStripMenuItem.Size = new System.Drawing.Size(199, 22);
+      this.debugToolStripMenuItem.Size = new System.Drawing.Size(242, 22);
       this.debugToolStripMenuItem.Text = "Debug";
       this.debugToolStripMenuItem.Click += new System.EventHandler(this.debugToolStripMenuItem_Click);
       // 
@@ -384,6 +409,11 @@
       this.modelsToolStripMenuItem.Name = "modelsToolStripMenuItem";
       this.modelsToolStripMenuItem.Size = new System.Drawing.Size(58, 20);
       this.modelsToolStripMenuItem.Text = "&Models";
+      // 
+      // openModelFileDialog
+      // 
+      this.openModelFileDialog.Filter = "Model files (*.model)|*.model|All files (*.*)|*.*";
+      this.openModelFileDialog.Title = "Open model file";
       // 
       // Main
       // 
@@ -447,6 +477,9 @@
     private System.Windows.Forms.ToolStripMenuItem reloadModelFileToolStripMenuItem;
     private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
     private System.Windows.Forms.ToolStripMenuItem showSourceToolStripMenuItem;
+    private System.Windows.Forms.ToolStripMenuItem openModelMenuItem;
+    private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
+    private System.Windows.Forms.OpenFileDialog openModelFileDialog;
 
 
   }

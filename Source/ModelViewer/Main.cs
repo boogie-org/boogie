@@ -26,7 +26,7 @@ namespace Microsoft.Boogie.ModelViewer
     Model currentModel;
     Model[] allModels;
     int modelId;
-    string modelFileName;
+    string lastModelFileName;
     internal ViewOptions viewOpts = new ViewOptions();
 
     // TODO this should be dynamically loaded
@@ -63,45 +63,69 @@ namespace Microsoft.Boogie.ModelViewer
         System.Diagnostics.Debugger.Launch();
       }
 
-      if (filename == null)
-      {
-        throw new Exception("error: usage:  ModelViewer.exe MyProgram.model[:N]");  // (where does this exception go?)
-      }
-
+      if (filename != null)
       {
         var idx = filename.IndexOf(':');
-        if (idx > 0) {
+        if (idx > 0)
+        {
           modelId = int.Parse(filename.Substring(idx + 1));
           filename = filename.Substring(0, idx);
         }
       }
 
-      modelFileName = filename;
-      ReadModels();
-
-      this.Text = Path.GetFileName(filename) + " - Boogie Verification Debugger";
-
-      langProvider = null;
-      foreach (var p in Providers()) {
-        if (p.IsMyModel(currentModel)) {
-          langProvider = p;
-          break;
-        }
-      }
-
-      LoadModel(modelId);
+      this.ReadModels(filename, this.modelId);
     }
 
-    private void ReadModels()
+    private void SetWindowTitle(string fileName)
     {
-      using (var rd = File.OpenText(modelFileName)) {
-        allModels = Model.ParseModels(rd).ToArray();
+      if (fileName == null)
+      {
+        this.Text = "Boogie Verification Debugger";
       }
-      if (modelId >= allModels.Length)
-        modelId = 0;
+      else
+      {
+        this.Text = Path.GetFileName(fileName) + " - Boogie Verification Debugger";
+      }
+    }
 
-      currentModel = allModels[modelId];
-      AddModelMenu();      
+    public void ReadModels(string modelFileName, int setModelIdTo)
+    {
+      this.lastModelFileName = modelFileName;
+      this.langProvider = Base.Provider.Instance;
+
+      if (!string.IsNullOrWhiteSpace(modelFileName) && File.Exists(modelFileName))
+      {
+        using (var rd = File.OpenText(modelFileName))
+        {
+          allModels = Model.ParseModels(rd).ToArray();
+        }
+
+        modelId = setModelIdTo;
+
+        if (modelId >= allModels.Length)
+          modelId = 0;
+
+        currentModel = allModels[modelId];
+        AddModelMenu();
+
+        foreach (var p in Providers())
+        {
+          if (p.IsMyModel(currentModel))
+          {
+            this.langProvider = p;
+            break;
+          }
+        }
+
+        LoadModel(modelId);
+      }
+      else
+      {
+        currentModel = new Model();
+      }
+
+      this.SetWindowTitle(modelFileName);
+
     }
 
     private void LoadModel(int idx)
@@ -130,7 +154,11 @@ namespace Microsoft.Boogie.ModelViewer
       var idx = 0;
       foreach (var m in allModels) {
         var currIdx = idx++; // this local needs to be in this block
-        modelsToolStripMenuItem.DropDownItems.Add(string.Format("Model #{0}", currIdx), null, (s, a) => LoadModel(currIdx));
+        var menuItem = modelsToolStripMenuItem.DropDownItems.Add(string.Format("Model #&{0}", currIdx), null, (s, a) => LoadModel(currIdx)) as ToolStripMenuItem;
+        if (currIdx <= 9)
+        {
+          menuItem.ShortcutKeys = Keys.Control | (Keys)(currIdx + Keys.D0);
+        }
       }
     }
 
@@ -619,8 +647,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     private void reloadModelFileToolStripMenuItem_Click(object sender, EventArgs e)
     {
-      ReadModels();
-      LoadModel(modelId);
+      ReadModels(this.lastModelFileName, this.modelId);
     }
 
     private SourceView sourceView;
@@ -647,6 +674,14 @@ namespace Microsoft.Boogie.ModelViewer
     private void stateList_DoubleClick(object sender, EventArgs e)
     {
       ShowSource();
+    }
+
+    private void openModelMenuItem_Click(object sender, EventArgs e)
+    {
+      if (this.openModelFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+      {
+        this.ReadModels(this.openModelFileDialog.FileName, 0);
+      }
     }
   }
 
