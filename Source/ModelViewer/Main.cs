@@ -15,7 +15,7 @@ namespace Microsoft.Boogie.ModelViewer
 {
   public partial class Main : Form
   {
-    public string SearchText;
+    string SearchText;
     SkeletonItem unfoldingRoot;
     SkeletonItem[] allItems;
     int currentState, previousState = -1;
@@ -37,9 +37,15 @@ namespace Microsoft.Boogie.ModelViewer
       yield return Base.Provider.Instance;
     }
 
-    public Main(string[] args)
+    public Main(string[] args, bool runAsHostedWindow = false)
     {
       InitializeComponent();
+
+      if (runAsHostedWindow)
+      {
+        this.fileToolStripMenuItem.Enabled = false;
+        this.fileToolStripMenuItem.Visible = false;
+      }
 
       viewItems = new ToolStripMenuItem[] {
         normalToolStripMenuItem,
