@@ -37,7 +37,7 @@ namespace Microsoft.Boogie.ModelViewer
       yield return Base.Provider.Instance;
     }
 
-    public Main()
+    public Main(string[] args)
     {
       InitializeComponent();
 
@@ -51,7 +51,6 @@ namespace Microsoft.Boogie.ModelViewer
       var debugBreak = false;
       string filename = null;
 
-      var args = Environment.GetCommandLineArgs();
       for (int i = 1; i < args.Length; i++) {
         var arg = args[i];
         if (arg == "/break" || arg == "-break")
@@ -63,7 +62,9 @@ namespace Microsoft.Boogie.ModelViewer
       if (debugBreak) {
         System.Diagnostics.Debugger.Launch();
       }
-      if (filename == null) {
+
+      if (filename == null)
+      {
         throw new Exception("error: usage:  ModelViewer.exe MyProgram.model[:N]");  // (where does this exception go?)
       }
 

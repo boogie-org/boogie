@@ -15,7 +15,14 @@ namespace Microsoft.Boogie.ModelViewer
     {
       Application.EnableVisualStyles();
       Application.SetCompatibleTextRenderingDefault(false);
-      Application.Run(new Main());
+      try
+      {
+        Application.Run(new Main(System.Environment.GetCommandLineArgs()));
+      }
+      catch (Exception exc)
+      {
+        MessageBox.Show(exc.Message, "Model Viewer Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+      }
     }
   }
 }
