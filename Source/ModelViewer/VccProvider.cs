@@ -210,8 +210,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
     #region Function name scoring
     static string[][] prefixes = new string[][] {
-      new string[] { "F#", "$eq.$map", },
-      new string[] { "#lambda", },
+      new string[] { "F#", "$eq.$map", "Q#", },
+      new string[] { "F#lambda", },
       new string[] { "$int_to_", "lambda@", "distinct-aux-f", "Select_","Store_", "$select.", "$store.", },
     };
 
@@ -288,9 +288,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           foreach (var p in prefixes[i])
             if (name.StartsWith(p)) {
               res = i;
-              goto stop;
+              //goto stop;
             }
-      stop: ;
+      //stop: ;
       }
 
       if (res == -1)
@@ -604,6 +604,14 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             return tp_ptrset;
           else if (tpl.Args[1] == element)
             return tp_object;
+
+        if (tpl.Args.Length == 2 && tpl.Args[0] == element && tpl.Func.Name.StartsWith("$select.$map_t")) {
+          var t1 = GuessType(tpl.Args[1]);
+          var t2 = GuessType(tpl.Result);
+          var t = f_map_t.TryEval(t1, t2);
+          if (t != null)
+            return t;
+        }
       }
 
       return tp_mathint;
@@ -746,7 +754,13 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             baseName = baseName.Substring(2);
           return string.Format("{0}@{1}", baseName, ShortenToken(tok, 10, false));
         }
-      } else if (f.Name.StartsWith("G#")) {
+      } 
+      return null;
+    }
+
+    string GlobalName(Model.Func f, ref Model.Element tp)
+    {
+      if (f.Name.StartsWith("G#")) {
         var idx = f.Name.LastIndexOf("#dt");
         if (idx < 0) return null;
         var name = f.Name.Substring(2, idx - 2);
@@ -755,6 +769,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
       return null;
     }
+
 
     public IEnumerable<ElementNode> CommonNodes(StateNode state)
     {
@@ -765,6 +780,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       foreach (var f in model.Functions) {
         if (f.Arity != 0) continue;
         var s = SkolemName(f, ref tp);        
+        if (s == null)
+          s = GlobalName(f, ref tp);
         if (s != null) {
           if (tp == null)
             tp = GuessType(f.GetConstant());
@@ -892,21 +909,41 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
       if (elt != null && !(elt is Model.Boolean)) {
         var curState = state.State.TryGet("$s");
-        
+
         foreach (var tupl in elt.References) {
           if (!tupl.Args.Contains(elt)) continue; // not looking for aliases (maybe we should?)
           if (tupl.Args.Any(IsSomeState) && !tupl.Args.Any(s => IsThisState(curState, s)))
-            continue;          
+            continue;
           var argsFmt = new StringBuilder();
           var name = tupl.Func.Name;
+          
           var score = FunctionScore(name);
           if (score >= viewOpts.ViewLevel)
             continue;
+
+          var retTp = GuessType(tupl.Result);
+          var retVal = tupl.Result;
+
           var cat = NodeCategory.MethodologyProperty;
           if (name.StartsWith("F#")) {
             name = name.Substring(2);
             cat = NodeCategory.UserFunction;
           }
+
+          if (name.StartsWith("$eq.$"))
+            name = "EQ";
+
+          {
+            Model.Element sktp = null;
+            var sk = SkolemName(tupl.Func, ref sktp);
+            if (sk != null) {
+              name = sk;
+              if (sktp != null)
+                retVal = WrapForUse(tupl.Result, sktp);
+              cat = NodeCategory.Maplet;
+            }
+          }
+
           argsFmt.Append(name).Append("(");
           var args = new List<Model.Element>();
           foreach (var a in tupl.Args) {
@@ -922,7 +959,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           argsFmt.Length -= 2;
           argsFmt.Append(")");
           var edgeName = new EdgeName(this, argsFmt.ToString(), args.ToArray());
-          result.Add(new MapletNode(state, edgeName, tupl.Result, GuessType(tupl.Result)) { ViewLevel = score, Category = cat });
+          result.Add(new MapletNode(state, edgeName, retVal, retTp) { ViewLevel = score, Category = cat });
         }
       }
 
