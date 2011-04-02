@@ -516,7 +516,8 @@ namespace Microsoft.Boogie.SMTLib
         var op = (VCExprLabelOp)node.Op;
         if (ExprLineariser.ProverOptions.UseLabels) {
           // Z3 extension
-          wr.Write("({0} {1} ", op.pos ? "lblpos" : "lblneg", SMTLibNamer.QuoteId(op.label));
+          //wr.Write("({0} {1} ", op.pos ? "lblpos" : "lblneg", SMTLibNamer.QuoteId(op.label));
+          wr.Write("(! ");
         }
 
         wr.Write("({0} {1} ", op.pos ? "and" : "or", SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(op.label)));
@@ -526,7 +527,7 @@ namespace Microsoft.Boogie.SMTLib
         wr.Write(")");
 
         if (ExprLineariser.ProverOptions.UseLabels)
-          wr.Write(")");
+          wr.Write(" :{0} {1})", op.pos ? "lblpos" : "lblneg", SMTLibNamer.QuoteId(op.label));
 
         return true;
       }
