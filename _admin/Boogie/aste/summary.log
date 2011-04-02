@@ -1,10 +1,11 @@
-# Aste started: 2011-03-28 07:00:15
+# Aste started: 2011-04-02 07:00:17
 # Host id: Boogiebox
-# [2011-03-28 07:02:52] SpecSharp revision: a31f63854fe6
-# [2011-03-28 07:02:52] SscBoogie revision: a31f63854fe6
-# [2011-03-28 07:04:00] Boogie revision: 64484
-[2011-03-28 07:06:31] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+# [2011-04-02 07:02:48] SpecSharp revision: e47e2d10ac81
+# [2011-04-02 07:02:48] SscBoogie revision: e47e2d10ac81
+# [2011-04-02 07:04:02] Boogie revision: 65019
+[2011-04-02 07:06:38] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
+    D:\Temp\aste\Boogie\Source\ModelViewer\Main.cs(18,12): warning CS0169: The field 'Microsoft.Boogie.ModelViewer.Main.SearchText' is never used
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
@@ -18,6 +19,7 @@
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1597,11): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1753,11): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(662,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
+    warning CS0169: The field 'Microsoft.Boogie.ModelViewer.Main.SearchText' is never used
     warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0162: Unreachable code detected
@@ -31,5 +33,5 @@
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-[2011-03-28 07:46:51] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2011-03-28 07:47:49] Released nightly of Boogie
+[2011-04-02 07:48:50] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2011-04-02 07:49:52] Released nightly of Boogie
