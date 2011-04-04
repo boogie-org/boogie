@@ -1,0 +1,11 @@
+syntax: regexp
+^Source/t$
+^Source/_ReSharper\.Boogie$
+^(Source|BCT)/.*\.(user|suo|cache)$
+^Binaries/.*\.(dll|pdb|exe|manifest|config)$
+^.*(bin|obj)/([^/]*/)?(Debug|Release)/.*$
+^Binaries/BytecodeTranslator$
+^BCT/Binaries/.*$
+Test/([^/]*)/Output
+Test/([^/]*)/([^/]*)\.sx
+Test/VSComp2010/out\.cs
