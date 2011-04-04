@@ -82,7 +82,8 @@ namespace BytecodeTranslator {
       
       try
       {
-        var proc = this.sink.FindOrCreateProcedure(invokeMethod);
+        var decl = this.sink.FindOrCreateProcedure(invokeMethod);
+        var proc = decl as Bpl.Procedure;
         var invars = proc.InParams;
         var outvars = proc.OutParams;
 
@@ -310,7 +311,8 @@ namespace BytecodeTranslator {
         return;
       }
 
-      var proc = procAndFormalMap.Procedure;
+      var decl = procAndFormalMap.Decl;
+      var proc = decl as Bpl.Procedure;
       var formalMap = procAndFormalMap.FormalMap;
       this.sink.RetVariable = procAndFormalMap.ReturnVariable;
 
@@ -359,16 +361,22 @@ namespace BytecodeTranslator {
         Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
         #endregion
 
-        Bpl.Implementation impl =
-            new Bpl.Implementation(method.Token(),
-                proc.Name,
-                new Microsoft.Boogie.TypeVariableSeq(),
-                proc.InParams,
-                proc.OutParams,
-                vseq,
-                stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken));
+        if (proc != null) {
+          Bpl.Implementation impl =
+              new Bpl.Implementation(method.Token(),
+                  decl.Name,
+                  new Microsoft.Boogie.TypeVariableSeq(),
+                  decl.InParams,
+                  decl.OutParams,
+                  vseq,
+                  stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken));
 
-        impl.Proc = proc;
+          impl.Proc = proc;
+          this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
+        } else { // method is translated as a function
+          //Bpl.Function func = decl as Bpl.Function;
+          //func.Body = new Bpl.CodeExpr(new Bpl.VariableSeq(), new List<Bpl.Block>{ new Bpl.Block(
+        }
 
         #region Translate method attributes
         // Don't need an expression translator because there is a limited set of things
@@ -401,11 +409,10 @@ namespace BytecodeTranslator {
               args[argIndex++] = o;
             }
           }
-          impl.AddAttribute(attrName, args);
+          decl.AddAttribute(attrName, args);
         }
         #endregion
 
-        this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
 
       } catch (TranslationException te) {
         throw new NotImplementedException(te.ToString());

@@ -61,7 +61,7 @@ namespace TranslationTest {
     #endregion
 
     private string ExecuteTest(string assemblyName, HeapFactory heapFactory) {
-      BCT.TranslateAssembly(new List<string>{assemblyName}, heapFactory, null, false);
+      BCT.TranslateAssembly(new List<string>{assemblyName}, heapFactory, null, false, null);
       var fileName = Path.ChangeExtension(assemblyName, "bpl");
       var s = File.ReadAllText(fileName);
       return s;

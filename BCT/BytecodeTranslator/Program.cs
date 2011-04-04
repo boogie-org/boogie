@@ -34,6 +34,9 @@ namespace BytecodeTranslator {
     [OptionDescription("Translate using whole-program assumptions", ShortForm = "whole")]
     public bool wholeProgram = false;
 
+    [OptionDescription("Stub assembly", ShortForm = "s")]
+    public List<string>/*?*/ stubAssemblies = null;
+
   }
 
   public class BCT {
@@ -83,7 +86,7 @@ namespace BytecodeTranslator {
             return 1;
         }
 
-        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram);
+        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stubAssemblies);
 
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed with uncaught exception: {0}", e.Message);
@@ -93,7 +96,7 @@ namespace BytecodeTranslator {
       return result;
     }
 
-    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, List<string>/*?*/ libPaths, bool wholeProgram) {
+    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, List<string>/*?*/ libPaths, bool wholeProgram, List<string>/*?*/ stubAssemblies) {
       Contract.Requires(assemblyNames != null);
       Contract.Requires(heapFactory != null);
 
@@ -115,6 +118,27 @@ namespace BytecodeTranslator {
         }
         module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader) as IModule;
         modules.Add(Tuple.Create(module, pdbReader));
+      }
+      if (stubAssemblies != null) {
+        foreach (var s in stubAssemblies) {
+          var module = host.LoadUnitFrom(s) as IModule;
+          if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
+            Console.WriteLine(s + " is not a PE file containing a CLR module or assembly, or an error occurred when loading it.");
+            Console.WriteLine("Skipping it, continuing with other input assemblies");
+          }
+          PdbReader/*?*/ pdbReader = null;
+          string pdbFile = Path.ChangeExtension(module.Location, "pdb");
+          if (File.Exists(pdbFile)) {
+            Stream pdbStream = File.OpenRead(pdbFile);
+            pdbReader = new PdbReader(pdbStream, host);
+          }
+          module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader) as IModule;
+          var reparenter = new Reparent(host,
+            TypeHelper.GetDefiningUnit(host.PlatformType.SystemObject.ResolvedType),
+            module);
+          module = reparenter.Visit(module);
+          modules.Add(Tuple.Create(module, pdbReader));
+        }
       }
       if (modules.Count == 0) {
         Console.WriteLine("No input assemblies to translate.");
@@ -160,6 +184,26 @@ namespace BytecodeTranslator {
         return name;
       else
         return name.Substring(0, i);
+    }
+
+    private class Reparent : CodeAndContractMutatingVisitor {
+      private IUnit targetUnit;
+      private IUnit sourceUnit;
+      public Reparent(IMetadataHost host, IUnit targetUnit, IUnit sourceUnit) 
+        : base(host) {
+        this.targetUnit = targetUnit;
+        this.sourceUnit = sourceUnit;
+      }
+
+      public override IRootUnitNamespace Visit(IRootUnitNamespace rootUnitNamespace) {
+        return new RootUnitNamespace() {
+          Attributes = new List<ICustomAttribute>(rootUnitNamespace.Attributes),
+          Locations = new List<ILocation>(rootUnitNamespace.Locations),
+          Members = new List<INamespaceMember>(rootUnitNamespace.Members),
+          Name = rootUnitNamespace.Name,
+          Unit = this.targetUnit,
+        };
+      }
     }
 
   }

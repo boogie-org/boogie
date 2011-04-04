@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2010, Microsoft Corp.
+// Copyright (c) 2010, Microsoft Corp.
 // Bytecode Translator prelude
 
 const null: int;
@@ -689,11 +689,11 @@ implementation RegressionTestInput.Class0.AssignToInParam$System.Int32(this: int
 
 
 
-procedure RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this: int, x$in: int) returns ($result: int);
+procedure {:RegressionTestInput.Async} RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this: int, x$in: int) returns ($result: int);
 
 
 
-implementation {:RegressionTestInput.Async} RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this: int, x$in: int) returns ($result: int)
+implementation RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this: int, x$in: int) returns ($result: int)
 {
   var x: int;
   var local_0: int;

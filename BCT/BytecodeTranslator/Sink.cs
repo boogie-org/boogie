@@ -206,29 +206,30 @@ namespace BytecodeTranslator {
     private Dictionary<IPropertyDefinition, Bpl.Variable> declaredProperties = new Dictionary<IPropertyDefinition, Bpl.Variable>();
 
     public struct ProcedureInfo {
-      private Bpl.Procedure proc;
+      private Bpl.DeclWithFormals decl;
       private Dictionary<IParameterDefinition, MethodParameter> formalMap;
       private Bpl.Variable returnVariable;
 
-      public ProcedureInfo(Bpl.Procedure proc, Dictionary<IParameterDefinition, MethodParameter> formalMap, Bpl.Variable returnVariable) {
-        this.proc = proc;
+      public ProcedureInfo(Bpl.DeclWithFormals decl, Dictionary<IParameterDefinition, MethodParameter> formalMap, Bpl.Variable returnVariable) {
+        this.decl = decl;
         this.formalMap = formalMap;
         this.returnVariable = returnVariable;
       }
 
-      public Bpl.Procedure Procedure { get { return proc; } }
+      public Bpl.DeclWithFormals Decl { get { return decl; } }
       public Dictionary<IParameterDefinition, MethodParameter> FormalMap { get { return formalMap; } }
       public Bpl.Variable ReturnVariable { get { return returnVariable; } }
     }
 
-    public Bpl.Procedure FindOrCreateProcedure(IMethodDefinition method) {
+    public Bpl.DeclWithFormals FindOrCreateProcedure(IMethodDefinition method) {
       ProcedureInfo procAndFormalMap;
 
       var key = method.InternedKey;
       if (!this.declaredMethods.TryGetValue(key, out procAndFormalMap)) {
 
         string MethodName = TranslationHelper.CreateUniqueMethodName(method);
-        
+
+        Bpl.Function f;
         Bpl.Procedure p;
         if (this.initiallyDeclaredProcedures.TryGetValue(MethodName, out p)) return p;
 
@@ -351,30 +352,51 @@ namespace BytecodeTranslator {
 
         #endregion
 
-
-        var proc = new Bpl.Procedure(method.Token(),
+        Bpl.DeclWithFormals decl;
+        if (IsPure(method)) {
+          var func = new Bpl.Function(method.Token(),
             MethodName,
-            new Bpl.TypeVariableSeq(),
             new Bpl.VariableSeq(invars),
-            new Bpl.VariableSeq(outvars),
-            boogiePrecondition,
-            boogieModifies,
-            boogiePostcondition);
+            this.RetVariable);
+          decl = func;
+        } else {
+          var proc = new Bpl.Procedure(method.Token(),
+              MethodName,
+              new Bpl.TypeVariableSeq(),
+              new Bpl.VariableSeq(invars),
+              new Bpl.VariableSeq(outvars),
+              boogiePrecondition,
+              boogieModifies,
+              boogiePostcondition);
+          decl = proc;
+        }
 
 
         string newName = null;
         if (IsStubMethod(method, out newName)) {
           if (newName != null) {
-            proc.Name = newName;
+            decl.Name = newName;
           }
         } else {
-          this.TranslatedProgram.TopLevelDeclarations.Add(proc);
+          this.TranslatedProgram.TopLevelDeclarations.Add(decl);
         }
-        procAndFormalMap = new ProcedureInfo(proc, formalMap, this.RetVariable);
+        procAndFormalMap = new ProcedureInfo(decl, formalMap, this.RetVariable);
         this.declaredMethods.Add(key, procAndFormalMap);
         this.RetVariable = savedRetVariable;
       }
-      return procAndFormalMap.Procedure;
+      return procAndFormalMap.Decl;
+    }
+
+    // TODO: Fix test to return true iff method is marked with the "real" [Pure] attribute
+    // also, should it return true for properties and all of the other things the tools
+    // consider pure?
+    private bool IsPure(IMethodDefinition method) {
+      foreach (var a in method.Attributes) {
+        if (TypeHelper.GetTypeName(a.Type).EndsWith("PureAttribute")) {
+          return true;
+        }
+      }
+      return false;
     }
 
     // TODO: check method's containing type in case the entire type is a stub type.
