@@ -15,7 +15,6 @@ namespace Microsoft.Boogie.ModelViewer
 {
   public partial class Main : Form
   {
-    string SearchText;
     SkeletonItem unfoldingRoot;
     SkeletonItem[] allItems;
     int currentState, previousState = -1;
