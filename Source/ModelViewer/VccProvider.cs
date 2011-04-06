@@ -128,15 +128,23 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       var i = 0;
       while (i < allStates.Length) {
         var lastGoodName = allStates[i].State.Name;
+        
+        var userVars = new HashSet<string>(allStates[i].State.Variables.Where(localVariableNames.ContainsKey));
         i++;
         while (i < allStates.Length) {          
-          if (allStates[i].State.Variables.Contains("$s"))
-            break;          
+          foreach (var v in allStates[i].State.Variables) {
+            if (v == "$s" || userVars.Contains(v)) goto stop;
+            if (localVariableNames.ContainsKey(v))
+              userVars.Add(v);
+          }
+
           var curName = TryParseSourceLocation(allStates[i].State.Name);
           if (!IsBadName(curName))
             lastGoodName = allStates[i].State.Name;
           i++;
         }
+
+      stop: 
 
         var lastState = allStates[i - 1];
         lastState.capturedStateName = lastGoodName;
@@ -1025,6 +1033,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       if (name != "")
         return name;
 
+      var isNull = false;
       foreach (var tpl in elt.References) {
         var fn = tpl.Func;
         if (fn.Name.StartsWith("$select.$map_t") && fn.Arity == 2 && tpl.Args[0] == elt)
@@ -1040,6 +1049,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         if (tpl.Result == elt)
           if (fn == f_int_to_version)
             return "version";
+
+        if (fn == f_is_null && tpl.Result == model.True) 
+          isNull = true;
       }
 
       var fld = vm.f_field.TryEval(elt);
@@ -1047,8 +1059,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         var tp = vm.f_field_type.TryEval(fld);
         if (tp != null) {
           var n = vm.TryTypeName(tp);
-          if (n != null)
+          if (n != null) {
+            if (isNull)
+              return "(" + n + "*)NULL";
             return n;
+          }
         }
       }
 

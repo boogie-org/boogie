@@ -246,6 +246,11 @@ namespace Microsoft.Boogie.ModelViewer
       foreach (var s in inp) fn(s);
     }
 
+    public static void AddRange<T>(this HashSet<T> st, IEnumerable<T> elts)
+    {
+      foreach (var e in elts) st.Add(e);
+    }
+
     public static T OrElse<T>(T a, T b)
       where T : class
     {
