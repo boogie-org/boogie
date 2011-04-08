@@ -28,10 +28,20 @@ class C {
 }
 model C {
   var x: int
+  var q: bool
   frame
     xyz
+    abc
+    klm
+    mno
+    pqr
+    a
+    b
+    c
   invariant
     x <= x
+    x < 100
+    y < 1000
 }
 code C {
 }
@@ -61,7 +71,9 @@ model ExtensibleArray[T] {
   var length: int
   var M: int
   frame
-    (elements * more) * more.Contents[*]
+    elements
+    more
+    more.Contents[*]
   invariant
     elements != null
     elements.Length = 256

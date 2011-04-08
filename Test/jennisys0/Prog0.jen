@@ -25,6 +25,10 @@ model C {
   frame xyz * abc * klm
      mno pqr
   invariant x <= x
+  var q: bool
+  invariant frame frame
+  invariant x < 100 y < 1000
+  frame a * b c
 }
 
 code C {
