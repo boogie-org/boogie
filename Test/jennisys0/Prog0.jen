@@ -1,0 +1,34 @@
+class C {
+  var a: seq[int]
+  var x: int
+  constructor Init()
+  { }
+  method Update(d)
+  {
+    x := x + 1
+    { nested := statement yes := sirrie }
+    x.f := (12 + true)[8000 := 0 <= n]
+  }
+  method Query() returns (r)
+    requires r
+    requires true
+    requires *
+    requires r.r.s
+    requires a[i]
+    requires a[i := 58]
+    requires (((hello)))
+    requires (((hello) + (goodbye)) - soonyousoon)
+    requires 0 <= r
+  { }
+  method ManyParams(x:bool,y) returns (r,s:set[MyClass],t)
+  { }
+}
+
+model C {
+  var x: int
+  frame xyz
+  invariant x <= x
+}
+
+code C {
+}
