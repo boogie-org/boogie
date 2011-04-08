@@ -6,31 +6,25 @@ class C {
   var a: seq[int]
   var x: int
   constructor Init()
-  {
-  }
   method Update(d)
-  {
     x := x + 1
     {
       nested := statement
       yes := sirrie
     }
     x.f := (12 + true)[8000 := 0 <= n]
-  }
   method Query() returns (r)
     requires r
-    requires *
+    requires a[*]
     requires r.r.s
     requires a[i]
     requires a[i := 58]
     requires hello
     requires (hello + goodbye) - soonyousoon
     requires 0 <= r
-  {
-  }
+    {
+    }
   method ManyParams(x: bool, y) returns (r, s: set[MyClass], t)
-  {
-  }
 }
 model C {
   var x: int
@@ -49,25 +43,17 @@ Jennisys, Copyright (c) 2011, Microsoft.
 class ExtensibleArray[T] {
   var Contents: seq[T]
   constructor Init()
-  {
     Contents := []
-  }
   method Get(i) returns (t)
     requires 0 <= i
     requires i < |Contents|
-  {
     t := Contents[i]
-  }
   method Set(i, t)
     requires 0 <= i
     requires i < |Contents|
-  {
     Contents := Contents[i := t]
-  }
   method Append(t)
-  {
     Contents := Contents + [t]
-  }
 }
 model ExtensibleArray[T] {
   var elements: array[T]

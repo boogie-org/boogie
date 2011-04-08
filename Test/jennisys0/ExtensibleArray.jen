@@ -2,26 +2,18 @@ class ExtensibleArray[T] {
   var Contents: seq[T]
 
   constructor Init()
-  {
     Contents := []
-  }
 
   method Get(i) returns (t)
     requires 0 <= i && i < |Contents|
-  {
     t := Contents[i]
-  }
 
   method Set(i, t)
     requires 0 <= i && i < |Contents|
-  {
     Contents := Contents[i := t]
-  }
 
   method Append(t)
-  {
     Contents := Contents + [t]
-  }
 }
 
 model ExtensibleArray[T] {
