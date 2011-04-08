@@ -53,12 +53,14 @@ class ExtensibleArray[T] {
     Contents := []
   }
   method Get(i) returns (t)
-    requires 0 <= (i && (i < |Contents|))
+    requires 0 <= i
+    requires i < |Contents|
   {
     t := Contents[i]
   }
   method Set(i, t)
-    requires 0 <= (i && (i < |Contents|))
+    requires 0 <= i
+    requires i < |Contents|
   {
     Contents := Contents[i := t]
   }
@@ -73,21 +75,17 @@ model ExtensibleArray[T] {
   var length: int
   var M: int
   frame
-    elements
-    *
-    more
-    *
-    more.Contents[*]
+    (elements * more) * more.Contents[*]
   invariant
     elements != null
     elements.Length = 256
-    (more = null) ==> (M = 0)
-    (more != null) ==> ((|more.Contents| != 0) && (M = (256 * |more.Contents|)))
+    more = null ==> M = 0
+    more != null ==> |more.Contents| != 0 && M = 256 * |more.Contents|
     0 <= length
-    length <= (M + 256)
-    (more != null) ==> (M < length)
+    length <= M + 256
+    more != null ==> M < length
     length = |Contents|
-    (forall i :: ((0 <= i) && (i < M)) ==> (Contents[i] = more.Contents[i div 256][i mod 256]))
-    (forall i :: ((M <= i) && (i < length)) ==> (Contents[i] = elements[i - M]))
+    forall i :: 0 <= i && i < M ==> Contents[i] = more.Contents[i div 256][i mod 256]
+    forall i :: M <= i && i < length ==> Contents[i] = elements[i - M]
 }
 ----------
