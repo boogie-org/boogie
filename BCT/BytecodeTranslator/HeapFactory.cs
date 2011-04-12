@@ -116,6 +116,9 @@ namespace BytecodeTranslator {
       return callDynamicType;
     }
 
+    [RepresentationFor("$TypeOf", "function $TypeOf(Type): ref;")]
+    public Bpl.Function TypeOfFunction = null;
+
     protected readonly string DelegateEncodingText =
       @"procedure DelegateAdd(a: int, b: int) returns (c: int)
 {

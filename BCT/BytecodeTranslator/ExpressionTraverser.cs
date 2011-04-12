@@ -916,7 +916,13 @@ namespace BytecodeTranslator
 
     public override void Visit(ITypeOf typeOf) {
       var v = this.sink.FindOrCreateType(typeOf.TypeToGet);
-      TranslatedExpressions.Push(new Bpl.IdentifierExpr(typeOf.Token(), v));
+      var callTypeOf = new Bpl.NAryExpr(
+        typeOf.Token(),
+        new Bpl.FunctionCall(this.sink.Heap.TypeOfFunction),
+        new Bpl.ExprSeq(new Bpl.IdentifierExpr(typeOf.Token(), v))
+        );
+      TranslatedExpressions.Push(callTypeOf);
+      //TranslatedExpressions.Push(new Bpl.IdentifierExpr(typeOf.Token(), v));
       return;
     }
 
