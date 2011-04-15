@@ -2364,7 +2364,7 @@ namespace VC
                             var args = new List<int>();
                             if (expr is VCExprIntLit)
                             {
-                                args.Add(errModel.valueToPartition[(expr as VCExprIntLit).Val.ToInt]);
+                                args.Add(errModel.valueToPartition[(expr as VCExprIntLit).Val]);
                             }
                             else if (expr is VCExprVar)
                             {
