@@ -91,7 +91,7 @@ namespace VC
             public VCExpr falseExpr;
 
             public StratifiedInliningInfo(Implementation impl, Program program, ProverContext ctxt, int uniqueid)
-                : base(impl, program, ctxt, uniqueid)
+                : base(impl, program, ctxt, uniqueid, null)
             {
                 Contract.Requires(impl != null);
                 Contract.Requires(program != null);

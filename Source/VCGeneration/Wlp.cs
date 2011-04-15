@@ -64,7 +64,7 @@ namespace VC {
 
       for (int i = b.Cmds.Length; --i >= 0; )
       {
-        res = Cmd(cce.NonNull( b.Cmds[i]), res, ctxt);
+        res = Cmd(b, cce.NonNull( b.Cmds[i]), res, ctxt);
       }
       
       int id = b.UniqueId;
@@ -83,7 +83,7 @@ namespace VC {
     /// <summary>
     /// Computes the wlp for an assert or assume command "cmd".
     /// </summary>
-    public static VCExpr Cmd(Cmd cmd, VCExpr N, VCContext ctxt)
+    public static VCExpr Cmd(Block b, Cmd cmd, VCExpr N, VCContext ctxt)
     {
       Contract.Requires(cmd!= null);
       Contract.Requires(N != null);
@@ -122,17 +122,12 @@ namespace VC {
           
           if (ctxt.ControlFlowVariable != null)
           {
-            VCExpr controlFlowVariableExpr = 
-              ctxt.Ctxt.BoogieExprTranslator.LookupVariable(ctxt.ControlFlowVariable);
+            VCExpr controlFlowVariableExpr = ctxt.Ctxt.BoogieExprTranslator.LookupVariable(ctxt.ControlFlowVariable);
             Contract.Assert(controlFlowVariableExpr != null);
-            VCExpr controlFlowFunctionAppl1 = 
-              gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(id)));
-            Contract.Assert(controlFlowFunctionAppl1 != null);
-            VCExpr controlFlowFunctionAppl2 = 
-              gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(id)));
-            VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl1, gen.Integer(BigNum.FromInt(0)));
-            VCExpr assertSuccess = gen.Neq(controlFlowFunctionAppl2, gen.Integer(BigNum.FromInt(0)));
-            return gen.And(gen.Implies(assertFailure, C), gen.Implies(assertSuccess, N));
+            VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(b.UniqueId)));
+            Contract.Assert(controlFlowFunctionAppl != null);
+            VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(ac.UniqueId)));
+            return gen.And(gen.Implies(assertFailure, C), gen.Implies(C, N));
           }
           else
             return gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), C), N);

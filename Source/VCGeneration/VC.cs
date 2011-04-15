@@ -88,20 +88,29 @@ namespace VC {
       public Hashtable /*GotoCmd->returnCmd*/ gotoCmdOrigins;
       public Hashtable/*<int, Absy!>*/ label2absy;
 
-      public LazyInliningInfo(Implementation impl, Program program, ProverContext ctxt, int uniqueId) {
+      public Dictionary<Block, VCExprVar> reachVars;
+      public List<VCExprLetBinding> reachVarBindings;
+      public Variable inputErrorVariable;
+      public Variable outputErrorVariable;
+
+      public LazyInliningInfo(Implementation impl, Program program, ProverContext ctxt, int uniqueId, GlobalVariable errorVariable) {
         Contract.Requires(impl != null);
         Contract.Requires(program != null);
+        Procedure proc = cce.NonNull(impl.Proc);
+
         this.impl = impl;
         this.uniqueId = uniqueId;
         this.controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "cfc", Microsoft.Boogie.Type.Int));
+        impl.LocVars.Add(controlFlowVariable);
 
-        Procedure proc = cce.NonNull(impl.Proc);
         List<Variable> interfaceVars = new List<Variable>();
         Expr assertExpr = new LiteralExpr(Token.NoToken, true);
         Contract.Assert(assertExpr != null);
         foreach (Variable v in program.GlobalVariables()) {
           Contract.Assert(v != null);
           interfaceVars.Add(v);
+          if (v.Name == "error")
+            inputErrorVariable = v;
         }
         // InParams must be obtained from impl and not proc
         foreach (Variable v in impl.InParams) {
@@ -117,17 +126,24 @@ namespace VC {
           Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
           assertExpr = Expr.And(assertExpr, eqExpr);
         }
+        if (errorVariable != null) {
+          proc.Modifies.Add(new IdentifierExpr(Token.NoToken, errorVariable));
+        }
         foreach (IdentifierExpr e in proc.Modifies) {
           Contract.Assert(e != null);
           if (e.Decl == null)
             continue;
           Variable v = e.Decl;
-          Constant c = new Constant(Token.NoToken,
-                                    new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
+          Constant c = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
           interfaceVars.Add(c);
+          if (v.Name == "error") {
+            outputErrorVariable = c;
+            continue;
+          }
           Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
           assertExpr = Expr.And(assertExpr, eqExpr);
         }
+
         this.interfaceVars = interfaceVars;
         this.assertExpr = Expr.Not(assertExpr);
         VariableSeq functionInterfaceVars = new VariableSeq();
@@ -149,6 +165,7 @@ namespace VC {
     }
 
     private Dictionary<string, LazyInliningInfo> implName2LazyInliningInfo;
+    private GlobalVariable errorVariable;
 
     public void GenerateVCsForLazyInlining(Program program) {
       Contract.Requires(program != null);
@@ -161,6 +178,9 @@ namespace VC {
       VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)c.Op;
       checker.TheoremProver.Context.DeclareFunction(op.Func, "");
 
+      errorVariable = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "error", Bpl.Type.Bool));  // come up with a better name for the variable
+      program.TopLevelDeclarations.Add(errorVariable);
+
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Contract.Assert(decl != null);
         Implementation impl = decl as Implementation;
@@ -168,9 +188,8 @@ namespace VC {
           continue;
         Procedure proc = cce.NonNull(impl.Proc);
         if (proc.FindExprAttribute("inline") != null) {
-          LazyInliningInfo info = new LazyInliningInfo(impl, program, checker.TheoremProver.Context, QuantifierExpr.GetNextSkolemId());
+          LazyInliningInfo info = new LazyInliningInfo(impl, program, checker.TheoremProver.Context, QuantifierExpr.GetNextSkolemId(), errorVariable);
           implName2LazyInliningInfo[impl.Name] = info;
-          impl.LocVars.Add(info.controlFlowVariable);
           ExprSeq exprs = new ExprSeq();
           foreach (Variable v in program.GlobalVariables()) {
             Contract.Assert(v != null);
@@ -216,12 +235,16 @@ namespace VC {
       Hashtable/*<int, Absy!>*/ label2absy;
       VCExpressionGenerator gen = checker.VCExprGen;
       Contract.Assert(gen != null);
-      VCExpr vcexpr = gen.Not(GenerateVC(impl, info.controlFlowVariable, out label2absy, checker));
-      Contract.Assert(vcexpr != null);
-      info.label2absy = label2absy;
-
       Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
       Contract.Assert(translator != null);
+      
+      VCExpr vcexpr = gen.Not(GenerateVC(impl, info.controlFlowVariable, out label2absy, checker));
+      Contract.Assert(vcexpr != null);
+      ResetPredecessors(impl.Blocks);
+      VCExpr reachvcexpr = GenerateReachVC(impl, info, checker);
+      vcexpr = gen.And(vcexpr, reachvcexpr);
+      info.label2absy = label2absy;
+      
       List<VCExprVar> privateVars = new List<VCExprVar>();
       foreach (Variable v in impl.LocVars) {
         Contract.Assert(v != null);
@@ -271,6 +294,49 @@ namespace VC {
 
       info.vcexpr = vcexpr;
       checker.TheoremProver.PushVCExpression(vcexpr);
+    }
+
+    protected VCExpr GenerateReachVC(Implementation impl, LazyInliningInfo info, Checker ch) {
+      Variable controlFlowVariable = info.controlFlowVariable;
+      VCExpressionGenerator gen = ch.VCExprGen;
+      Boogie2VCExprTranslator translator = ch.TheoremProver.Context.BoogieExprTranslator;
+      ProverContext proverCtxt = ch.TheoremProver.Context;
+      VCExprVar controlFlowVariableExpr = proverCtxt.BoogieExprTranslator.LookupVariable(controlFlowVariable);
+
+      Block exitBlock = null;
+      Dictionary<Block, VCExprVar> reachVars = new Dictionary<Block, VCExprVar>();
+      Dictionary<Block, VCExpr> reachExprs = new Dictionary<Block, VCExpr>();
+      foreach (Block b in impl.Blocks) {
+        reachVars[b] = gen.Variable(b.Label + "_reachable", Bpl.Type.Bool);
+        reachExprs[b] = VCExpressionGenerator.False;
+        if (b.TransferCmd is ReturnCmd)
+          exitBlock = b;
+      }
+      info.reachVars = reachVars;
+
+      foreach (Block b in impl.Blocks) {
+        foreach (Block pb in b.Predecessors) {
+          VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(pb.UniqueId)));
+          VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(b.UniqueId)));
+          reachExprs[b] = gen.Or(reachExprs[b], gen.And(reachVars[pb], controlTransferExpr));
+        }
+      }
+      reachExprs[impl.Blocks[0]] = VCExpressionGenerator.True;
+      List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
+      foreach (Block b in impl.Blocks) {
+        bindings.Add(gen.LetBinding(reachVars[b], reachExprs[b]));
+      }
+      info.reachVarBindings = bindings;
+
+      Debug.Assert(exitBlock != null && exitBlock.Cmds.Length > 0);
+      AssertCmd assertCmd = (AssertCmd) exitBlock.Cmds[exitBlock.Cmds.Length - 1];
+      Debug.Assert(assertCmd != null);
+      VCExpr exitFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(exitBlock.UniqueId)));
+      VCExpr exitTransferExpr = gen.Eq(exitFlowFunctionAppl, gen.Integer(BigNum.FromInt(assertCmd.UniqueId)));
+      VCExpr exitCondition = gen.And(info.reachVars[exitBlock], exitTransferExpr);
+      VCExpr errorExpr = gen.Eq(translator.LookupVariable(info.outputErrorVariable), gen.And(translator.LookupVariable(info.inputErrorVariable), exitCondition));
+      VCExpr reachvcexpr = gen.Let(info.reachVarBindings, errorExpr);
+      return reachvcexpr;
     }
     #endregion
 
@@ -1515,7 +1581,6 @@ namespace VC {
     }
     #endregion
 
-
     protected VCExpr GenerateVC(Implementation/*!*/ impl, Variable controlFlowVariable, out Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch)
     {
       Contract.Requires(impl != null);
@@ -1597,6 +1662,10 @@ namespace VC {
           Console.WriteLine("Checking function {0}", impl.Name);
           watch.Reset();
           watch.Start();
+      }
+
+      if (errorVariable != null) {
+        impl.Proc.Modifies.Add(new IdentifierExpr(Token.NoToken, errorVariable));
       }
       ConvertCFG2DAG(impl, program);
 
@@ -2367,12 +2436,20 @@ namespace VC {
     // Used by lazy/stratified inlining
     protected virtual void addExitAssert(string implName, Block exitBlock)
     {
-        if (implName2LazyInliningInfo != null && implName2LazyInliningInfo.ContainsKey(implName))
-        {
-            Expr assertExpr = implName2LazyInliningInfo[implName].assertExpr;
-            Contract.Assert(assertExpr != null);
-            exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
-        }
+      if (CommandLineOptions.Clo.LazyInlining == 0) return;
+      Debug.Assert(implName2LazyInliningInfo != null);
+
+      if (implName2LazyInliningInfo.ContainsKey(implName)) {
+        Expr assertExpr = implName2LazyInliningInfo[implName].assertExpr;
+        Contract.Assert(assertExpr != null);
+        exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
+      }
+      else {
+        Expr oldExpr = new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, errorVariable));
+        Expr expr = new IdentifierExpr(Token.NoToken, errorVariable);
+        Expr assertExpr = NAryExpr.Imp(oldExpr, expr);
+        exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
+      }
     }
 
     protected virtual void storeIncarnationMaps(string implName, Hashtable exitIncarnationMap)
@@ -2575,7 +2652,7 @@ namespace VC {
         {
           Cmd cmd = cce.NonNull( cmds[i]);
           AssertCmd assertCmd = cmd as AssertCmd;
-          if (assertCmd != null && errModel.LookupControlFlowFunctionAt(cfcValue, assertCmd.UniqueId) == 0)
+          if (assertCmd != null && errModel.LookupControlFlowFunctionAt(cfcValue, b.UniqueId) == assertCmd.UniqueId)
           {
             Counterexample newCounterexample;
             newCounterexample = AssertCmdToCounterexample(assertCmd, transferCmd, trace, errModel, mvInfo, context, cce.NonNull(info.incarnationOriginMap));
