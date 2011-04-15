@@ -68,13 +68,18 @@ namespace VC {
       }
       
       int id = b.UniqueId;
+      if (ctxt.Label2absy != null) {
+        ctxt.Label2absy[id] = b;
+      }
+
       try {
         cce.BeginExpose(ctxt);
-        ctxt.Label2absy[id] = b;
-        if (ctxt.ControlFlowVariable != null)
+        if (ctxt.Label2absy == null) {
           return res;
-        else
+        }
+        else {
           return gen.Implies(gen.LabelPos(cce.NonNull(id.ToString()), VCExpressionGenerator.True), res);
+        }
       } finally {
         cce.EndExpose();
       }
@@ -97,9 +102,13 @@ namespace VC {
         VCExpr C = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
           return gen.Implies(C, N);
-        } else {
+        }
+        else {
           int id = ac.UniqueId;
-          ctxt.Label2absy[id] = ac;
+          if (ctxt.Label2absy != null) {
+            ctxt.Label2absy[id] = ac;
+          }
+
           switch (Subsumption(ac)) {
             case CommandLineOptions.SubsumptionOption.Never:
               break;
@@ -112,25 +121,31 @@ namespace VC {
               }
               break;
             default:
-              Contract.Assert(false);throw new cce.UnreachableException();  // unexpected case
+              Contract.Assert(false); throw new cce.UnreachableException();  // unexpected case
           }
-          
+
           // (MSchaef) Hack: This line might be useless, but at least it is not harmful
           // need to test it
-          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) 
+          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
             return gen.Implies(C, N);
-          
-          if (ctxt.ControlFlowVariable != null)
-          {
+
+          if (ctxt.ControlFlowVariable == null) {
+            Contract.Assert(ctxt.Label2absy != null);
+            return gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), C), N);
+          }
+          else {
             VCExpr controlFlowVariableExpr = ctxt.Ctxt.BoogieExprTranslator.LookupVariable(ctxt.ControlFlowVariable);
             Contract.Assert(controlFlowVariableExpr != null);
             VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(b.UniqueId)));
             Contract.Assert(controlFlowFunctionAppl != null);
             VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(ac.UniqueId)));
-            return gen.And(gen.Implies(assertFailure, C), gen.Implies(C, N));
+            if (ctxt.Label2absy == null) {
+              return gen.AndSimp(gen.Implies(assertFailure, C), gen.Implies(C, N));
+            }
+            else {
+              return gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), gen.Implies(assertFailure, C)), gen.Implies(C, N));
+            }
           }
-          else
-            return gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), C), N);
         }
 
       } else if (cmd is AssumeCmd) {

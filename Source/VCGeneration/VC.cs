@@ -232,18 +232,18 @@ namespace VC {
       ModelViewInfo mvInfo;
       info.gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
       Contract.Assert(info.exitIncarnationMap != null);
-      Hashtable/*<int, Absy!>*/ label2absy;
       VCExpressionGenerator gen = checker.VCExprGen;
       Contract.Assert(gen != null);
       Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
       Contract.Assert(translator != null);
-      
-      VCExpr vcexpr = gen.Not(GenerateVC(impl, info.controlFlowVariable, out label2absy, checker));
+
+      TypecheckingContext tc = new TypecheckingContext(null);
+      impl.Typecheck(tc);
+      VCExpr vcexpr = gen.Not(LetVC(impl.Blocks[0], info.controlFlowVariable, null, checker.TheoremProver.Context));
       Contract.Assert(vcexpr != null);
       ResetPredecessors(impl.Blocks);
       VCExpr reachvcexpr = GenerateReachVC(impl, info, checker);
       vcexpr = gen.And(vcexpr, reachvcexpr);
-      info.label2absy = label2absy;
       
       List<VCExprVar> privateVars = new List<VCExprVar>();
       foreach (Variable v in impl.LocVars) {
@@ -299,9 +299,9 @@ namespace VC {
     protected VCExpr GenerateReachVC(Implementation impl, LazyInliningInfo info, Checker ch) {
       Variable controlFlowVariable = info.controlFlowVariable;
       VCExpressionGenerator gen = ch.VCExprGen;
-      Boogie2VCExprTranslator translator = ch.TheoremProver.Context.BoogieExprTranslator;
       ProverContext proverCtxt = ch.TheoremProver.Context;
-      VCExprVar controlFlowVariableExpr = proverCtxt.BoogieExprTranslator.LookupVariable(controlFlowVariable);
+      Boogie2VCExprTranslator translator = proverCtxt.BoogieExprTranslator;
+      VCExprVar controlFlowVariableExpr = translator.LookupVariable(controlFlowVariable);
 
       Block exitBlock = null;
       Dictionary<Block, VCExprVar> reachVars = new Dictionary<Block, VCExprVar>();
@@ -2743,7 +2743,13 @@ namespace VC {
         GotoCmd gotoCmd = transferCmd as GotoCmd;
         if (gotoCmd == null) break;
         int nextBlockId = errModel.LookupControlFlowFunctionAt(cfcValue, b.UniqueId);
-        b = (Block)cce.NonNull(info.label2absy)[nextBlockId];
+        foreach (Block x in gotoCmd.labelTargets) {
+          if (nextBlockId == x.UniqueId) {
+            b = x;
+            break;
+          }
+        }
+        //b = (Block)cce.NonNull(info.label2absy)[nextBlockId];
         trace.Add(b);
       }
       Contract.Assert(false);throw new cce.UnreachableException();
