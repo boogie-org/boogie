@@ -27,6 +27,8 @@ namespace Microsoft.Boogie.ModelViewer
     int modelId;
     string lastModelFileName;
     internal ViewOptions viewOpts = new ViewOptions();
+    Font smallFont, largeFont;
+    int lineHeight;
 
     // TODO this should be dynamically loaded
     IEnumerable<ILanguageProvider> Providers()
@@ -39,6 +41,8 @@ namespace Microsoft.Boogie.ModelViewer
     public Main(string[] args, bool runAsHostedWindow = false)
     {
       InitializeComponent();
+
+      smallFont = stateList.Font;
 
       if (runAsHostedWindow)
       {
@@ -239,9 +243,6 @@ namespace Microsoft.Boogie.ModelViewer
 
     }
 
-    const int levelMult = 16;
-    const int plusWidth = 16;
-
     static Color Col(int c)
     {
       return Color.FromArgb(c >> 16, (c >> 8) & 0xff, c & 0xff);
@@ -272,6 +273,7 @@ namespace Microsoft.Boogie.ModelViewer
       var skel = item.skel;
       var rect = e.Bounds;
       var listView = (ListView)sender;
+      lineHeight = rect.Height;
       rect.Y += 1;
       rect.Height -= 2;
 
@@ -288,19 +290,19 @@ namespace Microsoft.Boogie.ModelViewer
         e.Graphics.FillRectangle(bg, rect);
       }
 
-      var off = levelMult * item.skel.level;
+      var off = lineHeight * item.skel.level;
       if (item.IsMatchListItem)
         off = 0;
 
       {
         var plusRect = rect;
-        plusRect.Width = plusWidth;
+        plusRect.Width = lineHeight;
         plusRect.X += off;
         var plusBorder = plusRect;
-        plusBorder.Height = 8;
-        plusBorder.Width = 8;
-        plusBorder.X += 4;
-        plusBorder.Y += 3;        
+        plusBorder.Height = lineHeight / 2;
+        plusBorder.Width = lineHeight / 2;
+        plusBorder.X += lineHeight / 4;
+        plusBorder.Y += lineHeight / 4;   
         e.Graphics.DrawRectangle(plusPen, plusBorder);
         if (skel.Expandable) {
           float midX = plusBorder.X + plusBorder.Width / 2;
@@ -311,7 +313,7 @@ namespace Microsoft.Boogie.ModelViewer
         }
       }
 
-      off += plusWidth + 3;
+      off += lineHeight + 3;
       var nameRect = rect;
       var font = listView.Font;
 
@@ -368,8 +370,8 @@ namespace Microsoft.Boogie.ModelViewer
         clickedItem.Focused = true;
 
         var skel = clickedItem.skel;
-        int plusLoc = skel.level * levelMult;
-        if (skel.Expandable && e.X >= plusLoc && e.X <= plusLoc + plusWidth) {
+        int plusLoc = skel.level * lineHeight;
+        if (skel.Expandable && e.X >= plusLoc && e.X <= plusLoc + lineHeight) {
           skel.Expanded = !skel.Expanded;
           SyncCurrentStateView();
         }
@@ -666,6 +668,7 @@ namespace Microsoft.Boogie.ModelViewer
           if (sourceView == null) {
             sourceView = new SourceView();
           }
+          sourceView.largeFont = largeFontToolStripMenuItem.Checked;
           sourceView.SetSourceLocation(r);
         }
       }
@@ -687,6 +690,23 @@ namespace Microsoft.Boogie.ModelViewer
       {
         this.ReadModels(this.openModelFileDialog.FileName, 0);
       }
+    }
+
+    private void largeFontToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+      largeFontToolStripMenuItem.Checked = !largeFontToolStripMenuItem.Checked;
+
+      if (largeFont == null) {
+        largeFont = new Font(smallFont.FontFamily, smallFont.Size * 2, smallFont.Unit);
+      }
+
+      var font = largeFontToolStripMenuItem.Checked ? largeFont : smallFont;
+      stateList.Font = font;
+      currentStateView.Font = font;
+      matchesList.Font = font;
+      //textBox1.Font = font;
+      //linkLabel1.Font = font;
+      //label1.Font = font;
     }
   }
 
