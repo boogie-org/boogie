@@ -34,6 +34,7 @@ model ExtensibleArray[T] {
     more != null ==> M < length
 
     length = |Contents|
-    forall i :: 0 <= i && i < M ==> Contents[i] = more.Contents[i div 256][i mod 256]
+    more != null ==> forall i :: 0 <= i && i < |more.Contents| ==> more.Contents[i] != null && more.Contents[i].Length = 256
+    more != null ==> forall i :: 0 <= i && i < M ==> Contents[i] = more.Contents[i div 256][i mod 256]
     forall i :: M <= i && i < length ==> Contents[i] = elements[i - M]
 }
