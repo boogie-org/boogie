@@ -1,9 +1,9 @@
-# Aste started: 2011-04-05 14:33:00
+# Aste started: 2011-04-16 07:00:19
 # Host id: Boogiebox
-# [2011-04-05 14:35:37] SpecSharp revision: 40cb7c139809
-# [2011-04-05 14:35:37] SscBoogie revision: 40cb7c139809
-# [2011-04-05 14:36:59] Boogie revision: 445ca894f870
-[2011-04-05 14:38:55] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+# [2011-04-16 07:02:49] SpecSharp revision: 9e70f4df4f12
+# [2011-04-16 07:02:49] SscBoogie revision: 9e70f4df4f12
+# [2011-04-16 07:04:04] Boogie revision: 36bd84e75a0f
+[2011-04-16 07:06:47] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -15,8 +15,8 @@
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1597,11): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1753,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1662,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1822,11): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(662,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -31,5 +31,6 @@
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-[2011-04-05 15:20:55] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2011-04-05 15:21:59] Released nightly of Boogie
+[2011-04-16 07:48:44] 1 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+['lazyinline']
+# [2011-04-16 07:49:46] Released nightly of Boogie
