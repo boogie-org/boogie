@@ -101,7 +101,7 @@ namespace BytecodeTranslator {
       Contract.Requires(assemblyNames != null);
       Contract.Requires(heapFactory != null);
 
-      var host = new CodeContractAwareHostEnvironment(libPaths != null ? libPaths : IteratorHelper.GetEmptyEnumerable<string>(), true, true);
+      var host = new CodeContractAwareHostEnvironment(libPaths != null ? libPaths : Enumerable<string>.Empty, true, true);
       Host = host;
 
       var modules = new List<Tuple<IModule,PdbReader/*?*/>>();

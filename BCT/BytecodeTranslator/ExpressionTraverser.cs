@@ -897,6 +897,20 @@ namespace BytecodeTranslator
 
     #region Translate Unary Operators
 
+    public override void Visit(ICheckIfInstance checkIfInstance) {
+      var v = this.sink.FindOrCreateType(checkIfInstance.TypeToCheck);
+      //var callTypeOf = new Bpl.NAryExpr(
+      //  checkIfInstance.Token(),
+      //  new Bpl.FunctionCall(this.sink.Heap.TypeOfFunction),
+      //  new Bpl.ExprSeq(new Bpl.IdentifierExpr(checkIfInstance.Token(), v))
+      //  );
+      base.Visit(checkIfInstance.Operand);
+      var exp = TranslatedExpressions.Pop();
+      var dynTypeOfOperand = this.sink.Heap.DynamicType(exp);
+      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, dynTypeOfOperand, new Bpl.IdentifierExpr(checkIfInstance.Token(), v)));
+      return;
+    }
+
     public override void Visit(IUnaryNegation unaryNegation)
     {
       base.Visit(unaryNegation);
