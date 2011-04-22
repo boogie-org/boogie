@@ -7,7 +7,7 @@ procedure P0()
 
 procedure P1(y: int)
 {
-  goto X;  // error: label out of reach
+  goto X;  
   while (y < 100)
   {
     X:
@@ -21,13 +21,13 @@ procedure P1(y: int)
     B:
   } else {
     C:
-    goto K;  // error: label out of reach
+    goto K;  
   }
 
   while (y < 1000)
   {
     K:
-    goto A;  // error: label out of reach
+    goto A;  
     if (y % 2 == 0) {
       goto L;
       M:
@@ -35,10 +35,10 @@ procedure P1(y: int)
     goto K, L;
     L:
     if (*) {
-      goto M;  // error: label out of reach
+      goto M;  
     }
   }
-  goto B;  // error: label out of reach
+  goto B;  
 }
 
 
