@@ -72,7 +72,8 @@ namespace BytecodeTranslator {
       } else if (typeDefinition.IsEnum) {
         return; // enums just are translated as ints
       } else if (typeDefinition.IsStruct) {
-        Console.WriteLine("Skipping definition of '" + TypeHelper.GetTypeName(typeDefinition) + "' because it is a struct!");
+        sink.FindOrCreateType(typeDefinition);
+        base.Visit(typeDefinition);
       } else {
         Console.WriteLine("Unknown kind of type definition '{0}' was found",
           TypeHelper.GetTypeName(typeDefinition));
