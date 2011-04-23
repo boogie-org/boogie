@@ -37,7 +37,7 @@ namespace Microsoft.Boogie {
     public StructuredCmd ec;
     public TransferCmd tc;
 
-    public BigBlock successorBigBlock;  // null if successor is end of proceduure body (or if field has not yet been initialized)
+    public BigBlock successorBigBlock;  // null if successor is end of procedure body (or if field has not yet been initialized)
 
     public BigBlock(IToken tok, string labelName, [Captured] CmdSeq simpleCmds, StructuredCmd ec, TransferCmd tc) {
       Contract.Requires(simpleCmds != null);
@@ -244,12 +244,34 @@ namespace Microsoft.Boogie {
       Contract.Invariant(errorHandler != null);
     }
 
+    private void ComputeAllLabels(StmtList stmts) {
+      if (stmts == null) return;
+      foreach (BigBlock bb in stmts.BigBlocks) {
+        allLabels.Add(bb.LabelName);
+        ComputeAllLabels(bb.ec);
+      }
+    }
+
+    private void ComputeAllLabels(StructuredCmd cmd) {
+      if (cmd == null) return;
+      if (cmd is IfCmd) {
+        IfCmd ifCmd = (IfCmd)cmd;
+        ComputeAllLabels(ifCmd.thn);
+        ComputeAllLabels(ifCmd.elseIf);
+        ComputeAllLabels(ifCmd.elseBlock);
+      }
+      else if (cmd is WhileCmd) {
+        WhileCmd whileCmd = (WhileCmd)cmd;
+        ComputeAllLabels(whileCmd.Body);
+      }
+    }
 
     public BigBlocksResolutionContext(StmtList stmtList, Errors errorHandler) {
       Contract.Requires(errorHandler != null);
       Contract.Requires(stmtList != null);
       this.stmtList = stmtList;
       this.errorHandler = errorHandler;
+      ComputeAllLabels(stmtList);
     }
 
     public List<Block/*!*/>/*!*/ Blocks {
@@ -259,7 +281,7 @@ namespace Microsoft.Boogie {
           blocks = new List<Block/*!*/>();
 
           int startErrorCount = this.errorHandler.count;
-          // Check that there are no goto's into the middle of a block, and no break statement to a non-enclosing loop.
+          // Check that all goto statements go to a label in allLabels, and no break statement to a non-enclosing loop.
           // Also, determine a good value for "prefix".
           CheckLegalLabels(stmtList, null, null);
 
@@ -309,6 +331,7 @@ namespace Microsoft.Boogie {
           GotoCmd g = (GotoCmd)b.tc;
           foreach (string/*!*/ lbl in cce.NonNull(g.labelNames)) {
             Contract.Assert(lbl != null);
+            /*
             bool found = false;
             for (StmtList sl = stmtList; sl != null; sl = sl.ParentContext) {
               if (sl.Labels.Contains(lbl)) {
@@ -318,6 +341,10 @@ namespace Microsoft.Boogie {
             }
             if (!found) {
               this.errorHandler.SemErr(g.tok, "Error: goto label '" + lbl + "' is undefined or out of reach");
+            }
+            */
+            if (!allLabels.Contains(lbl)) {
+              this.errorHandler.SemErr(g.tok, "Error: goto label '" + lbl + "' is undefined");
             }
           }
         }

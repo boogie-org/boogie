@@ -109,20 +109,15 @@ WhereResolution.bpl(32,30): Error: old expressions allowed only in two-state con
 BadLabels0.bpl(4,2): Error: more than one declaration of block name: X
 BadLabels0.bpl(11,4): Error: more than one declaration of block name: Y
 2 name resolution errors detected in BadLabels0.bpl
-BadLabels1.bpl(4,3): error: Error: goto label 'X' is undefined or out of reach
-BadLabels1.bpl(5,3): error: Error: goto label 'Y' is undefined or out of reach
-BadLabels1.bpl(10,3): error: Error: goto label 'X' is undefined or out of reach
-BadLabels1.bpl(24,5): error: Error: goto label 'K' is undefined or out of reach
-BadLabels1.bpl(30,5): error: Error: goto label 'A' is undefined or out of reach
-BadLabels1.bpl(38,7): error: Error: goto label 'M' is undefined or out of reach
-BadLabels1.bpl(41,3): error: Error: goto label 'B' is undefined or out of reach
+BadLabels1.bpl(4,3): error: Error: goto label 'X' is undefined
+BadLabels1.bpl(5,3): error: Error: goto label 'Y' is undefined
 BadLabels1.bpl(47,3): error: Error: break statement is not inside a loop
 BadLabels1.bpl(49,5): error: Error: break statement is not inside a loop
 BadLabels1.bpl(60,5): error: Error: break label 'B' must designate an enclosing statement
 BadLabels1.bpl(63,5): error: Error: break label 'A' must designate an enclosing statement
 BadLabels1.bpl(64,5): error: Error: break label 'C' must designate an enclosing statement
 BadLabels1.bpl(65,8): error: Error: break label 'F' must designate an enclosing statement
-13 parse errors detected in BadLabels1.bpl
+8 parse errors detected in BadLabels1.bpl
 LineParse.bpl(1,0): error: Malformed (#line num [filename]) pragma: #line
 LineParse.bpl(2,0): error: Malformed (#line num [filename]) pragma: #line
 LineParse.bpl(1,0): error: Unrecognized pragma: #dontknow what this is    No, I don't    well, it's an error is what it is
