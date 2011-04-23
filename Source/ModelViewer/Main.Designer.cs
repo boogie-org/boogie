@@ -62,9 +62,9 @@
       this.includeTheKitchenSinkToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
       this.debugToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+      this.largeFontToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.modelsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.openModelFileDialog = new System.Windows.Forms.OpenFileDialog();
-      this.largeFontToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
       this.stateViewMenu.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
       this.splitContainer1.Panel1.SuspendLayout();
@@ -95,7 +95,7 @@
       this.currentStateView.Name = "currentStateView";
       this.currentStateView.OwnerDraw = true;
       this.currentStateView.ShowItemToolTips = true;
-      this.currentStateView.Size = new System.Drawing.Size(596, 539);
+      this.currentStateView.Size = new System.Drawing.Size(596, 344);
       this.currentStateView.TabIndex = 0;
       this.currentStateView.UseCompatibleStateImageBehavior = false;
       this.currentStateView.View = System.Windows.Forms.View.Details;
@@ -148,7 +148,7 @@
       // splitContainer1.Panel2
       // 
       this.splitContainer1.Panel2.Controls.Add(this.stateList);
-      this.splitContainer1.Size = new System.Drawing.Size(915, 702);
+      this.splitContainer1.Size = new System.Drawing.Size(915, 449);
       this.splitContainer1.SplitterDistance = 596;
       this.splitContainer1.TabIndex = 1;
       // 
@@ -169,15 +169,15 @@
       this.splitContainer2.Panel2.Controls.Add(this.linkLabel1);
       this.splitContainer2.Panel2.Controls.Add(this.label1);
       this.splitContainer2.Panel2.Controls.Add(this.textBox1);
-      this.splitContainer2.Size = new System.Drawing.Size(596, 702);
-      this.splitContainer2.SplitterDistance = 539;
+      this.splitContainer2.Size = new System.Drawing.Size(596, 449);
+      this.splitContainer2.SplitterDistance = 344;
       this.splitContainer2.TabIndex = 1;
       // 
       // matchesList
       // 
-      this.matchesList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+      this.matchesList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+                  | System.Windows.Forms.AnchorStyles.Left)
+                  | System.Windows.Forms.AnchorStyles.Right)));
       this.matchesList.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.columnHeader4,
             this.columnHeader5});
@@ -189,7 +189,7 @@
       this.matchesList.Name = "matchesList";
       this.matchesList.OwnerDraw = true;
       this.matchesList.ShowItemToolTips = true;
-      this.matchesList.Size = new System.Drawing.Size(596, 130);
+      this.matchesList.Size = new System.Drawing.Size(596, 72);
       this.matchesList.TabIndex = 4;
       this.matchesList.UseCompatibleStateImageBehavior = false;
       this.matchesList.View = System.Windows.Forms.View.Details;
@@ -233,9 +233,9 @@
       // 
       // textBox1
       // 
-      this.textBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+      this.textBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+                  | System.Windows.Forms.AnchorStyles.Left)
+                  | System.Windows.Forms.AnchorStyles.Right)));
       this.textBox1.Location = new System.Drawing.Point(53, 3);
       this.textBox1.Name = "textBox1";
       this.textBox1.Size = new System.Drawing.Size(477, 20);
@@ -257,7 +257,7 @@
       this.stateList.MultiSelect = false;
       this.stateList.Name = "stateList";
       this.stateList.ShowItemToolTips = true;
-      this.stateList.Size = new System.Drawing.Size(315, 702);
+      this.stateList.Size = new System.Drawing.Size(315, 449);
       this.stateList.TabIndex = 0;
       this.stateList.UseCompatibleStateImageBehavior = false;
       this.stateList.View = System.Windows.Forms.View.Details;
@@ -406,6 +406,13 @@
       this.debugToolStripMenuItem.Text = "Debug";
       this.debugToolStripMenuItem.Click += new System.EventHandler(this.debugToolStripMenuItem_Click);
       // 
+      // largeFontToolStripMenuItem
+      // 
+      this.largeFontToolStripMenuItem.Name = "largeFontToolStripMenuItem";
+      this.largeFontToolStripMenuItem.Size = new System.Drawing.Size(240, 22);
+      this.largeFontToolStripMenuItem.Text = "Large font";
+      this.largeFontToolStripMenuItem.Click += new System.EventHandler(this.largeFontToolStripMenuItem_Click);
+      // 
       // modelsToolStripMenuItem
       // 
       this.modelsToolStripMenuItem.Name = "modelsToolStripMenuItem";
@@ -417,23 +424,17 @@
       this.openModelFileDialog.Filter = "Model files (*.model)|*.model|All files (*.*)|*.*";
       this.openModelFileDialog.Title = "Open model file";
       // 
-      // largeFontToolStripMenuItem
-      // 
-      this.largeFontToolStripMenuItem.Name = "largeFontToolStripMenuItem";
-      this.largeFontToolStripMenuItem.Size = new System.Drawing.Size(240, 22);
-      this.largeFontToolStripMenuItem.Text = "Large font";
-      this.largeFontToolStripMenuItem.Click += new System.EventHandler(this.largeFontToolStripMenuItem_Click);
-      // 
       // Main
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-      this.ClientSize = new System.Drawing.Size(915, 726);
+      this.ClientSize = new System.Drawing.Size(915, 473);
       this.Controls.Add(this.splitContainer1);
       this.Controls.Add(this.menuStrip1);
       this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
       this.Name = "Main";
       this.Text = "Boogie Verification Debugger";
+      this.Load += new System.EventHandler(this.Main_Load);
       this.stateViewMenu.ResumeLayout(false);
       this.splitContainer1.Panel1.ResumeLayout(false);
       this.splitContainer1.Panel2.ResumeLayout(false);
