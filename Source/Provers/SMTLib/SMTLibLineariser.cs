@@ -262,7 +262,7 @@ namespace Microsoft.Boogie.SMTLib
         if (hasAttrs) {
           wr.Write("\n");
           if (infos.qid != null)
-            wr.Write(" :named {0}\n", SMTLibNamer.QuoteId(infos.qid));
+            wr.Write(" :qid {0}\n", SMTLibNamer.QuoteId(infos.qid));
           if (weight != 1)
             wr.Write(" :weight {0}\n", weight);
           if (infos.uniqueId != -1)
@@ -326,10 +326,10 @@ namespace Microsoft.Boogie.SMTLib
         foreach (VCTrigger vcTrig in triggers) {
           Contract.Assert(vcTrig != null);
           if (!vcTrig.Pos) {
-            wr.Write(" :no-pattern (");
+            wr.Write(" :no-pattern ");
             Contract.Assert(vcTrig.Exprs.Count == 1);
             Linearise(vcTrig.Exprs[0], options);
-            wr.Write(")\n");
+            wr.Write("\n");
           }
         }
       }

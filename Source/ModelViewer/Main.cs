@@ -708,6 +708,10 @@ namespace Microsoft.Boogie.ModelViewer
       //linkLabel1.Font = font;
       //label1.Font = font;
     }
+
+    private void Main_Load(object sender, EventArgs e) {
+
+    }
   }
 
   internal class DisplayItem : ListViewItem
