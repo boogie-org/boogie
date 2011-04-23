@@ -357,9 +357,9 @@ namespace Microsoft.Boogie.SMTLib
 
     private string[] GetLabelsInfo(ErrorHandler handler)
     {
-      SendThisVC("(get-info :labels)");
+      SendThisVC("(labels)");
       if (options.ExpectingModel())
-        SendThisVC("(get-info :model)");
+        SendThisVC("(model)");
       Process.Ping();
 
       List<string> labelNums = null;
@@ -370,12 +370,12 @@ namespace Microsoft.Boogie.SMTLib
         var resp = Process.GetProverResponse();
         if (resp == null || Process.IsPong(resp))
           break;
-        if (resp.Name == ":labels" && resp.ArgCount >= 1) {
+        if (resp.Name == "labels" && resp.ArgCount >= 1) {
           var labels = resp[0].Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
           res = labels;
           if (labelNums != null) HandleProverError("Got multiple :labels responses");
           labelNums = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
-        } else if (resp.Name == ":model" && resp.ArgCount >= 1) {
+        } else if (resp.Name == "model" && resp.ArgCount >= 1) {
           var modelStr = resp[0].Name;
           List<Model> models = null;
           try {
