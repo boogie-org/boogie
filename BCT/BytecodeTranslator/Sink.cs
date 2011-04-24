@@ -97,6 +97,16 @@ namespace BytecodeTranslator {
     
     public readonly Bpl.Program TranslatedProgram;
 
+    public Bpl.Type CciTypeToBoogie(ITypeReference type) {
+      if (TypeHelper.TypesAreEquivalent(type, type.PlatformType.SystemBoolean))
+        return Bpl.Type.Bool;
+      else if (TypeHelper.IsPrimitiveInteger(type))
+        return Bpl.Type.Int;
+      else if (type.ResolvedType.IsStruct)
+        return new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(this.heap.FieldType), this.heap.BoxType);
+      return Bpl.Type.Int; // BUG! This is where we need to return "ref" for a reference type
+    }
+
     /// <summary>
     /// Creates a fresh local var of the given Type and adds it to the
     /// Bpl Implementation
@@ -105,7 +115,15 @@ namespace BytecodeTranslator {
     /// <returns> A fresh Variable with automatic generated name and location </returns>
     public Bpl.Variable CreateFreshLocal(ITypeReference typeReference) {
       Bpl.IToken loc = Bpl.Token.NoToken; // Helper Variables do not have a location
-      Bpl.Type t = TranslationHelper.CciTypeToBoogie(typeReference);
+      Bpl.Type t = CciTypeToBoogie(typeReference);
+      Bpl.LocalVariable v = new Bpl.LocalVariable(loc, new Bpl.TypedIdent(loc, TranslationHelper.GenerateTempVarName(), t));
+      ILocalDefinition dummy = new LocalDefinition(); // Creates a dummy entry for the Dict, since only locals in the dict are translated to boogie
+      localVarMap.Add(dummy, v);
+      return v;
+    }
+
+    public Bpl.Variable CreateFreshLocal(Bpl.Type t) {
+      Bpl.IToken loc = Bpl.Token.NoToken; // Helper Variables do not have a location
       Bpl.LocalVariable v = new Bpl.LocalVariable(loc, new Bpl.TypedIdent(loc, TranslationHelper.GenerateTempVarName(), t));
       ILocalDefinition dummy = new LocalDefinition(); // Creates a dummy entry for the Dict, since only locals in the dict are translated to boogie
       localVarMap.Add(dummy, v);
@@ -125,7 +143,7 @@ namespace BytecodeTranslator {
     public Bpl.Variable FindOrCreateLocalVariable(ILocalDefinition local) {
       Bpl.LocalVariable v;
       Bpl.IToken tok = local.Token();
-      Bpl.Type t = TranslationHelper.CciTypeToBoogie(local.Type.ResolvedType);
+      Bpl.Type t = CciTypeToBoogie(local.Type.ResolvedType);
       if (!localVarMap.TryGetValue(local, out v)) {
         v = new Bpl.LocalVariable(tok, new Bpl.TypedIdent(tok, local.Name.Value, t));
         localVarMap.Add(local, v);
@@ -229,7 +247,6 @@ namespace BytecodeTranslator {
 
         string MethodName = TranslationHelper.CreateUniqueMethodName(method);
 
-        Bpl.Function f;
         Bpl.Procedure p;
         if (this.initiallyDeclaredProcedures.TryGetValue(MethodName, out p)) return p;
 
@@ -241,7 +258,7 @@ namespace BytecodeTranslator {
         var formalMap = new Dictionary<IParameterDefinition, MethodParameter>();
         foreach (IParameterDefinition formal in method.Parameters) {
 
-          mp = new MethodParameter(formal);
+          mp = new MethodParameter(formal, this.CciTypeToBoogie(formal.Type));
           if (mp.inParameterCopy != null) in_count++;
           if (mp.outParameterCopy != null && (formal.IsByReference || formal.IsOut))
             out_count++;
@@ -253,7 +270,7 @@ namespace BytecodeTranslator {
         Bpl.Variable savedRetVariable = this.RetVariable;
 
         if (method.Type.TypeCode != PrimitiveTypeCode.Void) {
-          Bpl.Type rettype = TranslationHelper.CciTypeToBoogie(method.Type);
+          Bpl.Type rettype = CciTypeToBoogie(method.Type);
           out_count++;
           this.RetVariable = new Bpl.Formal(method.Token(),
               new Bpl.TypedIdent(method.Type.Token(),
@@ -265,13 +282,22 @@ namespace BytecodeTranslator {
         #endregion
 
         Bpl.Formal/*?*/ self = null;
+        Bpl.Formal selfOut = null;
         #region Create 'this' parameter
         if (!method.IsStatic) {
-          in_count++;
-          Bpl.Type selftype = Bpl.Type.Int;
-          self = new Bpl.Formal(method.Token(),
-              new Bpl.TypedIdent(method.Type.Token(),
-                  "this", selftype), true);
+          Bpl.Type selfType;
+          if (method.ContainingType.ResolvedType.IsStruct) {
+            selfType = new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
+            in_count++;
+            self = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), "thisIn", selfType), true);
+            out_count++;
+            selfOut = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), "this", selfType), false);
+          }
+          else {
+            in_count++;
+            selfType = Bpl.Type.Int;
+            self = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), "this", selfType), true);
+          }
         }
         #endregion
 
@@ -281,9 +307,11 @@ namespace BytecodeTranslator {
         int i = 0;
         int j = 0;
 
-        #region Add 'this' parameter as first in parameter
-        if (!method.IsStatic)
+        #region Add 'this' parameter as first in parameter and 'thisOut' parameter as first out parameter
+        if (self != null)
           invars[i++] = self;
+        if (selfOut != null)
+          outvars[j++] = selfOut;
         #endregion
 
         foreach (MethodParameter mparam in formalMap.Values) {

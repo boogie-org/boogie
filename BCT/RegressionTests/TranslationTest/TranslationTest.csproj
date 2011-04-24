@@ -102,13 +102,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="TwoDIntHeapInput.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <EmbeddedResource Include="SplitFieldsHeapInput.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="TwoDBoxHeapInput.txt" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="GeneralHeapInput.txt" />

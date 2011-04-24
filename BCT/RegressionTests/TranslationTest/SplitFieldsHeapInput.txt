@@ -188,6 +188,10 @@ implementation DelegateRemoveHelper(oldi: int, m: int, o: int) returns (i: int)
 
 
 
+type Field;
+
+type box;
+
 type Type;
 
 function $DynamicType(ref) : Type;

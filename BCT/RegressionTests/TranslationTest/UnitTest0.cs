@@ -68,21 +68,6 @@ namespace TranslationTest {
     }
 
     [TestMethod]
-    public void TwoDIntHeap() {
-      string dir = TestContext.DeploymentDirectory;
-      var fullPath = Path.Combine(dir, "RegressionTestInput.dll");
-      Stream resource = typeof(UnitTest0).Assembly.GetManifestResourceStream("TranslationTest.TwoDIntHeapInput.txt");
-      StreamReader reader = new StreamReader(resource);
-      string expected = reader.ReadToEnd();
-      var result = ExecuteTest(fullPath, new TwoDIntHeap());
-      if (result != expected) {
-        string resultFile = Path.GetFullPath("TwoDIntHeapOutput.txt");
-        File.WriteAllText(resultFile, result);
-        Assert.Fail("Output didn't match TwoDIntHeapInput.txt: " + resultFile);
-      }
-    }
-
-    [TestMethod]
     public void SplitFieldsHeap() {
       string dir = TestContext.DeploymentDirectory;
       var fullPath = Path.Combine(dir, "RegressionTestInput.dll");
@@ -94,21 +79,6 @@ namespace TranslationTest {
         string resultFile = Path.GetFullPath("SplitFieldsHeapOutput.txt");
         File.WriteAllText(resultFile, result);
         Assert.Fail("Output didn't match SplitFieldsHeapInput.txt: " + resultFile);
-      }
-    }
-
-    [TestMethod]
-    public void TwoDBoxHeap() {
-      string dir = TestContext.DeploymentDirectory;
-      var fullPath = Path.Combine(dir, "RegressionTestInput.dll");
-      Stream resource = typeof(UnitTest0).Assembly.GetManifestResourceStream("TranslationTest.TwoDBoxHeapInput.txt");
-      StreamReader reader = new StreamReader(resource);
-      string expected = reader.ReadToEnd();
-      var result = ExecuteTest(fullPath, new TwoDBoxHeap());
-      if (result != expected) {
-        string resultFile = Path.GetFullPath("TwoDBoxHeapOutput.txt");
-        File.WriteAllText(resultFile, result);
-        Assert.Fail("Output didn't match TwoDBoxHeapInput.txt: " + resultFile);
       }
     }
 

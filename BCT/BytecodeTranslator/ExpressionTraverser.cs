@@ -293,10 +293,11 @@ namespace BytecodeTranslator
         var instance = boundExpression.Instance;
         if (instance == null) {
           TranslatedExpressions.Push(f);
-        } else {
+        }
+        else {
           this.Visit(instance);
           Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
-          TranslatedExpressions.Push(this.sink.Heap.ReadHeap(instanceExpr, f));
+          TranslatedExpressions.Push(this.sink.Heap.ReadHeap(instanceExpr, f, field.ContainingType.ResolvedType.IsStruct));
         }
         return;
       }
@@ -360,7 +361,7 @@ namespace BytecodeTranslator
     {
       if (constant.Value == null)
       {
-        var bplType = TranslationHelper.CciTypeToBoogie(constant.Type);
+        var bplType = sink.CciTypeToBoogie(constant.Type);
         if (bplType == Bpl.Type.Int) {
           var lit = Bpl.Expr.Literal(0);
           lit.Type = Bpl.Type.Int;
@@ -390,7 +391,7 @@ namespace BytecodeTranslator
     }
 
     public override void Visit(IDefaultValue defaultValue) {
-      var bplType = TranslationHelper.CciTypeToBoogie(defaultValue.Type);
+      var bplType = sink.CciTypeToBoogie(defaultValue.Type);
       if (bplType == Bpl.Type.Int) {
         var lit = Bpl.Expr.Literal(0);
         lit.Type = Bpl.Type.Int;
@@ -464,8 +465,12 @@ namespace BytecodeTranslator
         // Todo: if there is no stmttraverser we are visiting a contract and should use a boogie function instead of procedure!
 
         #region Translate Out vars
+        Bpl.IdentifierExpr outMap = null;
         var outvars = new List<Bpl.IdentifierExpr>();
-
+        if (!methodCall.IsStaticCall && methodCall.MethodToCall.ContainingType.ResolvedType.IsStruct) {
+          outMap = new Bpl.IdentifierExpr(methodCall.Token(), sink.CreateFreshLocal(new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(sink.Heap.FieldType), sink.Heap.BoxType)));
+          outvars.Add(outMap);
+        }
         foreach (KeyValuePair<IParameterDefinition, Bpl.Expr> kvp in p2eMap)
         {
           if (kvp.Key.IsOut || kvp.Key.IsByReference)
@@ -528,8 +533,8 @@ namespace BytecodeTranslator
             inexpr.Insert(0, Bpl.Expr.Ident(local));
           }
           else 
-          { 
-            this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), this.sink.Heap.ReadHeap(thisExpr, Bpl.Expr.Ident(eventVar))));
+          {
+            this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), this.sink.Heap.ReadHeap(thisExpr, Bpl.Expr.Ident(eventVar), resolvedMethod.ContainingType.ResolvedType.IsStruct)));
             inexpr[0] = Bpl.Expr.Ident(local);
           }
 
@@ -544,7 +549,7 @@ namespace BytecodeTranslator
           }
           else
           {
-            this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(methodCall.Token(), thisExpr, Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local)));
+            this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(methodCall.Token(), thisExpr, Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local), resolvedMethod.ContainingType.ResolvedType.IsStruct));
           }
         }
         else
@@ -554,6 +559,16 @@ namespace BytecodeTranslator
           else
             call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars);
           this.StmtTraverser.StmtBuilder.Add(call);
+        }
+        if (outMap != null) {
+          Debug.Assert(thisExpr != null);
+          Bpl.AssignLhs lhs = new Bpl.SimpleAssignLhs(Bpl.Token.NoToken, (Bpl.IdentifierExpr) thisExpr);
+          List<Bpl.AssignLhs> lhss = new List<Bpl.AssignLhs>();
+          lhss.Add(lhs);
+          List<Bpl.Expr> rhss = new List<Bpl.Expr>();
+          rhss.Add(outMap);
+          Bpl.AssignCmd acmd = new Bpl.AssignCmd(methodCall.Token(), lhss, rhss);
+          this.StmtTraverser.StmtBuilder.Add(acmd);
         }
       }
 
@@ -596,7 +611,15 @@ namespace BytecodeTranslator
         if (target.Instance != null)
           o = TranslatedExpressions.Pop();
         Bpl.IdentifierExpr f = this.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
-        var c = this.sink.Heap.WriteHeap(assignment.Token(), o, f, sourceexp);
+        Bpl.Cmd c;
+        if (target.Instance == null) {
+          c = Bpl.Cmd.SimpleAssign(assignment.Token(), f, sourceexp);
+        }
+        else {
+          c = this.sink.Heap.WriteHeap(assignment.Token(), o, f, sourceexp, fieldReference.ContainingType.ResolvedType.IsStruct);
+        }
+        // In the struct case, I am making the assumption that we only see a single field dereference on the left side of the assignment
+        //var c = (fieldReference.ContainingType.ResolvedType.IsStruct) ? this.sink.WriteStruct((Bpl.IdentifierExpr)o, f, sourceexp) : this.sink.Heap.WriteHeap(assignment.Token(), o, f, sourceexp);
         StmtTraverser.StmtBuilder.Add(c);
         return;
       }

@@ -40,24 +40,19 @@ namespace BytecodeTranslator {
 
     /// <summary>
     /// Returns the (typed) BPL expression that corresponds to the value of the field
-    /// <paramref name="f"/> belonging to the object <paramref name="o"/> (when
-    /// <paramref name="o"/> is non-null, otherwise the value of the static field.
+    /// <paramref name="f"/> belonging to the object <paramref name="o"/> (which should be non-null).
     /// </summary>
     /// <param name="o">The expression that represents the object to be dereferenced.
-    /// Null if <paramref name="f"/> is a static field.
     /// </param>
-    /// <param name="f">The field that is used to dereference the object <paramref name="o"/>, when
-    /// it is not null. Otherwise the static field whose value should be read.
+    /// <param name="f">The field that is used to dereference the object <paramref name="o"/>.
     /// </param>
-    Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f);
+    Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, bool isStruct);
 
     /// <summary>
     /// Returns the BPL command that corresponds to assigning the value <paramref name="value"/>
-    /// to the field <paramref name="f"/> of the object <paramref name="o"/> (when
-    /// <paramref name="o"/> is non-null, otherwise it is an assignment to the static
-    /// field.
+    /// to the field <paramref name="f"/> of the object <paramref name="o"/> (which should be non-null).
     /// </summary>
-    Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value);
+    Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value, bool isStruct);
 
     /// <summary>
     /// Returns the BPL expression that corresponds to the value of the dynamic type
@@ -70,6 +65,14 @@ namespace BytecodeTranslator {
   public abstract class Heap : HeapFactory, IHeap
   {
     public abstract Bpl.Variable CreateFieldVariable(IFieldReference field);
+
+    [RepresentationFor("Field", "type Field;")]
+    public Bpl.TypeCtorDecl FieldTypeDecl = null;
+    public Bpl.CtorType FieldType;
+
+    [RepresentationFor("box", "type box;")]
+    public Bpl.TypeCtorDecl BoxTypeDecl = null;
+    public Bpl.CtorType BoxType;
 
     [RepresentationFor("Type", "type Type;")]
     protected Bpl.TypeCtorDecl TypeTypeDecl = null;
@@ -95,9 +98,9 @@ namespace BytecodeTranslator {
 
     public abstract Bpl.Variable CreateEventVariable(IEventDefinition e);
 
-    public abstract Bpl.Expr ReadHeap(Bpl.Expr o, Bpl.IdentifierExpr f);
+    public abstract Bpl.Expr ReadHeap(Bpl.Expr o, Bpl.IdentifierExpr f, bool isStruct);
 
-    public abstract Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr o, Bpl.IdentifierExpr f, Bpl.Expr value);
+    public abstract Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr o, Bpl.IdentifierExpr f, Bpl.Expr value, bool isStruct);
 
     [RepresentationFor("$DynamicType", "function $DynamicType(ref): Type;")]
     protected Bpl.Function DynamicTypeFunction = null;

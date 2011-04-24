@@ -36,11 +36,9 @@ namespace BytecodeTranslator {
 
     public IParameterDefinition underlyingParameter;
 
-    public MethodParameter(IParameterDefinition parameterDefinition) {
+    public MethodParameter(IParameterDefinition parameterDefinition, Bpl.Type ptype) {
 
       this.underlyingParameter = parameterDefinition;
-
-      Bpl.Type ptype = TranslationHelper.CciTypeToBoogie(parameterDefinition.Type);
 
       var parameterToken = parameterDefinition.Token();
       var typeToken = parameterDefinition.Type.Token();
@@ -134,15 +132,6 @@ namespace BytecodeTranslator {
     }
 
     #region Temp Stuff that must be replaced as soon as there is real code to deal with this
-
-    public static Bpl.Type CciTypeToBoogie(ITypeReference type) {
-      if (TypeHelper.TypesAreEquivalent(type, type.PlatformType.SystemBoolean))
-        return Bpl.Type.Bool;
-      else if (TypeHelper.IsPrimitiveInteger(type))
-        return Bpl.Type.Int;
-      else
-        return Bpl.Type.Int; // BUG! This is where we need to return "ref" for a reference type
-    }
 
     public static Bpl.Variable TempThisVar() {
       return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "this", Bpl.Type.Int));

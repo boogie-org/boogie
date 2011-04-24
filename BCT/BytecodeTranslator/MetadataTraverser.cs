@@ -102,7 +102,7 @@ namespace BytecodeTranslator {
         if (f.IsStatic) {
 
           Bpl.Expr e;
-          var bplType = TranslationHelper.CciTypeToBoogie(f.Type);
+          var bplType = this.sink.CciTypeToBoogie(f.Type);
           if (bplType == Bpl.Type.Int) {
             e = Bpl.Expr.Literal(0);
             e.Type = Bpl.Type.Int;
@@ -179,6 +179,13 @@ namespace BytecodeTranslator {
               new Bpl.IdentifierExpr(tok, mparam.outParameterCopy),
               new Bpl.IdentifierExpr(tok, mparam.inParameterCopy)));
           }
+        }
+
+        if (!method.IsStatic && method.ContainingType.ResolvedType.IsStruct) {
+          Bpl.IToken tok = method.Token();
+          stmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
+              new Bpl.IdentifierExpr(tok, proc.OutParams[0]),
+              new Bpl.IdentifierExpr(tok, proc.InParams[0])));
         }
 
         #endregion

@@ -73,12 +73,6 @@ namespace BytecodeTranslator {
           case Options.HeapRepresentation.splitFields:
             heap = new SplitFieldsHeap();
             break;
-          case Options.HeapRepresentation.twoDInt:
-            heap = new TwoDIntHeap();
-            break;
-          case Options.HeapRepresentation.twoDBox:
-            heap = new TwoDBoxHeap();
-            break;
           case Options.HeapRepresentation.general:
             heap = new GeneralHeap();
             break;

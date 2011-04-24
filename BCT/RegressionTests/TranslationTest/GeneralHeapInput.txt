@@ -3,8 +3,6 @@
 
 const null: ref;
 
-type box;
-
 type ref = int;
 
 type HeapType = [ref,Field]box;
@@ -188,8 +186,6 @@ implementation DelegateRemoveHelper(oldi: int, m: int, o: int) returns (i: int)
 
 
 
-type Field;
-
 var $Heap: HeapType where IsGoodHeap($Heap);
 
 function Box2Int(box) : int;
@@ -209,6 +205,10 @@ function {:inline true} Write(H: HeapType, o: ref, f: Field, v: box) : HeapType
 {
   H[o, f := v]
 }
+
+type Field;
+
+type box;
 
 type Type;
 
