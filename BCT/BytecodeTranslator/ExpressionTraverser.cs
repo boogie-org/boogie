@@ -934,6 +934,42 @@ namespace BytecodeTranslator
       return;
     }
 
+    public override void Visit(IConversion conversion)
+    {
+      var tok = conversion.ValueToConvert.Token();
+      Visit(conversion.ValueToConvert);
+      var exp = TranslatedExpressions.Pop();
+      switch (conversion.TypeAfterConversion.TypeCode) {
+        case PrimitiveTypeCode.Int16:
+        case PrimitiveTypeCode.Int32:
+        case PrimitiveTypeCode.Int64:
+        case PrimitiveTypeCode.Int8:
+          switch (conversion.ValueToConvert.Type.TypeCode) {
+            case PrimitiveTypeCode.Boolean:
+              TranslatedExpressions.Push(
+                new Bpl.NAryExpr(tok, new Bpl.IfThenElse(tok), new Bpl.ExprSeq(exp, Bpl.Expr.Literal(1), Bpl.Expr.Literal(0)))
+                );
+              return;
+            default:
+              throw new NotImplementedException();
+          }
+        case PrimitiveTypeCode.Boolean:
+          switch (conversion.ValueToConvert.Type.TypeCode) {
+            case PrimitiveTypeCode.Int16:
+            case PrimitiveTypeCode.Int32:
+            case PrimitiveTypeCode.Int64:
+            case PrimitiveTypeCode.Int8:
+              TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, exp, Bpl.Expr.Literal(0)));
+              return;
+            default:
+              throw new NotImplementedException();
+
+          }
+        default:
+          throw new NotImplementedException();
+      }
+    }
+
     public override void Visit(IUnaryNegation unaryNegation)
     {
       base.Visit(unaryNegation);
