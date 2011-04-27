@@ -77,6 +77,73 @@ namespace BytecodeTranslator {
     [RepresentationFor("Type", "type Type;")]
     protected Bpl.TypeCtorDecl TypeTypeDecl = null;
     protected Bpl.CtorType TypeType;
+
+    private Bpl.Type structType = null;
+    public Bpl.Type StructType {
+      get {
+        if (structType == null) {
+          structType = new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(FieldType), BoxType);
+        }
+        return structType;
+      }
+    }
+
+    [RepresentationFor("Box2Int", "function Box2Int(box): int;")]
+    public Bpl.Function Box2Int = null;
+
+    [RepresentationFor("Box2Bool", "function Box2Bool(box): bool;")]
+    public Bpl.Function Box2Bool = null;
+
+    [RepresentationFor("Box2Struct", "function Box2Struct(box): struct;")]
+    public Bpl.Function Box2Struct = null;
+
+    [RepresentationFor("Int2Box", "function Int2Box(int): box;")]
+    public Bpl.Function Int2Box = null;
+
+    [RepresentationFor("Bool2Box", "function Bool2Box(bool): box;")]
+    public Bpl.Function Bool2Box = null;
+
+    [RepresentationFor("Struct2Box", "function Struct2Box(struct): box;")]
+    public Bpl.Function Struct2Box = null;
+
+    public Bpl.Expr Box(Bpl.IToken tok, Bpl.Type boogieType, Bpl.Expr expr) {
+      Bpl.Function conversion;
+      if (boogieType == Bpl.Type.Bool)
+        conversion = this.Bool2Box;
+      else if (boogieType == Bpl.Type.Int)
+        conversion = this.Int2Box;
+      else if (boogieType == StructType)
+        conversion = this.Struct2Box;
+      else
+        throw new InvalidOperationException("Unknown Boogie type");
+
+      var callConversion = new Bpl.NAryExpr(
+        tok,
+        new Bpl.FunctionCall(conversion),
+        new Bpl.ExprSeq(expr)
+        );
+      return callConversion;
+    }
+
+    public Bpl.Expr Unbox(Bpl.IToken tok, Bpl.Type boogieType, Bpl.Expr expr) {
+      Bpl.Function conversion = null;
+      if (boogieType == Bpl.Type.Bool)
+        conversion = this.Box2Bool;
+      else if (boogieType == Bpl.Type.Int)
+        conversion = this.Box2Int;
+      else if (boogieType == StructType)
+        conversion = this.Box2Struct;
+      else
+        throw new InvalidOperationException("Unknown Boogie type");
+
+      var callExpr = new Bpl.NAryExpr(
+        tok,
+        new Bpl.FunctionCall(conversion),
+        new Bpl.ExprSeq(expr)
+        );
+      callExpr.Type = boogieType;
+      return callExpr;
+    }
     
     /// <summary>
     /// Creates a fresh BPL variable to represent <paramref name="type"/>, deciding

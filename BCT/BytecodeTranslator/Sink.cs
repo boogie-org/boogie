@@ -103,7 +103,7 @@ namespace BytecodeTranslator {
       else if (TypeHelper.IsPrimitiveInteger(type))
         return Bpl.Type.Int;
       else if (type.ResolvedType.IsStruct)
-        return new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(this.heap.FieldType), this.heap.BoxType);
+        return heap.StructType;
       return Bpl.Type.Int; // BUG! This is where we need to return "ref" for a reference type
     }
 
@@ -287,7 +287,7 @@ namespace BytecodeTranslator {
         if (!method.IsStatic) {
           Bpl.Type selfType;
           if (method.ContainingType.ResolvedType.IsStruct) {
-            selfType = new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
+            selfType = Heap.StructType;
             in_count++;
             self = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), "thisIn", selfType), true);
             out_count++;

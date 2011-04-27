@@ -34,6 +34,8 @@ namespace BytecodeTranslator {
     /// </summary>
     private readonly string InitialPreludeText =
       @"const null: int;
+type ref = int;
+type struct = [Field]box;
 type HeapType = [int,int]int;
 var $Heap: HeapType where IsGoodHeap($Heap);
 function IsGoodHeap(HeapType): bool;
@@ -49,7 +51,6 @@ procedure {:inline 1} Alloc() returns (x: int)
   $Alloc[x] := true;
 }
 
-type ref = int;
 ";
     private Sink sink;
 
@@ -147,19 +148,7 @@ type ref = int;
 
     [RepresentationFor("$Heap", "var $Heap: HeapType where IsGoodHeap($Heap);", true)]
     private Bpl.Variable HeapVariable = null;
-
-    [RepresentationFor("Box2Int", "function Box2Int(box): int;")]
-    private Bpl.Function Box2Int = null;
-
-    [RepresentationFor("Box2Bool", "function Box2Bool(box): bool;")]
-    private Bpl.Function Box2Bool = null;
-
-    [RepresentationFor("Int2Box", "function Int2Box(int): box;")]
-    private Bpl.Function Int2Box = null;
-
-    [RepresentationFor("Bool2Box", "function Bool2Box(bool): box;")]
-    private Bpl.Function Bool2Box = null;
-
+    
     [RepresentationFor("Read", "function {:inline true} Read(H:HeapType, o:ref, f:Field): box { H[o, f] }")]
     private Bpl.Function Read = null;
 
@@ -172,6 +161,7 @@ type ref = int;
     private readonly string InitialPreludeText =
       @"const null: ref;
 type ref = int;
+type struct = [Field]box;
 type HeapType = [ref,Field]box;
 function IsGoodHeap(HeapType): bool;
 var $ArrayContents: [int][int]int;
@@ -185,6 +175,7 @@ procedure {:inline 1} Alloc() returns (x: ref)
   assume $Alloc[x] == false;
   $Alloc[x] := true;
 }
+
 ";
     private Sink sink;
 
@@ -269,23 +260,10 @@ procedure {:inline 1} Alloc() returns (x: ref)
           );
 
       // wrap it in the right conversion function
-      Bpl.Function conversion;
       var originalType = this.underlyingTypes[f.Decl];
       var boogieType = sink.CciTypeToBoogie(originalType);
-      if (boogieType == Bpl.Type.Bool)
-        conversion = this.Box2Bool;
-      else if (boogieType == Bpl.Type.Int)
-        conversion = this.Box2Int;
-      else
-        throw new InvalidOperationException("Unknown Boogie type");
-      var callExpr = new Bpl.NAryExpr(
-        f.tok,
-        new Bpl.FunctionCall(conversion),
-        new Bpl.ExprSeq(callRead)
-        );
-      callExpr.Type = boogieType;
+      var callExpr = Unbox(f.tok, boogieType, callRead);
       return callExpr;
-
     }
 
     /// <summary>
@@ -295,25 +273,12 @@ procedure {:inline 1} Alloc() returns (x: ref)
     public override Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value, bool isStruct) {
       Debug.Assert(o != null);
 
-      // wrap it in the right conversion function
-      Bpl.Function conversion;
-      var originalType = this.underlyingTypes[f.Decl];
-      var boogieType = sink.CciTypeToBoogie(originalType);
-      if (boogieType == Bpl.Type.Bool)
-        conversion = this.Bool2Box;
-      else if (boogieType == Bpl.Type.Int)
-        conversion = this.Int2Box;
-      else
-        throw new InvalidOperationException("Unknown Boogie type");
-
-      var callConversion = new Bpl.NAryExpr(
-        f.tok,
-        new Bpl.FunctionCall(conversion),
-        new Bpl.ExprSeq(value)
-        );
-
       Bpl.IdentifierExpr h;
       Bpl.NAryExpr callWrite;
+      var originalType = this.underlyingTypes[f.Decl];
+      var boogieType = sink.CciTypeToBoogie(originalType);
+      var callConversion = Box(f.tok, boogieType, value);
+
       if (isStruct) {
         h = (Bpl.IdentifierExpr)o;
         callWrite = Bpl.Expr.Store(h, f, callConversion);
