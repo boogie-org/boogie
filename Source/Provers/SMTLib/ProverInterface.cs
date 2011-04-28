@@ -371,7 +371,7 @@ namespace Microsoft.Boogie.SMTLib
         if (resp == null || Process.IsPong(resp))
           break;
         if (resp.Name == "labels" && resp.ArgCount >= 1) {
-          var labels = resp[0].Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
+          var labels = resp.Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
           res = labels;
           if (labelNums != null) HandleProverError("Got multiple :labels responses");
           labelNums = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
@@ -392,6 +392,8 @@ namespace Microsoft.Boogie.SMTLib
               theModel = models[0];
             }
           }
+        } else {
+          HandleProverError("Unexpected prover response (getting labels/model): " + resp.ToString());
         }
       }
 
