@@ -51,6 +51,13 @@ procedure {:inline 1} Alloc() returns (x: int)
   $Alloc[x] := true;
 }
 
+axiom (forall x : Field :: $DefaultStruct[x] == $DefaultBox);
+axiom Box2Int($DefaultBox) == 0;
+axiom Box2Bool($DefaultBox) == false;
+
+axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x );
+axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
+
 ";
     private Sink sink;
 
@@ -175,6 +182,13 @@ procedure {:inline 1} Alloc() returns (x: ref)
   assume $Alloc[x] == false;
   $Alloc[x] := true;
 }
+
+axiom (forall x : Field :: $DefaultStruct[x] == $DefaultBox);
+axiom Box2Int($DefaultBox) == 0;
+axiom Box2Bool($DefaultBox) == false;
+
+axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x );
+axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
 
 ";
     private Sink sink;

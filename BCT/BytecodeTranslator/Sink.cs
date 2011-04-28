@@ -415,6 +415,40 @@ namespace BytecodeTranslator {
       return procAndFormalMap.Decl;
     }
 
+    /// <summary>
+    /// Struct "creation" (source code that looks like "new S()" for a struct type S) is modeled
+    /// by a call to the nullary "ctor" that initializes all of the structs fields to zero-
+    /// equivalent values. Note that the generated procedure has no contract. So if the struct
+    /// is defined in an assembly that is not being translated, then its behavior is unspecified.
+    /// </summary>
+    /// <param name="structType">A type reference to the value type for which the ctor should be returned.</param>
+    /// <returns>A nullary procedure that returns an initialized value of type <paramref name="structType"/>.</returns>
+    public Bpl.DeclWithFormals FindOrCreateProcedureForDefaultStructCtor(ITypeReference structType) {
+      Contract.Requires(structType.IsValueType);
+     
+      ProcedureInfo procAndFormalMap;
+      var key = structType.InternedKey;
+      if (!this.declaredMethods.TryGetValue(key, out procAndFormalMap)) {
+        var typename = TranslationHelper.TurnStringIntoValidIdentifier(TypeHelper.GetTypeName(structType));
+        var tok = structType.Token();
+        var selfType = new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
+        var selfOut = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), false);
+        var outvars = new Bpl.Formal[]{ selfOut };
+        var proc = new Bpl.Procedure(Bpl.Token.NoToken, typename + ".#default_ctor",
+          new Bpl.TypeVariableSeq(),
+          new Bpl.VariableSeq(), // in
+          new Bpl.VariableSeq(outvars),
+          new Bpl.RequiresSeq(),
+          new Bpl.IdentifierExprSeq(), // modifies
+          new Bpl.EnsuresSeq()
+          );
+        this.TranslatedProgram.TopLevelDeclarations.Add(proc);
+        procAndFormalMap = new ProcedureInfo(proc, new Dictionary<IParameterDefinition, MethodParameter>(), this.RetVariable);
+        this.declaredMethods.Add(key, procAndFormalMap);
+      }
+      return procAndFormalMap.Decl;
+    }
+
     // TODO: Fix test to return true iff method is marked with the "real" [Pure] attribute
     // also, should it return true for properties and all of the other things the tools
     // consider pure?

@@ -130,4 +130,25 @@ namespace RegressionTestInput {
       this.y = this.x;
     }
   }
+
+  public struct S {
+    public int x;
+    public bool b;
+  }
+
+  public class CreateStruct {
+    public S Create() {
+      var s = new S();
+      Contract.Assert(s.x == 0);
+      Contract.Assert(s.b == false);
+      return s;
+    }
+    S AssignThreeToSDotX(S s) {
+      s.x = 3;
+      Contract.Assert(s.x == 3);
+      return s;
+    }
+
+  }
+
 }
