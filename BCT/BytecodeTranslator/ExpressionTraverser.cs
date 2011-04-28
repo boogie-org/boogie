@@ -94,8 +94,8 @@ namespace BytecodeTranslator
         }
         else {
           this.Visit(instance);
-          if (args != null) {
-            args.Add(field.ResolvedField);
+          if (this.args != null) {
+            this.args.Add(field.ResolvedField);
           }
           else {
             Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
@@ -305,8 +305,8 @@ namespace BytecodeTranslator
         }
         else {
           this.Visit(instance);
-          if (args != null) {
-            args.Add(field.ResolvedField);
+          if (this.args != null) {
+            this.args.Add(field.ResolvedField);
           }
           else {
             Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
@@ -436,11 +436,29 @@ namespace BytecodeTranslator
       var inexpr = new List<Bpl.Expr>();
 
       #region Create the 'this' argument for the function call
-      Bpl.Expr thisExpr = null;
+      Bpl.IdentifierExpr thisExpr = null;
+      List<Bpl.Variable> locals = null;
+      List<IFieldDefinition> args = null;
       if (!methodCall.IsStaticCall)
       {
+        Debug.Assert(this.args == null);
+        this.args = new List<IFieldDefinition>();
         this.Visit(methodCall.ThisArgument);
-        thisExpr = this.TranslatedExpressions.Pop();
+        args = this.args;
+        this.args = null;
+
+        thisExpr = this.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
+        locals = new List<Bpl.Variable>();
+        Bpl.Variable x = thisExpr.Decl;
+        locals.Add(x);
+        for (int i = 0; i < args.Count; i++) {
+          Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(args[i]));
+          Bpl.Variable y = this.sink.CreateFreshLocal(this.sink.CciTypeToBoogie(args[i].Type));
+          StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(y), this.sink.Heap.ReadHeap(Bpl.Expr.Ident(x), g, args[i].ContainingType.ResolvedType.IsStruct)));
+          x = y;
+          locals.Add(y);
+        }
+        thisExpr = Bpl.Expr.Ident(x);
         inexpr.Add(thisExpr);
       }
       #endregion
@@ -479,11 +497,9 @@ namespace BytecodeTranslator
         // Todo: if there is no stmttraverser we are visiting a contract and should use a boogie function instead of procedure!
 
         #region Translate Out vars
-        Bpl.IdentifierExpr outMap = null;
         var outvars = new List<Bpl.IdentifierExpr>();
         if (!methodCall.IsStaticCall && methodCall.MethodToCall.ContainingType.ResolvedType.IsStruct) {
-          outMap = new Bpl.IdentifierExpr(methodCall.Token(), sink.CreateFreshLocal(sink.Heap.StructType));
-          outvars.Add(outMap);
+          outvars.Add(thisExpr);
         }
         foreach (KeyValuePair<IParameterDefinition, Bpl.Expr> kvp in p2eMap)
         {
@@ -574,10 +590,23 @@ namespace BytecodeTranslator
             call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars);
           this.StmtTraverser.StmtBuilder.Add(call);
         }
-        if (outMap != null) {
-          Debug.Assert(thisExpr != null);
-          this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd((Bpl.IdentifierExpr)thisExpr, outMap));
+
+        if (!methodCall.IsStaticCall) {
+          Debug.Assert(args != null && locals != null);
+          int count = args.Count;
+          Bpl.Variable x = locals[count];
+          count--;
+          while (0 <= count) {
+            IFieldDefinition currField = args[count];
+            if (currField.Type.ResolvedType.IsClass) break;
+            Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(currField));
+            Bpl.Variable y = locals[count];
+            StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(methodCall.Token(), Bpl.Expr.Ident(y), g, Bpl.Expr.Ident(x), currField.ContainingType.ResolvedType.IsStruct));
+            x = y;
+            count--;
+          }
         }
+
       }
 
     }
@@ -604,7 +633,11 @@ namespace BytecodeTranslator
       var fieldReference = target.Definition as IFieldReference;
 
       this.assignmentSourceExpr = sourceexp;
+      List<IFieldDefinition> args = null;
+      Debug.Assert(this.args == null);
       this.Visit(target);
+      args = this.args;
+      this.args = null;
       this.assignmentSourceExpr = null;
 
       if (target.Definition is IArrayIndexer) {
@@ -624,31 +657,23 @@ namespace BytecodeTranslator
           Debug.Assert(args != null);
           List<Bpl.Variable> locals = new List<Bpl.Variable>();
           Bpl.IdentifierExpr instanceExpr = TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
-          Bpl.Variable x = this.sink.CreateFreshLocal(instanceExpr.Type);
+          Bpl.Variable x = instanceExpr.Decl;
           locals.Add(x);
-          StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(x), instanceExpr));
           for (int i = 0; i < args.Count; i++) {
             Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(args[i]));
             Bpl.Variable y = this.sink.CreateFreshLocal(this.sink.CciTypeToBoogie(args[i].Type));
-            locals.Add(y);
             StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(y), this.sink.Heap.ReadHeap(Bpl.Expr.Ident(x), g, args[i].ContainingType.ResolvedType.IsStruct)));
             x = y;
+            locals.Add(y);
           }
           StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(assignment.Token(), Bpl.Expr.Ident(x), f, sourceexp, fieldReference.ResolvedField.ContainingType.ResolvedType.IsStruct));
 
-          IFieldDefinition currField = fieldReference.ResolvedField;
           int count = args.Count;
           x = locals[count];
           count--;
-          while (true) {
-            if (count < 0) {
-              if (instanceExpr.Type == this.sink.Heap.StructType) {
-                StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(instanceExpr, Bpl.Expr.Ident(x)));
-              }
-              break;
-            }
-            if (currField.ContainingType.ResolvedType.IsClass) break;
-            currField = args[count];
+          while (0 <= count) {
+            IFieldDefinition currField = args[count];
+            if (currField.Type.ResolvedType.IsClass) break;
             Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(currField));
             Bpl.Variable y = locals[count];
             StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(assignment.Token(), Bpl.Expr.Ident(y), g, Bpl.Expr.Ident(x), currField.ContainingType.ResolvedType.IsStruct));
@@ -969,10 +994,15 @@ namespace BytecodeTranslator
       return;
     }
 
-    public override void Visit(IConversion conversion)
-    {
+    public override void Visit(IConversion conversion) {
       var tok = conversion.ValueToConvert.Token();
       Visit(conversion.ValueToConvert);
+      var boogieTypeOfValue = this.sink.CciTypeToBoogie(conversion.ValueToConvert.Type);
+      var boogieTypeToBeConvertedTo = this.sink.CciTypeToBoogie(conversion.TypeAfterConversion);
+      if (boogieTypeOfValue == boogieTypeToBeConvertedTo) {
+        // then this conversion is a nop, just ignore it
+        return;
+      }
       var exp = TranslatedExpressions.Pop();
       switch (conversion.TypeAfterConversion.TypeCode) {
         case PrimitiveTypeCode.Int16:
@@ -984,6 +1014,10 @@ namespace BytecodeTranslator
               TranslatedExpressions.Push(
                 new Bpl.NAryExpr(tok, new Bpl.IfThenElse(tok), new Bpl.ExprSeq(exp, Bpl.Expr.Literal(1), Bpl.Expr.Literal(0)))
                 );
+              return;
+            case PrimitiveTypeCode.IntPtr:
+              // just ignore the conversion. REVIEW: is that the right thing to do?
+              this.TranslatedExpressions.Push(exp);
               return;
             default:
               throw new NotImplementedException();

@@ -5,6 +5,8 @@ const null: ref;
 
 type ref = int;
 
+type struct = [Field]box;
+
 type HeapType = [ref,Field]box;
 
 function IsGoodHeap(HeapType) : bool;
@@ -188,14 +190,6 @@ implementation DelegateRemoveHelper(oldi: int, m: int, o: int) returns (i: int)
 
 var $Heap: HeapType where IsGoodHeap($Heap);
 
-function Box2Int(box) : int;
-
-function Box2Bool(box) : bool;
-
-function Int2Box(int) : box;
-
-function Bool2Box(bool) : box;
-
 function {:inline true} Read(H: HeapType, o: ref, f: Field) : box
 {
   H[o, f]
@@ -211,6 +205,18 @@ type Field;
 type box;
 
 type Type;
+
+function Box2Int(box) : int;
+
+function Box2Bool(box) : bool;
+
+function Box2Struct(box) : struct;
+
+function Int2Box(int) : box;
+
+function Bool2Box(bool) : box;
+
+function Struct2Box(struct) : box;
 
 function $DynamicType(ref) : Type;
 

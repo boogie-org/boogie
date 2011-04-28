@@ -3,6 +3,10 @@
 
 const null: int;
 
+type ref = int;
+
+type struct = [Field]box;
+
 type HeapType = [int,int]int;
 
 var $Heap: HeapType where IsGoodHeap($Heap);
@@ -28,8 +32,6 @@ implementation Alloc() returns (x: int)
 }
 
 
-
-type ref = int;
 
 procedure DelegateAdd(a: int, b: int) returns (c: int);
 
@@ -193,6 +195,18 @@ type Field;
 type box;
 
 type Type;
+
+function Box2Int(box) : int;
+
+function Box2Bool(box) : bool;
+
+function Box2Struct(box) : struct;
+
+function Int2Box(int) : box;
+
+function Bool2Box(bool) : box;
+
+function Struct2Box(struct) : box;
 
 function $DynamicType(ref) : Type;
 
