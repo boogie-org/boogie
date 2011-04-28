@@ -1,9 +1,9 @@
-# Aste started: 2011-04-23 07:00:23
+# Aste started: 2011-04-28 07:00:14
 # Host id: Boogiebox
-# [2011-04-23 07:03:02] SpecSharp revision: d2584fb425f5
-# [2011-04-23 07:03:02] SscBoogie revision: d2584fb425f5
-# [2011-04-23 07:04:17] Boogie revision: e2d86f3bdf77
-[2011-04-23 07:07:06] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+# [2011-04-28 07:02:44] SpecSharp revision: 45c103fb3936
+# [2011-04-28 07:02:44] SscBoogie revision: 45c103fb3936
+# [2011-04-28 07:04:00] Boogie revision: e03e943090a8
+[2011-04-28 07:06:30] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -31,6 +31,6 @@
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-[2011-04-23 07:17:49] 25 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-['sanity', 'test0', 'test1', 'test2', 'test20', 'test21', 'aitest9', 'lock', 'test13', 'inline', 'textbook', 'test15', 'bitvectors', 'smoke', 'test16', 'codeexpr', 'dafny0', 'dafny1', 'VSI-Benchmarks', 'vacid0', 'livevars', 'lazyinline', 'stratifiedinline', 'extractloops', 'VSComp2010']
-# [2011-04-23 07:18:50] Released nightly of Boogie
+[2011-04-28 07:48:21] 1 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+['lazyinline']
+# [2011-04-28 07:49:21] Released nightly of Boogie
