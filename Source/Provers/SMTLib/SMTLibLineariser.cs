@@ -266,7 +266,7 @@ namespace Microsoft.Boogie.SMTLib
           if (weight != 1)
             wr.Write(" :weight {0}\n", weight);
           if (infos.uniqueId != -1)
-            wr.Write(" :skolemid {0}\n", infos.uniqueId);
+            wr.Write(" :skolemid |{0}|\n", infos.uniqueId);
           WriteTriggers(node.Triggers, options);
           
           wr.Write(")");

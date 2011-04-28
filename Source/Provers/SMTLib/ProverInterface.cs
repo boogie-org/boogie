@@ -359,7 +359,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       SendThisVC("(labels)");
       if (options.ExpectingModel())
-        SendThisVC("(model)");
+        SendThisVC("(get-model)");
       Process.Ping();
 
       List<string> labelNums = null;
@@ -375,25 +375,33 @@ namespace Microsoft.Boogie.SMTLib
           res = labels;
           if (labelNums != null) HandleProverError("Got multiple :labels responses");
           labelNums = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
-        } else if (resp.Name == "model" && resp.ArgCount >= 1) {
-          var modelStr = resp[0].Name;
-          List<Model> models = null;
-          try {
-            models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelStr));
-          } catch (ArgumentException exn) {
-            HandleProverError("Model parsing error: " + exn.Message);
+        } else {
+          string modelStr = null;
+          if (resp.Name == "model" && resp.ArgCount >= 1) {
+            modelStr = resp[0].Name;
+          } else if (resp.ArgCount == 0 && resp.Name.Contains("->")) {
+            modelStr = resp.Name;
           }
 
-          if (models != null) {
-            if (models.Count == 0) HandleProverError("Could not parse any models");
-            else {
-              if (models.Count > 1) HandleProverError("Expecting only one model, got multiple");
-              if (theModel != null) HandleProverError("Got multiple :model responses");
-              theModel = models[0];
+          if (modelStr != null) {
+            List<Model> models = null;
+            try {
+              models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelStr));
+            } catch (ArgumentException exn) {
+              HandleProverError("Model parsing error: " + exn.Message);
             }
+
+            if (models != null) {
+              if (models.Count == 0) HandleProverError("Could not parse any models");
+              else {
+                if (models.Count > 1) HandleProverError("Expecting only one model, got multiple");
+                if (theModel != null) HandleProverError("Got multiple :model responses");
+                theModel = models[0];
+              }
+            }
+          } else {
+            HandleProverError("Unexpected prover response (getting labels/model): " + resp.ToString());
           }
-        } else {
-          HandleProverError("Unexpected prover response (getting labels/model): " + resp.ToString());
         }
       }
 
