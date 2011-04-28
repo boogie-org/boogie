@@ -33,6 +33,16 @@ implementation Alloc() returns (x: int)
 
 
 
+axiom (forall x: Field :: $DefaultStruct[x] == $DefaultBox);
+
+axiom Box2Int($DefaultBox) == 0;
+
+axiom Box2Bool($DefaultBox) == false;
+
+axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x);
+
+axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x);
+
 procedure DelegateAdd(a: int, b: int) returns (c: int);
 
 
@@ -193,6 +203,10 @@ implementation DelegateRemoveHelper(oldi: int, m: int, o: int) returns (i: int)
 type Field;
 
 type box;
+
+const unique $DefaultBox: box;
+
+const unique $DefaultStruct: struct;
 
 type Type;
 
@@ -710,6 +724,12 @@ implementation RegressionTestInput.ClassWithBoolTypes.#cctor()
 
 
 
+const unique RegressionTestInput.S: Type;
+
+var RegressionTestInput.S.x: [int]int;
+
+var RegressionTestInput.S.b: [int]bool;
+
 const unique RegressionTestInput.AsyncAttribute: Type;
 
 procedure RegressionTestInput.AsyncAttribute.#ctor(this: int);
@@ -733,6 +753,71 @@ procedure RegressionTestInput.AsyncAttribute.#cctor();
 
 
 implementation RegressionTestInput.AsyncAttribute.#cctor()
+{
+}
+
+
+
+const unique RegressionTestInput.CreateStruct: Type;
+
+procedure RegressionTestInput.CreateStruct.Create(this: int) returns ($result: [Field]box);
+
+
+
+implementation RegressionTestInput.CreateStruct.Create(this: int) returns ($result: [Field]box)
+{
+  var local_0: [Field]box;
+
+    assert {:sourceFile "Class1.cs"} {:sourceLine 141} true;
+    local_0 := $DefaultStruct;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 142} true;
+    assert local_0[RegressionTestInput.S.x] == 0;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 143} true;
+    assert !local_0[RegressionTestInput.S.b];
+    assert {:sourceFile "Class1.cs"} {:sourceLine 145} true;
+    $result := local_0;
+    return;
+}
+
+
+
+procedure RegressionTestInput.CreateStruct.AssignThreeToSDotX$RegressionTestInput.S(this: int, s$in: [Field]box) returns ($result: [Field]box);
+
+
+
+implementation RegressionTestInput.CreateStruct.AssignThreeToSDotX$RegressionTestInput.S(this: int, s$in: [Field]box) returns ($result: [Field]box)
+{
+  var s: [Field]box;
+
+    s := s$in;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 147} true;
+    s[RegressionTestInput.S.x] := 3;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 148} true;
+    assert s[RegressionTestInput.S.x] == 3;
+    assert {:sourceFile "Class1.cs"} {:sourceLine 150} true;
+    $result := s;
+    return;
+}
+
+
+
+procedure RegressionTestInput.CreateStruct.#ctor(this: int);
+
+
+
+implementation RegressionTestInput.CreateStruct.#ctor(this: int)
+{
+    call System.Object.#ctor(this);
+    return;
+}
+
+
+
+procedure RegressionTestInput.CreateStruct.#cctor();
+
+
+
+implementation RegressionTestInput.CreateStruct.#cctor()
 {
 }
 
