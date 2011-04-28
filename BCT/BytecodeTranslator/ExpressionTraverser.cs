@@ -405,20 +405,7 @@ namespace BytecodeTranslator
     }
 
     public override void Visit(IDefaultValue defaultValue) {
-      var bplType = sink.CciTypeToBoogie(defaultValue.Type);
-      if (bplType == Bpl.Type.Int) {
-        var lit = Bpl.Expr.Literal(0);
-        lit.Type = Bpl.Type.Int;
-        TranslatedExpressions.Push(lit);
-      } else if (bplType == Bpl.Type.Bool) {
-        var lit = Bpl.Expr.False;
-        lit.Type = Bpl.Type.Bool;
-        TranslatedExpressions.Push(lit);
-      } else if (defaultValue.Type.ResolvedType.IsStruct){
-        TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.Heap.DefaultStruct));
-      } else {
-        throw new NotImplementedException("Don't know how to translate type");
-      }
+      TranslatedExpressions.Push(this.sink.DefaultValue(defaultValue.Type));
     }
 
     #endregion

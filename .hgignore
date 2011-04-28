@@ -4,7 +4,7 @@ syntax: regexp
 ^(Source|BCT|Jennisys)/.*\.(user|suo|cache)$
 ^Source/(Core|Dafny)/(Parser|Scanner).cs.old$
 ^Binaries/.*\.(dll|pdb|exe|manifest|config)$
-^.*(bin|obj)/([^/]*/)?(Debug|Release|Checked)/.*$
+^.*(bin|obj)/([^/]*/)?(Debug|Release|Checked|Debug All|DEBUG ALL)/.*$
 ^Binaries/BytecodeTranslator$
 ^BCT/Binaries/.*$
 Test/([^/]*)/Output

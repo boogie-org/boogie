@@ -90,18 +90,7 @@ namespace BytecodeTranslator {
       var stmtBuilder = new Bpl.StmtListBuilder();
 
       foreach (var f in typeDefinition.Fields) {
-        Bpl.Expr e;
-        var bplType = this.sink.CciTypeToBoogie(f.Type);
-        if (bplType == Bpl.Type.Int) {
-          e = Bpl.Expr.Literal(0);
-          e.Type = Bpl.Type.Int;
-        } else if (bplType == Bpl.Type.Bool) {
-          e = Bpl.Expr.False;
-          e.Type = Bpl.Type.Bool;
-        } else {
-          throw new NotImplementedException("Don't know how to translate type");
-        }
-
+        var e = this.sink.DefaultValue(f.Type);
         var fExp = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f));
         var o = Bpl.Expr.Ident(proc.OutParams[0]);
         var c = this.sink.Heap.WriteHeap(Bpl.Token.NoToken, o, fExp, e, true);
@@ -145,18 +134,7 @@ namespace BytecodeTranslator {
       foreach (var f in typeDefinition.Fields) {
         if (f.IsStatic) {
 
-          Bpl.Expr e;
-          var bplType = this.sink.CciTypeToBoogie(f.Type);
-          if (bplType == Bpl.Type.Int) {
-            e = Bpl.Expr.Literal(0);
-            e.Type = Bpl.Type.Int;
-          } else if (bplType == Bpl.Type.Bool) {
-            e = Bpl.Expr.False;
-            e.Type = Bpl.Type.Bool;
-          } else {
-            throw new NotImplementedException("Don't know how to translate type");
-          }
-
+          var e = this.sink.DefaultValue(f.Type);
           stmtBuilder.Add(
             TranslationHelper.BuildAssignCmd(
             Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f)), 

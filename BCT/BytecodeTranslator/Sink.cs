@@ -97,6 +97,23 @@ namespace BytecodeTranslator {
     
     public readonly Bpl.Program TranslatedProgram;
 
+    public Bpl.Expr DefaultValue(ITypeReference type) {
+      var bplType = CciTypeToBoogie(type);
+      if (bplType == Bpl.Type.Int) {
+        var lit = Bpl.Expr.Literal(0);
+        lit.Type = Bpl.Type.Int;
+        return lit;
+      } else if (bplType == Bpl.Type.Bool) {
+        var lit = Bpl.Expr.False;
+        lit.Type = Bpl.Type.Bool;
+        return lit;
+      } else if (type.ResolvedType.IsStruct) {
+        return Bpl.Expr.Ident(this.Heap.DefaultStruct);
+      } else {
+        throw new NotImplementedException("Don't know how to translate type");
+      }
+    }
+
     public Bpl.Type CciTypeToBoogie(ITypeReference type) {
       if (TypeHelper.TypesAreEquivalent(type, type.PlatformType.SystemBoolean))
         return Bpl.Type.Bool;
