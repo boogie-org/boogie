@@ -74,6 +74,11 @@ namespace BytecodeTranslator {
     public Bpl.TypeCtorDecl BoxTypeDecl = null;
     public Bpl.CtorType BoxType;
 
+    [RepresentationFor("$DefaultBox", "const unique $DefaultBox : box;")]
+    public Bpl.Constant DefaultBox;
+    [RepresentationFor("$DefaultStruct", "const unique $DefaultStruct : struct;")]
+    public Bpl.Constant DefaultStruct;
+
     [RepresentationFor("Type", "type Type;")]
     protected Bpl.TypeCtorDecl TypeTypeDecl = null;
     protected Bpl.CtorType TypeType;

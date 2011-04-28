@@ -73,7 +73,7 @@ namespace BytecodeTranslator {
         return; // enums just are translated as ints
       } else if (typeDefinition.IsStruct) {
         sink.FindOrCreateType(typeDefinition);
-        CreateDefaultStructConstructor(typeDefinition);
+        //CreateDefaultStructConstructor(typeDefinition);
         base.Visit(typeDefinition);
       } else {
         Console.WriteLine("Unknown kind of type definition '{0}' was found",
