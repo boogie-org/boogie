@@ -130,4 +130,16 @@ namespace RegressionTestInput {
       this.y = this.x;
     }
   }
+
+  public struct S {
+    int x;
+    bool b;
+  }
+
+  public class CreateStruct {
+    public S Create() {
+      return new S();
+    }
+  }
+
 }

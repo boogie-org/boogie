@@ -73,12 +73,56 @@ namespace BytecodeTranslator {
         return; // enums just are translated as ints
       } else if (typeDefinition.IsStruct) {
         sink.FindOrCreateType(typeDefinition);
+        CreateDefaultStructConstructor(typeDefinition);
         base.Visit(typeDefinition);
       } else {
         Console.WriteLine("Unknown kind of type definition '{0}' was found",
           TypeHelper.GetTypeName(typeDefinition));
         throw new NotImplementedException(String.Format("Unknown kind of type definition '{0}'.", TypeHelper.GetTypeName(typeDefinition)));
       }
+    }
+
+    private void CreateDefaultStructConstructor(ITypeDefinition typeDefinition) {
+      Contract.Requires(typeDefinition.IsStruct);
+
+      var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typeDefinition);
+
+      var stmtBuilder = new Bpl.StmtListBuilder();
+
+      foreach (var f in typeDefinition.Fields) {
+        Bpl.Expr e;
+        var bplType = this.sink.CciTypeToBoogie(f.Type);
+        if (bplType == Bpl.Type.Int) {
+          e = Bpl.Expr.Literal(0);
+          e.Type = Bpl.Type.Int;
+        } else if (bplType == Bpl.Type.Bool) {
+          e = Bpl.Expr.False;
+          e.Type = Bpl.Type.Bool;
+        } else {
+          throw new NotImplementedException("Don't know how to translate type");
+        }
+
+        var fExp = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f));
+        var o = Bpl.Expr.Ident(proc.OutParams[0]);
+        var c = this.sink.Heap.WriteHeap(Bpl.Token.NoToken, o, fExp, e, true);
+        stmtBuilder.Add(c);
+      }
+
+      var attrib = new Bpl.QKeyValue(typeDefinition.Token(), "inline", new List<object>(1), null); // TODO: Need to have it be {:inine 1} (and not just {:inline})?
+      Bpl.Implementation impl =
+        new Bpl.Implementation(Bpl.Token.NoToken,
+        proc.Name,
+        new Bpl.TypeVariableSeq(),
+        proc.InParams,
+        proc.OutParams,
+        new Bpl.VariableSeq(),
+        stmtBuilder.Collect(Bpl.Token.NoToken),
+        attrib,
+        new Bpl.Errors()
+        );
+
+      impl.Proc = (Bpl.Procedure) proc; // TODO: get rid of cast
+      this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
     }
 
     private bool sawCctor = false;
@@ -290,7 +334,7 @@ namespace BytecodeTranslator {
           foreach (var f in method.ContainingTypeDefinition.Fields) {
             if (f.IsStatic == method.IsStatic) {
               var a = new Assignment() {
-                Source = new DefaultValue() { Type = f.Type, },
+                Source = new DefaultValue() { DefaultValueType = f.Type, Type = f.Type, },
                 Target = new TargetExpression() { Definition = f, Instance = method.IsConstructor ? thisExp : null, Type = f.Type },
                 Type = f.Type,
               };

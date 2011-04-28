@@ -586,6 +586,35 @@ namespace BytecodeTranslator
     public override void Visit(IAssignment assignment) {
       Contract.Assert(TranslatedExpressions.Count == 0);
 
+      #region Special case for s := default(S) when S is a struct
+
+      // The C# source "s = new S()" when S is a struct is compiled
+      // into an "initobj" instruction. That is decompiled into the
+      // assignment: "s = DefaultValue(S)".
+      // We translate it as a call to a pseduo-ctor that is created for S:
+      // "s := S.#default_ctor()".
+
+      if (assignment.Target.Type.ResolvedType.IsStruct &&
+        assignment.Target.Type.TypeCode == PrimitiveTypeCode.NotPrimitive &&
+        assignment.Source is IDefaultValue) {
+
+        this.Visit(assignment.Target);
+        var s = this.TranslatedExpressions.Pop();
+
+        var structType = assignment.Target.Type;
+        Bpl.IToken tok = assignment.Token();
+        var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(structType);
+        string methodname = proc.Name;
+        var inexpr = new List<Bpl.Expr>();
+        var outvars = new List<Bpl.IdentifierExpr>();
+        outvars.Add((Bpl.IdentifierExpr)s);
+        var call = new Bpl.CallCmd(tok, methodname, inexpr, outvars);
+        this.StmtTraverser.StmtBuilder.Add(call);
+
+        return;
+      }
+      #endregion
+
       #region Transform Right Hand Side ...
       this.Visit(assignment.Source);
       Bpl.Expr sourceexp = this.TranslatedExpressions.Pop();
@@ -938,6 +967,12 @@ namespace BytecodeTranslator
     {
       var tok = conversion.ValueToConvert.Token();
       Visit(conversion.ValueToConvert);
+      var boogieTypeOfValue = this.sink.CciTypeToBoogie(conversion.ValueToConvert.Type);
+      var boogieTypeToBeConvertedTo = this.sink.CciTypeToBoogie(conversion.TypeAfterConversion);
+      if (boogieTypeOfValue == boogieTypeToBeConvertedTo) {
+        // then this conversion is a nop, just ignore it
+        return;
+      }
       var exp = TranslatedExpressions.Pop();
       switch (conversion.TypeAfterConversion.TypeCode) {
         case PrimitiveTypeCode.Int16:
@@ -949,6 +984,10 @@ namespace BytecodeTranslator
               TranslatedExpressions.Push(
                 new Bpl.NAryExpr(tok, new Bpl.IfThenElse(tok), new Bpl.ExprSeq(exp, Bpl.Expr.Literal(1), Bpl.Expr.Literal(0)))
                 );
+              return;
+            case PrimitiveTypeCode.IntPtr:
+              // just ignore the conversion. REVIEW: is that the right thing to do?
+              this.TranslatedExpressions.Push(exp);
               return;
             default:
               throw new NotImplementedException();
