@@ -124,7 +124,7 @@ namespace Microsoft.Boogie.SMTLib
         options.AddWeakSmtOption("ARITH_RANDOM_INITIAL_VALUE", "true");
 
         // The left-to-right structural case-splitting strategy.
-        options.AddWeakSmtOption("SORT_AND_OR", "false");
+        //options.AddWeakSmtOption("SORT_AND_OR", "false"); // always false now
         options.AddWeakSmtOption("CASE_SPLIT", "3");
 
         // In addition delay adding unit conflicts.
