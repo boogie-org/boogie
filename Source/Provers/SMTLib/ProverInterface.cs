@@ -435,10 +435,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       if (wasUnknown) {
-        if (options.UseZ3)
-          SendThisVC("(get-info :last-failure)");
-        else
-          SendThisVC("(get-info :reason-unknown)");
+        SendThisVC("(get-info :reason-unknown)");
         Process.Ping();
 
         while (true) {
@@ -446,7 +443,7 @@ namespace Microsoft.Boogie.SMTLib
           if (resp == null || Process.IsPong(resp))
             break;
 
-          if (resp.ArgCount == 1 && (resp.Name == ":reason-unknown" || resp.Name == ":last-failure")) {
+          if (resp.ArgCount == 1 && resp.Name == ":reason-unknown") {
             switch (resp[0].Name) {
               case "memout":
                 result = Outcome.OutOfMemory;
