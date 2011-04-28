@@ -247,7 +247,9 @@ namespace Microsoft.Boogie {
     private void ComputeAllLabels(StmtList stmts) {
       if (stmts == null) return;
       foreach (BigBlock bb in stmts.BigBlocks) {
-        allLabels.Add(bb.LabelName);
+        if (bb.LabelName != null) {
+          allLabels.Add(bb.LabelName);
+        }
         ComputeAllLabels(bb.ec);
       }
     }
