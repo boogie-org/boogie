@@ -1,0 +1,51 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeCounter", "console\CodeCounter.csproj", "{7A901DC8-19B3-4F4C-9C2D-2088A30CB5D4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "codecounterlibrary", "library\codecounterlibrary.csproj", "{A055DCC3-3C6A-123C-82F8-AD10A8B313F7}"
+EndProject
+Global
+	GlobalSection(TeamFoundationVersionControl) = preSolution
+		SccNumberOfProjects = 4
+		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccTeamFoundationServer = https://tfs.codeplex.com/tfs/tfs09
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = console\\CodeCounter.csproj
+		SccProjectName1 = console
+		SccLocalPath1 = console
+		SccProjectUniqueName2 = library\\codecounterlibrary.csproj
+		SccProjectName2 = library
+		SccLocalPath2 = library
+		SccProjectUniqueName3 = Extensions\\vbcounter\\VBCodeCountingLogic\\VBCodeCountingLogic.vbproj
+		SccProjectName3 = Extensions/vbcounter/VBCodeCountingLogic
+		SccLocalPath3 = Extensions\\vbcounter\\VBCodeCountingLogic
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		DEBUG ALL|Any CPU = DEBUG ALL|Any CPU
+		Debug|Any CPU = Debug|Any CPU
+		RELEASE ALL|Any CPU = RELEASE ALL|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7A901DC8-19B3-4F4C-9C2D-2088A30CB5D4}.DEBUG ALL|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A901DC8-19B3-4F4C-9C2D-2088A30CB5D4}.DEBUG ALL|Any CPU.Build.0 = Debug|Any CPU
+		{7A901DC8-19B3-4F4C-9C2D-2088A30CB5D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A901DC8-19B3-4F4C-9C2D-2088A30CB5D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A901DC8-19B3-4F4C-9C2D-2088A30CB5D4}.RELEASE ALL|Any CPU.ActiveCfg = Release|Any CPU
+		{7A901DC8-19B3-4F4C-9C2D-2088A30CB5D4}.RELEASE ALL|Any CPU.Build.0 = Release|Any CPU
+		{7A901DC8-19B3-4F4C-9C2D-2088A30CB5D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A901DC8-19B3-4F4C-9C2D-2088A30CB5D4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A055DCC3-3C6A-123C-82F8-AD10A8B313F7}.DEBUG ALL|Any CPU.ActiveCfg = DEBUG ALL|Any CPU
+		{A055DCC3-3C6A-123C-82F8-AD10A8B313F7}.DEBUG ALL|Any CPU.Build.0 = DEBUG ALL|Any CPU
+		{A055DCC3-3C6A-123C-82F8-AD10A8B313F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A055DCC3-3C6A-123C-82F8-AD10A8B313F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A055DCC3-3C6A-123C-82F8-AD10A8B313F7}.RELEASE ALL|Any CPU.ActiveCfg = RELEASE ALL|Any CPU
+		{A055DCC3-3C6A-123C-82F8-AD10A8B313F7}.RELEASE ALL|Any CPU.Build.0 = RELEASE ALL|Any CPU
+		{A055DCC3-3C6A-123C-82F8-AD10A8B313F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A055DCC3-3C6A-123C-82F8-AD10A8B313F7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
