@@ -179,7 +179,9 @@ namespace BytecodeTranslator
         {
           currSelectExpr = Bpl.Expr.Select(currSelectExpr, e);
         }
-        TranslatedExpressions.Push(currSelectExpr);
+        Bpl.IdentifierExpr temp = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.CciTypeToBoogie(arrayIndexer.Type.ResolvedType)));
+        this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(temp, currSelectExpr));
+        TranslatedExpressions.Push(temp);
       }
     }
 
@@ -430,11 +432,11 @@ namespace BytecodeTranslator
       List<IFieldDefinition> args = null;
       if (!methodCall.IsStaticCall)
       {
-        Debug.Assert(this.args == null);
+        List<IFieldDefinition> savedArgs = this.args;
         this.args = new List<IFieldDefinition>();
         this.Visit(methodCall.ThisArgument);
         args = this.args;
-        this.args = null;
+        this.args = savedArgs;
 
         thisExpr = this.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
         locals = new List<Bpl.Variable>();
@@ -531,6 +533,11 @@ namespace BytecodeTranslator
           foreach (var e in resolvedMethod.ContainingTypeDefinition.Events)
           {
             if (e.Adder != null && e.Adder.ResolvedMethod == resolvedMethod)
+            {
+              ed = e;
+              break;
+            }
+            if (e.Remover != null && e.Remover.ResolvedMethod == resolvedMethod) 
             {
               ed = e;
               break;
