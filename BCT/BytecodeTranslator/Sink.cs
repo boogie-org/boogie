@@ -139,14 +139,6 @@ namespace BytecodeTranslator {
       return v;
     }
 
-    public Bpl.Variable CreateFreshLocal(Bpl.Type t) {
-      Bpl.IToken loc = Bpl.Token.NoToken; // Helper Variables do not have a location
-      Bpl.LocalVariable v = new Bpl.LocalVariable(loc, new Bpl.TypedIdent(loc, TranslationHelper.GenerateTempVarName(), t));
-      ILocalDefinition dummy = new LocalDefinition(); // Creates a dummy entry for the Dict, since only locals in the dict are translated to boogie
-      localVarMap.Add(dummy, v);
-      return v;
-    }
-
     private Dictionary<ILocalDefinition, Bpl.LocalVariable> localVarMap = null;
     public Dictionary<ILocalDefinition, Bpl.LocalVariable> LocalVarMap {
       get { return this.localVarMap; }

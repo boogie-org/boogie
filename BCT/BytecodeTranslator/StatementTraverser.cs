@@ -33,6 +33,7 @@ namespace BytecodeTranslator
 
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
     private bool contractContext;
+    internal readonly Stack<Bpl.Expr> operandStack = new Stack<Bpl.Expr>();
 
     #region Constructors
     public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
@@ -161,6 +162,20 @@ namespace BytecodeTranslator
       var tok = localDeclarationStatement.Token();
       var e = ExpressionFor(localDeclarationStatement.InitialValue);
       StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, new Bpl.IdentifierExpr(tok, loc), e));
+      return;
+    }
+
+    public override void Visit(IPushStatement pushStatement) {
+      var tok = pushStatement.Token();
+      var val = pushStatement.ValueToPush;
+      var dup = val as IDupValue;
+      Bpl.Expr e;
+      if (dup != null) {
+        e = this.operandStack.Peek();
+      } else {
+        e = ExpressionFor(val);
+      }
+      this.operandStack.Push(e);
       return;
     }
 

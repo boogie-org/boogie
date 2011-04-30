@@ -140,7 +140,7 @@ namespace BytecodeTranslator
         }
       }
       this.Visit(addressDereference.Address);
-      throw new NotImplementedException();
+      return;
     }
 
     public override void Visit(IArrayIndexer arrayIndexer)
@@ -179,7 +179,7 @@ namespace BytecodeTranslator
         {
           currSelectExpr = Bpl.Expr.Select(currSelectExpr, e);
         }
-        Bpl.IdentifierExpr temp = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.CciTypeToBoogie(arrayIndexer.Type.ResolvedType)));
+        Bpl.IdentifierExpr temp = Bpl.Expr.Ident(this.sink.CreateFreshLocal(arrayIndexer.Type));
         this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(temp, currSelectExpr));
         TranslatedExpressions.Push(temp);
       }
@@ -359,6 +359,11 @@ namespace BytecodeTranslator
       #endregion
     }
 
+    public override void Visit(IPopValue popValue) {
+      var locExpr = this.StmtTraverser.operandStack.Pop();
+      this.TranslatedExpressions.Push(locExpr);
+    }
+
     /// <summary>
     /// 
     /// </summary>
@@ -444,7 +449,7 @@ namespace BytecodeTranslator
         locals.Add(x);
         for (int i = 0; i < args.Count; i++) {
           Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(args[i]));
-          Bpl.Variable y = this.sink.CreateFreshLocal(this.sink.CciTypeToBoogie(args[i].Type));
+          Bpl.Variable y = this.sink.CreateFreshLocal(args[i].Type);
           StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(y), this.sink.Heap.ReadHeap(Bpl.Expr.Ident(x), g, args[i].ContainingType.ResolvedType.IsStruct)));
           x = y;
           locals.Add(y);
@@ -686,7 +691,7 @@ namespace BytecodeTranslator
           locals.Add(x);
           for (int i = 0; i < args.Count; i++) {
             Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(args[i]));
-            Bpl.Variable y = this.sink.CreateFreshLocal(this.sink.CciTypeToBoogie(args[i].Type));
+            Bpl.Variable y = this.sink.CreateFreshLocal(args[i].Type);
             StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(y), this.sink.Heap.ReadHeap(Bpl.Expr.Ident(x), g, args[i].ContainingType.ResolvedType.IsStruct)));
             x = y;
             locals.Add(y);

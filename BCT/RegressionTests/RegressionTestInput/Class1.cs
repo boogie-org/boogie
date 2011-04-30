@@ -151,4 +151,10 @@ namespace RegressionTestInput {
 
   }
 
+  public class RefParameters {
+    public static void M(ref int x) {
+      x++;
+    }
+  }
+
 }
