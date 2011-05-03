@@ -904,8 +904,8 @@ namespace BytecodeTranslator
       Bpl.Expr methodExpr = Bpl.Expr.Ident(constant);
       Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
 
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.DelegateAddHelperName, 
-                                                         new Bpl.ExprSeq(Bpl.Expr.Literal(0), Bpl.Expr.Ident(constant), instanceExpr), 
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.DelegateAddHelperName,
+                                                         new Bpl.ExprSeq(Bpl.Expr.Ident(this.sink.Heap.NullRef), Bpl.Expr.Ident(constant), instanceExpr), 
                                                          new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
@@ -1009,8 +1009,8 @@ namespace BytecodeTranslator
     /// TODO:
     /// If it isn't either of these short forms then emit the proper expression!
     /// </summary>
-    public override void Visit(IConditional conditional)
-    {
+    public override void Visit(IConditional conditional) {
+      #region Try and reconstruct And, Or, Not expressions
       CompileTimeConstant ctc = conditional.ResultIfFalse as CompileTimeConstant;
       if (ctc != null && ctc.Type == BCT.Host.PlatformType.SystemInt32)
       {
@@ -1055,6 +1055,8 @@ namespace BytecodeTranslator
           return;
         }
       }
+      #endregion
+      #region Just translate it as an if-then-else expression
       base.Visit(conditional);
       var ifFalse = TranslatedExpressions.Pop();
       var ifTrue = TranslatedExpressions.Pop();
@@ -1062,7 +1064,9 @@ namespace BytecodeTranslator
       var tok = conditional.Token();
       TranslatedExpressions.Push(
         new Bpl.NAryExpr(tok, new Bpl.IfThenElse(tok), new Bpl.ExprSeq(c, ifTrue, ifFalse))
-          ); 
+          );
+      return;
+      #endregion
 
     }
 
@@ -1070,6 +1074,18 @@ namespace BytecodeTranslator
 
     #region Translate Unary Operators
 
+    public override void Visit(ICastIfPossible castIfPossible) {
+      base.Visit(castIfPossible.ValueToCast);
+      var exp = TranslatedExpressions.Pop();
+      var v = this.sink.FindOrCreateType(castIfPossible.TargetType);
+      var callAs = new Bpl.NAryExpr(
+        castIfPossible.Token(),
+        new Bpl.FunctionCall(this.sink.Heap.AsFunction),
+        new Bpl.ExprSeq(exp, new Bpl.IdentifierExpr(castIfPossible.Token(), v))
+        );
+      TranslatedExpressions.Push(callAs);
+      return;
+    }
     public override void Visit(ICheckIfInstance checkIfInstance) {
       var v = this.sink.FindOrCreateType(checkIfInstance.TypeToCheck);
       //var callTypeOf = new Bpl.NAryExpr(

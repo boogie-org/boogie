@@ -66,9 +66,9 @@ namespace BytecodeTranslator {
 
   public abstract class Heap : HeapFactory, IHeap
   {
-    [RepresentationFor("$ArrayContents", "var $ArrayContents: [int][int]box;")]
+    [RepresentationFor("$ArrayContents", "var $ArrayContents: [Ref][int]Box;")]
     public Bpl.Variable ArrayContentsVariable = null;
-    [RepresentationFor("$ArrayLength", "var $ArrayLength: [int]int;")]
+    [RepresentationFor("$ArrayLength", "var $ArrayLength: [Ref]int;")]
     public Bpl.Variable ArrayLengthVariable = null;
 
     public abstract Bpl.Variable CreateFieldVariable(IFieldReference field);
@@ -128,18 +128,6 @@ namespace BytecodeTranslator {
     [RepresentationFor("Struct2Box", "function Struct2Box(Struct): Box;")]
     public Bpl.Function Struct2Box = null;
 
-    #region "Boxing" as done in the CLR
-    /// <summary>
-    /// Used to represent "boxing" as it is done in the CLR.
-    /// </summary>
-    [RepresentationFor("Struct2Ref", "function Struct2Ref(Struct): Ref;")]
-    public Bpl.Function Struct2Ref = null;
-    [RepresentationFor("Int2Ref", "function Int2Ref(int): Ref;")]
-    public Bpl.Function Int2Ref = null;
-    [RepresentationFor("Bool2Ref", "function Bool2Ref(bool): Ref;")]
-    public Bpl.Function Bool2Ref = null;
-    #endregion
-
     [RepresentationFor("Ref2Box", "function Ref2Box(Ref): Box;")]
     public Bpl.Function Ref2Box = null;
 
@@ -185,7 +173,19 @@ namespace BytecodeTranslator {
       callExpr.Type = boogieType;
       return callExpr;
     }
-    
+
+    #region "Boxing" as done in the CLR
+    /// <summary>
+    /// Used to represent "boxing" as it is done in the CLR.
+    /// </summary>
+    [RepresentationFor("Struct2Ref", "function Struct2Ref(Struct): Ref;")]
+    public Bpl.Function Struct2Ref = null;
+    [RepresentationFor("Int2Ref", "function Int2Ref(int): Ref;")]
+    public Bpl.Function Int2Ref = null;
+    [RepresentationFor("Bool2Ref", "function Bool2Ref(bool): Ref;")]
+    public Bpl.Function Bool2Ref = null;
+    #endregion
+
     /// <summary>
     /// Creates a fresh BPL variable to represent <paramref name="type"/>, deciding
     /// on its type based on the heap representation. I.e., the value of this
@@ -230,10 +230,13 @@ namespace BytecodeTranslator {
     [RepresentationFor("$TypeOf", "function $TypeOf(Type): Ref;")]
     public Bpl.Function TypeOfFunction = null;
 
+    [RepresentationFor("$As", "function $As(Ref, Type): Ref;")]
+    public Bpl.Function AsFunction = null;
+
     protected readonly string DelegateEncodingText =
       @"procedure DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
 {
-  var m: Ref;
+  var m: int;
   var o: Ref;
 
   if (a == null) {
@@ -256,7 +259,7 @@ namespace BytecodeTranslator {
 
 procedure DelegateRemove(a: Ref, b: Ref) returns (c: Ref)
 {
-  var m: Ref;
+  var m: int;
   var o: Ref;
 
   if (a == null) {
@@ -277,7 +280,7 @@ procedure DelegateRemove(a: Ref, b: Ref) returns (c: Ref)
   call c := DelegateRemoveHelper(c, m, o);
 }
 
-procedure GetFirstElement(i: Ref) returns (m: Ref, o: Ref)
+procedure GetFirstElement(i: Ref) returns (m: int, o: Ref)
 {
   var first: Ref;
   first := $Next[i][$Head[i]];
@@ -285,7 +288,7 @@ procedure GetFirstElement(i: Ref) returns (m: Ref, o: Ref)
   o := $Receiver[i][first]; 
 }
 
-procedure DelegateAddHelper(oldi: Ref, m: Ref, o: Ref) returns (i: Ref)
+procedure DelegateAddHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
 {
   var x: Ref;
   var h: Ref;
@@ -309,7 +312,7 @@ procedure DelegateAddHelper(oldi: Ref, m: Ref, o: Ref) returns (i: Ref)
   $Head[i] := x;
 }
 
-procedure DelegateRemoveHelper(oldi: Ref, m: Ref, o: Ref) returns (i: Ref)
+procedure DelegateRemoveHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
 {
   var prev: Ref;
   var iter: Ref;
@@ -350,7 +353,7 @@ procedure DelegateRemoveHelper(oldi: Ref, m: Ref, o: Ref) returns (i: Ref)
     [RepresentationFor("$Next", "var $Next: [Ref][Ref]Ref;")]
     public Bpl.GlobalVariable DelegateNext = null;
     
-    [RepresentationFor("$Method", "var $Method: [Ref][Ref]Ref;")]
+    [RepresentationFor("$Method", "var $Method: [Ref][Ref]int;")]
     public Bpl.GlobalVariable DelegateMethod = null;
 
     [RepresentationFor("$Receiver", "var $Receiver: [Ref][Ref]Ref;")]

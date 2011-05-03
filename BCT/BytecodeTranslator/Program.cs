@@ -237,7 +237,7 @@ namespace BytecodeTranslator {
         Bpl.IToken token = invokeMethod.Token();
 
         Bpl.Formal method = new Bpl.Formal(token, new Bpl.TypedIdent(token, "method", Bpl.Type.Int), true);
-        Bpl.Formal receiver = new Bpl.Formal(token, new Bpl.TypedIdent(token, "receiver", Bpl.Type.Int), true);
+        Bpl.Formal receiver = new Bpl.Formal(token, new Bpl.TypedIdent(token, "receiver", sink.Heap.RefType), true);
 
         Bpl.VariableSeq dispatchProcInvars = new Bpl.VariableSeq();
         dispatchProcInvars.Add(method);
@@ -295,8 +295,8 @@ namespace BytecodeTranslator {
         dispatchImpl.Proc = dispatchProc;
         sink.TranslatedProgram.TopLevelDeclarations.Add(dispatchImpl);
 
-        Bpl.LocalVariable iter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "iter", Bpl.Type.Int));
-        Bpl.LocalVariable niter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "niter", Bpl.Type.Int));
+        Bpl.LocalVariable iter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "iter", sink.Heap.RefType));
+        Bpl.LocalVariable niter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "niter", sink.Heap.RefType));
 
         Bpl.StmtListBuilder implStmtBuilder = new Bpl.StmtListBuilder();
         implStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(iter), sink.ReadHead(Bpl.Expr.Ident(invars[0]))));
