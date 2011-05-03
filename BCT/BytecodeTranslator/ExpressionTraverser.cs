@@ -352,14 +352,23 @@ namespace BytecodeTranslator
     }
 
     /// <summary>
-    /// 
+    /// If the expression is a struct, then this returns a "boxed" struct.
+    /// Otherwise it just translates the expression and skips the address-of
+    /// operation.
     /// </summary>
-    /// <param name="addressOf"></param>
-    /// <remarks>Since we are doing Copy-In,Copy-Out for function calls we can ignore it.
-    /// But will this work for the general case?</remarks>
     public override void Visit(IAddressOf addressOf)
     {
       Visit(addressOf.Expression);
+      if (addressOf.Expression.Type.IsValueType)
+      {
+        var e = this.TranslatedExpressions.Pop();
+        var callBox = new Bpl.NAryExpr(
+          addressOf.Token(),
+        new Bpl.FunctionCall(this.sink.Heap.Struct2Ref),
+        new Bpl.ExprSeq(e)
+        );
+        TranslatedExpressions.Push(callBox);
+      }
     }
     #endregion
 
@@ -376,8 +385,10 @@ namespace BytecodeTranslator
           TranslatedExpressions.Push(lit);
         } else if (bplType == Bpl.Type.Bool) {
           TranslatedExpressions.Push(Bpl.Expr.False);
+        } else if (bplType == this.sink.Heap.RefType) {
+          TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.Heap.NullRef));
         } else {
-          throw new NotImplementedException("Don't know how to translate type");
+          throw new NotImplementedException(String.Format("Don't know how to translate type: '{0}'", TypeHelper.GetTypeName(constant.Type)));
         }
      }
       else if (constant.Value is bool)
@@ -443,19 +454,35 @@ namespace BytecodeTranslator
         this.arrayExpr = savedArrayExpr;
         this.indexExpr = savedIndexExpr;
 
-        thisExpr = this.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
+        var e = this.TranslatedExpressions.Pop();
+        if (methodCall.MethodToCall.ContainingType.IsValueType)
+        {
+          // then the "this arg" was actually an AddressOf the struct
+          // but we are going to ignore that and just get the identifier
+          // that it was the address of
+          var nAry = e as Bpl.NAryExpr;
+          var nAryArgs = nAry.Args;
+          e = nAryArgs[0] as Bpl.IdentifierExpr;
+        }
+        inexpr.Add(e);
+        if (e is Bpl.NAryExpr)
+        {
+          e = ((Bpl.NAryExpr)e).Args[0];
+        }
+        thisExpr = e as Bpl.IdentifierExpr;
         locals = new List<Bpl.Variable>();
         Bpl.Variable x = thisExpr.Decl;
         locals.Add(x);
-        for (int i = 0; i < args.Count; i++) {
+        for (int i = 0; i < args.Count; i++)
+        {
           Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(args[i]));
           Bpl.Variable y = this.sink.CreateFreshLocal(args[i].Type);
           StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(y), this.sink.Heap.ReadHeap(Bpl.Expr.Ident(x), g, args[i].ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, y.TypedIdent.Type)));
           x = y;
           locals.Add(y);
         }
-        thisExpr = Bpl.Expr.Ident(x);
-        inexpr.Add(thisExpr);
+        //thisExpr = Bpl.Expr.Ident(x);
+        //inexpr.Add(thisExpr);
       }
       #endregion
 
@@ -597,7 +624,8 @@ namespace BytecodeTranslator
           int count = args.Count;
           Bpl.Variable x = locals[count];
           count--;
-          while (0 <= count) {
+          while (0 <= count)
+          {
             IFieldDefinition currField = args[count];
             Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(currField));
             Bpl.Variable y = locals[count];
@@ -1096,6 +1124,29 @@ namespace BytecodeTranslator
               throw new NotImplementedException();
 
           }
+        case PrimitiveTypeCode.NotPrimitive:
+          Bpl.Function func;
+          switch (conversion.ValueToConvert.Type.TypeCode) {
+            case PrimitiveTypeCode.Boolean:
+              func = this.sink.Heap.Bool2Ref;
+              break;
+            case PrimitiveTypeCode.Char: // chars are represented as ints
+            case PrimitiveTypeCode.Int16:
+            case PrimitiveTypeCode.Int32:
+            case PrimitiveTypeCode.Int64:
+            case PrimitiveTypeCode.Int8:
+              func = this.sink.Heap.Int2Ref;
+              break;
+            default:
+              throw new NotImplementedException();
+          }
+          var boxExpr = new Bpl.NAryExpr(
+            conversion.Token(),
+            new Bpl.FunctionCall(func),
+            new Bpl.ExprSeq(exp)
+            );
+            TranslatedExpressions.Push(boxExpr);
+            return;
         default:
           throw new NotImplementedException();
       }
