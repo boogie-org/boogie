@@ -110,6 +110,10 @@ namespace BytecodeTranslator {
     }
 
     public static string TurnStringIntoValidIdentifier(string s) {
+      s = s.Replace("[0:,0:]", "2DArray"); // TODO: Do this programmatically to handle arbitrary arity
+      s = s.Replace("[0:,0:,0:]", "3DArray");
+      s = s.Replace("[0:,0:,0:,0:]", "4DArray");
+      s = s.Replace("[0:,0:,0:,0:,0:]", "5DArray");
       s = s.Replace('(', '$');
       s = s.Replace(')', '$');
       s = s.Replace(',', '$');
@@ -137,14 +141,6 @@ namespace BytecodeTranslator {
       return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "this", Bpl.Type.Int));
     }
 
-    public static Bpl.Variable TempArrayContentsVar()
-    {
-        return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$ArrayContents", Bpl.Type.Int));
-    }
-    public static Bpl.Variable TempArrayLengthVar()
-    {
-        return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$ArrayLength", Bpl.Type.Int));
-    }
     #endregion
 
   }

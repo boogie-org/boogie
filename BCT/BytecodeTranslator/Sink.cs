@@ -52,18 +52,6 @@ namespace BytecodeTranslator {
     }
     readonly Heap heap;
 
-    public Bpl.Variable ArrayContentsVariable
-    {
-        get { return this.arrayContentsVariable; }
-    }
-    readonly Bpl.Variable arrayContentsVariable = TranslationHelper.TempArrayContentsVar();
-
-    public Bpl.Variable ArrayLengthVariable
-    {
-        get { return this.arrayLengthVariable; }
-    }
-    readonly Bpl.Variable arrayLengthVariable = TranslationHelper.TempArrayLengthVar();
-
     public Bpl.Variable ThisVariable = TranslationHelper.TempThisVar();
     public Bpl.Variable RetVariable;
 
@@ -191,6 +179,7 @@ namespace BytecodeTranslator {
       }
       return v;
     }
+
     /// <summary>
     /// The keys to the table are the interned key of the field.
     /// </summary>
@@ -231,6 +220,45 @@ namespace BytecodeTranslator {
     private Dictionary<string, Bpl.Constant> declaredStringConstants = new Dictionary<string, Bpl.Constant>();
 
     private Dictionary<IPropertyDefinition, Bpl.Variable> declaredProperties = new Dictionary<IPropertyDefinition, Bpl.Variable>();
+
+    private List<Bpl.Function> projectionFunctions = new List<Bpl.Function>();
+    private Dictionary<int, Bpl.Function> arityToNaryIntFunctions = new Dictionary<int, Bpl.Function>();
+    public Bpl.Function FindOrCreateNaryIntFunction(int arity) {
+      Bpl.Function f;
+      if (!this.arityToNaryIntFunctions.TryGetValue(arity, out f)) {
+        Bpl.VariableSeq vseq = new Bpl.VariableSeq();
+        for (int i = 0; i < arity; i++) {
+          vseq.Add(new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "arg" + i, Bpl.Type.Int), true));
+        }
+        f = new Bpl.Function(Bpl.Token.NoToken, "Int" + arity, vseq, new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "result", Bpl.Type.Int), false));
+        this.arityToNaryIntFunctions.Add(arity, f);
+        TranslatedProgram.TopLevelDeclarations.Add(f);
+        if (arity > projectionFunctions.Count) {
+          for (int i = projectionFunctions.Count; i < arity; i++) {
+            Bpl.Variable input = new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "in", Bpl.Type.Int), true);
+            Bpl.Variable output = new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "out", Bpl.Type.Int), false);
+            Bpl.Function g = new Bpl.Function(Bpl.Token.NoToken, "Proj" + i, new Bpl.VariableSeq(input), output);
+            TranslatedProgram.TopLevelDeclarations.Add(g);
+            projectionFunctions.Add(g);
+          }
+        }
+        Bpl.VariableSeq qvars = new Bpl.VariableSeq();
+        Bpl.ExprSeq exprs = new Bpl.ExprSeq();
+        for (int i = 0; i < arity; i++) {
+          Bpl.Variable v = new Bpl.Constant(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "arg" + i, Bpl.Type.Int));
+          qvars.Add(v);
+          exprs.Add(Bpl.Expr.Ident(v));
+        }
+        Bpl.Expr e = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(f), exprs);
+        for (int i = 0; i < arity; i++) {
+          Bpl.Expr appl = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(projectionFunctions[i]), new Bpl.ExprSeq(e));
+          Bpl.Expr qexpr = new Bpl.ForallExpr(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), qvars, null, null, Bpl.Expr.Eq(appl, Bpl.Expr.Ident(qvars[i])));
+          TranslatedProgram.TopLevelDeclarations.Add(new Bpl.Axiom(Bpl.Token.NoToken, qexpr));
+        }
+
+      }
+      return f;
+    }
 
     public struct ProcedureInfo {
       private Bpl.DeclWithFormals decl;

@@ -46,13 +46,13 @@ namespace BytecodeTranslator {
     /// </param>
     /// <param name="f">The field that is used to dereference the object <paramref name="o"/>.
     /// </param>
-    Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, bool isStruct);
+    Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.Expr f, AccessType accessType, Bpl.Type unboxType);
 
     /// <summary>
     /// Returns the BPL command that corresponds to assigning the value <paramref name="value"/>
     /// to the field <paramref name="f"/> of the object <paramref name="o"/> (which should be non-null).
     /// </summary>
-    Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value, bool isStruct);
+    Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.Expr f, Bpl.Expr value, AccessType accessType, Bpl.Type boxType);
 
     /// <summary>
     /// Returns the BPL expression that corresponds to the value of the dynamic type
@@ -61,9 +61,16 @@ namespace BytecodeTranslator {
     Bpl.Expr DynamicType(Bpl.Expr o);
 
   }
+  
+  public enum AccessType { Array, Heap, Struct };
 
   public abstract class Heap : HeapFactory, IHeap
   {
+    [RepresentationFor("$ArrayContents", "var $ArrayContents: [int][int]box;")]
+    public Bpl.Variable ArrayContentsVariable = null;
+    [RepresentationFor("$ArrayLength", "var $ArrayLength: [int]int;")]
+    public Bpl.Variable ArrayLengthVariable = null;
+
     public abstract Bpl.Variable CreateFieldVariable(IFieldReference field);
 
     [RepresentationFor("Field", "type Field;")]
@@ -170,9 +177,9 @@ namespace BytecodeTranslator {
 
     public abstract Bpl.Variable CreateEventVariable(IEventDefinition e);
 
-    public abstract Bpl.Expr ReadHeap(Bpl.Expr o, Bpl.IdentifierExpr f, bool isStruct);
+    public abstract Bpl.Expr ReadHeap(Bpl.Expr o, Bpl.Expr f, AccessType accessType, Bpl.Type unboxType);
 
-    public abstract Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr o, Bpl.IdentifierExpr f, Bpl.Expr value, bool isStruct);
+    public abstract Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr o, Bpl.Expr f, Bpl.Expr value, AccessType accessType, Bpl.Type boxType);
 
     [RepresentationFor("$DynamicType", "function $DynamicType(ref): Type;")]
     protected Bpl.Function DynamicTypeFunction = null;

@@ -39,8 +39,6 @@ type struct = [Field]box;
 type HeapType = [int,int]int;
 var $Heap: HeapType where IsGoodHeap($Heap);
 function IsGoodHeap(HeapType): bool;
-var $ArrayContents: [int][int]int;
-var $ArrayLength: [int]int;
 
 var $Alloc: [int] bool;
 procedure {:inline 1} Alloc() returns (x: int)
@@ -123,23 +121,27 @@ axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
     /// </param>
     /// <param name="f">The field that is used to dereference the object <paramref name="o"/>.
     /// </param>
-    public override Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, bool isStruct) {
-      if (isStruct)
+    public override Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.Expr f, AccessType accessType, Bpl.Type unboxType) {
+      if (accessType == AccessType.Struct)
         return Bpl.Expr.Select(o, f);
-      else
+      else if (accessType == AccessType.Heap)
         return Bpl.Expr.Select(f, o);
+      else
+        return Bpl.Expr.Select(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f);
     }
 
     /// <summary>
     /// Returns the BPL command that corresponds to assigning the value <paramref name="value"/>
     /// to the field <paramref name="f"/> of the object <paramref name="o"/> (which should be non-null).
     /// </summary>
-    public override Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value, bool isStruct) {
+    public override Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.Expr f, Bpl.Expr value, AccessType accessType, Bpl.Type boxType) {
       Debug.Assert(o != null);
-      if (isStruct)
+      if (accessType == AccessType.Struct)
         return Bpl.Cmd.MapAssign(tok, (Bpl.IdentifierExpr)o, f, value);
+      else if (accessType == AccessType.Heap)
+        return Bpl.Cmd.MapAssign(tok, (Bpl.IdentifierExpr)f, o, value);
       else
-        return Bpl.Cmd.MapAssign(tok, f, o, value);
+        return TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(ArrayContentsVariable), Bpl.Expr.Store(Bpl.Expr.Ident(ArrayContentsVariable), o, Bpl.Expr.Store(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f, value)));
     }
 
   }
@@ -171,8 +173,6 @@ type ref = int;
 type struct = [Field]box;
 type HeapType = [ref,Field]box;
 function IsGoodHeap(HeapType): bool;
-var $ArrayContents: [int][int]int;
-var $ArrayLength: [int]int;
 
 var $Alloc: [ref] bool;
 procedure {:inline 1} Alloc() returns (x: ref)
@@ -229,10 +229,8 @@ axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.Constant(tok, tident, true);
       }
-      this.underlyingTypes.Add(v, field.Type);
       return v;
     }
-    private Dictionary<Bpl.Variable, ITypeReference> underlyingTypes = new Dictionary<Bpl.Variable, ITypeReference>();
 
     public override Bpl.Variable CreateEventVariable(IEventDefinition e) {
       Bpl.Variable v;
@@ -249,7 +247,6 @@ axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.Constant(tok, tident, true);
       }
-      this.underlyingTypes.Add(v, e.Type);
       return v;
     }
 
@@ -261,22 +258,19 @@ axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
     /// </param>
     /// <param name="f">The field that is used to dereference the object <paramref name="o"/>.
     /// </param>
-    public override Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, bool isStruct) {
+    public override Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.Expr f, AccessType accessType, Bpl.Type unboxType) {
       Debug.Assert(o != null);
 
-      var callRead = isStruct ?
-        Bpl.Expr.Select(o, f) :
-        // $Read($Heap, o, f)
-        new Bpl.NAryExpr(
-          f.tok,
-          new Bpl.FunctionCall(this.Read),
-          new Bpl.ExprSeq(new Bpl.IdentifierExpr(f.tok, this.HeapVariable), o, f)
-          );
+      Bpl.NAryExpr callRead;
+      if (accessType == AccessType.Struct)
+        callRead = Bpl.Expr.Select(o, f);
+      else if (accessType == AccessType.Heap)
+        callRead = new Bpl.NAryExpr(f.tok, new Bpl.FunctionCall(this.Read), new Bpl.ExprSeq(new Bpl.IdentifierExpr(f.tok, this.HeapVariable), o, f));
+      else
+        callRead = Bpl.Expr.Select(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f);
 
       // wrap it in the right conversion function
-      var originalType = this.underlyingTypes[f.Decl];
-      var boogieType = sink.CciTypeToBoogie(originalType);
-      var callExpr = Unbox(f.tok, boogieType, callRead);
+      var callExpr = Unbox(f.tok, unboxType, callRead);
       return callExpr;
     }
 
@@ -284,27 +278,24 @@ axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
     /// Returns the BPL command that corresponds to assigning the value <paramref name="value"/>
     /// to the field <paramref name="f"/> of the object <paramref name="o"/> (which should be non-null).
     /// </summary>
-    public override Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.IdentifierExpr f, Bpl.Expr value, bool isStruct) {
+    public override Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.Expr f, Bpl.Expr value, AccessType accessType, Bpl.Type boxType) {
       Debug.Assert(o != null);
 
       Bpl.IdentifierExpr h;
       Bpl.NAryExpr callWrite;
-      var originalType = this.underlyingTypes[f.Decl];
-      var boogieType = sink.CciTypeToBoogie(originalType);
-      var callConversion = Box(f.tok, boogieType, value);
+      var callConversion = Box(f.tok, boxType, value);
 
-      if (isStruct) {
+      if (accessType == AccessType.Struct) {
         h = (Bpl.IdentifierExpr)o;
         callWrite = Bpl.Expr.Store(h, f, callConversion);
       }
+      else if (accessType == AccessType.Heap) {
+        h = Bpl.Expr.Ident(HeapVariable);
+        callWrite = new Bpl.NAryExpr(f.tok, new Bpl.FunctionCall(this.Write), new Bpl.ExprSeq(h, o, f, callConversion));
+      }
       else {
-        // $Write($Heap, o, f)
-        h = new Bpl.IdentifierExpr(f.tok, this.HeapVariable);
-        callWrite = new Bpl.NAryExpr(
-          f.tok,
-          new Bpl.FunctionCall(this.Write),
-          new Bpl.ExprSeq(h, o, f, callConversion)
-          );
+        h = Bpl.Expr.Ident(ArrayContentsVariable);
+        callWrite = Bpl.Expr.Store(Bpl.Expr.Ident(ArrayContentsVariable), o, Bpl.Expr.Store(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f, callConversion));
       }
       return Bpl.Cmd.SimpleAssign(f.tok, h, callWrite);
     }

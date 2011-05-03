@@ -28,9 +28,6 @@ namespace BytecodeTranslator
 
     public readonly PdbReader/*?*/ PdbReader;
 
-    private readonly Bpl.Variable ArrayContentsVariable;
-    private readonly Bpl.Variable ArrayLengthVariable;
-
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
     private bool contractContext;
     internal readonly Stack<Bpl.Expr> operandStack = new Stack<Bpl.Expr>();
@@ -41,9 +38,6 @@ namespace BytecodeTranslator
       this.factory = sink.Factory;
       PdbReader = pdbReader;
       this.contractContext = contractContext;
-
-      ArrayContentsVariable = sink.ArrayContentsVariable;
-      ArrayLengthVariable = sink.ArrayLengthVariable;
     }
     #endregion
 

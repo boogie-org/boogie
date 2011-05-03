@@ -93,7 +93,8 @@ namespace BytecodeTranslator {
         var e = this.sink.DefaultValue(f.Type);
         var fExp = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f));
         var o = Bpl.Expr.Ident(proc.OutParams[0]);
-        var c = this.sink.Heap.WriteHeap(Bpl.Token.NoToken, o, fExp, e, true);
+        var boogieType = sink.CciTypeToBoogie(f.Type);
+        var c = this.sink.Heap.WriteHeap(Bpl.Token.NoToken, o, fExp, e, AccessType.Struct, boogieType);
         stmtBuilder.Add(c);
       }
 
