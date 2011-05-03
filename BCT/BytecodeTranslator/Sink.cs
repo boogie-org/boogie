@@ -109,8 +109,10 @@ namespace BytecodeTranslator {
         return lit;
       } else if (type.ResolvedType.IsStruct) {
         return Bpl.Expr.Ident(this.Heap.DefaultStruct);
+      } else if (bplType == this.Heap.RefType) {
+        return Bpl.Expr.Ident(this.Heap.NullRef);
       } else {
-        throw new NotImplementedException("Don't know how to translate type");
+        throw new NotImplementedException(String.Format("Don't know how to translate type: '{0}'", TypeHelper.GetTypeName(type)));
       }
     }
 
@@ -121,7 +123,13 @@ namespace BytecodeTranslator {
         return Bpl.Type.Int;
       else if (type.ResolvedType.IsStruct)
         return heap.StructType;
-      return Bpl.Type.Int; // BUG! This is where we need to return "ref" for a reference type
+      else if (type.IsEnum)
+      {
+        return CciTypeToBoogie(type.ResolvedType.UnderlyingType);
+      }
+      else
+        return heap.RefType;
+      //return Bpl.Type.Int; // BUG! This is where we need to return "ref" for a reference type
     }
 
     /// <summary>
@@ -219,7 +227,7 @@ namespace BytecodeTranslator {
       Bpl.Constant c;
       if (!this.declaredStringConstants.TryGetValue(str, out c)) {
         var tok = Bpl.Token.NoToken;
-        var t = Bpl.Type.Int;
+        var t = Heap.RefType;
         var name = "$string_literal_" + TranslationHelper.TurnStringIntoValidIdentifier(str);
         var tident = new Bpl.TypedIdent(tok, name, t);
         c = new Bpl.Constant(tok, tident, true);
@@ -294,9 +302,9 @@ namespace BytecodeTranslator {
         Bpl.Formal selfOut = null;
         #region Create 'this' parameter
         if (!method.IsStatic) {
-          Bpl.Type selfType;
+          Bpl.Type selfType = CciTypeToBoogie(method.ContainingType);
           if (method.ContainingType.ResolvedType.IsStruct) {
-            selfType = Heap.StructType;
+            //selfType = Heap.StructType;
             in_count++;
             self = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), "thisIn", selfType), true);
             out_count++;
@@ -304,7 +312,7 @@ namespace BytecodeTranslator {
           }
           else {
             in_count++;
-            selfType = Bpl.Type.Int;
+            //selfType = Heap.RefType;
             self = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), "this", selfType), true);
           }
         }

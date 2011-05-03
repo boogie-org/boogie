@@ -70,14 +70,18 @@ namespace BytecodeTranslator {
     public Bpl.TypeCtorDecl FieldTypeDecl = null;
     public Bpl.CtorType FieldType;
 
-    [RepresentationFor("box", "type box;")]
+    [RepresentationFor("Box", "type Box;")]
     public Bpl.TypeCtorDecl BoxTypeDecl = null;
     public Bpl.CtorType BoxType;
 
-    [RepresentationFor("$DefaultBox", "const unique $DefaultBox : box;")]
+    [RepresentationFor("$DefaultBox", "const unique $DefaultBox : Box;")]
     public Bpl.Constant DefaultBox;
-    [RepresentationFor("$DefaultStruct", "const unique $DefaultStruct : struct;")]
-    public Bpl.Constant DefaultStruct;
+
+    [RepresentationFor("Ref", "type Ref;")]
+    public Bpl.TypeCtorDecl RefTypeDecl = null;
+    public Bpl.CtorType RefType;
+    [RepresentationFor("null", "const unique null : Ref;")]
+    public Bpl.Constant NullRef;
 
     [RepresentationFor("Type", "type Type;")]
     protected Bpl.TypeCtorDecl TypeTypeDecl = null;
@@ -92,24 +96,45 @@ namespace BytecodeTranslator {
         return structType;
       }
     }
+    [RepresentationFor("$DefaultStruct", "const unique $DefaultStruct : Struct;")]
+    public Bpl.Constant DefaultStruct;
 
-    [RepresentationFor("Box2Int", "function Box2Int(box): int;")]
+
+    [RepresentationFor("Box2Int", "function Box2Int(Box): int;")]
     public Bpl.Function Box2Int = null;
 
-    [RepresentationFor("Box2Bool", "function Box2Bool(box): bool;")]
+    [RepresentationFor("Box2Bool", "function Box2Bool(Box): bool;")]
     public Bpl.Function Box2Bool = null;
 
-    [RepresentationFor("Box2Struct", "function Box2Struct(box): struct;")]
+    [RepresentationFor("Box2Struct", "function Box2Struct(Box): Struct;")]
     public Bpl.Function Box2Struct = null;
 
-    [RepresentationFor("Int2Box", "function Int2Box(int): box;")]
+    [RepresentationFor("Box2Ref", "function Box2Ref(Box): Ref;")]
+    public Bpl.Function Box2Ref = null;
+
+    [RepresentationFor("Int2Box", "function Int2Box(int): Box;")]
     public Bpl.Function Int2Box = null;
 
-    [RepresentationFor("Bool2Box", "function Bool2Box(bool): box;")]
+    [RepresentationFor("Bool2Box", "function Bool2Box(bool): Box;")]
     public Bpl.Function Bool2Box = null;
 
-    [RepresentationFor("Struct2Box", "function Struct2Box(struct): box;")]
+    [RepresentationFor("Struct2Box", "function Struct2Box(Struct): Box;")]
     public Bpl.Function Struct2Box = null;
+
+    #region "Boxing" as done in the CLR
+    /// <summary>
+    /// Used to represent "boxing" as it is done in the CLR.
+    /// </summary>
+    [RepresentationFor("Struct2Ref", "function Struct2Ref(Struct): Ref;")]
+    public Bpl.Function Struct2Ref = null;
+    [RepresentationFor("Int2Ref", "function Int2Ref(int): Ref;")]
+    public Bpl.Function Int2Ref = null;
+    [RepresentationFor("Bool2Ref", "function Bool2Ref(bool): Ref;")]
+    public Bpl.Function Bool2Ref = null;
+    #endregion
+
+    [RepresentationFor("Ref2Box", "function Ref2Box(Ref): Box;")]
+    public Bpl.Function Ref2Box = null;
 
     public Bpl.Expr Box(Bpl.IToken tok, Bpl.Type boogieType, Bpl.Expr expr) {
       Bpl.Function conversion;
@@ -119,8 +144,10 @@ namespace BytecodeTranslator {
         conversion = this.Int2Box;
       else if (boogieType == StructType)
         conversion = this.Struct2Box;
+      else if (boogieType == RefType)
+        conversion = this.Ref2Box;
       else
-        throw new InvalidOperationException("Unknown Boogie type");
+        throw new InvalidOperationException(String.Format("Unknown Boogie type: '{0}'", boogieType.ToString()));
 
       var callConversion = new Bpl.NAryExpr(
         tok,
@@ -138,8 +165,10 @@ namespace BytecodeTranslator {
         conversion = this.Box2Int;
       else if (boogieType == StructType)
         conversion = this.Box2Struct;
+      else if (boogieType == RefType)
+        conversion = this.Box2Ref;
       else
-        throw new InvalidOperationException("Unknown Boogie type");
+        throw new InvalidOperationException(String.Format("Unknown Boogie type: '{0}'", boogieType.ToString()));
 
       var callExpr = new Bpl.NAryExpr(
         tok,
@@ -174,7 +203,7 @@ namespace BytecodeTranslator {
 
     public abstract Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr o, Bpl.IdentifierExpr f, Bpl.Expr value, bool isStruct);
 
-    [RepresentationFor("$DynamicType", "function $DynamicType(ref): Type;")]
+    [RepresentationFor("$DynamicType", "function $DynamicType(Ref): Type;")]
     protected Bpl.Function DynamicTypeFunction = null;
 
     /// <summary>
@@ -191,19 +220,19 @@ namespace BytecodeTranslator {
       return callDynamicType;
     }
 
-    [RepresentationFor("$TypeOf", "function $TypeOf(Type): ref;")]
+    [RepresentationFor("$TypeOf", "function $TypeOf(Type): Ref;")]
     public Bpl.Function TypeOfFunction = null;
 
     protected readonly string DelegateEncodingText =
-      @"procedure DelegateAdd(a: int, b: int) returns (c: int)
+      @"procedure DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
 {
-  var m: int;
-  var o: int;
+  var m: Ref;
+  var o: Ref;
 
-  if (a == 0) {
+  if (a == null) {
     c := b;
     return;
-  } else if (b == 0) {
+  } else if (b == null) {
     c := a;
     return;
   }
@@ -218,15 +247,15 @@ namespace BytecodeTranslator {
   call c := DelegateAddHelper(c, m, o);
 }
 
-procedure DelegateRemove(a: int, b: int) returns (c: int)
+procedure DelegateRemove(a: Ref, b: Ref) returns (c: Ref)
 {
-  var m: int;
-  var o: int;
+  var m: Ref;
+  var o: Ref;
 
-  if (a == 0) {
-    c := 0;
+  if (a == null) {
+    c := null;
     return;
-  } else if (b == 0) {
+  } else if (b == null) {
     c := a;
     return;
   }
@@ -241,20 +270,20 @@ procedure DelegateRemove(a: int, b: int) returns (c: int)
   call c := DelegateRemoveHelper(c, m, o);
 }
 
-procedure GetFirstElement(i: int) returns (m: int, o: int)
+procedure GetFirstElement(i: Ref) returns (m: Ref, o: Ref)
 {
-  var first: int;
+  var first: Ref;
   first := $Next[i][$Head[i]];
   m := $Method[i][first];
   o := $Receiver[i][first]; 
 }
 
-procedure DelegateAddHelper(oldi: int, m: int, o: int) returns (i: int)
+procedure DelegateAddHelper(oldi: Ref, m: Ref, o: Ref) returns (i: Ref)
 {
-  var x: int;
-  var h: int;
+  var x: Ref;
+  var h: Ref;
 
-  if (oldi == 0) {
+  if (oldi == null) {
     call i := Alloc();
     call x := Alloc();
     $Head[i] := x;
@@ -273,18 +302,18 @@ procedure DelegateAddHelper(oldi: int, m: int, o: int) returns (i: int)
   $Head[i] := x;
 }
 
-procedure DelegateRemoveHelper(oldi: int, m: int, o: int) returns (i: int)
+procedure DelegateRemoveHelper(oldi: Ref, m: Ref, o: Ref) returns (i: Ref)
 {
-  var prev: int;
-  var iter: int;
-  var niter: int;
+  var prev: Ref;
+  var iter: Ref;
+  var niter: Ref;
 
   i := oldi;
-  if (i == 0) {
+  if (i == null) {
     return;
   }
 
-  prev := 0;
+  prev := null;
   iter := $Head[i];
   while (true) {
     niter := $Next[i][iter];
@@ -296,28 +325,28 @@ procedure DelegateRemoveHelper(oldi: int, m: int, o: int) returns (i: int)
     }
     iter := niter;
   }
-  if (prev == 0) {
+  if (prev == null) {
     return;
   }
 
   $Next[i] := $Next[i][prev := $Next[i][$Next[i][prev]]];
   if ($Next[i][$Head[i]] == $Head[i]) {
-    i := 0;
+    i := null;
   }
 }
 
 ";
 
-    [RepresentationFor("$Head", "var $Head: [int]int;")]
+    [RepresentationFor("$Head", "var $Head: [Ref]Ref;")]
     public Bpl.GlobalVariable DelegateHead = null;
 
-    [RepresentationFor("$Next", "var $Next: [int][int]int;")]
+    [RepresentationFor("$Next", "var $Next: [Ref][Ref]Ref;")]
     public Bpl.GlobalVariable DelegateNext = null;
     
-    [RepresentationFor("$Method", "var $Method: [int][int]int;")]
+    [RepresentationFor("$Method", "var $Method: [Ref][Ref]Ref;")]
     public Bpl.GlobalVariable DelegateMethod = null;
 
-    [RepresentationFor("$Receiver", "var $Receiver: [int][int]int;")]
+    [RepresentationFor("$Receiver", "var $Receiver: [Ref][Ref]Ref;")]
     public Bpl.GlobalVariable DelegateReceiver = null;
   }
 

@@ -33,18 +33,16 @@ namespace BytecodeTranslator {
     /// Prelude text for which access to the ASTs is not needed
     /// </summary>
     private readonly string InitialPreludeText =
-      @"const null: int;
-type ref = int;
-type struct = [Field]box;
-type HeapType = [int,int]int;
+      @"type Struct = [Field]Box;
+type HeapType = [Ref,Field]Box;
 var $Heap: HeapType where IsGoodHeap($Heap);
 function IsGoodHeap(HeapType): bool;
 var $ArrayContents: [int][int]int;
 var $ArrayLength: [int]int;
 
-var $Alloc: [int] bool;
-procedure {:inline 1} Alloc() returns (x: int)
-  free ensures x != 0;
+var $Alloc: [Ref] bool;
+procedure {:inline 1} Alloc() returns (x: Ref)
+  free ensures x != null;
   modifies $Alloc;
 {
   assume $Alloc[x] == false;
@@ -71,6 +69,7 @@ axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
         this.BoxType = new Bpl.CtorType(this.BoxTypeDecl.tok, this.BoxTypeDecl, new Bpl.TypeSeq());
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
         this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
+        this.RefType = new Bpl.CtorType(this.RefTypeDecl.tok, this.RefTypeDecl, new Bpl.TypeSeq());
       }
       return b;
     }
@@ -90,7 +89,7 @@ axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
         v = new Bpl.GlobalVariable(tok, tident);
       }
       else {
-        Bpl.Type mt = new Bpl.MapType(tok, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Bpl.Type.Int), t);
+        Bpl.Type mt = new Bpl.MapType(tok, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(this.RefType), t);
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, mt);
         v = new Bpl.GlobalVariable(tok, tident);
       }
@@ -156,26 +155,24 @@ axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
     [RepresentationFor("$Heap", "var $Heap: HeapType where IsGoodHeap($Heap);", true)]
     private Bpl.Variable HeapVariable = null;
     
-    [RepresentationFor("Read", "function {:inline true} Read(H:HeapType, o:ref, f:Field): box { H[o, f] }")]
+    [RepresentationFor("Read", "function {:inline true} Read(H:HeapType, o:Ref, f:Field): Box { H[o, f] }")]
     private Bpl.Function Read = null;
 
-    [RepresentationFor("Write", "function {:inline true} Write(H:HeapType, o:ref, f:Field, v:box): HeapType { H[o,f := v] }")]
+    [RepresentationFor("Write", "function {:inline true} Write(H:HeapType, o:Ref, f:Field, v:Box): HeapType { H[o,f := v] }")]
     private Bpl.Function Write = null;
 
     /// <summary>
     /// Prelude text for which access to the ASTs is not needed
     /// </summary>
     private readonly string InitialPreludeText =
-      @"const null: ref;
-type ref = int;
-type struct = [Field]box;
-type HeapType = [ref,Field]box;
+      @"type Struct = [Field]Box;
+type HeapType = [Ref,Field]Box;
 function IsGoodHeap(HeapType): bool;
-var $ArrayContents: [int][int]int;
-var $ArrayLength: [int]int;
+var $ArrayContents: [Ref][int]Box;
+var $ArrayLength: [Ref]int;
 
-var $Alloc: [ref] bool;
-procedure {:inline 1} Alloc() returns (x: ref)
+var $Alloc: [Ref] bool;
+procedure {:inline 1} Alloc() returns (x: Ref)
   free ensures x != null;
   modifies $Alloc;
 {
@@ -205,6 +202,7 @@ axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
         this.BoxType = new Bpl.CtorType(this.BoxTypeDecl.tok, this.BoxTypeDecl, new Bpl.TypeSeq());
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
         this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
+        this.RefType = new Bpl.CtorType(this.RefTypeDecl.tok, this.RefTypeDecl, new Bpl.TypeSeq());
       }
       return b;
     }
