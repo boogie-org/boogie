@@ -110,6 +110,10 @@ namespace BytecodeTranslator {
     }
 
     public static string TurnStringIntoValidIdentifier(string s) {
+      s = s.Replace("[0:,0:]", "2DArray"); // TODO: Do this programmatically to handle arbitrary arity
+      s = s.Replace("[0:,0:,0:]", "3DArray");
+      s = s.Replace("[0:,0:,0:,0:]", "4DArray");
+      s = s.Replace("[0:,0:,0:,0:,0:]", "5DArray");
       s = s.Replace('(', '$');
       s = s.Replace(')', '$');
       s = s.Replace(',', '$');
