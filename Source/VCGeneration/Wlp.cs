@@ -17,7 +17,6 @@ namespace VC {
     [ContractInvariantMethod]
     void ObjectInvariant() 
     {
-      Contract.Invariant(Label2absy!=null);
       Contract.Invariant(Ctxt != null);
     }
 
@@ -27,7 +26,6 @@ namespace VC {
     
     public VCContext(Hashtable/*<int, Absy!>*/ label2absy, ProverContext ctxt)
     {
-      Contract.Requires(label2absy != null);
       Contract.Requires(ctxt != null);
       this.Label2absy = label2absy;
       this.Ctxt = ctxt;
@@ -36,7 +34,6 @@ namespace VC {
     
     public VCContext(Hashtable/*<int, Absy!>*/ label2absy, ProverContext ctxt, Variable controlFlowVariable)
     {
-      Contract.Requires(label2absy != null);
       Contract.Requires(ctxt != null);
       this.Label2absy = label2absy;
       this.Ctxt = ctxt;

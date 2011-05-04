@@ -3621,7 +3621,6 @@ namespace VC {
                         Hashtable/*<int, Absy!>*/ label2absy,
                         ProverContext proverCtxt) {
       Contract.Requires(startBlock != null);
-      Contract.Requires(label2absy != null);
       Contract.Requires(proverCtxt != null);
 
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -3640,7 +3639,6 @@ namespace VC {
                         ProverContext proverCtxt)
     {
       Contract.Requires(block != null);
-      Contract.Requires(label2absy != null);
       Contract.Requires(blockVariables!= null);
       Contract.Requires(cce.NonNullElements(bindings));
       Contract.Requires(proverCtxt != null);
