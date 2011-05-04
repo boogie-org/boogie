@@ -217,7 +217,7 @@ namespace BytecodeTranslator {
       if (!this.declaredStringConstants.TryGetValue(str, out c)) {
         var tok = Bpl.Token.NoToken;
         var t = Heap.RefType;
-        var name = "$string_literal_" + TranslationHelper.TurnStringIntoValidIdentifier(str);
+        var name = "$string_literal_" + TranslationHelper.TurnStringIntoValidIdentifier(str) + "_" + declaredStringConstants.Count;
         var tident = new Bpl.TypedIdent(tok, name, t);
         c = new Bpl.Constant(tok, tident, true);
         this.declaredStringConstants.Add(str, c);
