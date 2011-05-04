@@ -332,7 +332,7 @@ namespace Microsoft.Boogie {
       List<Block/*!*/> newBlocks = new List<Block/*!*/>();
       foreach (Block/*!*/ b in impl.Blocks) {
         Contract.Assert(b != null);
-        if (!removedBlocks.Contains(b)) {
+        if (visitedBlocks.Contains(b) && !removedBlocks.Contains(b)) {
           newBlocks.Add(b);
         }
       }
