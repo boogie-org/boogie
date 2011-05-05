@@ -135,10 +135,15 @@ namespace BytecodeTranslator {
       return v;
     }
 
+    /// <summary>
+    /// State that gets re-initialized per method
+    /// </summary>
     private Dictionary<ILocalDefinition, Bpl.LocalVariable> localVarMap = null;
     public Dictionary<ILocalDefinition, Bpl.LocalVariable> LocalVarMap {
       get { return this.localVarMap; }
     }
+    private int localCounter;
+    public int LocalCounter { get { return this.localCounter++; } }
 
     /// <summary>
     /// 
@@ -586,6 +591,7 @@ namespace BytecodeTranslator {
 
     public void BeginMethod() {
       this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
+      this.localCounter = 0;
     }
 
     public Dictionary<ITypeDefinition, HashSet<IMethodDefinition>> delegateTypeToDelegates = new Dictionary<ITypeDefinition, HashSet<IMethodDefinition>>();
@@ -603,7 +609,7 @@ namespace BytecodeTranslator {
     }
 
     private Dictionary<IMethodDefinition, Bpl.Constant> delegateMethods = new Dictionary<IMethodDefinition, Bpl.Constant>();
-    private IContractAwareHost host;
+    internal IContractAwareHost host;
 
     public Bpl.Constant FindOrAddDelegateMethodConstant(IMethodDefinition defn)
     {

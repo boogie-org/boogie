@@ -359,16 +359,16 @@ namespace BytecodeTranslator
     public override void Visit(IAddressOf addressOf)
     {
       Visit(addressOf.Expression);
-      if (addressOf.Expression.Type.IsValueType)
-      {
-        var e = this.TranslatedExpressions.Pop();
-        var callBox = new Bpl.NAryExpr(
-          addressOf.Token(),
-        new Bpl.FunctionCall(this.sink.Heap.Struct2Ref),
-        new Bpl.ExprSeq(e)
-        );
-        TranslatedExpressions.Push(callBox);
-      }
+      //if (addressOf.Expression.Type.IsValueType)
+      //{
+      //  var e = this.TranslatedExpressions.Pop();
+      //  var callBox = new Bpl.NAryExpr(
+      //    addressOf.Token(),
+      //  new Bpl.FunctionCall(this.sink.Heap.Struct2Ref),
+      //  new Bpl.ExprSeq(e)
+      //  );
+      //  TranslatedExpressions.Push(callBox);
+      //}
     }
     #endregion
 
@@ -659,42 +659,26 @@ namespace BytecodeTranslator
     public override void Visit(IAssignment assignment) {
       Contract.Assert(TranslatedExpressions.Count == 0);
 
-      #region Special case for s := default(S) when S is a struct
 
-      //// The C# source "s = new S()" when S is a struct is compiled
-      //// into an "initobj" instruction. That is decompiled into the
-      //// assignment: "s = DefaultValue(S)".
-      //// We translate it as a call to a pseduo-ctor that is created for S:
-      //// "s := S.#default_ctor()".
-
-      //if (assignment.Target.Type.ResolvedType.IsStruct &&
-      //  assignment.Target.Type.TypeCode == PrimitiveTypeCode.NotPrimitive &&
-      //  assignment.Source is IDefaultValue) {
-
-      //  this.Visit(assignment.Target);
-      //  var s = this.TranslatedExpressions.Pop();
-
-      //  var structType = assignment.Target.Type;
-      //  Bpl.IToken tok = assignment.Token();
-      //  var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(structType);
-      //  string methodname = proc.Name;
-      //  var inexpr = new List<Bpl.Expr>();
-      //  var outvars = new List<Bpl.IdentifierExpr>();
-      //  outvars.Add((Bpl.IdentifierExpr)s);
-      //  var call = new Bpl.CallCmd(tok, methodname, inexpr, outvars);
-      //  this.StmtTraverser.StmtBuilder.Add(call);
-
-      //  return;
+      //var localDeclaration = AssignmentSimplifier_FirstTry.Simplify(this.sink.host, assignment.Target);
+      //if (localDeclaration != null) {
+      //  this.StmtTraverser.Visit(localDeclaration);
       //}
-      #endregion
 
       #region Transform Right Hand Side ...
       this.Visit(assignment.Source);
       Bpl.Expr sourceexp = this.TranslatedExpressions.Pop();
       #endregion
 
-      var target = assignment.Target;
+      var blockExpression = AssignmentSimplifier.Simplify(this.sink, assignment.Target);
+      foreach (var s in blockExpression.BlockStatement.Statements) {
+        this.StmtTraverser.Visit(s);
+      }
+      var target = blockExpression.Expression as ITargetExpression;
+
+      //var target = assignment.Target;
       var fieldReference = target.Definition as IFieldReference;
+
 
       List<IFieldDefinition> args = null;
       Bpl.Expr arrayExpr = null;
@@ -1226,6 +1210,126 @@ namespace BytecodeTranslator
 
     }
     #endregion
+
+    /// <summary>
+    /// Actually a mutator! It will downcast and whack if/when it finds the right spot in the tree!
+    /// If found, replaces the "right-most object" on the left-hand side of an asignment with a local.
+    /// A local declaration statement is created (and stored in a field of this class) that initializes
+    /// the local to the part of the tree it replaced.
+    /// </summary>
+    private class AssignmentSimplifier_FirstTry : BaseCodeTraverser {
+      IMetadataHost host;
+      private ILocalDeclarationStatement/*?*/ localDeclarationStatement;
+      private AssignmentSimplifier_FirstTry(IMetadataHost host)
+        : base() {
+        this.host = host;
+      }
+      public static ILocalDeclarationStatement/*?*/ Simplify(IMetadataHost host, ITargetExpression targetExpression) {
+        var a = new AssignmentSimplifier_FirstTry(host);
+        a.Visit(targetExpression);
+        return a.localDeclarationStatement;
+      }
+      public override void Visit(IBoundExpression boundExpression) {
+        if (boundExpression.Instance == null) {
+          this.stopTraversal = true;
+          return;
+        }
+        var loc = new LocalDefinition() {
+          Name = this.host.NameTable.GetNameFor("_loc"), // TODO: should make the name unique within the method containing the assignment
+          Type = boundExpression.Type,
+        };
+        var mutableBoundExpression = (BoundExpression)boundExpression;
+        var init = new LocalDeclarationStatement() {
+          InitialValue = new BoundExpression(){
+            Definition = boundExpression.Definition,
+            Instance = boundExpression.Instance,
+            Type = boundExpression.Type,
+          },
+          LocalVariable = loc,
+          Locations = mutableBoundExpression.Locations,
+        };
+        this.localDeclarationStatement = init;
+        mutableBoundExpression.Instance = null;
+        mutableBoundExpression.Definition = loc;
+        this.stopTraversal = true;
+        return;
+      }
+
+      public override void Visit(ITargetExpression targetExpression) {
+        base.Visit(targetExpression);
+      }
+
+    }
+
+    /// <summary>
+    /// This is a rewriter so it must be used on a mutable Code Model!!!
+    /// </summary>
+    private class AssignmentSimplifier : CodeRewriter {
+
+      Sink sink;
+      private List<IStatement> localDeclarations = new List<IStatement>();
+
+      private AssignmentSimplifier(Sink sink)
+        : base(sink.host) {
+        this.sink = sink;
+      }
+
+      public static IBlockExpression Simplify(Sink sink, ITargetExpression targetExpression) {
+        var a = new AssignmentSimplifier(sink);
+        var leftOverExpression = a.Rewrite(targetExpression);
+        return new BlockExpression() {
+          BlockStatement = new BlockStatement() { Statements = a.localDeclarations, },
+          Expression = leftOverExpression,
+          Type = targetExpression.Type,
+        };
+      }
+
+      public override IExpression Rewrite(IBoundExpression boundExpression) {
+        if (boundExpression.Instance == null)
+          return base.Rewrite(boundExpression); // REVIEW: Maybe just stop the rewriting and return boundExpression?
+        var e = base.Rewrite(boundExpression);
+        boundExpression = e as IBoundExpression;
+        if (boundExpression == null) return e;
+        var loc = new LocalDefinition() {
+          Name = this.host.NameTable.GetNameFor("_loc" + this.sink.LocalCounter.ToString()), // TODO: should make the name unique within the method containing the assignment
+          Type = boundExpression.Type,
+        };
+        this.localDeclarations.Add(
+          new LocalDeclarationStatement() {
+            InitialValue = boundExpression,
+            LocalVariable = loc,
+          }
+          );
+        return new BoundExpression() {
+          Definition = loc,
+          Instance = null,
+          Type = boundExpression.Type,
+        };
+      }
+
+      public override IExpression Rewrite(IMethodCall methodCall) {
+
+        var e = base.Rewrite(methodCall); // simplify anything deeper in the tree
+        methodCall = e as IMethodCall;
+        if (methodCall == null) return e;
+
+        var loc = new LocalDefinition() {
+          Name = this.host.NameTable.GetNameFor("_loc"), // TODO: should make the name unique within the method containing the assignment
+          Type = methodCall.Type,
+        };
+        this.localDeclarations.Add(
+          new LocalDeclarationStatement() {
+            InitialValue = methodCall,
+            LocalVariable = loc,
+          }
+          );
+        return new BoundExpression() {
+          Definition = loc,
+          Instance = null,
+          Type = methodCall.Type,
+        };
+      }
+    }
   }
 
 }
