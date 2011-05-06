@@ -659,24 +659,19 @@ namespace BytecodeTranslator
     public override void Visit(IAssignment assignment) {
       Contract.Assert(TranslatedExpressions.Count == 0);
 
-
-      //var localDeclaration = AssignmentSimplifier_FirstTry.Simplify(this.sink.host, assignment.Target);
-      //if (localDeclaration != null) {
-      //  this.StmtTraverser.Visit(localDeclaration);
-      //}
-
       #region Transform Right Hand Side ...
       this.Visit(assignment.Source);
       Bpl.Expr sourceexp = this.TranslatedExpressions.Pop();
       #endregion
 
+      // Simplify the LHS so that all nested dereferences and method calls are broken
+      // up into separate assignments to locals.
       var blockExpression = AssignmentSimplifier.Simplify(this.sink, assignment.Target);
       foreach (var s in blockExpression.BlockStatement.Statements) {
         this.StmtTraverser.Visit(s);
       }
       var target = blockExpression.Expression as ITargetExpression;
 
-      //var target = assignment.Target;
       var fieldReference = target.Definition as IFieldReference;
 
 
@@ -1210,56 +1205,6 @@ namespace BytecodeTranslator
 
     }
     #endregion
-
-    /// <summary>
-    /// Actually a mutator! It will downcast and whack if/when it finds the right spot in the tree!
-    /// If found, replaces the "right-most object" on the left-hand side of an asignment with a local.
-    /// A local declaration statement is created (and stored in a field of this class) that initializes
-    /// the local to the part of the tree it replaced.
-    /// </summary>
-    private class AssignmentSimplifier_FirstTry : BaseCodeTraverser {
-      IMetadataHost host;
-      private ILocalDeclarationStatement/*?*/ localDeclarationStatement;
-      private AssignmentSimplifier_FirstTry(IMetadataHost host)
-        : base() {
-        this.host = host;
-      }
-      public static ILocalDeclarationStatement/*?*/ Simplify(IMetadataHost host, ITargetExpression targetExpression) {
-        var a = new AssignmentSimplifier_FirstTry(host);
-        a.Visit(targetExpression);
-        return a.localDeclarationStatement;
-      }
-      public override void Visit(IBoundExpression boundExpression) {
-        if (boundExpression.Instance == null) {
-          this.stopTraversal = true;
-          return;
-        }
-        var loc = new LocalDefinition() {
-          Name = this.host.NameTable.GetNameFor("_loc"), // TODO: should make the name unique within the method containing the assignment
-          Type = boundExpression.Type,
-        };
-        var mutableBoundExpression = (BoundExpression)boundExpression;
-        var init = new LocalDeclarationStatement() {
-          InitialValue = new BoundExpression(){
-            Definition = boundExpression.Definition,
-            Instance = boundExpression.Instance,
-            Type = boundExpression.Type,
-          },
-          LocalVariable = loc,
-          Locations = mutableBoundExpression.Locations,
-        };
-        this.localDeclarationStatement = init;
-        mutableBoundExpression.Instance = null;
-        mutableBoundExpression.Definition = loc;
-        this.stopTraversal = true;
-        return;
-      }
-
-      public override void Visit(ITargetExpression targetExpression) {
-        base.Visit(targetExpression);
-      }
-
-    }
 
     /// <summary>
     /// This is a rewriter so it must be used on a mutable Code Model!!!
