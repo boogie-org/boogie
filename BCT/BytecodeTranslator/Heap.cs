@@ -35,24 +35,26 @@ namespace BytecodeTranslator {
     private readonly string InitialPreludeText =
       @"type Struct = [Field]Box;
 type HeapType = [Ref,Field]Box;
-var $Heap: HeapType where IsGoodHeap($Heap);
-function IsGoodHeap(HeapType): bool;
+var $Heap: HeapType;
 
 var $Alloc: [Ref] bool;
 procedure {:inline 1} Alloc() returns (x: Ref)
-  free ensures x != null;
   modifies $Alloc;
 {
-  assume $Alloc[x] == false;
+  assume $Alloc[x] == false && x != null;
   $Alloc[x] := true;
 }
 
 axiom (forall x : Field :: $DefaultStruct[x] == $DefaultBox);
 axiom Box2Int($DefaultBox) == 0;
 axiom Box2Bool($DefaultBox) == false;
+axiom Box2Ref($DefaultBox) == null;
+axiom Box2Struct($DefaultBox) == $DefaultStruct;
 
 axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x );
 axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
+axiom (forall x: Ref :: { Ref2Box(x) } Box2Ref(Ref2Box(x)) == x );
+axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
 
 ";
     private Sink sink;
@@ -154,7 +156,7 @@ axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
 
     #region Fields
 
-    [RepresentationFor("$Heap", "var $Heap: HeapType where IsGoodHeap($Heap);", true)]
+    [RepresentationFor("$Heap", "var $Heap: HeapType;", true)]
     private Bpl.Variable HeapVariable = null;
     
     [RepresentationFor("Read", "function {:inline true} Read(H:HeapType, o:Ref, f:Field): Box { H[o, f] }")]
@@ -169,23 +171,25 @@ axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
     private readonly string InitialPreludeText =
       @"type Struct = [Field]Box;
 type HeapType = [Ref,Field]Box;
-function IsGoodHeap(HeapType): bool;
 
 var $Alloc: [Ref] bool;
 procedure {:inline 1} Alloc() returns (x: Ref)
-  free ensures x != null;
   modifies $Alloc;
 {
-  assume $Alloc[x] == false;
+  assume $Alloc[x] == false && x != null;
   $Alloc[x] := true;
 }
 
 axiom (forall x : Field :: $DefaultStruct[x] == $DefaultBox);
 axiom Box2Int($DefaultBox) == 0;
 axiom Box2Bool($DefaultBox) == false;
+axiom Box2Ref($DefaultBox) == null;
+axiom Box2Struct($DefaultBox) == $DefaultStruct;
 
 axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x );
 axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
+axiom (forall x: Ref :: { Ref2Box(x) } Box2Ref(Ref2Box(x)) == x );
+axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
 
 ";
     private Sink sink;
