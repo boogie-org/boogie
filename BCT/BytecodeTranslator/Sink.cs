@@ -114,10 +114,9 @@ namespace BytecodeTranslator {
       else if (type.ResolvedType.IsStruct)
         return heap.StructType;
       else if (type.IsEnum) {
-        return CciTypeToBoogie(type.ResolvedType.UnderlyingType);
+        return Bpl.Type.Int; // The underlying type of an enum is always some kind of integer
       } else
         return heap.RefType;
-      //return Bpl.Type.Int; // BUG! This is where we need to return "ref" for a reference type
     }
 
     /// <summary>
