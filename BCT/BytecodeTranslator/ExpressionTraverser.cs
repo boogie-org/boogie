@@ -374,10 +374,8 @@ namespace BytecodeTranslator
 
     #region Translate Constant Access
 
-    public override void Visit(ICompileTimeConstant constant)
-    {
-      if (constant.Value == null)
-      {
+    public override void Visit(ICompileTimeConstant constant) {
+      if (constant.Value == null) {
         var bplType = sink.CciTypeToBoogie(constant.Type);
         if (bplType == Bpl.Type.Int) {
           var lit = Bpl.Expr.Literal(0);
@@ -390,23 +388,35 @@ namespace BytecodeTranslator
         } else {
           throw new NotImplementedException(String.Format("Don't know how to translate type: '{0}'", TypeHelper.GetTypeName(constant.Type)));
         }
-     }
-      else if (constant.Value is bool)
-      {
-        TranslatedExpressions.Push(((bool)constant.Value) ? Bpl.Expr.True : Bpl.Expr.False);
+        return;
       }
-      else if (constant.Value is string)
-      {
+      if (constant.Value is string) {
         var c = this.sink.FindOrCreateConstant((string)(constant.Value));
         TranslatedExpressions.Push(Bpl.Expr.Ident(c));
-
-        //throw new NotImplementedException("Strings are not translated");
-      } else {
-        // TODO: (mschaef) hack
-        var lit = Bpl.Expr.Literal((int)constant.Value);
-        lit.Type = Bpl.Type.Int;
-        TranslatedExpressions.Push(lit);
+        return;
       }
+      switch (constant.Type.TypeCode) {
+        case PrimitiveTypeCode.Boolean:
+          TranslatedExpressions.Push(((bool)constant.Value) ? Bpl.Expr.True : Bpl.Expr.False);
+          break;
+        case PrimitiveTypeCode.Char: // chars are represented as ints
+        case PrimitiveTypeCode.Int16:
+        case PrimitiveTypeCode.Int32:
+        case PrimitiveTypeCode.Int64:
+        case PrimitiveTypeCode.Int8:
+          var lit = Bpl.Expr.Literal((int)constant.Value);
+          lit.Type = Bpl.Type.Int;
+          TranslatedExpressions.Push(lit);
+          break;
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          var c = this.sink.FindOrCreateConstant((double)(constant.Value));
+          TranslatedExpressions.Push(Bpl.Expr.Ident(c));
+          return;
+        default:
+          throw new NotImplementedException();
+      }
+      return;
     }
 
     public override void Visit(IDefaultValue defaultValue) {
@@ -460,7 +470,7 @@ namespace BytecodeTranslator
         this.indexExpr = savedIndexExpr;
 
         var e = this.TranslatedExpressions.Pop();
-        if (methodCall.MethodToCall.ContainingType.IsValueType)
+        if (false && methodCall.MethodToCall.ContainingType.IsValueType)
         {
           // then the "this arg" was actually an AddressOf the struct
           // but we are going to ignore that and just get the identifier

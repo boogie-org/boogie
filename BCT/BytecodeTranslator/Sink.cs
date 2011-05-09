@@ -232,6 +232,22 @@ namespace BytecodeTranslator {
     }
     private Dictionary<string, Bpl.Constant> declaredStringConstants = new Dictionary<string, Bpl.Constant>();
 
+    public Bpl.Constant FindOrCreateConstant(double d) {
+      Bpl.Constant c;
+      var str = d.ToString();
+      if (!this.declaredRealConstants.TryGetValue(str, out c)) {
+        var tok = Bpl.Token.NoToken;
+        var t = Heap.RealType;
+        var name = "$real_literal_" + TranslationHelper.TurnStringIntoValidIdentifier(str) + "_" + declaredStringConstants.Count;
+        var tident = new Bpl.TypedIdent(tok, name, t);
+        c = new Bpl.Constant(tok, tident, true);
+        this.declaredRealConstants.Add(str, c);
+        this.TranslatedProgram.TopLevelDeclarations.Add(c);
+      }
+      return c;
+    }
+    private Dictionary<string, Bpl.Constant> declaredRealConstants = new Dictionary<string, Bpl.Constant>();
+
     private Dictionary<IPropertyDefinition, Bpl.Variable> declaredProperties = new Dictionary<IPropertyDefinition, Bpl.Variable>();
 
     private List<Bpl.Function> projectionFunctions = new List<Bpl.Function>();
