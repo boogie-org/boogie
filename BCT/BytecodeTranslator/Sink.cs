@@ -109,13 +109,13 @@ namespace BytecodeTranslator {
         return Bpl.Type.Bool;
       else if (TypeHelper.IsPrimitiveInteger(type))
         return Bpl.Type.Int;
+      else if (type.TypeCode == PrimitiveTypeCode.Float32 || type.TypeCode == PrimitiveTypeCode.Float64)
+        return heap.RealType;
       else if (type.ResolvedType.IsStruct)
         return heap.StructType;
-      else if (type.IsEnum)
-      {
+      else if (type.IsEnum) {
         return CciTypeToBoogie(type.ResolvedType.UnderlyingType);
-      }
-      else
+      } else
         return heap.RefType;
       //return Bpl.Type.Int; // BUG! This is where we need to return "ref" for a reference type
     }

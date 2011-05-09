@@ -70,6 +70,7 @@ axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
         this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
         this.RefType = new Bpl.CtorType(this.RefTypeDecl.tok, this.RefTypeDecl, new Bpl.TypeSeq());
+        this.RealType = new Bpl.CtorType(this.RealTypeDecl.tok, this.RealTypeDecl, new Bpl.TypeSeq());
       }
       return b;
     }
@@ -207,6 +208,7 @@ axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
         this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
         this.RefType = new Bpl.CtorType(this.RefTypeDecl.tok, this.RefTypeDecl, new Bpl.TypeSeq());
+        this.RealType = new Bpl.CtorType(this.RealTypeDecl.tok, this.RealTypeDecl, new Bpl.TypeSeq());
       }
       return b;
     }

@@ -9,12 +9,19 @@ using System.Linq;
 using System.Text;
 
 namespace BytecodeTranslator {
-  class TranslationException : Exception {
+  public enum ExceptionType {
+    UnresolvedMethod,
+    UnresolvedType,
+  };
+
+  public class TranslationException : Exception {
     
-    public TranslationException(string reason) { 
-    
+    public TranslationException(string reason) : base(reason) {
     }
 
+    public TranslationException(ExceptionType eType, string message)
+      : base(eType.ToString() + ": " + message) {
+    }
 
   }
 }

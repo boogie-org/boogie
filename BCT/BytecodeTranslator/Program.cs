@@ -84,8 +84,8 @@ namespace BytecodeTranslator {
         result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stubAssemblies);
 
       } catch (Exception e) { // swallow everything and just return an error code
-        Console.WriteLine("The byte-code translator failed with uncaught exception: {0}", e.Message);
-        Console.WriteLine("Stack trace: {0}", e.StackTrace);
+        Console.WriteLine("The byte-code translator failed: {0}", e.Message);
+        //Console.WriteLine("Stack trace: {0}", e.StackTrace);
         return -1;
       }
       return result;

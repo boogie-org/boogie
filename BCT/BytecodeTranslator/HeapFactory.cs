@@ -73,6 +73,8 @@ namespace BytecodeTranslator {
 
     public abstract Bpl.Variable CreateFieldVariable(IFieldReference field);
 
+    #region Boogie Types
+
     [RepresentationFor("Field", "type Field;")]
     public Bpl.TypeCtorDecl FieldTypeDecl = null;
     public Bpl.CtorType FieldType;
@@ -106,6 +108,15 @@ namespace BytecodeTranslator {
     [RepresentationFor("$DefaultStruct", "const unique $DefaultStruct : Struct;")]
     public Bpl.Constant DefaultStruct;
 
+    [RepresentationFor("Real", "type Real;")]
+    protected Bpl.TypeCtorDecl RealTypeDecl = null;
+    public Bpl.CtorType RealType;
+
+    #endregion
+
+    #region Conversions
+
+    #region Heap values
 
     [RepresentationFor("Box2Int", "function Box2Int(Box): int;")]
     public Bpl.Function Box2Int = null;
@@ -174,6 +185,8 @@ namespace BytecodeTranslator {
       return callExpr;
     }
 
+    #endregion
+
     #region "Boxing" as done in the CLR
     /// <summary>
     /// Used to represent "boxing" as it is done in the CLR.
@@ -184,6 +197,15 @@ namespace BytecodeTranslator {
     public Bpl.Function Int2Ref = null;
     [RepresentationFor("Bool2Ref", "function Bool2Ref(bool): Ref;")]
     public Bpl.Function Bool2Ref = null;
+    #endregion
+
+    #region Real number conversions
+    [RepresentationFor("Int2Real", "function Int2Real(int, Type, Type): Real;")]
+    public Bpl.Function Int2Real = null;
+    [RepresentationFor("Real2Int", "function Real2Int(Real, Type, Type): Real;")]
+    public Bpl.Function Real2Int = null;
+    #endregion
+
     #endregion
 
     /// <summary>

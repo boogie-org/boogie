@@ -424,6 +424,11 @@ namespace BytecodeTranslator
     public override void Visit(IMethodCall methodCall)
     {
       var resolvedMethod = methodCall.MethodToCall.ResolvedMethod;
+      if (resolvedMethod == Dummy.Method) {
+        throw new TranslationException(
+          ExceptionType.UnresolvedMethod,
+          MemberHelper.GetMethodSignature(methodCall.MethodToCall, NameFormattingOptions.None));
+      }
         
       #region Translate In Parameters
 
@@ -1132,6 +1137,10 @@ namespace BytecodeTranslator
             case PrimitiveTypeCode.Int8:
               func = this.sink.Heap.Int2Ref;
               break;
+            case PrimitiveTypeCode.NotPrimitive:
+              // REVIEW: Do we need to check to make sure that conversion.ValueToConvert.Type.IsValueType?
+              func = this.sink.Heap.Struct2Ref;
+              break;
             default:
               throw new NotImplementedException();
           }
@@ -1142,6 +1151,27 @@ namespace BytecodeTranslator
             );
             TranslatedExpressions.Push(boxExpr);
             return;
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+            switch (conversion.ValueToConvert.Type.TypeCode) {
+              case PrimitiveTypeCode.Char: // chars are represented as ints
+              case PrimitiveTypeCode.Int16:
+              case PrimitiveTypeCode.Int32:
+              case PrimitiveTypeCode.Int64:
+              case PrimitiveTypeCode.Int8:
+              var convExpr = new Bpl.NAryExpr(
+                conversion.Token(),
+                new Bpl.FunctionCall(this.sink.Heap.Int2Real),
+                new Bpl.ExprSeq(exp,
+                  new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.ValueToConvert.Type)),
+                  new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.TypeAfterConversion))
+                  )
+                );
+                TranslatedExpressions.Push(convExpr);
+                return;
+              default:
+                throw new NotImplementedException();
+            }
         default:
           throw new NotImplementedException();
       }

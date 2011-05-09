@@ -220,13 +220,7 @@ namespace BytecodeTranslator {
         }
         #endregion
 
-        try {
-          method.Body.Dispatch(stmtTraverser);
-        } catch (TranslationException te) {
-          throw new NotImplementedException("No Errorhandling in Methodvisitor / " + te.ToString());
-        } catch {
-          throw;
-        }
+        method.Body.Dispatch(stmtTraverser);
 
         #region Create Local Vars For Implementation
         List<Bpl.Variable> vars = new List<Bpl.Variable>();
@@ -295,7 +289,9 @@ namespace BytecodeTranslator {
 
 
       } catch (TranslationException te) {
-        throw new NotImplementedException(te.ToString());
+        Console.WriteLine("Error during translation of '{0}'.",
+          MemberHelper.GetMethodSignature(method, NameFormattingOptions.None));
+        Console.WriteLine("\t" + te.Message);
       } catch {
         throw;
       } finally {
