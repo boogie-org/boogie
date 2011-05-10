@@ -151,6 +151,13 @@ namespace Microsoft.Boogie.SMTLib
         foreach (var opt in options.SmtOptions) {
           SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
         }
+
+        if (CommandLineOptions.Clo.UseArrayTheory) {
+          SendCommon("; skipping logic setting (using arrays)");
+        } else {
+          SendCommon("(set-logic UFNIA)");
+        }
+
         SendCommon("; done setting options\n");
         SendCommon(_backgroundPredicates);
       }
