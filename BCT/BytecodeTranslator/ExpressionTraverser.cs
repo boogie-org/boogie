@@ -576,29 +576,12 @@ namespace BytecodeTranslator
         bool isEventRemove = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("remove_");
         if (isEventAdd || isEventRemove)
         {
-          IEventDefinition ed = null;
-          foreach (var e in resolvedMethod.ContainingTypeDefinition.Events)
-          {
-            if (e.Adder != null && e.Adder.ResolvedMethod == resolvedMethod)
-            {
-              ed = e;
-              break;
-            }
-            if (e.Remover != null && e.Remover.ResolvedMethod == resolvedMethod) 
-            {
-              ed = e;
-              break;
-            }
-          }
-          Bpl.Variable eventVar = null;
-          Bpl.Variable local = null;
-          foreach (var f in resolvedMethod.ContainingTypeDefinition.Fields) {
-            if (ed.Name == f.Name) {
-              eventVar = this.sink.FindOrCreateFieldVariable(f);
-              local = this.sink.CreateFreshLocal(f.Type.ResolvedType);
-              break;
-            }
-          }
+          var mName = resolvedMethod.Name.Value;
+          var eventName = mName.Substring(mName.IndexOf('_')+1);
+          var eventDef = TypeHelper.GetEvent(resolvedMethod.ContainingTypeDefinition, this.sink.host.NameTable.GetNameFor(eventName));
+          Contract.Assert(eventDef != Dummy.Event);
+          Bpl.Variable eventVar = this.sink.FindOrCreateEventVariable(eventDef);
+          Bpl.Variable local = this.sink.CreateFreshLocal(eventDef.Type);
 
           if (methodCall.IsStaticCall)
           {
@@ -1109,6 +1092,10 @@ namespace BytecodeTranslator
         case PrimitiveTypeCode.Int32:
         case PrimitiveTypeCode.Int64:
         case PrimitiveTypeCode.Int8:
+        case PrimitiveTypeCode.UInt16:
+        case PrimitiveTypeCode.UInt32:
+        case PrimitiveTypeCode.UInt64:
+        case PrimitiveTypeCode.UInt8:
           switch (conversion.ValueToConvert.Type.TypeCode) {
             case PrimitiveTypeCode.Boolean:
               TranslatedExpressions.Push(
@@ -1119,40 +1106,41 @@ namespace BytecodeTranslator
               // just ignore the conversion. REVIEW: is that the right thing to do?
               this.TranslatedExpressions.Push(exp);
               return;
+            case PrimitiveTypeCode.Float32:
+            case PrimitiveTypeCode.Float64: {
+                var convExpr = new Bpl.NAryExpr(
+                conversion.Token(),
+                new Bpl.FunctionCall(this.sink.Heap.Real2Int),
+                new Bpl.ExprSeq(exp,
+                  new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.ValueToConvert.Type)),
+                  new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.TypeAfterConversion))
+                  )
+                );
+                TranslatedExpressions.Push(convExpr);
+                return;
+              }
+
             default:
               throw new NotImplementedException();
           }
         case PrimitiveTypeCode.Boolean:
-          switch (conversion.ValueToConvert.Type.TypeCode) {
-            case PrimitiveTypeCode.Int16:
-            case PrimitiveTypeCode.Int32:
-            case PrimitiveTypeCode.Int64:
-            case PrimitiveTypeCode.Int8:
+          if (TypeHelper.IsPrimitiveInteger(conversion.ValueToConvert.Type)) {
               TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, exp, Bpl.Expr.Literal(0)));
               return;
-            default:
-              throw new NotImplementedException();
-
+          } else {
+            throw new NotImplementedException();
           }
         case PrimitiveTypeCode.NotPrimitive:
           Bpl.Function func;
-          switch (conversion.ValueToConvert.Type.TypeCode) {
-            case PrimitiveTypeCode.Boolean:
+          if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Boolean){
               func = this.sink.Heap.Bool2Ref;
-              break;
-            case PrimitiveTypeCode.Char: // chars are represented as ints
-            case PrimitiveTypeCode.Int16:
-            case PrimitiveTypeCode.Int32:
-            case PrimitiveTypeCode.Int64:
-            case PrimitiveTypeCode.Int8:
+          }else if (TypeHelper.IsPrimitiveInteger(conversion.ValueToConvert.Type)) {
               func = this.sink.Heap.Int2Ref;
-              break;
-            case PrimitiveTypeCode.NotPrimitive:
-              // REVIEW: Do we need to check to make sure that conversion.ValueToConvert.Type.IsValueType?
-              func = this.sink.Heap.Struct2Ref;
-              break;
-            default:
-              throw new NotImplementedException();
+          } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.NotPrimitive) {
+            // REVIEW: Do we need to check to make sure that conversion.ValueToConvert.Type.IsValueType?
+            func = this.sink.Heap.Struct2Ref;
+          } else {
+            throw new NotImplementedException();
           }
           var boxExpr = new Bpl.NAryExpr(
             conversion.Token(),
@@ -1163,25 +1151,20 @@ namespace BytecodeTranslator
             return;
         case PrimitiveTypeCode.Float32:
         case PrimitiveTypeCode.Float64:
-            switch (conversion.ValueToConvert.Type.TypeCode) {
-              case PrimitiveTypeCode.Char: // chars are represented as ints
-              case PrimitiveTypeCode.Int16:
-              case PrimitiveTypeCode.Int32:
-              case PrimitiveTypeCode.Int64:
-              case PrimitiveTypeCode.Int8:
-              var convExpr = new Bpl.NAryExpr(
-                conversion.Token(),
-                new Bpl.FunctionCall(this.sink.Heap.Int2Real),
-                new Bpl.ExprSeq(exp,
-                  new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.ValueToConvert.Type)),
-                  new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.TypeAfterConversion))
-                  )
+          if (TypeHelper.IsPrimitiveInteger(conversion.ValueToConvert.Type)) {
+            var convExpr = new Bpl.NAryExpr(
+              conversion.Token(),
+              new Bpl.FunctionCall(this.sink.Heap.Int2Real),
+              new Bpl.ExprSeq(exp,
+                new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.ValueToConvert.Type)),
+                new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.TypeAfterConversion))
+                )
                 );
-                TranslatedExpressions.Push(convExpr);
-                return;
-              default:
-                throw new NotImplementedException();
-            }
+            TranslatedExpressions.Push(convExpr);
+            return;
+          } else {
+            throw new NotImplementedException();
+          }
         default:
           throw new NotImplementedException();
       }

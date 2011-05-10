@@ -202,9 +202,22 @@ namespace BytecodeTranslator {
       Bpl.Variable v;
       if (!this.declaredEvents.TryGetValue(e, out v))
       {
-        v = this.Heap.CreateEventVariable(e);
+        v = null;
+
+        // First, see if the compiler generated a field (which happens when the event did not explicitly
+        // define an adder and remover. If so, then just use the variable that corresponds to that field.
+        foreach (var f in e.ContainingTypeDefinition.Fields) {
+          if (e.Name == f.Name) {
+            v = this.FindOrCreateFieldVariable(f);
+            break;
+          }
+        }
+
+        if (v == null) {
+          v = this.Heap.CreateEventVariable(e);
+          this.TranslatedProgram.TopLevelDeclarations.Add(v);
+        }
         this.declaredEvents.Add(e, v);
-        this.TranslatedProgram.TopLevelDeclarations.Add(v);
       }
       return v;
     }
