@@ -170,7 +170,6 @@ namespace BytecodeTranslator {
       if (isEventAddOrRemove)
         return;
 
-      this.sink.BeginMethod();
 
       Sink.ProcedureInfo procAndFormalMap;
       IMethodDefinition stubMethod = null;
@@ -184,6 +183,7 @@ namespace BytecodeTranslator {
         return;
       }
 
+      this.sink.BeginMethod();
       var decl = procAndFormalMap.Decl;
       var proc = decl as Bpl.Procedure;
       var formalMap = procAndFormalMap.FormalMap;
@@ -220,38 +220,6 @@ namespace BytecodeTranslator {
         }
         #endregion
 
-        method.Body.Dispatch(stmtTraverser);
-
-        #region Create Local Vars For Implementation
-        List<Bpl.Variable> vars = new List<Bpl.Variable>();
-        foreach (MethodParameter mparam in formalMap.Values) {
-          if (!(mparam.underlyingParameter.IsByReference || mparam.underlyingParameter.IsOut))
-            vars.Add(mparam.outParameterCopy);
-        }
-        foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
-          vars.Add(v);
-        }
-
-        Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
-        #endregion
-
-        if (proc != null) {
-          Bpl.Implementation impl =
-              new Bpl.Implementation(method.Token(),
-                  decl.Name,
-                  new Microsoft.Boogie.TypeVariableSeq(),
-                  decl.InParams,
-                  decl.OutParams,
-                  vseq,
-                  stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken));
-
-          impl.Proc = proc;
-          this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
-        } else { // method is translated as a function
-          //Bpl.Function func = decl as Bpl.Function;
-          //func.Body = new Bpl.CodeExpr(new Bpl.VariableSeq(), new List<Bpl.Block>{ new Bpl.Block(
-        }
-
         #region Translate method attributes
         // Don't need an expression translator because there is a limited set of things
         // that can appear as arguments to custom attributes
@@ -287,15 +255,51 @@ namespace BytecodeTranslator {
         }
         #endregion
 
+        #region Translate body
+        method.Body.Dispatch(stmtTraverser);
+        #endregion
+
+        #region Create Local Vars For Implementation
+        List<Bpl.Variable> vars = new List<Bpl.Variable>();
+        foreach (MethodParameter mparam in formalMap.Values) {
+          if (!(mparam.underlyingParameter.IsByReference || mparam.underlyingParameter.IsOut))
+            vars.Add(mparam.outParameterCopy);
+        }
+        foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
+          vars.Add(v);
+        }
+
+        Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
+        #endregion
+
+        #region Add implementation to Boogie program
+        if (proc != null) {
+          Bpl.Implementation impl =
+              new Bpl.Implementation(method.Token(),
+                  decl.Name,
+                  new Microsoft.Boogie.TypeVariableSeq(),
+                  decl.InParams,
+                  decl.OutParams,
+                  vseq,
+                  stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken));
+
+          impl.Proc = proc;
+          this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
+        } else { // method is translated as a function
+          //Bpl.Function func = decl as Bpl.Function;
+          //func.Body = new Bpl.CodeExpr(new Bpl.VariableSeq(), new List<Bpl.Block>{ new Bpl.Block(
+        }
+        #endregion
 
       } catch (TranslationException te) {
-        Console.WriteLine("Error during translation of '{0}'.",
+        Console.WriteLine("Translation error in body of '{0}'.",
           MemberHelper.GetMethodSignature(method, NameFormattingOptions.None));
         Console.WriteLine("\t" + te.Message);
-      } catch {
-        throw;
+      } catch (Exception e) {
+        Console.WriteLine("Unknown error in body of '{0}'.",
+          MemberHelper.GetMethodSignature(method, NameFormattingOptions.None));
+        Console.WriteLine("\t" + e.Message);
       } finally {
-        // Maybe this is a good place to add the procedure to the toplevel declarations
       }
     }
 

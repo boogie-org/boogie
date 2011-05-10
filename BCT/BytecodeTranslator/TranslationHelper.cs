@@ -120,6 +120,9 @@ namespace BytecodeTranslator {
       s = s.Replace('\\', '$');
       s = s.Replace('=', '$');
       s = s.Replace('@', '$');
+      s = s.Replace(';', '$');
+      s = s.Replace('%', '$');
+      s = s.Replace('&', '$');
       return s;
     }
 
