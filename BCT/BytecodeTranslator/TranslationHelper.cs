@@ -37,22 +37,18 @@ namespace BytecodeTranslator {
     public IParameterDefinition underlyingParameter;
 
     public MethodParameter(IParameterDefinition parameterDefinition, Bpl.Type ptype) {
-
       this.underlyingParameter = parameterDefinition;
 
       var parameterToken = parameterDefinition.Token();
       var typeToken = parameterDefinition.Type.Token();
       var parameterName = parameterDefinition.Name.Value;
 
-      if (!parameterDefinition.IsOut) {
-        this.inParameterCopy = new Bpl.Formal(parameterToken, new Bpl.TypedIdent(typeToken, parameterName + "$in", ptype), true);
-      }
-      if (parameterDefinition.IsByReference || parameterDefinition.IsOut) {
+      this.inParameterCopy = new Bpl.Formal(parameterToken, new Bpl.TypedIdent(typeToken, parameterName + "$in", ptype), true);
+      if (parameterDefinition.IsByReference) {
         this.outParameterCopy = new Bpl.Formal(parameterToken, new Bpl.TypedIdent(typeToken, parameterName + "$out", ptype), false);
       } else {
         this.outParameterCopy = new Bpl.LocalVariable(parameterToken, new Bpl.TypedIdent(typeToken, parameterName, ptype));
       }
-      
     }
 
     public override string ToString() {

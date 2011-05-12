@@ -262,7 +262,7 @@ namespace BytecodeTranslator {
         #region Create Local Vars For Implementation
         List<Bpl.Variable> vars = new List<Bpl.Variable>();
         foreach (MethodParameter mparam in formalMap.Values) {
-          if (!(mparam.underlyingParameter.IsByReference || mparam.underlyingParameter.IsOut))
+          if (!mparam.underlyingParameter.IsByReference)
             vars.Add(mparam.outParameterCopy);
         }
         foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
