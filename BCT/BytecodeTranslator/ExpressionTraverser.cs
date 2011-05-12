@@ -644,17 +644,23 @@ namespace BytecodeTranslator
       Contract.Assert(TranslatedExpressions.Count == 0);
 
       #region Transform Right Hand Side ...
-      this.Visit(assignment.Source);
-      Bpl.Expr sourceexp = this.TranslatedExpressions.Pop();
+      // Simplify the RHS so that all nested dereferences and method calls are broken
+      // up into separate assignments to locals.
+      var sourceExpression = ExpressionSimplifier.Simplify(this.sink, assignment.Source);
+      this.Visit(sourceExpression);
+      var sourceexp = this.TranslatedExpressions.Pop();
       #endregion
 
       // Simplify the LHS so that all nested dereferences and method calls are broken
       // up into separate assignments to locals.
-      var blockExpression = AssignmentSimplifier.Simplify(this.sink, assignment.Target);
-      foreach (var s in blockExpression.BlockStatement.Statements) {
-        this.StmtTraverser.Visit(s);
-      }
-      var target = blockExpression.Expression as ITargetExpression;
+      var targetExpression = ExpressionSimplifier.Simplify(this.sink, assignment.Target);
+      //var targetBlockExpression = targetExpression as IBlockExpression;
+      //if (targetBlockExpression != null){
+      //foreach (var s in targetBlockExpression.BlockStatement.Statements) {
+      //  this.StmtTraverser.Visit(s);
+      //}
+
+      var target = targetExpression as ITargetExpression;
 
       List<IFieldDefinition> args = null;
       Bpl.Expr arrayExpr = null;
@@ -1198,71 +1204,108 @@ namespace BytecodeTranslator
     /// <summary>
     /// This is a rewriter so it must be used on a mutable Code Model!!!
     /// </summary>
-    private class AssignmentSimplifier : CodeRewriter {
+    private class ExpressionSimplifier : CodeRewriter {
 
       Sink sink;
-      private List<IStatement> localDeclarations = new List<IStatement>();
 
-      private AssignmentSimplifier(Sink sink)
+      private ExpressionSimplifier(Sink sink)
         : base(sink.host) {
         this.sink = sink;
       }
 
-      public static IBlockExpression Simplify(Sink sink, ITargetExpression targetExpression) {
-        var a = new AssignmentSimplifier(sink);
-        var leftOverExpression = a.Rewrite(targetExpression);
-        return new BlockExpression() {
-          BlockStatement = new BlockStatement() { Statements = a.localDeclarations, },
-          Expression = leftOverExpression,
-          Type = targetExpression.Type,
-        };
+      public static IExpression Simplify(Sink sink, IExpression expression) {
+        var a = new ExpressionSimplifier(sink);
+        return a.Rewrite(expression);
       }
 
       public override IExpression Rewrite(IBoundExpression boundExpression) {
         if (boundExpression.Instance == null)
           return base.Rewrite(boundExpression); // REVIEW: Maybe just stop the rewriting and return boundExpression?
+        var thisInst = boundExpression.Instance as IThisReference;
+        if (thisInst != null) return boundExpression;
+        var p = boundExpression.Instance as IParameterDefinition;
+        if (p != null) return boundExpression;
+        var existingLocal = boundExpression.Instance as ILocalDefinition;
+        if (existingLocal != null) return boundExpression;
+
         var e = base.Rewrite(boundExpression);
         boundExpression = e as IBoundExpression;
         if (boundExpression == null) return e;
+
         var loc = new LocalDefinition() {
-          Name = this.host.NameTable.GetNameFor("_loc" + this.sink.LocalCounter.ToString()), // TODO: should make the name unique within the method containing the assignment
+          Name = this.host.NameTable.GetNameFor("_loc" + this.sink.LocalCounter.ToString()),
           Type = boundExpression.Type,
         };
-        this.localDeclarations.Add(
-          new LocalDeclarationStatement() {
-            InitialValue = boundExpression,
-            LocalVariable = loc,
-          }
-          );
-        return new BoundExpression() {
-          Definition = loc,
-          Instance = null,
+        var locDecl = new LocalDeclarationStatement() {
+          InitialValue = boundExpression,
+          LocalVariable = loc,
+        };
+        return new BlockExpression() {
+          BlockStatement = new BlockStatement() {
+            Statements = new List<IStatement>{ locDecl },
+          },
+          Expression = new BoundExpression() {
+            Definition = loc,
+            Instance = null,
+            Type = boundExpression.Type,
+          },
           Type = boundExpression.Type,
+        };
+
+      }
+
+      public override ITargetExpression Rewrite(ITargetExpression targetExpression) {
+        var be = targetExpression.Instance as IBoundExpression;
+        if (be == null) return targetExpression;
+
+        var e = this.Rewrite(be);
+
+        var loc = new LocalDefinition() {
+          Name = this.host.NameTable.GetNameFor("_loc" + this.sink.LocalCounter.ToString()),
+          Type = be.Type,
+        };
+        var locDecl = new LocalDeclarationStatement() {
+          InitialValue = e,
+          LocalVariable = loc,
+        };
+        return new TargetExpression() {
+          Definition = targetExpression.Definition,
+          Instance = new BlockExpression() {
+            BlockStatement = new BlockStatement() {
+              Statements = new List<IStatement> { locDecl, },
+            },
+            Expression = new BoundExpression() {
+              Definition = loc,
+              Instance = null,
+            },
+            Type = loc.Type,
+          },
+           Type = targetExpression.Type,
         };
       }
 
-      public override IExpression Rewrite(IMethodCall methodCall) {
+      //public override IExpression Rewrite(IMethodCall methodCall) {
 
-        var e = base.Rewrite(methodCall); // simplify anything deeper in the tree
-        methodCall = e as IMethodCall;
-        if (methodCall == null) return e;
+      //  var e = base.Rewrite(methodCall); // simplify anything deeper in the tree
+      //  methodCall = e as IMethodCall;
+      //  if (methodCall == null) return e;
 
-        var loc = new LocalDefinition() {
-          Name = this.host.NameTable.GetNameFor("_loc"), // TODO: should make the name unique within the method containing the assignment
-          Type = methodCall.Type,
-        };
-        this.localDeclarations.Add(
-          new LocalDeclarationStatement() {
-            InitialValue = methodCall,
-            LocalVariable = loc,
-          }
-          );
-        return new BoundExpression() {
-          Definition = loc,
-          Instance = null,
-          Type = methodCall.Type,
-        };
-      }
+      //  var loc = new LocalDefinition() {
+      //    Name = this.host.NameTable.GetNameFor("_loc"), // TODO: should make the name unique within the method containing the assignment
+      //    Type = methodCall.Type,
+      //  };
+      //  this.localDeclarations.Add(
+      //    new LocalDeclarationStatement() {
+      //      InitialValue = methodCall,
+      //      LocalVariable = loc,
+      //    }
+      //    );
+      //  return new BoundExpression() {
+      //    Definition = loc,
+      //    Instance = null,
+      //    Type = methodCall.Type,
+      //  };
+      //}
     }
   }
 
