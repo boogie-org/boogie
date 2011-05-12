@@ -122,6 +122,7 @@ namespace Dafny
         // return the first one
         return t;
       }
+      return default(T);
     }
   }
   public class Sequence<T>
