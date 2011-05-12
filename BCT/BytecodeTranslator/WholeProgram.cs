@@ -149,13 +149,11 @@ namespace BytecodeTranslator {
 
         Bpl.IToken token = methodCall.Token();
 
-        // TODO: if there is no stmttraverser we are visiting a contract and should use a boogie function instead of procedure!
-
         #region Translate Out vars
         var outvars = new List<Bpl.IdentifierExpr>();
 
         foreach (KeyValuePair<IParameterDefinition, Bpl.Expr> kvp in p2eMap) {
-          if (kvp.Key.IsOut || kvp.Key.IsByReference) {
+          if (kvp.Key.IsByReference) {
             Bpl.IdentifierExpr iexp = kvp.Value as Bpl.IdentifierExpr;
             if (iexp == null) {
               throw new TranslationException("Trying to pass complex expression as out in functioncall");

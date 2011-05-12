@@ -7,9 +7,11 @@ syntax: regexp
 ^.*(bin|obj)/([^/]*/)?(Debug|Release|Checked|Debug All|DEBUG ALL)/.*$
 ^Binaries/BytecodeTranslator$
 ^BCT/Binaries/.*$
+^Chalice/bin/
 Test/([^/]*)/Output
 Test/([^/]*)/([^/]*)\.sx
-Test/(dafny0|dafny1|VSI-Benchmarks|vacid0|VSComp2010)/out\.cs
+Test/(dafny0|dafny1|VSI-Benchmarks|vacid0|VSComp2010)/(out\.cs|.*\.dll|.*\.pdb|.*\.exe)
+Test/desktop/
 ^.*~$
 syntax: glob
 BCT/TestResults/

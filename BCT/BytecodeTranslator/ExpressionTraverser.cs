@@ -424,18 +424,18 @@ namespace BytecodeTranslator
     /// </summary>
     /// <param name="methodCall"></param>
     /// <remarks>Stub, This one really needs comments!</remarks>
-    public override void Visit(IMethodCall methodCall)
-    {
-      var resolvedMethod = methodCall.MethodToCall.ResolvedMethod;
+    public override void Visit(IMethodCall methodCall) {
+      var resolvedMethod = Sink.Unspecialize(methodCall.MethodToCall).ResolvedMethod;
+
       if (resolvedMethod == Dummy.Method) {
         throw new TranslationException(
           ExceptionType.UnresolvedMethod,
           MemberHelper.GetMethodSignature(methodCall.MethodToCall, NameFormattingOptions.None));
       }
-        
-      #region Translate In Parameters
 
+      #region Translate In and Out Parameters
       var inexpr = new List<Bpl.Expr>();
+      var outvars = new List<Bpl.IdentifierExpr>();
 
       #region Create the 'this' argument for the function call
       Bpl.IdentifierExpr thisExpr = null;
@@ -443,8 +443,7 @@ namespace BytecodeTranslator
       List<IFieldDefinition> args = null;
       Bpl.Expr arrayExpr = null;
       Bpl.Expr indexExpr = null;
-      if (!methodCall.IsStaticCall)
-      {
+      if (!methodCall.IsStaticCall) {
         this.collectStructFields = true;
         this.structFields = new List<IFieldDefinition>();
         this.arrayExpr = null;
@@ -456,175 +455,145 @@ namespace BytecodeTranslator
         indexExpr = this.indexExpr;
 
         var e = this.TranslatedExpressions.Pop();
-        if (false && methodCall.MethodToCall.ContainingType.IsValueType)
-        {
-          // then the "this arg" was actually an AddressOf the struct
-          // but we are going to ignore that and just get the identifier
-          // that it was the address of
-          var nAry = e as Bpl.NAryExpr;
-          var nAryArgs = nAry.Args;
-          e = nAryArgs[0] as Bpl.IdentifierExpr;
-        }
         inexpr.Add(e);
-        if (e is Bpl.NAryExpr)
-        {
+        if (e is Bpl.NAryExpr) {
           e = ((Bpl.NAryExpr)e).Args[0];
         }
         thisExpr = e as Bpl.IdentifierExpr;
         locals = new List<Bpl.Variable>();
         Bpl.Variable x = thisExpr.Decl;
         locals.Add(x);
-        for (int i = 0; i < args.Count; i++)
-        {
+        for (int i = 0; i < args.Count; i++) {
           Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(args[i]));
           Bpl.Variable y = this.sink.CreateFreshLocal(args[i].Type);
           StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(y), this.sink.Heap.ReadHeap(Bpl.Expr.Ident(x), g, args[i].ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, y.TypedIdent.Type)));
           x = y;
           locals.Add(y);
         }
-        //thisExpr = Bpl.Expr.Ident(x);
-        //inexpr.Add(thisExpr);
+      }
+      if (!methodCall.IsStaticCall && methodCall.MethodToCall.ContainingType.ResolvedType.IsStruct) {
+        outvars.Add(thisExpr);
       }
       #endregion
 
-      Dictionary<IParameterDefinition, Bpl.Expr> p2eMap = new Dictionary<IParameterDefinition, Bpl.Expr>();
+      Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed = new Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr>();
+      Dictionary<IParameterDefinition, Bpl.IdentifierExpr> p2eMap = new Dictionary<IParameterDefinition, Bpl.IdentifierExpr>();
       IEnumerator<IParameterDefinition> penum = resolvedMethod.Parameters.GetEnumerator();
       penum.MoveNext();
-      foreach (IExpression exp in methodCall.Arguments)
-      {
-        if (penum.Current == null)
-        {
-          throw new TranslationException("More Arguments than Parameters in functioncall");
+      foreach (IExpression exp in methodCall.Arguments) {
+        if (penum.Current == null) {
+          throw new TranslationException("More arguments than parameters in method call");
         }
         this.Visit(exp);
         Bpl.Expr e = this.TranslatedExpressions.Pop();
-
-        p2eMap.Add(penum.Current, e);
-        if (!penum.Current.IsOut)
-        {
+        if (penum.Current.Type is IGenericTypeParameter)
+          inexpr.Add(sink.Heap.Box(methodCall.Token(), this.sink.CciTypeToBoogie(exp.Type), e));
+        else
           inexpr.Add(e);
+        if (penum.Current.IsByReference) {
+          Bpl.IdentifierExpr unboxed = e as Bpl.IdentifierExpr;
+          if (unboxed == null) {
+            throw new TranslationException("Trying to pass a complex expression for an out or ref parameter");
+          }
+          if (penum.Current.Type is IGenericTypeParameter) {
+            Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(sink.CreateFreshLocal(this.sink.Heap.BoxType));
+            toBoxed[unboxed] = boxed;
+            outvars.Add(boxed);
+          }
+          else {
+            outvars.Add(unboxed);
+          }
         }
-
         penum.MoveNext();
       }
       #endregion
 
       Bpl.IToken cloc = methodCall.Token();
-
-      // meeting a constructor is always something special
-      if (false && resolvedMethod.IsConstructor)
-      {
-        // Todo: do something with the constructor call
+      if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
+        Bpl.Variable v = this.sink.CreateFreshLocal(methodCall.Type.ResolvedType);
+        Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(cloc, v);
+        if (resolvedMethod.Type is IGenericTypeParameter) {
+          Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
+          toBoxed[unboxed] = boxed;
+          outvars.Add(boxed);
+        }
+        else {
+          outvars.Add(unboxed);
+        }
+        TranslatedExpressions.Push(unboxed);
       }
-      else
-      {
-        // Todo: if there is no stmttraverser we are visiting a contract and should use a boogie function instead of procedure!
+      var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
+      string methodname = proc.Name;
 
-        #region Translate Out vars
-        var outvars = new List<Bpl.IdentifierExpr>();
-        if (!methodCall.IsStaticCall && methodCall.MethodToCall.ContainingType.ResolvedType.IsStruct) {
-          outvars.Add(thisExpr);
+      Bpl.QKeyValue attrib = null;
+      foreach (var a in resolvedMethod.Attributes) {
+        if (TypeHelper.GetTypeName(a.Type).EndsWith("AsyncAttribute")) {
+          attrib = new Bpl.QKeyValue(cloc, "async", new List<object>(), null);
         }
-        foreach (KeyValuePair<IParameterDefinition, Bpl.Expr> kvp in p2eMap)
-        {
-          if (kvp.Key.IsOut || kvp.Key.IsByReference)
-          {
-            Bpl.IdentifierExpr iexp = kvp.Value as Bpl.IdentifierExpr;
-            if (iexp == null)
-            {
-              throw new TranslationException("Trying to pass complex expression as out in functioncall");
-            }
-            outvars.Add(iexp);
-          }
-        }
-        #endregion
+      }
 
-        if (methodCall.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void)
-        {
-          Bpl.Variable v = this.sink.CreateFreshLocal(methodCall.Type.ResolvedType);
-          outvars.Add(new Bpl.IdentifierExpr(cloc, v));
-          TranslatedExpressions.Push(new Bpl.IdentifierExpr(cloc, v));
-        }
-        var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
-        string methodname = proc.Name;
+      Bpl.CallCmd call;
+      bool isEventAdd = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("add_");
+      bool isEventRemove = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("remove_");
+      if (isEventAdd || isEventRemove) {
+        var mName = resolvedMethod.Name.Value;
+        var eventName = mName.Substring(mName.IndexOf('_') + 1);
+        var eventDef = TypeHelper.GetEvent(resolvedMethod.ContainingTypeDefinition, this.sink.host.NameTable.GetNameFor(eventName));
+        Contract.Assert(eventDef != Dummy.Event);
+        Bpl.Variable eventVar = this.sink.FindOrCreateEventVariable(eventDef);
+        Bpl.Variable local = this.sink.CreateFreshLocal(eventDef.Type);
 
-        Bpl.QKeyValue attrib = null;
-        foreach (var a in resolvedMethod.Attributes)
-        {
-          if (TypeHelper.GetTypeName(a.Type).EndsWith("AsyncAttribute"))
-          {
-            attrib = new Bpl.QKeyValue(cloc, "async", new List<object>(), null);
-          }
+        if (methodCall.IsStaticCall) {
+          this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), Bpl.Expr.Ident(eventVar)));
+          inexpr.Insert(0, Bpl.Expr.Ident(local));
+        }
+        else {
+          this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), this.sink.Heap.ReadHeap(thisExpr, Bpl.Expr.Ident(eventVar), resolvedMethod.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, local.TypedIdent.Type)));
+          inexpr[0] = Bpl.Expr.Ident(local);
         }
 
-        Bpl.CallCmd call;
-        bool isEventAdd = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("add_");
-        bool isEventRemove = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("remove_");
-        if (isEventAdd || isEventRemove)
-        {
-          var mName = resolvedMethod.Name.Value;
-          var eventName = mName.Substring(mName.IndexOf('_')+1);
-          var eventDef = TypeHelper.GetEvent(resolvedMethod.ContainingTypeDefinition, this.sink.host.NameTable.GetNameFor(eventName));
-          Contract.Assert(eventDef != Dummy.Event);
-          Bpl.Variable eventVar = this.sink.FindOrCreateEventVariable(eventDef);
-          Bpl.Variable local = this.sink.CreateFreshLocal(eventDef.Type);
-
-          if (methodCall.IsStaticCall)
-          {
-            this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), Bpl.Expr.Ident(eventVar)));
-            inexpr.Insert(0, Bpl.Expr.Ident(local));
-          }
-          else 
-          {
-            this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), this.sink.Heap.ReadHeap(thisExpr, Bpl.Expr.Ident(eventVar), resolvedMethod.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, local.TypedIdent.Type)));
-            inexpr[0] = Bpl.Expr.Ident(local);
-          }
-
-          System.Diagnostics.Debug.Assert(outvars.Count == 0);
-          outvars.Add(Bpl.Expr.Ident(local));
-          string methodName = isEventAdd ? this.sink.DelegateAddName : this.sink.DelegateRemoveName;
-          call = new Bpl.CallCmd(methodCall.Token(), methodName, inexpr, outvars);
-          this.StmtTraverser.StmtBuilder.Add(call);
-          if (methodCall.IsStaticCall)
-          {
-            this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local)));
-          }
-          else
-          {
-            this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(methodCall.Token(), thisExpr, Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local), resolvedMethod.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, local.TypedIdent.Type));
-          }
+        System.Diagnostics.Debug.Assert(outvars.Count == 0);
+        outvars.Add(Bpl.Expr.Ident(local));
+        string methodName = isEventAdd ? this.sink.DelegateAddName : this.sink.DelegateRemoveName;
+        call = new Bpl.CallCmd(methodCall.Token(), methodName, inexpr, outvars);
+        this.StmtTraverser.StmtBuilder.Add(call);
+        if (methodCall.IsStaticCall) {
+          this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local)));
         }
+        else {
+          this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(methodCall.Token(), thisExpr, Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local), resolvedMethod.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, local.TypedIdent.Type));
+        }
+      }
+      else {
+        if (attrib != null)
+          call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars, attrib);
         else
-        {
-          if (attrib != null)
-            call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars, attrib);
-          else
-            call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars);
-          this.StmtTraverser.StmtBuilder.Add(call);
-        }
-
-        if (!methodCall.IsStaticCall) {
-          Debug.Assert(args != null && locals != null);
-          int count = args.Count;
-          Bpl.Variable x = locals[count];
-          count--;
-          while (0 <= count)
-          {
-            IFieldDefinition currField = args[count];
-            Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(currField));
-            Bpl.Variable y = locals[count];
-            StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(methodCall.Token(), Bpl.Expr.Ident(y), g, Bpl.Expr.Ident(x), currField.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, x.TypedIdent.Type));
-            x = y;
-            count--;
-          }
-          if (indexExpr != null) {
-            Debug.Assert(arrayExpr != null);
-            StmtTraverser.StmtBuilder.Add(sink.Heap.WriteHeap(Bpl.Token.NoToken, arrayExpr, indexExpr, Bpl.Expr.Ident(x), AccessType.Array, x.TypedIdent.Type));
-          }
-        }
-
+          call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars);
+        this.StmtTraverser.StmtBuilder.Add(call);
       }
 
+      foreach (KeyValuePair<Bpl.IdentifierExpr, Bpl.IdentifierExpr> kv in toBoxed) {
+        this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(kv.Key, this.sink.Heap.Unbox(Bpl.Token.NoToken, kv.Key.Type, kv.Value)));
+      }
+
+      if (!methodCall.IsStaticCall) {
+        Debug.Assert(args != null && locals != null);
+        int count = args.Count;
+        Bpl.Variable x = locals[count];
+        count--;
+        while (0 <= count) {
+          IFieldDefinition currField = args[count];
+          Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(currField));
+          Bpl.Variable y = locals[count];
+          StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(methodCall.Token(), Bpl.Expr.Ident(y), g, Bpl.Expr.Ident(x), currField.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, x.TypedIdent.Type));
+          x = y;
+          count--;
+        }
+        if (indexExpr != null) {
+          Debug.Assert(arrayExpr != null);
+          StmtTraverser.StmtBuilder.Add(sink.Heap.WriteHeap(Bpl.Token.NoToken, arrayExpr, indexExpr, Bpl.Expr.Ident(x), AccessType.Array, x.TypedIdent.Type));
+        }
+      }
     }
 
     #endregion
@@ -762,7 +731,7 @@ namespace BytecodeTranslator
     /// </summary>
     public override void Visit(ICreateObjectInstance createObjectInstance)
     {
-      TranslateObjectCreation(createObjectInstance.MethodToCall, createObjectInstance.Arguments, createObjectInstance.Type, createObjectInstance);
+      TranslateObjectCreation(createObjectInstance.MethodToCall, createObjectInstance.Arguments, createObjectInstance);
     }
 
     public override void Visit(ICreateArray createArrayInstance)
@@ -794,35 +763,32 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
 
-    private void TranslateObjectCreation(IMethodReference ctor, IEnumerable<IExpression> arguments, ITypeReference ctorType, IExpression creationAST)
+    private void TranslateObjectCreation(IMethodReference ctor, IEnumerable<IExpression> arguments, IExpression creationAST)
     {
+      var resolvedMethod = Sink.Unspecialize(ctor).ResolvedMethod;
       Bpl.IToken token = creationAST.Token();
-
+      
       var a = this.sink.CreateFreshLocal(creationAST.Type);
 
       // First generate an Alloc() call
       this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
 
       // Second, generate the call to the appropriate ctor
-      var proc = this.sink.FindOrCreateProcedure(ctor.ResolvedMethod);
+      var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
       Bpl.ExprSeq inexpr = new Bpl.ExprSeq();
       inexpr.Add(Bpl.Expr.Ident(a));
-      IEnumerator<IParameterDefinition> penum = ctor.ResolvedMethod.Parameters.GetEnumerator();
+      IEnumerator<IParameterDefinition> penum = resolvedMethod.Parameters.GetEnumerator();
       penum.MoveNext();
-      foreach (IExpression exp in arguments)
-      {
-        if (penum.Current == null)
-        {
+      foreach (IExpression exp in arguments) {
+        if (penum.Current == null) {
           throw new TranslationException("More Arguments than Parameters in functioncall");
         }
         this.Visit(exp);
         Bpl.Expr e = this.TranslatedExpressions.Pop();
-
-        if (!penum.Current.IsOut)
-        {
+        if (penum.Current.Type is IGenericTypeParameter)
+          inexpr.Add(sink.Heap.Box(ctor.Token(), this.sink.CciTypeToBoogie(exp.Type), e));
+        else
           inexpr.Add(e);
-        }
-
         penum.MoveNext();
       }
 
