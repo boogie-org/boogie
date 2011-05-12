@@ -148,6 +148,9 @@ namespace BytecodeTranslator {
     [RepresentationFor("Real2Box", "function Real2Box(Real): Box;")]
     public Bpl.Function Real2Box = null;
 
+    [RepresentationFor("Box2Box", "function {:inline true} Box2Box(b: Box): Box { b }")]
+    public Bpl.Function Box2Box = null;
+
     public Bpl.Expr Box(Bpl.IToken tok, Bpl.Type boogieType, Bpl.Expr expr) {
       Bpl.Function conversion;
       if (boogieType == Bpl.Type.Bool)
@@ -160,6 +163,8 @@ namespace BytecodeTranslator {
         conversion = this.Ref2Box;
       else if (boogieType == RealType)
         conversion = this.Real2Box;
+      else if (boogieType == BoxType)
+        conversion = this.Box2Box;
       else
         throw new InvalidOperationException(String.Format("Unknown Boogie type: '{0}'", boogieType.ToString()));
 
@@ -183,6 +188,8 @@ namespace BytecodeTranslator {
         conversion = this.Box2Ref;
       else if (boogieType == RealType)
         conversion = this.Box2Real;
+      else if (boogieType == BoxType)
+        conversion = this.Box2Box;
       else
         throw new InvalidOperationException(String.Format("Unknown Boogie type: '{0}'", boogieType.ToString()));
 

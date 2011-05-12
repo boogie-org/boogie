@@ -99,6 +99,9 @@ namespace BytecodeTranslator {
         return Bpl.Expr.Ident(this.Heap.DefaultStruct);
       } else if (bplType == this.Heap.RefType) {
         return Bpl.Expr.Ident(this.Heap.NullRef);
+      }
+      else if (bplType == this.Heap.BoxType) {
+        return Bpl.Expr.Ident(this.Heap.DefaultBox);
       } else {
         throw new NotImplementedException(String.Format("Don't know how to translate type: '{0}'", TypeHelper.GetTypeName(type)));
       }
@@ -113,9 +116,11 @@ namespace BytecodeTranslator {
         return heap.RealType;
       else if (type.ResolvedType.IsStruct)
         return heap.StructType;
-      else if (type.IsEnum) {
+      else if (type.IsEnum)
         return Bpl.Type.Int; // The underlying type of an enum is always some kind of integer
-      } else
+      else if (type is IGenericTypeParameter) 
+        return heap.BoxType;
+      else
         return heap.RefType;
     }
 
@@ -128,6 +133,14 @@ namespace BytecodeTranslator {
     public Bpl.Variable CreateFreshLocal(ITypeReference typeReference) {
       Bpl.IToken loc = Bpl.Token.NoToken; // Helper Variables do not have a location
       Bpl.Type t = CciTypeToBoogie(typeReference);
+      Bpl.LocalVariable v = new Bpl.LocalVariable(loc, new Bpl.TypedIdent(loc, TranslationHelper.GenerateTempVarName(), t));
+      ILocalDefinition dummy = new LocalDefinition(); // Creates a dummy entry for the Dict, since only locals in the dict are translated to boogie
+      localVarMap.Add(dummy, v);
+      return v;
+    }
+
+    public Bpl.Variable CreateFreshLocal(Bpl.Type t) {
+      Bpl.IToken loc = Bpl.Token.NoToken; // Helper Variables do not have a location
       Bpl.LocalVariable v = new Bpl.LocalVariable(loc, new Bpl.TypedIdent(loc, TranslationHelper.GenerateTempVarName(), t));
       ILocalDefinition dummy = new LocalDefinition(); // Creates a dummy entry for the Dict, since only locals in the dict are translated to boogie
       localVarMap.Add(dummy, v);
@@ -335,10 +348,9 @@ namespace BytecodeTranslator {
         MethodParameter mp;
         var formalMap = new Dictionary<IParameterDefinition, MethodParameter>();
         foreach (IParameterDefinition formal in method.Parameters) {
-
           mp = new MethodParameter(formal, this.CciTypeToBoogie(formal.Type));
           if (mp.inParameterCopy != null) in_count++;
-          if (mp.outParameterCopy != null && (formal.IsByReference || formal.IsOut))
+          if (mp.outParameterCopy != null && formal.IsByReference)
             out_count++;
           formalMap.Add(formal, mp);
         }
@@ -397,7 +409,7 @@ namespace BytecodeTranslator {
             invars[i++] = mparam.inParameterCopy;
           }
           if (mparam.outParameterCopy != null) {
-            if (mparam.underlyingParameter.IsByReference || mparam.underlyingParameter.IsOut)
+            if (mparam.underlyingParameter.IsByReference)
               outvars[j++] = mparam.outParameterCopy;
           }
         }
@@ -563,7 +575,7 @@ namespace BytecodeTranslator {
       this.FindOrCreateProcedure(method);
       return this.declaredMethods[method.InternedKey];
     }
-    private static IMethodReference Unspecialize(IMethodReference method) {
+    public static IMethodReference Unspecialize(IMethodReference method) {
       IMethodReference result = method;
       var gmir = result as IGenericMethodInstanceReference;
       if (gmir != null) {
