@@ -235,30 +235,26 @@ namespace Microsoft.Boogie {
 
       ResolveTypes(rc);
 
-      List<Declaration/*!*/> prunedTopLevelDecls = CommandLineOptions.Clo.OverlookBoogieTypeErrors ? new List<Declaration/*!*/>() : null;
-
+      var prunedTopLevelDecls = new List<Declaration/*!*/>();
       foreach (Declaration d in TopLevelDeclarations) {
+        if (QKeyValue.FindBoolAttribute(d.Attributes, "ignore")) {
+          continue;
+        }
         // resolve all the non-type-declarations
         if (d is TypeCtorDecl || d is TypeSynonymDecl) {
-          if (prunedTopLevelDecls != null)
-            prunedTopLevelDecls.Add(d);
         } else {
           int e = rc.ErrorCount;
           d.Resolve(rc);
-          if (prunedTopLevelDecls != null) {
-            if (rc.ErrorCount != e && d is Implementation) {
-              // ignore this implementation
-              System.Console.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors", ((Implementation)d).Name);
-              rc.ErrorCount = e;
-            } else {
-              prunedTopLevelDecls.Add(d);
-            }
+          if (CommandLineOptions.Clo.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation) {
+            // ignore this implementation
+            System.Console.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors", ((Implementation)d).Name);
+            rc.ErrorCount = e;
+            continue;
           }
         }
+        prunedTopLevelDecls.Add(d);
       }
-      if (prunedTopLevelDecls != null) {
-        TopLevelDeclarations = prunedTopLevelDecls;
-      }
+      TopLevelDeclarations = prunedTopLevelDecls;
 
       foreach (Declaration d in TopLevelDeclarations) {
         Variable v = d as Variable;

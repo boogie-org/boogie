@@ -31,3 +31,12 @@ rem set BGEXE=mono ..\..\Binaries\Boogie.exe
 %BGEXE% %* /noVerify Orderings.bpl
 %BGEXE% %* /noVerify BadQuantifier.bpl
 %BGEXE% %* /noVerify EmptyCallArgs.bpl
+
+echo ----- SeparateVerification0.bpl
+%BGEXE% %* /noVerify SeparateVerification0.bpl
+echo ----- SeparateVerification1.bpl SeparateVerification0.bpl
+%BGEXE% %* /noVerify SeparateVerification1.bpl SeparateVerification0.bpl
+echo ----- SeparateVerification0.bpl SeparateVerification0.bpl
+%BGEXE% %* /noVerify SeparateVerification0.bpl SeparateVerification0.bpl
+echo ----- SeparateVerification0.bpl SeparateVerification0.bpl SeparateVerification1.bpl
+%BGEXE% %* /noVerify SeparateVerification0.bpl SeparateVerification0.bpl SeparateVerification1.bpl
