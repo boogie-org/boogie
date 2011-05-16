@@ -755,11 +755,13 @@ namespace BytecodeTranslator
 
       // Simplify the LHS so that all nested dereferences and method calls are broken
       // up into separate assignments to locals.
-      var blockExpression = ExpressionSimplifier.Simplify(this.sink, assignment.Target) as IBlockExpression;
-      foreach (var s in blockExpression.BlockStatement.Statements) {
-        this.StmtTraverser.Visit(s);
-      }
-      var target = blockExpression.Expression as ITargetExpression;
+      //var blockExpression = ExpressionSimplifier.Simplify(this.sink, assignment.Target) as IBlockExpression;
+      //foreach (var s in blockExpression.BlockStatement.Statements) {
+      //  this.StmtTraverser.Visit(s);
+      //}
+      //var target = blockExpression.Expression as ITargetExpression;
+
+      var target = assignment.Target;
 
       List<IFieldDefinition> args = null;
       Bpl.Expr arrayExpr = null;
@@ -1388,10 +1390,12 @@ namespace BytecodeTranslator
         };
       }
 
+#if EXPERIMENTAL
       public override ITargetExpression Rewrite(ITargetExpression targetExpression) {
         Contract.Assume(false, "The expression containing this as a subexpression should never allow a call to this routine.");
         return null;
       }
+#endif
 
       //public override IExpression Rewrite(IMethodCall methodCall) {
 
