@@ -169,7 +169,7 @@ namespace Microsoft.Boogie {
 
     public void AddType(NamedDeclaration td) {
       Contract.Requires(td != null);
-      Contract.Assert((td is TypeCtorDecl) || (td is TypeSynonymDecl));
+      Contract.Requires((td is TypeCtorDecl) || (td is TypeSynonymDecl));
       Contract.Requires(td.Name != null);
 
       string name = td.Name;
