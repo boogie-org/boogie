@@ -755,7 +755,7 @@ namespace BytecodeTranslator
 
       // Simplify the LHS so that all nested dereferences and method calls are broken
       // up into separate assignments to locals.
-      var blockExpression = AssignmentSimplifier.Simplify(this.sink, assignment.Target);
+      var blockExpression = ExpressionSimplifier.Simplify(this.sink, assignment.Target) as IBlockExpression;
       foreach (var s in blockExpression.BlockStatement.Statements) {
         this.StmtTraverser.Visit(s);
       }
