@@ -118,7 +118,7 @@ namespace BytecodeTranslator {
         return heap.StructType;
       else if (type.IsEnum)
         return Bpl.Type.Int; // The underlying type of an enum is always some kind of integer
-      else if (type is IGenericTypeParameter) 
+      else if (type is IGenericTypeParameter)
         return heap.BoxType;
       else
         return heap.RefType;
@@ -167,7 +167,9 @@ namespace BytecodeTranslator {
       Bpl.IToken tok = local.Token();
       Bpl.Type t = CciTypeToBoogie(local.Type.ResolvedType);
       if (!localVarMap.TryGetValue(local, out v)) {
-        v = new Bpl.LocalVariable(tok, new Bpl.TypedIdent(tok, local.Name.Value, t));
+        var name = local.Name.Value;
+        name = TranslationHelper.TurnStringIntoValidIdentifier(name);
+        v = new Bpl.LocalVariable(tok, new Bpl.TypedIdent(tok, name, t));
         localVarMap.Add(local, v);
       }
       return v;
@@ -334,6 +336,7 @@ namespace BytecodeTranslator {
       ProcedureInfo procAndFormalMap;
 
       var key = method.InternedKey;
+
       if (!this.declaredMethods.TryGetValue(key, out procAndFormalMap)) {
 
         string MethodName = TranslationHelper.CreateUniqueMethodName(method);
@@ -375,7 +378,7 @@ namespace BytecodeTranslator {
         Bpl.Formal selfOut = null;
         #region Create 'this' parameter
         if (!method.IsStatic) {
-          Bpl.Type selfType = CciTypeToBoogie(method.ContainingType);
+          var selfType = CciTypeToBoogie(method.ContainingType);
           if (method.ContainingType.ResolvedType.IsStruct) {
             //selfType = Heap.StructType;
             in_count++;
@@ -470,15 +473,16 @@ namespace BytecodeTranslator {
 
         #endregion
 
+        var tok = method.Token();
         Bpl.DeclWithFormals decl;
         if (IsPure(method)) {
-          var func = new Bpl.Function(method.Token(),
+          var func = new Bpl.Function(tok,
             MethodName,
             new Bpl.VariableSeq(invars),
             this.RetVariable);
           decl = func;
         } else {
-          var proc = new Bpl.Procedure(method.Token(),
+          var proc = new Bpl.Procedure(tok,
               MethodName,
               new Bpl.TypeVariableSeq(),
               new Bpl.VariableSeq(invars),
@@ -488,7 +492,10 @@ namespace BytecodeTranslator {
               boogiePostcondition);
           decl = proc;
         }
-
+        if (!TypeHelper.GetDefiningUnitReference(method.ContainingType).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity)) {
+          var attrib = new Bpl.QKeyValue(tok, "extern", new List<object>(1), null);
+          decl.Attributes = attrib;
+        }
 
         string newName = null;
         if (IsStubMethod(method, out newName)) {
@@ -573,7 +580,8 @@ namespace BytecodeTranslator {
 
     public ProcedureInfo FindOrCreateProcedureAndReturnProcAndFormalMap(IMethodDefinition method) {
       this.FindOrCreateProcedure(method);
-      return this.declaredMethods[method.InternedKey];
+      var key = method.InternedKey;
+      return this.declaredMethods[key];
     }
     public static IMethodReference Unspecialize(IMethodReference method) {
       IMethodReference result = method;
@@ -633,6 +641,15 @@ namespace BytecodeTranslator {
       this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
       this.localCounter = 0;
     }
+
+    public void BeginAssembly(IAssembly assembly) {
+      this.assemblyBeingTranslated = assembly;
+    }
+
+    public void EndAssembly(IAssembly assembly) {
+      this.assemblyBeingTranslated = null;
+    }
+    private IAssembly assemblyBeingTranslated;
 
     public Dictionary<ITypeDefinition, HashSet<IMethodDefinition>> delegateTypeToDelegates = new Dictionary<ITypeDefinition, HashSet<IMethodDefinition>>();
 

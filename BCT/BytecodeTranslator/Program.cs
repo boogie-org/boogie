@@ -132,12 +132,19 @@ namespace BytecodeTranslator {
           var copier = new CodeDeepCopier(host);
           var mutableModule = copier.Copy(module);
 
-          var mutator = new ReparentModule(host,
-            TypeHelper.GetDefiningUnit(host.PlatformType.SystemObject.ResolvedType),
-            mutableModule);
-          module = mutator.Rewrite(mutableModule);
+          var mscorlib = TypeHelper.GetDefiningUnit(host.PlatformType.SystemObject.ResolvedType);
 
-          modules.Add(Tuple.Create(module, pdbReader));
+          //var mutator = new ReparentModule(host, mscorlib, mutableModule);
+          //module = mutator.Rewrite(mutableModule);
+          //modules.Add(Tuple.Create(module, pdbReader));
+
+          RewriteUnitReferences renamer = new RewriteUnitReferences(host, mutableModule);
+          var mscorlibAssembly = (IAssembly)mscorlib;
+          renamer.targetAssembly = mscorlibAssembly;
+          renamer.originalAssemblyIdentity = mscorlibAssembly.AssemblyIdentity;
+          renamer.RewriteChildren(mutableModule);
+          modules.Add(Tuple.Create((IModule)mutableModule, pdbReader));
+
         }
       }
       if (modules.Count == 0) {
@@ -340,6 +347,34 @@ namespace BytecodeTranslator {
         // Maybe this is a good place to add the procedure to the toplevel declarations
       }
     }
+
+    private class RewriteUnitReferences : MetadataRewriter {
+      private UnitIdentity sourceUnitIdentity = null;
+      internal IAssembly/*?*/ targetAssembly = null;
+      internal AssemblyIdentity/*?*/ originalAssemblyIdentity = null;
+
+      Dictionary<uint, bool> internedKeys = new Dictionary<uint, bool>();
+
+      public RewriteUnitReferences(IMetadataHost host, Module sourceUnit)
+        : base(host) {
+        this.sourceUnitIdentity = sourceUnit.UnitIdentity;
+        }
+
+      public override IModuleReference Rewrite(IModuleReference moduleReference) {
+        if (this.sourceUnitIdentity.Equals(moduleReference.UnitIdentity)) {
+          return this.targetAssembly;
+        }
+        return base.Rewrite(moduleReference);
+      }
+      public override IAssemblyReference Rewrite(IAssemblyReference assemblyReference) {
+        if (this.sourceUnitIdentity.Equals(assemblyReference.UnitIdentity)) {
+          return this.targetAssembly;
+        }
+        return base.Rewrite(assemblyReference);
+      }
+
+    }
+
   }
 
 }
