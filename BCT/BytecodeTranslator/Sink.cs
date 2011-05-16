@@ -492,7 +492,7 @@ namespace BytecodeTranslator {
               boogiePostcondition);
           decl = proc;
         }
-        if (!TypeHelper.GetDefiningUnitReference(method.ContainingType).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity)) {
+        if (this.assemblyBeingTranslated != null && !TypeHelper.GetDefiningUnitReference(method.ContainingType).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity)) {
           var attrib = new Bpl.QKeyValue(tok, "extern", new List<object>(1), null);
           decl.Attributes = attrib;
         }
@@ -617,6 +617,10 @@ namespace BytecodeTranslator {
         t = this.Heap.CreateTypeVariable(type);
         this.declaredTypes.Add(key, t);
         this.TranslatedProgram.TopLevelDeclarations.Add(t);
+        if (this.assemblyBeingTranslated != null && !TypeHelper.GetDefiningUnitReference(type).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity)) {
+          var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "extern", new List<object>(1), null);
+          t.Attributes = attrib;
+        }
       }
       return t;
     }
@@ -649,7 +653,7 @@ namespace BytecodeTranslator {
     public void EndAssembly(IAssembly assembly) {
       this.assemblyBeingTranslated = null;
     }
-    private IAssembly assemblyBeingTranslated;
+    private IAssembly/*?*/ assemblyBeingTranslated;
 
     public Dictionary<ITypeDefinition, HashSet<IMethodDefinition>> delegateTypeToDelegates = new Dictionary<ITypeDefinition, HashSet<IMethodDefinition>>();
 
