@@ -50,13 +50,37 @@ namespace BytecodeTranslator
       return etrav.TranslatedExpressions.Pop();
     }
 
+    public ICollection<ITypeDefinition>/*?*/ TranslateMethod(IMethodDefinition method) {
+      var methodBody = method.Body as ISourceMethodBody;
+      if (methodBody == null) return null;
+      var block = methodBody.Block as BlockStatement;
+      // TODO: Error if cast fails?
+
+      ICollection<ITypeDefinition> newTypes = null;
+      if (block != null) {
+        var remover = new AnonymousDelegateRemover(this.sink.host, this.PdbReader);
+        newTypes = remover.RemoveAnonymousDelegates(methodBody.MethodDefinition, block);
+      }
+      this.Visit(methodBody);
+      return newTypes;
+    }
+
     #endregion
 
-    public override void Visit(IBlockStatement block) {
-      Bpl.StmtListBuilder slb = new Bpl.StmtListBuilder();
+    //public override void Visit(ISourceMethodBody methodBody) {
+    //  var block = methodBody.Block as BlockStatement;
+    //  // TODO: Error if cast fails?
 
-      foreach (IStatement st in block.Statements) {
-        this.Visit(st);
+    //  if (block != null) {
+    //    var remover = new AnonymousDelegateRemover(this.sink.host, this.PdbReader);
+    //    var newTypes = remover.RemoveAnonymousDelegates(methodBody.MethodDefinition, block);
+    //  }
+    //  base.Visit(methodBody);
+    //}
+
+    public override void Visit(IBlockStatement block) {
+      foreach (var s in block.Statements) {
+        this.Visit(s);
       }
     }
 
