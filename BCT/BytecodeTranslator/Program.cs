@@ -25,6 +25,9 @@ namespace BytecodeTranslator {
     [OptionDescription("The names of the assemblies to use as input", ShortForm = "a")]
     public List<string> assemblies = null;
 
+    [OptionDescription("Break into debugger", ShortForm = "break")]
+    public bool breakIntoDebugger = false;
+
     [OptionDescription("Search paths for assembly dependencies.", ShortForm = "lib")]
     public List<string> libpaths = new List<string>();
 
@@ -36,7 +39,7 @@ namespace BytecodeTranslator {
     public bool wholeProgram = false;
 
     [OptionDescription("Stub assembly", ShortForm = "s")]
-    public List<string>/*?*/ stubAssemblies = null;
+    public List<string>/*?*/ stub = null;
 
   }
 
@@ -47,14 +50,21 @@ namespace BytecodeTranslator {
     static int Main(string[] args)
     {
       int result = 0;
+      int errorReturnValue = -1;
 
       #region Parse options
       var options = new Options();
       options.Parse(args);
+      if (options.HelpRequested) {
+        options.PrintOptions("");
+        return errorReturnValue;
+      }
       if (options.HasErrors) {
-        if (options.HelpRequested)
-          options.PrintOptions("");
-        return 1;
+        options.PrintErrorsAndExit(Console.Out);
+      }
+
+      if (options.breakIntoDebugger) {
+        System.Diagnostics.Debugger.Break();
       }
       #endregion
 
@@ -81,7 +91,7 @@ namespace BytecodeTranslator {
             return 1;
         }
 
-        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stubAssemblies);
+        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stub);
 
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed: {0}", e.Message);
