@@ -289,6 +289,8 @@ namespace BytecodeTranslator {
         Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
         #endregion
 
+        var translatedBody = stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken);
+
         #region Add implementation to Boogie program
         if (proc != null) {
           Bpl.Implementation impl =
@@ -298,13 +300,14 @@ namespace BytecodeTranslator {
                   decl.InParams,
                   decl.OutParams,
                   vseq,
-                  stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken));
+                  translatedBody);
 
           impl.Proc = proc;
           this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
         } else { // method is translated as a function
-          //Bpl.Function func = decl as Bpl.Function;
-          //func.Body = new Bpl.CodeExpr(new Bpl.VariableSeq(), new List<Bpl.Block>{ new Bpl.Block(
+          //var func = decl as Bpl.Function;
+          //Contract.Assume(func != null);
+          //func.Body = new Bpl.CodeExpr(new Bpl.VariableSeq(), translatedBody.BigBlocks);
         }
         #endregion
 
