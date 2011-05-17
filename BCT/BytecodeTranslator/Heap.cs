@@ -60,6 +60,17 @@ procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref)
 {
   $result := $TypeOf($DynamicType(this));
 }
+axiom (forall t: Type :: $DynamicType($TypeOf(t)) == t);
+
+function $ThreadDelegate(Ref) : Ref;
+procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ParameterizedThreadStart(this: Ref, start$in: Ref)
+{
+  assume $ThreadDelegate(this) == start$in;
+}
+procedure {:inline 1} System.Threading.Thread.Start$System.Object(this: Ref, parameter$in: Ref)
+{
+  call {:async} System.Threading.ParameterizedThreadStart.Invoke$System.Object($ThreadDelegate(this), parameter$in);
+}
 
 ";
     private Sink sink;
@@ -202,6 +213,17 @@ axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
 procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref)
 {
   $result := $TypeOf($DynamicType(this));
+}
+axiom (forall t: Type :: $DynamicType($TypeOf(t)) == t);
+
+function $ThreadDelegate(Ref) : Ref;
+procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ParameterizedThreadStart(this: Ref, start$in: Ref)
+{
+  assume $ThreadDelegate(this) == start$in;
+}
+procedure {:inline 1} System.Threading.Thread.Start$System.Object(this: Ref, parameter$in: Ref)
+{
+  call {:async} System.Threading.ParameterizedThreadStart.Invoke$System.Object($ThreadDelegate(this), parameter$in);
 }
 
 ";
