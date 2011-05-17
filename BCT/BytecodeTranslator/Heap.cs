@@ -39,7 +39,6 @@ var $Heap: HeapType;
 
 var $Alloc: [Ref] bool;
 procedure {:inline 1} Alloc() returns (x: Ref)
-  free ensures x != null;
   modifies $Alloc;
 {
   assume $Alloc[x] == false && x != null;
@@ -56,6 +55,11 @@ axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x );
 axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
 axiom (forall x: Ref :: { Ref2Box(x) } Box2Ref(Ref2Box(x)) == x );
 axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
+
+procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref)
+{
+  $result := $TypeOf($DynamicType(this));
+}
 
 ";
     private Sink sink;
@@ -83,6 +87,7 @@ axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
     public override Bpl.Variable CreateFieldVariable(IFieldReference field) {
       Bpl.Variable v;
       string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
+      fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
       Bpl.IToken tok = field.Token();
       Bpl.Type t = this.sink.CciTypeToBoogie(field.Type.ResolvedType);
 
@@ -101,6 +106,7 @@ axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
     public override Bpl.Variable CreateEventVariable(IEventDefinition e) {
       Bpl.Variable v;
       string eventName = TypeHelper.GetTypeName(e.ContainingType) + "." + e.Name.Value;
+      eventName = TranslationHelper.TurnStringIntoValidIdentifier(eventName);
       Bpl.IToken tok = e.Token();
       Bpl.Type t = this.sink.CciTypeToBoogie(e.Type.ResolvedType);
 
@@ -109,7 +115,7 @@ axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
         v = new Bpl.GlobalVariable(tok, tident);
       }
       else {
-        Bpl.Type mt = new Bpl.MapType(tok, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Bpl.Type.Int), t);
+        Bpl.Type mt = new Bpl.MapType(tok, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(this.RefType), t);
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, eventName, mt);
         v = new Bpl.GlobalVariable(tok, tident);
       }
@@ -126,11 +132,11 @@ axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
     /// </param>
     public override Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.Expr f, AccessType accessType, Bpl.Type unboxType) {
       if (accessType == AccessType.Struct)
-        return Bpl.Expr.Select(o, f);
+        return Unbox(f.tok, unboxType, Bpl.Expr.Select(o, f));
       else if (accessType == AccessType.Heap)
         return Bpl.Expr.Select(f, o);
       else
-        return Bpl.Expr.Select(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f);
+        return Unbox(f.tok, unboxType, Bpl.Expr.Select(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f));
     }
 
     /// <summary>
@@ -140,11 +146,11 @@ axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
     public override Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.Expr f, Bpl.Expr value, AccessType accessType, Bpl.Type boxType) {
       Debug.Assert(o != null);
       if (accessType == AccessType.Struct)
-        return Bpl.Cmd.MapAssign(tok, (Bpl.IdentifierExpr)o, f, value);
+        return Bpl.Cmd.MapAssign(tok, (Bpl.IdentifierExpr)o, f, Box(f.tok, boxType, value));
       else if (accessType == AccessType.Heap)
         return Bpl.Cmd.MapAssign(tok, (Bpl.IdentifierExpr)f, o, value);
       else
-        return TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(ArrayContentsVariable), Bpl.Expr.Store(Bpl.Expr.Ident(ArrayContentsVariable), o, Bpl.Expr.Store(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f, value)));
+        return TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(ArrayContentsVariable), Bpl.Expr.Store(Bpl.Expr.Ident(ArrayContentsVariable), o, Bpl.Expr.Store(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f, Box(f.tok, boxType, value))));
     }
 
   }
@@ -176,7 +182,6 @@ type HeapType = [Ref,Field]Box;
 
 var $Alloc: [Ref] bool;
 procedure {:inline 1} Alloc() returns (x: Ref)
-  free ensures x != null;
   modifies $Alloc;
 {
   assume $Alloc[x] == false && x != null;
@@ -193,6 +198,11 @@ axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x );
 axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
 axiom (forall x: Ref :: { Ref2Box(x) } Box2Ref(Ref2Box(x)) == x );
 axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
+
+procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref)
+{
+  $result := $TypeOf($DynamicType(this));
+}
 
 ";
     private Sink sink;
@@ -241,6 +251,7 @@ axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
     public override Bpl.Variable CreateEventVariable(IEventDefinition e) {
       Bpl.Variable v;
       string fieldname = TypeHelper.GetTypeName(e.ContainingType) + "." + e.Name.Value;
+      fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
       Bpl.IToken tok = e.Token();
 
       if (e.Adder.ResolvedMethod.IsStatic) {
