@@ -46,7 +46,12 @@ namespace BytecodeTranslator {
     }
 
     public override void Visit(IAssembly assembly) {
-      base.Visit(assembly);
+      this.sink.BeginAssembly(assembly);
+      try {
+        base.Visit(assembly);
+      } finally {
+        this.sink.EndAssembly(assembly);
+      }
     }
 
     /// <summary>
@@ -54,6 +59,9 @@ namespace BytecodeTranslator {
     /// </summary>
     /// 
     public override void Visit(ITypeDefinition typeDefinition) {
+
+      var savedPrivateTypes = this.privateTypes;
+      this.privateTypes = new List<ITypeDefinition>();
 
       if (typeDefinition.IsClass) {
         bool savedSawCctor = this.sawCctor;
@@ -80,7 +88,12 @@ namespace BytecodeTranslator {
           TypeHelper.GetTypeName(typeDefinition));
         throw new NotImplementedException(String.Format("Unknown kind of type definition '{0}'.", TypeHelper.GetTypeName(typeDefinition)));
       }
+      this.Visit(typeDefinition.PrivateHelperMembers);
+      foreach (var t in this.privateTypes) {
+        this.Visit(t);
+      }
     }
+    List<ITypeDefinition> privateTypes = new List<ITypeDefinition>();
 
     private void CreateDefaultStructConstructor(ITypeDefinition typeDefinition) {
       Contract.Requires(typeDefinition.IsStruct);
@@ -256,7 +269,11 @@ namespace BytecodeTranslator {
         #endregion
 
         #region Translate body
-        method.Body.Dispatch(stmtTraverser);
+        var helperTypes = stmtTraverser.TranslateMethod(method);
+        if (helperTypes != null) {
+          this.privateTypes.AddRange(helperTypes);
+        }
+        //method.Body.Dispatch(stmtTraverser);
         #endregion
 
         #region Create Local Vars For Implementation

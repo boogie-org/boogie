@@ -39,6 +39,7 @@ var $Heap: HeapType;
 
 var $Alloc: [Ref] bool;
 procedure {:inline 1} Alloc() returns (x: Ref)
+  free ensures x != null;
   modifies $Alloc;
 {
   assume $Alloc[x] == false && x != null;
@@ -175,6 +176,7 @@ type HeapType = [Ref,Field]Box;
 
 var $Alloc: [Ref] bool;
 procedure {:inline 1} Alloc() returns (x: Ref)
+  free ensures x != null;
   modifies $Alloc;
 {
   assume $Alloc[x] == false && x != null;
