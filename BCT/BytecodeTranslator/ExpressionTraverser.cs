@@ -883,7 +883,21 @@ namespace BytecodeTranslator
 
     public override void Visit(ICreateArray createArrayInstance)
     {
-      TranslateArrayCreation(createArrayInstance);
+      Bpl.IToken cloc = createArrayInstance.Token();
+      var a = this.sink.CreateFreshLocal(createArrayInstance.Type);
+
+      Debug.Assert(createArrayInstance.Rank > 0); 
+      Bpl.Expr lengthExpr = Bpl.Expr.Literal(1);
+      foreach (IExpression expr in createArrayInstance.Sizes) {
+        this.Visit(expr);
+        lengthExpr = Bpl.Expr.Mul(lengthExpr, TranslatedExpressions.Pop());
+      }
+      
+      // First generate an Alloc() call
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
+      Bpl.Expr assumeExpr = Bpl.Expr.Eq(new Bpl.NAryExpr(cloc, new Bpl.FunctionCall(this.sink.Heap.ArrayLengthFunction), new Bpl.ExprSeq(Bpl.Expr.Ident(a))), lengthExpr);
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.AssumeCmd(cloc, assumeExpr));
+      TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
     
     public override void Visit(ICreateDelegateInstance createDelegateInstance)
@@ -896,18 +910,6 @@ namespace BytecodeTranslator
       }
 
       TranslateDelegateCreation(createDelegateInstance.MethodToCallViaDelegate, createDelegateInstance.Type, createDelegateInstance);
-    }
-
-    private void TranslateArrayCreation(IExpression creationAST)
-    {
-      Bpl.IToken cloc = creationAST.Token();
-
-      var a = this.sink.CreateFreshLocal(creationAST.Type);
-
-      // First generate an Alloc() call
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
-
-      TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
 
     private void TranslateObjectCreation(IMethodReference ctor, IEnumerable<IExpression> arguments, IExpression creationAST)
@@ -1287,9 +1289,7 @@ namespace BytecodeTranslator
     public override void Visit(IVectorLength vectorLength) {
       base.Visit(vectorLength.Vector);
       var e = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(
-        Bpl.Expr.Select(new Bpl.IdentifierExpr(vectorLength.Token(), this.sink.Heap.ArrayLengthVariable), new Bpl.Expr[] { e })
-        );
+      TranslatedExpressions.Push(new Bpl.NAryExpr(vectorLength.Token(), new Bpl.FunctionCall(this.sink.Heap.ArrayLengthFunction), new Bpl.ExprSeq(e)));
     }
 
     #endregion

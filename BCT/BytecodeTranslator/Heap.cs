@@ -63,6 +63,7 @@ procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref)
 axiom (forall t: Type :: $DynamicType($TypeOf(t)) == t);
 
 function $ThreadDelegate(Ref) : Ref;
+
 procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ParameterizedThreadStart(this: Ref, start$in: Ref)
 {
   assume $ThreadDelegate(this) == start$in;
@@ -71,6 +72,17 @@ procedure {:inline 1} System.Threading.Thread.Start$System.Object(this: Ref, par
 {
   call {:async} System.Threading.ParameterizedThreadStart.Invoke$System.Object($ThreadDelegate(this), parameter$in);
 }
+procedure {:extern} System.Threading.ParameterizedThreadStart.Invoke$System.Object(this: Ref, obj$in: Ref);
+
+procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ThreadStart(this: Ref, start$in: Ref) 
+{
+  assume $ThreadDelegate(this) == start$in;
+}
+procedure {:inline 1} System.Threading.Thread.Start(this: Ref) 
+{
+  call {:async} System.Threading.ThreadStart.Invoke($ThreadDelegate(this));
+}
+procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
 
 ";
     private Sink sink;
@@ -87,7 +99,7 @@ procedure {:inline 1} System.Threading.Thread.Start$System.Object(this: Ref, par
         this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
         this.RefType = new Bpl.CtorType(this.RefTypeDecl.tok, this.RefTypeDecl, new Bpl.TypeSeq());
         this.RealType = new Bpl.CtorType(this.RealTypeDecl.tok, this.RealTypeDecl, new Bpl.TypeSeq());
-      }
+      } 
       return b;
     }
 
@@ -225,7 +237,17 @@ procedure {:inline 1} System.Threading.Thread.Start$System.Object(this: Ref, par
 {
   call {:async} System.Threading.ParameterizedThreadStart.Invoke$System.Object($ThreadDelegate(this), parameter$in);
 }
+procedure {:extern} System.Threading.ParameterizedThreadStart.Invoke$System.Object(this: Ref, obj$in: Ref);
 
+procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ThreadStart(this: Ref, start$in: Ref) 
+{
+  assume $ThreadDelegate(this) == start$in;
+}
+procedure {:inline 1} System.Threading.Thread.Start(this: Ref) 
+{
+  call {:async} System.Threading.ThreadStart.Invoke($ThreadDelegate(this));
+}
+procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
 ";
     private Sink sink;
 
