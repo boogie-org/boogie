@@ -59,7 +59,9 @@ Contract.Requires(cce.NonNullElements(defines,true));
 
 
   FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
-  return Parse(stream, filename, defines, out program);
+  var ret = Parse(stream, filename, defines, out program);
+  stream.Close();
+  return ret;
 }
 
   
