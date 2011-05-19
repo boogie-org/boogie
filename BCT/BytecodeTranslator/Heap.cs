@@ -60,7 +60,8 @@ procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref)
 {
   $result := $TypeOf($DynamicType(this));
 }
-axiom (forall t: Type :: $DynamicType($TypeOf(t)) == t);
+function $TypeOfInv(Ref): Type;
+axiom (forall t: Type :: {$TypeOf(t)} $TypeOfInv($TypeOf(t)) == t);
 
 function $ThreadDelegate(Ref) : Ref;
 
@@ -226,7 +227,8 @@ procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref)
 {
   $result := $TypeOf($DynamicType(this));
 }
-axiom (forall t: Type :: $DynamicType($TypeOf(t)) == t);
+function $TypeOfInv(Ref): Type;
+axiom (forall t: Type :: {$TypeOf(t)} $TypeOfInv($TypeOf(t)) == t);
 
 function $ThreadDelegate(Ref) : Ref;
 procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ParameterizedThreadStart(this: Ref, start$in: Ref)
