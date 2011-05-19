@@ -544,27 +544,30 @@ namespace BytecodeTranslator
       }
       #endregion
 
-      Bpl.IToken cloc = methodCall.Token();
-      if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
-        Bpl.Variable v = this.sink.CreateFreshLocal(methodCall.Type.ResolvedType);
-        Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(cloc, v);
-        if (resolvedMethod.Type is IGenericTypeParameter) {
-          Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
-          toBoxed[unboxed] = boxed;
-          outvars.Add(boxed);
-        }
-        else {
-          outvars.Add(unboxed);
-        }
-        TranslatedExpressions.Push(unboxed);
-      }
       var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
       string methodname = proc.Name;
-
+      var translateAsFunctionCall = proc is Bpl.Function;
+      Bpl.IToken cloc = methodCall.Token();
       Bpl.QKeyValue attrib = null;
-      foreach (var a in resolvedMethod.Attributes) {
-        if (TypeHelper.GetTypeName(a.Type).EndsWith("AsyncAttribute")) {
-          attrib = new Bpl.QKeyValue(cloc, "async", new List<object>(), null);
+
+      if (!translateAsFunctionCall) {
+        if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
+          Bpl.Variable v = this.sink.CreateFreshLocal(methodCall.Type.ResolvedType);
+          Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(cloc, v);
+          if (resolvedMethod.Type is IGenericTypeParameter) {
+            Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
+            toBoxed[unboxed] = boxed;
+            outvars.Add(boxed);
+          } else {
+            outvars.Add(unboxed);
+          }
+          TranslatedExpressions.Push(unboxed);
+        }
+
+        foreach (var a in resolvedMethod.Attributes) {
+          if (TypeHelper.GetTypeName(a.Type).EndsWith("AsyncAttribute")) {
+            attrib = new Bpl.QKeyValue(cloc, "async", new List<object>(), null);
+          }
         }
       }
 
@@ -599,13 +602,24 @@ namespace BytecodeTranslator
         else {
           this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(methodCall.Token(), thisExpr, Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local), resolvedMethod.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, local.TypedIdent.Type));
         }
-      }
-      else {
-        if (attrib != null)
-          call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars, attrib);
-        else
-          call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars);
-        this.StmtTraverser.StmtBuilder.Add(call);
+      } else {
+        if (translateAsFunctionCall) {
+          var func = proc as Bpl.Function;
+          var exprSeq = new Bpl.ExprSeq();
+          foreach (var e in inexpr) {
+            exprSeq.Add(e);
+          }
+          var callFunction = new Bpl.NAryExpr(cloc, new Bpl.FunctionCall(func), exprSeq);
+          this.TranslatedExpressions.Push(callFunction);
+          return;
+
+        } else {
+          if (attrib != null)
+            call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars, attrib);
+          else
+            call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars);
+          this.StmtTraverser.StmtBuilder.Add(call);
+        }
       }
 
       foreach (KeyValuePair<Bpl.IdentifierExpr, Bpl.IdentifierExpr> kv in toBoxed) {
@@ -869,7 +883,21 @@ namespace BytecodeTranslator
 
     public override void Visit(ICreateArray createArrayInstance)
     {
-      TranslateArrayCreation(createArrayInstance);
+      Bpl.IToken cloc = createArrayInstance.Token();
+      var a = this.sink.CreateFreshLocal(createArrayInstance.Type);
+
+      Debug.Assert(createArrayInstance.Rank > 0); 
+      Bpl.Expr lengthExpr = Bpl.Expr.Literal(1);
+      foreach (IExpression expr in createArrayInstance.Sizes) {
+        this.Visit(expr);
+        lengthExpr = Bpl.Expr.Mul(lengthExpr, TranslatedExpressions.Pop());
+      }
+      
+      // First generate an Alloc() call
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
+      Bpl.Expr assumeExpr = Bpl.Expr.Eq(new Bpl.NAryExpr(cloc, new Bpl.FunctionCall(this.sink.Heap.ArrayLengthFunction), new Bpl.ExprSeq(Bpl.Expr.Ident(a))), lengthExpr);
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.AssumeCmd(cloc, assumeExpr));
+      TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
     
     public override void Visit(ICreateDelegateInstance createDelegateInstance)
@@ -882,18 +910,6 @@ namespace BytecodeTranslator
       }
 
       TranslateDelegateCreation(createDelegateInstance.MethodToCallViaDelegate, createDelegateInstance.Type, createDelegateInstance);
-    }
-
-    private void TranslateArrayCreation(IExpression creationAST)
-    {
-      Bpl.IToken cloc = creationAST.Token();
-
-      var a = this.sink.CreateFreshLocal(creationAST.Type);
-
-      // First generate an Alloc() call
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
-
-      TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
 
     private void TranslateObjectCreation(IMethodReference ctor, IEnumerable<IExpression> arguments, IExpression creationAST)
@@ -1273,9 +1289,7 @@ namespace BytecodeTranslator
     public override void Visit(IVectorLength vectorLength) {
       base.Visit(vectorLength.Vector);
       var e = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(
-        Bpl.Expr.Select(new Bpl.IdentifierExpr(vectorLength.Token(), this.sink.Heap.ArrayLengthVariable), new Bpl.Expr[] { e })
-        );
+      TranslatedExpressions.Push(new Bpl.NAryExpr(vectorLength.Token(), new Bpl.FunctionCall(this.sink.Heap.ArrayLengthFunction), new Bpl.ExprSeq(e)));
     }
 
     #endregion

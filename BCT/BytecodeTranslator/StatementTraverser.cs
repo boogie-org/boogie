@@ -97,7 +97,7 @@ namespace BytecodeTranslator
       if (this.PdbReader != null) {
         var slocs = this.PdbReader.GetClosestPrimarySourceLocationsFor(statement.Locations);
         foreach (var sloc in slocs) {
-          fileName = sloc.Document.Name.Value;
+          fileName = sloc.Document.Location;
           lineNumber = sloc.StartLine;
           break;
         }

@@ -68,8 +68,8 @@ namespace BytecodeTranslator {
   {
     [RepresentationFor("$ArrayContents", "var $ArrayContents: [Ref][int]Box;")]
     public Bpl.Variable ArrayContentsVariable = null;
-    [RepresentationFor("$ArrayLength", "var $ArrayLength: [Ref]int;")]
-    public Bpl.Variable ArrayLengthVariable = null;
+    [RepresentationFor("$ArrayLength", "function $ArrayLength(Ref): int;")]
+    public Bpl.Function ArrayLengthFunction = null;
 
     public abstract Bpl.Variable CreateFieldVariable(IFieldReference field);
 
