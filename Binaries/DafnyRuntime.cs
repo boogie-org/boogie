@@ -18,9 +18,16 @@ namespace Dafny
     public static Set<T> FromElements(params T[] values) {
       Dictionary<T, bool> d = new Dictionary<T, bool>(values.Length);
       foreach (T t in values)
-        d.Add(t, true);
+        d[t] = true;
       return new Set<T>(d);
     }
+    public static Set<T> FromCollection(ICollection<T> values) {
+      Dictionary<T, bool> d = new Dictionary<T, bool>();
+      foreach (T t in values)
+        d[t] = true;
+      return new Set<T>(d);
+    }
+    
     public IEnumerable<T> Elements {
       get {
         return dict.Keys;
@@ -98,7 +105,7 @@ namespace Dafny
       } else {
         a = other.dict; b = dict;
       }
-      Dictionary<T, bool> r = new Dictionary<T, bool>();
+      var r = new Dictionary<T, bool>();
       foreach (T t in a.Keys) {
         if (b.ContainsKey(t))
           r.Add(t, true);
@@ -110,7 +117,7 @@ namespace Dafny
         return this;
       else if (other.dict.Count == 0)
         return this;
-      Dictionary<T, bool> r = new Dictionary<T, bool>();
+      var r = new Dictionary<T, bool>();
       foreach (T t in dict.Keys) {
         if (!other.dict.ContainsKey(t))
           r.Add(t, true);
@@ -226,6 +233,7 @@ namespace Dafny
     }
   }
   public partial class Helpers {
+    // Computing forall/exists quantifiers
     public static bool QuantBool(bool frall, System.Predicate<bool> pred) {
       if (frall) {
         return pred(false) && pred(true);
@@ -239,17 +247,25 @@ namespace Dafny
       }
       return frall;
     }
-    public static bool QuantSet<T>(Dafny.Set<T> set, bool frall, System.Predicate<T> pred) {
-      foreach (var t in set.Elements) {
-        if (pred(t) != frall) { return !frall; }
+    public static bool QuantSet<U>(Dafny.Set<U> set, bool frall, System.Predicate<U> pred) {
+      foreach (var u in set.Elements) {
+        if (pred(u) != frall) { return !frall; }
       }
       return frall;
     }
-    public static bool QuantSeq<T>(Dafny.Sequence<T> seq, bool frall, System.Predicate<T> pred) {
-      foreach (var t in seq.Elements) {
-        if (pred(t) != frall) { return !frall; }
+    public static bool QuantSeq<U>(Dafny.Sequence<U> seq, bool frall, System.Predicate<U> pred) {
+      foreach (var u in seq.Elements) {
+        if (pred(u) != frall) { return !frall; }
       }
       return frall;
+    }
+    // Enumerating other collections
+    public delegate Dafny.Set<T> ComprehensionDelegate<T>();
+    public static IEnumerable<bool> AllBooleans {
+      get {
+        yield return false;
+        yield return true;
+      }
     }
   }
 }
