@@ -108,7 +108,9 @@ namespace BytecodeTranslator {
       var host = new CodeContractAwareHostEnvironment(libPaths != null ? libPaths : Enumerable<string>.Empty, true, true);
       Host = host;
 
-      var modules = new List<Tuple<IModule,PdbReader/*?*/>>();
+      var modules = new List<IModule>();
+      var contractExtractors = new Dictionary<IUnit, IContractProvider>();
+      var pdbReaders = new Dictionary<IUnit, PdbReader>();
       foreach (var a in assemblyNames) {
         var module = host.LoadUnitFrom(a) as IModule;
         if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
@@ -122,7 +124,9 @@ namespace BytecodeTranslator {
           pdbReader = new PdbReader(pdbStream, host);
         }
         module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader) as IModule;
-        modules.Add(Tuple.Create(module, pdbReader));
+        modules.Add(module);
+        contractExtractors.Add(module, host.GetContractExtractor(module.UnitIdentity));
+        pdbReaders.Add(module, pdbReader);
       }
       if (stubAssemblies != null) {
         foreach (var s in stubAssemblies) {
@@ -153,7 +157,9 @@ namespace BytecodeTranslator {
           renamer.targetAssembly = mscorlibAssembly;
           renamer.originalAssemblyIdentity = mscorlibAssembly.AssemblyIdentity;
           renamer.RewriteChildren(mutableModule);
-          modules.Add(Tuple.Create((IModule)mutableModule, pdbReader));
+          modules.Add((IModule)mutableModule);
+          contractExtractors.Add(module, host.GetContractExtractor(module.UnitIdentity));
+          pdbReaders.Add(module, pdbReader);
 
         }
       }
@@ -162,7 +168,7 @@ namespace BytecodeTranslator {
         return -1;
       }
 
-      var primaryModule = modules[0].Item1;
+      var primaryModule = modules[0];
 
       TraverserFactory traverserFactory;
       if (wholeProgram)
@@ -173,20 +179,8 @@ namespace BytecodeTranslator {
       var sink = new Sink(host, traverserFactory, heapFactory);
       TranslationHelper.tmpVarCounter = 0;
 
-      foreach (var tup in modules) {
-
-        var module = tup.Item1;
-        var pdbReader = tup.Item2;
-
-        IAssembly/*?*/ assembly = null;
-        MetadataTraverser translator = traverserFactory.MakeMetadataTraverser(sink, host.GetContractExtractor(module.ModuleIdentity), pdbReader);
-        assembly = module as IAssembly;
-        if (assembly != null)
-          translator.Visit(assembly);
-        else
-          translator.Visit(module);
-
-      }
+      MetadataTraverser translator = traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
+      translator.TranslateAssemblies(modules);
 
       foreach (ITypeDefinition type in sink.delegateTypeToDelegates.Keys) {
         CreateDispatchMethod(sink, type);

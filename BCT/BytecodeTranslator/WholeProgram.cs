@@ -16,8 +16,7 @@ namespace BytecodeTranslator {
   class WholeProgram : TraverserFactory {
 
     /// <summary>
-    /// Table to be filled by the metadata traverser when it first gets to an assembly.
-    /// [TODO: It should be full set of assemblies that are being translated (CUA).]
+    /// Table to be filled by the metadata traverser before visiting any assemblies.
     /// 
     /// The table lists the direct supertypes of all type definitions that it encounters during the
     /// traversal. (But the table is organized so that subTypes[T] is the list of type definitions
@@ -25,8 +24,10 @@ namespace BytecodeTranslator {
     /// </summary>
     readonly public Dictionary<ITypeReference, List<ITypeReference>> subTypes = new Dictionary<ITypeReference, List<ITypeReference>>();
 
-    public override MetadataTraverser MakeMetadataTraverser(Sink sink, IContractProvider contractProvider, PdbReader pdbReader) {
-      return new WholeProgramMetadataSemantics(this, sink, pdbReader);
+    public override MetadataTraverser MakeMetadataTraverser(Sink sink,
+      IDictionary<IUnit, IContractProvider> contractProviders, // TODO: remove this parameter?
+      IDictionary<IUnit, PdbReader> pdbReaders) {
+      return new WholeProgramMetadataSemantics(this, sink, pdbReaders);
     }
 
     public class WholeProgramMetadataSemantics : MetadataTraverser {
@@ -34,27 +35,23 @@ namespace BytecodeTranslator {
       readonly WholeProgram parent;
       readonly Sink sink;
 
-      /// <summary>
-      /// TODO: Need to have this populated before any of the assemblies in the CUA are traversed.
-      /// </summary>
-      readonly Dictionary<IAssembly, bool> codeUnderAnalysis = new Dictionary<IAssembly, bool>();
+      readonly Dictionary<IUnit, bool> codeUnderAnalysis = new Dictionary<IUnit, bool>();
 
-      public WholeProgramMetadataSemantics(WholeProgram parent, Sink sink, PdbReader/*?*/ pdbReader)
-        : base(sink, pdbReader) {
+      public WholeProgramMetadataSemantics(WholeProgram parent, Sink sink, IDictionary<IUnit, PdbReader> pdbReaders)
+        : base(sink, pdbReaders) {
         this.parent = parent;
         this.sink = sink;
       }
 
-      public override void Visit(IAssembly assembly) {
-
-        #region When doing whole-program analysis, traverse the assembly gathering type information
-        this.codeUnderAnalysis.Add(assembly, true);
+      public override void TranslateAssemblies(IEnumerable<IUnit> assemblies) {
+        #region traverse all of the units gathering type information
         var typeRecorder = new RecordSubtypes(this.parent.subTypes);
-        typeRecorder.Visit(assembly);
+        foreach (var a in assemblies) {
+          this.codeUnderAnalysis.Add(a, true);
+          typeRecorder.Visit(a);
+        }
         #endregion
-
-        base.Visit(assembly);
-
+        base.TranslateAssemblies(assemblies);
       }
       
       class RecordSubtypes : BaseMetadataTraverser {
@@ -120,54 +117,18 @@ namespace BytecodeTranslator {
           return;
         }
 
-        #region Translate In Parameters
-
-        var inexpr = new List<Bpl.Expr>();
-        #region Create the 'this' argument for the function call
-        this.Visit(methodCall.ThisArgument);
-        inexpr.Add(this.TranslatedExpressions.Pop());
-        #endregion
-
-        Dictionary<IParameterDefinition, Bpl.Expr> p2eMap = new Dictionary<IParameterDefinition, Bpl.Expr>();
-        IEnumerator<IParameterDefinition> penum = resolvedMethod.Parameters.GetEnumerator();
-        penum.MoveNext();
-        foreach (IExpression exp in methodCall.Arguments) {
-          if (penum.Current == null) {
-            throw new TranslationException("More Arguments than Parameters in functioncall");
-          }
-          this.Visit(exp);
-          Bpl.Expr e = this.TranslatedExpressions.Pop();
-
-          p2eMap.Add(penum.Current, e);
-          if (!penum.Current.IsOut) {
-            inexpr.Add(e);
-          }
-
-          penum.MoveNext();
-        }
-        #endregion
-
         Bpl.IToken token = methodCall.Token();
 
-        #region Translate Out vars
-        var outvars = new List<Bpl.IdentifierExpr>();
+        List<Bpl.Expr> inexpr;
+        List<Bpl.IdentifierExpr> outvars;
+        Bpl.IdentifierExpr thisExpr;
+        List<Bpl.Variable> locals;
+        List<IFieldDefinition> args;
+        Bpl.Expr arrayExpr;
+        Bpl.Expr indexExpr;
+        Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed;
+        var proc = TranslateArgumentsAndReturnProcedure(token, methodCall.MethodToCall, resolvedMethod, methodCall.IsStaticCall ? null : methodCall.ThisArgument, methodCall.Arguments, out inexpr, out outvars, out thisExpr, out locals, out args, out arrayExpr, out indexExpr, out toBoxed);
 
-        foreach (KeyValuePair<IParameterDefinition, Bpl.Expr> kvp in p2eMap) {
-          if (kvp.Key.IsByReference) {
-            Bpl.IdentifierExpr iexp = kvp.Value as Bpl.IdentifierExpr;
-            if (iexp == null) {
-              throw new TranslationException("Trying to pass complex expression as out in functioncall");
-            }
-            outvars.Add(iexp);
-          }
-        }
-        #endregion
-
-        if (methodCall.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
-          Bpl.Variable v = this.sink.CreateFreshLocal(methodCall.Type.ResolvedType);
-          outvars.Add(new Bpl.IdentifierExpr(token, v));
-          TranslatedExpressions.Push(new Bpl.IdentifierExpr(token, v));
-        }
 
         Bpl.QKeyValue attrib = null;
         foreach (var a in resolvedMethod.Attributes) {
@@ -179,7 +140,6 @@ namespace BytecodeTranslator {
 
         var elseBranch = new Bpl.StmtListBuilder();
 
-        var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
         var methodname = proc.Name;
 
         Bpl.CallCmd call;

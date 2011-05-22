@@ -484,21 +484,7 @@ namespace BytecodeTranslator
       string methodname = proc.Name;
       var translateAsFunctionCall = proc is Bpl.Function;
       Bpl.QKeyValue attrib = null;
-
       if (!translateAsFunctionCall) {
-        if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
-          Bpl.Variable v = this.sink.CreateFreshLocal(methodCall.Type.ResolvedType);
-          Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(cloc, v);
-          if (resolvedMethod.Type is IGenericTypeParameter) {
-            Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
-            toBoxed[unboxed] = boxed;
-            outvars.Add(boxed);
-          } else {
-            outvars.Add(unboxed);
-          }
-          TranslatedExpressions.Push(unboxed);
-        }
-
         foreach (var a in resolvedMethod.Attributes) {
           if (TypeHelper.GetTypeName(a.Type).EndsWith("AsyncAttribute")) {
             attrib = new Bpl.QKeyValue(cloc, "async", new List<object>(), null);
@@ -581,7 +567,7 @@ namespace BytecodeTranslator
       }
     }
 
-    private Bpl.DeclWithFormals TranslateArgumentsAndReturnProcedure(Bpl.IToken token, IMethodReference methodToCall, IMethodDefinition resolvedMethod, IExpression/*?*/ thisArg, IEnumerable<IExpression> arguments, out List<Bpl.Expr> inexpr, out List<Bpl.IdentifierExpr> outvars, out Bpl.IdentifierExpr thisExpr, out List<Bpl.Variable> locals, out List<IFieldDefinition> args, out Bpl.Expr arrayExpr, out Bpl.Expr indexExpr, out Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed) {
+    protected Bpl.DeclWithFormals TranslateArgumentsAndReturnProcedure(Bpl.IToken token, IMethodReference methodToCall, IMethodDefinition resolvedMethod, IExpression/*?*/ thisArg, IEnumerable<IExpression> arguments, out List<Bpl.Expr> inexpr, out List<Bpl.IdentifierExpr> outvars, out Bpl.IdentifierExpr thisExpr, out List<Bpl.Variable> locals, out List<IFieldDefinition> args, out Bpl.Expr arrayExpr, out Bpl.Expr indexExpr, out Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed) {
       inexpr = new List<Bpl.Expr>();
       outvars = new List<Bpl.IdentifierExpr>();
 
@@ -652,7 +638,26 @@ namespace BytecodeTranslator
         }
         penum.MoveNext();
       }
-      return this.sink.FindOrCreateProcedure(resolvedMethod);
+
+      var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
+      
+      var translateAsFunctionCall = proc is Bpl.Function;
+      if (!translateAsFunctionCall) {
+        if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
+          Bpl.Variable v = this.sink.CreateFreshLocal(resolvedMethod.Type.ResolvedType);
+          Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(token, v);
+          if (resolvedMethod.Type is IGenericTypeParameter) {
+            Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
+            toBoxed[unboxed] = boxed;
+            outvars.Add(boxed);
+          } else {
+            outvars.Add(unboxed);
+          }
+          TranslatedExpressions.Push(unboxed);
+        }
+      }
+
+      return proc;
     }
 
     #endregion

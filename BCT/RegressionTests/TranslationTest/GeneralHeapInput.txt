@@ -49,7 +49,9 @@ implementation System.Object.GetType(this: Ref) returns ($result: Ref)
 
 
 
-axiom (forall t: Type :: $DynamicType($TypeOf(t)) == t);
+function $TypeOfInv(Ref) : Type;
+
+axiom (forall t: Type :: { $TypeOf(t) } $TypeOfInv($TypeOf(t)) == t);
 
 function $ThreadDelegate(Ref) : Ref;
 

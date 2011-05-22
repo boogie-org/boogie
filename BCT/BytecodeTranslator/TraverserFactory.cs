@@ -18,9 +18,11 @@ using Bpl = Microsoft.Boogie;
 
 namespace BytecodeTranslator {
   public abstract class TraverserFactory {
-    public virtual MetadataTraverser MakeMetadataTraverser(Sink sink, IContractProvider contractProvider, PdbReader/*?*/ pdbReader)
+    public virtual MetadataTraverser MakeMetadataTraverser(Sink sink,
+      IDictionary<IUnit, IContractProvider> contractProviders, // TODO: remove this parameter?
+      IDictionary<IUnit, PdbReader> sourceLocationProviders)
     {
-      return new MetadataTraverser(sink, pdbReader);
+      return new MetadataTraverser(sink, sourceLocationProviders);
     }
     public virtual StatementTraverser MakeStatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
       return new StatementTraverser(sink, pdbReader, contractContext);

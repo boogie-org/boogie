@@ -30,22 +30,25 @@ namespace BytecodeTranslator {
 
     public readonly TraverserFactory factory;
 
-    public readonly PdbReader/*?*/ PdbReader;
+    public readonly IDictionary<IUnit, PdbReader> PdbReaders;
+    public PdbReader/*?*/ PdbReader;
 
-    public MetadataTraverser(Sink sink, PdbReader/*?*/ pdbReader)
+    public MetadataTraverser(Sink sink, IDictionary<IUnit, PdbReader> pdbReaders)
       : base() {
       this.sink = sink;
       this.factory = sink.Factory;
-      this.PdbReader = pdbReader;
+      this.PdbReaders = pdbReaders;
     }
 
     #region Overrides
 
     public override void Visit(IModule module) {
+      this.PdbReaders.TryGetValue(module, out this.PdbReader);
       base.Visit(module);
     }
 
     public override void Visit(IAssembly assembly) {
+      this.PdbReaders.TryGetValue(assembly, out this.PdbReader);
       this.sink.BeginAssembly(assembly);
       try {
         base.Visit(assembly);
@@ -386,6 +389,15 @@ namespace BytecodeTranslator {
 
     #endregion
 
+    #region Public API
+    public virtual void TranslateAssemblies(IEnumerable<IUnit> assemblies) {
+      foreach (var a in assemblies) {
+        a.Dispatch(this);
+      }
+    }
+    #endregion
+
+    #region Helpers
     private class FindCtorCall : BaseCodeTraverser {
       private bool isDeferringCtor = false;
       public ITypeReference containingType;
@@ -407,5 +419,7 @@ namespace BytecodeTranslator {
         base.Visit(methodCall);
       }
     }
+    #endregion
+
   }
 }
