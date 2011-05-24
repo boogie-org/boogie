@@ -1371,8 +1371,26 @@ namespace Microsoft.Dafny {
       Bpl.IdentifierExpr id = new Bpl.IdentifierExpr(mc.tok, mc.Ctor.FullName, predef.DatatypeType);
       return new Bpl.NAryExpr(mc.tok, new Bpl.FunctionCall(id), args);
     }
-    
-    Bpl.Expr IsTotal(Expression expr, ExpressionTranslator etran){
+
+    Bpl.Expr CtorInvocation(IToken tok, DatatypeCtor ctor, ExpressionTranslator etran, Bpl.VariableSeq locals, StmtListBuilder localTypeAssumptions) {
+      Contract.Requires(tok != null);
+      Contract.Requires(ctor != null);
+      Contract.Requires(etran != null);
+      Contract.Requires(locals != null);
+      Contract.Requires(localTypeAssumptions != null);
+      Contract.Requires(predef != null);
+      Contract.Ensures(Contract.Result<Bpl.Expr>() != null);
+
+      VariableSeq bvars;
+      List<Bpl.Expr> args;
+      CreateBoundVariables(ctor.Formals, out bvars, out args);
+      locals.AddRange(bvars);
+
+      Bpl.IdentifierExpr id = new Bpl.IdentifierExpr(tok, ctor.FullName, predef.DatatypeType);
+      return new Bpl.NAryExpr(tok, new Bpl.FunctionCall(id), new ExprSeq(args.ToArray()));
+    }
+
+    Bpl.Expr IsTotal(Expression expr, ExpressionTranslator etran) {
       Contract.Requires(expr != null);Contract.Requires(etran != null);
       Contract.Requires(predef != null);
       Contract.Ensures(Contract.Result<Bpl.Expr>() != null);
@@ -1509,9 +1527,12 @@ namespace Microsoft.Dafny {
         }
         Bpl.Expr r = BplAnd(t0, t1);
         return z == null ? r : BplAnd(r, z);
-      } else if (expr is QuantifierExpr) {
-        QuantifierExpr e = (QuantifierExpr)expr;
-        Bpl.Expr total = IsTotal(e.Body, etran);
+      } else if (expr is ComprehensionExpr) {
+        var e = (ComprehensionExpr)expr;
+        var total = IsTotal(e.Term, etran);
+        if (e.Range != null) {
+          total = BplAnd(IsTotal(e.Range, etran), BplImp(etran.TrExpr(e.Range), total));
+        }
         if (total != Bpl.Expr.True) {
           Bpl.VariableSeq bvars = new Bpl.VariableSeq();
           Bpl.Expr typeAntecedent = etran.TrBoundVariables(e.BoundVars, bvars);
@@ -1636,9 +1657,12 @@ namespace Microsoft.Dafny {
             break;
         }
         return BplAnd(t0, t1);
-      } else if (expr is QuantifierExpr) {
-        QuantifierExpr e = (QuantifierExpr)expr;
-        Bpl.Expr total = CanCallAssumption(e.Body, etran);
+      } else if (expr is ComprehensionExpr) {
+        var e = (ComprehensionExpr)expr;
+        var total = CanCallAssumption(e.Term, etran);
+        if (e.Range != null) {
+          total = BplAnd(CanCallAssumption(e.Range, etran), BplImp(etran.TrExpr(e.Range), total));
+        }
         if (total != Bpl.Expr.True) {
           Bpl.VariableSeq bvars = new Bpl.VariableSeq();
           Bpl.Expr typeAntecedent = etran.TrBoundVariables(e.BoundVars, bvars);
@@ -1681,6 +1705,18 @@ namespace Microsoft.Dafny {
         return a;
       } else {
         return Bpl.Expr.And(a, b);
+      }
+    }
+    
+    Bpl.Expr BplImp(Bpl.Expr a, Bpl.Expr b) {
+      Contract.Requires(a != null);
+      Contract.Requires(b != null);
+      Contract.Ensures(Contract.Result<Bpl.Expr>() != null);
+
+      if (a == Bpl.Expr.True || b == Bpl.Expr.True) {
+        return b;
+      } else {
+        return Bpl.Expr.Imp(a, b);
       }
     }
     
@@ -1785,6 +1821,9 @@ namespace Microsoft.Dafny {
         bool isSequence = e.Seq.Type is SeqType;
         CheckWellformed(e.Seq, options, locals, builder, etran);
         Bpl.Expr seq = etran.TrExpr(e.Seq);
+        if (e.Seq.Type.IsArrayType) {
+          builder.Add(Assert(e.Seq.tok, Bpl.Expr.Neq(seq, predef.Null), "array may be null"));
+        }
         Bpl.Expr e0 = null;
         if (e.E0 != null) {
           e0 = etran.TrExpr(e.E0);
@@ -1967,8 +2006,8 @@ namespace Microsoft.Dafny {
             break;
         }
 
-      } else if (expr is QuantifierExpr) {
-        QuantifierExpr e = (QuantifierExpr)expr;
+      } else if (expr is ComprehensionExpr) {
+        var e = (ComprehensionExpr)expr;
         Dictionary<IVariable,Expression> substMap = new Dictionary<IVariable,Expression>();
         foreach (BoundVar bv in e.BoundVars) {
           VarDecl local = new VarDecl(bv.tok, bv.Name, bv.Type, bv.IsGhost, null);
@@ -1983,8 +2022,18 @@ namespace Microsoft.Dafny {
             builder.Add(new Bpl.AssumeCmd(bv.tok, wh));
           }
         }
-        Expression body = Substitute(e.Body, null, substMap);
-        CheckWellformed(body, options, locals, builder, etran);
+
+        Expression body = Substitute(e.Term, null, substMap);
+        if (e.Range == null) {
+          CheckWellformed(body, options, locals, builder, etran);
+        } else {
+          Expression range = Substitute(e.Range, null, substMap);
+          CheckWellformed(range, options, locals, builder, etran);
+
+          Bpl.StmtListBuilder b = new Bpl.StmtListBuilder();
+          CheckWellformed(body, options, locals, b, etran);
+          builder.Add(new Bpl.IfCmd(expr.tok, etran.TrExpr(range), b.Collect(expr.tok), null, null));
+        }
 
       } else if (expr is ITEExpr) {
         ITEExpr e = (ITEExpr)expr;
@@ -1999,20 +2048,40 @@ namespace Microsoft.Dafny {
         MatchExpr me = (MatchExpr)expr;
         CheckWellformed(me.Source, options, locals, builder, etran);
         Bpl.Expr src = etran.TrExpr(me.Source);
-        Bpl.IfCmd ifcmd = null;
+        Bpl.IfCmd ifCmd = null;
         StmtListBuilder elsBldr = new StmtListBuilder();
         elsBldr.Add(new Bpl.AssumeCmd(expr.tok, Bpl.Expr.False));
         StmtList els = elsBldr.Collect(expr.tok);
+        foreach (var missingCtor in me.MissingCases) {
+          // havoc all bound variables
+          var b = new Bpl.StmtListBuilder();
+          VariableSeq newLocals = new VariableSeq();
+          Bpl.Expr r = CtorInvocation(me.tok, missingCtor, etran, newLocals, b);
+          locals.AddRange(newLocals);
+
+          if (newLocals.Length != 0) {
+            Bpl.IdentifierExprSeq havocIds = new Bpl.IdentifierExprSeq();
+            foreach (Variable local in newLocals) {
+              havocIds.Add(new Bpl.IdentifierExpr(local.tok, local));
+            }
+            builder.Add(new Bpl.HavocCmd(me.tok, havocIds));
+          }
+          b.Add(Assert(me.tok, Bpl.Expr.False, "missing case in case statement: " + missingCtor.Name));
+
+          Bpl.Expr guard = Bpl.Expr.Eq(src, r);
+          ifCmd = new Bpl.IfCmd(me.tok, guard, b.Collect(me.tok), ifCmd, els);
+          els = null;
+        }
         for (int i = me.Cases.Count; 0 <= --i; ) {
           MatchCaseExpr mc = me.Cases[i];
           Bpl.StmtListBuilder b = new Bpl.StmtListBuilder();
           Bpl.Expr ct = CtorInvocation(mc, etran, locals, b);
           // generate:  if (src == ctor(args)) { assume args-is-well-typed; mc.Body is well-formed; assume Result == TrExpr(case); } else ...
           CheckWellformedWithResult(mc.Body, options, result, resultType, locals, b, etran);
-          ifcmd = new Bpl.IfCmd(mc.tok, Bpl.Expr.Eq(src, ct), b.Collect(mc.tok), ifcmd, els);
+          ifCmd = new Bpl.IfCmd(mc.tok, Bpl.Expr.Eq(src, ct), b.Collect(mc.tok), ifCmd, els);
           els = null;
         }
-        builder.Add(ifcmd);
+        builder.Add(ifCmd);
         result = null;
         
       } else {
@@ -2070,15 +2139,16 @@ namespace Microsoft.Dafny {
       return decr;
     }
 
-    List<Expression> LoopDecreasesWithDefault(WhileStmt s, out bool inferredDecreases) {
-      Contract.Requires(s != null);
+    List<Expression> LoopDecreasesWithDefault(IToken tok, Expression Guard, List<Expression> Decreases, out bool inferredDecreases) {
+      Contract.Requires(tok != null);
+      Contract.Requires(Decreases != null);
 
-      List<Expression> theDecreases = s.Decreases;
+      List<Expression> theDecreases = Decreases;
       inferredDecreases = false;
-      if (theDecreases.Count == 0 && s.Guard != null) {
+      if (theDecreases.Count == 0 && Guard != null) {
         theDecreases = new List<Expression>();
         Expression prefix = null;
-        foreach (Expression guardConjunct in Conjuncts(s.Guard)) {
+        foreach (Expression guardConjunct in Conjuncts(Guard)) {
           Expression guess = null;
           BinaryExpr bin = guardConjunct as BinaryExpr;
           if (bin != null) {
@@ -2086,23 +2156,23 @@ namespace Microsoft.Dafny {
               case BinaryExpr.ResolvedOpcode.Lt:
               case BinaryExpr.ResolvedOpcode.Le:
                 // for A < B and A <= B, use the decreases B - A
-                guess = CreateIntSub(s.Tok, bin.E1, bin.E0);
+                guess = CreateIntSub(tok, bin.E1, bin.E0);
                 break;
               case BinaryExpr.ResolvedOpcode.Ge:
               case BinaryExpr.ResolvedOpcode.Gt:
                 // for A >= B and A > B, use the decreases A - B
-                guess = CreateIntSub(s.Tok, bin.E0, bin.E1);
+                guess = CreateIntSub(tok, bin.E0, bin.E1);
                 break;
               case BinaryExpr.ResolvedOpcode.NeqCommon:
                 if (bin.E0.Type is IntType) {
                   // for A != B where A and B are integers, use the absolute difference between A and B (that is: if 0 <= A-B then A-B else B-A)
-                  Expression AminusB = CreateIntSub(s.Tok, bin.E0, bin.E1);
-                  Expression BminusA = CreateIntSub(s.Tok, bin.E1, bin.E0);
-                  Expression zero = CreateIntLiteral(s.Tok, 0);
-                  BinaryExpr test = new BinaryExpr(s.Tok, BinaryExpr.Opcode.Le, zero, AminusB);
+                  Expression AminusB = CreateIntSub(tok, bin.E0, bin.E1);
+                  Expression BminusA = CreateIntSub(tok, bin.E1, bin.E0);
+                  Expression zero = CreateIntLiteral(tok, 0);
+                  BinaryExpr test = new BinaryExpr(tok, BinaryExpr.Opcode.Le, zero, AminusB);
                   test.ResolvedOp = BinaryExpr.ResolvedOpcode.Le;  // resolve here
                   test.Type = Type.Bool;  // resolve here
-                  guess = CreateIntITE(s.Tok, test, AminusB, BminusA);
+                  guess = CreateIntITE(tok, test, AminusB, BminusA);
                 }
                 break;
               default:
@@ -2112,8 +2182,8 @@ namespace Microsoft.Dafny {
           if (guess != null) {
             if (prefix != null) {
               // Make the following guess:  if prefix then guess else -1
-              Expression negativeOne = CreateIntLiteral(s.Tok, -1);
-              guess = CreateIntITE(s.Tok, prefix, guess, negativeOne);
+              Expression negativeOne = CreateIntLiteral(tok, -1);
+              guess = CreateIntITE(tok, prefix, guess, negativeOne);
             }
             theDecreases.Add(guess);
             inferredDecreases = true;
@@ -2122,7 +2192,7 @@ namespace Microsoft.Dafny {
           if (prefix == null) {
             prefix = guardConjunct;
           } else {
-            BinaryExpr and = new BinaryExpr(s.Tok, BinaryExpr.Opcode.And, prefix, guardConjunct);
+            BinaryExpr and = new BinaryExpr(tok, BinaryExpr.Opcode.And, prefix, guardConjunct);
             and.ResolvedOp = BinaryExpr.ResolvedOpcode.And;  // resolve here
             and.Type = Type.Bool;  // resolve here
             prefix = and;
@@ -2944,134 +3014,28 @@ namespace Microsoft.Dafny {
           }
         }
         builder.Add(new Bpl.IfCmd(stmt.Tok, guard, thn, elsIf, els));
-        
+
+      } else if (stmt is AlternativeStmt) {
+        AddComment(builder, stmt, "alternative statement");
+        var s = (AlternativeStmt)stmt;
+        var elseCase = Assert(s.Tok, Bpl.Expr.False, "alternative cases fail to cover all possibilties");
+        TrAlternatives(s.Alternatives, elseCase, null, builder, locals, etran);
+
       } else if (stmt is WhileStmt) {
         AddComment(builder, stmt, "while statement");
-        WhileStmt s = (WhileStmt)stmt;
-        int loopId = loopHeapVarCount;
-        loopHeapVarCount++;
-        
-        // use simple heuristics to create a default decreases clause, if none is given
-        bool inferredDecreases;
-        List<Expression> theDecreases = LoopDecreasesWithDefault(s, out inferredDecreases);
-        
-        Bpl.LocalVariable preLoopHeapVar = new Bpl.LocalVariable(stmt.Tok, new Bpl.TypedIdent(stmt.Tok, "$PreLoopHeap" + loopId, predef.HeapType));
-        locals.Add(preLoopHeapVar);
-        Bpl.IdentifierExpr preLoopHeap = new Bpl.IdentifierExpr(stmt.Tok, preLoopHeapVar);
-        ExpressionTranslator etranPreLoop = new ExpressionTranslator(this, predef, preLoopHeap);
-        builder.Add(Bpl.Cmd.SimpleAssign(stmt.Tok, preLoopHeap, etran.HeapExpr));  // TODO: does this screw up labeled breaks for this loop?
+        var s = (WhileStmt)stmt;
+        TrLoop(s, s.Guard,
+          delegate(Bpl.StmtListBuilder bld) { TrStmt(s.Body, bld, locals, etran); },
+          builder, locals, etran);
 
-        List<Bpl.Expr> initDecr = null;
-        if (!Contract.Exists(theDecreases, e => e is WildcardExpr)) {
-          initDecr = RecordDecreasesValue(theDecreases, builder, locals, etran, "$decr" + loopId + "$init$");
-        }
-
-        // the variable w is used to coordinate the definedness checking of the loop invariant
-        Bpl.LocalVariable wVar = new Bpl.LocalVariable(stmt.Tok, new Bpl.TypedIdent(stmt.Tok, "$w" + loopId, Bpl.Type.Bool));
-        Bpl.IdentifierExpr w = new Bpl.IdentifierExpr(stmt.Tok, wVar);
-        locals.Add(wVar);
-        // havoc w;
-        builder.Add(new Bpl.HavocCmd(stmt.Tok, new Bpl.IdentifierExprSeq(w)));
-        
-        List<Bpl.PredicateCmd> invariants = new List<Bpl.PredicateCmd>();
-        Bpl.StmtListBuilder invDefinednessBuilder = new Bpl.StmtListBuilder();
-        foreach (MaybeFreeExpression loopInv in s.Invariants) {
-          TrStmt_CheckWellformed(loopInv.E, invDefinednessBuilder, locals, etran, false);
-          invDefinednessBuilder.Add(new Bpl.AssumeCmd(loopInv.E.tok, etran.TrExpr(loopInv.E)));
-
-          invariants.Add(new Bpl.AssumeCmd(loopInv.E.tok, Bpl.Expr.Imp(w, CanCallAssumption(loopInv.E, etran))));
-          if (loopInv.IsFree) {
-            invariants.Add(new Bpl.AssumeCmd(loopInv.E.tok, Bpl.Expr.Imp(w, etran.TrExpr(loopInv.E))));
-          } else {
-            bool splitHappened;
-            var ss = TrSplitExpr(loopInv.E, etran, out splitHappened);
-            if (!splitHappened) {
-              var wInv = Bpl.Expr.Imp(w, etran.TrExpr(loopInv.E));
-              invariants.Add(Assert(loopInv.E.tok, wInv, "loop invariant violation"));
-            } else {
-              foreach (var split in ss) {
-                var wInv = Bpl.Expr.Binary(split.E.tok, BinaryOperator.Opcode.Imp, w, split.E);
-                if (split.IsFree) {
-                  invariants.Add(new Bpl.AssumeCmd(split.E.tok, wInv));
-                } else {
-                  invariants.Add(Assert(split.E.tok, wInv, "loop invariant violation"));  // TODO: it would be fine to have this use {:subsumption 0}
-                }
-              }
-            }
-          }
-        }
-        // check definedness of decreases clause
-        // TODO: can this check be omitted if the decreases clause is inferred?
-        foreach (Expression e in theDecreases) {
-          TrStmt_CheckWellformed(e, invDefinednessBuilder, locals, etran, true);
-        }
-        // include boilerplate invariants
-        foreach (BoilerplateTriple tri in GetTwoStateBoilerplate(stmt.Tok, currentMethod, etranPreLoop, etran)) {
-          if (tri.IsFree) {
-            invariants.Add(new Bpl.AssumeCmd(stmt.Tok, tri.Expr));
-          } else {
-            Contract.Assert(tri.ErrorMessage != null);  // follows from BoilerplateTriple invariant
-            invariants.Add(Assert(stmt.Tok, tri.Expr, tri.ErrorMessage));
-          }
-        }
-        // include a free invariant that says that all completed iterations so far have only decreased the termination metric
-        if (initDecr != null) {
-          List<IToken> toks = new List<IToken>();
-          List<Type> types = new List<Type>();
-          List<Bpl.Expr> decrs = new List<Bpl.Expr>();
-          foreach (Expression e in theDecreases) {
-            toks.Add(e.tok);
-            types.Add(cce.NonNull(e.Type));
-            decrs.Add(etran.TrExpr(e));
-          }
-          Bpl.Expr decrCheck = DecreasesCheck(toks, types, decrs, initDecr, etran, null, null, true, false);
-          invariants.Add(new Bpl.AssumeCmd(stmt.Tok, decrCheck));
-        }
-        
-        Bpl.StmtListBuilder loopBodyBuilder = new Bpl.StmtListBuilder();
-        // as the first thing inside the loop, generate:  if (!w) { assert IsTotal(inv); assume false; }
-        invDefinednessBuilder.Add(new Bpl.AssumeCmd(stmt.Tok, Bpl.Expr.False));
-        loopBodyBuilder.Add(new Bpl.IfCmd(stmt.Tok, Bpl.Expr.Not(w), invDefinednessBuilder.Collect(stmt.Tok), null, null));
-        // generate:  assert IsTotal(guard); if (!guard) { break; }
-        Bpl.Expr guard = null;
-        if (s.Guard != null) {
-          TrStmt_CheckWellformed(s.Guard, loopBodyBuilder, locals, etran, true);
-          guard = Bpl.Expr.Not(etran.TrExpr(s.Guard));
-        }
-        Bpl.StmtListBuilder guardBreak = new Bpl.StmtListBuilder();
-        guardBreak.Add(new Bpl.BreakCmd(s.Tok, null));
-        loopBodyBuilder.Add(new Bpl.IfCmd(s.Tok, guard, guardBreak.Collect(s.Tok), null, null));
-
-        loopBodyBuilder.Add(CaptureState(stmt.Tok, "loop entered"));
-        // termination checking
-        if (Contract.Exists(theDecreases, e => e is WildcardExpr)) {
-          // omit termination checking for this loop
-          TrStmt(s.Body, loopBodyBuilder, locals, etran);
-        } else {
-          List<Bpl.Expr> oldBfs = RecordDecreasesValue(theDecreases, loopBodyBuilder, locals, etran, "$decr" + loopId + "$");
-          // time for the actual loop body
-          TrStmt(s.Body, loopBodyBuilder, locals, etran);
-          // check definedness of decreases expressions
-          List<IToken> toks = new List<IToken>();
-          List<Type> types = new List<Type>();
-          List<Bpl.Expr> decrs = new List<Bpl.Expr>();
-          foreach (Expression e in theDecreases) {
-            toks.Add(e.tok);
-            types.Add(cce.NonNull(e.Type));
-            decrs.Add(etran.TrExpr(e));
-          }
-          Bpl.Expr decrCheck = DecreasesCheck(toks, types, decrs, oldBfs, etran, loopBodyBuilder, " at end of loop iteration", false, false);
-          loopBodyBuilder.Add(Assert(stmt.Tok, decrCheck, inferredDecreases ? "cannot prove termination; try supplying a decreases clause for the loop" : "decreases expression might not decrease"));
-        }
-        // Finally, assume the well-formedness of the invariant (which has been checked once and for all above), so that the check
-        // of invariant-maintenance can use the appropriate canCall predicates.
-        foreach (MaybeFreeExpression loopInv in s.Invariants) {
-          loopBodyBuilder.Add(new Bpl.AssumeCmd(loopInv.E.tok, CanCallAssumption(loopInv.E, etran)));
-        }
-        Bpl.StmtList body = loopBodyBuilder.Collect(stmt.Tok);
-
-        builder.Add(new Bpl.WhileCmd(stmt.Tok, Bpl.Expr.True, invariants, body));
-        builder.Add(CaptureState(stmt.Tok, "loop exit"));
+      } else if (stmt is AlternativeLoopStmt) {
+        AddComment(builder, stmt, "alternative loop statement");
+        var s = (AlternativeLoopStmt)stmt;
+        var tru = new LiteralExpr(s.Tok, true);
+        tru.Type = Type.Bool;  // resolve here
+        TrLoop(s, tru,
+          delegate(Bpl.StmtListBuilder bld) { TrAlternatives(s.Alternatives, null, new Bpl.BreakCmd(s.Tok, null), bld, locals, etran); },
+          builder, locals, etran);
 
       } else if (stmt is ForeachStmt) {
         AddComment(builder, stmt, "foreach statement");
@@ -3202,16 +3166,36 @@ namespace Microsoft.Dafny {
         builder.Add(CaptureState(stmt.Tok));
         
       } else if (stmt is MatchStmt) {
-        MatchStmt s = (MatchStmt)stmt;
+        var s = (MatchStmt)stmt;
         TrStmt_CheckWellformed(s.Source, builder, locals, etran, true);
         Bpl.Expr source = etran.TrExpr(s.Source);
         
-        Bpl.StmtListBuilder b = new Bpl.StmtListBuilder();
+        var b = new Bpl.StmtListBuilder();
         b.Add(new Bpl.AssumeCmd(stmt.Tok, Bpl.Expr.False));
         Bpl.StmtList els = b.Collect(stmt.Tok);
         Bpl.IfCmd ifCmd = null;
+        foreach (var missingCtor in s.MissingCases) {
+          // havoc all bound variables
+          b = new Bpl.StmtListBuilder();
+          VariableSeq newLocals = new VariableSeq();
+          Bpl.Expr r = CtorInvocation(s.Tok, missingCtor, etran, newLocals, b);
+          locals.AddRange(newLocals);
+
+          if (newLocals.Length != 0) {
+            Bpl.IdentifierExprSeq havocIds = new Bpl.IdentifierExprSeq();
+            foreach (Variable local in newLocals) {
+              havocIds.Add(new Bpl.IdentifierExpr(local.tok, local));
+            }
+            builder.Add(new Bpl.HavocCmd(s.Tok, havocIds));
+          }
+          b.Add(Assert(s.Tok, Bpl.Expr.False, "missing case in case statement: " + missingCtor.Name));
+
+          Bpl.Expr guard = Bpl.Expr.Eq(source, r);
+          ifCmd = new Bpl.IfCmd(s.Tok, guard, b.Collect(s.Tok), ifCmd, els);
+          els = null;
+        }
         for (int i = s.Cases.Count; 0 <= --i; ) {
-          MatchCaseStmt mc = (MatchCaseStmt)s.Cases[i];
+          var mc = (MatchCaseStmt)s.Cases[i];
           // havoc all bound variables
           b = new Bpl.StmtListBuilder();
           VariableSeq newLocals = new VariableSeq();
@@ -3235,12 +3219,199 @@ namespace Microsoft.Dafny {
           ifCmd = new Bpl.IfCmd(mc.tok, guard, b.Collect(mc.tok), ifCmd, els);
           els = null;
         }
-        Contract.Assert(ifCmd != null);  // follows from the fact that s.Cases.Count != 0.
+        Contract.Assert(ifCmd != null);  // follows from the fact that s.Cases.Count + s.MissingCases.Count != 0.
         builder.Add(ifCmd);
 
       } else {
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected statement
       }
+    }
+
+    delegate void BodyTranslator(Bpl.StmtListBuilder builder);
+
+    void TrLoop(LoopStmt s, Expression Guard, BodyTranslator bodyTr,
+                Bpl.StmtListBuilder builder, Bpl.VariableSeq locals, ExpressionTranslator etran) {
+      Contract.Requires(s != null);
+      Contract.Requires(bodyTr != null);
+      Contract.Requires(builder != null);
+      Contract.Requires(locals != null);
+      Contract.Requires(etran != null);
+
+      int loopId = loopHeapVarCount;
+      loopHeapVarCount++;
+
+      // use simple heuristics to create a default decreases clause, if none is given
+      bool inferredDecreases;
+      List<Expression> theDecreases = LoopDecreasesWithDefault(s.Tok, Guard, s.Decreases, out inferredDecreases);
+
+      Bpl.LocalVariable preLoopHeapVar = new Bpl.LocalVariable(s.Tok, new Bpl.TypedIdent(s.Tok, "$PreLoopHeap" + loopId, predef.HeapType));
+      locals.Add(preLoopHeapVar);
+      Bpl.IdentifierExpr preLoopHeap = new Bpl.IdentifierExpr(s.Tok, preLoopHeapVar);
+      ExpressionTranslator etranPreLoop = new ExpressionTranslator(this, predef, preLoopHeap);
+      builder.Add(Bpl.Cmd.SimpleAssign(s.Tok, preLoopHeap, etran.HeapExpr));  // TODO: does this screw up labeled breaks for this loop?
+
+      List<Bpl.Expr> initDecr = null;
+      if (!Contract.Exists(theDecreases, e => e is WildcardExpr)) {
+        initDecr = RecordDecreasesValue(theDecreases, builder, locals, etran, "$decr" + loopId + "$init$");
+      }
+
+      // the variable w is used to coordinate the definedness checking of the loop invariant
+      Bpl.LocalVariable wVar = new Bpl.LocalVariable(s.Tok, new Bpl.TypedIdent(s.Tok, "$w" + loopId, Bpl.Type.Bool));
+      Bpl.IdentifierExpr w = new Bpl.IdentifierExpr(s.Tok, wVar);
+      locals.Add(wVar);
+      // havoc w;
+      builder.Add(new Bpl.HavocCmd(s.Tok, new Bpl.IdentifierExprSeq(w)));
+
+      List<Bpl.PredicateCmd> invariants = new List<Bpl.PredicateCmd>();
+      Bpl.StmtListBuilder invDefinednessBuilder = new Bpl.StmtListBuilder();
+      foreach (MaybeFreeExpression loopInv in s.Invariants) {
+        TrStmt_CheckWellformed(loopInv.E, invDefinednessBuilder, locals, etran, false);
+        invDefinednessBuilder.Add(new Bpl.AssumeCmd(loopInv.E.tok, etran.TrExpr(loopInv.E)));
+
+        invariants.Add(new Bpl.AssumeCmd(loopInv.E.tok, Bpl.Expr.Imp(w, CanCallAssumption(loopInv.E, etran))));
+        if (loopInv.IsFree) {
+          invariants.Add(new Bpl.AssumeCmd(loopInv.E.tok, Bpl.Expr.Imp(w, etran.TrExpr(loopInv.E))));
+        } else {
+          bool splitHappened;
+          var ss = TrSplitExpr(loopInv.E, etran, out splitHappened);
+          if (!splitHappened) {
+            var wInv = Bpl.Expr.Imp(w, etran.TrExpr(loopInv.E));
+            invariants.Add(Assert(loopInv.E.tok, wInv, "loop invariant violation"));
+          } else {
+            foreach (var split in ss) {
+              var wInv = Bpl.Expr.Binary(split.E.tok, BinaryOperator.Opcode.Imp, w, split.E);
+              if (split.IsFree) {
+                invariants.Add(new Bpl.AssumeCmd(split.E.tok, wInv));
+              } else {
+                invariants.Add(Assert(split.E.tok, wInv, "loop invariant violation"));  // TODO: it would be fine to have this use {:subsumption 0}
+              }
+            }
+          }
+        }
+      }
+      // check definedness of decreases clause
+      // TODO: can this check be omitted if the decreases clause is inferred?
+      foreach (Expression e in theDecreases) {
+        TrStmt_CheckWellformed(e, invDefinednessBuilder, locals, etran, true);
+      }
+      // include boilerplate invariants
+      foreach (BoilerplateTriple tri in GetTwoStateBoilerplate(s.Tok, currentMethod, etranPreLoop, etran)) {
+        if (tri.IsFree) {
+          invariants.Add(new Bpl.AssumeCmd(s.Tok, tri.Expr));
+        } else {
+          Contract.Assert(tri.ErrorMessage != null);  // follows from BoilerplateTriple invariant
+          invariants.Add(Assert(s.Tok, tri.Expr, tri.ErrorMessage));
+        }
+      }
+      // include a free invariant that says that all completed iterations so far have only decreased the termination metric
+      if (initDecr != null) {
+        List<IToken> toks = new List<IToken>();
+        List<Type> types = new List<Type>();
+        List<Bpl.Expr> decrs = new List<Bpl.Expr>();
+        foreach (Expression e in theDecreases) {
+          toks.Add(e.tok);
+          types.Add(cce.NonNull(e.Type));
+          decrs.Add(etran.TrExpr(e));
+        }
+        Bpl.Expr decrCheck = DecreasesCheck(toks, types, decrs, initDecr, etran, null, null, true, false);
+        invariants.Add(new Bpl.AssumeCmd(s.Tok, decrCheck));
+      }
+
+      Bpl.StmtListBuilder loopBodyBuilder = new Bpl.StmtListBuilder();
+      // as the first thing inside the loop, generate:  if (!w) { assert IsTotal(inv); assume false; }
+      invDefinednessBuilder.Add(new Bpl.AssumeCmd(s.Tok, Bpl.Expr.False));
+      loopBodyBuilder.Add(new Bpl.IfCmd(s.Tok, Bpl.Expr.Not(w), invDefinednessBuilder.Collect(s.Tok), null, null));
+      // generate:  assert IsTotal(guard); if (!guard) { break; }
+      Bpl.Expr guard = null;
+      if (Guard != null) {
+        TrStmt_CheckWellformed(Guard, loopBodyBuilder, locals, etran, true);
+        guard = Bpl.Expr.Not(etran.TrExpr(Guard));
+      }
+      Bpl.StmtListBuilder guardBreak = new Bpl.StmtListBuilder();
+      guardBreak.Add(new Bpl.BreakCmd(s.Tok, null));
+      loopBodyBuilder.Add(new Bpl.IfCmd(s.Tok, guard, guardBreak.Collect(s.Tok), null, null));
+
+      loopBodyBuilder.Add(CaptureState(s.Tok, "loop entered"));
+      // termination checking
+      if (Contract.Exists(theDecreases, e => e is WildcardExpr)) {
+        // omit termination checking for this loop
+        bodyTr(loopBodyBuilder);
+      } else {
+        List<Bpl.Expr> oldBfs = RecordDecreasesValue(theDecreases, loopBodyBuilder, locals, etran, "$decr" + loopId + "$");
+        // time for the actual loop body
+        bodyTr(loopBodyBuilder);
+        // check definedness of decreases expressions
+        List<IToken> toks = new List<IToken>();
+        List<Type> types = new List<Type>();
+        List<Bpl.Expr> decrs = new List<Bpl.Expr>();
+        foreach (Expression e in theDecreases) {
+          toks.Add(e.tok);
+          types.Add(cce.NonNull(e.Type));
+          decrs.Add(etran.TrExpr(e));
+        }
+        Bpl.Expr decrCheck = DecreasesCheck(toks, types, decrs, oldBfs, etran, loopBodyBuilder, " at end of loop iteration", false, false);
+        loopBodyBuilder.Add(Assert(s.Tok, decrCheck, inferredDecreases ? "cannot prove termination; try supplying a decreases clause for the loop" : "decreases expression might not decrease"));
+      }
+      // Finally, assume the well-formedness of the invariant (which has been checked once and for all above), so that the check
+      // of invariant-maintenance can use the appropriate canCall predicates.
+      foreach (MaybeFreeExpression loopInv in s.Invariants) {
+        loopBodyBuilder.Add(new Bpl.AssumeCmd(loopInv.E.tok, CanCallAssumption(loopInv.E, etran)));
+      }
+      Bpl.StmtList body = loopBodyBuilder.Collect(s.Tok);
+
+      builder.Add(new Bpl.WhileCmd(s.Tok, Bpl.Expr.True, invariants, body));
+      builder.Add(CaptureState(s.Tok, "loop exit"));
+    }
+
+    void TrAlternatives(List<GuardedAlternative> alternatives, Bpl.Cmd elseCase0, Bpl.StructuredCmd elseCase1,
+                        Bpl.StmtListBuilder builder, VariableSeq locals, ExpressionTranslator etran) {
+      Contract.Requires(alternatives != null);
+      Contract.Requires((elseCase0 == null) == (elseCase1 == null));  // ugly way of doing a type union
+      Contract.Requires(builder != null);
+      Contract.Requires(locals != null);
+      Contract.Requires(etran != null);
+
+      if (alternatives.Count == 0) {
+        if (elseCase0 != null) {
+          builder.Add(elseCase0);
+        } else {
+          builder.Add(elseCase1);
+        }
+        return;
+      }
+
+      // build the negation of the disjunction of all guards (that is, the conjunction of their negations)
+      Bpl.Expr noGuard = Bpl.Expr.True;
+      foreach (var alternative in alternatives) {
+        noGuard = BplAnd(noGuard, Bpl.Expr.Not(etran.TrExpr(alternative.Guard)));
+      }
+
+      var b = new Bpl.StmtListBuilder();
+      var elseTok = elseCase0 != null ? elseCase0.tok : elseCase1.tok;
+      b.Add(new Bpl.AssumeCmd(elseTok, noGuard));
+      if (elseCase0 != null) {
+        b.Add(elseCase0);
+      } else {
+        b.Add(elseCase1);
+      }
+      Bpl.StmtList els = b.Collect(elseTok);
+
+      Bpl.IfCmd elsIf = null;
+      for (int i = alternatives.Count; 0 <= --i; ) {
+        Contract.Assert(elsIf == null || els == null);  // loop invariant
+        var alternative = alternatives[i];
+        b = new Bpl.StmtListBuilder();
+        TrStmt_CheckWellformed(alternative.Guard, b, locals, etran, true);
+        b.Add(new AssumeCmd(alternative.Guard.tok, etran.TrExpr(alternative.Guard)));
+        foreach (var s in alternative.Body) {
+          TrStmt(s, b, locals, etran);
+        }
+        Bpl.StmtList thn = b.Collect(alternative.Tok);
+        elsIf = new Bpl.IfCmd(alternative.Tok, null, thn, elsIf, els);
+        els = null;
+      }
+      Contract.Assert(elsIf != null && els == null); // follows from loop invariant and the fact that there's more than one alternative
+      builder.Add(elsIf);
     }
 
     void TrCallStmt(CallStmt s, Bpl.StmtListBuilder builder, Bpl.VariableSeq locals, ExpressionTranslator etran, Bpl.Expr actualReceiver) {
@@ -3673,11 +3844,15 @@ namespace Microsoft.Dafny {
         Bpl.Expr xSubI = FunctionCall(tok, BuiltinFunction.SeqIndex, predef.BoxType, x, i);
         Bpl.Expr unbox = ExpressionTranslator.ModeledAsBoxType(st.Arg) ? xSubI : FunctionCall(tok, BuiltinFunction.Unbox, TrType(st.Arg), xSubI);
 
+        Bpl.Expr c = GetBoolBoxCondition(xSubI, st.Arg);
         Bpl.Expr wh = GetWhereClause(tok, unbox, st.Arg, etran);
         if (wh != null) {
+          c = BplAnd(c, wh);
+        }
+        if (c != Bpl.Expr.True) {
           Bpl.Expr range = InSeqRange(tok, i, x, true, null, false);
           Bpl.Trigger tr = new Bpl.Trigger(tok, true, new Bpl.ExprSeq(xSubI));
-          return new Bpl.ForallExpr(tok, new Bpl.VariableSeq(iVar), tr, Bpl.Expr.Imp(range, wh));
+          return new Bpl.ForallExpr(tok, new Bpl.VariableSeq(iVar), tr, Bpl.Expr.Imp(range, c));
         }
 
       } else if (type.IsRefType) {
@@ -3701,6 +3876,18 @@ namespace Microsoft.Dafny {
       }
 
       return null;
+    }
+
+    Bpl.Expr GetBoolBoxCondition(Expr box, Type type) {
+      Contract.Requires(box != null);
+      Contract.Requires(type != null);
+      Contract.Ensures(Contract.Result<Bpl.Expr>() != null);
+
+      if (type is BoolType) {
+        return FunctionCall(box.tok, BuiltinFunction.IsCanonicalBoolBox, null, box);
+      } else {
+        return Bpl.Expr.True;
+      }
     }
 
     void TrAssignment(IToken tok, Expression lhs, AssignmentRhs rhs, Bpl.StmtListBuilder builder, Bpl.VariableSeq locals,
@@ -4412,15 +4599,36 @@ namespace Microsoft.Dafny {
             }
             tr = new Bpl.Trigger(expr.tok, true, tt, tr);
           }
-          Bpl.Expr body = TrExpr(e.Body);
+          var antecedent = typeAntecedent;
+          if (e.Range != null) {
+            antecedent = Bpl.Expr.And(antecedent, TrExpr(e.Range));
+          }
+          Bpl.Expr body = TrExpr(e.Term);
           
           if (e is ForallExpr) {
-            return new Bpl.ForallExpr(expr.tok, new Bpl.TypeVariableSeq(), bvars, kv, tr, Bpl.Expr.Imp(typeAntecedent, body));
+            return new Bpl.ForallExpr(expr.tok, new Bpl.TypeVariableSeq(), bvars, kv, tr, Bpl.Expr.Imp(antecedent, body));
           } else {
             Contract.Assert(e is ExistsExpr);
-            return new Bpl.ExistsExpr(expr.tok, new Bpl.TypeVariableSeq(), bvars, kv, tr, Bpl.Expr.And(typeAntecedent, body));
+            return new Bpl.ExistsExpr(expr.tok, new Bpl.TypeVariableSeq(), bvars, kv, tr, Bpl.Expr.And(antecedent, body));
           }
-        
+
+        } else if (expr is SetComprehension) {
+          var e = (SetComprehension)expr;
+          // Translate "set xs | R :: T" into "lambda y: BoxType :: (exists xs :: CorrectType(xs) && R && y==Box(T))".
+          Bpl.VariableSeq bvars = new Bpl.VariableSeq();
+          Bpl.Expr typeAntecedent = TrBoundVariables(e.BoundVars, bvars);
+          Bpl.QKeyValue kv = TrAttributes(e.Attributes);
+
+          var yVar = new Bpl.BoundVariable(expr.tok, new Bpl.TypedIdent(expr.tok, "$y#" + translator.otherTmpVarCount, predef.BoxType));
+          translator.otherTmpVarCount++;
+          Bpl.Expr y = new Bpl.IdentifierExpr(expr.tok, yVar);
+
+          var eq = Bpl.Expr.Eq(y, BoxIfNecessary(expr.tok, TrExpr(e.Term), e.Term.Type));
+          var ebody = Bpl.Expr.And(translator.BplAnd(typeAntecedent, TrExpr(e.Range)), eq);
+          var exst = new Bpl.ExistsExpr(expr.tok, bvars, ebody);
+
+          return new Bpl.LambdaExpr(expr.tok, new Bpl.TypeVariableSeq(), new VariableSeq(yVar), kv, exst);
+
         } else if (expr is ITEExpr) {
           ITEExpr e = (ITEExpr)expr;
           Bpl.Expr g = TrExpr(e.Test);
@@ -4819,6 +5027,7 @@ namespace Microsoft.Dafny {
       
       Box,
       Unbox,
+      IsCanonicalBoolBox,
       
       IsGoodHeap,
       HeapSucc,
@@ -4950,6 +5159,10 @@ namespace Microsoft.Dafny {
           Contract.Assert(args.Length == 1);
           Contract.Assert(typeInstantiation != null);
           return Bpl.Expr.CoerceType(tok, FunctionCall(tok, "$Unbox", typeInstantiation, args), typeInstantiation);
+        case BuiltinFunction.IsCanonicalBoolBox:
+          Contract.Assert(args.Length == 1);
+          Contract.Assert(typeInstantiation == null);
+          return FunctionCall(tok, "$IsCanonicalBoolBox", Bpl.Type.Bool, args);
 
         case BuiltinFunction.IsGoodHeap:
           Contract.Assert(args.Length == 1);
@@ -5217,7 +5430,7 @@ namespace Microsoft.Dafny {
 
             substMap.Add(n, ieK);
           }
-          Expression bodyK = Substitute(e.Body, null, substMap);
+          Expression bodyK = Substitute(e.LogicalBody(), null, substMap);
 
           Bpl.Expr less = DecreasesCheck(toks, types, kk, nn, etran, null, null, false, true);
 
@@ -5249,7 +5462,7 @@ namespace Microsoft.Dafny {
           typeAntecedent = etran.TrBoundVariables(e.BoundVars, bvars);
           foreach (var kase in caseProduct) {
             var ante = BplAnd(BplAnd(typeAntecedent, ih), kase);
-            var bdy = etran.LayerOffset(1).TrExpr(e.Body);
+            var bdy = etran.LayerOffset(1).TrExpr(e.LogicalBody());
             Bpl.Expr q = new Bpl.ForallExpr(kase.tok, bvars, Bpl.Expr.Imp(ante, bdy));
             splits.Add(new SplitExprInfo(false, q));
           }
@@ -5341,7 +5554,7 @@ namespace Microsoft.Dafny {
       // consider automatically applying induction
       var inductionVariables = new List<BoundVar>();
       foreach (var n in e.BoundVars) {
-        if (VarOccursInArgumentToRecursiveFunction(e.Body, n, null)) {
+        if (VarOccursInArgumentToRecursiveFunction(e.LogicalBody(), n, null)) {
           if (CommandLineOptions.Clo.Trace) {
             Console.Write("Applying automatic induction on variable '{0}' of: ", n.Name);
             new Printer(Console.Out).PrintExpression(e);
@@ -5442,9 +5655,10 @@ namespace Microsoft.Dafny {
         }
         return VarOccursInArgumentToRecursiveFunction(e.E0, n, p) ||
           VarOccursInArgumentToRecursiveFunction(e.E1, n, p);
-      } else if (expr is QuantifierExpr) {
-        var e = (QuantifierExpr)expr;
-        return VarOccursInArgumentToRecursiveFunction(e.Body, n, null);
+      } else if (expr is ComprehensionExpr) {
+        var e = (ComprehensionExpr)expr;
+        return (e.Range != null && VarOccursInArgumentToRecursiveFunction(e.Range, n, null)) ||
+          VarOccursInArgumentToRecursiveFunction(e.Term, n, null);
       } else if (expr is ITEExpr) {
         var e = (ITEExpr)expr;
         return VarOccursInArgumentToRecursiveFunction(e.Test, n, null) ||  // test is not "elevated"
@@ -5612,17 +5826,27 @@ namespace Microsoft.Dafny {
           newExpr = newBin;
         }
         
-      } else if (expr is QuantifierExpr) {
-        QuantifierExpr e = (QuantifierExpr)expr;
-        Expression newBody = Substitute(e.Body, receiverReplacement, substMap);
-        Triggers newTrigs = SubstTriggers(e.Trigs, receiverReplacement, substMap);
+      } else if (expr is ComprehensionExpr) {
+        var e = (ComprehensionExpr)expr;
+        Expression newRange = e.Range == null ? null : Substitute(e.Range, receiverReplacement, substMap);
+        Expression newTerm = Substitute(e.Term, receiverReplacement, substMap);
         Attributes newAttrs = SubstAttributes(e.Attributes, receiverReplacement, substMap);
-        if (newBody != e.Body || newTrigs != e.Trigs || newAttrs != e.Attributes) {
-          if (expr is ForallExpr) {
-            newExpr = new ForallExpr(expr.tok, e.BoundVars, newBody, newTrigs, newAttrs);
-          } else {
-            newExpr = new ExistsExpr(expr.tok, e.BoundVars, newBody, newTrigs, newAttrs);
+        if (e is SetComprehension) {
+          if (newRange != e.Range || newTerm != e.Term || newAttrs != e.Attributes) {
+            newExpr = new SetComprehension(expr.tok, e.BoundVars, newRange, newTerm);
           }
+        } else if (e is QuantifierExpr) {
+          var q = (QuantifierExpr)e;
+          Triggers newTrigs = SubstTriggers(q.Trigs, receiverReplacement, substMap);
+          if (newRange != e.Range || newTerm != e.Term || newAttrs != e.Attributes || newTrigs != q.Trigs) {
+            if (expr is ForallExpr) {
+              newExpr = new ForallExpr(expr.tok, e.BoundVars, newRange, newTerm, newTrigs, newAttrs);
+            } else {
+              newExpr = new ExistsExpr(expr.tok, e.BoundVars, newRange, newTerm, newTrigs, newAttrs);
+            }
+          }
+        } else {
+          Contract.Assume(false);  // unexpected ComprehensionExpr
         }
         
       } else if (expr is ITEExpr) {

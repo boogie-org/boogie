@@ -138,6 +138,16 @@ namespace BytecodeTranslator
     }
 
     public override void Visit(IArrayIndexer arrayIndexer) {
+
+#if EXPERIMENTAL
+      if (!IsAtomicInstance(arrayIndexer.IndexedObject)) {
+        // Simplify the BE so that all nested dereferences and method calls are broken up into separate assignments to locals.
+        var se = ExpressionSimplifier.Simplify(this.sink, arrayIndexer);
+        this.Visit(se);
+        return;
+      }
+#endif
+
       this.Visit(arrayIndexer.IndexedObject);
       Bpl.Expr arrayExpr = TranslatedExpressions.Pop();
       this.Visit(arrayIndexer.Indices);
@@ -155,6 +165,9 @@ namespace BytecodeTranslator
         indexExpr = new Bpl.NAryExpr(arrayIndexer.Token(), new Bpl.FunctionCall(f), new Bpl.ExprSeq(indexExprs));
       }
 
+#if EXPERIMENTAL
+      this.TranslatedExpressions.Push(arrayExpr);
+#else
       Bpl.IdentifierExpr temp = Bpl.Expr.Ident(this.sink.CreateFreshLocal(arrayIndexer.Type));
       Bpl.Expr selectExpr = sink.Heap.ReadHeap(arrayExpr, indexExpr, AccessType.Array, temp.Type);
       this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(temp, selectExpr));
@@ -162,10 +175,22 @@ namespace BytecodeTranslator
 
       this.arrayExpr = arrayExpr;
       this.indexExpr = indexExpr;
+#endif
     }
 
     public override void Visit(ITargetExpression targetExpression)
     {
+#if EXPERIMENTAL
+      Contract.Assume(false, "The expression containing this as a subexpression should never allow a call to this routine.");
+
+      if (targetExpression.Instance != null && !IsAtomicInstance(targetExpression.Instance)) {
+        //// Simplify the BE so that all nested dereferences and method calls are broken up into separate assignments to locals.
+        var se = ExpressionSimplifier.Simplify(this.sink, targetExpression);
+        this.Visit(se);
+        return;
+      }
+#endif
+
       #region ArrayIndexer
       IArrayIndexer/*?*/ indexer = targetExpression.Definition as IArrayIndexer;
       if (indexer != null)
@@ -252,11 +277,14 @@ namespace BytecodeTranslator
 
     public override void Visit(IBoundExpression boundExpression)
     {
-      //if (boundExpression.Instance != null)
-      //{
-      //    this.Visit(boundExpression.Instance);
-      //    // TODO: (mschaef) look where it's bound and do something
-      //}
+
+      if (boundExpression.Instance != null && !IsAtomicInstance(boundExpression.Instance)) {
+        // Simplify the BE so that all nested dereferences and method calls are broken up into separate assignments to locals.
+        var se = ExpressionSimplifier.Simplify(this.sink, boundExpression);
+        this.Visit(se);
+        return;
+      }
+
       #region Local
       ILocalDefinition local = boundExpression.Definition as ILocalDefinition;
       if (local != null)
@@ -290,9 +318,9 @@ namespace BytecodeTranslator
           }
           else {
             Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
-            Bpl.IdentifierExpr temp = Bpl.Expr.Ident(this.sink.CreateFreshLocal(field.ResolvedField.Type));
-            this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(temp, this.sink.Heap.ReadHeap(instanceExpr, f, field.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, temp.Type)));
-            TranslatedExpressions.Push(temp);
+            var bplType = this.sink.CciTypeToBoogie(field.Type);
+            var e = this.sink.Heap.ReadHeap(instanceExpr, f, field.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, bplType);
+            this.TranslatedExpressions.Push(e);
           }
         }
         return;
@@ -337,6 +365,14 @@ namespace BytecodeTranslator
         }
       }
       #endregion
+    }
+
+    internal static bool IsAtomicInstance(IExpression expression) {
+      var thisInst = expression as IThisReference;
+      if (thisInst != null) return true;
+      var be = expression as IBoundExpression;
+      if (be == null) return false;
+      return be.Instance == null;
     }
 
     public override void Visit(IPopValue popValue) {
@@ -433,102 +469,26 @@ namespace BytecodeTranslator
           MemberHelper.GetMethodSignature(methodCall.MethodToCall, NameFormattingOptions.None));
       }
 
-      #region Translate In and Out Parameters
-      var inexpr = new List<Bpl.Expr>();
-      var outvars = new List<Bpl.IdentifierExpr>();
-
-      #region Create the 'this' argument for the function call
-      Bpl.IdentifierExpr thisExpr = null;
-      List<Bpl.Variable> locals = null;
-      List<IFieldDefinition> args = null;
-      Bpl.Expr arrayExpr = null;
-      Bpl.Expr indexExpr = null;
-      if (!methodCall.IsStaticCall) {
-        this.collectStructFields = true;
-        this.structFields = new List<IFieldDefinition>();
-        this.arrayExpr = null;
-        this.indexExpr = null;
-        this.Visit(methodCall.ThisArgument);
-        this.collectStructFields = false;
-        args = this.structFields;
-        arrayExpr = this.arrayExpr;
-        indexExpr = this.indexExpr;
-
-        var e = this.TranslatedExpressions.Pop();
-        inexpr.Add(e);
-        if (e is Bpl.NAryExpr) {
-          e = ((Bpl.NAryExpr)e).Args[0];
-        }
-        thisExpr = e as Bpl.IdentifierExpr;
-        locals = new List<Bpl.Variable>();
-        Bpl.Variable x = thisExpr.Decl;
-        locals.Add(x);
-        for (int i = 0; i < args.Count; i++) {
-          Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(args[i]));
-          Bpl.Variable y = this.sink.CreateFreshLocal(args[i].Type);
-          StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(y), this.sink.Heap.ReadHeap(Bpl.Expr.Ident(x), g, args[i].ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, y.TypedIdent.Type)));
-          x = y;
-          locals.Add(y);
-        }
-      }
-      if (!methodCall.IsStaticCall && methodCall.MethodToCall.ContainingType.ResolvedType.IsStruct) {
-        outvars.Add(thisExpr);
-      }
-      #endregion
-
-      Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed = new Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr>();
-      Dictionary<IParameterDefinition, Bpl.IdentifierExpr> p2eMap = new Dictionary<IParameterDefinition, Bpl.IdentifierExpr>();
-      IEnumerator<IParameterDefinition> penum = resolvedMethod.Parameters.GetEnumerator();
-      penum.MoveNext();
-      foreach (IExpression exp in methodCall.Arguments) {
-        if (penum.Current == null) {
-          throw new TranslationException("More arguments than parameters in method call");
-        }
-        this.Visit(exp);
-        Bpl.Expr e = this.TranslatedExpressions.Pop();
-        if (penum.Current.Type is IGenericTypeParameter)
-          inexpr.Add(sink.Heap.Box(methodCall.Token(), this.sink.CciTypeToBoogie(exp.Type), e));
-        else
-          inexpr.Add(e);
-        if (penum.Current.IsByReference) {
-          Bpl.IdentifierExpr unboxed = e as Bpl.IdentifierExpr;
-          if (unboxed == null) {
-            throw new TranslationException("Trying to pass a complex expression for an out or ref parameter");
-          }
-          if (penum.Current.Type is IGenericTypeParameter) {
-            Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(sink.CreateFreshLocal(this.sink.Heap.BoxType));
-            toBoxed[unboxed] = boxed;
-            outvars.Add(boxed);
-          }
-          else {
-            outvars.Add(unboxed);
-          }
-        }
-        penum.MoveNext();
-      }
-      #endregion
-
       Bpl.IToken cloc = methodCall.Token();
-      if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
-        Bpl.Variable v = this.sink.CreateFreshLocal(methodCall.Type.ResolvedType);
-        Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(cloc, v);
-        if (resolvedMethod.Type is IGenericTypeParameter) {
-          Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
-          toBoxed[unboxed] = boxed;
-          outvars.Add(boxed);
-        }
-        else {
-          outvars.Add(unboxed);
-        }
-        TranslatedExpressions.Push(unboxed);
-      }
-      var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
-      string methodname = proc.Name;
 
+      List<Bpl.Expr> inexpr;
+      List<Bpl.IdentifierExpr> outvars;
+      Bpl.IdentifierExpr thisExpr;
+      List<Bpl.Variable> locals;
+      List<IFieldDefinition> args;
+      Bpl.Expr arrayExpr;
+      Bpl.Expr indexExpr;
+      Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed;
+      var proc = TranslateArgumentsAndReturnProcedure(cloc, methodCall.MethodToCall, resolvedMethod, methodCall.IsStaticCall ? null : methodCall.ThisArgument, methodCall.Arguments, out inexpr, out outvars, out thisExpr, out locals, out args, out arrayExpr, out indexExpr, out toBoxed);
+
+      string methodname = proc.Name;
+      var translateAsFunctionCall = proc is Bpl.Function;
       Bpl.QKeyValue attrib = null;
-      foreach (var a in resolvedMethod.Attributes) {
-        if (TypeHelper.GetTypeName(a.Type).EndsWith("AsyncAttribute")) {
-          attrib = new Bpl.QKeyValue(cloc, "async", new List<object>(), null);
+      if (!translateAsFunctionCall) {
+        foreach (var a in resolvedMethod.Attributes) {
+          if (TypeHelper.GetTypeName(a.Type).EndsWith("AsyncAttribute")) {
+            attrib = new Bpl.QKeyValue(cloc, "async", new List<object>(), null);
+          }
         }
       }
 
@@ -563,13 +523,24 @@ namespace BytecodeTranslator
         else {
           this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(methodCall.Token(), thisExpr, Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local), resolvedMethod.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, local.TypedIdent.Type));
         }
-      }
-      else {
-        if (attrib != null)
-          call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars, attrib);
-        else
-          call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars);
-        this.StmtTraverser.StmtBuilder.Add(call);
+      } else {
+        if (translateAsFunctionCall) {
+          var func = proc as Bpl.Function;
+          var exprSeq = new Bpl.ExprSeq();
+          foreach (var e in inexpr) {
+            exprSeq.Add(e);
+          }
+          var callFunction = new Bpl.NAryExpr(cloc, new Bpl.FunctionCall(func), exprSeq);
+          this.TranslatedExpressions.Push(callFunction);
+          return;
+
+        } else {
+          if (attrib != null)
+            call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars, attrib);
+          else
+            call = new Bpl.CallCmd(cloc, methodname, inexpr, outvars);
+          this.StmtTraverser.StmtBuilder.Add(call);
+        }
       }
 
       foreach (KeyValuePair<Bpl.IdentifierExpr, Bpl.IdentifierExpr> kv in toBoxed) {
@@ -596,6 +567,99 @@ namespace BytecodeTranslator
       }
     }
 
+    protected Bpl.DeclWithFormals TranslateArgumentsAndReturnProcedure(Bpl.IToken token, IMethodReference methodToCall, IMethodDefinition resolvedMethod, IExpression/*?*/ thisArg, IEnumerable<IExpression> arguments, out List<Bpl.Expr> inexpr, out List<Bpl.IdentifierExpr> outvars, out Bpl.IdentifierExpr thisExpr, out List<Bpl.Variable> locals, out List<IFieldDefinition> args, out Bpl.Expr arrayExpr, out Bpl.Expr indexExpr, out Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed) {
+      inexpr = new List<Bpl.Expr>();
+      outvars = new List<Bpl.IdentifierExpr>();
+
+      #region Create the 'this' argument for the function call
+      thisExpr = null;
+      locals = null;
+      args = null;
+      arrayExpr = null;
+      indexExpr = null;
+      if (thisArg != null) {
+        this.collectStructFields = true;
+        this.structFields = new List<IFieldDefinition>();
+        this.arrayExpr = null;
+        this.indexExpr = null;
+        this.Visit(thisArg);
+        this.collectStructFields = false;
+        args = this.structFields;
+        arrayExpr = this.arrayExpr;
+        indexExpr = this.indexExpr;
+
+        var e = this.TranslatedExpressions.Pop();
+        inexpr.Add(e);
+        if (e is Bpl.NAryExpr) {
+          e = ((Bpl.NAryExpr)e).Args[0];
+        }
+        thisExpr = e as Bpl.IdentifierExpr;
+        locals = new List<Bpl.Variable>();
+        Bpl.Variable x = thisExpr.Decl;
+        locals.Add(x);
+        for (int i = 0; i < args.Count; i++) {
+          Bpl.IdentifierExpr g = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(args[i]));
+          Bpl.Variable y = this.sink.CreateFreshLocal(args[i].Type);
+          StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(y), this.sink.Heap.ReadHeap(Bpl.Expr.Ident(x), g, args[i].ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, y.TypedIdent.Type)));
+          x = y;
+          locals.Add(y);
+        }
+      }
+      if (thisArg != null && methodToCall.ContainingType.ResolvedType.IsStruct) {
+        outvars.Add(thisExpr);
+      }
+      #endregion
+
+      toBoxed = new Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr>();
+      IEnumerator<IParameterDefinition> penum = resolvedMethod.Parameters.GetEnumerator();
+      penum.MoveNext();
+      foreach (IExpression exp in arguments) {
+        if (penum.Current == null) {
+          throw new TranslationException("More arguments than parameters in method call");
+        }
+        this.Visit(exp);
+        Bpl.Expr e = this.TranslatedExpressions.Pop();
+        if (penum.Current.Type is IGenericTypeParameter)
+          inexpr.Add(sink.Heap.Box(token, this.sink.CciTypeToBoogie(exp.Type), e));
+        else
+          inexpr.Add(e);
+        if (penum.Current.IsByReference) {
+          Bpl.IdentifierExpr unboxed = e as Bpl.IdentifierExpr;
+          if (unboxed == null) {
+            throw new TranslationException("Trying to pass a complex expression for an out or ref parameter");
+          }
+          if (penum.Current.Type is IGenericTypeParameter) {
+            Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(sink.CreateFreshLocal(this.sink.Heap.BoxType));
+            toBoxed[unboxed] = boxed;
+            outvars.Add(boxed);
+          } else {
+            outvars.Add(unboxed);
+          }
+        }
+        penum.MoveNext();
+      }
+
+      var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
+      
+      var translateAsFunctionCall = proc is Bpl.Function;
+      if (!translateAsFunctionCall) {
+        if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
+          Bpl.Variable v = this.sink.CreateFreshLocal(resolvedMethod.Type.ResolvedType);
+          Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(token, v);
+          if (resolvedMethod.Type is IGenericTypeParameter) {
+            Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
+            toBoxed[unboxed] = boxed;
+            outvars.Add(boxed);
+          } else {
+            outvars.Add(unboxed);
+          }
+          TranslatedExpressions.Push(unboxed);
+        }
+      }
+
+      return proc;
+    }
+
     #endregion
 
     #region Translate Assignments
@@ -604,6 +668,7 @@ namespace BytecodeTranslator
     private Bpl.Expr arrayExpr = null;
     private Bpl.Expr indexExpr = null;
 
+#if EXPERIMENTAL
     /// <summary>
     /// 
     /// </summary>
@@ -612,18 +677,119 @@ namespace BytecodeTranslator
     public override void Visit(IAssignment assignment) {
       Contract.Assert(TranslatedExpressions.Count == 0);
 
+      var tok = assignment.Token();
+
+      object container = assignment.Target.Definition;
+
+      var/*?*/ local = container as ILocalDefinition;
+      if (local != null) {
+        Contract.Assume(assignment.Target.Instance == null);
+        this.Visit(assignment.Source);
+        var e = this.TranslatedExpressions.Pop();
+        var bplLocal = Bpl.Expr.Ident(this.sink.FindOrCreateLocalVariable(local));
+        StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, bplLocal, e));
+        return;
+      }
+
+      var/*?*/ parameter = container as IParameterDefinition;
+      if (parameter != null) {
+        Contract.Assume(assignment.Target.Instance == null);
+        this.Visit(assignment.Source);
+        var e = this.TranslatedExpressions.Pop();
+        var bplParam = Bpl.Expr.Ident(this.sink.FindParameterVariable(parameter, this.contractContext));
+        StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, bplParam, e));
+        return;
+      }
+
+      var/*?*/ field = container as IFieldReference;
+      if (field != null) {
+        this.Visit(assignment.Source);
+        var e = this.TranslatedExpressions.Pop();
+        var f = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(field));
+        if (assignment.Target.Instance == null) {
+          // static fields are not kept in the heap
+          StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, f, e));
+        } else {
+          if (field.ContainingType.ResolvedType.IsStruct) {
+            //var s_prime = this.sink.CreateFreshLocal(this.sink.Heap.StructType);
+            //var s_prime_expr = Bpl.Expr.Ident(s_prime);
+            //var boogieType = sink.CciTypeToBoogie(field.Type);
+            //StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(tok, s_prime_expr, f, e,
+            //  field.ResolvedField.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap,
+            //  boogieType));
+            UpdateStruct(tok, assignment.Target.Instance, field, e);
+          } else {
+            this.Visit(assignment.Target.Instance);
+            var x = this.TranslatedExpressions.Pop();
+            var boogieType = sink.CciTypeToBoogie(field.Type);
+            StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(tok, x, f, e,
+              field.ResolvedField.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap,
+              boogieType));
+          }
+        }
+        return;
+      }
+
+      var/*?*/ arrayIndexer = container as IArrayIndexer;
+      if (arrayIndexer != null) {
+        this.Visit(assignment.Target.Instance);
+        var x = this.TranslatedExpressions.Pop();
+        this.Visit(arrayIndexer.Indices);
+        var indices_prime = this.TranslatedExpressions.Pop();
+        this.Visit(assignment.Source);
+        var e = this.TranslatedExpressions.Pop();
+        StmtTraverser.StmtBuilder.Add(sink.Heap.WriteHeap(Bpl.Token.NoToken, x, indices_prime, e, AccessType.Array, sink.CciTypeToBoogie(arrayIndexer.Type)));
+        return;
+      }
+
+      Contract.Assume(false);
+    }
+
+    private void UpdateStruct(Bpl.IToken tok, IExpression iExpression, IFieldReference field, Bpl.Expr e) {
+      var addrOf = iExpression as IAddressOf;
+      if (addrOf == null) return;
+      var addressableExpression = addrOf.Expression as IAddressableExpression;
+      if (addressableExpression == null) return;
+
+      var f = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(field));
+
+      if (addressableExpression.Instance == null) {
+        var boogieType = sink.CciTypeToBoogie(field.Type);
+        this.Visit(addressableExpression);
+        var def = this.TranslatedExpressions.Pop();
+        StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(tok, def, f, e,
+          AccessType.Struct,
+          boogieType));
+      } else {
+        var s_prime = this.sink.CreateFreshLocal(this.sink.Heap.StructType);
+        var s_prime_expr = Bpl.Expr.Ident(s_prime);
+        var boogieType = sink.CciTypeToBoogie(field.Type);
+        StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(tok, s_prime_expr, f, e,
+          AccessType.Struct,
+          boogieType));
+        UpdateStruct(tok, addressableExpression.Instance, addressableExpression.Definition as IFieldReference, s_prime_expr);
+      }
+    }
+
+#else
+
+    public override void Visit(IAssignment assignment) {
+      Contract.Assert(TranslatedExpressions.Count == 0);
+
       #region Transform Right Hand Side ...
       this.Visit(assignment.Source);
-      Bpl.Expr sourceexp = this.TranslatedExpressions.Pop();
+      var sourceexp = this.TranslatedExpressions.Pop();
       #endregion
 
       // Simplify the LHS so that all nested dereferences and method calls are broken
       // up into separate assignments to locals.
-      var blockExpression = AssignmentSimplifier.Simplify(this.sink, assignment.Target);
-      foreach (var s in blockExpression.BlockStatement.Statements) {
-        this.StmtTraverser.Visit(s);
-      }
-      var target = blockExpression.Expression as ITargetExpression;
+      //var blockExpression = ExpressionSimplifier.Simplify(this.sink, assignment.Target) as IBlockExpression;
+      //foreach (var s in blockExpression.BlockStatement.Statements) {
+      //  this.StmtTraverser.Visit(s);
+      //}
+      //var target = blockExpression.Expression as ITargetExpression;
+
+      var target = assignment.Target;
 
       List<IFieldDefinition> args = null;
       Bpl.Expr arrayExpr = null;
@@ -643,8 +809,7 @@ namespace BytecodeTranslator
         Bpl.IdentifierExpr f = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(fieldReference.ResolvedField));
         if (target.Instance == null) {
           StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(assignment.Token(), f, sourceexp));
-        }
-        else {
+        } else {
           Debug.Assert(args != null);
           List<Bpl.Variable> locals = new List<Bpl.Variable>();
           Bpl.IdentifierExpr instanceExpr = TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
@@ -715,6 +880,8 @@ namespace BytecodeTranslator
       return;
     }
 
+#endif
+
     #endregion
 
     #region Translate Object Creation
@@ -725,12 +892,59 @@ namespace BytecodeTranslator
     /// </summary>
     public override void Visit(ICreateObjectInstance createObjectInstance)
     {
-      TranslateObjectCreation(createObjectInstance.MethodToCall, createObjectInstance.Arguments, createObjectInstance);
+      var ctor = createObjectInstance.MethodToCall;
+      var resolvedMethod = Sink.Unspecialize(ctor).ResolvedMethod;
+      Bpl.IToken token = createObjectInstance.Token();
+
+      var a = this.sink.CreateFreshLocal(createObjectInstance.Type);
+
+      // First generate an Alloc() call
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
+
+      // Second, generate the call to the appropriate ctor
+
+      List<Bpl.Expr> inexpr;
+      List<Bpl.IdentifierExpr> outvars;
+      Bpl.IdentifierExpr thisExpr;
+      List<Bpl.Variable> locals;
+      List<IFieldDefinition> args;
+      Bpl.Expr arrayExpr;
+      Bpl.Expr indexExpr;
+      Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed;
+      var proc = TranslateArgumentsAndReturnProcedure(token, ctor, resolvedMethod, null, createObjectInstance.Arguments, out inexpr, out outvars, out thisExpr, out locals, out args, out arrayExpr, out indexExpr, out toBoxed);
+
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, proc.Name, inexpr, outvars));
+
+      // Generate assumption about the dynamic type of the just allocated object
+      this.StmtTraverser.StmtBuilder.Add(
+        new Bpl.AssumeCmd(token,
+          Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
+          this.sink.Heap.DynamicType(inexpr[0]),
+          Bpl.Expr.Ident(this.sink.FindOrCreateType(createObjectInstance.Type))
+          )
+          )
+        );
+
+      TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
 
     public override void Visit(ICreateArray createArrayInstance)
     {
-      TranslateArrayCreation(createArrayInstance);
+      Bpl.IToken cloc = createArrayInstance.Token();
+      var a = this.sink.CreateFreshLocal(createArrayInstance.Type);
+
+      Debug.Assert(createArrayInstance.Rank > 0); 
+      Bpl.Expr lengthExpr = Bpl.Expr.Literal(1);
+      foreach (IExpression expr in createArrayInstance.Sizes) {
+        this.Visit(expr);
+        lengthExpr = Bpl.Expr.Mul(lengthExpr, TranslatedExpressions.Pop());
+      }
+      
+      // First generate an Alloc() call
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
+      Bpl.Expr assumeExpr = Bpl.Expr.Eq(new Bpl.NAryExpr(cloc, new Bpl.FunctionCall(this.sink.Heap.ArrayLengthFunction), new Bpl.ExprSeq(Bpl.Expr.Ident(a))), lengthExpr);
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.AssumeCmd(cloc, assumeExpr));
+      TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
     
     public override void Visit(ICreateDelegateInstance createDelegateInstance)
@@ -743,64 +957,6 @@ namespace BytecodeTranslator
       }
 
       TranslateDelegateCreation(createDelegateInstance.MethodToCallViaDelegate, createDelegateInstance.Type, createDelegateInstance);
-    }
-
-    private void TranslateArrayCreation(IExpression creationAST)
-    {
-      Bpl.IToken cloc = creationAST.Token();
-
-      var a = this.sink.CreateFreshLocal(creationAST.Type);
-
-      // First generate an Alloc() call
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
-
-      TranslatedExpressions.Push(Bpl.Expr.Ident(a));
-    }
-
-    private void TranslateObjectCreation(IMethodReference ctor, IEnumerable<IExpression> arguments, IExpression creationAST)
-    {
-      var resolvedMethod = Sink.Unspecialize(ctor).ResolvedMethod;
-      Bpl.IToken token = creationAST.Token();
-      
-      var a = this.sink.CreateFreshLocal(creationAST.Type);
-
-      // First generate an Alloc() call
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
-
-      // Second, generate the call to the appropriate ctor
-      var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
-      Bpl.ExprSeq inexpr = new Bpl.ExprSeq();
-      inexpr.Add(Bpl.Expr.Ident(a));
-      IEnumerator<IParameterDefinition> penum = resolvedMethod.Parameters.GetEnumerator();
-      penum.MoveNext();
-      foreach (IExpression exp in arguments) {
-        if (penum.Current == null) {
-          throw new TranslationException("More Arguments than Parameters in functioncall");
-        }
-        this.Visit(exp);
-        Bpl.Expr e = this.TranslatedExpressions.Pop();
-        if (penum.Current.Type is IGenericTypeParameter)
-          inexpr.Add(sink.Heap.Box(ctor.Token(), this.sink.CciTypeToBoogie(exp.Type), e));
-        else
-          inexpr.Add(e);
-        penum.MoveNext();
-      }
-
-      Bpl.IdentifierExprSeq outvars = new Bpl.IdentifierExprSeq();
-
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, proc.Name, inexpr, outvars));
-
-      // Generate assumption about the dynamic type of the just allocated object
-      this.StmtTraverser.StmtBuilder.Add(
-        new Bpl.AssumeCmd(token, 
-          Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
-          this.sink.Heap.DynamicType(inexpr[0]),
-          Bpl.Expr.Ident(this.sink.FindOrCreateType(creationAST.Type))
-          )
-          )
-        );
-
-      TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
 
     private void TranslateDelegateCreation(IMethodReference methodToCall, ITypeReference type, IExpression creationAST)
@@ -1134,9 +1290,7 @@ namespace BytecodeTranslator
     public override void Visit(IVectorLength vectorLength) {
       base.Visit(vectorLength.Vector);
       var e = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(
-        Bpl.Expr.Select(new Bpl.IdentifierExpr(vectorLength.Token(), this.sink.Heap.ArrayLengthVariable), new Bpl.Expr[] { e })
-        );
+      TranslatedExpressions.Push(new Bpl.NAryExpr(vectorLength.Token(), new Bpl.FunctionCall(this.sink.Heap.ArrayLengthFunction), new Bpl.ExprSeq(e)));
     }
 
     #endregion
@@ -1161,74 +1315,125 @@ namespace BytecodeTranslator
     }
     #endregion
 
+    public override void Visit(IBlockExpression blockExpression) {
+      this.StmtTraverser.Visit(blockExpression.BlockStatement);
+      this.Visit(blockExpression.Expression);
+    }
+
     /// <summary>
     /// This is a rewriter so it must be used on a mutable Code Model!!!
     /// </summary>
-    private class AssignmentSimplifier : CodeRewriter {
+    private class ExpressionSimplifier : CodeRewriter {
 
       Sink sink;
-      private List<IStatement> localDeclarations = new List<IStatement>();
 
-      private AssignmentSimplifier(Sink sink)
+      private ExpressionSimplifier(Sink sink)
         : base(sink.host) {
         this.sink = sink;
       }
 
-      public static IBlockExpression Simplify(Sink sink, ITargetExpression targetExpression) {
-        var a = new AssignmentSimplifier(sink);
-        var leftOverExpression = a.Rewrite(targetExpression);
-        return new BlockExpression() {
-          BlockStatement = new BlockStatement() { Statements = a.localDeclarations, },
-          Expression = leftOverExpression,
-          Type = targetExpression.Type,
-        };
+      public static IExpression Simplify(Sink sink, IExpression expression) {
+        var a = new ExpressionSimplifier(sink);
+        return a.Rewrite(expression);
       }
 
       public override IExpression Rewrite(IBoundExpression boundExpression) {
-        if (boundExpression.Instance == null)
-          return base.Rewrite(boundExpression); // REVIEW: Maybe just stop the rewriting and return boundExpression?
-        var e = base.Rewrite(boundExpression);
-        boundExpression = e as IBoundExpression;
-        if (boundExpression == null) return e;
+
+        if (ExpressionTraverser.IsAtomicInstance(boundExpression.Instance)) return boundExpression;
+
+        // boundExpression == BE(inst, def), i.e., inst.def
+        // return { loc := e; [assert loc != null;] | BE(BE(null,loc), def) }, i.e., "loc := e; loc.def"
+        //   where e is the rewritten inst
+
+        var e = base.Rewrite(boundExpression.Instance);
+
         var loc = new LocalDefinition() {
-          Name = this.host.NameTable.GetNameFor("_loc" + this.sink.LocalCounter.ToString()), // TODO: should make the name unique within the method containing the assignment
+          Name = this.host.NameTable.GetNameFor("_loc" + this.sink.LocalCounter.ToString()),
           Type = boundExpression.Type,
         };
-        this.localDeclarations.Add(
-          new LocalDeclarationStatement() {
-            InitialValue = boundExpression,
-            LocalVariable = loc,
-          }
-          );
-        return new BoundExpression() {
-          Definition = loc,
-          Instance = null,
-          Type = boundExpression.Type,
+        var locDecl = new LocalDeclarationStatement() {
+          InitialValue = e,
+          LocalVariable = loc,
+        };
+        return new BlockExpression() {
+          BlockStatement = new BlockStatement() {
+            Statements = new List<IStatement> { locDecl },
+          },
+          Expression = new BoundExpression() {
+            Definition = boundExpression.Definition,
+            Instance = new BoundExpression() {
+              Definition = loc,
+              Instance = null,
+              Type = loc.Type,
+            },
+            Type = boundExpression.Type,
+          },
+        };
+
+      }
+
+      public override IExpression Rewrite(IArrayIndexer arrayIndexer) {
+        if (ExpressionTraverser.IsAtomicInstance(arrayIndexer.IndexedObject)) return arrayIndexer;
+
+        // arrayIndexer == AI(inst, [index]), i.e., inst[index0, index1,...]
+        // return { loc := e; [assert loc != null;] | AI(BE(null,loc), [index]) }
+        //   where e is the rewritten array instance
+
+        var e = base.Rewrite(arrayIndexer.IndexedObject);
+
+        var loc = new LocalDefinition() {
+          Name = this.host.NameTable.GetNameFor("_loc" + this.sink.LocalCounter.ToString()),
+          Type = arrayIndexer.Type,
+        };
+        var locDecl = new LocalDeclarationStatement() {
+          InitialValue = e,
+          LocalVariable = loc,
+        };
+        return new BlockExpression() {
+          BlockStatement = new BlockStatement() {
+            Statements = new List<IStatement> { locDecl },
+          },
+          Expression = new ArrayIndexer() {
+            IndexedObject = new BoundExpression() {
+              Definition = loc,
+              Instance = null,
+              Type = loc.Type,
+            },
+            Indices = new List<IExpression>(arrayIndexer.Indices),
+            Type = arrayIndexer.Type,
+          },
         };
       }
 
-      public override IExpression Rewrite(IMethodCall methodCall) {
-
-        var e = base.Rewrite(methodCall); // simplify anything deeper in the tree
-        methodCall = e as IMethodCall;
-        if (methodCall == null) return e;
-
-        var loc = new LocalDefinition() {
-          Name = this.host.NameTable.GetNameFor("_loc"), // TODO: should make the name unique within the method containing the assignment
-          Type = methodCall.Type,
-        };
-        this.localDeclarations.Add(
-          new LocalDeclarationStatement() {
-            InitialValue = methodCall,
-            LocalVariable = loc,
-          }
-          );
-        return new BoundExpression() {
-          Definition = loc,
-          Instance = null,
-          Type = methodCall.Type,
-        };
+#if EXPERIMENTAL
+      public override ITargetExpression Rewrite(ITargetExpression targetExpression) {
+        Contract.Assume(false, "The expression containing this as a subexpression should never allow a call to this routine.");
+        return null;
       }
+#endif
+
+      //public override IExpression Rewrite(IMethodCall methodCall) {
+
+      //  var e = base.Rewrite(methodCall); // simplify anything deeper in the tree
+      //  methodCall = e as IMethodCall;
+      //  if (methodCall == null) return e;
+
+      //  var loc = new LocalDefinition() {
+      //    Name = this.host.NameTable.GetNameFor("_loc"), // TODO: should make the name unique within the method containing the assignment
+      //    Type = methodCall.Type,
+      //  };
+      //  this.localDeclarations.Add(
+      //    new LocalDeclarationStatement() {
+      //      InitialValue = methodCall,
+      //      LocalVariable = loc,
+      //    }
+      //    );
+      //  return new BoundExpression() {
+      //    Definition = loc,
+      //    Instance = null,
+      //    Type = methodCall.Type,
+      //  };
+      //}
     }
   }
 

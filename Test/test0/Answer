@@ -247,3 +247,16 @@ BadQuantifier.bpl(3,15): error: invalid QuantifierBody
 EmptyCallArgs.bpl(31,2): Error: type variable must occur in types of given arguments: a
 EmptyCallArgs.bpl(32,2): Error: type variable must occur in types of given arguments: a
 2 name resolution errors detected in EmptyCallArgs.bpl
+----- SeparateVerification0.bpl
+SeparateVerification0.bpl(13,6): Error: undeclared identifier: y
+1 name resolution errors detected in SeparateVerification0.bpl
+----- SeparateVerification1.bpl SeparateVerification0.bpl
+SeparateVerification1.bpl(4,6): Error: undeclared identifier: x
+SeparateVerification0.bpl(10,6): Error: undeclared identifier: x
+2 name resolution errors detected in SeparateVerification0.bpl
+----- SeparateVerification0.bpl SeparateVerification0.bpl
+
+Boogie program verifier finished with 0 verified, 0 errors
+----- SeparateVerification0.bpl SeparateVerification0.bpl SeparateVerification1.bpl
+
+Boogie program verifier finished with 0 verified, 0 errors

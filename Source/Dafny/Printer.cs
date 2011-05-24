@@ -507,6 +507,13 @@ namespace Microsoft.Dafny {
             break;
           }
         }
+
+      } else if (stmt is AlternativeStmt) {
+        var s = (AlternativeStmt)stmt;
+        wr.WriteLine("if {");
+        PrintAlternatives(indent, s.Alternatives);
+        Indent(indent);
+        wr.Write("}");
       
       } else if (stmt is WhileStmt) {
         WhileStmt s = (WhileStmt)stmt;
@@ -514,12 +521,23 @@ namespace Microsoft.Dafny {
         PrintGuard(s.Guard);
         wr.WriteLine(")");
 
-        int ind = indent + IndentAmount;
-        PrintSpec("invariant", s.Invariants, ind);
-        PrintSpecLine("decreases", s.Decreases, indent);
+        PrintSpec("invariant", s.Invariants, indent + IndentAmount);
+        PrintSpecLine("decreases", s.Decreases, indent + IndentAmount);
         Indent(indent);
         PrintStatement(s.Body, indent);
-        
+
+      } else if (stmt is AlternativeLoopStmt) {
+        var s = (AlternativeLoopStmt)stmt;
+        wr.WriteLine("while");
+        PrintSpec("invariant", s.Invariants, indent + IndentAmount);
+        PrintSpecLine("decreases", s.Decreases, indent + IndentAmount);
+
+        Indent(indent);
+        wr.WriteLine("{");
+        PrintAlternatives(indent, s.Alternatives);
+        Indent(indent);
+        wr.Write("}");
+
       } else if (stmt is ForeachStmt) {
         ForeachStmt s = (ForeachStmt)stmt;
         wr.Write("foreach ({0} in ", s.BoundVar.Name);
@@ -570,6 +588,21 @@ namespace Microsoft.Dafny {
         
       } else {
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected statement
+      }
+    }
+
+    void PrintAlternatives(int indent, List<GuardedAlternative> alternatives) {
+      int caseInd = indent + IndentAmount;
+      foreach (var alternative in alternatives) {
+        Indent(caseInd);
+        wr.Write("case ");
+        PrintExpression(alternative.Guard);
+        wr.WriteLine(" =>");
+        foreach (Statement s in alternative.Body) {
+          Indent(caseInd + IndentAmount);
+          PrintStatement(s, caseInd + IndentAmount);
+          wr.WriteLine();
+        }
       }
     }
     
@@ -931,17 +964,43 @@ namespace Microsoft.Dafny {
         wr.Write(" ");
         PrintAttributes(e.Attributes);
         PrintTriggers(e.Trigs);
+        if (e.Range != null) {
+          wr.Write("| ");
+          PrintExpression(e.Range);
+          wr.Write(" ");
+        }
         wr.Write(":: ");
         if (0 <= indent) {
           int ind = indent + IndentAmount;
           wr.WriteLine();
           Indent(ind);
-          PrintExpression(e.Body, ind);
+          PrintExpression(e.Term, ind);
         } else {
-          PrintExpression(e.Body);
+          PrintExpression(e.Term);
         }
         if (parensNeeded) { wr.Write(")"); }
-        
+
+      } else if (expr is SetComprehension) {
+        var e = (SetComprehension)expr;
+        bool parensNeeded = !isRightmost;
+        if (parensNeeded) { wr.Write("("); }
+        wr.Write("set ");
+        string sep = "";
+        foreach (BoundVar bv in e.BoundVars) {
+          wr.Write("{0}{1}", sep, bv.Name);
+          sep = ", ";
+          PrintType(": ", bv.Type);
+        }
+        wr.Write(" ");
+        PrintAttributes(e.Attributes);
+        wr.Write("| ");
+        PrintExpression(e.Range);
+        if (!e.TermIsImplicit) {
+          wr.Write(" :: ");
+          PrintExpression(e.Term);
+        }
+        if (parensNeeded) { wr.Write(")"); }
+
       } else if (expr is WildcardExpr) {
         wr.Write("*");
         

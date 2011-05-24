@@ -1875,6 +1875,21 @@ namespace Microsoft.Boogie {
       Console.WriteLine(
 @"Boogie: The following attributes are supported by this implementation.
 
+  ---- On top-level declarations ---------------------------------------------
+
+    {:ignore}
+      Ignore the declaration (after checking for duplicate names).
+      See also below for more options when :ignore is used with axioms.
+
+    {:extern}
+      If two top-level declarations introduce the same name (for example, two
+      constants with the same name or two procedures with the same name), then
+      Boogie usually produces an error message.  However, if at least one of
+      the declarations is declared with :extern, one of the declarations is
+      ignored.  If both declarations are :extern, Boogie arbitrarily chooses
+      one of them to keep; otherwise, Boogie ignore the :extern declaration
+      and keeps the other.
+
   ---- On axioms -------------------------------------------------------------
 
     {:inline true}

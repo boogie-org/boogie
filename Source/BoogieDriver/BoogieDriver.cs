@@ -261,7 +261,8 @@ namespace Microsoft.Boogie {
       //BoogiePL.Errors.count = 0;
       Program program = null;
       bool okay = true;
-      foreach (string bplFileName in fileNames) {
+      for (int fileId = 0; fileId < fileNames.Count; fileId++) {
+        string bplFileName = fileNames[fileId];
         if (!suppressTraceOutput) {
           if (CommandLineOptions.Clo.XmlSink != null) {
             CommandLineOptions.Clo.XmlSink.WriteFileFragment(bplFileName);
@@ -274,7 +275,8 @@ namespace Microsoft.Boogie {
         Program programSnippet;
         int errorCount;
         try {
-          errorCount = BoogiePL.Parser.Parse(bplFileName, null, out programSnippet);
+          var defines = new List<string>() { "FILE_" + fileId };
+          errorCount = BoogiePL.Parser.Parse(bplFileName, defines, out programSnippet);
           if (programSnippet == null || errorCount != 0) {
             Console.WriteLine("{0} parse errors detected in {1}", errorCount, bplFileName);
             okay = false;

@@ -25,6 +25,9 @@ namespace BytecodeTranslator {
     [OptionDescription("The names of the assemblies to use as input", ShortForm = "a")]
     public List<string> assemblies = null;
 
+    [OptionDescription("Break into debugger", ShortForm = "break")]
+    public bool breakIntoDebugger = false;
+
     [OptionDescription("Search paths for assembly dependencies.", ShortForm = "lib")]
     public List<string> libpaths = new List<string>();
 
@@ -36,7 +39,7 @@ namespace BytecodeTranslator {
     public bool wholeProgram = false;
 
     [OptionDescription("Stub assembly", ShortForm = "s")]
-    public List<string>/*?*/ stubAssemblies = null;
+    public List<string>/*?*/ stub = null;
 
   }
 
@@ -47,14 +50,21 @@ namespace BytecodeTranslator {
     static int Main(string[] args)
     {
       int result = 0;
+      int errorReturnValue = -1;
 
       #region Parse options
       var options = new Options();
       options.Parse(args);
+      if (options.HelpRequested) {
+        options.PrintOptions("");
+        return errorReturnValue;
+      }
       if (options.HasErrors) {
-        if (options.HelpRequested)
-          options.PrintOptions("");
-        return 1;
+        options.PrintErrorsAndExit(Console.Out);
+      }
+
+      if (options.breakIntoDebugger) {
+        System.Diagnostics.Debugger.Break();
       }
       #endregion
 
@@ -81,7 +91,7 @@ namespace BytecodeTranslator {
             return 1;
         }
 
-        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stubAssemblies);
+        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stub);
 
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed: {0}", e.Message);
@@ -98,7 +108,9 @@ namespace BytecodeTranslator {
       var host = new CodeContractAwareHostEnvironment(libPaths != null ? libPaths : Enumerable<string>.Empty, true, true);
       Host = host;
 
-      var modules = new List<Tuple<IModule,PdbReader/*?*/>>();
+      var modules = new List<IModule>();
+      var contractExtractors = new Dictionary<IUnit, IContractProvider>();
+      var pdbReaders = new Dictionary<IUnit, PdbReader>();
       foreach (var a in assemblyNames) {
         var module = host.LoadUnitFrom(a) as IModule;
         if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
@@ -112,7 +124,9 @@ namespace BytecodeTranslator {
           pdbReader = new PdbReader(pdbStream, host);
         }
         module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader) as IModule;
-        modules.Add(Tuple.Create(module, pdbReader));
+        modules.Add(module);
+        contractExtractors.Add(module, host.GetContractExtractor(module.UnitIdentity));
+        pdbReaders.Add(module, pdbReader);
       }
       if (stubAssemblies != null) {
         foreach (var s in stubAssemblies) {
@@ -132,12 +146,21 @@ namespace BytecodeTranslator {
           var copier = new CodeDeepCopier(host);
           var mutableModule = copier.Copy(module);
 
-          var mutator = new ReparentModule(host,
-            TypeHelper.GetDefiningUnit(host.PlatformType.SystemObject.ResolvedType),
-            mutableModule);
-          module = mutator.Rewrite(mutableModule);
+          var mscorlib = TypeHelper.GetDefiningUnit(host.PlatformType.SystemObject.ResolvedType);
 
-          modules.Add(Tuple.Create(module, pdbReader));
+          //var mutator = new ReparentModule(host, mscorlib, mutableModule);
+          //module = mutator.Rewrite(mutableModule);
+          //modules.Add(Tuple.Create(module, pdbReader));
+
+          RewriteUnitReferences renamer = new RewriteUnitReferences(host, mutableModule);
+          var mscorlibAssembly = (IAssembly)mscorlib;
+          renamer.targetAssembly = mscorlibAssembly;
+          renamer.originalAssemblyIdentity = mscorlibAssembly.AssemblyIdentity;
+          renamer.RewriteChildren(mutableModule);
+          modules.Add((IModule)mutableModule);
+          contractExtractors.Add(module, host.GetContractExtractor(module.UnitIdentity));
+          pdbReaders.Add(module, pdbReader);
+
         }
       }
       if (modules.Count == 0) {
@@ -145,7 +168,7 @@ namespace BytecodeTranslator {
         return -1;
       }
 
-      var primaryModule = modules[0].Item1;
+      var primaryModule = modules[0];
 
       TraverserFactory traverserFactory;
       if (wholeProgram)
@@ -156,20 +179,8 @@ namespace BytecodeTranslator {
       var sink = new Sink(host, traverserFactory, heapFactory);
       TranslationHelper.tmpVarCounter = 0;
 
-      foreach (var tup in modules) {
-
-        var module = tup.Item1;
-        var pdbReader = tup.Item2;
-
-        IAssembly/*?*/ assembly = null;
-        MetadataTraverser translator = traverserFactory.MakeMetadataTraverser(sink, host.GetContractExtractor(module.ModuleIdentity), pdbReader);
-        assembly = module as IAssembly;
-        if (assembly != null)
-          translator.Visit(assembly);
-        else
-          translator.Visit(module);
-
-      }
+      MetadataTraverser translator = traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
+      translator.TranslateAssemblies(modules);
 
       foreach (ITypeDefinition type in sink.delegateTypeToDelegates.Keys) {
         CreateDispatchMethod(sink, type);
@@ -340,6 +351,34 @@ namespace BytecodeTranslator {
         // Maybe this is a good place to add the procedure to the toplevel declarations
       }
     }
+
+    private class RewriteUnitReferences : MetadataRewriter {
+      private UnitIdentity sourceUnitIdentity = null;
+      internal IAssembly/*?*/ targetAssembly = null;
+      internal AssemblyIdentity/*?*/ originalAssemblyIdentity = null;
+
+      Dictionary<uint, bool> internedKeys = new Dictionary<uint, bool>();
+
+      public RewriteUnitReferences(IMetadataHost host, Module sourceUnit)
+        : base(host) {
+        this.sourceUnitIdentity = sourceUnit.UnitIdentity;
+        }
+
+      public override IModuleReference Rewrite(IModuleReference moduleReference) {
+        if (this.sourceUnitIdentity.Equals(moduleReference.UnitIdentity)) {
+          return this.targetAssembly;
+        }
+        return base.Rewrite(moduleReference);
+      }
+      public override IAssemblyReference Rewrite(IAssemblyReference assemblyReference) {
+        if (this.sourceUnitIdentity.Equals(assemblyReference.UnitIdentity)) {
+          return this.targetAssembly;
+        }
+        return base.Rewrite(assemblyReference);
+      }
+
+    }
+
   }
 
 }

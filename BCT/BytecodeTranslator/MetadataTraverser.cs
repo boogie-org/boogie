@@ -30,23 +30,31 @@ namespace BytecodeTranslator {
 
     public readonly TraverserFactory factory;
 
-    public readonly PdbReader/*?*/ PdbReader;
+    public readonly IDictionary<IUnit, PdbReader> PdbReaders;
+    public PdbReader/*?*/ PdbReader;
 
-    public MetadataTraverser(Sink sink, PdbReader/*?*/ pdbReader)
+    public MetadataTraverser(Sink sink, IDictionary<IUnit, PdbReader> pdbReaders)
       : base() {
       this.sink = sink;
       this.factory = sink.Factory;
-      this.PdbReader = pdbReader;
+      this.PdbReaders = pdbReaders;
     }
 
     #region Overrides
 
     public override void Visit(IModule module) {
+      this.PdbReaders.TryGetValue(module, out this.PdbReader);
       base.Visit(module);
     }
 
     public override void Visit(IAssembly assembly) {
-      base.Visit(assembly);
+      this.PdbReaders.TryGetValue(assembly, out this.PdbReader);
+      this.sink.BeginAssembly(assembly);
+      try {
+        base.Visit(assembly);
+      } finally {
+        this.sink.EndAssembly(assembly);
+      }
     }
 
     /// <summary>
@@ -54,6 +62,9 @@ namespace BytecodeTranslator {
     /// </summary>
     /// 
     public override void Visit(ITypeDefinition typeDefinition) {
+
+      var savedPrivateTypes = this.privateTypes;
+      this.privateTypes = new List<ITypeDefinition>();
 
       if (typeDefinition.IsClass) {
         bool savedSawCctor = this.sawCctor;
@@ -80,7 +91,12 @@ namespace BytecodeTranslator {
           TypeHelper.GetTypeName(typeDefinition));
         throw new NotImplementedException(String.Format("Unknown kind of type definition '{0}'.", TypeHelper.GetTypeName(typeDefinition)));
       }
+      this.Visit(typeDefinition.PrivateHelperMembers);
+      foreach (var t in this.privateTypes) {
+        this.Visit(t);
+      }
     }
+    List<ITypeDefinition> privateTypes = new List<ITypeDefinition>();
 
     private void CreateDefaultStructConstructor(ITypeDefinition typeDefinition) {
       Contract.Requires(typeDefinition.IsStruct);
@@ -256,7 +272,11 @@ namespace BytecodeTranslator {
         #endregion
 
         #region Translate body
-        method.Body.Dispatch(stmtTraverser);
+        var helperTypes = stmtTraverser.TranslateMethod(method);
+        if (helperTypes != null) {
+          this.privateTypes.AddRange(helperTypes);
+        }
+        //method.Body.Dispatch(stmtTraverser);
         #endregion
 
         #region Create Local Vars For Implementation
@@ -272,6 +292,8 @@ namespace BytecodeTranslator {
         Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
         #endregion
 
+        var translatedBody = stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken);
+
         #region Add implementation to Boogie program
         if (proc != null) {
           Bpl.Implementation impl =
@@ -281,13 +303,14 @@ namespace BytecodeTranslator {
                   decl.InParams,
                   decl.OutParams,
                   vseq,
-                  stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken));
+                  translatedBody);
 
           impl.Proc = proc;
           this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
         } else { // method is translated as a function
-          //Bpl.Function func = decl as Bpl.Function;
-          //func.Body = new Bpl.CodeExpr(new Bpl.VariableSeq(), new List<Bpl.Block>{ new Bpl.Block(
+          //var func = decl as Bpl.Function;
+          //Contract.Assume(func != null);
+          //func.Body = new Bpl.CodeExpr(new Bpl.VariableSeq(), translatedBody.BigBlocks);
         }
         #endregion
 
@@ -366,6 +389,15 @@ namespace BytecodeTranslator {
 
     #endregion
 
+    #region Public API
+    public virtual void TranslateAssemblies(IEnumerable<IUnit> assemblies) {
+      foreach (var a in assemblies) {
+        a.Dispatch(this);
+      }
+    }
+    #endregion
+
+    #region Helpers
     private class FindCtorCall : BaseCodeTraverser {
       private bool isDeferringCtor = false;
       public ITypeReference containingType;
@@ -387,5 +419,7 @@ namespace BytecodeTranslator {
         base.Visit(methodCall);
       }
     }
+    #endregion
+
   }
 }

@@ -198,8 +198,18 @@ Execution trace:
     (0,0): anon0
     SmallTests.dfy(267,19): anon3_Else
     (0,0): anon2
+SmallTests.dfy(307,3): Error BP5003: A postcondition might not hold on this return path.
+SmallTests.dfy(301,11): Related location: This is the postcondition that might not hold.
+Execution trace:
+    (0,0): anon0
+    (0,0): anon18_Else
+    (0,0): anon11
+    (0,0): anon23_Then
+    (0,0): anon24_Then
+    (0,0): anon15
+    (0,0): anon25_Else
 
-Dafny program verifier finished with 34 verified, 13 errors
+Dafny program verifier finished with 41 verified, 14 errors
 
 -------------------- Definedness.dfy --------------------
 Definedness.dfy(8,7): Error: possible division by zero
@@ -391,6 +401,13 @@ Execution trace:
 
 Dafny program verifier finished with 3 verified, 3 errors
 
+-------------------- ResolutionErrors.dfy --------------------
+ResolutionErrors.dfy(10,16): Error: 'decreases *' is not allowed on ghost loops
+ResolutionErrors.dfy(22,11): Error: array selection requires an array2 (got array3<T>)
+ResolutionErrors.dfy(23,12): Error: sequence/array selection requires a sequence or array (got array3<T>)
+ResolutionErrors.dfy(24,11): Error: array selection requires an array4 (got array<T>)
+4 resolution/type errors detected in ResolutionErrors.dfy
+
 -------------------- Array.dfy --------------------
 Array.dfy(10,12): Error: assignment may update an array element not in the enclosing method's modifies clause
 Execution trace:
@@ -457,14 +474,17 @@ Dafny program verifier finished with 8 verified, 2 errors
 
 -------------------- NonGhostQuantifiers.dfy --------------------
 NonGhostQuantifiers.dfy(13,5): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'n'
-NonGhostQuantifiers.dfy(57,5): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'i'
-NonGhostQuantifiers.dfy(61,5): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'j'
-NonGhostQuantifiers.dfy(71,5): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'j'
-NonGhostQuantifiers.dfy(86,5): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'j'
-NonGhostQuantifiers.dfy(94,10): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'y'
-NonGhostQuantifiers.dfy(103,8): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'x'
-NonGhostQuantifiers.dfy(120,8): Error: Assignment to non-ghost variable is not allowed in this context (because this is a ghost method or because the statement is guarded by a specification-only expression)
-8 resolution/type errors detected in NonGhostQuantifiers.dfy
+NonGhostQuantifiers.dfy(42,4): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'n'
+NonGhostQuantifiers.dfy(46,4): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'd'
+NonGhostQuantifiers.dfy(50,4): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'n'
+NonGhostQuantifiers.dfy(74,5): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'i'
+NonGhostQuantifiers.dfy(78,5): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'j'
+NonGhostQuantifiers.dfy(88,5): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'j'
+NonGhostQuantifiers.dfy(103,5): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'j'
+NonGhostQuantifiers.dfy(111,10): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'y'
+NonGhostQuantifiers.dfy(120,8): Error: quantifiers in non-ghost contexts must be compilable, but Dafny's heuristics can't figure out how to produce a bounded set of values for 'x'
+NonGhostQuantifiers.dfy(137,8): Error: Assignment to non-ghost variable is not allowed in this context (because this is a ghost method or because the statement is guarded by a specification-only expression)
+11 resolution/type errors detected in NonGhostQuantifiers.dfy
 
 -------------------- AdvancedLHS.dfy --------------------
 AdvancedLHS.dfy(32,23): Error: target object may be null
@@ -483,9 +503,12 @@ Modules0.dfy(62,6): Error: inter-module calls must follow the module import rela
 Modules0.dfy(72,6): Error: inter-module calls must follow the module import relation (so module X0 must transitively import X1)
 Modules0.dfy(91,4): Error: inter-module calls must follow the module import relation (so module _default must transitively import YY)
 Modules0.dfy(116,16): Error: ghost variables are allowed only in specification contexts
-Modules0.dfy(133,10): Error: match source expression 'tree' has already been used as a match source expression in this context
-Modules0.dfy(172,12): Error: match source expression 'l' has already been used as a match source expression in this context
-10 resolution/type errors detected in Modules0.dfy
+Modules0.dfy(130,11): Error: old expressions are allowed only in specification and ghost contexts
+Modules0.dfy(131,11): Error: fresh expressions are allowed only in specification and ghost contexts
+Modules0.dfy(132,11): Error: allocated expressions are allowed only in specification and ghost contexts
+Modules0.dfy(148,10): Error: match source expression 'tree' has already been used as a match source expression in this context
+Modules0.dfy(187,12): Error: match source expression 'l' has already been used as a match source expression in this context
+13 resolution/type errors detected in Modules0.dfy
 
 -------------------- Modules1.dfy --------------------
 Modules1.dfy(55,3): Error: decreases expression must be bounded below by 0
@@ -503,6 +526,59 @@ Execution trace:
     (0,0): anon3_Else
 
 Dafny program verifier finished with 2 verified, 1 error
+
+-------------------- Comprehensions.dfy --------------------
+Comprehensions.dfy(9,14): Error: assertion violation
+Execution trace:
+    (0,0): anon0
+    (0,0): anon9_Then
+    (0,0): anon10_Then
+    (0,0): anon4
+    (0,0): anon11_Then
+    (0,0): anon12_Then
+    (0,0): anon8
+
+Dafny program verifier finished with 6 verified, 1 error
+
+-------------------- ControlStructures.dfy --------------------
+ControlStructures.dfy(5,3): Error: missing case in case statement: Blue
+Execution trace:
+    (0,0): anon0
+    (0,0): anon6_Else
+    (0,0): anon7_Else
+    (0,0): anon8_Else
+    (0,0): anon9_Then
+ControlStructures.dfy(5,3): Error: missing case in case statement: Purple
+Execution trace:
+    (0,0): anon0
+    (0,0): anon6_Else
+    (0,0): anon7_Else
+    (0,0): anon8_Then
+ControlStructures.dfy(14,3): Error: missing case in case statement: Purple
+Execution trace:
+    (0,0): anon0
+    (0,0): anon6_Else
+    (0,0): anon7_Else
+    (0,0): anon8_Then
+ControlStructures.dfy(43,5): Error: missing case in case statement: Red
+Execution trace:
+    (0,0): anon0
+    (0,0): anon8_Then
+    (0,0): anon9_Else
+    (0,0): anon10_Then
+ControlStructures.dfy(51,3): Error: missing case in case statement: Red
+Execution trace:
+    (0,0): anon8_Else
+    (0,0): anon9_Else
+    (0,0): anon10_Else
+    (0,0): anon11_Else
+    (0,0): anon12_Then
+ControlStructures.dfy(72,3): Error: alternative cases fail to cover all possibilties
+Execution trace:
+    (0,0): anon0
+    (0,0): anon5_Else
+
+Dafny program verifier finished with 15 verified, 6 errors
 
 -------------------- Termination.dfy --------------------
 Termination.dfy(102,3): Error: cannot prove termination; try supplying a decreases clause for the loop

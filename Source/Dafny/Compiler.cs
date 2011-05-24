@@ -716,7 +716,20 @@ namespace Microsoft.Dafny {
           Indent(indent);  wr.WriteLine("else");
           TrStmt(s.Els, indent);
         }
-        
+
+      } else if (stmt is AlternativeStmt) {
+        var s = (AlternativeStmt)stmt;
+        Indent(indent);
+        foreach (var alternative in s.Alternatives) {
+          wr.Write("if (");
+          TrExpr(alternative.Guard);
+          wr.WriteLine(") {");
+          TrStmtList(alternative.Body, indent);
+          Indent(indent);
+          wr.Write("} else ");
+        }
+        wr.WriteLine("{ /*unreachable alternative*/ }");
+
       } else if (stmt is WhileStmt) {
         WhileStmt s = (WhileStmt)stmt;
         if (s.Guard == null) {
@@ -728,6 +741,26 @@ namespace Microsoft.Dafny {
           TrExpr(s.Guard);
           wr.WriteLine(")");
           TrStmt(s.Body, indent);
+        }
+
+      } else if (stmt is AlternativeLoopStmt) {
+        var s = (AlternativeLoopStmt)stmt;
+        if (s.Alternatives.Count != 0) {
+          Indent(indent);
+          wr.WriteLine("while (true) {");
+          int ind = indent + IndentAmount;
+          Indent(ind);
+          foreach (var alternative in s.Alternatives) {
+            wr.Write("if (");
+            TrExpr(alternative.Guard);
+            wr.WriteLine(") {");
+            TrStmtList(alternative.Body, ind);
+            Indent(ind);
+            wr.Write("} else ");
+          }
+          wr.WriteLine("{ break; }");
+          Indent(indent);
+          wr.WriteLine("}");
         }
 
       } else if (stmt is ForeachStmt) {
@@ -795,21 +828,22 @@ namespace Microsoft.Dafny {
         // } else if (true) {
         //   ...
         // }
+        if (s.Cases.Count != 0) {
+          string source = "_source" + tmpVarCount;
+          tmpVarCount++;
+          Indent(indent);
+          wr.Write("{0} {1} = ", TypeName(cce.NonNull(s.Source.Type)), source);
+          TrExpr(s.Source);
+          wr.WriteLine(";");
 
-        string source = "_source" + tmpVarCount;
-        tmpVarCount++;
-        Indent(indent);
-        wr.Write("{0} {1} = ", TypeName(cce.NonNull(s.Source.Type)), source);
-        TrExpr(s.Source);
-        wr.WriteLine(";");
-        
-        int i = 0;
-        foreach (MatchCaseStmt mc in s.Cases) {
-          MatchCasePrelude(source, cce.NonNull(mc.Ctor), mc.Arguments, i, s.Cases.Count, indent);
-          TrStmtList(mc.Body, indent);
-          i++;
+          int i = 0;
+          foreach (MatchCaseStmt mc in s.Cases) {
+            MatchCasePrelude(source, cce.NonNull(mc.Ctor), mc.Arguments, i, s.Cases.Count, indent);
+            TrStmtList(mc.Body, indent);
+            i++;
+          }
+          Indent(indent); wr.WriteLine("}");
         }
-        Indent(indent);  wr.WriteLine("}");
 
       } else {
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected statement
@@ -1126,7 +1160,7 @@ namespace Microsoft.Dafny {
       } else if (expr is DatatypeValue) {
         DatatypeValue dtv = (DatatypeValue)expr;
         Contract.Assert(dtv.Ctor != null);  // since dtv has been successfully resolved
-        wr.Write("new {0}(new {0}", dtv.DatatypeName, DtCtorName(dtv.Ctor));
+        wr.Write("new {0}(new {1}", dtv.DatatypeName, DtCtorName(dtv.Ctor));
         if (dtv.InferredTypeArgs.Count != 0) {
           wr.Write("<{0}>", TypeNames(dtv.InferredTypeArgs));
         }
@@ -1306,7 +1340,7 @@ namespace Microsoft.Dafny {
         Contract.Assert(e.Bounds != null);  // for non-ghost quantifiers, the resolver would have insisted on finding bounds
         var n = e.BoundVars.Count;
         Contract.Assert(e.Bounds.Count == n);
-        for (int i = n; 0 <= --i; ) {
+        for (int i = 0; i < n; i++) {
           var bound = e.Bounds[i];
           var bv = e.BoundVars[i];
           // emit:  Dafny.Helpers.QuantX(boundsInformation, isForall, bv => body)
@@ -1335,11 +1369,72 @@ namespace Microsoft.Dafny {
           wr.Write("{0}, ", expr is ForallExpr ? "true" : "false");
           wr.Write("@{0} => ", bv.Name);
         }
-        TrExpr(e.Body);
+        TrExpr(e.LogicalBody());
         for (int i = 0; i < n; i++) {
           wr.Write(")");
         }
-      
+
+      } else if (expr is SetComprehension) {
+        var e = (SetComprehension)expr;
+        // For "set i,j,k,l | R(i,j,k,l) :: Term(i,j,k,l)" where the term has type "G", emit something like:
+        // ((ComprehensionDelegate<G>)delegate() {
+        //   var _coll = new List<G>();
+        //   foreach (L l in sq.Elements) {
+        //     foreach (K k in st.Elements) {
+        //       for (BigInteger j = Lo; j < Hi; j++) {
+        //         for (bool i in Helper.AllBooleans) {
+        //           if (R(i,j,k,l)) {
+        //             _coll.Add(Term(i,j,k,l));
+        //           }
+        //         }
+        //       }
+        //     }
+        //   }
+        //   return Dafny.Set<G>.FromCollection(_coll);
+        // })()
+        Contract.Assert(e.Bounds != null);  // the resolver would have insisted on finding bounds
+        var typeName = TypeName(((SetType)e.Type).Arg);
+        wr.Write("((Dafny.Helpers.ComprehensionDelegate<{0}>)delegate() {{ ", typeName);
+        wr.Write("var _coll = new System.Collections.Generic.List<{0}>(); ", typeName);
+        var n = e.BoundVars.Count;
+        Contract.Assert(e.Bounds.Count == n);
+        for (int i = 0; i < n; i++) {
+          var bound = e.Bounds[i];
+          var bv = e.BoundVars[i];
+          if (bound is QuantifierExpr.BoolBoundedPool) {
+            wr.Write("foreach (var @{0} in Dafny.Helpers.AllBooleans) {{ ", bv.Name);
+          } else if (bound is QuantifierExpr.IntBoundedPool) {
+            var b = (QuantifierExpr.IntBoundedPool)bound;
+            wr.Write("for (var @{0} = ", bv.Name);
+            TrExpr(b.LowerBound);
+            wr.Write("; @{0} < ", bv.Name);
+            TrExpr(b.UpperBound);
+            wr.Write("; @{0}++) {{ ", bv.Name);
+          } else if (bound is QuantifierExpr.SetBoundedPool) {
+            var b = (QuantifierExpr.SetBoundedPool)bound;
+            wr.Write("foreach (var @{0} in (", bv.Name);
+            TrExpr(b.Set);
+            wr.Write(").Elements) { ");
+          } else if (bound is QuantifierExpr.SeqBoundedPool) {
+            var b = (QuantifierExpr.SeqBoundedPool)bound;
+            wr.Write("foreach (var @{0} in (", bv.Name);
+            TrExpr(b.Seq);
+            wr.Write(").Elements) { ");
+          } else {
+            Contract.Assert(false); throw new cce.UnreachableException();  // unexpected BoundedPool type
+          }
+        }
+        wr.Write("if (");
+        TrExpr(e.Range);
+        wr.Write(") { _coll.Add(");
+        TrExpr(e.Term);
+        wr.Write("); }");
+        for (int i = 0; i < n; i++) {
+          wr.Write("}");
+        }
+        wr.Write("return Dafny.Set<{0}>.FromCollection(_coll); ", typeName);
+        wr.Write("})()");
+
       } else if (expr is ITEExpr) {
         ITEExpr e = (ITEExpr)expr;
         wr.Write("(");

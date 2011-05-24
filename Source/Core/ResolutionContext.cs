@@ -169,16 +169,23 @@ namespace Microsoft.Boogie {
 
     public void AddType(NamedDeclaration td) {
       Contract.Requires(td != null);
-      Contract.Assert((td is TypeCtorDecl) || (td is TypeSynonymDecl));
+      Contract.Requires((td is TypeCtorDecl) || (td is TypeSynonymDecl));
+      Contract.Requires(td.Name != null);
 
-      string name = cce.NonNull(td.Name);
+      string name = td.Name;
       if (CheckBvNameClashes(td, name))
         return;  // error has already been reported
 
-      if (types[name] != null) {
-        Error(td, "more than one declaration of type name: {0}", name);
-      } else {
+      var previous = (NamedDeclaration)types[name];
+      if (previous == null) {
         types.Add(name, td);
+      } else {
+        var r = (NamedDeclaration)SelectNonExtern(td, previous);
+        if (r == null) {
+          Error(td, "more than one declaration of type name: {0}", name);
+        } else {
+          types[name] = r;
+        }
       }
     }
 
@@ -247,79 +254,6 @@ namespace Microsoft.Boogie {
       return null;  // not present
     }
 
-    // ------------------------------  Types  ------------------------------
-
-    // user-defined types
-    //      Hashtable /*string->TypeDecl*/! types = new Hashtable /*string->TypeDecl*/ ();
-    /*
-            public void AddType(TypeDecl td){
-    Contract.Requires(td != null);
-                string! name = (!)td.Name;
-
-                if (name.StartsWith("bv") && name.Length > 2) {
-                    bool isBv = true;
-                    for (int i = 2; i < name.Length; ++i)
-                        if (!char.IsDigit(name[i])) isBv = false;
-                    if (isBv)
-                        Error(td, "type name: {0} is registered for bitvectors", name);
-                }
-
-                if (types[name] != null) 
-                {
-                    Error(td, "more than one declaration of type name: {0}", name);
-                } 
-                else 
-                {
-                    types.Add(name, td);
-                }
-            }
-    */
-    /// <summary>
-    /// Returns the declaration of the named type, or null if
-    /// no such type is declared.
-    /// </summary>
-    /// <param name="name"></param>
-    /// <returns></returns>
-    /*    public TypeDecl LookUpType(string name){
-Contract.Requires(name != null);
-            return (TypeDecl)types[name];
-        }
-      */
-    // ------------------------------  Type Binders  ------------------------------
-    /*
-            List<TypeBinderDecl!>! typeBinders = new List<TypeBinderDecl!>(5);
-        
-            public void AddTypeBinder(TypeBinderDecl td){
-    Contract.Requires(td != null);
-              for (int i = 0; i < typeBinders.Count; i++) {
-                if (typeBinders[i].Name == td.Name) {
-                  Error(td, "more than one declaration of type binder name: {0}", td.Name);
-                  return;
-                }
-              }
-              typeBinders.Add(td);
-            }
-        
-            public int TypeBinderState {
-              get { return typeBinders.Count; }
-              set { typeBinders.RemoveRange(value, typeBinders.Count - value); }
-            }
-        
-            /// <summary>
-            /// Returns the declaration of the named type binder, or null if
-            /// no such binder is declared.
-            /// </summary>
-            public TypeDecl LookUpTypeBinder(string name){
-    Contract.Requires(name != null);
-              for (int i = typeBinders.Count; 0 <= --i; ) {
-                TypeBinderDecl td = typeBinders[i];
-                if (td.Name == name) {
-                  return td;
-                }
-              }
-              return null;  // not present
-            }
-      */
     // ------------------------------  Variables  ------------------------------
 
     class VarContextNode {
@@ -365,10 +299,16 @@ Contract.Requires(name != null);
 
     public void AddVariable(Variable var, bool global) {
       Contract.Requires(var != null);
-      if (FindVariable(cce.NonNull(var.Name), !global) != null) {
-        Error(var, "more than one declaration of variable name: {0}", var.Name);
-      } else {
+      var previous = FindVariable(cce.NonNull(var.Name), !global);
+      if (previous == null) {
         varContext.VarSymbols.Add(var.Name, var);
+      } else {
+        var r = (Variable)SelectNonExtern(var, previous);
+        if (r == null) {
+          Error(var, "more than one declaration of variable name: {0}", var.Name);
+        } else {
+          varContext.VarSymbols[var.Name] = r;
+        }
       }
     }
 
@@ -417,11 +357,47 @@ Contract.Requires(name != null);
 
     public void AddProcedure(DeclWithFormals proc) {
       Contract.Requires(proc != null);
-      if (funcdures[cce.NonNull(proc.Name)] != null) {
-        Error(proc, "more than one declaration of function/procedure name: {0}", proc.Name);
+      Contract.Requires(proc.Name != null);
+
+      string name = proc.Name;
+      var previous = (DeclWithFormals)funcdures[name];
+      if (previous == null) {
+        funcdures.Add(name, proc);
       } else {
-        funcdures.Add(proc.Name, proc);
+        var r = (DeclWithFormals)SelectNonExtern(proc, previous);
+        if (r == null) {
+          Error(proc, "more than one declaration of function/procedure name: {0}", name);
+        } else {
+          funcdures[name] = r;
+        }
       }
+    }
+
+    /// <summary>
+    /// If both "a" and "b" have an ":extern" attribute, returns either one.
+    /// If one of "a" and "b" has an ":extern" attribute, returns that one.
+    /// If neither of "a" and "b" has an ":extern" attribute, returns null.
+    /// If a non-value value is returned, this method also adds the ":ignore"
+    /// attribute to the declaration NOT returned.
+    /// </summary>
+    Declaration SelectNonExtern(Declaration a, Declaration b) {
+      Contract.Requires(a != null);
+      Contract.Requires(b != null);
+      Contract.Ensures(Contract.Result<Declaration>() == null || Contract.Result<Declaration>() == a || Contract.Result<Declaration>() == b);
+
+      Declaration ignore, keep;
+      if (QKeyValue.FindBoolAttribute(a.Attributes, "extern")) {
+        ignore = a;
+        keep = b;
+      } else if (QKeyValue.FindBoolAttribute(b.Attributes, "extern")) {
+        ignore = b;
+        keep = a;
+      } else {
+        return null;
+      }
+      // prepend :ignore attribute
+      ignore.Attributes = new QKeyValue(ignore.tok, "ignore", new List<object/*!*/>(), ignore.Attributes);
+      return keep;
     }
 
     /// <summary>
