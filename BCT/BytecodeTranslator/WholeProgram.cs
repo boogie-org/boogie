@@ -122,12 +122,8 @@ namespace BytecodeTranslator {
         List<Bpl.Expr> inexpr;
         List<Bpl.IdentifierExpr> outvars;
         Bpl.IdentifierExpr thisExpr;
-        List<Bpl.Variable> locals;
-        List<IFieldDefinition> args;
-        Bpl.Expr arrayExpr;
-        Bpl.Expr indexExpr;
         Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed;
-        var proc = TranslateArgumentsAndReturnProcedure(token, methodCall.MethodToCall, resolvedMethod, methodCall.IsStaticCall ? null : methodCall.ThisArgument, methodCall.Arguments, out inexpr, out outvars, out thisExpr, out locals, out args, out arrayExpr, out indexExpr, out toBoxed);
+        var proc = TranslateArgumentsAndReturnProcedure(token, methodCall.MethodToCall, resolvedMethod, methodCall.IsStaticCall ? null : methodCall.ThisArgument, methodCall.Arguments, out inexpr, out outvars, out thisExpr, out toBoxed);
 
 
         Bpl.QKeyValue attrib = null;

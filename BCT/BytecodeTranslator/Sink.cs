@@ -115,7 +115,7 @@ namespace BytecodeTranslator {
       else if (type.TypeCode == PrimitiveTypeCode.Float32 || type.TypeCode == PrimitiveTypeCode.Float64)
         return heap.RealType;
       else if (type.ResolvedType.IsStruct)
-        return heap.StructType;
+        return heap.RefType; // structs are kept on the heap with special rules about assignment
       else if (type.IsEnum)
         return Bpl.Type.Int; // The underlying type of an enum is always some kind of integer
       else if (type is IGenericTypeParameter)
@@ -528,13 +528,13 @@ namespace BytecodeTranslator {
       if (!this.declaredMethods.TryGetValue(key, out procAndFormalMap)) {
         var typename = TranslationHelper.TurnStringIntoValidIdentifier(TypeHelper.GetTypeName(structType));
         var tok = structType.Token();
-        var selfType = new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
-        var selfOut = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), false);
-        var outvars = new Bpl.Formal[]{ selfOut };
+        var selfType = this.CciTypeToBoogie(structType); //new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
+        var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), false);
+        var invars = new Bpl.Formal[]{ selfIn };
         var proc = new Bpl.Procedure(Bpl.Token.NoToken, typename + ".#default_ctor",
           new Bpl.TypeVariableSeq(),
-          new Bpl.VariableSeq(), // in
-          new Bpl.VariableSeq(outvars),
+          new Bpl.VariableSeq(invars),
+          new Bpl.VariableSeq(), // out
           new Bpl.RequiresSeq(),
           new Bpl.IdentifierExprSeq(), // modifies
           new Bpl.EnsuresSeq()
