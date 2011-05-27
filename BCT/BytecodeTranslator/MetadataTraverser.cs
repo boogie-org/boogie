@@ -30,22 +30,25 @@ namespace BytecodeTranslator {
 
     public readonly TraverserFactory factory;
 
-    public readonly PdbReader/*?*/ PdbReader;
+    public readonly IDictionary<IUnit, PdbReader> PdbReaders;
+    public PdbReader/*?*/ PdbReader;
 
-    public MetadataTraverser(Sink sink, PdbReader/*?*/ pdbReader)
+    public MetadataTraverser(Sink sink, IDictionary<IUnit, PdbReader> pdbReaders)
       : base() {
       this.sink = sink;
       this.factory = sink.Factory;
-      this.PdbReader = pdbReader;
+      this.PdbReaders = pdbReaders;
     }
 
     #region Overrides
 
     public override void Visit(IModule module) {
+      this.PdbReaders.TryGetValue(module, out this.PdbReader);
       base.Visit(module);
     }
 
     public override void Visit(IAssembly assembly) {
+      this.PdbReaders.TryGetValue(assembly, out this.PdbReader);
       this.sink.BeginAssembly(assembly);
       try {
         base.Visit(assembly);
@@ -81,7 +84,7 @@ namespace BytecodeTranslator {
         return; // enums just are translated as ints
       } else if (typeDefinition.IsStruct) {
         sink.FindOrCreateType(typeDefinition);
-        //CreateDefaultStructConstructor(typeDefinition);
+        CreateDefaultStructConstructor(typeDefinition);
         base.Visit(typeDefinition);
       } else {
         Console.WriteLine("Unknown kind of type definition '{0}' was found",
@@ -105,13 +108,16 @@ namespace BytecodeTranslator {
       foreach (var f in typeDefinition.Fields) {
         var e = this.sink.DefaultValue(f.Type);
         var fExp = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f));
-        var o = Bpl.Expr.Ident(proc.OutParams[0]);
+        var o = Bpl.Expr.Ident(proc.InParams[0]);
         var boogieType = sink.CciTypeToBoogie(f.Type);
         var c = this.sink.Heap.WriteHeap(Bpl.Token.NoToken, o, fExp, e, AccessType.Struct, boogieType);
         stmtBuilder.Add(c);
       }
 
-      var attrib = new Bpl.QKeyValue(typeDefinition.Token(), "inline", new List<object>(1), null); // TODO: Need to have it be {:inine 1} (and not just {:inline})?
+      var lit = Bpl.Expr.Literal(1);
+      lit.Type = Bpl.Type.Int;
+      var args = new List<object> { lit };
+      var attrib = new Bpl.QKeyValue(typeDefinition.Token(), "inline", args, null); // TODO: Need to have it be {:inine 1} (and not just {:inline})?
       Bpl.Implementation impl =
         new Bpl.Implementation(Bpl.Token.NoToken,
         proc.Name,
@@ -386,6 +392,15 @@ namespace BytecodeTranslator {
 
     #endregion
 
+    #region Public API
+    public virtual void TranslateAssemblies(IEnumerable<IUnit> assemblies) {
+      foreach (var a in assemblies) {
+        a.Dispatch(this);
+      }
+    }
+    #endregion
+
+    #region Helpers
     private class FindCtorCall : BaseCodeTraverser {
       private bool isDeferringCtor = false;
       public ITypeReference containingType;
@@ -407,5 +422,7 @@ namespace BytecodeTranslator {
         base.Visit(methodCall);
       }
     }
+    #endregion
+
   }
 }

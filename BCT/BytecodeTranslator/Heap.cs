@@ -45,11 +45,11 @@ procedure {:inline 1} Alloc() returns (x: Ref)
   $Alloc[x] := true;
 }
 
-axiom (forall x : Field :: $DefaultStruct[x] == $DefaultBox);
+//axiom (forall x : Field :: $DefaultStruct[x] == $DefaultBox);
 axiom Box2Int($DefaultBox) == 0;
 axiom Box2Bool($DefaultBox) == false;
 axiom Box2Ref($DefaultBox) == null;
-axiom Box2Struct($DefaultBox) == $DefaultStruct;
+//axiom Box2Struct($DefaultBox) == $DefaultStruct;
 
 axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x );
 axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
@@ -191,18 +191,19 @@ procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
     [RepresentationFor("$Heap", "var $Heap: HeapType;", true)]
     private Bpl.Variable HeapVariable = null;
     
-    [RepresentationFor("Read", "function {:inline true} Read(H:HeapType, o:Ref, f:Field): Box { H[o, f] }")]
+    [RepresentationFor("Read", "function {:inline true} Read(H:HeapType, o:Ref, f:Field): Box { H[o][f] }")]
     private Bpl.Function Read = null;
 
-    [RepresentationFor("Write", "function {:inline true} Write(H:HeapType, o:Ref, f:Field, v:Box): HeapType { H[o,f := v] }")]
+    [RepresentationFor("Write", "function {:inline true} Write(H:HeapType, o:Ref, f:Field, v:Box): HeapType { H[o := H[o][f := v]] }")]
     private Bpl.Function Write = null;
 
     /// <summary>
     /// Prelude text for which access to the ASTs is not needed
     /// </summary>
     private readonly string InitialPreludeText =
-      @"type Struct = [Field]Box;
-type HeapType = [Ref,Field]Box;
+      @"//type Struct = [Field]Box;
+type Struct = Ref;
+type HeapType = [Ref][Field]Box;
 
 var $Alloc: [Ref] bool;
 procedure {:inline 1} Alloc() returns (x: Ref)
@@ -212,11 +213,12 @@ procedure {:inline 1} Alloc() returns (x: Ref)
   $Alloc[x] := true;
 }
 
-axiom (forall x : Field :: $DefaultStruct[x] == $DefaultBox);
+//axiom (forall x : Field :: $DefaultStruct[x] == $DefaultBox);
+//axiom (forall h : HeapType, f : Field :: { Read(h, $DefaultStruct, f) } Read(h, $DefaultStruct, f) == $DefaultBox);
 axiom Box2Int($DefaultBox) == 0;
 axiom Box2Bool($DefaultBox) == false;
 axiom Box2Ref($DefaultBox) == null;
-axiom Box2Struct($DefaultBox) == $DefaultStruct;
+//axiom Box2Struct($DefaultBox) == $DefaultStruct;
 
 axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x );
 axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
@@ -325,9 +327,7 @@ procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
       Debug.Assert(o != null);
 
       Bpl.NAryExpr callRead;
-      if (accessType == AccessType.Struct)
-        callRead = Bpl.Expr.Select(o, f);
-      else if (accessType == AccessType.Heap)
+      if (accessType == AccessType.Struct || accessType == AccessType.Heap)
         callRead = new Bpl.NAryExpr(f.tok, new Bpl.FunctionCall(this.Read), new Bpl.ExprSeq(new Bpl.IdentifierExpr(f.tok, this.HeapVariable), o, f));
       else
         callRead = Bpl.Expr.Select(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f);
@@ -348,11 +348,7 @@ procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
       Bpl.NAryExpr callWrite;
       var callConversion = Box(f.tok, boxType, value);
 
-      if (accessType == AccessType.Struct) {
-        h = (Bpl.IdentifierExpr)o;
-        callWrite = Bpl.Expr.Store(h, f, callConversion);
-      }
-      else if (accessType == AccessType.Heap) {
+      if (accessType == AccessType.Struct || accessType == AccessType.Heap) {
         h = Bpl.Expr.Ident(HeapVariable);
         callWrite = new Bpl.NAryExpr(f.tok, new Bpl.FunctionCall(this.Write), new Bpl.ExprSeq(h, o, f, callConversion));
       }

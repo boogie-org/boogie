@@ -30,7 +30,7 @@ namespace BytecodeTranslator
 
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
     private bool contractContext;
-    internal readonly Stack<Bpl.Expr> operandStack = new Stack<Bpl.Expr>();
+    internal readonly Stack<IExpression> operandStack = new Stack<IExpression>();
 
     #region Constructors
     public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
@@ -175,11 +175,12 @@ namespace BytecodeTranslator
     /// statement "loc := e" from it. Otherwise ignore it.
     /// </summary>
     public override void Visit(ILocalDeclarationStatement localDeclarationStatement) {
-      if (localDeclarationStatement.InitialValue == null) return;
-      var loc = this.sink.FindOrCreateLocalVariable(localDeclarationStatement.LocalVariable);
+      var initVal = localDeclarationStatement.InitialValue;
+      if (initVal == null) return;
+      var boogieLocal = this.sink.FindOrCreateLocalVariable(localDeclarationStatement.LocalVariable);
       var tok = localDeclarationStatement.Token();
-      var e = ExpressionFor(localDeclarationStatement.InitialValue);
-      StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, new Bpl.IdentifierExpr(tok, loc), e));
+      var e = ExpressionFor(initVal);
+      StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, new Bpl.IdentifierExpr(tok, boogieLocal), e));
       return;
     }
 
@@ -187,11 +188,11 @@ namespace BytecodeTranslator
       var tok = pushStatement.Token();
       var val = pushStatement.ValueToPush;
       var dup = val as IDupValue;
-      Bpl.Expr e;
+      IExpression e;
       if (dup != null) {
         e = this.operandStack.Peek();
       } else {
-        e = ExpressionFor(val);
+        e = val;
       }
       this.operandStack.Push(e);
       return;
