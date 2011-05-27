@@ -105,7 +105,7 @@ namespace BytecodeTranslator {
         return structType;
       }
     }
-    [RepresentationFor("$DefaultStruct", "const unique $DefaultStruct : Struct;")]
+    [RepresentationFor("$DefaultStruct", "const unique $DefaultStruct : [Field]Box;")]
     public Bpl.Constant DefaultStruct;
 
     [RepresentationFor("Real", "type Real;")]

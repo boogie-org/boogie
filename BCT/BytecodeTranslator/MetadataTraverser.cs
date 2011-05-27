@@ -84,7 +84,8 @@ namespace BytecodeTranslator {
         return; // enums just are translated as ints
       } else if (typeDefinition.IsStruct) {
         sink.FindOrCreateType(typeDefinition);
-        //CreateDefaultStructConstructor(typeDefinition);
+        CreateDefaultStructConstructor(typeDefinition);
+        CreateStructCopyConstructor(typeDefinition);
         base.Visit(typeDefinition);
       } else {
         Console.WriteLine("Unknown kind of type definition '{0}' was found",
@@ -108,13 +109,16 @@ namespace BytecodeTranslator {
       foreach (var f in typeDefinition.Fields) {
         var e = this.sink.DefaultValue(f.Type);
         var fExp = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f));
-        var o = Bpl.Expr.Ident(proc.OutParams[0]);
+        var o = Bpl.Expr.Ident(proc.InParams[0]);
         var boogieType = sink.CciTypeToBoogie(f.Type);
         var c = this.sink.Heap.WriteHeap(Bpl.Token.NoToken, o, fExp, e, AccessType.Struct, boogieType);
         stmtBuilder.Add(c);
       }
 
-      var attrib = new Bpl.QKeyValue(typeDefinition.Token(), "inline", new List<object>(1), null); // TODO: Need to have it be {:inine 1} (and not just {:inline})?
+      var lit = Bpl.Expr.Literal(1);
+      lit.Type = Bpl.Type.Int;
+      var args = new List<object> { lit };
+      var attrib = new Bpl.QKeyValue(typeDefinition.Token(), "inline", args, null); // TODO: Need to have it be {:inine 1} (and not just {:inline})?
       Bpl.Implementation impl =
         new Bpl.Implementation(Bpl.Token.NoToken,
         proc.Name,
@@ -128,6 +132,42 @@ namespace BytecodeTranslator {
         );
 
       impl.Proc = (Bpl.Procedure) proc; // TODO: get rid of cast
+      this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
+    }
+    
+    private void CreateStructCopyConstructor(ITypeDefinition typeDefinition) {
+      Contract.Requires(typeDefinition.IsStruct);
+
+      var proc = this.sink.FindOrCreateProcedureForStructCopy(typeDefinition);
+
+      var stmtBuilder = new Bpl.StmtListBuilder();
+
+      foreach (var f in typeDefinition.Fields) {
+        var boogieType = sink.CciTypeToBoogie(f.Type);
+        var fExp = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f));
+        var e = this.sink.Heap.ReadHeap(Bpl.Expr.Ident(proc.InParams[0]), fExp, AccessType.Struct, boogieType);
+        var o = Bpl.Expr.Ident(proc.InParams[1]);
+        var c = this.sink.Heap.WriteHeap(Bpl.Token.NoToken, o, fExp, e, AccessType.Struct, boogieType);
+        stmtBuilder.Add(c);
+      }
+
+      var lit = Bpl.Expr.Literal(1);
+      lit.Type = Bpl.Type.Int;
+      var args = new List<object> { lit };
+      var attrib = new Bpl.QKeyValue(typeDefinition.Token(), "inline", args, null); // TODO: Need to have it be {:inine 1} (and not just {:inline})?
+      Bpl.Implementation impl =
+        new Bpl.Implementation(Bpl.Token.NoToken,
+        proc.Name,
+        new Bpl.TypeVariableSeq(),
+        proc.InParams,
+        proc.OutParams,
+        new Bpl.VariableSeq(),
+        stmtBuilder.Collect(Bpl.Token.NoToken),
+        attrib,
+        new Bpl.Errors()
+        );
+
+      impl.Proc = (Bpl.Procedure)proc; // TODO: get rid of cast
       this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
     }
 

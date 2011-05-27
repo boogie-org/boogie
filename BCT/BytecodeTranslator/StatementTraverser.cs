@@ -30,7 +30,7 @@ namespace BytecodeTranslator
 
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
     private bool contractContext;
-    internal readonly Stack<Bpl.Expr> operandStack = new Stack<Bpl.Expr>();
+    internal readonly Stack<IExpression> operandStack = new Stack<IExpression>();
 
     #region Constructors
     public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
@@ -175,11 +175,31 @@ namespace BytecodeTranslator
     /// statement "loc := e" from it. Otherwise ignore it.
     /// </summary>
     public override void Visit(ILocalDeclarationStatement localDeclarationStatement) {
-      if (localDeclarationStatement.InitialValue == null) return;
-      var loc = this.sink.FindOrCreateLocalVariable(localDeclarationStatement.LocalVariable);
+      var initVal = localDeclarationStatement.InitialValue;
+      if (initVal == null) return;
+      var boogieLocal = this.sink.FindOrCreateLocalVariable(localDeclarationStatement.LocalVariable);
+      var boogieLocalExpr = Bpl.Expr.Ident(boogieLocal);
       var tok = localDeclarationStatement.Token();
-      var e = ExpressionFor(localDeclarationStatement.InitialValue);
-      StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, new Bpl.IdentifierExpr(tok, loc), e));
+      var e = ExpressionFor(initVal);
+
+      var typ = initVal.Type;
+      var structCopy = typ.IsValueType && typ.TypeCode == PrimitiveTypeCode.NotPrimitive && !(initVal is IDefaultValue);
+      // then a struct value of type S is being assigned: "lhs := s"
+      // model this as the statement "call lhs := S..#copy_ctor(s)" that does the bit-wise copying
+      Bpl.DeclWithFormals proc = null;
+      if (structCopy) {
+        var defaultValue = new DefaultValue() {
+          DefaultValueType = typ,
+          Locations = new List<ILocation>(localDeclarationStatement.Locations),
+          Type = typ,
+        };
+        var e2 = ExpressionFor(defaultValue);
+        StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, boogieLocalExpr, e2));
+        proc = this.sink.FindOrCreateProcedureForStructCopy(typ);
+        StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr> { e, boogieLocalExpr, }, new List<Bpl.IdentifierExpr>()));
+      } else {
+        StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, boogieLocalExpr, e));
+      }
       return;
     }
 
@@ -187,11 +207,11 @@ namespace BytecodeTranslator
       var tok = pushStatement.Token();
       var val = pushStatement.ValueToPush;
       var dup = val as IDupValue;
-      Bpl.Expr e;
+      IExpression e;
       if (dup != null) {
         e = this.operandStack.Peek();
       } else {
-        e = ExpressionFor(val);
+        e = val;
       }
       this.operandStack.Push(e);
       return;

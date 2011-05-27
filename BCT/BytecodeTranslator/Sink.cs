@@ -115,7 +115,7 @@ namespace BytecodeTranslator {
       else if (type.TypeCode == PrimitiveTypeCode.Float32 || type.TypeCode == PrimitiveTypeCode.Float64)
         return heap.RealType;
       else if (type.ResolvedType.IsStruct)
-        return heap.StructType;
+        return heap.RefType; // structs are kept on the heap with special rules about assignment
       else if (type.IsEnum)
         return Bpl.Type.Int; // The underlying type of an enum is always some kind of integer
       else if (type is IGenericTypeParameter)
@@ -512,6 +512,7 @@ namespace BytecodeTranslator {
       return procAndFormalMap.Decl;
     }
 
+    private Dictionary<uint, ProcedureInfo> declaredStructDefaultCtors = new Dictionary<uint, ProcedureInfo>();
     /// <summary>
     /// Struct "creation" (source code that looks like "new S()" for a struct type S) is modeled
     /// by a call to the nullary "ctor" that initializes all of the structs fields to zero-
@@ -519,21 +520,62 @@ namespace BytecodeTranslator {
     /// is defined in an assembly that is not being translated, then its behavior is unspecified.
     /// </summary>
     /// <param name="structType">A type reference to the value type for which the ctor should be returned.</param>
-    /// <returns>A nullary procedure that returns an initialized value of type <paramref name="structType"/>.</returns>
+    /// <returns>A unary procedure (i.e., it takes the struct value as its parameter) that initializes
+    /// its parameter of type <paramref name="structType"/>.
+    /// </returns>
     public Bpl.DeclWithFormals FindOrCreateProcedureForDefaultStructCtor(ITypeReference structType) {
       Contract.Requires(structType.IsValueType);
-     
+
       ProcedureInfo procAndFormalMap;
       var key = structType.InternedKey;
-      if (!this.declaredMethods.TryGetValue(key, out procAndFormalMap)) {
+      if (!this.declaredStructDefaultCtors.TryGetValue(key, out procAndFormalMap)) {
         var typename = TranslationHelper.TurnStringIntoValidIdentifier(TypeHelper.GetTypeName(structType));
         var tok = structType.Token();
-        var selfType = new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
-        var selfOut = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), false);
-        var outvars = new Bpl.Formal[]{ selfOut };
+        var selfType = this.CciTypeToBoogie(structType); //new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
+        var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), false);
+        var invars = new Bpl.Formal[]{ selfIn };
         var proc = new Bpl.Procedure(Bpl.Token.NoToken, typename + ".#default_ctor",
           new Bpl.TypeVariableSeq(),
-          new Bpl.VariableSeq(), // in
+          new Bpl.VariableSeq(invars),
+          new Bpl.VariableSeq(), // out
+          new Bpl.RequiresSeq(),
+          new Bpl.IdentifierExprSeq(), // modifies
+          new Bpl.EnsuresSeq()
+          );
+        this.TranslatedProgram.TopLevelDeclarations.Add(proc);
+        procAndFormalMap = new ProcedureInfo(proc, new Dictionary<IParameterDefinition, MethodParameter>(), this.RetVariable);
+        this.declaredStructDefaultCtors.Add(key, procAndFormalMap);
+      }
+      return procAndFormalMap.Decl;
+    }
+
+    private Dictionary<uint, ProcedureInfo> declaredStructCopyCtors = new Dictionary<uint, ProcedureInfo>();
+    private Dictionary<uint, ProcedureInfo> declaredStructEqualityOperators = new Dictionary<uint, ProcedureInfo>();
+    /// <summary>
+    /// The assignment of one struct value to another is modeled by a method that makes a field-by-field
+    /// copy of the source of the assignment.
+    /// Note that the generated procedure has no contract. So if the struct
+    /// is defined in an assembly that is not being translated, then its behavior is unspecified.
+    /// </summary>
+    /// <param name="structType">A type reference to the value type for which the procedure should be returned.</param>
+    /// <returns>A binary procedure (i.e., it takes the two struct values as its parameters).
+    /// </returns>
+    public Bpl.DeclWithFormals FindOrCreateProcedureForStructCopy(ITypeReference structType) {
+      Contract.Requires(structType.IsValueType);
+
+      ProcedureInfo procAndFormalMap;
+      var key = structType.InternedKey;
+      if (!this.declaredStructCopyCtors.TryGetValue(key, out procAndFormalMap)) {
+        var typename = TranslationHelper.TurnStringIntoValidIdentifier(TypeHelper.GetTypeName(structType));
+        var tok = structType.Token();
+        var selfType = this.CciTypeToBoogie(structType); //new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
+        var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), false);
+        var otherIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "other", selfType), false);
+        var invars = new Bpl.Formal[] { selfIn, otherIn, };
+        var outvars = new Bpl.Formal[0];
+        var proc = new Bpl.Procedure(Bpl.Token.NoToken, typename + ".#copy_ctor",
+          new Bpl.TypeVariableSeq(),
+          new Bpl.VariableSeq(invars),
           new Bpl.VariableSeq(outvars),
           new Bpl.RequiresSeq(),
           new Bpl.IdentifierExprSeq(), // modifies
@@ -541,7 +583,7 @@ namespace BytecodeTranslator {
           );
         this.TranslatedProgram.TopLevelDeclarations.Add(proc);
         procAndFormalMap = new ProcedureInfo(proc, new Dictionary<IParameterDefinition, MethodParameter>(), this.RetVariable);
-        this.declaredMethods.Add(key, procAndFormalMap);
+        this.declaredStructCopyCtors.Add(key, procAndFormalMap);
       }
       return procAndFormalMap.Decl;
     }
