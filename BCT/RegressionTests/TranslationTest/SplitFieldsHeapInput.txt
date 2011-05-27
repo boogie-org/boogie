@@ -681,6 +681,18 @@ implementation {:inline 1} RegressionTestInput.S.#default_ctor(this: Ref)
 
 
 
+procedure RegressionTestInput.S.#copy_ctor(this: Ref, other: Ref);
+
+
+
+implementation {:inline 1} RegressionTestInput.S.#copy_ctor(this: Ref, other: Ref)
+{
+    other[RegressionTestInput.S.x] := Int2Box(Box2Int(this[RegressionTestInput.S.x]));
+    other[RegressionTestInput.S.b] := Bool2Box(Box2Bool(this[RegressionTestInput.S.b]));
+}
+
+
+
 const unique RegressionTestInput.Class0: Type;
 
 var RegressionTestInput.Class0.StaticInt: int;

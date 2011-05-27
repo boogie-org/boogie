@@ -178,9 +178,28 @@ namespace BytecodeTranslator
       var initVal = localDeclarationStatement.InitialValue;
       if (initVal == null) return;
       var boogieLocal = this.sink.FindOrCreateLocalVariable(localDeclarationStatement.LocalVariable);
+      var boogieLocalExpr = Bpl.Expr.Ident(boogieLocal);
       var tok = localDeclarationStatement.Token();
       var e = ExpressionFor(initVal);
-      StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, new Bpl.IdentifierExpr(tok, boogieLocal), e));
+
+      var typ = initVal.Type;
+      var structCopy = typ.IsValueType && typ.TypeCode == PrimitiveTypeCode.NotPrimitive && !(initVal is IDefaultValue);
+      // then a struct value of type S is being assigned: "lhs := s"
+      // model this as the statement "call lhs := S..#copy_ctor(s)" that does the bit-wise copying
+      Bpl.DeclWithFormals proc = null;
+      if (structCopy) {
+        var defaultValue = new DefaultValue() {
+          DefaultValueType = typ,
+          Locations = new List<ILocation>(localDeclarationStatement.Locations),
+          Type = typ,
+        };
+        var e2 = ExpressionFor(defaultValue);
+        StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, boogieLocalExpr, e2));
+        proc = this.sink.FindOrCreateProcedureForStructCopy(typ);
+        StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr> { e, boogieLocalExpr, }, new List<Bpl.IdentifierExpr>()));
+      } else {
+        StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, boogieLocalExpr, e));
+      }
       return;
     }
 
