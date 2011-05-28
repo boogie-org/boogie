@@ -595,7 +595,8 @@ namespace BytecodeTranslator
     /// <param name="assignment"></param>
     public override void Visit(IAssignment assignment) {
       Contract.Assert(TranslatedExpressions.Count == 0);
-      TranslateAssignment(assignment.Token(), assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
+      var tok = assignment.Token();
+      TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
       return;
 
     }
@@ -608,13 +609,28 @@ namespace BytecodeTranslator
     private void TranslateAssignment(Bpl.IToken tok, object container, IExpression/*?*/ instance, IExpression source) {
       Contract.Assert(TranslatedExpressions.Count == 0);
 
+      var typ = source.Type;
+      var structCopy = typ.IsValueType && typ.TypeCode == PrimitiveTypeCode.NotPrimitive && !(source is IDefaultValue);
+      // then a struct value of type S is being assigned: "lhs := s"
+      // model this as the statement "call lhs := S..#copy_ctor(s)" that does the bit-wise copying
+      Bpl.DeclWithFormals proc = null;
+      if (structCopy) {
+        proc = this.sink.FindOrCreateProcedureForStructCopy(typ);
+      }
+      Bpl.Cmd cmd;
+
       var/*?*/ local = container as ILocalDefinition;
       if (local != null) {
         Contract.Assume(instance == null);
         this.Visit(source);
         var e = this.TranslatedExpressions.Pop();
         var bplLocal = Bpl.Expr.Ident(this.sink.FindOrCreateLocalVariable(local));
-        StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, bplLocal, e));
+        if (structCopy) {
+          cmd = new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr>{ e, bplLocal, }, new List<Bpl.IdentifierExpr>());
+        } else {
+          cmd = Bpl.Cmd.SimpleAssign(tok, bplLocal, e);
+        }
+        StmtTraverser.StmtBuilder.Add(cmd);
         return;
       }
 
