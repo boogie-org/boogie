@@ -460,12 +460,13 @@ namespace Microsoft.Dafny {
             AddLimitedAxioms(f, 1);
           }
           for (int layerOffset = 0; layerOffset < 2; layerOffset++) {
-            if (f.Body is MatchExpr) {
-              AddFunctionAxiomCase(f, (MatchExpr)f.Body, null, layerOffset);
+            var body = f.Body == null ? null : f.Body.Resolved;
+            if (body is MatchExpr) {
+              AddFunctionAxiomCase(f, (MatchExpr)body, null, layerOffset);
               Bpl.Axiom axPost = FunctionAxiom(f, null, f.Ens, null, layerOffset);
               sink.TopLevelDeclarations.Add(axPost);
             } else {
-              Bpl.Axiom ax = FunctionAxiom(f, f.Body, f.Ens, null, layerOffset);
+              Bpl.Axiom ax = FunctionAxiom(f, body, f.Ens, null, layerOffset);
               sink.TopLevelDeclarations.Add(ax);
             }
             if (!f.IsRecursive || f.IsUnlimited) { break; }
@@ -510,10 +511,11 @@ namespace Microsoft.Dafny {
       foreach (MatchCaseExpr mc in me.Cases) {
         Contract.Assert(mc.Ctor != null);  // the field is filled in by resolution
         Specialization s = new Specialization(formal, mc, prev);
-        if (mc.Body is MatchExpr) {
-          AddFunctionAxiomCase(f, (MatchExpr)mc.Body, s, layerOffset);
+        var body = mc.Body.Resolved;
+        if (body is MatchExpr) {
+          AddFunctionAxiomCase(f, (MatchExpr)body, s, layerOffset);
         } else {
-          Bpl.Axiom ax = FunctionAxiom(f, mc.Body, new List<Expression>(), s, layerOffset);
+          Bpl.Axiom ax = FunctionAxiom(f, body, new List<Expression>(), s, layerOffset);
           sink.TopLevelDeclarations.Add(ax);
         }
       }
@@ -2093,6 +2095,7 @@ namespace Microsoft.Dafny {
       } else if (expr is ConcreteSyntaxExpression) {
         var e = (ConcreteSyntaxExpression)expr;
         CheckWellformedWithResult(e.ResolvedExpression, options, result, resultType, locals, builder, etran);
+        result = null;
 
       } else {
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected expression
@@ -3067,7 +3070,8 @@ namespace Microsoft.Dafny {
           Bpl.Expr Si = FunctionCall(stmt.Tok, BuiltinFunction.SeqIndex, predef.BoxType, S, i);
           Bpl.Trigger tr = new Bpl.Trigger(stmt.Tok, true, new Bpl.ExprSeq(Si));
           // TODO: in the next line, the == should be replaced by something that understands extensionality, for sets and sequences
-          oInS = new Bpl.ExistsExpr(stmt.Tok, new Bpl.VariableSeq(iVar), tr, Bpl.Expr.And(range, Bpl.Expr.Eq(Si, o)));
+          var boxO = etran.BoxIfNecessary(stmt.Tok, o, ((SeqType)s.Collection.Type).Arg);
+          oInS = new Bpl.ExistsExpr(stmt.Tok, new Bpl.VariableSeq(iVar), tr, Bpl.Expr.And(range, Bpl.Expr.Eq(Si, boxO)));
         }
         oInS = Bpl.Expr.And(Bpl.Expr.Neq(o, predef.Null), oInS);
         
@@ -5332,7 +5336,7 @@ namespace Microsoft.Dafny {
       } else if (expandFunctions && expr is FunctionCallExpr) {
         var fexp = (FunctionCallExpr)expr;
         Contract.Assert(fexp.Function != null);  // filled in during resolution
-        if (fexp.Function.Body != null && !(fexp.Function.Body is MatchExpr)) {
+        if (fexp.Function.Body != null && !(fexp.Function.Body.Resolved is MatchExpr)) {
           // inline this body
           Dictionary<IVariable, Expression> substMap = new Dictionary<IVariable, Expression>();
           Contract.Assert(fexp.Args.Count == fexp.Function.Formals.Count);
@@ -5533,7 +5537,7 @@ namespace Microsoft.Dafny {
       // consider automatically applying induction
       var inductionVariables = new List<BoundVar>();
       foreach (var n in e.BoundVars) {
-        if (VarOccursInArgumentToRecursiveFunction(e.LogicalBody(), n, null)) {
+        if (!n.Type.IsTypeParameter && VarOccursInArgumentToRecursiveFunction(e.LogicalBody(), n, null)) {
           if (CommandLineOptions.Clo.Trace) {
             Console.Write("Applying automatic induction on variable '{0}' of: ", n.Name);
             new Printer(Console.Out).PrintExpression(e);

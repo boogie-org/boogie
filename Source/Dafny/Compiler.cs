@@ -211,7 +211,7 @@ namespace Microsoft.Dafny {
 
         Indent(ind);
         wr.Write("public {0}(", DtCtorName(ctor));
-        WriteFormals(ctor.Formals);
+        WriteFormals("", ctor.Formals);
         wr.WriteLine(") {");
         i = 0;
         foreach (Formal arg in ctor.Formals) {
@@ -297,11 +297,11 @@ namespace Microsoft.Dafny {
       wr.WriteLine("}");
     }
     
-    void WriteFormals(List<Formal/*!*/>/*!*/ formals)
+    void WriteFormals(string sep, List<Formal/*!*/>/*!*/ formals)
     {
+      Contract.Requires(sep != null);
       Contract.Requires(cce.NonNullElements(formals));
       int i = 0;
-      string sep = "";
       foreach (Formal arg in formals) {
         if (!arg.IsGhost) {
           string name = FormalName(arg, i);
@@ -349,47 +349,9 @@ namespace Microsoft.Dafny {
               wr.Write("<{0}>", TypeParameters(f.TypeArgs));
             }
             wr.Write("(");
-            WriteFormals(f.Formals);
+            WriteFormals("", f.Formals);
             wr.WriteLine(") {");
-            if (f.Body is MatchExpr) {
-              MatchExpr me = (MatchExpr)f.Body;
-              // Type source = e;
-              // if (source._D is Dt_Ctor0) {
-              //   FormalType f0 = ((Dt_Ctor0)source._D).a0;
-              //   ...
-              //   return Body0;
-              // } else if (...) {
-              //   ...
-              // } else if (true) {
-              //   ...
-              // }
-
-              string source = "_source" + tmpVarCount;
-              tmpVarCount++;
-              Indent(indent);
-              wr.Write("{0} {1} = ", TypeName(cce.NonNull(me.Source.Type)), source);
-              TrExpr(me.Source);
-              wr.WriteLine(";");
-
-              int i = 0;
-              foreach (MatchCaseExpr mc in me.Cases) {
-                MatchCasePrelude(source, cce.NonNull(mc.Ctor), mc.Arguments, i, me.Cases.Count, indent + IndentAmount);
-                
-                Indent(indent + 2*IndentAmount);
-                wr.Write("return ");
-                TrExpr(mc.Body);
-                wr.WriteLine(";");
-                i++;
-              }
-
-              Indent(indent);  wr.WriteLine("}");
-
-            } else {
-              Indent(indent + IndentAmount);
-              wr.Write("return ");
-              TrExpr(f.Body);
-              wr.WriteLine(";");
-            }
+            CompileReturnBody(f.Body, indent);
             Indent(indent);  wr.WriteLine("}");
           }
           
@@ -402,11 +364,8 @@ namespace Microsoft.Dafny {
               wr.Write("<{0}>", TypeParameters(m.TypeArgs));
             }
             wr.Write("(");
-            WriteFormals(m.Ins);
-            if (m.Ins.Count != 0 && m.Outs.Count != 0) {
-              wr.Write(", ");
-            }
-            WriteFormals(m.Outs);
+            WriteFormals("", m.Ins);
+            WriteFormals(", ", m.Outs);
             wr.WriteLine(")");
             Indent(indent);  wr.WriteLine("{");
             foreach (Formal p in m.Outs) {
@@ -453,7 +412,51 @@ namespace Microsoft.Dafny {
         }
       }
     }
-    
+
+    void CompileReturnBody(Expression body, int indent) {
+      body = body.Resolved;
+      if (body is MatchExpr) {
+        MatchExpr me = (MatchExpr)body;
+        // Type source = e;
+        // if (source._D is Dt_Ctor0) {
+        //   FormalType f0 = ((Dt_Ctor0)source._D).a0;
+        //   ...
+        //   return Body0;
+        // } else if (...) {
+        //   ...
+        // } else if (true) {
+        //   ...
+        // }
+
+        string source = "_source" + tmpVarCount;
+        tmpVarCount++;
+        Indent(indent);
+        wr.Write("{0} {1} = ", TypeName(cce.NonNull(me.Source.Type)), source);
+        TrExpr(me.Source);
+        wr.WriteLine(";");
+
+        if (me.Cases.Count == 0) {
+          // the verifier would have proved we never get here; still, we need some code that will compile
+          Indent(indent);
+          wr.WriteLine("throw new System.Exception();");
+        } else {
+          int i = 0;
+          foreach (MatchCaseExpr mc in me.Cases) {
+            MatchCasePrelude(source, cce.NonNull(mc.Ctor), mc.Arguments, i, me.Cases.Count, indent + IndentAmount);
+            CompileReturnBody(mc.Body, indent + IndentAmount);
+            i++;
+          }
+          Indent(indent); wr.WriteLine("}");
+        }
+
+      } else {
+        Indent(indent + IndentAmount);
+        wr.Write("return ");
+        TrExpr(body);
+        wr.WriteLine(";");
+      }
+    }
+
     // ----- Type ---------------------------------------------------------------------------------
     
     readonly string DafnySetClass = "Dafny.Set";
