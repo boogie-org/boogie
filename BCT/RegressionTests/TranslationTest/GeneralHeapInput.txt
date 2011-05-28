@@ -692,6 +692,8 @@ implementation {:inline 1} RegressionTestInput.S.#default_ctor(this: Ref)
 
 
 procedure RegressionTestInput.S.#copy_ctor(this: Ref, other: Ref);
+  free requires this != other;
+  free ensures this != other;
 
 
 

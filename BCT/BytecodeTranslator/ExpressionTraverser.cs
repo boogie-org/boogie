@@ -640,7 +640,12 @@ namespace BytecodeTranslator
         this.Visit(source);
         var e = this.TranslatedExpressions.Pop();
         var bplParam = Bpl.Expr.Ident(this.sink.FindParameterVariable(parameter, this.contractContext));
-        StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, bplParam, e));
+        if (structCopy) {
+          cmd = new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr> { e, bplParam, }, new List<Bpl.IdentifierExpr>());
+        } else {
+          cmd = Bpl.Cmd.SimpleAssign(tok, bplParam, e);
+        }
+        StmtTraverser.StmtBuilder.Add(cmd);
         return;
       }
 

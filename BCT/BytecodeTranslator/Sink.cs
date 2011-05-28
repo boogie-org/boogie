@@ -473,6 +473,24 @@ namespace BytecodeTranslator {
 
         #endregion
 
+        #region Add disjointness contracts for any struct values passed by value
+        var paramList = new List<IParameterDefinition>(method.Parameters);
+        for (int p1index = 0; p1index < method.ParameterCount; p1index++) {
+          var p1 = paramList[p1index];
+          if (p1.IsByReference) continue;
+          if (!(p1.Type.IsValueType && p1.Type.TypeCode == PrimitiveTypeCode.NotPrimitive)) continue;
+          for (int p2index = p1index + 1; p2index < method.ParameterCount; p2index++) {
+            var p2 = paramList[p2index];
+            if (p2.IsByReference) continue;
+            if (!(p2.Type.IsValueType && p2.Type.TypeCode == PrimitiveTypeCode.NotPrimitive)) continue;
+            if (!TypeHelper.TypesAreEquivalent(p1.Type, p2.Type)) continue;
+            var req = new Bpl.Requires(true, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq,
+              Bpl.Expr.Ident(formalMap[p1].inParameterCopy), Bpl.Expr.Ident(formalMap[p2].inParameterCopy)));
+            boogiePrecondition.Add(req);
+          }
+        }
+        #endregion
+
         var tok = method.Token();
         Bpl.DeclWithFormals decl;
         if (IsPure(method)) {
@@ -573,13 +591,18 @@ namespace BytecodeTranslator {
         var otherIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "other", selfType), false);
         var invars = new Bpl.Formal[] { selfIn, otherIn, };
         var outvars = new Bpl.Formal[0];
+        var selfInExpr = Bpl.Expr.Ident(selfIn);
+        var otherInExpr = Bpl.Expr.Ident(otherIn);
+        var req = new Bpl.Requires(true, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, selfInExpr, otherInExpr));
+        var ens = new Bpl.Ensures(true, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, selfInExpr, otherInExpr));
+
         var proc = new Bpl.Procedure(Bpl.Token.NoToken, typename + ".#copy_ctor",
           new Bpl.TypeVariableSeq(),
           new Bpl.VariableSeq(invars),
           new Bpl.VariableSeq(outvars),
-          new Bpl.RequiresSeq(),
+          new Bpl.RequiresSeq(req),
           new Bpl.IdentifierExprSeq(), // modifies
-          new Bpl.EnsuresSeq()
+          new Bpl.EnsuresSeq(ens)
           );
         this.TranslatedProgram.TopLevelDeclarations.Add(proc);
         procAndFormalMap = new ProcedureInfo(proc, new Dictionary<IParameterDefinition, MethodParameter>(), this.RetVariable);
