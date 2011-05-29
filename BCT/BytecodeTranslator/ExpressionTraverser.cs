@@ -324,7 +324,13 @@ namespace BytecodeTranslator
       }
       switch (constant.Type.TypeCode) {
         case PrimitiveTypeCode.Boolean:
-          TranslatedExpressions.Push(((bool)constant.Value) ? Bpl.Expr.True : Bpl.Expr.False);
+          // Decompiler might not have converted the constant back to a boolean? Not sure why,
+          // but that's what I'm seeing here.
+          if (constant.Value is bool) {
+            TranslatedExpressions.Push(((bool)constant.Value) ? Bpl.Expr.True : Bpl.Expr.False);
+          } else {
+            TranslatedExpressions.Push(((int)constant.Value) != 0 ? Bpl.Expr.True : Bpl.Expr.False);
+          }
           break;
         case PrimitiveTypeCode.Char: // chars are represented as ints
         case PrimitiveTypeCode.Int16:
@@ -400,6 +406,8 @@ namespace BytecodeTranslator
         e = Bpl.Expr.Ident(this.sink.Heap.NullRef);
       } else if (bplType == this.sink.Heap.BoxType) {
         e = Bpl.Expr.Ident(this.sink.Heap.DefaultBox);
+      } else if (bplType == this.sink.Heap.RealType) {
+        e = Bpl.Expr.Ident(this.sink.Heap.DefaultReal);
       } else {
         throw new NotImplementedException(String.Format("Don't know how to translate type: '{0}'", TypeHelper.GetTypeName(typ)));
       }
@@ -735,6 +743,19 @@ namespace BytecodeTranslator
         var be2 = addressDereference.Address as IBoundExpression;
         if (be2 != null) {
           TranslateAssignment(tok, be2.Definition, be2.Instance, source);
+          return;
+        }
+        var thisExp = addressDereference.Address as IThisReference;
+        if (thisExp != null) {
+          // I believe this happens only when a struct calls the default
+          // ctor (probably only ever done in a different ctor for the
+          // struct). The assignment actually looks like "*this := DefaultValue(S)"
+          Contract.Assume(instance == null);
+          this.Visit(source);
+          var e = this.TranslatedExpressions.Pop();
+          var bplLocal = Bpl.Expr.Ident(this.sink.ThisVariable);
+          cmd = Bpl.Cmd.SimpleAssign(tok, bplLocal, e);
+          StmtTraverser.StmtBuilder.Add(cmd);
           return;
         }
       }
@@ -1133,6 +1154,17 @@ namespace BytecodeTranslator
                 );
             TranslatedExpressions.Push(convExpr);
             return;
+          } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.NotPrimitive) {
+            var convExpr = new Bpl.NAryExpr(
+              conversion.Token(),
+              new Bpl.FunctionCall(this.sink.Heap.Ref2Real),
+              new Bpl.ExprSeq(exp,
+                new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.ValueToConvert.Type)),
+                new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.TypeAfterConversion))
+                )
+                );
+            TranslatedExpressions.Push(convExpr);
+            return;
           } else {
             throw new NotImplementedException();
           }
@@ -1222,7 +1254,7 @@ namespace BytecodeTranslator
 
       public override IExpression Rewrite(IBoundExpression boundExpression) {
 
-        if (ExpressionTraverser.IsAtomicInstance(boundExpression.Instance)) return boundExpression;
+        if (boundExpression.Instance == null || ExpressionTraverser.IsAtomicInstance(boundExpression.Instance)) return boundExpression;
 
         // boundExpression == BE(inst, def), i.e., inst.def
         // return { loc := e; [assert loc != null;] | BE(BE(null,loc), def) }, i.e., "loc := e; loc.def"
