@@ -512,6 +512,7 @@ namespace BytecodeTranslator
 
     }
 
+    // REVIEW: Does "thisExpr" really need to come back as an identifier? Can't it be a general expression?
     protected Bpl.DeclWithFormals TranslateArgumentsAndReturnProcedure(Bpl.IToken token, IMethodReference methodToCall, IMethodDefinition resolvedMethod, IExpression/*?*/ thisArg, IEnumerable<IExpression> arguments, out List<Bpl.Expr> inexpr, out List<Bpl.IdentifierExpr> outvars, out Bpl.IdentifierExpr thisExpr, out Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed) {
       inexpr = new List<Bpl.Expr>();
       outvars = new List<Bpl.IdentifierExpr>();
@@ -522,12 +523,15 @@ namespace BytecodeTranslator
         this.Visit(thisArg);
 
         var e = this.TranslatedExpressions.Pop();
-        inexpr.Add(e);
-        if (e is Bpl.NAryExpr) {
-          e = ((Bpl.NAryExpr)e).Args[0];
+        var identifierExpr = e as Bpl.IdentifierExpr;
+        if (identifierExpr == null) {
+          var newLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(thisArg.Type));
+          var cmd = Bpl.Cmd.SimpleAssign(token, newLocal, e);
+          this.StmtTraverser.StmtBuilder.Add(cmd);
+          e = newLocal;
         }
-        thisExpr = e as Bpl.IdentifierExpr;
-        Bpl.Variable x = thisExpr.Decl;
+        inexpr.Add(e);
+        thisExpr = (Bpl.IdentifierExpr) e;
       }
       if (thisArg != null && methodToCall.ContainingType.ResolvedType.IsStruct) {
         outvars.Add(thisExpr);
