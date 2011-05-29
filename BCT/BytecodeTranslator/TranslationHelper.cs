@@ -122,6 +122,10 @@ namespace BytecodeTranslator {
       return s;
     }
 
+    public static bool IsStruct(ITypeReference typ) {
+      return typ.IsValueType && !typ.IsEnum && typ.TypeCode == PrimitiveTypeCode.NotPrimitive;
+    }
+
     #region Temp Stuff that must be replaced as soon as there is real code to deal with this
 
     public static Bpl.Variable TempThisVar() {

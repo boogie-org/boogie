@@ -85,28 +85,6 @@ namespace BytecodeTranslator {
     
     public readonly Bpl.Program TranslatedProgram;
 
-    public Bpl.Expr DefaultValue(ITypeReference type) {
-      var bplType = CciTypeToBoogie(type);
-      if (bplType == Bpl.Type.Int) {
-        var lit = Bpl.Expr.Literal(0);
-        lit.Type = Bpl.Type.Int;
-        return lit;
-      } else if (bplType == Bpl.Type.Bool) {
-        var lit = Bpl.Expr.False;
-        lit.Type = Bpl.Type.Bool;
-        return lit;
-      } else if (type.ResolvedType.IsStruct) {
-        return Bpl.Expr.Ident(this.Heap.DefaultStruct);
-      } else if (bplType == this.Heap.RefType) {
-        return Bpl.Expr.Ident(this.Heap.NullRef);
-      }
-      else if (bplType == this.Heap.BoxType) {
-        return Bpl.Expr.Ident(this.Heap.DefaultBox);
-      } else {
-        throw new NotImplementedException(String.Format("Don't know how to translate type: '{0}'", TypeHelper.GetTypeName(type)));
-      }
-    }
-
     public Bpl.Type CciTypeToBoogie(ITypeReference type) {
       if (TypeHelper.TypesAreEquivalent(type, type.PlatformType.SystemBoolean))
         return Bpl.Type.Bool;
@@ -478,11 +456,11 @@ namespace BytecodeTranslator {
         for (int p1index = 0; p1index < method.ParameterCount; p1index++) {
           var p1 = paramList[p1index];
           if (p1.IsByReference) continue;
-          if (!(p1.Type.IsValueType && p1.Type.TypeCode == PrimitiveTypeCode.NotPrimitive)) continue;
+          if (!TranslationHelper.IsStruct(p1.Type)) continue;
           for (int p2index = p1index + 1; p2index < method.ParameterCount; p2index++) {
             var p2 = paramList[p2index];
             if (p2.IsByReference) continue;
-            if (!(p2.Type.IsValueType && p2.Type.TypeCode == PrimitiveTypeCode.NotPrimitive)) continue;
+            if (!TranslationHelper.IsStruct(p2.Type)) continue;
             if (!TypeHelper.TypesAreEquivalent(p1.Type, p2.Type)) continue;
             var req = new Bpl.Requires(true, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq,
               Bpl.Expr.Ident(formalMap[p1].inParameterCopy), Bpl.Expr.Ident(formalMap[p2].inParameterCopy)));

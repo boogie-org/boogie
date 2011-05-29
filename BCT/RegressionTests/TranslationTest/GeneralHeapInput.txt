@@ -685,8 +685,6 @@ implementation RegressionTestInput.RefParameters.#cctor()
 
 implementation {:inline 1} RegressionTestInput.S.#default_ctor(this: Ref)
 {
-    $Heap := Write($Heap, this, RegressionTestInput.S.x, Int2Box(0));
-    $Heap := Write($Heap, this, RegressionTestInput.S.b, Bool2Box(false));
 }
 
 

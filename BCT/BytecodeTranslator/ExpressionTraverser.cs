@@ -350,7 +350,8 @@ namespace BytecodeTranslator
 
       var typ = defaultValue.Type;
 
-      if (typ.IsValueType && typ.TypeCode == PrimitiveTypeCode.NotPrimitive) {
+      #region Struct
+      if (TranslationHelper.IsStruct(typ)) {
         // then it is a struct and gets special treatment
         // translate it as if it were a call to the nullary ctor for the struct type
         // (which doesn't actually exist, but gets generated for each struct type
@@ -383,8 +384,28 @@ namespace BytecodeTranslator
         this.TranslatedExpressions.Push(locExpr);
         return;
       }
+      #endregion
 
-      TranslatedExpressions.Push(this.sink.DefaultValue(typ));
+      Bpl.Expr e;
+      var bplType = this.sink.CciTypeToBoogie(typ);
+      if (bplType == Bpl.Type.Int) {
+        var lit = Bpl.Expr.Literal(0);
+        lit.Type = Bpl.Type.Int;
+        e = lit;
+      } else if (bplType == Bpl.Type.Bool) {
+        var lit = Bpl.Expr.False;
+        lit.Type = Bpl.Type.Bool;
+        e = lit;
+      } else if (bplType == this.sink.Heap.RefType) {
+        e = Bpl.Expr.Ident(this.sink.Heap.NullRef);
+      } else if (bplType == this.sink.Heap.BoxType) {
+        e = Bpl.Expr.Ident(this.sink.Heap.DefaultBox);
+      } else {
+        throw new NotImplementedException(String.Format("Don't know how to translate type: '{0}'", TypeHelper.GetTypeName(typ)));
+      }
+
+      TranslatedExpressions.Push(e);
+      return;
     }
 
     #endregion
@@ -614,7 +635,7 @@ namespace BytecodeTranslator
       Contract.Assert(TranslatedExpressions.Count == 0);
 
       var typ = source.Type;
-      var structCopy = typ.IsValueType && typ.TypeCode == PrimitiveTypeCode.NotPrimitive && !(source is IDefaultValue);
+      var structCopy = TranslationHelper.IsStruct(typ) && !(source is IDefaultValue);
       // then a struct value of type S is being assigned: "lhs := s"
       // model this as the statement "call lhs := S..#copy_ctor(s)" that does the bit-wise copying
       Bpl.DeclWithFormals proc = null;

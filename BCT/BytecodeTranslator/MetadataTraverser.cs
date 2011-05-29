@@ -104,29 +104,47 @@ namespace BytecodeTranslator {
 
       var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typeDefinition);
 
-      var stmtBuilder = new Bpl.StmtListBuilder();
+      this.sink.BeginMethod();
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
+      var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
-        var e = this.sink.DefaultValue(f.Type);
-        var fExp = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f));
-        var o = Bpl.Expr.Ident(proc.InParams[0]);
-        var boogieType = sink.CciTypeToBoogie(f.Type);
-        var c = this.sink.Heap.WriteHeap(Bpl.Token.NoToken, o, fExp, e, AccessType.Struct, boogieType);
-        stmtBuilder.Add(c);
+        if (f.IsStatic) continue;
+        var s = new ExpressionStatement() {
+          Expression = new Assignment() {
+            Source = new DefaultValue() { DefaultValueType = f.Type, Type = f.Type, },
+            Target = new TargetExpression() {
+              Definition = f,
+              Instance = new ThisReference() { Type = typeDefinition, },
+              Type = f.Type,
+            },
+            Type = f.Type,
+          },
+        };
       }
+
+      stmtTranslator.Visit(stmts);
+      var translatedStatements = stmtTranslator.StmtBuilder.Collect(Bpl.Token.NoToken);
 
       var lit = Bpl.Expr.Literal(1);
       lit.Type = Bpl.Type.Int;
       var args = new List<object> { lit };
       var attrib = new Bpl.QKeyValue(typeDefinition.Token(), "inline", args, null); // TODO: Need to have it be {:inine 1} (and not just {:inline})?
+
+      List<Bpl.Variable> vars = new List<Bpl.Variable>();
+      foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
+        vars.Add(v);
+      }
+      Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
+
       Bpl.Implementation impl =
         new Bpl.Implementation(Bpl.Token.NoToken,
         proc.Name,
         new Bpl.TypeVariableSeq(),
         proc.InParams,
         proc.OutParams,
-        new Bpl.VariableSeq(),
-        stmtBuilder.Collect(Bpl.Token.NoToken),
+        vseq,
+        translatedStatements,
         attrib,
         new Bpl.Errors()
         );
@@ -143,6 +161,7 @@ namespace BytecodeTranslator {
       var stmtBuilder = new Bpl.StmtListBuilder();
 
       foreach (var f in typeDefinition.Fields) {
+        if (f.IsStatic) continue;
         var boogieType = sink.CciTypeToBoogie(f.Type);
         var fExp = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f));
         var e = this.sink.Heap.ReadHeap(Bpl.Expr.Ident(proc.InParams[0]), fExp, AccessType.Struct, boogieType);
@@ -187,31 +206,48 @@ namespace BytecodeTranslator {
 
       this.sink.TranslatedProgram.TopLevelDeclarations.Add(proc);
 
-      var stmtBuilder = new Bpl.StmtListBuilder();
-      foreach (var f in typeDefinition.Fields) {
-        if (f.IsStatic) {
+      this.sink.BeginMethod();
 
-          var e = this.sink.DefaultValue(f.Type);
-          stmtBuilder.Add(
-            TranslationHelper.BuildAssignCmd(
-            Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f)), 
-            e
-            ));
-        }
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
+      var stmts = new List<IStatement>();
+
+      foreach (var f in typeDefinition.Fields) {
+        if (!f.IsStatic) continue;
+        stmts.Add(
+          new ExpressionStatement() {
+            Expression = new Assignment() {
+              Source = new DefaultValue() { DefaultValueType = f.Type, Type = f.Type, },
+              Target = new TargetExpression() {
+                Definition = f,
+                Instance = null,
+                Type = f.Type,
+              },
+              Type = f.Type,
+            }
+          });
       }
+
+      stmtTranslator.Visit(stmts);
+      var translatedStatements = stmtTranslator.StmtBuilder.Collect(Bpl.Token.NoToken);
+
+      List<Bpl.Variable> vars = new List<Bpl.Variable>();
+      foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
+        vars.Add(v);
+      }
+      Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
+
       Bpl.Implementation impl =
         new Bpl.Implementation(Bpl.Token.NoToken,
         proc.Name,
         new Bpl.TypeVariableSeq(),
         proc.InParams,
         proc.OutParams,
-        new Bpl.VariableSeq(),
-        stmtBuilder.Collect(Bpl.Token.NoToken)
+        vseq,
+        translatedStatements
         );
 
       impl.Proc = proc;
       this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
-
 
     }
 

@@ -675,8 +675,6 @@ implementation RegressionTestInput.RefParameters.#cctor()
 
 implementation {:inline 1} RegressionTestInput.S.#default_ctor(this: Ref)
 {
-    this[RegressionTestInput.S.x] := Int2Box(0);
-    this[RegressionTestInput.S.b] := Bool2Box(false);
 }
 
 
