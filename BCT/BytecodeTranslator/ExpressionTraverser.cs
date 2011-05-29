@@ -265,7 +265,7 @@ namespace BytecodeTranslator
       var addressOf = expression as IAddressOf;
       if (addressOf != null) {
         var ae = addressOf.Expression;
-        return ae.Instance == null;
+        return ae.Instance == null || IsAtomicInstance(ae.Instance);
       }
       var be = expression as IBoundExpression;
       if (be == null) return false;
@@ -658,7 +658,7 @@ namespace BytecodeTranslator
           // static fields are not kept in the heap
           StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, f, e));
         } else {
-          if (field.ContainingType.ResolvedType.IsStruct) {
+          if (false && field.ContainingType.ResolvedType.IsStruct) {
             //var s_prime = this.sink.CreateFreshLocal(this.sink.Heap.StructType);
             //var s_prime_expr = Bpl.Expr.Ident(s_prime);
             //var boogieType = sink.CciTypeToBoogie(field.Type);
