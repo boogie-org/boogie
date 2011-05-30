@@ -229,6 +229,13 @@ namespace BytecodeTranslator {
     public Bpl.Function Real2Ref = null;
     #endregion
 
+    #region Ref conversions
+    [RepresentationFor("Ref2Int", "function Ref2Int(Ref, Type, Type): int;")]
+    public Bpl.Function Ref2Int = null;
+    [RepresentationFor("Ref2Bool", "function Ref2Bool(Ref, Type, Type): bool;")]
+    public Bpl.Function Ref2Bool = null;
+    #endregion
+
     #endregion
 
     /// <summary>

@@ -341,11 +341,28 @@ namespace BytecodeTranslator
           lit.Type = Bpl.Type.Int;
           TranslatedExpressions.Push(lit);
           break;
+        case PrimitiveTypeCode.UInt16:
+        case PrimitiveTypeCode.UInt32:
+        case PrimitiveTypeCode.UInt64:
+        case PrimitiveTypeCode.UInt8:
+          lit = Bpl.Expr.Literal((int)(uint)constant.Value);
+          lit.Type = Bpl.Type.Int;
+          TranslatedExpressions.Push(lit);
+          break;
         case PrimitiveTypeCode.Float32:
         case PrimitiveTypeCode.Float64:
           var c = this.sink.FindOrCreateConstant((double)(constant.Value));
           TranslatedExpressions.Push(Bpl.Expr.Ident(c));
           return;
+        case PrimitiveTypeCode.NotPrimitive:
+          if (constant.Type.IsEnum) {
+            lit = Bpl.Expr.Literal((int)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            return;
+          }
+          throw new NotImplementedException(String.Format("Can't translate compile-time constant of type '{0}'",
+            TypeHelper.GetTypeName(constant.Type)));
         default:
           throw new NotImplementedException();
       }
@@ -1075,6 +1092,10 @@ namespace BytecodeTranslator
         // then this conversion is a nop, just ignore it
         return;
       }
+      var nameOfTypeToConvert = TypeHelper.GetTypeName(conversion.ValueToConvert.Type);
+      var nameOfTypeToBeConvertedTo = TypeHelper.GetTypeName(conversion.TypeAfterConversion);
+      var msg = String.Format("Can't convert '{0}' to '{1}'", nameOfTypeToConvert, nameOfTypeToBeConvertedTo);
+
       var exp = TranslatedExpressions.Pop();
       switch (conversion.TypeAfterConversion.TypeCode) {
         case PrimitiveTypeCode.Int16:
@@ -1109,15 +1130,36 @@ namespace BytecodeTranslator
                 return;
               }
 
+            case PrimitiveTypeCode.NotPrimitive:
+                TranslatedExpressions.Push(new Bpl.NAryExpr(
+                  conversion.Token(),
+                  new Bpl.FunctionCall(this.sink.Heap.Ref2Int),
+                  new Bpl.ExprSeq(exp,
+                    new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.ValueToConvert.Type)),
+                    new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.TypeAfterConversion))
+                    )
+                    ));
+                    return;
+
             default:
-              throw new NotImplementedException();
+              throw new NotImplementedException(msg);
           }
         case PrimitiveTypeCode.Boolean:
           if (TypeHelper.IsPrimitiveInteger(conversion.ValueToConvert.Type)) {
               TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, exp, Bpl.Expr.Literal(0)));
               return;
+          } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.NotPrimitive) {
+            TranslatedExpressions.Push(new Bpl.NAryExpr(
+              conversion.Token(),
+              new Bpl.FunctionCall(this.sink.Heap.Ref2Bool),
+              new Bpl.ExprSeq(exp,
+                new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.ValueToConvert.Type)),
+                new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.TypeAfterConversion))
+                )
+                ));
+            return;
           } else {
-            throw new NotImplementedException();
+            throw new NotImplementedException(msg);
           }
         case PrimitiveTypeCode.NotPrimitive:
           Bpl.Function func;
@@ -1128,8 +1170,11 @@ namespace BytecodeTranslator
           } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.NotPrimitive) {
             // REVIEW: Do we need to check to make sure that conversion.ValueToConvert.Type.IsValueType?
             func = this.sink.Heap.Struct2Ref;
+          } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Float32 ||
+            conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Float64) {
+              func = this.sink.Heap.Real2Ref;
           } else {
-            throw new NotImplementedException();
+            throw new NotImplementedException(msg);
           }
           var boxExpr = new Bpl.NAryExpr(
             conversion.Token(),
@@ -1163,10 +1208,10 @@ namespace BytecodeTranslator
             TranslatedExpressions.Push(convExpr);
             return;
           } else {
-            throw new NotImplementedException();
+            throw new NotImplementedException(msg);
           }
         default:
-          throw new NotImplementedException();
+          throw new NotImplementedException(msg);
       }
     }
 

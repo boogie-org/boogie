@@ -333,6 +333,10 @@ function Ref2Real(Ref, Type, Type) : Real;
 
 function Real2Ref(Real, Type, Type) : Ref;
 
+function Ref2Int(Ref, Type, Type) : int;
+
+function Ref2Bool(Ref, Type, Type) : bool;
+
 function $DynamicType(Ref) : Type;
 
 function $TypeOf(Type) : Ref;
