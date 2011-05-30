@@ -913,6 +913,14 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Div, lexp, rexp));
     }
 
+    // TODO: Encode this correctly!
+    public override void Visit(IExclusiveOr exclusiveOr) {
+      base.Visit(exclusiveOr);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or, lexp, rexp));
+    }
+
     public override void Visit(ISubtraction subtraction)
     {
       base.Visit(subtraction);

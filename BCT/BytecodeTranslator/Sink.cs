@@ -389,10 +389,49 @@ namespace BytecodeTranslator {
 
         #endregion
 
-        #region Check The Method Contracts
+        var tok = method.Token();
         Bpl.RequiresSeq boogiePrecondition = new Bpl.RequiresSeq();
         Bpl.EnsuresSeq boogiePostcondition = new Bpl.EnsuresSeq();
         Bpl.IdentifierExprSeq boogieModifies = new Bpl.IdentifierExprSeq();
+
+        Bpl.DeclWithFormals decl;
+        if (IsPure(method)) {
+          var func = new Bpl.Function(tok,
+            MethodName,
+            new Bpl.VariableSeq(invars),
+            this.RetVariable);
+          decl = func;
+        } else {
+          var proc = new Bpl.Procedure(tok,
+              MethodName,
+              new Bpl.TypeVariableSeq(),
+              new Bpl.VariableSeq(invars),
+              new Bpl.VariableSeq(outvars),
+              boogiePrecondition,
+              boogieModifies,
+              boogiePostcondition);
+          decl = proc;
+        }
+        if (this.assemblyBeingTranslated != null && !TypeHelper.GetDefiningUnitReference(method.ContainingType).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity)) {
+          var attrib = new Bpl.QKeyValue(tok, "extern", new List<object>(1), null);
+          decl.Attributes = attrib;
+        }
+
+        string newName = null;
+        if (IsStubMethod(method, out newName)) {
+          if (newName != null) {
+            decl.Name = newName;
+          }
+        } else {
+          this.TranslatedProgram.TopLevelDeclarations.Add(decl);
+        }
+        procAndFormalMap = new ProcedureInfo(decl, formalMap, this.RetVariable);
+        this.declaredMethods.Add(key, procAndFormalMap);
+
+        // Can't visit the method's contracts until the formalMap and procedure are added to the
+        // table because information in them might be needed (e.g., if a parameter is mentioned
+        // in a contract.
+        #region Check The Method Contracts
 
         var possiblyUnspecializedMethod = Unspecialize(method);
 
@@ -457,40 +496,6 @@ namespace BytecodeTranslator {
         }
         #endregion
 
-        var tok = method.Token();
-        Bpl.DeclWithFormals decl;
-        if (IsPure(method)) {
-          var func = new Bpl.Function(tok,
-            MethodName,
-            new Bpl.VariableSeq(invars),
-            this.RetVariable);
-          decl = func;
-        } else {
-          var proc = new Bpl.Procedure(tok,
-              MethodName,
-              new Bpl.TypeVariableSeq(),
-              new Bpl.VariableSeq(invars),
-              new Bpl.VariableSeq(outvars),
-              boogiePrecondition,
-              boogieModifies,
-              boogiePostcondition);
-          decl = proc;
-        }
-        if (this.assemblyBeingTranslated != null && !TypeHelper.GetDefiningUnitReference(method.ContainingType).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity)) {
-          var attrib = new Bpl.QKeyValue(tok, "extern", new List<object>(1), null);
-          decl.Attributes = attrib;
-        }
-
-        string newName = null;
-        if (IsStubMethod(method, out newName)) {
-          if (newName != null) {
-            decl.Name = newName;
-          }
-        } else {
-          this.TranslatedProgram.TopLevelDeclarations.Add(decl);
-        }
-        procAndFormalMap = new ProcedureInfo(decl, formalMap, this.RetVariable);
-        this.declaredMethods.Add(key, procAndFormalMap);
         this.RetVariable = savedRetVariable;
       }
       return procAndFormalMap.Decl;
