@@ -52,7 +52,7 @@ namespace BytecodeTranslator {
     }
     readonly Heap heap;
 
-    public Bpl.Variable ThisVariable = TranslationHelper.TempThisVar();
+    public Bpl.Variable ThisVariable;
     public Bpl.Variable RetVariable;
 
     public readonly string AllocationMethodName = "Alloc";
@@ -353,22 +353,12 @@ namespace BytecodeTranslator {
         #endregion
 
         Bpl.Formal/*?*/ self = null;
-        Bpl.Formal selfOut = null;
         #region Create 'this' parameter
         if (!method.IsStatic) {
           var selfType = CciTypeToBoogie(method.ContainingType);
-          if (method.ContainingType.ResolvedType.IsStruct) {
-            //selfType = Heap.StructType;
-            in_count++;
-            self = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), "thisIn", selfType), true);
-            out_count++;
-            selfOut = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), "this", selfType), false);
-          }
-          else {
-            in_count++;
-            //selfType = Heap.RefType;
-            self = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), "this", selfType), true);
-          }
+          in_count++;
+          var self_name = method.ContainingTypeDefinition.IsStruct ? "this$in" : "this";
+          self = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), self_name, selfType), true);
         }
         #endregion
 
@@ -378,11 +368,9 @@ namespace BytecodeTranslator {
         int i = 0;
         int j = 0;
 
-        #region Add 'this' parameter as first in parameter and 'thisOut' parameter as first out parameter
+        #region Add 'this' parameter as first in parameter
         if (self != null)
           invars[i++] = self;
-        if (selfOut != null)
-          outvars[j++] = selfOut;
         #endregion
 
         foreach (MethodParameter mparam in formalMap.Values) {
@@ -684,9 +672,10 @@ namespace BytecodeTranslator {
     /// </summary>
     private Dictionary<string, Bpl.Procedure> initiallyDeclaredProcedures = new Dictionary<string, Bpl.Procedure>();
 
-    public void BeginMethod() {
+    public void BeginMethod(ITypeReference containingType) {
       this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
       this.localCounter = 0;
+      this.ThisVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "this", this.Heap.RefType));
     }
 
     public void BeginAssembly(IAssembly assembly) {

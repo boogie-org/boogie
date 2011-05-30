@@ -126,13 +126,5 @@ namespace BytecodeTranslator {
       return typ.IsValueType && !typ.IsEnum && typ.TypeCode == PrimitiveTypeCode.NotPrimitive;
     }
 
-    #region Temp Stuff that must be replaced as soon as there is real code to deal with this
-
-    public static Bpl.Variable TempThisVar() {
-      return new Bpl.GlobalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "this", Bpl.Type.Int));
-    }
-
-    #endregion
-
   }
 }

@@ -104,7 +104,7 @@ namespace BytecodeTranslator {
 
       var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typeDefinition);
 
-      this.sink.BeginMethod();
+      this.sink.BeginMethod(typeDefinition);
       var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
       var stmts = new List<IStatement>();
 
@@ -206,7 +206,7 @@ namespace BytecodeTranslator {
 
       this.sink.TranslatedProgram.TopLevelDeclarations.Add(proc);
 
-      this.sink.BeginMethod();
+      this.sink.BeginMethod(typeDefinition);
 
       var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
       var stmts = new List<IStatement>();
@@ -275,7 +275,7 @@ namespace BytecodeTranslator {
         return;
       }
 
-      this.sink.BeginMethod();
+      this.sink.BeginMethod(method.ContainingType);
       var decl = procAndFormalMap.Decl;
       var proc = decl as Bpl.Procedure;
       var formalMap = procAndFormalMap.FormalMap;
@@ -299,8 +299,8 @@ namespace BytecodeTranslator {
         if (!method.IsStatic && method.ContainingType.ResolvedType.IsStruct) {
           Bpl.IToken tok = method.Token();
           stmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
-              new Bpl.IdentifierExpr(tok, proc.OutParams[0]),
-              new Bpl.IdentifierExpr(tok, proc.InParams[0])));
+            Bpl.Expr.Ident(this.sink.ThisVariable),
+            new Bpl.IdentifierExpr(tok, proc.InParams[0])));
         }
 
         #endregion
@@ -357,6 +357,9 @@ namespace BytecodeTranslator {
 
         #region Create Local Vars For Implementation
         List<Bpl.Variable> vars = new List<Bpl.Variable>();
+        if (!method.IsStatic && method.ContainingType.ResolvedType.IsStruct) {
+          vars.Add(this.sink.ThisVariable);
+        }
         foreach (MethodParameter mparam in formalMap.Values) {
           if (!mparam.underlyingParameter.IsByReference)
             vars.Add(mparam.outParameterCopy);

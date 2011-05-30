@@ -562,9 +562,6 @@ namespace BytecodeTranslator
         inexpr.Add(e);
         thisExpr = (Bpl.IdentifierExpr) e;
       }
-      if (thisArg != null && methodToCall.ContainingType.ResolvedType.IsStruct) {
-        outvars.Add(thisExpr);
-      }
       #endregion
 
       toBoxed = new Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr>();
