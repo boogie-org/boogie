@@ -111,6 +111,7 @@ namespace BytecodeTranslator {
       s = s.Replace('-', '$');
       s = s.Replace(' ', '$');
       s = s.Replace('\t', '$');
+      s = s.Replace('\r', '$');
       s = s.Replace('\n', '$');
       s = s.Replace('/', '$');
       s = s.Replace('\\', '$');
@@ -119,6 +120,7 @@ namespace BytecodeTranslator {
       s = s.Replace(';', '$');
       s = s.Replace('%', '$');
       s = s.Replace('&', '$');
+      s = s.Replace('"', '$');
       return s;
     }
 
