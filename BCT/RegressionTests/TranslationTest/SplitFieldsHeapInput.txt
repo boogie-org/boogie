@@ -693,7 +693,7 @@ implementation RegressionTestInput.ClassWithArrayTypes.Main4$System.Int32array(t
   var xs: Ref;
 
     xs := xs$in;
-    if (!(if xs != null then $ArrayLength(xs) <= 0 else true))
+    if (!(!(xs != null) || $ArrayLength(xs) <= 0))
     {
         assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 121} true;
         $ArrayContents := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[this] := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[this]][0 := Int2Box(xs)]];
@@ -951,7 +951,7 @@ implementation RegressionTestInput.Class0.M$System.Int32(this: Ref, x$in: int)
     x := 3;
     local_0 := __temp_1 + 3;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 22} true;
-    assert (if x == 3 then local_0 <= 8 else false);
+    assert x == 3 && local_0 <= 8;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 23} true;
     RegressionTestInput.Class0.StaticInt := local_0;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 24} true;
