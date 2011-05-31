@@ -396,7 +396,20 @@ namespace BytecodeTranslator {
         } else { // method is translated as a function
           //var func = decl as Bpl.Function;
           //Contract.Assume(func != null);
-          //func.Body = new Bpl.CodeExpr(new Bpl.VariableSeq(), translatedBody.BigBlocks);
+          //var blocks = new List<Bpl.Block>();
+          //var counter = 0;
+          //var returnValue = decl.OutParams[0];
+          //foreach (var bb in translatedBody.BigBlocks) {
+          //  var label = bb.LabelName ?? "L" + counter++.ToString();
+          //  var newTransferCmd = (bb.tc is Bpl.ReturnCmd)
+          //    ? new Bpl.ReturnExprCmd(bb.tc.tok, Bpl.Expr.Ident(returnValue))
+          //    : bb.tc;
+          //  var b = new Bpl.Block(bb.tok, label, bb.simpleCmds, newTransferCmd);
+          //  blocks.Add(b);
+          //}
+          //var localVars = new Bpl.VariableSeq();
+          //localVars.Add(returnValue);
+          //func.Body = new Bpl.CodeExpr(localVars, blocks);
         }
         #endregion
 

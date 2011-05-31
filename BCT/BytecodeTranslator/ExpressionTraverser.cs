@@ -349,11 +349,16 @@ namespace BytecodeTranslator
           lit.Type = Bpl.Type.Int;
           TranslatedExpressions.Push(lit);
           break;
-        case PrimitiveTypeCode.Float32:
-        case PrimitiveTypeCode.Float64:
-          var c = this.sink.FindOrCreateConstant((double)(constant.Value));
-          TranslatedExpressions.Push(Bpl.Expr.Ident(c));
-          return;
+        case PrimitiveTypeCode.Float32: {
+            var c = this.sink.FindOrCreateConstant((float)(constant.Value));
+            TranslatedExpressions.Push(Bpl.Expr.Ident(c));
+            return;
+          }
+        case PrimitiveTypeCode.Float64: {
+            var c = this.sink.FindOrCreateConstant((double)(constant.Value));
+            TranslatedExpressions.Push(Bpl.Expr.Ident(c));
+            return;
+          }
         case PrimitiveTypeCode.NotPrimitive:
           if (constant.Type.IsEnum) {
             lit = Bpl.Expr.Literal((int)constant.Value);
@@ -902,7 +907,37 @@ namespace BytecodeTranslator
       base.Visit(addition);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Add, lexp, rexp));
+      Bpl.Expr e;
+      switch (addition.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            addition.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealPlus),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Add, lexp, rexp);
+          break;
+      }
+      TranslatedExpressions.Push(e);
+    }
+
+    // TODO: Encode this correctly!
+    public override void Visit(IBitwiseAnd bitwiseAnd) {
+      base.Visit(bitwiseAnd);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.And, lexp, rexp));
+    }
+
+    // TODO: Encode this correctly!
+    public override void Visit(IBitwiseOr bitwiseOr) {
+      base.Visit(bitwiseOr);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or, lexp, rexp));
     }
 
     public override void Visit(IDivision division)
@@ -910,7 +945,21 @@ namespace BytecodeTranslator
       base.Visit(division);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Div, lexp, rexp));
+      Bpl.Expr e;
+      switch (division.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            division.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealDivide),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Div, lexp, rexp);
+          break;
+      }
+      TranslatedExpressions.Push(e);
     }
 
     // TODO: Encode this correctly!
@@ -926,7 +975,21 @@ namespace BytecodeTranslator
       base.Visit(subtraction);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Sub, lexp, rexp));
+      Bpl.Expr e;
+      switch (subtraction.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            subtraction.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealMinus),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Sub, lexp, rexp);
+          break;
+      }
+      TranslatedExpressions.Push(e);
     }
 
     public override void Visit(IMultiplication multiplication)
@@ -934,7 +997,21 @@ namespace BytecodeTranslator
       base.Visit(multiplication);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Mul, lexp, rexp));
+      Bpl.Expr e;
+      switch (multiplication.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            multiplication.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealTimes),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Mul, lexp, rexp);
+          break;
+      }
+      TranslatedExpressions.Push(e);
     }
 
     public override void Visit(IModulus modulus)
@@ -1152,6 +1229,12 @@ namespace BytecodeTranslator
             default:
               throw new NotImplementedException(msg);
           }
+        case PrimitiveTypeCode.UIntPtr:
+        case PrimitiveTypeCode.IntPtr:
+          // just ignore the conversion. REVIEW: is that the right thing to do?
+          this.TranslatedExpressions.Push(exp);
+          return;
+
         case PrimitiveTypeCode.Boolean:
           if (TypeHelper.IsPrimitiveInteger(conversion.ValueToConvert.Type)) {
               TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, exp, Bpl.Expr.Literal(0)));

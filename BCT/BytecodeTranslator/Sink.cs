@@ -251,6 +251,20 @@ namespace BytecodeTranslator {
       }
       return c;
     }
+    public Bpl.Constant FindOrCreateConstant(float f) {
+      Bpl.Constant c;
+      var str = f.ToString();
+      if (!this.declaredRealConstants.TryGetValue(str, out c)) {
+        var tok = Bpl.Token.NoToken;
+        var t = Heap.RealType;
+        var name = "$real_literal_" + TranslationHelper.TurnStringIntoValidIdentifier(str) + "_" + declaredStringConstants.Count;
+        var tident = new Bpl.TypedIdent(tok, name, t);
+        c = new Bpl.Constant(tok, tident, true);
+        this.declaredRealConstants.Add(str, c);
+        this.TranslatedProgram.TopLevelDeclarations.Add(c);
+      }
+      return c;
+    }
     private Dictionary<string, Bpl.Constant> declaredRealConstants = new Dictionary<string, Bpl.Constant>();
 
     private Dictionary<IPropertyDefinition, Bpl.Variable> declaredProperties = new Dictionary<IPropertyDefinition, Bpl.Variable>();
@@ -431,7 +445,7 @@ namespace BytecodeTranslator {
         // Can't visit the method's contracts until the formalMap and procedure are added to the
         // table because information in them might be needed (e.g., if a parameter is mentioned
         // in a contract.
-        #region Check The Method Contracts
+        #region Translate the method's contracts
 
         var possiblyUnspecializedMethod = Unspecialize(method);
 
@@ -586,6 +600,9 @@ namespace BytecodeTranslator {
     // also, should it return true for properties and all of the other things the tools
     // consider pure?
     private bool IsPure(IMethodDefinition method) {
+      bool isPropertyGetter = method.IsSpecialName && method.Name.Value.StartsWith("get_");
+      if (isPropertyGetter) return true;
+
       foreach (var a in method.Attributes) {
         if (TypeHelper.GetTypeName(a.Type).EndsWith("PureAttribute")) {
           return true;
