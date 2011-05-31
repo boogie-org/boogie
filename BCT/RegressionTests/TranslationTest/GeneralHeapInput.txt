@@ -341,6 +341,14 @@ function RealTimes(Real, Real) : Real;
 
 function RealDivide(Real, Real) : Real;
 
+function BitwiseAnd(int, int) : int;
+
+function BitwiseOr(int, int) : int;
+
+function BitwiseExclusiveOr(int, int) : int;
+
+function BitwiseNegation(int) : int;
+
 function Ref2Int(Ref, Type, Type) : int;
 
 function Ref2Bool(Ref, Type, Type) : bool;
@@ -730,6 +738,100 @@ procedure RegressionTestInput.ClassWithArrayTypes.#cctor();
 implementation RegressionTestInput.ClassWithArrayTypes.#cctor()
 {
     RegressionTestInput.ClassWithArrayTypes.s := null;
+}
+
+
+
+const unique RegressionTestInput.BitwiseOperations: Type;
+
+procedure RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int) returns ($result: int);
+
+
+
+implementation RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int) returns ($result: int)
+{
+  var x: int;
+  var y: int;
+
+    x := x$in;
+    y := y$in;
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 178} true;
+    $result := BitwiseAnd(x, y);
+    return;
+}
+
+
+
+procedure RegressionTestInput.BitwiseOperations.BitwiseOr$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int) returns ($result: int);
+
+
+
+implementation RegressionTestInput.BitwiseOperations.BitwiseOr$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int) returns ($result: int)
+{
+  var x: int;
+  var y: int;
+
+    x := x$in;
+    y := y$in;
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 179} true;
+    $result := BitwiseOr(x, y);
+    return;
+}
+
+
+
+procedure RegressionTestInput.BitwiseOperations.ExclusiveOr$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int) returns ($result: int);
+
+
+
+implementation RegressionTestInput.BitwiseOperations.ExclusiveOr$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int) returns ($result: int)
+{
+  var x: int;
+  var y: int;
+
+    x := x$in;
+    y := y$in;
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 180} true;
+    $result := BitwiseExclusiveOr(x, y);
+    return;
+}
+
+
+
+procedure RegressionTestInput.BitwiseOperations.BitwiseNegation$System.Int32(this: Ref, x$in: int) returns ($result: int);
+
+
+
+implementation RegressionTestInput.BitwiseOperations.BitwiseNegation$System.Int32(this: Ref, x$in: int) returns ($result: int)
+{
+  var x: int;
+
+    x := x$in;
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 181} true;
+    $result := BitwiseNegation(x);
+    return;
+}
+
+
+
+procedure RegressionTestInput.BitwiseOperations.#ctor(this: Ref);
+
+
+
+implementation RegressionTestInput.BitwiseOperations.#ctor(this: Ref)
+{
+    call System.Object.#ctor(this);
+    return;
+}
+
+
+
+procedure RegressionTestInput.BitwiseOperations.#cctor();
+
+
+
+implementation RegressionTestInput.BitwiseOperations.#cctor()
+{
 }
 
 

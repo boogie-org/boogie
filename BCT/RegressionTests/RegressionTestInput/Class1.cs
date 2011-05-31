@@ -174,4 +174,11 @@ namespace RegressionTestInput {
     }
   }
 
+  public class BitwiseOperations {
+    public int BitwiseAnd(int x, int y) { return x & y; }
+    public int BitwiseOr(int x, int y) { return x | y; }
+    public int ExclusiveOr(int x, int y) { return x ^ y; }
+    public int BitwiseNegation(int x) { return ~x; }
+  }
+
 }
