@@ -282,6 +282,8 @@ const unique $DefaultStruct: [Field]Box;
 
 type Real;
 
+const unique $DefaultReal: Real;
+
 function Box2Int(Box) : int;
 
 function Box2Bool(Box) : bool;
@@ -316,6 +318,14 @@ function Bool2Ref(bool) : Ref;
 function Int2Real(int, Type, Type) : Real;
 
 function Real2Int(Real, Type, Type) : Real;
+
+function Ref2Real(Ref, Type, Type) : Real;
+
+function Real2Ref(Real, Type, Type) : Ref;
+
+function Ref2Int(Ref, Type, Type) : int;
+
+function Ref2Bool(Ref, Type, Type) : bool;
 
 function $DynamicType(Ref) : Type;
 
@@ -675,8 +685,6 @@ implementation RegressionTestInput.RefParameters.#cctor()
 
 implementation {:inline 1} RegressionTestInput.S.#default_ctor(this: Ref)
 {
-    this[RegressionTestInput.S.x] := Int2Box(0);
-    this[RegressionTestInput.S.b] := Bool2Box(false);
 }
 
 

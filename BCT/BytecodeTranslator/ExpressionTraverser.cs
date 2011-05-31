@@ -324,7 +324,13 @@ namespace BytecodeTranslator
       }
       switch (constant.Type.TypeCode) {
         case PrimitiveTypeCode.Boolean:
-          TranslatedExpressions.Push(((bool)constant.Value) ? Bpl.Expr.True : Bpl.Expr.False);
+          // Decompiler might not have converted the constant back to a boolean? Not sure why,
+          // but that's what I'm seeing here.
+          if (constant.Value is bool) {
+            TranslatedExpressions.Push(((bool)constant.Value) ? Bpl.Expr.True : Bpl.Expr.False);
+          } else {
+            TranslatedExpressions.Push(((int)constant.Value) != 0 ? Bpl.Expr.True : Bpl.Expr.False);
+          }
           break;
         case PrimitiveTypeCode.Char: // chars are represented as ints
         case PrimitiveTypeCode.Int16:
@@ -335,11 +341,28 @@ namespace BytecodeTranslator
           lit.Type = Bpl.Type.Int;
           TranslatedExpressions.Push(lit);
           break;
+        case PrimitiveTypeCode.UInt16:
+        case PrimitiveTypeCode.UInt32:
+        case PrimitiveTypeCode.UInt64:
+        case PrimitiveTypeCode.UInt8:
+          lit = Bpl.Expr.Literal((int)(uint)constant.Value);
+          lit.Type = Bpl.Type.Int;
+          TranslatedExpressions.Push(lit);
+          break;
         case PrimitiveTypeCode.Float32:
         case PrimitiveTypeCode.Float64:
           var c = this.sink.FindOrCreateConstant((double)(constant.Value));
           TranslatedExpressions.Push(Bpl.Expr.Ident(c));
           return;
+        case PrimitiveTypeCode.NotPrimitive:
+          if (constant.Type.IsEnum) {
+            lit = Bpl.Expr.Literal((int)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            return;
+          }
+          throw new NotImplementedException(String.Format("Can't translate compile-time constant of type '{0}'",
+            TypeHelper.GetTypeName(constant.Type)));
         default:
           throw new NotImplementedException();
       }
@@ -350,7 +373,8 @@ namespace BytecodeTranslator
 
       var typ = defaultValue.Type;
 
-      if (typ.IsValueType && typ.TypeCode == PrimitiveTypeCode.NotPrimitive) {
+      #region Struct
+      if (TranslationHelper.IsStruct(typ)) {
         // then it is a struct and gets special treatment
         // translate it as if it were a call to the nullary ctor for the struct type
         // (which doesn't actually exist, but gets generated for each struct type
@@ -383,8 +407,30 @@ namespace BytecodeTranslator
         this.TranslatedExpressions.Push(locExpr);
         return;
       }
+      #endregion
 
-      TranslatedExpressions.Push(this.sink.DefaultValue(typ));
+      Bpl.Expr e;
+      var bplType = this.sink.CciTypeToBoogie(typ);
+      if (bplType == Bpl.Type.Int) {
+        var lit = Bpl.Expr.Literal(0);
+        lit.Type = Bpl.Type.Int;
+        e = lit;
+      } else if (bplType == Bpl.Type.Bool) {
+        var lit = Bpl.Expr.False;
+        lit.Type = Bpl.Type.Bool;
+        e = lit;
+      } else if (bplType == this.sink.Heap.RefType) {
+        e = Bpl.Expr.Ident(this.sink.Heap.NullRef);
+      } else if (bplType == this.sink.Heap.BoxType) {
+        e = Bpl.Expr.Ident(this.sink.Heap.DefaultBox);
+      } else if (bplType == this.sink.Heap.RealType) {
+        e = Bpl.Expr.Ident(this.sink.Heap.DefaultReal);
+      } else {
+        throw new NotImplementedException(String.Format("Don't know how to translate type: '{0}'", TypeHelper.GetTypeName(typ)));
+      }
+
+      TranslatedExpressions.Push(e);
+      return;
     }
 
     #endregion
@@ -512,6 +558,7 @@ namespace BytecodeTranslator
 
     }
 
+    // REVIEW: Does "thisExpr" really need to come back as an identifier? Can't it be a general expression?
     protected Bpl.DeclWithFormals TranslateArgumentsAndReturnProcedure(Bpl.IToken token, IMethodReference methodToCall, IMethodDefinition resolvedMethod, IExpression/*?*/ thisArg, IEnumerable<IExpression> arguments, out List<Bpl.Expr> inexpr, out List<Bpl.IdentifierExpr> outvars, out Bpl.IdentifierExpr thisExpr, out Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed) {
       inexpr = new List<Bpl.Expr>();
       outvars = new List<Bpl.IdentifierExpr>();
@@ -522,15 +569,15 @@ namespace BytecodeTranslator
         this.Visit(thisArg);
 
         var e = this.TranslatedExpressions.Pop();
-        inexpr.Add(e);
-        if (e is Bpl.NAryExpr) {
-          e = ((Bpl.NAryExpr)e).Args[0];
+        var identifierExpr = e as Bpl.IdentifierExpr;
+        if (identifierExpr == null) {
+          var newLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(thisArg.Type));
+          var cmd = Bpl.Cmd.SimpleAssign(token, newLocal, e);
+          this.StmtTraverser.StmtBuilder.Add(cmd);
+          e = newLocal;
         }
-        thisExpr = e as Bpl.IdentifierExpr;
-        Bpl.Variable x = thisExpr.Decl;
-      }
-      if (thisArg != null && methodToCall.ContainingType.ResolvedType.IsStruct) {
-        outvars.Add(thisExpr);
+        inexpr.Add(e);
+        thisExpr = (Bpl.IdentifierExpr) e;
       }
       #endregion
 
@@ -610,7 +657,7 @@ namespace BytecodeTranslator
       Contract.Assert(TranslatedExpressions.Count == 0);
 
       var typ = source.Type;
-      var structCopy = typ.IsValueType && typ.TypeCode == PrimitiveTypeCode.NotPrimitive && !(source is IDefaultValue);
+      var structCopy = TranslationHelper.IsStruct(typ) && !(source is IDefaultValue);
       // then a struct value of type S is being assigned: "lhs := s"
       // model this as the statement "call lhs := S..#copy_ctor(s)" that does the bit-wise copying
       Bpl.DeclWithFormals proc = null;
@@ -710,6 +757,19 @@ namespace BytecodeTranslator
         var be2 = addressDereference.Address as IBoundExpression;
         if (be2 != null) {
           TranslateAssignment(tok, be2.Definition, be2.Instance, source);
+          return;
+        }
+        var thisExp = addressDereference.Address as IThisReference;
+        if (thisExp != null) {
+          // I believe this happens only when a struct calls the default
+          // ctor (probably only ever done in a different ctor for the
+          // struct). The assignment actually looks like "*this := DefaultValue(S)"
+          Contract.Assume(instance == null);
+          this.Visit(source);
+          var e = this.TranslatedExpressions.Pop();
+          var bplLocal = Bpl.Expr.Ident(this.sink.ThisVariable);
+          cmd = Bpl.Cmd.SimpleAssign(tok, bplLocal, e);
+          StmtTraverser.StmtBuilder.Add(cmd);
           return;
         }
       }
@@ -851,6 +911,14 @@ namespace BytecodeTranslator
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Div, lexp, rexp));
+    }
+
+    // TODO: Encode this correctly!
+    public override void Visit(IExclusiveOr exclusiveOr) {
+      base.Visit(exclusiveOr);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or, lexp, rexp));
     }
 
     public override void Visit(ISubtraction subtraction)
@@ -1032,6 +1100,10 @@ namespace BytecodeTranslator
         // then this conversion is a nop, just ignore it
         return;
       }
+      var nameOfTypeToConvert = TypeHelper.GetTypeName(conversion.ValueToConvert.Type);
+      var nameOfTypeToBeConvertedTo = TypeHelper.GetTypeName(conversion.TypeAfterConversion);
+      var msg = String.Format("Can't convert '{0}' to '{1}'", nameOfTypeToConvert, nameOfTypeToBeConvertedTo);
+
       var exp = TranslatedExpressions.Pop();
       switch (conversion.TypeAfterConversion.TypeCode) {
         case PrimitiveTypeCode.Int16:
@@ -1066,15 +1138,36 @@ namespace BytecodeTranslator
                 return;
               }
 
+            case PrimitiveTypeCode.NotPrimitive:
+                TranslatedExpressions.Push(new Bpl.NAryExpr(
+                  conversion.Token(),
+                  new Bpl.FunctionCall(this.sink.Heap.Ref2Int),
+                  new Bpl.ExprSeq(exp,
+                    new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.ValueToConvert.Type)),
+                    new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.TypeAfterConversion))
+                    )
+                    ));
+                    return;
+
             default:
-              throw new NotImplementedException();
+              throw new NotImplementedException(msg);
           }
         case PrimitiveTypeCode.Boolean:
           if (TypeHelper.IsPrimitiveInteger(conversion.ValueToConvert.Type)) {
               TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, exp, Bpl.Expr.Literal(0)));
               return;
+          } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.NotPrimitive) {
+            TranslatedExpressions.Push(new Bpl.NAryExpr(
+              conversion.Token(),
+              new Bpl.FunctionCall(this.sink.Heap.Ref2Bool),
+              new Bpl.ExprSeq(exp,
+                new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.ValueToConvert.Type)),
+                new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.TypeAfterConversion))
+                )
+                ));
+            return;
           } else {
-            throw new NotImplementedException();
+            throw new NotImplementedException(msg);
           }
         case PrimitiveTypeCode.NotPrimitive:
           Bpl.Function func;
@@ -1085,8 +1178,11 @@ namespace BytecodeTranslator
           } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.NotPrimitive) {
             // REVIEW: Do we need to check to make sure that conversion.ValueToConvert.Type.IsValueType?
             func = this.sink.Heap.Struct2Ref;
+          } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Float32 ||
+            conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Float64) {
+              func = this.sink.Heap.Real2Ref;
           } else {
-            throw new NotImplementedException();
+            throw new NotImplementedException(msg);
           }
           var boxExpr = new Bpl.NAryExpr(
             conversion.Token(),
@@ -1108,11 +1204,22 @@ namespace BytecodeTranslator
                 );
             TranslatedExpressions.Push(convExpr);
             return;
+          } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.NotPrimitive) {
+            var convExpr = new Bpl.NAryExpr(
+              conversion.Token(),
+              new Bpl.FunctionCall(this.sink.Heap.Ref2Real),
+              new Bpl.ExprSeq(exp,
+                new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.ValueToConvert.Type)),
+                new Bpl.IdentifierExpr(tok, this.sink.FindOrCreateType(conversion.TypeAfterConversion))
+                )
+                );
+            TranslatedExpressions.Push(convExpr);
+            return;
           } else {
-            throw new NotImplementedException();
+            throw new NotImplementedException(msg);
           }
         default:
-          throw new NotImplementedException();
+          throw new NotImplementedException(msg);
       }
     }
 
@@ -1197,7 +1304,7 @@ namespace BytecodeTranslator
 
       public override IExpression Rewrite(IBoundExpression boundExpression) {
 
-        if (ExpressionTraverser.IsAtomicInstance(boundExpression.Instance)) return boundExpression;
+        if (boundExpression.Instance == null || ExpressionTraverser.IsAtomicInstance(boundExpression.Instance)) return boundExpression;
 
         // boundExpression == BE(inst, def), i.e., inst.def
         // return { loc := e; [assert loc != null;] | BE(BE(null,loc), def) }, i.e., "loc := e; loc.def"

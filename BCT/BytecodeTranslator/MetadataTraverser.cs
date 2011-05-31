@@ -104,29 +104,47 @@ namespace BytecodeTranslator {
 
       var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typeDefinition);
 
-      var stmtBuilder = new Bpl.StmtListBuilder();
+      this.sink.BeginMethod(typeDefinition);
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
+      var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
-        var e = this.sink.DefaultValue(f.Type);
-        var fExp = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f));
-        var o = Bpl.Expr.Ident(proc.InParams[0]);
-        var boogieType = sink.CciTypeToBoogie(f.Type);
-        var c = this.sink.Heap.WriteHeap(Bpl.Token.NoToken, o, fExp, e, AccessType.Struct, boogieType);
-        stmtBuilder.Add(c);
+        if (f.IsStatic) continue;
+        var s = new ExpressionStatement() {
+          Expression = new Assignment() {
+            Source = new DefaultValue() { DefaultValueType = f.Type, Type = f.Type, },
+            Target = new TargetExpression() {
+              Definition = f,
+              Instance = new ThisReference() { Type = typeDefinition, },
+              Type = f.Type,
+            },
+            Type = f.Type,
+          },
+        };
       }
+
+      stmtTranslator.Visit(stmts);
+      var translatedStatements = stmtTranslator.StmtBuilder.Collect(Bpl.Token.NoToken);
 
       var lit = Bpl.Expr.Literal(1);
       lit.Type = Bpl.Type.Int;
       var args = new List<object> { lit };
       var attrib = new Bpl.QKeyValue(typeDefinition.Token(), "inline", args, null); // TODO: Need to have it be {:inine 1} (and not just {:inline})?
+
+      List<Bpl.Variable> vars = new List<Bpl.Variable>();
+      foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
+        vars.Add(v);
+      }
+      Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
+
       Bpl.Implementation impl =
         new Bpl.Implementation(Bpl.Token.NoToken,
         proc.Name,
         new Bpl.TypeVariableSeq(),
         proc.InParams,
         proc.OutParams,
-        new Bpl.VariableSeq(),
-        stmtBuilder.Collect(Bpl.Token.NoToken),
+        vseq,
+        translatedStatements,
         attrib,
         new Bpl.Errors()
         );
@@ -143,6 +161,7 @@ namespace BytecodeTranslator {
       var stmtBuilder = new Bpl.StmtListBuilder();
 
       foreach (var f in typeDefinition.Fields) {
+        if (f.IsStatic) continue;
         var boogieType = sink.CciTypeToBoogie(f.Type);
         var fExp = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f));
         var e = this.sink.Heap.ReadHeap(Bpl.Expr.Ident(proc.InParams[0]), fExp, AccessType.Struct, boogieType);
@@ -187,31 +206,48 @@ namespace BytecodeTranslator {
 
       this.sink.TranslatedProgram.TopLevelDeclarations.Add(proc);
 
-      var stmtBuilder = new Bpl.StmtListBuilder();
-      foreach (var f in typeDefinition.Fields) {
-        if (f.IsStatic) {
+      this.sink.BeginMethod(typeDefinition);
 
-          var e = this.sink.DefaultValue(f.Type);
-          stmtBuilder.Add(
-            TranslationHelper.BuildAssignCmd(
-            Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f)), 
-            e
-            ));
-        }
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
+      var stmts = new List<IStatement>();
+
+      foreach (var f in typeDefinition.Fields) {
+        if (!f.IsStatic) continue;
+        stmts.Add(
+          new ExpressionStatement() {
+            Expression = new Assignment() {
+              Source = new DefaultValue() { DefaultValueType = f.Type, Type = f.Type, },
+              Target = new TargetExpression() {
+                Definition = f,
+                Instance = null,
+                Type = f.Type,
+              },
+              Type = f.Type,
+            }
+          });
       }
+
+      stmtTranslator.Visit(stmts);
+      var translatedStatements = stmtTranslator.StmtBuilder.Collect(Bpl.Token.NoToken);
+
+      List<Bpl.Variable> vars = new List<Bpl.Variable>();
+      foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
+        vars.Add(v);
+      }
+      Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
+
       Bpl.Implementation impl =
         new Bpl.Implementation(Bpl.Token.NoToken,
         proc.Name,
         new Bpl.TypeVariableSeq(),
         proc.InParams,
         proc.OutParams,
-        new Bpl.VariableSeq(),
-        stmtBuilder.Collect(Bpl.Token.NoToken)
+        vseq,
+        translatedStatements
         );
 
       impl.Proc = proc;
       this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
-
 
     }
 
@@ -239,7 +275,7 @@ namespace BytecodeTranslator {
         return;
       }
 
-      this.sink.BeginMethod();
+      this.sink.BeginMethod(method.ContainingType);
       var decl = procAndFormalMap.Decl;
       var proc = decl as Bpl.Procedure;
       var formalMap = procAndFormalMap.FormalMap;
@@ -263,8 +299,8 @@ namespace BytecodeTranslator {
         if (!method.IsStatic && method.ContainingType.ResolvedType.IsStruct) {
           Bpl.IToken tok = method.Token();
           stmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
-              new Bpl.IdentifierExpr(tok, proc.OutParams[0]),
-              new Bpl.IdentifierExpr(tok, proc.InParams[0])));
+            Bpl.Expr.Ident(this.sink.ThisVariable),
+            new Bpl.IdentifierExpr(tok, proc.InParams[0])));
         }
 
         #endregion
@@ -279,35 +315,42 @@ namespace BytecodeTranslator {
         #region Translate method attributes
         // Don't need an expression translator because there is a limited set of things
         // that can appear as arguments to custom attributes
-        foreach (var a in method.Attributes) {
-          var attrName = TypeHelper.GetTypeName(a.Type);
-          if (attrName.EndsWith("Attribute"))
-            attrName = attrName.Substring(0, attrName.Length - 9);
-          var args = new object[IteratorHelper.EnumerableCount(a.Arguments)];
-          int argIndex = 0;
-          foreach (var c in a.Arguments) {
-            var mdc = c as IMetadataConstant;
-            if (mdc != null) {
-              object o;
-              switch (mdc.Type.TypeCode) {
-                case PrimitiveTypeCode.Boolean:
-                  o = (bool)mdc.Value ? Bpl.Expr.True : Bpl.Expr.False;
-                  break;
-                case PrimitiveTypeCode.Int32:
-                  var lit = Bpl.Expr.Literal((int)mdc.Value);
-                  lit.Type = Bpl.Type.Int;
-                  o = lit;
-                  break;
-                case PrimitiveTypeCode.String:
-                  o = mdc.Value;
-                  break;
-                default:
-                  throw new InvalidCastException("Invalid metadata constant type");
+        // TODO: decode enum values
+        try {
+          foreach (var a in method.Attributes) {
+            var attrName = TypeHelper.GetTypeName(a.Type);
+            if (attrName.EndsWith("Attribute"))
+              attrName = attrName.Substring(0, attrName.Length - 9);
+            var args = new object[IteratorHelper.EnumerableCount(a.Arguments)];
+            int argIndex = 0;
+            foreach (var c in a.Arguments) {
+              var mdc = c as IMetadataConstant;
+              if (mdc != null) {
+                object o;
+                switch (mdc.Type.TypeCode) {
+                  case PrimitiveTypeCode.Boolean:
+                    o = (bool)mdc.Value ? Bpl.Expr.True : Bpl.Expr.False;
+                    break;
+                  case PrimitiveTypeCode.Int32:
+                    var lit = Bpl.Expr.Literal((int)mdc.Value);
+                    lit.Type = Bpl.Type.Int;
+                    o = lit;
+                    break;
+                  case PrimitiveTypeCode.String:
+                    o = mdc.Value;
+                    break;
+                  default:
+                    throw new InvalidCastException("Invalid metadata constant type");
+                }
+                args[argIndex++] = o;
               }
-              args[argIndex++] = o;
             }
+            decl.AddAttribute(attrName, args);
           }
-          decl.AddAttribute(attrName, args);
+        } catch (InvalidCastException e) {
+          Console.WriteLine("Warning: Cannot translate custom attributes for method\n    '{0}':",
+            MemberHelper.GetMethodSignature(method, NameFormattingOptions.None));
+          Console.WriteLine("    >>Skipping attributes, continuing with method translation");
         }
         #endregion
 
@@ -321,6 +364,9 @@ namespace BytecodeTranslator {
 
         #region Create Local Vars For Implementation
         List<Bpl.Variable> vars = new List<Bpl.Variable>();
+        if (!method.IsStatic && method.ContainingType.ResolvedType.IsStruct) {
+          vars.Add(this.sink.ThisVariable);
+        }
         foreach (MethodParameter mparam in formalMap.Values) {
           if (!mparam.underlyingParameter.IsByReference)
             vars.Add(mparam.outParameterCopy);
@@ -355,13 +401,13 @@ namespace BytecodeTranslator {
         #endregion
 
       } catch (TranslationException te) {
-        Console.WriteLine("Translation error in body of '{0}'.",
+        Console.WriteLine("Translation error in body of \n    '{0}':",
           MemberHelper.GetMethodSignature(method, NameFormattingOptions.None));
         Console.WriteLine("\t" + te.Message);
       } catch (Exception e) {
-        Console.WriteLine("Unknown error in body of '{0}'.",
+        Console.WriteLine("Error encountered during translation of \n    '{0}':",
           MemberHelper.GetMethodSignature(method, NameFormattingOptions.None));
-        Console.WriteLine("\t" + e.Message);
+        Console.WriteLine("\t>>" + e.Message);
       } finally {
       }
     }

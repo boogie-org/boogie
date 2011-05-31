@@ -183,7 +183,7 @@ namespace BytecodeTranslator
       var e = ExpressionFor(initVal);
 
       var typ = initVal.Type;
-      var structCopy = typ.IsValueType && typ.TypeCode == PrimitiveTypeCode.NotPrimitive && !(initVal is IDefaultValue);
+      var structCopy = TranslationHelper.IsStruct(typ) && !(initVal is IDefaultValue);
       // then a struct value of type S is being assigned: "lhs := s"
       // model this as the statement "call lhs := S..#copy_ctor(s)" that does the bit-wise copying
       Bpl.DeclWithFormals proc = null;

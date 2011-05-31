@@ -111,6 +111,8 @@ namespace BytecodeTranslator {
     [RepresentationFor("Real", "type Real;")]
     protected Bpl.TypeCtorDecl RealTypeDecl = null;
     public Bpl.CtorType RealType;
+    [RepresentationFor("$DefaultReal", "const unique $DefaultReal : Real;")]
+    public Bpl.Constant DefaultReal;
 
     #endregion
 
@@ -221,6 +223,17 @@ namespace BytecodeTranslator {
     public Bpl.Function Int2Real = null;
     [RepresentationFor("Real2Int", "function Real2Int(Real, Type, Type): Real;")]
     public Bpl.Function Real2Int = null;
+    [RepresentationFor("Ref2Real", "function Ref2Real(Ref, Type, Type): Real;")]
+    public Bpl.Function Ref2Real = null;
+    [RepresentationFor("Real2Ref", "function Real2Ref(Real, Type, Type): Ref;")]
+    public Bpl.Function Real2Ref = null;
+    #endregion
+
+    #region Ref conversions
+    [RepresentationFor("Ref2Int", "function Ref2Int(Ref, Type, Type): int;")]
+    public Bpl.Function Ref2Int = null;
+    [RepresentationFor("Ref2Bool", "function Ref2Bool(Ref, Type, Type): bool;")]
+    public Bpl.Function Ref2Bool = null;
     #endregion
 
     #endregion

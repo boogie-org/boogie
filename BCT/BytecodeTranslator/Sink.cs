@@ -52,7 +52,7 @@ namespace BytecodeTranslator {
     }
     readonly Heap heap;
 
-    public Bpl.Variable ThisVariable = TranslationHelper.TempThisVar();
+    public Bpl.Variable ThisVariable;
     public Bpl.Variable RetVariable;
 
     public readonly string AllocationMethodName = "Alloc";
@@ -84,28 +84,6 @@ namespace BytecodeTranslator {
     }
     
     public readonly Bpl.Program TranslatedProgram;
-
-    public Bpl.Expr DefaultValue(ITypeReference type) {
-      var bplType = CciTypeToBoogie(type);
-      if (bplType == Bpl.Type.Int) {
-        var lit = Bpl.Expr.Literal(0);
-        lit.Type = Bpl.Type.Int;
-        return lit;
-      } else if (bplType == Bpl.Type.Bool) {
-        var lit = Bpl.Expr.False;
-        lit.Type = Bpl.Type.Bool;
-        return lit;
-      } else if (type.ResolvedType.IsStruct) {
-        return Bpl.Expr.Ident(this.Heap.DefaultStruct);
-      } else if (bplType == this.Heap.RefType) {
-        return Bpl.Expr.Ident(this.Heap.NullRef);
-      }
-      else if (bplType == this.Heap.BoxType) {
-        return Bpl.Expr.Ident(this.Heap.DefaultBox);
-      } else {
-        throw new NotImplementedException(String.Format("Don't know how to translate type: '{0}'", TypeHelper.GetTypeName(type)));
-      }
-    }
 
     public Bpl.Type CciTypeToBoogie(ITypeReference type) {
       if (TypeHelper.TypesAreEquivalent(type, type.PlatformType.SystemBoolean))
@@ -375,22 +353,12 @@ namespace BytecodeTranslator {
         #endregion
 
         Bpl.Formal/*?*/ self = null;
-        Bpl.Formal selfOut = null;
         #region Create 'this' parameter
         if (!method.IsStatic) {
           var selfType = CciTypeToBoogie(method.ContainingType);
-          if (method.ContainingType.ResolvedType.IsStruct) {
-            //selfType = Heap.StructType;
-            in_count++;
-            self = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), "thisIn", selfType), true);
-            out_count++;
-            selfOut = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), "this", selfType), false);
-          }
-          else {
-            in_count++;
-            //selfType = Heap.RefType;
-            self = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), "this", selfType), true);
-          }
+          in_count++;
+          var self_name = method.ContainingTypeDefinition.IsStruct ? "this$in" : "this";
+          self = new Bpl.Formal(method.Token(), new Bpl.TypedIdent(method.Type.Token(), self_name, selfType), true);
         }
         #endregion
 
@@ -400,11 +368,9 @@ namespace BytecodeTranslator {
         int i = 0;
         int j = 0;
 
-        #region Add 'this' parameter as first in parameter and 'thisOut' parameter as first out parameter
+        #region Add 'this' parameter as first in parameter
         if (self != null)
           invars[i++] = self;
-        if (selfOut != null)
-          outvars[j++] = selfOut;
         #endregion
 
         foreach (MethodParameter mparam in formalMap.Values) {
@@ -423,10 +389,49 @@ namespace BytecodeTranslator {
 
         #endregion
 
-        #region Check The Method Contracts
+        var tok = method.Token();
         Bpl.RequiresSeq boogiePrecondition = new Bpl.RequiresSeq();
         Bpl.EnsuresSeq boogiePostcondition = new Bpl.EnsuresSeq();
         Bpl.IdentifierExprSeq boogieModifies = new Bpl.IdentifierExprSeq();
+
+        Bpl.DeclWithFormals decl;
+        if (IsPure(method)) {
+          var func = new Bpl.Function(tok,
+            MethodName,
+            new Bpl.VariableSeq(invars),
+            this.RetVariable);
+          decl = func;
+        } else {
+          var proc = new Bpl.Procedure(tok,
+              MethodName,
+              new Bpl.TypeVariableSeq(),
+              new Bpl.VariableSeq(invars),
+              new Bpl.VariableSeq(outvars),
+              boogiePrecondition,
+              boogieModifies,
+              boogiePostcondition);
+          decl = proc;
+        }
+        if (this.assemblyBeingTranslated != null && !TypeHelper.GetDefiningUnitReference(method.ContainingType).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity)) {
+          var attrib = new Bpl.QKeyValue(tok, "extern", new List<object>(1), null);
+          decl.Attributes = attrib;
+        }
+
+        string newName = null;
+        if (IsStubMethod(method, out newName)) {
+          if (newName != null) {
+            decl.Name = newName;
+          }
+        } else {
+          this.TranslatedProgram.TopLevelDeclarations.Add(decl);
+        }
+        procAndFormalMap = new ProcedureInfo(decl, formalMap, this.RetVariable);
+        this.declaredMethods.Add(key, procAndFormalMap);
+
+        // Can't visit the method's contracts until the formalMap and procedure are added to the
+        // table because information in them might be needed (e.g., if a parameter is mentioned
+        // in a contract.
+        #region Check The Method Contracts
 
         var possiblyUnspecializedMethod = Unspecialize(method);
 
@@ -478,11 +483,11 @@ namespace BytecodeTranslator {
         for (int p1index = 0; p1index < method.ParameterCount; p1index++) {
           var p1 = paramList[p1index];
           if (p1.IsByReference) continue;
-          if (!(p1.Type.IsValueType && p1.Type.TypeCode == PrimitiveTypeCode.NotPrimitive)) continue;
+          if (!TranslationHelper.IsStruct(p1.Type)) continue;
           for (int p2index = p1index + 1; p2index < method.ParameterCount; p2index++) {
             var p2 = paramList[p2index];
             if (p2.IsByReference) continue;
-            if (!(p2.Type.IsValueType && p2.Type.TypeCode == PrimitiveTypeCode.NotPrimitive)) continue;
+            if (!TranslationHelper.IsStruct(p2.Type)) continue;
             if (!TypeHelper.TypesAreEquivalent(p1.Type, p2.Type)) continue;
             var req = new Bpl.Requires(true, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq,
               Bpl.Expr.Ident(formalMap[p1].inParameterCopy), Bpl.Expr.Ident(formalMap[p2].inParameterCopy)));
@@ -491,40 +496,6 @@ namespace BytecodeTranslator {
         }
         #endregion
 
-        var tok = method.Token();
-        Bpl.DeclWithFormals decl;
-        if (IsPure(method)) {
-          var func = new Bpl.Function(tok,
-            MethodName,
-            new Bpl.VariableSeq(invars),
-            this.RetVariable);
-          decl = func;
-        } else {
-          var proc = new Bpl.Procedure(tok,
-              MethodName,
-              new Bpl.TypeVariableSeq(),
-              new Bpl.VariableSeq(invars),
-              new Bpl.VariableSeq(outvars),
-              boogiePrecondition,
-              boogieModifies,
-              boogiePostcondition);
-          decl = proc;
-        }
-        if (this.assemblyBeingTranslated != null && !TypeHelper.GetDefiningUnitReference(method.ContainingType).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity)) {
-          var attrib = new Bpl.QKeyValue(tok, "extern", new List<object>(1), null);
-          decl.Attributes = attrib;
-        }
-
-        string newName = null;
-        if (IsStubMethod(method, out newName)) {
-          if (newName != null) {
-            decl.Name = newName;
-          }
-        } else {
-          this.TranslatedProgram.TopLevelDeclarations.Add(decl);
-        }
-        procAndFormalMap = new ProcedureInfo(decl, formalMap, this.RetVariable);
-        this.declaredMethods.Add(key, procAndFormalMap);
         this.RetVariable = savedRetVariable;
       }
       return procAndFormalMap.Decl;
@@ -706,9 +677,10 @@ namespace BytecodeTranslator {
     /// </summary>
     private Dictionary<string, Bpl.Procedure> initiallyDeclaredProcedures = new Dictionary<string, Bpl.Procedure>();
 
-    public void BeginMethod() {
+    public void BeginMethod(ITypeReference containingType) {
       this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
       this.localCounter = 0;
+      this.ThisVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "this", this.Heap.RefType));
     }
 
     public void BeginAssembly(IAssembly assembly) {
