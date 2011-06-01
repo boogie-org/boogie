@@ -600,8 +600,10 @@ namespace BytecodeTranslator {
     // also, should it return true for properties and all of the other things the tools
     // consider pure?
     private bool IsPure(IMethodDefinition method) {
-      bool isPropertyGetter = method.IsSpecialName && method.Name.Value.StartsWith("get_");
-      if (isPropertyGetter) return true;
+      // TODO:
+      // This needs to wait until we get function bodies sorted out.
+      //bool isPropertyGetter = method.IsSpecialName && method.Name.Value.StartsWith("get_");
+      //if (isPropertyGetter) return true;
 
       foreach (var a in method.Attributes) {
         if (TypeHelper.GetTypeName(a.Type).EndsWith("PureAttribute")) {
