@@ -157,4 +157,28 @@ namespace RegressionTestInput {
     }
   }
 
+  public class RealNumbers {
+    public void WriteDouble(double d) {
+      Console.WriteLine(d);
+    }
+    public void ObjectToDouble(object o) {
+      WriteDouble((double)o);
+    }
+    public void RealOperations() {
+      double d = 3.0;
+      double d2 = 4.0;
+      WriteDouble(d + d2);
+      WriteDouble(d - d2);
+      WriteDouble(d * d2);
+      WriteDouble(d / d2);
+    }
+  }
+
+  public class BitwiseOperations {
+    public int BitwiseAnd(int x, int y) { return x & y; }
+    public int BitwiseOr(int x, int y) { return x | y; }
+    public int ExclusiveOr(int x, int y) { return x ^ y; }
+    public int BitwiseNegation(int x) { return ~x; }
+  }
+
 }

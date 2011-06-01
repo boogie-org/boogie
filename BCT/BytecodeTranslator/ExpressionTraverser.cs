@@ -349,11 +349,16 @@ namespace BytecodeTranslator
           lit.Type = Bpl.Type.Int;
           TranslatedExpressions.Push(lit);
           break;
-        case PrimitiveTypeCode.Float32:
-        case PrimitiveTypeCode.Float64:
-          var c = this.sink.FindOrCreateConstant((double)(constant.Value));
-          TranslatedExpressions.Push(Bpl.Expr.Ident(c));
-          return;
+        case PrimitiveTypeCode.Float32: {
+            var c = this.sink.FindOrCreateConstant((float)(constant.Value));
+            TranslatedExpressions.Push(Bpl.Expr.Ident(c));
+            return;
+          }
+        case PrimitiveTypeCode.Float64: {
+            var c = this.sink.FindOrCreateConstant((double)(constant.Value));
+            TranslatedExpressions.Push(Bpl.Expr.Ident(c));
+            return;
+          }
         case PrimitiveTypeCode.NotPrimitive:
           if (constant.Type.IsEnum) {
             lit = Bpl.Expr.Literal((int)constant.Value);
@@ -902,7 +907,45 @@ namespace BytecodeTranslator
       base.Visit(addition);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Add, lexp, rexp));
+      Bpl.Expr e;
+      switch (addition.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            addition.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealPlus),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Add, lexp, rexp);
+          break;
+      }
+      TranslatedExpressions.Push(e);
+    }
+
+    public override void Visit(IBitwiseAnd bitwiseAnd) {
+      base.Visit(bitwiseAnd);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      var e = new Bpl.NAryExpr(
+        bitwiseAnd.Token(),
+        new Bpl.FunctionCall(this.sink.Heap.BitwiseAnd),
+        new Bpl.ExprSeq(lexp, rexp)
+        );
+      TranslatedExpressions.Push(e);
+    }
+
+    public override void Visit(IBitwiseOr bitwiseOr) {
+      base.Visit(bitwiseOr);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      var e = new Bpl.NAryExpr(
+        bitwiseOr.Token(),
+        new Bpl.FunctionCall(this.sink.Heap.BitwiseOr),
+        new Bpl.ExprSeq(lexp, rexp)
+        );
+      TranslatedExpressions.Push(e);
     }
 
     public override void Visit(IDivision division)
@@ -910,7 +953,33 @@ namespace BytecodeTranslator
       base.Visit(division);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Div, lexp, rexp));
+      Bpl.Expr e;
+      switch (division.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            division.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealDivide),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Div, lexp, rexp);
+          break;
+      }
+      TranslatedExpressions.Push(e);
+    }
+
+    public override void Visit(IExclusiveOr exclusiveOr) {
+      base.Visit(exclusiveOr);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      var e = new Bpl.NAryExpr(
+        exclusiveOr.Token(),
+        new Bpl.FunctionCall(this.sink.Heap.BitwiseExclusiveOr),
+        new Bpl.ExprSeq(lexp, rexp)
+        );
+      TranslatedExpressions.Push(e);
     }
 
     public override void Visit(ISubtraction subtraction)
@@ -918,7 +987,21 @@ namespace BytecodeTranslator
       base.Visit(subtraction);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Sub, lexp, rexp));
+      Bpl.Expr e;
+      switch (subtraction.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            subtraction.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealMinus),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Sub, lexp, rexp);
+          break;
+      }
+      TranslatedExpressions.Push(e);
     }
 
     public override void Visit(IMultiplication multiplication)
@@ -926,7 +1009,21 @@ namespace BytecodeTranslator
       base.Visit(multiplication);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Mul, lexp, rexp));
+      Bpl.Expr e;
+      switch (multiplication.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            multiplication.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealTimes),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Mul, lexp, rexp);
+          break;
+      }
+      TranslatedExpressions.Push(e);
     }
 
     public override void Visit(IModulus modulus)
@@ -994,48 +1091,54 @@ namespace BytecodeTranslator
     /// </summary>
     public override void Visit(IConditional conditional) {
       #region Try and reconstruct And, Or, Not expressions
-      CompileTimeConstant ctc = conditional.ResultIfFalse as CompileTimeConstant;
-      if (ctc != null && ctc.Type == BCT.Host.PlatformType.SystemInt32)
-      {
-        int v = (int)ctc.Value;
-        if (v == 0) { // x ? y : 0 == x && y
-          Visit(conditional.Condition);
-          Bpl.Expr x = TranslatedExpressions.Pop();
-          Visit(conditional.ResultIfTrue);
-          Bpl.Expr y = TranslatedExpressions.Pop();
-          TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.And, x, y));
-          return;
+      if (conditional.Type.TypeCode == PrimitiveTypeCode.Boolean) {
+        CompileTimeConstant ctc = conditional.ResultIfFalse as CompileTimeConstant;
+        if (ctc != null) {
+          var v = BooleanValueOfCompileTimeConstant(ctc);
+          if (!v) { // x ? y : "false or 0" == x && y
+            Visit(conditional.Condition);
+            Bpl.Expr x = TranslatedExpressions.Pop();
+            x = PossiblyCoerceRefToBool(x);
+            Visit(conditional.ResultIfTrue);
+            Bpl.Expr y = TranslatedExpressions.Pop();
+            y = PossiblyCoerceRefToBool(y);
+            TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.And, x, y));
+            return;
+          } else { // x ? y : "true or 1" == !x || y
+            Visit(conditional.Condition);
+            Bpl.Expr x = TranslatedExpressions.Pop();
+            x = PossiblyCoerceRefToBool(x);
+            Visit(conditional.ResultIfTrue);
+            Bpl.Expr y = TranslatedExpressions.Pop();
+            y = PossiblyCoerceRefToBool(y);
+            var notX = Bpl.Expr.Unary(conditional.Token(), Bpl.UnaryOperator.Opcode.Not, x);
+            TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or, notX, y));
+            return;
+          }
         }
-        if (v == 1) { // x ? y : 1 == !x || y
-          Visit(conditional.Condition);
-          Bpl.Expr x = TranslatedExpressions.Pop();
-          Visit(conditional.ResultIfTrue);
-          Bpl.Expr y = TranslatedExpressions.Pop();
-          var notX = Bpl.Expr.Unary(conditional.Token(), Bpl.UnaryOperator.Opcode.Not, x);
-          TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or, notX, y));
-          return;
-        }
-      }
-      ctc = conditional.ResultIfTrue as CompileTimeConstant;
-      if (ctc != null && ctc.Type == BCT.Host.PlatformType.SystemInt32)
-      {
-        int v = (int)ctc.Value;
-        if (v == 1) { // x ? 1 : y == x || y
-          Visit(conditional.Condition);
-          Bpl.Expr x = TranslatedExpressions.Pop();
-          Visit(conditional.ResultIfFalse);
-          Bpl.Expr y = TranslatedExpressions.Pop();
-          TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or, x, y));
-          return;
-        }
-        if (v == 0) { // x ? 0 : y == !x && y
-          Visit(conditional.Condition);
-          Bpl.Expr x = TranslatedExpressions.Pop();
-          Visit(conditional.ResultIfFalse);
-          Bpl.Expr y = TranslatedExpressions.Pop();
-          var notX = Bpl.Expr.Unary(conditional.Token(), Bpl.UnaryOperator.Opcode.Not, x);
-          TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.And, notX, y));
-          return;
+        ctc = conditional.ResultIfTrue as CompileTimeConstant;
+        if (ctc != null && ctc.Type == BCT.Host.PlatformType.SystemInt32) {
+          var v = BooleanValueOfCompileTimeConstant(ctc);
+          if (v) { // x ? "true or 1" : y == x || y
+            Visit(conditional.Condition);
+            Bpl.Expr x = TranslatedExpressions.Pop();
+            x = PossiblyCoerceRefToBool(x);
+            Visit(conditional.ResultIfFalse);
+            Bpl.Expr y = TranslatedExpressions.Pop();
+            y = PossiblyCoerceRefToBool(y);
+            TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or, x, y));
+            return;
+          } else { // x ? "false or 0" : y == !x && y
+            Visit(conditional.Condition);
+            Bpl.Expr x = TranslatedExpressions.Pop();
+            x = PossiblyCoerceRefToBool(x);
+            Visit(conditional.ResultIfFalse);
+            Bpl.Expr y = TranslatedExpressions.Pop();
+            y = PossiblyCoerceRefToBool(y);
+            var notX = Bpl.Expr.Unary(conditional.Token(), Bpl.UnaryOperator.Opcode.Not, x);
+            TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.And, notX, y));
+            return;
+          }
         }
       }
       #endregion
@@ -1051,6 +1154,28 @@ namespace BytecodeTranslator
       return;
       #endregion
 
+    }
+
+    private bool BooleanValueOfCompileTimeConstant(CompileTimeConstant ctc) {
+      if (ctc.Type.TypeCode == PrimitiveTypeCode.Int32)
+        return ((int)ctc.Value) != 0;
+      if (ctc.Type.TypeCode == PrimitiveTypeCode.Boolean)
+        return (bool)ctc.Value;
+      throw new NotImplementedException("BooleanValueOfCompileTimeConstant: Unknown type of compile-time constant");
+    }
+
+    /// <summary>
+    /// Sometimes the decompiler doesn't recreate the expression "o != null" when the
+    /// IL tests an object for being null by just branching on the object instead of
+    /// doing a ceq operation on the constant null.
+    /// </summary>
+    /// <returns>
+    /// If o is not of type Ref, then it just returns o, otherwise it returns
+    /// the expression "o != null".
+    /// </returns>
+    private Bpl.Expr PossiblyCoerceRefToBool(Bpl.Expr o) {
+      if (o.Type != this.sink.Heap.RefType) return o;
+      return Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, o, Bpl.Expr.Ident(this.sink.Heap.NullRef));
     }
 
     #endregion
@@ -1144,6 +1269,12 @@ namespace BytecodeTranslator
             default:
               throw new NotImplementedException(msg);
           }
+        case PrimitiveTypeCode.UIntPtr:
+        case PrimitiveTypeCode.IntPtr:
+          // just ignore the conversion. REVIEW: is that the right thing to do?
+          this.TranslatedExpressions.Push(exp);
+          return;
+
         case PrimitiveTypeCode.Boolean:
           if (TypeHelper.IsPrimitiveInteger(conversion.ValueToConvert.Type)) {
               TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, exp, Bpl.Expr.Literal(0)));
@@ -1213,6 +1344,17 @@ namespace BytecodeTranslator
         default:
           throw new NotImplementedException(msg);
       }
+    }
+
+    public override void Visit(IOnesComplement onesComplement) {
+      base.Visit(onesComplement);
+      var exp = TranslatedExpressions.Pop();
+      var e = new Bpl.NAryExpr(
+        onesComplement.Token(),
+        new Bpl.FunctionCall(this.sink.Heap.BitwiseNegation),
+        new Bpl.ExprSeq(exp)
+        );
+      TranslatedExpressions.Push(e);
     }
 
     public override void Visit(IUnaryNegation unaryNegation)

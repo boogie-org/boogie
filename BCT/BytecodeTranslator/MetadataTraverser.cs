@@ -315,35 +315,42 @@ namespace BytecodeTranslator {
         #region Translate method attributes
         // Don't need an expression translator because there is a limited set of things
         // that can appear as arguments to custom attributes
-        foreach (var a in method.Attributes) {
-          var attrName = TypeHelper.GetTypeName(a.Type);
-          if (attrName.EndsWith("Attribute"))
-            attrName = attrName.Substring(0, attrName.Length - 9);
-          var args = new object[IteratorHelper.EnumerableCount(a.Arguments)];
-          int argIndex = 0;
-          foreach (var c in a.Arguments) {
-            var mdc = c as IMetadataConstant;
-            if (mdc != null) {
-              object o;
-              switch (mdc.Type.TypeCode) {
-                case PrimitiveTypeCode.Boolean:
-                  o = (bool)mdc.Value ? Bpl.Expr.True : Bpl.Expr.False;
-                  break;
-                case PrimitiveTypeCode.Int32:
-                  var lit = Bpl.Expr.Literal((int)mdc.Value);
-                  lit.Type = Bpl.Type.Int;
-                  o = lit;
-                  break;
-                case PrimitiveTypeCode.String:
-                  o = mdc.Value;
-                  break;
-                default:
-                  throw new InvalidCastException("Invalid metadata constant type");
+        // TODO: decode enum values
+        try {
+          foreach (var a in method.Attributes) {
+            var attrName = TypeHelper.GetTypeName(a.Type);
+            if (attrName.EndsWith("Attribute"))
+              attrName = attrName.Substring(0, attrName.Length - 9);
+            var args = new object[IteratorHelper.EnumerableCount(a.Arguments)];
+            int argIndex = 0;
+            foreach (var c in a.Arguments) {
+              var mdc = c as IMetadataConstant;
+              if (mdc != null) {
+                object o;
+                switch (mdc.Type.TypeCode) {
+                  case PrimitiveTypeCode.Boolean:
+                    o = (bool)mdc.Value ? Bpl.Expr.True : Bpl.Expr.False;
+                    break;
+                  case PrimitiveTypeCode.Int32:
+                    var lit = Bpl.Expr.Literal((int)mdc.Value);
+                    lit.Type = Bpl.Type.Int;
+                    o = lit;
+                    break;
+                  case PrimitiveTypeCode.String:
+                    o = mdc.Value;
+                    break;
+                  default:
+                    throw new InvalidCastException("Invalid metadata constant type");
+                }
+                args[argIndex++] = o;
               }
-              args[argIndex++] = o;
             }
+            decl.AddAttribute(attrName, args);
           }
-          decl.AddAttribute(attrName, args);
+        } catch (InvalidCastException e) {
+          Console.WriteLine("Warning: Cannot translate custom attributes for method\n    '{0}':",
+            MemberHelper.GetMethodSignature(method, NameFormattingOptions.None));
+          Console.WriteLine("    >>Skipping attributes, continuing with method translation");
         }
         #endregion
 
@@ -389,18 +396,31 @@ namespace BytecodeTranslator {
         } else { // method is translated as a function
           //var func = decl as Bpl.Function;
           //Contract.Assume(func != null);
-          //func.Body = new Bpl.CodeExpr(new Bpl.VariableSeq(), translatedBody.BigBlocks);
+          //var blocks = new List<Bpl.Block>();
+          //var counter = 0;
+          //var returnValue = decl.OutParams[0];
+          //foreach (var bb in translatedBody.BigBlocks) {
+          //  var label = bb.LabelName ?? "L" + counter++.ToString();
+          //  var newTransferCmd = (bb.tc is Bpl.ReturnCmd)
+          //    ? new Bpl.ReturnExprCmd(bb.tc.tok, Bpl.Expr.Ident(returnValue))
+          //    : bb.tc;
+          //  var b = new Bpl.Block(bb.tok, label, bb.simpleCmds, newTransferCmd);
+          //  blocks.Add(b);
+          //}
+          //var localVars = new Bpl.VariableSeq();
+          //localVars.Add(returnValue);
+          //func.Body = new Bpl.CodeExpr(localVars, blocks);
         }
         #endregion
 
       } catch (TranslationException te) {
-        Console.WriteLine("Translation error in body of '{0}'.",
+        Console.WriteLine("Translation error in body of \n    '{0}':",
           MemberHelper.GetMethodSignature(method, NameFormattingOptions.None));
         Console.WriteLine("\t" + te.Message);
       } catch (Exception e) {
-        Console.WriteLine("Unknown error in body of '{0}'.",
+        Console.WriteLine("Error encountered during translation of \n    '{0}':",
           MemberHelper.GetMethodSignature(method, NameFormattingOptions.None));
-        Console.WriteLine("\t" + e.Message);
+        Console.WriteLine("\t>>" + e.Message);
       } finally {
       }
     }
