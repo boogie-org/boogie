@@ -620,7 +620,7 @@ namespace BytecodeTranslator
       var translateAsFunctionCall = proc is Bpl.Function;
       if (!translateAsFunctionCall) {
         if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
-          Bpl.Variable v = this.sink.CreateFreshLocal(resolvedMethod.Type.ResolvedType);
+          Bpl.Variable v = this.sink.CreateFreshLocal(methodToCall.ResolvedMethod.Type.ResolvedType);
           Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(token, v);
           if (resolvedMethod.Type is IGenericTypeParameter) {
             Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
