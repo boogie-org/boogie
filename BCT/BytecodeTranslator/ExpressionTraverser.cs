@@ -157,7 +157,7 @@ namespace BytecodeTranslator
         indexExpr = new Bpl.NAryExpr(arrayIndexer.Token(), new Bpl.FunctionCall(f), new Bpl.ExprSeq(indexExprs));
       }
 
-      this.TranslatedExpressions.Push(arrayExpr);
+      this.TranslatedExpressions.Push(this.sink.Heap.ReadHeap(arrayExpr, indexExpr, AccessType.Array, this.sink.CciTypeToBoogie(arrayIndexer.Type)));
     }
 
     public override void Visit(ITargetExpression targetExpression)
@@ -620,7 +620,7 @@ namespace BytecodeTranslator
       var translateAsFunctionCall = proc is Bpl.Function;
       if (!translateAsFunctionCall) {
         if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
-          Bpl.Variable v = this.sink.CreateFreshLocal(resolvedMethod.Type.ResolvedType);
+          Bpl.Variable v = this.sink.CreateFreshLocal(methodToCall.ResolvedMethod.Type.ResolvedType);
           Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(token, v);
           if (resolvedMethod.Type is IGenericTypeParameter) {
             Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
@@ -1482,7 +1482,7 @@ namespace BytecodeTranslator
 
         var loc = new LocalDefinition() {
           Name = this.host.NameTable.GetNameFor("_loc" + this.sink.LocalCounter.ToString()),
-          Type = arrayIndexer.Type,
+          Type = arrayIndexer.IndexedObject.Type
         };
         var locDecl = new LocalDeclarationStatement() {
           InitialValue = e,
