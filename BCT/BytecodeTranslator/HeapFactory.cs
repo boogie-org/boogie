@@ -93,8 +93,8 @@ namespace BytecodeTranslator {
     public Bpl.Constant NullRef;
 
     [RepresentationFor("Type", "type Type;")]
-    protected Bpl.TypeCtorDecl TypeTypeDecl = null;
-    protected Bpl.CtorType TypeType;
+    public Bpl.TypeCtorDecl TypeTypeDecl = null;
+    public Bpl.CtorType TypeType;
 
     private Bpl.Type structType = null;
     public Bpl.Type StructType {
@@ -267,16 +267,28 @@ namespace BytecodeTranslator {
     /// </summary>
     public Bpl.Variable CreateTypeVariable(ITypeReference type)
     {
-        Bpl.Variable v;
         string typename = TypeHelper.GetTypeName(type);
         typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
         Bpl.IToken tok = type.Token();
-        Bpl.Type t = this.TypeType;
-        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, typename, t);
-        tident.Type = this.TypeType;
-        v = new Bpl.Constant(tok, tident, true);
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, typename, this.TypeType);
+        Bpl.Constant v = new Bpl.Constant(tok, tident, true);
         return v;
     }
+
+    public Bpl.Function CreateTypeFunction(ITypeReference type, int parameterCount) {
+      System.Diagnostics.Debug.Assert(parameterCount > 0);
+      string typename = TypeHelper.GetTypeName(type);
+      typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
+      Bpl.IToken tok = type.Token();
+      Bpl.VariableSeq inputs = new Bpl.VariableSeq();
+      for (int i = 0; i < parameterCount; i++) {
+        inputs.Add(new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "arg"+i, this.TypeType), true));
+      }
+      Bpl.Variable output = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "result", this.TypeType), false);
+      Bpl.Function func = new Bpl.Function(tok, typename, inputs, output);
+      return func;
+    }
+    
 
     public abstract Bpl.Variable CreateEventVariable(IEventDefinition e);
 

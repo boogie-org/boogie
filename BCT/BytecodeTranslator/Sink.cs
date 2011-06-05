@@ -300,7 +300,8 @@ namespace BytecodeTranslator {
         Bpl.Expr e = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(f), exprs);
         for (int i = 0; i < arity; i++) {
           Bpl.Expr appl = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(projectionFunctions[i]), new Bpl.ExprSeq(e));
-          Bpl.Expr qexpr = new Bpl.ForallExpr(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), qvars, null, null, Bpl.Expr.Eq(appl, Bpl.Expr.Ident(qvars[i])));
+          Bpl.Trigger trigger = new Bpl.Trigger(Bpl.Token.NoToken, true, new Bpl.ExprSeq(e));
+          Bpl.Expr qexpr = new Bpl.ForallExpr(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), qvars, null, trigger, Bpl.Expr.Eq(appl, Bpl.Expr.Ident(qvars[i])));
           TranslatedProgram.TopLevelDeclarations.Add(new Bpl.Axiom(Bpl.Token.NoToken, qexpr));
         }
 
@@ -312,16 +313,30 @@ namespace BytecodeTranslator {
       private Bpl.DeclWithFormals decl;
       private Dictionary<IParameterDefinition, MethodParameter> formalMap;
       private Bpl.Variable returnVariable;
+      private List<Bpl.Formal> typeParameters;
+      private List<Bpl.Formal> methodParameters;
 
       public ProcedureInfo(Bpl.DeclWithFormals decl, Dictionary<IParameterDefinition, MethodParameter> formalMap, Bpl.Variable returnVariable) {
         this.decl = decl;
         this.formalMap = formalMap;
         this.returnVariable = returnVariable;
+        this.typeParameters = null;
+        this.methodParameters = null;
+      }
+
+      public ProcedureInfo(Bpl.DeclWithFormals decl, Dictionary<IParameterDefinition, MethodParameter> formalMap, Bpl.Variable returnVariable, List<Bpl.Formal> typeParameters, List<Bpl.Formal> methodParameters) {
+        this.decl = decl;
+        this.formalMap = formalMap;
+        this.returnVariable = returnVariable;
+        this.typeParameters = typeParameters;
+        this.methodParameters = methodParameters;
       }
 
       public Bpl.DeclWithFormals Decl { get { return decl; } }
       public Dictionary<IParameterDefinition, MethodParameter> FormalMap { get { return formalMap; } }
       public Bpl.Variable ReturnVariable { get { return returnVariable; } }
+      public Bpl.Formal TypeParameter(int index) { return typeParameters[index]; }
+      public Bpl.Formal MethodParameter(int index) { return methodParameters[index]; } 
     }
 
     public Bpl.DeclWithFormals FindOrCreateProcedure(IMethodDefinition method) {
@@ -376,6 +391,28 @@ namespace BytecodeTranslator {
         }
         #endregion
 
+        List<Bpl.Formal> typeParameters = new List<Bpl.Formal>();
+        ITypeDefinition containingType = method.ContainingType.ResolvedType;
+        while (true) {
+          int paramIndex = 0;
+          foreach (IGenericTypeParameter gtp in containingType.GenericParameters) {
+            Bpl.Formal f = new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, gtp.Name.Value, this.Heap.TypeType), true);
+            typeParameters.Insert(paramIndex, f);
+            if (method.IsStatic) in_count++;
+            paramIndex++;
+          }
+          INestedTypeDefinition ntd = containingType as INestedTypeDefinition;
+          if (ntd == null) break;
+          containingType = ntd.ContainingType.ResolvedType;
+        }
+
+        List<Bpl.Formal> methodParameters = new List<Bpl.Formal>();
+        foreach (IGenericMethodParameter gmp in method.GenericParameters) {
+          Bpl.Formal f = new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, gmp.Name.Value, this.Heap.TypeType), true);
+          methodParameters.Add(f);
+          in_count++;
+        }
+
         Bpl.Variable[] invars = new Bpl.Formal[in_count];
         Bpl.Variable[] outvars = new Bpl.Formal[out_count];
 
@@ -401,6 +438,14 @@ namespace BytecodeTranslator {
         if (this.RetVariable != null) outvars[j] = this.RetVariable;
         #endregion
 
+        if (method.IsStatic) {
+          foreach (Bpl.Formal f in typeParameters) {
+            invars[i++] = f;
+          }
+        }
+        foreach (Bpl.Formal f in methodParameters) {
+          invars[i++] = f;
+        }
         #endregion
 
         var tok = method.Token();
@@ -439,7 +484,7 @@ namespace BytecodeTranslator {
         } else {
           this.TranslatedProgram.TopLevelDeclarations.Add(decl);
         }
-        procAndFormalMap = new ProcedureInfo(decl, formalMap, this.RetVariable);
+        procAndFormalMap = new ProcedureInfo(decl, formalMap, this.RetVariable, typeParameters, methodParameters);
         this.declaredMethods.Add(key, procAndFormalMap);
 
         // Can't visit the method's contracts until the formalMap and procedure are added to the
@@ -654,33 +699,160 @@ namespace BytecodeTranslator {
       return result;
     }
 
+    private static int NumGenericParameters(ITypeReference typeReference) {
+      ITypeDefinition typeDefinition = typeReference.ResolvedType;
+      int numParameters = typeDefinition.GenericParameterCount;
+      INestedTypeDefinition ntd = typeDefinition as INestedTypeDefinition;
+      while (ntd != null) {
+        ITypeDefinition containingType = ntd.ContainingType.ResolvedType;
+        numParameters += containingType.GenericParameterCount;
+        ntd = containingType as INestedTypeDefinition;
+      }
+      return numParameters;
+    }
 
+    private static ITypeReference GetUninstantiatedGenericType(ITypeReference typeReference) {
+      IGenericTypeInstanceReference/*?*/ genericTypeInstanceReference = typeReference as IGenericTypeInstanceReference;
+      if (genericTypeInstanceReference != null) return GetUninstantiatedGenericType(genericTypeInstanceReference.GenericType);
+      INestedTypeReference/*?*/ nestedTypeReference = typeReference as INestedTypeReference;
+      if (nestedTypeReference != null) {
+        ISpecializedNestedTypeReference/*?*/ specializedNestedType = nestedTypeReference as ISpecializedNestedTypeReference;
+        if (specializedNestedType != null) return specializedNestedType.UnspecializedVersion;
+        return nestedTypeReference;
+      }
+      return typeReference;
+    }
+
+    private void GetConsolidatedTypeArguments(List<ITypeReference> consolidatedTypeArguments, ITypeReference typeReference) {
+      IGenericTypeInstanceReference/*?*/ genTypeInstance = typeReference as IGenericTypeInstanceReference;
+      if (genTypeInstance != null) {
+        GetConsolidatedTypeArguments(consolidatedTypeArguments, genTypeInstance.GenericType);
+        consolidatedTypeArguments.AddRange(genTypeInstance.GenericArguments);
+        return;
+      }
+      INestedTypeReference/*?*/ nestedTypeReference = typeReference as INestedTypeReference;
+      if (nestedTypeReference != null) GetConsolidatedTypeArguments(consolidatedTypeArguments, nestedTypeReference.ContainingType);
+    }
 
     /// <summary>
     /// Creates a fresh variable that represents the type of
     /// <paramref name="type"/> in the Bpl program. I.e., its
     /// value represents the expression "typeof(type)".
     /// </summary>
-    public Bpl.Variable FindOrCreateType(ITypeReference type) {
+    public Bpl.Expr FindOrCreateType(ITypeReference type) {
       // The Heap has to decide how to represent the field (i.e., its type),
       // all the Sink cares about is adding a declaration for it.
-      Bpl.Variable t;
-      var key = type.InternedKey;
-      if (!this.declaredTypes.TryGetValue(key, out t)) {
-        t = this.Heap.CreateTypeVariable(type);
-        this.declaredTypes.Add(key, t);
-        this.TranslatedProgram.TopLevelDeclarations.Add(t);
-        if (this.assemblyBeingTranslated != null && !TypeHelper.GetDefiningUnitReference(type).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity)) {
-          var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "extern", new List<object>(1), null);
-          t.Attributes = attrib;
+
+      IGenericTypeParameter gtp = type as IGenericTypeParameter;
+      if (gtp != null) {
+        // calculate the index
+        int index = gtp.Index;
+        INestedTypeDefinition containingType = gtp.DefiningType as INestedTypeDefinition;
+        while (containingType != null) {
+          index += containingType.GenericParameterCount;
+          containingType = containingType.ContainingTypeDefinition as INestedTypeDefinition;
+        }
+
+        ProcedureInfo info = FindOrCreateProcedureAndReturnProcAndFormalMap(methodBeingTranslated);
+        if (methodBeingTranslated.IsStatic) {
+          return Bpl.Expr.Ident(info.TypeParameter(index));
+        }
+        else {
+          Bpl.Expr thisExpr = Bpl.Expr.Ident(this.ThisVariable);
+          return new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(childFunctions[index]), new Bpl.ExprSeq(this.Heap.DynamicType(thisExpr)));
         }
       }
-      return t;
+
+      IGenericMethodParameter gmp = type as IGenericMethodParameter;
+      if (gmp != null) {
+        ProcedureInfo info = FindOrCreateProcedureAndReturnProcAndFormalMap(methodBeingTranslated);
+        return Bpl.Expr.Ident(info.TypeParameter(gmp.Index));
+      }
+
+      ITypeReference uninstantiatedGenericType = GetUninstantiatedGenericType(type);
+      List<ITypeReference> consolidatedTypeArguments = new List<ITypeReference>();
+      GetConsolidatedTypeArguments(consolidatedTypeArguments, type);
+
+      if (consolidatedTypeArguments.Count > 0) {
+        this.FindOrCreateType(uninstantiatedGenericType);
+        var key = uninstantiatedGenericType.InternedKey;
+        Bpl.Function f = this.declaredTypeFunctions[key];
+        Bpl.ExprSeq args = new Bpl.ExprSeq();
+        foreach (ITypeReference p in consolidatedTypeArguments) {
+          args.Add(FindOrCreateType(p));
+        }
+        Bpl.Expr naryExpr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(f), args);
+        return naryExpr;
+      }
+
+      int numParameters = NumGenericParameters(type);
+      bool isExtern = this.assemblyBeingTranslated != null && 
+                      !TypeHelper.GetDefiningUnitReference(type).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity);
+
+      if (numParameters > 0) {
+        Bpl.Function f;
+        var key = type.InternedKey;
+        if (!this.declaredTypeFunctions.TryGetValue(key, out f)) {
+          Bpl.VariableSeq vseq = new Bpl.VariableSeq();
+          for (int i = 0; i < numParameters; i++) {
+            vseq.Add(new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "arg" + i, this.Heap.TypeType), true));
+          }
+          f = this.Heap.CreateTypeFunction(type, numParameters);
+          this.declaredTypeFunctions.Add(key, f);
+          this.TranslatedProgram.TopLevelDeclarations.Add(f);
+          if (numParameters > childFunctions.Count) {
+            for (int i = childFunctions.Count; i < numParameters; i++) {
+              Bpl.Variable input = new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "in", this.Heap.TypeType), true);
+              Bpl.Variable output = new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "out", this.Heap.TypeType), false);
+              Bpl.Function g = new Bpl.Function(Bpl.Token.NoToken, "Child" + i, new Bpl.VariableSeq(input), output);
+              TranslatedProgram.TopLevelDeclarations.Add(g);
+              childFunctions.Add(g);
+            }
+          }
+          if (isExtern) {
+            var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "extern", new List<object>(1), null);
+            f.Attributes = attrib;
+          }
+          else {
+            Bpl.VariableSeq qvars = new Bpl.VariableSeq();
+            Bpl.ExprSeq exprs = new Bpl.ExprSeq();
+            for (int i = 0; i < numParameters; i++) {
+              Bpl.Variable v = new Bpl.Constant(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "arg" + i, this.Heap.TypeType));
+              qvars.Add(v);
+              exprs.Add(Bpl.Expr.Ident(v));
+            }
+            Bpl.Expr e = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(f), exprs);
+            for (int i = 0; i < numParameters; i++) {
+              Bpl.Expr appl = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(childFunctions[i]), new Bpl.ExprSeq(e));
+              Bpl.Trigger trigger = new Bpl.Trigger(Bpl.Token.NoToken, true, new Bpl.ExprSeq(e));
+              Bpl.Expr qexpr = new Bpl.ForallExpr(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), qvars, null, trigger, Bpl.Expr.Eq(appl, Bpl.Expr.Ident(qvars[i])));
+              TranslatedProgram.TopLevelDeclarations.Add(new Bpl.Axiom(Bpl.Token.NoToken, qexpr));
+            }
+          }
+        }
+        return null;
+      }
+      else {
+        Bpl.Variable t;
+        var key = type.InternedKey;
+        if (!this.declaredTypeConstants.TryGetValue(key, out t)) {
+          t = this.Heap.CreateTypeVariable(type);
+          this.declaredTypeConstants.Add(key, t);
+          this.TranslatedProgram.TopLevelDeclarations.Add(t);
+          if (isExtern) {
+            var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "extern", new List<object>(1), null);
+            t.Attributes = attrib;
+          }
+        }
+        return Bpl.Expr.Ident(t);
+      }
     }
     /// <summary>
     /// The keys to the table are the interned key of the type.
     /// </summary>
-    private Dictionary<uint, Bpl.Variable> declaredTypes = new Dictionary<uint, Bpl.Variable>();
+    private Dictionary<uint, Bpl.Variable> declaredTypeConstants = new Dictionary<uint, Bpl.Variable>();
+    private Dictionary<uint, Bpl.Function> declaredTypeFunctions = new Dictionary<uint, Bpl.Function>();
+    private List<Bpl.Function> childFunctions = new List<Bpl.Function>();
 
     /// <summary>
     /// The keys to the table are the interned keys of the methods.
@@ -698,6 +870,13 @@ namespace BytecodeTranslator {
       this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
       this.localCounter = 0;
       this.ThisVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "this", this.Heap.RefType));
+      this.methodBeingTranslated = null;
+    }
+
+    IMethodDefinition methodBeingTranslated;
+    public void BeginMethod(IMethodDefinition method) {
+      this.BeginMethod(method.ContainingType);
+      this.methodBeingTranslated = method;
     }
 
     public void BeginAssembly(IAssembly assembly) {
