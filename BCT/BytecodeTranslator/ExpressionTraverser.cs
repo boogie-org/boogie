@@ -615,6 +615,20 @@ namespace BytecodeTranslator
         penum.MoveNext();
       }
 
+      if (resolvedMethod.IsStatic) {
+        List<ITypeReference> consolidatedTypeArguments = new List<ITypeReference>();
+        Sink.GetConsolidatedTypeArguments(consolidatedTypeArguments, methodToCall.ContainingType);
+        foreach (ITypeReference typeReference in consolidatedTypeArguments) {
+          inexpr.Add(sink.FindOrCreateType(typeReference));
+        }
+      }
+      IGenericMethodInstanceReference methodInstanceReference = methodToCall as IGenericMethodInstanceReference;
+      if (methodInstanceReference != null) {
+        foreach (ITypeReference typeReference in methodInstanceReference.GenericArguments) {
+          inexpr.Add(sink.FindOrCreateType(typeReference));
+        }
+      }
+
       var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
       
       var translateAsFunctionCall = proc is Bpl.Function;

@@ -711,7 +711,7 @@ namespace BytecodeTranslator {
       return numParameters;
     }
 
-    private static ITypeReference GetUninstantiatedGenericType(ITypeReference typeReference) {
+    public static ITypeReference GetUninstantiatedGenericType(ITypeReference typeReference) {
       IGenericTypeInstanceReference/*?*/ genericTypeInstanceReference = typeReference as IGenericTypeInstanceReference;
       if (genericTypeInstanceReference != null) return GetUninstantiatedGenericType(genericTypeInstanceReference.GenericType);
       INestedTypeReference/*?*/ nestedTypeReference = typeReference as INestedTypeReference;
@@ -723,7 +723,7 @@ namespace BytecodeTranslator {
       return typeReference;
     }
 
-    private void GetConsolidatedTypeArguments(List<ITypeReference> consolidatedTypeArguments, ITypeReference typeReference) {
+    public static void GetConsolidatedTypeArguments(List<ITypeReference> consolidatedTypeArguments, ITypeReference typeReference) {
       IGenericTypeInstanceReference/*?*/ genTypeInstance = typeReference as IGenericTypeInstanceReference;
       if (genTypeInstance != null) {
         GetConsolidatedTypeArguments(consolidatedTypeArguments, genTypeInstance.GenericType);
