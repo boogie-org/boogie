@@ -27,7 +27,7 @@ class PoirotMain
         {
             x = 34;
         }
-        Contract.Assert(x == 34);
+        Contract.Assert(x == 35);
     }
 }
 

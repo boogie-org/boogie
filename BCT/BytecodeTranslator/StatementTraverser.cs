@@ -33,11 +33,12 @@ namespace BytecodeTranslator
     internal readonly Stack<IExpression> operandStack = new Stack<IExpression>();
 
     #region Constructors
-    public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
+    public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext, string exceptionTarget) {
       this.sink = sink;
       this.factory = sink.Factory;
       PdbReader = pdbReader;
       this.contractContext = contractContext;
+      this.exceptionTarget = exceptionTarget;
     }
     #endregion
 
@@ -131,8 +132,8 @@ namespace BytecodeTranslator
     /// <remarks>(mschaef) Works, but still a stub</remarks>
     /// <param name="conditionalStatement"></param>
     public override void Visit(IConditionalStatement conditionalStatement) {
-      StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
-      StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
+      StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext, this.exceptionTarget);
+      StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext, this.exceptionTarget);
 
       ExpressionTraverser condTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
       condTraverser.Visit(conditionalStatement.Condition);
@@ -277,6 +278,56 @@ namespace BytecodeTranslator
 
     #endregion
 
+    string exceptionTarget = null;
+    public Bpl.TransferCmd ExceptionJump { get { if (exceptionTarget == null) return new Bpl.ReturnCmd(Bpl.Token.NoToken); else return new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(exceptionTarget)); } }
+ 
+    public override void Visit(ITryCatchFinallyStatement tryCatchFinallyStatement) {
+      System.Diagnostics.Debug.Assert(tryCatchFinallyStatement.FinallyBody == null);
+      string savedExceptionTarget = this.exceptionTarget;
+      string catchLabel = TranslationHelper.GenerateCatchClauseName();
+      this.exceptionTarget = catchLabel;
+      this.Visit(tryCatchFinallyStatement.TryBody);
+      this.exceptionTarget = savedExceptionTarget;
+
+      StmtBuilder.AddLabelCmd(catchLabel);
+      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LocalExcVariable), Bpl.Expr.Ident(this.sink.ExcVariable)));
+      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.ExcVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef)));
+
+      List<Bpl.StmtList> catchStatements = new List<Bpl.StmtList>();
+      List<Bpl.Expr> typeReferences = new List<Bpl.Expr>();
+      foreach (ICatchClause catchClause in tryCatchFinallyStatement.CatchClauses) {
+        typeReferences.Insert(0, this.sink.FindOrCreateType(catchClause.ExceptionType));
+        StatementTraverser catchTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext, this.exceptionTarget);
+        if (catchClause.ExceptionContainer != Dummy.LocalVariable) {
+          Bpl.Variable catchClauseVariable = this.sink.FindOrCreateLocalVariable(catchClause.ExceptionContainer);
+          catchTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(catchClauseVariable), Bpl.Expr.Ident(this.sink.LocalExcVariable)));
+        }
+        catchTraverser.Visit(catchClause.Body);
+        catchStatements.Insert(0, catchTraverser.StmtBuilder.Collect(catchClause.Token()));
+      }
+
+      Bpl.StmtList stmtList = TranslationHelper.BuildStmtList(this.ExceptionJump);
+      Bpl.Expr dynTypeOfOperand = this.sink.Heap.DynamicType(Bpl.Expr.Ident(this.sink.LocalExcVariable));
+      Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, dynTypeOfOperand, typeReferences[0]);
+      Bpl.IfCmd elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, expr, catchStatements[0], null, stmtList);
+      for (int i = 1; i < catchStatements.Count; i++) {
+        expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, dynTypeOfOperand, typeReferences[i]);
+        elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, expr, catchStatements[i], elseIfCmd, null);
+      }
+      this.StmtBuilder.Add(elseIfCmd);
+    }
+
+    public override void Visit(IThrowStatement throwStatement) {
+      ExpressionTraverser exceptionTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
+      exceptionTraverser.Visit(throwStatement.Exception);
+      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.ExcVariable), exceptionTraverser.TranslatedExpressions.Pop()));
+      StmtBuilder.Add(this.ExceptionJump);
+    }
+
+    public override void Visit(IRethrowStatement rethrowStatement) {
+      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.ExcVariable), Bpl.Expr.Ident(this.sink.LocalExcVariable)));
+      StmtBuilder.Add(this.ExceptionJump);
+    }
   }
 
 }

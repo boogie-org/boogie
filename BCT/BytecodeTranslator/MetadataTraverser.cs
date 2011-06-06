@@ -104,7 +104,7 @@ namespace BytecodeTranslator {
       var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typeDefinition);
 
       this.sink.BeginMethod(typeDefinition);
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null);
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -207,7 +207,7 @@ namespace BytecodeTranslator {
 
       this.sink.BeginMethod(typeDefinition);
 
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null);
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -262,12 +262,12 @@ namespace BytecodeTranslator {
         return;
 
 
-      Sink.ProcedureInfo procAndFormalMap;
+      Sink.ProcedureInfo procInfo;
       IMethodDefinition stubMethod = null;
       if (IsStubMethod(method, out stubMethod)) {
-        procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(stubMethod);
+        procInfo = this.sink.FindOrCreateProcedure(stubMethod);
       } else {
-        procAndFormalMap = this.sink.FindOrCreateProcedureAndReturnProcAndFormalMap(method);
+        procInfo = this.sink.FindOrCreateProcedure(method);
       }
 
       if (method.IsAbstract) { // we're done, just define the procedure
@@ -275,14 +275,13 @@ namespace BytecodeTranslator {
       }
 
       this.sink.BeginMethod(method);
-      var decl = procAndFormalMap.Decl;
+      var decl = procInfo.Decl;
       var proc = decl as Bpl.Procedure;
-      var formalMap = procAndFormalMap.FormalMap;
-      this.sink.RetVariable = procAndFormalMap.ReturnVariable;
+      var formalMap = procInfo.FormalMap;
 
       try {
 
-        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
+        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null);
 
         #region Add assignments from In-Params to local-Params
 
@@ -373,7 +372,7 @@ namespace BytecodeTranslator {
         foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
           vars.Add(v);
         }
-
+        vars.Add(procInfo.LocalExcVariable);
         Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
         #endregion
 

@@ -561,6 +561,9 @@ namespace BytecodeTranslator
         this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(kv.Key, this.sink.Heap.Unbox(Bpl.Token.NoToken, kv.Key.Type, kv.Value)));
       }
 
+      Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.ExcVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
+      Bpl.StmtList thenStmt = TranslationHelper.BuildStmtList(this.StmtTraverser.ExceptionJump);
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.IfCmd(methodCall.Token(), expr, thenStmt, null, null));
     }
 
     // REVIEW: Does "thisExpr" really need to come back as an identifier? Can't it be a general expression?
@@ -629,9 +632,8 @@ namespace BytecodeTranslator
         }
       }
 
-      var proc = this.sink.FindOrCreateProcedure(resolvedMethod);
-      
-      var translateAsFunctionCall = proc is Bpl.Function;
+      var procInfo = this.sink.FindOrCreateProcedure(resolvedMethod);
+      var translateAsFunctionCall = procInfo.Decl is Bpl.Function;
       if (!translateAsFunctionCall) {
         if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
           Bpl.Variable v = this.sink.CreateFreshLocal(methodToCall.ResolvedMethod.Type.ResolvedType);
@@ -645,9 +647,10 @@ namespace BytecodeTranslator
           }
           TranslatedExpressions.Push(unboxed);
         }
+        outvars.Add(Bpl.Expr.Ident(procInfo.ExcVariable));
       }
 
-      return proc;
+      return procInfo.Decl;
     }
 
     #endregion

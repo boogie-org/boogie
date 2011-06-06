@@ -240,7 +240,7 @@ namespace BytecodeTranslator {
       }
 
       try {
-        var decl = sink.FindOrCreateProcedure(invokeMethod);
+        var decl = sink.FindOrCreateProcedure(invokeMethod).Decl;
         var proc = decl as Bpl.Procedure;
         var invars = proc.InParams;
         var outvars = proc.OutParams;
