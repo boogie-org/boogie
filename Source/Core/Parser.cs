@@ -205,15 +205,19 @@ private class BvBounds : Expr {
 			case 19: {
 				Consts(out vs);
 				foreach(Bpl.Variable/*!*/ v in vs){
-				Contract.Assert(v != null);
-				 Pgm.TopLevelDeclarations.Add(v); } 
+				 Contract.Assert(v != null);
+				 Pgm.TopLevelDeclarations.Add(v);
+				}
+				
 				break;
 			}
 			case 23: {
 				Function(out ds);
 				foreach(Bpl.Declaration/*!*/ d in ds){
-				Contract.Assert(d != null);
-				 Pgm.TopLevelDeclarations.Add(d); } 
+				 Contract.Assert(d != null);
+				 Pgm.TopLevelDeclarations.Add(d);
+				}
+				
 				break;
 			}
 			case 27: {
@@ -224,16 +228,19 @@ private class BvBounds : Expr {
 			case 28: {
 				UserDefinedTypes(out ts);
 				foreach(Declaration/*!*/ td in ts){
-				Contract.Assert(td != null);
-				                                        Pgm.TopLevelDeclarations.Add(td);
-				                                      } 
+				 Contract.Assert(td != null);
+				 Pgm.TopLevelDeclarations.Add(td);
+				}
+				
 				break;
 			}
 			case 6: {
 				GlobalVars(out vs);
 				foreach(Bpl.Variable/*!*/ v in vs){
-				Contract.Assert(v != null);
-				 Pgm.TopLevelDeclarations.Add(v); } 
+				 Contract.Assert(v != null);
+				 Pgm.TopLevelDeclarations.Add(v);
+				}
+				
 				break;
 			}
 			case 30: {
@@ -276,13 +283,14 @@ private class BvBounds : Expr {
 		}
 		bool makeClone = false;
 		foreach(TypedIdent/*!*/ x in xs){
-		Contract.Assert(x != null);
+		  Contract.Assert(x != null);
 		
 		       // ensure that no sharing is introduced
 		       List<ConstantParent/*!*/> ParentsClone;
 		       if (makeClone && Parents != null) {
 		         ParentsClone = new List<ConstantParent/*!*/> ();
-		         foreach (ConstantParent/*!*/ p in Parents){Contract.Assert(p != null);
+		         foreach (ConstantParent/*!*/ p in Parents){
+		           Contract.Assert(p != null);
 		           ParentsClone.Add(new ConstantParent (
 		                            new IdentifierExpr (p.Parent.tok, p.Parent.Name),
 		                            p.Unique));}
@@ -360,65 +368,66 @@ private class BvBounds : Expr {
 		ds.Add(func);
 		bool allUnnamed = true;
 		foreach(Formal/*!*/ f in arguments){
-		Contract.Assert(f != null);
-		      if (f.TypedIdent.Name != "") {
-		        allUnnamed = false;
-			break;
-		      }
-		    }
-		    if (!allUnnamed) {
-		      Type prevType = null;
-		      for (int i = arguments.Length - 1; i >= 0; i--) {
-		        TypedIdent/*!*/ curr = cce.NonNull(arguments[i]).TypedIdent;
-		        if (curr.Name == "") {
-			  if (prevType == null) {
-			    this.errors.SemErr(curr.tok, "the type of the last parameter is unspecified");
-			    break;
-			  }
-			  Type ty = curr.Type;
-		          if (ty is UnresolvedTypeIdentifier &&
-		              cce.NonNull(ty as UnresolvedTypeIdentifier).Arguments.Length == 0) {
-			    curr.Name = cce.NonNull(ty as UnresolvedTypeIdentifier).Name;
-			    curr.Type = prevType;
-			  } else {
-			    this.errors.SemErr(curr.tok, "expecting an identifier as parameter name");
-			  }
-			} else {
-			  prevType = curr.Type;
-			}
-		      }
-		    }
-		    if (definition != null) {
-		      // generate either an axiom or a function body
-		      if (QKeyValue.FindBoolAttribute(kv, "inline")) {
-		        func.Body = definition;
-		      } else {
-		        VariableSeq dummies = new VariableSeq();
-		        ExprSeq callArgs = new ExprSeq();
-		        int i = 0;
-		        foreach(Formal/*!*/ f in arguments){
-		Contract.Assert(f != null);
-		          string nm = f.TypedIdent.HasName ? f.TypedIdent.Name : "_" + i;
-		          dummies.Add(new BoundVariable(f.tok, new TypedIdent(f.tok, nm, f.TypedIdent.Type)));
-		          callArgs.Add(new IdentifierExpr(f.tok, nm));
-		          i++;
-		        }
-		        TypeVariableSeq/*!*/ quantifiedTypeVars = new TypeVariableSeq ();
-		        foreach(TypeVariable/*!*/ t in typeParams){
-		Contract.Assert(t != null);
-		          quantifiedTypeVars.Add(new TypeVariable (Token.NoToken, t.Name));}
+		  Contract.Assert(f != null);
+		  if (f.TypedIdent.Name != "") {
+		    allUnnamed = false;
+		break;
+		     }
+		   }
+		   if (!allUnnamed) {
+		     Type prevType = null;
+		     for (int i = arguments.Length - 1; i >= 0; i--) {
+		       TypedIdent/*!*/ curr = cce.NonNull(arguments[i]).TypedIdent;
+		       if (curr.Name == "") {
+		  if (prevType == null) {
+		    this.errors.SemErr(curr.tok, "the type of the last parameter is unspecified");
+		    break;
+		  }
+		  Type ty = curr.Type;
+		         if (ty is UnresolvedTypeIdentifier &&
+		             cce.NonNull(ty as UnresolvedTypeIdentifier).Arguments.Length == 0) {
+		    curr.Name = cce.NonNull(ty as UnresolvedTypeIdentifier).Name;
+		    curr.Type = prevType;
+		  } else {
+		    this.errors.SemErr(curr.tok, "expecting an identifier as parameter name");
+		  }
+		} else {
+		  prevType = curr.Type;
+		}
+		     }
+		   }
+		   if (definition != null) {
+		     // generate either an axiom or a function body
+		     if (QKeyValue.FindBoolAttribute(kv, "inline")) {
+		       func.Body = definition;
+		     } else {
+		       VariableSeq dummies = new VariableSeq();
+		       ExprSeq callArgs = new ExprSeq();
+		       int i = 0;
+		       foreach(Formal/*!*/ f in arguments){
+		         Contract.Assert(f != null);
+		         string nm = f.TypedIdent.HasName ? f.TypedIdent.Name : "_" + i;
+		         dummies.Add(new BoundVariable(f.tok, new TypedIdent(f.tok, nm, f.TypedIdent.Type)));
+		         callArgs.Add(new IdentifierExpr(f.tok, nm));
+		         i++;
+		       }
+		       TypeVariableSeq/*!*/ quantifiedTypeVars = new TypeVariableSeq ();
+		       foreach(TypeVariable/*!*/ t in typeParams){
+		         Contract.Assert(t != null);
+		         quantifiedTypeVars.Add(new TypeVariable (Token.NoToken, t.Name));
+		       }
 		
 		        Expr call = new NAryExpr(z, new FunctionCall(new IdentifierExpr(z, z.val)), callArgs);
 		        // specify the type of the function, because it might be that
 		        // type parameters only occur in the output type
 		        call = Expr.CoerceType(z, call, (Type)tyd.Type.Clone());
-				    Expr def = Expr.Eq(call, definition);
-				    if (quantifiedTypeVars.Length != 0 || dummies.Length != 0) {
-				      def = new ForallExpr(z, quantifiedTypeVars, dummies, 
-				                           kv, 
-				                           new Trigger(z, true, new ExprSeq(call), null),
-				                           def);
-				    }
+		        Expr def = Expr.Eq(call, definition);
+		        if (quantifiedTypeVars.Length != 0 || dummies.Length != 0) {
+		          def = new ForallExpr(z, quantifiedTypeVars, dummies,
+		                               kv,
+		                               new Trigger(z, true, new ExprSeq(call), null),
+		                               def);
+		        }
 		        ds.Add(new Axiom(z, def, "autogenerated definition axiom", null));
 		      }
 		    }
@@ -462,10 +471,10 @@ private class BvBounds : Expr {
 		IdsTypeWheres(true, tyds);
 		Expect(7);
 		foreach(TypedIdent/*!*/ tyd in tyds){
-		Contract.Assert(tyd != null);
-		       ds.Add(new GlobalVariable(tyd.tok, tyd, kv));
-		     }
-		  
+		 Contract.Assert(tyd != null);
+		 ds.Add(new GlobalVariable(tyd.tok, tyd, kv));
+		}
+		
 	}
 
 	void Procedure(out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl) {
@@ -538,10 +547,10 @@ private class BvBounds : Expr {
 		IdsTypeWheres(true, tyds);
 		Expect(7);
 		foreach(TypedIdent/*!*/ tyd in tyds){
-		Contract.Assert(tyd != null);
-		       ds.Add(new LocalVariable(tyd.tok, tyd, kv));
-		     }
-		  
+		 Contract.Assert(tyd != null);
+		 ds.Add(new LocalVariable(tyd.tok, tyd, kv));
+		}
+		
 	}
 
 	void ProcFormals(bool incoming, bool allowWhereClauses, out VariableSeq/*!*/ ds) {
@@ -552,20 +561,20 @@ private class BvBounds : Expr {
 		}
 		Expect(9);
 		foreach(TypedIdent/*!*/ tyd in tyds){
-		Contract.Assert(tyd != null);
-		       ds.Add(new Formal(tyd.tok, tyd, incoming));
-		     }
-		  
+		 Contract.Assert(tyd != null);
+		 ds.Add(new Formal(tyd.tok, tyd, incoming));
+		}
+		
 	}
 
 	void BoundVars(IToken/*!*/ x, out VariableSeq/*!*/ ds) {
 		Contract.Requires(x != null); Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); ds = new VariableSeq(); 
 		IdsTypeWheres(false, tyds);
 		foreach(TypedIdent/*!*/ tyd in tyds){
-		Contract.Assert(tyd != null);
-		       ds.Add(new BoundVariable(tyd.tok, tyd));
-		     }
-		  
+		 Contract.Assert(tyd != null);
+		 ds.Add(new BoundVariable(tyd.tok, tyd));
+		}
+		
 	}
 
 	void IdsType(out TypedIdentSeq/*!*/ tyds) {
@@ -575,10 +584,10 @@ private class BvBounds : Expr {
 		Type(out ty);
 		tyds = new TypedIdentSeq();
 		foreach(Token/*!*/ id in ids){
-		Contract.Assert(id != null);
-		       tyds.Add(new TypedIdent(id, id.val, ty, null));
-		     }
-		  
+		  Contract.Assert(id != null);
+		  tyds.Add(new TypedIdent(id, id.val, ty, null));
+		}
+		
 	}
 
 	void Idents(out TokenSeq/*!*/ xs) {
@@ -624,10 +633,10 @@ private class BvBounds : Expr {
 			
 		}
 		foreach(Token/*!*/ id in ids){
-		Contract.Assert(id != null);
-		       tyds.Add(new TypedIdent(id, id.val, ty, wh));
-		     }
-		  
+		 Contract.Assert(id != null);
+		 tyds.Add(new TypedIdent(id, id.val, ty, wh));
+		}
+		
 	}
 
 	void Expression(out Expr/*!*/ e0) {
@@ -716,9 +725,9 @@ private class BvBounds : Expr {
 		Expect(18);
 		typeParams = new TypeVariableSeq ();
 		foreach(Token/*!*/ id in typeParamToks){
-		Contract.Assert(id != null);
-		      typeParams.Add(new TypeVariable(id, id.val));}
-		   
+		  Contract.Assert(id != null);
+		  typeParams.Add(new TypeVariable(id, id.val));}
+		
 	}
 
 	void Types(TypeSeq/*!*/ ts) {
@@ -804,13 +813,13 @@ private class BvBounds : Expr {
 		if (synonym) {
 		 TypeVariableSeq/*!*/ typeParams = new TypeVariableSeq();
 		 foreach(Token/*!*/ t in paramTokens){
-		Contract.Assert(t != null);
-		         typeParams.Add(new TypeVariable(t, t.val));}
-		       decl = new TypeSynonymDecl(id, id.val, typeParams, body, kv);
-		     } else {
-		       decl = new TypeCtorDecl(id, id.val, paramTokens.Length, kv);
-		     }
-		   
+		   Contract.Assert(t != null);
+		   typeParams.Add(new TypeVariable(t, t.val));}
+		 decl = new TypeSynonymDecl(id, id.val, typeParams, body, kv);
+		} else {
+		  decl = new TypeCtorDecl(id, id.val, paramTokens.Length, kv);
+		}
+		
 	}
 
 	void WhiteSpaceIdents(out TokenSeq/*!*/ xs) {
@@ -849,10 +858,10 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 			if (la.kind == 1) {
 				Idents(out ms);
 				foreach(IToken/*!*/ m in ms){
-				Contract.Assert(m != null);
-				                                 mods.Add(new IdentifierExpr(m, m.val));
-				                               }
-				                            
+				 Contract.Assert(m != null);
+				 mods.Add(new IdentifierExpr(m, m.val));
+				}
+				
 			}
 			Expect(7);
 		} else if (la.kind == 33) {
@@ -999,11 +1008,11 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 			Expect(7);
 			ids = new IdentifierExprSeq();
 			foreach(IToken/*!*/ y in xs){
-			Contract.Assert(y != null);
-			                               ids.Add(new IdentifierExpr(y, y.val));
-			                             }
-			                             c = new HavocCmd(x,ids);
-			                          
+			  Contract.Assert(y != null);
+			  ids.Add(new IdentifierExpr(y, y.val));
+			}
+			c = new HavocCmd(x,ids);
+			
 		} else if (la.kind == 48) {
 			CallCmd(out cn);
 			Expect(7);
@@ -1037,10 +1046,10 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 			y = t; 
 			Idents(out xs);
 			foreach(IToken/*!*/ s in xs){
-			Contract.Assert(s != null);
+			 Contract.Assert(s != null);
 			 ss.Add(s.val); }
-			                          tc = new GotoCmd(y, ss);
-			                       
+			tc = new GotoCmd(y, ss);
+			
 		} else if (la.kind == 37) {
 			Get();
 			tc = new ReturnCmd(t); 
@@ -1910,10 +1919,10 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			y = t; 
 			Idents(out xs);
 			foreach(IToken/*!*/ s in xs){
-			Contract.Assert(s != null);
+			 Contract.Assert(s != null);
 			 ss.Add(s.val); }
-			                          b = new Block(x,x.val,cs,new GotoCmd(y,ss));
-			                       
+			b = new Block(x,x.val,cs,new GotoCmd(y,ss));
+			
 		} else if (la.kind == 37) {
 			Get();
 			Expression(out e);
