@@ -718,8 +718,11 @@ namespace Microsoft.Boogie {
 
       List<object> vals = new List<object>();
       foreach (int i in args) {
-        object o = cce.NonNull(partitionToValue[i]);
-        if (o is bool) {
+        object o = partitionToValue[i];
+        if (o == null) {
+          // uninterpreted value
+          vals.Add(string.Format("UI({0})", i.ToString()));
+        } else if (o is bool) {
           vals.Add(o);
         } else if (o is BigNum) {
           vals.Add(o);

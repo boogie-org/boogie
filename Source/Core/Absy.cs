@@ -1751,7 +1751,7 @@ namespace Microsoft.Boogie {
   public class Function : DeclWithFormals {
     public string Comment;
 
-    // the body is only set if the function is declared with {:expand true}
+    // the body is only set if the function is declared with {:inline}
     public Expr Body;
     public List<Expansion/*!*/> expansions;
     public bool doingExpansion;
