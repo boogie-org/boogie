@@ -161,7 +161,7 @@ namespace BytecodeTranslator {
           ifcmd = new Bpl.IfCmd(token,
             Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
             this.sink.Heap.DynamicType(inexpr[0]),
-            Bpl.Expr.Ident(this.sink.FindOrCreateType(t))
+            this.sink.FindOrCreateType(t)
             ),
             thenBranch.Collect(token),
             null,

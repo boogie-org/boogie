@@ -62,7 +62,6 @@ namespace BytecodeTranslator {
     /// </summary>
     /// 
     public override void Visit(ITypeDefinition typeDefinition) {
-
       var savedPrivateTypes = this.privateTypes;
       this.privateTypes = new List<ITypeDefinition>();
 
@@ -275,7 +274,7 @@ namespace BytecodeTranslator {
         return;
       }
 
-      this.sink.BeginMethod(method.ContainingType);
+      this.sink.BeginMethod(method);
       var decl = procAndFormalMap.Decl;
       var proc = decl as Bpl.Procedure;
       var formalMap = procAndFormalMap.FormalMap;
