@@ -104,7 +104,7 @@ namespace BytecodeTranslator {
       var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typeDefinition);
 
       this.sink.BeginMethod(typeDefinition);
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null);
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null, null);
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -207,7 +207,7 @@ namespace BytecodeTranslator {
 
       this.sink.BeginMethod(typeDefinition);
 
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null);
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null, null);
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -280,8 +280,9 @@ namespace BytecodeTranslator {
       var formalMap = procInfo.FormalMap;
 
       try {
-
-        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null);
+        MostNestedTryStatementTraverser tryStatementTraverser = new MostNestedTryStatementTraverser();
+        tryStatementTraverser.Visit(method.Body);
+        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null, null);
 
         #region Add assignments from In-Params to local-Params
 

@@ -61,9 +61,16 @@ namespace BytecodeTranslator {
     /// from Cci to Boogie
     /// </summary>
   static class TranslationHelper {
-    public static Bpl.StmtList BuildStmtList(Bpl.TransferCmd cmd) {
+    public static Bpl.StmtList BuildStmtList(Bpl.Cmd cmd, Bpl.TransferCmd tcmd) {
       Bpl.StmtListBuilder builder = new Bpl.StmtListBuilder();
       builder.Add(cmd);
+      builder.Add(tcmd);
+      return builder.Collect(Bpl.Token.NoToken);
+    }
+
+    public static Bpl.StmtList BuildStmtList(Bpl.TransferCmd tcmd) {
+      Bpl.StmtListBuilder builder = new Bpl.StmtListBuilder();
+      builder.Add(tcmd);
       return builder.Collect(Bpl.Token.NoToken);
     }
 
@@ -97,6 +104,11 @@ namespace BytecodeTranslator {
     internal static int catchClauseCounter = 0;
     public static string GenerateCatchClauseName() {
       return "catch" + (catchClauseCounter++).ToString();
+    }
+
+    internal static int finallyClauseCounter = 0;
+    public static string GenerateFinallyClauseName() {
+      return "finally" + (finallyClauseCounter++).ToString();
     }
 
     public static string CreateUniqueMethodName(IMethodReference method) {
