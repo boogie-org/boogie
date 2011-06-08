@@ -104,6 +104,11 @@ namespace BytecodeTranslator
         this.Visit(addressDereference);
         return;
       }
+      IBlockExpression block = addressableExpression.Definition as IBlockExpression;
+      if (block != null) {
+        this.Visit(block);
+        return;
+      }
       IMethodReference/*?*/ method = addressableExpression.Definition as IMethodReference;
       if (method != null)
       {

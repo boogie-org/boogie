@@ -124,6 +124,7 @@ namespace BytecodeTranslator {
           pdbReader = new PdbReader(pdbStream, host);
         }
         module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader) as IModule;
+        host.HelperRegisterAsLatest(module);
         modules.Add(module);
         contractExtractors.Add(module, host.GetContractExtractor(module.UnitIdentity));
         pdbReaders.Add(module, pdbReader);
