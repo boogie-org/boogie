@@ -489,7 +489,7 @@ namespace BytecodeTranslator {
         } else {
           this.TranslatedProgram.TopLevelDeclarations.Add(decl);
         }
-        procInfo = new ProcedureInfo(decl, formalMap, retVariable, excVariable, excVariable, localExcVariable, typeParameters, methodParameters);
+        procInfo = new ProcedureInfo(decl, formalMap, retVariable, thisVariable, excVariable, localExcVariable, typeParameters, methodParameters);
         this.declaredMethods.Add(key, procInfo);
 
         // Can't visit the method's contracts until the formalMap and procedure are added to the
