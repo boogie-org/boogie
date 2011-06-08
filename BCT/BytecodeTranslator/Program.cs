@@ -124,7 +124,7 @@ namespace BytecodeTranslator {
           pdbReader = new PdbReader(pdbStream, host);
         }
         module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader) as IModule;
-        host.HelperRegisterAsLatest(module);
+        host.RegisterAsLatest(module);
         modules.Add(module);
         contractExtractors.Add(module, host.GetContractExtractor(module.UnitIdentity));
         pdbReaders.Add(module, pdbReader);
@@ -241,7 +241,7 @@ namespace BytecodeTranslator {
       }
 
       try {
-        var decl = sink.FindOrCreateProcedure(invokeMethod);
+        var decl = sink.FindOrCreateProcedure(invokeMethod).Decl;
         var proc = decl as Bpl.Procedure;
         var invars = proc.InParams;
         var outvars = proc.OutParams;
