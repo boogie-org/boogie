@@ -326,20 +326,26 @@ namespace BytecodeTranslator {
               var mdc = c as IMetadataConstant;
               if (mdc != null) {
                 object o;
-                switch (mdc.Type.TypeCode) {
-                  case PrimitiveTypeCode.Boolean:
-                    o = (bool)mdc.Value ? Bpl.Expr.True : Bpl.Expr.False;
-                    break;
-                  case PrimitiveTypeCode.Int32:
-                    var lit = Bpl.Expr.Literal((int)mdc.Value);
-                    lit.Type = Bpl.Type.Int;
-                    o = lit;
-                    break;
-                  case PrimitiveTypeCode.String:
-                    o = mdc.Value;
-                    break;
-                  default:
-                    throw new InvalidCastException("Invalid metadata constant type");
+                if (mdc.Type.IsEnum) {
+                  var lit = Bpl.Expr.Literal((int) mdc.Value);
+                  lit.Type = Bpl.Type.Int;
+                  o = lit;
+                } else {
+                  switch (mdc.Type.TypeCode) {
+                    case PrimitiveTypeCode.Boolean:
+                      o = (bool) mdc.Value ? Bpl.Expr.True : Bpl.Expr.False;
+                      break;
+                    case PrimitiveTypeCode.Int32:
+                      var lit = Bpl.Expr.Literal((int) mdc.Value);
+                      lit.Type = Bpl.Type.Int;
+                      o = lit;
+                      break;
+                    case PrimitiveTypeCode.String:
+                      o = mdc.Value;
+                      break;
+                    default:
+                      throw new InvalidCastException("Invalid metadata constant type");
+                  }
                 }
                 args[argIndex++] = o;
               }

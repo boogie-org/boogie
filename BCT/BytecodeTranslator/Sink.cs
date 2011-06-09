@@ -764,7 +764,7 @@ namespace BytecodeTranslator {
       IGenericMethodParameter gmp = type as IGenericMethodParameter;
       if (gmp != null) {
         ProcedureInfo info = FindOrCreateProcedure(methodBeingTranslated);
-        return Bpl.Expr.Ident(info.TypeParameter(gmp.Index));
+        return Bpl.Expr.Ident(info.MethodParameter(gmp.Index));
       }
 
       ITypeReference uninstantiatedGenericType = GetUninstantiatedGenericType(type);
@@ -862,7 +862,7 @@ namespace BytecodeTranslator {
     /// The values in this table are the procedures
     /// defined in the program created by the heap in the Sink's ctor.
     /// </summary>
-    private Dictionary<string, ProcedureInfo> initiallyDeclaredProcedures = new Dictionary<string, ProcedureInfo>();
+    public Dictionary<string, ProcedureInfo> initiallyDeclaredProcedures = new Dictionary<string, ProcedureInfo>();
 
     public void BeginMethod(ITypeReference containingType) {
       this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
