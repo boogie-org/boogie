@@ -338,13 +338,17 @@ namespace BytecodeTranslator
           }
           break;
         case PrimitiveTypeCode.Char: // chars are represented as ints
-        case PrimitiveTypeCode.Int16:
-        case PrimitiveTypeCode.Int32:
-        case PrimitiveTypeCode.Int64:
         case PrimitiveTypeCode.Int8:
-          var lit = Bpl.Expr.Literal((int)constant.Value);
+        case PrimitiveTypeCode.Int16:
+          var lit = Bpl.Expr.Literal((short)constant.Value);
           lit.Type = Bpl.Type.Int;
           TranslatedExpressions.Push(lit);
+          break;
+        case PrimitiveTypeCode.Int32:
+        case PrimitiveTypeCode.Int64:
+          var lit2 = Bpl.Expr.Literal((int)constant.Value);
+          lit2.Type = Bpl.Type.Int;
+          TranslatedExpressions.Push(lit2);
           break;
         case PrimitiveTypeCode.UInt16:
         case PrimitiveTypeCode.UInt32:
@@ -486,11 +490,6 @@ namespace BytecodeTranslator
         // So this code is the same as Visit(ICreateObjectInstance)
         // TODO: factor the code into a single method?
 
-        var addrOf = methodCall.ThisArgument as IAddressOf;
-        var ae = addrOf.Expression as IAddressableExpression;
-        var local = ae.Definition as ILocalDefinition;
-        var s = this.sink.CreateFreshLocal(local.Type);
-
         // First generate an Alloc() call
         this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(methodCallToken, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(thisExpr)));
 
@@ -502,7 +501,7 @@ namespace BytecodeTranslator
             new Bpl.AssumeCmd(methodCallToken,
               Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
               this.sink.Heap.DynamicType(thisExpr),
-              this.sink.FindOrCreateType(resolvedMethod.ContainingTypeDefinition)
+              this.sink.FindOrCreateType(methodCall.MethodToCall.ResolvedMethod.ContainingTypeDefinition)
               )
               )
             );
@@ -531,8 +530,8 @@ namespace BytecodeTranslator
           inexpr[0] = Bpl.Expr.Ident(local);
         }
 
-        System.Diagnostics.Debug.Assert(outvars.Count == 0);
-        outvars.Add(Bpl.Expr.Ident(local));
+        System.Diagnostics.Debug.Assert(outvars.Count == 1);
+        outvars.Insert(0, Bpl.Expr.Ident(local));
         string methodName = isEventAdd ? this.sink.DelegateAddName : this.sink.DelegateRemoveName;
         call = new Bpl.CallCmd(methodCallToken, methodName, inexpr, outvars);
         this.StmtTraverser.StmtBuilder.Add(call);
@@ -652,7 +651,7 @@ namespace BytecodeTranslator
           }
           TranslatedExpressions.Push(unboxed);
         }
-        outvars.Add(Bpl.Expr.Ident(procInfo.ExcVariable));
+        outvars.Add(Bpl.Expr.Ident(this.sink.ExcVariable));
       }
 
       return procInfo.Decl;
@@ -778,6 +777,11 @@ namespace BytecodeTranslator
           var be = popValue as IBoundExpression;
           if (be != null) {
             TranslateAssignment(tok, be.Definition, be.Instance, source);
+            return;
+          }
+          var ao = popValue as IAddressOf;
+          if (ao != null) {
+            TranslateAssignment(tok, ao.Expression.Definition, ao.Expression.Instance, source);
             return;
           }
         }
