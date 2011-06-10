@@ -1424,12 +1424,12 @@ namespace BytecodeTranslator
 
     public override void Visit(IReturnValue returnValue)
     {
-      if (this.sink.RetVariable == null)
+      if (this.sink.ReturnVariable == null)
       {
         throw new TranslationException(String.Format("Don't know what to do with return value {0}", returnValue.ToString()));
       }
       TranslatedExpressions.Push(new Bpl.IdentifierExpr(returnValue.Token(),
-        this.sink.RetVariable));
+        this.sink.ReturnVariable));
 
     }
     #endregion

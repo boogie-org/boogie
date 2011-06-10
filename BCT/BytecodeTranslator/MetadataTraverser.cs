@@ -104,7 +104,7 @@ namespace BytecodeTranslator {
       var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typeDefinition);
 
       this.sink.BeginMethod(typeDefinition);
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null, null);
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, new List<ITryCatchFinallyStatement>());
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -207,7 +207,7 @@ namespace BytecodeTranslator {
 
       this.sink.BeginMethod(typeDefinition);
 
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null, null);
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, new List<ITryCatchFinallyStatement>());
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -280,9 +280,7 @@ namespace BytecodeTranslator {
       var formalMap = procInfo.FormalMap;
 
       try {
-        MostNestedTryStatementTraverser tryStatementTraverser = new MostNestedTryStatementTraverser();
-        tryStatementTraverser.Visit(method.Body);
-        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null, null);
+        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, new List<ITryCatchFinallyStatement>());
 
         #region Add assignments from In-Params to local-Params
 
@@ -359,6 +357,7 @@ namespace BytecodeTranslator {
           this.privateTypes.AddRange(helperTypes);
         }
         //method.Body.Dispatch(stmtTraverser);
+        stmtTraverser.GenerateDispatchContinuation();
         #endregion
 
         #region Create Local Vars For Implementation
