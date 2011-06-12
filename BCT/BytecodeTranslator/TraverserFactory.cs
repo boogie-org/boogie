@@ -24,7 +24,7 @@ namespace BytecodeTranslator {
     {
       return new MetadataTraverser(sink, sourceLocationProviders);
     }
-    public virtual StatementTraverser MakeStatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext, List<ITryCatchFinallyStatement> nestedTryCatchFinallyStatements) {
+    public virtual StatementTraverser MakeStatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext, List<Tuple<ITryCatchFinallyStatement,StatementTraverser.TryCatchFinallyContext>> nestedTryCatchFinallyStatements) {
       return new StatementTraverser(sink, pdbReader, contractContext, nestedTryCatchFinallyStatements);
     }
     public virtual ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext) {

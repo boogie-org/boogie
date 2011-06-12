@@ -104,7 +104,7 @@ namespace BytecodeTranslator {
       var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typeDefinition);
 
       this.sink.BeginMethod(typeDefinition);
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, new List<ITryCatchFinallyStatement>());
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, new List<Tuple<ITryCatchFinallyStatement, StatementTraverser.TryCatchFinallyContext>>());
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -207,7 +207,7 @@ namespace BytecodeTranslator {
 
       this.sink.BeginMethod(typeDefinition);
 
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, new List<ITryCatchFinallyStatement>());
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, new List<Tuple<ITryCatchFinallyStatement, StatementTraverser.TryCatchFinallyContext>>());
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -280,7 +280,7 @@ namespace BytecodeTranslator {
       var formalMap = procInfo.FormalMap;
 
       try {
-        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, new List<ITryCatchFinallyStatement>());
+        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, new List<Tuple<ITryCatchFinallyStatement, StatementTraverser.TryCatchFinallyContext>>());
 
         #region Add assignments from In-Params to local-Params
 
@@ -291,13 +291,6 @@ namespace BytecodeTranslator {
               new Bpl.IdentifierExpr(tok, mparam.outParameterCopy),
               new Bpl.IdentifierExpr(tok, mparam.inParameterCopy)));
           }
-        }
-
-        if (!method.IsStatic && method.ContainingType.ResolvedType.IsStruct) {
-          Bpl.IToken tok = method.Token();
-          stmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
-            Bpl.Expr.Ident(this.sink.ThisVariable),
-            new Bpl.IdentifierExpr(tok, proc.InParams[0])));
         }
 
         #endregion
@@ -368,9 +361,6 @@ namespace BytecodeTranslator {
 
         #region Create Local Vars For Implementation
         List<Bpl.Variable> vars = new List<Bpl.Variable>();
-        if (!method.IsStatic && method.ContainingType.ResolvedType.IsStruct) {
-          vars.Add(this.sink.ThisVariable);
-        }
         foreach (MethodParameter mparam in formalMap.Values) {
           if (!mparam.underlyingParameter.IsByReference)
             vars.Add(mparam.outParameterCopy);
@@ -379,6 +369,8 @@ namespace BytecodeTranslator {
           vars.Add(v);
         }
         vars.Add(procInfo.LocalExcVariable);
+        vars.Add(procInfo.FinallyStackVariable);
+        vars.Add(procInfo.LabelVariable);
         Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
         #endregion
 

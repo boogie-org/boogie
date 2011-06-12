@@ -54,7 +54,7 @@ namespace BytecodeTranslator
     internal readonly Stack<IExpression> operandStack = new Stack<IExpression>();
 
     #region Constructors
-    public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext, List<ITryCatchFinallyStatement> nestedTryCatchFinallyStatements) {
+    public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext, List<Tuple<ITryCatchFinallyStatement,TryCatchFinallyContext>> nestedTryCatchFinallyStatements) {
       this.sink = sink;
       this.factory = sink.Factory;
       PdbReader = pdbReader;
@@ -89,7 +89,7 @@ namespace BytecodeTranslator
 
     public void GenerateDispatchContinuation() {
       // Iterate over all labels in sink.cciLabels and sink.boogieLabels and generate dispatch based on sink.LabelVariable
-      this.StmtBuilder.AddLabelCmd("DispatchContinutation");
+      this.StmtBuilder.AddLabelCmd("DispatchContinuation");
       Bpl.IfCmd elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(true), TranslationHelper.BuildStmtList(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(false))), null, null);
       Bpl.IdentifierExpr labelExpr = Bpl.Expr.Ident(this.sink.LabelVariable);
       foreach (IName name in sink.cciLabels.Keys) {
@@ -292,7 +292,7 @@ namespace BytecodeTranslator
       int count = 0;
       while (count < this.nestedTryCatchFinallyStatements.Count) {
         int index = this.nestedTryCatchFinallyStatements.Count - count - 1;
-        ITryCatchFinallyStatement nestedContext = this.nestedTryCatchFinallyStatements[index];
+        ITryCatchFinallyStatement nestedContext = this.nestedTryCatchFinallyStatements[index].Item1;
         if (targetContext == nestedContext)
           break;
         count++;
@@ -301,8 +301,8 @@ namespace BytecodeTranslator
       if (count != 0) {
         int id = this.sink.FindOrCreateCciLabelIdentifier(target);
         StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LabelVariable), Bpl.Expr.Literal(id)));
-        StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.FinallyStackVariable), Bpl.Expr.Literal(count)));
-        string finallyLabel = this.sink.FindOrCreateFinallyLabel(this.nestedTryCatchFinallyStatements[this.nestedTryCatchFinallyStatements.Count - 1]);
+        StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.FinallyStackCounterVariable), Bpl.Expr.Literal(count)));
+        string finallyLabel = this.sink.FindOrCreateFinallyLabel(this.nestedTryCatchFinallyStatements[this.nestedTryCatchFinallyStatements.Count - 1].Item1);
         StmtBuilder.Add(new Bpl.GotoCmd(gotoStatement.Token(), new Bpl.StringSeq(finallyLabel)));
       }
       else {
@@ -332,31 +332,62 @@ namespace BytecodeTranslator
 
     #endregion
 
-    List<ITryCatchFinallyStatement> nestedTryCatchFinallyStatements;
-    public Bpl.TransferCmd ExceptionJump {
-      get {
-        int count = nestedTryCatchFinallyStatements.Count;
-        if (count == 0) {
-          return new Bpl.ReturnCmd(Bpl.Token.NoToken);
+    public enum TryCatchFinallyContext { InTry, InCatch, InFinally };
+    List<Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext>> nestedTryCatchFinallyStatements;
+    
+    private void RaiseExceptionHelper(Bpl.StmtListBuilder builder) {
+      List<Bpl.Cmd> cmds = new List<Bpl.Cmd>();
+      int count = nestedTryCatchFinallyStatements.Count;
+      if (count == 0) {
+        builder.Add(new Bpl.ReturnCmd(Bpl.Token.NoToken));
+      }
+      else {
+        Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext> topOfStack = nestedTryCatchFinallyStatements[count - 1];
+        cmds.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.FinallyStackCounterVariable), Bpl.Expr.Literal(0)));
+        string continuationTarget = this.sink.FindOrCreateContinuationLabel(topOfStack.Item1);
+        string exceptionTarget; // jump target of the exception
+        if (topOfStack.Item2 == TryCatchFinallyContext.InTry) {
+          exceptionTarget = this.sink.FindOrCreateCatchLabel(topOfStack.Item1);
+        }
+        else if (topOfStack.Item2 == TryCatchFinallyContext.InCatch) {
+          exceptionTarget = this.sink.FindOrCreateFinallyLabel(topOfStack.Item1);
+          int continuationId = this.sink.FindOrCreateBoogieLabelIdentifier(continuationTarget);
+          builder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LabelVariable), Bpl.Expr.Literal(continuationId)));
         }
         else {
-          string exceptionTarget = this.sink.FindOrCreateFinallyLabel(nestedTryCatchFinallyStatements[count - 1]);
-          return new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(exceptionTarget));
+          exceptionTarget = continuationTarget;
         }
+        builder.Add(new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(exceptionTarget)));
       }
     }
 
+    public void RaiseException() {
+      RaiseExceptionHelper(StmtBuilder);
+    }
+    
+    public void RaiseException(Bpl.Expr e) {
+      Bpl.StmtListBuilder builder = new Bpl.StmtListBuilder();
+      RaiseExceptionHelper(builder);
+      Bpl.IfCmd ifCmd = new Bpl.IfCmd(Bpl.Token.NoToken, e, builder.Collect(Bpl.Token.NoToken), null, null);
+      StmtBuilder.Add(ifCmd);
+    }
+
     public override void Visit(ITryCatchFinallyStatement tryCatchFinallyStatement) {
-      nestedTryCatchFinallyStatements.Add(tryCatchFinallyStatement);
+      int continuationId = this.sink.FindOrCreateBoogieLabelIdentifier(this.sink.FindOrCreateContinuationLabel(tryCatchFinallyStatement));
+
+      nestedTryCatchFinallyStatements.Add(new Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext>(tryCatchFinallyStatement, TryCatchFinallyContext.InTry));
       this.Visit(tryCatchFinallyStatement.TryBody);
+      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LabelVariable), Bpl.Expr.Literal(continuationId)));
+      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.FinallyStackCounterVariable), Bpl.Expr.Literal(0)));
+      StmtBuilder.Add(new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(this.sink.FindOrCreateFinallyLabel(tryCatchFinallyStatement))));
       nestedTryCatchFinallyStatements.RemoveAt(nestedTryCatchFinallyStatements.Count - 1);
 
       StmtBuilder.AddLabelCmd(this.sink.FindOrCreateCatchLabel(tryCatchFinallyStatement));
-      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LocalExcVariable), Bpl.Expr.Ident(this.sink.ExcVariable)));
-      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.ExcVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef)));
-
+      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LocalExcVariable), Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable)));
+      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef)));
       List<Bpl.StmtList> catchStatements = new List<Bpl.StmtList>();
       List<Bpl.Expr> typeReferences = new List<Bpl.Expr>();
+      this.nestedTryCatchFinallyStatements.Add(new Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext>(tryCatchFinallyStatement, TryCatchFinallyContext.InCatch));
       foreach (ICatchClause catchClause in tryCatchFinallyStatement.CatchClauses) {
         typeReferences.Insert(0, this.sink.FindOrCreateType(catchClause.ExceptionType));
         StatementTraverser catchTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext, this.nestedTryCatchFinallyStatements);
@@ -365,63 +396,67 @@ namespace BytecodeTranslator
           catchTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(catchClauseVariable), Bpl.Expr.Ident(this.sink.LocalExcVariable)));
         }
         catchTraverser.Visit(catchClause.Body);
+        catchTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LabelVariable), Bpl.Expr.Literal(continuationId)));
+        catchTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.FinallyStackCounterVariable), Bpl.Expr.Literal(0)));
+        catchTraverser.StmtBuilder.Add(new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(this.sink.FindOrCreateFinallyLabel(tryCatchFinallyStatement))));
         catchStatements.Insert(0, catchTraverser.StmtBuilder.Collect(catchClause.Token()));
       }
-
-      Bpl.AssignCmd assignCmd = TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.ExcVariable), Bpl.Expr.Ident(this.sink.LocalExcVariable));
-      Bpl.TransferCmd transferCmd = this.ExceptionJump;
-      if (catchStatements.Count == 0) {
-        StmtBuilder.Add(assignCmd);
-        StmtBuilder.Add(transferCmd);
+      Bpl.IfCmd elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(false), TranslationHelper.BuildStmtList(new Bpl.ReturnCmd(Bpl.Token.NoToken)), null, null);
+      Bpl.Expr dynTypeOfOperand = this.sink.Heap.DynamicType(Bpl.Expr.Ident(this.sink.LocalExcVariable));
+      for (int i = 0; i < catchStatements.Count; i++) {
+        Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, dynTypeOfOperand, typeReferences[i]);
+        elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, expr, catchStatements[i], elseIfCmd, null);
       }
-      else {
-        Bpl.IfCmd elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(true), TranslationHelper.BuildStmtList(assignCmd, transferCmd), null, null);
-        Bpl.Expr dynTypeOfOperand = this.sink.Heap.DynamicType(Bpl.Expr.Ident(this.sink.LocalExcVariable));
-        for (int i = 0; i < catchStatements.Count; i++) {
-          Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, dynTypeOfOperand, typeReferences[i]);
-          elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, expr, catchStatements[i], elseIfCmd, null);
-        }
-        this.StmtBuilder.Add(elseIfCmd);
-      }
+      this.StmtBuilder.Add(elseIfCmd);
+      this.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.LocalExcVariable)));
+      RaiseException();
+      nestedTryCatchFinallyStatements.RemoveAt(nestedTryCatchFinallyStatements.Count - 1);
 
       this.StmtBuilder.AddLabelCmd(this.sink.FindOrCreateFinallyLabel(tryCatchFinallyStatement));
       if (tryCatchFinallyStatement.FinallyBody != null) {
+        nestedTryCatchFinallyStatements.Add(new Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext>(tryCatchFinallyStatement, TryCatchFinallyContext.InFinally));
+        Bpl.Variable savedExcVariable = this.sink.CreateFreshLocal(this.sink.Heap.RefType);
+        Bpl.Variable savedFinallyStackCounterVariable = this.sink.CreateFreshLocal(Bpl.Type.Int);
+        Bpl.Variable savedLabelVariable = this.sink.CreateFreshLocal(Bpl.Type.Int);
+        StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(savedExcVariable), Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable)));
+        StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(savedFinallyStackCounterVariable), Bpl.Expr.Ident(this.sink.FinallyStackCounterVariable)));
+        StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(savedLabelVariable), Bpl.Expr.Ident(this.sink.LabelVariable)));
         Visit(tryCatchFinallyStatement.FinallyBody);
+        StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(savedExcVariable)));
+        StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.FinallyStackCounterVariable), Bpl.Expr.Ident(savedFinallyStackCounterVariable)));
+        StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LabelVariable), Bpl.Expr.Ident(savedLabelVariable)));
+        nestedTryCatchFinallyStatements.RemoveAt(nestedTryCatchFinallyStatements.Count - 1);
       }
+      Bpl.IdentifierExpr fsv = Bpl.Expr.Ident(this.sink.FinallyStackCounterVariable);
       Bpl.GotoCmd dispatchCmd = new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq("DispatchContinuation"));
-      if (this.nestedTryCatchFinallyStatements.Count == 0) {
+      int count = this.nestedTryCatchFinallyStatements.Count;
+      if (count == 0) {
         this.StmtBuilder.Add(dispatchCmd);
       }
       else {
-        Bpl.IdentifierExpr fsv = Bpl.Expr.Ident(this.sink.FinallyStackVariable);
-        this.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(fsv, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Sub, fsv, Bpl.Expr.Literal(1))));
-        string finallyLabel = this.sink.FindOrCreateFinallyLabel(this.nestedTryCatchFinallyStatements[this.nestedTryCatchFinallyStatements.Count - 1]);
+        Bpl.AssignCmd decrementCmd = TranslationHelper.BuildAssignCmd(fsv, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Sub, fsv, Bpl.Expr.Literal(1)));
+        string finallyLabel = this.sink.FindOrCreateFinallyLabel(this.nestedTryCatchFinallyStatements[count - 1].Item1);
         Bpl.GotoCmd parentCmd = new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(finallyLabel));
         Bpl.StmtList thenList = TranslationHelper.BuildStmtList(dispatchCmd);
-        Bpl.StmtList elseList = TranslationHelper.BuildStmtList(parentCmd);
+        Bpl.StmtList elseList = TranslationHelper.BuildStmtList(decrementCmd, parentCmd);
         Bpl.IfCmd ifCmd = new Bpl.IfCmd(Bpl.Token.NoToken, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, fsv, Bpl.Expr.Literal(0)), thenList, null, elseList);
         this.StmtBuilder.Add(ifCmd);
       }
+      StmtBuilder.AddLabelCmd(this.sink.FindOrCreateContinuationLabel(tryCatchFinallyStatement));
+      Bpl.Expr raiseExpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
+      RaiseException(raiseExpr);
     }
 
     public override void Visit(IThrowStatement throwStatement) {
       ExpressionTraverser exceptionTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
       exceptionTraverser.Visit(throwStatement.Exception);
-      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.ExcVariable), exceptionTraverser.TranslatedExpressions.Pop())); 
-      if (this.nestedTryCatchFinallyStatements.Count != 0) {
-        ITryCatchFinallyStatement target = this.nestedTryCatchFinallyStatements[this.nestedTryCatchFinallyStatements.Count-1];
-        int id = this.sink.FindOrCreateBoogieLabelIdentifier(this.sink.FindOrCreateCatchLabel(target));
-        StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LabelVariable), Bpl.Expr.Literal(id)));
-        StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.FinallyStackVariable), Bpl.Expr.Literal(1)));
-        string finallyLabel = this.sink.FindOrCreateFinallyLabel(this.nestedTryCatchFinallyStatements[this.nestedTryCatchFinallyStatements.Count - 1]);
-        StmtBuilder.Add(new Bpl.GotoCmd(throwStatement.Token(), new Bpl.StringSeq(finallyLabel)));
-      }
-      StmtBuilder.Add(this.ExceptionJump);
+      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), exceptionTraverser.TranslatedExpressions.Pop()));
+      RaiseException();
     }
 
     public override void Visit(IRethrowStatement rethrowStatement) {
-      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.ExcVariable), Bpl.Expr.Ident(this.sink.LocalExcVariable)));
-      StmtBuilder.Add(this.ExceptionJump);
+      StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.LocalExcVariable)));
+      RaiseException();
     }
   }
 

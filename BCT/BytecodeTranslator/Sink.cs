@@ -64,19 +64,13 @@ namespace BytecodeTranslator {
         return info.ReturnVariable;
       }
     }
-    public Bpl.Formal ExcVariable {
-      get {
-        ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
-        return info.ExcVariable;
-      }
-    }
     public Bpl.LocalVariable LocalExcVariable {
       get {
         ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
         return info.LocalExcVariable;
       }
     }
-    public Bpl.LocalVariable FinallyStackVariable {
+    public Bpl.LocalVariable FinallyStackCounterVariable {
       get {
         ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
         return info.FinallyStackVariable;
@@ -348,7 +342,6 @@ namespace BytecodeTranslator {
       private Dictionary<IParameterDefinition, MethodParameter> formalMap;
       private Bpl.Formal thisVariable;
       private Bpl.Formal returnVariable;
-      private Bpl.Formal excVariable;
       private Bpl.LocalVariable localExcVariable;
       private Bpl.LocalVariable finallyStackVariable;
       private Bpl.LocalVariable labelVariable;
@@ -360,7 +353,6 @@ namespace BytecodeTranslator {
         this.formalMap = null;
         this.returnVariable = null;
         this.thisVariable = null;
-        this.excVariable = null;
         this.localExcVariable = null;
         this.finallyStackVariable = null;
         this.labelVariable = null;
@@ -385,7 +377,6 @@ namespace BytecodeTranslator {
         Dictionary<IParameterDefinition, MethodParameter> formalMap,
         Bpl.Formal returnVariable,
         Bpl.Formal thisVariable,
-        Bpl.Formal excVariable,
         Bpl.LocalVariable localExcVariable,
         Bpl.LocalVariable finallyStackVariable,
         Bpl.LocalVariable labelVariable,
@@ -393,7 +384,6 @@ namespace BytecodeTranslator {
         List<Bpl.Formal> methodParameters)
         : this(decl, formalMap, returnVariable) {
         this.thisVariable = thisVariable;
-        this.excVariable = excVariable;
         this.localExcVariable = localExcVariable;
         this.finallyStackVariable = finallyStackVariable;
         this.labelVariable = labelVariable;
@@ -405,7 +395,6 @@ namespace BytecodeTranslator {
       public Dictionary<IParameterDefinition, MethodParameter> FormalMap { get { return formalMap; } }
       public Bpl.Formal ThisVariable { get { return thisVariable; } }
       public Bpl.Formal ReturnVariable { get { return returnVariable; } }
-      public Bpl.Formal ExcVariable { get { return excVariable; } }
       public Bpl.LocalVariable LocalExcVariable { get { return localExcVariable; } }
       public Bpl.LocalVariable FinallyStackVariable { get { return finallyStackVariable; } }
       public Bpl.LocalVariable LabelVariable { get { return labelVariable; } }
@@ -423,13 +412,12 @@ namespace BytecodeTranslator {
 
         Bpl.Formal thisVariable = null;
         Bpl.Formal retVariable = null;
-        Bpl.Formal excVariable = new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$exc", this.Heap.RefType), true);
         Bpl.LocalVariable localExcVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$localExc", this.Heap.RefType));
-        Bpl.LocalVariable finallyStackVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$finallyStack", Bpl.Type.Int));
+        Bpl.LocalVariable finallyStackVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$finallyStackCounter", Bpl.Type.Int));
         Bpl.LocalVariable labelVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$label", Bpl.Type.Int));
         
         int in_count = 0;
-        int out_count = 1; // every method has the output variable $exc
+        int out_count = 0; 
         MethodParameter mp;
         var formalMap = new Dictionary<IParameterDefinition, MethodParameter>();
         foreach (IParameterDefinition formal in method.Parameters) {
@@ -504,8 +492,6 @@ namespace BytecodeTranslator {
 
         if (retVariable != null) outvars[j++] = retVariable;
 
-        outvars[j++] = excVariable;
-
         var tok = method.Token();
         Bpl.RequiresSeq boogiePrecondition = new Bpl.RequiresSeq();
         Bpl.EnsuresSeq boogiePostcondition = new Bpl.EnsuresSeq();
@@ -542,7 +528,7 @@ namespace BytecodeTranslator {
         } else {
           this.TranslatedProgram.TopLevelDeclarations.Add(decl);
         }
-        procInfo = new ProcedureInfo(decl, formalMap, retVariable, thisVariable, excVariable, localExcVariable, finallyStackVariable, labelVariable, typeParameters, methodParameters);
+        procInfo = new ProcedureInfo(decl, formalMap, retVariable, thisVariable, localExcVariable, finallyStackVariable, labelVariable, typeParameters, methodParameters);
         this.declaredMethods.Add(key, procInfo);
 
         // Can't visit the method's contracts until the formalMap and procedure are added to the
@@ -558,7 +544,7 @@ namespace BytecodeTranslator {
           try {
 
             foreach (IPrecondition pre in contract.Preconditions) {
-              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true, new List<ITryCatchFinallyStatement>());
+              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true, new List<Tuple<ITryCatchFinallyStatement, StatementTraverser.TryCatchFinallyContext>>());
               ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, stmtTraverser, true);
               exptravers.Visit(pre.Condition); // TODO
               // Todo: Deal with Descriptions
@@ -567,7 +553,7 @@ namespace BytecodeTranslator {
             }
 
             foreach (IPostcondition post in contract.Postconditions) {
-              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true, new List<ITryCatchFinallyStatement>());
+              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true, new List<Tuple<ITryCatchFinallyStatement, StatementTraverser.TryCatchFinallyContext>>());
               ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, stmtTraverser, true);
               exptravers.Visit(post.Condition);
               // Todo: Deal with Descriptions
@@ -957,6 +943,14 @@ namespace BytecodeTranslator {
         tryCatchFinallyIdentifiers[stmt] = id;
       }
       return "finally" + id;
+    }
+    public string FindOrCreateContinuationLabel(ITryCatchFinallyStatement stmt) {
+      int id;
+      if (!tryCatchFinallyIdentifiers.TryGetValue(stmt, out id)) {
+        id = tryCatchFinallyIdentifiers.Count;
+        tryCatchFinallyIdentifiers[stmt] = id;
+      }
+      return "continuation" + id;
     }
     MostNestedTryStatementTraverser mostNestedTryStatementTraverser;
     public ITryCatchFinallyStatement MostNestedTryStatement(IName label) {

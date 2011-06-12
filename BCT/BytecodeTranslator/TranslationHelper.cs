@@ -41,7 +41,7 @@ namespace BytecodeTranslator {
 
       var parameterToken = parameterDefinition.Token();
       var typeToken = parameterDefinition.Type.Token();
-      var parameterName = parameterDefinition.Name.Value;
+      var parameterName = TranslationHelper.TurnStringIntoValidIdentifier(parameterDefinition.Name.Value);
 
       this.inParameterCopy = new Bpl.Formal(parameterToken, new Bpl.TypedIdent(typeToken, parameterName + "$in", ptype), true);
       if (parameterDefinition.IsByReference) {

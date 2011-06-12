@@ -565,9 +565,8 @@ namespace BytecodeTranslator
         this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(kv.Key, this.sink.Heap.Unbox(Bpl.Token.NoToken, kv.Key.Type, kv.Value)));
       }
 
-      Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.ExcVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
-      Bpl.StmtList thenStmt = TranslationHelper.BuildStmtList(this.StmtTraverser.ExceptionJump);
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.IfCmd(methodCall.Token(), expr, thenStmt, null, null));
+      Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
+      this.StmtTraverser.RaiseException(expr);
     }
 
     // REVIEW: Does "thisExpr" really need to come back as an identifier? Can't it be a general expression?
@@ -651,7 +650,6 @@ namespace BytecodeTranslator
           }
           TranslatedExpressions.Push(unboxed);
         }
-        outvars.Add(Bpl.Expr.Ident(this.sink.ExcVariable));
       }
 
       return procInfo.Decl;

@@ -444,6 +444,9 @@ procedure DelegateRemoveHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
 
     [RepresentationFor("$Receiver", "var $Receiver: [Ref][Ref]Ref;")]
     public Bpl.GlobalVariable DelegateReceiver = null;
+
+    [RepresentationFor("$Exception", "var $Exception: Ref;")]
+    public Bpl.GlobalVariable ExceptionVariable = null;
   }
 
   public abstract class HeapFactory {
