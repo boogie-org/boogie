@@ -913,17 +913,8 @@ namespace BytecodeTranslator {
     public int FindOrCreateCciLabelIdentifier(IName label) {
       int v;
       if (!cciLabels.TryGetValue(label, out v)) {
-        v = cciLabels.Count + boogieLabels.Count;
+        v = cciLabels.Count;
         cciLabels[label] = v;
-      }
-      return v;
-    }
-    public Dictionary<string, int> boogieLabels;
-    public int FindOrCreateBoogieLabelIdentifier(string label) {
-      int v;
-      if (!boogieLabels.TryGetValue(label, out v)) {
-        v = cciLabels.Count + boogieLabels.Count;
-        boogieLabels[label] = v;
       }
       return v;
     }
@@ -961,7 +952,6 @@ namespace BytecodeTranslator {
       this.BeginMethod(method.ContainingType);
       this.methodBeingTranslated = method;
       this.cciLabels = new Dictionary<IName, int>();
-      this.boogieLabels = new Dictionary<string, int>();
       this.tryCatchFinallyIdentifiers = new Dictionary<ITryCatchFinallyStatement, int>();
       mostNestedTryStatementTraverser = new MostNestedTryStatementTraverser();
       mostNestedTryStatementTraverser.Visit(method.Body);
