@@ -966,18 +966,22 @@ namespace BytecodeTranslator {
     }
     private IAssembly/*?*/ assemblyBeingTranslated;
 
-    public Dictionary<ITypeDefinition, HashSet<IMethodDefinition>> delegateTypeToDelegates = new Dictionary<ITypeDefinition, HashSet<IMethodDefinition>>();
+    public Dictionary<uint, Tuple<ITypeDefinition, HashSet<IMethodDefinition>>> delegateTypeToDelegates = 
+      new Dictionary<uint, Tuple<ITypeDefinition, HashSet<IMethodDefinition>>>();
 
     public void AddDelegate(ITypeDefinition type, IMethodDefinition defn)
     {
-      if (!delegateTypeToDelegates.ContainsKey(type))
-        delegateTypeToDelegates[type] = new HashSet<IMethodDefinition>();
-      delegateTypeToDelegates[type].Add(defn);
+      uint key = type.InternedKey;
+      if (!delegateTypeToDelegates.ContainsKey(key))
+        delegateTypeToDelegates[key] = new Tuple<ITypeDefinition, HashSet<IMethodDefinition>>(type, new HashSet<IMethodDefinition>());
+      FindOrCreateProcedure(defn);
+      delegateTypeToDelegates[key].Item2.Add(defn);
     }
 
     public void AddDelegateType(ITypeDefinition type) {
-      if (!delegateTypeToDelegates.ContainsKey(type))
-        delegateTypeToDelegates[type] = new HashSet<IMethodDefinition>();
+      uint key = type.InternedKey;
+      if (!delegateTypeToDelegates.ContainsKey(key))
+        delegateTypeToDelegates[key] = new Tuple<ITypeDefinition, HashSet<IMethodDefinition>>(type, new HashSet<IMethodDefinition>());
     }
 
     private Dictionary<IMethodDefinition, Bpl.Constant> delegateMethods = new Dictionary<IMethodDefinition, Bpl.Constant>();

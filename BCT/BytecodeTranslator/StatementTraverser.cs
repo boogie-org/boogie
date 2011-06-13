@@ -148,15 +148,33 @@ namespace BytecodeTranslator
     #region Basic Statements
 
     public override void Visit(IAssertStatement assertStatement) {
-      StmtBuilder.Add(
-        new Bpl.AssertCmd(assertStatement.Token(), ExpressionFor(assertStatement.Condition))
-        );
+      Bpl.Expr conditionExpr = ExpressionFor(assertStatement.Condition);
+      Bpl.Type conditionType = this.sink.CciTypeToBoogie(assertStatement.Condition.Type);
+      if (conditionType == this.sink.Heap.RefType) {
+        conditionExpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, conditionExpr, Bpl.Expr.Ident(this.sink.Heap.NullRef));
+      }
+      else if (conditionType == Bpl.Type.Int) {
+        conditionExpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, conditionExpr, Bpl.Expr.Literal(0));
+      }
+      else {
+        System.Diagnostics.Debug.Assert(conditionType == Bpl.Type.Bool);
+      }
+      StmtBuilder.Add(new Bpl.AssertCmd(assertStatement.Token(), conditionExpr));
     }
 
     public override void Visit(IAssumeStatement assumeStatement) {
-      StmtBuilder.Add(
-        new Bpl.AssumeCmd(assumeStatement.Token(), ExpressionFor(assumeStatement.Condition))
-        );
+      Bpl.Expr conditionExpr = ExpressionFor(assumeStatement.Condition);
+      Bpl.Type conditionType = this.sink.CciTypeToBoogie(assumeStatement.Condition.Type);
+      if (conditionType == this.sink.Heap.RefType) {
+        conditionExpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, conditionExpr, Bpl.Expr.Ident(this.sink.Heap.NullRef));
+      }
+      else if (conditionType == Bpl.Type.Int) {
+        conditionExpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, conditionExpr, Bpl.Expr.Literal(0));
+      }
+      else {
+        System.Diagnostics.Debug.Assert(conditionType == Bpl.Type.Bool);
+      }
+      StmtBuilder.Add(new Bpl.AssumeCmd(assumeStatement.Token(), conditionExpr));
     }
 
     /// <summary>
@@ -173,8 +191,20 @@ namespace BytecodeTranslator
       thenTraverser.Visit(conditionalStatement.TrueBranch);
       elseTraverser.Visit(conditionalStatement.FalseBranch);
 
+      Bpl.Expr conditionExpr = condTraverser.TranslatedExpressions.Pop();
+      Bpl.Type conditionType = this.sink.CciTypeToBoogie(conditionalStatement.Condition.Type);
+      if (conditionType == this.sink.Heap.RefType) {
+        conditionExpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, conditionExpr, Bpl.Expr.Ident(this.sink.Heap.NullRef));
+      }
+      else if (conditionType == Bpl.Type.Int) {
+        conditionExpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, conditionExpr, Bpl.Expr.Literal(0));
+      }
+      else {
+        System.Diagnostics.Debug.Assert(conditionType == Bpl.Type.Bool);
+      }
+
       Bpl.IfCmd ifcmd = new Bpl.IfCmd(conditionalStatement.Token(),
-          condTraverser.TranslatedExpressions.Pop(),
+          conditionExpr,
           thenTraverser.StmtBuilder.Collect(conditionalStatement.TrueBranch.Token()),
           null,
           elseTraverser.StmtBuilder.Collect(conditionalStatement.FalseBranch.Token())

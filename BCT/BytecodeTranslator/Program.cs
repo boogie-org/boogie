@@ -183,8 +183,8 @@ namespace BytecodeTranslator {
       MetadataTraverser translator = traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
       translator.TranslateAssemblies(modules);
 
-      foreach (ITypeDefinition type in sink.delegateTypeToDelegates.Keys) {
-        CreateDispatchMethod(sink, type);
+      foreach (var pair in sink.delegateTypeToDelegates.Values) {
+        CreateDispatchMethod(sink, pair.Item1, pair.Item2);
       }
 
       Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(primaryModule.Name + ".bpl");
@@ -230,7 +230,7 @@ namespace BytecodeTranslator {
       ifStmtBuilder.Add(new Bpl.ReturnCmd(b.tok));
       return new Bpl.IfCmd(b.tok, b, ifStmtBuilder.Collect(b.tok), null, null);
     }
-    private static void CreateDispatchMethod(Sink sink, ITypeDefinition type) {
+    private static void CreateDispatchMethod(Sink sink, ITypeDefinition type, HashSet<IMethodDefinition> delegates) {
       Contract.Assert(type.IsDelegate);
       IMethodDefinition invokeMethod = null;
       foreach (IMethodDefinition m in type.Methods) {
@@ -276,7 +276,7 @@ namespace BytecodeTranslator {
         sink.TranslatedProgram.TopLevelDeclarations.Add(dispatchProc);
 
         Bpl.IfCmd ifCmd = BuildIfCmd(Bpl.Expr.True, new Bpl.AssumeCmd(token, Bpl.Expr.False), null);
-        foreach (IMethodDefinition defn in sink.delegateTypeToDelegates[type]) {
+        foreach (IMethodDefinition defn in delegates) {
           Bpl.ExprSeq ins = new Bpl.ExprSeq();
           Bpl.IdentifierExprSeq outs = new Bpl.IdentifierExprSeq();
           if (!defn.IsStatic)

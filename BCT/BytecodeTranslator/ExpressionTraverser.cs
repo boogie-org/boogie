@@ -530,7 +530,7 @@ namespace BytecodeTranslator
           inexpr[0] = Bpl.Expr.Ident(local);
         }
 
-        System.Diagnostics.Debug.Assert(outvars.Count == 1);
+        System.Diagnostics.Debug.Assert(outvars.Count == 0);
         outvars.Insert(0, Bpl.Expr.Ident(local));
         string methodName = isEventAdd ? this.sink.DelegateAddName : this.sink.DelegateRemoveName;
         call = new Bpl.CallCmd(methodCallToken, methodName, inexpr, outvars);
@@ -1063,7 +1063,23 @@ namespace BytecodeTranslator
       base.Visit(greaterThan);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Gt, lexp, rexp));
+
+      Bpl.Expr e;
+      switch (greaterThan.LeftOperand.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            greaterThan.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealGreaterThan),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Gt, lexp, rexp);
+          break;
+      }
+
+      TranslatedExpressions.Push(e);
     }
 
     public override void Visit(IGreaterThanOrEqual greaterEqual)
@@ -1071,7 +1087,23 @@ namespace BytecodeTranslator
       base.Visit(greaterEqual);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Ge, lexp, rexp));
+
+      Bpl.Expr e;
+      switch (greaterEqual.LeftOperand.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            greaterEqual.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealGreaterThanOrEqual),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Ge, lexp, rexp);
+          break;
+      } 
+      
+      TranslatedExpressions.Push(e);
     }
 
     public override void Visit(ILessThan lessThan)
@@ -1079,7 +1111,23 @@ namespace BytecodeTranslator
       base.Visit(lessThan);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Lt, lexp, rexp));
+
+      Bpl.Expr e;
+      switch (lessThan.LeftOperand.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            lessThan.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealLessThan),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Lt, lexp, rexp);
+          break;
+      }
+
+      TranslatedExpressions.Push(e);
     }
 
     public override void Visit(ILessThanOrEqual lessEqual)
@@ -1087,7 +1135,23 @@ namespace BytecodeTranslator
       base.Visit(lessEqual);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Le, lexp, rexp));
+
+      Bpl.Expr e;
+      switch (lessEqual.LeftOperand.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            lessEqual.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealLessThanOrEqual),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Le, lexp, rexp);
+          break;
+      }
+
+      TranslatedExpressions.Push(e);
     }
 
     public override void Visit(IEquality equal)
@@ -1393,6 +1457,16 @@ namespace BytecodeTranslator
     {
       base.Visit(logicalNot.Operand);
       Bpl.Expr exp = TranslatedExpressions.Pop();
+      Bpl.Type operandType = this.sink.CciTypeToBoogie(logicalNot.Operand.Type);
+      if (operandType == this.sink.Heap.RefType) {
+        exp = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, exp, Bpl.Expr.Ident(this.sink.Heap.NullRef));
+      }
+      else if (operandType == Bpl.Type.Int) {
+        exp = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, exp, Bpl.Expr.Literal(0));
+      }
+      else {
+        //System.Diagnostics.Debug.Assert(operandType == Bpl.Type.Bool);
+      }
       TranslatedExpressions.Push(Bpl.Expr.Unary(
           logicalNot.Token(),
           Bpl.UnaryOperator.Opcode.Not, exp));

@@ -225,7 +225,7 @@ namespace BytecodeTranslator {
     public Bpl.Function Real2Int = null;
     [RepresentationFor("Ref2Real", "function Ref2Real(Ref, Type, Type): Real;")]
     public Bpl.Function Ref2Real = null;
-    [RepresentationFor("Real2Ref", "function Real2Ref(Real, Type, Type): Ref;")]
+    [RepresentationFor("Real2Ref", "function Real2Ref(Real): Ref;")]
     public Bpl.Function Real2Ref = null;
     #endregion
 
@@ -238,6 +238,14 @@ namespace BytecodeTranslator {
     public Bpl.Function RealTimes = null;
     [RepresentationFor("RealDivide", "function RealDivide(Real, Real): Real;")]
     public Bpl.Function RealDivide = null;
+    [RepresentationFor("RealLessThan", "function RealLessThan(Real, Real): bool;")]
+    public Bpl.Function RealLessThan = null;
+    [RepresentationFor("RealLessThanOrEqual", "function RealLessThanOrEqual(Real, Real): bool;")]
+    public Bpl.Function RealLessThanOrEqual = null;
+    [RepresentationFor("RealGreaterThan", "function RealGreaterThan(Real, Real): bool;")]
+    public Bpl.Function RealGreaterThan = null;
+    [RepresentationFor("RealGreaterThanOrEqual", "function RealGreaterThanOrEqual(Real, Real): bool;")]
+    public Bpl.Function RealGreaterThanOrEqual = null;
     #endregion
 
     #region Bitwise operations
