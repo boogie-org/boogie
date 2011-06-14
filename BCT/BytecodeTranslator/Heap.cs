@@ -32,67 +32,15 @@ namespace BytecodeTranslator {
     /// <summary>
     /// Prelude text for which access to the ASTs is not needed
     /// </summary>
-    private readonly string InitialPreludeText =
-      @"type Struct = [Field]Box;
-type HeapType = [Ref,Field]Box;
-var $Heap: HeapType;
+    private readonly string InitialPreludeText = @"";
 
-var $Alloc: [Ref] bool;
-procedure {:inline 1} Alloc() returns (x: Ref)
-  modifies $Alloc;
-{
-  assume $Alloc[x] == false && x != null;
-  $Alloc[x] := true;
-}
-
-//axiom (forall x : Field :: $DefaultStruct[x] == $DefaultBox);
-axiom Box2Int($DefaultBox) == 0;
-axiom Box2Bool($DefaultBox) == false;
-axiom Box2Ref($DefaultBox) == null;
-//axiom Box2Struct($DefaultBox) == $DefaultStruct;
-
-axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x );
-axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
-axiom (forall x: Ref :: { Ref2Box(x) } Box2Ref(Ref2Box(x)) == x );
-axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
-
-procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref)
-{
-  $result := $TypeOf($DynamicType(this));
-}
-function $TypeOfInv(Ref): Type;
-axiom (forall t: Type :: {$TypeOf(t)} $TypeOfInv($TypeOf(t)) == t);
-
-function $ThreadDelegate(Ref) : Ref;
-
-procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ParameterizedThreadStart(this: Ref, start$in: Ref)
-{
-  assume $ThreadDelegate(this) == start$in;
-}
-procedure {:inline 1} System.Threading.Thread.Start$System.Object(this: Ref, parameter$in: Ref)
-{
-  call {:async} System.Threading.ParameterizedThreadStart.Invoke$System.Object($ThreadDelegate(this), parameter$in);
-}
-procedure {:extern} System.Threading.ParameterizedThreadStart.Invoke$System.Object(this: Ref, obj$in: Ref);
-
-procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ThreadStart(this: Ref, start$in: Ref) 
-{
-  assume $ThreadDelegate(this) == start$in;
-}
-procedure {:inline 1} System.Threading.Thread.Start(this: Ref) 
-{
-  call {:async} System.Threading.ThreadStart.Invoke($ThreadDelegate(this));
-}
-procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
-
-";
     private Sink sink;
 
     public override bool MakeHeap(Sink sink, out Heap heap, out Bpl.Program/*?*/ program) {
       heap = this;
       program = null;
       this.sink = sink;
-      string prelude = this.InitialPreludeText + this.DelegateEncodingText;
+      string prelude = this.InitialPreludeText + this.CommonText;
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       if (b) {
         this.BoxType = new Bpl.CtorType(this.BoxTypeDecl.tok, this.BoxTypeDecl, new Bpl.TypeSeq());
@@ -201,57 +149,8 @@ procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
     /// Prelude text for which access to the ASTs is not needed
     /// </summary>
     private readonly string InitialPreludeText =
-      @"//type Struct = [Field]Box;
-type Struct = Ref;
-type HeapType = [Ref][Field]Box;
+      @"type HeapType = [Ref][Field]Box;
 
-var $Alloc: [Ref] bool;
-procedure {:inline 1} Alloc() returns (x: Ref)
-  modifies $Alloc;
-{
-  assume $Alloc[x] == false && x != null;
-  $Alloc[x] := true;
-}
-
-//axiom (forall x : Field :: $DefaultStruct[x] == $DefaultBox);
-//axiom (forall h : HeapType, f : Field :: { Read(h, $DefaultStruct, f) } Read(h, $DefaultStruct, f) == $DefaultBox);
-axiom Box2Int($DefaultBox) == 0;
-axiom Box2Bool($DefaultBox) == false;
-axiom Box2Ref($DefaultBox) == null;
-//axiom Box2Struct($DefaultBox) == $DefaultStruct;
-
-axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x );
-axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
-axiom (forall x: Ref :: { Ref2Box(x) } Box2Ref(Ref2Box(x)) == x );
-axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x );
-
-procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref)
-{
-  $result := $TypeOf($DynamicType(this));
-}
-function $TypeOfInv(Ref): Type;
-axiom (forall t: Type :: {$TypeOf(t)} $TypeOfInv($TypeOf(t)) == t);
-
-function $ThreadDelegate(Ref) : Ref;
-procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ParameterizedThreadStart(this: Ref, start$in: Ref)
-{
-  assume $ThreadDelegate(this) == start$in;
-}
-procedure {:inline 1} System.Threading.Thread.Start$System.Object(this: Ref, parameter$in: Ref)
-{
-  call {:async} System.Threading.ParameterizedThreadStart.Invoke$System.Object($ThreadDelegate(this), parameter$in);
-}
-procedure {:extern} System.Threading.ParameterizedThreadStart.Invoke$System.Object(this: Ref, obj$in: Ref);
-
-procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ThreadStart(this: Ref, start$in: Ref) 
-{
-  assume $ThreadDelegate(this) == start$in;
-}
-procedure {:inline 1} System.Threading.Thread.Start(this: Ref) 
-{
-  call {:async} System.Threading.ThreadStart.Invoke($ThreadDelegate(this));
-}
-procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
 ";
     private Sink sink;
 
@@ -261,7 +160,7 @@ procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
       this.sink = sink;
       heap = this;
       program = null;
-      string prelude = this.InitialPreludeText + this.DelegateEncodingText;
+      string prelude = this.InitialPreludeText + this.CommonText;
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       if (b) {
         this.BoxType = new Bpl.CtorType(this.BoxTypeDecl.tok, this.BoxTypeDecl, new Bpl.TypeSeq());

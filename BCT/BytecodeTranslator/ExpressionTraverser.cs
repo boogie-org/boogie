@@ -291,16 +291,6 @@ namespace BytecodeTranslator
     public override void Visit(IAddressOf addressOf)
     {
       Visit(addressOf.Expression);
-      //if (addressOf.Expression.Type.IsValueType)
-      //{
-      //  var e = this.TranslatedExpressions.Pop();
-      //  var callBox = new Bpl.NAryExpr(
-      //    addressOf.Token(),
-      //  new Bpl.FunctionCall(this.sink.Heap.Struct2Ref),
-      //  new Bpl.ExprSeq(e)
-      //  );
-      //  TranslatedExpressions.Push(callBox);
-      //}
     }
     #endregion
 
@@ -728,23 +718,14 @@ namespace BytecodeTranslator
         if (instance == null) {
           // static fields are not kept in the heap
           StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, f, e));
-        } else {
-          if (false && field.ContainingType.ResolvedType.IsStruct) {
-            //var s_prime = this.sink.CreateFreshLocal(this.sink.Heap.StructType);
-            //var s_prime_expr = Bpl.Expr.Ident(s_prime);
-            //var boogieType = sink.CciTypeToBoogie(field.Type);
-            //StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(tok, s_prime_expr, f, e,
-            //  field.ResolvedField.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap,
-            //  boogieType));
-            UpdateStruct(tok, instance, field, e);
-          } else {
-            this.Visit(instance);
-            var x = this.TranslatedExpressions.Pop();
-            var boogieType = sink.CciTypeToBoogie(field.Type);
-            StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(tok, x, f, e,
-              field.ResolvedField.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap,
-              boogieType));
-          }
+        }
+        else {
+          this.Visit(instance);
+          var x = this.TranslatedExpressions.Pop();
+          var boogieType = sink.CciTypeToBoogie(field.Type);
+          StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(tok, x, f, e,
+            field.ResolvedField.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap,
+            boogieType));
         }
         return;
       }
@@ -805,34 +786,7 @@ namespace BytecodeTranslator
 
       Contract.Assume(false);
     }
-
-    private void UpdateStruct(Bpl.IToken tok, IExpression iExpression, IFieldReference field, Bpl.Expr e) {
-      var addrOf = iExpression as IAddressOf;
-      if (addrOf == null) return;
-      var addressableExpression = addrOf.Expression as IAddressableExpression;
-      if (addressableExpression == null) return;
-
-      var f = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(field));
-
-      if (addressableExpression.Instance == null) {
-        var boogieType = sink.CciTypeToBoogie(field.Type);
-        this.Visit(addressableExpression);
-        var def = this.TranslatedExpressions.Pop();
-        StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(tok, def, f, e,
-          AccessType.Struct,
-          boogieType));
-      } else {
-        var s_prime = this.sink.CreateFreshLocal(this.sink.Heap.StructType);
-        var s_prime_expr = Bpl.Expr.Ident(s_prime);
-        var boogieType = sink.CciTypeToBoogie(field.Type);
-        StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(tok, s_prime_expr, f, e,
-          AccessType.Struct,
-          boogieType));
-        UpdateStruct(tok, addressableExpression.Instance, addressableExpression.Definition as IFieldReference, s_prime_expr);
-      }
-    }
-
-
+    
     #endregion
 
     #region Translate Object Creation
@@ -1388,7 +1342,7 @@ namespace BytecodeTranslator
               func = this.sink.Heap.Int2Ref;
           } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.NotPrimitive) {
             // REVIEW: Do we need to check to make sure that conversion.ValueToConvert.Type.IsValueType?
-            func = this.sink.Heap.Struct2Ref;
+            func = this.sink.Heap.Box2Ref;
           } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Float32 ||
             conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Float64) {
               func = this.sink.Heap.Real2Ref;
