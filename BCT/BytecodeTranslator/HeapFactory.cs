@@ -197,7 +197,7 @@ namespace BytecodeTranslator {
     #region Real number conversions
     [RepresentationFor("Int2Real", "function Int2Real(int, Type, Type): Real;")]
     public Bpl.Function Int2Real = null;
-    [RepresentationFor("Real2Int", "function Real2Int(Real, Type, Type): Real;")]
+    [RepresentationFor("Real2Int", "function Real2Int(Real, Type, Type): int;")]
     public Bpl.Function Real2Int = null;
     [RepresentationFor("Ref2Real", "function Ref2Real(Ref, Type, Type): Real;")]
     public Bpl.Function Ref2Real = null;
