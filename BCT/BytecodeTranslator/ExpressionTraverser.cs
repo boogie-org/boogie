@@ -1403,8 +1403,23 @@ namespace BytecodeTranslator
     {
       base.Visit(unaryNegation);
       Bpl.Expr exp = TranslatedExpressions.Pop();
-      Bpl.Expr zero = Bpl.Expr.Literal(0); // TODO: (mschaef) will this work in any case?
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Sub, zero, exp));
+      Bpl.Expr e, zero, realZero;
+      zero = Bpl.Expr.Literal(0);
+      realZero = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Int2Real), new Bpl.ExprSeq(zero));
+      switch (unaryNegation.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            unaryNegation.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealMinus),
+            new Bpl.ExprSeq(realZero, exp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Sub, Bpl.Expr.Literal(0), exp);
+          break;
+      }
+      TranslatedExpressions.Push(e);
     }
 
     public override void Visit(ILogicalNot logicalNot)
