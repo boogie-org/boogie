@@ -1264,6 +1264,65 @@ namespace BytecodeTranslator
       var msg = String.Format("Can't convert '{0}' to '{1}'", nameOfTypeToConvert, nameOfTypeToBeConvertedTo);
 
       var exp = TranslatedExpressions.Pop();
+
+      if (boogieTypeOfValue == Bpl.Type.Bool)
+
+          break;
+
+        case Bpl.Type.Int:
+
+          break;
+
+        case this.sink.Heap.RefType:
+
+          break;
+
+        case this.sink.Heap.RealType:
+
+          break;
+
+        case this.sink.Heap.BoxType:
+
+          break;
+
+        default:
+          throw NotImplementedException(msg);
+      }
+
+
+
+      if (conversion.TypeAfterConversion.IsEnum) {
+
+      }
+      if (conversion.TypeAfterConversion is IGenericTypeParameter || conversion.TypeAfterConversion is IGenericMethodParameter) {
+        Bpl.Function func;
+        if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Boolean) {
+          func = this.sink.Heap.Bool2Box;
+        }
+        else if (TypeHelper.IsPrimitiveInteger(conversion.ValueToConvert.Type)) {
+          func = this.sink.Heap.Int2Box;
+        }
+        else if (conversion.ValueToConvert.Type.IsEnum) {
+          func = this.sink.Heap.Int2Box;
+        }
+        else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Float32 ||
+                 conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Float64) {
+          func = this.sink.Heap.Real2Box;
+        }
+        else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.NotPrimitive) {
+          func = this.sink.Heap.Ref2Box;
+        } else {
+          throw new NotImplementedException(msg);
+        }
+        var boxExpr = new Bpl.NAryExpr(
+          conversion.Token(),
+          new Bpl.FunctionCall(func),
+          new Bpl.ExprSeq(exp)
+          );
+        TranslatedExpressions.Push(boxExpr);
+        return;
+      }
+
       switch (conversion.TypeAfterConversion.TypeCode) {
         case PrimitiveTypeCode.Int16:
         case PrimitiveTypeCode.Int32:
@@ -1336,17 +1395,20 @@ namespace BytecodeTranslator
           }
         case PrimitiveTypeCode.NotPrimitive:
           Bpl.Function func;
-          if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Boolean){
-              func = this.sink.Heap.Bool2Ref;
-          }else if (TypeHelper.IsPrimitiveInteger(conversion.ValueToConvert.Type)) {
-              func = this.sink.Heap.Int2Ref;
-          } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.NotPrimitive) {
-            // REVIEW: Do we need to check to make sure that conversion.ValueToConvert.Type.IsValueType?
+          if (conversion.ValueToConvert.Type is IGenericTypeParameter || conversion.ValueToConvert.Type is IGenericMethodParameter) {
             func = this.sink.Heap.Box2Ref;
-          } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Float32 ||
-            conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Float64) {
-              func = this.sink.Heap.Real2Ref;
-          } else {
+          } else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Boolean) {
+            func = this.sink.Heap.Bool2Ref;
+          } else if (TypeHelper.IsPrimitiveInteger(conversion.ValueToConvert.Type)) {
+            func = this.sink.Heap.Int2Ref;
+          } else if (conversion.ValueToConvert.Type.IsEnum) {
+            func = this.sink.Heap.Int2Ref;
+          }
+          else if (conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Float32 ||
+                   conversion.ValueToConvert.Type.TypeCode == PrimitiveTypeCode.Float64) {
+            func = this.sink.Heap.Real2Ref;
+          }
+          else {
             throw new NotImplementedException(msg);
           }
           var boxExpr = new Bpl.NAryExpr(

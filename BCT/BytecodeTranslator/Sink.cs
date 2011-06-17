@@ -124,7 +124,7 @@ namespace BytecodeTranslator {
         return heap.RefType; // structs are kept on the heap with special rules about assignment
       else if (type.IsEnum)
         return Bpl.Type.Int; // The underlying type of an enum is always some kind of integer
-      else if (type is IGenericTypeParameter)
+      else if (type is IGenericTypeParameter || type is IGenericMethodParameter)
         return heap.BoxType;
       else
         return heap.RefType;
