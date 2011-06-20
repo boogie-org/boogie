@@ -411,38 +411,28 @@ namespace Microsoft.Boogie {
         // I must first iterate over all the targets and remove the live ones.
         // After the removals are done, I must add the variables referred on 
         // the right side of the removed targets
+
+        AssignCmd simpleAssignCmd = assignCmd.AsSimpleAssignCmd;
         HashSet<int> indexSet = new HashSet<int>();
         int index = 0;
-        foreach (AssignLhs/*!*/ lhs in assignCmd.Lhss) {
+        foreach (AssignLhs/*!*/ lhs in simpleAssignCmd.Lhss) {
           Contract.Assert(lhs != null);
-          Variable var = lhs.DeepAssignedVariable;
+          SimpleAssignLhs salhs = lhs as SimpleAssignLhs;
+          Contract.Assert(salhs != null);
+          Variable var = salhs.DeepAssignedVariable;
           if (var != null && liveSet.Contains(var)) {
             indexSet.Add(index);
-            if (lhs is SimpleAssignLhs) {
-              // we should only remove non-map target variables because there is an implicit
-              // read of a map variable in an assignment to it
-              liveSet.Remove(var);
-            }
+            liveSet.Remove(var);
           }
           index++;
         }
         index = 0;
-        foreach (Expr/*!*/ expr in assignCmd.Rhss) {
+        foreach (Expr/*!*/ expr in simpleAssignCmd.Rhss) {
           Contract.Assert(expr != null);
           if (indexSet.Contains(index)) {
             VariableCollector/*!*/ collector = new VariableCollector();
             collector.Visit(expr);
             liveSet.UnionWith(collector.usedVars);
-            AssignLhs lhs = assignCmd.Lhss[index];
-            if (lhs is MapAssignLhs) {
-              // If the target is a map, then all indices are also read
-              MapAssignLhs malhs = (MapAssignLhs)lhs;
-              foreach (Expr e in malhs.Indexes) {
-                VariableCollector/*!*/ c = new VariableCollector();
-                c.Visit(e);
-                liveSet.UnionWith(c.usedVars);
-              }
-            }
           }
           index++;
         }
