@@ -29,28 +29,7 @@ namespace BytecodeTranslator {
 
       public CLRExpressionSemantics(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext)
         : base(sink, statementTraverser, contractContext) { }
-
-      /*
-      public override void Visit(IDivision division) {
-        this.Visit(division.LeftOperand);
-        this.Visit(division.RightOperand);
-        Bpl.Expr rexp = TranslatedExpressions.Pop();
-        Bpl.Expr lexp = TranslatedExpressions.Pop();
-
-        var tok = division.Token();
-
-        var loc = this.sink.CreateFreshLocal(division.RightOperand.Type);
-        var locExpr = Bpl.Expr.Ident(loc);
-        var storeLocal = Bpl.Cmd.SimpleAssign(tok, locExpr, rexp);
-        this.StmtTraverser.StmtBuilder.Add(storeLocal);
-
-//        Assertion fails if denominator is Real or something else than int
-//        var a = new Bpl.AssertCmd(tok, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, locExpr, Bpl.Expr.Literal(0)));
-//        this.StmtTraverser.StmtBuilder.Add(a);
-
-        TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Div, lexp, locExpr));
-      }
-       * */
+      
     }
   }
 }

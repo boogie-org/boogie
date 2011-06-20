@@ -108,23 +108,23 @@ namespace BytecodeTranslator {
 
     #region Heap values
 
-    [RepresentationFor("Box2Int", "function Box2Int(Box): int;")]
-    public Bpl.Function Box2Int = null;
-
     [RepresentationFor("Box2Bool", "function Box2Bool(Box): bool;")]
     public Bpl.Function Box2Bool = null;
-
+    
+    [RepresentationFor("Box2Int", "function Box2Int(Box): int;")]
+    public Bpl.Function Box2Int = null;
+    
     [RepresentationFor("Box2Ref", "function Box2Ref(Box): Ref;")]
     public Bpl.Function Box2Ref = null;
 
     [RepresentationFor("Box2Real", "function Box2Real(Box): Real;")]
     public Bpl.Function Box2Real = null;
 
-    [RepresentationFor("Int2Box", "function Int2Box(int): Box;")]
-    public Bpl.Function Int2Box = null;
-
     [RepresentationFor("Bool2Box", "function Bool2Box(bool): Box;")]
     public Bpl.Function Bool2Box = null;
+
+    [RepresentationFor("Int2Box", "function Int2Box(int): Box;")]
+    public Bpl.Function Int2Box = null;
 
     [RepresentationFor("Ref2Box", "function Ref2Box(Ref): Box;")]
     public Bpl.Function Ref2Box = null;
@@ -188,21 +188,15 @@ namespace BytecodeTranslator {
     /// <summary>
     /// Used to represent "boxing" as it is done in the CLR.
     /// </summary>
-    [RepresentationFor("Int2Ref", "function Int2Ref(int): Ref;")]
-    public Bpl.Function Int2Ref = null;
-    [RepresentationFor("Bool2Ref", "function Bool2Ref(bool): Ref;")]
-    public Bpl.Function Bool2Ref = null;
+    [RepresentationFor("$BoxField", "const unique $BoxField: Field;")]
+    public Bpl.Constant BoxField = null;
     #endregion
 
     #region Real number conversions
-    [RepresentationFor("Int2Real", "function Int2Real(int, Type, Type): Real;")]
+    [RepresentationFor("Int2Real", "function Int2Real(int): Real;")]
     public Bpl.Function Int2Real = null;
-    [RepresentationFor("Real2Int", "function Real2Int(Real, Type, Type): int;")]
+    [RepresentationFor("Real2Int", "function Real2Int(Real): int;")]
     public Bpl.Function Real2Int = null;
-    [RepresentationFor("Ref2Real", "function Ref2Real(Ref, Type, Type): Real;")]
-    public Bpl.Function Ref2Real = null;
-    [RepresentationFor("Real2Ref", "function Real2Ref(Real): Ref;")]
-    public Bpl.Function Real2Ref = null;
     #endregion
 
     #region Real number operations
@@ -233,13 +227,6 @@ namespace BytecodeTranslator {
     public Bpl.Function BitwiseExclusiveOr = null;
     [RepresentationFor("BitwiseNegation", "function BitwiseNegation(int): int;")]
     public Bpl.Function BitwiseNegation = null;
-    #endregion
-
-    #region Ref conversions
-    [RepresentationFor("Ref2Int", "function Ref2Int(Ref, Type, Type): int;")]
-    public Bpl.Function Ref2Int = null;
-    [RepresentationFor("Ref2Bool", "function Ref2Bool(Ref, Type, Type): bool;")]
-    public Bpl.Function Ref2Bool = null;
     #endregion
 
     #endregion

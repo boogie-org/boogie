@@ -116,6 +116,8 @@ namespace BytecodeTranslator {
     public Bpl.Type CciTypeToBoogie(ITypeReference type) {
       if (TypeHelper.TypesAreEquivalent(type, type.PlatformType.SystemBoolean))
         return Bpl.Type.Bool;
+      else if (type.TypeCode == PrimitiveTypeCode.UIntPtr || type.TypeCode == PrimitiveTypeCode.IntPtr)
+        return Bpl.Type.Int;
       else if (TypeHelper.IsPrimitiveInteger(type))
         return Bpl.Type.Int;
       else if (type.TypeCode == PrimitiveTypeCode.Float32 || type.TypeCode == PrimitiveTypeCode.Float64)
@@ -204,6 +206,9 @@ namespace BytecodeTranslator {
       // The Heap has to decide how to represent the field (i.e., its type),
       // all the Sink cares about is adding a declaration for it.
       Bpl.Variable v;
+      var specializedField = field as ISpecializedFieldReference;
+      if (specializedField != null)
+        field = specializedField.UnspecializedVersion;
       var key = field.InternedKey;
       if (!this.declaredFields.TryGetValue(key, out v)) {
         v = this.Heap.CreateFieldVariable(field);
