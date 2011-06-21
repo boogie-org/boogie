@@ -277,6 +277,11 @@ namespace BytecodeTranslator {
       this.sink.BeginMethod(method);
       var decl = procInfo.Decl;
       var proc = decl as Bpl.Procedure;
+
+      if (proc.Name.StartsWith("Microsoft.Devices.Camera.$get_AvailableResolutions")) {
+
+      }
+
       var formalMap = procInfo.FormalMap;
 
       try {
