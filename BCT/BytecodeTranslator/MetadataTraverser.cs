@@ -104,7 +104,7 @@ namespace BytecodeTranslator {
       var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typeDefinition);
 
       this.sink.BeginMethod(typeDefinition);
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, new List<Tuple<ITryCatchFinallyStatement, StatementTraverser.TryCatchFinallyContext>>());
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -207,7 +207,7 @@ namespace BytecodeTranslator {
 
       this.sink.BeginMethod(typeDefinition);
 
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, new List<Tuple<ITryCatchFinallyStatement, StatementTraverser.TryCatchFinallyContext>>());
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -277,15 +277,10 @@ namespace BytecodeTranslator {
       this.sink.BeginMethod(method);
       var decl = procInfo.Decl;
       var proc = decl as Bpl.Procedure;
-
-      if (proc.Name.StartsWith("Microsoft.Devices.Camera.$get_AvailableResolutions")) {
-
-      }
-
       var formalMap = procInfo.FormalMap;
 
       try {
-        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, new List<Tuple<ITryCatchFinallyStatement, StatementTraverser.TryCatchFinallyContext>>());
+        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
 
         #region Add assignments from In-Params to local-Params
 

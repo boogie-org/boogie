@@ -1155,6 +1155,7 @@ namespace BytecodeTranslator
     /// If it isn't either of these short forms then emit the proper expression!
     /// </summary>
     public override void Visit(IConditional conditional) {
+      /*
       #region Try and reconstruct And, Or, Not expressions
       if (conditional.Type.TypeCode == PrimitiveTypeCode.Boolean) {
         CompileTimeConstant ctc = conditional.ResultIfFalse as CompileTimeConstant;
@@ -1207,6 +1208,7 @@ namespace BytecodeTranslator
         }
       }
       #endregion
+
       #region Just translate it as an if-then-else expression
       base.Visit(conditional);
       var ifFalse = TranslatedExpressions.Pop();
@@ -1218,7 +1220,30 @@ namespace BytecodeTranslator
           );
       return;
       #endregion
+      */
 
+      StatementTraverser thenStmtTraverser = this.StmtTraverser.factory.MakeStatementTraverser(this.sink, this.StmtTraverser.PdbReader, this.contractContext);
+      ExpressionTraverser thenExprTraverser = this.StmtTraverser.factory.MakeExpressionTraverser(this.sink, thenStmtTraverser, this.contractContext);
+      StatementTraverser elseStmtTraverser = this.StmtTraverser.factory.MakeStatementTraverser(this.sink, this.StmtTraverser.PdbReader, this.contractContext);
+      ExpressionTraverser elseExprTraverser = this.StmtTraverser.factory.MakeExpressionTraverser(this.sink, elseStmtTraverser, this.contractContext);
+      thenExprTraverser.Visit(conditional.ResultIfTrue);
+      elseExprTraverser.Visit(conditional.ResultIfFalse);
+
+      this.Visit(conditional.Condition);
+      Bpl.Expr conditionExpr = this.TranslatedExpressions.Pop();
+
+      Bpl.IfCmd ifcmd = new Bpl.IfCmd(conditional.Token(),
+          conditionExpr,
+          thenStmtTraverser.StmtBuilder.Collect(conditional.ResultIfTrue.Token()),
+          null,
+          elseStmtTraverser.StmtBuilder.Collect(conditional.ResultIfFalse.Token())
+          );
+
+      this.StmtTraverser.StmtBuilder.Add(ifcmd);
+
+      var ifFalse = elseExprTraverser.TranslatedExpressions.Pop();
+      var ifTrue = thenExprTraverser.TranslatedExpressions.Pop();
+      TranslatedExpressions.Push(new Bpl.NAryExpr(conditional.Token(), new Bpl.IfThenElse(conditional.Token()), new Bpl.ExprSeq(conditionExpr, ifTrue, ifFalse)));
     }
 
     private bool BooleanValueOfCompileTimeConstant(CompileTimeConstant ctc) {
