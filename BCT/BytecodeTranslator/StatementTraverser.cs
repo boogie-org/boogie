@@ -54,6 +54,13 @@ namespace BytecodeTranslator
     internal readonly Stack<IExpression> operandStack = new Stack<IExpression>();
 
     #region Constructors
+    public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
+      this.sink = sink;
+      this.factory = sink.Factory;
+      PdbReader = pdbReader;
+      this.contractContext = contractContext;
+      this.nestedTryCatchFinallyStatements = new List<Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext>>();
+    }
     public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext, List<Tuple<ITryCatchFinallyStatement,TryCatchFinallyContext>> nestedTryCatchFinallyStatements) {
       this.sink = sink;
       this.factory = sink.Factory;

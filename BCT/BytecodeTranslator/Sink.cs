@@ -549,7 +549,7 @@ namespace BytecodeTranslator {
           try {
 
             foreach (IPrecondition pre in contract.Preconditions) {
-              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true, new List<Tuple<ITryCatchFinallyStatement, StatementTraverser.TryCatchFinallyContext>>());
+              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true);
               ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, stmtTraverser, true);
               exptravers.Visit(pre.Condition); // TODO
               // Todo: Deal with Descriptions
@@ -558,7 +558,7 @@ namespace BytecodeTranslator {
             }
 
             foreach (IPostcondition post in contract.Postconditions) {
-              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true, new List<Tuple<ITryCatchFinallyStatement, StatementTraverser.TryCatchFinallyContext>>());
+              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true);
               ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, stmtTraverser, true);
               exptravers.Visit(post.Condition);
               // Todo: Deal with Descriptions
