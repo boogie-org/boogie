@@ -202,7 +202,6 @@ namespace Microsoft.Boogie.Z3
         private static Z3Config BuildConfig(int timeout, bool nativeBv)
         {
             Z3Config config = new Z3Config();
-            config.SetModelCompletion(false);
             config.SetModel(true);
 
             if (0 <= CommandLineOptions.Clo.ProverCCLimit)

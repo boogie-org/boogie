@@ -20,11 +20,6 @@ namespace Microsoft.Boogie.Z3
         private string logFilename;
         private List<string> debugTraces = new List<string>();
 
-        public void SetModelCompletion(bool enabled)
-        {
-            config.SetParamValue("MODEL_VALUE_COMPLETION", (enabled ? "true" : "false"));
-        }
-
         public void SetModel(bool enabled)
         {
             config.SetParamValue("MODEL", (enabled ? "true" : "false"));
@@ -109,15 +104,17 @@ namespace Microsoft.Boogie.Z3
     internal class PartitionMap
     {
         private Context ctx;
+        private Model model;
         private Dictionary<Term, int> termToPartition = new Dictionary<Term, int>();
         private Dictionary<object, int> valueToPartition = new Dictionary<object, int>();
         private List<Object> partitionToValue = new List<Object>();
         private int partitionCounter = 0;
         public int PartitionCounter { get { return partitionCounter; } }
 
-        public PartitionMap(Context ctx)
+        public PartitionMap(Context ctx, Model z3Model)
         { 
-            this.ctx = ctx; 
+            this.ctx = ctx;
+            this.model = z3Model;
         }
 
         public int GetPartition(Term value)
@@ -158,7 +155,7 @@ namespace Microsoft.Boogie.Z3
                     return BigNum.FromString(ctx.GetNumeralString(v));
                 }
             }
-            else if (ctx.TryGetArrayValue(v, out av))
+            else if (model.TryGetArrayValue(v, out av))
             {
                 List<List<int>> arrayValue = new List<List<int>>();
                 List<int> tuple;
@@ -249,10 +246,10 @@ namespace Microsoft.Boogie.Z3
         private Z3Context container;
         private PartitionMap partitionMap;
 
-        public BoogieErrorModelBuilder(Z3Context container)
+        public BoogieErrorModelBuilder(Z3Context container, Model z3Model)
         {
             this.container = container;
-            this.partitionMap = new PartitionMap(((Z3SafeContext)container).z3);
+            this.partitionMap = new PartitionMap(((Z3SafeContext)container).z3, z3Model);
         }
         
         private Dictionary<string, int> CreateConstantToPartition(Model z3Model)

@@ -65,9 +65,21 @@ namespace Microsoft.Boogie.Z3
             }
         }
 
+        private class CtorTypeComparator : IEqualityComparer<CtorType> {
+          public bool Equals(CtorType x, CtorType y) {
+            return (x.Decl.Name == y.Decl.Name);
+          }
+
+          public int GetHashCode(CtorType ctorType) {
+            return ctorType.Decl.Name.GetHashCode();
+          }
+        }
+
         private Dictionary<MapType, Z3Type> mapTypes = new Dictionary<MapType, Z3Type>(new MapTypeComparator());
         private Dictionary<BvType, Z3Type> bvTypes = new Dictionary<BvType, Z3Type>(new BvTypeComparator());
         private Dictionary<BasicType, Z3Type> basicTypes = new Dictionary<BasicType, Z3Type>(new BasicTypeComparator());
+        private Dictionary<CtorType, Z3Type> ctorTypes = new Dictionary<CtorType, Z3Type>(new CtorTypeComparator());
+
         private Z3Context container;
 
         public Z3TypeCachedBuilder(Z3Context context)
@@ -118,16 +130,29 @@ namespace Microsoft.Boogie.Z3
             return result;
         }
 
-        public virtual Z3Type GetType(Type boogieType)
-        {
-            if (boogieType.GetType().Equals(typeof(BvType)))
-                return GetBvType((BvType)boogieType);
-            else if (boogieType.GetType().Equals(typeof(BasicType)))
-                return GetBasicType((BasicType)boogieType);
-            else if (boogieType.GetType().Equals(typeof(MapType)))
-                return GetMapType((MapType)boogieType);
-            else
-                throw new Exception("Boogie Type " + boogieType.GetType() + " is unknown");
+        private Z3Type GetCtorType(CtorType ctorType) {
+          if (!ctorTypes.ContainsKey(ctorType)) {
+            Z3Type typeAst = BuildCtorType(ctorType);
+            ctorTypes.Add(ctorType, typeAst);
+          }
+          Z3Type result;
+          bool containsKey = ctorTypes.TryGetValue(ctorType, out result);
+          Debug.Assert(containsKey);
+          return result;
+        }
+
+        public virtual Z3Type GetType(Type boogieType) {
+          System.Type type = boogieType.GetType();
+          if (type.Equals(typeof(BvType)))
+            return GetBvType((BvType)boogieType);
+          else if (type.Equals(typeof(BasicType)))
+            return GetBasicType((BasicType)boogieType);
+          else if (type.Equals(typeof(MapType)))
+            return GetMapType((MapType)boogieType);
+          else if (type.Equals(typeof(CtorType)))
+            return GetCtorType((CtorType)boogieType);
+          else
+            throw new Exception("Boogie Type " + boogieType.GetType() + " is unknown");
         }
 
         private Z3Type WrapType(Sort typeAst)
@@ -164,6 +189,15 @@ namespace Microsoft.Boogie.Z3
             else
                 throw new Exception("Unknown Basic Type " + basicType.ToString());
             return WrapType(typeAst);
+        }
+
+        public Z3Type BuildCtorType(CtorType ctorType) {
+          Context z3 = ((Z3SafeContext)container).z3;
+          Sort typeAst;
+          if (ctorType.Arguments.Length > 0)
+            throw new Exception("Type constructor of non-zero arity are not handled");
+          typeAst = z3.MkSort(ctorType.Decl.Name);
+          return WrapType(typeAst);
         }
     }
 

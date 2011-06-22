@@ -315,7 +315,7 @@ namespace Microsoft.Boogie.Z3
 
         private Z3ErrorModelAndLabels BuildZ3ErrorModel(Model z3Model, List<string> relevantLabels)
         {
-            BoogieErrorModelBuilder boogieErrorBuilder = new BoogieErrorModelBuilder(this);
+            BoogieErrorModelBuilder boogieErrorBuilder = new BoogieErrorModelBuilder(this, z3Model);
             Z3ErrorModel boogieModel = boogieErrorBuilder.BuildBoogieModel(z3Model);
             return new Z3ErrorModelAndLabels(boogieModel, new List<string>(relevantLabels));
         }
