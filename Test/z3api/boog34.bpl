@@ -1,3 +1,4 @@
+type ref;
 
 function Rep(int, int) returns (int);
 axiom(forall n:int, x:int :: {Rep(n,x)} 

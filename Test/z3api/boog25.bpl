@@ -1,3 +1,5 @@
+type name;
+type ref;
 type byte;
 function OneByteToInt(byte) returns (int);
 function TwoBytesToInt(byte, byte) returns (int);

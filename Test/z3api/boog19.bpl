@@ -1,3 +1,5 @@
+type name;
+type ref;
 var alloc:[int]name;
 
 

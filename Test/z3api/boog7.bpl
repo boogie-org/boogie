@@ -1,3 +1,4 @@
+type ref;
 // consts
 const w: int;
 
@@ -7,7 +8,8 @@ var favorite: int;
 
 // procedure
 procedure SetToSeven(p: int);
-  modifies favorite;
+  modifies favorite
+;
 
   ensures favorite==p;
 
