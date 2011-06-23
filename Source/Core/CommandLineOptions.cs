@@ -259,6 +259,7 @@ namespace Microsoft.Boogie {
       BlockReach,
       BlockNestedReach,
       Dag,
+      DagIterative,
       Doomed,
       Unspecified
     }
@@ -1048,6 +1049,9 @@ namespace Microsoft.Boogie {
                 case "d":
                 case "dag":
                   vcVariety = VCVariety.Dag;
+                  break;
+                case "i":
+                  vcVariety = VCVariety.DagIterative;
                   break;
                 case "doomed":
                   vcVariety = VCVariety.Doomed;

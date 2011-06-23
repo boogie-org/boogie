@@ -1627,6 +1627,9 @@ namespace VC {
             vc = LetVC(cce.NonNull(impl.Blocks[0]), controlFlowVariable, label2absy, ch.TheoremProver.Context);
           }
           break;
+        case CommandLineOptions.VCVariety.DagIterative:
+          vc = LetVCIterative(impl.Blocks, controlFlowVariable, label2absy, ch.TheoremProver.Context);
+          break;
         case CommandLineOptions.VCVariety.Doomed:
           vc = FlatBlockVC(impl, label2absy, false, false, true, ch.TheoremProver.Context);
           break;
@@ -3639,6 +3642,73 @@ namespace VC {
       List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
       VCExpr startCorrect = LetVC(startBlock, controlFlowVariable, label2absy, blockVariables, bindings, proverCtxt);
       return proverCtxt.ExprGen.Let(bindings, startCorrect);
+    }
+
+    static VCExpr LetVCIterative(List<Block> blocks,
+                                 Variable controlFlowVariable,
+                                 Hashtable label2absy,
+                                 ProverContext proverCtxt) {
+      Contract.Requires(blocks != null);
+      Contract.Requires(proverCtxt != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+      Graph<Block> dag = new Graph<Block>();
+      dag.AddSource(blocks[0]); 
+      foreach (Block b in blocks) {
+        GotoCmd gtc = b.TransferCmd as GotoCmd;
+        if (gtc != null) {
+          Contract.Assume(gtc.labelTargets != null);
+          foreach (Block dest in gtc.labelTargets) {
+            Contract.Assert(dest != null);
+            dag.AddEdge(dest, b);
+          }
+        }
+      }
+      IEnumerable sortedNodes = dag.TopologicalSort();
+      Contract.Assert(sortedNodes != null);
+
+      Dictionary<Block, VCExprVar> blockVariables = new Dictionary<Block, VCExprVar>();
+      List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
+      VCExpressionGenerator gen = proverCtxt.ExprGen;
+      Contract.Assert(gen != null);
+      foreach (Block block in sortedNodes) {
+        VCExpr SuccCorrect;
+        GotoCmd gotocmd = block.TransferCmd as GotoCmd;
+        if (gotocmd == null) {
+          ReturnExprCmd re = block.TransferCmd as ReturnExprCmd;
+          if (re == null) {
+            SuccCorrect = VCExpressionGenerator.True;
+          }
+          else {
+            SuccCorrect = proverCtxt.BoogieExprTranslator.Translate(re.Expr);
+          }
+        }
+        else {
+          Contract.Assert(gotocmd.labelTargets != null);
+          List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Length);
+          foreach (Block successor in gotocmd.labelTargets) {
+            Contract.Assert(successor != null);
+            VCExpr s = blockVariables[successor];
+            if (controlFlowVariable != null) {
+              VCExprVar controlFlowVariableExpr = proverCtxt.BoogieExprTranslator.LookupVariable(controlFlowVariable);
+              VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(block.UniqueId)));
+              VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(successor.UniqueId)));
+              s = gen.Implies(controlTransferExpr, s);
+            }
+            SuccCorrectVars.Add(s);
+          }
+          SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
+        }
+
+        VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariable);
+        VCExpr vc = Wlp.Block(block, SuccCorrect, context);
+
+        VCExprVar v = gen.Variable(block.Label + "_correct", Bpl.Type.Bool);
+        bindings.Add(gen.LetBinding(v, vc));
+        blockVariables.Add(block, v);
+      }
+
+      return proverCtxt.ExprGen.Let(bindings, blockVariables[blocks[0]]);
     }
 
     static VCExpr LetVC(Block block,
