@@ -2463,18 +2463,18 @@ namespace VC {
         }
     }
 
-    public Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
+    public virtual Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
         // Construct the set of inlined procs in the original program
-        var inlinedProcs = new Dictionary<string, Procedure>();
+        var inlinedProcs = new HashSet<string>();
         foreach (var decl in program.TopLevelDeclarations)
         {
             if (decl is Procedure)
-            {
+            {  
                 if (!(decl is LoopProcedure))
                 {
                     var p = decl as Procedure;
-                    inlinedProcs.Add(p.Name, p);
+                    inlinedProcs.Add(p.Name);
                 }
             }
         }
@@ -2484,9 +2484,9 @@ namespace VC {
             mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
     }
 
-    private CalleeCounterexampleInfo extractLoopTraceRec(
+    protected CalleeCounterexampleInfo extractLoopTraceRec(
         CalleeCounterexampleInfo cexInfo, string currProc,
-        Dictionary<string, Procedure> inlinedProcs, 
+        HashSet<string> inlinedProcs, 
         Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
         Contract.Requires(currProc != null);
@@ -2507,7 +2507,11 @@ namespace VC {
             for (int numInstr = 0; numInstr < block.Cmds.Length; numInstr ++) {
                 Cmd cmd = block.Cmds[numInstr];
                 var loc = new TraceLocation(numBlock, numInstr);
-                if (!cex.calleeCounterexamples.ContainsKey(loc)) continue;
+                if (!cex.calleeCounterexamples.ContainsKey(loc))
+                {
+                    if (getCallee(cex.getTraceCmd(loc), inlinedProcs) != null) callCnt++;
+                    continue;
+                }
                 string callee = cex.getCalledProcName(cex.getTraceCmd(loc));
                 Contract.Assert(callee != null);
                 var calleeTrace = cex.calleeCounterexamples[loc];
@@ -2543,33 +2547,13 @@ namespace VC {
     // return the position of the i^th CallCmd in the block (count only those Calls that call a procedure in inlinedProcs). 
     // Assert failure if there isn't any.
     // Assert that the CallCmd found calls "callee"
-    private int getCallCmdPosition(Block block, int i, Dictionary<string, Procedure> inlinedProcs, string callee)
+    private int getCallCmdPosition(Block block, int i, HashSet<string> inlinedProcs, string callee)
     {
         Debug.Assert(i >= 1);
         for (int pos = 0; pos < block.Cmds.Length; pos++)
         {
             Cmd cmd = block.Cmds[pos];
-            string procCalled = null;
-            if (cmd is CallCmd)
-            {
-                var cc = (CallCmd)cmd;
-                if (inlinedProcs.ContainsKey(cc.Proc.Name))
-                {
-                    procCalled = cc.Proc.Name;
-                }
-            }
-
-            if (cmd is AssumeCmd)
-            {
-                var expr = (cmd as AssumeCmd).Expr as NAryExpr;
-                if (expr != null)
-                {
-                    if (inlinedProcs.ContainsKey(expr.Fun.FunctionName))
-                    {
-                        procCalled = expr.Fun.FunctionName;
-                    }
-                }
-            }
+            string procCalled = getCallee(cmd, inlinedProcs);
 
             if (procCalled != null)
             {
@@ -2584,6 +2568,32 @@ namespace VC {
 
         Debug.Assert(false, "Didn't find the i^th call cmd");
         return -1;
+    }
+
+    private string getCallee(Cmd cmd, HashSet<string> inlinedProcs)
+    {
+        string procCalled = null;
+        if (cmd is CallCmd)
+        {
+            var cc = (CallCmd)cmd;
+            if (inlinedProcs.Contains(cc.Proc.Name))
+            {
+                procCalled = cc.Proc.Name;
+            }
+        }
+
+        if (cmd is AssumeCmd)
+        {
+            var expr = (cmd as AssumeCmd).Expr as NAryExpr;
+            if (expr != null)
+            {
+                if (inlinedProcs.Contains(expr.Fun.FunctionName))
+                {
+                    procCalled = expr.Fun.FunctionName;
+                }
+            }
+        }
+        return procCalled;
     }
 
     protected virtual bool elIsLoop(string procname)
