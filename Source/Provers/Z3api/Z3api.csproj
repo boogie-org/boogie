@@ -169,8 +169,6 @@
     </Compile>
     <Compile Include="ContextLayer.cs" />
     <Compile Include="ProverLayer.cs" />
-    <Compile Include="SafeContext.cs" />
-    <Compile Include="StubContext.cs" />
     <Compile Include="TypeAdapter.cs">
       <SubType>Code</SubType>
     </Compile>
