@@ -1,3 +1,4 @@
+type ref;
 
 function PLUS(int, int, int) returns (int);
 function Rep(int, int) returns (int);

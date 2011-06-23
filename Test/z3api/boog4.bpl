@@ -1,3 +1,4 @@
+type ref;
 type Wicket;
 
 const w: Wicket;
@@ -10,7 +11,8 @@ function age(Wicket) returns (int);
 
 axiom age(w)==7;
 axiom 7 < 8;
-axiom 7 <= 8;
+axiom 7 <= 8;
+
 axiom 8 > 7;
 axiom 8 >= 7;
 axiom 6 != 7;
@@ -28,7 +30,8 @@ axiom 7!=7;
 
 
 procedure NewFavorite(p: Wicket);
-  modifies favorite;
+  modifies favorite
+;
 
   ensures favorite==p;
 

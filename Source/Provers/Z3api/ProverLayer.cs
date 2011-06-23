@@ -47,7 +47,7 @@ namespace Microsoft.Boogie.Z3
         public override void Close()
         {
             base.Close();
-            Z3SafeContext cm = context.cm;
+            Z3Context cm = context.cm;
             cm.CloseLog();
             cm.z3.Dispose();
             cm.config.Config.Dispose();
@@ -55,7 +55,7 @@ namespace Microsoft.Boogie.Z3
 
         public void PushAxiom(VCExpr axiom)
         {
-            Z3SafeContext cm = context.cm;
+            Z3Context cm = context.cm;
             cm.CreateBacktrackPoint();
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
             cm.AddAxiom(axiom, linOptions);
@@ -64,7 +64,7 @@ namespace Microsoft.Boogie.Z3
 
         private void PushConjecture(VCExpr conjecture)
         {
-            Z3SafeContext cm = context.cm;
+            Z3Context cm = context.cm;
             cm.CreateBacktrackPoint();
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
             cm.AddConjecture(conjecture, linOptions);
@@ -78,14 +78,14 @@ namespace Microsoft.Boogie.Z3
 
         public void CreateBacktrackPoint()
         {
-            Z3SafeContext cm = context.cm;
+            Z3Context cm = context.cm;
             cm.CreateBacktrackPoint();
         }
 
         public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
         {
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            Z3SafeContext cm = context.cm;
+            Z3Context cm = context.cm;
             Push();
             cm.AddAxiom(context.Axioms, linOptions);
             cm.AddConjecture(vc, linOptions);
@@ -95,33 +95,33 @@ namespace Microsoft.Boogie.Z3
   
         public override void Check()
         {
-            Z3SafeContext cm = context.cm;
+            Z3Context cm = context.cm;
             outcome = cm.Check(out z3LabelModels);
         }
 
         public override void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
         {
-            Z3SafeContext cm = context.cm;
+            Z3Context cm = context.cm;
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
             outcome = cm.CheckAssumptions(assumptions, linOptions, out z3LabelModels, out unsatCore);
         }
 
         public override void Push()
         {
-            Z3SafeContext cm = context.cm;
+            Z3Context cm = context.cm;
             cm.CreateBacktrackPoint();
         }
 
         public override void Pop()
         {
-            Z3SafeContext cm = context.cm;
+            Z3Context cm = context.cm;
             cm.Backtrack();
         }
 
         public override void Assert(VCExpr vc, bool polarity)
         {
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            Z3SafeContext cm = context.cm;
+            Z3Context cm = context.cm;
             if (polarity)
                 cm.AddAxiom(vc, linOptions);
             else
@@ -131,7 +131,7 @@ namespace Microsoft.Boogie.Z3
         public override void AssertAxioms()
         {
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            Z3SafeContext cm = context.cm;
+            Z3Context cm = context.cm;
             cm.AddAxiom(context.Axioms, linOptions);
         }
 
@@ -191,18 +191,17 @@ namespace Microsoft.Boogie.Z3
 
     public class Z3apiProverContext : DeclFreeProverContext
     {
-        public Z3SafeContext cm;
+        public Z3Context cm;
         
         public Z3apiProverContext(Z3InstanceOptions opts, VCExpressionGenerator gen)
             : base(gen, new VCGenerationOptions(new List<string>()))
         {
             Z3Config config = BuildConfig(opts.Timeout * 1000, true);
-            this.cm = new Z3SafeContext(this, config, gen);
+            this.cm = new Z3Context(this, config, gen);
         }
         private static Z3Config BuildConfig(int timeout, bool nativeBv)
         {
             Z3Config config = new Z3Config();
-            config.SetModelCompletion(false);
             config.SetModel(true);
 
             if (0 <= CommandLineOptions.Clo.ProverCCLimit)

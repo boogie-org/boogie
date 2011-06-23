@@ -1,3 +1,4 @@
+type ref;
 // types
 type Color;
 const unique red: Color;
@@ -9,7 +10,8 @@ var myColor: Color;
 
 // procedure
 procedure SetTo(c: Color);
-  modifies myColor;
+  modifies myColor
+;
 
   ensures myColor==c;
 

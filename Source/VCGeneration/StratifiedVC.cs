@@ -2485,6 +2485,39 @@ namespace VC
             }
         }
 
+        public override Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
+        {
+            // Construct the set of inlined procs in the original program
+            var inlinedProcs = new HashSet<string>();
+            foreach (var decl in program.TopLevelDeclarations)
+            {
+                // Implementations
+                if (decl is Implementation)
+                {
+                    var impl = decl as Implementation;
+                    if (!(impl.Proc is LoopProcedure))
+                    {
+                        inlinedProcs.Add(impl.Name);
+                    }
+                }
+
+                // And recording procedures
+                if (decl is Procedure)
+                {
+                    var proc = decl as Procedure;
+                    if (proc.Name.StartsWith(recordProcName))
+                    {
+                        Debug.Assert(!(decl is LoopProcedure));
+                        inlinedProcs.Add(proc.Name);
+                    }
+                }
+            }
+
+            return extractLoopTraceRec(
+                new CalleeCounterexampleInfo(cex, new List<object>()),
+                mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
+        }
+
         protected override bool elIsLoop(string procname)
         {
             LazyInliningInfo info = null;
