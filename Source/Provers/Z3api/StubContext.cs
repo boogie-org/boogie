@@ -45,6 +45,9 @@ namespace Microsoft.Boogie.Z3 {
     public Z3TermAst MakeIntLiteral(string numeral) {
       return new Z3StubTermAst();
     }
+    public Z3TermAst MakeBvLiteral(int i, uint bvSize) {
+      return new Z3StubTermAst();
+    }
     public Z3TermAst MakeTrue() {
       return new Z3StubTermAst();
     }

@@ -192,6 +192,10 @@
       <Project>{A598ED5A-93AD-4125-A555-3921A2F936FA}</Project>
       <Name>TPTP</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Provers\Z3api\Z3api.csproj">
+      <Project>{966DD87B-A29D-4F3C-9406-F680A61DC0E0}</Project>
+      <Name>Z3api</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Provers\Z3\Z3.csproj">
       <Project>{BB49B90B-BE21-4BE8-85BA-359FDB55F4DF}</Project>
       <Name>Z3</Name>
