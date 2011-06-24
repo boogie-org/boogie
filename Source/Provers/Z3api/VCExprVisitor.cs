@@ -31,9 +31,9 @@ namespace Microsoft.Boogie.Z3
 
         internal readonly UniqueNamer namer;
         internal readonly Dictionary<VCExprVar, Term> letBindings;
-        protected Z3Context cm;
+        protected Z3apiProverContext cm;
 
-        public Z3apiExprLineariser(Z3Context cm, UniqueNamer namer)
+        public Z3apiExprLineariser(Z3apiProverContext cm, UniqueNamer namer)
         {
             this.cm = cm;
             this.namer = namer;
@@ -48,6 +48,86 @@ namespace Microsoft.Boogie.Z3
         }
 
         /////////////////////////////////////////////////////////////////////////////////////
+
+        public Term Make(VCExprOp op, List<Term> children) {
+          Context z3 = cm.z3;
+          Term[] unwrapChildren = children.ToArray();
+          VCExprBoogieFunctionOp boogieFunctionOp = op as VCExprBoogieFunctionOp;
+          if (boogieFunctionOp != null) {
+            FuncDecl f = cm.GetFunction(boogieFunctionOp.Func.Name);
+            return z3.MkApp(f, unwrapChildren);
+          }
+          VCExprDistinctOp distinctOp = op as VCExprDistinctOp;
+          if (distinctOp != null) {
+            return z3.MkDistinct(unwrapChildren);
+          }
+
+          if (op == VCExpressionGenerator.AndOp) {
+            return z3.MkAnd(unwrapChildren);
+          }
+
+          if (op == VCExpressionGenerator.OrOp) {
+            return z3.MkOr(unwrapChildren);
+          }
+
+          if (op == VCExpressionGenerator.ImpliesOp) {
+            return z3.MkImplies(unwrapChildren[0], unwrapChildren[1]);
+          }
+
+          if (op == VCExpressionGenerator.NotOp) {
+            return z3.MkNot(unwrapChildren[0]);
+          }
+
+          if (op == VCExpressionGenerator.EqOp) {
+            return z3.MkEq(unwrapChildren[0], unwrapChildren[1]);
+          }
+
+          if (op == VCExpressionGenerator.NeqOp) {
+            return z3.MkNot(z3.MkEq(unwrapChildren[0], unwrapChildren[1]));
+          }
+
+          if (op == VCExpressionGenerator.LtOp) {
+            return z3.MkLt(unwrapChildren[0], unwrapChildren[1]);
+          }
+
+          if (op == VCExpressionGenerator.LeOp) {
+            return z3.MkLe(unwrapChildren[0], unwrapChildren[1]);
+          }
+
+          if (op == VCExpressionGenerator.GtOp) {
+            return z3.MkGt(unwrapChildren[0], unwrapChildren[1]);
+          }
+
+          if (op == VCExpressionGenerator.GeOp) {
+            return z3.MkGe(unwrapChildren[0], unwrapChildren[1]);
+          }
+
+          if (op == VCExpressionGenerator.AddOp) {
+            return z3.MkAdd(unwrapChildren);
+          }
+
+          if (op == VCExpressionGenerator.SubOp) {
+            return z3.MkSub(unwrapChildren);
+          }
+
+          if (op == VCExpressionGenerator.DivOp) {
+            return z3.MkDiv(unwrapChildren[0], unwrapChildren[1]);
+          }
+
+          if (op == VCExpressionGenerator.MulOp) {
+            return z3.MkMul(unwrapChildren);
+          }
+
+          if (op == VCExpressionGenerator.ModOp) {
+            return z3.MkMod(unwrapChildren[0], unwrapChildren[1]);
+          }
+
+          if (op == VCExpressionGenerator.IfThenElseOp) {
+            return z3.MkIte(unwrapChildren[0], unwrapChildren[1], unwrapChildren[2]);
+          }
+
+          throw new Exception("unhandled boogie operator");
+        }
 
         public Term Visit(VCExprLiteral node, LineariserOptions options)
         {
@@ -91,7 +171,7 @@ namespace Microsoft.Boogie.Z3
                     }
                 }
 
-                return cm.Make(op, asts);
+                return Make(op, asts);
             }
 
             return node.Accept<Term, LineariserOptions>(OpLineariser, options);
@@ -155,9 +235,9 @@ namespace Microsoft.Boogie.Z3
                 switch (node.Quan)
                 {
                     case Microsoft.Boogie.VCExprAST.Quantifier.ALL:
-                        result = cm.MakeQuantifier(true, weight, qid, skolemid, varNames, varTypes, patterns, no_patterns, body); break;
+                        result = MakeQuantifier(true, weight, qid, skolemid, varNames, varTypes, patterns, no_patterns, body); break;
                     case Microsoft.Boogie.VCExprAST.Quantifier.EX:
-                        result = cm.MakeQuantifier(false, weight, qid, skolemid, varNames, varTypes, patterns, no_patterns, body); break;
+                        result = MakeQuantifier(false, weight, qid, skolemid, varNames, varTypes, patterns, no_patterns, body); break;
                     default:
                         throw new Exception("unknown quantifier kind " + node.Quan);
                 }
@@ -168,7 +248,18 @@ namespace Microsoft.Boogie.Z3
                 namer.PopScope();
             }
         }
-        
+
+        private Term MakeQuantifier(bool isForall, uint weight, string qid, int skolemid, List<string> varNames, List<Type> boogieTypes, List<Pattern> patterns, List<Term> no_patterns, Term body) {
+          List<Term> bound = new List<Term>();
+          for (int i = 0; i < varNames.Count; i++) {
+            Term t = cm.GetConstant(varNames[i], boogieTypes[i]);
+            bound.Add(t);
+          }
+
+          Term termAst = cm.z3.MkQuantifier(isForall, weight, cm.z3.MkSymbol(qid), cm.z3.MkSymbol(skolemid.ToString()), patterns.ToArray(), no_patterns.ToArray(), bound.ToArray(), body);
+          return termAst;
+        }
+
         private void VisitBounds(List<VCExprVar> boundVars, out List<string> varNames, out List<Type> varTypes)
         {
             varNames = new List<string>();
@@ -196,17 +287,15 @@ namespace Microsoft.Boogie.Z3
                 }
                 if (exprs.Count > 0)
                 {
-                    if (trigger.Pos)
-                    {
-                        Pattern pattern = cm.MakePattern(exprs);
-                        patterns.Add(pattern);
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.Assert(false, "Z3api currently does not handle nopats");
-                        foreach (Term expr in exprs)
-                            no_patterns.Add(expr);
-                    }
+                  if (trigger.Pos) {
+                    Pattern pattern = cm.z3.MkPattern(exprs.ToArray());
+                    patterns.Add(pattern);
+                  }
+                  else {
+                    System.Diagnostics.Debug.Assert(false, "Z3api currently does not handle nopats");
+                    foreach (Term expr in exprs)
+                      no_patterns.Add(expr);
+                  }
                 }
             }
         }
@@ -258,7 +347,7 @@ namespace Microsoft.Boogie.Z3
                     Contract.Assert(e != null);
                     args.Add(ExprLineariser.Linearise(e, options));
                 }
-                return ExprLineariser.cm.Make(op, args);
+                return ExprLineariser.Make(op, args);
             }
 
             ///////////////////////////////////////////////////////////////////////////////////

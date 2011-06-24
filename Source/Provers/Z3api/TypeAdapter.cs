@@ -80,15 +80,15 @@ namespace Microsoft.Boogie.Z3
         private Dictionary<BasicType, Sort> basicTypes = new Dictionary<BasicType, Sort>(new BasicTypeComparator());
         private Dictionary<CtorType, Sort> ctorTypes = new Dictionary<CtorType, Sort>(new CtorTypeComparator());
 
-        private Z3Context container;
+        private Z3apiProverContext container;
 
-        public Z3TypeCachedBuilder(Z3Context context)
+        public Z3TypeCachedBuilder(Z3apiProverContext context)
         {
             this.container = context;
         }
 
         private Sort GetMapType(MapType mapType) {
-          Context z3 = ((Z3Context)container).z3;
+          Context z3 = ((Z3apiProverContext)container).z3;
           if (!mapTypes.ContainsKey(mapType)) {
             Type result = mapType.Result;
             for (int i = mapType.Arguments.Length-1; i > 0; i--) {
@@ -153,19 +153,19 @@ namespace Microsoft.Boogie.Z3
 
         public Sort BuildMapType(Sort domain, Sort range)
         {
-            Context z3 = ((Z3Context)container).z3;
+            Context z3 = ((Z3apiProverContext)container).z3;
             return z3.MkArraySort(domain, range);
         }
 
         public Sort BuildBvType(BvType bvType)
         {
-            Context z3 = ((Z3Context)container).z3;
+            Context z3 = ((Z3apiProverContext)container).z3;
             return z3.MkBvSort((uint)bvType.Bits);
         }
 
         public Sort BuildBasicType(BasicType basicType)
         {
-            Context z3 = ((Z3Context)container).z3;
+            Context z3 = ((Z3apiProverContext)container).z3;
             Sort typeAst;
             if (basicType.IsBool)
             {
@@ -181,7 +181,7 @@ namespace Microsoft.Boogie.Z3
         }
 
         public Sort BuildCtorType(CtorType ctorType) {
-          Context z3 = ((Z3Context)container).z3;
+          Context z3 = ((Z3apiProverContext)container).z3;
           if (ctorType.Arguments.Length > 0)
             throw new Exception("Type constructor of non-zero arity are not handled");
           return z3.MkSort(ctorType.Decl.Name);
