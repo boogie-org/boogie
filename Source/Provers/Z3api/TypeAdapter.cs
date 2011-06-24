@@ -87,21 +87,17 @@ namespace Microsoft.Boogie.Z3
             this.container = context;
         }
 
-        private Sort GetMapType(MapType mapType)
-        {
-            Context z3 = ((Z3Context)container).z3;
-            if (!mapTypes.ContainsKey(mapType))
-            {
-                Debug.Assert(mapType.Arguments.Length == 1, "Z3api only supports maps of arity 1");
-                Sort domain = GetType(mapType.Arguments[0]);
-                Sort range = GetType(mapType.Result);
-                Sort typeAst = BuildMapType(domain, range);
-                mapTypes.Add(mapType, typeAst);
+        private Sort GetMapType(MapType mapType) {
+          Context z3 = ((Z3Context)container).z3;
+          if (!mapTypes.ContainsKey(mapType)) {
+            Type result = mapType.Result;
+            for (int i = mapType.Arguments.Length-1; i > 0; i--) {
+              GetType(result);
+              result = new MapType(mapType.tok, new TypeVariableSeq(), new TypeSeq(mapType.Arguments[i]), result);
             }
-            Sort result;
-            bool containsKey = mapTypes.TryGetValue(mapType, out result);
-            Debug.Assert(containsKey);
-            return result;
+            mapTypes.Add(mapType, BuildMapType(GetType(mapType.Arguments[0]), GetType(result)));
+          }
+          return mapTypes[mapType];
         }
 
         private Sort GetBvType(BvType bvType)
@@ -158,15 +154,13 @@ namespace Microsoft.Boogie.Z3
         public Sort BuildMapType(Sort domain, Sort range)
         {
             Context z3 = ((Z3Context)container).z3;
-            Sort typeAst = z3.MkArraySort(domain, range);
-            return typeAst;
+            return z3.MkArraySort(domain, range);
         }
 
         public Sort BuildBvType(BvType bvType)
         {
             Context z3 = ((Z3Context)container).z3;
-            Sort typeAst = z3.MkBvSort((uint)bvType.Bits);
-            return typeAst;
+            return z3.MkBvSort((uint)bvType.Bits);
         }
 
         public Sort BuildBasicType(BasicType basicType)
@@ -188,11 +182,9 @@ namespace Microsoft.Boogie.Z3
 
         public Sort BuildCtorType(CtorType ctorType) {
           Context z3 = ((Z3Context)container).z3;
-          Sort typeAst;
           if (ctorType.Arguments.Length > 0)
             throw new Exception("Type constructor of non-zero arity are not handled");
-          typeAst = z3.MkSort(ctorType.Decl.Name);
-          return typeAst;
+          return z3.MkSort(ctorType.Decl.Name);
         }
     }
 }

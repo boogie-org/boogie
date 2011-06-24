@@ -202,7 +202,10 @@ namespace Microsoft.Boogie.Z3
         private static Z3Config BuildConfig(int timeout, bool nativeBv)
         {
             Z3Config config = new Z3Config();
-            config.SetModel(true);
+            config.Config.SetParamValue("MODEL", "true");
+            config.Config.SetParamValue("MODEL_V2", "true");
+            config.Config.SetParamValue("MODEL_COMPLETION", "true");
+            config.Config.SetParamValue("MBQI", "false");
 
             if (0 <= CommandLineOptions.Clo.ProverCCLimit)
             {
@@ -211,7 +214,7 @@ namespace Microsoft.Boogie.Z3
 
             if (0 <= timeout)
             {
-                config.SetSoftTimeout(timeout.ToString());
+              config.Config.SetParamValue("SOFT_TIMEOUT", timeout.ToString());
             }
 
             if (CommandLineOptions.Clo.SimplifyLogFilePath != null)
@@ -219,7 +222,7 @@ namespace Microsoft.Boogie.Z3
                 config.SetLogFilename(CommandLineOptions.Clo.SimplifyLogFilePath);
             }
 
-            config.SetTypeCheck(true);
+            config.Config.SetParamValue("TYPE_CHECK", "true");
             return config;
         }
 

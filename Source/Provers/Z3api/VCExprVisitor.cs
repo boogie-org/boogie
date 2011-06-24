@@ -17,15 +17,15 @@ namespace Microsoft.Boogie.Z3
 {
     public class Z3apiExprLineariser : IVCExprVisitor<Term, LineariserOptions>
     {
-        private Z3apiOpLineariser OpLinObject = null;
+        private Z3apiOpLineariser opLineariser = null;
         private IVCExprOpVisitor<Term, LineariserOptions> OpLineariser
         {
             get
             {
                 Contract.Ensures(Contract.Result<IVCExprOpVisitor<bool, LineariserOptions>>() != null);
-                if (OpLinObject == null)
-                    OpLinObject = new Z3apiOpLineariser(this);
-                return OpLinObject;
+                if (opLineariser == null)
+                    opLineariser = new Z3apiOpLineariser(this);
+                return opLineariser;
             }
         }
 
@@ -91,7 +91,7 @@ namespace Microsoft.Boogie.Z3
                     }
                 }
 
-                return cm.Make(opString, asts);
+                return cm.Make(op, asts);
             }
 
             return node.Accept<Term, LineariserOptions>(OpLineariser, options);
@@ -246,7 +246,7 @@ namespace Microsoft.Boogie.Z3
 
             ///////////////////////////////////////////////////////////////////////////////////
 
-            private Term WriteApplication(string op, IEnumerable<VCExpr> terms, LineariserOptions options)
+            private Term WriteApplication(VCExprOp op, IEnumerable<VCExpr> terms, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(op != null);
@@ -267,76 +267,49 @@ namespace Microsoft.Boogie.Z3
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("NOT", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitEqOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("EQ", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitNeqOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("NEQ", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitAndOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("AND", node, options);  
+                return WriteApplication(node.Op, node, options);  
             }
 
             public Term VisitOrOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("OR", node, options); 
+                return WriteApplication(node.Op, node, options); 
             }
 
             public Term VisitImpliesOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                if (options.InverseImplies)
-                {
-                    List<Term> args = new List<Term>();
-
-                    args.Add(ExprLineariser.Linearise(node[1], options));
-                    List<Term> t = new List<Term>();
-                    t.Add(ExprLineariser.Linearise(node[0], options));
-                    args.Add(ExprLineariser.cm.Make("NOT", t));
-                    return ExprLineariser.cm.Make("OR", args);
-                }
-                else
-                {
-                    return WriteApplication("IMPLIES", node, options);
-                }
+                return WriteApplication(node.Op, node, options);
             }
 
-            public Term VisitDistinctOp(VCExprNAry node, LineariserOptions options)
+            public Term VisitDistinctOp(VCExprNAry node, LineariserOptions options) 
             {
-                Contract.Requires(options != null);
-                Contract.Requires(node != null);
-
-                if (node.Length < 2)
-                {
-                    return ExprLineariser.Linearise(VCExpressionGenerator.True, options);
-                }
-                else
-                {
-                    List<Term> args = new List<Term>();
-                    foreach (VCExpr e in node)
-                    {
-                        Contract.Assert(e != null);
-                        args.Add(ExprLineariser.Linearise(e, options));
-                    }
-                    return ExprLineariser.cm.Make("DISTINCT", args);
-                }
+              Contract.Requires(options != null);
+              Contract.Requires(node != null);
+              return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitLabelOp(VCExprNAry node, LineariserOptions options)
@@ -358,10 +331,24 @@ namespace Microsoft.Boogie.Z3
                     Contract.Assert(e != null);
                     args.Add(ExprLineariser.Linearise(e, options));
                 }
+                System.Diagnostics.Debug.Assert(args.Count >= 2);
 
-                Term[] unwrapChildren = args.ToArray();
-                return ExprLineariser.cm.z3.MkArraySelect(unwrapChildren[0], unwrapChildren[1]);
-                // return ExprLineariser.cm.Make(SimplifyLikeExprLineariser.SelectOpName(node), args);
+                Term selectTerm = args[0];
+                for (int i = 1; i < args.Count; i++) {
+                  selectTerm = ExprLineariser.cm.z3.MkArraySelect(selectTerm, args[i]);
+                }
+                return selectTerm;
+            }
+
+            private Term ConstructStoreTerm(Term mapTerm, List<Term> args, int index) {
+              System.Diagnostics.Debug.Assert(0 < index && index < args.Count - 1);
+              if (index == args.Count - 2) {
+                return ExprLineariser.cm.z3.MkArrayStore(mapTerm, args[index], args[index + 1]);
+              }
+              else {
+                Term t = ConstructStoreTerm(ExprLineariser.cm.z3.MkArraySelect(mapTerm, args[index]), args, index + 1);
+                return ExprLineariser.cm.z3.MkArrayStore(mapTerm, args[index], t);
+              }
             }
 
             public Term VisitStoreOp(VCExprNAry node, LineariserOptions options)
@@ -374,10 +361,7 @@ namespace Microsoft.Boogie.Z3
                     Contract.Assert(e != null);
                     args.Add(ExprLineariser.Linearise(e, options));
                 }
-
-                Term[] unwrapChildren = args.ToArray();
-                return ExprLineariser.cm.z3.MkArrayStore(unwrapChildren[0], unwrapChildren[1], unwrapChildren[2]);
-                // return ExprLineariser.cm.Make(SimplifyLikeExprLineariser.StoreOpName(node), args);
+                return ConstructStoreTerm(args[0], args, 1);
             }
 
             public Term VisitBvOp(VCExprNAry node, LineariserOptions options)
@@ -431,129 +415,97 @@ namespace Microsoft.Boogie.Z3
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-
-                List<Term> args = new List<Term>();
-                args.Add(ExprLineariser.Linearise(node[0], options));
-                args.Add(ExprLineariser.Linearise(node[1], options));
-                args.Add(ExprLineariser.Linearise(node[2], options));
-                return ExprLineariser.cm.Make("ITE", args);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitCustomOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(node != null);
                 Contract.Requires(options != null);
-                VCExprCustomOp op = (VCExprCustomOp)node.Op;
-                List<Term> args = new List<Term>();
-                foreach (VCExpr arg in node)
-                {
-                    args.Add(ExprLineariser.Linearise(arg, options));
-                }
-                return ExprLineariser.cm.Make(op.Name, args);
+                return WriteApplication(node.Op, node, options);
             }
 
-            public Term VisitAddOp(VCExprNAry node, LineariserOptions options)
-            {
-                Contract.Requires(options != null);
-                Contract.Requires(node != null);
-                if (CommandLineOptions.Clo.ReflectAdd)
-                {
-                    return WriteApplication("Reflect$Add", node, options);
-                }
-                else
-                {
-                    return WriteApplication("+", node, options);
-                }
+            public Term VisitAddOp(VCExprNAry node, LineariserOptions options) {
+              Contract.Requires(options != null);
+              Contract.Requires(node != null);
+              return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitSubOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("-", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitMulOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("*", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitDivOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("/", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitModOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("%", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitLtOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("<", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitLeOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("<=", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitGtOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication(">", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitGeOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication(">=", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitSubtypeOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("<:", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitSubtype3Op(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                return WriteApplication("<::", node, options);
+                return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
-                VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)node.Op;
-                Contract.Assert(op != null);
-                string funcName = op.Func.Name;
-                Contract.Assert(funcName != null);
-                string bvzName = op.Func.FindStringAttribute("external");
-                if (bvzName != null) funcName = bvzName;
-
-                List<Term> args = new List<Term>();
-                foreach (VCExpr e in node)
-                {
-                    Contract.Assert(e != null);
-                    args.Add(ExprLineariser.Linearise(e, options));
-                }
-                return ExprLineariser.cm.Make(funcName, args);
+                return WriteApplication(node.Op, node, options);
             }
         }
     }

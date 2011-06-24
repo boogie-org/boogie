@@ -11,6 +11,9 @@ using Microsoft.Z3;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Basetypes;
 
+using Z3Model = Microsoft.Z3.Model;
+using BoogieModel = Microsoft.Boogie.Model;
+
 namespace Microsoft.Boogie.Z3
 {
     public class Z3Config
@@ -19,21 +22,6 @@ namespace Microsoft.Boogie.Z3
         private int counterexamples;
         private string logFilename;
         private List<string> debugTraces = new List<string>();
-
-        public void SetModel(bool enabled)
-        {
-            config.SetParamValue("MODEL", (enabled ? "true" : "false"));
-        }
-
-        public void SetSoftTimeout(string timeout)
-        {
-            config.SetParamValue("SOFT_TIMEOUT", timeout);
-        }
-
-        public void SetTypeCheck(bool enabled)
-        {
-            config.SetParamValue("TYPE_CHECK", (enabled ? "true" : "false"));
-        }
 
         public void SetCounterExample(int counterexample)
         {
@@ -66,102 +54,6 @@ namespace Microsoft.Boogie.Z3
         public List<string> DebugTraces
         {
             get { return this.debugTraces; }
-        }
-    }
-
-    internal class PartitionMap
-    {
-        private Context ctx;
-        private Model model;
-        private Dictionary<Term, int> termToPartition = new Dictionary<Term, int>();
-        private Dictionary<object, int> valueToPartition = new Dictionary<object, int>();
-        private List<Object> partitionToValue = new List<Object>();
-        private int partitionCounter = 0;
-        public int PartitionCounter { get { return partitionCounter; } }
-
-        public PartitionMap(Context ctx, Model z3Model)
-        { 
-            this.ctx = ctx;
-            this.model = z3Model;
-        }
-
-        public int GetPartition(Term value)
-        {
-            int result;
-            if (!termToPartition.TryGetValue(value, out result))
-            {
-                result = partitionCounter++;
-                termToPartition.Add(value, result);
-                partitionToValue.Add(null);
-                object constant = Evaluate(value);
-                valueToPartition.Add(constant, result);
-                partitionToValue[result] = constant;
-            }
-            return result;
-        }
-
-        private object Evaluate(Term v)
-        {
-            Sort s = v.GetSort();
-            Sort boolSort = ctx.MkBoolSort();
-            Sort intSort = ctx.MkIntSort();
-            ArrayValue av;
-            
-            if (s.Equals(boolSort))
-            {
-                return ctx.GetBoolValue(v);
-            }
-            else if (s.Equals(intSort)) {
-              int i;
-              long il;
-              uint u;
-              ulong ul;
-              if (ctx.TryGetNumeralInt(v, out i)) {
-                return BigNum.FromInt(i);
-              }
-              else if (ctx.TryGetNumeralInt64(v, out il)) {
-                return BigNum.FromLong(il);
-              }
-              else if (ctx.TryGetNumeralUInt(v, out u)) {
-                return BigNum.FromUInt(u);
-              }
-              else if (ctx.TryGetNumeralUInt64(v, out ul)) {
-                return BigNum.FromULong(ul);
-              }
-              else {
-                string str = v.ToString();
-                return GetPartition(v);
-                //return BigNum.FromString(ctx.GetNumeralString(v));
-              }
-            }
-            else if (model.TryGetArrayValue(v, out av)) {
-              List<List<int>> arrayValue = new List<List<int>>();
-              List<int> tuple;
-              for (int i = 0; i < av.Domain.Length; i++) {
-                tuple = new List<int>();
-                tuple.Add(GetPartition(av.Domain[i]));
-                tuple.Add(GetPartition(av.Range[i]));
-                arrayValue.Add(tuple);
-              }
-              tuple = new List<int>();
-              tuple.Add(GetPartition(av.ElseCase));
-              arrayValue.Add(tuple);
-              return arrayValue;
-            }
-            else {
-              // The term is uninterpreted; just return the partition id.
-              return GetPartition(v);
-            }
-        }
-
-        public List<Object> PartitionToValue(Context ctx) 
-        {
-            return partitionToValue;
-        }
-
-        public Dictionary<object, int> ValueToPartition(Context ctx)
-        {
-            return valueToPartition;
         }
     }
 
@@ -217,86 +109,11 @@ namespace Microsoft.Boogie.Z3
         }
     }
 
-    internal class BoogieErrorModelBuilder
-    {
-        private Z3Context container;
-        private PartitionMap partitionMap;
-
-        public BoogieErrorModelBuilder(Z3Context container, Model z3Model)
-        {
-            this.container = container;
-            this.partitionMap = new PartitionMap(((Z3Context)container).z3, z3Model);
-        }
-        
-        private Dictionary<string, int> CreateConstantToPartition(Model z3Model)
-        {
-            Dictionary<string, int> constantToPartition = new Dictionary<string, int>();
-            foreach (FuncDecl c in z3Model.GetModelConstants())
-            {
-                string name = container.GetDeclName(c);
-                int pid = partitionMap.GetPartition(z3Model.Eval(c, new Term[0]));
-                constantToPartition.Add(name, pid);
-            }
-            return constantToPartition;
-        }
-
-        private List<List<string>> CreatePartitionToConstant(Dictionary<string, int> constantToPartition)
-        {
-            List<List<string>> partitionToConstant = new List<List<string>>();
-            for (int i = 0; i < partitionMap.PartitionCounter; i++)
-            {
-                partitionToConstant.Add(new List<string>());
-            }
-            foreach (string s in constantToPartition.Keys)
-            {
-                partitionToConstant[constantToPartition[s]].Add(s);
-            }
-            return partitionToConstant;
-        }
-
-        private Dictionary<string, List<List<int>>> CreateFunctionToPartition(Model z3Model)
-        {
-            Dictionary<string, List<List<int>>> functionToPartition = new Dictionary<string, List<List<int>>>();
-
-            foreach (KeyValuePair<FuncDecl, FunctionGraph> kv in z3Model.GetFunctionGraphs())
-            {
-                List<List<int>> f_tuples = new List<List<int>>();
-                string f_name = container.GetDeclName(kv.Key);
-                FunctionGraph graph = kv.Value;
-                foreach (FunctionEntry entry in graph.Entries)
-                {
-                    List<int> tuple = new List<int>();
-                    foreach (Term v in entry.Arguments)
-                    {
-                        tuple.Add(partitionMap.GetPartition(z3Model.Eval(v)));
-                    }
-                    tuple.Add(partitionMap.GetPartition(z3Model.Eval(entry.Result)));
-                    f_tuples.Add(tuple);
-                }
-                List<int> else_tuple = new List<int>();
-                else_tuple.Add(partitionMap.GetPartition(z3Model.Eval(graph.Else)));
-                f_tuples.Add(else_tuple);
-                functionToPartition.Add(f_name, f_tuples);
-            }
-            return functionToPartition;
-        }
-
-        public Z3ErrorModel BuildBoogieModel(Model z3Model)
-        {
-            Dictionary<string, int> constantToPartition = CreateConstantToPartition(z3Model);
-            Dictionary<string, List<List<int>>> functionToPartition = CreateFunctionToPartition(z3Model);
-            List<List<string>> partitionToConstant = CreatePartitionToConstant(constantToPartition);
-            List<Object> partitionToValue = partitionMap.PartitionToValue(((Z3Context)container).z3);
-            Dictionary<object, int> valueToPartition = partitionMap.ValueToPartition(((Z3Context)container).z3);
-            return new Z3ErrorModel(constantToPartition, partitionToConstant, partitionToValue, valueToPartition, functionToPartition);
-        }
-    }
-
     public class Z3ErrorModelAndLabels
     {
-        private Z3ErrorModel _errorModel;
+        private ErrorModel _errorModel;
         private List<string> _relevantLabels;
-        public Z3ErrorModel ErrorModel
+        public ErrorModel ErrorModel
         {
             get { return this._errorModel; }
         }
@@ -304,7 +121,7 @@ namespace Microsoft.Boogie.Z3
         {
             get { return this._relevantLabels; }
         }
-        public Z3ErrorModelAndLabels(Z3ErrorModel errorModel, List<string> relevantLabels)
+        public Z3ErrorModelAndLabels(ErrorModel errorModel, List<string> relevantLabels)
         {
             this._errorModel = errorModel;
             this._relevantLabels = relevantLabels;
@@ -461,12 +278,13 @@ namespace Microsoft.Boogie.Z3
         return true;
       }
 
-      private Z3ErrorModelAndLabels BuildZ3ErrorModel(Model z3Model, List<string> relevantLabels) {
+      /*
+      private Z3ErrorModelAndLabels BuildZ3ErrorModel(Z3Model z3Model, List<string> relevantLabels) {
         BoogieErrorModelBuilder boogieErrorBuilder = new BoogieErrorModelBuilder(this, z3Model);
         Z3ErrorModel boogieModel = boogieErrorBuilder.BuildBoogieModel(z3Model);
         return new Z3ErrorModelAndLabels(boogieModel, new List<string>(relevantLabels));
       }
-
+      */
       private void DisplayRelevantLabels(List<string> relevantLabels) {
         foreach (string labelName in relevantLabels) {
           System.Console.Write(labelName + ",");
@@ -480,8 +298,9 @@ namespace Microsoft.Boogie.Z3
         LBool outcome = LBool.Undef;
         Debug.Assert(0 < this.config.Counterexamples);
         while (true) {
-          Model z3Model;
+          Z3Model z3Model;
           outcome = z3.CheckAndGetModel(out z3Model);
+          
           log("(check-sat)");
           if (outcome == LBool.False)
             break;
@@ -505,12 +324,26 @@ namespace Microsoft.Boogie.Z3
             }
             labelStrings.Add(labelName);
           }
-          boogieErrors.Add(BuildZ3ErrorModel(z3Model, labelStrings));
+
+          var sw = new StringWriter();
+          sw.WriteLine("*** MODEL");
+          z3Model.Display(sw);
+          sw.WriteLine("*** END_MODEL");
+          var sr = new StringReader(sw.ToString());
+          var models = Microsoft.Boogie.Model.ParseModels(sr);
+
+
+          Z3ErrorModelAndLabels e = new Z3ErrorModelAndLabels(new ErrorModel(models[0]), new List<string>(labelStrings));
+
+
+          boogieErrors.Add(e);
 
           if (boogieErrors.Count < this.config.Counterexamples) {
             z3.BlockLiterals(labels);
             log("block-literals {0}", labels);
           }
+
+          
 
           labels.Dispose();
           z3Model.Dispose();
@@ -538,7 +371,7 @@ namespace Microsoft.Boogie.Z3
         unsatCore = new List<int>();
         LBool outcome = LBool.Undef;
 
-        Model z3Model;
+        Z3Model z3Model;
         Term proof;
         Term[] core;
         Term[] assumption_terms = new Term[assumptions.Count];
@@ -568,7 +401,16 @@ namespace Microsoft.Boogie.Z3
             }
             labelStrings.Add(labelName);
           }
-          boogieErrors.Add(BuildZ3ErrorModel(z3Model, labelStrings));
+
+          var sw = new StringWriter();
+          sw.WriteLine("*** MODEL");
+          z3Model.Display(sw);
+          sw.WriteLine("*** END_MODEL");
+          var sr = new StringReader(sw.ToString());
+          var models = Microsoft.Boogie.Model.ParseModels(sr);
+
+          Z3ErrorModelAndLabels e = new Z3ErrorModelAndLabels(new ErrorModel(models[0]), new List<string>(labelStrings));
+          boogieErrors.Add(e);
 
           labels.Dispose();
           z3Model.Dispose();
@@ -668,37 +510,83 @@ namespace Microsoft.Boogie.Z3
         return safeLiterals;
       }
 
-      public Term Make(string op, List<Term> children) {
+      public Term Make(VCExprOp op, List<Term> children) {
         Term[] unwrapChildren = children.ToArray();
-        Term term;
-        switch (op) {
-          // formulas  
-          case "AND": term = z3.MkAnd(unwrapChildren); break;
-          case "OR": term = z3.MkOr(unwrapChildren); break;
-          case "IMPLIES": term = z3.MkImplies(unwrapChildren[0], unwrapChildren[1]); break;
-          case "NOT": term = z3.MkNot(unwrapChildren[0]); break;
-          case "IFF": term = z3.MkIff(unwrapChildren[0], unwrapChildren[1]); break;
-          // terms
-          case "EQ": term = z3.MkEq(unwrapChildren[0], unwrapChildren[1]); break;
-          case "NEQ": term = z3.MkNot(z3.MkEq(unwrapChildren[0], unwrapChildren[1])); break;
-          case "DISTINCT": term = z3.MkDistinct(unwrapChildren); break;
-          // terms
-          case "<": term = z3.MkLt(unwrapChildren[0], unwrapChildren[1]); break;
-          case ">": term = z3.MkGt(unwrapChildren[0], unwrapChildren[1]); break;
-          case "<=": term = z3.MkLe(unwrapChildren[0], unwrapChildren[1]); break;
-          case ">=": term = z3.MkGe(unwrapChildren[0], unwrapChildren[1]); break;
-          case "+": term = z3.MkAdd(unwrapChildren); break;
-          case "-": term = z3.MkSub(unwrapChildren); break;
-          case "/": term = z3.MkDiv(unwrapChildren[0], unwrapChildren[1]); break;
-          case "%": term = z3.MkMod(unwrapChildren[0], unwrapChildren[1]); break;
-          case "*": term = z3.MkMul(unwrapChildren); break;
-          default: {
-              FuncDecl f = GetFunction(op);
-              term = z3.MkApp(f, unwrapChildren);
-            }
-            break;
+        VCExprBoogieFunctionOp boogieFunctionOp = op as VCExprBoogieFunctionOp;
+        if (boogieFunctionOp != null) {
+          FuncDecl f = GetFunction(boogieFunctionOp.Func.Name);
+          return z3.MkApp(f, unwrapChildren);
         }
-        return term;
+        VCExprDistinctOp distinctOp = op as VCExprDistinctOp;
+        if (distinctOp != null) {
+          return z3.MkDistinct(unwrapChildren);
+        }
+
+        if (op == VCExpressionGenerator.AndOp) {
+          return z3.MkAnd(unwrapChildren);
+        }
+
+        if (op == VCExpressionGenerator.OrOp) {
+          return z3.MkOr(unwrapChildren);
+        }
+
+        if (op == VCExpressionGenerator.ImpliesOp) {
+          return z3.MkImplies(unwrapChildren[0], unwrapChildren[1]);
+        }
+
+        if (op == VCExpressionGenerator.NotOp) {
+          return z3.MkNot(unwrapChildren[0]);
+        }
+
+        if (op == VCExpressionGenerator.EqOp) {
+          return z3.MkEq(unwrapChildren[0], unwrapChildren[1]);
+        }
+
+        if (op == VCExpressionGenerator.NeqOp) {
+          return z3.MkNot(z3.MkEq(unwrapChildren[0], unwrapChildren[1]));
+        }
+
+        if (op == VCExpressionGenerator.LtOp) {
+          return z3.MkLt(unwrapChildren[0], unwrapChildren[1]);
+        }
+
+        if (op == VCExpressionGenerator.LeOp) {
+          return z3.MkLe(unwrapChildren[0], unwrapChildren[1]);
+        }
+
+        if (op == VCExpressionGenerator.GtOp) {
+          return z3.MkGt(unwrapChildren[0], unwrapChildren[1]);
+        }
+
+        if (op == VCExpressionGenerator.GeOp) {
+          return z3.MkGe(unwrapChildren[0], unwrapChildren[1]);
+        }
+
+        if (op == VCExpressionGenerator.AddOp) {
+          return z3.MkAdd(unwrapChildren);
+        }
+
+        if (op == VCExpressionGenerator.SubOp) {
+          return z3.MkSub(unwrapChildren);
+        }
+
+        if (op == VCExpressionGenerator.DivOp) {
+          return z3.MkDiv(unwrapChildren[0], unwrapChildren[1]);
+        }
+
+        if (op == VCExpressionGenerator.MulOp) {
+          return z3.MkMul(unwrapChildren);
+        }
+
+        if (op == VCExpressionGenerator.ModOp) {
+          return z3.MkMod(unwrapChildren[0], unwrapChildren[1]);
+        }
+
+        if (op == VCExpressionGenerator.IfThenElseOp) {
+          return z3.MkIte(unwrapChildren[0], unwrapChildren[1], unwrapChildren[2]);
+        }
+
+        throw new Exception("unhandled boogie operator");
       }
     }
 }
