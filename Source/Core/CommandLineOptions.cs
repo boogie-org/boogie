@@ -1530,6 +1530,7 @@ namespace Microsoft.Boogie {
         TypeEncodingMethod = TypeEncoding.Monomorphic;
         UseArrayTheory = true;
         UseAbstractInterpretation = false;
+        MaxProverMemory = 0; // no max: avoids restarts
         if (ProverName == "Z3API")
         {
             ProverCCLimit = 1;

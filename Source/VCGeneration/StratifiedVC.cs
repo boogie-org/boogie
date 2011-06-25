@@ -897,6 +897,13 @@ namespace VC
             // Record current time
             var startTime = DateTime.Now;
 
+            // No Max: avoids theorem prover restarts
+            CommandLineOptions.Clo.MaxProverMemory = 0;
+
+            // Initialize cache
+            satQueryCache = new Dictionary<int, List<HashSet<string>>>();
+            unsatQueryCache = new Dictionary<int, List<HashSet<string>>>();
+
             // Get the checker
             Checker checker = FindCheckerFor(impl, CommandLineOptions.Clo.ProverKillTime); Contract.Assert(checker != null);
 
@@ -930,7 +937,8 @@ namespace VC
                 var constant = decl as Constant;
                 if (constant == null) continue;
                 if (!allBoolVars.Contains(constant.Name)) continue;
-                allConsts.Add(checker.TheoremProver.Context.BoogieExprTranslator.LookupVariable(constant));
+                var v = checker.TheoremProver.Context.BoogieExprTranslator.LookupVariable(constant);
+                allConsts.Add(v);
             }
 
             // Now, lets start the algo
@@ -985,10 +993,30 @@ namespace VC
             return refinementLoop(apiChecker, a, c, allVars);
         }
 
+        Dictionary<int, List<HashSet<string>>> satQueryCache;
+        Dictionary<int, List<HashSet<string>>> unsatQueryCache;
+
         private bool refinementLoopCheckPath(StratifiedCheckerInterface apiChecker, HashSet<VCExprVar> varsToSet, HashSet<VCExprVar> allVars)
         {
             var assumptions = new List<VCExpr>();
             List<int> temp = null;
+
+            var query = new HashSet<string>();
+            varsToSet.Iter(v => query.Add(v.Name));
+
+            if (checkCache(query, unsatQueryCache))
+            {
+                apiChecker.LogComment("FindLeast: Query Cache Hit");
+                return true;
+            }
+            if (checkCache(query, satQueryCache))
+            {
+                apiChecker.LogComment("FindLeast: Query Cache Hit");
+                return false;
+            }
+
+
+            apiChecker.LogComment("FindLeast: Query Begin");
 
             //Console.Write("Query: ");
             foreach (var c in allVars)
@@ -1008,9 +1036,35 @@ namespace VC
             var o = apiChecker.CheckAssumptions(assumptions, out temp);
             Debug.Assert(o == Outcome.Correct || o == Outcome.Errors);
             //Console.WriteLine("Result = " + o.ToString());
+            apiChecker.LogComment("FindLeast: Query End");
 
-            if (o == Outcome.Correct) return true;
+            if (o == Outcome.Correct)
+            {
+                insertCache(query, unsatQueryCache);
+                return true;
+            }
+
+            insertCache(query, satQueryCache);
             return false;
+        }
+
+        private bool checkCache(HashSet<string> q, Dictionary<int, List<HashSet<string>>> cache)
+        {
+            if (!cache.ContainsKey(q.Count)) return false;
+            foreach (var s in cache[q.Count])
+            {
+                if (q.SetEquals(s)) return true;
+            }
+            return false;
+        }
+
+        private void insertCache(HashSet<string> q, Dictionary<int, List<HashSet<string>>> cache)
+        {
+            if (!cache.ContainsKey(q.Count))
+            {
+                cache.Add(q.Count, new List<HashSet<string>>());
+            }
+            cache[q.Count].Add(q);
         }
 
         public static void Partition<T>(HashSet<T> values, out HashSet<T> part1, out HashSet<T> part2)
