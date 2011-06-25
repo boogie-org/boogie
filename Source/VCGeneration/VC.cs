@@ -2320,14 +2320,6 @@ namespace VC {
       storeIncarnationMaps(impl.Name, exitIncarnationMap);
       #endregion
             
-      if (CommandLineOptions.Clo.LiveVariableAnalysis == 1) {
-        Microsoft.Boogie.LiveVariableAnalysis.ClearLiveVariables(impl);
-      } 
-      // TODO: fix
-      //else if (CommandLineOptions.Clo.LiveVariableAnalysis == 2) {
-      //  Microsoft.Boogie.InterProcGenKill.ClearLiveVariables(impl, program);
-      //}
-      
       #region Peep-hole optimizations
       if (CommandLineOptions.Clo.RemoveEmptyBlocks){
         #region Get rid of empty blocks
