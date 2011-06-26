@@ -854,7 +854,7 @@ namespace VC
             // The call tree
             public FCallHandler calls;
             // Error reporter (stores models)
-            public StratifiedInliningErrorReporter reporter;
+            public ProverInterface.ErrorHandler reporter;
             // The theorem prover interface
             //public Checker checker;
             public StratifiedCheckerInterface checker;
@@ -872,7 +872,7 @@ namespace VC
             }
 
             public VerificationState(VCExpr vcMain, FCallHandler calls,
-                StratifiedInliningErrorReporter reporter, Checker checker)
+                ProverInterface.ErrorHandler reporter, Checker checker)
             {
                 this.vcMain = vcMain;
                 this.calls = calls;
@@ -910,6 +910,13 @@ namespace VC
             Contract.Assert(implName2StratifiedInliningInfo != null);
             this.program = program;
 
+            // Build VCs for all procedures
+            foreach (StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
+            {
+                Contract.Assert(info != null);
+                GenerateVCForStratifiedInlining(program, info, checker);
+            }
+
             // Get the VC of the current procedure
             VCExpr vcMain;
             Hashtable/*<int, Absy!>*/ mainLabel2absy;
@@ -919,15 +926,30 @@ namespace VC
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
             vcMain = GenerateVC(impl, null, out mainLabel2absy, checker);
 
-            StratifiedCheckerInterface apiChecker = null;
+            // Find all procedure calls in vc and put labels on them      
+            FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
+            calls.setCurrProcAsMain();
+            vcMain = calls.Mutate(vcMain, true);
 
-            if (checker.TheoremProver is ApiProverInterface)
+            // Put all of the necessary state into one object
+            var vState = new VerificationState(vcMain, calls, new EmptyErrorHandler(), checker);
+            vState.coverageManager = null;
+
+            // We'll restore the original state of the theorem prover at the end
+            // of this procedure
+            vState.checker.Push();
+
+            // Do eager inlining
+            while (calls.currCandidates.Count > 0)
             {
-                apiChecker = new ApiChecker(vcMain, new EmptyErrorHandler(), checker);
-            }
-            else
-            {
-                apiChecker = new NormalChecker(vcMain, new EmptyErrorHandler(), checker);
+                List<int> toExpand = new List<int>();
+
+                foreach (int id in calls.currCandidates)
+                {
+                    Debug.Assert(calls.getRecursionBound(id) <= 1, "Recursion not supported");
+                    toExpand.Add(id);
+                }
+                DoExpansion(true, toExpand, vState);
             }
 
             // Find all the boolean constants
@@ -942,7 +964,7 @@ namespace VC
             }
 
             // Now, lets start the algo
-            var min = refinementLoop(apiChecker, new HashSet<VCExprVar>(), allConsts, allConsts);
+            var min = refinementLoop(vState.checker, new HashSet<VCExprVar>(), allConsts, allConsts);
 
             var ret = new HashSet<string>();
             foreach (var v in min)
@@ -951,6 +973,9 @@ namespace VC
                 ret.Add(v.Name);
             }
             allBoolVars = ret;
+
+            vState.checker.Pop();
+
             return Outcome.Correct;
         }
 
@@ -1380,7 +1405,7 @@ namespace VC
             Outcome ret;
             List<int> unsatCore;
 
-            var reporter = vState.reporter;
+            var reporter = vState.reporter as StratifiedInliningErrorReporter;
             var calls = vState.calls;
             var checker = vState.checker;
 
@@ -1587,7 +1612,7 @@ namespace VC
                 calls.currInlineCount = id;
                 calls.setCurrProc(procName);
                 expansion = calls.Mutate(expansion, true);
-                vState.coverageManager.addRecentEdges(id);
+                if(vState.coverageManager != null) vState.coverageManager.addRecentEdges(id);
 
                 //expansion = checker.VCExprGen.Eq(calls.id2ControlVar[id], expansion);
                 expansion = checker.VCExprGen.Implies(calls.id2ControlVar[id], expansion);
