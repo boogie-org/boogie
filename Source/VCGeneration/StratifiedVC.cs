@@ -609,6 +609,7 @@ namespace VC
             abstract public void Pop();
             abstract public void AddAxiom(VCExpr vc);
             abstract public void LogComment(string str);
+            abstract public void updateMainVC(VCExpr vcMain);
             virtual public Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
             {
                 Outcome ret;
@@ -655,6 +656,11 @@ namespace VC
                 this.underlyingChecker = checker;
                 numAxiomsPushed = new List<int>();
                 numQueries = 0;
+            }
+
+            public override void updateMainVC(VCExpr vcMain)
+            {
+                this.vcMain = vcMain;
             }
 
             public override Outcome CheckVC()
@@ -757,6 +763,11 @@ namespace VC
                 TheoremProver.Assert(vcMain, false);
             }
 
+            public override void updateMainVC(VCExpr vcMain)
+            {
+                throw new NotImplementedException("Stratified non-incremental search is not yet supported with z3api");
+            }
+
             public override Outcome CheckVC()
             {
                 Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -850,7 +861,7 @@ namespace VC
         public class VerificationState
         {
             // The VC of main
-            public VCExpr vcMain;
+            public VCExpr vcMain { get; private set; }
             // The call tree
             public FCallHandler calls;
             // Error reporter (stores models)
@@ -887,6 +898,12 @@ namespace VC
                 }
                 vcSize = 0;
                 expansionCount = 0;
+            }
+
+            public void updateMainVC(VCExpr vcMain)
+            {
+                this.vcMain = vcMain;
+                checker.updateMainVC(vcMain);
             }
         }
 
@@ -1626,7 +1643,6 @@ namespace VC
         // Does on-demand inlining -- inlines procedures into the VC of main.
         private void DoExpansionAndInline(List<int>/*!*/ candidates, VerificationState vState)
         {
-            Contract.Requires(vState.vcMain != null);
             Contract.Requires(candidates != null);
             Contract.Requires(vState.calls != null);
             Contract.Requires(vState.checker != null);
@@ -1698,7 +1714,7 @@ namespace VC
 
             }
 
-            vState.vcMain = inliner.Mutate(vState.vcMain, true);
+            vState.updateMainVC(inliner.Mutate(vState.vcMain, true));
             vState.vcSize = SizeComputingVisitor.ComputeSize(vState.vcMain);
         }
 
