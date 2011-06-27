@@ -19,7 +19,7 @@ using Microsoft.Boogie.VCExprAST;
 namespace Microsoft.Boogie {
   public class CalleeCounterexampleInfo {
     public Counterexample counterexample;
-    public List<object>/*!>!*/ args;
+    public List<Model.Element>/*!>!*/ args;
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -28,7 +28,7 @@ namespace Microsoft.Boogie {
     }
 
 
-    public CalleeCounterexampleInfo(Counterexample cex, List<object/*!>!*/> x) {
+    public CalleeCounterexampleInfo(Counterexample cex, List<Model.Element/*!>!*/> x) {
       Contract.Requires(cex != null);
       Contract.Requires(cce.NonNullElements(x));
       counterexample = cex;
@@ -76,7 +76,7 @@ namespace Microsoft.Boogie {
 
     [Peer]
     public BlockSeq Trace;
-    public ErrorModel Model;
+    public Model Model;
     public VC.ModelViewInfo MvInfo;
     public ProverContext Context;
     [Peer]
@@ -84,7 +84,7 @@ namespace Microsoft.Boogie {
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
-    internal Counterexample(BlockSeq trace, ErrorModel model, VC.ModelViewInfo mvInfo, ProverContext context) {
+    internal Counterexample(BlockSeq trace, Model model, VC.ModelViewInfo mvInfo, ProverContext context) {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
       this.Trace = trace;
@@ -211,7 +211,7 @@ namespace Microsoft.Boogie {
     {
       if (Model == null) return null;
 
-      Model m = Model.ToModel();
+      Model m = Model;
 
       var mvstates = m.TryGetFunc("@MV_state");
       if (MvInfo == null || mvstates == null)
@@ -308,7 +308,7 @@ namespace Microsoft.Boogie {
     }
 
 
-    public AssertCounterexample(BlockSeq trace, AssertCmd failingAssert, ErrorModel model, VC.ModelViewInfo mvInfo, ProverContext context)
+    public AssertCounterexample(BlockSeq trace, AssertCmd failingAssert, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
       : base(trace, model, mvInfo, context) {
       Contract.Requires(trace != null);
       Contract.Requires(failingAssert != null);
@@ -338,7 +338,7 @@ namespace Microsoft.Boogie {
     }
 
 
-    public CallCounterexample(BlockSeq trace, CallCmd failingCall, Requires failingRequires, ErrorModel model, VC.ModelViewInfo mvInfo, ProverContext context)
+    public CallCounterexample(BlockSeq trace, CallCmd failingCall, Requires failingRequires, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
       : base(trace, model, mvInfo, context) {
       Contract.Requires(!failingRequires.Free);
       Contract.Requires(trace != null);
@@ -371,7 +371,7 @@ namespace Microsoft.Boogie {
     }
 
 
-    public ReturnCounterexample(BlockSeq trace, TransferCmd failingReturn, Ensures failingEnsures, ErrorModel model, VC.ModelViewInfo mvInfo, ProverContext context)
+    public ReturnCounterexample(BlockSeq trace, TransferCmd failingReturn, Ensures failingEnsures, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
       : base(trace, model, mvInfo, context) {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
