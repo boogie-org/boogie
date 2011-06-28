@@ -254,6 +254,24 @@ namespace Microsoft.Boogie
       }
 
       /// <summary>
+      /// Look for function application with a subsequence of given arguments and return its value or null if no such application exists.
+      /// </summary>
+      public Element TryPartialEval(params Element[] args)
+      {
+        foreach (var tpl in apps) {
+          int j = 0;
+          for (int i = 0; i < args.Length; ++i) {
+            if (tpl.Args[j] == args[i]) {
+              j++;
+              if (j == tpl.Args.Length)
+                return tpl.Result;
+            }
+          }
+        }
+        return null;
+      }
+
+      /// <summary>
       /// Short for TryEval(args) == (Element)true
       /// </summary>
       public bool IsTrue(params Element[] args)
@@ -515,6 +533,11 @@ namespace Microsoft.Boogie
       return res;
     }
 
+    public Func TryGetSkolemFunc(string name)
+    {
+      return Functions.Where(f => f.Name.StartsWith(name + "!")).FirstOrDefault();
+    }
+
     public Element GetElement(string name)
     {
       Element res;
@@ -522,6 +545,11 @@ namespace Microsoft.Boogie
         return res;
       else
         throw new KeyNotFoundException("element '" + name + "' undefined in the model");
+    }
+
+    public Element MkIntElement(int v)
+    {
+      return MkElement(v.ToString());
     }
 
     public void Write(System.IO.TextWriter wr)

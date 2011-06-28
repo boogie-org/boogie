@@ -2302,7 +2302,7 @@ namespace VC
                 {
                     if (errModel == null)
                         return;
-                    var cex = GenerateTraceMain(labels, errModel, mvInfo);
+                    var cex = GenerateTraceMain(labels, errModel.ToModel(), mvInfo);
                     Debug.Assert(candidatesToExpand.Count == 0);
                     if(cex != null) callback.OnCounterexample(cex, null);
                     return;
@@ -2311,7 +2311,7 @@ namespace VC
                 Contract.Assert(calls != null);
                 Contract.Assert(errModel != null);
 
-                GenerateTraceMain(labels, errModel, mvInfo);
+                GenerateTraceMain(labels, errModel.ToModel(), mvInfo);
 
                 /*
                     foreach (string lab in labels)
@@ -2328,13 +2328,13 @@ namespace VC
             }
 
             // Construct the interprocedural trace
-            private Counterexample GenerateTraceMain(IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, ModelViewInfo mvInfo)
+            private Counterexample GenerateTraceMain(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo)
             {
                 Contract.Requires(errModel != null);
                 Contract.Requires(cce.NonNullElements(labels));
                 if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null)
                 {
-                    errModel.Print(ErrorReporter.ModelWriter);
+                    errModel.Write(ErrorReporter.ModelWriter);
                     ErrorReporter.ModelWriter.Flush();
                 }
 
@@ -2365,7 +2365,7 @@ namespace VC
                 return newCounterexample;
             }
 
-            private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, ModelViewInfo mvInfo,
+            private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo,
                                                  int candidateId, Implementation procImpl)
             {
                 Contract.Requires(errModel != null);
@@ -2414,7 +2414,7 @@ namespace VC
             }
 
             private Counterexample GenerateTraceRec(
-                                  IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, ModelViewInfo mvInfo, int candidateId,
+                                  IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo, int candidateId,
                                   Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace,
                                   Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples)
             {
@@ -2456,28 +2456,28 @@ namespace VC
                             var expr = calls.recordExpr2Var[new BoogieCallExpr(naryExpr, candidateId)];
 
                             // Record concrete value of the argument to this procedure
-                            var args = new List<int>();
+                            var args = new List<Model.Element>();
                             if (expr is VCExprIntLit)
                             {
-                                args.Add(errModel.valueToPartition[(expr as VCExprIntLit).Val]);
+                                args.Add(errModel.MkElement((expr as VCExprIntLit).Val.ToString()));
                             }
                             else if (expr is VCExprVar)
                             {
                                 var idExpr = expr as VCExprVar;
                                 string name = context.Lookup(idExpr);
                                 Contract.Assert(name != null);
-                                if (errModel.identifierToPartition.ContainsKey(name))
+                                Model.Func f = errModel.TryGetFunc(name);
+                                if (f != null)
                                 {
-                                    args.Add(errModel.identifierToPartition[name]);
+                                    args.Add(f.GetConstant());
                                 }
                             }
                             else
                             {
                                 Contract.Assert(false);
                             }
-                            var values = errModel.PartitionsToValues(args);
                             calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
-                                 new CalleeCounterexampleInfo(null, values);
+                                 new CalleeCounterexampleInfo(null, args);
                             continue;
                         }
 
@@ -2496,7 +2496,7 @@ namespace VC
                           calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                               new CalleeCounterexampleInfo(
                                   cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
-                                  new List<object>());
+                                  new List<Model.Element>());
                         }
                     }
 
@@ -2609,7 +2609,7 @@ namespace VC
             }
 
             return extractLoopTraceRec(
-                new CalleeCounterexampleInfo(cex, new List<object>()),
+                new CalleeCounterexampleInfo(cex, new List<Model.Element>()),
                 mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
         }
 
