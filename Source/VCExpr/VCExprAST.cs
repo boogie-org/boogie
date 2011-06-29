@@ -587,14 +587,18 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Quantify(Quantifier.ALL, typeParams, vars, triggers, infos, body);
     }
-    public VCExpr Forall(List<VCExprVar/*!*/>/*!*/ vars, List<VCTrigger/*!*/>/*!*/ triggers, string qid, VCExpr body) {
+    public VCExpr Forall(List<VCExprVar/*!*/>/*!*/ vars, List<VCTrigger/*!*/>/*!*/ triggers, string qid, int weight, VCExpr body) {
       Contract.Requires(body != null);
       Contract.Requires(qid != null);
       Contract.Requires(cce.NonNullElements(triggers));
       Contract.Requires(cce.NonNullElements(vars));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
+      QKeyValue kv = null;
+      if (0 <= weight) {
+        kv = new QKeyValue(Token.NoToken, "weight", new List<object>() { new LiteralExpr(Token.NoToken, BigNum.FromInt(0)) }, null);
+      }
       return Quantify(Quantifier.ALL, new List<TypeVariable/*!*/>(), vars,
-                            triggers, new VCQuantifierInfos(qid, -1, false, null), body);
+                            triggers, new VCQuantifierInfos(qid, -1, false, kv), body);
     }
     public VCExpr Forall(List<VCExprVar/*!*/>/*!*/ vars, List<VCTrigger/*!*/>/*!*/ triggers, VCExpr body) {
       Contract.Requires(body != null);
