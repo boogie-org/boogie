@@ -148,19 +148,26 @@ BoogiePL
      Implementation/*!*/ nnim;
   .)
   { Consts<out vs>             (. foreach(Bpl.Variable/*!*/ v in vs){
-Contract.Assert(v != null);
- Pgm.TopLevelDeclarations.Add(v); } .)
+                                    Contract.Assert(v != null);
+                                    Pgm.TopLevelDeclarations.Add(v);
+                                  }
+                               .)
   | Function<out ds>           (. foreach(Bpl.Declaration/*!*/ d in ds){
-Contract.Assert(d != null);
- Pgm.TopLevelDeclarations.Add(d); } .)
+                                    Contract.Assert(d != null);
+                                    Pgm.TopLevelDeclarations.Add(d);
+                                  }
+                               .)
   | Axiom<out ax>              (. Pgm.TopLevelDeclarations.Add(ax); .)
   | UserDefinedTypes<out ts>   (. foreach(Declaration/*!*/ td in ts){
-Contract.Assert(td != null);
-                                        Pgm.TopLevelDeclarations.Add(td);
-                                      } .)
+                                    Contract.Assert(td != null);
+                                    Pgm.TopLevelDeclarations.Add(td);
+                                  }
+                               .)
   | GlobalVars<out vs>         (. foreach(Bpl.Variable/*!*/ v in vs){
-Contract.Assert(v != null);
- Pgm.TopLevelDeclarations.Add(v); } .)
+                                    Contract.Assert(v != null);
+                                    Pgm.TopLevelDeclarations.Add(v);
+                                  }
+                               .)
   | Procedure<out pr, out im>  (. Pgm.TopLevelDeclarations.Add(pr);
                                    if (im != null) {
                                      Pgm.TopLevelDeclarations.Add(im);
@@ -178,7 +185,7 @@ GlobalVars<out VariableSeq/*!*/ ds>
   { Attribute<ref kv> }
   IdsTypeWheres<true, tyds> ";"
   (. foreach(TypedIdent/*!*/ tyd in tyds){
-Contract.Assert(tyd != null);
+       Contract.Assert(tyd != null);
        ds.Add(new GlobalVariable(tyd.tok, tyd, kv));
      }
   .)
@@ -190,7 +197,7 @@ LocalVars<VariableSeq/*!*/ ds>
   { Attribute<ref kv> }
   IdsTypeWheres<true, tyds> ";"
   (. foreach(TypedIdent/*!*/ tyd in tyds){
-Contract.Assert(tyd != null);
+       Contract.Assert(tyd != null);
        ds.Add(new LocalVariable(tyd.tok, tyd, kv));
      }
   .)
@@ -202,7 +209,7 @@ ProcFormals<bool incoming, bool allowWhereClauses, out VariableSeq/*!*/ ds>
   [ IdsTypeWheres<allowWhereClauses, tyds> ]
   ")"
   (. foreach(TypedIdent/*!*/ tyd in tyds){
-Contract.Assert(tyd != null);
+       Contract.Assert(tyd != null);
        ds.Add(new Formal(tyd.tok, tyd, incoming));
      }
   .)
@@ -212,7 +219,7 @@ BoundVars<IToken/*!*/ x, out VariableSeq/*!*/ ds>
 = (. Contract.Requires(x != null); Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); ds = new VariableSeq(); .)
   IdsTypeWheres<false, tyds>
   (. foreach(TypedIdent/*!*/ tyd in tyds){
-Contract.Assert(tyd != null);
+       Contract.Assert(tyd != null);
        ds.Add(new BoundVariable(tyd.tok, tyd));
      }
   .)
@@ -225,7 +232,7 @@ IdsType<out TypedIdentSeq/*!*/ tyds>
   Idents<out ids> ":" Type<out ty>
   (. tyds = new TypedIdentSeq();
      foreach(Token/*!*/ id in ids){
-Contract.Assert(id != null);
+       Contract.Assert(id != null);
        tyds.Add(new TypedIdent(id, id.val, ty, null));
      }
   .)
@@ -250,7 +257,7 @@ IdsTypeWhere<bool allowWhereClauses, TypedIdentSeq/*!*/ tyds>
                                  .)
   ]
   (. foreach(Token/*!*/ id in ids){
-Contract.Assert(id != null);
+       Contract.Assert(id != null);
        tyds.Add(new TypedIdent(id, id.val, ty, wh));
      }
   .)
@@ -320,7 +327,7 @@ TypeParams<out IToken/*!*/ tok, out Bpl.TypeVariableSeq/*!*/ typeParams>
   (.
     typeParams = new TypeVariableSeq ();
     foreach(Token/*!*/ id in typeParamToks){
-Contract.Assert(id != null);
+      Contract.Assert(id != null);
       typeParams.Add(new TypeVariable(id, id.val));}
    .)
   .
@@ -348,13 +355,14 @@ Consts<out VariableSeq/*!*/ ds>
   [ OrderSpec<out ChildrenComplete, out Parents> ]
   (. bool makeClone = false;
      foreach(TypedIdent/*!*/ x in xs){
-Contract.Assert(x != null);
+       Contract.Assert(x != null);
 
        // ensure that no sharing is introduced
        List<ConstantParent/*!*/> ParentsClone;
        if (makeClone && Parents != null) {
          ParentsClone = new List<ConstantParent/*!*/> ();
-         foreach (ConstantParent/*!*/ p in Parents){Contract.Assert(p != null);
+         foreach (ConstantParent/*!*/ p in Parents){
+           Contract.Assert(p != null);
            ParentsClone.Add(new ConstantParent (
                             new IdentifierExpr (p.Parent.tok, p.Parent.Name),
                             p.Unique));}
@@ -432,7 +440,7 @@ ds = new DeclarationSeq(); IToken/*!*/ z;
     ds.Add(func);
     bool allUnnamed = true;
     foreach(Formal/*!*/ f in arguments){
-Contract.Assert(f != null);
+      Contract.Assert(f != null);
       if (f.TypedIdent.Name != "") {
         allUnnamed = false;
 	break;
@@ -469,7 +477,7 @@ Contract.Assert(f != null);
         ExprSeq callArgs = new ExprSeq();
         int i = 0;
         foreach(Formal/*!*/ f in arguments){
-Contract.Assert(f != null);
+          Contract.Assert(f != null);
           string nm = f.TypedIdent.HasName ? f.TypedIdent.Name : "_" + i;
           dummies.Add(new BoundVariable(f.tok, new TypedIdent(f.tok, nm, f.TypedIdent.Type)));
           callArgs.Add(new IdentifierExpr(f.tok, nm));
@@ -477,20 +485,21 @@ Contract.Assert(f != null);
         }
         TypeVariableSeq/*!*/ quantifiedTypeVars = new TypeVariableSeq ();
         foreach(TypeVariable/*!*/ t in typeParams){
-Contract.Assert(t != null);
-          quantifiedTypeVars.Add(new TypeVariable (Token.NoToken, t.Name));}
+          Contract.Assert(t != null);
+          quantifiedTypeVars.Add(new TypeVariable (Token.NoToken, t.Name));
+        }
 
         Expr call = new NAryExpr(z, new FunctionCall(new IdentifierExpr(z, z.val)), callArgs);
         // specify the type of the function, because it might be that
         // type parameters only occur in the output type
         call = Expr.CoerceType(z, call, (Type)tyd.Type.Clone());
-		    Expr def = Expr.Eq(call, definition);
-		    if (quantifiedTypeVars.Length != 0 || dummies.Length != 0) {
-		      def = new ForallExpr(z, quantifiedTypeVars, dummies, 
-		                           kv, 
-		                           new Trigger(z, true, new ExprSeq(call), null),
-		                           def);
-		    }
+        Expr def = Expr.Eq(call, definition);
+        if (quantifiedTypeVars.Length != 0 || dummies.Length != 0) {
+          def = new ForallExpr(z, quantifiedTypeVars, dummies,
+                               kv,
+                               new Trigger(z, true, new ExprSeq(call), null),
+                               def);
+        }
         ds.Add(new Axiom(z, def, "autogenerated definition axiom", null));
       }
     }
@@ -544,7 +553,7 @@ UserDefinedType<out Declaration/*!*/ decl, QKeyValue kv>
      if (synonym) {
        TypeVariableSeq/*!*/ typeParams = new TypeVariableSeq();
        foreach(Token/*!*/ t in paramTokens){
-Contract.Assert(t != null);
+         Contract.Assert(t != null);
          typeParams.Add(new TypeVariable(t, t.val));}
        decl = new TypeSynonymDecl(id, id.val, typeParams, body, kv);
      } else {
@@ -618,7 +627,7 @@ Spec<RequiresSeq/*!*/ pre, IdentifierExprSeq/*!*/ mods, EnsuresSeq/*!*/ post>
 = (.Contract.Requires(pre != null); Contract.Requires(mods != null); Contract.Requires(post != null); TokenSeq/*!*/ ms; .)
   ( "modifies"
     [ Idents<out ms>        (. foreach(IToken/*!*/ m in ms){
-Contract.Assert(m != null);
+                                 Contract.Assert(m != null);
                                  mods.Add(new IdentifierExpr(m, m.val));
                                }
                             .)
@@ -726,8 +735,8 @@ TransferCmd<out TransferCmd/*!*/ tc>
   .)
   ( "goto"             (. y = t; .)
     Idents<out xs>     (. foreach(IToken/*!*/ s in xs){
-Contract.Assert(s != null);
- ss.Add(s.val); }
+                            Contract.Assert(s != null);
+                            ss.Add(s.val); }
                           tc = new GotoCmd(y, ss);
                        .)
   | "return"           (. tc = new ReturnCmd(t); .)
@@ -828,7 +837,7 @@ LabelOrCmd<out Cmd c, out IToken label>
   | "havoc"               (. x = t; .)
     Idents<out xs> ";"    (. ids = new IdentifierExprSeq();
                              foreach(IToken/*!*/ y in xs){
-Contract.Assert(y != null);
+                               Contract.Assert(y != null);
                                ids.Add(new IdentifierExpr(y, y.val));
                              }
                              c = new HavocCmd(x,ids);
@@ -1323,8 +1332,8 @@ SpecBlock<out Block/*!*/ b>
   }
   ( "goto"             (. y = t; .)
     Idents<out xs>     (. foreach(IToken/*!*/ s in xs){
-Contract.Assert(s != null);
- ss.Add(s.val); }
+                            Contract.Assert(s != null);
+                            ss.Add(s.val); }
                           b = new Block(x,x.val,cs,new GotoCmd(y,ss));
                        .)
   | "return" Expression<out e>

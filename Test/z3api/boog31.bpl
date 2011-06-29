@@ -1,3 +1,4 @@
+type ref;
 
 const b1:bool;
 const b2:bool;

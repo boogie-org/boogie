@@ -1,3 +1,4 @@
+type ref;
 function AtLeast(int, int) returns ([int]bool);
 axiom(forall n:int, x:int :: {AtLeast(n,x)} AtLeast(n,x)[x]);
 

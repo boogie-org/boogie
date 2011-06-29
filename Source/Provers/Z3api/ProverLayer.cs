@@ -47,27 +47,23 @@ namespace Microsoft.Boogie.Z3
         public override void Close()
         {
             base.Close();
-            Z3SafeContext cm = context.cm;
-            cm.CloseLog();
-            cm.z3.Dispose();
-            cm.config.Config.Dispose();
+            context.CloseLog();
+            context.z3.Dispose();
+            context.config.Dispose();
         }
 
         public void PushAxiom(VCExpr axiom)
         {
-            Z3SafeContext cm = context.cm;
-            cm.CreateBacktrackPoint();
+            context.CreateBacktrackPoint();
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            cm.AddAxiom(axiom, linOptions);
-            
+            context.AddAxiom(axiom, linOptions);
         }
 
         private void PushConjecture(VCExpr conjecture)
         {
-            Z3SafeContext cm = context.cm;
-            cm.CreateBacktrackPoint();
+            context.CreateBacktrackPoint();
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            cm.AddConjecture(conjecture, linOptions);
+            context.AddConjecture(conjecture, linOptions);
         }
 
         public override void PushVCExpression(VCExpr vc)
@@ -78,61 +74,53 @@ namespace Microsoft.Boogie.Z3
 
         public void CreateBacktrackPoint()
         {
-            Z3SafeContext cm = context.cm;
-            cm.CreateBacktrackPoint();
+            context.CreateBacktrackPoint();
         }
 
         public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
         {
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            Z3SafeContext cm = context.cm;
             Push();
-            cm.AddAxiom(context.Axioms, linOptions);
-            cm.AddConjecture(vc, linOptions);
-            outcome = cm.Check(out z3LabelModels);
+            context.AddAxiom(context.Axioms, linOptions);
+            context.AddConjecture(vc, linOptions);
+            outcome = context.Check(out z3LabelModels);
             Pop();
         }
   
         public override void Check()
         {
-            Z3SafeContext cm = context.cm;
-            outcome = cm.Check(out z3LabelModels);
+            outcome = context.Check(out z3LabelModels);
         }
 
         public override void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
         {
-            Z3SafeContext cm = context.cm;
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            outcome = cm.CheckAssumptions(assumptions, linOptions, out z3LabelModels, out unsatCore);
+            outcome = context.CheckAssumptions(assumptions, linOptions, out z3LabelModels, out unsatCore);
         }
 
         public override void Push()
         {
-            Z3SafeContext cm = context.cm;
-            cm.CreateBacktrackPoint();
+            context.CreateBacktrackPoint();
         }
 
         public override void Pop()
         {
-            Z3SafeContext cm = context.cm;
-            cm.Backtrack();
+            context.Backtrack();
         }
 
         public override void Assert(VCExpr vc, bool polarity)
         {
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            Z3SafeContext cm = context.cm;
             if (polarity)
-                cm.AddAxiom(vc, linOptions);
+                context.AddAxiom(vc, linOptions);
             else
-                cm.AddConjecture(vc, linOptions);
+                context.AddConjecture(vc, linOptions);
         }
 
         public override void AssertAxioms()
         {
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            Z3SafeContext cm = context.cm;
-            cm.AddAxiom(context.Axioms, linOptions);
+            context.AddAxiom(context.Axioms, linOptions);
         }
 
         // Number of axioms pushed since the last call to FlushAxioms
@@ -186,80 +174,6 @@ namespace Microsoft.Boogie.Z3
                     throw new Exception("Unknown prefix in label " + label);
             }
             return result;
-        }
-    }
-
-    public class Z3apiProverContext : DeclFreeProverContext
-    {
-        public Z3SafeContext cm;
-        
-        public Z3apiProverContext(Z3InstanceOptions opts, VCExpressionGenerator gen)
-            : base(gen, new VCGenerationOptions(new List<string>()))
-        {
-            Z3Config config = BuildConfig(opts.Timeout * 1000, true);
-            this.cm = new Z3SafeContext(this, config, gen);
-        }
-        private static Z3Config BuildConfig(int timeout, bool nativeBv)
-        {
-            Z3Config config = new Z3Config();
-            config.SetModelCompletion(false);
-            config.SetModel(true);
-
-            if (0 <= CommandLineOptions.Clo.ProverCCLimit)
-            {
-                config.SetCounterExample(CommandLineOptions.Clo.ProverCCLimit);
-            }
-
-            if (0 <= timeout)
-            {
-                config.SetSoftTimeout(timeout.ToString());
-            }
-
-            if (CommandLineOptions.Clo.SimplifyLogFilePath != null)
-            {
-                config.SetLogFilename(CommandLineOptions.Clo.SimplifyLogFilePath);
-            }
-
-            config.SetTypeCheck(true);
-            return config;
-        }
-
-        public override void DeclareType(TypeCtorDecl t, string attributes)
-        {
-            base.DeclareType(t, attributes);
-            cm.DeclareType(t.Name);
-        }
-
-        public override void DeclareConstant(Constant c, bool uniq, string attributes)
-        {
-            base.DeclareConstant(c, uniq, attributes);
-            cm.DeclareConstant(c.Name, c.TypedIdent.Type);
-        }
-
-        public override void DeclareFunction(Function f, string attributes)
-        {
-            base.DeclareFunction(f, attributes);
-            List<Type> domain = new List<Type>();
-            foreach (Variable v in f.InParams)
-            {
-                domain.Add(v.TypedIdent.Type);
-            }
-            if (f.OutParams.Length != 1)
-                throw new Exception("Cannot handle functions with " + f.OutParams + " out parameters.");
-            Type range = f.OutParams[0].TypedIdent.Type;
-
-            cm.DeclareFunction(f.Name, domain, range);
-        }
-
-        public override void DeclareGlobalVariable(GlobalVariable v, string attributes)
-        {
-            base.DeclareGlobalVariable(v, attributes);
-            cm.DeclareConstant(v.Name, v.TypedIdent.Type);
-        }
-
-        public override string Lookup(VCExprVar var)
-        {
-            return cm.Namer.Lookup(var);
         }
     }
 }

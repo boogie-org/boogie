@@ -1,3 +1,4 @@
+type ref;
 type Wicket;
 
 procedure Dummy();

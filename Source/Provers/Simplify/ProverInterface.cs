@@ -511,7 +511,13 @@ namespace Microsoft.Boogie.Simplify {
           thmProver = null;
           currentProverHasBeenABadBoy = false;
           restarts++;
+
+          if (CommandLineOptions.Clo.StratifiedInlining > 0)
+          {
+              Console.WriteLine("Warning: restarting theorem prover. Context could be lost");
+          }
         }
+          
         FireUpNewProver();
       }
       cce.EndExpose();

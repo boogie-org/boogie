@@ -512,6 +512,12 @@ namespace Microsoft.Boogie {
                   }
                   outcome = svcgen.FindLeastToVerify(impl, program, ref ss);
                   errors = new List<Counterexample>();
+                  Console.Write("Result: ");
+                  foreach (var s in ss)
+                  {
+                      Console.Write("{0} ", s);
+                  }
+                  Console.WriteLine();
               }
               else
               {

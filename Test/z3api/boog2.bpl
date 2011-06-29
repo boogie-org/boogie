@@ -1,10 +1,12 @@
+type ref;
 type Wicket;
 
 var favorite: Wicket;
 var hate: Wicket;
 
 procedure NewFavorite(p: Wicket);
-  modifies favorite;
+  modifies favorite
+;
 
   ensures favorite==p;
 

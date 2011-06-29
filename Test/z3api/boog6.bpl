@@ -1,3 +1,4 @@
+type ref;
 // types
 type Wicket;
 
@@ -10,7 +11,8 @@ axiom b==true;
 
 // procedure
 procedure SetToSeven(p: Wicket);
-  modifies favorite;
+  modifies favorite
+;
 
   ensures favorite==p;
 

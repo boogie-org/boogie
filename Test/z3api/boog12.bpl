@@ -1,3 +1,4 @@
+type ref;
 // types
 type Color;
 const blue: Color;
@@ -7,7 +8,8 @@ var myMatrix:[int,int] Color;
 
 // procedure
 procedure SetTo(c: Color);
-  modifies myArray, myMatrix;
+  modifies myArray, myMatrix
+;
 
   ensures myArray[0]==c;
 

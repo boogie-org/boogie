@@ -1,3 +1,4 @@
+type ref;
 // types
 type Wicket;
 
@@ -23,7 +24,8 @@ axiom age(x)==4;
 
 // procedure
 procedure SetToSeven(p: Wicket);
-  modifies favorite;
+  modifies favorite
+;
 
   ensures favorite==p;
 
@@ -32,7 +34,8 @@ implementation SetToSeven(l: Wicket) {
     favorite:=l;
   } else {
     favorite:=v;
-  }
+  }
+
 
 }
 

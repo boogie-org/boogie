@@ -184,10 +184,11 @@ namespace Graphing {
       int n = this.graph.Nodes.Count;
       this.postOrderNumberToNode = new Maybe<Node>[n + 1];
       this.nodeToPostOrderNumber = new Dictionary<Node, int>();
-      HashSet<Node> visited = new HashSet<Node>();
-      int currentNumber = 1;
+      //HashSet<Node> visited = new HashSet<Node>();
+      //int currentNumber = 1;
       Contract.Assume(this.source != null);
-      this.PostOrderVisit(this.source, visited, ref currentNumber);
+      //this.PostOrderVisit(this.source, visited, ref currentNumber);
+      this.PostOrderVisitIterative(this.source);
       this.sourceNum = this.nodeToPostOrderNumber[source];
       //    for (int i = 1; i <= n; i++){ Console.WriteLine(postOrderNumberToNode[i]); }
       this.doms = new int[n + 1]; // 0 is unused: means undefined
@@ -277,6 +278,50 @@ namespace Graphing {
       this.nodeToPostOrderNumber[n] = currentNumber;
       currentNumber++;
       return;
+    }
+    // Iterative version: mimics the above recursive procedure
+    private void PostOrderVisitIterative(Node n)
+    {
+        Contract.Requires(n != null);
+        var visited = new HashSet<Node>();
+        var grey = new HashSet<Node>();
+        var stack = new Stack<Node>();
+
+        int currentNumber = 1;
+
+        stack.Push(n);
+        visited.Add(n);
+
+        while (stack.Count != 0)
+        {
+            var curr = stack.Pop();
+
+            if (grey.Contains(curr))
+            {
+                Contract.Assume(this.postOrderNumberToNode != null);
+                Contract.Assume(this.nodeToPostOrderNumber != null);
+                this.postOrderNumberToNode[currentNumber].Val = curr;
+                this.nodeToPostOrderNumber[curr] = currentNumber;
+                currentNumber++;
+            }
+            else
+            {
+                grey.Add(curr);
+                stack.Push(curr);
+                foreach (Node/*!*/ child in this.graph.Successors(curr))
+                {
+                    Contract.Assert(child != null);
+                    if (!visited.Contains(child))
+                    {
+                        visited.Add(child);
+                        stack.Push(child);
+                    }
+                }
+            }
+
+        }
+
+
     }
   }
 

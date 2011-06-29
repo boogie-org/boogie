@@ -259,6 +259,7 @@ namespace Microsoft.Boogie {
       BlockReach,
       BlockNestedReach,
       Dag,
+      DagIterative,
       Doomed,
       Unspecified
     }
@@ -1049,6 +1050,9 @@ namespace Microsoft.Boogie {
                 case "dag":
                   vcVariety = VCVariety.Dag;
                   break;
+                case "i":
+                  vcVariety = VCVariety.DagIterative;
+                  break;
                 case "doomed":
                   vcVariety = VCVariety.Doomed;
                   break;
@@ -1526,6 +1530,7 @@ namespace Microsoft.Boogie {
         TypeEncodingMethod = TypeEncoding.Monomorphic;
         UseArrayTheory = true;
         UseAbstractInterpretation = false;
+        MaxProverMemory = 0; // no max: avoids restarts
         if (ProverName == "Z3API")
         {
             ProverCCLimit = 1;
