@@ -1627,6 +1627,9 @@ namespace VC {
             vc = LetVC(cce.NonNull(impl.Blocks[0]), controlFlowVariable, label2absy, ch.TheoremProver.Context);
           }
           break;
+        case CommandLineOptions.VCVariety.DagIterative:
+          vc = LetVCIterative(impl.Blocks, controlFlowVariable, label2absy, ch.TheoremProver.Context);
+          break;
         case CommandLineOptions.VCVariety.Doomed:
           vc = FlatBlockVC(impl, label2absy, false, false, true, ch.TheoremProver.Context);
           break;
@@ -1919,7 +1922,7 @@ namespace VC {
         Contract.Assert(traceNodes.Contains(entryBlock));
         trace.Add(entryBlock);
 
-        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel, MvInfo, incarnationOriginMap, implName2LazyInliningInfo, context, program, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
+        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel == null ? null : errModel.ToModel(), MvInfo, incarnationOriginMap, implName2LazyInliningInfo, context, program, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
 
         if (newCounterexample == null)
           return;
@@ -2014,7 +2017,7 @@ namespace VC {
             if (b.Cmds.Has(a)) {
               BlockSeq trace = new BlockSeq();
               trace.Add(b);
-              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, errModel, MvInfo, context, incarnationOriginMap);
+              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, errModel == null ? null : errModel.ToModel(), MvInfo, context, incarnationOriginMap);
               callback.OnCounterexample(newCounterexample, null);
               goto NEXT_ASSERT;
             }
@@ -2317,14 +2320,6 @@ namespace VC {
       storeIncarnationMaps(impl.Name, exitIncarnationMap);
       #endregion
             
-      if (CommandLineOptions.Clo.LiveVariableAnalysis == 1) {
-        Microsoft.Boogie.LiveVariableAnalysis.ClearLiveVariables(impl);
-      } 
-      // TODO: fix
-      //else if (CommandLineOptions.Clo.LiveVariableAnalysis == 2) {
-      //  Microsoft.Boogie.InterProcGenKill.ClearLiveVariables(impl, program);
-      //}
-      
       #region Peep-hole optimizations
       if (CommandLineOptions.Clo.RemoveEmptyBlocks){
         #region Get rid of empty blocks
@@ -2463,30 +2458,30 @@ namespace VC {
         }
     }
 
-    public Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
+    public virtual Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
         // Construct the set of inlined procs in the original program
-        var inlinedProcs = new Dictionary<string, Procedure>();
+        var inlinedProcs = new HashSet<string>();
         foreach (var decl in program.TopLevelDeclarations)
         {
             if (decl is Procedure)
-            {
+            {  
                 if (!(decl is LoopProcedure))
                 {
                     var p = decl as Procedure;
-                    inlinedProcs.Add(p.Name, p);
+                    inlinedProcs.Add(p.Name);
                 }
             }
         }
 
         return extractLoopTraceRec(
-            new CalleeCounterexampleInfo(cex, new List<object>()),
+            new CalleeCounterexampleInfo(cex, new List<Model.Element>()),
             mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
     }
 
-    private CalleeCounterexampleInfo extractLoopTraceRec(
+    protected CalleeCounterexampleInfo extractLoopTraceRec(
         CalleeCounterexampleInfo cexInfo, string currProc,
-        Dictionary<string, Procedure> inlinedProcs, 
+        HashSet<string> inlinedProcs, 
         Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
         Contract.Requires(currProc != null);
@@ -2507,7 +2502,11 @@ namespace VC {
             for (int numInstr = 0; numInstr < block.Cmds.Length; numInstr ++) {
                 Cmd cmd = block.Cmds[numInstr];
                 var loc = new TraceLocation(numBlock, numInstr);
-                if (!cex.calleeCounterexamples.ContainsKey(loc)) continue;
+                if (!cex.calleeCounterexamples.ContainsKey(loc))
+                {
+                    if (getCallee(cex.getTraceCmd(loc), inlinedProcs) != null) callCnt++;
+                    continue;
+                }
                 string callee = cex.getCalledProcName(cex.getTraceCmd(loc));
                 Contract.Assert(callee != null);
                 var calleeTrace = cex.calleeCounterexamples[loc];
@@ -2543,33 +2542,13 @@ namespace VC {
     // return the position of the i^th CallCmd in the block (count only those Calls that call a procedure in inlinedProcs). 
     // Assert failure if there isn't any.
     // Assert that the CallCmd found calls "callee"
-    private int getCallCmdPosition(Block block, int i, Dictionary<string, Procedure> inlinedProcs, string callee)
+    private int getCallCmdPosition(Block block, int i, HashSet<string> inlinedProcs, string callee)
     {
         Debug.Assert(i >= 1);
         for (int pos = 0; pos < block.Cmds.Length; pos++)
         {
             Cmd cmd = block.Cmds[pos];
-            string procCalled = null;
-            if (cmd is CallCmd)
-            {
-                var cc = (CallCmd)cmd;
-                if (inlinedProcs.ContainsKey(cc.Proc.Name))
-                {
-                    procCalled = cc.Proc.Name;
-                }
-            }
-
-            if (cmd is AssumeCmd)
-            {
-                var expr = (cmd as AssumeCmd).Expr as NAryExpr;
-                if (expr != null)
-                {
-                    if (inlinedProcs.ContainsKey(expr.Fun.FunctionName))
-                    {
-                        procCalled = expr.Fun.FunctionName;
-                    }
-                }
-            }
+            string procCalled = getCallee(cmd, inlinedProcs);
 
             if (procCalled != null)
             {
@@ -2584,6 +2563,32 @@ namespace VC {
 
         Debug.Assert(false, "Didn't find the i^th call cmd");
         return -1;
+    }
+
+    private string getCallee(Cmd cmd, HashSet<string> inlinedProcs)
+    {
+        string procCalled = null;
+        if (cmd is CallCmd)
+        {
+            var cc = (CallCmd)cmd;
+            if (inlinedProcs.Contains(cc.Proc.Name))
+            {
+                procCalled = cc.Proc.Name;
+            }
+        }
+
+        if (cmd is AssumeCmd)
+        {
+            var expr = (cmd as AssumeCmd).Expr as NAryExpr;
+            if (expr != null)
+            {
+                if (inlinedProcs.Contains(expr.Fun.FunctionName))
+                {
+                    procCalled = expr.Fun.FunctionName;
+                }
+            }
+        }
+        return procCalled;
     }
 
     protected virtual bool elIsLoop(string procname)
@@ -2618,11 +2623,11 @@ namespace VC {
     }
 
     private static Counterexample LazyCounterexample(
-                                       ErrorModel/*!*/ errModel, ModelViewInfo mvInfo,
+                                       Model/*!*/ errModel, ModelViewInfo mvInfo,
                                        Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
                                        ProverContext/*!*/ context,
                                        Program/*!*/ program,
-                                       string/*!*/ implName, List<int>/*!*/ values)
+                                       string/*!*/ implName, List<Model.Element>/*!*/ values)
     {
       Contract.Requires(errModel != null);
       Contract.Requires(cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
@@ -2641,9 +2646,10 @@ namespace VC {
       trace.Add(b);
       VCExprVar cfcVar = boogieExprTranslator.LookupVariable(info.controlFlowVariable);
       string cfcName = context.Lookup(cfcVar);
-      int cfcPartition = errModel.LookupSkolemFunctionAt(cfcName + "!" + info.uniqueId, values);
-      int cfcValue = errModel.LookupPartitionValue(cfcPartition);
-      
+      Model.Func skolemFunction = errModel.TryGetSkolemFunc(cfcName + "!" + info.uniqueId);
+      Model.Element cfcValue = skolemFunction.TryPartialEval(values.ToArray());
+
+      Model.Func controlFlowFunction = errModel.GetFunc("ControlFlow");
       var calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
       while (true) {
         CmdSeq cmds = b.Cmds;Contract.Assert(cmds != null);
@@ -2652,7 +2658,7 @@ namespace VC {
         {
           Cmd cmd = cce.NonNull( cmds[i]);
           AssertCmd assertCmd = cmd as AssertCmd;
-          if (assertCmd != null && errModel.LookupControlFlowFunctionAt(cfcValue, b.UniqueId) == assertCmd.UniqueId)
+          if (assertCmd != null && controlFlowFunction.TryEval(cfcValue, errModel.MkIntElement(b.UniqueId)).AsInt() == assertCmd.UniqueId)
           {
             Counterexample newCounterexample;
             newCounterexample = AssertCmdToCounterexample(assertCmd, transferCmd, trace, errModel, mvInfo, context, cce.NonNull(info.incarnationOriginMap));
@@ -2668,15 +2674,16 @@ namespace VC {
           Contract.Assert(calleeName != null);
           if (!implName2LazyInliningInfo.ContainsKey(calleeName)) continue;
       
-          List<int> args = new List<int>();
+          List<Model.Element> args = new List<Model.Element>();
           foreach (Expr expr in naryExpr.Args)
           {Contract.Assert(expr != null);
             VCExprVar exprVar;
             string name;
             LiteralExpr litExpr = expr as LiteralExpr;
+            
             if (litExpr != null) 
             {
-              args.Add(errModel.valueToPartition[litExpr.Val]);
+              args.Add(errModel.MkElement(litExpr.Val.ToString()));
               continue;
             }
           
@@ -2688,7 +2695,7 @@ namespace VC {
             {
               exprVar = boogieExprTranslator.LookupVariable(var);
               name = context.Lookup(exprVar);
-              args.Add(errModel.identifierToPartition[name]);
+              args.Add(errModel.GetFunc(name).GetConstant());
               continue;
             }
             
@@ -2732,17 +2739,18 @@ namespace VC {
             
             exprVar = boogieExprTranslator.LookupVariable(var);
             name = context.Lookup(exprVar);
-            args.Add(errModel.LookupSkolemFunctionAt(name + "!" + info.uniqueId, values));
+            Model.Func skolemFunction1 = errModel.TryGetSkolemFunc(name + "!" + info.uniqueId);
+            args.Add(skolemFunction1.TryPartialEval(values.ToArray()));
           }
           calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] = 
             new CalleeCounterexampleInfo(
               LazyCounterexample(errModel, mvInfo, implName2LazyInliningInfo, context, program, calleeName, args),
-              errModel.PartitionsToValues(args));
+              args);
         }
           
         GotoCmd gotoCmd = transferCmd as GotoCmd;
         if (gotoCmd == null) break;
-        int nextBlockId = errModel.LookupControlFlowFunctionAt(cfcValue, b.UniqueId);
+        int nextBlockId = controlFlowFunction.TryEval(cfcValue, errModel.MkIntElement(b.UniqueId)).AsInt();
         foreach (Block x in gotoCmd.labelTargets) {
           if (nextBlockId == x.UniqueId) {
             b = x;
@@ -2766,7 +2774,7 @@ namespace VC {
     }
 
     static Counterexample TraceCounterexample(
-                          Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace, ErrorModel errModel, ModelViewInfo mvInfo,
+                          Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace, Model errModel, ModelViewInfo mvInfo,
                           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
                           Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
                           ProverContext/*!*/ context, Program/*!*/ program,
@@ -2807,13 +2815,13 @@ namespace VC {
         if (!implName2LazyInliningInfo.ContainsKey(calleeName)) continue;
         Boogie2VCExprTranslator boogieExprTranslator = context.BoogieExprTranslator;
         Contract.Assert(boogieExprTranslator != null);
-        List<int> args = new List<int>();
+        List<Model.Element> args = new List<Model.Element>();
         foreach (Expr expr in naryExpr.Args)
         {Contract.Assert(expr != null);
           LiteralExpr litExpr = expr as LiteralExpr;
           if (litExpr != null) 
           {
-            args.Add(errModel.valueToPartition[litExpr.Val]);
+            args.Add(errModel.MkElement(litExpr.Val.ToString()));
             continue;
           }
           
@@ -2824,12 +2832,12 @@ namespace VC {
           Contract.Assert(var != null);
           string name = context.Lookup(var);
           Contract.Assert(name != null);
-          args.Add(errModel.identifierToPartition[name]);
+          args.Add(errModel.GetFunc(name).GetConstant());
         }
         calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] = 
             new CalleeCounterexampleInfo(
                 LazyCounterexample(errModel, mvInfo, implName2LazyInliningInfo, context, program, calleeName, args),
-                errModel.PartitionsToValues(args));
+                args);
         #endregion
       }
       
@@ -3335,231 +3343,7 @@ namespace VC {
       }
     }
 
-    //returned int is zID
-    static int GetValuesFromModel(Bpl.Expr expr, Hashtable /*Variable -> Expr*/ incarnationMap, ErrorModel errModel,
-      Dictionary<Bpl.Expr/*!*/, object>/*!*/ exprToPrintableValue) 
-      //modifies exprToPrintableValue.*;
-    {
-      Contract.Requires(expr != null);
-      Contract.Requires(incarnationMap != null);
-      Contract.Requires(errModel != null);
-      Contract.Requires(exprToPrintableValue != null);
-      // call GetValuesFromModel on all proper subexpressions, returning their value, 
-      // so they only have to be computed once!
-      if (expr is LiteralExpr) {
-        // nothing needs to be added to the exprToPrintableValue map, because e.g. 0 -> 0 is not interesting
-        object o = ((LiteralExpr) expr).Val;
-        if (o == null) {
-          o = "nullObject";
-        } 
-        int idForExprVal;
-        if (errModel.valueToPartition.TryGetValue(o, out idForExprVal)) {
-          return idForExprVal;
-        } else {
-          return -1;
-        }
-      }
-      else if (expr is IdentifierExpr) {
-        // if the expression expr is in the incarnation map, then use its incarnation, 
-        // otherwise just use the actual expression 
-        string s = ((IdentifierExpr) expr).Name;
-        object o = null;
-        Variable v = ((IdentifierExpr) expr).Decl;
-        if (v != null && incarnationMap.ContainsKey(v)) {
-          if (incarnationMap[v] is IdentifierExpr) {
-            s = ((IdentifierExpr) incarnationMap[v]).Name;
-          } else if (incarnationMap[v] is LiteralExpr) {
-            o = ((LiteralExpr) incarnationMap[v]).Val;
-          }
-        }
-        // if o is not null, then we got a LiteralExpression, that needs separate treatment
-        if (o == null) {
-          // if the expression (respectively its incarnation) is mapped to some partition
-          // then return that id, else return the error code -1
-          if (errModel.identifierToPartition.ContainsKey(s)) {
-            int i = errModel.identifierToPartition[s];
-            // if the key is already in the map we can assume that it is the same map we would
-            // get now and thus just ignore it
-            if (!exprToPrintableValue.ContainsKey(expr)) {
-              exprToPrintableValue.Add(expr, ValueFromZID(errModel, i, ((IdentifierExpr) expr).Name));
-            }
-            return i;
-          } else {
-            return -1;
-          }
-        } else if (errModel.valueToPartition.ContainsKey(o)) {
-          int i = errModel.valueToPartition[o];
-          if (!exprToPrintableValue.ContainsKey(expr))
-            exprToPrintableValue.Add(expr, ValueFromZID(errModel, i));
-          return i;
-        } else {
-          return -1;
-        }
-      }
-      else if (expr is Bpl.NAryExpr) {
-        Bpl.NAryExpr e = (Bpl.NAryExpr)expr;
-        List<int> zargs = new List<int>();
-        bool undefined = false;
-        // do the recursion first
-        foreach (Expr argument in ((NAryExpr) expr).Args) {
-          int zid = -1;
-          if (argument != null) {
-            zid = GetValuesFromModel(argument, incarnationMap, errModel, exprToPrintableValue);
-          }
-          // if one of the arguments is 'undefined' then return -1 ('noZid') for this
-          // but make sure the recursion is complete first1
-          if (zid == -1) {
-            undefined = true;
-          }
-          zargs.Add(zid);
-        }
-        IAppliable fun = e.Fun;
-        Contract.Assert(fun != null);
-        string functionName = fun.FunctionName; // PR: convert to select1, select2, etc in case of a map?
-        // same as IndexedExpr:
-        int id = TreatFunction(functionName, zargs, undefined, errModel);
-        if (id != -1 && !exprToPrintableValue.ContainsKey(expr)) {
-          exprToPrintableValue.Add(expr, ValueFromZID(errModel, id));
-        }
-        return id;
-      } 
-      else if (expr is Bpl.OldExpr) {
-        //Bpl.OldExpr e = (Bpl.OldExpr)expr;
-        // We do not know which heap is the old heap and what the latest state change was,
-        // therefore we cannot return anything useful here!
-        return -1;
-      } 
-      else if (expr is Bpl.QuantifierExpr) {
-        Bpl.QuantifierExpr q = (Bpl.QuantifierExpr)expr;
-        for (int i = 0; i < q.Dummies.Length; i++) {
-          Bpl.Variable v = q.Dummies[i];
-          if (v != null) {
-            // add to the incarnation map a connection between the bound variable v
-            // of the quantifier and its skolemized incarnation, if available,
-            // i.e., search through the list of identifiers in the model and look for
-            // v.sk.(q.SkolemId), only pick those that are directly associated to a value
-            // DISCLAIMER: of course it is very well possible that one of these incarnations 
-            // could be used without actually having a value, but it seems better to pick those
-            // with a value, that is they are more likely to contribute useful information to 
-            // the output
-            List<Bpl.IdentifierExpr> quantVarIncarnationList = new List<Bpl.IdentifierExpr>();
-            List<int> incarnationZidList = new List<int>();
-            int numberOfNonNullValueIncarnations = 0;
-            for (int j = 0; j < errModel.partitionToIdentifiers.Count; j++){
-              List<string> pti = errModel.partitionToIdentifiers[j];
-              Contract.Assert(pti != null);
-              if (pti != null) {
-                for (int k = 0; k < pti.Count; k++) {
-                  // look for v.sk.(q.SkolemId)
-                  // if there is more than one look at if there is exactly one with a non-null value
-                  // associated, see above explanation
-                  if (pti[k].StartsWith(v + ".sk." + q.SkolemId) && 
-                      errModel.partitionToValue[errModel.identifierToPartition[pti[k]]] != null) {
-                    quantVarIncarnationList.Add(new Bpl.IdentifierExpr(Bpl.Token.NoToken, pti[k], new Bpl.UnresolvedTypeIdentifier(Token.NoToken, "TName")));
-                    incarnationZidList.Add(j);
-                    if (errModel.partitionToValue[errModel.identifierToPartition[pti[k]]] != null) {
-                      numberOfNonNullValueIncarnations++;
-                    }
-                  }
-                }
-              }
-            }
-            // only one such variable found, associate it with v
-            if (quantVarIncarnationList.Count == 1) {
-              incarnationMap[v] = quantVarIncarnationList[0];
-            } else if (quantVarIncarnationList.Count > 1 && numberOfNonNullValueIncarnations == 1) {
-              // if there are multiple candidate incarnations and exactly one of them has a value 
-              // we can pick that one; otherwise it is not clear how to pick one out of multiple 
-              // incarnations without a value or out of multiple incarnations with a value associated
-              for (int n = 0; n < incarnationZidList.Count; n++) {
-                if (errModel.partitionToValue[incarnationZidList[n]] != null) {
-                  // quantVarIncarnationList and incarnationZidList are indexed in lockstep, so if
-                  // for the associated zid the partitionToValue map is non-null then that is the one
-                  // thus distinguished incarnation we want to put into the incarnationMap
-                  incarnationMap[v] = quantVarIncarnationList[n];
-                  break;
-                }
-              }
-            }
-          }
-        }
-        // generate the value of the body but do not return that outside
-        GetValuesFromModel(q.Body, incarnationMap, errModel, exprToPrintableValue);
-        // the quantifier cannot contribute any one value to the rest of the 
-        // expression, thus just return -1
-        return -1;
-      } 
-      else if (expr is Bpl.BvExtractExpr) {
-        Bpl.BvExtractExpr ex = (Bpl.BvExtractExpr) expr;
-        Bpl.Expr e0 = ex.Bitvector;
-        Bpl.Expr e1 = new LiteralExpr(Token.NoToken, BigNum.FromInt(ex.Start));
-        Bpl.Expr e2 = new LiteralExpr(Token.NoToken, BigNum.FromInt(ex.End));
-        string functionName = "$bv_extract";
-        List<int> zargs = new List<int>();
-        bool undefined = false;
-        
-        int zid = -1;
-        zid = GetValuesFromModel(e0, incarnationMap, errModel, exprToPrintableValue);
-        if (zid == -1) {
-          undefined = true;
-        }
-        zargs.Add(zid);
-        
-        zid = -1;
-        zid = GetValuesFromModel(e1, incarnationMap, errModel, exprToPrintableValue);
-        if (zid == -1) {
-          undefined = true;
-        }
-        zargs.Add(zid);
-        
-        zid = -1;
-        zid = GetValuesFromModel(e2, incarnationMap, errModel, exprToPrintableValue);
-        if (zid == -1) {
-          undefined = true;
-        }
-        zargs.Add(zid);
-        
-        //same as NAryExpr:
-        int id = TreatFunction(functionName, zargs, undefined, errModel);
-        if (id != -1 && !exprToPrintableValue.ContainsKey(expr)) {
-          exprToPrintableValue.Add(expr, ValueFromZID(errModel, id));
-        }
-        return id;
-      } 
-      else if (expr is Bpl.BvConcatExpr) {
-        // see comment above
-        Bpl.BvConcatExpr bvc = (Bpl.BvConcatExpr) expr;
-        string functionName = "$bv_concat";
-        List<int> zargs = new List<int>();
-        bool undefined = false;
-        
-        int zid = -1;
-        zid = GetValuesFromModel(bvc.E0, incarnationMap, errModel, exprToPrintableValue);
-        if (zid == -1) {
-          undefined = true;
-        }
-        zargs.Add(zid);
-        
-        zid = -1;
-        zid = GetValuesFromModel(bvc.E0, incarnationMap, errModel, exprToPrintableValue);
-        if (zid == -1) {
-          undefined = true;
-        }
-        zargs.Add(zid);
-      
-        //same as NAryExpr:
-        int id = TreatFunction(functionName, zargs, undefined, errModel);
-        if (id != -1 && !exprToPrintableValue.ContainsKey(expr)) {
-          exprToPrintableValue.Add(expr, ValueFromZID(errModel, id));
-        }
-        return id;
-      }
-      else {
-        Contract.Assert(false);throw new cce.UnreachableException();  // unexpected Bpl.Expr
-      }
-    }
-
-    protected static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, ErrorModel errModel, ModelViewInfo mvInfo, ProverContext context,
+    protected static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, Model errModel, ModelViewInfo mvInfo, ProverContext context,
       Dictionary<Incarnation, Absy> incarnationOriginMap) 
     {
       Contract.Requires(cmd != null);
@@ -3570,16 +3354,7 @@ namespace VC {
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       List<string> relatedInformation = new List<string>();
-      if (CommandLineOptions.Clo.EnhancedErrorMessages == 1) {
-        if (cmd.OrigExpr != null && cmd.IncarnationMap != null && errModel != null) {
-          
-          // get all possible information first
-          Dictionary<Expr, object> exprToPrintableValue = new Dictionary<Expr, object>();
-          GetValuesFromModel(cmd.OrigExpr, cmd.IncarnationMap, errModel, exprToPrintableValue);
-          // then apply the strategies
-          ApplyEnhancedErrorPrintingStrategy(cmd.OrigExpr, cmd.IncarnationMap, cmd.ErrorDataEnhanced, errModel, exprToPrintableValue, relatedInformation, true, incarnationOriginMap);
-        }
-      }
+      
       
       // See if it is a special assert inserted in translation
       if (cmd is AssertRequiresCmd)
@@ -3606,16 +3381,6 @@ namespace VC {
       }
     }
 
-    //    static void EmitImpl(Implementation! impl, bool printDesugarings) {
-    //      int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-    //      CommandLineOptions.Clo.PrintUnstructured = 2;  // print only the unstructured program
-    //      bool oldPrintDesugaringSetting = CommandLineOptions.Clo.PrintDesugarings;
-    //      CommandLineOptions.Clo.PrintDesugarings = printDesugarings;
-    //      impl.Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
-    //      CommandLineOptions.Clo.PrintDesugarings = oldPrintDesugaringSetting;
-    //      CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
-    //    }
-
     static VCExpr LetVC(Block startBlock,
                         Variable controlFlowVariable,
                         Hashtable/*<int, Absy!>*/ label2absy,
@@ -3629,6 +3394,73 @@ namespace VC {
       List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
       VCExpr startCorrect = LetVC(startBlock, controlFlowVariable, label2absy, blockVariables, bindings, proverCtxt);
       return proverCtxt.ExprGen.Let(bindings, startCorrect);
+    }
+
+    static VCExpr LetVCIterative(List<Block> blocks,
+                                 Variable controlFlowVariable,
+                                 Hashtable label2absy,
+                                 ProverContext proverCtxt) {
+      Contract.Requires(blocks != null);
+      Contract.Requires(proverCtxt != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+      Graph<Block> dag = new Graph<Block>();
+      dag.AddSource(blocks[0]); 
+      foreach (Block b in blocks) {
+        GotoCmd gtc = b.TransferCmd as GotoCmd;
+        if (gtc != null) {
+          Contract.Assume(gtc.labelTargets != null);
+          foreach (Block dest in gtc.labelTargets) {
+            Contract.Assert(dest != null);
+            dag.AddEdge(dest, b);
+          }
+        }
+      }
+      IEnumerable sortedNodes = dag.TopologicalSort();
+      Contract.Assert(sortedNodes != null);
+
+      Dictionary<Block, VCExprVar> blockVariables = new Dictionary<Block, VCExprVar>();
+      List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
+      VCExpressionGenerator gen = proverCtxt.ExprGen;
+      Contract.Assert(gen != null);
+      foreach (Block block in sortedNodes) {
+        VCExpr SuccCorrect;
+        GotoCmd gotocmd = block.TransferCmd as GotoCmd;
+        if (gotocmd == null) {
+          ReturnExprCmd re = block.TransferCmd as ReturnExprCmd;
+          if (re == null) {
+            SuccCorrect = VCExpressionGenerator.True;
+          }
+          else {
+            SuccCorrect = proverCtxt.BoogieExprTranslator.Translate(re.Expr);
+          }
+        }
+        else {
+          Contract.Assert(gotocmd.labelTargets != null);
+          List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Length);
+          foreach (Block successor in gotocmd.labelTargets) {
+            Contract.Assert(successor != null);
+            VCExpr s = blockVariables[successor];
+            if (controlFlowVariable != null) {
+              VCExprVar controlFlowVariableExpr = proverCtxt.BoogieExprTranslator.LookupVariable(controlFlowVariable);
+              VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(block.UniqueId)));
+              VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(successor.UniqueId)));
+              s = gen.Implies(controlTransferExpr, s);
+            }
+            SuccCorrectVars.Add(s);
+          }
+          SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
+        }
+
+        VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariable);
+        VCExpr vc = Wlp.Block(block, SuccCorrect, context);
+
+        VCExprVar v = gen.Variable(block.Label + "_correct", Bpl.Type.Bool);
+        bindings.Add(gen.LetBinding(v, vc));
+        blockVariables.Add(block, v);
+      }
+
+      return proverCtxt.ExprGen.Let(bindings, blockVariables[blocks[0]]);
     }
 
     static VCExpr LetVC(Block block,

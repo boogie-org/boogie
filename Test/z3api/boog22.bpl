@@ -1,3 +1,4 @@
+type ref;
 type W;
 
 function f1(W,int) returns (int);

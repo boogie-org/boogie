@@ -1,3 +1,5 @@
+type name;
+type ref;
 const unique g : int;
 axiom(g != 0);
 

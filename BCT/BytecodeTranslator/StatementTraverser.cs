@@ -95,7 +95,7 @@ namespace BytecodeTranslator
     }
 
     public void GenerateDispatchContinuation() {
-      // Iterate over all labels in sink.cciLabels and sink.boogieLabels and generate dispatch based on sink.LabelVariable
+      // Iterate over all labels in sink.cciLabels and generate dispatch based on sink.LabelVariable
       this.StmtBuilder.AddLabelCmd("DispatchContinuation");
       Bpl.IfCmd elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(true), TranslationHelper.BuildStmtList(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(false))), null, null);
       Bpl.IdentifierExpr labelExpr = Bpl.Expr.Ident(this.sink.LabelVariable);

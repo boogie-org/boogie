@@ -1,3 +1,4 @@
+type ref;
 // types
 type Wicket;
 var favorite: Wicket;
@@ -9,7 +10,8 @@ axiom (exists v:Wicket :: age(v)<8);
 
 // procedure
 procedure SetToSeven(p: Wicket);
-  modifies favorite;
+  modifies favorite
+;
 
   ensures favorite==p;
 

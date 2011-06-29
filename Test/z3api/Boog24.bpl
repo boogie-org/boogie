@@ -1,3 +1,4 @@
+type ref;
  
 function LIFT(a:bool) returns (int);
 axiom(forall a:bool :: {LIFT(a)} a <==> LIFT(a) != 0);

@@ -609,6 +609,7 @@ namespace VC
             abstract public void Pop();
             abstract public void AddAxiom(VCExpr vc);
             abstract public void LogComment(string str);
+            abstract public void updateMainVC(VCExpr vcMain);
             virtual public Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
             {
                 Outcome ret;
@@ -655,6 +656,11 @@ namespace VC
                 this.underlyingChecker = checker;
                 numAxiomsPushed = new List<int>();
                 numQueries = 0;
+            }
+
+            public override void updateMainVC(VCExpr vcMain)
+            {
+                this.vcMain = vcMain;
             }
 
             public override Outcome CheckVC()
@@ -757,6 +763,11 @@ namespace VC
                 TheoremProver.Assert(vcMain, false);
             }
 
+            public override void updateMainVC(VCExpr vcMain)
+            {
+                throw new NotImplementedException("Stratified non-incremental search is not yet supported with z3api");
+            }
+
             public override Outcome CheckVC()
             {
                 Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -850,11 +861,11 @@ namespace VC
         public class VerificationState
         {
             // The VC of main
-            public VCExpr vcMain;
+            public VCExpr vcMain { get; private set; }
             // The call tree
             public FCallHandler calls;
             // Error reporter (stores models)
-            public StratifiedInliningErrorReporter reporter;
+            public ProverInterface.ErrorHandler reporter;
             // The theorem prover interface
             //public Checker checker;
             public StratifiedCheckerInterface checker;
@@ -872,7 +883,7 @@ namespace VC
             }
 
             public VerificationState(VCExpr vcMain, FCallHandler calls,
-                StratifiedInliningErrorReporter reporter, Checker checker)
+                ProverInterface.ErrorHandler reporter, Checker checker)
             {
                 this.vcMain = vcMain;
                 this.calls = calls;
@@ -888,6 +899,12 @@ namespace VC
                 vcSize = 0;
                 expansionCount = 0;
             }
+
+            public void updateMainVC(VCExpr vcMain)
+            {
+                this.vcMain = vcMain;
+                checker.updateMainVC(vcMain);
+            }
         }
 
         public Outcome FindLeastToVerify(Implementation impl, Program program, ref HashSet<string> allBoolVars)
@@ -897,11 +914,25 @@ namespace VC
             // Record current time
             var startTime = DateTime.Now;
 
+            // No Max: avoids theorem prover restarts
+            CommandLineOptions.Clo.MaxProverMemory = 0;
+
+            // Initialize cache
+            satQueryCache = new Dictionary<int, List<HashSet<string>>>();
+            unsatQueryCache = new Dictionary<int, List<HashSet<string>>>();
+
             // Get the checker
             Checker checker = FindCheckerFor(impl, CommandLineOptions.Clo.ProverKillTime); Contract.Assert(checker != null);
 
             Contract.Assert(implName2StratifiedInliningInfo != null);
             this.program = program;
+
+            // Build VCs for all procedures
+            foreach (StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
+            {
+                Contract.Assert(info != null);
+                GenerateVCForStratifiedInlining(program, info, checker);
+            }
 
             // Get the VC of the current procedure
             VCExpr vcMain;
@@ -912,15 +943,30 @@ namespace VC
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
             vcMain = GenerateVC(impl, null, out mainLabel2absy, checker);
 
-            StratifiedCheckerInterface apiChecker = null;
+            // Find all procedure calls in vc and put labels on them      
+            FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
+            calls.setCurrProcAsMain();
+            vcMain = calls.Mutate(vcMain, true);
 
-            if (checker.TheoremProver is ApiProverInterface)
+            // Put all of the necessary state into one object
+            var vState = new VerificationState(vcMain, calls, new EmptyErrorHandler(), checker);
+            vState.coverageManager = null;
+
+            // We'll restore the original state of the theorem prover at the end
+            // of this procedure
+            vState.checker.Push();
+
+            // Do eager inlining
+            while (calls.currCandidates.Count > 0)
             {
-                apiChecker = new ApiChecker(vcMain, new EmptyErrorHandler(), checker);
-            }
-            else
-            {
-                apiChecker = new NormalChecker(vcMain, new EmptyErrorHandler(), checker);
+                List<int> toExpand = new List<int>();
+
+                foreach (int id in calls.currCandidates)
+                {
+                    Debug.Assert(calls.getRecursionBound(id) <= 1, "Recursion not supported");
+                    toExpand.Add(id);
+                }
+                DoExpansion(true, toExpand, vState);
             }
 
             // Find all the boolean constants
@@ -930,11 +976,12 @@ namespace VC
                 var constant = decl as Constant;
                 if (constant == null) continue;
                 if (!allBoolVars.Contains(constant.Name)) continue;
-                allConsts.Add(checker.TheoremProver.Context.BoogieExprTranslator.LookupVariable(constant));
+                var v = checker.TheoremProver.Context.BoogieExprTranslator.LookupVariable(constant);
+                allConsts.Add(v);
             }
 
             // Now, lets start the algo
-            var min = refinementLoop(apiChecker, new HashSet<VCExprVar>(), allConsts, allConsts);
+            var min = refinementLoop(vState.checker, new HashSet<VCExprVar>(), allConsts, allConsts);
 
             var ret = new HashSet<string>();
             foreach (var v in min)
@@ -943,6 +990,9 @@ namespace VC
                 ret.Add(v.Name);
             }
             allBoolVars = ret;
+
+            vState.checker.Pop();
+
             return Outcome.Correct;
         }
 
@@ -985,10 +1035,30 @@ namespace VC
             return refinementLoop(apiChecker, a, c, allVars);
         }
 
+        Dictionary<int, List<HashSet<string>>> satQueryCache;
+        Dictionary<int, List<HashSet<string>>> unsatQueryCache;
+
         private bool refinementLoopCheckPath(StratifiedCheckerInterface apiChecker, HashSet<VCExprVar> varsToSet, HashSet<VCExprVar> allVars)
         {
             var assumptions = new List<VCExpr>();
             List<int> temp = null;
+
+            var query = new HashSet<string>();
+            varsToSet.Iter(v => query.Add(v.Name));
+
+            if (checkCache(query, unsatQueryCache))
+            {
+                apiChecker.LogComment("FindLeast: Query Cache Hit");
+                return true;
+            }
+            if (checkCache(query, satQueryCache))
+            {
+                apiChecker.LogComment("FindLeast: Query Cache Hit");
+                return false;
+            }
+
+
+            apiChecker.LogComment("FindLeast: Query Begin");
 
             //Console.Write("Query: ");
             foreach (var c in allVars)
@@ -1008,9 +1078,35 @@ namespace VC
             var o = apiChecker.CheckAssumptions(assumptions, out temp);
             Debug.Assert(o == Outcome.Correct || o == Outcome.Errors);
             //Console.WriteLine("Result = " + o.ToString());
+            apiChecker.LogComment("FindLeast: Query End");
 
-            if (o == Outcome.Correct) return true;
+            if (o == Outcome.Correct)
+            {
+                insertCache(query, unsatQueryCache);
+                return true;
+            }
+
+            insertCache(query, satQueryCache);
             return false;
+        }
+
+        private bool checkCache(HashSet<string> q, Dictionary<int, List<HashSet<string>>> cache)
+        {
+            if (!cache.ContainsKey(q.Count)) return false;
+            foreach (var s in cache[q.Count])
+            {
+                if (q.SetEquals(s)) return true;
+            }
+            return false;
+        }
+
+        private void insertCache(HashSet<string> q, Dictionary<int, List<HashSet<string>>> cache)
+        {
+            if (!cache.ContainsKey(q.Count))
+            {
+                cache.Add(q.Count, new List<HashSet<string>>());
+            }
+            cache[q.Count].Add(q);
         }
 
         public static void Partition<T>(HashSet<T> values, out HashSet<T> part1, out HashSet<T> part2)
@@ -1326,7 +1422,7 @@ namespace VC
             Outcome ret;
             List<int> unsatCore;
 
-            var reporter = vState.reporter;
+            var reporter = vState.reporter as StratifiedInliningErrorReporter;
             var calls = vState.calls;
             var checker = vState.checker;
 
@@ -1533,7 +1629,7 @@ namespace VC
                 calls.currInlineCount = id;
                 calls.setCurrProc(procName);
                 expansion = calls.Mutate(expansion, true);
-                vState.coverageManager.addRecentEdges(id);
+                if(vState.coverageManager != null) vState.coverageManager.addRecentEdges(id);
 
                 //expansion = checker.VCExprGen.Eq(calls.id2ControlVar[id], expansion);
                 expansion = checker.VCExprGen.Implies(calls.id2ControlVar[id], expansion);
@@ -1547,7 +1643,6 @@ namespace VC
         // Does on-demand inlining -- inlines procedures into the VC of main.
         private void DoExpansionAndInline(List<int>/*!*/ candidates, VerificationState vState)
         {
-            Contract.Requires(vState.vcMain != null);
             Contract.Requires(candidates != null);
             Contract.Requires(vState.calls != null);
             Contract.Requires(vState.checker != null);
@@ -1619,7 +1714,7 @@ namespace VC
 
             }
 
-            vState.vcMain = inliner.Mutate(vState.vcMain, true);
+            vState.updateMainVC(inliner.Mutate(vState.vcMain, true));
             vState.vcSize = SizeComputingVisitor.ComputeSize(vState.vcMain);
         }
 
@@ -2207,7 +2302,7 @@ namespace VC
                 {
                     if (errModel == null)
                         return;
-                    var cex = GenerateTraceMain(labels, errModel, mvInfo);
+                    var cex = GenerateTraceMain(labels, errModel.ToModel(), mvInfo);
                     Debug.Assert(candidatesToExpand.Count == 0);
                     if(cex != null) callback.OnCounterexample(cex, null);
                     return;
@@ -2216,7 +2311,7 @@ namespace VC
                 Contract.Assert(calls != null);
                 Contract.Assert(errModel != null);
 
-                GenerateTraceMain(labels, errModel, mvInfo);
+                GenerateTraceMain(labels, errModel.ToModel(), mvInfo);
 
                 /*
                     foreach (string lab in labels)
@@ -2233,13 +2328,13 @@ namespace VC
             }
 
             // Construct the interprocedural trace
-            private Counterexample GenerateTraceMain(IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, ModelViewInfo mvInfo)
+            private Counterexample GenerateTraceMain(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo)
             {
                 Contract.Requires(errModel != null);
                 Contract.Requires(cce.NonNullElements(labels));
                 if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null)
                 {
-                    errModel.Print(ErrorReporter.ModelWriter);
+                    errModel.Write(ErrorReporter.ModelWriter);
                     ErrorReporter.ModelWriter.Flush();
                 }
 
@@ -2270,7 +2365,7 @@ namespace VC
                 return newCounterexample;
             }
 
-            private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, ModelViewInfo mvInfo,
+            private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo,
                                                  int candidateId, Implementation procImpl)
             {
                 Contract.Requires(errModel != null);
@@ -2319,7 +2414,7 @@ namespace VC
             }
 
             private Counterexample GenerateTraceRec(
-                                  IList<string/*!*/>/*!*/ labels, ErrorModel/*!*/ errModel, ModelViewInfo mvInfo, int candidateId,
+                                  IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo, int candidateId,
                                   Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace,
                                   Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples)
             {
@@ -2361,28 +2456,28 @@ namespace VC
                             var expr = calls.recordExpr2Var[new BoogieCallExpr(naryExpr, candidateId)];
 
                             // Record concrete value of the argument to this procedure
-                            var args = new List<int>();
+                            var args = new List<Model.Element>();
                             if (expr is VCExprIntLit)
                             {
-                                args.Add(errModel.valueToPartition[(expr as VCExprIntLit).Val]);
+                                args.Add(errModel.MkElement((expr as VCExprIntLit).Val.ToString()));
                             }
                             else if (expr is VCExprVar)
                             {
                                 var idExpr = expr as VCExprVar;
                                 string name = context.Lookup(idExpr);
                                 Contract.Assert(name != null);
-                                if (errModel.identifierToPartition.ContainsKey(name))
+                                Model.Func f = errModel.TryGetFunc(name);
+                                if (f != null)
                                 {
-                                    args.Add(errModel.identifierToPartition[name]);
+                                    args.Add(f.GetConstant());
                                 }
                             }
                             else
                             {
                                 Contract.Assert(false);
                             }
-                            var values = errModel.PartitionsToValues(args);
                             calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
-                                 new CalleeCounterexampleInfo(null, values);
+                                 new CalleeCounterexampleInfo(null, args);
                             continue;
                         }
 
@@ -2401,7 +2496,7 @@ namespace VC
                           calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                               new CalleeCounterexampleInfo(
                                   cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
-                                  new List<object>());
+                                  new List<Model.Element>());
                         }
                     }
 
@@ -2483,6 +2578,39 @@ namespace VC
                 info.exitIncarnationMap = exitIncarnationMap;
                 info.incarnationOriginMap = this.incarnationOriginMap;
             }
+        }
+
+        public override Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
+        {
+            // Construct the set of inlined procs in the original program
+            var inlinedProcs = new HashSet<string>();
+            foreach (var decl in program.TopLevelDeclarations)
+            {
+                // Implementations
+                if (decl is Implementation)
+                {
+                    var impl = decl as Implementation;
+                    if (!(impl.Proc is LoopProcedure))
+                    {
+                        inlinedProcs.Add(impl.Name);
+                    }
+                }
+
+                // And recording procedures
+                if (decl is Procedure)
+                {
+                    var proc = decl as Procedure;
+                    if (proc.Name.StartsWith(recordProcName))
+                    {
+                        Debug.Assert(!(decl is LoopProcedure));
+                        inlinedProcs.Add(proc.Name);
+                    }
+                }
+            }
+
+            return extractLoopTraceRec(
+                new CalleeCounterexampleInfo(cex, new List<Model.Element>()),
+                mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
         }
 
         protected override bool elIsLoop(string procname)
