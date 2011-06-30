@@ -60,7 +60,7 @@ namespace Microsoft.Boogie.TypeErasure {
       List<VCTrigger/*!*/>/*!*/ triggers;
       VCExprVar/*!*/ var;
       VCExpr/*!*/ eq = GenReverseCastEq(castToU, castFromU, out var, out triggers);
-      return Gen.Forall(HelperFuns.ToList(var), triggers, "cast:" + castFromU.Name, eq);
+      return Gen.Forall(HelperFuns.ToList(var), triggers, "cast:" + castFromU.Name, -1, eq);
     }
 
     protected override VCExpr GenCastTypeAxioms(Function castToU, Function castFromU) {
@@ -316,8 +316,7 @@ Contract.Ensures(Contract.ValueAtReturn(out store) != null);
 
       VCExpr/*!*/ eq = Gen.Eq(selectExpr, val);
       Contract.Assert(eq != null);
-      return Gen.Forall(quantifiedVars, new List<VCTrigger/*!*/>(),
-                        "mapAx0:" + select.Name, eq);
+      return Gen.Forall(quantifiedVars, new List<VCTrigger/*!*/>(), "mapAx0:" + select.Name, 0, eq);
     }
 
     private VCExpr/*!*/ GenMapAxiom1(Function/*!*/ select, Function/*!*/ store,
@@ -397,8 +396,7 @@ Contract.Ensures(Contract.ValueAtReturn(out store) != null);
         Contract.Assert(indexesEq != null);
         VCExpr/*!*/ matrix = Gen.Or(indexesEq, selectEq);
         Contract.Assert(matrix != null);
-        VCExpr/*!*/ conjunct = Gen.Forall(quantifiedVars, triggers,
-                                      "mapAx1:" + select.Name + ":" + n, matrix);
+        VCExpr/*!*/ conjunct = Gen.Forall(quantifiedVars, triggers, "mapAx1:" + select.Name + ":" + n, 0, matrix);
         Contract.Assert(conjunct != null);
         axiom = Gen.AndSimp(axiom, conjunct);
         n = n + 1;

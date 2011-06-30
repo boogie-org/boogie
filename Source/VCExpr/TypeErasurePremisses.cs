@@ -119,7 +119,7 @@ namespace Microsoft.Boogie.TypeErasure
                                   new Dictionary<TypeVariable/*!*/, VCExpr/*!*/>());
       VCExpr/*!*/ matrix = Gen.ImpliesSimp(premiss, eq);
       Contract.Assert(matrix != null);
-      return Gen.Forall(HelperFuns.ToList(var), triggers, "cast:" + castFromU.Name, matrix);
+      return Gen.Forall(HelperFuns.ToList(var), triggers, "cast:" + castFromU.Name, -1, matrix);
     }
 
     protected override VCExpr GenCastTypeAxioms(Function castToU, Function castFromU) {
@@ -489,7 +489,7 @@ namespace Microsoft.Boogie.TypeErasure
       if (boundVars.Count > 0) {
         List<VCTrigger/*!*/> triggers = HelperFuns.ToList(Gen.Trigger(true, HelperFuns.ToList(funApp)));
         Contract.Assert(cce.NonNullElements(triggers));
-        return Gen.Forall(boundVars, triggers, "funType:" + fun.Name, conclusionWithPremisses);
+        return Gen.Forall(boundVars, triggers, "funType:" + fun.Name, -1, conclusionWithPremisses);
       } else {
         return conclusionWithPremisses;
       }
@@ -846,7 +846,7 @@ namespace Microsoft.Boogie.TypeErasure
       } else {
         body = Gen.Let(letBindings_Implicit, Gen.Let(letBindings_Explicit, Gen.ImpliesSimp(ante, eq)));
       }
-      return Gen.Forall(quantifiedVars, new List<VCTrigger/*!*/>(), "mapAx0:" + select.Name, body);
+      return Gen.Forall(quantifiedVars, new List<VCTrigger/*!*/>(), "mapAx0:" + select.Name, 0, body);
     }
 
     private VCExpr GenMapAxiom1(Function select, Function store, Type mapResult, List<TypeVariable/*!*/>/*!*/ explicitSelectParams) {
@@ -924,8 +924,7 @@ namespace Microsoft.Boogie.TypeErasure
       for (int i = 0; i < arity; ++i) {
         VCExpr/*!*/ indexesEq = Gen.Eq(indexes0[i], indexes1[i]);
         VCExpr/*!*/ matrix = Gen.Or(indexesEq, selectEq);
-        VCExpr/*!*/ conjunct = Gen.Forall(quantifiedVars, triggers,
-                                      "mapAx1:" + select.Name + ":" + i, matrix);
+        VCExpr/*!*/ conjunct = Gen.Forall(quantifiedVars, triggers, "mapAx1:" + select.Name + ":" + i, 0, matrix);
         Contract.Assert(indexesEq != null);
         Contract.Assert(matrix != null);
         Contract.Assert(conjunct != null);
@@ -940,8 +939,7 @@ namespace Microsoft.Boogie.TypeErasure
         typesEq = Gen.AndSimp(typesEq, Gen.Eq(b.V, b.E));
       }
       VCExpr/*!*/ matrix2 = Gen.Or(typesEq, selectEq);
-      VCExpr/*!*/ conjunct2 = Gen.Forall(quantifiedVars, triggers,
-                                     "mapAx2:" + select.Name, matrix2);
+      VCExpr/*!*/ conjunct2 = Gen.Forall(quantifiedVars, triggers, "mapAx2:" + select.Name, 0, matrix2);
       axiom = Gen.AndSimp(axiom, conjunct2);
 
       return axiom;
