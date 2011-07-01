@@ -1,0 +1,5 @@
+Verification of cell.chalice 
+
+  142.5: Assertion might not hold. Insufficient fraction at 142.12 for Cell.valid.
+
+Boogie program verifier finished with 31 verified, 1 error

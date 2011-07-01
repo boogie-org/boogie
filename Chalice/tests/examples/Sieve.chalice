@@ -45,7 +45,7 @@ class Sieve {
     while (2 <= p)
       invariant ch != null;
       invariant 2 <= p ==> credit(ch, 1);
-      invariant rd(ch.mu) && waitlevel << ch.mu;
+      invariant rd*(ch.mu) && waitlevel << ch.mu;
     {
       // print p--it's a prime!
       var cp := new ChalicePrint;  call cp.Int(p);

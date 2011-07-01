@@ -183,13 +183,19 @@ object PrintProgram {
     case Unfold(e) =>
       print("unfold "); Expr(e); println(Semi)
     case CallAsync(declaresLocal, token, obj, name, args) =>
-      print("call async ");
+      print("fork ");
       if (token != null) {
         Expr(token); print(" := ");
       }
       Expr(obj); print("."); print(name); print("("); ExprList(args); print(")");
     case JoinAsync(lhs, token) =>
-      print("join async "); ExprList(lhs); print(" := "); Expr(token);
+      print("join ");
+      if (lhs != null && !lhs.isEmpty) {
+        ExprList(lhs);
+        print(" := ");
+      }
+      Expr(token);
+      println(Semi)
     case Wait(obj, id) =>
       print("wait ")
       MemberSelect(obj, id, 0, false)
@@ -257,20 +263,26 @@ object PrintProgram {
     case _:Result => print("result")
     case VariableExpr(id) => print(id)
     case MemberAccess(e,f) => MemberSelect(e,f,contextBindingPower,fragileContext)
-    case Full | Epsilon =>
-    case Frac(e) => print(", "); Expr(e)
-    case Star => print(", *")
-    case Epsilons(e) => print(", "); Expr(e)
-    case Access(e, p:Write) =>  print("acc("); Expr(e); Expr(p); print(")")
-    case Access(e, p:Read) =>   print("rd("); Expr(e); Expr(p); print(")")
-    case AccessAll(obj, p:Write) =>   print("acc("); Expr(obj); print(".*"); Expr(p); print(")")
-    case AccessAll(obj, p:Read) =>    print("rd("); Expr(obj); print(".*"); Expr(p); print(")")
-    case AccessSeq(s, f, p:Write) =>  print("acc("); Expr(s); print("[*].");
+    case Full => print("100");
+    case Epsilon => print("rd");
+    case MethodEpsilon => print("rd");
+    case Frac(e) => Expr(e);
+    case Star => print("rd(*)")
+    case ChannelEpsilon(None) | PredicateEpsilon(None) | MonitorEpsilon(None) => print("rd");
+    case ChannelEpsilon(Some(e)) => print("rd("); Expr(e); print(")");
+    case PredicateEpsilon(Some(e)) => print("rd("); Expr(e); print(")");
+    case MonitorEpsilon(Some(e)) => print("rd("); Expr(e); print(")");
+    case ForkEpsilon(tk) => print("rd("); Expr(tk); print(")");
+    case PermPlus(e0, e1) => BinExpr(e0, e1, "+", 0x50, false, false, contextBindingPower, fragileContext)
+    case PermMinus(e0, e1) => BinExpr(e0, e1, "-", 0x50, false, true, contextBindingPower, fragileContext)
+    case PermTimes(e0, e1) => BinExpr(e0, e1, "*", 0x60, false, false, contextBindingPower, fragileContext)
+    case IntPermTimes(n, p) => BinExpr(n, p, "*", 0x60, false, false, contextBindingPower, fragileContext)
+    case Epsilons(e) => print("rd("); Expr(e); print(")");
+    case Access(e, p) =>  print("acc("); Expr(e); print(", "); Expr(p); print(")")
+    case AccessAll(obj, p) =>   print("acc("); Expr(obj); print(", "); print(".*"); Expr(p); print(")")
+    case AccessSeq(s, f, p) =>  print("acc("); Expr(s); print(", "); print("[*].");
       f match { case None => print("*"); case Some(x) => print(x)}
       Expr(p); print(")")
-    case AccessSeq(s, f, p:Read) =>   print("rd("); Expr(s); print("[*].");
-      f match { case None => print("*"); case Some(x) => print(x)}
-      Expr(p); print(")")      
     case Credit(e, n) =>
       print("credit("); Expr(e)
       n match { case None => case Some(n) => print(", "); Expr(n) }
@@ -338,7 +350,7 @@ object PrintProgram {
         { 
           case AcquireState(obj) => Expr(obj); print(".acquire"); 
           case ReleaseState(obj) => Expr(obj); print(".release"); 
-          case CallState(token, obj, id, args) => Expr(token); print(".joinable"); print(", "); Expr(obj); print("." + id + "("); ExprList(args); print(")"); 
+          case CallState(token, obj, id, args) => Expr(token); print(".fork"); print(" "); Expr(obj); print("." + id + "("); ExprList(args); print(")"); 
         }); print(", "); Expr(e); print(")"); 
   }
   def MemberSelect(e: Expression, f: String, contextBindingPower: Int, fragileContext: Boolean) = e match {
@@ -350,6 +362,11 @@ object PrintProgram {
               context: Int, fragileContext: Boolean) = {
     ParenExpr(power, context, fragileContext,
           { Expr(bin.E0, power, fragileLeft); print(" " + op + " "); Expr(bin.E1, power, fragileRight) })
+  }
+  def BinExpr(left: Expression, right: Expression, op: String, power: Int, fragileLeft: Boolean, fragileRight: Boolean,
+              context: Int, fragileContext: Boolean) = {
+    ParenExpr(power, context, fragileContext,
+          { Expr(left, power, fragileLeft); print(" " + op + " "); Expr(right, power, fragileRight) })
   }
   def ParenExpr(power: Int, context: Int, fragileContext: Boolean, pe: =>Unit) {
     val ap = power & 0xF0;

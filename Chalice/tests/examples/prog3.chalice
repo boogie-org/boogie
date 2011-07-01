@@ -179,13 +179,13 @@ class ReadSharing {
   var x: int
 
   method Consume()
-    requires rd(x)
+    requires rd(x,1)
   {
     // skip
   }
 
   method Divulge()  // bad
-    requires rd(x)
+    requires rd(x,1)
   {
     call Consume()
     call Consume()  // error: cannot share twice (1773)
@@ -209,8 +209,8 @@ class ReadSharing {
   }  // error: does not live up to postcondition (2015)
 
   method Shares()  // good
-    requires rd(x,*)
-    ensures rd(x,*)
+    requires rd*(x)
+    ensures rd*(x)
   {
     call Consume()
     call Consume()
@@ -218,27 +218,26 @@ class ReadSharing {
   }
 
   method TeamPlayer(N: int)  // good
-    requires 0<=N && rd(x,N)
-    ensures rd(x,0)
+    requires 0<N && rd(x,N)
   {
     var n := N
-    while (0 < n)
-      invariant 0<=n && rd(x,n)
+    while (1 < n)
+      invariant 0<n && rd(x,n)
     {
       n := n - 1
     }
   }
 
   method Unselfish(N: int)  // good
-    requires rd(x,*)
-    ensures rd(x,*)
+    requires rd*(x)
+    ensures rd*(x)
   {
     var n := N
     if (N == 173) {
       call Unselfish(200)
     }
     while (0 < n)
-      invariant rd(x,*)
+      invariant rd*(x)
     {
       call Consume()
       n := n - 1

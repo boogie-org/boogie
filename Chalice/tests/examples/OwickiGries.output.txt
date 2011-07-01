@@ -1,0 +1,4 @@
+Verification of OwickiGries.chalice 
+
+
+Boogie program verifier finished with 5 verified, 0 errors

@@ -1,0 +1,7 @@
+Verification of predicates.chalice 
+
+  37.5: Fold might fail because the definition of Cell.write1 does not hold. Insufficient fraction at 6.22 for Cell.x.
+  55.5: Fold might fail because the definition of Cell.read1 does not hold. Insufficient fraction at 8.21 for Cell.x.
+  66.3: The postcondition at 68.13 might not hold. Insufficient fraction at 68.13 for Cell.x.
+
+Boogie program verifier finished with 27 verified, 3 errors

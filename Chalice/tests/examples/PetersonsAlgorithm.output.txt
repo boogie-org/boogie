@@ -1,0 +1,4 @@
+Verification of PetersonsAlgorithm.chalice 
+
+
+Boogie program verifier finished with 7 verified, 0 errors

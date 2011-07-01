@@ -1,0 +1,8 @@
+Verification of prog2.chalice 
+
+  24.5: Assertion might not hold. The expression at 24.12 might not evaluate to true.
+  31.13: Location might not be readable.
+  73.5: Const variable can be assigned to only once.
+  78.5: Assertion might not hold. The expression at 78.12 might not evaluate to true.
+
+Boogie program verifier finished with 24 verified, 4 errors

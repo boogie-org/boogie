@@ -46,7 +46,7 @@ class Iterator module Collections {
   method init(l: List)
     requires acc(list) && acc(index);
     requires l!=null;
-    requires rd(l.valid);
+    requires acc(l.valid,rd(l.valid));
     ensures valid;
     ensures getList()==l;
   {
@@ -68,7 +68,7 @@ class Iterator module Collections {
 
   method dispose()
     requires valid;
-    ensures rd(old(getList()).valid);
+    ensures acc(old(getList()).valid,rd(old(getList()).valid));
   {
     unfold valid;
   }

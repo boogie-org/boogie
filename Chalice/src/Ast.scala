@@ -27,6 +27,7 @@ sealed case class Class(classId: String, parameters: List[Class], module: String
   def IsChannel: Boolean = false
   def IsState: Boolean = false
   def IsNormalClass = true
+  def IsPermission = false
 
   lazy val DeclaredFields = members flatMap {case x: Field => List(x); case _ => Nil}
   lazy val MentionableFields = Fields filter {x => ! x.Hidden}
@@ -65,11 +66,21 @@ sealed case class Class(classId: String, parameters: List[Class], module: String
   lazy val Replaces: List[Field] = CouplingInvariants flatMap (_.fields)
 }
 
-sealed case class Channel(channelId: String, parameters: List[Variable], where: Expression) extends TopLevelDecl(channelId)
+sealed case class Channel(channelId: String, parameters: List[Variable], private val rawWhere: Expression) extends TopLevelDecl(channelId) {
+  lazy val where: Expression = rawWhere.transform {
+    case Epsilon | MethodEpsilon => Some(ChannelEpsilon(None))
+    case _ => None
+  }
+}
 
 sealed case class SeqClass(parameter: Class) extends Class("seq", List(parameter), "default", Nil) {
   override def IsRef = false;
   override def IsSeq = true;
+  override def IsNormalClass = false
+}
+object PermClass extends Class("$Permission", Nil, "default", Nil) {
+  override def IsRef = false
+  override def IsPermission = true
   override def IsNormalClass = false
 }
 object IntClass extends Class("int", Nil, "default", Nil) {
@@ -114,6 +125,7 @@ object RootClass extends Class("$root", Nil, "default", List(
   ))  // joinable and held are bool in Chalice, but translated into an int in Boogie
 
 sealed case class Type(id: String, params: List[Type]) extends ASTNode {  // denotes the use of a type
+  if (id equals "seq") TranslatorPrelude.addComponent(AxiomatizationOfSequencesPL) // include sequence axioms if necessary
   var typ: Class = null
   def this(id: String) = { this(id, Nil); }
   def this(cl: Class) = { this(cl.id); typ = cl }
@@ -134,7 +146,13 @@ sealed case class TokenType(C: Type, m: String) extends Type("token", Nil) {  //
 sealed abstract class Member extends ASTNode {
   val Hidden: Boolean = false  // hidden means not mentionable in source
 }
-case class MonitorInvariant(e: Expression) extends Member
+case class MonitorInvariant(private val rawE: Expression) extends Member {
+  lazy val e: Expression = rawE.transform {
+    case Epsilon | MethodEpsilon => Some(MonitorEpsilon(None))
+    case _ => None
+  }
+}
+
 sealed abstract class NamedMember(id: String) extends Member {
   val Id = id
   var Parent: Class = null
@@ -157,7 +175,12 @@ case class Method(id: String, ins: List[Variable], outs: List[Variable], spec: L
   override def Ins = ins
   override def Outs = outs
 }
-case class Predicate(id: String, definition: Expression) extends NamedMember(id)
+case class Predicate(id: String, private val rawDefinition: Expression) extends NamedMember(id) {
+  lazy val definition: Expression = rawDefinition.transform {
+    case Epsilon | MethodEpsilon => Some(PredicateEpsilon(None))
+    case _ => None
+  }
+}
 case class Function(id: String, ins: List[Variable], out: Type, spec: List[Specification], definition: Option[Expression]) extends NamedMember(id) {
   def apply(rec: Expression, args: List[Expression]): FunctionApplication = {
     val result = FunctionApplication(rec, id, args);
@@ -175,6 +198,7 @@ case class Variable(id: String, t: Type, isGhost: Boolean, isImmutable: Boolean)
     S_Variable.VariableCount = S_Variable.VariableCount + 1
     id + "#" + n
   }
+  val Id = id;
   def this(name: String, typ: Type) = this(name,typ,false,false);
   override def toString = (if (isGhost) "ghost " else "") + (if (isImmutable) "const " else "var ") + id;
 }
@@ -249,8 +273,6 @@ case class NonDetPat(is: List[String], code: List[Statement]) extends Transform 
   def matches(s: Statement) = s match {
     case _:Call => true
     case _:SpecStmt => true
-    case _:Assign => true // declarative expression on the right
-    case _:LocalVar => true // declarative expression on the right    
     case _ => false
   }
 }
@@ -262,16 +284,11 @@ case class SeqPat(pats: List[Transform]) extends Transform {
 case class RefinementBlock(con: List[Statement], abs: List[Statement]) extends Statement {
   if (con.size > 0) pos = con.head.pos
   // local variables in context at the beginning of the block
-
   var before: List[Variable] = null
   // shared declared local variables (mapping between abstract and concrete)
-  // should be called after resolution
   lazy val during: (List[Variable], List[Variable]) = {
-    val a = abs.flatMap(s => s.Declares);
-    val c = for (v <- a) yield con.flatMap(s => s.Declares).find(_ == v) match {
-      case Some(w) => w;
-      case None => v;
-    }
+    val a = for (v <- abs.flatMap(s => s.Declares)) yield v;
+    val c = for (v <- a) yield con.flatMap(s => s.Declares).find(_ == v).get
     (a,c)
   }         
   override def Declares = con flatMap {_.Declares}
@@ -396,20 +413,65 @@ case class MemberAccess(e: Expression, id: String) extends Expression {
 }
 case class IfThenElse(con: Expression, then: Expression, els: Expression) extends Expression
 
-sealed abstract class Permission extends Expression
-sealed abstract class Write extends Permission
+object PermissionType extends Enumeration {
+  type PermissionType = Value
+  val Fraction, Epsilons, Mixed = Value
+}
+import PermissionType._
+sealed abstract class Permission extends Expression {
+  typ = PermClass
+  def permissionType: PermissionType
+}
+sealed abstract class Write extends Permission {
+  override def permissionType = PermissionType.Fraction
+}
 object Full extends Write                // None
 case class Frac(n: Expression) extends Write // Some(n)
-sealed abstract class Read extends Permission
-object Epsilon extends Read                      // None
-object Star extends Read               // Some(None)
+sealed abstract class Read extends Permission {
+  override def permissionType = PermissionType.Epsilons
+}
+object Epsilon extends Write                      // None
+// we use Option for the argument of the next three classes as follows:
+// the argument is Some(_) if the exression originates from the user (e.g. if he used acc(x,rd(monitor))),
+// and None otherwise. If Some(_) is used, we have additional checks to ensure that we have read access
+// to _ and _ is not null.
+case class PredicateEpsilon(predicate: Option[Expression]) extends Write
+case class MonitorEpsilon(monitor: Option[Expression]) extends Write
+case class ChannelEpsilon(channel: Option[Expression]) extends Write
+object MethodEpsilon extends Write
+case class ForkEpsilon(token: Expression) extends Write
+object Star extends Write               // Some(None)
 case class Epsilons(n: Expression) extends Read   // Some(Some(n))
+
+sealed abstract class ArithmeticPermission extends Permission
+case class PermTimes(val lhs: Permission, val rhs: Permission) extends ArithmeticPermission {
+  override def permissionType = {
+    if (lhs.permissionType == rhs.permissionType) lhs.permissionType
+    else Mixed
+  }
+}
+case class IntPermTimes(val lhs: Expression, val rhs: Permission) extends ArithmeticPermission {
+  override def permissionType = rhs.permissionType
+}
+case class PermPlus(val lhs: Permission, val rhs: Permission) extends ArithmeticPermission {
+  override def permissionType = {
+    if (lhs.permissionType == rhs.permissionType) lhs.permissionType
+    else Mixed
+  }
+}
+case class PermMinus(val lhs: Permission, val rhs: Permission) extends ArithmeticPermission {
+  override def permissionType = {
+    if (lhs.permissionType == rhs.permissionType) lhs.permissionType
+    else Mixed
+  }
+}
+
 
 sealed abstract class PermissionExpr(perm: Permission) extends Expression
 sealed abstract class WildCardPermission(perm: Permission) extends PermissionExpr(perm)
-case class Access(ma: MemberAccess, perm: Permission) extends PermissionExpr(perm) 
-case class AccessAll(obj: Expression, perm: Permission) extends WildCardPermission(perm)
-case class AccessSeq(s: Expression, f: Option[MemberAccess], perm: Permission) extends WildCardPermission(perm)
+case class Access(ma: MemberAccess, var perm: Permission) extends PermissionExpr(perm) 
+case class AccessAll(obj: Expression, var perm: Permission) extends WildCardPermission(perm)
+case class AccessSeq(s: Expression, f: Option[MemberAccess], var perm: Permission) extends WildCardPermission(perm)
 
 case class Credit(e: Expression, n: Option[Expression]) extends Expression {
   val N = n match { case None => IntLiteral(1) case Some(n) => n }
@@ -512,8 +574,15 @@ sealed abstract class Quantification(q: Quant, is: List[String], e: Expression) 
   val E = e;
   var variables = null: List[Variable]; // resolved by type checker
 }
-case class SeqQuantification(q: Quant, is: List[String], seq: Expression, e: Expression) extends Quantification(q, is, e)
-case class TypeQuantification(q: Quant, is: List[String], t: Type, e: Expression) extends Quantification(q, is, e)
+case class SeqQuantification(q: Quant, is: List[String], seq: Expression, e: Expression) extends Quantification(q, is, e) {
+  TranslatorPrelude.addComponent(AxiomatizationOfSequencesPL) // include sequence axioms if necessary
+}
+// The minmax field stores the minimum and maximum of a range if the TypeQuantification originates from
+// a SeqQuantification (e.g. from "forall i in [0..2] :: ..". This is later needed in isDefined to
+// assert that min <= max
+case class TypeQuantification(q: Quant, is: List[String], t: Type, e: Expression, minmax: (Expression, Expression)) extends Quantification(q, is, e) {
+  def this(q: Quant, is: List[String], t: Type, e: Expression) = this(q, is, t, e, null)
+}
 
 /**
  * Expressions: sequences
@@ -623,7 +692,8 @@ object AST {
         case _ => Unmatched(wp)
       }
     // non det pat
-    case (l @ List(s), ndp @ NonDetPat(_, code)) if ndp matches s => new Matched(RefinementBlock(code, l))
+    case (l @ List(_: Call), NonDetPat(_, code)) => new Matched(RefinementBlock(code, l))
+    case (l @ List(_: SpecStmt), NonDetPat(_, code)) => new Matched(RefinementBlock(code, l))
     // insert pat
     case (Nil, InsertPat(code)) => new Matched(RefinementBlock(code, Nil))
     // block pattern (greedy matching)
@@ -678,9 +748,18 @@ object AST {
         g.predicate = ma.predicate;
         g.isPredicate = ma.isPredicate;
         g
-      case Full | Epsilon | Star => expr
+      case ForkEpsilon(token) => ForkEpsilon(func(token))
+      case MonitorEpsilon(Some(monitor)) => MonitorEpsilon(Some(func(monitor)))
+      case ChannelEpsilon(Some(channel)) => ChannelEpsilon(Some(func(channel)))
+      case PredicateEpsilon(Some(predicate)) => PredicateEpsilon(Some(func(predicate)))
+      case ChannelEpsilon(None) | MonitorEpsilon(None) | PredicateEpsilon(None) => expr
+      case Full | Star | Epsilon | MethodEpsilon => expr
       case Frac(perm) => Frac(func(perm))
       case Epsilons(perm) => Epsilons(func(perm))
+      case PermTimes(lhs, rhs) => PermTimes(func(lhs).asInstanceOf[Permission], func(rhs).asInstanceOf[Permission])
+      case IntPermTimes(lhs, rhs) => IntPermTimes(func(lhs), func(rhs).asInstanceOf[Permission])
+      case PermPlus(lhs, rhs) => PermPlus(func(lhs).asInstanceOf[Permission], func(rhs).asInstanceOf[Permission])
+      case PermMinus(lhs, rhs) => PermMinus(func(lhs).asInstanceOf[Permission], func(rhs).asInstanceOf[Permission])
       case Access(e, perm) => Access(func(e).asInstanceOf[MemberAccess], func(perm).asInstanceOf[Permission]);
       case AccessAll(obj, perm) => AccessAll(func(obj), func(perm).asInstanceOf[Permission]);
       case AccessSeq(s, None, perm) => AccessSeq(func(s), None, func(perm).asInstanceOf[Permission])
@@ -727,8 +806,12 @@ object AST {
         val result = SeqQuantification(q, is, func(seq), func(e));
         result.variables = qe.variables;
         result;
-      case qe @ TypeQuantification(q, is, t, e) =>
-        val result = TypeQuantification(q, is, t, func(e));
+      case qe @ TypeQuantification(q, is, t, e, (min, max)) =>
+        val result = TypeQuantification(q, is, t, func(e), (func(min),func(max)));
+        result.variables = qe.variables;
+        result;
+      case qe @ TypeQuantification(q, is, t, e, null) =>
+        val result = new TypeQuantification(q, is, t, func(e));
         result.variables = qe.variables;
         result;
       case Eval(h, e) =>
@@ -762,7 +845,20 @@ object AST {
 
      case Frac(p) => visit(p, f);
      case Epsilons(p) => visit(p, f);
-     case Full | Epsilon | Star =>;
+     case Full | Epsilon | Star | MethodEpsilon =>;
+     case ChannelEpsilon(None) | PredicateEpsilon(None) | MonitorEpsilon(None) =>;
+     case ChannelEpsilon(Some(e)) => visit(e, f);
+     case PredicateEpsilon(Some(e)) => visit(e, f);
+     case MonitorEpsilon(Some(e)) => visit(e, f);
+     case ForkEpsilon(tk) => visit(tk, f);
+     case IntPermTimes(n, p) =>
+       visit(n, f); visit(p, f);
+     case PermTimes(e0, e1) =>
+       visit(e0, f); visit(e1, f);
+     case PermPlus(e0, e1) =>
+       visit(e0, f); visit(e1, f);
+     case PermMinus(e0, e1) =>
+       visit(e0, f); visit(e1, f);
      case Access(e, perm) =>
        visit(e, f); visit(perm, f);
      case AccessAll(obj, perm) =>
@@ -789,8 +885,8 @@ object AST {
        visit(pred, f); visit(e, f);
 
      case SeqQuantification(_, _, seq, e) => visit(seq, f); visit(e, f);
-     case TypeQuantification(_, _, _, e) => visit(e, f);
-
+     case TypeQuantification(_, _, _, e, (min,max)) => visit(e, f); visit(min, f); visit(max, f);
+     case TypeQuantification(_, _, _, e, _) => visit(e, f);
      case ExplicitSeq(es) =>
        es foreach { e => visit(e, f) }
      case Length(e) =>
