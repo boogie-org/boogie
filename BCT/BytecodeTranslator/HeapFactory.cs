@@ -73,6 +73,8 @@ namespace BytecodeTranslator {
 
     public abstract Bpl.Variable CreateFieldVariable(IFieldReference field);
 
+    public abstract Bpl.Variable BoxField { get; }
+
     #region Boogie Types
 
     [RepresentationFor("Field", "type Field;")]
@@ -182,14 +184,6 @@ namespace BytecodeTranslator {
       return callExpr;
     }
 
-    #endregion
-
-    #region "Boxing" as done in the CLR
-    /// <summary>
-    /// Used to represent "boxing" as it is done in the CLR.
-    /// </summary>
-    [RepresentationFor("$BoxField", "const unique $BoxField: Field;")]
-    public Bpl.Constant BoxField = null;
     #endregion
 
     #region Real number conversions
