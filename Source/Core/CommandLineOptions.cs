@@ -159,6 +159,7 @@ namespace Microsoft.Boogie {
     public string DafnyPrelude = null;
     public string DafnyPrintFile = null;
     public bool Compile = true;
+    public bool ForceCompile = false;
 
     public enum ProverWarnings {
       None,
@@ -712,8 +713,9 @@ namespace Microsoft.Boogie {
           case "-compile":
           case "/compile": {
               int compile = 0;
-              if (ps.GetNumericArgument(ref compile, 2)) {
-                Compile = compile == 1;
+              if (ps.GetNumericArgument(ref compile, 3)) {
+                Compile = compile == 1 || compile == 2;
+                ForceCompile = compile == 2;
               }
               break;
             }
@@ -2097,6 +2099,8 @@ namespace Microsoft.Boogie {
   /compile:<n>   : 0 - do not compile Dafny program
                    1 (default) - upon successful verification of the Dafny
                        program, compile Dafny program to C# program out.cs
+                   2 - always attempt to compile Dafny program to C# program
+                       out.cs, regardless of verification outcome
 
   ---- Boogie options --------------------------------------------------------
 

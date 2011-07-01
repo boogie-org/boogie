@@ -93,6 +93,7 @@ class ChaliceToCSharp {
         indent +  "}" + nl
       case MonitorInvariant(_) => indent + "// monitor invariant" + nl
       case Predicate(_, _) => indent + "//predicate" + nl
+	  case _ => throw new NotSupportedException("unsupportet construct")
     }
   }
 
@@ -156,6 +157,7 @@ class ChaliceToCSharp {
       case r@Receive(_, ch, outs) =>
         declareLocals(r.locals) +
         indent + convertExpression(ch) + ".Receive(" + repsep(outs map { out => "out " + convertExpression(out)}, ", ") + ")" + ";" + nl
+	  case _ => throw new NotSupportedException("unsupportet construct")
     }
   }
   
@@ -201,7 +203,7 @@ class ChaliceToCSharp {
       case Range(min, max) => "Chalice.ImmutableList.Range(" + convertExpression(min) + ", " + convertExpression(max) + ")"
       case Length(s) => convertExpression(s) + ".Length"
       case IfThenElse(c, thn, els) => "(" + convertExpression(c) + " ? " + convertExpression(thn) + " : " + convertExpression(els) + ")"
-      case _ => throw new Exception("Expression not supported yet!");
+      case _ => throw new NotSupportedException("Expression not supported yet!");
     }
   }
   

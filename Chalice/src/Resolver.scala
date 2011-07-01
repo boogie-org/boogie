@@ -18,7 +18,7 @@ object Resolver {
  sealed class ProgramContext(val decls: Map[String,TopLevelDecl], val currentClass: Class,
                       val currentMember: Member, val errors: ListBuffer[(Position,String)]) {
    final def AddVariable(v: Variable): ProgramContext = new LProgramContext(v, this);
-   final def Error(pos: Position, msg: String) {errors.append((pos, msg))}
+   final def Error(pos: Position, msg: String) {errors += ((pos, msg))}
    final def SetClass(cl: Class): ProgramContext = new MProgramContext(cl, null, this)
    final def SetMember(m: Member): ProgramContext = {
      var ctx:ProgramContext = new MProgramContext(currentClass, m, this)
@@ -150,15 +150,39 @@ object Resolver {
          case _: CouplingInvariant =>
          case Field(_, t, _) =>
            ResolveType(t, baseContext)
-         case Method(_, ins, outs, _, _) =>
-           for (v <- ins ++ outs) ResolveType(v.t, baseContext)
+         case Method(id, ins, outs, _, _) =>
+           val ids = scala.collection.mutable.Set.empty[String]
+           for (v <- ins ++ outs) {
+             ResolveType(v.t, baseContext)
+             if (ids contains v.Id) {
+               return Errors(List((m.pos, "duplicate parameter " + v.Id + " of method " + id + " in class " + cl.id)))
+             } else {
+               ids += v.Id
+             }
+           }
          case _: Condition =>
          case _: Predicate =>
          case Function(id, ins, out, specs, _) => 
-           for (v <- ins) ResolveType(v.t, baseContext)
+           val ids = scala.collection.mutable.Set.empty[String]
+           for (v <- ins) {
+             ResolveType(v.t, baseContext)
+             if (ids contains v.Id) {
+               return Errors(List((m.pos, "duplicate parameter " + v.Id + " of function " + id + " in class " + cl.id)))
+             } else {
+               ids += v.Id
+             }
+           }
            ResolveType(out, baseContext)
          case mt: MethodTransform =>
-           for (v <- mt.ins ++ mt.outs) ResolveType(v.t, baseContext)
+           val ids = scala.collection.mutable.Set.empty[String]
+           for (v <- mt.ins ++ mt.outs) {
+             ResolveType(v.t, baseContext)
+             if (ids contains v.Id) {
+               return Errors(List((m.pos, "duplicate parameter " + v.Id + " of method transform " + mt.Id + " in class " + cl.id)))
+             } else {
+               ids += v.Id
+             }
+           }
        }
    }   
 
@@ -189,7 +213,7 @@ object Resolver {
                case Precondition(e) => ResolveExpr(e, context, false, true)(false)
                case Postcondition(e) => ResolveExpr(e, context, true, true)(false)
                case lc@LockChange(ee) => 
-               if(m.id == runMethod) context.Error(lc.pos, "lockchange not allowed on method run") 
+               if (m.id == runMethod) context.Error(lc.pos, "lockchange not allowed on method run")
                ee foreach (e => ResolveExpr(e, context, true, false)(false))
              }
              ResolveStmt(BlockStmt(body), context)
@@ -294,11 +318,14 @@ object Resolver {
    case Assume(e) =>
      ResolveExpr(e, context, true, true)(false)  
      if (!e.typ.IsBool) context.Error(e.pos, "assume statement requires a boolean expression (found " + e.typ.FullName + ")")
-   case RefinementBlock(ss, _) => throw new Exception("unexpected statement")
+   case RefinementBlock(ss, _) => throw new InternalErrorException("unexpected statement")
    case BlockStmt(ss) =>
      var ctx = context
      for (s <- ss) s match {
        case l @ LocalVar(v, rhs) =>
+         if (ctx.LookupVariable(v.id).isDefined) {
+           context.Error(l.pos, "local variable name "+v.id+" collides with parameter or other local variable")
+         }
          ResolveType(v.t, ctx)
          val oldCtx = ctx
          ctx = ctx.AddVariable(v)
@@ -340,7 +367,7 @@ object Resolver {
      ResolveStmt(thn, context)
      els match { case None => case Some(s) => ResolveStmt(s, context) }
    case w@ WhileStmt(guard, invs, ref, lkch, body) =>
-     if (ref.size > 0) throw new Exception("unexpected statement")
+     if (ref.size > 0) throw new InternalErrorException("unexpected statement")
      ResolveExpr(guard, context, false, false)(false)
      if (!guard.typ.IsBool) context.Error(guard.pos, "while statement requires a boolean guard (found " + guard.typ.FullName + ")")
      CheckNoGhost(guard, context)
@@ -370,8 +397,8 @@ object Resolver {
      ResolveExpr(rhs, context, false, false)(false)
      if (! lhs.isPredicate && !canAssign(lhs.typ, rhs.typ)) context.Error(fu.pos, "type mismatch in assignment, lhs=" + lhs.typ.FullName + " rhs=" + rhs.typ.FullName)
      if (! lhs.isPredicate && lhs.f != null && !lhs.f.isGhost) CheckNoGhost(rhs, context)
-   case _:LocalVar => throw new Exception("unexpected LocalVar; should have been handled in BlockStmt above")
-   case _:SpecStmt => throw new Exception("should have been handled before")
+   case _:LocalVar => throw new InternalErrorException("unexpected LocalVar; should have been handled in BlockStmt above")
+   case _:SpecStmt => throw new InternalErrorException("should have been handled before")
    case c @ Call(declaresLocal, lhs, obj, id, args) =>
      ResolveExpr(obj, context, false, false)(false)
      CheckNoGhost(obj, context)
@@ -630,6 +657,188 @@ object Resolver {
      context.Error(lhs.pos, "type mismatch in assignment, lhs=" + lhs.typ.FullName + " rhs=" + rhs.typ.FullName)
    if (lhs.v != null && !lhs.v.isGhost) CheckNoGhost(rhs, context)
  }
+ 
+ // ResolvePermissionExpr resolves all parts of a permission expression, and replaces arithmetic operations
+ // by the appropriate operation on permissions
+ // Note that the parsing of permissions can be highly inaccurate. Besides historic reasons, we also need type information
+ // to decide how rd(x) inside acc(o.f, ***) should be interpreted. If x is an integer expression, it stands for Epsilons(x),
+ // but x could also be a channel, monitor or predicate.
+ // For instance, acc(x,rd(n)) is parsed to
+ //    Access(MemberAccess(ImplicitThisExpr(),x),Frac(Access(MemberAccess(ImplicitThisExpr(),n),Epsilon)))
+ // These error during parsing are corrected here during the resolve process. In particular, the following corrections are done:
+ // - Plus and Minus are replaced by the corresponding operation on permission (i.e. PermPlus and PermMinus)
+ // - Integer expressions x are replaced by Frac(x)
+ def ResolvePermissionExpr(e: Expression, context: ProgramContext, twoStateContext: Boolean,
+                 specContext: Boolean, pos: Position)(implicit inPredicate: Boolean): Permission = e match {
+   case ve @ VariableExpr(id) =>
+     ResolvePermissionExpr(Frac(ve), context, twoStateContext, specContext, pos)(inPredicate);
+   case f @ Frac(perm) =>
+     ResolveExpr(perm, context, twoStateContext, false);
+     if(perm.typ != IntClass)
+       context.Error(pos, "fraction in permission must be of type integer")
+     f
+   case sel @ MemberAccess(e, id) =>
+     ResolvePermissionExpr(Frac(sel), context, twoStateContext, specContext, pos)(inPredicate);
+   case ep @ Epsilons(exp) => 
+     ResolveExpr(exp, context, twoStateContext, false)
+     var p: Permission = Epsilon
+     exp.typ match {
+       case BoolClass if exp.isInstanceOf[MemberAccess] && exp.asInstanceOf[MemberAccess].isPredicate =>
+         p = PredicateEpsilon(Some(exp.asInstanceOf[MemberAccess]))
+         p.pos = ep.pos
+       case IntClass =>
+         p = Epsilons(exp)
+         p.pos = ep.pos
+       case TokenClass(c, m) =>
+         p = ForkEpsilon(exp)
+         p.pos = ep.pos
+       case c:Channel =>
+         p = ChannelEpsilon(Some(exp))
+         p.pos = ep.pos
+       case c:Class if (c.IsNormalClass) =>
+         p = MonitorEpsilon(Some(exp))
+         p.pos = ep.pos
+       case _ =>
+         p = Star
+         context.Error(ep.pos, "type " + exp.typ.FullName + " is not supported inside a rd expression.");
+     }
+     exp.pos = ep.pos
+     p
+   case f @ Full => f
+   case f:PredicateEpsilon => f
+   case f:ForkEpsilon => f
+   case f:ChannelEpsilon => f
+   case f:MonitorEpsilon => f
+   case Epsilon => Epsilon
+   case MethodEpsilon => MethodEpsilon
+   case f @ Star => f
+   case p @ Plus(ee0, ee1) =>
+     if (ContainsStar(ee0) || ContainsStar(ee1))
+       context.Error(p.pos, "rd* is not allowed inside permission expressions.")
+     val e0 = ResolvePermissionExpr(ee0, context, twoStateContext, specContext, pos)(inPredicate);
+     val e1 = ResolvePermissionExpr(ee1, context, twoStateContext, specContext, pos)(inPredicate);
+     val pp = PermPlus(e0, e1)
+     pp.pos = p.pos;
+     pp
+   case p @ Minus(ee0, ee1) =>
+     if (ContainsStar(ee0) || ContainsStar(ee1))
+       context.Error(p.pos, "rd* is not allowed inside permission expressions.")
+     val e0 = ResolvePermissionExpr(ee0, context, twoStateContext, specContext, pos)(inPredicate);
+     val e1 = ResolvePermissionExpr(ee1, context, twoStateContext, specContext, pos)(inPredicate);
+     val pp = PermMinus(e0, e1)
+     pp.pos = p.pos;
+     pp
+   case a @ Access(sel @ MemberAccess(e, id),Epsilon) =>
+     var exp: Expression = sel
+     var typ: Class = null
+     if (e.getClass == classOf[ImplicitThisExpr]) { // id could be a local variable, if e == ImplicitThisExpr()
+       val ve = VariableExpr(id)
+       context.LookupVariable(id) match {
+         case Some(v) => ve.Resolve(v); typ = ve.typ; exp = ve;
+         case None =>
+       }
+     }
+     if (typ == null) {
+       ResolveExpr(e, context, twoStateContext, false)
+       e.typ.LookupMember(id) match {
+         case None =>
+           context.Error(sel.pos, "undeclared member " + id + " in class " + e.typ.FullName)
+         case Some(f: Field) => sel.f = f; typ = f.typ.typ
+         case Some(pred@Predicate(id, body)) =>
+           sel.predicate = pred;
+           sel.isPredicate = true;
+           typ = BoolClass
+         case _ => context.Error(sel.pos, "field-select expression does not denote a field: " + e.typ.FullName + "." + id);
+       }
+       sel.typ = typ
+       exp = sel
+     }
+     var p: Permission = Epsilon
+     typ match {
+       case BoolClass if sel.isPredicate =>
+         p = PredicateEpsilon(Some(sel))
+         p.pos = a.pos
+       case IntClass =>
+         p = Epsilons(exp)
+         p.pos = a.pos
+       case TokenClass(c, m) =>
+         p = ForkEpsilon(exp)
+         p.pos = a.pos
+       case c:Channel =>
+         p = ChannelEpsilon(Some(exp))
+         p.pos = a.pos
+       case c:Class if (c.IsNormalClass) =>
+         p = MonitorEpsilon(Some(exp))
+         p.pos = a.pos
+       case _ =>
+         context.Error(a.pos, "type " + typ.FullName + " of variable " + id + " is not supported inside a rd expression.")
+         p = Star
+     }
+     exp.pos = a.pos
+     p
+   // multiplication is a bit tricky: we want to support integer multiplication i0*i1 (which will
+   // correspond to a percentage i0*i1), but also the multiplication of an integer i0 with a permission
+   // amount p1 (and vice versa): i0*p1 or p0*i1.
+   // we first try to resolve both expressions as integer, and if not successful, try again as
+   // permission amount
+   case bin @ Times(e0, e1) =>
+     var p0, p1: Permission = null
+     var ee0 = e0
+     var ee1 = e1
+     var oldErrors = (new ListBuffer[(Position,String)]) ++= context.errors
+     ResolveExpr(bin.E0, context, twoStateContext, false)
+     if (context.errors.size > oldErrors.size) {
+       context.errors.clear; context.errors ++= oldErrors // reset errors
+       p0 = ResolvePermissionExpr(bin.E0, context, twoStateContext, specContext, pos)(inPredicate)
+       ee0 = p0
+     }
+     
+     oldErrors = (new ListBuffer[(Position,String)]) ++= context.errors
+     ResolveExpr(bin.E1, context, twoStateContext, false)
+     if (context.errors.size > oldErrors.size) {
+       context.errors.clear; context.errors ++= oldErrors // reset errors
+       p1 = ResolvePermissionExpr(bin.E1, context, twoStateContext, specContext, pos)(inPredicate)
+       ee1 = p1
+     }
+     
+     if (ee0.typ.IsInt && ee1.typ.IsInt) {
+       bin.typ = IntClass
+       val pp = Frac(bin)
+       pp.pos = bin.pos
+       pp
+     } else if (ee0.typ.IsInt && ee1.typ.IsPermission) {
+       val pp = IntPermTimes(ee0,p1)
+       pp.pos = bin.pos
+       pp
+     } else if (ee0.typ.IsPermission && ee1.typ.IsInt) {
+       val pp = IntPermTimes(ee1,p0)
+       pp.pos = bin.pos
+       pp
+     } else {
+       context.Error(pos, "multiplication of permission amounts not supported"); Star
+     }
+   case expr =>
+     ResolveExpr(expr, context, twoStateContext, specContext)(inPredicate);
+     if (expr.typ == IntClass) {
+       val pp = Frac(expr)
+       pp.pos = expr.pos;
+       pp
+     } else {
+       context.Error(pos, "expression of type " + expr.typ.FullName + " invalid in permission"); Star
+     }
+ }
+ 
+ // does e contain a Star (i.e., rd*)?
+ def ContainsStar(expr: Expression): Boolean = {
+   var x: Boolean = false
+   AST.visit(expr,
+     e => e match {
+       case Star => x = true
+       case _ =>
+     }
+   )
+   x
+ }
 
  // ResolveExpr resolves all parts of an RValue, if possible, and (always) sets the RValue's typ field
  def ResolveExpr(e: RValue, context: ProgramContext,
@@ -707,25 +916,26 @@ object Resolver {
        case _ => context.Error(sel.pos, "field-select expression does not denote a field: " + e.typ.FullName + "." + id);
      }
      sel.typ = typ
-   case Frac(perm) => ResolveExpr(perm, context, twoStateContext, false);
-   case Epsilons(perm) => ResolveExpr(perm, context, twoStateContext, false);
-   case Full | Epsilon | Star => ;
+   case p: Permission => context.Error(p.pos, "permission not expected here.")
    case expr @ Access(e, perm) =>
-     if (!specContext) context.Error(expr.pos, (perm match {case _:Read => "rd"; case _:Write => "acc"}) + " expression is allowed only in positive predicate contexts")
+     if (!specContext) context.Error(expr.pos, permExpressionName(perm) + " expression is allowed only in positive predicate contexts")
      ResolveExpr(e, context, twoStateContext, true)
-     ResolveExpr(perm, context, twoStateContext, false);
+     val p = ResolvePermissionExpr(perm match { case Frac(f) => f; case o => o;}, context, twoStateContext, false, expr.pos);
+     expr.perm = p;
      expr.typ = BoolClass
    case expr @ AccessAll(obj, perm) =>
-     if (!specContext) context.Error(expr.pos, (perm match {case _:Read => "rd"; case _:Write => "acc"}) + " expression is allowed only in positive predicate contexts")
+     if (!specContext) context.Error(expr.pos, permExpressionName(perm) + " expression is allowed only in positive predicate contexts")
      ResolveExpr(obj, context, twoStateContext, false)
      if(!obj.typ.IsRef) context.Error(expr.pos, "Target of .* must be object reference.")
-     ResolveExpr(perm, context, twoStateContext, false);
+     val p = ResolvePermissionExpr(perm match { case Frac(f) => f; case o => o;}, context, twoStateContext, false, expr.pos);
+     expr.perm = p;
      expr.typ = BoolClass
    case expr @ AccessSeq(s, f, perm) =>
-     if (!specContext) context.Error(expr.pos, (perm match {case _:Read => "rd"; case _:Write => "acc"}) + " expression is allowed only in positive predicate contexts")
+     if (!specContext) context.Error(expr.pos, permExpressionName(perm) + " expression is allowed only in positive predicate contexts")
      ResolveExpr(s, context, twoStateContext, false)
      if(!s.typ.IsSeq) context.Error(expr.pos, "Target of [*] must be sequence.")
-     ResolveExpr(perm, context, twoStateContext, false);
+     val p = ResolvePermissionExpr(perm match { case Frac(f) => f; case o => o;}, context, twoStateContext, false, expr.pos);
+     expr.perm = p;
      f match {
        case Some(x) =>
          ResolveExpr(x, context, twoStateContext, true);
@@ -1010,8 +1220,25 @@ object Resolver {
    case MemberAccess(e, id) =>
      CheckRunSpecification(e, context, false)
    case Frac(perm) => CheckRunSpecification(perm, context, false)
-   case Epsilons(perm) =>  CheckRunSpecification(perm, context, false)
-   case Full | Epsilon | Star =>
+   case Epsilons(perm) => CheckRunSpecification(perm, context, false)
+   case PermPlus(p0, p1) =>
+     CheckRunSpecification(p0, context, false)
+     CheckRunSpecification(p1, context, false)
+   case PermMinus(p0, p1) =>
+     CheckRunSpecification(p0, context, false)
+     CheckRunSpecification(p1, context, false)
+   case PermTimes(p0, p1) =>
+     CheckRunSpecification(p0, context, false)
+     CheckRunSpecification(p1, context, false)
+   case IntPermTimes(p0, p1) =>
+     CheckRunSpecification(p0, context, false)
+     CheckRunSpecification(p1, context, false)
+   case Full | Epsilon | Star | MethodEpsilon =>
+   case ChannelEpsilon(None) | PredicateEpsilon(None) | MonitorEpsilon(None) =>;
+   case ChannelEpsilon(Some(e)) => CheckRunSpecification(e, context, false);
+   case PredicateEpsilon(Some(e)) => CheckRunSpecification(e, context, false);
+   case MonitorEpsilon(Some(e)) => CheckRunSpecification(e, context, false);
+   case ForkEpsilon(tk) => CheckRunSpecification(tk, context, false);
    case Access(e, perm) =>
      CheckRunSpecification(e, context, false);
      CheckRunSpecification(perm, context, false);
@@ -1081,7 +1308,7 @@ object Resolver {
        context.Error(e.pos, "Method refinement cannot add a pre-condition")
      case Postcondition(e) =>
        ResolveExpr(e, context.SetClass(mt.Parent).SetMember(mt), true, true)(false)
-     case _ : LockChange => throw new Exception("not implemented")
+     case _ : LockChange => throw new NotSupportedException("not implemented")
    }
    if (mt.ins != mt.refines.Ins) context.Error(mt.pos, "Refinement must have same input arguments")
    if (! mt.outs.startsWith(mt.refines.Outs)) context.Error(mt.pos, "Refinement must declare all abstract output variables")
@@ -1127,7 +1354,7 @@ object Resolver {
        }
      }
    }
-   resolveBody(mt.body, context.SetClass(mt.Parent).SetMember(mt), mt.refines.Outs)
+   resolveBody(mt.body, context.SetClass(mt.Parent).SetMember(mt), Nil)
  }
 
  def ResolveCouplingInvariant(ci: CouplingInvariant, cl: Class, context: ProgramContext) {
@@ -1141,5 +1368,21 @@ object Resolver {
    if (!ci.e.typ.IsBool) context.Error(ci.pos, "coupling invariant requires a boolean expression (found " + ci.e.typ.FullName + ")")
    // TODO: check coupling invariant may only give permissions to newly declared fields
    // TODO: check concrete body cannot refer to replaced fields
+ }
+ 
+ // TODO: this method might need to be replaced at some point. it is not possible
+ // to decide what name is used on the source level just by the permission (e.g.,
+ // Epsilons can be rd(x,1) or acc(x,rd(1))
+ def permExpressionName(perm: Permission): String = {
+   perm match {
+     case _:Epsilons => "rd";
+     case Epsilon => "rd";
+     case MethodEpsilon => "rd"
+     case Star => "rd";
+     case Full => "acc";
+     case _:Frac => "acc";
+     case _:ArithmeticPermission => "acc";
+     case _:ChannelEpsilon | _:ForkEpsilon | _:MonitorEpsilon | _:PredicateEpsilon => "acc";
+   }
  }
 }

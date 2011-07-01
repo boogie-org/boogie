@@ -1,0 +1,11 @@
+Verification of prog1.chalice 
+
+  9.10: Location might not be readable.
+  25.5: Location might not be writable
+  33.14: Location might not be readable.
+  42.5: Monitor invariant might hot hold. The expression at 5.23 might not evaluate to true.
+  60.5: Location might not be writable
+  76.5: The target of the unshare statement might not be shared.
+  84.5: The target of the unshare statement might not be shared.
+
+Boogie program verifier finished with 16 verified, 7 errors

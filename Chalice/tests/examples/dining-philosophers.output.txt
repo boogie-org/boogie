@@ -1,0 +1,4 @@
+Verification of dining-philosophers.chalice 
+
+
+Boogie program verifier finished with 12 verified, 0 errors
