@@ -70,6 +70,7 @@ class Program {
   } 
 
   method Main(x: Node)
+    requires x != null;
     requires x.list;
   {
     var e := new C;

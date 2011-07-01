@@ -18,7 +18,7 @@ class List {
 
   method Init()
     requires acc(mu) && mu == lockbottom && acc(head) && acc(sum)
-    ensures rd(mu,*) && waitlevel << this
+    ensures rd*(mu) && waitlevel << this
     ensures acc(sum,80) && sum == 0
   {
     var t := new Node
@@ -46,11 +46,11 @@ class List {
     release this
 
     while (p.next != null && p.next.val < x)
-      invariant p != null && acc(p.next) && rd(p.val) && acc(p.mu,50)
+      invariant p != null && acc(p.next) && acc(p.val,rd(p)) && acc(p.mu,50)
       invariant holds(p) && waitlevel == p.mu
       invariant !old(holds(p)) && !old(rd holds(p))
       invariant p.next != null ==> acc(p.next.mu,50) && p << p.next
-      invariant p.next != null ==> rd(p.next.val) && p.val <= p.next.val
+      invariant p.next != null ==> acc(p.next.val,rd(p.next)) && p.val <= p.next.val
       invariant acc(p.sum, 50)
       invariant p.next == null ==> p.sum == x
       invariant p.next != null ==> acc(p.next.sum, 50) && p.sum == p.next.val + p.next.sum + x
@@ -87,11 +87,11 @@ class List {
     release this
 
     while (p.next != null && p.next.val < x)
-      invariant p != null && acc(p.next) && rd(p.val) && acc(p.mu,50)
+      invariant p != null && acc(p.next) && acc(p.val,rd(p)) && acc(p.mu,50)
       invariant holds(p) && waitlevel == p.mu && !assigned(c)
       invariant !old(holds(p)) && !old(rd holds(p))
       invariant p.next != null ==> acc(p.next.mu,50) && p << p.next
-      invariant p.next != null ==> rd(p.next.val) && p.val <= p.next.val
+      invariant p.next != null ==> acc(p.next.val,rd(p.next)) && p.val <= p.next.val
       invariant acc(p.sum, 50)
       invariant p.next == null ==> p.sum == 0 - c
       invariant p.next != null ==> acc(p.next.sum, 50) && p.sum == p.next.val + p.next.sum - c

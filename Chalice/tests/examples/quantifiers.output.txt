@@ -1,0 +1,5 @@
+Verification of quantifiers.chalice 
+
+  57.29: The heap of the callee might not be strictly smaller than the heap of the caller.
+
+Boogie program verifier finished with 11 verified, 1 error

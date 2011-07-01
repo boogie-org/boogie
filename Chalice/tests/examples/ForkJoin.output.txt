@@ -1,0 +1,4 @@
+Verification of ForkJoin.chalice 
+
+
+Boogie program verifier finished with 18 verified, 0 errors

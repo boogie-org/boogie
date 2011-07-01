@@ -1,0 +1,5 @@
+Verification of peculiar.chalice 
+
+  35.5: Assertion might not hold. Insufficient fraction at 35.12 for Cell.x.
+
+Boogie program verifier finished with 18 verified, 1 error
