@@ -1,0 +1,29 @@
+class Node {
+  var l: Node
+  var r: Node
+  
+  method work(data: Data)
+    requires rd(data.f)
+    requires valid
+    ensures rd(data.f)
+    ensures valid
+  {
+    var tkl: token<Node.work>
+    var tkr: token<Node.work>
+    
+    unfold valid
+    if (l != null) { fork tkl := l.work(data) }
+    if (r != null) { fork tkr := r.work(data) }
+    /* .. perform work on this node (using the global data: data.f) */
+    if (l != null) { join tkl }
+    if (r != null) { join tkr }
+    fold valid
+  }
+  
+  predicate valid {
+    acc(l) && acc(r) &&
+    (l != null ==> l.valid) &&
+    (r != null ==> r.valid)
+  }
+}
+class Data { var f: int; }

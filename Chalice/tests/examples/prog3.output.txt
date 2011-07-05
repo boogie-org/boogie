@@ -1,4 +1,4 @@
-Verification of prog3.chalice 
+Verification of prog3.chalice using parameters="" 
 
   76.3: The postcondition at 77.13 might not hold. The expression at 77.13 might not evaluate to true.
   76.3: Method might lock/unlock more than allowed.

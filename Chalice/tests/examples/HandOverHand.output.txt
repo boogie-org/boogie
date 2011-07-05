@@ -1,4 +1,4 @@
-Verification of HandOverHand.chalice 
+Verification of HandOverHand.chalice using parameters="" 
 
 
 Boogie program verifier finished with 10 verified, 0 errors

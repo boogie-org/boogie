@@ -47,7 +47,7 @@ object Chalice {
     var boogieArgs = " ";
     var gen = false;
     var showFullStackTrace = false
-
+		
     // closures should be idempotent
     val options = Map(
      "-print" -> {() => printProgram = true},
@@ -87,7 +87,13 @@ object Chalice {
          else percentageSupport = in
        } catch { case _ => CommandLineError("-percentageSupport takes integer argument", help); }
      }
-     else if (a.startsWith("-") || a.startsWith("/")) boogieArgs += (a + " ") // other arguments starting with "-" or "/" are sent to Boogie.exe
+     else if (a.startsWith("-") || a.startsWith("/"))
+			boogieArgs += ('"' + a + '"' + " ")
+				// other arguments starting with "-" or "/" are sent to Boogie.exe
+				/* [MHS] Quote whole argument to not confuse Boogie with arguments that
+				 * contain spaces, e.g. if Chalice is invoked as
+				 *   chalice -z3exe:"C:\Program Files\z3\z3.exe" program.chalice
+				 */
      else inputs += a
     }
     

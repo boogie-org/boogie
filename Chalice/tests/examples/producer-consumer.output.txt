@@ -1,4 +1,4 @@
-Verification of producer-consumer.chalice 
+Verification of producer-consumer.chalice using parameters="" 
 
 
 Boogie program verifier finished with 36 verified, 0 errors

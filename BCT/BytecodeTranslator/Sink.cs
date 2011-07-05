@@ -925,7 +925,7 @@ namespace BytecodeTranslator {
       }
       return v;
     }
-    Dictionary<ITryCatchFinallyStatement, int> tryCatchFinallyIdentifiers;
+    public Dictionary<ITryCatchFinallyStatement, int> tryCatchFinallyIdentifiers;
     public string FindOrCreateCatchLabel(ITryCatchFinallyStatement stmt) {
       int id;
       if (!tryCatchFinallyIdentifiers.TryGetValue(stmt, out id)) {
@@ -949,6 +949,14 @@ namespace BytecodeTranslator {
         tryCatchFinallyIdentifiers[stmt] = id;
       }
       return "continuation" + id;
+    }
+    public string FindOrCreateDispatchContinuationLabel(ITryCatchFinallyStatement stmt) {
+      int id;
+      if (!tryCatchFinallyIdentifiers.TryGetValue(stmt, out id)) {
+        id = tryCatchFinallyIdentifiers.Count;
+        tryCatchFinallyIdentifiers[stmt] = id;
+      }
+      return "DispatchContinuation" + id;
     }
     MostNestedTryStatementTraverser mostNestedTryStatementTraverser;
     public ITryCatchFinallyStatement MostNestedTryStatement(IName label) {

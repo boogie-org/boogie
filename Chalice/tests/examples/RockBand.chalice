@@ -1,3 +1,4 @@
+// chalice-parameter=-checkLeaks -defaults -autoFold
 // verify this program with -checkLeaks -defaults -autoFold
 
 class Client {

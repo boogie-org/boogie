@@ -1,4 +1,4 @@
-Verification of prog4.chalice 
+Verification of prog4.chalice using parameters="" 
 
   5.5: Assertion might not hold. The expression at 5.12 might not evaluate to true.
   17.7: The target of the release statement might not be locked by the current thread.

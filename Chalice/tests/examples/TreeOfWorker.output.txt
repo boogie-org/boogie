@@ -1,4 +1,4 @@
-Verification of swap.chalice using parameters="" 
+Verification of TreeOfWorker.chalice using parameters="" 
 
 
 Boogie program verifier finished with 5 verified, 0 errors

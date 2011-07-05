@@ -1,4 +1,4 @@
-Verification of iterator.chalice 
+Verification of iterator.chalice using parameters="" 
 
 
 Boogie program verifier finished with 22 verified, 0 errors

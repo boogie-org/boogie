@@ -239,6 +239,10 @@ namespace Microsoft.Boogie.Simplify {
       Contract.Requires(proverExe != null);
       Contract.Ensures(_proverPath != null);
 
+      if (CommandLineOptions.Clo.Z3ExecutablePath != null) {
+        _proverPath = CommandLineOptions.Clo.Z3ExecutablePath;
+      }
+
       if (_proverPath == null) {
         // Initialize '_proverPath'
         _proverPath = Path.Combine(CodebaseString(), proverExe);

@@ -1,4 +1,4 @@
-Verification of counter.chalice 
+Verification of counter.chalice using parameters="" 
 
   69.5: Monitor invariant might hot hold. The expression at 4.27 might not evaluate to true.
   80.5: Assertion might not hold. The expression at 80.12 might not evaluate to true.

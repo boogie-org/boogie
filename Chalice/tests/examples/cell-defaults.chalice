@@ -1,3 +1,4 @@
+// chalice-parameter=-defaults -autoFold -autoMagic
 // verify this program with -defaults -autoFold -autoMagic
 
 class Cell module Library {

@@ -969,7 +969,7 @@ class Translator {
     // havoc formal outs
     (for (v <- formalOuts) yield Havoc(v)) :::
     // havoc lockchanges
-    LockHavoc(for (e <- LockChanges(c.m.Spec) map (p => SubstVars(p, formalThis, c.m.Ins, formalIns))) yield etran.Tr(e), postEtran) :::
+    LockHavoc(for (e <- LockChanges(c.m.Spec) map (p => SubstVars(p, formalThis, c.m.Ins ++ c.m.Outs, formalIns ++ formalOuts))) yield etran.Tr(e), postEtran) :::
     // inhale postconditions (using the state before the call as the "old" state)
     postEtran.Inhale(Postconditions(c.m.Spec) map
                      (p => SubstVars(p, formalThis, c.m.Ins ++ c.m.Outs, formalIns ++ formalOuts)) , "postcondition", false, methodCallK) :::

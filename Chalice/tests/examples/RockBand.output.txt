@@ -1,10 +1,4 @@
-Verification of RockBand.chalice 
+Verification of RockBand.chalice using parameters="-checkLeaks -defaults -autoFold" 
 
-  27.3: The postcondition at 29.13 might not hold. Insufficient fraction at 29.13 for RockBand.Valid.
-  41.10: Location might not be readable.
-  50.5: Location might not be writable
-  58.3: The postcondition at 60.13 might not hold. Insufficient fraction at 60.13 for Guitar.Valid.
-  77.3: The postcondition at 79.13 might not hold. Insufficient fraction at 79.13 for Vocalist.Valid.
-  96.3: The postcondition at 98.13 might not hold. Insufficient fraction at 98.13 for Organ.Valid.
 
-Boogie program verifier finished with 29 verified, 6 errors
+Boogie program verifier finished with 35 verified, 0 errors

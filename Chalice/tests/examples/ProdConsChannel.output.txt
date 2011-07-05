@@ -1,4 +1,4 @@
-Verification of ProdConsChannel.chalice 
+Verification of ProdConsChannel.chalice using parameters="" 
 
   47.3: Method body is not allowed to leave any debt.
   61.3: Method body is not allowed to leave any debt.
