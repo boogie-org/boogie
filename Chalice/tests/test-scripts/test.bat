@@ -5,9 +5,26 @@ set getparams="%~dp0\getparams.bat"
 
 if not exist "%1.chalice" goto errorNotFound
 
-set output=output.txt
+:: get parameters
 set chaliceparameters=
-call %getparams% %1 chaliceparameters
+setlocal EnableDelayedExpansion
+set done=0
+set key=a
+FOR /F "usebackq tokens=1,2 delims==" %%i in (%1.chalice) do (
+    
+    if !done!==0 (
+        set key=%%i
+        set param=%%j
+    )
+    
+    set done=1
+)
+set str=// chalice-parameter
+if "!key!"=="!str!" (
+    set chaliceparameters=!param!
+)
+
+set output=output.txt
 echo Verification of %1.chalice using parameters="%chaliceparameters%" > %output%
 echo.>> %output%
 call %chalice% "%1.chalice" %chaliceparameters% %2 %3 %4 %5 %6 %7 >> %output% 2>&1
