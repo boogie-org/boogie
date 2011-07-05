@@ -95,16 +95,18 @@ namespace BytecodeTranslator
     }
 
     public void GenerateDispatchContinuation() {
-      // Iterate over all labels in sink.cciLabels and generate dispatch based on sink.LabelVariable
-      this.StmtBuilder.AddLabelCmd("DispatchContinuation");
-      Bpl.IfCmd elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(true), TranslationHelper.BuildStmtList(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(false))), null, null);
-      Bpl.IdentifierExpr labelExpr = Bpl.Expr.Ident(this.sink.LabelVariable);
-      foreach (IName name in sink.cciLabels.Keys) {
-        Bpl.GotoCmd gotoCmd = new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(name.Value));
-        Bpl.Expr targetExpr = Bpl.Expr.Literal(sink.cciLabels[name]);
-        elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, labelExpr, targetExpr), TranslationHelper.BuildStmtList(gotoCmd), elseIfCmd, null);
+      foreach (ITryCatchFinallyStatement stmt in sink.tryCatchFinallyIdentifiers.Keys) {
+        // Iterate over all labels in sink.cciLabels and generate dispatch based on sink.LabelVariable
+        this.StmtBuilder.AddLabelCmd(sink.FindOrCreateDispatchContinuationLabel(stmt));
+        Bpl.IfCmd elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(true), TranslationHelper.BuildStmtList(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(false))), null, null);
+        Bpl.IdentifierExpr labelExpr = Bpl.Expr.Ident(this.sink.LabelVariable);
+        foreach (IName name in sink.cciLabels.Keys) {
+          Bpl.GotoCmd gotoCmd = new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(name.Value));
+          Bpl.Expr targetExpr = Bpl.Expr.Literal(sink.cciLabels[name]);
+          elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, labelExpr, targetExpr), TranslationHelper.BuildStmtList(gotoCmd), elseIfCmd, null);
+        }
+        this.StmtBuilder.Add(elseIfCmd);
       }
-      this.StmtBuilder.Add(elseIfCmd);
     }
     #endregion
 
@@ -227,7 +229,6 @@ namespace BytecodeTranslator
     /// <param name="expressionStatement"></param>
     /// <remarks> TODO: might be wrong for the general case</remarks>
     public override void Visit(IExpressionStatement expressionStatement) {
-
       ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
       etrav.Visit(expressionStatement.Expression);
     }
@@ -238,7 +239,12 @@ namespace BytecodeTranslator
     /// <remarks>(mschaef) Not Implemented</remarks>
     /// <param name="breakStatement"></param>
     public override void Visit(IBreakStatement breakStatement) {
-      StmtBuilder.Add(new Bpl.BreakCmd(breakStatement.Token(), "I dont know"));
+      throw new TranslationException("Break statements are not handled");
+      //StmtBuilder.Add(new Bpl.BreakCmd(breakStatement.Token(), "I dont know"));
+    }
+
+    public override void Visit(IContinueStatement continueStatement) {
+      throw new TranslationException("Continue statements are not handled");
     }
 
     /// <summary>
@@ -357,10 +363,16 @@ namespace BytecodeTranslator
     #region Looping Statements
 
     public override void Visit(IWhileDoStatement whileDoStatement) {
-      throw new NotImplementedException("While Statements are not implemented");
+      throw new TranslationException("WhileDo statements are not handled");
     }
 
+    public override void Visit(IForEachStatement forEachStatement) {
+      throw new TranslationException("ForEach statements are not handled");
+    }
 
+    public override void Visit(IForStatement forStatement) {
+      throw new TranslationException("For statements are not handled");
+    }
 
     #endregion
 
@@ -451,7 +463,7 @@ namespace BytecodeTranslator
         StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.FinallyStackCounterVariable), Bpl.Expr.Ident(savedFinallyStackCounterVariable)));
         nestedTryCatchFinallyStatements.RemoveAt(nestedTryCatchFinallyStatements.Count - 1);
       }
-      Bpl.GotoCmd dispatchCmd = new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq("DispatchContinuation"));
+      Bpl.GotoCmd dispatchCmd = new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(this.sink.FindOrCreateDispatchContinuationLabel(tryCatchFinallyStatement)));
       Bpl.GotoCmd continuationCmd = new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(this.sink.FindOrCreateContinuationLabel(tryCatchFinallyStatement)));
       Bpl.IfCmd ifCmd = new Bpl.IfCmd(
         Bpl.Token.NoToken,
