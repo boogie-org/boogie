@@ -144,6 +144,7 @@ namespace Microsoft.Boogie {
     public bool UseUncheckedContracts = false;
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
+    public string Z3ExecutablePath = null;
 
     private bool noConsistencyChecks = false;
     public bool NoConsistencyChecks {
@@ -1388,6 +1389,13 @@ namespace Microsoft.Boogie {
             }
             break;
 
+          case "-z3exe":
+          case "/z3exe":
+            if (ps.ConfirmArgumentCount(1)) {
+              Z3ExecutablePath = args[ps.i];
+            }
+            break;
+
           default:
             Contract.Assume(true);
             bool option = false;
@@ -2335,6 +2343,7 @@ namespace Microsoft.Boogie {
   /z3types       : generate multi-sorted VC that make use of Z3 types
   /z3lets:<n>    : 0 - no LETs, 1 - only LET TERM, 2 - only LET FORMULA,
                    3 - (default) any
+  /z3exe:<path>  : path to Z3 executable
 ");
     }
   }
