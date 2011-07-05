@@ -47,11 +47,6 @@ object Chalice {
     var boogieArgs = " ";
     var gen = false;
     var showFullStackTrace = false
-
-		println("----------------")
-		args foreach println
-		println("----------------")
-		// exit(0)
 		
     // closures should be idempotent
     val options = Map(
