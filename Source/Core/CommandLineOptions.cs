@@ -136,6 +136,7 @@ namespace Microsoft.Boogie {
     public bool NoTypecheck = false;
     public bool OverlookBoogieTypeErrors = false;
     public bool Verify = true;
+    public bool DisallowSoundnessCheating = false;
     public bool TraceVerify = false;
     public int /*(0:3)*/ ErrorTrace = 1;
     public bool IntraproceduralInfer = true;
@@ -716,6 +717,15 @@ namespace Microsoft.Boogie {
               if (ps.GetNumericArgument(ref compile, 3)) {
                 Compile = compile == 1 || compile == 2;
                 ForceCompile = compile == 2;
+              }
+              break;
+            }
+
+          case "-noCheating":
+          case "/noCheating": {
+              int cheat = 0; // 0 is default, allows cheating
+              if (ps.GetNumericArgument(ref cheat, 2)) {
+                DisallowSoundnessCheating = cheat == 1;
               }
               break;
             }
@@ -2101,6 +2111,8 @@ namespace Microsoft.Boogie {
                        program, compile Dafny program to C# program out.cs
                    2 - always attempt to compile Dafny program to C# program
                        out.cs, regardless of verification outcome
+  /noCheating:<n> : 0 (default) - allow assume statements and free invariants
+                    1 - treat all assumptions as asserts, and drop free.
 
   ---- Boogie options --------------------------------------------------------
 
