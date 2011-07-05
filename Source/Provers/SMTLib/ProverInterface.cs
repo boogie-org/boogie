@@ -346,8 +346,10 @@ namespace Microsoft.Boogie.SMTLib
             posLabels = Enumerable.Empty<string>();
           var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat(negLabels.Select(lbl)).ToArray();
           var expr = conjuncts.Length == 1 ? conjuncts[0] : ("(or " + conjuncts.Concat(" ") + ")");
-          SendThisVC("(assert " + expr + ")");
-          SendThisVC("(check-sat)");
+          if (errorsLeft > 0) {
+            SendThisVC("(assert " + expr + ")");
+            SendThisVC("(check-sat)");
+          }
         }
 
         SendThisVC("(pop 1)");
