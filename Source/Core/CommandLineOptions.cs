@@ -136,6 +136,7 @@ namespace Microsoft.Boogie {
     public bool NoTypecheck = false;
     public bool OverlookBoogieTypeErrors = false;
     public bool Verify = true;
+    public bool DisallowSoundnessCheating = false;
     public bool TraceVerify = false;
     public int /*(0:3)*/ ErrorTrace = 1;
     public bool IntraproceduralInfer = true;
@@ -143,6 +144,7 @@ namespace Microsoft.Boogie {
     public bool UseUncheckedContracts = false;
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
+    public string Z3ExecutablePath = null;
 
     private bool noConsistencyChecks = false;
     public bool NoConsistencyChecks {
@@ -159,6 +161,7 @@ namespace Microsoft.Boogie {
     public string DafnyPrelude = null;
     public string DafnyPrintFile = null;
     public bool Compile = true;
+    public bool ForceCompile = false;
 
     public enum ProverWarnings {
       None,
@@ -712,8 +715,18 @@ namespace Microsoft.Boogie {
           case "-compile":
           case "/compile": {
               int compile = 0;
-              if (ps.GetNumericArgument(ref compile, 2)) {
-                Compile = compile == 1;
+              if (ps.GetNumericArgument(ref compile, 3)) {
+                Compile = compile == 1 || compile == 2;
+                ForceCompile = compile == 2;
+              }
+              break;
+            }
+
+          case "-noCheating":
+          case "/noCheating": {
+              int cheat = 0; // 0 is default, allows cheating
+              if (ps.GetNumericArgument(ref cheat, 2)) {
+                DisallowSoundnessCheating = cheat == 1;
               }
               break;
             }
@@ -1373,6 +1386,13 @@ namespace Microsoft.Boogie {
                   }
                 }
               }
+            }
+            break;
+
+          case "-z3exe":
+          case "/z3exe":
+            if (ps.ConfirmArgumentCount(1)) {
+              Z3ExecutablePath = args[ps.i];
             }
             break;
 
@@ -2097,6 +2117,10 @@ namespace Microsoft.Boogie {
   /compile:<n>   : 0 - do not compile Dafny program
                    1 (default) - upon successful verification of the Dafny
                        program, compile Dafny program to C# program out.cs
+                   2 - always attempt to compile Dafny program to C# program
+                       out.cs, regardless of verification outcome
+  /noCheating:<n> : 0 (default) - allow assume statements and free invariants
+                    1 - treat all assumptions as asserts, and drop free.
 
   ---- Boogie options --------------------------------------------------------
 
@@ -2319,6 +2343,7 @@ namespace Microsoft.Boogie {
   /z3types       : generate multi-sorted VC that make use of Z3 types
   /z3lets:<n>    : 0 - no LETs, 1 - only LET TERM, 2 - only LET FORMULA,
                    3 - (default) any
+  /z3exe:<path>  : path to Z3 executable
 ");
     }
   }

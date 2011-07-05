@@ -1,0 +1,4 @@
+Verification of iterator2.chalice using parameters="" 
+
+
+Boogie program verifier finished with 21 verified, 0 errors

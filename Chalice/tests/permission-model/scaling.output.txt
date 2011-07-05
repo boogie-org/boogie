@@ -1,0 +1,11 @@
+Verification of scaling.chalice using parameters="" 
+
+  33.5: Assertion might not hold. Insufficient fraction at 33.12 for Cell.x.
+  36.3: The postcondition at 38.13 might not hold. Insufficient fraction at 38.13 for Cell.read1.
+  50.5: Assertion might not hold. Insufficient fraction at 50.12 for Cell.x.
+  53.3: The postcondition at 55.13 might not hold. Insufficient fraction at 55.13 for Cell.read1.
+  65.5: Assertion might not hold. Insufficient fraction at 65.12 for Cell.x.
+  74.5: Assertion might not hold. Insufficient fraction at 74.12 for Cell.x.
+  77.3: The postcondition at 79.13 might not hold. Insufficient fraction at 79.13 for Cell.read2.
+
+Boogie program verifier finished with 17 verified, 7 errors

@@ -1,0 +1,63 @@
+channel NumberStream(x: int) where 2 <= x ==> credit(this);
+
+class Sieve {
+  method Counter(n: NumberStream, to: int)  // sends the plurals along n
+    requires rd(n.mu) && credit(n,-1) && 0 <= to;
+  {
+    var i := 2;
+    while (i < to)
+      invariant rd(n.mu);
+      invariant 2 <= i;
+      invariant credit(n, -1)
+    {
+      send n(i);
+      i := i + 1;
+    }
+    send n(-1);
+  }
+
+  method Filter(prime: int, r: NumberStream, s: NumberStream)
+    requires 2 <= prime;
+    requires rd(r.mu) && waitlevel << r.mu;
+    requires rd(s.mu) && s.mu << r.mu && credit(r) && credit(s, -1);
+  {
+    receive x := r;
+    while (2 <= x)
+      invariant rd(r.mu) && rd(s.mu) && s << r && waitlevel << r.mu;
+      invariant 2<= x ==> credit(r);
+      invariant credit(s, -1);
+    {
+      if (x % prime != 0) {  // suppress multiples of prime
+        send s(x);
+      }
+      receive x := r;
+      
+    }
+    send s(-1);
+  }
+
+  method Start()
+  {
+    var ch := new NumberStream;
+    fork Counter(ch, 101);
+    var p: int;
+    receive p := ch;
+    while (2 <= p)
+      invariant ch != null;
+      invariant 2 <= p ==> credit(ch, 1);
+      invariant rd*(ch.mu) && waitlevel << ch.mu;
+    {
+      // print p--it's a prime!
+      var cp := new ChalicePrint;  call cp.Int(p);
+
+      var n := new NumberStream between waitlevel and ch;
+      fork Filter(p, ch, n);
+      ch := n;
+      receive p := ch;
+    }
+  }
+}
+
+external class ChalicePrint {
+  method Int(x: int) { }
+}

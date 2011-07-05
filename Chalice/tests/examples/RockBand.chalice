@@ -1,0 +1,112 @@
+// chalice-parameter=-checkLeaks -defaults -autoFold
+// verify this program with -checkLeaks -defaults -autoFold
+
+class Client {
+  method Main() {
+    var b := new RockBand
+    call b.Init()
+    call b.Play()
+    call b.Play()
+    call b.Dispose()
+  }
+}
+
+class RockBand module M {
+  var gigs: int
+  var gt: Guitar
+  var doowops: seq<Vocalist>
+  var b3: Organ
+  predicate Valid {
+    acc(gigs) && 0 <= gigs &&
+    acc(gt) && gt != null && gt.Valid &&
+    acc(gt.mu) &&  // to enable an eventual free
+    acc(doowops) && //forall d: Vocalist in doowops :: d != null && d.Valid} &&
+    acc(b3) && b3 != null && b3.Valid &&
+    acc(b3.mu)  // to enable an eventual free
+  }
+
+  method Init()
+    requires acc(this.*)
+    ensures Valid
+  {
+    gigs := 0
+    gt := new Guitar
+    call gt.Init()
+    b3 := new Organ
+    call b3.Init()
+  }
+
+  method Dispose()
+    requires Valid && acc(mu)
+  {
+    call gt.Dispose()
+    call b3.Dispose()
+    free this
+  }
+
+  method Play()
+    requires Valid
+    ensures Valid
+  {
+    gigs := gigs + 1
+    call gt.Strum()
+    call b3.Grind()
+  }
+}
+
+class Guitar module Musicians {
+  predicate Valid { true }
+  method Init()
+    requires acc(this.*)
+    ensures Valid
+  {
+  }
+  method Dispose()
+    requires Valid && acc(mu)
+  {
+    free this
+  }
+  method Strum()
+    requires Valid
+    ensures Valid
+  {
+  }
+}
+
+class Vocalist module Musicians {
+  predicate Valid { true }
+  method Init()
+    requires acc(this.*)
+    ensures Valid
+  {
+  }
+  method Dispose()
+    requires Valid && acc(mu)
+  {
+    free this
+  }
+  method Strum()
+    requires Valid
+    ensures Valid
+  {
+  }
+}
+
+class Organ module Musicians {
+  predicate Valid { true }
+  method Init()
+    requires acc(this.*)
+    ensures Valid
+  {
+  }
+  method Dispose()
+    requires Valid && acc(mu)
+  {
+    free this
+  }
+  method Grind()
+    requires Valid
+    ensures Valid
+  {
+  }
+}

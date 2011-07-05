@@ -1,0 +1,13 @@
+Verification of permarith_parser.chalice using parameters="" 
+
+The program did not typecheck.
+6.14: fraction in permission must be of type integer
+11.20: undeclared member n in class Cell
+16.26: permission not expected here.
+16.26: type $Permission is not supported inside a rd expression.
+21.20: rd expression is allowed only in positive predicate contexts
+21.14: expression of type bool invalid in permission
+26.20: type $Mu of variable mu is not supported inside a rd expression.
+27.23: type null is not supported inside a rd expression.
+28.23: type bool is not supported inside a rd expression.
+33.14: multiplication of permission amounts not supported

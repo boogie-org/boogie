@@ -1,0 +1,7 @@
+Verification of cell-defaults.chalice using parameters="-defaults -autoFold -autoMagic" 
+
+  97.5: The heap of the callee might not be strictly smaller than the heap of the caller.
+  103.5: The heap of the callee might not be strictly smaller than the heap of the caller.
+  132.5: Assertion might not hold. Insufficient fraction at 132.12 for Cell.valid.
+
+Boogie program verifier finished with 29 verified, 3 errors

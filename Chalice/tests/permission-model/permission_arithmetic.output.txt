@@ -1,0 +1,13 @@
+Verification of permission_arithmetic.chalice using parameters="" 
+
+  24.5: Assertion might not hold. The permission at 24.18 might not be positive.
+  40.5: The precondition at 33.14 might not hold. The permission at 33.20 might not be positive.
+  73.3: The postcondition at 75.13 might not hold. Insufficient fraction at 75.13 for Cell.x.
+  86.3: The postcondition at 88.13 might not hold. Insufficient epsilons at 88.22  for Cell.x.
+  103.20: Location might not be readable.
+  109.20: Location might not be readable.
+  145.5: Monitor invariant might not hold. Insufficient fraction at 6.13 for Cell.x.
+  162.3: The postcondition at 164.13 might not hold. The permission at 164.19 might not be positive.
+  174.3: The postcondition at 176.13 might not hold. Insufficient fraction at 176.13 for Cell.x.
+
+Boogie program verifier finished with 47 verified, 9 errors

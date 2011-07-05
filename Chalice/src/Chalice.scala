@@ -32,6 +32,11 @@ object Chalice {
   private[chalice] var skipDeadlockChecks = false: Boolean;
   private[chalice] var skipTermination = false: Boolean;
   private[chalice] var noFreeAssume = false: Boolean;
+  // percentageSupport 0: use multiplication directly
+  // percentageSupport 1: fix Permission$denominator as constant (possibly unsound for small values of the constant?)
+  // percentageSupport 2: use function and provide some (redundant) axioms
+  // percentageSupport 3: use an uninterpreted function and axiomatize the properties of multiplication
+  private[chalice] var percentageSupport = 2;
 
   def main(args: Array[String]): Unit = {
     var boogiePath = "C:\\boogie\\Binaries\\Boogie.exe"
@@ -41,7 +46,8 @@ object Chalice {
     var doTranslate = true
     var boogieArgs = " ";
     var gen = false;
-
+    var showFullStackTrace = false
+		
     // closures should be idempotent
     val options = Map(
      "-print" -> {() => printProgram = true},
@@ -55,7 +61,8 @@ object Chalice {
      "-gen" -> {() => gen = true},
      "-autoFold" -> {() => autoFold = true},
      "-autoMagic"-> {() => autoMagic = true},
-     "-noFreeAssume" -> {() => noFreeAssume = true}
+     "-noFreeAssume" -> {() => noFreeAssume = true},
+     "-showFullStackTrace" -> {() => showFullStackTrace = true}
     )
     lazy val help = options.keys.foldLeft("syntax: chalice")((s, o) => s + " [" + o + "]") +
     " [-boogie:path]" +
@@ -73,8 +80,28 @@ object Chalice {
          if (3<=defaults) { autoMagic = true; }
        } catch { case _ => CommandLineError("-defaults takes integer argument", help); }
      }
-     else if (a.startsWith("-") || a.startsWith("/")) boogieArgs += (a + " ") // other arguments starting with "-" or "/" are sent to Boogie.exe
+     else if (a.startsWith("-percentageSupport:")) {
+       try {
+         val in = Integer.parseInt(a.substring("-percentageSupport:".length));
+         if (in < 0 || in > 3) CommandLineError("-percentageSupport takes only values 0,1,2 or 3", help)
+         else percentageSupport = in
+       } catch { case _ => CommandLineError("-percentageSupport takes integer argument", help); }
+     }
+     else if (a.startsWith("-") || a.startsWith("/"))
+			boogieArgs += ('"' + a + '"' + " ")
+				// other arguments starting with "-" or "/" are sent to Boogie.exe
+				/* [MHS] Quote whole argument to not confuse Boogie with arguments that
+				 * contain spaces, e.g. if Chalice is invoked as
+				 *   chalice -z3exe:"C:\Program Files\z3\z3.exe" program.chalice
+				 */
      else inputs += a
+    }
+    
+    percentageSupport match {
+      case 0 => TranslatorPrelude.addComponent(PercentageStandardPL)
+      case 1 => TranslatorPrelude.addComponent(PercentageStandardPL, PercentageFixedDenominatorPL)
+      case 2 => TranslatorPrelude.addComponent(PercentageFunctionPL)
+      case 3 => TranslatorPrelude.addComponent(PercentageUninterpretedFunctionPL)
     }
 
     // check that input files exist
@@ -126,14 +153,34 @@ object Chalice {
          if (doTranslate) {
            // checking if Boogie.exe exists
            val boogieFile = new File(boogiePath);
-           if (System.getProperty("os.name").toLowerCase.indexOf("win") >= 0) {
-             if(! boogieFile.exists() || ! boogieFile.isFile()) {
-               CommandLineError("Boogie.exe not found at " + boogiePath, help); return
-             }
+           if(! boogieFile.exists() || ! boogieFile.isFile()) {
+             CommandLineError("Boogie.exe not found at " + boogiePath, help); return
            }
            // translate program to Boogie
            val translator = new Translator();
-           val bplProg = translator.translateProgram(program);
+           var bplProg: List[Boogie.Decl] = Nil
+           try {
+             bplProg = translator.translateProgram(program);
+           } catch {
+             case e:InternalErrorException => {
+               if (showFullStackTrace) {
+                 e.printStackTrace()
+                 Console.err.println()
+                 Console.err.println()
+               }
+               CommandLineError("Internal error: " + e.msg, help)
+               return
+             }
+             case e:NotSupportedException => {
+               if (showFullStackTrace) {
+                 e.printStackTrace()
+                 Console.err.println()
+                 Console.err.println()
+               }
+               CommandLineError("Not supported: " + e.msg, help)
+               return
+             }
+           }
            // write to out.bpl
            val bplText = TranslatorPrelude.P + (bplProg map Boogie.Print).foldLeft(""){ (a, b) => a + b };
            val bplFilename = if (vsMode) "c:\\tmp\\out.bpl" else "out.bpl"
@@ -146,7 +193,7 @@ object Chalice {
                try {
                  val kill = Runtime.getRuntime.exec("taskkill /T /F /IM Boogie.exe");
                  kill.waitFor;
-               } catch {case _ => }               
+               } catch {case _ => }
                // just to be sure
                boogie.destroy
              }
@@ -202,3 +249,6 @@ object Chalice {
     }
   }  
 }
+
+class InternalErrorException(val msg: String) extends Throwable
+class NotSupportedException(val msg: String) extends Throwable

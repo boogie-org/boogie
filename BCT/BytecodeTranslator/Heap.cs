@@ -29,6 +29,15 @@ namespace BytecodeTranslator {
   /// </summary>
   public class SplitFieldsHeap : Heap {
 
+    #region "Boxing" as done in the CLR
+    /// <summary>
+    /// Used to represent "boxing" as it is done in the CLR.
+    /// </summary>
+    [RepresentationFor("$BoxField", "var $BoxField: [Ref]Box;")]
+    private Bpl.GlobalVariable boxField = null;
+    public override Bpl.Variable BoxField { get { return boxField; } }
+    #endregion
+
     /// <summary>
     /// Prelude text for which access to the ASTs is not needed
     /// </summary>
@@ -103,10 +112,14 @@ namespace BytecodeTranslator {
     /// <param name="f">The field that is used to dereference the object <paramref name="o"/>.
     /// </param>
     public override Bpl.Expr ReadHeap(Bpl.Expr/*?*/ o, Bpl.Expr f, AccessType accessType, Bpl.Type unboxType) {
-      if (accessType == AccessType.Struct)
-        return Unbox(f.tok, unboxType, Bpl.Expr.Select(o, f));
-      else if (accessType == AccessType.Heap)
-        return Bpl.Expr.Select(f, o);
+      if (accessType == AccessType.Struct || accessType == AccessType.Heap) {
+        Bpl.IdentifierExpr field = f as Bpl.IdentifierExpr;
+        Debug.Assert(field != null);
+        if (field.Decl == this.BoxField)
+          return Unbox(f.tok, unboxType, Bpl.Expr.Select(field, o));
+        else
+          return Bpl.Expr.Select(field, o);
+      }
       else
         return Unbox(f.tok, unboxType, Bpl.Expr.Select(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f));
     }
@@ -117,12 +130,17 @@ namespace BytecodeTranslator {
     /// </summary>
     public override Bpl.Cmd WriteHeap(Bpl.IToken tok, Bpl.Expr/*?*/ o, Bpl.Expr f, Bpl.Expr value, AccessType accessType, Bpl.Type boxType) {
       Debug.Assert(o != null);
-      if (accessType == AccessType.Struct)
-        return Bpl.Cmd.MapAssign(tok, (Bpl.IdentifierExpr)o, f, Box(f.tok, boxType, value));
-      else if (accessType == AccessType.Heap)
-        return Bpl.Cmd.MapAssign(tok, (Bpl.IdentifierExpr)f, o, value);
-      else
+      if (accessType == AccessType.Struct || accessType == AccessType.Heap) {
+        Bpl.IdentifierExpr field = f as Bpl.IdentifierExpr;
+        Debug.Assert(field != null);
+        if (field.Decl == this.BoxField)
+          return Bpl.Cmd.MapAssign(tok, field, o, Box(tok, boxType, value));
+        else
+          return Bpl.Cmd.MapAssign(tok, field, o, value);
+      }
+      else {
         return TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(ArrayContentsVariable), Bpl.Expr.Store(Bpl.Expr.Ident(ArrayContentsVariable), o, Bpl.Expr.Store(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f, Box(f.tok, boxType, value))));
+      }
     }
 
   }
@@ -133,6 +151,15 @@ namespace BytecodeTranslator {
   /// how to exactly represent the heap is made in the Prelude.
   /// </summary>
   public class GeneralHeap : Heap {
+
+    #region "Boxing" as done in the CLR
+    /// <summary>
+    /// Used to represent "boxing" as it is done in the CLR.
+    /// </summary>
+    [RepresentationFor("$BoxField", "const unique $BoxField: Field;")]
+    private Bpl.Constant boxField = null;
+    public override Bpl.Variable BoxField { get { return boxField; } }
+    #endregion
 
     #region Fields
 

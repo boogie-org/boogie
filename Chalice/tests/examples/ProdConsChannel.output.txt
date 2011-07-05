@@ -1,0 +1,8 @@
+Verification of ProdConsChannel.chalice using parameters="" 
+
+  47.3: Method body is not allowed to leave any debt.
+  61.3: Method body is not allowed to leave any debt.
+  85.20: Location might not be readable.
+  123.7: Assertion might not hold. The expression at 123.14 might not evaluate to true.
+
+Boogie program verifier finished with 19 verified, 4 errors
