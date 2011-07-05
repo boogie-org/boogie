@@ -31,9 +31,9 @@ Commands (sorted by relevance):
   current directory.
 - getboogieoutput.bat: File used internally by generete_reference.bat.
 
+To provide additional parameters to Chalice when verifying the tests (e.g., to
+test the autoMagic feature, see tests/examples/RockBand-automagic.chalice), one
+can start the Chalice source file with the line
+  "// chalice-parameter=<list of space-separated parameters>"
 
-Note: There is also an alternative way to execute the tests in example, namely
-to use the script test.bat. The scripts in test-scripts allow more fine-grained
-testing, but they do not allow to use special parameters for certain tests
-(e.g. -autoMagic).
-For the refinement tests, there is a bash script test.sh, similar to test.bat.
+Note: For the refinement tests, there is a bash script test.sh.

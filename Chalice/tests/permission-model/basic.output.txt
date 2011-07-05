@@ -1,4 +1,4 @@
-Verification of basic.chalice 
+Verification of basic.chalice using parameters="" 
 
   28.3: The postcondition at 30.13 might not hold. Insufficient fraction at 30.13 for Cell.x.
   48.3: The postcondition at 50.13 might not hold. Insufficient fraction at 50.13 for Cell.x.

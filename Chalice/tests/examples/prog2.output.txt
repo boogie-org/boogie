@@ -1,4 +1,4 @@
-Verification of prog2.chalice 
+Verification of prog2.chalice using parameters="" 
 
   24.5: Assertion might not hold. The expression at 24.12 might not evaluate to true.
   31.13: Location might not be readable.

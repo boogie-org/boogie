@@ -1,4 +1,4 @@
-Verification of prog0.chalice 
+Verification of prog0.chalice using parameters="" 
 
 The program did not typecheck.
 3.17: undeclared member a in class C

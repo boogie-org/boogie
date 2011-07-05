@@ -1,17 +1,7 @@
-Verification of cell-defaults.chalice 
+Verification of cell-defaults.chalice using parameters="-defaults -autoFold -autoMagic" 
 
-  6.3: The postcondition at 8.13 might not hold. Insufficient fraction at 8.13 for Cell.valid.
-  17.5: Location might not be writable
-  24.5: Location might not be writable
-  31.5: The field x of the target of the free statement might not be writable.
-  38.5: Location might not be readable.
-  52.3: The postcondition at 55.13 might not hold. Insufficient fraction at 55.13 for Interval.valid.
-  71.10: Location might not be readable.
-  80.10: Location might not be readable.
-  89.10: Location might not be readable.
-  96.5: Location might not be readable.
-  102.5: Location might not be readable.
-  107.5: Location might not be readable.
-  131.5: Assertion might not hold. Insufficient fraction at 131.12 for Cell.valid.
+  97.5: The heap of the callee might not be strictly smaller than the heap of the caller.
+  103.5: The heap of the callee might not be strictly smaller than the heap of the caller.
+  132.5: Assertion might not hold. Insufficient fraction at 132.12 for Cell.valid.
 
-Boogie program verifier finished with 19 verified, 13 errors
+Boogie program verifier finished with 29 verified, 3 errors

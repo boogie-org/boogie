@@ -1,4 +1,4 @@
-Verification of prog1.chalice 
+Verification of prog1.chalice using parameters="" 
 
   9.10: Location might not be readable.
   25.5: Location might not be writable

@@ -1,4 +1,4 @@
-Verification of locks.chalice 
+Verification of locks.chalice using parameters="" 
 
   21.5: Assertion might not hold. Insufficient fraction at 21.12 for Cell.x.
   24.5: Assertion might not hold. Insufficient fraction at 24.12 for Cell.x.

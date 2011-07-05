@@ -1,5 +1,4 @@
 @echo off
-
 set getboogieoutput="%~dp0\getboogieoutput.bat"
 
 echo   Generating reference for %1.chalice ...

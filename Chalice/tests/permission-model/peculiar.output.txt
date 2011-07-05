@@ -1,4 +1,4 @@
-Verification of peculiar.chalice 
+Verification of peculiar.chalice using parameters="" 
 
   35.5: Assertion might not hold. Insufficient fraction at 35.12 for Cell.x.
 

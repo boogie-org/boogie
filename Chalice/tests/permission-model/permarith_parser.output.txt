@@ -1,4 +1,4 @@
-Verification of permarith_parser.chalice 
+Verification of permarith_parser.chalice using parameters="" 
 
 The program did not typecheck.
 6.14: fraction in permission must be of type integer
