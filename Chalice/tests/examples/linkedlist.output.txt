@@ -1,0 +1,5 @@
+Verification of linkedlist.chalice using parameters="" 
+
+  49.39: Precondition at 47.14 might not hold. The expression at 47.31 might not evaluate to true.
+
+Boogie program verifier finished with 9 verified, 1 error

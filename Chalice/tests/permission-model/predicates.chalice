@@ -1,0 +1,103 @@
+class Cell {
+  var x: int;
+  
+  // --- some predicates ---
+  
+  predicate write1 { acc(x) } // full permission in a predicate
+  predicate write2 { acc(x,10) } // 10%
+  predicate read1 { rd(x) } // fractional read permission
+  predicate read2 { rd*(x) } // starred fractional read permission
+  predicate read3 { rd(x,1) } // counting permission (1 epsilon)
+  
+  // --- basic tests ---
+  
+  method b1()
+    requires write1 && write2 && read1 && read2 && read3;
+    ensures write1 && write2 && read1 && read2 && read3;
+  {
+  }
+  
+  method b2()
+    requires write1;
+    ensures read1;
+  {
+    unfold write1;
+    fold read1;
+  }
+  
+  method b3()
+    requires read1;
+    ensures read3;
+  {
+    unfold read1;
+    fold read3;
+    fold read2;
+    fold read3;
+    fold read2;
+    fold write1; // ERROR: should fail
+  }
+  
+  method b4()
+    requires read2;
+    ensures read2;
+  {
+    unfold read2;
+    call dispose();
+    fold read2;
+  }
+  
+  method b5()
+    requires read1;
+    ensures read1;
+  {
+    unfold read1;
+    call dispose();
+    fold read1; // ERROR: should fail
+  }
+  
+  method b6()
+    requires acc(x);
+    ensures acc(x);
+  {
+    fold read1;
+    unfold read1;
+  }
+  
+  method b7() // ERROR: precondition does not hold
+    requires acc(x);
+    ensures acc(x);
+  {
+    fold read2;
+    unfold read2;
+  }
+  
+  method b8()
+    requires acc(x);
+    ensures acc(x);
+  {
+    fold read3;
+    unfold read3;
+  }
+  
+  method b9()
+    requires acc(x);
+    ensures acc(x);
+  {
+    fold write1;
+    unfold write1;
+  }
+  
+  method b10()
+    requires acc(x);
+    ensures acc(x);
+  {
+    fold write2;
+    unfold write2;
+  }
+  
+  // --- helper functions ---
+  
+  method void() requires rd(x); ensures rd(x); {}
+  method dispose() requires rd(x); {}
+  
+}

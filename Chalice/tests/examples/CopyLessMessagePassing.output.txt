@@ -1,0 +1,4 @@
+Verification of CopyLessMessagePassing.chalice using parameters="" 
+
+
+Boogie program verifier finished with 11 verified, 0 errors

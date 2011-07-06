@@ -813,6 +813,9 @@ namespace Microsoft.Boogie {
     // VC generation and SCC computation
     public BlockSeq/*!*/ Predecessors;
 
+    // This field is used during passification to null-out entries in block2Incartion hashtable early
+    public int succCount;
+
     public HashSet<Variable/*!*/> liveVarsBefore;
     [ContractInvariantMethod]
     void ObjectInvariant() {

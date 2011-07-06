@@ -1,0 +1,10 @@
+Verification of counter.chalice using parameters="" 
+
+  69.5: Monitor invariant might hot hold. The expression at 4.27 might not evaluate to true.
+  80.5: Assertion might not hold. The expression at 80.12 might not evaluate to true.
+  119.5: The target of the release statement might not be locked by the current thread.
+  128.7: The mu field of the target of the acquire statement might not be above waitlevel.
+  136.7: The mu field of the target of the acquire statement might not be above waitlevel.
+  145.5: The target of the release statement might not be locked by the current thread.
+
+Boogie program verifier finished with 24 verified, 6 errors

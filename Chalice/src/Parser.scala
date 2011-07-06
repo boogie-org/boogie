@@ -5,6 +5,8 @@
 //-----------------------------------------------------------------------------
 package chalice;
 import scala.util.parsing.combinator.syntactical.StandardTokenParsers
+import scala.util.parsing.combinator.lexical.StdLexical
+import scala.util.parsing.combinator._
 import scala.util.parsing.input.PagedSeqReader
 import scala.collection.immutable.PagedSeq
 import scala.util.parsing.input.Position
@@ -18,7 +20,13 @@ class Parser extends StandardTokenParsers {
   def parseFile(file: File) = phrase(programUnit)(new lexical.Scanner(new PagedSeqReader(PagedSeq fromFile file)))
  
   case class PositionedString(v: String) extends Positional
-
+  
+  // handle comments already in lexer
+  override val lexical = new StdLexical {
+    def rp: RegexParsers = new RegexParsers {}
+    override val whitespace: Parser[Any] = rp.regex("""(\s|//.*|(?m)/\*(\*(?!/)|[^*])*\*/)*""".r).asInstanceOf[Parser[Any]]
+  }
+  
   lexical.reserved += ("class", "ghost", "var", "const", "method", "channel", "condition",
                        "assert", "assume", "new", "this", "reorder",
                        "between", "and", "above", "below", "share", "unshare", "acquire", "release", "downgrade",
@@ -45,6 +53,7 @@ class Parser extends StandardTokenParsers {
   def Semi = ";" ?
   var currentLocalVariables = Set[String]() // used in the method context
   var assumeAllLocals = false;
+  var insidePermission = false;
 
   /**
    * Top level declarations
@@ -273,8 +282,8 @@ class Parser extends StandardTokenParsers {
                          case Some(NewRhs(tid, _, _, _)) => Type(tid, Nil)
                          case Some(BoolLiteral(b)) => Type("bool", Nil)
                          case Some(x:BinaryExpr) if x.ResultType != null => new Type(x.ResultType);
-			 case Some(x:Contains) => Type("bool", Nil)
-			 case Some(x:Quantification) => Type("bool", Nil)
+                         case Some(x:Contains) => Type("bool", Nil)
+                         case Some(x:Quantification) => Type("bool", Nil)
                          case _ => Type("int", Nil)
                        }
                    }, ghost, const)
@@ -485,14 +494,34 @@ class Parser extends StandardTokenParsers {
           r.pos = id.pos; r
         }
     | "rd" ~> "(" ~>
-      ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result})) ~ rdPermArg <~ ")"
-      | selectExprFerSureX ~ rdPermArg <~ ")"
-      ) ^^ {
-        case MemberAccess(obj, "*") ~ p => AccessAll(obj, p);
-        case MemberAccess(obj, "[*].*") ~ p => AccessSeq(obj, None, p);
-        case MemberAccess(MemberAccess(obj, "[*]"), f) ~ p => AccessSeq(obj, Some(MemberAccess(At(obj, IntLiteral(0)), f)), p);
-        case e ~ p => Access(e, p)
+      ( // note: depending on the context where rd occurs, we parse it wrongly (e.g. acc(x,rd(n)) is parsed to
+        // Access(MemberAccess(ImplicitThisExpr(),x),Frac(Access(MemberAccess(ImplicitThisExpr(),n),Epsilon))) ).
+        // This might seem completely wrong (and it is), but we correct this later, see the comment before
+        // method ResolvePermissionExpr in the resolver.
+        (( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result})) ~ rdPermArg <~ ")"
+        | selectExprFerSureX ~ rdPermArg <~ ")"
+        ) ^^ {
+          case MemberAccess(obj, "*") ~ p => AccessAll(obj, p);
+          case MemberAccess(obj, "[*].*") ~ p => AccessSeq(obj, None, p);
+          case MemberAccess(MemberAccess(obj, "[*]"), f) ~ p => AccessSeq(obj, Some(MemberAccess(At(obj, IntLiteral(0)), f)), p);
+          case e ~ p => Access(e, p)
+        })
+      | expression <~ ")" ^^ {
+        case e => val eps = Epsilons(e); eps.pos = e.pos; eps
       }
+      | "*" ~> ")" ~ err("This syntax is not supported any longer. For the starred read permission, use rd*(o.f).") ^^^ Star
+      )
+    | "rd" ~> "*" ~> "(" ~>
+      (
+        (( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result})) <~ ")"
+        | selectExprFerSureX <~ ")"
+        ) ^^ {
+          case MemberAccess(obj, "*") => AccessAll(obj, Star);
+          case MemberAccess(obj, "[*].*") => AccessSeq(obj, None, Star);
+          case MemberAccess(MemberAccess(obj, "[*]"), f) => AccessSeq(obj, Some(MemberAccess(At(obj, IntLiteral(0)), f)), Star);
+          case e => Access(e, Star)
+        })
+      )
     | "acc" ~> "(" ~>
       ( (Ident ^^ (e => { val result = MemberAccess(ImplicitThisExpr(),e.v); result.pos = e.pos; result} )) ~ accPermArg <~ ")"
       | selectExprFerSureX ~ accPermArg <~ ")"
@@ -506,6 +535,7 @@ class Parser extends StandardTokenParsers {
         case ch ~ n => Credit(ch, n) }
     | "holds" ~> "(" ~> expression <~ ")" ^^ Holds
     | "rd" ~> "holds" ~> "(" ~> expression <~ ")" ^^ RdHolds
+    | "rd" ^^ (_ => MethodEpsilon)
     | "assigned" ~> "(" ~> ident <~ ")" ^^ Assigned
     | "old" ~> "(" ~> expression <~ ")" ^^ Old
     | ("unfolding" ~> suffixExpr <~ "in") ~ expression ^? { 
@@ -538,7 +568,7 @@ class Parser extends StandardTokenParsers {
     ((":" ~> typeDecl <~ "::") ~ (exprWithLocals(is))) ^^
       { case t ~ e =>
         currentLocalVariables = currentLocalVariables -- is;
-        TypeQuantification(q, is, t, e);
+        new TypeQuantification(q, is, t, e);
       }
   def quant: Parser[Quant] =
     ( "forall" ^^^ Forall | "exists" ^^^ Exists)
@@ -557,12 +587,12 @@ class Parser extends StandardTokenParsers {
           case MemberAccess(obj,id) ~ args => CallState(e, obj, id, args) }
       )}
 
-  def rdPermArg : Parser[Read] =
-      opt( "," ~> "*" ^^^ Star
-      | "," ~> expression ^^ { case e => Epsilons(e) }) ^^ { case None => Epsilon; case Some(p) => p}
+  def rdPermArg : Parser[Permission] =
+      opt( "," ~> "*" ~ err("This syntax is not supported any longer. For the starred read permission, use rd*(o.f).") ^^^ Star
+      | "," ~> expression ^^ { case e => val eps = Epsilons(e); eps.pos = e.pos; eps }) ^^ { case None => Epsilon; case Some(p) => p}
 
   def accPermArg : Parser[Write] =
-      opt( "," ~> expression ^^ { case e => Frac(e) }) ^^ { case None => Full; case Some(p) => p}
+      opt( "," ~> expression ^^ { case e => val f: Frac = Frac(e); f.pos = e.pos; f }) ^^ { case None => Full; case Some(p) => p}
 
   /**
    * Transforms

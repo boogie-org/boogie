@@ -1,0 +1,246 @@
+// 4 errors expected
+
+class Main {
+  method A() {
+    var d := new Data;
+    call d.Init();
+    share d;
+
+    var t0: T := new T;  t0.d := d;
+    share t0 between waitlevel and d
+    var t1: T := new T;  t1.d := d;
+    share t1 between waitlevel and d
+    
+    var t0Token: token<T.run>;
+    fork t0Token := t0.run();
+    var t1Token: token<T.run>;
+    fork t1Token := t1.run();
+
+    join t0Token;  acquire t0; unshare t0;
+    join t1Token;  acquire t1; unshare t1;
+
+    acquire d;  unshare d;
+    assert 0 <= d.x && d.x < 100;
+  }
+
+  method B() returns (r: U)
+    lockchange r;
+  {
+    var u := new U;
+    share u;
+
+    var uToken: token<U.run>;
+    fork uToken := u.run();
+
+    acquire u;  // a little unusual to acquire after a fork, but allowed
+    assert waitlevel == u.mu;
+
+    var v := new U;
+    share v;  acquire v;  // this line has the effect of increasing waitlevel
+
+    assert waitlevel == v.mu;
+    assert waitlevel != u.mu;
+    assert u << v;
+    assert u << waitlevel;
+
+    join uToken;  // material for the smoke check
+    release u;
+    r := v;
+  }
+  
+  method C()
+    ensures waitlevel == old(waitlevel);
+  {
+    var u := new U;
+    share u;
+    acquire u;
+    release u;
+  }
+
+  method Mx0()
+  {
+  }
+  method Mx1()
+    lockchange this
+  {
+  }
+  method MxCaller0()
+    ensures waitlevel == old(waitlevel);
+  {
+  }
+  method MxCaller1()
+    ensures waitlevel == old(waitlevel);
+  {
+    call Mx0();
+  }
+  method MxCaller2()
+    ensures waitlevel == old(waitlevel); // error
+  {
+    call Mx1();
+  }  // error: missing lockchange
+
+  method D(u: U)
+    requires u != null && rd(u.mu) && waitlevel << u;
+    ensures waitlevel == old(waitlevel);
+  {
+    acquire u;
+    release u;
+  }
+}
+
+class Data {
+  var x: int;
+  invariant acc(x) && 0 <= x && x < 100;
+  method Init()
+    requires acc(x);
+    ensures acc(x) && x == 0;
+  {
+    x := 0;
+  }
+}
+
+class T {
+  var d: Data;
+  invariant rd(d) && d != null && rd(d.mu) && rd(this.mu) && this << d;
+  method run()
+    requires rd(mu) && waitlevel << this;
+    ensures rd(mu);
+  {
+    acquire this;
+    acquire d;
+    d.x := d.x + 1;
+    if (d.x == 100) { d.x := 0; }
+    release d;
+    release this;
+  }
+}
+
+class U {
+  method run()
+    requires rd(mu) && waitlevel << this;
+    ensures rd(mu);
+  {
+  }
+}
+
+// Tests that use OLD in postcondition of run:
+
+class X {
+  var k: int
+  var l: int
+
+  method inc()
+    requires acc(k)
+    ensures acc(k) && k == old(k) + 1
+  {
+    k := k + 1
+  }
+  method Client0() returns (y: int)
+    ensures y == 8
+  {
+    var x := new X
+    x.k := 17  x.l := 10
+    call x.inc()
+    assert x.k == 18 && x.l == 10
+    y := x.k - x.l
+  }
+
+  method run()
+    requires acc(k) && 0 <= k
+    ensures acc(k) && k == old(k) + 1
+  {
+    k := k + 1
+  }
+
+  method Client1() returns (y: int)
+    ensures y == 8
+  {
+    var x := new X
+    x.k := 17
+    x.l := 20
+    var xToken: token<X.run>;
+    fork xToken := x.run();
+    x.l := 10
+    join xToken
+    assert x.k == 18 && x.l == 10
+    y := x.k - x.l
+  }
+  method Client2(tk: token<X.run>, x: X) returns (z: int)
+    requires x!=null && tk!=null && acc(tk.joinable) && tk.joinable && eval(tk.fork x.run(), acc(x.k) && 0<=x.k); 
+    ensures 1 <= z
+  {
+    join tk
+    z := x.k
+    assert 1<=x.k;
+  }
+}
+
+class ReadSharing {
+  var x: int
+
+  method Consume()
+    requires rd(x,1)
+  {
+    // skip
+  }
+
+  method Divulge()  // bad
+    requires rd(x,1)
+  {
+    call Consume()
+    call Consume()  // error: cannot share twice (1773)
+  }
+
+  method Communicates()  // good
+    requires rd(x,3)
+    ensures rd(x,1)
+  {
+    call Consume()
+    call Consume()
+  }
+
+  method Gossips()  // bad
+    requires rd(x,3)
+    ensures rd(x,1)
+  {
+    call Consume()
+    call Consume()
+    call Consume()
+  }  // error: does not live up to postcondition (2015)
+
+  method Shares()  // good
+    requires rd*(x)
+    ensures rd*(x)
+  {
+    call Consume()
+    call Consume()
+    call Consume()
+  }
+
+  method TeamPlayer(N: int)  // good
+    requires 0<N && rd(x,N)
+  {
+    var n := N
+    while (1 < n)
+      invariant 0<n && rd(x,n)
+    {
+      n := n - 1
+    }
+  }
+
+  method Unselfish(N: int)  // good
+    requires rd*(x)
+    ensures rd*(x)
+  {
+    var n := N
+    if (N == 173) {
+      call Unselfish(200)
+    }
+    while (0 < n)
+      invariant rd*(x)
+    {
+      call Consume()
+      n := n - 1
+    }
+  }
+}

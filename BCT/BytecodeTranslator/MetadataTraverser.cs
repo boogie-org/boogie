@@ -104,7 +104,7 @@ namespace BytecodeTranslator {
       var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typeDefinition);
 
       this.sink.BeginMethod(typeDefinition);
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null, null);
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -207,7 +207,7 @@ namespace BytecodeTranslator {
 
       this.sink.BeginMethod(typeDefinition);
 
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null, null);
+      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -280,9 +280,7 @@ namespace BytecodeTranslator {
       var formalMap = procInfo.FormalMap;
 
       try {
-        MostNestedTryStatementTraverser tryStatementTraverser = new MostNestedTryStatementTraverser();
-        tryStatementTraverser.Visit(method.Body);
-        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false, null, null);
+        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
 
         #region Add assignments from In-Params to local-Params
 
@@ -293,13 +291,6 @@ namespace BytecodeTranslator {
               new Bpl.IdentifierExpr(tok, mparam.outParameterCopy),
               new Bpl.IdentifierExpr(tok, mparam.inParameterCopy)));
           }
-        }
-
-        if (!method.IsStatic && method.ContainingType.ResolvedType.IsStruct) {
-          Bpl.IToken tok = method.Token();
-          stmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
-            Bpl.Expr.Ident(this.sink.ThisVariable),
-            new Bpl.IdentifierExpr(tok, proc.InParams[0])));
         }
 
         #endregion
@@ -326,20 +317,26 @@ namespace BytecodeTranslator {
               var mdc = c as IMetadataConstant;
               if (mdc != null) {
                 object o;
-                switch (mdc.Type.TypeCode) {
-                  case PrimitiveTypeCode.Boolean:
-                    o = (bool)mdc.Value ? Bpl.Expr.True : Bpl.Expr.False;
-                    break;
-                  case PrimitiveTypeCode.Int32:
-                    var lit = Bpl.Expr.Literal((int)mdc.Value);
-                    lit.Type = Bpl.Type.Int;
-                    o = lit;
-                    break;
-                  case PrimitiveTypeCode.String:
-                    o = mdc.Value;
-                    break;
-                  default:
-                    throw new InvalidCastException("Invalid metadata constant type");
+                if (mdc.Type.IsEnum) {
+                  var lit = Bpl.Expr.Literal((int) mdc.Value);
+                  lit.Type = Bpl.Type.Int;
+                  o = lit;
+                } else {
+                  switch (mdc.Type.TypeCode) {
+                    case PrimitiveTypeCode.Boolean:
+                      o = (bool) mdc.Value ? Bpl.Expr.True : Bpl.Expr.False;
+                      break;
+                    case PrimitiveTypeCode.Int32:
+                      var lit = Bpl.Expr.Literal((int) mdc.Value);
+                      lit.Type = Bpl.Type.Int;
+                      o = lit;
+                      break;
+                    case PrimitiveTypeCode.String:
+                      o = mdc.Value;
+                      break;
+                    default:
+                      throw new InvalidCastException("Invalid metadata constant type");
+                  }
                 }
                 args[argIndex++] = o;
               }
@@ -359,13 +356,12 @@ namespace BytecodeTranslator {
           this.privateTypes.AddRange(helperTypes);
         }
         //method.Body.Dispatch(stmtTraverser);
+        stmtTraverser.StmtBuilder.Add(new Bpl.ReturnCmd(Bpl.Token.NoToken));
+        stmtTraverser.GenerateDispatchContinuation();
         #endregion
 
         #region Create Local Vars For Implementation
         List<Bpl.Variable> vars = new List<Bpl.Variable>();
-        if (!method.IsStatic && method.ContainingType.ResolvedType.IsStruct) {
-          vars.Add(this.sink.ThisVariable);
-        }
         foreach (MethodParameter mparam in formalMap.Values) {
           if (!mparam.underlyingParameter.IsByReference)
             vars.Add(mparam.outParameterCopy);
@@ -374,6 +370,8 @@ namespace BytecodeTranslator {
           vars.Add(v);
         }
         vars.Add(procInfo.LocalExcVariable);
+        vars.Add(procInfo.FinallyStackVariable);
+        vars.Add(procInfo.LabelVariable);
         Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
         #endregion
 

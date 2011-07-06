@@ -113,7 +113,7 @@ The generic options may or may not be used by the prover plugin.
         if (opt.Length == name.Length) {
           field = "";
           return true;
-        } else if (opt[name.Length] == '=') {
+        } else if (opt[name.Length] == '=' || opt[name.Length] == ':') {
           field = opt.Substring(name.Length + 1);
           return true;
         }

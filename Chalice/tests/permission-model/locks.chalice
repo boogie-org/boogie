@@ -1,0 +1,146 @@
+class Cell {
+  var x: int;
+  
+  // use starred read permission
+  invariant rd*(x);
+  
+  method a1(c: Cell)
+    requires c != null && rd(c.mu) && waitlevel << c;
+  {
+    acquire c;
+    assert(rd*(c.x));
+    
+    release c;
+    assert(rd*(c.x));
+  }
+  
+  method a2(c: Cell)
+    requires c != null && rd(c.mu) && waitlevel << c;
+  {
+    acquire c;
+    assert(rd(c.x)); // ERROR: should fail
+    
+    release c;
+    assert(rd(c.x)); // ERROR: should fail
+  }
+  
+  method a3()
+  {
+    var c: Cell := new Cell;
+    
+    share c;
+    assert(rd*(c.x));
+    
+    acquire c;
+    unshare c;
+    assert(rd*(c.x));
+  }
+  
+  method a4()
+  {
+    var c: Cell := new Cell;
+    
+    share c;
+    assert(rd(c.x)); // ERROR: should fail
+  }
+  
+  method a5()
+  {
+    var c: Cell := new Cell;
+    
+    share c;
+    acquire c;
+    unshare c;
+    assert(rd(c.x)); // ERROR: should fail
+  }
+  
+}
+
+
+class Cell2 {
+  var x: int;
+  
+  // use normal fractional permission
+  invariant rd(x);
+  
+  method a1(c: Cell2)
+    requires c != null && rd(c.mu) && waitlevel << c;
+  {
+    acquire c;
+    assert(rd*(c.x));
+    
+    release c;
+    assert(rd*(c.x)); // ERROR: we gave away all permission
+  }
+  
+  method a2(c: Cell2)
+    requires c != null && rd(c.mu) && waitlevel << c;
+  {
+    acquire c;
+    assert(rd(c.x)); // ERROR: should fail
+    
+    release c;
+    assert(rd(c.x)); // ERROR: should fail
+  }
+  
+  method a3()
+  {
+    var c: Cell2 := new Cell2;
+    
+    share c;
+    assert(rd*(c.x));
+    
+    call void(c);
+    assert(rd*(c.x));
+    
+    call dispose(c);
+    assert(rd*(c.x));
+    
+    acquire c;
+    unshare c;
+    assert(rd*(c.x));
+    
+    assert(acc(c.x)); // ERROR: should fail
+  }
+  
+  method a4(c: Cell2)
+    requires c != null && acc(c.mu) && holds(c);
+    requires rd(c.x);
+    lockchange c
+  {
+    release c; // ERROR: should fail, we don't have enough permission
+  }
+  
+  method a5()
+  {
+    var c: Cell2 := new Cell2;
+    
+    share c;
+    acquire c;
+    assert(acc(c.x));
+    
+    unshare c;
+    assert(acc(c.x));
+  }
+  
+  method a6(c: Cell2)
+    requires acc(c.x,rd(c)) && acc(c.mu) && c.mu == lockbottom
+  {
+    var n: int;
+    
+    share c;
+    rd acquire c;
+    n := c.x
+    rd release c;
+    
+    n := c.x // ERROR: no read access possible
+    
+    acquire c;
+    unshare c;
+  }
+  
+  method void(c: Cell2) requires rd(c.x); ensures rd(c.x); {}
+  
+  method dispose(c: Cell2) requires rd(c.x); {}
+  
+}

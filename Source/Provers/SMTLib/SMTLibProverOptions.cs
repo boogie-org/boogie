@@ -34,6 +34,7 @@ namespace Microsoft.Boogie.SMTLib
     public List<OptionValue> SmtOptions = new List<OptionValue>();
     public List<string> SolverArguments = new List<string>();
     public bool MultiTraces = false;
+    public string Logic = "";
 
     // Z3 specific (at the moment; some of them make sense also for other provers)
     public bool UseZ3 = true;
@@ -92,6 +93,7 @@ namespace Microsoft.Boogie.SMTLib
         ParseBool(opt, "USE_Z3", ref UseZ3) ||
         ParseString(opt, "INSPECTOR", ref Inspector) ||
         ParseBool(opt, "OPTIMIZE_FOR_BV", ref OptimizeForBv) ||
+        ParseString(opt, "LOGIC", ref Logic) ||
         base.Parse(opt);
     }
 
@@ -114,6 +116,7 @@ USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (defau
 VERBOSITY=<int>           1 - print prover output (default: 0)
 O:<name>=<value>          Pass (set-option :<name> <value>) to the SMT solver.
 C:<string>                Pass <string> to the SMT on the command line. 
+LOGIC=<string>            Pass (set-logic <string>) to the prover (default: empty)
 
 Z3-specific options:
 ~~~~~~~~~~~~~~~~~~~~

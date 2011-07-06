@@ -1,3 +1,4 @@
+type ref;
 const A100INT4_name:int;
 
 function Match(a:int, t:int) returns (int);

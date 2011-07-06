@@ -65,93 +65,107 @@ namespace Microsoft.Boogie.Z3
             }
         }
 
-        private Dictionary<MapType, Z3Type> mapTypes = new Dictionary<MapType, Z3Type>(new MapTypeComparator());
-        private Dictionary<BvType, Z3Type> bvTypes = new Dictionary<BvType, Z3Type>(new BvTypeComparator());
-        private Dictionary<BasicType, Z3Type> basicTypes = new Dictionary<BasicType, Z3Type>(new BasicTypeComparator());
-        private Z3Context container;
+        private class CtorTypeComparator : IEqualityComparer<CtorType> {
+          public bool Equals(CtorType x, CtorType y) {
+            return (x.Decl.Name == y.Decl.Name);
+          }
 
-        public Z3TypeCachedBuilder(Z3Context context)
+          public int GetHashCode(CtorType ctorType) {
+            return ctorType.Decl.Name.GetHashCode();
+          }
+        }
+
+        private Dictionary<MapType, Sort> mapTypes = new Dictionary<MapType, Sort>(new MapTypeComparator());
+        private Dictionary<BvType, Sort> bvTypes = new Dictionary<BvType, Sort>(new BvTypeComparator());
+        private Dictionary<BasicType, Sort> basicTypes = new Dictionary<BasicType, Sort>(new BasicTypeComparator());
+        private Dictionary<CtorType, Sort> ctorTypes = new Dictionary<CtorType, Sort>(new CtorTypeComparator());
+
+        private Z3apiProverContext container;
+
+        public Z3TypeCachedBuilder(Z3apiProverContext context)
         {
             this.container = context;
         }
 
-        private Z3Type GetMapType(MapType mapType)
-        {
-            Context z3 = ((Z3SafeContext)container).z3;
-            if (!mapTypes.ContainsKey(mapType))
-            {
-                Debug.Assert(mapType.Arguments.Length == 1, "Z3api only supports maps of arity 1");
-                Z3Type domain = GetType(mapType.Arguments[0]);
-                Z3Type range = GetType(mapType.Result);
-                Z3Type typeAst = BuildMapType(domain, range);
-                mapTypes.Add(mapType, typeAst);
+        private Sort GetMapType(MapType mapType) {
+          Context z3 = ((Z3apiProverContext)container).z3;
+          if (!mapTypes.ContainsKey(mapType)) {
+            Type result = mapType.Result;
+            for (int i = mapType.Arguments.Length-1; i > 0; i--) {
+              GetType(result);
+              result = new MapType(mapType.tok, new TypeVariableSeq(), new TypeSeq(mapType.Arguments[i]), result);
             }
-            Z3Type result;
-            bool containsKey = mapTypes.TryGetValue(mapType, out result);
-            Debug.Assert(containsKey);
-            return result;
+            mapTypes.Add(mapType, BuildMapType(GetType(mapType.Arguments[0]), GetType(result)));
+          }
+          return mapTypes[mapType];
         }
 
-        private Z3Type GetBvType(BvType bvType)
+        private Sort GetBvType(BvType bvType)
         {
             if (!bvTypes.ContainsKey(bvType))
             {
-                Z3Type typeAst = BuildBvType(bvType);
+                Sort typeAst = BuildBvType(bvType);
                 bvTypes.Add(bvType, typeAst);
             }
-            Z3Type result;
+            Sort result;
             bool containsKey = bvTypes.TryGetValue(bvType, out result);
             Debug.Assert(containsKey);
             return result;
         }
 
-        private Z3Type GetBasicType(BasicType basicType)
+        private Sort GetBasicType(BasicType basicType)
         {
             if (!basicTypes.ContainsKey(basicType))
             {
-                Z3Type typeAst = BuildBasicType(basicType);
+                Sort typeAst = BuildBasicType(basicType);
                 basicTypes.Add(basicType, typeAst);
             }
-            Z3Type result;
+            Sort result;
             bool containsKey = basicTypes.TryGetValue(basicType, out result);
             Debug.Assert(containsKey);
             return result;
         }
 
-        public virtual Z3Type GetType(Type boogieType)
-        {
-            if (boogieType.GetType().Equals(typeof(BvType)))
-                return GetBvType((BvType)boogieType);
-            else if (boogieType.GetType().Equals(typeof(BasicType)))
-                return GetBasicType((BasicType)boogieType);
-            else if (boogieType.GetType().Equals(typeof(MapType)))
-                return GetMapType((MapType)boogieType);
-            else
-                throw new Exception("Boogie Type " + boogieType.GetType() + " is unknown");
+        private Sort GetCtorType(CtorType ctorType) {
+          if (!ctorTypes.ContainsKey(ctorType)) {
+            Sort typeAst = BuildCtorType(ctorType);
+            ctorTypes.Add(ctorType, typeAst);
+          }
+          Sort result;
+          bool containsKey = ctorTypes.TryGetValue(ctorType, out result);
+          Debug.Assert(containsKey);
+          return result;
         }
 
-        private Z3Type WrapType(Sort typeAst)
-        {
-            return new Z3SafeType(typeAst);
+        public virtual Sort GetType(Type boogieType) {
+          System.Type type = boogieType.GetType();
+          if (type.Equals(typeof(BvType)))
+            return GetBvType((BvType)boogieType);
+          else if (type.Equals(typeof(BasicType)))
+            return GetBasicType((BasicType)boogieType);
+          else if (type.Equals(typeof(MapType)))
+            return GetMapType((MapType)boogieType);
+          else if (type.Equals(typeof(CtorType)))
+            return GetCtorType((CtorType)boogieType);
+          else
+            throw new Exception("Boogie Type " + boogieType.GetType() + " is unknown");
         }
 
-        public Z3Type BuildMapType(Z3Type domain, Z3Type range)
+        public Sort BuildMapType(Sort domain, Sort range)
         {
-            Context z3 = ((Z3SafeContext)container).z3;
-            Sort typeAst = z3.MkArraySort(((Z3SafeType)domain).TypeAst, ((Z3SafeType)range).TypeAst);
-            return WrapType(typeAst);
+            Context z3 = ((Z3apiProverContext)container).z3;
+            return z3.MkArraySort(domain, range);
         }
 
-        public Z3Type BuildBvType(BvType bvType)
+        public Sort BuildBvType(BvType bvType)
         {
-            Context z3 = ((Z3SafeContext)container).z3;
-            Sort typeAst = z3.MkBvSort((uint)bvType.Bits);
-            return WrapType(typeAst);
+            Context z3 = ((Z3apiProverContext)container).z3;
+            return z3.MkBvSort((uint)bvType.Bits);
         }
 
-        public Z3Type BuildBasicType(BasicType basicType)
+        public Sort BuildBasicType(BasicType basicType)
         {
-            Context z3 = ((Z3SafeContext)container).z3;
+            Context z3 = ((Z3apiProverContext)container).z3;
             Sort typeAst;
             if (basicType.IsBool)
             {
@@ -163,9 +177,14 @@ namespace Microsoft.Boogie.Z3
             }
             else
                 throw new Exception("Unknown Basic Type " + basicType.ToString());
-            return WrapType(typeAst);
+            return typeAst;
+        }
+
+        public Sort BuildCtorType(CtorType ctorType) {
+          Context z3 = ((Z3apiProverContext)container).z3;
+          if (ctorType.Arguments.Length > 0)
+            throw new Exception("Type constructor of non-zero arity are not handled");
+          return z3.MkSort(ctorType.Decl.Name);
         }
     }
-
-    public class Z3Type { }
 }

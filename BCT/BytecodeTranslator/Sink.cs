@@ -52,10 +52,36 @@ namespace BytecodeTranslator {
     }
     readonly Heap heap;
 
-    public Bpl.Formal ThisVariable;
-    public Bpl.Formal RetVariable;
-    public Bpl.Formal ExcVariable;
-    public Bpl.LocalVariable LocalExcVariable;
+    public Bpl.Formal ThisVariable {
+      get {
+        ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
+        return info.ThisVariable;
+      }
+    }
+    public Bpl.Formal ReturnVariable {
+      get {
+        ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
+        return info.ReturnVariable;
+      }
+    }
+    public Bpl.LocalVariable LocalExcVariable {
+      get {
+        ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
+        return info.LocalExcVariable;
+      }
+    }
+    public Bpl.LocalVariable FinallyStackCounterVariable {
+      get {
+        ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
+        return info.FinallyStackVariable;
+      }
+    }
+    public Bpl.LocalVariable LabelVariable {
+      get {
+        ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
+        return info.LabelVariable;
+      }
+    }
 
     public readonly string AllocationMethodName = "Alloc";
     public readonly string StaticFieldFunction = "ClassRepr";
@@ -90,6 +116,8 @@ namespace BytecodeTranslator {
     public Bpl.Type CciTypeToBoogie(ITypeReference type) {
       if (TypeHelper.TypesAreEquivalent(type, type.PlatformType.SystemBoolean))
         return Bpl.Type.Bool;
+      else if (type.TypeCode == PrimitiveTypeCode.UIntPtr || type.TypeCode == PrimitiveTypeCode.IntPtr)
+        return Bpl.Type.Int;
       else if (TypeHelper.IsPrimitiveInteger(type))
         return Bpl.Type.Int;
       else if (type.TypeCode == PrimitiveTypeCode.Float32 || type.TypeCode == PrimitiveTypeCode.Float64)
@@ -98,7 +126,7 @@ namespace BytecodeTranslator {
         return heap.RefType; // structs are kept on the heap with special rules about assignment
       else if (type.IsEnum)
         return Bpl.Type.Int; // The underlying type of an enum is always some kind of integer
-      else if (type is IGenericTypeParameter)
+      else if (type is IGenericTypeParameter || type is IGenericMethodParameter)
         return heap.BoxType;
       else
         return heap.RefType;
@@ -178,6 +206,9 @@ namespace BytecodeTranslator {
       // The Heap has to decide how to represent the field (i.e., its type),
       // all the Sink cares about is adding a declaration for it.
       Bpl.Variable v;
+      var specializedField = field as ISpecializedFieldReference;
+      if (specializedField != null)
+        field = specializedField.UnspecializedVersion;
       var key = field.InternedKey;
       if (!this.declaredFields.TryGetValue(key, out v)) {
         v = this.Heap.CreateFieldVariable(field);
@@ -316,8 +347,9 @@ namespace BytecodeTranslator {
       private Dictionary<IParameterDefinition, MethodParameter> formalMap;
       private Bpl.Formal thisVariable;
       private Bpl.Formal returnVariable;
-      private Bpl.Formal excVariable;
       private Bpl.LocalVariable localExcVariable;
+      private Bpl.LocalVariable finallyStackVariable;
+      private Bpl.LocalVariable labelVariable;
       private List<Bpl.Formal> typeParameters;
       private List<Bpl.Formal> methodParameters;
 
@@ -326,28 +358,40 @@ namespace BytecodeTranslator {
         this.formalMap = null;
         this.returnVariable = null;
         this.thisVariable = null;
-        this.excVariable = null;
         this.localExcVariable = null;
+        this.finallyStackVariable = null;
+        this.labelVariable = null;
         this.typeParameters = null;
         this.methodParameters = null;
       }
-      public ProcedureInfo(Bpl.DeclWithFormals decl, Dictionary<IParameterDefinition, MethodParameter> formalMap, Bpl.Formal returnVariable) {
-        this.decl = decl;
-        this.formalMap = formalMap;
-        this.returnVariable = returnVariable;
-        this.thisVariable = null;
-        this.excVariable = null;
-        this.localExcVariable = null;
-        this.typeParameters = null;
-        this.methodParameters = null;
+      public ProcedureInfo(
+        Bpl.DeclWithFormals decl,
+        Dictionary<IParameterDefinition, MethodParameter> formalMap)
+        : this(decl) {
+          this.formalMap = formalMap;
       }
-      public ProcedureInfo(Bpl.DeclWithFormals decl, Dictionary<IParameterDefinition, MethodParameter> formalMap, Bpl.Formal returnVariable, Bpl.Formal thisVariable, Bpl.Formal excVariable, Bpl.LocalVariable localExcVariable, List<Bpl.Formal> typeParameters, List<Bpl.Formal> methodParameters) {
-        this.decl = decl;
-        this.formalMap = formalMap;
+      public ProcedureInfo(
+        Bpl.DeclWithFormals decl,
+        Dictionary<IParameterDefinition, MethodParameter> formalMap,
+        Bpl.Formal returnVariable)
+        : this(decl, formalMap) {
         this.returnVariable = returnVariable;
+      }
+      public ProcedureInfo(
+        Bpl.DeclWithFormals decl,
+        Dictionary<IParameterDefinition, MethodParameter> formalMap,
+        Bpl.Formal returnVariable,
+        Bpl.Formal thisVariable,
+        Bpl.LocalVariable localExcVariable,
+        Bpl.LocalVariable finallyStackVariable,
+        Bpl.LocalVariable labelVariable,
+        List<Bpl.Formal> typeParameters,
+        List<Bpl.Formal> methodParameters)
+        : this(decl, formalMap, returnVariable) {
         this.thisVariable = thisVariable;
-        this.excVariable = excVariable;
         this.localExcVariable = localExcVariable;
+        this.finallyStackVariable = finallyStackVariable;
+        this.labelVariable = labelVariable;
         this.typeParameters = typeParameters;
         this.methodParameters = methodParameters;
       }
@@ -356,8 +400,9 @@ namespace BytecodeTranslator {
       public Dictionary<IParameterDefinition, MethodParameter> FormalMap { get { return formalMap; } }
       public Bpl.Formal ThisVariable { get { return thisVariable; } }
       public Bpl.Formal ReturnVariable { get { return returnVariable; } }
-      public Bpl.Formal ExcVariable { get { return excVariable; } }
       public Bpl.LocalVariable LocalExcVariable { get { return localExcVariable; } }
+      public Bpl.LocalVariable FinallyStackVariable { get { return finallyStackVariable; } }
+      public Bpl.LocalVariable LabelVariable { get { return labelVariable; } }
       public Bpl.Formal TypeParameter(int index) { return typeParameters[index]; }
       public Bpl.Formal MethodParameter(int index) { return methodParameters[index]; } 
     }
@@ -372,11 +417,12 @@ namespace BytecodeTranslator {
 
         Bpl.Formal thisVariable = null;
         Bpl.Formal retVariable = null;
-        Bpl.Formal excVariable = new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$exc", this.Heap.RefType), true);
         Bpl.LocalVariable localExcVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$localExc", this.Heap.RefType));
+        Bpl.LocalVariable finallyStackVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$finallyStackCounter", Bpl.Type.Int));
+        Bpl.LocalVariable labelVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$label", Bpl.Type.Int));
         
         int in_count = 0;
-        int out_count = 1; // every method has the output variable $exc
+        int out_count = 0; 
         MethodParameter mp;
         var formalMap = new Dictionary<IParameterDefinition, MethodParameter>();
         foreach (IParameterDefinition formal in method.Parameters) {
@@ -451,8 +497,6 @@ namespace BytecodeTranslator {
 
         if (retVariable != null) outvars[j++] = retVariable;
 
-        outvars[j++] = excVariable;
-
         var tok = method.Token();
         Bpl.RequiresSeq boogiePrecondition = new Bpl.RequiresSeq();
         Bpl.EnsuresSeq boogiePostcondition = new Bpl.EnsuresSeq();
@@ -489,7 +533,7 @@ namespace BytecodeTranslator {
         } else {
           this.TranslatedProgram.TopLevelDeclarations.Add(decl);
         }
-        procInfo = new ProcedureInfo(decl, formalMap, retVariable, excVariable, excVariable, localExcVariable, typeParameters, methodParameters);
+        procInfo = new ProcedureInfo(decl, formalMap, retVariable, thisVariable, localExcVariable, finallyStackVariable, labelVariable, typeParameters, methodParameters);
         this.declaredMethods.Add(key, procInfo);
 
         // Can't visit the method's contracts until the formalMap and procedure are added to the
@@ -505,7 +549,7 @@ namespace BytecodeTranslator {
           try {
 
             foreach (IPrecondition pre in contract.Preconditions) {
-              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true, null, null);
+              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true);
               ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, stmtTraverser, true);
               exptravers.Visit(pre.Condition); // TODO
               // Todo: Deal with Descriptions
@@ -514,7 +558,7 @@ namespace BytecodeTranslator {
             }
 
             foreach (IPostcondition post in contract.Postconditions) {
-              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true, null, null);
+              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true);
               ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, stmtTraverser, true);
               exptravers.Visit(post.Condition);
               // Todo: Deal with Descriptions
@@ -583,7 +627,7 @@ namespace BytecodeTranslator {
         var typename = TranslationHelper.TurnStringIntoValidIdentifier(TypeHelper.GetTypeName(structType));
         var tok = structType.Token();
         var selfType = this.CciTypeToBoogie(structType); //new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
-        var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), false);
+        var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), true);
         var invars = new Bpl.Formal[]{ selfIn };
         var proc = new Bpl.Procedure(Bpl.Token.NoToken, typename + ".#default_ctor",
           new Bpl.TypeVariableSeq(),
@@ -594,7 +638,7 @@ namespace BytecodeTranslator {
           new Bpl.EnsuresSeq()
           );
         this.TranslatedProgram.TopLevelDeclarations.Add(proc);
-        procAndFormalMap = new ProcedureInfo(proc, new Dictionary<IParameterDefinition, MethodParameter>(), this.RetVariable);
+        procAndFormalMap = new ProcedureInfo(proc, new Dictionary<IParameterDefinition, MethodParameter>());
         this.declaredStructDefaultCtors.Add(key, procAndFormalMap);
       }
       return procAndFormalMap.Decl;
@@ -620,8 +664,8 @@ namespace BytecodeTranslator {
         var typename = TranslationHelper.TurnStringIntoValidIdentifier(TypeHelper.GetTypeName(structType));
         var tok = structType.Token();
         var selfType = this.CciTypeToBoogie(structType); //new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
-        var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), false);
-        var otherIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "other", selfType), false);
+        var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), true);
+        var otherIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "other", selfType), true);
         var invars = new Bpl.Formal[] { selfIn, otherIn, };
         var outvars = new Bpl.Formal[0];
         var selfInExpr = Bpl.Expr.Ident(selfIn);
@@ -638,7 +682,7 @@ namespace BytecodeTranslator {
           new Bpl.EnsuresSeq(ens)
           );
         this.TranslatedProgram.TopLevelDeclarations.Add(proc);
-        procAndFormalMap = new ProcedureInfo(proc, new Dictionary<IParameterDefinition, MethodParameter>(), this.RetVariable);
+        procAndFormalMap = new ProcedureInfo(proc, new Dictionary<IParameterDefinition, MethodParameter>());
         this.declaredStructCopyCtors.Add(key, procAndFormalMap);
       }
       return procAndFormalMap.Decl;
@@ -764,7 +808,7 @@ namespace BytecodeTranslator {
       IGenericMethodParameter gmp = type as IGenericMethodParameter;
       if (gmp != null) {
         ProcedureInfo info = FindOrCreateProcedure(methodBeingTranslated);
-        return Bpl.Expr.Ident(info.TypeParameter(gmp.Index));
+        return Bpl.Expr.Ident(info.MethodParameter(gmp.Index));
       }
 
       ITypeReference uninstantiatedGenericType = GetUninstantiatedGenericType(type);
@@ -862,29 +906,70 @@ namespace BytecodeTranslator {
     /// The values in this table are the procedures
     /// defined in the program created by the heap in the Sink's ctor.
     /// </summary>
-    private Dictionary<string, ProcedureInfo> initiallyDeclaredProcedures = new Dictionary<string, ProcedureInfo>();
+    public Dictionary<string, ProcedureInfo> initiallyDeclaredProcedures = new Dictionary<string, ProcedureInfo>();
 
     public void BeginMethod(ITypeReference containingType) {
       this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
       this.localCounter = 0;
-      this.ThisVariable = null;
-      this.RetVariable = null;
-      this.ExcVariable = null;
-      this.LocalExcVariable = null;
       this.methodBeingTranslated = null;
     }
 
+    public Dictionary<IName, int> cciLabels;
+    public int FindOrCreateCciLabelIdentifier(IName label) {
+      int v;
+      if (!cciLabels.TryGetValue(label, out v)) {
+        v = cciLabels.Count;
+        cciLabels[label] = v;
+      }
+      return v;
+    }
+    public Dictionary<ITryCatchFinallyStatement, int> tryCatchFinallyIdentifiers;
+    public string FindOrCreateCatchLabel(ITryCatchFinallyStatement stmt) {
+      int id;
+      if (!tryCatchFinallyIdentifiers.TryGetValue(stmt, out id)) {
+        id = tryCatchFinallyIdentifiers.Count;
+        tryCatchFinallyIdentifiers[stmt] = id;
+      }
+      return "catch" + id;
+    }
+    public string FindOrCreateFinallyLabel(ITryCatchFinallyStatement stmt) {
+      int id;
+      if (!tryCatchFinallyIdentifiers.TryGetValue(stmt, out id)) {
+        id = tryCatchFinallyIdentifiers.Count;
+        tryCatchFinallyIdentifiers[stmt] = id;
+      }
+      return "finally" + id;
+    }
+    public string FindOrCreateContinuationLabel(ITryCatchFinallyStatement stmt) {
+      int id;
+      if (!tryCatchFinallyIdentifiers.TryGetValue(stmt, out id)) {
+        id = tryCatchFinallyIdentifiers.Count;
+        tryCatchFinallyIdentifiers[stmt] = id;
+      }
+      return "continuation" + id;
+    }
+    public string FindOrCreateDispatchContinuationLabel(ITryCatchFinallyStatement stmt) {
+      int id;
+      if (!tryCatchFinallyIdentifiers.TryGetValue(stmt, out id)) {
+        id = tryCatchFinallyIdentifiers.Count;
+        tryCatchFinallyIdentifiers[stmt] = id;
+      }
+      return "DispatchContinuation" + id;
+    }
+    MostNestedTryStatementTraverser mostNestedTryStatementTraverser;
+    public ITryCatchFinallyStatement MostNestedTryStatement(IName label) {
+      return mostNestedTryStatementTraverser.MostNestedTryStatement(label);
+    }
     IMethodDefinition methodBeingTranslated;
     public void BeginMethod(IMethodDefinition method) {
       this.BeginMethod(method.ContainingType);
       this.methodBeingTranslated = method;
-      ProcedureInfo info = FindOrCreateProcedure(method);
-      this.ThisVariable = info.ThisVariable;
-      this.RetVariable = info.ReturnVariable;
-      this.ExcVariable = info.ExcVariable;
-      this.LocalExcVariable = info.LocalExcVariable;
+      this.cciLabels = new Dictionary<IName, int>();
+      this.tryCatchFinallyIdentifiers = new Dictionary<ITryCatchFinallyStatement, int>();
+      mostNestedTryStatementTraverser = new MostNestedTryStatementTraverser();
+      mostNestedTryStatementTraverser.Visit(method.Body);
     }
-
+    
     public void BeginAssembly(IAssembly assembly) {
       this.assemblyBeingTranslated = assembly;
     }
@@ -894,18 +979,22 @@ namespace BytecodeTranslator {
     }
     private IAssembly/*?*/ assemblyBeingTranslated;
 
-    public Dictionary<ITypeDefinition, HashSet<IMethodDefinition>> delegateTypeToDelegates = new Dictionary<ITypeDefinition, HashSet<IMethodDefinition>>();
+    public Dictionary<uint, Tuple<ITypeDefinition, HashSet<IMethodDefinition>>> delegateTypeToDelegates = 
+      new Dictionary<uint, Tuple<ITypeDefinition, HashSet<IMethodDefinition>>>();
 
     public void AddDelegate(ITypeDefinition type, IMethodDefinition defn)
     {
-      if (!delegateTypeToDelegates.ContainsKey(type))
-        delegateTypeToDelegates[type] = new HashSet<IMethodDefinition>();
-      delegateTypeToDelegates[type].Add(defn);
+      uint key = type.InternedKey;
+      if (!delegateTypeToDelegates.ContainsKey(key))
+        delegateTypeToDelegates[key] = new Tuple<ITypeDefinition, HashSet<IMethodDefinition>>(type, new HashSet<IMethodDefinition>());
+      FindOrCreateProcedure(defn);
+      delegateTypeToDelegates[key].Item2.Add(defn);
     }
 
     public void AddDelegateType(ITypeDefinition type) {
-      if (!delegateTypeToDelegates.ContainsKey(type))
-        delegateTypeToDelegates[type] = new HashSet<IMethodDefinition>();
+      uint key = type.InternedKey;
+      if (!delegateTypeToDelegates.ContainsKey(key))
+        delegateTypeToDelegates[key] = new Tuple<ITypeDefinition, HashSet<IMethodDefinition>>(type, new HashSet<IMethodDefinition>());
     }
 
     private Dictionary<IMethodDefinition, Bpl.Constant> delegateMethods = new Dictionary<IMethodDefinition, Bpl.Constant>();

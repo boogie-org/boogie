@@ -27,6 +27,9 @@ namespace Microsoft.Boogie.SMTLib
       // Bitvectors
       "extract", "concat", 
       "bvnot", "bvneg", "bvand", "bvor", "bvadd", "bvmul", "bvudiv", "bvurem", "bvshl", "bvlshr", "bvult",
+      // arrays
+      "store", "select", "const", "default", "map", "union", "intersect", "difference", "complement",
+      "subset", "array-ext", "as-array", "Array",
       // Z3 (and not only?) extensions to bitvectors
       "bit1", "bit0", "bvsub", "bvsdiv", "bvsrem", "bvsmod", "bvsdiv0", "bvudiv0", "bvsrem0", "bvurem0",
       "bvsmod0", "bvsdiv_i", "bvudiv_i", "bvsrem_i", "bvurem_i", "bvumod_i", "bvule", "bvsle", "bvuge",

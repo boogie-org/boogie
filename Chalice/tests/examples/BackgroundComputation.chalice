@@ -1,0 +1,38 @@
+class C {
+  var x: int;
+  
+  method main()
+    requires acc(x);
+    ensures acc(x);
+  {
+    // start long-running processing
+    fork tk := processing();
+    
+    /* do some computation itself */
+    
+    // finish
+    call finish(tk);
+  }
+  
+  method finish(tk: token<C.processing>)
+    requires acc(x,100-rd(tk));
+    requires acc(tk.joinable) && tk.joinable && tk != null;
+    requires eval(tk.fork this.processing(), true);
+    ensures acc(x);
+  {
+    var res: int;
+    join res := tk;
+    
+    // final write to x (requires full permission)
+    this.x := res - 1;
+  }
+  
+  method processing() returns (res: int)
+    requires rd(x);
+    ensures rd(x);
+  {
+    res := 1;
+    /* do some computation */
+  }
+  
+}

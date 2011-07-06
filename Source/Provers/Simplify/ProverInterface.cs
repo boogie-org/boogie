@@ -239,6 +239,10 @@ namespace Microsoft.Boogie.Simplify {
       Contract.Requires(proverExe != null);
       Contract.Ensures(_proverPath != null);
 
+      if (CommandLineOptions.Clo.Z3ExecutablePath != null) {
+        _proverPath = CommandLineOptions.Clo.Z3ExecutablePath;
+      }
+
       if (_proverPath == null) {
         // Initialize '_proverPath'
         _proverPath = Path.Combine(CodebaseString(), proverExe);
@@ -511,7 +515,13 @@ namespace Microsoft.Boogie.Simplify {
           thmProver = null;
           currentProverHasBeenABadBoy = false;
           restarts++;
+
+          if (CommandLineOptions.Clo.StratifiedInlining > 0)
+          {
+              Console.WriteLine("Warning: restarting theorem prover. Context could be lost");
+          }
         }
+          
         FireUpNewProver();
       }
       cce.EndExpose();

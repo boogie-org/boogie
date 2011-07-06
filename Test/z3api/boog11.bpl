@@ -1,10 +1,12 @@
+type ref;
 // types
 const top: ref;
 var myRef: ref;
 
 // procedure
 procedure SetTo(r: ref);
-  modifies myRef;
+  modifies myRef
+;
 
   ensures myRef==r;
 

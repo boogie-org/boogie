@@ -73,6 +73,8 @@ namespace BytecodeTranslator {
 
     public abstract Bpl.Variable CreateFieldVariable(IFieldReference field);
 
+    public abstract Bpl.Variable BoxField { get; }
+
     #region Boogie Types
 
     [RepresentationFor("Field", "type Field;")]
@@ -96,18 +98,6 @@ namespace BytecodeTranslator {
     public Bpl.TypeCtorDecl TypeTypeDecl = null;
     public Bpl.CtorType TypeType;
 
-    private Bpl.Type structType = null;
-    public Bpl.Type StructType {
-      get {
-        if (structType == null) {
-          structType = new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(FieldType), BoxType);
-        }
-        return structType;
-      }
-    }
-    [RepresentationFor("$DefaultStruct", "const unique $DefaultStruct : [Field]Box;")]
-    public Bpl.Constant DefaultStruct;
-
     [RepresentationFor("Real", "type Real;")]
     protected Bpl.TypeCtorDecl RealTypeDecl = null;
     public Bpl.CtorType RealType;
@@ -120,29 +110,23 @@ namespace BytecodeTranslator {
 
     #region Heap values
 
-    [RepresentationFor("Box2Int", "function Box2Int(Box): int;")]
-    public Bpl.Function Box2Int = null;
-
     [RepresentationFor("Box2Bool", "function Box2Bool(Box): bool;")]
     public Bpl.Function Box2Bool = null;
-
-    [RepresentationFor("Box2Struct", "function Box2Struct(Box): Struct;")]
-    public Bpl.Function Box2Struct = null;
-
+    
+    [RepresentationFor("Box2Int", "function Box2Int(Box): int;")]
+    public Bpl.Function Box2Int = null;
+    
     [RepresentationFor("Box2Ref", "function Box2Ref(Box): Ref;")]
     public Bpl.Function Box2Ref = null;
 
     [RepresentationFor("Box2Real", "function Box2Real(Box): Real;")]
     public Bpl.Function Box2Real = null;
 
-    [RepresentationFor("Int2Box", "function Int2Box(int): Box;")]
-    public Bpl.Function Int2Box = null;
-
     [RepresentationFor("Bool2Box", "function Bool2Box(bool): Box;")]
     public Bpl.Function Bool2Box = null;
 
-    [RepresentationFor("Struct2Box", "function Struct2Box(Struct): Box;")]
-    public Bpl.Function Struct2Box = null;
+    [RepresentationFor("Int2Box", "function Int2Box(int): Box;")]
+    public Bpl.Function Int2Box = null;
 
     [RepresentationFor("Ref2Box", "function Ref2Box(Ref): Box;")]
     public Bpl.Function Ref2Box = null;
@@ -159,8 +143,6 @@ namespace BytecodeTranslator {
         conversion = this.Bool2Box;
       else if (boogieType == Bpl.Type.Int)
         conversion = this.Int2Box;
-      else if (boogieType == StructType)
-        conversion = this.Struct2Box;
       else if (boogieType == RefType)
         conversion = this.Ref2Box;
       else if (boogieType == RealType)
@@ -184,8 +166,6 @@ namespace BytecodeTranslator {
         conversion = this.Box2Bool;
       else if (boogieType == Bpl.Type.Int)
         conversion = this.Box2Int;
-      else if (boogieType == StructType)
-        conversion = this.Box2Struct;
       else if (boogieType == RefType)
         conversion = this.Box2Ref;
       else if (boogieType == RealType)
@@ -206,27 +186,11 @@ namespace BytecodeTranslator {
 
     #endregion
 
-    #region "Boxing" as done in the CLR
-    /// <summary>
-    /// Used to represent "boxing" as it is done in the CLR.
-    /// </summary>
-    [RepresentationFor("Struct2Ref", "function Struct2Ref(Struct): Ref;")]
-    public Bpl.Function Struct2Ref = null;
-    [RepresentationFor("Int2Ref", "function Int2Ref(int): Ref;")]
-    public Bpl.Function Int2Ref = null;
-    [RepresentationFor("Bool2Ref", "function Bool2Ref(bool): Ref;")]
-    public Bpl.Function Bool2Ref = null;
-    #endregion
-
     #region Real number conversions
-    [RepresentationFor("Int2Real", "function Int2Real(int, Type, Type): Real;")]
+    [RepresentationFor("Int2Real", "function Int2Real(int): Real;")]
     public Bpl.Function Int2Real = null;
-    [RepresentationFor("Real2Int", "function Real2Int(Real, Type, Type): Real;")]
+    [RepresentationFor("Real2Int", "function Real2Int(Real): int;")]
     public Bpl.Function Real2Int = null;
-    [RepresentationFor("Ref2Real", "function Ref2Real(Ref, Type, Type): Real;")]
-    public Bpl.Function Ref2Real = null;
-    [RepresentationFor("Real2Ref", "function Real2Ref(Real, Type, Type): Ref;")]
-    public Bpl.Function Real2Ref = null;
     #endregion
 
     #region Real number operations
@@ -238,6 +202,14 @@ namespace BytecodeTranslator {
     public Bpl.Function RealTimes = null;
     [RepresentationFor("RealDivide", "function RealDivide(Real, Real): Real;")]
     public Bpl.Function RealDivide = null;
+    [RepresentationFor("RealLessThan", "function RealLessThan(Real, Real): bool;")]
+    public Bpl.Function RealLessThan = null;
+    [RepresentationFor("RealLessThanOrEqual", "function RealLessThanOrEqual(Real, Real): bool;")]
+    public Bpl.Function RealLessThanOrEqual = null;
+    [RepresentationFor("RealGreaterThan", "function RealGreaterThan(Real, Real): bool;")]
+    public Bpl.Function RealGreaterThan = null;
+    [RepresentationFor("RealGreaterThanOrEqual", "function RealGreaterThanOrEqual(Real, Real): bool;")]
+    public Bpl.Function RealGreaterThanOrEqual = null;
     #endregion
 
     #region Bitwise operations
@@ -249,13 +221,6 @@ namespace BytecodeTranslator {
     public Bpl.Function BitwiseExclusiveOr = null;
     [RepresentationFor("BitwiseNegation", "function BitwiseNegation(int): int;")]
     public Bpl.Function BitwiseNegation = null;
-    #endregion
-
-    #region Ref conversions
-    [RepresentationFor("Ref2Int", "function Ref2Int(Ref, Type, Type): int;")]
-    public Bpl.Function Ref2Int = null;
-    [RepresentationFor("Ref2Bool", "function Ref2Bool(Ref, Type, Type): bool;")]
-    public Bpl.Function Ref2Bool = null;
     #endregion
 
     #endregion
@@ -319,8 +284,63 @@ namespace BytecodeTranslator {
     [RepresentationFor("$As", "function $As(Ref, Type): Ref;")]
     public Bpl.Function AsFunction = null;
 
-    protected readonly string DelegateEncodingText =
-      @"procedure DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
+    protected readonly string CommonText =
+      @"var $Alloc: [Ref] bool;
+
+procedure {:inline 1} Alloc() returns (x: Ref)
+  modifies $Alloc;
+{
+  assume $Alloc[x] == false && x != null;
+  $Alloc[x] := true;
+}
+
+function $TypeOfInv(Ref): Type;
+axiom (forall t: Type :: {$TypeOf(t)} $TypeOfInv($TypeOf(t)) == t);
+
+procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref)
+{
+  $result := $TypeOf($DynamicType(this));
+}
+
+axiom Box2Int($DefaultBox) == 0;
+axiom Box2Bool($DefaultBox) == false;
+axiom Box2Ref($DefaultBox) == null;
+
+axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x );
+axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x );
+axiom (forall x: Ref :: { Ref2Box(x) } Box2Ref(Ref2Box(x)) == x );
+
+function $ThreadDelegate(Ref) : Ref;
+
+procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ParameterizedThreadStart(this: Ref, start$in: Ref)
+{
+  assume $ThreadDelegate(this) == start$in;
+}
+procedure {:inline 1} System.Threading.Thread.Start$System.Object(this: Ref, parameter$in: Ref)
+{
+  call {:async} Wrapper_System.Threading.ParameterizedThreadStart.Invoke$System.Object($ThreadDelegate(this), parameter$in);
+}
+procedure {:inline 1} Wrapper_System.Threading.ParameterizedThreadStart.Invoke$System.Object(this: Ref, obj$in: Ref) {
+  $Exception := null;
+  call System.Threading.ParameterizedThreadStart.Invoke$System.Object(this, obj$in);
+}
+procedure {:extern} System.Threading.ParameterizedThreadStart.Invoke$System.Object(this: Ref, obj$in: Ref);
+
+procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ThreadStart(this: Ref, start$in: Ref) 
+{
+  assume $ThreadDelegate(this) == start$in;
+}
+procedure {:inline 1} System.Threading.Thread.Start(this: Ref) 
+{
+  call {:async} Wrapper_System.Threading.ThreadStart.Invoke($ThreadDelegate(this));
+}
+procedure {:inline 1} Wrapper_System.Threading.ThreadStart.Invoke(this: Ref) {
+  $Exception := null;
+  call System.Threading.ThreadStart.Invoke(this);
+}
+procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
+
+procedure DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
 {
   var m: int;
   var o: Ref;
@@ -444,6 +464,9 @@ procedure DelegateRemoveHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
 
     [RepresentationFor("$Receiver", "var $Receiver: [Ref][Ref]Ref;")]
     public Bpl.GlobalVariable DelegateReceiver = null;
+
+    [RepresentationFor("$Exception", "var {:thread_local} $Exception: Ref;")]
+    public Bpl.GlobalVariable ExceptionVariable = null;
   }
 
   public abstract class HeapFactory {

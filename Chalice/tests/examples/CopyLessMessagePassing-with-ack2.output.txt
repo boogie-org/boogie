@@ -1,0 +1,4 @@
+Verification of CopyLessMessagePassing-with-ack2.chalice using parameters="" 
+
+
+Boogie program verifier finished with 12 verified, 0 errors

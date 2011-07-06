@@ -14,6 +14,9 @@ lastbuild = None
 if os.path.exists(buildstamp):
     lastbuild = os.path.getmtime(buildstamp)
 
+if not os.path.exists(bindir):
+    os.makedirs(bindir)
+
 changedfiles = [file for file in srcfiles if not lastbuild or lastbuild <= os.path.getmtime(file)]
 
 if not changedfiles:
