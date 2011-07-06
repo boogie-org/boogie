@@ -4,7 +4,7 @@
 //
 //-----------------------------------------------------------------------------
 
-//#define RECENT_Z3 // 2.20 or newer
+// #define RECENT_Z3 // 2.20 or newer
 
 using System;
 using System.IO;
@@ -135,7 +135,9 @@ namespace Microsoft.Boogie.Z3
         AddOption(result, "ARITH_RANDOM_INITIAL_VALUE", "true");
 
         // The left-to-right structural case-splitting strategy.
+#if !RECENT_Z3
         AddOption(result, "SORT_AND_OR", "false");
+#endif
         AddOption(result, "CASE_SPLIT", "3");
 
         // In addition delay adding unit conflicts.

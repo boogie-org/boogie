@@ -157,8 +157,10 @@ namespace Microsoft.Boogie.SMTLib
         options.AddWeakSmtOption("WARNING", "false");
       }
 
-      if (options.TimeLimit > 0)
+      if (options.TimeLimit > 0) {
         options.AddWeakSmtOption("SOFT_TIMEOUT", options.TimeLimit.ToString());
+        options.AddSolverArgument("/T:" + (options.TimeLimit + 1000) / 1000);
+      }
 
       // legacy option handling
       if (!CommandLineOptions.Clo.z3AtFlag)

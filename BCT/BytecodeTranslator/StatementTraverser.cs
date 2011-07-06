@@ -106,6 +106,7 @@ namespace BytecodeTranslator
           elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, labelExpr, targetExpr), TranslationHelper.BuildStmtList(gotoCmd), elseIfCmd, null);
         }
         this.StmtBuilder.Add(elseIfCmd);
+        this.StmtBuilder.Add(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(false)));
       }
     }
     #endregion

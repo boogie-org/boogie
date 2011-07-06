@@ -1449,7 +1449,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val (tmpHeapV, tmpHeap) = Boogie.NewBVar("Heap", theap, true);
         val (tmpMaskV, tmpMask) = Boogie.NewBVar("Mask", tmask, true); 
         val (tmpCreditsV, tmpCredits) = Boogie.NewBVar("Credits", tcredits, true); 
-        val tmpTranslator = new ExpressionTranslator(List(tmpHeap,tmpMask,tmpCredits), currentClass);
+        val tmpTranslator = new ExpressionTranslator(List(tmpHeap,tmpMask,tmpCredits), etran.oldEtran.Globals, currentClass);
         
         // pick new k
         val (funcappKV, funcappK) = Boogie.NewBVar("funcappK", tint, true)
@@ -1475,7 +1475,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val (tmpHeapV, tmpHeap) = Boogie.NewBVar("Heap", theap, true);
         val (tmpMaskV, tmpMask) = Boogie.NewBVar("Mask", tmask, true);
         val (tmpCreditsV, tmpCredits) = Boogie.NewBVar("Credits", tcredits, true);
-        val tmpTranslator = new ExpressionTranslator(List(tmpHeap, tmpMask, tmpCredits), currentClass);
+        val tmpTranslator = new ExpressionTranslator(List(tmpHeap, tmpMask, tmpCredits), etran.oldEtran.Globals, currentClass);
         
         val receiverOk = isDefined(obj) ::: prove(nonNull(Tr(obj)), obj.pos, "Receiver might be null.");
         val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), obj), perm, unfolding.pos)
@@ -1549,7 +1549,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         isDefined(e0) ::: isDefined(e1)
       case Eval(h, e) =>
         val (evalHeap, evalMask, evalCredits, checks, assumptions) = fromEvalState(h);
-        val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalCredits), currentClass);
+        val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalCredits), etran.oldEtran.Globals, currentClass);
         evalEtran.isDefined(e)
       case _ : SeqQuantification => throw new InternalErrorException("should be desugared")
       case tq @ TypeQuantification(_, _, _, e, (min, max)) =>
@@ -1675,7 +1675,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     case Contains(e0, e1) => SeqContains(Tr(e1), Tr(e0))
     case Eval(h, e) =>
       val (evalHeap, evalMask, evalCredits, checks, assumptions) = fromEvalState(h);
-      val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalCredits), currentClass);
+      val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalCredits), etran.oldEtran.Globals, currentClass);
       evalEtran.Tr(e)
     case _:SeqQuantification => throw new InternalErrorException("should be desugared")
     case tq @ TypeQuantification(Forall, _, _, e, _) =>
@@ -2393,6 +2393,7 @@ object TranslationHelper {
   // scale an expression (such as the definition of a predicate) by a permission
   def scaleExpressionByPermission(expr: Expression, perm1: Permission, pos: Position): Expression = {
     val result = expr match {
+      case pred@MemberAccess(o, p) if pred.isPredicate => Access(pred, perm1)
       case Access(e, perm2) => Access(e, multiplyPermission(perm1, perm2, pos))
       case AccessSeq(e, f, perm2) => AccessSeq(e, f, multiplyPermission(perm1, perm2, pos))
       case And(lhs, rhs) => And(scaleExpressionByPermission(lhs, perm1, pos), scaleExpressionByPermission(rhs, perm1, pos))
