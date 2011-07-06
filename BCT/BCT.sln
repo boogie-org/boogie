@@ -42,8 +42,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContractExtractor", "..\..\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Contracts", "..\..\CCICodePlex\Ast\Metadata\Sources\Microsoft.Contracts\Microsoft.Contracts.csproj", "{B114E5FF-F2A2-4BE7-8AF1-936FC87030F0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mscorlibStub", "mscorlibStub\mscorlibStub.csproj", "{962CB683-8B50-4246-854C-E48D74F733B8}"
-EndProject
 Global
 	GlobalSection(TestCaseManagementSettings) = postSolution
 		CategoryFile = BCT.vsmdi
@@ -249,18 +247,6 @@ Global
 		{B114E5FF-F2A2-4BE7-8AF1-936FC87030F0}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
 		{B114E5FF-F2A2-4BE7-8AF1-936FC87030F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B114E5FF-F2A2-4BE7-8AF1-936FC87030F0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{962CB683-8B50-4246-854C-E48D74F733B8}.CompilerOnly|Any CPU.ActiveCfg = Release|Any CPU
-		{962CB683-8B50-4246-854C-E48D74F733B8}.CompilerOnly|Any CPU.Build.0 = Release|Any CPU
-		{962CB683-8B50-4246-854C-E48D74F733B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{962CB683-8B50-4246-854C-E48D74F733B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{962CB683-8B50-4246-854C-E48D74F733B8}.FastpathSim|Any CPU.ActiveCfg = Release|Any CPU
-		{962CB683-8B50-4246-854C-E48D74F733B8}.FastpathSim|Any CPU.Build.0 = Release|Any CPU
-		{962CB683-8B50-4246-854C-E48D74F733B8}.NightlyDebug|Any CPU.ActiveCfg = Debug|Any CPU
-		{962CB683-8B50-4246-854C-E48D74F733B8}.NightlyDebug|Any CPU.Build.0 = Debug|Any CPU
-		{962CB683-8B50-4246-854C-E48D74F733B8}.NightlyRelease|Any CPU.ActiveCfg = Release|Any CPU
-		{962CB683-8B50-4246-854C-E48D74F733B8}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
-		{962CB683-8B50-4246-854C-E48D74F733B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{962CB683-8B50-4246-854C-E48D74F733B8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
