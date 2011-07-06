@@ -2393,6 +2393,7 @@ object TranslationHelper {
   // scale an expression (such as the definition of a predicate) by a permission
   def scaleExpressionByPermission(expr: Expression, perm1: Permission, pos: Position): Expression = {
     val result = expr match {
+      case pred@MemberAccess(o, p) if pred.isPredicate => Access(pred, perm1)
       case Access(e, perm2) => Access(e, multiplyPermission(perm1, perm2, pos))
       case AccessSeq(e, f, perm2) => AccessSeq(e, f, multiplyPermission(perm1, perm2, pos))
       case And(lhs, rhs) => And(scaleExpressionByPermission(lhs, perm1, pos), scaleExpressionByPermission(rhs, perm1, pos))
