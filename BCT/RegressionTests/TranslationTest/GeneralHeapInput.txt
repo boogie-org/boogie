@@ -379,7 +379,9 @@ var $Receiver: [Ref][Ref]Ref;
 
 var {:thread_local} $Exception: Ref;
 
-const unique RegressionTestInput.RealNumbers: Type;
+const {:extern} unique System.Object: Type extends;
+
+const unique RegressionTestInput.RealNumbers: Type extends unique System.Object;
 
 procedure RegressionTestInput.RealNumbers.WriteDouble$System.Double($this: Ref, d$in: Real);
 
@@ -532,7 +534,7 @@ implementation RegressionTestInput.RealNumbers.#cctor()
 
 
 
-const unique RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap: Type;
+const unique RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap: Type extends unique System.Object;
 
 const unique RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.x: Field;
 
@@ -593,7 +595,7 @@ implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#cctor()
 
 
 
-const unique RegressionTestInput.CreateStruct: Type;
+const unique RegressionTestInput.CreateStruct: Type extends unique System.Object;
 
 procedure RegressionTestInput.CreateStruct.Create($this: Ref) returns ($result: Ref);
 
@@ -603,7 +605,9 @@ procedure RegressionTestInput.S.#default_ctor(this: Ref);
 
 
 
-const unique RegressionTestInput.S: Type;
+const {:extern} unique System.ValueType: Type extends unique System.Object;
+
+const unique RegressionTestInput.S: Type extends unique System.ValueType;
 
 const unique RegressionTestInput.S.x: Field;
 
@@ -693,7 +697,7 @@ implementation RegressionTestInput.CreateStruct.#cctor()
 
 
 
-const unique RegressionTestInput.ClassWithArrayTypes: Type;
+const unique RegressionTestInput.ClassWithArrayTypes: Type extends unique System.Object;
 
 var RegressionTestInput.ClassWithArrayTypes.s: Ref;
 
@@ -879,7 +883,7 @@ implementation RegressionTestInput.ClassWithArrayTypes.#cctor()
 
 
 
-const unique RegressionTestInput.BitwiseOperations: Type;
+const unique RegressionTestInput.BitwiseOperations: Type extends unique System.Object;
 
 procedure RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int32($this: Ref, x$in: int, y$in: int) returns ($result: int);
 
@@ -1004,7 +1008,11 @@ implementation RegressionTestInput.BitwiseOperations.#cctor()
 
 
 
-const unique RegressionTestInput.AsyncAttribute: Type;
+const {:extern} unique System.Runtime.InteropServices._Attribute: Type extends;
+
+const {:extern} unique System.Attribute: Type extends unique System.Object, System.Runtime.InteropServices._Attribute;
+
+const unique RegressionTestInput.AsyncAttribute: Type extends unique System.Attribute;
 
 procedure RegressionTestInput.AsyncAttribute.#ctor($this: Ref);
 
@@ -1043,7 +1051,7 @@ implementation RegressionTestInput.AsyncAttribute.#cctor()
 
 
 
-const unique RegressionTestInput.RefParameters: Type;
+const unique RegressionTestInput.RefParameters: Type extends unique System.Object;
 
 procedure RegressionTestInput.RefParameters.M$System.Int32$(x$in: int) returns (x$out: int);
 
@@ -1119,7 +1127,7 @@ implementation {:inline 1} RegressionTestInput.S.#copy_ctor(this: Ref, other: Re
 
 
 
-const unique RegressionTestInput.Class0: Type;
+const unique RegressionTestInput.Class0: Type extends unique System.Object;
 
 var RegressionTestInput.Class0.StaticInt: int;
 
@@ -1424,7 +1432,7 @@ implementation RegressionTestInput.Class0.#cctor()
 
 
 
-const unique RegressionTestInput.ClassWithBoolTypes: Type;
+const unique RegressionTestInput.ClassWithBoolTypes: Type extends unique System.Object;
 
 var RegressionTestInput.ClassWithBoolTypes.staticB: bool;
 
