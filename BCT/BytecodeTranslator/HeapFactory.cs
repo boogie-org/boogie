@@ -34,7 +34,7 @@ namespace BytecodeTranslator {
     /// on its type based on the heap representation. I.e., the value of this
     /// variable represents the value of the expression "typeof(type)".
     /// </summary>
-    Bpl.Variable CreateTypeVariable(ITypeReference type);
+    Bpl.Variable CreateTypeVariable(ITypeReference type, List<Bpl.ConstantParent> parents);
 
     Bpl.Variable CreateEventVariable(IEventDefinition e);
 
@@ -230,13 +230,13 @@ namespace BytecodeTranslator {
     /// on its type based on the heap representation. I.e., the value of this
     /// variable represents the value of the expression "typeof(type)".
     /// </summary>
-    public Bpl.Variable CreateTypeVariable(ITypeReference type)
+    public Bpl.Variable CreateTypeVariable(ITypeReference type, List<Bpl.ConstantParent> parents)
     {
         string typename = TypeHelper.GetTypeName(type);
         typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
         Bpl.IToken tok = type.Token();
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, typename, this.TypeType);
-        Bpl.Constant v = new Bpl.Constant(tok, tident, true);
+        Bpl.Constant v = new Bpl.Constant(tok, tident, true /*unique*/, parents, false, null);
         return v;
     }
 

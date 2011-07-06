@@ -692,6 +692,8 @@ namespace BytecodeTranslator {
     // also, should it return true for properties and all of the other things the tools
     // consider pure?
     private bool IsPure(IMethodDefinition method) {
+      // TODO:
+      // This needs to wait until we get function bodies sorted out.
       //bool isPropertyGetter = method.IsSpecialName && method.Name.Value.StartsWith("get_");
       //if (isPropertyGetter) return true;
 
@@ -878,7 +880,8 @@ namespace BytecodeTranslator {
         Bpl.Variable t;
         var key = type.InternedKey;
         if (!this.declaredTypeConstants.TryGetValue(key, out t)) {
-          t = this.Heap.CreateTypeVariable(type);
+          var parents = GetParents(type.ResolvedType);
+          t = this.Heap.CreateTypeVariable(type, parents);
           this.declaredTypeConstants.Add(key, t);
           this.TranslatedProgram.TopLevelDeclarations.Add(t);
           if (isExtern) {
@@ -889,6 +892,20 @@ namespace BytecodeTranslator {
         return Bpl.Expr.Ident(t);
       }
     }
+
+    private List<Bpl.ConstantParent> GetParents(ITypeDefinition typeDefinition) {
+      var parents = new List<Bpl.ConstantParent>();
+      foreach (var p in typeDefinition.BaseClasses) {
+        var v = (Bpl.IdentifierExpr) FindOrCreateType(p);
+        parents.Add(new Bpl.ConstantParent(v, true));
+      }
+      foreach (var j in typeDefinition.Interfaces) {
+        var v = (Bpl.IdentifierExpr)FindOrCreateType(j);
+        parents.Add(new Bpl.ConstantParent(v, false));
+      }
+      return parents;
+    }
+
     /// <summary>
     /// The keys to the table are the interned key of the type.
     /// </summary>
