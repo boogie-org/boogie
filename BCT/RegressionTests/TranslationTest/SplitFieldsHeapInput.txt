@@ -1,12 +1,6 @@
 // Copyright (c) 2010, Microsoft Corp.
 // Bytecode Translator prelude
 
-type Struct = [Field]Box;
-
-type HeapType = [Ref,Field]Box;
-
-var $Heap: HeapType;
-
 var $Alloc: [Ref]bool;
 
 procedure {:inline 1} Alloc() returns (x: Ref);
@@ -22,19 +16,9 @@ implementation Alloc() returns (x: Ref)
 
 
 
-axiom Box2Int($DefaultBox) == 0;
+function $TypeOfInv(Ref) : Type;
 
-axiom Box2Bool($DefaultBox) == false;
-
-axiom Box2Ref($DefaultBox) == null;
-
-axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x);
-
-axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x);
-
-axiom (forall x: Ref :: { Ref2Box(x) } Box2Ref(Ref2Box(x)) == x);
-
-axiom (forall x: Struct :: { Struct2Box(x) } Box2Struct(Struct2Box(x)) == x);
+axiom (forall t: Type :: { $TypeOf(t) } $TypeOfInv($TypeOf(t)) == t);
 
 procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref);
 
@@ -47,9 +31,17 @@ implementation System.Object.GetType(this: Ref) returns ($result: Ref)
 
 
 
-function $TypeOfInv(Ref) : Type;
+axiom Box2Int($DefaultBox) == 0;
 
-axiom (forall t: Type :: { $TypeOf(t) } $TypeOfInv($TypeOf(t)) == t);
+axiom Box2Bool($DefaultBox) == false;
+
+axiom Box2Ref($DefaultBox) == null;
+
+axiom (forall x: int :: { Int2Box(x) } Box2Int(Int2Box(x)) == x);
+
+axiom (forall x: bool :: { Bool2Box(x) } Box2Bool(Bool2Box(x)) == x);
+
+axiom (forall x: Ref :: { Ref2Box(x) } Box2Ref(Ref2Box(x)) == x);
 
 function $ThreadDelegate(Ref) : Ref;
 
@@ -70,7 +62,19 @@ procedure {:inline 1} System.Threading.Thread.Start$System.Object(this: Ref, par
 
 implementation System.Threading.Thread.Start$System.Object(this: Ref, parameter$in: Ref)
 {
-    call {:async} System.Threading.ParameterizedThreadStart.Invoke$System.Object($ThreadDelegate(this), parameter$in);
+    call {:async} Wrapper_System.Threading.ParameterizedThreadStart.Invoke$System.Object($ThreadDelegate(this), parameter$in);
+}
+
+
+
+procedure {:inline 1} Wrapper_System.Threading.ParameterizedThreadStart.Invoke$System.Object(this: Ref, obj$in: Ref);
+
+
+
+implementation Wrapper_System.Threading.ParameterizedThreadStart.Invoke$System.Object(this: Ref, obj$in: Ref)
+{
+    $Exception := null;
+    call System.Threading.ParameterizedThreadStart.Invoke$System.Object(this, obj$in);
 }
 
 
@@ -96,7 +100,19 @@ procedure {:inline 1} System.Threading.Thread.Start(this: Ref);
 
 implementation System.Threading.Thread.Start(this: Ref)
 {
-    call {:async} System.Threading.ThreadStart.Invoke($ThreadDelegate(this));
+    call {:async} Wrapper_System.Threading.ThreadStart.Invoke($ThreadDelegate(this));
+}
+
+
+
+procedure {:inline 1} Wrapper_System.Threading.ThreadStart.Invoke(this: Ref);
+
+
+
+implementation Wrapper_System.Threading.ThreadStart.Invoke(this: Ref)
+{
+    $Exception := null;
+    call System.Threading.ThreadStart.Invoke(this);
 }
 
 
@@ -262,6 +278,8 @@ implementation DelegateRemoveHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
 
 
 
+var $BoxField: [Ref]Box;
+
 var $ArrayContents: [Ref][int]Box;
 
 function $ArrayLength(Ref) : int;
@@ -278,27 +296,21 @@ const unique null: Ref;
 
 type Type;
 
-const unique $DefaultStruct: [Field]Box;
-
 type Real;
 
 const unique $DefaultReal: Real;
 
-function Box2Int(Box) : int;
-
 function Box2Bool(Box) : bool;
 
-function Box2Struct(Box) : Struct;
+function Box2Int(Box) : int;
 
 function Box2Ref(Box) : Ref;
 
 function Box2Real(Box) : Real;
 
-function Int2Box(int) : Box;
-
 function Bool2Box(bool) : Box;
 
-function Struct2Box(Struct) : Box;
+function Int2Box(int) : Box;
 
 function Ref2Box(Ref) : Box;
 
@@ -309,19 +321,9 @@ function {:inline true} Box2Box(b: Box) : Box
   b
 }
 
-function Struct2Ref(Struct) : Ref;
+function Int2Real(int) : Real;
 
-function Int2Ref(int) : Ref;
-
-function Bool2Ref(bool) : Ref;
-
-function Int2Real(int, Type, Type) : Real;
-
-function Real2Int(Real, Type, Type) : Real;
-
-function Ref2Real(Ref, Type, Type) : Real;
-
-function Real2Ref(Real, Type, Type) : Ref;
+function Real2Int(Real) : int;
 
 function RealPlus(Real, Real) : Real;
 
@@ -331,6 +333,14 @@ function RealTimes(Real, Real) : Real;
 
 function RealDivide(Real, Real) : Real;
 
+function RealLessThan(Real, Real) : bool;
+
+function RealLessThanOrEqual(Real, Real) : bool;
+
+function RealGreaterThan(Real, Real) : bool;
+
+function RealGreaterThanOrEqual(Real, Real) : bool;
+
 function BitwiseAnd(int, int) : int;
 
 function BitwiseOr(int, int) : int;
@@ -338,10 +348,6 @@ function BitwiseOr(int, int) : int;
 function BitwiseExclusiveOr(int, int) : int;
 
 function BitwiseNegation(int) : int;
-
-function Ref2Int(Ref, Type, Type) : int;
-
-function Ref2Bool(Ref, Type, Type) : bool;
 
 function $DynamicType(Ref) : Type;
 
@@ -357,9 +363,11 @@ var $Method: [Ref][Ref]int;
 
 var $Receiver: [Ref][Ref]Ref;
 
+var {:thread_local} $Exception: Ref;
+
 const unique RegressionTestInput.RealNumbers: Type;
 
-procedure RegressionTestInput.RealNumbers.WriteDouble$System.Double(this: Ref, d$in: Real);
+procedure RegressionTestInput.RealNumbers.WriteDouble$System.Double($this: Ref, d$in: Real);
 
 
 
@@ -367,41 +375,57 @@ procedure {:extern} System.Console.WriteLine$System.Double(value$in: Real);
 
 
 
-implementation RegressionTestInput.RealNumbers.WriteDouble$System.Double(this: Ref, d$in: Real)
+implementation RegressionTestInput.RealNumbers.WriteDouble$System.Double($this: Ref, d$in: Real)
 {
   var d: Real;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     d := d$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 162} true;
     call System.Console.WriteLine$System.Double(d);
+    if ($Exception != null)
+    {
+        return;
+    }
+
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 163} true;
+    return;
+
     return;
 }
 
 
 
-procedure RegressionTestInput.RealNumbers.ObjectToDouble$System.Object(this: Ref, o$in: Ref);
+procedure RegressionTestInput.RealNumbers.ObjectToDouble$System.Object($this: Ref, o$in: Ref);
 
 
 
-const {:extern} unique System.Object: Type;
-
-const {:extern} unique System.Double: Type;
-
-implementation RegressionTestInput.RealNumbers.ObjectToDouble$System.Object(this: Ref, o$in: Ref)
+implementation RegressionTestInput.RealNumbers.ObjectToDouble$System.Object($this: Ref, o$in: Ref)
 {
   var o: Ref;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     o := o$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 165} true;
-    call RegressionTestInput.RealNumbers.WriteDouble$System.Double(this, Ref2Real(o, System.Object, System.Double));
+    call RegressionTestInput.RealNumbers.WriteDouble$System.Double($this, Box2Real($BoxField[o]));
+    if ($Exception != null)
+    {
+        return;
+    }
+
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 166} true;
+    return;
+
     return;
 }
 
 
 
-procedure RegressionTestInput.RealNumbers.RealOperations(this: Ref);
+procedure RegressionTestInput.RealNumbers.RealOperations($this: Ref);
 
 
 
@@ -409,43 +433,76 @@ const unique $real_literal_3_0: Real;
 
 const unique $real_literal_4_0: Real;
 
-implementation RegressionTestInput.RealNumbers.RealOperations(this: Ref)
+implementation RegressionTestInput.RealNumbers.RealOperations($this: Ref)
 {
   var local_0: Real;
   var local_1: Real;
-  var $tmp0: Real;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 168} true;
     local_0 := $real_literal_3_0;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 169} true;
     local_1 := $real_literal_4_0;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 170} true;
-    call RegressionTestInput.RealNumbers.WriteDouble$System.Double(this, RealPlus(local_0, local_1));
+    call RegressionTestInput.RealNumbers.WriteDouble$System.Double($this, RealPlus(local_0, local_1));
+    if ($Exception != null)
+    {
+        return;
+    }
+
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 171} true;
-    call RegressionTestInput.RealNumbers.WriteDouble$System.Double(this, RealMinus(local_0, local_1));
+    call RegressionTestInput.RealNumbers.WriteDouble$System.Double($this, RealMinus(local_0, local_1));
+    if ($Exception != null)
+    {
+        return;
+    }
+
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 172} true;
-    call RegressionTestInput.RealNumbers.WriteDouble$System.Double(this, RealTimes(local_0, local_1));
+    call RegressionTestInput.RealNumbers.WriteDouble$System.Double($this, RealTimes(local_0, local_1));
+    if ($Exception != null)
+    {
+        return;
+    }
+
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 173} true;
-    $tmp0 := local_1;
-    assert $tmp0 != 0;
-    call RegressionTestInput.RealNumbers.WriteDouble$System.Double(this, local_0 / $tmp0);
+    call RegressionTestInput.RealNumbers.WriteDouble$System.Double($this, RealDivide(local_0, local_1));
+    if ($Exception != null)
+    {
+        return;
+    }
+
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 174} true;
+    return;
+
     return;
 }
 
 
 
-procedure RegressionTestInput.RealNumbers.#ctor(this: Ref);
+procedure RegressionTestInput.RealNumbers.#ctor($this: Ref);
 
 
 
-procedure {:extern} System.Object.#ctor(this: Ref);
+procedure {:extern} System.Object.#ctor($this: Ref);
 
 
 
-implementation RegressionTestInput.RealNumbers.#ctor(this: Ref)
+implementation RegressionTestInput.RealNumbers.#ctor($this: Ref)
 {
-    call System.Object.#ctor(this);
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
+    call System.Object.#ctor($this);
+    if ($Exception != null)
+    {
+        return;
+    }
+
+    return;
+
     return;
 }
 
@@ -467,29 +524,46 @@ var RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.x: [Ref]int;
 
 var RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.y: [Ref]int;
 
-procedure RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.M(this: Ref);
+procedure RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.M($this: Ref);
 
 
 
-implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.M(this: Ref)
+implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.M($this: Ref)
 {
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 130} true;
-    RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.y[this] := RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.x[this];
+    RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.y[$this] := RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.x[$this];
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 131} true;
+    return;
+
     return;
 }
 
 
 
-procedure RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#ctor(this: Ref);
+procedure RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#ctor($this: Ref);
 
 
 
-implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#ctor(this: Ref)
+implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#ctor($this: Ref)
 {
-    RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.x[this] := 0;
-    RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.y[this] := 0;
-    call System.Object.#ctor(this);
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
+    RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.x[$this] := 0;
+    RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.y[$this] := 0;
+    call System.Object.#ctor($this);
+    if ($Exception != null)
+    {
+        return;
+    }
+
+    return;
+
     return;
 }
 
@@ -507,7 +581,7 @@ implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#cctor()
 
 const unique RegressionTestInput.CreateStruct: Type;
 
-procedure RegressionTestInput.CreateStruct.Create(this: Ref) returns ($result: Ref);
+procedure RegressionTestInput.CreateStruct.Create($this: Ref) returns ($result: Ref);
 
 
 
@@ -521,54 +595,75 @@ var RegressionTestInput.S.x: [Ref]int;
 
 var RegressionTestInput.S.b: [Ref]bool;
 
-implementation RegressionTestInput.CreateStruct.Create(this: Ref) returns ($result: Ref)
+implementation RegressionTestInput.CreateStruct.Create($this: Ref) returns ($result: Ref)
 {
-  var $tmp1: Ref;
+  var $tmp0: Ref;
   var local_0: Ref;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 141} true;
-    call $tmp1 := Alloc();
-    call RegressionTestInput.S.#default_ctor($tmp1);
-    assume $DynamicType($tmp1) == RegressionTestInput.S;
-    local_0 := $tmp1;
+    call $tmp0 := Alloc();
+    call RegressionTestInput.S.#default_ctor($tmp0);
+    assume $DynamicType($tmp0) == RegressionTestInput.S;
+    local_0 := $tmp0;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 142} true;
-    assert Box2Int(local_0[RegressionTestInput.S.x]) == 0;
+    assert RegressionTestInput.S.x[local_0] == 0;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 143} true;
-    assert !Box2Bool(local_0[RegressionTestInput.S.b]);
+    assert !RegressionTestInput.S.b[local_0];
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 145} true;
     $result := local_0;
     return;
-}
 
-
-
-procedure RegressionTestInput.CreateStruct.AssignThreeToSDotX$RegressionTestInput.S(this: Ref, s$in: Ref) returns ($result: Ref);
-
-
-
-implementation RegressionTestInput.CreateStruct.AssignThreeToSDotX$RegressionTestInput.S(this: Ref, s$in: Ref) returns ($result: Ref)
-{
-  var s: Ref;
-
-    s := s$in;
-    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 147} true;
-    s[RegressionTestInput.S.x] := Int2Box(3);
-    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 148} true;
-    assert Box2Int(s[RegressionTestInput.S.x]) == 3;
-    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 150} true;
-    $result := s;
     return;
 }
 
 
 
-procedure RegressionTestInput.CreateStruct.#ctor(this: Ref);
+procedure RegressionTestInput.CreateStruct.AssignThreeToSDotX$RegressionTestInput.S($this: Ref, s$in: Ref) returns ($result: Ref);
 
 
 
-implementation RegressionTestInput.CreateStruct.#ctor(this: Ref)
+implementation RegressionTestInput.CreateStruct.AssignThreeToSDotX$RegressionTestInput.S($this: Ref, s$in: Ref) returns ($result: Ref)
 {
-    call System.Object.#ctor(this);
+  var s: Ref;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
+    s := s$in;
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 147} true;
+    RegressionTestInput.S.x[s] := 3;
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 148} true;
+    assert RegressionTestInput.S.x[s] == 3;
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 150} true;
+    $result := s;
+    return;
+
+    return;
+}
+
+
+
+procedure RegressionTestInput.CreateStruct.#ctor($this: Ref);
+
+
+
+implementation RegressionTestInput.CreateStruct.#ctor($this: Ref)
+{
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
+    call System.Object.#ctor($this);
+    if ($Exception != null)
+    {
+        return;
+    }
+
+    return;
+
     return;
 }
 
@@ -597,29 +692,34 @@ procedure RegressionTestInput.ClassWithArrayTypes.Main1();
 implementation RegressionTestInput.ClassWithArrayTypes.Main1()
 {
   var local_0: Ref;
-  var $tmp2: Ref;
+  var $tmp1: Ref;
   var local_1: Ref;
-  var $tmp3: Ref;
+  var $tmp2: Ref;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 86} true;
-    call $tmp2 := Alloc();
-    assume $ArrayLength($tmp2) == 1 * 5;
-    local_0 := $tmp2;
+    call $tmp1 := Alloc();
+    assume $ArrayLength($tmp1) == 1 * 5;
+    local_0 := $tmp1;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 87} true;
     $ArrayContents := $ArrayContents[local_0 := $ArrayContents[local_0][0 := Int2Box(2)]];
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 88} true;
-    assert local_0 == 2;
+    assert Box2Int($ArrayContents[local_0][0]) == 2;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 90} true;
-    call $tmp3 := Alloc();
-    assume $ArrayLength($tmp3) == 1 * 4;
-    local_1 := $tmp3;
+    call $tmp2 := Alloc();
+    assume $ArrayLength($tmp2) == 1 * 4;
+    local_1 := $tmp2;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 91} true;
     $ArrayContents := $ArrayContents[local_1 := $ArrayContents[local_1][0 := Int2Box(1)]];
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 92} true;
-    assert local_1 == 1;
+    assert Box2Int($ArrayContents[local_1][0]) == 1;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 94} true;
-    assert local_0 == 2;
+    assert Box2Int($ArrayContents[local_0][0]) == 2;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 95} true;
+    return;
+
     return;
 }
 
@@ -631,72 +731,92 @@ procedure RegressionTestInput.ClassWithArrayTypes.Main2();
 
 implementation RegressionTestInput.ClassWithArrayTypes.Main2()
 {
-  var $tmp4: Ref;
+  var $tmp3: Ref;
   var local_0: Ref;
-  var $tmp5: Ref;
+  var $tmp4: Ref;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 100} true;
-    call $tmp4 := Alloc();
-    assume $ArrayLength($tmp4) == 1 * 5;
-    RegressionTestInput.ClassWithArrayTypes.s := $tmp4;
+    call $tmp3 := Alloc();
+    assume $ArrayLength($tmp3) == 1 * 5;
+    RegressionTestInput.ClassWithArrayTypes.s := $tmp3;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 101} true;
     $ArrayContents := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.s := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.s][0 := Int2Box(2)]];
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 102} true;
-    assert RegressionTestInput.ClassWithArrayTypes.s == 2;
+    assert Box2Int($ArrayContents[RegressionTestInput.ClassWithArrayTypes.s][0]) == 2;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 104} true;
-    call $tmp5 := Alloc();
-    assume $ArrayLength($tmp5) == 1 * 4;
-    local_0 := $tmp5;
+    call $tmp4 := Alloc();
+    assume $ArrayLength($tmp4) == 1 * 4;
+    local_0 := $tmp4;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 105} true;
     $ArrayContents := $ArrayContents[local_0 := $ArrayContents[local_0][0 := Int2Box(1)]];
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 106} true;
-    assert local_0 == 1;
+    assert Box2Int($ArrayContents[local_0][0]) == 1;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 108} true;
-    assert RegressionTestInput.ClassWithArrayTypes.s == 2;
+    assert Box2Int($ArrayContents[RegressionTestInput.ClassWithArrayTypes.s][0]) == 2;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 109} true;
+    return;
+
     return;
 }
 
 
 
-procedure RegressionTestInput.ClassWithArrayTypes.Main3$System.Int32(this: Ref, x$in: int);
+procedure RegressionTestInput.ClassWithArrayTypes.Main3$System.Int32($this: Ref, x$in: int);
 
 
 
-implementation RegressionTestInput.ClassWithArrayTypes.Main3$System.Int32(this: Ref, x$in: int)
+implementation RegressionTestInput.ClassWithArrayTypes.Main3$System.Int32($this: Ref, x$in: int)
 {
   var x: int;
-  var _loc0: int;
-  var _loc1: int;
+  var _loc0: Ref;
+  var _loc1: Ref;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     x := x$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 114} true;
-    $ArrayContents := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[this] := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[this]][x := Int2Box(42)]];
+    $ArrayContents := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[$this] := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[$this]][x := Int2Box(42)]];
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 115} true;
-    $ArrayContents := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[this] := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[this]][x + 1 := Int2Box(43)]];
+    $ArrayContents := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[$this] := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[$this]][x + 1 := Int2Box(43)]];
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 116} true;
-    _loc0 := RegressionTestInput.ClassWithArrayTypes.a[this];
-    _loc1 := RegressionTestInput.ClassWithArrayTypes.a[this];
-    assert _loc0 == _loc1 + 1;
+    _loc0 := RegressionTestInput.ClassWithArrayTypes.a[$this];
+    _loc1 := RegressionTestInput.ClassWithArrayTypes.a[$this];
+    assert Box2Int($ArrayContents[_loc0][x + 1]) == Box2Int($ArrayContents[_loc1][x]) + 1;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 117} true;
+    return;
+
     return;
 }
 
 
 
-procedure RegressionTestInput.ClassWithArrayTypes.Main4$System.Int32array(this: Ref, xs$in: Ref);
+procedure RegressionTestInput.ClassWithArrayTypes.Main4$System.Int32array($this: Ref, xs$in: Ref);
 
 
 
-implementation RegressionTestInput.ClassWithArrayTypes.Main4$System.Int32array(this: Ref, xs$in: Ref)
+implementation RegressionTestInput.ClassWithArrayTypes.Main4$System.Int32array($this: Ref, xs$in: Ref)
 {
   var xs: Ref;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     xs := xs$in;
-    if (!(!(xs != null) || $ArrayLength(xs) <= 0))
+    if (xs != null)
+    {
+    }
+    else
+    {
+    }
+
+    if (!(if xs != null then $ArrayLength(xs) <= 0 else true))
     {
         assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 121} true;
-        $ArrayContents := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[this] := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[this]][0 := Int2Box(xs)]];
+        $ArrayContents := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[$this] := $ArrayContents[RegressionTestInput.ClassWithArrayTypes.a[$this]][0 := Int2Box(Box2Int($ArrayContents[xs][0]))]];
     }
     else
     {
@@ -704,18 +824,31 @@ implementation RegressionTestInput.ClassWithArrayTypes.Main4$System.Int32array(t
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 123} true;
     return;
+
+    return;
 }
 
 
 
-procedure RegressionTestInput.ClassWithArrayTypes.#ctor(this: Ref);
+procedure RegressionTestInput.ClassWithArrayTypes.#ctor($this: Ref);
 
 
 
-implementation RegressionTestInput.ClassWithArrayTypes.#ctor(this: Ref)
+implementation RegressionTestInput.ClassWithArrayTypes.#ctor($this: Ref)
 {
-    RegressionTestInput.ClassWithArrayTypes.a[this] := null;
-    call System.Object.#ctor(this);
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
+    RegressionTestInput.ClassWithArrayTypes.a[$this] := null;
+    call System.Object.#ctor($this);
+    if ($Exception != null)
+    {
+        return;
+    }
+
+    return;
+
     return;
 }
 
@@ -734,83 +867,114 @@ implementation RegressionTestInput.ClassWithArrayTypes.#cctor()
 
 const unique RegressionTestInput.BitwiseOperations: Type;
 
-procedure RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int) returns ($result: int);
+procedure RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int32($this: Ref, x$in: int, y$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int) returns ($result: int)
+implementation RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int32($this: Ref, x$in: int, y$in: int) returns ($result: int)
 {
   var x: int;
   var y: int;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     x := x$in;
     y := y$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 178} true;
     $result := BitwiseAnd(x, y);
     return;
+
+    return;
 }
 
 
 
-procedure RegressionTestInput.BitwiseOperations.BitwiseOr$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int) returns ($result: int);
+procedure RegressionTestInput.BitwiseOperations.BitwiseOr$System.Int32$System.Int32($this: Ref, x$in: int, y$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.BitwiseOperations.BitwiseOr$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int) returns ($result: int)
+implementation RegressionTestInput.BitwiseOperations.BitwiseOr$System.Int32$System.Int32($this: Ref, x$in: int, y$in: int) returns ($result: int)
 {
   var x: int;
   var y: int;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     x := x$in;
     y := y$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 179} true;
     $result := BitwiseOr(x, y);
     return;
+
+    return;
 }
 
 
 
-procedure RegressionTestInput.BitwiseOperations.ExclusiveOr$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int) returns ($result: int);
+procedure RegressionTestInput.BitwiseOperations.ExclusiveOr$System.Int32$System.Int32($this: Ref, x$in: int, y$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.BitwiseOperations.ExclusiveOr$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int) returns ($result: int)
+implementation RegressionTestInput.BitwiseOperations.ExclusiveOr$System.Int32$System.Int32($this: Ref, x$in: int, y$in: int) returns ($result: int)
 {
   var x: int;
   var y: int;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     x := x$in;
     y := y$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 180} true;
     $result := BitwiseExclusiveOr(x, y);
     return;
-}
 
-
-
-procedure RegressionTestInput.BitwiseOperations.BitwiseNegation$System.Int32(this: Ref, x$in: int) returns ($result: int);
-
-
-
-implementation RegressionTestInput.BitwiseOperations.BitwiseNegation$System.Int32(this: Ref, x$in: int) returns ($result: int)
-{
-  var x: int;
-
-    x := x$in;
-    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 181} true;
-    $result := BitwiseNegation(x);
     return;
 }
 
 
 
-procedure RegressionTestInput.BitwiseOperations.#ctor(this: Ref);
+procedure RegressionTestInput.BitwiseOperations.BitwiseNegation$System.Int32($this: Ref, x$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.BitwiseOperations.#ctor(this: Ref)
+implementation RegressionTestInput.BitwiseOperations.BitwiseNegation$System.Int32($this: Ref, x$in: int) returns ($result: int)
 {
-    call System.Object.#ctor(this);
+  var x: int;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
+    x := x$in;
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 181} true;
+    $result := BitwiseNegation(x);
+    return;
+
+    return;
+}
+
+
+
+procedure RegressionTestInput.BitwiseOperations.#ctor($this: Ref);
+
+
+
+implementation RegressionTestInput.BitwiseOperations.#ctor($this: Ref)
+{
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
+    call System.Object.#ctor($this);
+    if ($Exception != null)
+    {
+        return;
+    }
+
+    return;
+
     return;
 }
 
@@ -828,17 +992,28 @@ implementation RegressionTestInput.BitwiseOperations.#cctor()
 
 const unique RegressionTestInput.AsyncAttribute: Type;
 
-procedure RegressionTestInput.AsyncAttribute.#ctor(this: Ref);
+procedure RegressionTestInput.AsyncAttribute.#ctor($this: Ref);
 
 
 
-procedure {:extern} System.Attribute.#ctor(this: Ref);
+procedure {:extern} System.Attribute.#ctor($this: Ref);
 
 
 
-implementation RegressionTestInput.AsyncAttribute.#ctor(this: Ref)
+implementation RegressionTestInput.AsyncAttribute.#ctor($this: Ref)
 {
-    call System.Attribute.#ctor(this);
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
+    call System.Attribute.#ctor($this);
+    if ($Exception != null)
+    {
+        return;
+    }
+
+    return;
+
     return;
 }
 
@@ -862,22 +1037,39 @@ procedure RegressionTestInput.RefParameters.M$System.Int32$(x$in: int) returns (
 
 implementation RegressionTestInput.RefParameters.M$System.Int32$(x$in: int) returns (x$out: int)
 {
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
     x$out := x$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 156} true;
     x$out := x$out + 1;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 157} true;
     return;
+
+    return;
 }
 
 
 
-procedure RegressionTestInput.RefParameters.#ctor(this: Ref);
+procedure RegressionTestInput.RefParameters.#ctor($this: Ref);
 
 
 
-implementation RegressionTestInput.RefParameters.#ctor(this: Ref)
+implementation RegressionTestInput.RefParameters.#ctor($this: Ref)
 {
-    call System.Object.#ctor(this);
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
+    call System.Object.#ctor($this);
+    if ($Exception != null)
+    {
+        return;
+    }
+
+    return;
+
     return;
 }
 
@@ -907,8 +1099,8 @@ procedure RegressionTestInput.S.#copy_ctor(this: Ref, other: Ref);
 
 implementation {:inline 1} RegressionTestInput.S.#copy_ctor(this: Ref, other: Ref)
 {
-    other[RegressionTestInput.S.x] := Int2Box(Box2Int(this[RegressionTestInput.S.x]));
-    other[RegressionTestInput.S.b] := Bool2Box(Box2Bool(this[RegressionTestInput.S.b]));
+    RegressionTestInput.S.x[other] := RegressionTestInput.S.x[this];
+    RegressionTestInput.S.b[other] := RegressionTestInput.S.b[this];
 }
 
 
@@ -924,129 +1116,178 @@ procedure RegressionTestInput.Class0.StaticMethod$System.Int32(x$in: int) return
 implementation RegressionTestInput.Class0.StaticMethod$System.Int32(x$in: int) returns ($result: int)
 {
   var x: int;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     x := x$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 18} true;
     $result := x + 1;
     return;
+
+    return;
 }
 
 
 
-procedure RegressionTestInput.Class0.M$System.Int32(this: Ref, x$in: int);
+procedure RegressionTestInput.Class0.M$System.Int32($this: Ref, x$in: int);
 
 
 
-implementation RegressionTestInput.Class0.M$System.Int32(this: Ref, x$in: int)
+implementation RegressionTestInput.Class0.M$System.Int32($this: Ref, x$in: int)
 {
   var x: int;
   var __temp_1: int;
-  var $tmp6: int;
   var local_0: int;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     x := x$in;
-    $tmp6 := x;
-    assert $tmp6 != 0;
-    __temp_1 := 5 / $tmp6;
+    __temp_1 := 5 / x;
     x := 3;
     local_0 := __temp_1 + 3;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 22} true;
-    assert x == 3 && local_0 <= 8;
+    if (x == 3)
+    {
+    }
+    else
+    {
+    }
+
+    assert (if x == 3 then local_0 <= 8 else false);
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 23} true;
     RegressionTestInput.Class0.StaticInt := local_0;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 24} true;
     assert local_0 == RegressionTestInput.Class0.StaticInt;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 25} true;
     return;
+
+    return;
 }
 
 
 
-procedure RegressionTestInput.Class0.M$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int);
+procedure RegressionTestInput.Class0.M$System.Int32$System.Int32($this: Ref, x$in: int, y$in: int);
 
 
 
-implementation RegressionTestInput.Class0.M$System.Int32$System.Int32(this: Ref, x$in: int, y$in: int)
+implementation RegressionTestInput.Class0.M$System.Int32$System.Int32($this: Ref, x$in: int, y$in: int)
 {
   var x: int;
   var y: int;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     x := x$in;
     y := y$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 28} true;
     return;
+
+    return;
 }
 
 
 
-procedure RegressionTestInput.Class0.M$System.Boolean(this: Ref, b$in: bool);
+procedure RegressionTestInput.Class0.M$System.Boolean($this: Ref, b$in: bool);
 
 
 
-implementation RegressionTestInput.Class0.M$System.Boolean(this: Ref, b$in: bool)
+implementation RegressionTestInput.Class0.M$System.Boolean($this: Ref, b$in: bool)
 {
   var b: bool;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     b := b$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 29} true;
     return;
+
+    return;
 }
 
 
 
-procedure RegressionTestInput.Class0.M$RegressionTestInput.Class0(this: Ref, c$in: Ref);
+procedure RegressionTestInput.Class0.M$RegressionTestInput.Class0($this: Ref, c$in: Ref);
 
 
 
-implementation RegressionTestInput.Class0.M$RegressionTestInput.Class0(this: Ref, c$in: Ref)
+implementation RegressionTestInput.Class0.M$RegressionTestInput.Class0($this: Ref, c$in: Ref)
 {
   var c: Ref;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     c := c$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 30} true;
     return;
-}
 
-
-
-procedure RegressionTestInput.Class0.NonVoid(this: Ref) returns ($result: int);
-
-
-
-implementation RegressionTestInput.Class0.NonVoid(this: Ref) returns ($result: int)
-{
-  var $tmp7: int;
-
-    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 34} true;
-    call $tmp7 := RegressionTestInput.Class0.StaticMethod$System.Int32(3);
-    $result := 3 + RegressionTestInput.Class0.StaticInt + $tmp7;
     return;
 }
 
 
 
-procedure RegressionTestInput.Class0.OutParam$System.Int32$(this: Ref, x$in: int) returns (x$out: int, $result: int);
+procedure RegressionTestInput.Class0.NonVoid($this: Ref) returns ($result: int);
 
 
 
-implementation RegressionTestInput.Class0.OutParam$System.Int32$(this: Ref, x$in: int) returns (x$out: int, $result: int)
+implementation RegressionTestInput.Class0.NonVoid($this: Ref) returns ($result: int)
 {
+  var $tmp5: int;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 34} true;
+    call $tmp5 := RegressionTestInput.Class0.StaticMethod$System.Int32(3);
+    if ($Exception != null)
+    {
+        return;
+    }
+
+    $result := 3 + RegressionTestInput.Class0.StaticInt + $tmp5;
+    return;
+
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.OutParam$System.Int32$($this: Ref, x$in: int) returns (x$out: int, $result: int);
+
+
+
+implementation RegressionTestInput.Class0.OutParam$System.Int32$($this: Ref, x$in: int) returns (x$out: int, $result: int)
+{
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
     x$out := x$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 37} true;
     x$out := 3 + RegressionTestInput.Class0.StaticInt;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 39} true;
     $result := x$out;
     return;
+
+    return;
 }
 
 
 
-procedure RegressionTestInput.Class0.RefParam$System.Int32$(this: Ref, x$in: int) returns (x$out: int, $result: int);
+procedure RegressionTestInput.Class0.RefParam$System.Int32$($this: Ref, x$in: int) returns (x$out: int, $result: int);
 
 
 
-implementation RegressionTestInput.Class0.RefParam$System.Int32$(this: Ref, x$in: int) returns (x$out: int, $result: int)
+implementation RegressionTestInput.Class0.RefParam$System.Int32$($this: Ref, x$in: int) returns (x$out: int, $result: int)
 {
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
     x$out := x$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 42} true;
     x$out := x$out + 1;
@@ -1055,17 +1296,22 @@ implementation RegressionTestInput.Class0.RefParam$System.Int32$(this: Ref, x$in
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 45} true;
     $result := x$out;
     return;
+
+    return;
 }
 
 
 
-procedure RegressionTestInput.Class0.AssignToInParam$System.Int32(this: Ref, x$in: int) returns ($result: int);
+procedure RegressionTestInput.Class0.AssignToInParam$System.Int32($this: Ref, x$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.Class0.AssignToInParam$System.Int32(this: Ref, x$in: int) returns ($result: int)
+implementation RegressionTestInput.Class0.AssignToInParam$System.Int32($this: Ref, x$in: int) returns ($result: int)
 {
   var x: int;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     x := x$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 48} true;
@@ -1075,51 +1321,79 @@ implementation RegressionTestInput.Class0.AssignToInParam$System.Int32(this: Ref
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 51} true;
     $result := x;
     return;
+
+    return;
 }
 
 
 
-procedure {:RegressionTestInput.Async} RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this: Ref, x$in: int) returns ($result: int);
+procedure {:RegressionTestInput.Async} RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32($this: Ref, x$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this: Ref, x$in: int) returns ($result: int)
+implementation RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32($this: Ref, x$in: int) returns ($result: int)
 {
   var x: int;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     x := x$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 56} true;
     $result := x;
     return;
-}
 
-
-
-procedure RegressionTestInput.Class0.CallAsyncMethod$System.Int32(this: Ref, y$in: int) returns ($result: int);
-
-
-
-implementation RegressionTestInput.Class0.CallAsyncMethod$System.Int32(this: Ref, y$in: int) returns ($result: int)
-{
-  var y: int;
-  var $tmp8: int;
-
-    y := y$in;
-    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 60} true;
-    call {:async} $tmp8 := RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32(this, y);
-    $result := $tmp8;
     return;
 }
 
 
 
-procedure RegressionTestInput.Class0.#ctor(this: Ref);
+procedure RegressionTestInput.Class0.CallAsyncMethod$System.Int32($this: Ref, y$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.Class0.#ctor(this: Ref)
+implementation RegressionTestInput.Class0.CallAsyncMethod$System.Int32($this: Ref, y$in: int) returns ($result: int)
 {
-    call System.Object.#ctor(this);
+  var y: int;
+  var $tmp6: int;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
+    y := y$in;
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 60} true;
+    call {:async} $tmp6 := RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32($this, y);
+    if ($Exception != null)
+    {
+        return;
+    }
+
+    $result := $tmp6;
+    return;
+
+    return;
+}
+
+
+
+procedure RegressionTestInput.Class0.#ctor($this: Ref);
+
+
+
+implementation RegressionTestInput.Class0.#ctor($this: Ref)
+{
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
+
+    call System.Object.#ctor($this);
+    if ($Exception != null)
+    {
+        return;
+    }
+
+    return;
+
     return;
 }
 
@@ -1150,30 +1424,43 @@ implementation RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int3
 {
   var x: int;
   var y: int;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     x := x$in;
     y := y$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 70} true;
     $result := x < y;
     return;
+
+    return;
 }
 
 
 
-procedure RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean(this: Ref, z$in: bool);
+procedure RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean($this: Ref, z$in: bool);
 
 
 
-implementation RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean(this: Ref, z$in: bool)
+implementation RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean($this: Ref, z$in: bool)
 {
   var z: bool;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     z := z$in;
-    RegressionTestInput.ClassWithBoolTypes.b[this] := false;
+    RegressionTestInput.ClassWithBoolTypes.b[$this] := false;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 72} true;
-    call System.Object.#ctor(this);
+    call System.Object.#ctor($this);
+    if ($Exception != null)
+    {
+        return;
+    }
+
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 73} true;
-    RegressionTestInput.ClassWithBoolTypes.b[this] := z;
+    RegressionTestInput.ClassWithBoolTypes.b[$this] := z;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 74} true;
     if (z)
     {
@@ -1183,6 +1470,8 @@ implementation RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean(this:
     else
     {
     }
+
+    return;
 
     return;
 }
@@ -1195,11 +1484,21 @@ procedure RegressionTestInput.ClassWithBoolTypes.Main();
 
 implementation RegressionTestInput.ClassWithBoolTypes.Main()
 {
-  var $tmp9: bool;
+  var $tmp7: bool;
+  var $localExc: Ref;
+  var $finallyStackCounter: int;
+  var $label: int;
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 78} true;
-    call $tmp9 := RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int32(3, 4);
+    call $tmp7 := RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int32(3, 4);
+    if ($Exception != null)
+    {
+        return;
+    }
+
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 79} true;
+    return;
+
     return;
 }
 
