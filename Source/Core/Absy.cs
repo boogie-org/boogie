@@ -697,52 +697,14 @@ namespace Microsoft.Boogie {
       }
       return g;
     }
-
-    // Delete unreachable Blocks of an Impl. This helps avoid a bug inside
-    // NewComputeDominators
-
-    public void pruneUnreachableBlocks(Implementation impl)
-    {
-        // Do a BFS to find all reachable blocks
-        List<Block> reachableBlocks = new List<Block>();
-        HashSet<string> visited = new HashSet<string>();
-        List<Block> worklist = new List<Block>();
-
-        visited.Add(impl.Blocks[0].Label);
-        worklist.Add(impl.Blocks[0]);
-
-        while (worklist.Count != 0)
-        {
-            var block = worklist[0];
-            worklist.RemoveAt(0);
-
-            reachableBlocks.Add(block);
-            GotoCmd gc = block.TransferCmd as GotoCmd;
-            if(gc == null) continue;
-
-            foreach (Block succ in gc.labelTargets)
-            {
-                if (visited.Contains(succ.Label)) continue;
-                visited.Add(succ.Label);
-                worklist.Add(succ);
-            }
-        }
-
-        // Delete unreachable blocks
-       
-        // Make sure that the start block hasn't changed.
-        Contract.Assert(reachableBlocks[0] == impl.Blocks[0]);
-
-        impl.Blocks = reachableBlocks;
-    }
-
+    
     public Dictionary<string, Dictionary<string, Block>> ExtractLoops() {
       List<Implementation/*!*/>/*!*/ loopImpls = new List<Implementation/*!*/>();
       Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
       foreach (Declaration d in this.TopLevelDeclarations) {
         Implementation impl = d as Implementation;
         if (impl != null && impl.Blocks != null && impl.Blocks.Count > 0) {
-          pruneUnreachableBlocks(impl);
+          impl.PruneUnreachableBlocks();
           Graph<Block/*!*/>/*!*/ g = GraphFromImpl(impl);
           g.ComputeLoops();
           if (!g.Reducible) {
