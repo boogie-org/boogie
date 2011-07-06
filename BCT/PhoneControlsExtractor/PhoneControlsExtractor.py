@@ -67,6 +67,11 @@ def addControlToMap(parentPage, controlNode):
     newControl["IsEnabled"]= controlNode.getAttribute("IsEnabled")
   else:
     newControl["IsEnabled"]= "true"
+  
+  if (controlNode.hasAttribute("Visibility")):
+    newControl["Visibility"]= controlNode.getAttribute("Visibility")
+  else:
+    newControl["Visibility"]= "Visible"
 
   # TODO it is possible that more events are of interest, we should add as we discover them in existing applications
   newControl["Click"] = controlNode.getAttribute("Click")
@@ -75,7 +80,7 @@ def addControlToMap(parentPage, controlNode):
   pageControls.append(newControl)
   staticControlsMap[parentPage]= pageControls
 
-def extractPhoneControlsFromPage(pageFile, outputFile):
+def extractPhoneControlsFromPage(pageFile):
   # maybe it is not a page file
   if not isPageFile(pageFile):
     return
@@ -93,12 +98,28 @@ def extractPhoneControlsFromPage(pageFile, outputFile):
       parent= parent.parentNode
     addControlToMap(ownerPage, control)
 
-def extractPhoneControls(sourceDir, outputFile):
+def outputPhoneControls(outputFileName):
+  outputFile= open(outputFileName, "w")
+
+  # Output format is one line per
+  # <pageClassName>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>#
+  for page in staticControlsMap.keys():
+    for control in staticControlsMap[page]:
+      isEnabled= control["IsEnabled"]
+      visibility= control["Visibility"]
+      click= control["Click"]
+      checked= control["Checked"]
+      unchecked= control["Unchecked"]
+      outputFile.write(page + "," + control["Type"] + "," + control["Name"] + "," + isEnabled + "," + visibility + "," + click + "," + checked + "," + unchecked + "#\n")
+
+  outputFile.close()
+
+def extractPhoneControls(sourceDir):
   fileList= [os.path.normcase(fileName) for fileName in os.listdir(sourceDir)]
   fileList= [os.path.join(sourceDir, fileName) for fileName in fileList if os.path.splitext(fileName)[1] == ".xaml"]
   for fileName in fileList:
     pageFile= open(fileName, "r")
-    extractPhoneControlsFromPage(pageFile, outputFile)
+    extractPhoneControlsFromPage(pageFile)
     pageFile.close()
 
   # TODO dump controls into a config file that can be passed to BCT
@@ -124,9 +145,8 @@ def main():
     if o in ["-o", "--output"]:
       outputFile= a
 
-  output= open(outputFile, "w")
-  extractPhoneControls(pagesDir, output)
-  output.close()
+  extractPhoneControls(pagesDir)
+  outputPhoneControls(outputFile)
 
 if __name__ == "__main__":
   main()
