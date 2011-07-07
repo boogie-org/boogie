@@ -53,7 +53,7 @@ def getControlNodes(xmlNode):
 
   return controlNodes
 
-def addControlToMap(parentPage, controlNode):
+def addControlToMap(pageXAML, parentPage, controlNode):
   pageControls=[]
   newControl={}
   try:
@@ -77,32 +77,33 @@ def addControlToMap(parentPage, controlNode):
   newControl["Click"] = controlNode.getAttribute("Click")
   newControl["Checked"] = controlNode.getAttribute("Checked")
   newControl["Unchecked"] = controlNode.getAttribute("Unchecked")
+  newControl["XAML"]= pageXAML
   pageControls.append(newControl)
   staticControlsMap[parentPage]= pageControls
 
-def extractPhoneControlsFromPage(pageFile):
+def extractPhoneControlsFromPage(pageXAML):
   # maybe it is not a page file
+  pageFile= open(pageXAML, "r")
   if not isPageFile(pageFile):
     return
-
   pageFileXML= minidom.parse(pageFile)
+  pageFile.close()
   removeBlankElements(pageFileXML)
   controls= getControlNodes(pageFileXML)
   for control in controls:
     ownerPage=""
     parent= control
     while not parent == None:
-      a=""
       if parent.localName == "PhoneApplicationPage":
         ownerPage= parent.getAttribute("x:Class")
       parent= parent.parentNode
-    addControlToMap(ownerPage, control)
+    addControlToMap(pageXAML, ownerPage, control)
 
 def outputPhoneControls(outputFileName):
   outputFile= open(outputFileName, "w")
 
   # Output format is one line per
-  # <pageClassName>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>#
+  # <pageClassName>,<page.xaml file>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>
   for page in staticControlsMap.keys():
     for control in staticControlsMap[page]:
       isEnabled= control["IsEnabled"]
@@ -110,7 +111,8 @@ def outputPhoneControls(outputFileName):
       click= control["Click"]
       checked= control["Checked"]
       unchecked= control["Unchecked"]
-      outputFile.write(page + "," + control["Type"] + "," + control["Name"] + "," + isEnabled + "," + visibility + "," + click + "," + checked + "," + unchecked + "#\n")
+      pageXAML= control["XAML"]
+      outputFile.write(page + "," + os.path.basename(pageXAML) + "," + control["Type"] + "," + control["Name"] + "," + isEnabled + "," + visibility + "," + click + "," + checked + "," + unchecked + "\n")
 
   outputFile.close()
 
@@ -118,9 +120,7 @@ def extractPhoneControls(sourceDir):
   fileList= [os.path.normcase(fileName) for fileName in os.listdir(sourceDir)]
   fileList= [os.path.join(sourceDir, fileName) for fileName in fileList if os.path.splitext(fileName)[1] == ".xaml"]
   for fileName in fileList:
-    pageFile= open(fileName, "r")
-    extractPhoneControlsFromPage(pageFile)
-    pageFile.close()
+    extractPhoneControlsFromPage(fileName)
 
   # TODO dump controls into a config file that can be passed to BCT
 

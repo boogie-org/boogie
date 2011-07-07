@@ -41,6 +41,9 @@ namespace BytecodeTranslator {
     [OptionDescription("Stub assembly", ShortForm = "s")]
     public List<string>/*?*/ stub = null;
 
+    [OptionDescription("Phone translation controls configuration")]
+    public string phoneControls = null;
+
   }
 
   public class BCT {
@@ -91,7 +94,7 @@ namespace BytecodeTranslator {
             return 1;
         }
 
-        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stub);
+        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stub, options.phoneControls);
 
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed: {0}", e.Message);
@@ -101,7 +104,7 @@ namespace BytecodeTranslator {
       return result;
     }
 
-    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, List<string>/*?*/ libPaths, bool wholeProgram, List<string>/*?*/ stubAssemblies) {
+    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, List<string>/*?*/ libPaths, bool wholeProgram, List<string>/*?*/ stubAssemblies, string phoneControlsConfigFile) {
       Contract.Requires(assemblyNames != null);
       Contract.Requires(heapFactory != null);
 
@@ -177,7 +180,7 @@ namespace BytecodeTranslator {
       else
         traverserFactory = new CLRSemantics();
 
-      var sink = new Sink(host, traverserFactory, heapFactory);
+      var sink = new Sink(host, traverserFactory, heapFactory, phoneControlsConfigFile);
       TranslationHelper.tmpVarCounter = 0;
 
       MetadataTraverser translator = traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
