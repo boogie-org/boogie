@@ -1898,13 +1898,13 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     stmts :::
     (perm.permissionType match {
       case PermissionType.Mixed =>
-        bassert(f > 0 || (f == 0 && n > 0), error.pos, error.message + " The permission at " + perm.pos + " might not be positive.") ::
+        bassert(f > 0 || (f == 0 && n > 0), error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
         DecPermissionBoth(obj, memberName, f, n, em, error, pos, ec)
       case PermissionType.Epsilons =>
-        bassert(n > 0, error.pos, error.message + " The permission at " + perm.pos + " might not be positive.") ::
+        bassert(n > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
         DecPermissionEpsilon(obj, memberName, n, em, error, pos)
       case PermissionType.Fraction =>
-        bassert(f > 0, error.pos, error.message + " The permission at " + perm.pos + " might not be positive.") ::
+        bassert(f > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
         DecPermission(obj, memberName, f, em, error, pos, ec)
     })
   }
