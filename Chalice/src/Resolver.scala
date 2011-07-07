@@ -1128,7 +1128,10 @@ object Resolver {
          if( ! token.typ.IsToken) context.Error(token.pos, "joinable is only applicable to tokens");
          ResolveExpr(obj, context, false, false)
          CheckNoGhost(obj, context)
-         args foreach { a => ResolveExpr(a, context, false, false); CheckNoGhost(a, context) }
+         args foreach { a => a match {
+            case VariableExpr("?") => 
+            case _ => ResolveExpr(a, context, false, false); CheckNoGhost(a, context)
+         }}
          // lookup method
          var typ: Class = IntClass
          obj.typ.LookupMember(id) match {
@@ -1141,8 +1144,12 @@ object Resolver {
                          " (" + args.length + " instead of " + m.ins.length + ")")
              else {
                for((actual, formal) <- args zip m.ins){
-                 if(! canAssign(formal.t.typ, actual.typ))
-                  context.Error(actual.pos, "the type of the actual argument is not assignable to the formal parameter (expected: " + formal.t.FullName + ", found: " + actual.typ.FullName + ")")
+                 actual match {
+                    case VariableExpr("?") =>
+                    case _ => if (!canAssign(formal.t.typ, actual.typ))
+                        context.Error(actual.pos, "the type of the actual argument is not assignable to the formal parameter (expected: " + formal.t.FullName + ", found: " + actual.typ.FullName + ")")
+                 }
+                 
              }
            }
          case _ => context.Error(obj.pos, "call expression does not denote a method: " + obj.typ.FullName + "." + id)

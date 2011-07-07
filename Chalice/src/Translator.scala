@@ -2119,6 +2119,14 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       case CallState(token, obj, id, args) =>
         val argsSeq = CallArgs(Heap.select(Tr(token), "joinable"));
 
+        var f: ((Expression, Int)) => Expr =
+            (a: (Expression, Int)) => a match {
+                case (VariableExpr("?"),_) => true: Expr
+                case _ => new MapSelect(argsSeq, a._2) ==@ Tr(a._1)
+              }
+        var ll: List[(Expression, Int)] = null
+        ll = (args zip (1 until args.length+1).toList);
+        
         var i = 0;
         (CallHeap(Heap.select(Tr(token), "joinable")), 
          CallMask(Heap.select(Tr(token), "joinable")),
@@ -2129,7 +2137,9 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
          bassert(CanRead(Tr(token), "joinable"), obj.pos, "Joinable field of the token might not be readable.") ::
          bassert(Heap.select(Tr(token), "joinable") !=@ 0, obj.pos, "Token might not be active."),
          (new MapSelect(argsSeq, 0) ==@ Tr(obj) ) &&
-         (((args zip (1 until args.length+1).toList) map { a => new MapSelect(argsSeq, a._2) ==@ Tr(a._1)}).foldLeft(true: Expr){ (a: Expr, b: Expr) => a && b})
+         ((ll map { 
+            f
+         }).foldLeft(true: Expr){ (a: Expr, b: Expr) => a && b})
         )
     }
   }

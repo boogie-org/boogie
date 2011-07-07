@@ -370,6 +370,9 @@ class Parser extends StandardTokenParsers {
   def expressionList =
     repsep(expression, ",")
   def expression = positioned(iteExpr)
+  
+  def partialExpressionList =
+    repsep(expression | ("_" ^^^ VariableExpr("?")), ",")
 
   def iteExpr: Parser[Expression] =
         positioned(iffExpr ~ (("?" ~> iteExpr) ~ (":" ~> iteExpr) ?) ^^ {
@@ -442,7 +445,7 @@ class Parser extends StandardTokenParsers {
         case name ~ Some(es) => { e0: Expression => FunctionApplication(e0, name, es) } }
     | "." ~> "acquire" ~> exprBody ^^ { case eb => { e0: Expression => Eval(AcquireState(e0), eb) }}
     | "." ~> "release" ~> exprBody ^^ { case eb => { e0: Expression => Eval(ReleaseState(e0), eb) }}
-    | "." ~> "fork" ~> (callTarget ~ expressionList <~ ")") ~ exprBody ^^ {
+    | "." ~> "fork" ~> (callTarget ~ partialExpressionList <~ ")") ~ exprBody ^^ {
         case MemberAccess(obj,id) ~ args ~ eb => { e0: Expression => Eval(CallState(e0, obj, id, args), eb) }}
     )
   def exprBody =
@@ -583,7 +586,7 @@ class Parser extends StandardTokenParsers {
     (suffixExpr <~ ".") into { e =>
       ( "acquire" ^^^ AcquireState(e)
       | "release" ^^^ ReleaseState(e)
-      | "fork" ~> callTarget ~ expressionList <~ ")" ^^ {
+      | "fork" ~> callTarget ~ partialExpressionList <~ ")" ^^ {
           case MemberAccess(obj,id) ~ args => CallState(e, obj, id, args) }
       )}
 
