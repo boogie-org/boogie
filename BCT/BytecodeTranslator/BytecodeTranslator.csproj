@@ -179,6 +179,10 @@
       <Project>{319E150C-8F33-49E7-81CA-30F02F9BA90A}</Project>
       <Name>MutableCodeModel</Name>
     </ProjectReference>
+    <ProjectReference Include="..\TranslationPlugins\TranslationPlugins.csproj">
+      <Project>{8C242D42-9714-440F-884D-F64F09E78C7B}</Project>
+      <Name>TranslationPlugins</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

@@ -22,10 +22,19 @@ namespace BytecodeTranslator {
 
   public class Sink {
 
+    private TranslationPlugins.PhoneControlsPlugin phonePlugin;
+
     public TraverserFactory Factory {
       get { return this.factory; }
     }
     readonly TraverserFactory factory;
+
+    public Sink(IContractAwareHost host, TraverserFactory factory, HeapFactory heapFactory, string phoneControlsConfigFile)
+      : this(host, factory, heapFactory) {
+      // TODO I'm loading the config file here, it would be best to create the sink and then register callback plugins from outside
+
+        phonePlugin = new TranslationPlugins.PhoneControlsPlugin(phoneControlsConfigFile);
+    }
 
     public Sink(IContractAwareHost host, TraverserFactory factory, HeapFactory heapFactory) {
       Contract.Requires(host != null);

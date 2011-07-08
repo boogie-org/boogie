@@ -42,6 +42,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContractExtractor", "..\..\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Contracts", "..\..\CCICodePlex\Ast\Metadata\Sources\Microsoft.Contracts\Microsoft.Contracts.csproj", "{B114E5FF-F2A2-4BE7-8AF1-936FC87030F0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TranslationPlugins", "TranslationPlugins\TranslationPlugins.csproj", "{8C242D42-9714-440F-884D-F64F09E78C7B}"
+EndProject
 Global
 	GlobalSection(TestCaseManagementSettings) = postSolution
 		CategoryFile = BCT.vsmdi
@@ -247,6 +249,18 @@ Global
 		{B114E5FF-F2A2-4BE7-8AF1-936FC87030F0}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
 		{B114E5FF-F2A2-4BE7-8AF1-936FC87030F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B114E5FF-F2A2-4BE7-8AF1-936FC87030F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C242D42-9714-440F-884D-F64F09E78C7B}.CompilerOnly|Any CPU.ActiveCfg = Release|Any CPU
+		{8C242D42-9714-440F-884D-F64F09E78C7B}.CompilerOnly|Any CPU.Build.0 = Release|Any CPU
+		{8C242D42-9714-440F-884D-F64F09E78C7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C242D42-9714-440F-884D-F64F09E78C7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C242D42-9714-440F-884D-F64F09E78C7B}.FastpathSim|Any CPU.ActiveCfg = Release|Any CPU
+		{8C242D42-9714-440F-884D-F64F09E78C7B}.FastpathSim|Any CPU.Build.0 = Release|Any CPU
+		{8C242D42-9714-440F-884D-F64F09E78C7B}.NightlyDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C242D42-9714-440F-884D-F64F09E78C7B}.NightlyDebug|Any CPU.Build.0 = Debug|Any CPU
+		{8C242D42-9714-440F-884D-F64F09E78C7B}.NightlyRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{8C242D42-9714-440F-884D-F64F09E78C7B}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
+		{8C242D42-9714-440F-884D-F64F09E78C7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C242D42-9714-440F-884D-F64F09E78C7B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
