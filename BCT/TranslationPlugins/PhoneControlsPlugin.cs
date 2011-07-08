@@ -98,6 +98,11 @@ namespace TranslationPlugins {
 
     private IDictionary<string, PageStructure> pageStructureInfo;
 
+    public static string getFullyQualifiedControlClass(string controlClass) {
+      // TODO do an actual API discovery. The problem will be differencing 7.0 apps from 7.1 apps
+      return "System.Windows.Controls." + controlClass;
+    }
+    
     public PhoneControlsPlugin(string configFile) {
       pageStructureInfo = new Dictionary<string, PageStructure>();
       StreamReader fileStream = null;
@@ -172,6 +177,7 @@ namespace TranslationPlugins {
           controlInfoStr.setHandler(Event.Unchecked, uncheckedHandler);
 
           pageStr.setControlInfo(controlName, controlInfoStr);
+          pageStructureInfo[pageClass] = pageStr;
           configLine = configStream.ReadLine();
 
         }

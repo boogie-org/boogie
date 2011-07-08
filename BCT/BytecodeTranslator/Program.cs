@@ -174,18 +174,18 @@ namespace BytecodeTranslator {
 
       var primaryModule = modules[0];
 
+      if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
+        PhoneMetadataTraverser tr = new PhoneMetadataTraverser();
+        tr.InjectPhoneCodeAssemblies(modules);
+      }
+
       TraverserFactory traverserFactory;
       if (wholeProgram)
         traverserFactory = new WholeProgram();
       else
         traverserFactory = new CLRSemantics();
 
-      Sink sink;
-      if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
-        sink = new Sink(host, traverserFactory, heapFactory, phoneControlsConfigFile);
-      } else {
-        sink = new Sink(host, traverserFactory, heapFactory);
-      }
+      Sink sink= new Sink(host, traverserFactory, heapFactory);
       TranslationHelper.tmpVarCounter = 0;
 
       MetadataTraverser translator = traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
