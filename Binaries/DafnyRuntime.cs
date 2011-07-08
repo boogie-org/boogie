@@ -267,5 +267,41 @@ namespace Dafny
         yield return true;
       }
     }
+    // pre: b != 0
+    // post: result == a/b, as defined by Euclidean Division (http://en.wikipedia.org/wiki/Modulo_operation)
+    public static BigInteger EuclideanDivision(BigInteger a, BigInteger b) {
+      if (0 <= a.Sign) {
+        if (0 <= b.Sign) {
+          // +a +b: a/b
+          return BigInteger.Divide(a, b);
+        } else {
+          // +a -b: -(a/(-b))
+          return BigInteger.Negate(BigInteger.Divide(a, BigInteger.Negate(b)));
+        }
+      } else {
+        if (0 <= b.Sign) {
+          // -a +b: -((-a-1)/b) - 1
+          return BigInteger.Negate(BigInteger.Divide(BigInteger.Negate(a) - 1, b)) - 1;
+        } else {
+          // -a -b: ((-a-1)/(-b)) + 1
+          return BigInteger.Divide(BigInteger.Negate(a) - 1, BigInteger.Negate(b)) + 1;
+        }
+      }
+    }
+    // pre: b != 0
+    // post: result == a%b, as defined by Euclidean Division (http://en.wikipedia.org/wiki/Modulo_operation)
+    public static BigInteger EuclideanModulus(BigInteger a, BigInteger b) {
+      var bp = BigInteger.Abs(b);
+      if (0 <= a.Sign) {
+        // +a: a % b'
+        return BigInteger.Remainder(a, bp);
+      } else {
+        // c = ((-a) % b')
+        // -a: b' - c if c > 0
+        // -a: 0 if c == 0
+        var c = BigInteger.Remainder(BigInteger.Negate(a), bp);
+        return c.IsZero ? c : BigInteger.Subtract(bp, c);
+      }
+    }
   }
 }
