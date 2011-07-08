@@ -880,9 +880,16 @@ namespace BytecodeTranslator {
         Bpl.Variable t;
         var key = type.InternedKey;
         if (!this.declaredTypeConstants.TryGetValue(key, out t)) {
-          var parents = GetParents(type.ResolvedType);
+          List<ITypeReference> structuralParents;
+          var parents = GetParents(type.ResolvedType, out structuralParents);
           t = this.Heap.CreateTypeVariable(type, parents);
           this.declaredTypeConstants.Add(key, t);
+          foreach (var p in structuralParents) {
+            var p_prime = FindOrCreateType(p);
+            var e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Subtype, Bpl.Expr.Ident(t), p_prime);
+            var a = new Bpl.Axiom(Bpl.Token.NoToken, e);
+            this.TranslatedProgram.TopLevelDeclarations.Add(a);
+          }
           this.TranslatedProgram.TopLevelDeclarations.Add(t);
           if (isExtern) {
             var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "extern", new List<object>(1), null);
@@ -893,15 +900,24 @@ namespace BytecodeTranslator {
       }
     }
 
-    private List<Bpl.ConstantParent> GetParents(ITypeDefinition typeDefinition) {
+    private List<Bpl.ConstantParent> GetParents(ITypeDefinition typeDefinition, out List<ITypeReference> structuralParents) {
       var parents = new List<Bpl.ConstantParent>();
+      structuralParents = new List<ITypeReference>();
       foreach (var p in typeDefinition.BaseClasses) {
-        var v = (Bpl.IdentifierExpr) FindOrCreateType(p);
-        parents.Add(new Bpl.ConstantParent(v, true));
+        if (p is IGenericTypeInstanceReference) {
+          structuralParents.Add(p);
+        } else {
+          var v = (Bpl.IdentifierExpr)FindOrCreateType(p);
+          parents.Add(new Bpl.ConstantParent(v, true));
+        }
       }
       foreach (var j in typeDefinition.Interfaces) {
-        var v = (Bpl.IdentifierExpr)FindOrCreateType(j);
-        parents.Add(new Bpl.ConstantParent(v, false));
+        if (j is IGenericTypeInstanceReference) {
+          structuralParents.Add(j);
+        } else {
+          var v = (Bpl.IdentifierExpr)FindOrCreateType(j);
+          parents.Add(new Bpl.ConstantParent(v, false));
+        }
       }
       return parents;
     }
