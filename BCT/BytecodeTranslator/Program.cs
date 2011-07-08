@@ -180,7 +180,12 @@ namespace BytecodeTranslator {
       else
         traverserFactory = new CLRSemantics();
 
-      var sink = new Sink(host, traverserFactory, heapFactory, phoneControlsConfigFile);
+      Sink sink;
+      if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
+        sink = new Sink(host, traverserFactory, heapFactory, phoneControlsConfigFile);
+      } else {
+        sink = new Sink(host, traverserFactory, heapFactory);
+      }
       TranslationHelper.tmpVarCounter = 0;
 
       MetadataTraverser translator = traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
