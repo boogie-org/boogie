@@ -117,8 +117,7 @@ def outputPhoneControls(outputFileName):
   outputFile.close()
 
 def extractPhoneControls(sourceDir):
-  fileList= [os.path.normcase(fileName) for fileName in os.listdir(sourceDir)]
-  fileList= [os.path.join(sourceDir, fileName) for fileName in fileList if os.path.splitext(fileName)[1] == ".xaml"]
+  fileList= [os.path.join(sourceDir, fileName) for fileName in os.listdir(sourceDir) if os.path.splitext(fileName)[1] == ".xaml"]
   for fileName in fileList:
     extractPhoneControlsFromPage(fileName)
 
