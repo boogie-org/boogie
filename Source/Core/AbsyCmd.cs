@@ -1915,8 +1915,8 @@ namespace Microsoft.Boogie {
 
       if (QKeyValue.FindBoolAttribute(this.Attributes, "async") && Outs.Count > 0) {
         Type returnType = cce.NonNull(Outs[0]).ShallowType;
-        if (!returnType.Equals(Type.Int)) {
-          tc.Error(this.tok, "the return from an asynchronous call should be an integer");
+        if (!returnType.Equals(Type.Int) && !returnType.Equals(Type.GetBvType(32))) {
+          tc.Error(this.tok, "the return from an asynchronous call should be either int or bv32");
           return;
         }
       }
