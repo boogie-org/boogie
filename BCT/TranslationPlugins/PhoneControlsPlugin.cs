@@ -26,7 +26,7 @@ namespace TranslationPlugins {
     public string[] ParameterTypes;
   }
 
-  class ControlInfoStructure {
+  public class ControlInfoStructure {
     public string Name;
     public string ClassName;
     public bool IsEnabled;
@@ -79,6 +79,10 @@ namespace TranslationPlugins {
 
     public void setControlInfo(string controlName, ControlInfoStructure controlInfo) {
       controlsInfo[controlName] = controlInfo;
+    }
+
+    public IEnumerable<ControlInfoStructure> getAllControlsInfo() {
+      return controlsInfo.Values.AsEnumerable();
     }
   }
 
@@ -186,7 +190,8 @@ namespace TranslationPlugins {
       }
     }
 
-    public void getControlsForPage(string pageClass) {
+    public IEnumerable<ControlInfoStructure> getControlsForPage(string pageClass) {
+      return pageStructureInfo[pageClass].getAllControlsInfo();
     }
 
     public string getXAMLForPage(string pageClass) {
