@@ -1294,7 +1294,10 @@ namespace BytecodeTranslator
       base.Visit(checkIfInstance.Operand);
       var exp = TranslatedExpressions.Pop();
       var dynTypeOfOperand = this.sink.Heap.DynamicType(exp);
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, dynTypeOfOperand, e));
+      var subtype = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Subtype, dynTypeOfOperand, e);
+      var notnull = Bpl.Expr.Neq(exp, Bpl.Expr.Ident(this.sink.Heap.NullRef));
+      var and = Bpl.Expr.And(notnull, subtype);
+      TranslatedExpressions.Push(and);
       return;
     }
 

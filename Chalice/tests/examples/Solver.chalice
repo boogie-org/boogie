@@ -1,0 +1,44 @@
+class Client {
+  
+  method main(p: Problem, s: Solver) returns (r: int)
+    requires acc(p.f) && s != null
+    ensures acc(p.f)
+  {
+    // start randomized computations
+    var tk1: token<Solver.solve>
+    var tk2: token<Solver.solve>
+    call tk1 := s.start(p)
+    call tk2 := s.start(p)
+    
+    // get the results
+    var r1: int 
+    join r1 := tk1
+    var r2: int
+    join r2:= tk2
+    r := r1 > r2 ? r1 : r2
+  }
+  
+}
+class Solver {
+  
+  method solve(p: Problem, d: Data) returns (r: int)
+    requires rd(p.f)
+    requires acc(d.*)
+    ensures rd(p.f)
+  { /* ... */ }
+  
+  method start(p: Problem)
+    returns (tk: token<Solver.solve>)
+    requires rd(p.f)
+    ensures acc(p.f, rd-rd(tk))
+    ensures acc(tk.joinable) && tk.joinable;
+    ensures eval(tk.fork this.solve(p,_), true)
+  {
+    var d: Data := new Data
+    /* .. perform some set-up/initialization and prepare the data d for the solve method */
+    fork tk := solve(p, d)
+  }
+  
+}
+class Problem { var f: int }
+class Data { var f: int; var g: int }

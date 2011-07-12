@@ -343,7 +343,7 @@ namespace BytecodeTranslator {
             }
             decl.AddAttribute(attrName, args);
           }
-        } catch (InvalidCastException e) {
+        } catch (InvalidCastException) {
           Console.WriteLine("Warning: Cannot translate custom attributes for method\n    '{0}':",
             MemberHelper.GetMethodSignature(method, NameFormattingOptions.None));
           Console.WriteLine("    >>Skipping attributes, continuing with method translation");

@@ -692,6 +692,8 @@ namespace BytecodeTranslator {
     // also, should it return true for properties and all of the other things the tools
     // consider pure?
     private bool IsPure(IMethodDefinition method) {
+      // TODO:
+      // This needs to wait until we get function bodies sorted out.
       //bool isPropertyGetter = method.IsSpecialName && method.Name.Value.StartsWith("get_");
       //if (isPropertyGetter) return true;
 
@@ -878,8 +880,16 @@ namespace BytecodeTranslator {
         Bpl.Variable t;
         var key = type.InternedKey;
         if (!this.declaredTypeConstants.TryGetValue(key, out t)) {
-          t = this.Heap.CreateTypeVariable(type);
+          List<ITypeReference> structuralParents;
+          var parents = GetParents(type.ResolvedType, out structuralParents);
+          t = this.Heap.CreateTypeVariable(type, parents);
           this.declaredTypeConstants.Add(key, t);
+          foreach (var p in structuralParents) {
+            var p_prime = FindOrCreateType(p);
+            var e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Subtype, Bpl.Expr.Ident(t), p_prime);
+            var a = new Bpl.Axiom(Bpl.Token.NoToken, e);
+            this.TranslatedProgram.TopLevelDeclarations.Add(a);
+          }
           this.TranslatedProgram.TopLevelDeclarations.Add(t);
           if (isExtern) {
             var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "extern", new List<object>(1), null);
@@ -889,6 +899,29 @@ namespace BytecodeTranslator {
         return Bpl.Expr.Ident(t);
       }
     }
+
+    private List<Bpl.ConstantParent> GetParents(ITypeDefinition typeDefinition, out List<ITypeReference> structuralParents) {
+      var parents = new List<Bpl.ConstantParent>();
+      structuralParents = new List<ITypeReference>();
+      foreach (var p in typeDefinition.BaseClasses) {
+        if (p is IGenericTypeInstanceReference) {
+          structuralParents.Add(p);
+        } else {
+          var v = (Bpl.IdentifierExpr)FindOrCreateType(p);
+          parents.Add(new Bpl.ConstantParent(v, true));
+        }
+      }
+      foreach (var j in typeDefinition.Interfaces) {
+        if (j is IGenericTypeInstanceReference) {
+          structuralParents.Add(j);
+        } else {
+          var v = (Bpl.IdentifierExpr)FindOrCreateType(j);
+          parents.Add(new Bpl.ConstantParent(v, false));
+        }
+      }
+      return parents;
+    }
+
     /// <summary>
     /// The keys to the table are the interned key of the type.
     /// </summary>
