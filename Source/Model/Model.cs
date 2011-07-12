@@ -776,6 +776,5 @@ namespace Microsoft.Boogie
       p.Run();
       return p.resModels;
     }
-
   }
 }
