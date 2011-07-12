@@ -193,7 +193,12 @@ void ObjectInvariant()
       // there are a couple cases where operators have to be
       // registered by generating appropriate Z3 statements
 
-      if (node.Op is VCExprBvConcatOp) {
+      if (node.Op is VCExprBvOp) {
+        if (NativeBv) {
+          RegisterType(node[0].Type);
+          RegisterType(node.Type);
+        }
+      } else if (node.Op is VCExprBvConcatOp) {
         //
         if (NativeBv) {
           RegisterType(node[0].Type);
