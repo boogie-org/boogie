@@ -356,8 +356,8 @@ namespace BytecodeTranslator {
           this.privateTypes.AddRange(helperTypes);
         }
         //method.Body.Dispatch(stmtTraverser);
-        stmtTraverser.StmtBuilder.Add(new Bpl.ReturnCmd(Bpl.Token.NoToken));
-        stmtTraverser.GenerateDispatchContinuation();
+        //stmtTraverser.StmtBuilder.Add(new Bpl.ReturnCmd(Bpl.Token.NoToken));
+        //stmtTraverser.GenerateDispatchContinuation();
         #endregion
 
         #region Create Local Vars For Implementation

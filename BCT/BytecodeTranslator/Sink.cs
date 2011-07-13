@@ -70,12 +70,6 @@ namespace BytecodeTranslator {
         return info.LocalExcVariable;
       }
     }
-    public Bpl.LocalVariable FinallyStackCounterVariable {
-      get {
-        ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
-        return info.FinallyStackVariable;
-      }
-    }
     public Bpl.LocalVariable LabelVariable {
       get {
         ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
@@ -981,18 +975,24 @@ namespace BytecodeTranslator {
       }
       return "continuation" + id;
     }
-    public string FindOrCreateDispatchContinuationLabel(ITryCatchFinallyStatement stmt) {
-      int id;
-      if (!tryCatchFinallyIdentifiers.TryGetValue(stmt, out id)) {
-        id = tryCatchFinallyIdentifiers.Count;
-        tryCatchFinallyIdentifiers[stmt] = id;
-      }
-      return "DispatchContinuation" + id;
-    }
     MostNestedTryStatementTraverser mostNestedTryStatementTraverser;
     public ITryCatchFinallyStatement MostNestedTryStatement(IName label) {
       return mostNestedTryStatementTraverser.MostNestedTryStatement(label);
     }
+    public Dictionary<ITryCatchFinallyStatement, List<string>> escapingGotoEdges;
+    public void AddEscapingEdge(ITryCatchFinallyStatement tryCatchFinallyStatement, out int labelId, out string label) {
+      List<string> edges = null;
+      if (!escapingGotoEdges.ContainsKey(tryCatchFinallyStatement)) {
+        escapingGotoEdges[tryCatchFinallyStatement] = new List<string>();
+      }
+      edges = escapingGotoEdges[tryCatchFinallyStatement];
+      label = this.FindOrCreateFinallyLabel(tryCatchFinallyStatement) + "_" + edges.Count;
+      labelId = edges.Count;
+      edges.Add(label);
+    }
+    public enum TryCatchFinallyContext { InTry, InCatch, InFinally };
+    public List<Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext>> nestedTryCatchFinallyStatements;
+
     IMethodDefinition methodBeingTranslated;
     public void BeginMethod(IMethodDefinition method) {
       this.BeginMethod(method.ContainingType);
@@ -1000,6 +1000,8 @@ namespace BytecodeTranslator {
       this.cciLabels = new Dictionary<IName, int>();
       this.tryCatchFinallyIdentifiers = new Dictionary<ITryCatchFinallyStatement, int>();
       mostNestedTryStatementTraverser = new MostNestedTryStatementTraverser();
+      escapingGotoEdges = new Dictionary<ITryCatchFinallyStatement, List<string>>();
+      nestedTryCatchFinallyStatements = new List<Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext>>();
       mostNestedTryStatementTraverser.Visit(method.Body);
     }
     
