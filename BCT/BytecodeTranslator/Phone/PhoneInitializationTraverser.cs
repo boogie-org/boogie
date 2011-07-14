@@ -18,7 +18,7 @@ using System.Diagnostics.Contracts;
 using TranslationPlugins;
 
 
-namespace BytecodeTranslator {
+namespace BytecodeTranslator.Phone {
 
   /// <summary>
   /// Traverse code looking for phone specific points of interest, possibly injecting necessary code in-between
@@ -291,26 +291,9 @@ namespace BytecodeTranslator {
     /// </summary>
     /// 
     public override void Visit(ITypeDefinition typeDefinition) {
-      if (typeDefinition.IsClass && isPhoneApplicationPage(typeDefinition)) {
+      if (typeDefinition.IsClass && PhoneCodeHelper.isPhoneApplicationPageClass(typeDefinition, host)) {
         base.Visit(typeDefinition);
       }
-    }
-
-    private bool isPhoneApplicationPage(ITypeDefinition typeDefinition) {
-      ITypeReference baseClass = typeDefinition.BaseClasses.FirstOrDefault();
-      ITypeDefinition baseClassDef;
-      while (baseClass != null) {
-        baseClassDef = baseClass.ResolvedType;
-        if (baseClassDef is INamespaceTypeDefinition) {
-          if (((INamespaceTypeDefinition) baseClassDef).Name.Value == "PhoneApplicationPage" &&
-               ((INamespaceTypeDefinition) baseClassDef).Container.ToString() == "Microsoft.Phone.Controls") {
-            return true;
-          }
-        }
-        baseClass = baseClass.ResolvedType.BaseClasses.FirstOrDefault();
-      }
-
-      return false;
     }
 
     /// <summary>
@@ -328,7 +311,7 @@ namespace BytecodeTranslator {
       codeTraverser.injectPhoneControlsCode(block);
     }
 
-    public virtual void InjectPhoneCodeAssemblies(IEnumerable<IUnit> assemblies) {
+    public void InjectPhoneCodeAssemblies(IEnumerable<IUnit> assemblies) {
       foreach (var a in assemblies) {
         a.Dispatch(this);
       }
