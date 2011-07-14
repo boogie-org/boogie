@@ -225,7 +225,50 @@ namespace BytecodeTranslator
     }
 
     public override void Visit(ISwitchStatement switchStatement) {
-      throw new TranslationException("Switch statements are not handled");
+      var eTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
+      eTraverser.Visit(switchStatement.Expression);
+      var conditionExpr = eTraverser.TranslatedExpressions.Pop();
+
+      // Can't depend on default case existing or its index in the collection.
+      var switchCases = new List<ISwitchCase>();
+      ISwitchCase defaultCase = null;
+      foreach (var switchCase in switchStatement.Cases) {
+        if (switchCase.IsDefault) {
+          defaultCase = switchCase;
+        } else {
+          switchCases.Add(switchCase);
+        }
+      }
+      Bpl.StmtList defaultStmts = null;
+      if (defaultCase != null) {
+        var defaultBodyTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
+        defaultBodyTraverser.Visit(defaultCase.Body);
+        defaultStmts = defaultBodyTraverser.StmtBuilder.Collect(defaultCase.Token());
+      }
+
+      Bpl.IfCmd ifCmd = null;
+
+      for (int i = switchCases.Count-1; 0 <= i; i--) {
+
+        var switchCase = switchCases[i];
+
+        var scTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
+        scTraverser.Visit(switchCase.Expression);
+        var scConditionExpr = scTraverser.TranslatedExpressions.Pop();
+        var condition = Bpl.Expr.Eq(conditionExpr, scConditionExpr);
+
+        var scBodyTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
+        scBodyTraverser.Visit(switchCase.Body);
+
+        ifCmd = new Bpl.IfCmd(switchCase.Token(),
+          condition,
+          scBodyTraverser.StmtBuilder.Collect(switchCase.Token()),
+          ifCmd,
+          defaultStmts);
+        defaultStmts = null; // default body goes only into the innermost if-then-else
+
+      }
+      StmtBuilder.Add(ifCmd);
     }
 
     /// <summary>
