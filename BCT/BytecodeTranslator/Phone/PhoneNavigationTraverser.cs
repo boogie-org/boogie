@@ -59,6 +59,7 @@ namespace BytecodeTranslator.Phone {
               Expression= uriInitAssign,
             };
             bodyBlock.Statements.Insert(0, uriInitStmt);
+            bodyBlock.Statements.Insert(0, uriInitStmt);
           }
         }
       }
@@ -100,39 +101,33 @@ namespace BytecodeTranslator.Phone {
         return;
       } else {
         navCallFound = true;
-        bool targetIsStatic=false;
+        bool isStatic=false;
         string notStaticReason = "";
+        StaticURIMode staticMode = StaticURIMode.NOT_STATIC;
+
         if (methodToCallName == "GoBack")
-          targetIsStatic = true;
+          isStatic= true;
         else { // Navigate()
           // check for different static patterns that we may be able to verify
-          bool isStatic = false;
-          StaticURIMode staticMode = StaticURIMode.NOT_STATIC;
-
           IExpression uriArg= methodCall.Arguments.First();
           if (isArgumentURILocallyCreatedStatic(uriArg)) {
             isStatic = true;
             staticMode = StaticURIMode.STATIC_URI_CREATION_ONSITE;
           } else if (isArgumentURILocallyCreatedStaticRoot(uriArg)) {
-            isStatic=true;
-            staticMode=StaticURIMode.STATIC_URI_ROOT_CREATION_ONSITE;
-          }
-
-          ICreateObjectInstance creationSite= methodCall.Arguments.First() as ICreateObjectInstance;
-          if (creationSite != null) {
-            if (creationSite.Arguments.First().Type.ResolvedType.Equals(host.PlatformType.SystemString.ResolvedType) && creationSite.Arguments.First() is ICompileTimeConstant) {
-              targetIsStatic = true;
-            } else {
-              targetIsStatic = false;
-              notStaticReason = "URI not initialized as a static string";
-            }
+            isStatic = true;
+            staticMode = StaticURIMode.STATIC_URI_ROOT_CREATION_ONSITE;
           } else {
-            targetIsStatic = false;
-            notStaticReason = "URI not created at call site";
+            // get reason
+            ICreateObjectInstance creationSite = methodCall.Arguments.First() as ICreateObjectInstance;
+            if (creationSite == null)
+              notStaticReason = "URI not created at call site";
+            else
+              notStaticReason = "URI not initialized as a static string";
           }
         }
-        Console.Write("Page navigation event found. Target is static? " + (targetIsStatic ? "YES" : "NO"));
-        if (!targetIsStatic) {
+
+        Console.Write("Page navigation event found. Target is static? " + (isStatic ? "YES" : "NO"));
+        if (!isStatic) {
           nonStaticNavEvtCount++;
           Console.WriteLine(" -- Reason: " + notStaticReason);
         } else {
@@ -172,8 +167,19 @@ namespace BytecodeTranslator.Phone {
     /// <returns></returns>
     private bool isArgumentURILocallyCreatedStaticRoot(IExpression arg) {
       // Pre: !isArgumentURILocallyCreatedStatic
-      // TODO
-      return false;
+      if (!arg.isCreateObjectInstance())
+        return false;
+
+      if (!arg.Type.isURIClass(host))
+        return false;
+
+      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
+      IExpression uriTargetArg = creationSite.Arguments.First();
+
+      if (!uriTargetArg.Type.isStringClass(host))
+        return false;
+
+      return uriTargetArg.IsStaticURIRootExtractable();
     }
 
     private void injectNavigationUpdateCode(IBlockStatement block, IEnumerable<IStatement> stmts) {

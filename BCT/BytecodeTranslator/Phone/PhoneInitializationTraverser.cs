@@ -236,9 +236,8 @@ namespace BytecodeTranslator.Phone {
       return new List<IStatement>();
     }
 
-    // TODO should stop propagating the string
+    // TODO should stop propagating the string event name
     private IEnumerable<IStatement> getCodeForSettingEventHandlers(ControlInfoStructure controlInfo, string eventName) {
-
       // TODO not implemented yet
       return new List<IStatement>();
     }

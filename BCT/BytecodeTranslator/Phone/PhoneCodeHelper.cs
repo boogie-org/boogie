@@ -44,7 +44,7 @@ namespace BytecodeTranslator.Phone {
       AssemblyIdentity systemAssemblyId = new AssemblyIdentity(host.NameTable.GetNameFor("System"), "", coreRef.Version, coreRef.PublicKeyToken, "");
       IAssemblyReference systemAssembly = host.FindAssembly(systemAssemblyId);
 
-      ITypeReference uriTypeRef= platformType.CreateReference(systemAssembly, "System", "URI");
+      ITypeReference uriTypeRef= platformType.CreateReference(systemAssembly, "System", "Uri");
       return typeRef.isClass(uriTypeRef);
     }
 
@@ -80,6 +80,42 @@ namespace BytecodeTranslator.Phone {
       }
 
       return false;
+    }
+
+    /// <summary>
+    /// checks whether a static URI root (a definite page base) can be extracted from the expression 
+    /// </summary>
+    /// <param name="expr"></param>
+    /// <returns></returns>
+    public static bool IsStaticURIRootExtractable(this IExpression expr) {
+      // Pre expr.type == string
+      IMethodCall stringConcatExpr = expr as IMethodCall;
+      if (stringConcatExpr == null)
+        return false;
+
+      if (stringConcatExpr.MethodToCall.Name.Value != "Concat")
+        return false;
+
+      IList<string> constantStrings = new List<string>();
+
+      // TODO this misses so many static strings, but let's start with this for now
+      IExpression leftOp= stringConcatExpr.Arguments.FirstOrDefault();
+      while (leftOp != null && leftOp is ICompileTimeConstant) {
+        ICompileTimeConstant strConst= leftOp as ICompileTimeConstant;
+        constantStrings.Add(strConst.Value as string);
+        if (stringConcatExpr.Arguments.ToList()[1] is IMethodCall) {
+          stringConcatExpr = stringConcatExpr.Arguments.ToList()[1] as IMethodCall;
+          leftOp = stringConcatExpr.Arguments.FirstOrDefault();
+        } else if (stringConcatExpr.Arguments.ToList()[1] is ICompileTimeConstant) {
+          constantStrings.Add((stringConcatExpr.Arguments.ToList()[1] as ICompileTimeConstant).Value as string);
+          break;
+        } else {
+          break;
+        }
+      }
+
+      string constantSubstring= constantStrings.Aggregate((aggr, elem) => aggr + elem);
+      return Uri.IsWellFormedUriString(constantSubstring, UriKind.RelativeOrAbsolute);
     }
   }
 }
