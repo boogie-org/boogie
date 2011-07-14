@@ -21,10 +21,15 @@ type Type =
 type VarDecl =
   | Var of string * Type option
 
+(* 
+   the difference between IdLiteral and VarLiteral is that the VarLiteral is more specific, 
+   it always referes to a local variable (either method parameter or quantification variable)  
+ *)
 type Expr =
   | IntLiteral of int
   | BoolLiteral of bool
-  | IdLiteral of string
+  | VarLiteral of string  
+  | IdLiteral of string  
   | Star
   | Dot of Expr * string
   | UnaryExpr of string * Expr
@@ -34,7 +39,7 @@ type Expr =
   | UpdateExpr of Expr * Expr * Expr
   | SequenceExpr of Expr list
   | SeqLength of Expr
-  | SetExpr of Expr list
+  | SetExpr of Expr list //TODO: maybe this should really be a set instead of a list
   | ForallExpr of VarDecl list * Expr
 
 type Stmt =
