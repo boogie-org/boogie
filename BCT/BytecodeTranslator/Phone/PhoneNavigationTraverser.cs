@@ -8,7 +8,6 @@ using Microsoft.Cci.MutableCodeModel;
 namespace BytecodeTranslator.Phone {
   public class PhoneNavigationCodeTraverser : BaseCodeTraverser {
     private MetadataReaderHost host;
-    private bool navCallFound;
     private ITypeReference navigationSvcType;
     private ITypeReference typeTraversed;
 
@@ -59,29 +58,30 @@ namespace BytecodeTranslator.Phone {
               Expression= uriInitAssign,
             };
             bodyBlock.Statements.Insert(0, uriInitStmt);
-            bodyBlock.Statements.Insert(0, uriInitStmt);
           }
         }
       }
       base.Visit(method);
     }
 
+
+    private bool navCallFound=false;
+    private StaticURIMode currentStaticMode= StaticURIMode.NOT_STATIC;
+    private string unpurifiedFoundURI="";
+
     public override void Visit(IBlockStatement block) {
-      IList<IStatement> navStmts = new List<IStatement>();
+      IList<Tuple<IStatement,StaticURIMode,string>> navStmts = new List<Tuple<IStatement,StaticURIMode,string>>();
       foreach (IStatement statement in block.Statements) {
         navCallFound = false;
         this.Visit(statement);
         if (navCallFound) {
-          navStmts.Add(statement);
+          navStmts.Add(new Tuple<IStatement, StaticURIMode, string>(statement, currentStaticMode, unpurifiedFoundURI));
         }
       }
 
       injectNavigationUpdateCode(block, navStmts);
     }
 
-    private int navEvtCount= 0;
-    private int staticNavEvtCount = 0;
-    private int nonStaticNavEvtCount = 0;
     public override void Visit(IMethodCall methodCall) {
       // check whether it is a NavigationService call
       IMethodReference methodToCall= methodCall.MethodToCall;
@@ -100,41 +100,39 @@ namespace BytecodeTranslator.Phone {
         // TODO possibly log
         return;
       } else {
-        navCallFound = true;
         bool isStatic=false;
-        string notStaticReason = "";
-        StaticURIMode staticMode = StaticURIMode.NOT_STATIC;
+        currentStaticMode = StaticURIMode.NOT_STATIC;
 
         if (methodToCallName == "GoBack")
           isStatic= true;
         else { // Navigate()
           // check for different static patterns that we may be able to verify
           IExpression uriArg= methodCall.Arguments.First();
-          if (isArgumentURILocallyCreatedStatic(uriArg)) {
+          if (isArgumentURILocallyCreatedStatic(uriArg, out unpurifiedFoundURI)) {
             isStatic = true;
-            staticMode = StaticURIMode.STATIC_URI_CREATION_ONSITE;
-          } else if (isArgumentURILocallyCreatedStaticRoot(uriArg)) {
+            currentStaticMode = StaticURIMode.STATIC_URI_CREATION_ONSITE;
+          } else if (isArgumentURILocallyCreatedStaticRoot(uriArg, out unpurifiedFoundURI)) {
             isStatic = true;
-            staticMode = StaticURIMode.STATIC_URI_ROOT_CREATION_ONSITE;
+            currentStaticMode = StaticURIMode.STATIC_URI_ROOT_CREATION_ONSITE;
           } else {
             // get reason
-            ICreateObjectInstance creationSite = methodCall.Arguments.First() as ICreateObjectInstance;
-            if (creationSite == null)
-              notStaticReason = "URI not created at call site";
-            else
-              notStaticReason = "URI not initialized as a static string";
+            //ICreateObjectInstance creationSite = methodCall.Arguments.First() as ICreateObjectInstance;
+            //if (creationSite == null)
+            //  notStaticReason = "URI not created at call site";
+            //else
+            //  notStaticReason = "URI not initialized as a static string";
           }
         }
 
-        Console.Write("Page navigation event found. Target is static? " + (isStatic ? "YES" : "NO"));
-        if (!isStatic) {
-          nonStaticNavEvtCount++;
-          Console.WriteLine(" -- Reason: " + notStaticReason);
-        } else {
-          staticNavEvtCount++;
-          Console.WriteLine("");
-        }
-        navEvtCount++;
+        if (isStatic)
+          navCallFound = true;
+
+        //Console.Write("Page navigation event found. Target is static? " + (isStatic ? "YES" : "NO"));
+        //if (!isStatic) {
+        //  Console.WriteLine(" -- Reason: " + notStaticReason);
+        //} else {
+        //  Console.WriteLine("");
+        //}
       }
     }
     
@@ -143,7 +141,8 @@ namespace BytecodeTranslator.Phone {
     /// </summary>
     /// <param name="arg"></param>
     /// <returns></returns>
-    private bool isArgumentURILocallyCreatedStatic(IExpression arg) {
+    private bool isArgumentURILocallyCreatedStatic(IExpression arg, out string uri) {
+      uri = null;
       if (!arg.isCreateObjectInstance())
         return false;
 
@@ -157,7 +156,11 @@ namespace BytecodeTranslator.Phone {
         return false;
 
       ICompileTimeConstant staticURITarget = uriTargetArg as ICompileTimeConstant;
-      return (staticURITarget != null);
+      if (staticURITarget == null)
+        return false;
+
+      uri= staticURITarget.Value as string;
+      return true;
     }
 
     /// <summary>
@@ -165,8 +168,9 @@ namespace BytecodeTranslator.Phone {
     /// </summary>
     /// <param name="arg"></param>
     /// <returns></returns>
-    private bool isArgumentURILocallyCreatedStaticRoot(IExpression arg) {
+    private bool isArgumentURILocallyCreatedStaticRoot(IExpression arg, out string uri) {
       // Pre: !isArgumentURILocallyCreatedStatic
+      uri = null;
       if (!arg.isCreateObjectInstance())
         return false;
 
@@ -179,13 +183,44 @@ namespace BytecodeTranslator.Phone {
       if (!uriTargetArg.Type.isStringClass(host))
         return false;
 
-      return uriTargetArg.IsStaticURIRootExtractable();
+      if (!uriTargetArg.IsStaticURIRootExtractable(out uri))
+        return false;
+
+      return true;
     }
 
-    private void injectNavigationUpdateCode(IBlockStatement block, IEnumerable<IStatement> stmts) {
+    private void injectNavigationUpdateCode(IBlockStatement block, IEnumerable<Tuple<IStatement,StaticURIMode, string>> stmts) {
       // TODO Here there is the STRONG assumption that a given method will only navigate at most once per method call
       // TODO (or at most will re-navigate to the same page). Quick "page flipping" on the same method
       // TODO would not be captured correctly
+      foreach (Tuple<IStatement, StaticURIMode, string> entry in stmts) {
+        int ndx= block.Statements.ToList().IndexOf(entry.Item1, 0);
+        if (ndx == -1) {
+          // can't be
+          throw new IndexOutOfRangeException("Statement must exist in original block");
+        }
+
+        Assignment currentURIAssign = new Assignment() {
+          Source = new CompileTimeConstant() {
+            Type = host.PlatformType.SystemString,
+            Value = PhoneCodeHelper.getURIBase(entry.Item3),
+          },
+          Type = host.PlatformType.SystemString,
+          Target = new TargetExpression() {
+            Type = host.PlatformType.SystemString,
+            Definition = new FieldReference() {
+              ContainingType = typeTraversed,
+              IsStatic = true,
+              Type = host.PlatformType.SystemString,
+              Name = host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
+            },
+          },
+        };
+        Statement uriInitStmt = new ExpressionStatement() {
+          Expression = currentURIAssign,
+        };
+        block.Statements.ToList().Insert(ndx+1, uriInitStmt);
+      }
     }
   }
 

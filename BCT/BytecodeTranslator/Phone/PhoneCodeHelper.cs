@@ -87,9 +87,10 @@ namespace BytecodeTranslator.Phone {
     /// </summary>
     /// <param name="expr"></param>
     /// <returns></returns>
-    public static bool IsStaticURIRootExtractable(this IExpression expr) {
+    public static bool IsStaticURIRootExtractable(this IExpression expr, out string uri) {
       // Pre expr.type == string
       IMethodCall stringConcatExpr = expr as IMethodCall;
+      uri = null;
       if (stringConcatExpr == null)
         return false;
 
@@ -114,8 +115,19 @@ namespace BytecodeTranslator.Phone {
         }
       }
 
-      string constantSubstring= constantStrings.Aggregate((aggr, elem) => aggr + elem);
-      return Uri.IsWellFormedUriString(constantSubstring, UriKind.RelativeOrAbsolute);
+      uri= constantStrings.Aggregate((aggr, elem) => aggr + elem);
+      return Uri.IsWellFormedUriString(uri, UriKind.RelativeOrAbsolute);
+    }
+
+    /// <summary>
+    /// uri is a valid URI but possibly partial (incomplete ?arg= values) and overspecified (complete ?arg=values)
+    /// This method returns a base URI
+    /// </summary>
+    /// <param name="uri"></param>
+    /// <returns></returns>
+    public static string getURIBase(string uri) {
+      // TODO
+      return uri;
     }
   }
 }
