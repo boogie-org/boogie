@@ -224,6 +224,10 @@ namespace BytecodeTranslator
       throw new TranslationException("Continue statements are not handled");
     }
 
+    public override void Visit(ISwitchStatement switchStatement) {
+      throw new TranslationException("Switch statements are not handled");
+    }
+
     /// <summary>
     /// If the local declaration has an initial value, then generate the
     /// statement "loc := e" from it. Otherwise ignore it.
@@ -349,7 +353,7 @@ namespace BytecodeTranslator
       string continuationLabel = this.sink.FindOrCreateContinuationLabel(tryCatchFinallyStatement);
       Bpl.IfCmd elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(true),
         TranslationHelper.BuildStmtList(new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(continuationLabel))), null, null);
-      List<string> edges = sink.escapingGotoEdges[tryCatchFinallyStatement];
+      List<string> edges = sink.EscapingEdges(tryCatchFinallyStatement);
       Bpl.IdentifierExpr labelExpr = Bpl.Expr.Ident(this.sink.LabelVariable);
       for (int i = 0; i < edges.Count; i++) {
         string label = edges[i];
@@ -459,6 +463,7 @@ namespace BytecodeTranslator
       StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.LocalExcVariable)));
       RaiseException();
     }
+
   }
 
 }

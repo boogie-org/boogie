@@ -342,7 +342,6 @@ namespace BytecodeTranslator {
       private Bpl.Formal thisVariable;
       private Bpl.Formal returnVariable;
       private Bpl.LocalVariable localExcVariable;
-      private Bpl.LocalVariable finallyStackVariable;
       private Bpl.LocalVariable labelVariable;
       private List<Bpl.Formal> typeParameters;
       private List<Bpl.Formal> methodParameters;
@@ -353,7 +352,6 @@ namespace BytecodeTranslator {
         this.returnVariable = null;
         this.thisVariable = null;
         this.localExcVariable = null;
-        this.finallyStackVariable = null;
         this.labelVariable = null;
         this.typeParameters = null;
         this.methodParameters = null;
@@ -377,14 +375,12 @@ namespace BytecodeTranslator {
         Bpl.Formal returnVariable,
         Bpl.Formal thisVariable,
         Bpl.LocalVariable localExcVariable,
-        Bpl.LocalVariable finallyStackVariable,
         Bpl.LocalVariable labelVariable,
         List<Bpl.Formal> typeParameters,
         List<Bpl.Formal> methodParameters)
         : this(decl, formalMap, returnVariable) {
         this.thisVariable = thisVariable;
         this.localExcVariable = localExcVariable;
-        this.finallyStackVariable = finallyStackVariable;
         this.labelVariable = labelVariable;
         this.typeParameters = typeParameters;
         this.methodParameters = methodParameters;
@@ -395,7 +391,6 @@ namespace BytecodeTranslator {
       public Bpl.Formal ThisVariable { get { return thisVariable; } }
       public Bpl.Formal ReturnVariable { get { return returnVariable; } }
       public Bpl.LocalVariable LocalExcVariable { get { return localExcVariable; } }
-      public Bpl.LocalVariable FinallyStackVariable { get { return finallyStackVariable; } }
       public Bpl.LocalVariable LabelVariable { get { return labelVariable; } }
       public Bpl.Formal TypeParameter(int index) { return typeParameters[index]; }
       public Bpl.Formal MethodParameter(int index) { return methodParameters[index]; } 
@@ -412,7 +407,6 @@ namespace BytecodeTranslator {
         Bpl.Formal thisVariable = null;
         Bpl.Formal retVariable = null;
         Bpl.LocalVariable localExcVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$localExc", this.Heap.RefType));
-        Bpl.LocalVariable finallyStackVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$finallyStackCounter", Bpl.Type.Int));
         Bpl.LocalVariable labelVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$label", Bpl.Type.Int));
         
         int in_count = 0;
@@ -527,7 +521,7 @@ namespace BytecodeTranslator {
         } else {
           this.TranslatedProgram.TopLevelDeclarations.Add(decl);
         }
-        procInfo = new ProcedureInfo(decl, formalMap, retVariable, thisVariable, localExcVariable, finallyStackVariable, labelVariable, typeParameters, methodParameters);
+        procInfo = new ProcedureInfo(decl, formalMap, retVariable, thisVariable, localExcVariable, labelVariable, typeParameters, methodParameters);
         this.declaredMethods.Add(key, procInfo);
 
         // Can't visit the method's contracts until the formalMap and procedure are added to the
@@ -979,7 +973,7 @@ namespace BytecodeTranslator {
     public ITryCatchFinallyStatement MostNestedTryStatement(IName label) {
       return mostNestedTryStatementTraverser.MostNestedTryStatement(label);
     }
-    public Dictionary<ITryCatchFinallyStatement, List<string>> escapingGotoEdges;
+    Dictionary<ITryCatchFinallyStatement, List<string>> escapingGotoEdges;
     public void AddEscapingEdge(ITryCatchFinallyStatement tryCatchFinallyStatement, out int labelId, out string label) {
       List<string> edges = null;
       if (!escapingGotoEdges.ContainsKey(tryCatchFinallyStatement)) {
@@ -989,6 +983,12 @@ namespace BytecodeTranslator {
       label = this.FindOrCreateFinallyLabel(tryCatchFinallyStatement) + "_" + edges.Count;
       labelId = edges.Count;
       edges.Add(label);
+    }
+    public List<string> EscapingEdges(ITryCatchFinallyStatement tryCatchFinallyStatement) {
+      if (!escapingGotoEdges.ContainsKey(tryCatchFinallyStatement)) {
+        escapingGotoEdges[tryCatchFinallyStatement] = new List<string>();
+      }
+      return escapingGotoEdges[tryCatchFinallyStatement];
     }
     public enum TryCatchFinallyContext { InTry, InCatch, InFinally };
     public List<Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext>> nestedTryCatchFinallyStatements;
