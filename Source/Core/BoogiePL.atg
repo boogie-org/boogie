@@ -45,7 +45,7 @@ Contract.Requires(cce.NonNullElements(defines,true));
   return ret;
 }
 
-  
+
 public static int Parse (Stream stream, string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
 Contract.Requires(stream != null);
 Contract.Requires(filename != null);
@@ -341,7 +341,7 @@ Types<TypeSeq/*!*/ ts>
 
 
 /*------------------------------------------------------------------------*/
-Consts<out VariableSeq/*!*/ ds> 
+Consts<out VariableSeq/*!*/ ds>
 = (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; TypedIdentSeq/*!*/ xs;
      ds = new VariableSeq();
      bool u = false; QKeyValue kv = null;
@@ -415,16 +415,16 @@ ds = new DeclarationSeq(); IToken/*!*/ z;
      Expr definition = null;
      Expr/*!*/ tmp;
   .)
-  "function" { Attribute<ref kv> } Ident<out z> 
+  "function" { Attribute<ref kv> } Ident<out z>
   [ TypeParams<out typeParamTok, out typeParams> ]
   "("
   [ VarOrType<out tyd>      (. arguments.Add(new Formal(tyd.tok, tyd, true)); .)
   { "," VarOrType<out tyd>  (. arguments.Add(new Formal(tyd.tok, tyd, true)); .)
   } ] ")"
-  ( 
+  (
     "returns" "(" VarOrType<out tyd> ")" (. retTyd = tyd; .)
-    | 
-    ":" Type<out retTy>   (. retTyd = new TypedIdent(retTy.tok, "", retTy); .) 
+    |
+    ":" Type<out retTy>   (. retTyd = new TypedIdent(retTy.tok, "", retTy); .)
   )
   ( "{" Expression<out tmp> (. definition = tmp; .) "}" | ";" )
   (.
@@ -587,7 +587,7 @@ Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
     (.
       // here we attach kv only to the Procedure, not its implementation
       impl = new Implementation(x, x.val, typeParams,
-                                Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, null, this.errors); 
+                                Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, null, this.errors);
     .)
   )
   (. proc = new Procedure(x, x.val, typeParams, ins, outs, pre, mods, post, kv); .)
@@ -1047,12 +1047,12 @@ ImpliesExpression<bool noExplies, out Expr/*!*/ e0>
     ExpliesOp      (. if (noExplies)
                         this.SemErr("illegal mixture of ==> and <==, use parentheses to disambiguate");
                       x = t; .)
-    LogicalExpression<out e1> 
+    LogicalExpression<out e1>
                    (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e1, e0); .)
     /* loop because explies is left-associative */
     {
       ExpliesOp    (. x = t; .)
-      LogicalExpression<out e1> 
+      LogicalExpression<out e1>
                    (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Imp, e1, e0); .)
     }
   ]
@@ -1211,19 +1211,19 @@ ArrayExpression<out Expr/*!*/ e>
                   allArgs.Add(e);
                   store = false; bvExtract = false; .)
       [
-        Expression<out index0> 
+        Expression<out index0>
                (. if (index0 is BvBounds)
                     bvExtract = true;
                   else
                     allArgs.Add(index0);
                .)
-        { "," Expression<out e1> 
+        { "," Expression<out e1>
                (. if (bvExtract || e1 is BvBounds)
                     this.SemErr("bitvectors only have one dimension");
                   allArgs.Add(e1);
                .)
         }
-        [ ":=" Expression<out e1> 
+        [ ":=" Expression<out e1>
                (. if (bvExtract || e1 is BvBounds)
                     this.SemErr("assignment to bitvectors is not possible");
                   allArgs.Add(e1); store = true;
@@ -1239,7 +1239,7 @@ ArrayExpression<out Expr/*!*/ e>
                                ((BvBounds)index0).Upper.ToIntSafe,
                                ((BvBounds)index0).Lower.ToIntSafe);
        else
-         e = new NAryExpr(x, new MapSelect(x, allArgs.Length - 1), allArgs); 
+         e = new NAryExpr(x, new MapSelect(x, allArgs.Length - 1), allArgs);
     .)
   }
   .
@@ -1282,11 +1282,11 @@ AtomExpression<out Expr/*!*/ e>
                                             (. if (typeParams.Length + ds.Length > 0)
                                                  e = new ForallExpr(x, typeParams, ds, kv, trig, e); .)
         | Exists                            (. x = t; .)
-          QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e> 
+          QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e>
                                             (. if (typeParams.Length + ds.Length > 0)
                                                  e = new ExistsExpr(x, typeParams, ds, kv, trig, e); .)
         | Lambda                            (. x = t; .)
-          QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e> 
+          QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e>
                                             (. if (trig != null)
                                                  SemErr("triggers not allowed in lambda expressions");
                                                if (typeParams.Length + ds.Length > 0)
@@ -1404,7 +1404,7 @@ AttributeParameter<out object/*!*/ o>
 IfThenElseExpression<out Expr/*!*/ e>
 = (. Contract.Ensures(Contract.ValueAtReturn(out e) != null);
      IToken/*!*/ tok;
-     Expr/*!*/ e0, e1, e2; 
+     Expr/*!*/ e0, e1, e2;
      e = dummyExpr; .)
   "if" (. tok = t; .) Expression<out e0> "then" Expression<out e1> "else" Expression<out e2>
   (. e = new NAryExpr(tok, new IfThenElse(tok), new ExprSeq(e0, e1, e2)); .)
