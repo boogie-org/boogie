@@ -27,10 +27,12 @@ namespace TranslationPlugins {
   }
 
   public class ControlInfoStructure {
-    public string Name;
-    public string ClassName;
-    public bool IsEnabled;
-    public Visibility Visible;
+    public string Name { get; set; }
+    public string ClassName { get; set; }
+    public bool IsEnabled { get; set; }
+    public Visibility Visible { get; set; }
+    public string BplName { get; set; }
+
     private IDictionary<Event, IList<HandlerSignature>> handlers;
 
     public ControlInfoStructure() {
@@ -90,7 +92,7 @@ namespace TranslationPlugins {
   public class PhoneControlsPlugin : TranslationPlugin {
     // TODO this will probably need a complete rewrite once it is event based, and make it more push than pull
     // TODO but it doesn't make sense right now to make it BCT or CCI aware
-    private static int CONFIG_LINE_FIELDS= 9;
+    private static int CONFIG_LINE_FIELDS= 10;
     private static int PAGE_CLASS_FIELD= 0;
     private static int PAGE_XAML_FIELD= 1;
     private static int CONTROL_CLASS_FIELD= 2;
@@ -100,6 +102,7 @@ namespace TranslationPlugins {
     private static int CLICK_HANDLER_FIELD= 6;
     private static int CHECKED_HANDLER_FIELD= 7;
     private static int UNCHECKED_HANDLER_FIELD = 8;
+    private static int BPL_NAME_FIELD = 9;
 
     private IDictionary<string, PageStructure> pageStructureInfo;
 
@@ -143,17 +146,63 @@ namespace TranslationPlugins {
       }
     }
 
+    public void DumpControlStructure(StreamWriter outputStream) {
+      // maintain same format as input format
+      string pageClass, pageXAML, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
+      outputStream.WriteLine(getMainPageXAML());
+      foreach (KeyValuePair<string, PageStructure> entry in this.pageStructureInfo) {
+        pageClass = entry.Key;
+        pageXAML = entry.Value.PageXAML;
+        foreach (ControlInfoStructure controlInfo in entry.Value.getAllControlsInfo()) {
+          controlClass= controlInfo.ClassName;
+          controlName = controlInfo.Name;
+          enabled= controlInfo.IsEnabled ? "true" : "false";
+          switch (controlInfo.Visible) {
+            case Visibility.Collapsed:
+              visibility = "Collapsed";
+              break;
+            default:
+              visibility = "Visible";
+              break;
+          }
+          IEnumerable<HandlerSignature> handlers= controlInfo.getHandlers(Event.Click);
+          if (handlers.Any()) {
+            clickHandler = handlers.First().Name;
+          } else {
+            clickHandler = "";
+          }
+
+          handlers = controlInfo.getHandlers(Event.Checked);
+          if (handlers.Any()) {
+            checkedHandler = handlers.First().Name;
+          } else {
+            checkedHandler = "";
+          }
+
+          handlers = controlInfo.getHandlers(Event.Unchecked);
+          if (handlers.Any()) {
+            uncheckedHandler = handlers.First().Name;
+          } else {
+            uncheckedHandler = "";
+          }
+          bplName = controlInfo.BplName;
+          outputStream.WriteLine(pageClass + "," + pageXAML + "," + controlClass + "," + controlName + "," + enabled + "," + visibility + "," + clickHandler + "," + checkedHandler + "," + uncheckedHandler + "," + bplName);
+        }
+      }
+    }
+
     private void LoadControlStructure(StreamReader configStream) {
       // TODO it would be nice to have some kind of dynamic definition of config format
       // TODO for now remember that config format is CSV
-      // TODO each line is <pageClassName>,<pageXAMLPath>,<controlClassName>,<controlName>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>
+      // TODO each line is <pageClassName>,<pageXAMLPath>,<controlClassName>,<controlName>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<BPL control name>
+      // TODO BPL control name will most probably be empty, but it is useful to be able to dump it
       // TODO check PhoneControlsExtractor.py
 
       // TODO the page.xaml value is saved with no directory information: if two pages exist with same name but different directories it will treat them as the same
       // TODO I'm not handling this for now, and I won't be handling relative/absolute URI either for now
 
       try {
-        string pageClass, pageXAML, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler;
+        string pageClass, pageXAML, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
         string configLine = configStream.ReadLine();
         string[] inputLine;
         PageStructure pageStr;
@@ -178,6 +227,7 @@ namespace TranslationPlugins {
           clickHandler = inputLine[CLICK_HANDLER_FIELD];
           checkedHandler = inputLine[CHECKED_HANDLER_FIELD];
           uncheckedHandler = inputLine[UNCHECKED_HANDLER_FIELD];
+          bplName = inputLine[BPL_NAME_FIELD];
 
           try {
             pageStr = pageStructureInfo[pageClass];
@@ -193,6 +243,7 @@ namespace TranslationPlugins {
             controlInfoStr = new ControlInfoStructure();
             controlInfoStr.Name = controlName;
             controlInfoStr.ClassName = controlClass;
+            controlInfoStr.BplName = bplName;
           }
           controlInfoStr.IsEnabled = Boolean.Parse(enabled);
           controlInfoStr.Visible = visibility == "Collapsed" ? Visibility.Collapsed : Visibility.Visible;
@@ -212,26 +263,48 @@ namespace TranslationPlugins {
     }
 
     public IEnumerable<ControlInfoStructure> getControlsForPage(string pageClass) {
-      return pageStructureInfo[pageClass].getAllControlsInfo();
+      try {
+        return pageStructureInfo[pageClass].getAllControlsInfo();
+      } catch (KeyNotFoundException) {
+        return null;
+      }
     }
 
     public string getXAMLForPage(string pageClass) {
-      return pageStructureInfo[pageClass].PageXAML;
+      try {
+        return pageStructureInfo[pageClass].PageXAML;
+      } catch (KeyNotFoundException) {
+        return null;
+      }
     }
 
     public bool getIsEnabled(string pageClass, string controlName) {
-      return pageStructureInfo[pageClass].getControlInfo(controlName).IsEnabled;
+      try {
+        return pageStructureInfo[pageClass].getControlInfo(controlName).IsEnabled;
+      } catch (KeyNotFoundException) {
+        // TODO not really correct
+        return false;
+      }
     }
 
     public Visibility getVisibility(string pageClass, string controlName) {
-      return pageStructureInfo[pageClass].getControlInfo(controlName).Visible;
+      try {
+        return pageStructureInfo[pageClass].getControlInfo(controlName).Visible;
+      } catch (KeyNotFoundException) {
+        // TODO not really correct
+        return default(Visibility);
+      }
     }
 
     public IList<HandlerSignature> getHandlers(string pageClass, string controlName, string eventName) {
       if (eventName != "Checked" && eventName != "Unchecked" && eventName != "Click")
         throw new NotImplementedException("Event " + eventName + " is not translated or defined for control " + controlName + " in page " + pageClass);
 
-      return pageStructureInfo[pageClass].getControlInfo(controlName).getHandlers((Event) Event.Parse(typeof(Event), eventName));
+      try {
+        return pageStructureInfo[pageClass].getControlInfo(controlName).getHandlers((Event) Event.Parse(typeof(Event), eventName));
+      } catch (KeyNotFoundException) {
+        return null;
+      }
     }
   }
 }

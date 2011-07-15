@@ -148,9 +148,6 @@ namespace BytecodeTranslator.Phone {
         injectedStatements = injectedStatements.Concat(getCodeForSettingEnabledness(controlInfo));
         injectedStatements = injectedStatements.Concat(getCodeForSettingCheckedState(controlInfo));
         injectedStatements = injectedStatements.Concat(getCodeForSettingVisibility(controlInfo));
-        injectedStatements = injectedStatements.Concat(getCodeForSettingEventHandlers(controlInfo, "Click"));
-        injectedStatements = injectedStatements.Concat(getCodeForSettingEventHandlers(controlInfo, "Checked"));
-        injectedStatements = injectedStatements.Concat(getCodeForSettingEventHandlers(controlInfo, "Unchecked"));
       }
 
       int stmtPos= block.Statements.IndexOf(statementAfter);
@@ -222,7 +219,7 @@ namespace BytecodeTranslator.Phone {
         MethodToCall = isEnabledSetter,
         ThisArgument = boundControl,
       };
-      
+
       setEnablednessCall.Arguments.Add(controlInfo.IsEnabled ? trueConstant : falseConstant);
       ExpressionStatement callStmt = new ExpressionStatement() {
         Expression = setEnablednessCall,
@@ -232,13 +229,23 @@ namespace BytecodeTranslator.Phone {
     }
 
     private IEnumerable<IStatement> getCodeForSettingCheckedState(ControlInfoStructure controlInfo) {
-      // TODO not implemented yet
-      return new List<IStatement>();
-    }
+    //  IList<IStatement> code = new List<IStatement>();
+    //  BoundExpression boundControl = makeBoundControlFromControlInfo(controlInfo);
+    //  MethodCall setCheckStateCall= new MethodCall() {
+    //    IsStaticCall = false,
+    //    IsVirtualCall = true,
+    //    IsTailCall = false,
+    //    Type = ((Microsoft.Cci.Immutable.PlatformType) host.PlatformType).SystemVoid,
+    //    MethodToCall = isCheckedSetter,
+    //    ThisArgument = boundControl,
+    //  };
 
-    // TODO should stop propagating the string event name
-    private IEnumerable<IStatement> getCodeForSettingEventHandlers(ControlInfoStructure controlInfo, string eventName) {
-      // TODO not implemented yet
+    //  setCheckStateCall.Arguments.Add(controlInfo.IsChecked ? trueConstant : falseConstant);
+    //  ExpressionStatement callStmt = new ExpressionStatement() {
+    //    Expression = setCheckStateCall,
+    //  };
+    //  code.Add(callStmt);
+    //  return code;
       return new List<IStatement>();
     }
 

@@ -16,6 +16,7 @@ using Microsoft.Cci.ILToCodeModel;
 
 using Bpl = Microsoft.Boogie;
 using System.Diagnostics.Contracts;
+using TranslationPlugins;
 
 
 namespace BytecodeTranslator {
@@ -32,6 +33,8 @@ namespace BytecodeTranslator {
 
     public readonly IDictionary<IUnit, PdbReader> PdbReaders;
     public PdbReader/*?*/ PdbReader;
+
+    public PhoneControlsPlugin PhonePlugin { get; set; }
 
     public MetadataTraverser(Sink sink, IDictionary<IUnit, PdbReader> pdbReaders)
       : base() {
@@ -476,7 +479,21 @@ namespace BytecodeTranslator {
     }
 
     public override void Visit(IFieldDefinition fieldDefinition) {
-      this.sink.FindOrCreateFieldVariable(fieldDefinition);
+      Bpl.Variable fieldVar= this.sink.FindOrCreateFieldVariable(fieldDefinition);
+
+      // if tracked by the phone plugin, we need to find out the bpl assigned name for future use
+      if (PhonePlugin != null) {
+        INamespaceTypeReference namedContainerRef= fieldDefinition.ContainingType as INamespaceTypeReference;
+        if (namedContainerRef != null) {
+          string containerName = namedContainerRef.ContainingUnitNamespace.Unit.Name.Value + "." + namedContainerRef.Name.Value;
+          IEnumerable<ControlInfoStructure> controls= PhonePlugin.getControlsForPage(containerName);
+          if (controls != null) {
+            ControlInfoStructure ctrlInfo = controls.FirstOrDefault(ctrl => ctrl.Name == fieldDefinition.Name.Value);
+            if (ctrlInfo != null)
+              ctrlInfo.BplName = fieldVar.Name;
+          }
+        }
+      }
     }
 
     #endregion
