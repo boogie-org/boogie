@@ -18,12 +18,12 @@ using System.Diagnostics.Contracts;
 using TranslationPlugins;
 
 
-namespace BytecodeTranslator {
+namespace BytecodeTranslator.Phone {
 
   /// <summary>
   /// Traverse code looking for phone specific points of interest, possibly injecting necessary code in-between
   /// </summary>
-  public class PhoneCodeTraverser : BaseCodeTraverser {
+  public class PhoneInitializationCodeTraverser : BaseCodeTraverser {
     private readonly IMethodDefinition methodBeingTraversed;
     private static bool initializationFound= false;
     private PhoneControlsPlugin phonePlugin;
@@ -69,7 +69,7 @@ namespace BytecodeTranslator {
       }
     }
 
-    public PhoneCodeTraverser(MetadataReaderHost host, IMethodDefinition traversedMethod, PhoneControlsPlugin phonePlugin) : base() {
+    public PhoneInitializationCodeTraverser(MetadataReaderHost host, IMethodDefinition traversedMethod, PhoneControlsPlugin phonePlugin) : base() {
       this.methodBeingTraversed = traversedMethod;
       this.phonePlugin = phonePlugin;
       this.host = host;
@@ -138,11 +138,6 @@ namespace BytecodeTranslator {
 
     public void injectPhoneControlsCode(BlockStatement block) {
       this.Visit(block);
-    }
-
-    private Assignment MakeFieldAssigment(string assignType, string objectName, string objectType, string fieldName, string sourceObjName, string sourceObjType, string sourceObjFieldName) {
-      /* TODO */
-      return null;
     }
 
     private void injectPhoneInitializationCode(BlockStatement block, Statement statementAfter) {
@@ -241,6 +236,7 @@ namespace BytecodeTranslator {
       return new List<IStatement>();
     }
 
+    // TODO should stop propagating the string event name
     private IEnumerable<IStatement> getCodeForSettingEventHandlers(ControlInfoStructure controlInfo, string eventName) {
       // TODO not implemented yet
       return new List<IStatement>();
@@ -271,11 +267,11 @@ namespace BytecodeTranslator {
   /// <summary>
   /// Traverse metadata looking only for PhoneApplicationPage's constructors
   /// </summary>
-  public class PhoneMetadataTraverser : BaseMetadataTraverser {
+  public class PhoneInitializationMetadataTraverser : BaseMetadataTraverser {
     private PhoneControlsPlugin phoneControlsInfo;
     private MetadataReaderHost host;
 
-    public PhoneMetadataTraverser(PhoneControlsPlugin phonePlugin, MetadataReaderHost host)
+    public PhoneInitializationMetadataTraverser(PhoneControlsPlugin phonePlugin, MetadataReaderHost host)
       : base() {
         this.phoneControlsInfo = phonePlugin;
         this.host = host;
@@ -294,26 +290,9 @@ namespace BytecodeTranslator {
     /// </summary>
     /// 
     public override void Visit(ITypeDefinition typeDefinition) {
-      if (typeDefinition.IsClass && isPhoneApplicationPage(typeDefinition)) {
+      if (typeDefinition.IsClass && PhoneCodeHelper.isPhoneApplicationPageClass(typeDefinition, host)) {
         base.Visit(typeDefinition);
       }
-    }
-
-    private bool isPhoneApplicationPage(ITypeDefinition typeDefinition) {
-      ITypeReference baseClass = typeDefinition.BaseClasses.FirstOrDefault();
-      ITypeDefinition baseClassDef;
-      while (baseClass != null) {
-        baseClassDef = baseClass.ResolvedType;
-        if (baseClassDef is INamespaceTypeDefinition) {
-          if (((INamespaceTypeDefinition) baseClassDef).Name.Value == "PhoneApplicationPage" &&
-               ((INamespaceTypeDefinition) baseClassDef).Container.ToString() == "Microsoft.Phone.Controls") {
-            return true;
-          }
-        }
-        baseClass = baseClass.ResolvedType.BaseClasses.FirstOrDefault();
-      }
-
-      return false;
     }
 
     /// <summary>
@@ -323,7 +302,7 @@ namespace BytecodeTranslator {
       if (!method.IsConstructor)
         return;
 
-      PhoneCodeTraverser codeTraverser = new PhoneCodeTraverser(host, method, phoneControlsInfo);
+      PhoneInitializationCodeTraverser codeTraverser = new PhoneInitializationCodeTraverser(host, method, phoneControlsInfo);
       var methodBody = method.Body as SourceMethodBody;
       if (methodBody == null)
         return;
@@ -331,7 +310,7 @@ namespace BytecodeTranslator {
       codeTraverser.injectPhoneControlsCode(block);
     }
 
-    public virtual void InjectPhoneCodeAssemblies(IEnumerable<IUnit> assemblies) {
+    public void InjectPhoneCodeAssemblies(IEnumerable<IUnit> assemblies) {
       foreach (var a in assemblies) {
         a.Dispatch(this);
       }

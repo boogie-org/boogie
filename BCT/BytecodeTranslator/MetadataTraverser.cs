@@ -355,9 +355,6 @@ namespace BytecodeTranslator {
         if (helperTypes != null) {
           this.privateTypes.AddRange(helperTypes);
         }
-        //method.Body.Dispatch(stmtTraverser);
-        stmtTraverser.StmtBuilder.Add(new Bpl.ReturnCmd(Bpl.Token.NoToken));
-        stmtTraverser.GenerateDispatchContinuation();
         #endregion
 
         #region Create Local Vars For Implementation
@@ -370,7 +367,6 @@ namespace BytecodeTranslator {
           vars.Add(v);
         }
         vars.Add(procInfo.LocalExcVariable);
-        vars.Add(procInfo.FinallyStackVariable);
         vars.Add(procInfo.LabelVariable);
         Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
         #endregion
