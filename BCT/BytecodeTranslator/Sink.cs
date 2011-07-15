@@ -876,7 +876,7 @@ namespace BytecodeTranslator {
             var p_prime = FindOrCreateType(p);
             var e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Subtype, Bpl.Expr.Ident(t), p_prime);
             var a = new Bpl.Axiom(Bpl.Token.NoToken, e);
-            this.TranslatedProgram.TopLevelDeclarations.Add(a);
+            //this.TranslatedProgram.TopLevelDeclarations.Add(a);
           }
           this.TranslatedProgram.TopLevelDeclarations.Add(t);
           if (isExtern) {
