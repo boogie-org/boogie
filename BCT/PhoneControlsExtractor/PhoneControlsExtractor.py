@@ -13,6 +13,7 @@ CONTROL_NAMES= ["Button", "CheckBox", "RadioButton"]
 CONTAINER_CONTROL_NAMES= ["Canvas", "Grid", "StackPanel"]
 
 staticControlsMap= {}
+mainPageXAML= None
 
 def showUsage():
   print "PhoneControlsExtractor -- extract control information from phone application pages"
@@ -90,10 +91,10 @@ def extractPhoneControlsFromPage(pageXAML):
   pageFile.close()
   removeBlankElements(pageFileXML)
   controls= getControlNodes(pageFileXML)
+  ownerPage = None
   for control in controls:
-    ownerPage=""
     parent= control
-    while not parent == None:
+    while not parent == None and ownerPage == None:
       if parent.localName == "PhoneApplicationPage":
         ownerPage= parent.getAttribute("x:Class")
       parent= parent.parentNode
@@ -102,8 +103,9 @@ def extractPhoneControlsFromPage(pageXAML):
 def outputPhoneControls(outputFileName):
   outputFile= open(outputFileName, "w")
 
-  # Output format is one line per
+  # Output format is first line containing only the main page, and then one line per
   # <pageClassName>,<page.xaml file>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>
+  outputFile.write(mainPageXAML + "\n")
   for page in staticControlsMap.keys():
     for control in staticControlsMap[page]:
       isEnabled= control["IsEnabled"]
@@ -116,12 +118,23 @@ def outputPhoneControls(outputFileName):
 
   outputFile.close()
 
+def getMainPageXAMLFromManifest(filename):
+  file= open(filename, "r");
+  manifest= minidom.parse(file)
+  file.close()
+  # interesting XPath location /App/Tasks/DefaultTask/@NavigationPage
+  return manifest.getElementsByTagName("DefaultTask")[0].getAttribute("NavigationPage")
+
 def extractPhoneControls(sourceDir):
-  fileList= [os.path.join(sourceDir, fileName) for fileName in os.listdir(sourceDir) if os.path.splitext(fileName)[1] == ".xaml"]
+  global mainPageXAML
+  fileList= [os.path.join(sourceDir, fileName) for fileName in os.listdir(sourceDir) if os.path.splitext(fileName)[1] == ".xaml" or os.path.splitext(fileName)[1] == ".xml"]
+  for fileName in fileList:
+    if os.path.splitext(fileName)[1] == ".xml" and os.path.splitext(os.path.split(fileName)[1])[0].lower() == "wmappmanifest":
+      mainPageXAML= getMainPageXAMLFromManifest(fileName)
+      break
+
   for fileName in fileList:
     extractPhoneControlsFromPage(fileName)
-
-  # TODO dump controls into a config file that can be passed to BCT
 
 def main():
   pagesDir= ""

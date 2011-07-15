@@ -65,8 +65,9 @@ namespace TranslationPlugins {
       controlsInfo = new Dictionary<string, ControlInfoStructure>();
     }
 
-    public string PageClassName;
-    public string PageXAML;
+    public string PageClassName { get; set; }
+    public string PageXAML { get; set; }
+    public bool IsMainPage { get; set; }
 
     private IDictionary<string, ControlInfoStructure> controlsInfo;
     public ControlInfoStructure getControlInfo(string controlName) {
@@ -128,6 +129,20 @@ namespace TranslationPlugins {
         fileStream.Close();
     }
 
+    public string getMainPageXAML() {
+      KeyValuePair<string, PageStructure> entry= pageStructureInfo.FirstOrDefault(keyValue => keyValue.Value.IsMainPage);
+      return entry.Value.PageXAML;
+    }
+
+    private void setPageAsMainPage(string pageXAML) {
+      KeyValuePair<string,PageStructure> mainPageClass= pageStructureInfo.FirstOrDefault(keyValue => keyValue.Value.PageXAML == pageXAML);
+      if (mainPageClass.Equals(default(KeyValuePair<string, PageStructure>))) {
+        // do nothing. Pre is page was already parsed
+      } else {
+        mainPageClass.Value.IsMainPage = true;
+      }
+    }
+
     private void LoadControlStructure(StreamReader configStream) {
       // TODO it would be nice to have some kind of dynamic definition of config format
       // TODO for now remember that config format is CSV
@@ -143,6 +158,10 @@ namespace TranslationPlugins {
         string[] inputLine;
         PageStructure pageStr;
         ControlInfoStructure controlInfoStr;
+
+        // first line just states the main page xaml
+        string mainPage = configLine.Trim();
+        configLine = configStream.ReadLine();
 
         while (configLine != null) {
           inputLine = configLine.Split(',');
@@ -166,6 +185,7 @@ namespace TranslationPlugins {
             pageStr = new PageStructure();
             pageStr.PageClassName = pageClass;
             pageStr.PageXAML = pageXAML;
+            pageStr.IsMainPage = false;
           }
 
           controlInfoStr= pageStr.getControlInfo(controlName);
@@ -184,6 +204,7 @@ namespace TranslationPlugins {
           pageStructureInfo[pageClass] = pageStr;
           configLine = configStream.ReadLine();
 
+          setPageAsMainPage(mainPage);
         }
       } catch (Exception) {
         // TODO log, I don't want to terminate BCT because of this

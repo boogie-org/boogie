@@ -126,8 +126,13 @@ namespace BytecodeTranslator.Phone {
     /// <param name="uri"></param>
     /// <returns></returns>
     public static string getURIBase(string uri) {
-      // TODO
-      return uri;
+      // I need to build an absolute URI just to call getComponents() ...
+      Uri mockBaseUri = new Uri("mock://mock/", UriKind.RelativeOrAbsolute);
+      Uri realUri = new Uri(mockBaseUri, uri);
+
+      string str= realUri.GetComponents(UriComponents.Path|UriComponents.StrongAuthority|UriComponents.Scheme, UriFormat.UriEscaped);
+      Uri mockStrippedUri = new Uri(str);
+      return mockBaseUri.MakeRelativeUri(mockStrippedUri).ToString();
     }
   }
 }

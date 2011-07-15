@@ -177,9 +177,10 @@ namespace BytecodeTranslator {
       var primaryModule = modules[0];
 
       if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
-        PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(new PhoneControlsPlugin(phoneControlsConfigFile), host);
+        PhoneControlsPlugin phonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
+        PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(phonePlugin, host);
         initTr.InjectPhoneCodeAssemblies(modules);
-        PhoneNavigationMetadataTraverser navTr = new PhoneNavigationMetadataTraverser(host);
+        PhoneNavigationMetadataTraverser navTr = new PhoneNavigationMetadataTraverser(phonePlugin, host);
         navTr.InjectPhoneCodeAssemblies(modules);
       }
 

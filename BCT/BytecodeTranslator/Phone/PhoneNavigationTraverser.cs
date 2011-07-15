@@ -4,18 +4,21 @@ using System.Linq;
 using System.Text;
 using Microsoft.Cci;
 using Microsoft.Cci.MutableCodeModel;
+using TranslationPlugins;
 
 namespace BytecodeTranslator.Phone {
   public class PhoneNavigationCodeTraverser : BaseCodeTraverser {
     private MetadataReaderHost host;
     private ITypeReference navigationSvcType;
     private ITypeReference typeTraversed;
+    private PhoneControlsPlugin phonePlugin;
 
     private static readonly string[] NAV_CALLS = { "GoBack", "GoForward", "Navigate", "StopLoading" };
 
-    public PhoneNavigationCodeTraverser(MetadataReaderHost host, ITypeReference typeTraversed) : base() {
+    public PhoneNavigationCodeTraverser(PhoneControlsPlugin plugin, MetadataReaderHost host, ITypeReference typeTraversed) : base() {
       this.host = host;
       this.typeTraversed = typeTraversed;
+      this.phonePlugin = plugin;
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
 
       // TODO obtain version, culture and signature data dynamically
@@ -33,7 +36,7 @@ namespace BytecodeTranslator.Phone {
       if (method.IsConstructor && PhoneCodeHelper.isPhoneApplicationClass(typeTraversed, host)) {
         // TODO initialize current navigation URI to mainpage, using a placeholder for now.
         // TODO BUG doing this is generating a fresh variable definition somewhere that the BCT then translates into two different (identical) declarations
-        string URI_placeholder="URI_PLACEHOLDER";
+        string mainPageUri = phonePlugin.getMainPageXAML();
         SourceMethodBody sourceBody = method.Body as SourceMethodBody;
         if (sourceBody != null) {
           BlockStatement bodyBlock = sourceBody.Block as BlockStatement;
@@ -41,7 +44,7 @@ namespace BytecodeTranslator.Phone {
             Assignment uriInitAssign = new Assignment() {
               Source = new CompileTimeConstant() {
                 Type = host.PlatformType.SystemString,
-                Value = URI_placeholder,
+                Value = mainPageUri,
               },
               Type = host.PlatformType.SystemString,
               Target = new TargetExpression() {
@@ -230,10 +233,12 @@ namespace BytecodeTranslator.Phone {
   public class PhoneNavigationMetadataTraverser : BaseMetadataTraverser {
     private MetadataReaderHost host;
     private ITypeDefinition typeBeingTraversed;
+    private PhoneControlsPlugin phonePlugin;
 
-    public PhoneNavigationMetadataTraverser(MetadataReaderHost host)
+    public PhoneNavigationMetadataTraverser(PhoneControlsPlugin plugin, MetadataReaderHost host)
       : base() {
       this.host = host;
+      this.phonePlugin = plugin;
     }
 
     public override void Visit(IModule module) {
@@ -267,7 +272,7 @@ namespace BytecodeTranslator.Phone {
     // TODO same here. Are there specific methods (and ways to identfy those) that can perform navigation?
     public override void Visit(IMethodDefinition method) {
 
-      PhoneNavigationCodeTraverser codeTraverser = new PhoneNavigationCodeTraverser(host, typeBeingTraversed);
+      PhoneNavigationCodeTraverser codeTraverser = new PhoneNavigationCodeTraverser(phonePlugin, host, typeBeingTraversed);
       codeTraverser.Visit(method);
     }
 
