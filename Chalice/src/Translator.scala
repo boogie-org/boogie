@@ -1668,7 +1668,12 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       createAppendSeq(Tr(e0), Tr(e1))
     case at@At(e0, e1) =>SeqIndex(Tr(e0), Tr(e1))
     case Drop(e0, e1) =>
-      Boogie.FunctionApp("Seq#Drop", List(Tr(e0), Tr(e1)))
+      e1 match {
+        case IntLiteral(0) =>
+          Tr(e0)
+        case _ =>
+          Boogie.FunctionApp("Seq#Drop", List(Tr(e0), Tr(e1)))
+      }
     case Take(e0, e1) =>
       Boogie.FunctionApp("Seq#Take", List(Tr(e0), Tr(e1)))
     case Length(e) => SeqLength(Tr(e))
