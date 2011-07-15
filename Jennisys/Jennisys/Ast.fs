@@ -1,7 +1,9 @@
-﻿/// The AST of a Jennisy program
+﻿//  ####################################################################
+///   The AST of a Jennisy program
 ///
-/// author: Rustan Leino (leino@microsoft.com)
-/// author: Aleksandar Milicevic (t-alekm@microsoft.com)
+///   author: Rustan Leino (leino@microsoft.com)
+///   author: Aleksandar Milicevic (t-alekm@microsoft.com)
+//  ####################################################################
 
 namespace Ast
 
@@ -13,24 +15,49 @@ type Type =
   | BoolType
   | SetType of Type (* type parameter *)
   | SeqType of Type (* type parameter *)
-  | NamedType of string
-  | InstantiatedType of string * Type (* type parameter *)
+  | NamedType of string * string list (* type parameters *)  
+  | InstantiatedType of string * Type list (* type parameters *)
 
 type VarDecl =
   | Var of string * Type option
 
+(* 
+   the difference between IdLiteral and VarLiteral is that the VarLiteral is more specific, 
+   it always referes to a local variable (either method parameter or quantification variable)  
+
+   ObjLiteral is a concrete object, so if two ObjLiterals have different names, 
+   they are different objects (as opposed to IdLiterals and VarLiterals, which can alias).
+ *)
 type Expr =
   | IntLiteral of int
-  | IdLiteral of string
+  | BoolLiteral of bool
+  | VarLiteral of string  
+  | IdLiteral of string 
+  | ObjLiteral of string 
   | Star
   | Dot of Expr * string
   | UnaryExpr of string * Expr
   | BinaryExpr of int * string * Expr * Expr
+  | IteExpr of (* cond *) Expr * (* thenExpr *) Expr * (* elseExpr *) Expr
   | SelectExpr of Expr * Expr
   | UpdateExpr of Expr * Expr * Expr
   | SequenceExpr of Expr list
   | SeqLength of Expr
+  | SetExpr of Expr list //TODO: maybe this should really be a set instead of a list
   | ForallExpr of VarDecl list * Expr
+
+type Const = 
+  | IntConst   of int
+  | BoolConst  of bool
+  | SetConst   of Set<Const>
+  | SeqConst   of Const list
+  | NullConst
+  | NoneConst
+  | ThisConst  of (* loc id *) string * Type option
+  | VarConst   of string
+  | NewObj     of (* loc id *) string * Type option
+  | ExprConst  of Expr
+  | Unresolved of (* loc id *) string 
 
 type Stmt =
   | Block of Stmt list
@@ -57,15 +84,3 @@ type Component =
 
 type Program =
   | Program of Component list
-
-type Const = 
-  | IntConst   of int
-  | BoolConst  of bool
-  | SetConst   of Set<Const option>
-  | SeqConst   of (Const option) list
-  | NullConst
-  | ThisConst  of (* loc id *) string * Type option
-  | NewObj     of (* loc id *) string * Type option
-  | ExprConst  of Expr
-  | VarConst   of (* varName *) string
-  | Unresolved of (* loc id *) string 

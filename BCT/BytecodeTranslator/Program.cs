@@ -17,6 +17,8 @@ using Microsoft.Cci.MutableContracts;
 using Bpl = Microsoft.Boogie;
 using System.Diagnostics.Contracts;
 using Microsoft.Cci.MutableCodeModel.Contracts;
+using TranslationPlugins;
+using BytecodeTranslator.Phone;
 
 namespace BytecodeTranslator {
 
@@ -40,6 +42,9 @@ namespace BytecodeTranslator {
 
     [OptionDescription("Stub assembly", ShortForm = "s")]
     public List<string>/*?*/ stub = null;
+
+    [OptionDescription("Phone translation controls configuration")]
+    public string phoneControls = null;
 
   }
 
@@ -91,7 +96,7 @@ namespace BytecodeTranslator {
             return 1;
         }
 
-        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stub);
+        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stub, options.phoneControls);
 
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed: {0}", e.Message);
@@ -101,7 +106,7 @@ namespace BytecodeTranslator {
       return result;
     }
 
-    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, List<string>/*?*/ libPaths, bool wholeProgram, List<string>/*?*/ stubAssemblies) {
+    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, List<string>/*?*/ libPaths, bool wholeProgram, List<string>/*?*/ stubAssemblies, string phoneControlsConfigFile) {
       Contract.Requires(assemblyNames != null);
       Contract.Requires(heapFactory != null);
 
@@ -171,15 +176,22 @@ namespace BytecodeTranslator {
 
       var primaryModule = modules[0];
 
+      if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
+        PhoneControlsPlugin phonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
+        PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(phonePlugin, host);
+        initTr.InjectPhoneCodeAssemblies(modules);
+        PhoneNavigationMetadataTraverser navTr = new PhoneNavigationMetadataTraverser(phonePlugin, host);
+        navTr.InjectPhoneCodeAssemblies(modules);
+      }
+
       TraverserFactory traverserFactory;
       if (wholeProgram)
         traverserFactory = new WholeProgram();
       else
         traverserFactory = new CLRSemantics();
 
-      var sink = new Sink(host, traverserFactory, heapFactory);
+      Sink sink= new Sink(host, traverserFactory, heapFactory);
       TranslationHelper.tmpVarCounter = 0;
-
       MetadataTraverser translator = traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
       translator.TranslateAssemblies(modules);
 

@@ -343,7 +343,7 @@ namespace BytecodeTranslator {
             }
             decl.AddAttribute(attrName, args);
           }
-        } catch (InvalidCastException e) {
+        } catch (InvalidCastException) {
           Console.WriteLine("Warning: Cannot translate custom attributes for method\n    '{0}':",
             MemberHelper.GetMethodSignature(method, NameFormattingOptions.None));
           Console.WriteLine("    >>Skipping attributes, continuing with method translation");
@@ -355,9 +355,6 @@ namespace BytecodeTranslator {
         if (helperTypes != null) {
           this.privateTypes.AddRange(helperTypes);
         }
-        //method.Body.Dispatch(stmtTraverser);
-        stmtTraverser.StmtBuilder.Add(new Bpl.ReturnCmd(Bpl.Token.NoToken));
-        stmtTraverser.GenerateDispatchContinuation();
         #endregion
 
         #region Create Local Vars For Implementation
@@ -370,7 +367,6 @@ namespace BytecodeTranslator {
           vars.Add(v);
         }
         vars.Add(procInfo.LocalExcVariable);
-        vars.Add(procInfo.FinallyStackVariable);
         vars.Add(procInfo.LabelVariable);
         Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
         #endregion

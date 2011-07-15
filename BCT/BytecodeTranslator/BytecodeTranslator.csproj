@@ -125,6 +125,10 @@
     <Compile Include="Heap.cs" />
     <Compile Include="HeapFactory.cs" />
     <Compile Include="MetadataTraverser.cs" />
+    <Compile Include="Phone\PhoneCodeHelper.cs" />
+    <Compile Include="Phone\PhoneInitializationTraverser.cs" />
+    <Compile Include="Phone\PhoneNavigationTraverser.cs" />
+    <Compile Include="Phone\PhoneURIDeclarationsTraverser.cs" />
     <Compile Include="Prelude.cs" />
     <Compile Include="ExpressionTraverser.cs" />
     <Compile Include="Sink.cs" />
@@ -178,6 +182,10 @@
     <ProjectReference Include="..\..\..\CCICodePlex\Ast\Sources\MutableCodeModel\MutableCodeModel.csproj">
       <Project>{319E150C-8F33-49E7-81CA-30F02F9BA90A}</Project>
       <Name>MutableCodeModel</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TranslationPlugins\TranslationPlugins.csproj">
+      <Project>{8C242D42-9714-440F-884D-F64F09E78C7B}</Project>
+      <Name>TranslationPlugins</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

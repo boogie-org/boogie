@@ -1,273 +1,116 @@
-﻿/// Utility functions for manipulating AST elements
+﻿//  ####################################################################
+///   Utility functions for manipulating AST elements
 ///
-/// author: Aleksandar Milicevic (t-alekm@microsoft.com)
+///   author: Aleksandar Milicevic (t-alekm@microsoft.com)
+//  ####################################################################
 
 module AstUtils
 
 open Ast
 open Utils
 
-// ------------------------------- Visitor Stuff -------------------------------------------
+//  =====================
+/// Returns TRUE literal
+//  =====================
+let TrueLiteral = BoolLiteral(true)
 
-let rec VisitExpr visitorFunc expr acc =
-  match expr with
-  | IntLiteral(_)
-  | IdLiteral(_)
-  | Star                   -> acc |> visitorFunc expr
-  | Dot(e, _)              -> acc |> visitorFunc expr |> VisitExpr visitorFunc e
-  | SelectExpr(e1, e2)     -> acc |> visitorFunc expr |> VisitExpr visitorFunc e1 |> VisitExpr visitorFunc e2
-  | UpdateExpr(e1, e2, e3) -> acc |> visitorFunc expr |> VisitExpr visitorFunc e1 |> VisitExpr visitorFunc e2 |> VisitExpr visitorFunc e3
-  | SequenceExpr(exs)      -> exs |> List.fold (fun acc2 e -> acc2 |> VisitExpr visitorFunc e) (visitorFunc expr acc)
-  | SeqLength(e)           -> acc |> visitorFunc expr |> VisitExpr visitorFunc e
-  | ForallExpr(_,e)        -> acc |> visitorFunc expr |> VisitExpr visitorFunc e
-  | UnaryExpr(_,e)         -> acc |> visitorFunc expr |> VisitExpr visitorFunc e
-  | BinaryExpr(_,_,e1,e2)  -> acc |> visitorFunc expr |> VisitExpr visitorFunc e1 |> VisitExpr visitorFunc e2
+//  =====================
+/// Returns FALSE literal
+//  =====================
+let FalseLiteral = BoolLiteral(false)
 
-// ------------------------------- End Visitor Stuff -------------------------------------------
+let UnaryNeg sub =
+  match sub with
+  | UnaryExpr("-", s) -> s
+  | _ -> UnaryExpr("-", sub)
 
-exception EvalFailed 
-
-let rec EvalSym expr = 
-  match expr with
-  | IntLiteral(n) -> IntConst(n)
-  | IdLiteral(id) -> VarConst(id)
-  | Dot(e, str) -> 
-      match EvalSym e with
-      | VarConst(lhsName) -> VarConst(lhsName + "." + str)
-      | _ -> ExprConst(expr)
-  | SeqLength(e) -> 
-      match EvalSym e with
-      | SeqConst(clist) -> IntConst(List.length clist)
-      | _ -> ExprConst(expr)
-  | SequenceExpr(elist) -> 
-      let clist = elist |> List.fold (fun acc e -> EvalSym e :: acc) [] |> List.rev |> Utils.ConvertToOptionList
-      SeqConst(clist)
-  | SelectExpr(lst, idx) ->
-      match EvalSym lst, EvalSym idx with
-      | SeqConst(clist), IntConst(n) -> clist.[n] |> Utils.ExtractOption
-      | _ -> ExprConst(expr)
-  | UpdateExpr(lst,idx,v) ->
-      match EvalSym lst, EvalSym idx, EvalSym v with
-      | SeqConst(clist), IntConst(n), (_ as c) -> SeqConst(Utils.ListSet n (Some(c)) clist)
-      | _ -> ExprConst(expr)
-  | BinaryExpr(_,op,e1,e2) ->
-      match op with
-      | Exact "=" _ ->
-          match EvalSym e1, EvalSym e2 with
-          | BoolConst(b1), BoolConst(b2) -> BoolConst(b1 = b2)
-          | IntConst(n1), IntConst(n2)   -> BoolConst(n1 = n2)
-          | VarConst(v1), VarConst(v2)   -> BoolConst(v1 = v2)
-          | _ -> ExprConst(expr)
-      | Exact "!=" _ -> 
-          match EvalSym e1, EvalSym e2 with
-          | BoolConst(b1), BoolConst(b2) -> BoolConst(not (b1 = b2))
-          | IntConst(n1), IntConst(n2)   -> BoolConst(not (n1 = n2))
-          | VarConst(v1), VarConst(v2)   -> BoolConst(not (v1 = v2))
-          | _ -> ExprConst(expr)
-      | Exact "<" _ -> 
-          match EvalSym e1, EvalSym e2 with
-          | IntConst(n1), IntConst(n2)   -> BoolConst(n1 < n2)
-          | SetConst(s1), SetConst(s2)   -> BoolConst((Set.count s1) < (Set.count s2))
-          | SeqConst(s1), SeqConst(s2)   -> BoolConst((List.length s1) < (List.length s2))
-          | _ -> ExprConst(expr)
-      | Exact "<=" _ -> 
-          match EvalSym e1, EvalSym e2 with
-          | IntConst(n1), IntConst(n2)   -> BoolConst(n1 <= n2)
-          | SetConst(s1), SetConst(s2)   -> BoolConst((Set.count s1) <= (Set.count s2))
-          | SeqConst(s1), SeqConst(s2)   -> BoolConst((List.length s1) <= (List.length s2))
-          | _ -> ExprConst(expr)
-      | Exact ">" _ -> 
-          match EvalSym e1, EvalSym e2 with
-          | IntConst(n1), IntConst(n2)   -> BoolConst(n1 > n2)
-          | SetConst(s1), SetConst(s2)   -> BoolConst((Set.count s1) > (Set.count s2))
-          | SeqConst(s1), SeqConst(s2)   -> BoolConst((List.length s1) > (List.length s2))
-          | _ -> ExprConst(expr)
-      | Exact ">=" _ -> 
-          match EvalSym e1, EvalSym e2 with
-          | IntConst(n1), IntConst(n2)   -> BoolConst(n1 >= n2)
-          | SetConst(s1), SetConst(s2)   -> BoolConst((Set.count s1) >= (Set.count s2))
-          | SeqConst(s1), SeqConst(s2)   -> BoolConst((List.length s1) >= (List.length s2))
-          | _ -> ExprConst(expr)
-      | Exact "in" _ -> 
-          match EvalSym e1, EvalSym e2 with
-          | _ as c, SetConst(s)   -> BoolConst(Set.contains (Some(c)) s)
-          | _ as c, SeqConst(s)   -> BoolConst(Utils.ListContains (Some(c)) s)
-          | _ -> ExprConst(expr)
-      | Exact "!in" _ -> 
-          match EvalSym e1, EvalSym e2 with
-          | _ as c, SetConst(s)   -> BoolConst(not (Set.contains (Some(c)) s))
-          | _ as c, SeqConst(s)   -> BoolConst(not (Utils.ListContains (Some(c)) s))
-          | _ -> ExprConst(expr)
-      | Exact "+" _ -> 
-          match EvalSym e1, EvalSym e2 with
-          | IntConst(n1), IntConst(n2) -> IntConst(n1 + n2)
-          | SeqConst(l1), SeqConst(l2) -> SeqConst(List.append l1 l2)
-          | SetConst(s1), SetConst(s2) -> SetConst(Set.union s1 s2)
-          | _ -> ExprConst(expr)
-      | Exact "-" _ -> 
-          match EvalSym e1, EvalSym e2 with
-          | IntConst(n1), IntConst(n2) -> IntConst(n1 + n2)
-          | SetConst(s1), SetConst(s2) -> SetConst(Set.difference s1 s2)
-          | _ -> ExprConst(expr)
-      | Exact "*" _ -> 
-          match EvalSym e1, EvalSym e2 with
-          | IntConst(n1), IntConst(n2) -> IntConst(n1 * n2)
-          | _ -> ExprConst(expr)
-      | Exact "div" _ -> 
-          match EvalSym e1, EvalSym e2 with
-          | IntConst(n1), IntConst(n2) -> IntConst(n1 / n2)
-          | _ -> ExprConst(expr)
-      | Exact "mod" _ -> 
-          match EvalSym e1, EvalSym e2 with
-          | IntConst(n1), IntConst(n2) -> IntConst(n1 % n2)
-          | _ -> ExprConst(expr)
-      | _ -> ExprConst(expr)
-  | UnaryExpr(op, e) ->
-      match op with
-      | Exact "!" _ -> 
-          match EvalSym e with
-          | BoolConst(b) -> BoolConst(not b)
-          | _ -> ExprConst(expr)
-      | Exact "-" _ -> 
-          match EvalSym e with
-          | IntConst(n) -> IntConst(-n)
-          | _ -> ExprConst(expr)
-      | _ -> ExprConst(expr)
-  | _ -> ExprConst(expr)
-
-//TODO: stuff might be missing
-let rec EvalToConst expr = 
-  match expr with
-  | IntLiteral(n) -> IntConst(n)
-  | IdLiteral(id) -> raise EvalFailed //VarConst(id)
-  | Dot(e, str)   -> raise EvalFailed
-  | SeqLength(e) -> 
-      match EvalToConst e with
-      | SeqConst(clist) -> IntConst(List.length clist)
-      | _ -> raise EvalFailed
-  | SequenceExpr(elist) -> 
-      let clist = elist |> List.fold (fun acc e -> EvalToConst e :: acc) [] |> List.rev |> Utils.ConvertToOptionList
-      SeqConst(clist)
-  | SelectExpr(lst, idx) ->
-      match EvalToConst lst, EvalToConst idx with
-      | SeqConst(clist), IntConst(n) -> clist.[n] |> Utils.ExtractOption
-      | _ -> raise EvalFailed
-  | UpdateExpr(lst,idx,v) ->
-      match EvalToConst lst, EvalToConst idx, EvalToConst v with
-      | SeqConst(clist), IntConst(n), (_ as c) -> SeqConst(Utils.ListSet n (Some(c)) clist)
-      | _ -> raise EvalFailed
-  | BinaryExpr(_,op,e1,e2) ->
-      match op with
-      | Exact "=" _ ->
-          try 
-            BoolConst(EvalToBool(e1) = EvalToBool(e2))
-          with 
-          | EvalFailed -> BoolConst(EvalToInt(e1) = EvalToInt(e2))
-      | Exact "!=" _ -> 
-          try 
-            BoolConst(not(EvalToBool(e1) = EvalToBool(e2)))
-          with 
-          | EvalFailed -> BoolConst(not(EvalToInt e1 = EvalToInt e2))
-      | Exact "<" _ -> BoolConst(EvalToInt e1 < EvalToInt e2) //TODO sets, seqs
-      | Exact "<=" _ -> BoolConst(EvalToInt e1 <= EvalToInt e2) //TODO sets, seqs
-      | Exact ">" _ -> BoolConst(EvalToInt e1 > EvalToInt e2) //TODO sets, seqs
-      | Exact ">=" _ -> BoolConst(EvalToInt e1 >= EvalToInt e2) //TODO sets, seqs
-      | Exact "in" _ -> raise EvalFailed //TODO
-      | Exact "!in" _ -> raise EvalFailed //TODO
-      | Exact "+" _ -> 
-          match EvalToConst e1, EvalToConst e2 with
-          | IntConst(n1), IntConst(n2) -> IntConst(n1 + n2)
-          | SeqConst(l1), SeqConst(l2) -> SeqConst(List.append l1 l2)
-          | SetConst(s1), SetConst(s2) -> SetConst(Set.union s1 s2)
-          | _ -> raise EvalFailed
-      | Exact "-" _ -> IntConst(EvalToInt e1 - EvalToInt e2)
-      | Exact "*" _ -> IntConst(EvalToInt e1 * EvalToInt e2)
-      | Exact "div" _ -> IntConst(EvalToInt e1 / EvalToInt e2)
-      | Exact "mod" _ -> IntConst(EvalToInt e1 % EvalToInt e2)
-      | _ -> raise EvalFailed 
-  | UnaryExpr(op, e) ->
-      match op with
-      | Exact "!" _ -> BoolConst(not (EvalToBool e))
-      | Exact "-" _ -> IntConst(-(EvalToInt e))
-      | _ -> raise EvalFailed  
-  | _ -> raise EvalFailed
-and EvalToBool e =
-  let c = EvalToConst e
-  match c with
-  | BoolConst(b) -> b
-  | _ -> raise EvalFailed
-and EvalToInt e = 
-  let c = EvalToConst e
-  match c with
-  | IntConst(n) -> n
-  | _ -> raise EvalFailed
-  
-let rec Const2Expr c =
-  match c with
-  | IntConst(n) -> IntLiteral(n)
-  | BoolConst(b) -> if b then IntLiteral(1) else IntLiteral(0) //?? BoolLiteral(b)
-  | SeqConst(clist) -> 
-      let expList = clist |> List.fold (fun acc c -> Const2Expr (Utils.ExtractOption c) :: acc) [] |> List.rev
-      SequenceExpr(expList)
-  | ThisConst(_) -> IdLiteral("this")
-  | VarConst(v) -> IdLiteral(v)
-  | NullConst -> IdLiteral("null")
-  | ExprConst(e) -> e
-  | _ -> failwith "not implemented or not supported"
+let UnaryNot sub =
+  match sub with
+  | UnaryExpr("!", s) -> s
+  | _ -> UnaryExpr("!", sub)
 
 //  =======================================================================
 /// Returns a binary AND of the two given expressions with short-circuiting
 //  =======================================================================
 let BinaryAnd (lhs: Expr) (rhs: Expr) = 
-    match lhs, rhs with
-    | IdLiteral("true"), _  -> rhs
-    | IdLiteral("false"), _ -> IdLiteral("false")
-    | _, IdLiteral("true")  -> lhs
-    | _, IdLiteral("false") -> IdLiteral("false")
-    | _, _                  -> BinaryExpr(30, "&&", lhs, rhs)
+  match lhs, rhs with
+  | BoolLiteral(true), _  -> rhs
+  | BoolLiteral(false), _ -> FalseLiteral
+  | _, BoolLiteral(true)  -> lhs
+  | _, BoolLiteral(false) -> FalseLiteral
+  | _, _                  -> BinaryExpr(30, "&&", lhs, rhs)
 
 //  =======================================================================
 /// Returns a binary OR of the two given expressions with short-circuiting
 //  =======================================================================
 let BinaryOr (lhs: Expr) (rhs: Expr) = 
-    match lhs, rhs with
-    | IdLiteral("true"), _  -> IdLiteral("true")
-    | IdLiteral("false"), _ -> rhs
-    | _, IdLiteral("true")  -> IdLiteral("true")
-    | _, IdLiteral("false") -> lhs
-    | _, _                  -> BinaryExpr(30, "||", lhs, rhs)
+  match lhs, rhs with
+  | BoolLiteral(true), _  -> TrueLiteral
+  | BoolLiteral(false), _ -> rhs
+  | _, BoolLiteral(true)  -> TrueLiteral
+  | _, BoolLiteral(false) -> lhs
+  | _, _                  -> BinaryExpr(30, "||", lhs, rhs)
 
 //  ===================================================================================
-/// Returns a binary IMPLIES of the two given expressions (TODO: with short-circuiting)
+/// Returns a binary IMPLIES of the two given expressions 
 //  ===================================================================================
-let BinaryImplies lhs rhs = BinaryExpr(20, "==>", lhs, rhs)
+let BinaryImplies lhs rhs = 
+  match lhs, rhs with
+  | BoolLiteral(false), _ -> FalseLiteral
+  | BoolLiteral(true), _  -> rhs
+  | _, BoolLiteral(true)  -> lhs
+  | _, BoolLiteral(false) -> UnaryNot(lhs)
+  | _ -> BinaryExpr(20, "==>", lhs, rhs)
 
-//  =================================================
-/// Returns a binary NEQ of the two given expressions
-//  =================================================
+
+//let TrueLiteral = IdLiteral("true")
+//let FalseLiteral = IdLiteral("false")
+//
+////  =======================================================================
+///// Returns a binary AND of the two given expressions with short-circuiting
+////  =======================================================================
+//let BinaryAnd (lhs: Expr) (rhs: Expr) = 
+//    match lhs, rhs with
+//    | IdLiteral("true"), _  -> rhs
+//    | IdLiteral("false"), _ -> IdLiteral("false")
+//    | _, IdLiteral("true")  -> lhs
+//    | _, IdLiteral("false") -> IdLiteral("false")
+//    | _, _                  -> BinaryExpr(30, "&&", lhs, rhs)
+//
+////  =======================================================================
+///// Returns a binary OR of the two given expressions with short-circuiting
+////  =======================================================================
+//let BinaryOr (lhs: Expr) (rhs: Expr) = 
+//    match lhs, rhs with
+//    | IdLiteral("true"), _  -> IdLiteral("true")
+//    | IdLiteral("false"), _ -> rhs
+//    | _, IdLiteral("true")  -> IdLiteral("true")
+//    | _, IdLiteral("false") -> lhs
+//    | _, _                  -> BinaryExpr(30, "||", lhs, rhs)
+//
+////  ===================================================================================
+///// Returns a binary IMPLIES of the two given expressions (TODO: with short-circuiting)
+////  ===================================================================================
+//let BinaryImplies lhs rhs = BinaryExpr(20, "==>", lhs, rhs)
+
+//  =======================================================
+/// Constructors for binary EQ/NEQ of two given expressions
+//  =======================================================
 let BinaryNeq lhs rhs = BinaryExpr(40, "!=", lhs, rhs)
-
-//  =================================================
-/// Returns a binary EQ of the two given expressions
-//  =================================================
 let BinaryEq lhs rhs = BinaryExpr(40, "=", lhs, rhs)
 
-//  =====================
-/// Returns TRUE literal
-//  =====================
-let TrueLiteral = IdLiteral("true")
-
-//  =====================
-/// Returns FALSE literal
-//  =====================
-let FalseLiteral = IdLiteral("false")
-
+//  =======================================================
+/// Constructors for binary IN/!IN of two given expressions
+//  =======================================================
+let BinaryIn lhs rhs = BinaryExpr(40, "in", lhs, rhs)
+let BinaryNotIn lhs rhs = BinaryExpr(40, "!in", lhs, rhs)
+  
 //  ==========================================
 /// Splits "expr" into a list of its conjuncts
 //  ==========================================
 let rec SplitIntoConjunts expr = 
   match expr with
-  | IdLiteral("true") -> []
+  | BoolLiteral(true) -> []
   | BinaryExpr(_,"&&",e0,e1) -> List.concat [SplitIntoConjunts e0 ; SplitIntoConjunts e1]
   | _ -> [expr]
 
@@ -276,6 +119,46 @@ let rec SplitIntoConjunts expr =
 //  ======================================
 let rec ForeachConjunct f expr =
   SplitIntoConjunts expr |> List.fold (fun acc e -> acc + (f e)) ""
+
+//  =======================================
+/// Converts a given constant to expression
+//  =======================================
+let rec Const2Expr c =
+  match c with
+  | IntConst(n) -> IntLiteral(n)
+  | BoolConst(b) -> BoolLiteral(b)
+  | SeqConst(clist) -> 
+      let expList = clist |> List.fold (fun acc c -> Const2Expr c :: acc) [] |> List.rev
+      SequenceExpr(expList)
+  | SetConst(cset) -> 
+      let expSet = cset |> Set.fold (fun acc c -> Set.add (Const2Expr c) acc) Set.empty
+      SetExpr(Set.toList expSet)
+  | VarConst(id) -> VarLiteral(id)
+  | ThisConst(name,_) 
+  | NewObj(name,_)   -> ObjLiteral(name)
+  | NullConst -> ObjLiteral("null")
+  | ExprConst(e) -> e
+  | Unresolved(name) -> printf "What about unresolved stuff??"; failwith "don't want to convert unresolved to expr"
+  | _ -> failwithf "not implemented or not supported: %O" c
+
+let rec Expr2Const e =
+  match e with
+  | IntLiteral(n) -> IntConst(n)
+  | BoolLiteral(b) -> BoolConst(b)
+  | ObjLiteral("this") -> ThisConst("this",None)
+  | ObjLiteral("null") -> NullConst
+  | ObjLiteral(name) -> NewObj(name, None) //TODO: or Unresolved?
+  | IdLiteral(id) -> Unresolved(id)
+  | VarLiteral(id) -> VarConst(id)
+  | SequenceExpr(elist) -> SeqConst(elist |> List.map Expr2Const)
+  | SetExpr(elist) -> SetConst(elist |> List.map Expr2Const |> Set.ofList)
+  | _ -> failwithf "Not a constant: %O" e
+
+let TryExpr2Const e =
+  try 
+    Some(Expr2Const e)
+  with
+    | ex -> None
 
 // --- search functions ---
                      
@@ -333,6 +216,11 @@ let GetClassName comp =
   | Component(Class(name,_,_),_,_) -> name
   | _ -> failwith ("unrecognized component: " + comp.ToString())
 
+let GetClassType comp = 
+  match comp with
+  | Component(Class(name,typeParams,_),_,_) -> NamedType(name, typeParams)
+  | _ -> failwith ("unrecognized component: " + comp.ToString())
+
 //  ========================
 /// Returns name of a method
 //  ========================
@@ -355,13 +243,30 @@ let GetMethodSig mthd =
   | Method(_,sgn,_,_,_) -> sgn
   | _ -> failwith ("not a method: " + mthd.ToString())
 
+let GetMethodPrePost mthd = 
+  match mthd with
+  | Method(_,_,pre,post,_) -> pre,post
+  | _ -> failwith ("not a method: " + mthd.ToString())
+
 //  =========================================================
 /// Returns all arguments of a method (both input and output)
 //  =========================================================
+let GetSigVars sign = 
+  match sign with
+  | Sig(ins, outs) -> List.concat [ins; outs]
+
 let GetMethodArgs mthd = 
   match mthd with
   | Method(_,Sig(ins, outs),_,_,_) -> List.concat [ins; outs]
   | _ -> failwith ("not a method: " + mthd.ToString())
+
+let rec GetTypeShortName ty =
+  match ty with
+  | IntType -> "int"
+  | BoolType -> "bool"
+  | SetType(_) -> "set"
+  | SeqType(_) -> "seq"
+  | NamedType(n,_) | InstantiatedType(n,_) -> n
 
 //  ==============================================================
 /// Returns all invariants of a component as a list of expressions
@@ -371,7 +276,14 @@ let GetInvariantsAsList comp =
   | Component(Class(_,_,members), Model(_,_,_,_,inv), _) -> 
       let clsInvs = members |> List.choose (function Invariant(exprList) -> Some(exprList) | _ -> None) |> List.concat
       List.append (SplitIntoConjunts inv) clsInvs
-  | _ -> failwith ("unexpected kinf of component: %s" + comp.ToString())
+  | _ -> failwithf "unexpected kind of component: %O" comp
+
+//  ==================================
+/// Returns variable name
+//  ==================================
+let GetVarName var =
+  match var with
+  | Var(name,_) -> name
 
 //  ==================================
 /// Returns all members of a component
@@ -409,6 +321,247 @@ let FindVar (prog: Program) clsName fldName =
       GetAllFields comp |> List.filter (function Var(name,_) when name = fldName -> true | _ -> false)
                         |> Utils.ListToOption
   | None -> None
+
+let AddPrecondition prog comp m e =
+  match prog, comp, m with
+  | Program(clist), Component(Class(cname, ctypeParams, members), model, code), Method(mn, sgn, pre, post, cstr) ->
+      let newMthd = Method(mn, sgn, BinaryAnd pre e, post, cstr)
+      let newCls = Class(cname, ctypeParams, Utils.ListReplace m newMthd members)
+      let newComp = Component(newCls, model, code)
+      let newProg = Program(Utils.ListReplace comp newComp clist)
+      newProg, newComp, newMthd
+  | _ -> failwithf "Not a method: %O" m
+
+////////////////////
+
+exception EvalFailed of string
+
+let DefaultResolver e = e
+
+let DefaultFallbackResolver resolverFunc e = 
+  match resolverFunc e with
+  | Some(e') -> e'
+  | None -> e
+
+let __CheckEqual e1 e2 =
+  match e1, e2 with
+  | BoolLiteral(b1), BoolLiteral(b2) -> Some(b1 = b2)
+  | IntLiteral(n1), IntLiteral(n2)   -> Some(n1 = n2)
+  | ObjLiteral(o1), ObjLiteral(o2)   -> Some(o1 = o2)
+  | SetExpr(elist1), SetExpr(elist2) -> Some(Set.ofList elist1 = Set.ofList elist2)
+  | SequenceExpr(elist1), SequenceExpr(elist2) -> Some(elist1 = elist2)
+  | UnaryExpr("-", sub1), sub2
+  | sub1, UnaryExpr("-", sub2)                 when sub1 = sub2 -> Some(false)
+  | UnaryExpr("-", sub1), UnaryExpr("-", sub2) when sub1 = sub2 -> Some(true)
+  | UnaryExpr("!", sub1), sub2
+  | sub1, UnaryExpr("!", sub2)                 when sub1 = sub2 -> Some(false)
+  | UnaryExpr("!", sub1), UnaryExpr("-", sub2) when sub1 = sub2 -> Some(true)
+  | _ when e1 = e2 -> Some(true)
+  | _ -> None
+
+let rec __EvalSym resolverFunc ctx expr = 
+  match expr with
+  | IntLiteral(_)  -> expr
+  | BoolLiteral(_) -> expr
+  | ObjLiteral(_)  -> expr
+  | Star           -> expr //TODO: can we do better?
+  | VarLiteral(id) -> 
+      try 
+        let _,e = ctx |> List.find (fun (v,e) -> GetVarName v = id)
+        e
+      with 
+      | ex -> resolverFunc expr
+  | IdLiteral(_)   -> resolverFunc expr
+  | Dot(_)         -> resolverFunc expr
+  | SeqLength(e)   -> 
+      let e' = __EvalSym resolverFunc ctx e
+      match e' with
+      | SequenceExpr(elist) -> IntLiteral(List.length elist)
+      | _ -> SeqLength(e')
+  | SequenceExpr(elist) -> 
+      let elist' = elist |> List.fold (fun acc e -> __EvalSym resolverFunc ctx e :: acc) [] |> List.rev
+      SequenceExpr(elist')
+  | SetExpr(elist) -> 
+      let eset' = elist |> List.fold (fun acc e -> Set.add (__EvalSym resolverFunc ctx e) acc) Set.empty
+      SetExpr(Set.toList eset')
+  | SelectExpr(lst, idx) ->
+      let lst', idx' = __EvalSym resolverFunc ctx lst, __EvalSym resolverFunc ctx idx 
+      match lst', idx' with
+      | SequenceExpr(elist), IntLiteral(n) -> elist.[n] 
+      | _ -> SelectExpr(lst', idx')
+  | UpdateExpr(lst,idx,v) ->
+      let lst', idx', v' = __EvalSym resolverFunc ctx lst, __EvalSym resolverFunc ctx idx, __EvalSym resolverFunc ctx v
+      match lst', idx', v' with
+      | SequenceExpr(elist), IntLiteral(n), _ -> SequenceExpr(Utils.ListSet n v' elist)
+      | _ -> UpdateExpr(lst', idx', v')
+  | IteExpr(c, e1, e2) ->
+      let c' = __EvalSym resolverFunc ctx c
+      match c' with
+      | BoolLiteral(b) -> if b then __EvalSym resolverFunc ctx e1 else __EvalSym resolverFunc ctx e2
+      | _ -> IteExpr(c', __EvalSym resolverFunc ctx e1, __EvalSym resolverFunc ctx e2)
+  | BinaryExpr(p,op,e1,e2) ->
+      let e1' = lazy (__EvalSym resolverFunc ctx e1)
+      let e2' = lazy (__EvalSym resolverFunc ctx e2)
+      let recomposed = lazy (BinaryExpr(p, op, e1'.Force(), e2'.Force()))
+      match op with
+      | "=" ->
+          let e1'' = e1'.Force()
+          let e2'' = e2'.Force()
+          let eq = __CheckEqual e1'' e2''
+          match eq with
+          | Some(b) -> BoolLiteral(b)
+          | None -> recomposed.Force()
+      | "!=" -> 
+          let e1'' = e1'.Force()
+          let e2'' = e2'.Force()
+          let eq = __CheckEqual e1'' e2''
+          match eq with
+          | Some(b) -> BoolLiteral(not b)
+          | None -> recomposed.Force()
+      | "<" -> 
+          match e1'.Force(), e2'.Force() with
+          | IntLiteral(n1), IntLiteral(n2)     -> BoolLiteral(n1 < n2)
+          | SetExpr(s1), SetExpr(s2)           -> BoolLiteral((List.length s1) < (List.length s2))
+          | SequenceExpr(s1), SequenceExpr(s2) -> BoolLiteral((List.length s1) < (List.length s2))
+          | _ -> recomposed.Force()
+      | "<=" -> 
+          let e1'' = e1'.Force()
+          let e2'' = e2'.Force()
+          let eq = __CheckEqual e1'' e2''
+          match eq with
+          | Some(true) -> TrueLiteral
+          | _ -> match e1'', e2'' with
+                 | IntLiteral(n1), IntLiteral(n2)     -> BoolLiteral(n1 <= n2)
+                 | SetExpr(s1), SetExpr(s2)           -> BoolLiteral((List.length s1) <= (List.length s2))
+                 | SequenceExpr(s1), SequenceExpr(s2) -> BoolLiteral((List.length s1) <= (List.length s2))
+                 | _ -> recomposed.Force()
+      | ">" -> 
+          match e1'.Force(), e2'.Force() with
+          | IntLiteral(n1), IntLiteral(n2)     -> BoolLiteral(n1 > n2)
+          | SetExpr(s1), SetExpr(s2)           -> BoolLiteral((List.length s1) > (List.length s2))
+          | SequenceExpr(s1), SequenceExpr(s2) -> BoolLiteral((List.length s1) > (List.length s2))
+          | _ -> recomposed.Force()
+      | ">=" -> 
+          let e1'' = e1'.Force()
+          let e2'' = e2'.Force()
+          let eq = __CheckEqual e1'' e2''
+          match eq with
+          | Some(true) -> TrueLiteral
+          | _ -> match e1'', e2'' with
+                 | IntLiteral(n1), IntLiteral(n2)     -> BoolLiteral(n1 >= n2)
+                 | SetExpr(s1), SetExpr(s2)           -> BoolLiteral((List.length s1) >= (List.length s2))
+                 | SequenceExpr(s1), SequenceExpr(s2) -> BoolLiteral((List.length s1) >= (List.length s2))
+                 | _ -> recomposed.Force()
+      | "in" -> 
+          match e1'.Force(), e2'.Force() with
+          | _, SetExpr(s)       
+          | _, SequenceExpr(s)  -> BoolLiteral(Utils.ListContains (e1'.Force()) s)
+          | _ -> recomposed.Force()
+      | "!in" -> 
+          match e1'.Force(), e2'.Force() with
+          | _, SetExpr(s)       
+          | _, SequenceExpr(s)  -> BoolLiteral(not (Utils.ListContains (e1'.Force()) s))
+          | _ -> recomposed.Force()
+      | "+" -> 
+          let e1'' = e1'.Force();
+          let e2'' = e2'.Force();
+          match e1'', e2'' with
+          | IntLiteral(n1), IntLiteral(n2) -> IntLiteral(n1 + n2)
+          | SequenceExpr(l1), SequenceExpr(l2) -> SequenceExpr(List.append l1 l2)
+          | SetExpr(s1), SetExpr(s2) -> SetExpr(Set.union (Set.ofList s1) (Set.ofList s2) |> Set.toList)
+          | SetExpr(s), _ -> SetExpr(Set.add e2'' (Set.ofList s) |> Set.toList)
+          | _, SetExpr(s) -> SetExpr(Set.add e1'' (Set.ofList s) |> Set.toList)
+          | _ -> recomposed.Force()
+      | "-" -> 
+          match e1'.Force(), e2'.Force() with
+          | IntLiteral(n1), IntLiteral(n2) -> IntLiteral(n1 - n2)
+          | SetExpr(s1), SetExpr(s2) -> SetExpr(Set.difference (Set.ofList s1) (Set.ofList s2) |> Set.toList)
+          | _ -> recomposed.Force()
+      | "*" -> 
+          match e1'.Force(), e2'.Force() with
+          | IntLiteral(n1), IntLiteral(n2) -> IntLiteral(n1 * n2)
+          | _ -> recomposed.Force()
+      | "div" -> 
+          match e1'.Force(), e2'.Force() with
+          | IntLiteral(n1), IntLiteral(n2) -> IntLiteral(n1 / n2)
+          | _ -> recomposed.Force()
+      | "mod" -> 
+          match e1'.Force(), e2'.Force() with
+          | IntLiteral(n1), IntLiteral(n2) -> IntLiteral(n1 % n2)
+          | _ -> recomposed.Force()
+      | "&&" -> 
+          // shortcircuit
+          match e1'.Force() with
+          | BoolLiteral(false) -> BoolLiteral(false)
+          | _ ->
+              match e1'.Force(), e2'.Force() with
+              | BoolLiteral(false), _            -> BoolLiteral(false)
+              | _, BoolLiteral(false)            -> BoolLiteral(false)
+              | BoolLiteral(b1), BoolLiteral(b2) -> BoolLiteral(b1 && b2)
+              | _ -> BinaryAnd (e1'.Force()) (e2'.Force())
+      | "||" -> 
+          // shortcircuit
+          match e1'.Force() with
+          | BoolLiteral(true) -> BoolLiteral(true)
+          | _ ->
+              match e1'.Force(), e2'.Force() with
+              | BoolLiteral(true), _             -> BoolLiteral(true)
+              | _, BoolLiteral(true)             -> BoolLiteral(true)
+              | BoolLiteral(b1), BoolLiteral(b2) -> BoolLiteral(b1 || b2)
+              | _ -> BinaryOr (e1'.Force()) (e2'.Force())
+      | "==>" -> 
+          // shortcircuit
+          match e1'.Force() with
+          | BoolLiteral(false) -> BoolLiteral(true)
+          | _ ->
+              match e1'.Force(), e2'.Force() with
+              | BoolLiteral(false), _            -> BoolLiteral(true)
+              | _, BoolLiteral(true)             -> BoolLiteral(true)
+              | BoolLiteral(b1), BoolLiteral(b2) -> BoolLiteral((not b1) || b2)
+              | _ -> BinaryImplies (e1'.Force()) (e2'.Force())
+      | "<==>" -> 
+          match e1'.Force(), e2'.Force() with
+          | BoolLiteral(b1), BoolLiteral(b2) -> BoolLiteral(b1 = b2)
+          | x, BoolLiteral(b)
+          | BoolLiteral(b), x -> if b then x else UnaryNot(x)
+          | _ -> recomposed.Force()
+      | _ -> recomposed.Force()
+  | UnaryExpr(op, e) ->
+      let e' = __EvalSym resolverFunc ctx e
+      let recomposed = UnaryExpr(op, e')
+      match op with
+      | "!" -> 
+          match e' with
+          | BoolLiteral(b) -> BoolLiteral(not b)
+          | _ -> recomposed
+      | "-" -> 
+          match e' with
+          | IntLiteral(n) -> IntLiteral(-n)
+          | _ -> recomposed
+      | _ -> recomposed
+  | ForallExpr(vars, e) -> 
+      let rec __ExhaustVar v restV vDomain = 
+        match vDomain with
+        | vv :: restD -> 
+            let newCtx = (v,vv) :: ctx
+            let e = __EvalSym resolverFunc newCtx (ForallExpr(restV, e))
+            let erest = __ExhaustVar v restV restD
+            __EvalSym resolverFunc ctx (BinaryAnd e erest)
+        | [] -> BoolLiteral(true)
+      match vars with
+      | v :: restV -> 
+          let vDom = GetVarDomain resolverFunc v e
+          __ExhaustVar v restV vDom
+      | [] -> __EvalSym resolverFunc ctx e
+and GetVarDomain resolverFunc var expr = 
+  //TODO: don't hardcode this!!!
+  let elems = __EvalSym resolverFunc [] (Dot(ObjLiteral("this"), "elems"))
+  match elems with 
+  | SetExpr(elist) -> elist
+  | _ -> failwith "this is bogus"
+
+let EvalSym resolverFunc expr = 
+  __EvalSym resolverFunc [] expr 
   
 //  ==========================================================
 /// Desugars a given expression so that all list constructors 
@@ -417,43 +570,105 @@ let FindVar (prog: Program) clsName fldName =
 let rec Desugar expr = 
   match expr with
   | IntLiteral(_)          
-  | IdLiteral(_)           
+  | BoolLiteral(_)  
+  | IdLiteral(_)   
+  | VarLiteral(_)        
+  | ObjLiteral(_)
   | Star                   
   | Dot(_)                 
   | SelectExpr(_) 
-  | SeqLength(_)           -> expr
-  | UpdateExpr(_)          -> expr //TODO
-  | SequenceExpr(exs)      -> expr //TODO
+  | SeqLength(_)           
+  | UpdateExpr(_)     
+  | SetExpr(_)     
+  | SequenceExpr(_)        -> expr 
   | ForallExpr(v,e)        -> ForallExpr(v, Desugar e)
   | UnaryExpr(op,e)        -> UnaryExpr(op, Desugar e)
+  | IteExpr(c,e1,e2)       -> IteExpr(c, Desugar e1, Desugar e2)
   | BinaryExpr(p,op,e1,e2) -> 
       let be = BinaryExpr(p, op, Desugar e1, Desugar e2)
       try
         match op with
-        | Exact "=" _ ->           
-            match EvalSym e1, EvalSym e2 with
-            | VarConst(v), SeqConst(clist)
-            | SeqConst(clist), VarConst(v) -> 
-                let rec __fff lst cnt = 
-                  match lst with
-                  | fs :: rest -> BinaryEq (SelectExpr(IdLiteral(v), IntLiteral(cnt))) (Const2Expr (Utils.ExtractOption clist.[cnt])) :: __fff rest (cnt+1)
-                  | [] -> []
-                __fff clist 0 |> List.fold (fun acc e -> BinaryAnd acc e) be
-            | SeqConst(cl1), SeqConst(cl2) -> 
+        | "=" ->           
+            match EvalSym DefaultResolver e1, EvalSym DefaultResolver e2 with
+            | SequenceExpr(l1), SequenceExpr(l2) -> 
                 let rec __fff lst1 lst2 cnt = 
                   match lst1, lst2 with
-                  | fs1 :: rest1, fs2 :: rest2 -> BinaryEq (Const2Expr (Utils.ExtractOption cl1.[cnt])) (Const2Expr (Utils.ExtractOption cl2.[cnt])) :: __fff rest1 rest2 (cnt+1)
+                  | fs1 :: rest1, fs2 :: rest2 -> BinaryEq l1.[cnt] l2.[cnt] :: __fff rest1 rest2 (cnt+1)
                   | [], [] -> []
                   | _ -> failwith "Lists are of different sizes"
-                __fff cl1 cl2 0 |> List.fold (fun acc e -> BinaryAnd acc e) be
+                __fff l1 l2 0 |> List.fold (fun acc e -> BinaryAnd acc e) be
+            | e, SequenceExpr(elist)
+            | SequenceExpr(elist), e -> 
+                let rec __fff lst cnt = 
+                  match lst with
+                  | fs :: rest -> BinaryEq (SelectExpr(e, IntLiteral(cnt))) elist.[cnt] :: __fff rest (cnt+1)
+                  | [] -> []
+                __fff elist 0 |> List.fold (fun acc e -> BinaryAnd acc e) be
             | _ -> be
         | _ -> be
       with
-        | EvalFailed as ex -> (* printfn "%s" (ex.StackTrace.ToString());  *) be
-          
+        | EvalFailed(_) as ex -> (* printfn "%O" (ex.StackTrace);  *) be
 
 let rec DesugarLst exprLst = 
   match exprLst with
   | expr :: rest -> Desugar expr :: DesugarLst rest
   | [] -> []
 
+let ChangeThisReceiver receiver expr = 
+  let rec __ChangeThis locals expr = 
+    match expr with
+    | IntLiteral(_)
+    | BoolLiteral(_)                   
+    | Star                             
+    | VarLiteral(_)                    -> expr
+    | ObjLiteral("this")               -> receiver
+    | ObjLiteral(_)                    -> expr
+    | IdLiteral("null")                -> failwith "should never happen anymore"   //TODO
+    | IdLiteral("this")                -> failwith "should never happen anymore"
+    | IdLiteral(id)                    -> if Set.contains id locals then VarLiteral(id) else __ChangeThis locals (Dot(ObjLiteral("this"), id))
+    | Dot(e, id)                       -> Dot(__ChangeThis locals e, id)
+    | ForallExpr(vars,e)               -> let newLocals = vars |> List.map (function Var(name,_) -> name) |> Set.ofList |> Set.union locals
+                                          ForallExpr(vars, __ChangeThis newLocals e)   
+    | UnaryExpr(op,e)                  -> UnaryExpr(op, __ChangeThis locals e)
+    | SeqLength(e)                     -> SeqLength(__ChangeThis locals e)
+    | SelectExpr(e1, e2)               -> SelectExpr(__ChangeThis locals e1, __ChangeThis locals e2)
+    | BinaryExpr(p,op,e1,e2)           -> BinaryExpr(p, op, __ChangeThis locals e1, __ChangeThis locals e2)
+    | IteExpr(e1,e2,e3)                -> IteExpr(__ChangeThis locals e1, __ChangeThis locals e2, __ChangeThis locals e3) 
+    | UpdateExpr(e1,e2,e3)             -> UpdateExpr(__ChangeThis locals e1, __ChangeThis locals e2, __ChangeThis locals e3) 
+    | SequenceExpr(exs)                -> SequenceExpr(exs |> List.map (__ChangeThis locals))
+    | SetExpr(exs)                     -> SetExpr(exs |> List.map (__ChangeThis locals))
+  (* function body starts here *)
+  __ChangeThis Set.empty expr
+
+let rec Rewrite rewriterFunc expr =
+  let __RewriteOrRecurse e =
+    match rewriterFunc e with
+    | Some(ee) -> ee
+    | None -> Rewrite rewriterFunc e 
+  match expr with
+  | IntLiteral(_)
+  | BoolLiteral(_)                   
+  | Star      
+  | VarLiteral(_) 
+  | ObjLiteral(_)                      
+  | IdLiteral(_)                     -> match rewriterFunc expr with
+                                        | Some(e) -> e
+                                        | None -> expr
+  | Dot(e, id)                       -> Dot(__RewriteOrRecurse e, id)
+  | ForallExpr(vars,e)               -> ForallExpr(vars, __RewriteOrRecurse e)   
+  | UnaryExpr(op,e)                  -> UnaryExpr(op, __RewriteOrRecurse e)
+  | SeqLength(e)                     -> SeqLength(__RewriteOrRecurse e)
+  | SelectExpr(e1, e2)               -> SelectExpr(__RewriteOrRecurse e1, __RewriteOrRecurse e2)
+  | BinaryExpr(p,op,e1,e2)           -> BinaryExpr(p, op, __RewriteOrRecurse e1, __RewriteOrRecurse e2)
+  | IteExpr(e1,e2,e3)                -> IteExpr(__RewriteOrRecurse e1, __RewriteOrRecurse e2, __RewriteOrRecurse e3) 
+  | UpdateExpr(e1,e2,e3)             -> UpdateExpr(__RewriteOrRecurse e1, __RewriteOrRecurse e2, __RewriteOrRecurse e3) 
+  | SequenceExpr(exs)                -> SequenceExpr(exs |> List.map __RewriteOrRecurse)
+  | SetExpr(exs)                     -> SetExpr(exs |> List.map __RewriteOrRecurse)
+
+let RewriteVars vars expr = 
+  let __IdIsArg id = vars |> List.exists (function Var(name,_) -> name = id)
+  Rewrite (fun e ->
+             match e with 
+             | IdLiteral(id) when __IdIsArg id -> Some(VarLiteral(id))
+             | _ -> None) expr
+              

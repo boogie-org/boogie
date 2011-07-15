@@ -16,12 +16,12 @@ let rec PrintSep sep f list =
   
 let rec PrintType ty =
   match ty with
-  | IntType                  -> "int"
-  | BoolType                 -> "bool"
-  | NamedType(id)            -> id
-  | SeqType(t)               -> sprintf "seq[%s]" (PrintType t)
-  | SetType(t)               -> sprintf "set[%s]" (PrintType t)
-  | InstantiatedType(id,arg) -> sprintf "%s[%s]" id (PrintType arg)
+  | IntType                   -> "int"
+  | BoolType                  -> "bool"
+  | NamedType(id, args)       -> if List.isEmpty args then id else (PrintSep ", " (fun s -> s) args)
+  | SeqType(t)                -> sprintf "seq[%s]" (PrintType t)
+  | SetType(t)                -> sprintf "set[%s]" (PrintType t)
+  | InstantiatedType(id,args) -> sprintf "%s[%s]" id (PrintSep ", " (fun a -> PrintType a) args)
 
 let PrintVarDecl vd =
   match vd with
@@ -34,25 +34,45 @@ let PrintVarName vd =
 
 let rec PrintExpr ctx expr =
   match expr with
-  | IntLiteral(n)     -> sprintf "%O" n
+  | IntLiteral(d)     -> sprintf "%d" d
+  | BoolLiteral(b)    -> sprintf "%b" b
+  | ObjLiteral(id)
+  | VarLiteral(id) 
   | IdLiteral(id)     -> id
   | Star              -> "*"
   | Dot(e,id)         -> sprintf "%s.%s" (PrintExpr 100 e) id
+  | UnaryExpr(op,UnaryExpr(op2, e2))   -> sprintf "%s(%s)" op (PrintExpr 90 (UnaryExpr(op2, e2)))
   | UnaryExpr(op,e)   -> sprintf "%s%s" op (PrintExpr 90 e)
   | BinaryExpr(strength,op,e0,e1) ->
       let needParens = strength <= ctx
       let openParen = if needParens then "(" else ""
       let closeParen = if needParens then ")" else ""
       sprintf "%s%s %s %s%s" openParen (PrintExpr strength e0) op (PrintExpr strength e1) closeParen
+  | IteExpr(c,e1,e2)  -> sprintf "%s ? %s : %s" (PrintExpr 25 c) (PrintExpr 25 e1) (PrintExpr 25 e2)
   | SelectExpr(e,i)   -> sprintf "%s[%s]" (PrintExpr 100 e) (PrintExpr 0 i) 
   | UpdateExpr(e,i,v) -> sprintf "%s[%s := %s]" (PrintExpr 100 e) (PrintExpr 0 i) (PrintExpr 0 v)
-  | SequenceExpr(ee)  -> sprintf "[%s]" (ee |> PrintSep ", " (PrintExpr 0))
+  | SequenceExpr(ee)  -> sprintf "[%s]" (ee |> PrintSep " " (PrintExpr 0))
   | SeqLength(e)      -> sprintf "|%s|" (PrintExpr 0 e)
+  | SetExpr(ee)       -> sprintf "{%s}" (ee |> PrintSep " " (PrintExpr 0))
   | ForallExpr(vv,e)  ->
       let needParens = ctx <> 0
       let openParen = if needParens then "(" else ""
       let closeParen = if needParens then ")" else ""
       sprintf "%sforall %s :: %s%s" openParen (vv |> PrintSep ", " PrintVarDecl) (PrintExpr 0 e) closeParen
+
+let rec PrintConst cst = 
+  match cst with 
+  | IntConst(v)        -> sprintf "%d" v
+  | BoolConst(b)       -> sprintf "%b" b
+  | VarConst(v)        -> sprintf "%s" v
+  | SetConst(cset)     -> sprintf "{%s}" (PrintSep " " (fun c -> PrintConst c) (Set.toList cset))
+  | SeqConst(cseq)     -> sprintf "[%s]" (PrintSep " " (fun c -> PrintConst c) cseq)
+  | NullConst          -> "null"
+  | NoneConst          -> "<none>"
+  | ThisConst(_,_)     -> "this"
+  | ExprConst(e)       -> PrintExpr 0 e
+  | NewObj(name,_)     -> PrintGenSym name
+  | Unresolved(name)   -> sprintf "Unresolved(%s)" name
 
 let PrintSig signature =
   match signature with
@@ -111,26 +131,20 @@ let PrintDecl d =
   | Code(id,typeParams) ->
       (PrintTopLevelDeclHeader "code" id typeParams) + "}" + newline
 
+let PrintMethodSignFull indent m = 
+  let idt = Indent indent
+  let __PrintPrePost pfix expr = SplitIntoConjunts expr |> PrintSep newline (fun e -> pfix + (PrintExpr 0 e) + ";")
+  match m with
+  | Method(methodName, sgn, pre, post, isConstr) ->  
+      let mc = if isConstr then "constructor" else "method"
+      let preStr = (__PrintPrePost (idt + "  requires ") pre)
+      let postStr = (__PrintPrePost (idt + "  ensures ") post)
+      idt + mc + " " + methodName + (PrintSig sgn) + newline +
+      preStr + (if preStr = "" then "" else newline) +
+      postStr
+      
+  | _ -> failwithf "not a method: %O" m
+
 let Print prog =
   match prog with
   | SProgram(decls) -> List.fold (fun acc d -> acc + (PrintDecl d)) "" decls
-
-let rec PrintConst cst = 
-  match cst with 
-  | IntConst(v)        -> sprintf "%d" v
-  | BoolConst(b)       -> sprintf "%b" b
-  | SetConst(cset)     -> cset.ToString() //TODO: this won't work
-  | SeqConst(cseq)     -> 
-      let seqCont = cseq |> List.fold (fun acc cOpt ->
-                                         let sep = if acc = "" then "" else ", "
-                                         match cOpt with 
-                                         | Some(c) -> acc + sep + (PrintConst c)
-                                         | None -> acc + sep + "null"
-                                      ) ""
-      sprintf "[%s]" seqCont
-  | NullConst          -> "null"
-  | ThisConst(_,_)     -> "this"
-  | NewObj(name,_)     -> PrintGenSym name
-  | ExprConst(e)       -> PrintExpr 0 e
-  | VarConst(name)     -> name
-  | Unresolved(name)   -> sprintf "Unresolved(%s)" name

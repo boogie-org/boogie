@@ -3,6 +3,13 @@ setlocal
 set chalice="%~dp0\..\..\chalice.bat"
 set diff="%~dp0\diff.bat"
 
+:: no-diff command line parameter
+set nodiff=0
+if "%1"=="-no-diff" (
+    set nodiff=1
+    SHIFT
+)
+
 if not exist "%1.chalice" goto errorNotFound
 if not exist "%1.output.txt" goto errorNoRef
 
@@ -40,7 +47,9 @@ goto end
 
 :failTest
 echo FAIL: %1.chalice
-call %diff% "%1.output.txt" output.txt
+if %nodiff%==0 (
+    call %diff% "%1.output.txt" output.txt
+)
 goto errorEnd
 
 :errorEnd

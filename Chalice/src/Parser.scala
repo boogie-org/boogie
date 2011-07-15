@@ -79,23 +79,32 @@ class Parser extends StandardTokenParsers {
    */
 
   def memberDecl = {
-    currentLocalVariables = Set[String]();
     positioned(fieldDecl | invariantDecl | methodDecl | conditionDecl | predicateDecl | functionDecl | couplingDecl | transformDecl) // important that last one is transformDecl
   }
-  def fieldDecl =
-        ( "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, false) }
-        | "ghost" ~> "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, true) }
-        )
-  def invariantDecl = "invariant" ~> expression <~ Semi ^^ MonitorInvariant
-  def methodDecl =
+  def fieldDecl = {
+    currentLocalVariables = Set[String]();
+    ( "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, false) }
+    | "ghost" ~> "var" ~> idType <~ Semi ^^ { case (id,t) => Field(id.v, t, true) }
+    )
+  }
+  def invariantDecl = {
+    currentLocalVariables = Set[String]();
+    "invariant" ~> expression <~ Semi ^^ MonitorInvariant
+  }
+  def methodDecl = {
+    currentLocalVariables = Set[String]();
     "method" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~
     (methodSpec*) ~ blockStatement ^^ {
       case id ~ ins ~ outs ~ spec ~ body =>
         Method(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, body)
     }
-  def predicateDecl: Parser[Predicate] =
+  }
+  def predicateDecl: Parser[Predicate] = {
+    currentLocalVariables = Set[String]();
     ("predicate" ~> ident) ~ ("{" ~> expression <~ "}") ^^ { case id ~ definition => Predicate(id, definition) }
-  def functionDecl =
+  }
+  def functionDecl = {
+    currentLocalVariables = Set[String]();
     ("unlimited" ?) ~ ("function" ~> ident) ~ formalParameters(true) ~ (":" ~> typeDecl) ~ (methodSpec*) ~ opt("{" ~> expression <~ "}") ^^ {
       case u ~ id ~ ins ~ out ~ specs ~ body => {
         val f = Function(id, ins, out, specs, body);
@@ -103,10 +112,14 @@ class Parser extends StandardTokenParsers {
         f
       }
     }
-  def conditionDecl =
+  }
+  def conditionDecl = {
+    currentLocalVariables = Set[String]();
     "condition" ~> ident ~ ("where" ~> expression ?) <~ Semi ^^ {
       case id ~ optE => Condition(id, optE) }
-  def transformDecl =
+  }
+  def transformDecl = {
+    currentLocalVariables = Set[String]();
     ( "refines" ~> ident ~ formalParameters(true) ~ ("returns" ~> formalParameters(false) ?) ~ (methodSpec*) ~ blockStatement ^^ {
         case id ~ ins ~outs ~ spec ~ body =>
           MethodTransform(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, ProgramPat(body)) }).|(
@@ -118,7 +131,11 @@ class Parser extends StandardTokenParsers {
             MethodTransform(id, ins, outs match {case None => Nil; case Some(outs) => outs}, spec, AST.normalize(trans))
         }
       })
-  def couplingDecl = ("replaces" ~> rep1sep(ident, ",") <~ "by") ~ expression <~ Semi ^^ {case ids ~ e => CouplingInvariant(ids, e)}
+  }
+  def couplingDecl = {
+    currentLocalVariables = Set[String]();
+    ("replaces" ~> rep1sep(ident, ",") <~ "by") ~ expression <~ Semi ^^ {case ids ~ e => CouplingInvariant(ids, e)}
+  }
 
   def formalParameters(immutable: Boolean) =
     "(" ~> (formalList(immutable) ?) <~ ")" ^^ {
@@ -370,6 +387,9 @@ class Parser extends StandardTokenParsers {
   def expressionList =
     repsep(expression, ",")
   def expression = positioned(iteExpr)
+  
+  def partialExpressionList =
+    repsep(expression | ("_" ^^^ VariableExpr("?")), ",")
 
   def iteExpr: Parser[Expression] =
         positioned(iffExpr ~ (("?" ~> iteExpr) ~ (":" ~> iteExpr) ?) ^^ {
@@ -442,7 +462,7 @@ class Parser extends StandardTokenParsers {
         case name ~ Some(es) => { e0: Expression => FunctionApplication(e0, name, es) } }
     | "." ~> "acquire" ~> exprBody ^^ { case eb => { e0: Expression => Eval(AcquireState(e0), eb) }}
     | "." ~> "release" ~> exprBody ^^ { case eb => { e0: Expression => Eval(ReleaseState(e0), eb) }}
-    | "." ~> "fork" ~> (callTarget ~ expressionList <~ ")") ~ exprBody ^^ {
+    | "." ~> "fork" ~> (callTarget ~ partialExpressionList <~ ")") ~ exprBody ^^ {
         case MemberAccess(obj,id) ~ args ~ eb => { e0: Expression => Eval(CallState(e0, obj, id, args), eb) }}
     )
   def exprBody =
@@ -583,7 +603,7 @@ class Parser extends StandardTokenParsers {
     (suffixExpr <~ ".") into { e =>
       ( "acquire" ^^^ AcquireState(e)
       | "release" ^^^ ReleaseState(e)
-      | "fork" ~> callTarget ~ expressionList <~ ")" ^^ {
+      | "fork" ~> callTarget ~ partialExpressionList <~ ")" ^^ {
           case MemberAccess(obj,id) ~ args => CallState(e, obj, id, args) }
       )}
 

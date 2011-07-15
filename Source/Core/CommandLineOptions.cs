@@ -72,12 +72,12 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private static CommandLineOptions clo = new CommandLineOptions(); 
+    private static CommandLineOptions clo = new CommandLineOptions();
     public static CommandLineOptions/*!*/ Clo
     {
       get { return clo; }
     }
-    
+
     public string/*!*/ Environment = "";
     public string/*!*/ FileName = "unknown";
 
@@ -450,7 +450,7 @@ namespace Microsoft.Boogie {
 
     [Verify(false)]
     private CommandLineOptions() {
-      // this is just to suppress verification. 
+      // this is just to suppress verification.
     }
 
     [Verify(false)]
@@ -1170,7 +1170,7 @@ namespace Microsoft.Boogie {
             }
             break;
           case "-recursionBound":
-          case "/recursionBound": 
+          case "/recursionBound":
             if(ps.ConfirmArgumentCount(1)){
               RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
             }
@@ -1918,7 +1918,7 @@ namespace Microsoft.Boogie {
   ---- On axioms -------------------------------------------------------------
 
     {:inline true}
-      Works on axiom of the form: 
+      Works on axiom of the form:
         (forall VARS :: f(VARS) = expr(VARS))
       Makes Boogie replace f(VARS) with expr(VARS) everywhere just before
       doing VC generation.
@@ -1934,36 +1934,36 @@ namespace Microsoft.Boogie {
   ---- On implementations and procedures -------------------------------------
 
      {:inline N}
-       Inline given procedure (can be also used on implementation). 
-       N should be a non-negative number and represents the inlining depth. 
+       Inline given procedure (can be also used on implementation).
+       N should be a non-negative number and represents the inlining depth.
        With /inline:assume call is replaced with ""assume false"" once inlining depth is reached.
        With /inline:assert call is replaced with ""assert false"" once inlining depth is reached.
        With /inline:spec call is left as is once inlining depth is reached.
        With the above three options, methods with the attribute {:inline N} are not verified.
-       With /inline:none the entire attribute is ignored. 
-       
+       With /inline:none the entire attribute is ignored.
+
      {:verify false}
        Skip verification of an implementation.
-       
+
      {:forceBvZ3Native true}
        Verify the given implementation with the native Z3 bitvector
        handling. Only works if /bv:i (or /bv:z, but then it does not do
        anything) is given on the command line.
-       
+
      {:forceBvInt true}
        Use int translation for the given implementation. Only work with
        /bv:z (or /bv:i).
-       
+
      {:vcs_max_cost N}
      {:vcs_max_splits N}
      {:vcs_max_keep_going_splits N}
-       Per-implementation versions of 
+       Per-implementation versions of
        /vcsMaxCost, /vcsMaxSplits and /vcsMaxKeepGoingSplits.
 
      {:selective_checking true}
        Turn all asserts into assumes except for the ones reachable from
        assumptions marked with the attribute {:start_checking_here}.
-       Thus, ""assume {:start_checking_here} something;"" becomes an inverse 
+       Thus, ""assume {:start_checking_here} something;"" becomes an inverse
        of ""assume false;"": the first one disables all verification before
        it, and the second one disables all verification after.
 
@@ -1971,7 +1971,7 @@ namespace Microsoft.Boogie {
 
      {:bvbuiltin ""spec""}
        Z3 specific, used only with /bv:z.
-       
+
      {:bvint ""fn""}
        With /bv:i rewrite the function to function symbol 'fn', except if
        the 'fn' is 'id', in which case just strip the function altogether.
@@ -1996,7 +1996,7 @@ namespace Microsoft.Boogie {
 
      {:subsumption n}
        Overrides the /subsumption command-line setting for this assertion.
-       
+
   ---- The end ---------------------------------------------------------------
 ");
     }
@@ -2099,7 +2099,7 @@ namespace Microsoft.Boogie {
                               t = trivial (implied by /methodology:vs)
   /printModel:<n> : 0 (default) - do not print Z3's error model
                     1 - print Z3's error model
-                    2 - print Z3's error model plus reverse mappings         
+                    2 - print Z3's error model plus reverse mappings
                     4 - print Z3's error model in a more human readable way
   /printModelToFile:<file> : print model to <file> instead of console
   /mv:<file>        Specify file where to save the model in BVD format
@@ -2107,7 +2107,7 @@ namespace Microsoft.Boogie {
                                1 - Z3 error model enhanced error messages
 
   ---- Dafny options ---------------------------------------------------------
-  
+
   Multiple .dfy files supplied on the command line are concatenated into one
   Dafny program.
 
@@ -2137,7 +2137,7 @@ namespace Microsoft.Boogie {
                    identifies variables
   /printUnstructured : with /print option, desugars all structured statements
   /printDesugared : with /print option, desugars calls
-  
+
   /overlookTypeErrors : skip any implementation with resolution or type
                         checking errors
 
@@ -2152,7 +2152,7 @@ namespace Microsoft.Boogie {
                                           + @"
                    <flags> are as follows (missing <flags> means all)
                    i = intervals
-                   c = constant propagation        
+                   c = constant propagation
                    d = dynamic type
                    n = nullness
                    p = polyhedra for linear inequalities
@@ -2186,8 +2186,8 @@ namespace Microsoft.Boogie {
   /break[:method] : break into debugger
 
   ---- Verification-condition generation options -----------------------------
-  
-  /liveVariableAnalysis:<c> : 0 = do not perform live variable analysis 
+
+  /liveVariableAnalysis:<c> : 0 = do not perform live variable analysis
                               1 = perform live variable analysis (default)
                               2 = perform interprocedural live variable analysis
   /noVerify      : skip VC generation and invocation of the theorem prover
@@ -2211,25 +2211,25 @@ namespace Microsoft.Boogie {
                    n = none
                    z = native Z3 bitvectors (default)
                    i = unsoundly translate bitvectors to integers
-  /inline:<i>    : use inlining strategy <i> for procedures with the :inline 
+  /inline:<i>    : use inlining strategy <i> for procedures with the :inline
                    attribute, see /attrHelp for details:
                    none
                    assume (default)
                    assert
                    spec
-  /printInlined  : print the implementation after inlining calls to 
+  /printInlined  : print the implementation after inlining calls to
                    procedures with the :inline attribute (works with /inline)
   /lazyInline:1  : Use the lazy inlining algorithm
   /stratifiedInline:1 : Use the stratified inlining algorithm
-  /recursionBound:<n> : Set the recursion bound for stratified inlining to 
+  /recursionBound:<n> : Set the recursion bound for stratified inlining to
                         be n (default 500)
   /inferLeastForUnsat:<str> : Infer the least number of constants (whose names
-                              are prefixed by <str>) that need to be set to 
+                              are prefixed by <str>) that need to be set to
                               true for the program to be correct. This turns
                               on stratified inlining.
-  /smoke         : Soundness Smoke Test: try to stick assert false; in some 
+  /smoke         : Soundness Smoke Test: try to stick assert false; in some
                    places in the BPL and see if we can still prove it
-  /smokeTimeout:<n> : Timeout, in seconds, for a single theorem prover 
+  /smokeTimeout:<n> : Timeout, in seconds, for a single theorem prover
                    invocation during smoke test, defaults to 10.
   /causalImplies : Translate Boogie's A ==> B into prover's A ==> A && B.
   /typeEncoding:<m> : how to encode types when sending VC to theorem prover
@@ -2247,38 +2247,38 @@ namespace Microsoft.Boogie {
   /vcsMaxCost:<f>   : VC will not be split unless the cost of a VC exceeds this
                       number, defaults to 2000.0. This does NOT apply in the
                       keep-going mode after first round of splitting.
-  /vcsMaxSplits:<n> : Maximal number of VC generated per method. In keep 
+  /vcsMaxSplits:<n> : Maximal number of VC generated per method. In keep
                       going mode only applies to the first round.
                       Defaults to 1.
-  /vcsMaxKeepGoingSplits:<n> : If set to more than 1, activates the keep 
+  /vcsMaxKeepGoingSplits:<n> : If set to more than 1, activates the keep
                       going mode, where after the first round of splitting,
                       VCs that timed out are split into <n> pieces and retried
-                      until we succeed proving them, or there is only one 
+                      until we succeed proving them, or there is only one
                       assertion on a single path and it timeouts (in which
-                      case error is reported for that assertion). 
+                      case error is reported for that assertion).
                       Defaults to 1.
   /vcsKeepGoingTimeout:<n> : Timeout in seconds for a single theorem prover
                       invocation in keep going mode, except for the final
                       single-assertion case. Defaults to 1s.
-  /vcsFinalAssertTimeout:<n> : Timeout in seconds for the single last 
+  /vcsFinalAssertTimeout:<n> : Timeout in seconds for the single last
                       assertion in the keep going mode. Defaults to 30s.
   /vcsPathJoinMult:<f> : If more than one path join at a block, by how much
                       multiply the number of paths in that block, to accomodate
                       for the fact that the prover will learn something on one
                       paths, before proceeding to another. Defaults to 0.8.
   /vcsPathCostMult:<f1>
-  /vcsAssumeMult:<f2> : The cost of a block is 
+  /vcsAssumeMult:<f2> : The cost of a block is
          (<assert-cost> + <f2>*<assume-cost>)*(1.0 + <f1>*<entering-paths>)
                       <f1> defaults to 1.0, <f2> defaults to 0.01.
-                      The cost of a single assertion or assumption is 
+                      The cost of a single assertion or assumption is
                       currently always 1.0.
-  /vcsPathSplitMult:<f> : If the best path split of a VC of cost A is into 
+  /vcsPathSplitMult:<f> : If the best path split of a VC of cost A is into
                       VCs of cost B and C, then the split is applied if
-                      A >= <f>*(B+C), otherwise assertion splitting will be 
-                      applied. Defaults to 0.5 (always do path splitting if 
+                      A >= <f>*(B+C), otherwise assertion splitting will be
+                      applied. Defaults to 0.5 (always do path splitting if
                       possible), set to more to do less path splitting
                       and more assertion splitting.
-  /vcsDumpSplits      For split #n dump split.n.dot and split.n.bpl. 
+  /vcsDumpSplits      For split #n dump split.n.dot and split.n.bpl.
                       Warning: Affects error reporting.
   /vcsCores:<n>     : Try to verify <n> VCs at once. Defaults to 1.
 
@@ -2292,10 +2292,10 @@ namespace Microsoft.Boogie {
                     1 (default) - include useful Trace labels in error output,
                     2 - include all Trace labels in the error output
   /vcBrackets:<b> : bracket odd-charactered identifier names with |'s.  <b> is:
-                   0 - no (default with /prover:Z3), 
+                   0 - no (default with /prover:Z3),
                    1 - yes (default with /prover:Simplify)
   /prover:<tp>   : use theorem prover <tp>, where <tp> is either the name of
-                   a DLL containing the prover interface located in the 
+                   a DLL containing the prover interface located in the
                    Boogie directory, or a full path to a DLL containing such
                    an interface. The standard interfaces shipped include:
                    Z3 (default)

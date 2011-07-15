@@ -70,12 +70,6 @@ namespace BytecodeTranslator {
         return info.LocalExcVariable;
       }
     }
-    public Bpl.LocalVariable FinallyStackCounterVariable {
-      get {
-        ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
-        return info.FinallyStackVariable;
-      }
-    }
     public Bpl.LocalVariable LabelVariable {
       get {
         ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
@@ -348,7 +342,6 @@ namespace BytecodeTranslator {
       private Bpl.Formal thisVariable;
       private Bpl.Formal returnVariable;
       private Bpl.LocalVariable localExcVariable;
-      private Bpl.LocalVariable finallyStackVariable;
       private Bpl.LocalVariable labelVariable;
       private List<Bpl.Formal> typeParameters;
       private List<Bpl.Formal> methodParameters;
@@ -359,7 +352,6 @@ namespace BytecodeTranslator {
         this.returnVariable = null;
         this.thisVariable = null;
         this.localExcVariable = null;
-        this.finallyStackVariable = null;
         this.labelVariable = null;
         this.typeParameters = null;
         this.methodParameters = null;
@@ -383,14 +375,12 @@ namespace BytecodeTranslator {
         Bpl.Formal returnVariable,
         Bpl.Formal thisVariable,
         Bpl.LocalVariable localExcVariable,
-        Bpl.LocalVariable finallyStackVariable,
         Bpl.LocalVariable labelVariable,
         List<Bpl.Formal> typeParameters,
         List<Bpl.Formal> methodParameters)
         : this(decl, formalMap, returnVariable) {
         this.thisVariable = thisVariable;
         this.localExcVariable = localExcVariable;
-        this.finallyStackVariable = finallyStackVariable;
         this.labelVariable = labelVariable;
         this.typeParameters = typeParameters;
         this.methodParameters = methodParameters;
@@ -401,7 +391,6 @@ namespace BytecodeTranslator {
       public Bpl.Formal ThisVariable { get { return thisVariable; } }
       public Bpl.Formal ReturnVariable { get { return returnVariable; } }
       public Bpl.LocalVariable LocalExcVariable { get { return localExcVariable; } }
-      public Bpl.LocalVariable FinallyStackVariable { get { return finallyStackVariable; } }
       public Bpl.LocalVariable LabelVariable { get { return labelVariable; } }
       public Bpl.Formal TypeParameter(int index) { return typeParameters[index]; }
       public Bpl.Formal MethodParameter(int index) { return methodParameters[index]; } 
@@ -418,7 +407,6 @@ namespace BytecodeTranslator {
         Bpl.Formal thisVariable = null;
         Bpl.Formal retVariable = null;
         Bpl.LocalVariable localExcVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$localExc", this.Heap.RefType));
-        Bpl.LocalVariable finallyStackVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$finallyStackCounter", Bpl.Type.Int));
         Bpl.LocalVariable labelVariable = new Bpl.LocalVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$label", Bpl.Type.Int));
         
         int in_count = 0;
@@ -533,7 +521,7 @@ namespace BytecodeTranslator {
         } else {
           this.TranslatedProgram.TopLevelDeclarations.Add(decl);
         }
-        procInfo = new ProcedureInfo(decl, formalMap, retVariable, thisVariable, localExcVariable, finallyStackVariable, labelVariable, typeParameters, methodParameters);
+        procInfo = new ProcedureInfo(decl, formalMap, retVariable, thisVariable, localExcVariable, labelVariable, typeParameters, methodParameters);
         this.declaredMethods.Add(key, procInfo);
 
         // Can't visit the method's contracts until the formalMap and procedure are added to the
@@ -692,6 +680,8 @@ namespace BytecodeTranslator {
     // also, should it return true for properties and all of the other things the tools
     // consider pure?
     private bool IsPure(IMethodDefinition method) {
+      // TODO:
+      // This needs to wait until we get function bodies sorted out.
       //bool isPropertyGetter = method.IsSpecialName && method.Name.Value.StartsWith("get_");
       //if (isPropertyGetter) return true;
 
@@ -878,8 +868,16 @@ namespace BytecodeTranslator {
         Bpl.Variable t;
         var key = type.InternedKey;
         if (!this.declaredTypeConstants.TryGetValue(key, out t)) {
-          t = this.Heap.CreateTypeVariable(type);
+          List<ITypeReference> structuralParents;
+          var parents = GetParents(type.ResolvedType, out structuralParents);
+          t = this.Heap.CreateTypeVariable(type, parents);
           this.declaredTypeConstants.Add(key, t);
+          foreach (var p in structuralParents) {
+            var p_prime = FindOrCreateType(p);
+            var e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Subtype, Bpl.Expr.Ident(t), p_prime);
+            var a = new Bpl.Axiom(Bpl.Token.NoToken, e);
+            //this.TranslatedProgram.TopLevelDeclarations.Add(a);
+          }
           this.TranslatedProgram.TopLevelDeclarations.Add(t);
           if (isExtern) {
             var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "extern", new List<object>(1), null);
@@ -889,6 +887,29 @@ namespace BytecodeTranslator {
         return Bpl.Expr.Ident(t);
       }
     }
+
+    private List<Bpl.ConstantParent> GetParents(ITypeDefinition typeDefinition, out List<ITypeReference> structuralParents) {
+      var parents = new List<Bpl.ConstantParent>();
+      structuralParents = new List<ITypeReference>();
+      foreach (var p in typeDefinition.BaseClasses) {
+        if (p is IGenericTypeInstanceReference) {
+          structuralParents.Add(p);
+        } else {
+          var v = (Bpl.IdentifierExpr)FindOrCreateType(p);
+          parents.Add(new Bpl.ConstantParent(v, true));
+        }
+      }
+      foreach (var j in typeDefinition.Interfaces) {
+        if (j is IGenericTypeInstanceReference) {
+          structuralParents.Add(j);
+        } else {
+          var v = (Bpl.IdentifierExpr)FindOrCreateType(j);
+          parents.Add(new Bpl.ConstantParent(v, false));
+        }
+      }
+      return parents;
+    }
+
     /// <summary>
     /// The keys to the table are the interned key of the type.
     /// </summary>
@@ -948,18 +969,30 @@ namespace BytecodeTranslator {
       }
       return "continuation" + id;
     }
-    public string FindOrCreateDispatchContinuationLabel(ITryCatchFinallyStatement stmt) {
-      int id;
-      if (!tryCatchFinallyIdentifiers.TryGetValue(stmt, out id)) {
-        id = tryCatchFinallyIdentifiers.Count;
-        tryCatchFinallyIdentifiers[stmt] = id;
-      }
-      return "DispatchContinuation" + id;
-    }
     MostNestedTryStatementTraverser mostNestedTryStatementTraverser;
     public ITryCatchFinallyStatement MostNestedTryStatement(IName label) {
       return mostNestedTryStatementTraverser.MostNestedTryStatement(label);
     }
+    Dictionary<ITryCatchFinallyStatement, List<string>> escapingGotoEdges;
+    public void AddEscapingEdge(ITryCatchFinallyStatement tryCatchFinallyStatement, out int labelId, out string label) {
+      List<string> edges = null;
+      if (!escapingGotoEdges.ContainsKey(tryCatchFinallyStatement)) {
+        escapingGotoEdges[tryCatchFinallyStatement] = new List<string>();
+      }
+      edges = escapingGotoEdges[tryCatchFinallyStatement];
+      label = this.FindOrCreateFinallyLabel(tryCatchFinallyStatement) + "_" + edges.Count;
+      labelId = edges.Count;
+      edges.Add(label);
+    }
+    public List<string> EscapingEdges(ITryCatchFinallyStatement tryCatchFinallyStatement) {
+      if (!escapingGotoEdges.ContainsKey(tryCatchFinallyStatement)) {
+        escapingGotoEdges[tryCatchFinallyStatement] = new List<string>();
+      }
+      return escapingGotoEdges[tryCatchFinallyStatement];
+    }
+    public enum TryCatchFinallyContext { InTry, InCatch, InFinally };
+    public List<Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext>> nestedTryCatchFinallyStatements;
+
     IMethodDefinition methodBeingTranslated;
     public void BeginMethod(IMethodDefinition method) {
       this.BeginMethod(method.ContainingType);
@@ -967,6 +1000,8 @@ namespace BytecodeTranslator {
       this.cciLabels = new Dictionary<IName, int>();
       this.tryCatchFinallyIdentifiers = new Dictionary<ITryCatchFinallyStatement, int>();
       mostNestedTryStatementTraverser = new MostNestedTryStatementTraverser();
+      escapingGotoEdges = new Dictionary<ITryCatchFinallyStatement, List<string>>();
+      nestedTryCatchFinallyStatements = new List<Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext>>();
       mostNestedTryStatementTraverser.Visit(method.Body);
     }
     

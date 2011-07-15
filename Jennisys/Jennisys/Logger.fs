@@ -1,6 +1,8 @@
-﻿/// Simple logging facility
+﻿//  #######################################################
+///   Simple logging facility
 ///
-/// author: Aleksandar Milicevic (t-alekm@microsoft.com)
+///   author: Aleksandar Milicevic (t-alekm@microsoft.com)
+//  #######################################################
 
 module Logger
 
@@ -14,7 +16,7 @@ let _WARN = 40
 let _ERROR = 20
 let _NONE = 0
 
-let logLevel = _ALL
+let logLevel = _DEBUG
 
 let Log level msg =
   if logLevel >= level then

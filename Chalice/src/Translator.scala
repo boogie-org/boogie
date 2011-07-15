@@ -1903,13 +1903,13 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     stmts :::
     (perm.permissionType match {
       case PermissionType.Mixed =>
-        bassert(f > 0 || (f == 0 && n > 0), error.pos, error.message + " The permission at " + perm.pos + " might not be positive.") ::
+        bassert(f > 0 || (f == 0 && n > 0), error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
         DecPermissionBoth(obj, memberName, f, n, em, error, pos, ec)
       case PermissionType.Epsilons =>
-        bassert(n > 0, error.pos, error.message + " The permission at " + perm.pos + " might not be positive.") ::
+        bassert(n > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
         DecPermissionEpsilon(obj, memberName, n, em, error, pos)
       case PermissionType.Fraction =>
-        bassert(f > 0, error.pos, error.message + " The permission at " + perm.pos + " might not be positive.") ::
+        bassert(f > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
         DecPermission(obj, memberName, f, em, error, pos, ec)
     })
   }
@@ -2124,6 +2124,14 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       case CallState(token, obj, id, args) =>
         val argsSeq = CallArgs(Heap.select(Tr(token), "joinable"));
 
+        var f: ((Expression, Int)) => Expr =
+            (a: (Expression, Int)) => a match {
+                case (VariableExpr("?"),_) => true: Expr
+                case _ => new MapSelect(argsSeq, a._2) ==@ Tr(a._1)
+              }
+        var ll: List[(Expression, Int)] = null
+        ll = (args zip (1 until args.length+1).toList);
+        
         var i = 0;
         (CallHeap(Heap.select(Tr(token), "joinable")), 
          CallMask(Heap.select(Tr(token), "joinable")),
@@ -2134,7 +2142,9 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
          bassert(CanRead(Tr(token), "joinable"), obj.pos, "Joinable field of the token might not be readable.") ::
          bassert(Heap.select(Tr(token), "joinable") !=@ 0, obj.pos, "Token might not be active."),
          (new MapSelect(argsSeq, 0) ==@ Tr(obj) ) &&
-         (((args zip (1 until args.length+1).toList) map { a => new MapSelect(argsSeq, a._2) ==@ Tr(a._1)}).foldLeft(true: Expr){ (a: Expr, b: Expr) => a && b})
+         ((ll map { 
+            f
+         }).foldLeft(true: Expr){ (a: Expr, b: Expr) => a && b})
         )
     }
   }
