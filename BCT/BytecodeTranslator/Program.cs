@@ -17,6 +17,7 @@ using Microsoft.Cci.MutableContracts;
 using Bpl = Microsoft.Boogie;
 using System.Diagnostics.Contracts;
 using Microsoft.Cci.MutableCodeModel.Contracts;
+using TranslationPlugins;
 
 namespace BytecodeTranslator {
 
@@ -175,7 +176,7 @@ namespace BytecodeTranslator {
       var primaryModule = modules[0];
 
       if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
-        PhoneMetadataTraverser tr = new PhoneMetadataTraverser();
+        PhoneMetadataTraverser tr = new PhoneMetadataTraverser(new PhoneControlsPlugin(phoneControlsConfigFile), host);
         tr.InjectPhoneCodeAssemblies(modules);
       }
 
@@ -187,7 +188,6 @@ namespace BytecodeTranslator {
 
       Sink sink= new Sink(host, traverserFactory, heapFactory);
       TranslationHelper.tmpVarCounter = 0;
-
       MetadataTraverser translator = traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
       translator.TranslateAssemblies(modules);
 
