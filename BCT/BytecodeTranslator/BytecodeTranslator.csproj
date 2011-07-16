@@ -128,7 +128,7 @@
     <Compile Include="Phone\PhoneCodeHelper.cs" />
     <Compile Include="Phone\PhoneInitializationTraverser.cs" />
     <Compile Include="Phone\PhoneNavigationTraverser.cs" />
-    <Compile Include="Phone\PhoneURIDeclarationsTraverser.cs" />
+    <Compile Include="Phone\PhoneCodeWrapperWriter.cs" />
     <Compile Include="Prelude.cs" />
     <Compile Include="ExpressionTraverser.cs" />
     <Compile Include="Sink.cs" />

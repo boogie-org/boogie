@@ -100,7 +100,7 @@ namespace BytecodeTranslator {
 
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed: {0}", e.Message);
-        //Console.WriteLine("Stack trace: {0}", e.StackTrace);
+        // Console.WriteLine("Stack trace: {0}", e.StackTrace);
         return -1;
       }
       return result;
@@ -176,8 +176,9 @@ namespace BytecodeTranslator {
 
       var primaryModule = modules[0];
 
+      PhoneControlsPlugin phonePlugin = null;
       if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
-        PhoneControlsPlugin phonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
+        phonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
         PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(phonePlugin, host);
         initTr.InjectPhoneCodeAssemblies(modules);
         PhoneNavigationMetadataTraverser navTr = new PhoneNavigationMetadataTraverser(phonePlugin, host);
@@ -192,11 +193,26 @@ namespace BytecodeTranslator {
 
       Sink sink= new Sink(host, traverserFactory, heapFactory);
       TranslationHelper.tmpVarCounter = 0;
-      MetadataTraverser translator = traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
+      MetadataTraverser translator;
+      if (phonePlugin != null) {
+        translator = traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders, phonePlugin);
+      } else {
+        translator= traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
+      }
       translator.TranslateAssemblies(modules);
 
       foreach (var pair in sink.delegateTypeToDelegates.Values) {
         CreateDispatchMethod(sink, pair.Item1, pair.Item2);
+      }
+
+      // TODO based on phone plugin information, create the main Boogie program, control drivers and assume/assert scheme
+      if (phonePlugin != null) {
+        string outputConfigFile = Path.ChangeExtension(phoneControlsConfigFile, "bplout");
+        StreamWriter outputStream = new StreamWriter(outputConfigFile);
+        phonePlugin.DumpControlStructure(outputStream);
+        outputStream.Close();
+
+        PhoneCodeWrapperWriter.createCodeWrapper(sink, phonePlugin);
       }
 
       Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(primaryModule.Name + ".bpl");

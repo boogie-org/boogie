@@ -196,8 +196,10 @@ namespace BytecodeTranslator.Phone {
       // TODO Here there is the STRONG assumption that a given method will only navigate at most once per method call
       // TODO (or at most will re-navigate to the same page). Quick "page flipping" on the same method
       // TODO would not be captured correctly
+      Microsoft.Cci.MutableCodeModel.BlockStatement mutableBlock = block as Microsoft.Cci.MutableCodeModel.BlockStatement;
+
       foreach (Tuple<IStatement, StaticURIMode, string> entry in stmts) {
-        int ndx= block.Statements.ToList().IndexOf(entry.Item1, 0);
+        int ndx= mutableBlock.Statements.ToList().IndexOf(entry.Item1, 0);
         if (ndx == -1) {
           // can't be
           throw new IndexOutOfRangeException("Statement must exist in original block");
@@ -222,7 +224,7 @@ namespace BytecodeTranslator.Phone {
         Statement uriInitStmt = new ExpressionStatement() {
           Expression = currentURIAssign,
         };
-        block.Statements.ToList().Insert(ndx+1, uriInitStmt);
+        mutableBlock.Statements.Insert(ndx+1, uriInitStmt);
       }
     }
   }

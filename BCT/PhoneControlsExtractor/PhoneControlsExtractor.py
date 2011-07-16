@@ -114,7 +114,8 @@ def outputPhoneControls(outputFileName):
       checked= control["Checked"]
       unchecked= control["Unchecked"]
       pageXAML= control["XAML"]
-      outputFile.write(page + "," + os.path.basename(pageXAML) + "," + control["Type"] + "," + control["Name"] + "," + isEnabled + "," + visibility + "," + click + "," + checked + "," + unchecked + "\n")
+      # last comma is to account for bpl translation name, that is unknown for now
+      outputFile.write(page + "," + os.path.basename(pageXAML) + "," + control["Type"] + "," + control["Name"] + "," + isEnabled + "," + visibility + "," + click + "," + checked + "," + unchecked + ",\n")
 
   outputFile.close()
 
