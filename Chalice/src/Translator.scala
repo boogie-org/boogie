@@ -693,7 +693,8 @@ class Translator {
         bassume(CallCredits(asyncState) ==@ preCallCredits) ::
         bassume(CallArgs(asyncState) ==@ argsSeq) :::
         // assign the returned token to the variable
-        { if (token != null) List(token := tokenId) else List() }
+        { if (token != null) List(token := tokenId) else List() } :::
+        bassume(wf(VarExpr(HeapName), VarExpr(MaskName))) :: Nil
       case jn@JoinAsync(lhs, token) =>
         val formalThisV = new Variable("this", new Type(jn.m.Parent))
         val formalThis = new VariableExpr(formalThisV)
@@ -1111,7 +1112,8 @@ class Translator {
           (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
           BLocal(m) ::
           (me := absTran.Mask) ::
-          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam) :::
+          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam, false) :::
+          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam, true) :::
           (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
              bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable not in frame of the specification statement: " + v.id)),
           keepTag)
@@ -1888,7 +1890,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     val (emV, em) = NewBVar("exhaleMask", tmask, true)
     Comment("begin exhale (" + occasion + ")") ::
     BLocal(emV) :: (em := Mask) ::
-    (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check, currentK, exactchecking)).flatten :::
+    (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check, currentK, exactchecking, false)).flatten :::
+    (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check, currentK, exactchecking, true)).flatten :::
     (Mask := em) ::
     bassume(wf(Heap, Mask)) ::
     Comment("end exhale")
@@ -1943,7 +1946,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   
   // Exhale is done in two passes: In the first run, everything except permissions
   // which need exact checking are exhaled. Then, in the second run, those
-  // permissions are exhaled.
+  // permissions are exhaled. The behaviour is controlled with the parameter
+  // onlyExactCheckingPermissions.
   // The reason for this behaviour is that we want to support preconditions like
   // "acc(o.f,100-rd) && acc(o.f,rd)", which should be equivalent to a full
   // permission to o.f. However, when we exhale in the given order, we cannot
@@ -1951,11 +1955,6 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   // this would introduce the (unsound) assumption that "methodcallk < mask[o.f]".
   // To avoid detecting this, we exhale all abstract read permissions first (or,
   // more precisely, we exhale all permissions with exact checking later).
-  def Exhale(p: Expression, em: Boogie.Expr, eh: Boogie.Expr, error: ErrorMessage, check: Boolean, currentK: Expr, exactchecking: Boolean): List[Boogie.Stmt] = {
-    Exhale(p, em, eh, error, check, currentK, exactchecking, false) :::
-    Exhale(p, em, eh, error, check, currentK, exactchecking, true)
-  }
-  
   def Exhale(p: Expression, em: Boogie.Expr, eh: Boogie.Expr, error: ErrorMessage, check: Boolean, currentK: Expr, exactchecking: Boolean, onlyExactCheckingPermissions: Boolean): List[Boogie.Stmt] = desugar(p) match {
     case pred@MemberAccess(e, p) if pred.isPredicate =>
       val tmp = Access(pred, Full);
