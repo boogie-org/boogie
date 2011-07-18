@@ -303,7 +303,9 @@ sealed abstract class Statement extends ASTNode {
   def Declares: List[Variable] = Nil // call after resolution
   def Targets: Set[Variable] = Set() // assigned local variables
 }
-case class Assert(e: Expression) extends Statement
+case class Assert(e: Expression) extends Statement {
+  var smokeErrorNr: Option[Int] = None
+}
 case class Assume(e: Expression) extends Statement
 case class BlockStmt(ss: List[Statement]) extends Statement {
   override def Targets = (ss :\ Set[Variable]()) { (s, vars) => vars ++ s.Targets}

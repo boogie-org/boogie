@@ -310,6 +310,7 @@ class Translator {
     val methodKStmts = BLocal(methodKV) :: bassume(0 < methodK && 1000*methodK < permissionOnePercent)
     
     // check definedness of the method contract
+    (if (!Chalice.smoke)
     Proc(method.FullName + "$checkDefinedness", 
       NewBVarWhere("this", new Type(currentClass)) :: (method.ins map {i => Variable2BVarWhere(i)}),
       method.outs map {i => Variable2BVarWhere(i)},
@@ -326,7 +327,8 @@ class Translator {
         // check postcondition
         InhaleWithChecking(Postconditions(method.spec), "postcondition", methodK) :::
         // check lockchange
-        (LockChanges(method.spec) flatMap { lc => isDefined(lc)})) ::
+        (LockChanges(method.spec) flatMap { lc => isDefined(lc)})) :: Nil
+    else Nil) :::
     // check that method body satisfies the method contract
     Proc(method.FullName,
       NewBVarWhere("this", new Type(currentClass)) :: (method.ins map {i => Variable2BVarWhere(i)}),
@@ -431,18 +433,23 @@ class Translator {
 
   def translateStatement(s: Statement, methodK: Expr): List[Stmt] = {
     s match {
-      case Assert(e) =>
-        val newGlobals = etran.FreshGlobals("assert");
-        val tmpHeap = Boogie.NewBVar(HeapName, theap, true);
-        val tmpMask = Boogie.NewBVar(MaskName, tmask, true); 
-        val tmpCredits = Boogie.NewBVar(CreditsName, tcredits, true); 
-        val tmpTranslator = new ExpressionTranslator(List(tmpHeap._1.id, tmpMask._1.id, tmpCredits._1.id), List(etran.ChooseEtran(true).Heap, etran.ChooseEtran(true).Mask, etran.ChooseEtran(true).Credits), currentClass);        
-        Comment("assert") ::
-        // exhale e in a copy of the heap/mask/credits
-        BLocal(tmpHeap._1) :: (tmpHeap._2 := etran.Heap) ::
-        BLocal(tmpMask._1) :: (tmpMask._2 := etran.Mask) ::
-        BLocal(tmpCredits._1) :: (tmpCredits._2 := etran.Credits) ::
-        tmpTranslator.Exhale(List((e, ErrorMessage(s.pos, "Assertion might not hold."))), "assert", true, methodK, true)
+      case a@Assert(e) =>
+        a.smokeErrorNr match {
+          case None =>
+            val newGlobals = etran.FreshGlobals("assert");
+            val tmpHeap = Boogie.NewBVar(HeapName, theap, true);
+            val tmpMask = Boogie.NewBVar(MaskName, tmask, true); 
+            val tmpCredits = Boogie.NewBVar(CreditsName, tcredits, true); 
+            val tmpTranslator = new ExpressionTranslator(List(tmpHeap._1.id, tmpMask._1.id, tmpCredits._1.id), List(etran.ChooseEtran(true).Heap, etran.ChooseEtran(true).Mask, etran.ChooseEtran(true).Credits), currentClass);        
+            Comment("assert") ::
+            // exhale e in a copy of the heap/mask/credits
+            BLocal(tmpHeap._1) :: (tmpHeap._2 := etran.Heap) ::
+            BLocal(tmpMask._1) :: (tmpMask._2 := etran.Mask) ::
+            BLocal(tmpCredits._1) :: (tmpCredits._2 := etran.Credits) ::
+            tmpTranslator.Exhale(List((e, ErrorMessage(s.pos, "Assertion might not hold."))), "assert", true, methodK, true)
+          case Some(err) =>
+            bassert(e, a.pos, "SMOKE-TEST-" + err + ".") :: Nil
+        }
       case Assume(e) =>
         Comment("assume") ::
         isDefined(e) :::

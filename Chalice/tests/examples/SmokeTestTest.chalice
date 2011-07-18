@@ -1,0 +1,76 @@
+// chalice-parameter=-smoke
+// This file is meant as a test for Chalice's smoke testing feature (command line switch -smoke)
+class Cell {
+  var f: int;
+  
+  method a1()
+    requires false
+  {}
+  
+  method a2()
+    requires acc(this.f,-2)
+  {}
+  
+  method a3()
+    requires acc(this.f)
+  {
+    if (this.f > 0) {
+      this.f := 0;
+    }
+  }
+  
+  method a4()
+    requires acc(this.f)
+  {
+    if (false) {
+      this.f := 0;
+    }
+  }
+  
+  method a5()
+    requires acc(this.f)
+  {
+    if (true) {
+      this.f := 0;
+    }
+  }
+  
+  method a6()
+    requires acc(this.f)
+  {
+    if (false) {
+      this.f := 0;
+    } else {
+      this.f := 1;
+    }
+  }
+  
+  method a7(i: int, j: int)
+    requires i != j;
+  {
+    assume i == j;
+  }
+  
+  method a8()
+    requires acc(this.f)
+  {
+    while (true) {
+      this.f := this.f + 1
+    }
+  }
+  
+  method a9()
+  {
+    call a8()
+  }
+  
+  method a10()
+    requires acc(this.f)
+  {
+    if (true) {
+      this.f := 0;
+    } else {
+      this.f := 1;
+    }
+  }
+}

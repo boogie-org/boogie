@@ -37,6 +37,7 @@ object Chalice {
   // percentageSupport 2: use function and provide some (redundant) axioms
   // percentageSupport 3: use an uninterpreted function and axiomatize the properties of multiplication
   private[chalice] var percentageSupport = 2;
+  private[chalice] var smoke = false;
 
   def main(args: Array[String]): Unit = {
     var boogiePath = "C:\\boogie\\Binaries\\Boogie.exe"
@@ -62,7 +63,8 @@ object Chalice {
      "-autoFold" -> {() => autoFold = true},
      "-autoMagic"-> {() => autoMagic = true},
      "-noFreeAssume" -> {() => noFreeAssume = true},
-     "-showFullStackTrace" -> {() => showFullStackTrace = true}
+     "-showFullStackTrace" -> {() => showFullStackTrace = true},
+     "-smoke" -> {() => smoke = true}
     )
     lazy val help = options.keys.foldLeft("syntax: chalice")((s, o) => s + " [" + o + "]") +
     " [-boogie:path]" +
@@ -88,13 +90,20 @@ object Chalice {
        } catch { case _ => CommandLineError("-percentageSupport takes integer argument", help); }
      }
      else if (a.startsWith("-") || a.startsWith("/"))
-			boogieArgs += ('"' + a + '"' + " ")
+			boogieArgs += ("\"" + a + "\"" + " ")
 				// other arguments starting with "-" or "/" are sent to Boogie.exe
 				/* [MHS] Quote whole argument to not confuse Boogie with arguments that
 				 * contain spaces, e.g. if Chalice is invoked as
 				 *   chalice -z3exe:"C:\Program Files\z3\z3.exe" program.chalice
 				 */
      else inputs += a
+    }
+    
+    // for smoke testing, we want to see all failing assertions, so we use no
+    // error limit (or a very high one), and turn the subsumption option off
+    if (smoke) {
+      boogieArgs += ("\"-subsumption:0\" ")
+      boogieArgs += ("\"-errorLimit:10000\" ")
     }
     
     percentageSupport match {
@@ -134,8 +143,9 @@ object Chalice {
          Console.err.println("Error: " + e);
        Nil
      case parser.Success(prog, _) =>
-       if (printProgram) PrintProgram.P(prog)
-       prog
+       val pprog = if (smoke) SmokeTest.smokeProgram(prog) else prog
+       if (printProgram) PrintProgram.P(pprog)
+       pprog
     }).flatten;
     if (parseErrors) return;
 
@@ -209,14 +219,25 @@ object Chalice {
            val input = new BufferedReader(new InputStreamReader(boogie.getInputStream));
            var line = input.readLine();
            var previous_line = null: String;
-           while(line!=null){
-             Console.out.println(line);
-             Console.out.flush;
+           val boogieOutput: ListBuffer[String] = new ListBuffer()
+           while (line!=null){
+             if (!smoke) {
+               Console.out.println(line);
+               Console.out.flush;
+             }
+             boogieOutput += line
              previous_line = line;
              line = input.readLine();
            }
            boogie.waitFor;
            input.close;
+           
+           // smoke test output
+           if (smoke) {
+             val output = SmokeTest.processBoogieOutput(boogieOutput.toList)
+             Console.out.println(output);
+             Console.out.flush;
+           }
 
            // generate code
            if(gen && (previous_line != null) && previous_line.endsWith(" 0 errors")) { // hack
@@ -230,14 +251,14 @@ object Chalice {
   }
 
   def writeFile(filename: String, text: String) {
-   val writer = new FileWriter(new File(filename));
-   writer.write(text);
-   writer.flush();
-   writer.close();
+    val writer = new FileWriter(new File(filename));
+    writer.write(text);
+    writer.flush();
+    writer.close();
   }
 
   def CommandLineError(msg: String, help: String) = {
-   Console.err.println("Error: " + msg)
+    Console.err.println("Error: " + msg)
   }
 
   def ReportError(pos: Position, msg: String) = {
@@ -252,3 +273,4 @@ object Chalice {
 
 class InternalErrorException(val msg: String) extends Throwable
 class NotSupportedException(val msg: String) extends Throwable
+

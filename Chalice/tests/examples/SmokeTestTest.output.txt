@@ -1,0 +1,15 @@
+Verification of SmokeTestTest.chalice using parameters="-smoke" 
+
+  6.3: Precondition of method a1 is equivalent to false.
+  6.3: The end of method a1 is unreachable.
+  10.3: Precondition of method a2 is equivalent to false.
+  10.3: The end of method a2 is unreachable.
+  25.5: The end of the if-branch is unreachable.
+  41.5: The end of the if-branch is unreachable.
+  51.5: Assumption might introduce a contradiction.
+  48.3: The end of method a7 is unreachable.
+  54.3: The end of method a8 is unreachable.
+  70.5: The end of the else-branch is unreachable.
+
+Smoke testing finished with 3 verified, 10 warnings
+
