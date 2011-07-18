@@ -45,6 +45,7 @@ namespace TranslationPlugins {
         eventHandlers = handlers[p];
       } catch (KeyNotFoundException) {
         eventHandlers= new List<HandlerSignature>();
+        handlers[p] = eventHandlers;
       }
 
       HandlerSignature newHandler= new HandlerSignature();
