@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Cci;
+using Bpl=Microsoft.Boogie;
+using TranslationPlugins;
 
 namespace BytecodeTranslator.Phone {
   public enum StaticURIMode {
@@ -11,8 +13,45 @@ namespace BytecodeTranslator.Phone {
 
   public static class PhoneCodeHelper {
     // TODO ensure this name is unique in the program code, although it is esoteric enough
+    // TODO externalize strings
     private const string IL_BOOGIE_VAR_PREFIX = "@__BOOGIE_";
+    private const string BOOGIE_VAR_PREFIX= "__BOOGIE_";
     public const string IL_CURRENT_NAVIGATION_URI_VARIABLE = IL_BOOGIE_VAR_PREFIX + "CurrentNavigationURI__";
+    public const string BOOGIE_CONTINUE_ON_PAGE_VARIABLE = BOOGIE_VAR_PREFIX + "ContinueOnPage__";
+
+    // awful hack. want to insert a nonexisting method call while traversing CCI AST, deferring it to Boogie translation
+    public const string BOOGIE_DO_HAVOC_CURRENTURI = BOOGIE_VAR_PREFIX + "Havoc_CurrentURI__";
+
+    public static PhoneControlsPlugin PhonePlugin { get; set; }
+    private static IDictionary<string, Bpl.NamedDeclaration> boogieObjects = new Dictionary<string, Bpl.NamedDeclaration>();
+
+    public static Bpl.Variable getBoogieVariableForName(string varName) {
+      Bpl.Variable boogieVar = null;
+      try {
+        boogieVar = boogieObjects[varName] as Bpl.Variable;
+      } catch (KeyNotFoundException) {
+      }
+
+      if (boogieVar == null)
+        throw new ArgumentException("The boogie variable " + varName + " is not defined.");
+
+      return boogieVar;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="name"></param>
+    /// <param name="bplObject"></param>
+    /// <returns>true if defining a new name, false if replacing</returns>
+    public static bool setBoogieObjectForName(string name, Bpl.NamedDeclaration bplObject) {
+      bool ret= true;
+      if (boogieObjects.ContainsKey(name))
+        ret = false;
+
+      boogieObjects[name] = bplObject;
+      return ret;
+    }
 
     public static bool isCreateObjectInstance(this IExpression expr) {
       ICreateObjectInstance createObjExpr = expr as ICreateObjectInstance;
@@ -58,7 +97,6 @@ namespace BytecodeTranslator.Phone {
 
       IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
       ITypeReference applicationClass = platform.CreateReference(systemAssembly, "System", "Windows", "Application");
-
       return typeRef.isClass(applicationClass);
     }
 

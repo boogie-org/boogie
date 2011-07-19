@@ -17,6 +17,8 @@ using Microsoft.Cci.ILToCodeModel;
 
 using Bpl = Microsoft.Boogie;
 using System.Diagnostics.Contracts;
+using TranslationPlugins;
+using BytecodeTranslator.Phone;
 
 
 namespace BytecodeTranslator
@@ -657,9 +659,21 @@ namespace BytecodeTranslator
     public override void Visit(IAssignment assignment) {
       Contract.Assert(TranslatedExpressions.Count == 0);
       var tok = assignment.Token();
-      TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
-      return;
 
+      ICompileTimeConstant constant= assignment.Source as ICompileTimeConstant;
+      if (PhoneCodeHelper.PhonePlugin != null && constant != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
+        TranslateHavocCurrentURI();
+      } else {
+        TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
+      }
+    }
+
+    /// <summary>
+    /// Patch, to account for URIs that cannot be tracked because of current dataflow restrictions
+    /// </summary>
+    private void TranslateHavocCurrentURI() {
+      Bpl.CallCmd havocCall = new Bpl.CallCmd(Bpl.Token.NoToken, PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI, new List<Bpl.Expr>(), new List<Bpl.IdentifierExpr>());
+      StmtTraverser.StmtBuilder.Add(havocCall);
     }
 
     /// <summary>
@@ -1223,8 +1237,8 @@ namespace BytecodeTranslator
       */
 
       StatementTraverser thenStmtTraverser = this.StmtTraverser.factory.MakeStatementTraverser(this.sink, this.StmtTraverser.PdbReader, this.contractContext);
-      ExpressionTraverser thenExprTraverser = this.StmtTraverser.factory.MakeExpressionTraverser(this.sink, thenStmtTraverser, this.contractContext);
       StatementTraverser elseStmtTraverser = this.StmtTraverser.factory.MakeStatementTraverser(this.sink, this.StmtTraverser.PdbReader, this.contractContext);
+      ExpressionTraverser thenExprTraverser = this.StmtTraverser.factory.MakeExpressionTraverser(this.sink, thenStmtTraverser, this.contractContext);
       ExpressionTraverser elseExprTraverser = this.StmtTraverser.factory.MakeExpressionTraverser(this.sink, elseStmtTraverser, this.contractContext);
       thenExprTraverser.Visit(conditional.ResultIfTrue);
       elseExprTraverser.Visit(conditional.ResultIfFalse);

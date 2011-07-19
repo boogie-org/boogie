@@ -16,6 +16,7 @@ using Microsoft.Cci.ILToCodeModel;
 
 using Bpl = Microsoft.Boogie;
 using System.Diagnostics.Contracts;
+using TranslationPlugins;
 
 
 namespace BytecodeTranslator
@@ -171,7 +172,6 @@ namespace BytecodeTranslator
     public override void Visit(IConditionalStatement conditionalStatement) {
       StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
       StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
-
       ExpressionTraverser condTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
       condTraverser.Visit(conditionalStatement.Condition);
       thenTraverser.Visit(conditionalStatement.TrueBranch);

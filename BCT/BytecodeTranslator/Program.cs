@@ -179,9 +179,10 @@ namespace BytecodeTranslator {
       PhoneControlsPlugin phonePlugin = null;
       if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
         phonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
-        PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(phonePlugin, host);
+        PhoneCodeHelper.PhonePlugin = phonePlugin;
+        PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(host);
         initTr.InjectPhoneCodeAssemblies(modules);
-        PhoneNavigationMetadataTraverser navTr = new PhoneNavigationMetadataTraverser(phonePlugin, host);
+        PhoneNavigationMetadataTraverser navTr = new PhoneNavigationMetadataTraverser(host);
         navTr.InjectPhoneCodeAssemblies(modules);
       }
 
@@ -194,11 +195,7 @@ namespace BytecodeTranslator {
       Sink sink= new Sink(host, traverserFactory, heapFactory);
       TranslationHelper.tmpVarCounter = 0;
       MetadataTraverser translator;
-      if (phonePlugin != null) {
-        translator = traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders, phonePlugin);
-      } else {
-        translator= traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
-      }
+      translator= traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
       translator.TranslateAssemblies(modules);
 
       foreach (var pair in sink.delegateTypeToDelegates.Values) {
@@ -211,8 +208,7 @@ namespace BytecodeTranslator {
         StreamWriter outputStream = new StreamWriter(outputConfigFile);
         phonePlugin.DumpControlStructure(outputStream);
         outputStream.Close();
-
-        PhoneCodeWrapperWriter.createCodeWrapper(sink, phonePlugin);
+        PhoneCodeWrapperWriter.createCodeWrapper(sink);
       }
 
       Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(primaryModule.Name + ".bpl");

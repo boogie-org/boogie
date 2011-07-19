@@ -150,6 +150,24 @@ namespace BytecodeTranslator {
     }
 
     /// <summary>
+    /// There are no global variables in code, but it may be useful to have global Boogie vars in the translation
+    /// 
+    /// This should be just the same as the encoding for a static field, but I'm being
+    /// IL-unaware here...not sure if this is 100% right
+    /// </summary>
+    private IDictionary<string, Bpl.Variable> globalVariables = new Dictionary<string, Bpl.Variable>();
+    public Bpl.Variable FindOrCreateGlobalVariable(string globalVarName, Bpl.Type type) {
+      Bpl.Variable globalVar;
+      // assuming globalVarName is a valid identifier. Possible name clashing issues too
+      if (!globalVariables.TryGetValue(globalVarName, out globalVar)) {
+        globalVar= new Bpl.GlobalVariable(null, new Bpl.TypedIdent(null, globalVarName, type));
+      }
+
+      return globalVar;
+    }
+
+
+    /// <summary>
     /// State that gets re-initialized per method
     /// </summary>
     private Dictionary<ILocalDefinition, Bpl.LocalVariable> localVarMap = null;

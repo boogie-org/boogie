@@ -8,12 +8,10 @@ using TranslationPlugins;
 namespace BytecodeTranslator.Phone {
   class PhoneCodeWrapperWriter {
     private static Sink sink;
-    private static PhoneControlsPlugin controlsPlugin;
     private static readonly string BOOGIE_MAIN_PROCEDURE = "$__BOOGIE_MAIN_PROCEDURE__$";
 
-    public static void createCodeWrapper(Sink sink, PhoneControlsPlugin controlsPlugin) {
+    public static void createCodeWrapper(Sink sink) {
       PhoneCodeWrapperWriter.sink = sink;
-      PhoneCodeWrapperWriter.controlsPlugin = controlsPlugin;
       /*
        * create Main procedure
        *  - creates page instances, one per page -- this overapproximates as there may be more instances
