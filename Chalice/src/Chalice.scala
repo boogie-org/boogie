@@ -48,46 +48,99 @@ object Chalice {
     var boogieArgs = " ";
     var gen = false;
     var showFullStackTrace = false
-		
-    // closures should be idempotent
-    val options = Map(
-     "-print" -> {() => printProgram = true},
-     "-noTranslate" -> {() => doTranslate = false},
-     "-noTypecheck"-> {() => doTypecheck = false},
-     "-vs" -> {() => vsMode = true},
-     "-checkLeaks" -> {() => checkLeaks = true},
-     "-noDeadlockChecks" -> {() => skipDeadlockChecks = true},
-     "-noTermination" -> {() => skipTermination = true},
-     "-defaults" -> {() => defaults = 3},
-     "-gen" -> {() => gen = true},
-     "-autoFold" -> {() => autoFold = true},
-     "-autoMagic"-> {() => autoMagic = true},
-     "-noFreeAssume" -> {() => noFreeAssume = true},
-     "-showFullStackTrace" -> {() => showFullStackTrace = true},
-     "-smoke" -> {() => smoke = true}
-    )
-    lazy val help = options.keys.foldLeft("syntax: chalice")((s, o) => s + " [" + o + "]") +
-    " [-boogie:path]" +
-    " [-defaults:int]" +
-    " <boogie option>*" +
-    " <file.chalice>*";
 
+    // help texts and closures for boolean command line options
+    // closures should be idempotent
+    import scala.collection.immutable.ListMap
+    val options = ListMap[String,(() => Unit, String)](
+     "help" -> (
+       {() => },
+       "print this message"),
+     "print" -> (
+       {() => printProgram = true},
+       "print intermediate versions of the Chalice program"),
+     "noTranslate" -> (
+       {() => doTranslate = false},
+       "do not translate the program to Boogie (only parse and typecheck)"),
+     "noTypecheck"-> (
+       {() => doTypecheck = false},
+       "do not typecheck the program (only parse). Implies /noTranslate."),
+     "vs" -> (
+       {() => vsMode = true},
+       "Microsoft Visual Studio mode (special error reporting for Visual Studio; requires an existing, writable directory at C:\\tmp)"),
+     "checkLeaks" -> (
+       {() => checkLeaks = true},
+       "(no description available)"),
+     "noDeadlockChecks" -> (
+       {() => skipDeadlockChecks = true},
+       "skip all lock ordering checks"),
+     "noTermination" -> (
+       {() => skipTermination = true},
+       "skip the termination checks for functions"),
+     "defaults" -> (
+       {() => defaults = 3},
+       null),
+     "gen" -> (
+       {() => gen = true},
+       "generate C# code from the Chalice program"),
+     "autoFold" -> (
+       {() => autoFold = true},
+       "automatically fold predicates whenever necessary"),
+     "autoMagic" -> (
+       {() => autoMagic = true},
+       "automatically try to infer accessibility predicates and non-nullness checks in specifications"),
+     "noFreeAssume" -> (
+       {() => noFreeAssume = true},
+       "(no description available)"),
+     "showFullStackTrace" -> (
+       {() => showFullStackTrace = true},
+       "show the full stack trace if an exception is encountered"),
+     "smoke" -> (
+       {() => smoke = true},
+       "smoke testing; try to find unreachable code, preconditions/invariants/predicates that are equivalent to false and assumptions that introduce contradictions, by trying to prove 'false' at various positions.")
+    )
+    // help text for options with arguments
+    val nonBooleanOptions = ListMap(
+      "boogie:<file>" -> "use the executable of Boogie at <file>",
+      "defaults:<level>" -> ("defaults to reduce specification overhead\n"+
+          "level 0 or below: no defaults\n"+
+          "level 1: unfold predicates with receiver this in pre and postconditions\n"+
+          "level 2: unfold predicates and functions with receiver this in pre and postconditions\n"+
+          "level 3 or above: level 2 + autoMagic"),
+      "percentageSupport:<n>" -> ("determin how percentage permissions are translated to Boogie\n"+
+          "0: use multiplication directly (can cause performance problems)\n"+
+          "1: fix Permission$denominator as constant (possibly unsound)\n"+
+          "2: use a function and provide some (redundant) axioms\n"+
+          "3: use an uninterpreted function and axiomatize the properties of multiplication")/*,
+      "boogieOpt:<arg>, /bo:<arg>" -> "specify additional Boogie options"*/
+    )
+    lazy val help = {
+      val maxLength = math.min((nonBooleanOptions.keys++options.keys).map(s => s.length+1).max,14)
+      val printOptionHelp = (param: String, help: String) => "\n  /" + param + (" "*(maxLength-param.length-1)) +
+                             ": " + help.split("\n").map(h => " "*(maxLength+2+2)+wordWrap(h, 80-2-2-math.max(maxLength,param.length+1)," "*(maxLength+2+2))).mkString("\n").substring(maxLength+2+2)
+
+      "Chalice concurrent program verifier.\nUsage: chalice [option] <filename>+\n"+
+      "  where <option> is one of"+
+      options.foldLeft("")((acc, v) => acc + (if (v._2._2 == null) "" else printOptionHelp(v._1, v._2._2)))+
+      nonBooleanOptions.foldLeft("")((acc, v) => acc + printOptionHelp(v._1, v._2))
+    }
+    
     for (a <- args) {
-     if (options contains a) options(a)()
-     else if (a == "-help") {Console.out.println(help); return}
-     else if (a.startsWith("-boogie:")) boogiePath = a.substring(8)
-     else if (a.startsWith("-defaults:")) {
+     if (a == "/help" || a == "-help") {Console.out.println(help); return}
+     else if ((a.startsWith("-") || a.startsWith("/")) && (options contains a.substring(1))) options(a.substring(1))._1()
+     else if (a.startsWith("/boogie:") || a.startsWith("-boogie:")) boogiePath = a.substring(8)
+     else if (a.startsWith("/defaults:") || a.startsWith("-defaults:")) {
        try {
          defaults = Integer.parseInt(a.substring(10));
          if (3<=defaults) { autoMagic = true; }
        } catch { case _ => CommandLineError("-defaults takes integer argument", help); }
      }
-     else if (a.startsWith("-percentageSupport:")) {
+     else if (a.startsWith("/percentageSupport:") || a.startsWith("-percentageSupport:")) {
        try {
-         val in = Integer.parseInt(a.substring("-percentageSupport:".length));
-         if (in < 0 || in > 3) CommandLineError("-percentageSupport takes only values 0,1,2 or 3", help)
+         val in = Integer.parseInt(a.substring(19));
+         if (in < 0 || in > 3) CommandLineError("/percentageSupport takes only values 0,1,2 or 3", help)
          else percentageSupport = in
-       } catch { case _ => CommandLineError("-percentageSupport takes integer argument", help); }
+       } catch { case _ => CommandLineError("/percentageSupport takes integer argument", help); }
      }
      else if (a.startsWith("-") || a.startsWith("/"))
 			boogieArgs += ("\"" + a + "\"" + " ")
@@ -268,7 +321,22 @@ object Chalice {
     } else {
      Console.err.println(pos + ": " + msg)
     }
-  }  
+  }
+  
+  def wordWrap(s: String, l: Int, indent: String): String = {
+    var prefix = s.takeWhile(c => c == ' ').length
+    if (prefix == 0) prefix = if (s.indexOf(": ") > 0) s.indexOf(": ")+2 else 0;
+    val words = s.split(" ")
+    var c = 0
+    var result = ""
+    var first = 0
+    for (word <- words) {
+      c += word.length + 1
+      if (c-1 > l-first*prefix) { result += "\n"; c = word.length + 1; first = 1}
+      result += word + " "
+    }
+    result.substring(0, result.length-1).replace("\n", "\n" + (" "*prefix) + indent).replace(" \n","\n")
+  }
 }
 
 class InternalErrorException(val msg: String) extends Throwable
