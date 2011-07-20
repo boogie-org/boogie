@@ -469,7 +469,7 @@ namespace BytecodeTranslator
       Bpl.IfCmd elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, Bpl.Expr.Literal(false), TranslationHelper.BuildStmtList(new Bpl.ReturnCmd(Bpl.Token.NoToken)), null, null);
       Bpl.Expr dynTypeOfOperand = this.sink.Heap.DynamicType(Bpl.Expr.Ident(this.sink.LocalExcVariable));
       for (int i = 0; i < catchStatements.Count; i++) {
-        Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, dynTypeOfOperand, typeReferences[i]);
+        Bpl.Expr expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Subtype), new Bpl.ExprSeq(dynTypeOfOperand, typeReferences[i]));
         elseIfCmd = new Bpl.IfCmd(Bpl.Token.NoToken, expr, catchStatements[i], elseIfCmd, null);
       }
       this.StmtBuilder.Add(elseIfCmd);
