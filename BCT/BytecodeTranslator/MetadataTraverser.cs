@@ -497,7 +497,6 @@ namespace BytecodeTranslator {
     #endregion
 
     private void addPhoneTopLevelDeclarations() {
-      // adding global variable for continue on page
       Bpl.Variable continueOnPageVar = sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool);
       sink.TranslatedProgram.TopLevelDeclarations.Add(continueOnPageVar);
     }

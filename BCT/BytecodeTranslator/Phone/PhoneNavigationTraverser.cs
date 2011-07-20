@@ -12,8 +12,6 @@ namespace BytecodeTranslator.Phone {
     private ITypeReference navigationSvcType;
     private ITypeReference typeTraversed;
 
-    private static readonly string[] NAV_CALLS = { /*"GoBack", "GoForward", "Navigate", "StopLoading"*/ "Navigate", "GoBack"};
-
     public PhoneNavigationCodeTraverser(MetadataReaderHost host, ITypeReference typeTraversed) : base() {
       this.host = host;
       this.typeTraversed = typeTraversed;
@@ -48,7 +46,8 @@ namespace BytecodeTranslator.Phone {
               Target = new TargetExpression() {
                 Type = host.PlatformType.SystemString,
                 Definition = new FieldReference() {
-                  ContainingType= typeTraversed,
+                  // ContainingType= typeTraversed,
+                  ContainingType= PhoneCodeHelper.getMainAppTypeReference(),
                   IsStatic=true,
                   Type=host.PlatformType.SystemString,
                   Name=host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
@@ -96,7 +95,7 @@ namespace BytecodeTranslator.Phone {
         return;
 
       string methodToCallName= methodToCall.Name.Value;
-      if (!NAV_CALLS.Contains(methodToCallName))
+      if (!PhoneCodeHelper.NAV_CALLS.Contains(methodToCallName))
         return;
 
       navCallFound = true;
@@ -214,7 +213,7 @@ namespace BytecodeTranslator.Phone {
           Target = new TargetExpression() {
             Type = host.PlatformType.SystemString,
             Definition = new FieldReference() {
-              ContainingType=typeTraversed,
+              ContainingType=PhoneCodeHelper.getMainAppTypeReference(),
               IsStatic= true,
               Type = host.PlatformType.SystemString,
               Name = host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
@@ -244,7 +243,7 @@ namespace BytecodeTranslator.Phone {
           Target = new TargetExpression() {
             Type = host.PlatformType.SystemString,
             Definition = new FieldReference() {
-              ContainingType=typeTraversed,
+              ContainingType = PhoneCodeHelper.getMainAppTypeReference(),
               IsStatic= true,
               Type = host.PlatformType.SystemString,
               Name = host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),

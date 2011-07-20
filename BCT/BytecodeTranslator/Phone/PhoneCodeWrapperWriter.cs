@@ -8,8 +8,6 @@ using TranslationPlugins;
 namespace BytecodeTranslator.Phone {
   class PhoneCodeWrapperWriter {
     private static Sink sink;
-    private static readonly string BOOGIE_MAIN_PROCEDURE = "$__BOOGIE_MAIN_PROCEDURE__$";
-
     public static void createCodeWrapper(Sink sink) {
       PhoneCodeWrapperWriter.sink = sink;
       /*

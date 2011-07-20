@@ -161,6 +161,7 @@ namespace BytecodeTranslator.Phone {
           IsStatic = false,
         },
         Instance = new ThisReference() { Type = methodBeingTraversed.Container },
+        Type=getTypeForClassname(controlInfo.ClassName),
       };
     }
 
@@ -293,7 +294,9 @@ namespace BytecodeTranslator.Phone {
     /// </summary>
     /// 
     public override void Visit(ITypeDefinition typeDefinition) {
-      if (typeDefinition.IsClass && PhoneCodeHelper.isPhoneApplicationPageClass(typeDefinition, host)) {
+      if (typeDefinition.isPhoneApplicationClass(host)) {
+        PhoneCodeHelper.setMainAppTypeReference(typeDefinition);
+      } else if (typeDefinition.isPhoneApplicationPageClass(host)) {
         base.Visit(typeDefinition);
       }
     }

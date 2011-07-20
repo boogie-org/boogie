@@ -449,7 +449,6 @@ namespace BytecodeTranslator
     /// <remarks>Stub, This one really needs comments!</remarks>
     public override void Visit(IMethodCall methodCall) {
       var resolvedMethod = Sink.Unspecialize(methodCall.MethodToCall).ResolvedMethod;
-
       if (resolvedMethod == Dummy.Method) {
         throw new TranslationException(
           ExceptionType.UnresolvedMethod,
@@ -457,108 +456,131 @@ namespace BytecodeTranslator
       }
 
       Bpl.IToken methodCallToken = methodCall.Token();
-
       List<Bpl.Expr> inexpr;
       List<Bpl.IdentifierExpr> outvars;
       Bpl.IdentifierExpr thisExpr;
       Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed;
       var proc = TranslateArgumentsAndReturnProcedure(methodCallToken, methodCall.MethodToCall, resolvedMethod, methodCall.IsStaticCall ? null : methodCall.ThisArgument, methodCall.Arguments, out inexpr, out outvars, out thisExpr, out toBoxed);
-
       string methodname = proc.Name;
       var translateAsFunctionCall = proc is Bpl.Function;
       Bpl.QKeyValue attrib = null;
-      if (!translateAsFunctionCall) {
-        foreach (var a in resolvedMethod.Attributes) {
-          if (TypeHelper.GetTypeName(a.Type).EndsWith("AsyncAttribute")) {
-            attrib = new Bpl.QKeyValue(methodCallToken, "async", new List<object>(), null);
+
+      // TODO this code structure is quite chaotic, and some code needs to be evaluated regardless, hence the try-finally
+      try {
+        if (!translateAsFunctionCall) {
+          foreach (var a in resolvedMethod.Attributes) {
+            if (TypeHelper.GetTypeName(a.Type).EndsWith("AsyncAttribute")) {
+              attrib = new Bpl.QKeyValue(methodCallToken, "async", new List<object>(), null);
+            }
           }
         }
-      }
 
-      #region Special case: ctor call for a struct type
-      if (resolvedMethod.IsConstructor && resolvedMethod.ContainingTypeDefinition.IsStruct) {
-        // then the method call looks like "&s.S.ctor(...)" for some variable s of struct type S
-        // treat it as if it was "s := new S(...)"
-        // So this code is the same as Visit(ICreateObjectInstance)
-        // TODO: factor the code into a single method?
-
-        // First generate an Alloc() call
-        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(methodCallToken, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(thisExpr)));
-
-        // Second, generate the call to the appropriate ctor
-        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(methodCallToken, proc.Name, inexpr, outvars));
-
-        // Generate an assumption about the dynamic type of the just allocated object
-        this.StmtTraverser.StmtBuilder.Add(
-            new Bpl.AssumeCmd(methodCallToken,
-              Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
-              this.sink.Heap.DynamicType(thisExpr),
-              this.sink.FindOrCreateType(methodCall.MethodToCall.ResolvedMethod.ContainingTypeDefinition)
-              )
-              )
-            );
-
-        return;
-      }
-      #endregion
-
-      Bpl.CallCmd call;
-      bool isEventAdd = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("add_");
-      bool isEventRemove = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("remove_");
-      if (isEventAdd || isEventRemove) {
-        var mName = resolvedMethod.Name.Value;
-        var eventName = mName.Substring(mName.IndexOf('_') + 1);
-        var eventDef = TypeHelper.GetEvent(resolvedMethod.ContainingTypeDefinition, this.sink.host.NameTable.GetNameFor(eventName));
-        Contract.Assert(eventDef != Dummy.Event);
-        Bpl.Variable eventVar = this.sink.FindOrCreateEventVariable(eventDef);
-        Bpl.Variable local = this.sink.CreateFreshLocal(eventDef.Type);
-
-        if (methodCall.IsStaticCall) {
-          this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), Bpl.Expr.Ident(eventVar)));
-          inexpr.Insert(0, Bpl.Expr.Ident(local));
-        }
-        else {
-          this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), this.sink.Heap.ReadHeap(thisExpr, Bpl.Expr.Ident(eventVar), resolvedMethod.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, local.TypedIdent.Type)));
-          inexpr[0] = Bpl.Expr.Ident(local);
-        }
-
-        System.Diagnostics.Debug.Assert(outvars.Count == 0);
-        outvars.Insert(0, Bpl.Expr.Ident(local));
-        string methodName = isEventAdd ? this.sink.DelegateAddName : this.sink.DelegateRemoveName;
-        call = new Bpl.CallCmd(methodCallToken, methodName, inexpr, outvars);
-        this.StmtTraverser.StmtBuilder.Add(call);
-        if (methodCall.IsStaticCall) {
-          this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local)));
-        }
-        else {
-          this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(methodCallToken, thisExpr, Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local), resolvedMethod.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, local.TypedIdent.Type));
-        }
-      } else {
-        if (translateAsFunctionCall) {
-          var func = proc as Bpl.Function;
-          var exprSeq = new Bpl.ExprSeq();
-          foreach (var e in inexpr) {
-            exprSeq.Add(e);
-          }
-          var callFunction = new Bpl.NAryExpr(methodCallToken, new Bpl.FunctionCall(func), exprSeq);
-          this.TranslatedExpressions.Push(callFunction);
+        if (resolvedMethod.IsConstructor && resolvedMethod.ContainingTypeDefinition.IsStruct) {
+          handleStructConstructorCall(methodCall, methodCallToken, inexpr, outvars, thisExpr, proc);
           return;
+        }
 
+        Bpl.CallCmd call;
+        bool isEventAdd = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("add_");
+        bool isEventRemove = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("remove_");
+        if (isEventAdd || isEventRemove) {
+          call = translateAddRemoveCall(methodCall, resolvedMethod, methodCallToken, inexpr, outvars, thisExpr, isEventAdd);
         } else {
-          if (attrib != null)
-            call = new Bpl.CallCmd(methodCallToken, methodname, inexpr, outvars, attrib);
-          else
-            call = new Bpl.CallCmd(methodCallToken, methodname, inexpr, outvars);
-          this.StmtTraverser.StmtBuilder.Add(call);
+          if (translateAsFunctionCall) {
+            var func = proc as Bpl.Function;
+            var exprSeq = new Bpl.ExprSeq();
+            foreach (var e in inexpr) {
+              exprSeq.Add(e);
+            }
+            var callFunction = new Bpl.NAryExpr(methodCallToken, new Bpl.FunctionCall(func), exprSeq);
+            this.TranslatedExpressions.Push(callFunction);
+            return;
+          } else {
+            if (attrib != null)
+              call = new Bpl.CallCmd(methodCallToken, methodname, inexpr, outvars, attrib);
+            else
+              call = new Bpl.CallCmd(methodCallToken, methodname, inexpr, outvars);
+            this.StmtTraverser.StmtBuilder.Add(call);
+          }
+        }
+
+        foreach (KeyValuePair<Bpl.IdentifierExpr, Bpl.IdentifierExpr> kv in toBoxed) {
+          this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(kv.Key, this.sink.Heap.Unbox(Bpl.Token.NoToken, kv.Key.Type, kv.Value)));
+        }
+
+        Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
+        this.StmtTraverser.RaiseException(expr);
+      } finally {
+        if (PhoneCodeHelper.PhonePlugin != null) {
+          if (PhoneCodeHelper.isNavigationCall(methodCall, sink.host)) {
+            // the block is a potential page changer
+            List<Bpl.AssignLhs> lhs = new List<Bpl.AssignLhs>();
+            List<Bpl.Expr> rhs = new List<Bpl.Expr>();
+            Bpl.Expr value = new Bpl.LiteralExpr(Bpl.Token.NoToken, false);
+            rhs.Add(value);
+            Bpl.SimpleAssignLhs assignee=
+              new Bpl.SimpleAssignLhs(Bpl.Token.NoToken,
+                                      new Bpl.IdentifierExpr(Bpl.Token.NoToken,
+                                                             sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool)));
+            lhs.Add(assignee);
+            Bpl.AssignCmd assignCmd = new Bpl.AssignCmd(Bpl.Token.NoToken, lhs, rhs);
+            this.StmtTraverser.StmtBuilder.Add(assignCmd);
+          }
         }
       }
+    }
 
-      foreach (KeyValuePair<Bpl.IdentifierExpr, Bpl.IdentifierExpr> kv in toBoxed) {
-        this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(kv.Key, this.sink.Heap.Unbox(Bpl.Token.NoToken, kv.Key.Type, kv.Value)));
+    private Bpl.CallCmd translateAddRemoveCall(IMethodCall methodCall, IMethodDefinition resolvedMethod, Bpl.IToken methodCallToken, List<Bpl.Expr> inexpr, List<Bpl.IdentifierExpr> outvars, Bpl.IdentifierExpr thisExpr, bool isEventAdd) {
+      Bpl.CallCmd call;
+      var mName = resolvedMethod.Name.Value;
+      var eventName = mName.Substring(mName.IndexOf('_') + 1);
+      var eventDef = TypeHelper.GetEvent(resolvedMethod.ContainingTypeDefinition, this.sink.host.NameTable.GetNameFor(eventName));
+      Contract.Assert(eventDef != Dummy.Event);
+      Bpl.Variable eventVar = this.sink.FindOrCreateEventVariable(eventDef);
+      Bpl.Variable local = this.sink.CreateFreshLocal(eventDef.Type);
+
+      if (methodCall.IsStaticCall) {
+        this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), Bpl.Expr.Ident(eventVar)));
+        inexpr.Insert(0, Bpl.Expr.Ident(local));
+      } else {
+        this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), this.sink.Heap.ReadHeap(thisExpr, Bpl.Expr.Ident(eventVar), resolvedMethod.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, local.TypedIdent.Type)));
+        inexpr[0] = Bpl.Expr.Ident(local);
       }
 
-      Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
-      this.StmtTraverser.RaiseException(expr);
+      System.Diagnostics.Debug.Assert(outvars.Count == 0);
+      outvars.Insert(0, Bpl.Expr.Ident(local));
+      string methodName = isEventAdd ? this.sink.DelegateAddName : this.sink.DelegateRemoveName;
+      call = new Bpl.CallCmd(methodCallToken, methodName, inexpr, outvars);
+      this.StmtTraverser.StmtBuilder.Add(call);
+      if (methodCall.IsStaticCall) {
+        this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local)));
+      } else {
+        this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(methodCallToken, thisExpr, Bpl.Expr.Ident(eventVar), Bpl.Expr.Ident(local), resolvedMethod.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, local.TypedIdent.Type));
+      }
+      return call;
+    }
+
+    private void handleStructConstructorCall(IMethodCall methodCall, Bpl.IToken methodCallToken, List<Bpl.Expr> inexpr, List<Bpl.IdentifierExpr> outvars, Bpl.IdentifierExpr thisExpr, Bpl.DeclWithFormals proc) {
+      // then the method call looks like "&s.S.ctor(...)" for some variable s of struct type S
+      // treat it as if it was "s := new S(...)"
+      // So this code is the same as Visit(ICreateObjectInstance)
+      // TODO: factor the code into a single method?
+
+      // First generate an Alloc() call
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(methodCallToken, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(thisExpr)));
+
+      // Second, generate the call to the appropriate ctor
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(methodCallToken, proc.Name, inexpr, outvars));
+
+      // Generate an assumption about the dynamic type of the just allocated object
+      this.StmtTraverser.StmtBuilder.Add(
+          new Bpl.AssumeCmd(methodCallToken,
+            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
+            this.sink.Heap.DynamicType(thisExpr),
+            this.sink.FindOrCreateType(methodCall.MethodToCall.ResolvedMethod.ContainingTypeDefinition)
+            )
+            )
+          );
     }
 
     // REVIEW: Does "thisExpr" really need to come back as an identifier? Can't it be a general expression?

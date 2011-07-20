@@ -176,16 +176,6 @@ namespace BytecodeTranslator {
 
       var primaryModule = modules[0];
 
-      PhoneControlsPlugin phonePlugin = null;
-      if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
-        phonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
-        PhoneCodeHelper.PhonePlugin = phonePlugin;
-        PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(host);
-        initTr.InjectPhoneCodeAssemblies(modules);
-        PhoneNavigationMetadataTraverser navTr = new PhoneNavigationMetadataTraverser(host);
-        navTr.InjectPhoneCodeAssemblies(modules);
-      }
-
       TraverserFactory traverserFactory;
       if (wholeProgram)
         traverserFactory = new WholeProgram();
@@ -196,6 +186,17 @@ namespace BytecodeTranslator {
       TranslationHelper.tmpVarCounter = 0;
       MetadataTraverser translator;
       translator= traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
+
+      PhoneControlsPlugin phonePlugin = null;
+      if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
+        phonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
+        PhoneCodeHelper.PhonePlugin = phonePlugin;
+        PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(host);
+        initTr.InjectPhoneCodeAssemblies(modules);
+        PhoneNavigationMetadataTraverser navTr = new PhoneNavigationMetadataTraverser(host);
+        navTr.InjectPhoneCodeAssemblies(modules);
+      }
+
       translator.TranslateAssemblies(modules);
 
       foreach (var pair in sink.delegateTypeToDelegates.Values) {

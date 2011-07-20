@@ -7,6 +7,9 @@ import xml.dom
 CONTROL_NAMES= ["Button", "CheckBox", "RadioButton"]
 CONTAINER_CONTROL_NAMES= ["Canvas", "Grid", "StackPanel"]
 
+# TODO externalize strings, share with C# code
+CONTINUEONPAGE_VAR= "__BOOGIE_ContinueOnPage__"
+
 staticControlsMap= {}
 mainPageXAML= None
 originalPageVars= []
@@ -73,9 +76,9 @@ def outputPageControlDriver(file, originalPageName, boogiePageName):
   file.write("\tvar $isEnabled: bool;\n")
   file.write("\tvar $handlerToActivate: int;\n")
 
-  file.write("\tBOOGIE_continueOnPage:=true;\n")
+  file.write("\t" + CONTINUEONPAGE_VAR +":=true;\n")
   file.write("\thavoc $activeControl;\n")
-  file.write("\twhile (BOOGIE_continueOnPage) {\n")
+  file.write("\twhile (" + CONTINUEONPAGE_VAR + ") {\n")
   activeControl=0
   for entry in staticControlsMap[originalPageName]["controls"].keys():
     controlInfo= staticControlsMap[originalPageName]["controls"][entry]
@@ -84,7 +87,6 @@ def outputPageControlDriver(file, originalPageName, boogiePageName):
     else:
       file.write("\t\telse if ($activeControl == " + str(activeControl) + ") {\n")
     
-    file.write("\t\t\t//TODO assuming split fields heap representation\n")
     file.write("\t\t\t$control := " + controlInfo["bplName"] + "[" + boogiePageName + "];\n")
     file.write("\t\t\tcall $isEnabledRef := System.Windows.Controls.Control.get_IsEnabled($control);\n")
     file.write("\t\t\t$isEnabled := Box2Bool(Ref2Box($isEnabledRef));\n")
@@ -92,15 +94,15 @@ def outputPageControlDriver(file, originalPageName, boogiePageName):
     file.write("\t\t\t\thavoc $handlerToActivate;\n")
     if not controlInfo["clickHandler"] == "":
       file.write("\t\t\t\tif ($handlerToActivate == 0) {\n")
-      file.write("\t\t\t\t\t" + staticControlsMap[originalPageName]["class"] + "." + controlInfo["clickHandler"] + "$System.Object$System.Windows.RoutedEventArgs(" + controlInfo["bplName"] + "[" + boogiePageName + "],null,null);\n")
+      file.write("\t\t\t\t\tcall " + staticControlsMap[originalPageName]["class"] + "." + controlInfo["clickHandler"] + "$System.Object$System.Windows.RoutedEventArgs(" + controlInfo["bplName"] + "[" + boogiePageName + "],null,null);\n")
       file.write("\t\t\t\t}\n")
     if not controlInfo["checkedHandler"] == "":
       file.write("\t\t\t\tif ($handlerToActivate == 1) {\n")
-      file.write("\t\t\t\t\t" + staticControlsMap[originalPageName]["class"] + "." + controlInfo["checkedHandler"] + "$System.Object$System.Windows.RoutedEventArgs(" + controlInfo["bplName"] + "[" + boogiePageName + "],null,null);\n")
+      file.write("\t\t\t\t\tcall " + staticControlsMap[originalPageName]["class"] + "." + controlInfo["checkedHandler"] + "$System.Object$System.Windows.RoutedEventArgs(" + controlInfo["bplName"] + "[" + boogiePageName + "],null,null);\n")
       file.write("\t\t\t\t}\n")
     if not controlInfo["uncheckedHandler"] == "":
       file.write("\t\t\t\tif ($handlerToActivate == 2) {\n")
-      file.write("\t\t\t\t\t" + staticControlsMap[originalPageName]["class"] + "." + controlInfo["uncheckedHandler"] + "$System.Object$System.Windows.RoutedEventArgs(" + controlInfo["bplName"] + "[" + boogiePageName + "],null,null);\n")
+      file.write("\t\t\t\t\tcall " + staticControlsMap[originalPageName]["class"] + "." + controlInfo["uncheckedHandler"] + "$System.Object$System.Windows.RoutedEventArgs(" + controlInfo["bplName"] + "[" + boogiePageName + "],null,null);\n")
       file.write("\t\t\t\t}\n")
 
     file.write("\t\t\t}\n")
@@ -136,11 +138,11 @@ def outputControlDrivers(file):
   file.write("}\n")
 
 def outputURIHavocProcedure(file):
-  file.write("procedure __BOOGIE_HavocCall__();\n")
-  file.write("implementation __BOOGIE_HavocCall__() {\n")
-  # TODO change this name to a dynamically inferred one. This is just for testing right now
+  file.write("procedure __BOOGIE_Havoc_CurrentURI__();\n")
+  file.write("implementation __BOOGIE_Havoc_CurrentURI__() {\n")
+  file.write("// TODO change this name to a dynamically inferred one. This is just for testing right now\n")
   file.write("\thavoc SimpleNavigationApp.App.$__BOOGIE_CurrentNavigationURI__;\n")
-  # TODO write assume statement to filter havoc'd variable to either of all pages
+  file.write("// TODO write assume statements to filter havoc'd variable to either of all pages\n")
   # file.write("\tassume )
   file.write("}\n")
 
@@ -181,7 +183,6 @@ def buildControlInfo(controlInfoFileName):
 
     infoLine=file.readline().strip()
   file.close()
-  print staticControlsMap
 
 def main():
   controlFile= ""

@@ -18,6 +18,7 @@ namespace BytecodeTranslator.Phone {
     private const string BOOGIE_VAR_PREFIX= "__BOOGIE_";
     public const string IL_CURRENT_NAVIGATION_URI_VARIABLE = IL_BOOGIE_VAR_PREFIX + "CurrentNavigationURI__";
     public const string BOOGIE_CONTINUE_ON_PAGE_VARIABLE = BOOGIE_VAR_PREFIX + "ContinueOnPage__";
+    public static readonly string[] NAV_CALLS = { /*"GoBack", "GoForward", "Navigate", "StopLoading"*/ "Navigate", "GoBack" };
 
     // awful hack. want to insert a nonexisting method call while traversing CCI AST, deferring it to Boogie translation
     public const string BOOGIE_DO_HAVOC_CURRENTURI = BOOGIE_VAR_PREFIX + "Havoc_CurrentURI__";
@@ -69,12 +70,12 @@ namespace BytecodeTranslator.Phone {
       return false;
     }
 
-    public static bool isStringClass(this ITypeReference typeRef, MetadataReaderHost host) {
+    public static bool isStringClass(this ITypeReference typeRef, IMetadataHost host) {
       ITypeReference targetType = host.PlatformType.SystemString;
       return typeRef.isClass(targetType);
     }
 
-    public static bool isURIClass (this ITypeReference typeRef, MetadataReaderHost host) {
+    public static bool isURIClass (this ITypeReference typeRef, IMetadataHost host) {
       Microsoft.Cci.Immutable.PlatformType platformType = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
       if (platformType == null)
         return false;
@@ -87,8 +88,27 @@ namespace BytecodeTranslator.Phone {
       return typeRef.isClass(uriTypeRef);
     }
 
+    public static bool isNavigationServiceClass(this ITypeReference typeRef, IMetadataHost host) {
+      Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
+      AssemblyIdentity MSPhoneAssemblyId =
+          new AssemblyIdentity(host.NameTable.GetNameFor("Microsoft.Phone"), "", new Version("7.0.0.0"),
+                               new byte[] { 0x24, 0xEE, 0xC0, 0xD8, 0xC8, 0x6C, 0xDA, 0x1E }, "");
 
-    public static bool isPhoneApplicationClass(this ITypeReference typeRef, MetadataReaderHost host) {
+      IAssemblyReference phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
+      ITypeReference phoneApplicationPageTypeRef = platform.CreateReference(phoneAssembly, "System", "Windows", "Navigation", "NavigationService");
+
+      ITypeReference baseClass = typeRef.ResolvedType.BaseClasses.FirstOrDefault();
+      while (baseClass != null) {
+        if (baseClass.ResolvedType.Equals(phoneApplicationPageTypeRef.ResolvedType)) {
+          return true;
+        }
+        baseClass = baseClass.ResolvedType.BaseClasses.FirstOrDefault();
+      }
+
+      return false;
+    }
+
+    public static bool isPhoneApplicationClass(this ITypeReference typeRef, IMetadataHost host) {
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
       IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
       AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
@@ -100,7 +120,7 @@ namespace BytecodeTranslator.Phone {
       return typeRef.isClass(applicationClass);
     }
 
-    public static bool isPhoneApplicationPageClass(ITypeReference typeDefinition, MetadataReaderHost host) {
+    public static bool isPhoneApplicationPageClass(this ITypeReference typeRef, IMetadataHost host) {
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
       AssemblyIdentity MSPhoneAssemblyId =
           new AssemblyIdentity(host.NameTable.GetNameFor("Microsoft.Phone"), "", new Version("7.0.0.0"),
@@ -109,7 +129,7 @@ namespace BytecodeTranslator.Phone {
       IAssemblyReference phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
       ITypeReference phoneApplicationPageTypeRef = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Controls", "PhoneApplicationPage");
 
-      ITypeReference baseClass = typeDefinition.ResolvedType.BaseClasses.FirstOrDefault();
+      ITypeReference baseClass = typeRef.ResolvedType.BaseClasses.FirstOrDefault();
       while (baseClass != null) {
         if (baseClass.ResolvedType.Equals(phoneApplicationPageTypeRef.ResolvedType)) {
           return true;
@@ -157,6 +177,14 @@ namespace BytecodeTranslator.Phone {
       return Uri.IsWellFormedUriString(uri, UriKind.RelativeOrAbsolute);
     }
 
+    public static bool isNavigationCall(IMethodCall call, IMetadataHost host) {
+      ITypeReference callType = call.MethodToCall.ContainingType;
+      if (!callType.isNavigationServiceClass(host))
+        return false;
+
+      return PhoneCodeHelper.NAV_CALLS.Contains(call.MethodToCall.Name.Value);
+    }
+
     /// <summary>
     /// uri is a valid URI but possibly partial (incomplete ?arg= values) and overspecified (complete ?arg=values)
     /// This method returns a base URI
@@ -171,6 +199,15 @@ namespace BytecodeTranslator.Phone {
       string str= realUri.GetComponents(UriComponents.Path|UriComponents.StrongAuthority|UriComponents.Scheme, UriFormat.UriEscaped);
       Uri mockStrippedUri = new Uri(str);
       return mockBaseUri.MakeRelativeUri(mockStrippedUri).ToString();
+    }
+
+    private static ITypeReference mainAppTypeRef;
+    public static void setMainAppTypeReference(ITypeReference appType) {
+      mainAppTypeRef = appType;
+    }
+
+    public static ITypeReference getMainAppTypeReference() {
+      return mainAppTypeRef;
     }
   }
 }
