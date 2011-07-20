@@ -155,7 +155,6 @@ object Chalice {
     // for smoke testing, we want to see all failing assertions, so we use no
     // error limit (or a very high one), and turn the subsumption option off
     if (smoke) {
-      boogieArgs += ("\"-subsumption:0\" ")
       boogieArgs += ("\"-errorLimit:10000\" ")
     }
     

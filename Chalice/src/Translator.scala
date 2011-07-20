@@ -310,7 +310,6 @@ class Translator {
     val methodKStmts = BLocal(methodKV) :: bassume(0 < methodK && 1000*methodK < permissionOnePercent)
     
     // check definedness of the method contract
-    (if (!Chalice.smoke)
     Proc(method.FullName + "$checkDefinedness", 
       NewBVarWhere("this", new Type(currentClass)) :: (method.ins map {i => Variable2BVarWhere(i)}),
       method.outs map {i => Variable2BVarWhere(i)},
@@ -327,8 +326,7 @@ class Translator {
         // check postcondition
         InhaleWithChecking(Postconditions(method.spec), "postcondition", methodK) :::
         // check lockchange
-        (LockChanges(method.spec) flatMap { lc => isDefined(lc)})) :: Nil
-    else Nil) :::
+        (LockChanges(method.spec) flatMap { lc => isDefined(lc)})) ::
     // check that method body satisfies the method contract
     Proc(method.FullName,
       NewBVarWhere("this", new Type(currentClass)) :: (method.ins map {i => Variable2BVarWhere(i)}),
@@ -448,7 +446,7 @@ class Translator {
             BLocal(tmpCredits._1) :: (tmpCredits._2 := etran.Credits) ::
             tmpTranslator.Exhale(List((e, ErrorMessage(s.pos, "Assertion might not hold."))), "assert", true, methodK, true)
           case Some(err) =>
-            bassert(e, a.pos, "SMOKE-TEST-" + err + ".") :: Nil
+            bassert(e, a.pos, "SMOKE-TEST-" + err + ".", 0) :: Nil
         }
       case Assume(e) =>
         Comment("assume") ::
@@ -2350,6 +2348,7 @@ object TranslationHelper {
   def TypeName = NamedType("TypeName");
   def FieldType(tp: BType) = IndexedType("Field", tp);
   def bassert(e: Expr, pos: Position, msg: String) = new Boogie.Assert(e, pos, msg)
+  def bassert(e: Expr, pos: Position, msg: String, subsumption: Int) = new Boogie.Assert(e, pos, msg, subsumption)
   def bassume(e: Expr) = Boogie.Assume(e)
   def BLocal(id: String, tp: BType) = new Boogie.LocalVar(id, tp)
   def BLocal(x: Boogie.BVar) = Boogie.LocalVar(x)
