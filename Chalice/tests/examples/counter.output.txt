@@ -7,4 +7,10 @@ Verification of counter.chalice using parameters=""
   136.7: The mu field of the target of the acquire statement might not be above waitlevel.
   145.5: The target of the release statement might not be locked by the current thread.
 
-Boogie program verifier finished with 24 verified, 6 errors
+  62.3: The end of method main4 is unreachable.
+  116.3: The end of method nestedBad0 is unreachable.
+  124.3: The end of method nestedBad1 is unreachable.
+  132.3: The end of method nestedBad2 is unreachable.
+  141.3: The end of method nestedBad3 is unreachable.
+
+Boogie program verifier finished with 6 errors and 5 smoke test warnings.

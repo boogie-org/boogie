@@ -29,8 +29,10 @@ object Boogie {
  case class Comment(comment: String) extends Stmt
  case class Assert(e: Expr) extends Stmt {
    def this(e: Expr, p: Position, txt: String) = { this(e); this.pos = p; this.message = txt; this } 
+   def this(e: Expr, p: Position, txt: String, subsumption: Int) = { this(e, p, txt); this.subsumption = Some(subsumption); this } 
    var pos = NoPosition : Position
    var message = "" : String
+   var subsumption = None: Option[Int]
  }
  case class Assume(e: Expr) extends Stmt
  case class Assign(lhs: Expr, rhs: Expr) extends Stmt
@@ -214,7 +216,7 @@ object Boogie {
      } else {
        "  " + assert.pos + ": "
      }
-     indent +  "assert " + "{:msg \"" + pos + assert.message + "\"}" + " " + PrintExpr(e) + ";" + nl
+     indent +  "assert " + "{:msg \"" + pos + assert.message + "\"}" + (assert.subsumption match {case Some(n) => "{:subsumption " + n + "}"; case None => ""}) + " " + PrintExpr(e) + ";" + nl
    case Assume(e) => indent + "assume " + PrintExpr(e) +  ";" + nl
    case If(guard, thn, els) =>
      indent + "if (" +

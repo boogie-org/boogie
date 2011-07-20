@@ -3,4 +3,11 @@ Verification of AssociationList.chalice using parameters=""
   19.3: The postcondition at 21.13 might not hold. Insufficient fraction at 21.13 for mu.
   64.9: Method execution before loop might lock/unlock more than allowed by lockchange clause of loop.
 
-Boogie program verifier finished with 10 verified, 2 errors
+  75.11: The end of the if-branch is unreachable.
+  79.13: The end of the if-branch is unreachable.
+  79.13: The end of the else-branch is unreachable.
+  75.11: The end of the else-branch is unreachable.
+  64.9: The end of the while-body is unreachable.
+  60.7: The end of the else-branch is unreachable.
+
+Boogie program verifier finished with 2 errors and 6 smoke test warnings.

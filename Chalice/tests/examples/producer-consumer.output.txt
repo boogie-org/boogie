@@ -1,4 +1,7 @@
 Verification of producer-consumer.chalice using parameters="" 
 
 
-Boogie program verifier finished with 36 verified, 0 errors
+  36.3: The end of method run is unreachable.
+  77.3: The end of method run is unreachable.
+
+Boogie program verifier finished with 0 errors and 2 smoke test warnings.

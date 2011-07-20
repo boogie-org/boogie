@@ -11,4 +11,9 @@ Verification of locks.chalice using parameters=""
   111.5: Monitor invariant might hot hold. Insufficient fraction at 64.13 for Cell2.x.
   136.10: Location might not be readable.
 
-Boogie program verifier finished with 20 verified, 10 errors
+  66.3: The end of method a1 is unreachable.
+  76.3: The end of method a2 is unreachable.
+  86.3: The end of method a3 is unreachable.
+  126.3: The end of method a6 is unreachable.
+
+Boogie program verifier finished with 10 errors and 4 smoke test warnings.

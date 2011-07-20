@@ -26,7 +26,6 @@ namespace BytecodeTranslator.Phone {
   public class PhoneInitializationCodeTraverser : BaseCodeTraverser {
     private readonly IMethodDefinition methodBeingTraversed;
     private static bool initializationFound= false;
-    private PhoneControlsPlugin phonePlugin;
     private MetadataReaderHost host;
 
     private IAssemblyReference coreAssemblyRef;
@@ -69,9 +68,8 @@ namespace BytecodeTranslator.Phone {
       }
     }
 
-    public PhoneInitializationCodeTraverser(MetadataReaderHost host, IMethodDefinition traversedMethod, PhoneControlsPlugin phonePlugin) : base() {
+    public PhoneInitializationCodeTraverser(MetadataReaderHost host, IMethodDefinition traversedMethod) : base() {
       this.methodBeingTraversed = traversedMethod;
-      this.phonePlugin = phonePlugin;
       this.host = host;
       InitializeTraverser();
     }
@@ -142,7 +140,7 @@ namespace BytecodeTranslator.Phone {
 
     private void injectPhoneInitializationCode(BlockStatement block, Statement statementAfter) {
       // TODO check page name against container name
-      IEnumerable<ControlInfoStructure> controls= phonePlugin.getControlsForPage(methodBeingTraversed.Container.ToString());
+      IEnumerable<ControlInfoStructure> controls= PhoneCodeHelper.PhonePlugin.getControlsForPage(methodBeingTraversed.Container.ToString());
       IEnumerable<IStatement> injectedStatements = new List<IStatement>();
       foreach (ControlInfoStructure controlInfo in controls) {
         injectedStatements = injectedStatements.Concat(getCodeForSettingEnabledness(controlInfo));
@@ -275,12 +273,10 @@ namespace BytecodeTranslator.Phone {
   /// Traverse metadata looking only for PhoneApplicationPage's constructors
   /// </summary>
   public class PhoneInitializationMetadataTraverser : BaseMetadataTraverser {
-    private PhoneControlsPlugin phoneControlsInfo;
     private MetadataReaderHost host;
 
-    public PhoneInitializationMetadataTraverser(PhoneControlsPlugin phonePlugin, MetadataReaderHost host)
+    public PhoneInitializationMetadataTraverser(MetadataReaderHost host)
       : base() {
-        this.phoneControlsInfo = phonePlugin;
         this.host = host;
     }
 
@@ -309,7 +305,7 @@ namespace BytecodeTranslator.Phone {
       if (!method.IsConstructor)
         return;
 
-      PhoneInitializationCodeTraverser codeTraverser = new PhoneInitializationCodeTraverser(host, method, phoneControlsInfo);
+      PhoneInitializationCodeTraverser codeTraverser = new PhoneInitializationCodeTraverser(host, method);
       var methodBody = method.Body as SourceMethodBody;
       if (methodBody == null)
         return;

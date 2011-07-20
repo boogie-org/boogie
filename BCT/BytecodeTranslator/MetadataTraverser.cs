@@ -17,6 +17,7 @@ using Microsoft.Cci.ILToCodeModel;
 using Bpl = Microsoft.Boogie;
 using System.Diagnostics.Contracts;
 using TranslationPlugins;
+using BytecodeTranslator.Phone;
 
 
 namespace BytecodeTranslator {
@@ -33,8 +34,6 @@ namespace BytecodeTranslator {
 
     public readonly IDictionary<IUnit, PdbReader> PdbReaders;
     public PdbReader/*?*/ PdbReader;
-
-    public PhoneControlsPlugin PhonePlugin { get; set; }
 
     public MetadataTraverser(Sink sink, IDictionary<IUnit, PdbReader> pdbReaders)
       : base() {
@@ -482,11 +481,11 @@ namespace BytecodeTranslator {
       Bpl.Variable fieldVar= this.sink.FindOrCreateFieldVariable(fieldDefinition);
 
       // if tracked by the phone plugin, we need to find out the bpl assigned name for future use
-      if (PhonePlugin != null) {
+      if (PhoneCodeHelper.PhonePlugin != null) {
         INamespaceTypeReference namedContainerRef= fieldDefinition.ContainingType as INamespaceTypeReference;
         if (namedContainerRef != null) {
           string containerName = namedContainerRef.ContainingUnitNamespace.Unit.Name.Value + "." + namedContainerRef.Name.Value;
-          IEnumerable<ControlInfoStructure> controls= PhonePlugin.getControlsForPage(containerName);
+          IEnumerable<ControlInfoStructure> controls= PhoneCodeHelper.PhonePlugin.getControlsForPage(containerName);
           if (controls != null) {
             ControlInfoStructure ctrlInfo = controls.FirstOrDefault(ctrl => ctrl.Name == fieldDefinition.Name.Value);
             if (ctrlInfo != null)
@@ -495,11 +494,19 @@ namespace BytecodeTranslator {
         }
       }
     }
-
     #endregion
+
+    private void addPhoneTopLevelDeclarations() {
+      // adding global variable for continue on page
+      Bpl.Variable continueOnPageVar = sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool);
+      sink.TranslatedProgram.TopLevelDeclarations.Add(continueOnPageVar);
+    }
 
     #region Public API
     public virtual void TranslateAssemblies(IEnumerable<IUnit> assemblies) {
+      if (PhoneCodeHelper.PhonePlugin != null)
+        addPhoneTopLevelDeclarations();
+
       foreach (var a in assemblies) {
         a.Dispatch(this);
       }

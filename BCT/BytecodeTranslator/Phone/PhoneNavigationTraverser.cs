@@ -11,14 +11,12 @@ namespace BytecodeTranslator.Phone {
     private MetadataReaderHost host;
     private ITypeReference navigationSvcType;
     private ITypeReference typeTraversed;
-    private PhoneControlsPlugin phonePlugin;
 
-    private static readonly string[] NAV_CALLS = { "GoBack", "GoForward", "Navigate", "StopLoading" };
+    private static readonly string[] NAV_CALLS = { /*"GoBack", "GoForward", "Navigate", "StopLoading"*/ "Navigate", "GoBack"};
 
-    public PhoneNavigationCodeTraverser(PhoneControlsPlugin plugin, MetadataReaderHost host, ITypeReference typeTraversed) : base() {
+    public PhoneNavigationCodeTraverser(MetadataReaderHost host, ITypeReference typeTraversed) : base() {
       this.host = host;
       this.typeTraversed = typeTraversed;
-      this.phonePlugin = plugin;
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
 
       // TODO obtain version, culture and signature data dynamically
@@ -36,7 +34,7 @@ namespace BytecodeTranslator.Phone {
       if (method.IsConstructor && PhoneCodeHelper.isPhoneApplicationClass(typeTraversed, host)) {
         // TODO initialize current navigation URI to mainpage, using a placeholder for now.
         // TODO BUG doing this is generating a fresh variable definition somewhere that the BCT then translates into two different (identical) declarations
-        string mainPageUri = phonePlugin.getMainPageXAML();
+        string mainPageUri = PhoneCodeHelper.PhonePlugin.getMainPageXAML();
         SourceMethodBody sourceBody = method.Body as SourceMethodBody;
         if (sourceBody != null) {
           BlockStatement bodyBlock = sourceBody.Block as BlockStatement;
@@ -69,20 +67,25 @@ namespace BytecodeTranslator.Phone {
 
 
     private bool navCallFound=false;
+    private bool navCallIsStatic = false;
     private StaticURIMode currentStaticMode= StaticURIMode.NOT_STATIC;
     private string unpurifiedFoundURI="";
 
     public override void Visit(IBlockStatement block) {
-      IList<Tuple<IStatement,StaticURIMode,string>> navStmts = new List<Tuple<IStatement,StaticURIMode,string>>();
+      IList<Tuple<IStatement,StaticURIMode,string>> staticNavStmts = new List<Tuple<IStatement,StaticURIMode,string>>();
+      IList<IStatement> nonStaticNavStmts = new List<IStatement>();
       foreach (IStatement statement in block.Statements) {
         navCallFound = false;
+        navCallIsStatic = false;
         this.Visit(statement);
-        if (navCallFound) {
-          navStmts.Add(new Tuple<IStatement, StaticURIMode, string>(statement, currentStaticMode, unpurifiedFoundURI));
+        if (navCallFound && navCallIsStatic) {
+          staticNavStmts.Add(new Tuple<IStatement, StaticURIMode, string>(statement, currentStaticMode, unpurifiedFoundURI));
+        } else if (navCallFound) {
+          nonStaticNavStmts.Add(statement);
         }
       }
 
-      injectNavigationUpdateCode(block, navStmts);
+      injectNavigationUpdateCode(block, staticNavStmts, nonStaticNavStmts);
     }
 
     public override void Visit(IMethodCall methodCall) {
@@ -96,6 +99,7 @@ namespace BytecodeTranslator.Phone {
       if (!NAV_CALLS.Contains(methodToCallName))
         return;
 
+      navCallFound = true;
       // TODO check what to do with these
       if (methodToCallName == "GoForward" || methodToCallName == "StopLoading") {
         // TODO forward navigation is not supported by the phone
@@ -103,19 +107,18 @@ namespace BytecodeTranslator.Phone {
         // TODO possibly log
         return;
       } else {
-        bool isStatic=false;
         currentStaticMode = StaticURIMode.NOT_STATIC;
 
-        if (methodToCallName == "GoBack")
-          isStatic= true;
-        else { // Navigate()
+        if (methodToCallName == "GoBack") {
+          navCallIsStatic = false;
+        } else { // Navigate()
           // check for different static patterns that we may be able to verify
-          IExpression uriArg= methodCall.Arguments.First();
+          IExpression uriArg = methodCall.Arguments.First();
           if (isArgumentURILocallyCreatedStatic(uriArg, out unpurifiedFoundURI)) {
-            isStatic = true;
+            navCallIsStatic = true;
             currentStaticMode = StaticURIMode.STATIC_URI_CREATION_ONSITE;
           } else if (isArgumentURILocallyCreatedStaticRoot(uriArg, out unpurifiedFoundURI)) {
-            isStatic = true;
+            navCallIsStatic = true;
             currentStaticMode = StaticURIMode.STATIC_URI_ROOT_CREATION_ONSITE;
           } else {
             // get reason
@@ -126,9 +129,6 @@ namespace BytecodeTranslator.Phone {
             //  notStaticReason = "URI not initialized as a static string";
           }
         }
-
-        if (isStatic)
-          navCallFound = true;
 
         //Console.Write("Page navigation event found. Target is static? " + (isStatic ? "YES" : "NO"));
         //if (!isStatic) {
@@ -192,14 +192,44 @@ namespace BytecodeTranslator.Phone {
       return true;
     }
 
-    private void injectNavigationUpdateCode(IBlockStatement block, IEnumerable<Tuple<IStatement,StaticURIMode, string>> stmts) {
+    private void injectNavigationUpdateCode(IBlockStatement block, IEnumerable<Tuple<IStatement,StaticURIMode, string>> staticStmts, IEnumerable<IStatement> nonStaticStmts) {
       // TODO Here there is the STRONG assumption that a given method will only navigate at most once per method call
       // TODO (or at most will re-navigate to the same page). Quick "page flipping" on the same method
       // TODO would not be captured correctly
       Microsoft.Cci.MutableCodeModel.BlockStatement mutableBlock = block as Microsoft.Cci.MutableCodeModel.BlockStatement;
+      
+      foreach (IStatement stmt in nonStaticStmts) {
+        int ndx = mutableBlock.Statements.ToList().IndexOf(stmt);
+        if (ndx == -1) {
+          // can't be
+          throw new IndexOutOfRangeException("Statement must exist in original block");
+        }
 
-      foreach (Tuple<IStatement, StaticURIMode, string> entry in stmts) {
-        int ndx= mutableBlock.Statements.ToList().IndexOf(entry.Item1, 0);
+        Assignment currentURIAssign = new Assignment() {
+          Source = new CompileTimeConstant() {
+            Type = host.PlatformType.SystemString,
+            Value = PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI,
+          },
+          Type = host.PlatformType.SystemString,
+          Target = new TargetExpression() {
+            Type = host.PlatformType.SystemString,
+            Definition = new FieldReference() {
+              ContainingType=typeTraversed,
+              IsStatic= true,
+              Type = host.PlatformType.SystemString,
+              Name = host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
+            },
+          },
+        };
+        Statement uriInitStmt = new ExpressionStatement() {
+          Expression = currentURIAssign,
+        };
+        mutableBlock.Statements.Insert(ndx + 1, uriInitStmt);
+      }
+
+
+      foreach (Tuple<IStatement, StaticURIMode, string> entry in staticStmts) {
+        int ndx= mutableBlock.Statements.ToList().IndexOf(entry.Item1);
         if (ndx == -1) {
           // can't be
           throw new IndexOutOfRangeException("Statement must exist in original block");
@@ -214,8 +244,8 @@ namespace BytecodeTranslator.Phone {
           Target = new TargetExpression() {
             Type = host.PlatformType.SystemString,
             Definition = new FieldReference() {
-              ContainingType = typeTraversed,
-              IsStatic = true,
+              ContainingType=typeTraversed,
+              IsStatic= true,
               Type = host.PlatformType.SystemString,
               Name = host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
             },
@@ -235,12 +265,10 @@ namespace BytecodeTranslator.Phone {
   public class PhoneNavigationMetadataTraverser : BaseMetadataTraverser {
     private MetadataReaderHost host;
     private ITypeDefinition typeBeingTraversed;
-    private PhoneControlsPlugin phonePlugin;
 
-    public PhoneNavigationMetadataTraverser(PhoneControlsPlugin plugin, MetadataReaderHost host)
+    public PhoneNavigationMetadataTraverser(MetadataReaderHost host)
       : base() {
       this.host = host;
-      this.phonePlugin = plugin;
     }
 
     public override void Visit(IModule module) {
@@ -274,7 +302,7 @@ namespace BytecodeTranslator.Phone {
     // TODO same here. Are there specific methods (and ways to identfy those) that can perform navigation?
     public override void Visit(IMethodDefinition method) {
 
-      PhoneNavigationCodeTraverser codeTraverser = new PhoneNavigationCodeTraverser(phonePlugin, host, typeBeingTraversed);
+      PhoneNavigationCodeTraverser codeTraverser = new PhoneNavigationCodeTraverser(host, typeBeingTraversed);
       codeTraverser.Visit(method);
     }
 

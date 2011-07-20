@@ -41,7 +41,7 @@ def outputPageVariables(file):
     originalPageVars.append(entry)
     boogiePageVars.append(pageVarName)
     boogiePageClasses.append(staticControlsMap[entry]["class"])
-    pageVar= pageVarName + ": Ref;\n"
+    pageVar= "var " + pageVarName + ": Ref;\n"
     file.write(pageVar)
 
 def outputMainProcedure(file):
@@ -135,9 +135,19 @@ def outputControlDrivers(file):
     file.write("\t\t call drive" + boogiePageVars[i] + "Controls();\n\t}\n")
   file.write("}\n")
 
+def outputURIHavocProcedure(file):
+  file.write("procedure __BOOGIE_HavocCall__();\n")
+  file.write("implementation __BOOGIE_HavocCall__() {\n")
+  # TODO change this name to a dynamically inferred one. This is just for testing right now
+  file.write("\thavoc SimpleNavigationApp.App.$__BOOGIE_CurrentNavigationURI__;\n")
+  # TODO write assume statement to filter havoc'd variable to either of all pages
+  # file.write("\tassume )
+  file.write("}\n")
+
 def outputBoilerplate(outputFile):
   file= open(outputFile,"w")
   outputPageVariables(file)
+  outputURIHavocProcedure(file)
   outputControlDrivers(file)
   outputMainProcedure(file)
   file.close()

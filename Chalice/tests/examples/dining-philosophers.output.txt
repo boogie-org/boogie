@@ -1,4 +1,6 @@
 Verification of dining-philosophers.chalice using parameters="" 
 
 
-Boogie program verifier finished with 12 verified, 0 errors
+  16.3: The end of method run is unreachable.
+
+Boogie program verifier finished with 0 errors and 1 smoke test warnings.

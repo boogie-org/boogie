@@ -4,11 +4,11 @@ class Cell {
   var f: int;
   
   method a1()
-    requires false
+    requires false // SMOKE: precondition is false
   {}
   
   method a2()
-    requires acc(this.f,-2)
+    requires acc(this.f,-2) // SMOKE: precondition is equivalent to false
   {}
   
   method a3()
@@ -23,7 +23,7 @@ class Cell {
     requires acc(this.f)
   {
     if (false) {
-      this.f := 0;
+      this.f := 0; // SMOKE: unreachable
     }
   }
   
@@ -39,7 +39,7 @@ class Cell {
     requires acc(this.f)
   {
     if (false) {
-      this.f := 0;
+      this.f := 0; // SMOKE: unreachable
     } else {
       this.f := 1;
     }
@@ -48,18 +48,22 @@ class Cell {
   method a7(i: int, j: int)
     requires i != j;
   {
-    assume i == j;
+    assume i == j; // SMOKE: introduces contradiction
   }
   
   method a8()
     requires acc(this.f)
   {
-    while (true) {
+    while (true)
+      invariant acc(this.f)
+    {
       this.f := this.f + 1
     }
+    // SMOKE: unreachable, loop does not terminate
   }
   
   method a9()
+    requires acc(this.f)
   {
     call a8()
   }
@@ -70,7 +74,7 @@ class Cell {
     if (true) {
       this.f := 0;
     } else {
-      this.f := 1;
+      this.f := 1; // SMOKE: unreachable
     }
   }
 }

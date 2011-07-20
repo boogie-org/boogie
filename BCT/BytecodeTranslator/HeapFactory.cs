@@ -284,6 +284,15 @@ namespace BytecodeTranslator {
     [RepresentationFor("$As", "function $As(Ref, Type): Ref;")]
     public Bpl.Function AsFunction = null;
 
+    [RepresentationFor("$Subtype", "function $Subtype(Type, Type): bool;")]
+    public Bpl.Function Subtype = null;
+
+    [RepresentationFor("$DirectSubtype", "function $DirectSubtype(Type, Type): bool;")]
+    public Bpl.Function DirectSubtype = null;
+
+    [RepresentationFor("$DisjointSubtree", "function $DisjointSubtree(Type, Type): bool;")]
+    public Bpl.Function DisjointSubtree = null;
+
     protected readonly string CommonText =
       @"var $Alloc: [Ref] bool;
 
@@ -293,6 +302,27 @@ procedure {:inline 1} Alloc() returns (x: Ref)
   assume $Alloc[x] == false && x != null;
   $Alloc[x] := true;
 }
+
+// Subtype is reflexive
+axiom (forall t: Type :: $Subtype(t, t) );
+
+// Subtype is anti-symmetric
+axiom (forall t0 : Type, t1 : Type :: { $Subtype(t0, t1), $Subtype(t1, t0) }
+        $Subtype(t0, t1) && $Subtype(t1, t0) ==> (t0 == t1) );
+
+// Subtype is transitive
+axiom (forall t0 : Type, t1 : Type, t2 : Type :: { $Subtype(t0, t1), $Subtype(t1, t2) }
+        $Subtype(t0, t1) && $Subtype(t1, t2) ==> $Subtype(t0, t2) );
+
+// Direct subtype definition
+axiom (forall C : Type, D : Type :: { $DirectSubtype(D, C) }
+        $DirectSubtype(D, C) <==> $Subtype(D, C) && (forall z : Type :: $Subtype(D, z) && $Subtype(z, C) ==> z == C || z == D )
+      );
+
+// Incomparable subtypes: the subtrees are disjoint for (some) subtypes (those that imply single inheritance)
+function oneDown(t0 : Type, t1 : Type) : Type; // uninterpreted function with no axioms
+axiom (forall C : Type, D : Type :: { $DisjointSubtree(D, C) }
+        $DisjointSubtree(D, C) <==> (forall z : Type :: $Subtype(z, D) ==> oneDown(C,z) == D) );
 
 function $TypeOfInv(Ref): Type;
 axiom (forall t: Type :: {$TypeOf(t)} $TypeOfInv($TypeOf(t)) == t);
@@ -451,47 +481,47 @@ procedure DelegateRemoveHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
   }
 }
 
-//procedure System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
-//procedure System.String.op_Inequality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
-//
-//implementation System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool) {
-//  $result := (a$in == b$in);
-//}
-//
-//implementation System.String.op_Inequality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool) {
-//  $result := (a$in != b$in);
-//}
-//
-//// SILVERLIGHT CONTROL SPECIFIC CODE
-//function isControlEnabled(Ref) : bool;
-//function isControlChecked(Ref) : bool;
-//
-//procedure System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool);
-//implementation System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool) {
-//  assume isControlEnabled($this) == value$in;
-//}
-//
-//procedure System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref);
-//implementation System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref) {
-//  var enabledness: bool;
-//  enabledness := isControlEnabled($this);
-//  $result := Box2Ref(Bool2Box(enabledness));
-//}
-//
-//procedure System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref);
-//implementation System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref) {
-//  var check: bool;
-//
-//  check := Box2Bool(Ref2Box(value$in));
-//  assume isControlChecked($this) == check;
-//}
-//
-//procedure System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref);
-//implementation System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref) {
-//  var isChecked: bool;
-//  isChecked := isControlChecked($this);
-//  $result := Box2Ref(Bool2Box(isChecked));
-//}
+procedure System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
+procedure System.String.op_Inequality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
+
+implementation System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool) {
+  $result := (a$in == b$in);
+}
+
+implementation System.String.op_Inequality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool) {
+  $result := (a$in != b$in);
+}
+
+// SILVERLIGHT CONTROL SPECIFIC CODE
+function isControlEnabled(Ref) : bool;
+function isControlChecked(Ref) : bool;
+
+procedure System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool);
+implementation System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool) {
+  assume isControlEnabled($this) == value$in;
+}
+
+procedure System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref);
+implementation System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref) {
+  var enabledness: bool;
+  enabledness := isControlEnabled($this);
+  $result := Box2Ref(Bool2Box(enabledness));
+}
+
+procedure System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref);
+implementation System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref) {
+  var check: bool;
+
+  check := Box2Bool(Ref2Box(value$in));
+  assume isControlChecked($this) == check;
+}
+
+procedure System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref);
+implementation System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref) {
+  var isChecked: bool;
+  isChecked := isControlChecked($this);
+  $result := Box2Ref(Bool2Box(isChecked));
+}
 
 ";
 

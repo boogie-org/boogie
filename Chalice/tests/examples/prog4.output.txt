@@ -8,4 +8,6 @@ Verification of prog4.chalice using parameters=""
   34.5: The target of the release statement might not be locked by the current thread.
   34.5: Release might fail because the current thread might hold the read lock.
 
-Boogie program verifier finished with 6 verified, 7 errors
+  2.3: The end of method M is unreachable.
+
+Boogie program verifier finished with 7 errors and 1 smoke test warnings.
