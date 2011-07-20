@@ -1,4 +1,8 @@
 Verification of PetersonsAlgorithm.chalice using parameters="" 
 
 
-Boogie program verifier finished with 7 verified, 0 errors
+  15.3: The end of method Main is unreachable.
+  30.3: The end of method Process0 is unreachable.
+  55.3: The end of method Process1 is unreachable.
+
+Boogie program verifier finished with 0 errors and 3 smoke test warnings.
