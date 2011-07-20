@@ -106,7 +106,7 @@ axiom Permission$denominator == 100000000000;"""
 }
 object PercentageFunctionPL extends PreludeComponent {
   val text = """
-function Fractions(n: int): int
+function Fractions(n: int) returns (int)
 {
   n * Permission$denominator
 }
@@ -120,8 +120,8 @@ axiom predicateK == channelK && channelK == monitorK;"""
 }
 object PercentageUninterpretedFunctionPL extends PreludeComponent {
   val text = """
-function Fractions(n: int): int;
-function Fractions'(n: int): int;
+function Fractions(n: int) returns (int);
+function Fractions'(n: int) returns (int);
 axiom (forall x: int :: { Fractions(x) } Fractions(x) == Fractions'(x));
 axiom (forall x,y: int :: 0 <= x && x <= y ==> Fractions'(x) <= Fractions'(y));
 axiom (forall x,y: int :: { Fractions(x), Fractions(y) } Fractions(x) + Fractions(y) == Fractions'(x+y));
