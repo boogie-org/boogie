@@ -284,6 +284,15 @@ namespace BytecodeTranslator {
     [RepresentationFor("$As", "function $As(Ref, Type): Ref;")]
     public Bpl.Function AsFunction = null;
 
+    [RepresentationFor("$Subtype", "function $Subtype(Type, Type): bool;")]
+    public Bpl.Function Subtype = null;
+
+    [RepresentationFor("$DirectSubtype", "function $DirectSubtype(Type, Type): bool;")]
+    public Bpl.Function DirectSubtype = null;
+
+    [RepresentationFor("$DisjointSubtree", "function $DisjointSubtree(Type, Type): bool;")]
+    public Bpl.Function DisjointSubtree = null;
+
     protected readonly string CommonText =
       @"var $Alloc: [Ref] bool;
 
@@ -293,6 +302,27 @@ procedure {:inline 1} Alloc() returns (x: Ref)
   assume $Alloc[x] == false && x != null;
   $Alloc[x] := true;
 }
+
+// Subtype is reflexive
+axiom (forall t: Type :: $Subtype(t, t) );
+
+// Subtype is anti-symmetric
+axiom (forall t0 : Type, t1 : Type :: { $Subtype(t0, t1), $Subtype(t1, t0) }
+        $Subtype(t0, t1) && $Subtype(t1, t0) ==> (t0 == t1) );
+
+// Subtype is transitive
+axiom (forall t0 : Type, t1 : Type, t2 : Type :: { $Subtype(t0, t1), $Subtype(t1, t2) }
+        $Subtype(t0, t1) && $Subtype(t1, t2) ==> $Subtype(t0, t2) );
+
+// Direct subtype definition
+axiom (forall C : Type, D : Type :: { $DirectSubtype(D, C) }
+        $DirectSubtype(D, C) <==> $Subtype(D, C) && (forall z : Type :: $Subtype(D, z) && $Subtype(z, C) ==> z == C || z == D )
+      );
+
+// Incomparable subtypes: the subtrees are disjoint for (some) subtypes (those that imply single inheritance)
+function oneDown(t0 : Type, t1 : Type) : Type; // uninterpreted function with no axioms
+axiom (forall C : Type, D : Type :: { $DisjointSubtree(D, C) }
+        $DisjointSubtree(D, C) <==> (forall z : Type :: $Subtype(z, D) ==> oneDown(C,z) == D) );
 
 function $TypeOfInv(Ref): Type;
 axiom (forall t: Type :: {$TypeOf(t)} $TypeOfInv($TypeOf(t)) == t);

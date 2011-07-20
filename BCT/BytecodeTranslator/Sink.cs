@@ -887,16 +887,23 @@ namespace BytecodeTranslator {
         var key = type.InternedKey;
         if (!this.declaredTypeConstants.TryGetValue(key, out t)) {
           List<ITypeReference> structuralParents;
-          var parents = GetParents(type.ResolvedType, out structuralParents);
-          t = this.Heap.CreateTypeVariable(type, parents);
+          //var parents = GetParents(type.ResolvedType, out structuralParents);
+          //t = this.Heap.CreateTypeVariable(type, parents);
+          t = this.Heap.CreateTypeVariable(type, null);
           this.declaredTypeConstants.Add(key, t);
-          foreach (var p in structuralParents) {
-            var p_prime = FindOrCreateType(p);
-            var e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Subtype, Bpl.Expr.Ident(t), p_prime);
-            var a = new Bpl.Axiom(Bpl.Token.NoToken, e);
-            //this.TranslatedProgram.TopLevelDeclarations.Add(a);
-          }
+          //foreach (var p in structuralParents) {
+          //  var p_prime = FindOrCreateType(p);
+          //  //var e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Subtype, Bpl.Expr.Ident(t), p_prime);
+          //  var e = new Bpl.NAryExpr(
+          //    Bpl.Token.NoToken,
+          //    new Bpl.FunctionCall(this.Heap.Subtype),
+          //    new Bpl.ExprSeq(Bpl.Expr.Ident(t), p_prime)
+          //    );
+          //  var a = new Bpl.Axiom(Bpl.Token.NoToken, e);
+          //  this.TranslatedProgram.TopLevelDeclarations.Add(a);
+          //}
           this.TranslatedProgram.TopLevelDeclarations.Add(t);
+          DeclareParents(type.ResolvedType, t);
           if (isExtern) {
             var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "extern", new List<object>(1), null);
             t.Attributes = attrib;
@@ -904,6 +911,35 @@ namespace BytecodeTranslator {
         }
         return Bpl.Expr.Ident(t);
       }
+    }
+
+    private void DeclareSuperType(Bpl.Variable typeDefinitionAsBplConstant, ITypeReference superType) {
+      var superType_prime = FindOrCreateType(superType);
+      var e = new Bpl.NAryExpr(
+        Bpl.Token.NoToken,
+        new Bpl.FunctionCall(this.Heap.Subtype),
+        new Bpl.ExprSeq(Bpl.Expr.Ident(typeDefinitionAsBplConstant), superType_prime)
+        );
+      var a = new Bpl.Axiom(Bpl.Token.NoToken, e);
+      this.TranslatedProgram.TopLevelDeclarations.Add(a);
+      if (!superType.ResolvedType.IsInterface) {
+        var e2 = new Bpl.NAryExpr(
+          Bpl.Token.NoToken,
+          new Bpl.FunctionCall(this.Heap.DisjointSubtree),
+          new Bpl.ExprSeq(Bpl.Expr.Ident(typeDefinitionAsBplConstant), superType_prime)
+          );
+        var a2 = new Bpl.Axiom(Bpl.Token.NoToken, e2);
+        this.TranslatedProgram.TopLevelDeclarations.Add(a2);
+      }
+    }
+    private void DeclareParents(ITypeDefinition typeDefinition, Bpl.Variable typeDefinitionAsBplConstant) {
+      foreach (var p in typeDefinition.BaseClasses) {
+        DeclareSuperType(typeDefinitionAsBplConstant, p);
+      }
+      foreach (var j in typeDefinition.Interfaces) {
+        DeclareSuperType(typeDefinitionAsBplConstant, j);
+      }
+      return;
     }
 
     private List<Bpl.ConstantParent> GetParents(ITypeDefinition typeDefinition, out List<ITypeReference> structuralParents) {
