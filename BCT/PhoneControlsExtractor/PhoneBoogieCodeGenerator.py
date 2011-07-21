@@ -12,6 +12,7 @@ CONTINUEONPAGE_VAR= "__BOOGIE_ContinueOnPage__"
 
 staticControlsMap= {}
 mainPageXAML= None
+currentNavigationVariable= None
 originalPageVars= []
 boogiePageVars= []
 boogiePageClasses= []
@@ -42,7 +43,10 @@ def outputPageVariables(file):
   for entry in staticControlsMap.keys():
     pageVarName= "__BOOGIE_PAGE_VAR_" + entry
     originalPageVars.append(entry)
-    boogiePageVars.append(pageVarName)
+    pageInfo={}
+    pageInfo["name"]=pageVarName
+    pageInfo["boogieStringName"]= staticControlsMap[entry]["boogieStringName"]
+    boogiePageVars.append(pageInfo)
     boogiePageClasses.append(staticControlsMap[entry]["class"])
     pageVar= "var " + pageVarName + ": Ref;\n"
     file.write(pageVar)
@@ -57,7 +61,7 @@ def outputMainProcedure(file):
   file.write("\tvar $control: Ref;\n\n")
 
   for i in range(0,len(boogiePageVars)):
-    file.write("\tcall " + boogiePageClasses[i] + ".#ctor(" + boogiePageVars[i] + ");\n")
+    file.write("\tcall " + boogiePageClasses[i] + ".#ctor(" + boogiePageVars[i]["name"] + ");\n")
 
   file.write("\t//TODO still need to call Loaded handler on main page and the App ctor.\n")
   file.write("\thavoc $doWork;\n")
@@ -114,16 +118,16 @@ def outputPageControlDriver(file, originalPageName, boogiePageName):
 
 def outputControlDrivers(file):
   for i in range(0,len(boogiePageVars)):
-    outputPageControlDriver(file, originalPageVars[i],boogiePageVars[i])
+    outputPageControlDriver(file, originalPageVars[i],boogiePageVars[i]["name"])
 
   file.write("procedure DriveControls();\n")
   file.write("implementation DriveControls() {\n")
   for i in range(0,len(boogiePageVars)):
-    file.write("\tvar isCurrent" + boogiePageVars[i] + ": bool;\n")
+    file.write("\tvar isCurrent" + boogiePageVars[i]["name"] + ": bool;\n")
   file.write("\n")
 
   for i in range(0,len(boogiePageVars)):
-    file.write("\t//TODO call isCurrent" + boogiePageVars[i] + " := System.String.op_Equality$System.String$System.String(" + "BOOGIE_CURRENT_VAR" + "," + "BOOGIE_PAGE_APPROPRIATE_CONSTANT_STRING" + ");\n")
+    file.write("\tcall isCurrent" + boogiePageVars[i]["name"] + " := System.String.op_Equality$System.String$System.String(" + currentNavigationVariable + "," + boogiePageVars[i]["boogieStringName"] + ");\n")
 
   firstTime= True
   for i in range(0,len(boogiePageVars)):
@@ -133,15 +137,14 @@ def outputControlDrivers(file):
     else:
       file.write("\telse if")
 
-    file.write(" (isCurrent" + boogiePageVars[i] +  ") {\n")
-    file.write("\t\t call drive" + boogiePageVars[i] + "Controls();\n\t}\n")
+    file.write(" (isCurrent" + boogiePageVars[i]["name"] +  ") {\n")
+    file.write("\t\t call drive" + boogiePageVars[i]["name"] + "Controls();\n\t}\n")
   file.write("}\n")
 
 def outputURIHavocProcedure(file):
   file.write("procedure __BOOGIE_Havoc_CurrentURI__();\n")
   file.write("implementation __BOOGIE_Havoc_CurrentURI__() {\n")
-  file.write("// TODO change this name to a dynamically inferred one. This is just for testing right now\n")
-  file.write("\thavoc SimpleNavigationApp.App.$__BOOGIE_CurrentNavigationURI__;\n")
+  file.write("\thavoc " + currentNavigationVariable + ";\n")
   file.write("// TODO write assume statements to filter havoc'd variable to either of all pages\n")
   # file.write("\tassume )
   file.write("}\n")
@@ -156,15 +159,17 @@ def outputBoilerplate(outputFile):
 
 def buildControlInfo(controlInfoFileName):
   global mainPageXAML
+  global currentNavigationVariable
   global staticControlsMap
 
   file = open(controlInfoFileName, "r")
-  # Info file format is first line containing only the main page, and then one line per
-  # <pageClassName>,<page.xaml file>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<BoogieName>
+  # Info file format is first line containing only the main page, another line with boogie's current navigation variable and then one line per
+  # <pageClassName>,<page.xaml file>,<xaml boogie string representation>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<BoogieName>
   mainPageXAML= file.readline().strip()
+  currentNavigationVariable= file.readline().strip()
   infoLine= file.readline().strip()
   while not infoLine == "":
-    pageClass, pageName, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, bplName= infoLine.split(",")
+    pageClass, pageName, pageBoogieStringName, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, bplName= infoLine.split(",")
     pageInfo={}
     pageInfo["class"]=pageClass
     try:
@@ -172,6 +177,7 @@ def buildControlInfo(controlInfoFileName):
     except KeyError:
       staticControlsMap[pageName]=pageInfo
 
+    pageInfo["boogieStringName"]= pageBoogieStringName
     pageControlInfo={}
     try:
       pageControlInfo= pageInfo["controls"]

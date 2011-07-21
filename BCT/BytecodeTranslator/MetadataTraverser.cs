@@ -67,6 +67,8 @@ namespace BytecodeTranslator {
       var savedPrivateTypes = this.privateTypes;
       this.privateTypes = new List<ITypeDefinition>();
 
+      trackPageNameVariableName(typeDefinition);
+
       if (typeDefinition.IsClass) {
         bool savedSawCctor = this.sawCctor;
         this.sawCctor = false;
@@ -99,6 +101,16 @@ namespace BytecodeTranslator {
       }
     }
     List<ITypeDefinition> privateTypes = new List<ITypeDefinition>();
+
+    private void trackPageNameVariableName(ITypeDefinition typeDef) {
+      if (typeDef.isPhoneApplicationPageClass(sink.host)) {
+        INamespaceTypeDefinition namedTypeDef = typeDef as INamespaceTypeDefinition;
+        string fullyQualifiedName = namedTypeDef.ContainingNamespace.Name.Value + "." + namedTypeDef.Name.Value;
+        string uriName = PhoneCodeHelper.getURIBase(PhoneCodeHelper.getXAMLForPage(fullyQualifiedName));
+        Bpl.Constant uriConstant= sink.FindOrCreateConstant(uriName);
+        PhoneCodeHelper.setBoogieStringPageNameForPageClass(fullyQualifiedName, uriConstant.Name);
+      }
+    }
 
     private void CreateDefaultStructConstructor(ITypeDefinition typeDefinition) {
       Contract.Requires(typeDefinition.IsStruct);
@@ -482,15 +494,26 @@ namespace BytecodeTranslator {
 
       // if tracked by the phone plugin, we need to find out the bpl assigned name for future use
       if (PhoneCodeHelper.PhonePlugin != null) {
-        INamespaceTypeReference namedContainerRef= fieldDefinition.ContainingType as INamespaceTypeReference;
-        if (namedContainerRef != null) {
-          string containerName = namedContainerRef.ContainingUnitNamespace.Unit.Name.Value + "." + namedContainerRef.Name.Value;
-          IEnumerable<ControlInfoStructure> controls= PhoneCodeHelper.PhonePlugin.getControlsForPage(containerName);
-          if (controls != null) {
-            ControlInfoStructure ctrlInfo = controls.FirstOrDefault(ctrl => ctrl.Name == fieldDefinition.Name.Value);
-            if (ctrlInfo != null)
-              ctrlInfo.BplName = fieldVar.Name;
-          }
+        trackControlVariableName(fieldDefinition, fieldVar);
+        trackNavigationVariableName(fieldDefinition, fieldVar);
+      }
+    }
+
+    private static void trackNavigationVariableName(IFieldDefinition fieldDefinition, Bpl.Variable fieldVar) {
+      if (fieldDefinition.Name.Value.Equals(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE)) {
+        PhoneCodeHelper.setBoogieNavigationVariable(fieldVar.Name);
+      }
+    }
+
+    private static void trackControlVariableName(IFieldDefinition fieldDefinition, Bpl.Variable fieldVar) {
+      INamespaceTypeReference namedContainerRef = fieldDefinition.ContainingType as INamespaceTypeReference;
+      if (namedContainerRef != null) {
+        string containerName = namedContainerRef.ContainingUnitNamespace.Unit.Name.Value + "." + namedContainerRef.Name.Value;
+        IEnumerable<ControlInfoStructure> controls = PhoneCodeHelper.PhonePlugin.getControlsForPage(containerName);
+        if (controls != null) {
+          ControlInfoStructure ctrlInfo = controls.FirstOrDefault(ctrl => ctrl.Name == fieldDefinition.Name.Value);
+          if (ctrlInfo != null)
+            ctrlInfo.BplName = fieldVar.Name;
         }
       }
     }

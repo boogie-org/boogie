@@ -68,6 +68,7 @@ namespace TranslationPlugins {
       controlsInfo = new Dictionary<string, ControlInfoStructure>();
     }
 
+    public string PageBoogieName { get; set; }
     public string PageClassName { get; set; }
     public string PageXAML { get; set; }
     public bool IsMainPage { get; set; }
@@ -93,17 +94,18 @@ namespace TranslationPlugins {
   public class PhoneControlsPlugin : TranslationPlugin {
     // TODO this will probably need a complete rewrite once it is event based, and make it more push than pull
     // TODO but it doesn't make sense right now to make it BCT or CCI aware
-    private static int CONFIG_LINE_FIELDS= 10;
+    private static int CONFIG_LINE_FIELDS= 11;
     private static int PAGE_CLASS_FIELD= 0;
     private static int PAGE_XAML_FIELD= 1;
-    private static int CONTROL_CLASS_FIELD= 2;
-    private static int CONTROL_NAME_FIELD= 3;
-    private static int ENABLED_FIELD= 4;
-    private static int VISIBILITY_FIELD= 5;
-    private static int CLICK_HANDLER_FIELD= 6;
-    private static int CHECKED_HANDLER_FIELD= 7;
-    private static int UNCHECKED_HANDLER_FIELD = 8;
-    private static int BPL_NAME_FIELD = 9;
+    private static int PAGE_BOOGIE_STRING_FIELD = 2;
+    private static int CONTROL_CLASS_FIELD= 3;
+    private static int CONTROL_NAME_FIELD= 4;
+    private static int ENABLED_FIELD= 5;
+    private static int VISIBILITY_FIELD= 6;
+    private static int CLICK_HANDLER_FIELD= 7;
+    private static int CHECKED_HANDLER_FIELD= 8;
+    private static int UNCHECKED_HANDLER_FIELD = 9;
+    private static int BPL_NAME_FIELD = 10;
 
     private IDictionary<string, PageStructure> pageStructureInfo;
 
@@ -138,6 +140,15 @@ namespace TranslationPlugins {
       return entry.Value.PageXAML;
     }
 
+    private string boogieCurrentNavigationVariable;
+    public string getBoogieNavigationVariable() {
+      return boogieCurrentNavigationVariable;
+    }
+
+    public void setBoogieNavigationVariable(string var) {
+      boogieCurrentNavigationVariable = var;
+    }
+
     private void setPageAsMainPage(string pageXAML) {
       KeyValuePair<string,PageStructure> mainPageClass= pageStructureInfo.FirstOrDefault(keyValue => keyValue.Value.PageXAML == pageXAML);
       if (mainPageClass.Equals(default(KeyValuePair<string, PageStructure>))) {
@@ -149,11 +160,13 @@ namespace TranslationPlugins {
 
     public void DumpControlStructure(StreamWriter outputStream) {
       // maintain same format as input format
-      string pageClass, pageXAML, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
+      string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
       outputStream.WriteLine(getMainPageXAML());
+      outputStream.WriteLine(getBoogieNavigationVariable());
       foreach (KeyValuePair<string, PageStructure> entry in this.pageStructureInfo) {
         pageClass = entry.Key;
         pageXAML = entry.Value.PageXAML;
+        pageBoogieStringName = entry.Value.PageBoogieName;
         foreach (ControlInfoStructure controlInfo in entry.Value.getAllControlsInfo()) {
           controlClass= controlInfo.ClassName;
           controlName = controlInfo.Name;
@@ -187,15 +200,19 @@ namespace TranslationPlugins {
             uncheckedHandler = "";
           }
           bplName = controlInfo.BplName;
-          outputStream.WriteLine(pageClass + "," + pageXAML + "," + controlClass + "," + controlName + "," + enabled + "," + visibility + "," + clickHandler + "," + checkedHandler + "," + uncheckedHandler + "," + bplName);
+          outputStream.WriteLine(pageClass + "," + pageXAML + "," + pageBoogieStringName + "," + controlClass + "," + controlName + "," + enabled + "," + visibility + "," + clickHandler + "," + checkedHandler + "," + uncheckedHandler + "," + bplName);
         }
       }
+    }
+
+    public void setBoogieStringPageNameForPageClass(string pageClass, string boogieStringPageName) {
+      pageStructureInfo[pageClass].PageBoogieName = boogieStringPageName;
     }
 
     private void LoadControlStructure(StreamReader configStream) {
       // TODO it would be nice to have some kind of dynamic definition of config format
       // TODO for now remember that config format is CSV
-      // TODO each line is <pageClassName>,<pageXAMLPath>,<controlClassName>,<controlName>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<BPL control name>
+      // TODO each line is <pageClassName>,<pageXAMLPath>,<pageBoogieStringName>,<controlClassName>,<controlName>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<BPL control name>
       // TODO BPL control name will most probably be empty, but it is useful to be able to dump it
       // TODO check PhoneControlsExtractor.py
 
@@ -203,17 +220,25 @@ namespace TranslationPlugins {
       // TODO I'm not handling this for now, and I won't be handling relative/absolute URI either for now
 
       try {
-        string pageClass, pageXAML, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
+        string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
         string configLine = configStream.ReadLine();
         string[] inputLine;
         PageStructure pageStr;
         ControlInfoStructure controlInfoStr;
 
         // first line just states the main page xaml
-        string mainPage = configLine.Trim();
+        string mainPageXAML= configLine.Trim();
         configLine = configStream.ReadLine();
 
+        // second line states boogie current nav variable, possibly dummy value
+        setBoogieNavigationVariable(configLine.Trim());
+        configLine= configStream.ReadLine();
+
         while (configLine != null) {
+          if (configLine.Trim().Equals(string.Empty)) {
+            configLine = configStream.ReadLine();
+            continue;
+          }
           inputLine = configLine.Split(',');
 
           if (inputLine.Length != CONFIG_LINE_FIELDS)
@@ -221,6 +246,7 @@ namespace TranslationPlugins {
 
           pageClass = inputLine[PAGE_CLASS_FIELD];
           pageXAML = inputLine[PAGE_XAML_FIELD];
+          pageBoogieStringName = inputLine[PAGE_BOOGIE_STRING_FIELD];
           controlClass = inputLine[CONTROL_CLASS_FIELD];
           controlName = inputLine[CONTROL_NAME_FIELD];
           enabled = inputLine[ENABLED_FIELD];
@@ -236,6 +262,7 @@ namespace TranslationPlugins {
             pageStr = new PageStructure();
             pageStr.PageClassName = pageClass;
             pageStr.PageXAML = pageXAML;
+            pageStr.PageBoogieName = pageBoogieStringName;
             pageStr.IsMainPage = false;
           }
 
@@ -255,9 +282,9 @@ namespace TranslationPlugins {
           pageStr.setControlInfo(controlName, controlInfoStr);
           pageStructureInfo[pageClass] = pageStr;
           configLine = configStream.ReadLine();
-
-          setPageAsMainPage(mainPage);
         }
+
+        setPageAsMainPage(mainPageXAML);
       } catch (Exception) {
         // TODO log, I don't want to terminate BCT because of this
       }

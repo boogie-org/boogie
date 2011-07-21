@@ -15,7 +15,7 @@ namespace BytecodeTranslator.Phone {
     // TODO ensure this name is unique in the program code, although it is esoteric enough
     // TODO externalize strings
     private const string IL_BOOGIE_VAR_PREFIX = "@__BOOGIE_";
-    private const string BOOGIE_VAR_PREFIX= "__BOOGIE_";
+    private const string BOOGIE_VAR_PREFIX = "__BOOGIE_";
     public const string IL_CURRENT_NAVIGATION_URI_VARIABLE = IL_BOOGIE_VAR_PREFIX + "CurrentNavigationURI__";
     public const string BOOGIE_CONTINUE_ON_PAGE_VARIABLE = BOOGIE_VAR_PREFIX + "ContinueOnPage__";
     public static readonly string[] NAV_CALLS = { /*"GoBack", "GoForward", "Navigate", "StopLoading"*/ "Navigate", "GoBack" };
@@ -46,7 +46,7 @@ namespace BytecodeTranslator.Phone {
     /// <param name="bplObject"></param>
     /// <returns>true if defining a new name, false if replacing</returns>
     public static bool setBoogieObjectForName(string name, Bpl.NamedDeclaration bplObject) {
-      bool ret= true;
+      bool ret = true;
       if (boogieObjects.ContainsKey(name))
         ret = false;
 
@@ -75,7 +75,7 @@ namespace BytecodeTranslator.Phone {
       return typeRef.isClass(targetType);
     }
 
-    public static bool isURIClass (this ITypeReference typeRef, IMetadataHost host) {
+    public static bool isURIClass(this ITypeReference typeRef, IMetadataHost host) {
       Microsoft.Cci.Immutable.PlatformType platformType = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
       if (platformType == null)
         return false;
@@ -84,7 +84,7 @@ namespace BytecodeTranslator.Phone {
       AssemblyIdentity systemAssemblyId = new AssemblyIdentity(host.NameTable.GetNameFor("System"), "", coreRef.Version, coreRef.PublicKeyToken, "");
       IAssemblyReference systemAssembly = host.FindAssembly(systemAssemblyId);
 
-      ITypeReference uriTypeRef= platformType.CreateReference(systemAssembly, "System", "Uri");
+      ITypeReference uriTypeRef = platformType.CreateReference(systemAssembly, "System", "Uri");
       return typeRef.isClass(uriTypeRef);
     }
 
@@ -158,9 +158,9 @@ namespace BytecodeTranslator.Phone {
       IList<string> constantStrings = new List<string>();
 
       // TODO this misses so many static strings, but let's start with this for now
-      IExpression leftOp= stringConcatExpr.Arguments.FirstOrDefault();
+      IExpression leftOp = stringConcatExpr.Arguments.FirstOrDefault();
       while (leftOp != null && leftOp is ICompileTimeConstant) {
-        ICompileTimeConstant strConst= leftOp as ICompileTimeConstant;
+        ICompileTimeConstant strConst = leftOp as ICompileTimeConstant;
         constantStrings.Add(strConst.Value as string);
         if (stringConcatExpr.Arguments.ToList()[1] is IMethodCall) {
           stringConcatExpr = stringConcatExpr.Arguments.ToList()[1] as IMethodCall;
@@ -173,7 +173,7 @@ namespace BytecodeTranslator.Phone {
         }
       }
 
-      uri= constantStrings.Aggregate((aggr, elem) => aggr + elem);
+      uri = constantStrings.Aggregate((aggr, elem) => aggr + elem);
       return Uri.IsWellFormedUriString(uri, UriKind.RelativeOrAbsolute);
     }
 
@@ -202,7 +202,7 @@ namespace BytecodeTranslator.Phone {
         realUri = new Uri(mockBaseUri, uri);
       }
 
-      string str= realUri.GetComponents(UriComponents.Path|UriComponents.StrongAuthority|UriComponents.Scheme, UriFormat.UriEscaped);
+      string str = realUri.GetComponents(UriComponents.Path | UriComponents.StrongAuthority | UriComponents.Scheme, UriFormat.UriEscaped);
       Uri mockStrippedUri = new Uri(str);
       return mockBaseUri.MakeRelativeUri(mockStrippedUri).ToString();
     }
@@ -214,6 +214,22 @@ namespace BytecodeTranslator.Phone {
 
     public static ITypeReference getMainAppTypeReference() {
       return mainAppTypeRef;
+    }
+
+    public static void setBoogieNavigationVariable(string var) {
+      PhonePlugin.setBoogieNavigationVariable(var);
+    }
+
+    public static string getBoogieNavigationVariable() {
+      return PhonePlugin.getBoogieNavigationVariable();
+    }
+
+    public static string getXAMLForPage(string pageClass) {
+      return PhonePlugin.getXAMLForPage(pageClass);
+    }
+
+    public static void setBoogieStringPageNameForPageClass(string pageClass, string boogieStringName) {
+      PhonePlugin.setBoogieStringPageNameForPageClass(pageClass, boogieStringName);
     }
   }
 }
