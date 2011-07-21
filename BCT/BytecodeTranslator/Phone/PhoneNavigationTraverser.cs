@@ -40,7 +40,7 @@ namespace BytecodeTranslator.Phone {
             Assignment uriInitAssign = new Assignment() {
               Source = new CompileTimeConstant() {
                 Type = host.PlatformType.SystemString,
-                Value = mainPageUri,
+                Value = PhoneCodeHelper.getURIBase(mainPageUri),
               },
               Type = host.PlatformType.SystemString,
               Target = new TargetExpression() {

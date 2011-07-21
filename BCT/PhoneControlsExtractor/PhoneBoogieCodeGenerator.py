@@ -56,7 +56,6 @@ def outputMainProcedure(file):
   file.write("\tvar $isEnabled: bool;\n")
   file.write("\tvar $control: Ref;\n\n")
 
-  file.write("\t$Exception := null;\n")
   for i in range(0,len(boogiePageVars)):
     file.write("\tcall " + boogiePageClasses[i] + ".#ctor(" + boogiePageVars[i] + ");\n")
 
