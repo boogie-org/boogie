@@ -166,7 +166,7 @@ namespace BytecodeTranslator.Phone {
     }
 
     private IEnumerable<IStatement> getCodeForSettingVisibility(ControlInfoStructure controlInfo) {
-      // TODO I do not want to import System.Windows into this project...and using the underlying uint won't work
+      // TODO I do not want to import System.Windows into this project...and using the underlying uint won't work for dependency properties
       /*
       IList<IStatement> code = new List<IStatement>();
       BoundExpression boundControl = makeBoundControlFromControlInfo(controlInfo);

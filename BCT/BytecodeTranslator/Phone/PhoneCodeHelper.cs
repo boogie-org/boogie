@@ -12,7 +12,6 @@ namespace BytecodeTranslator.Phone {
   }
 
   public static class PhoneCodeHelper {
-    // TODO ensure this name is unique in the program code, although it is esoteric enough
     // TODO externalize strings
     private const string IL_BOOGIE_VAR_PREFIX = "@__BOOGIE_";
     private const string BOOGIE_VAR_PREFIX = "__BOOGIE_";
@@ -157,7 +156,7 @@ namespace BytecodeTranslator.Phone {
 
       IList<string> constantStrings = new List<string>();
 
-      // TODO this misses so many static strings, but let's start with this for now
+      // TODO this misses so many "static" strings, but let's start with this for now
       IExpression leftOp = stringConcatExpr.Arguments.FirstOrDefault();
       while (leftOp != null && leftOp is ICompileTimeConstant) {
         ICompileTimeConstant strConst = leftOp as ICompileTimeConstant;

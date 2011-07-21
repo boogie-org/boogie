@@ -203,7 +203,6 @@ namespace BytecodeTranslator {
         CreateDispatchMethod(sink, pair.Item1, pair.Item2);
       }
 
-      // TODO based on phone plugin information, create the main Boogie program, control drivers and assume/assert scheme
       if (phonePlugin != null) {
         string outputConfigFile = Path.ChangeExtension(phoneControlsConfigFile, "bplout");
         StreamWriter outputStream = new StreamWriter(outputConfigFile);

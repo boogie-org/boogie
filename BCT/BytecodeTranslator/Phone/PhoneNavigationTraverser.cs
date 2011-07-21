@@ -30,8 +30,8 @@ namespace BytecodeTranslator.Phone {
 
     public override void Visit(IMethodDefinition method) {
       if (method.IsConstructor && PhoneCodeHelper.isPhoneApplicationClass(typeTraversed, host)) {
-        // TODO initialize current navigation URI to mainpage, using a placeholder for now.
         // TODO BUG doing this is generating a fresh variable definition somewhere that the BCT then translates into two different (identical) declarations
+        // TODO maybe a bug introduced here or a BCT bug
         string mainPageUri = PhoneCodeHelper.PhonePlugin.getMainPageXAML();
         SourceMethodBody sourceBody = method.Body as SourceMethodBody;
         if (sourceBody != null) {
@@ -46,7 +46,6 @@ namespace BytecodeTranslator.Phone {
               Target = new TargetExpression() {
                 Type = host.PlatformType.SystemString,
                 Definition = new FieldReference() {
-                  // ContainingType= typeTraversed,
                   ContainingType= PhoneCodeHelper.getMainAppTypeReference(),
                   IsStatic=true,
                   Type=host.PlatformType.SystemString,
@@ -300,7 +299,6 @@ namespace BytecodeTranslator.Phone {
 
     // TODO same here. Are there specific methods (and ways to identfy those) that can perform navigation?
     public override void Visit(IMethodDefinition method) {
-
       PhoneNavigationCodeTraverser codeTraverser = new PhoneNavigationCodeTraverser(host, typeBeingTraversed);
       codeTraverser.Visit(method);
     }

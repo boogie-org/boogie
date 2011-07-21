@@ -465,7 +465,7 @@ namespace BytecodeTranslator
       var translateAsFunctionCall = proc is Bpl.Function;
       Bpl.QKeyValue attrib = null;
 
-      // TODO this code structure is quite chaotic, and some code needs to be evaluated regardless, hence the try-finally
+      // this code structure is quite chaotic, and some code needs to be evaluated regardless, hence the try-finally
       try {
         if (!translateAsFunctionCall) {
           foreach (var a in resolvedMethod.Attributes) {

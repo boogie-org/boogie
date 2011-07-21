@@ -122,8 +122,10 @@ namespace TranslationPlugins {
       } catch (Exception e) {
         if (e is DirectoryNotFoundException || e is FileNotFoundException || e is IOException) {
           // TODO log, I don't want to terminate BCT because of this
+          throw;
         } else if (e is ArgumentException || e is ArgumentNullException) {
           // TODO log, I don't want to terminate BCT because of this
+          throw;
         } else {
           throw;
         }
@@ -214,80 +216,76 @@ namespace TranslationPlugins {
       // TODO for now remember that config format is CSV
       // TODO each line is <pageClassName>,<pageXAMLPath>,<pageBoogieStringName>,<controlClassName>,<controlName>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<BPL control name>
       // TODO BPL control name will most probably be empty, but it is useful to be able to dump it
-      // TODO check PhoneControlsExtractor.py
+      // TODO check PhoneControlsExtractor.py and PhoneBoogieCodeCreator.py
 
       // TODO the page.xaml value is saved with no directory information: if two pages exist with same name but different directories it will treat them as the same
       // TODO I'm not handling this for now, and I won't be handling relative/absolute URI either for now
 
-      try {
-        string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
-        string configLine = configStream.ReadLine();
-        string[] inputLine;
-        PageStructure pageStr;
-        ControlInfoStructure controlInfoStr;
+      string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
+      string configLine = configStream.ReadLine();
+      string[] inputLine;
+      PageStructure pageStr;
+      ControlInfoStructure controlInfoStr;
 
-        // first line just states the main page xaml
-        string mainPageXAML= configLine.Trim();
-        configLine = configStream.ReadLine();
+      // first line just states the main page xaml
+      string mainPageXAML= configLine.Trim();
+      configLine = configStream.ReadLine();
 
-        // second line states boogie current nav variable, possibly dummy value
-        setBoogieNavigationVariable(configLine.Trim());
-        configLine= configStream.ReadLine();
+      // second line states boogie current nav variable, possibly dummy value
+      setBoogieNavigationVariable(configLine.Trim());
+      configLine= configStream.ReadLine();
 
-        while (configLine != null) {
-          if (configLine.Trim().Equals(string.Empty)) {
-            configLine = configStream.ReadLine();
-            continue;
-          }
-          inputLine = configLine.Split(',');
-
-          if (inputLine.Length != CONFIG_LINE_FIELDS)
-            throw new ArgumentException("Config input line contains wrong number of fields: " + inputLine.Length + ", expected " + CONFIG_LINE_FIELDS);
-
-          pageClass = inputLine[PAGE_CLASS_FIELD];
-          pageXAML = inputLine[PAGE_XAML_FIELD];
-          pageBoogieStringName = inputLine[PAGE_BOOGIE_STRING_FIELD];
-          controlClass = inputLine[CONTROL_CLASS_FIELD];
-          controlName = inputLine[CONTROL_NAME_FIELD];
-          enabled = inputLine[ENABLED_FIELD];
-          visibility = inputLine[VISIBILITY_FIELD];
-          clickHandler = inputLine[CLICK_HANDLER_FIELD];
-          checkedHandler = inputLine[CHECKED_HANDLER_FIELD];
-          uncheckedHandler = inputLine[UNCHECKED_HANDLER_FIELD];
-          bplName = inputLine[BPL_NAME_FIELD];
-
-          try {
-            pageStr = pageStructureInfo[pageClass];
-          } catch (KeyNotFoundException) {
-            pageStr = new PageStructure();
-            pageStr.PageClassName = pageClass;
-            pageStr.PageXAML = pageXAML;
-            pageStr.PageBoogieName = pageBoogieStringName;
-            pageStr.IsMainPage = false;
-          }
-
-          controlInfoStr= pageStr.getControlInfo(controlName);
-          if (controlInfoStr == null) {
-            controlInfoStr = new ControlInfoStructure();
-            controlInfoStr.Name = controlName;
-            controlInfoStr.ClassName = controlClass;
-            controlInfoStr.BplName = bplName;
-          }
-          controlInfoStr.IsEnabled = Boolean.Parse(enabled);
-          controlInfoStr.Visible = visibility == "Collapsed" ? Visibility.Collapsed : Visibility.Visible;
-          controlInfoStr.setHandler(Event.Click, clickHandler);
-          controlInfoStr.setHandler(Event.Checked, checkedHandler);
-          controlInfoStr.setHandler(Event.Unchecked, uncheckedHandler);
-
-          pageStr.setControlInfo(controlName, controlInfoStr);
-          pageStructureInfo[pageClass] = pageStr;
+      while (configLine != null) {
+        if (configLine.Trim().Equals(string.Empty)) {
           configLine = configStream.ReadLine();
+          continue;
+        }
+        inputLine = configLine.Split(',');
+
+        if (inputLine.Length != CONFIG_LINE_FIELDS)
+          throw new ArgumentException("Config input line contains wrong number of fields: " + inputLine.Length + ", expected " + CONFIG_LINE_FIELDS);
+
+        pageClass = inputLine[PAGE_CLASS_FIELD];
+        pageXAML = inputLine[PAGE_XAML_FIELD];
+        pageBoogieStringName = inputLine[PAGE_BOOGIE_STRING_FIELD];
+        controlClass = inputLine[CONTROL_CLASS_FIELD];
+        controlName = inputLine[CONTROL_NAME_FIELD];
+        enabled = inputLine[ENABLED_FIELD];
+        visibility = inputLine[VISIBILITY_FIELD];
+        clickHandler = inputLine[CLICK_HANDLER_FIELD];
+        checkedHandler = inputLine[CHECKED_HANDLER_FIELD];
+        uncheckedHandler = inputLine[UNCHECKED_HANDLER_FIELD];
+        bplName = inputLine[BPL_NAME_FIELD];
+
+        try {
+          pageStr = pageStructureInfo[pageClass];
+        } catch (KeyNotFoundException) {
+          pageStr = new PageStructure();
+          pageStr.PageClassName = pageClass;
+          pageStr.PageXAML = pageXAML;
+          pageStr.PageBoogieName = pageBoogieStringName;
+          pageStr.IsMainPage = false;
         }
 
-        setPageAsMainPage(mainPageXAML);
-      } catch (Exception) {
-        // TODO log, I don't want to terminate BCT because of this
+        controlInfoStr= pageStr.getControlInfo(controlName);
+        if (controlInfoStr == null) {
+          controlInfoStr = new ControlInfoStructure();
+          controlInfoStr.Name = controlName;
+          controlInfoStr.ClassName = controlClass;
+          controlInfoStr.BplName = bplName;
+        }
+        controlInfoStr.IsEnabled = Boolean.Parse(enabled);
+        controlInfoStr.Visible = visibility == "Collapsed" ? Visibility.Collapsed : Visibility.Visible;
+        controlInfoStr.setHandler(Event.Click, clickHandler);
+        controlInfoStr.setHandler(Event.Checked, checkedHandler);
+        controlInfoStr.setHandler(Event.Unchecked, uncheckedHandler);
+
+        pageStr.setControlInfo(controlName, controlInfoStr);
+        pageStructureInfo[pageClass] = pageStr;
+        configLine = configStream.ReadLine();
       }
+
+      setPageAsMainPage(mainPageXAML);
     }
 
     public IEnumerable<ControlInfoStructure> getControlsForPage(string pageClass) {

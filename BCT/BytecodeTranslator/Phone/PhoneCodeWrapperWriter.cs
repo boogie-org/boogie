@@ -29,10 +29,5 @@ namespace BytecodeTranslator.Phone {
        */
       createMainProcedure();
     }
-
-    private static void createMainProcedure() {
-      // TODO
-      // for now I'm trying to create this code as an outside step of the flow
-    }
   }
 }
