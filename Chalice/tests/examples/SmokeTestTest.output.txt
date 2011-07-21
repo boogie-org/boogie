@@ -1,15 +1,19 @@
-Verification of SmokeTestTest.chalice using parameters="-smoke" 
+Verification of SmokeTestTest.chalice using parameters="" 
 
+  103.3: The postcondition at 104.13 might not hold. The expression at 104.13 might not evaluate to true.
 
-  6.3: Precondition of method a1 is equivalent to false.
-  6.3: The end of method a1 is unreachable.
-  10.3: Precondition of method a2 is equivalent to false.
-  10.3: The end of method a2 is unreachable.
-  25.5: The end of the if-branch is unreachable.
-  41.5: The end of the if-branch is unreachable.
-  51.5: Assumption might introduce a contradiction.
-  48.3: The end of method a7 is unreachable.
-  54.3: The end of method a8 is unreachable.
-  74.5: The end of the else-branch is unreachable.
+The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
+  5.3: Precondition of method a1 is equivalent to false.
+  9.3: Precondition of method a2 is equivalent to false.
+  24.5: The begging of the if-branch is unreachable.
+  40.5: The begging of the if-branch is unreachable.
+  50.5: Assumption introduces a contradiction.
+  56.5: The statements after the while-loop are unreachable.
+  73.5: The begging of the else-branch is unreachable.
+  87.5: The begging of the if-branch is unreachable.
+  90.7: The begging of the else-branch is unreachable.
+  90.19: Assumption introduces a contradiction.
+  97.5: Assumption introduces a contradiction.
+  110.5: The statements after the method call statement are unreachable.
 
-Boogie program verifier finished with 0 errors and 10 smoke test warnings.
+Boogie program verifier finished with 1 errors and 12 smoke test warnings.

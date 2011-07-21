@@ -5,6 +5,7 @@ Verification of prog3.chalice using parameters=""
   191.5: The precondition at 182.14 might not hold. Insufficient epsilons at 182.14  for ReadSharing.x.
   202.3: The postcondition at 204.13 might not hold. Insufficient epsilons at 204.13  for ReadSharing.x.
 
-  187.3: The end of method Divulge is unreachable.
+The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
+  191.5: The statements after the method call statement are unreachable.
 
 Boogie program verifier finished with 4 errors and 1 smoke test warnings.
