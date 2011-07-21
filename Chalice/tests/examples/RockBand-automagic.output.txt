@@ -1,8 +1,4 @@
 Verification of RockBand-automagic.chalice using parameters="-checkLeaks -defaults -autoFold -autoMagic" 
 
-  20.27: Location might not be readable.
-  28.3: Method RockBand.Init might leak references.
-  42.10: Location might not be readable.
-  51.5: Location might not be writable
 
-Boogie program verifier finished with 31 verified, 4 errors
+Boogie program verifier finished with 0 errors and 0 smoke test warnings.

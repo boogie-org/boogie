@@ -4,4 +4,9 @@ Verification of LoopLockChange.chalice using parameters=""
   35.5: The loop might lock/unlock more than the lockchange clause allows.
   65.5: The loop might lock/unlock more than the lockchange clause allows.
 
-Boogie program verifier finished with 14 verified, 3 errors
+The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
+  10.5: The begging of the while-body is unreachable.
+  10.5: The statements after the while-loop are unreachable.
+  75.5: Assumption introduces a contradiction.
+
+Boogie program verifier finished with 3 errors and 3 smoke test warnings.

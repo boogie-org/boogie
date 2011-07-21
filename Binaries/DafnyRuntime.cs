@@ -132,11 +132,154 @@ namespace Dafny
       return default(T);
     }
   }
+  public class MultiSet<T>
+  {
+    Dictionary<T, int> dict;
+    public MultiSet() { }
+    MultiSet(Dictionary<T, int> d) {
+      dict = d;
+    }
+    public static MultiSet<T> Empty {
+      get {
+        return new MultiSet<T>(new Dictionary<T, int>(0));
+      }
+    }
+    public static MultiSet<T> FromElements(params T[] values) {
+      Dictionary<T, int> d = new Dictionary<T, int>(values.Length);
+      foreach (T t in values) {
+        var i = 0;
+        if (!d.TryGetValue(t, out i)) {
+          i = 0;
+        }
+        d[t] = i + 1;
+      }
+      return new MultiSet<T>(d);
+    }
+    public static MultiSet<T> FromCollection(ICollection<T> values) {
+      Dictionary<T, int> d = new Dictionary<T, int>();
+      foreach (T t in values) {
+        var i = 0;
+        if (!d.TryGetValue(t, out i)) {
+          i = 0;
+        }
+        d[t] = i + 1;
+      }
+      return new MultiSet<T>(d);
+    }
+    public static MultiSet<T> FromSeq(Sequence<T> values) {
+      Dictionary<T, int> d = new Dictionary<T, int>();
+      foreach (T t in values.Elements) {
+        var i = 0;
+        if (!d.TryGetValue(t, out i)) {
+          i = 0;
+        }
+        d[t] = i + 1;
+      }
+      return new MultiSet<T>(d);
+    }
+    public static MultiSet<T> FromSet(Set<T> values) {
+      Dictionary<T, int> d = new Dictionary<T, int>();
+      foreach (T t in values.Elements) {
+        d[t] = 1;
+      }
+      return new MultiSet<T>(d);
+    }
+
+    public bool Equals(MultiSet<T> other) {
+      return other.IsSubsetOf(this) && this.IsSubsetOf(other);
+    }
+    public override bool Equals(object other) {
+      return other is MultiSet<T> && Equals((MultiSet<T>)other);
+    }
+    public override int GetHashCode() {
+      return dict.GetHashCode();
+    }
+    public bool IsProperSubsetOf(MultiSet<T> other) {
+      return !Equals(other) && IsSubsetOf(other);
+    }
+    public bool IsSubsetOf(MultiSet<T> other) {
+      foreach (T t in dict.Keys) {
+        if (!other.dict.ContainsKey(t) || other.dict[t] < dict[t])
+          return false;
+      }
+      return true;
+    }
+    public bool IsSupersetOf(MultiSet<T> other) {
+      return other.IsSubsetOf(this);
+    }
+    public bool IsProperSupersetOf(MultiSet<T> other) {
+      return other.IsProperSubsetOf(this);
+    }
+    public bool IsDisjointFrom(MultiSet<T> other) {
+      foreach (T t in dict.Keys) {
+        if (other.dict.ContainsKey(t))
+          return false;
+      }
+      foreach (T t in other.dict.Keys) {
+        if (dict.ContainsKey(t))
+          return false;
+      }
+      return true;
+    }
+    public bool Contains(T t) {
+      return dict.ContainsKey(t);
+    }
+    public MultiSet<T> Union(MultiSet<T> other) {
+      if (dict.Count == 0)
+        return other;
+      else if (other.dict.Count == 0)
+        return this;
+      var r = new Dictionary<T, int>();
+      foreach (T t in dict.Keys) {
+        var i = 0;
+        if (!r.TryGetValue(t, out i)) {
+          i = 0;
+        }
+        r[t] = i + dict[t];
+      }
+      foreach (T t in other.dict.Keys) {
+        var i = 0;
+        if (!r.TryGetValue(t, out i)) {
+          i = 0;
+        }
+        r[t] = i + other.dict[t];
+      }
+      return new MultiSet<T>(r);
+    }
+    public MultiSet<T> Intersect(MultiSet<T> other) {
+      if (dict.Count == 0)
+        return this;
+      else if (other.dict.Count == 0)
+        return other;
+      var r = new Dictionary<T, int>();
+      foreach (T t in dict.Keys) {
+        if (other.dict.ContainsKey(t)) {
+          r.Add(t, other.dict[t] < dict[t] ? other.dict[t] : dict[t]);
+        }
+      }
+      return new MultiSet<T>(r);
+    }
+    public MultiSet<T> Difference(MultiSet<T> other) { // \result == this - other
+      if (dict.Count == 0)
+        return this;
+      else if (other.dict.Count == 0)
+        return this;
+      var r = new Dictionary<T, int>();
+      foreach (T t in dict.Keys) {
+        if (!other.dict.ContainsKey(t)) {
+          r.Add(t, dict[t]);
+        } else if (other.dict[t] < dict[t]) {
+          r.Add(t, dict[t] - other.dict[t]);
+        }
+      }
+      return new MultiSet<T>(r);
+    }
+  }
   public class Sequence<T>
   {
     T[] elmts;
     public Sequence() { }
-    Sequence(T[] ee) {
+    public Sequence(T[] ee) {
       elmts = ee;
     }
     public static Sequence<T> Empty {
@@ -302,6 +445,9 @@ namespace Dafny
         var c = BigInteger.Remainder(BigInteger.Negate(a), bp);
         return c.IsZero ? c : BigInteger.Subtract(bp, c);
       }
+    }
+    public static Sequence<T> SeqFromArray<T>(T[] array) {
+      return new Sequence<T>(array);
     }
   }
 }

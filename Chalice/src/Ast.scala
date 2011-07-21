@@ -303,7 +303,9 @@ sealed abstract class Statement extends ASTNode {
   def Declares: List[Variable] = Nil // call after resolution
   def Targets: Set[Variable] = Set() // assigned local variables
 }
-case class Assert(e: Expression) extends Statement
+case class Assert(e: Expression) extends Statement {
+  var smokeErrorNr: Option[Int] = None
+}
 case class Assume(e: Expression) extends Statement
 case class BlockStmt(ss: List[Statement]) extends Statement {
   override def Targets = (ss :\ Set[Variable]()) { (s, vars) => vars ++ s.Targets}
@@ -344,7 +346,9 @@ case class Release(obj: Expression) extends Statement
 case class RdAcquire(obj: Expression) extends Statement
 case class RdRelease(obj: Expression) extends Statement
 case class Downgrade(obj: Expression) extends Statement
-case class Lock(obj: Expression, b: BlockStmt, rdLock: Boolean) extends Statement
+case class Lock(obj: Expression, b: BlockStmt, rdLock: Boolean) extends Statement {
+  override def Targets = b.Targets
+}
 case class Free(obj: Expression) extends Statement
 case class CallAsync(declaresLocal: Boolean, lhs: VariableExpr, obj: Expression, id: String, args: List[Expression]) extends Statement {
   var local: Variable = null
@@ -366,6 +370,7 @@ case class Send(ch: Expression, args: List[Expression]) extends Statement {
 case class Receive(declaresLocal: List[Boolean], ch: Expression, outs: List[VariableExpr]) extends Statement {
   var locals = List[Variable]()
   override def Declares = locals
+  override def Targets = (outs :\ Set[Variable]()) { (ve, vars) => if (ve.v != null) vars + ve.v else vars }
 }
 case class Fold(pred: Access) extends Statement
 case class Unfold(pred: Access) extends Statement

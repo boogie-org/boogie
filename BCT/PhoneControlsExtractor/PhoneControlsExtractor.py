@@ -103,9 +103,10 @@ def extractPhoneControlsFromPage(pageXAML):
 def outputPhoneControls(outputFileName):
   outputFile= open(outputFileName, "w")
 
-  # Output format is first line containing only the main page, and then one line per
-  # <pageClassName>,<page.xaml file>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>
+  # Output format is first line containing only the main page, then line containing boogie navigation variable, and then one line per
+  # <pageClassName>,<page.xaml file>,<boogie string page name>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>
   outputFile.write(mainPageXAML + "\n")
+  outputFile.write("dummyNavigationVariable_unknown\n")
   for page in staticControlsMap.keys():
     for control in staticControlsMap[page]:
       isEnabled= control["IsEnabled"]
@@ -114,7 +115,9 @@ def outputPhoneControls(outputFileName):
       checked= control["Checked"]
       unchecked= control["Unchecked"]
       pageXAML= control["XAML"]
-      outputFile.write(page + "," + os.path.basename(pageXAML) + "," + control["Type"] + "," + control["Name"] + "," + isEnabled + "," + visibility + "," + click + "," + checked + "," + unchecked + "\n")
+      # last comma is to account for bpl translation name, that is unknown for now
+      # boogie string page name is unknown for now
+      outputFile.write(page + "," + os.path.basename(pageXAML) + ",dummyBoogieStringPageName," + control["Type"] + "," + control["Name"] + "," + isEnabled + "," + visibility + "," + click + "," + checked + "," + unchecked + ",\n")
 
   outputFile.close()
 

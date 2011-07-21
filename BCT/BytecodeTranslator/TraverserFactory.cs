@@ -14,10 +14,14 @@ using Microsoft.Cci.MutableCodeModel;
 using Microsoft.Cci.Contracts;
 using Microsoft.Cci.ILToCodeModel;
 
+using TranslationPlugins;
+
 using Bpl = Microsoft.Boogie;
 
 namespace BytecodeTranslator {
   public abstract class TraverserFactory {
+    // TODO this one factory method will have to go away and find the way to get the phone info into the traverser
+    // TODO in some other (better) way
     public virtual MetadataTraverser MakeMetadataTraverser(Sink sink,
       IDictionary<IUnit, IContractProvider> contractProviders, // TODO: remove this parameter?
       IDictionary<IUnit, PdbReader> sourceLocationProviders)
@@ -27,6 +31,7 @@ namespace BytecodeTranslator {
     public virtual StatementTraverser MakeStatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
       return new StatementTraverser(sink, pdbReader, contractContext);
     }
+
     public virtual ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext) {
       return new ExpressionTraverser(sink, statementTraverser, contractContext);
     }

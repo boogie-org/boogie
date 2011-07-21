@@ -2,4 +2,5 @@ Verification of quantifiers.chalice using parameters=""
 
   57.29: The heap of the callee might not be strictly smaller than the heap of the caller.
 
-Boogie program verifier finished with 11 verified, 1 error
+The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
+Boogie program verifier finished with 1 errors and 0 smoke test warnings.

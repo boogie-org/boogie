@@ -16,6 +16,18 @@ implementation Alloc() returns (x: Ref)
 
 
 
+axiom (forall t: Type :: $Subtype(t, t));
+
+axiom (forall t0: Type, t1: Type :: { $Subtype(t0, t1), $Subtype(t1, t0) } $Subtype(t0, t1) && $Subtype(t1, t0) ==> t0 == t1);
+
+axiom (forall t0: Type, t1: Type, t2: Type :: { $Subtype(t0, t1), $Subtype(t1, t2) } $Subtype(t0, t1) && $Subtype(t1, t2) ==> $Subtype(t0, t2));
+
+axiom (forall C: Type, D: Type :: { $DirectSubtype(D, C) } $DirectSubtype(D, C) <==> $Subtype(D, C) && (forall z: Type :: $Subtype(D, z) && $Subtype(z, C) ==> z == C || z == D));
+
+function oneDown(t0: Type, t1: Type) : Type;
+
+axiom (forall C: Type, D: Type :: { $DisjointSubtree(D, C) } $DisjointSubtree(D, C) <==> (forall z: Type :: $Subtype(z, D) ==> oneDown(C, z) == D));
+
 function $TypeOfInv(Ref) : Type;
 
 axiom (forall t: Type :: { $TypeOf(t) } $TypeOfInv($TypeOf(t)) == t);
@@ -278,6 +290,85 @@ implementation DelegateRemoveHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
 
 
 
+procedure System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
+
+
+
+procedure System.String.op_Inequality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
+
+
+
+implementation System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool)
+{
+    $result := a$in == b$in;
+}
+
+
+
+implementation System.String.op_Inequality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool)
+{
+    $result := a$in != b$in;
+}
+
+
+
+function isControlEnabled(Ref) : bool;
+
+function isControlChecked(Ref) : bool;
+
+procedure System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool);
+
+
+
+implementation System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool)
+{
+    assume isControlEnabled($this) == value$in;
+}
+
+
+
+procedure System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref);
+
+
+
+implementation System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref)
+{
+  var enabledness: bool;
+
+    enabledness := isControlEnabled($this);
+    $result := Box2Ref(Bool2Box(enabledness));
+}
+
+
+
+procedure System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref);
+
+
+
+implementation System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref)
+{
+  var check: bool;
+
+    check := Box2Bool(Ref2Box(value$in));
+    assume isControlChecked($this) == check;
+}
+
+
+
+procedure System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref);
+
+
+
+implementation System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref)
+{
+  var isChecked: bool;
+
+    isChecked := isControlChecked($this);
+    $result := Box2Ref(Bool2Box(isChecked));
+}
+
+
+
 var $BoxField: [Ref]Box;
 
 var $ArrayContents: [Ref][int]Box;
@@ -355,6 +446,12 @@ function $TypeOf(Type) : Ref;
 
 function $As(Ref, Type) : Ref;
 
+function $Subtype(Type, Type) : bool;
+
+function $DirectSubtype(Type, Type) : bool;
+
+function $DisjointSubtree(Type, Type) : bool;
+
 var $Head: [Ref]Ref;
 
 var $Next: [Ref][Ref]Ref;
@@ -365,9 +462,13 @@ var $Receiver: [Ref][Ref]Ref;
 
 var {:thread_local} $Exception: Ref;
 
-const {:extern} unique System.Object: Type extends;
+const unique RegressionTestInput.RealNumbers: Type;
 
-const unique RegressionTestInput.RealNumbers: Type extends unique System.Object;
+const {:extern} unique System.Object: Type;
+
+axiom $Subtype(RegressionTestInput.RealNumbers, System.Object);
+
+axiom $DisjointSubtree(RegressionTestInput.RealNumbers, System.Object);
 
 procedure RegressionTestInput.RealNumbers.WriteDouble$System.Double($this: Ref, d$in: Real);
 
@@ -508,7 +609,11 @@ implementation RegressionTestInput.RealNumbers.#cctor()
 
 
 
-const unique RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap: Type extends unique System.Object;
+const unique RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap: Type;
+
+axiom $Subtype(RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap, System.Object);
+
+axiom $DisjointSubtree(RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap, System.Object);
 
 var RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.x: [Ref]int;
 
@@ -563,7 +668,11 @@ implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#cctor()
 
 
 
-const unique RegressionTestInput.CreateStruct: Type extends unique System.Object;
+const unique RegressionTestInput.CreateStruct: Type;
+
+axiom $Subtype(RegressionTestInput.CreateStruct, System.Object);
+
+axiom $DisjointSubtree(RegressionTestInput.CreateStruct, System.Object);
 
 procedure RegressionTestInput.CreateStruct.Create($this: Ref) returns ($result: Ref);
 
@@ -573,9 +682,17 @@ procedure RegressionTestInput.S.#default_ctor(this: Ref);
 
 
 
-const {:extern} unique System.ValueType: Type extends unique System.Object;
+const unique RegressionTestInput.S: Type;
 
-const unique RegressionTestInput.S: Type extends unique System.ValueType;
+const {:extern} unique System.ValueType: Type;
+
+axiom $Subtype(System.ValueType, System.Object);
+
+axiom $DisjointSubtree(System.ValueType, System.Object);
+
+axiom $Subtype(RegressionTestInput.S, System.ValueType);
+
+axiom $DisjointSubtree(RegressionTestInput.S, System.ValueType);
 
 var RegressionTestInput.S.x: [Ref]int;
 
@@ -656,7 +773,11 @@ implementation RegressionTestInput.CreateStruct.#cctor()
 
 
 
-const unique RegressionTestInput.ClassWithArrayTypes: Type extends unique System.Object;
+const unique RegressionTestInput.ClassWithArrayTypes: Type;
+
+axiom $Subtype(RegressionTestInput.ClassWithArrayTypes, System.Object);
+
+axiom $DisjointSubtree(RegressionTestInput.ClassWithArrayTypes, System.Object);
 
 var RegressionTestInput.ClassWithArrayTypes.s: Ref;
 
@@ -827,7 +948,11 @@ implementation RegressionTestInput.ClassWithArrayTypes.#cctor()
 
 
 
-const unique RegressionTestInput.BitwiseOperations: Type extends unique System.Object;
+const unique RegressionTestInput.BitwiseOperations: Type;
+
+axiom $Subtype(RegressionTestInput.BitwiseOperations, System.Object);
+
+axiom $DisjointSubtree(RegressionTestInput.BitwiseOperations, System.Object);
 
 procedure RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int32($this: Ref, x$in: int, y$in: int) returns ($result: int);
 
@@ -937,11 +1062,21 @@ implementation RegressionTestInput.BitwiseOperations.#cctor()
 
 
 
-const {:extern} unique System.Runtime.InteropServices._Attribute: Type extends;
+const unique RegressionTestInput.AsyncAttribute: Type;
 
-const {:extern} unique System.Attribute: Type extends unique System.Object, System.Runtime.InteropServices._Attribute;
+const {:extern} unique System.Attribute: Type;
 
-const unique RegressionTestInput.AsyncAttribute: Type extends unique System.Attribute;
+axiom $Subtype(System.Attribute, System.Object);
+
+axiom $DisjointSubtree(System.Attribute, System.Object);
+
+const {:extern} unique System.Runtime.InteropServices._Attribute: Type;
+
+axiom $Subtype(System.Attribute, System.Runtime.InteropServices._Attribute);
+
+axiom $Subtype(RegressionTestInput.AsyncAttribute, System.Attribute);
+
+axiom $DisjointSubtree(RegressionTestInput.AsyncAttribute, System.Attribute);
 
 procedure RegressionTestInput.AsyncAttribute.#ctor($this: Ref);
 
@@ -977,7 +1112,11 @@ implementation RegressionTestInput.AsyncAttribute.#cctor()
 
 
 
-const unique RegressionTestInput.RefParameters: Type extends unique System.Object;
+const unique RegressionTestInput.RefParameters: Type;
+
+axiom $Subtype(RegressionTestInput.RefParameters, System.Object);
+
+axiom $DisjointSubtree(RegressionTestInput.RefParameters, System.Object);
 
 procedure RegressionTestInput.RefParameters.M$System.Int32$(x$in: int) returns (x$out: int);
 
@@ -1047,7 +1186,11 @@ implementation {:inline 1} RegressionTestInput.S.#copy_ctor(this: Ref, other: Re
 
 
 
-const unique RegressionTestInput.Class0: Type extends unique System.Object;
+const unique RegressionTestInput.Class0: Type;
+
+axiom $Subtype(RegressionTestInput.Class0, System.Object);
+
+axiom $DisjointSubtree(RegressionTestInput.Class0, System.Object);
 
 var RegressionTestInput.Class0.StaticInt: int;
 
@@ -1316,7 +1459,11 @@ implementation RegressionTestInput.Class0.#cctor()
 
 
 
-const unique RegressionTestInput.ClassWithBoolTypes: Type extends unique System.Object;
+const unique RegressionTestInput.ClassWithBoolTypes: Type;
+
+axiom $Subtype(RegressionTestInput.ClassWithBoolTypes, System.Object);
+
+axiom $DisjointSubtree(RegressionTestInput.ClassWithBoolTypes, System.Object);
 
 var RegressionTestInput.ClassWithBoolTypes.staticB: bool;
 

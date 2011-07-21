@@ -11,10 +11,9 @@
 
 channel AckChannel(ch: C) where ch != null && credit(ch, -1); // ack
 
-channel C(msg: int, n: Node, ackC: AckChannel) where 
-  (msg == 0 || msg == 1) &&
-  (msg == 0 ==> acc(this.mu, 50) && acc(ackC.mu, 50)) &&
-  (msg == 1 ==> n != null && acc(n.next) && acc(n.mu) && credit(ackC, -1)); // cell 
+channel C(msg: bool, n: Node, ackC: AckChannel) where 
+  (!msg ==> acc(this.mu, 50) && acc(ackC.mu, 50)) &&
+  (msg ==> n != null && acc(n.next) && acc(n.mu) && credit(ackC, -1)); // cell 
 
 class Node {
   var next: Node;
@@ -42,7 +41,7 @@ class Program {
     {
       unfold x.list;
       t := x.next;
-      send e(1, x, ackC);
+      send e(true, x, ackC);
       x := t;
       var ack;
       assume waitlevel << ackC.mu; // Chalice should be able to figure this out itself?
@@ -50,23 +49,21 @@ class Program {
       receive ctmp := ackC;
       if(ctmp != e) { assume false; /* abort */ }
     }
-    send e(0, null, ackC);
+    send e(false, null, ackC);
   }  
   
   method Getter(f: C, ackC: AckChannel) 
     requires f!= null && credit(f, 1) && acc(f.mu, 50) && waitlevel << f.mu && ackC != null && acc(ackC.mu, 50) && f.mu << ackC.mu;
   {
     var x: Node := null;
-    var msg := 1;
-    while(msg != 0)
-      invariant acc(f.mu, 50) && waitlevel << f.mu && (msg == 1 ==> credit(f, 1)) && (msg == 0 ==> acc(f.mu, 50) && acc(ackC.mu, 50));
+    var msg: bool := true;
+    while(msg)
+      invariant acc(f.mu, 50) && waitlevel << f.mu && (msg ==> credit(f, 1)) && (!msg ==> acc(f.mu, 50) && acc(ackC.mu, 50));
     {
       var ackC2: AckChannel;
       receive msg, x, ackC2 := f;
       if(ackC2 != ackC) { assume false; /* abort */ }
-      if(msg == 0) {
-      }
-      if(msg == 1) {
+      if(msg) {
         free x;
         send ackC(f);
       }

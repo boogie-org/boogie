@@ -2,6 +2,8 @@ class Cell {
   var x: int;
   var i: int;
   var y: Cell;
+  var f: int;
+  var g: int;
   
   invariant rd(x);
   
@@ -187,6 +189,57 @@ class Cell {
     share this
     acquire this
     fold valid
+  }
+  
+  method a27()
+    requires acc(f,100-rd) && acc(f,rd)
+  {
+    assert acc(f) // ok, we have full access
+  }
+  
+  method a28()
+    requires acc(f)
+  {
+    call a27();
+    var x: int
+    x := f // ERROR: no permission left
+  }
+  
+  method a27b()
+    requires acc(f,100-rd)
+    requires acc(f,rd)
+  {
+    assert acc(f) // ok, we have full access
+  }
+  
+  method a28b()
+    requires acc(f)
+  {
+    call a27b();
+    var x: int
+    x := f // ERROR: no permission left
+  }
+  
+  method a29()
+    requires acc(f, 100-rd) && acc(g, rd)
+  {  }
+
+  method a30()
+    requires acc(f, 100) && acc(g, rd)
+  {
+    call a29();
+    var tmp: int := this.g;
+  }
+  
+  method a31(c: Cell)
+    requires acc(f, 100-rd) && acc(c.f, rd)
+  {  }
+
+  method a32(c: Cell)
+    requires acc(f, 100) && acc(c.f, rd)
+  {
+    call a31(c);
+    var tmp: int := this.f;
   }
   
   method void() requires rd(x); ensures rd(x); {}

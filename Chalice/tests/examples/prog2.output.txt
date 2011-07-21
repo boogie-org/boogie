@@ -5,4 +5,9 @@ Verification of prog2.chalice using parameters=""
   73.5: Const variable can be assigned to only once.
   78.5: Assertion might not hold. The expression at 78.12 might not evaluate to true.
 
-Boogie program verifier finished with 24 verified, 4 errors
+The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
+  20.3: The end of method Caller1 is unreachable.
+  39.5: The statements after the method call statement are unreachable.
+  70.3: The end of method M2 is unreachable.
+
+Boogie program verifier finished with 4 errors and 3 smoke test warnings.

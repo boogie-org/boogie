@@ -431,18 +431,23 @@ class Translator {
 
   def translateStatement(s: Statement, methodK: Expr): List[Stmt] = {
     s match {
-      case Assert(e) =>
-        val newGlobals = etran.FreshGlobals("assert");
-        val tmpHeap = Boogie.NewBVar(HeapName, theap, true);
-        val tmpMask = Boogie.NewBVar(MaskName, tmask, true); 
-        val tmpCredits = Boogie.NewBVar(CreditsName, tcredits, true); 
-        val tmpTranslator = new ExpressionTranslator(List(tmpHeap._1.id, tmpMask._1.id, tmpCredits._1.id), List(etran.ChooseEtran(true).Heap, etran.ChooseEtran(true).Mask, etran.ChooseEtran(true).Credits), currentClass);        
-        Comment("assert") ::
-        // exhale e in a copy of the heap/mask/credits
-        BLocal(tmpHeap._1) :: (tmpHeap._2 := etran.Heap) ::
-        BLocal(tmpMask._1) :: (tmpMask._2 := etran.Mask) ::
-        BLocal(tmpCredits._1) :: (tmpCredits._2 := etran.Credits) ::
-        tmpTranslator.Exhale(List((e, ErrorMessage(s.pos, "Assertion might not hold."))), "assert", true, methodK, true)
+      case a@Assert(e) =>
+        a.smokeErrorNr match {
+          case None =>
+            val newGlobals = etran.FreshGlobals("assert");
+            val tmpHeap = Boogie.NewBVar(HeapName, theap, true);
+            val tmpMask = Boogie.NewBVar(MaskName, tmask, true); 
+            val tmpCredits = Boogie.NewBVar(CreditsName, tcredits, true); 
+            val tmpTranslator = new ExpressionTranslator(List(tmpHeap._1.id, tmpMask._1.id, tmpCredits._1.id), List(etran.ChooseEtran(true).Heap, etran.ChooseEtran(true).Mask, etran.ChooseEtran(true).Credits), currentClass);        
+            Comment("assert") ::
+            // exhale e in a copy of the heap/mask/credits
+            BLocal(tmpHeap._1) :: (tmpHeap._2 := etran.Heap) ::
+            BLocal(tmpMask._1) :: (tmpMask._2 := etran.Mask) ::
+            BLocal(tmpCredits._1) :: (tmpCredits._2 := etran.Credits) ::
+            tmpTranslator.Exhale(List((e, ErrorMessage(s.pos, "Assertion might not hold."))), "assert", true, methodK, true)
+          case Some(err) =>
+            bassert(e, a.pos, "SMOKE-TEST-" + err + ".", 0) :: Nil
+        }
       case Assume(e) =>
         Comment("assume") ::
         isDefined(e) :::
@@ -693,7 +698,8 @@ class Translator {
         bassume(CallCredits(asyncState) ==@ preCallCredits) ::
         bassume(CallArgs(asyncState) ==@ argsSeq) :::
         // assign the returned token to the variable
-        { if (token != null) List(token := tokenId) else List() }
+        { if (token != null) List(token := tokenId) else List() } :::
+        bassume(wf(VarExpr(HeapName), VarExpr(MaskName))) :: Nil
       case jn@JoinAsync(lhs, token) =>
         val formalThisV = new Variable("this", new Type(jn.m.Parent))
         val formalThis = new VariableExpr(formalThisV)
@@ -1111,7 +1117,8 @@ class Translator {
           (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
           BLocal(m) ::
           (me := absTran.Mask) ::
-          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam) :::
+          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam, false) :::
+          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam, true) :::
           (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
              bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable not in frame of the specification statement: " + v.id)),
           keepTag)
@@ -1668,7 +1675,12 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       createAppendSeq(Tr(e0), Tr(e1))
     case at@At(e0, e1) =>SeqIndex(Tr(e0), Tr(e1))
     case Drop(e0, e1) =>
-      Boogie.FunctionApp("Seq#Drop", List(Tr(e0), Tr(e1)))
+      e1 match {
+        case IntLiteral(0) =>
+          Tr(e0)
+        case _ =>
+          Boogie.FunctionApp("Seq#Drop", List(Tr(e0), Tr(e1)))
+      }
     case Take(e0, e1) =>
       Boogie.FunctionApp("Seq#Take", List(Tr(e0), Tr(e1)))
     case Length(e) => SeqLength(Tr(e))
@@ -1883,15 +1895,14 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     val (emV, em) = NewBVar("exhaleMask", tmask, true)
     Comment("begin exhale (" + occasion + ")") ::
     BLocal(emV) :: (em := Mask) ::
-    (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check, currentK, exactchecking)).flatten :::
+    (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check, currentK, exactchecking, false)).flatten :::
+    (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check, currentK, exactchecking, true)).flatten :::
     (Mask := em) ::
     bassume(wf(Heap, Mask)) ::
     Comment("end exhale")
   }
   
   def ExhalePermission(perm: Permission, obj: Expr, memberName: String, currentK: Expr, pos: Position, error: ErrorMessage, em: Boogie.Expr, exactchecking: Boolean): List[Boogie.Stmt] = {
-    val ec = needExactChecking(perm, exactchecking);
-    
     val (f, stmts) = extractKFromPermission(perm, currentK)
     val n = extractEpsilonsFromPermission(perm);
     
@@ -1899,13 +1910,13 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     (perm.permissionType match {
       case PermissionType.Mixed =>
         bassert(f > 0 || (f == 0 && n > 0), error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
-        DecPermissionBoth(obj, memberName, f, n, em, error, pos, ec)
+        DecPermissionBoth(obj, memberName, f, n, em, error, pos, exactchecking)
       case PermissionType.Epsilons =>
         bassert(n > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
         DecPermissionEpsilon(obj, memberName, n, em, error, pos)
       case PermissionType.Fraction =>
         bassert(f > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
-        DecPermission(obj, memberName, f, em, error, pos, ec)
+        DecPermission(obj, memberName, f, em, error, pos, exactchecking)
     })
   }
   
@@ -1938,79 +1949,94 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     }
   }
   
-  def Exhale(p: Expression, em: Boogie.Expr, eh: Boogie.Expr, error: ErrorMessage, check: Boolean, currentK: Expr, exactchecking: Boolean): List[Boogie.Stmt] = desugar(p) match {
+  // Exhale is done in two passes: In the first run, everything except permissions
+  // which need exact checking are exhaled. Then, in the second run, those
+  // permissions are exhaled. The behaviour is controlled with the parameter
+  // onlyExactCheckingPermissions.
+  // The reason for this behaviour is that we want to support preconditions like
+  // "acc(o.f,100-rd) && acc(o.f,rd)", which should be equivalent to a full
+  // permission to o.f. However, when we exhale in the given order, we cannot
+  // use inexact checking for the abstract read permission ("acc(o.f,rd)"), as
+  // this would introduce the (unsound) assumption that "methodcallk < mask[o.f]".
+  // To avoid detecting this, we exhale all abstract read permissions first (or,
+  // more precisely, we exhale all permissions with exact checking later).
+  def Exhale(p: Expression, em: Boogie.Expr, eh: Boogie.Expr, error: ErrorMessage, check: Boolean, currentK: Expr, exactchecking: Boolean, onlyExactCheckingPermissions: Boolean): List[Boogie.Stmt] = desugar(p) match {
     case pred@MemberAccess(e, p) if pred.isPredicate =>
       val tmp = Access(pred, Full);
       tmp.pos = pred.pos;
-      Exhale(tmp, em , eh, error, check, currentK, exactchecking)
+      Exhale(tmp, em , eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions)
     case AccessAll(obj, perm) => throw new InternalErrorException("should be desugared")
     case AccessSeq(s, None, perm) => throw new InternalErrorException("should be desugared")
     case acc@Access(e,perm) =>
-      val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
-      val (starKV, starK) = NewBVar("starK", tint, true);
-
-      // check definedness
-      (if(check) isDefined(e.e)(true) :::
-                 bassert(nonNull(Tr(e.e)), error.pos, error.message + " The target of the acc predicate at " + acc.pos + " might be null.") else Nil) :::
-      // if the mask does not contain sufficient permissions, try folding acc(e, fraction)
-      // TODO: include automagic again
-      // check that the necessary permissions are there and remove them from the mask
-      ExhalePermission(perm, Tr(e.e), memberName, currentK, acc.pos, error, em, exactchecking) :::
-      bassume(IsGoodMask(Mask)) ::
-      bassume(wf(Heap, Mask)) ::
-      bassume(wf(Heap, em))
+      val ec = needExactChecking(perm, exactchecking)
+      if (ec != onlyExactCheckingPermissions) Nil else {
+        val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
+        val (starKV, starK) = NewBVar("starK", tint, true);
+        
+        // check definedness
+        (if(check) isDefined(e.e)(true) :::
+                   bassert(nonNull(Tr(e.e)), error.pos, error.message + " The target of the acc predicate at " + acc.pos + " might be null.") else Nil) :::
+        // if the mask does not contain sufficient permissions, try folding acc(e, fraction)
+        // TODO: include automagic again
+        // check that the necessary permissions are there and remove them from the mask
+        ExhalePermission(perm, Tr(e.e), memberName, currentK, acc.pos, error, em, ec) :::
+        bassume(IsGoodMask(Mask)) ::
+        bassume(wf(Heap, Mask)) ::
+        bassume(wf(Heap, em))
+      }
     case acc @ AccessSeq(s, Some(member), perm) =>
       if (member.isPredicate) throw new NotSupportedException("not yet implemented");
-      val e = Tr(s);
-      val memberName = member.f.FullName;
-      
-      val (r, stmts) = extractKFromPermission(perm, currentK)
-      val n = extractEpsilonsFromPermission(perm);
       val ec = needExactChecking(perm, exactchecking);
-
-      stmts :::
-      (if (check) isDefined(s)(true) ::: isDefined(perm)(true) else Nil) :::
-      {
-        val (aV,a) = Boogie.NewTVar("alpha");
-        val (refV, ref) = Boogie.NewBVar("ref", tref, true);
-        val (fV, f) = Boogie.NewBVar("f", FieldType(a), true);
-        val (pcV,pc) = Boogie.NewBVar("p", tperm, true);
-        val mr = em(ref, memberName)("perm$R");
-        val mn = em(ref, memberName)("perm$N");
+      
+      if (ec != onlyExactCheckingPermissions) Nil else {
+        val e = Tr(s);
+        val memberName = member.f.FullName;
+        val (r, stmts) = extractKFromPermission(perm, currentK)
+        val n = extractEpsilonsFromPermission(perm);
         
-        // assert that the permission is positive
-        bassert((SeqContains(e, ref) ==>
-          (perm.permissionType match {
-            case PermissionType.Fraction => r > 0
-            case PermissionType.Mixed    => r > 0 || (r == 0 && n > 0)
-            case PermissionType.Epsilons => n > 0
-          })).forall(refV), error.pos, error.message + " The permission at " + acc.pos + " might not be positive.") ::
-        // make sure enough permission is available
-        bassert((SeqContains(e, ref) ==>
-          ((perm,perm.permissionType) match {
-            case _ if !ec     => mr > 0
-            case (Star,_)     => mr > 0
-            case (_,PermissionType.Fraction) => r <= mr && (r ==@ mr ==> 0 <= mn)
-            case (_,PermissionType.Mixed)    => r <= mr && (r ==@ mr ==> n <= mn)
-            case (_,PermissionType.Epsilons) => mr ==@ 0 ==> n <= mn
-          })).forall(refV), error.pos, error.message + " Insufficient permission at " + acc.pos + " for " + member.f.FullName) ::
-        // additional assumption on k if we have a star permission or use inexact checking
-        ( perm match {
-            case _ if !ec => bassume((SeqContains(e, ref) ==> (r < mr)).forall(refV)) :: Nil
-            case Star => bassume((SeqContains(e, ref) ==> (r < mr)).forall(refV)) :: Nil
-            case _ => Nil
-        }) :::
-        // update the map
-        (em := Lambda(List(aV), List(refV, fV),
-          (SeqContains(e, ref) && f ==@ memberName).thenElse(
-            Lambda(List(), List(pcV), (pc ==@ "perm$R").thenElse(mr - r, mn - n)),
-            em(ref, f))))
-      } :::
-      bassume(IsGoodMask(Mask)) ::
-      bassume(wf(Heap, Mask)) ::
-      bassume(wf(Heap, em))
-
-    case cr@Credit(ch, n) =>
+        stmts :::
+        (if (check) isDefined(s)(true) ::: isDefined(perm)(true) else Nil) :::
+        {
+          val (aV,a) = Boogie.NewTVar("alpha");
+          val (refV, ref) = Boogie.NewBVar("ref", tref, true);
+          val (fV, f) = Boogie.NewBVar("f", FieldType(a), true);
+          val (pcV,pc) = Boogie.NewBVar("p", tperm, true);
+          val mr = em(ref, memberName)("perm$R");
+          val mn = em(ref, memberName)("perm$N");
+          
+          // assert that the permission is positive
+          bassert((SeqContains(e, ref) ==>
+            (perm.permissionType match {
+              case PermissionType.Fraction => r > 0
+              case PermissionType.Mixed    => r > 0 || (r == 0 && n > 0)
+              case PermissionType.Epsilons => n > 0
+            })).forall(refV), error.pos, error.message + " The permission at " + acc.pos + " might not be positive.") ::
+          // make sure enough permission is available
+          bassert((SeqContains(e, ref) ==>
+            ((perm,perm.permissionType) match {
+              case _ if !ec     => mr > 0
+              case (Star,_)     => mr > 0
+              case (_,PermissionType.Fraction) => r <= mr && (r ==@ mr ==> 0 <= mn)
+              case (_,PermissionType.Mixed)    => r <= mr && (r ==@ mr ==> n <= mn)
+              case (_,PermissionType.Epsilons) => mr ==@ 0 ==> n <= mn
+            })).forall(refV), error.pos, error.message + " Insufficient permission at " + acc.pos + " for " + member.f.FullName) ::
+          // additional assumption on k if we have a star permission or use inexact checking
+          ( perm match {
+              case _ if !ec => bassume((SeqContains(e, ref) ==> (r < mr)).forall(refV)) :: Nil
+              case Star => bassume((SeqContains(e, ref) ==> (r < mr)).forall(refV)) :: Nil
+              case _ => Nil
+          }) :::
+          // update the map
+          (em := Lambda(List(aV), List(refV, fV),
+            (SeqContains(e, ref) && f ==@ memberName).thenElse(
+              Lambda(List(), List(pcV), (pc ==@ "perm$R").thenElse(mr - r, mn - n)),
+              em(ref, f))))
+        } :::
+        bassume(IsGoodMask(Mask)) ::
+        bassume(wf(Heap, Mask)) ::
+        bassume(wf(Heap, em))
+      }
+    case cr@Credit(ch, n) if !onlyExactCheckingPermissions =>
       val trCh = Tr(ch)
       (if (check)
          isDefined(ch)(true) :::
@@ -2020,14 +2046,14 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
          Nil) :::
       new Boogie.MapUpdate(Credits, trCh, new Boogie.MapSelect(Credits, trCh) - Tr(cr.N))
     case Implies(e0,e1) =>
-      (if(check) isDefined(e0)(true) else Nil) :::
-      Boogie.If(Tr(e0), Exhale(e1, em, eh, error, check, currentK, exactchecking), Nil)
+      (if(check && !onlyExactCheckingPermissions) isDefined(e0)(true) else Nil) :::
+      Boogie.If(Tr(e0), Exhale(e1, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions), Nil)
     case IfThenElse(con, then, els) =>
       (if(check) isDefined(con)(true) else Nil) :::
-      Boogie.If(Tr(con), Exhale(then, em, eh, error, check, currentK, exactchecking), Exhale(els, em, eh, error, check, currentK, exactchecking))
+      Boogie.If(Tr(con), Exhale(then, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions), Exhale(els, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions))
     case And(e0,e1) =>
-      Exhale(e0, em, eh, error, check, currentK, exactchecking) ::: Exhale(e1, em, eh, error, check, currentK, exactchecking)
-    case holds@Holds(e) => 
+      Exhale(e0, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions) ::: Exhale(e1, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions)
+    case holds@Holds(e) if !onlyExactCheckingPermissions => 
       (if(check) isDefined(e)(true) :::
       bassert(nonNull(Tr(e)), error.pos, error.message + " The target of the holds predicate at " + holds.pos + " might be null.") :: Nil else Nil) :::
       bassert(0 < new Boogie.MapSelect(Heap, Tr(e), "held"), error.pos, error.message + " The current thread might not hold lock at " + holds.pos + ".") ::
@@ -2035,7 +2061,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       bassume(IsGoodMask(Mask)) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(Heap, em))
-    case Eval(h, e) =>
+    case Eval(h, e) if !onlyExactCheckingPermissions =>
       val (evalHeap, evalMask, evalCredits, checks, proofOrAssume) = fromEvalState(h);
       val preGlobals = etran.FreshGlobals("eval")
       val preEtran = new ExpressionTranslator(List(Boogie.VarExpr(preGlobals(0).id), Boogie.VarExpr(preGlobals(1).id), Boogie.VarExpr(preGlobals(2).id)), currentClass);
@@ -2047,7 +2073,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       bassume(wf(preEtran.Heap, preEtran.Mask)) ::
       bassert(proofOrAssume, p.pos, "Arguments for joinable might not match up.") ::
       preEtran.Exhale(List((e, error)), "eval", check, currentK, exactchecking)
-    case e => (if(check) isDefined(e)(true) else Nil) ::: List(bassert(Tr(e), error.pos, error.message + " The expression at " + e.pos + " might not evaluate to true."))
+    case e if !onlyExactCheckingPermissions => (if(check) isDefined(e)(true) else Nil) ::: List(bassert(Tr(e), error.pos, error.message + " The expression at " + e.pos + " might not evaluate to true."))
+    case _ => Nil
   }
   
   def extractKFromPermission(expr: Permission, currentK: Expr): (Expr, List[Boogie.Stmt]) = expr match {
@@ -2321,6 +2348,7 @@ object TranslationHelper {
   def TypeName = NamedType("TypeName");
   def FieldType(tp: BType) = IndexedType("Field", tp);
   def bassert(e: Expr, pos: Position, msg: String) = new Boogie.Assert(e, pos, msg)
+  def bassert(e: Expr, pos: Position, msg: String, subsumption: Int) = new Boogie.Assert(e, pos, msg, subsumption)
   def bassume(e: Expr) = Boogie.Assume(e)
   def BLocal(id: String, tp: BType) = new Boogie.LocalVar(id, tp)
   def BLocal(x: Boogie.BVar) = Boogie.LocalVar(x)

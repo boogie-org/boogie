@@ -26,7 +26,6 @@ namespace BytecodeTranslator.Phone {
   public class PhoneInitializationCodeTraverser : BaseCodeTraverser {
     private readonly IMethodDefinition methodBeingTraversed;
     private static bool initializationFound= false;
-    private PhoneControlsPlugin phonePlugin;
     private MetadataReaderHost host;
 
     private IAssemblyReference coreAssemblyRef;
@@ -69,9 +68,8 @@ namespace BytecodeTranslator.Phone {
       }
     }
 
-    public PhoneInitializationCodeTraverser(MetadataReaderHost host, IMethodDefinition traversedMethod, PhoneControlsPlugin phonePlugin) : base() {
+    public PhoneInitializationCodeTraverser(MetadataReaderHost host, IMethodDefinition traversedMethod) : base() {
       this.methodBeingTraversed = traversedMethod;
-      this.phonePlugin = phonePlugin;
       this.host = host;
       InitializeTraverser();
     }
@@ -142,15 +140,12 @@ namespace BytecodeTranslator.Phone {
 
     private void injectPhoneInitializationCode(BlockStatement block, Statement statementAfter) {
       // TODO check page name against container name
-      IEnumerable<ControlInfoStructure> controls= phonePlugin.getControlsForPage(methodBeingTraversed.Container.ToString());
+      IEnumerable<ControlInfoStructure> controls= PhoneCodeHelper.PhonePlugin.getControlsForPage(methodBeingTraversed.Container.ToString());
       IEnumerable<IStatement> injectedStatements = new List<IStatement>();
       foreach (ControlInfoStructure controlInfo in controls) {
         injectedStatements = injectedStatements.Concat(getCodeForSettingEnabledness(controlInfo));
         injectedStatements = injectedStatements.Concat(getCodeForSettingCheckedState(controlInfo));
         injectedStatements = injectedStatements.Concat(getCodeForSettingVisibility(controlInfo));
-        injectedStatements = injectedStatements.Concat(getCodeForSettingEventHandlers(controlInfo, "Click"));
-        injectedStatements = injectedStatements.Concat(getCodeForSettingEventHandlers(controlInfo, "Checked"));
-        injectedStatements = injectedStatements.Concat(getCodeForSettingEventHandlers(controlInfo, "Unchecked"));
       }
 
       int stmtPos= block.Statements.IndexOf(statementAfter);
@@ -166,6 +161,7 @@ namespace BytecodeTranslator.Phone {
           IsStatic = false,
         },
         Instance = new ThisReference() { Type = methodBeingTraversed.Container },
+        Type=getTypeForClassname(controlInfo.ClassName),
       };
     }
 
@@ -222,7 +218,7 @@ namespace BytecodeTranslator.Phone {
         MethodToCall = isEnabledSetter,
         ThisArgument = boundControl,
       };
-      
+
       setEnablednessCall.Arguments.Add(controlInfo.IsEnabled ? trueConstant : falseConstant);
       ExpressionStatement callStmt = new ExpressionStatement() {
         Expression = setEnablednessCall,
@@ -232,13 +228,23 @@ namespace BytecodeTranslator.Phone {
     }
 
     private IEnumerable<IStatement> getCodeForSettingCheckedState(ControlInfoStructure controlInfo) {
-      // TODO not implemented yet
-      return new List<IStatement>();
-    }
+    //  IList<IStatement> code = new List<IStatement>();
+    //  BoundExpression boundControl = makeBoundControlFromControlInfo(controlInfo);
+    //  MethodCall setCheckStateCall= new MethodCall() {
+    //    IsStaticCall = false,
+    //    IsVirtualCall = true,
+    //    IsTailCall = false,
+    //    Type = ((Microsoft.Cci.Immutable.PlatformType) host.PlatformType).SystemVoid,
+    //    MethodToCall = isCheckedSetter,
+    //    ThisArgument = boundControl,
+    //  };
 
-    // TODO should stop propagating the string event name
-    private IEnumerable<IStatement> getCodeForSettingEventHandlers(ControlInfoStructure controlInfo, string eventName) {
-      // TODO not implemented yet
+    //  setCheckStateCall.Arguments.Add(controlInfo.IsChecked ? trueConstant : falseConstant);
+    //  ExpressionStatement callStmt = new ExpressionStatement() {
+    //    Expression = setCheckStateCall,
+    //  };
+    //  code.Add(callStmt);
+    //  return code;
       return new List<IStatement>();
     }
 
@@ -268,12 +274,10 @@ namespace BytecodeTranslator.Phone {
   /// Traverse metadata looking only for PhoneApplicationPage's constructors
   /// </summary>
   public class PhoneInitializationMetadataTraverser : BaseMetadataTraverser {
-    private PhoneControlsPlugin phoneControlsInfo;
     private MetadataReaderHost host;
 
-    public PhoneInitializationMetadataTraverser(PhoneControlsPlugin phonePlugin, MetadataReaderHost host)
+    public PhoneInitializationMetadataTraverser(MetadataReaderHost host)
       : base() {
-        this.phoneControlsInfo = phonePlugin;
         this.host = host;
     }
 
@@ -290,7 +294,9 @@ namespace BytecodeTranslator.Phone {
     /// </summary>
     /// 
     public override void Visit(ITypeDefinition typeDefinition) {
-      if (typeDefinition.IsClass && PhoneCodeHelper.isPhoneApplicationPageClass(typeDefinition, host)) {
+      if (typeDefinition.isPhoneApplicationClass(host)) {
+        PhoneCodeHelper.setMainAppTypeReference(typeDefinition);
+      } else if (typeDefinition.isPhoneApplicationPageClass(host)) {
         base.Visit(typeDefinition);
       }
     }
@@ -302,7 +308,7 @@ namespace BytecodeTranslator.Phone {
       if (!method.IsConstructor)
         return;
 
-      PhoneInitializationCodeTraverser codeTraverser = new PhoneInitializationCodeTraverser(host, method, phoneControlsInfo);
+      PhoneInitializationCodeTraverser codeTraverser = new PhoneInitializationCodeTraverser(host, method);
       var methodBody = method.Body as SourceMethodBody;
       if (methodBody == null)
         return;
