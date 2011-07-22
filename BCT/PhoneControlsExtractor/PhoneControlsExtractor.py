@@ -144,7 +144,7 @@ def main():
   outputFile= ""
   try:
     opts, args= getopt.getopt(sys.argv[1:], "p:o:", ["pages=","output="])
-  except geopt.error, msg:
+  except getopt.error, msg:
     print msg
     showUsage()
     sys.exit(2)
