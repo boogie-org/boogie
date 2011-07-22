@@ -100,6 +100,11 @@ class Translator {
         Havoc(etran.Heap) ::
         // check that invariant is well-defined
         etran.WhereOldIs(h1, m1, c1).Inhale(invs map { mi => mi.e}, "monitor invariant", true, methodK) :::
+        // smoke test: is the monitor invariant equivalent to false?
+        (if (Chalice.smoke) {
+          val a = SmokeTest.initSmokeAssert(pos, "Monitor invariant is equivalent to false.")
+          translateStatement(a.chaliceAssert, methodK)
+        } else Nil) :::
         (if (! Chalice.checkLeaks || invs.length == 0) Nil else
           // check that there are no loops among .mu permissions in monitors
           // !CanWrite[this,mu]
@@ -147,6 +152,11 @@ class Translator {
       // check definedness of the precondition
       InhaleWithChecking(Preconditions(f.spec) map { p => (if(0 < Chalice.defaults) UnfoldPredicatesWithReceiverThis(p) else p)}, "precondition", functionK) :::
       bassume(CurrentModule ==@ VarExpr(ModuleName(currentClass))) :: // verify the body assuming that you are in the module
+      // smoke test: is precondition equivalent to false?
+      (if (Chalice.smoke) {
+        val a = SmokeTest.initSmokeAssert(f.pos, "Precondition of function " + f.Id + " is equivalent to false.")
+        translateStatement(a.chaliceAssert, functionK)
+      } else Nil) :::
       // check definedness of function body
       checkBody :::
       (f.definition match {case Some(e) => BLocal(myresult) :: (Boogie.VarExpr("result") := etran.Tr(e)); case None => Nil}) :::
@@ -301,7 +311,13 @@ class Translator {
       DefaultPrecondition(),
       predicateKStmts :::
       DefinePreInitialState :::
-      InhaleWithChecking(List(DefinitionOf(pred)), "predicate definition", predicateK))
+      InhaleWithChecking(List(DefinitionOf(pred)), "predicate definition", predicateK) :::
+      // smoke test: is the predicate equivalent to false?
+      (if (Chalice.smoke) {
+        val a = SmokeTest.initSmokeAssert(pred.pos, "Predicate " + pred.FullName + " is equivalent to false.")
+        translateStatement(a.chaliceAssert, predicateK)
+      } else Nil)
+    )
   }
 
   def translateMethod(method: Method): List[Decl] = {
@@ -446,7 +462,7 @@ class Translator {
             BLocal(tmpCredits._1) :: (tmpCredits._2 := etran.Credits) ::
             tmpTranslator.Exhale(List((e, ErrorMessage(s.pos, "Assertion might not hold."))), "assert", true, methodK, true)
           case Some(err) =>
-            bassert(e, a.pos, "SMOKE-TEST-" + err + ".", 0) :: Nil
+            bassert(e, a.pos, "SMOKE-TEST-" + err + ". ("+SmokeTest.smokeWarningMessage(err)+")", 0) :: Nil
         }
       case Assume(e) =>
         Comment("assume") ::
@@ -1934,17 +1950,17 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       case PermTimes(lhs, rhs) => {
         val l = needExactChecking(lhs, default);
         val r = needExactChecking(rhs, default);
-        if (l == false || r == false) false else true // if one side doesn't need exact checking, the whole multiplication doesn't
+        (if (l == false || r == false) false else true) // if one side doesn't need exact checking, the whole multiplication doesn't
       }
       case PermPlus(lhs, rhs) => {
         val l = needExactChecking(lhs, default);
         val r = needExactChecking(rhs, default);
-        if (l == true || r == true) true else false // if one side needs exact checking, use exact
+        (if (l == true || r == true) true else false) // if one side needs exact checking, use exact
       }
       case PermMinus(lhs, rhs) => {
         val l = needExactChecking(lhs, default);
         val r = needExactChecking(rhs, default);
-        if (l == true || r == true) true else false // if one side needs exact checking, use exact
+        (if (l == true || r == true) true else false) // if one side needs exact checking, use exact
       }
     }
   }
