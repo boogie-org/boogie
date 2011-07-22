@@ -160,11 +160,22 @@ namespace TranslationPlugins {
       }
     }
 
+    private string mainAppTypeName;
+    public void setMainAppTypeName(string typeName) {
+      mainAppTypeName= typeName;
+    }
+
+    public string getMainAppTypeName() {
+      return mainAppTypeName;
+    }
+
     public void DumpControlStructure(StreamWriter outputStream) {
       // maintain same format as input format
       string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
       outputStream.WriteLine(getMainPageXAML());
       outputStream.WriteLine(getBoogieNavigationVariable());
+      outputStream.WriteLine(getMainAppTypeName());
+
       foreach (KeyValuePair<string, PageStructure> entry in this.pageStructureInfo) {
         pageClass = entry.Key;
         pageXAML = entry.Value.PageXAML;
@@ -234,6 +245,10 @@ namespace TranslationPlugins {
       // second line states boogie current nav variable, possibly dummy value
       setBoogieNavigationVariable(configLine.Trim());
       configLine= configStream.ReadLine();
+
+      // third line is main phone app type, possibly dummy;
+      setMainAppTypeName(configLine.Trim());
+      configLine = configStream.ReadLine();
 
       while (configLine != null) {
         if (configLine.Trim().Equals(string.Empty)) {

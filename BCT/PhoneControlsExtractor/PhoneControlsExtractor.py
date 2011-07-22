@@ -107,6 +107,7 @@ def outputPhoneControls(outputFileName):
   # <pageClassName>,<page.xaml file>,<boogie string page name>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>
   outputFile.write(mainPageXAML + "\n")
   outputFile.write("dummyNavigationVariable_unknown\n")
+  outputFile.write("dummyMainAppName_unknown\n") # I could possibly deduce it from WMAppManifest.xml, but I'm unsure. Doing it later is safe anyway
   for page in staticControlsMap.keys():
     for control in staticControlsMap[page]:
       isEnabled= control["IsEnabled"]

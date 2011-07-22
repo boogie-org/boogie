@@ -96,15 +96,7 @@ namespace BytecodeTranslator.Phone {
       IAssemblyReference phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
       ITypeReference phoneApplicationPageTypeRef = platform.CreateReference(phoneAssembly, "System", "Windows", "Navigation", "NavigationService");
 
-      ITypeReference baseClass = typeRef.ResolvedType.BaseClasses.FirstOrDefault();
-      while (baseClass != null) {
-        if (baseClass.ResolvedType.Equals(phoneApplicationPageTypeRef.ResolvedType)) {
-          return true;
-        }
-        baseClass = baseClass.ResolvedType.BaseClasses.FirstOrDefault();
-      }
-
-      return false;
+      return typeRef.isClass(phoneApplicationPageTypeRef);
     }
 
     public static bool isPhoneApplicationClass(this ITypeReference typeRef, IMetadataHost host) {
@@ -128,15 +120,7 @@ namespace BytecodeTranslator.Phone {
       IAssemblyReference phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
       ITypeReference phoneApplicationPageTypeRef = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Controls", "PhoneApplicationPage");
 
-      ITypeReference baseClass = typeRef.ResolvedType.BaseClasses.FirstOrDefault();
-      while (baseClass != null) {
-        if (baseClass.ResolvedType.Equals(phoneApplicationPageTypeRef.ResolvedType)) {
-          return true;
-        }
-        baseClass = baseClass.ResolvedType.BaseClasses.FirstOrDefault();
-      }
-
-      return false;
+      return typeRef.isClass(phoneApplicationPageTypeRef);
     }
 
     /// <summary>
@@ -229,6 +213,14 @@ namespace BytecodeTranslator.Phone {
 
     public static void setBoogieStringPageNameForPageClass(string pageClass, string boogieStringName) {
       PhonePlugin.setBoogieStringPageNameForPageClass(pageClass, boogieStringName);
+    }
+
+    public static void setMainAppTypeName(string fullyQualifiedName) {
+      PhonePlugin.setMainAppTypeName(fullyQualifiedName);
+    }
+
+    public static string getMainAppTypeName() {
+      return PhonePlugin.getMainAppTypeName();
     }
   }
 }
