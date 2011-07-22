@@ -118,3 +118,4 @@ class Cell {
   }
 }
 
+channel C(msg: bool) where msg && !msg // SMOKE: contradiction
