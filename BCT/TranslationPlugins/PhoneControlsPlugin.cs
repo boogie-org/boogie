@@ -308,7 +308,7 @@ namespace TranslationPlugins {
       try {
         return pageStructureInfo[pageClass].getControlInfo(controlName).IsEnabled;
       } catch (KeyNotFoundException) {
-        // TODO not really correct
+        //TODO not really correct
         return false;
       }
     }

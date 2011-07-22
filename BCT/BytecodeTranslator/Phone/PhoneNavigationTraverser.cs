@@ -50,6 +50,7 @@ namespace BytecodeTranslator.Phone {
                   IsStatic=true,
                   Type=host.PlatformType.SystemString,
                   Name=host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
+                  InternFactory= host.InternFactory,
                 },
               },
             };
@@ -216,6 +217,7 @@ namespace BytecodeTranslator.Phone {
               IsStatic= true,
               Type = host.PlatformType.SystemString,
               Name = host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
+              InternFactory=host.InternFactory,
             },
           },
         };
@@ -246,6 +248,7 @@ namespace BytecodeTranslator.Phone {
               IsStatic= true,
               Type = host.PlatformType.SystemString,
               Name = host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
+              InternFactory=host.InternFactory,
             },
           },
         };
