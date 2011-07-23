@@ -1,7 +1,9 @@
-// chalice-parameter=-smoke
 // This file is meant as a test for Chalice's smoke testing feature (command line switch -smoke)
 class Cell {
   var f: int;
+  
+  invariant acc(this.f) && f == 1
+  invariant f == 2 // SMOKE: contradiction
   
   method a1()
     requires false // SMOKE: precondition is false
@@ -77,4 +79,43 @@ class Cell {
       this.f := 1; // SMOKE: unreachable
     }
   }
+  
+  function f1(): int
+    requires false // SMOKE: precondition is false
+  { 1 }
+  
+  method a11()
+  {
+    var i: int := 0
+    if (false) {
+      // SMOKE: unreachable
+    } else {
+      if (true) { assume false } // SMOKE: introduces contradiction
+      else { assume i == 1 } // SMOKE: introduces contradiction
+    }
+  }
+  
+  method a12()
+  {
+    assume false // SMOKE: introduces contradiction
+    while (false) {
+    
+    }
+  }
+  
+  method a13()
+    ensures false // ERROR: cannot prove false
+  {
+  }
+  
+  method a14()
+  {
+    call a13(); // SMOKE: statements afterwards not reachable anymore
+  }
+  
+  predicate valid {
+    1 == 2 // SMOKE: contradiction
+  }
 }
+
+channel C(msg: bool) where msg && !msg // SMOKE: contradiction

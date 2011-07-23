@@ -8,8 +8,6 @@ using TranslationPlugins;
 namespace BytecodeTranslator.Phone {
   class PhoneCodeWrapperWriter {
     private static Sink sink;
-    private static readonly string BOOGIE_MAIN_PROCEDURE = "$__BOOGIE_MAIN_PROCEDURE__$";
-
     public static void createCodeWrapper(Sink sink) {
       PhoneCodeWrapperWriter.sink = sink;
       /*
@@ -29,12 +27,7 @@ namespace BytecodeTranslator.Phone {
        *  - might be slightly more efficient to nto return control until we know page navigation may have changed,
        *    but this requires a lot of knowledge (ie, will the called method call NavigationService or not)
        */
-      createMainProcedure();
-    }
-
-    private static void createMainProcedure() {
-      // TODO
-      // for now I'm trying to create this code as an outside step of the flow
+      //createMainProcedure();
     }
   }
 }

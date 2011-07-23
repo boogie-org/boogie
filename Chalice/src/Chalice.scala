@@ -38,6 +38,7 @@ object Chalice {
   // percentageSupport 3: use an uninterpreted function and axiomatize the properties of multiplication
   private[chalice] var percentageSupport = 2;
   private[chalice] var smoke = false;
+  private[chalice] var smokeAll = false;
 
   def main(args: Array[String]): Unit = {
     var boogiePath = "C:\\boogie\\Binaries\\Boogie.exe"
@@ -97,7 +98,10 @@ object Chalice {
        "show the full stack trace if an exception is encountered"),
      "smoke" -> (
        {() => smoke = true},
-       "smoke testing; try to find unreachable code, preconditions/invariants/predicates that are equivalent to false and assumptions that introduce contradictions, by trying to prove 'false' at various positions.")
+       "smoke testing; try to find unreachable code, preconditions/invariants/predicates that are equivalent to false and assumptions that introduce contradictions, by trying to prove 'false' at various positions."),
+     "smokeAll" -> (
+       {() => smokeAll = true; smoke = true},
+       "aggressive smoke testing; try to prove false after every statement.")
     )
     // help text for options with arguments
     val nonBooleanOptions = ListMap(

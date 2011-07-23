@@ -161,11 +161,12 @@ namespace BytecodeTranslator.Phone {
           IsStatic = false,
         },
         Instance = new ThisReference() { Type = methodBeingTraversed.Container },
+        Type=getTypeForClassname(controlInfo.ClassName),
       };
     }
 
     private IEnumerable<IStatement> getCodeForSettingVisibility(ControlInfoStructure controlInfo) {
-      // TODO I do not want to import System.Windows into this project...and using the underlying uint won't work
+      // TODO I do not want to import System.Windows into this project...and using the underlying uint won't work for dependency properties
       /*
       IList<IStatement> code = new List<IStatement>();
       BoundExpression boundControl = makeBoundControlFromControlInfo(controlInfo);
@@ -293,7 +294,9 @@ namespace BytecodeTranslator.Phone {
     /// </summary>
     /// 
     public override void Visit(ITypeDefinition typeDefinition) {
-      if (typeDefinition.IsClass && PhoneCodeHelper.isPhoneApplicationPageClass(typeDefinition, host)) {
+      if (typeDefinition.isPhoneApplicationClass(host)) {
+        PhoneCodeHelper.setMainAppTypeReference(typeDefinition);
+      } else if (typeDefinition.isPhoneApplicationPageClass(host)) {
         base.Visit(typeDefinition);
       }
     }

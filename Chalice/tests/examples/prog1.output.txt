@@ -8,6 +8,7 @@ Verification of prog1.chalice using parameters=""
   76.5: The target of the unshare statement might not be shared.
   84.5: The target of the unshare statement might not be shared.
 
+The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
   7.3: The end of method seq0 is unreachable.
   21.3: The end of method seq3 is unreachable.
   28.3: The end of method main0 is unreachable.

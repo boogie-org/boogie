@@ -5,6 +5,7 @@ Verification of ProdConsChannel.chalice using parameters=""
   85.20: Location might not be readable.
   123.7: Assertion might not hold. The expression at 123.14 might not evaluate to true.
 
-  80.5: The end of the while-body is unreachable.
+The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
+  80.5: The end of the while-loop is unreachable.
 
 Boogie program verifier finished with 4 errors and 1 smoke test warnings.

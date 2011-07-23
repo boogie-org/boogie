@@ -13,14 +13,35 @@ import scala.util.parsing.input.NoPosition
  */
 object SmokeTest {
 
-  /** Map from error message ID's to their position and error message */
-  private var errorMessages: scala.collection.SortedMap[Int, (Position, String)] = scala.collection.SortedMap()
+  /** SmokeAssert is used to keep track of the position and real error message
+   *  associated with a certain assert statement. Also, we build a DAG of
+   *  SmokeAssert that essentially corresponds to the control flow graph (the
+   *  member prev is used to record the in-edges of every SmokeAssert). This
+   *  graph is then used to omit certain warnings (e.g., if the precondition is
+   *  already false, we do not need to report that the method end cannot be
+   *  reached, too).
+   */
+  case class SmokeAssert(id: Int, pos: Position, msg: String, prev: Set[SmokeAssert], chaliceAssert: Assert) {
+    var warning: Boolean = false // did this "assert false" generate a warning? (i.e. did it not generate a Boogie error?)
+  }
+  /** Serves as a sentinel for the first assert (which should always cause a
+   *  warning, thus SmokeAssertSentinel.warning = false
+   */
+  object SmokeAssertSentinel extends SmokeAssert(-1, NoPosition, "", Set(), null)
+
+  /** Map from error message ID's to their SmokeAssert object */
+  private var smokeAssertions: Map[Int,SmokeAssert] = Map()
   private var count: Int = 0 // current error message id
+  
+  /** Get the warning message from an ID */
+  def smokeWarningMessage(id: Int) = {
+    smokeAssertions(id).msg
+  }
   
   /** Process the output of Boogie and generate the correct warnings from smoke testing */
   def processBoogieOutput(out: List[String]): String = {
     var errorCount: Map[String, Int] = Map()
-    val SmokePattern = ".*: SMOKE-TEST-([0-9]+).".r
+    val SmokePattern = ".*: SMOKE-TEST-([0-9]+).*".r
     val SummaryPattern = "Boogie program verifier finished with ([0-9]+) verified, ([0-9]+) errors".r
     var verificationResult = "";
     var smokeErrors: Set[Int] = Set()
@@ -30,26 +51,38 @@ object SmokeTest {
       case SummaryPattern(verified, errors) => outcome = Some((verified.toInt,errors.toInt))
       case _ => verificationResult += s + "\n"
     }
-    val smokeTestAssertions = errorMessages.size
-    val smokeTestWarnings = smokeTestAssertions - smokeErrors.size
     
+    // check which smoke assertions failed
+    for ((errNr, s@SmokeAssert(_, pos, msg, prev, _)) <- smokeAssertions) yield {
+      s.warning = !smokeErrors.contains(errNr)
+    }
+    
+    var smokeTestWarnings = 0
     val smokeResult = {
       var t = "";
-      for ((errNr, (pos, msg)) <- errorMessages) yield {
-        if (!smokeErrors.contains(errNr)) {
-          t += "  " + pos + ": " + msg + "\n"
+      for (s@SmokeAssert(_, pos, msg, prev, _) <- smokeAssertions.values.toList.sortWith((a,b) => a.pos < b.pos)) yield {
+        if (s.warning) {
+          if (s.prev.exists(a => !a.warning)) { // omit warning if all ancestors created a warning
+            t += "  " + pos + ": " + msg + "\n"
+            smokeTestWarnings += 1
+          }
         }
       }
       t
     }
     
-    verificationResult +
-    smokeResult + (if (smokeResult != "") "\n" else "") +
-    (outcome match {
+    var realErrors = -1
+    val status = (outcome match {
       case None => ""
       case Some((verified,errors)) =>
-        "Boogie program verifier finished with " + (errors-smokeErrors.size) + " errors and " + smokeTestWarnings + " smoke test warnings."
+        realErrors = errors-smokeErrors.size
+        "Boogie program verifier finished with " + realErrors + " errors and " + smokeTestWarnings + " smoke test warnings."
     })
+    
+    verificationResult +
+    (if (realErrors > 0) "The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.\n" else "") + 
+    smokeResult + (if (smokeResult != "") "\n" else "") +
+    status
   }
   
   /** Add smoke assertions for to a program. */
@@ -74,61 +107,113 @@ object SmokeTest {
   
   /** Add smoke assertions for a method (if necessary). */
   private def smokeMethod(method: Method) = {
-    var newbody = smokeStmt(method.body)
-    val preassert = smokeAssert(method.pos, "Precondition of method " + method.Id + " is equivalent to false.")
-    val postassert = smokeAssert(method.pos, "The end of method " + method.Id + " is unreachable.")
-    newbody = preassert :: newbody ::: postassert :: Nil
+    val preassert = initSmokeAssert(method.pos, "Precondition of method " + method.Id + " is equivalent to false.")
+    var (newbody, bodyout) = smokeStmt(method.body, Set(preassert))
+    val postassert = initSmokeAssert(method.pos, "The end of method " + method.Id + " is unreachable.", bodyout)
+    newbody = preassert.chaliceAssert :: newbody ::: postassert.chaliceAssert :: Nil
     Method(method.id, method.ins, method.outs, method.spec, newbody)
   }
   
   /** Add smoke assertions for multiple statements (if necessary). */
-  private def smokeStmt(stmts: List[Statement]): List[Statement] = {
-    (for (s <- stmts) yield copyPosition(s, smokeStmt(s))).flatten
+  private def smokeStmt(stmts: List[Statement], in: Set[SmokeAssert]): (List[Statement], Set[SmokeAssert]) = {
+    var tmp = in
+    val newstmts = (for (s <- stmts) yield {
+      val (sstmts, sout) = smokeStmt(s, tmp)
+      tmp = sout
+      copyPosition(s, sstmts)
+    }).flatten
+    (newstmts, tmp)
   }
   
   /** Add smoke assertions for a statement (if necessary). */
-  private def smokeStmt(stmt: Statement): List[Statement] = {
-    stmt match {
-      case Assume(_) => stmt :: smokeAssert(stmt.pos, "Assumption might introduce a contradiction.") :: Nil
-      case BlockStmt(ss) => smokeStmt(ss)
+  private def smokeStmt(stmt: Statement, in: Set[SmokeAssert]): (List[Statement], Set[SmokeAssert]) = {
+    var out = in
+    
+    def helper(name: String): List[Statement] = {
+      val (stmts, sout) = smokeSimpleStmt(stmt, in, name); out = sout; stmts
+    }
+    
+    val result = stmt match {
+      // composite statements
+      case BlockStmt(ss) =>
+        val (smokestmts, blocksmoke) = smokeStmt(ss, in)
+        out = blocksmoke
+        smokestmts
       case ifs@IfStmt(guard, BlockStmt(then), els) =>
-        val newthen = smokeStmt(then) ::: smokeAssert(ifs.pos, "The end of the if-branch is unreachable.") :: Nil
+        val thensmoke = initSmokeAssert(ifs.pos, "The begging of the if-branch is unreachable.", in)
+        val (thensmokestmts, thenout) = smokeStmt(then, Set(thensmoke))
+        out = thenout
+        val newthen = thensmoke.chaliceAssert :: thensmokestmts
         val newelse = els match {
-          case None => None
-          case Some(s) => Some(BlockStmt(smokeStmt(s) ::: smokeAssert(ifs.pos, "The end of the else-branch is unreachable.") :: Nil))
+          case None =>
+            out ++= in
+            None
+          case Some(s) =>
+            val elsesmoke = initSmokeAssert(ifs.pos, "The begging of the else-branch is unreachable.", in)
+            val (blocksmokestmts, blockout) = smokeStmt(s, Set(elsesmoke))
+            out ++= blockout
+            Some(BlockStmt(elsesmoke.chaliceAssert :: blocksmokestmts))
         }
         IfStmt(guard, BlockStmt(newthen), newelse) :: Nil
       case WhileStmt(guard, oldInvs, newInvs, lkch, BlockStmt(body)) =>
-        val newbody = smokeStmt(body) ::: smokeAssert(stmt.pos, "The end of the while-body is unreachable.") :: Nil
-        WhileStmt(guard, oldInvs, newInvs, lkch, BlockStmt(newbody)) :: Nil
+        val whilesmoke = initSmokeAssert(stmt.pos, "The begging of the while-body is unreachable.", in)
+        val (whilesmokestmts, whileout) = smokeStmt(body, Set(whilesmoke))
+        val whileaftersmoke = initSmokeAssert(stmt.pos, "The statements after the while-loop are unreachable.", in)
+        val whileendsmoke = initSmokeAssert(stmt.pos, "The end of the while-loop is unreachable.", whileout)
+        out = Set(whileaftersmoke)
+        val newbody = whilesmoke.chaliceAssert :: whilesmokestmts ::: whileendsmoke.chaliceAssert :: Nil
+        WhileStmt(guard, oldInvs, newInvs, lkch, BlockStmt(newbody)) :: whileaftersmoke.chaliceAssert :: Nil
       case Lock(obj, BlockStmt(body), rdLock) =>
-        Lock(obj, BlockStmt(smokeStmt(body)), rdLock) :: Nil
-      case _: RefinementBlock => stmt :: Nil
+        val locksmoke = initSmokeAssert(stmt.pos, "The begging of the lock-block is unreachable.", in)
+        val (blocksmokestmts, blockout) = smokeStmt(body, Set(locksmoke))
+        out = blockout
+        Lock(obj, BlockStmt(locksmoke.chaliceAssert :: blocksmokestmts), rdLock) :: Nil
+      case _: RefinementBlock =>
+        // TODO
+        stmt :: Nil
       
-      case Assert(_) => stmt :: Nil
-      case Assign(_, _) => stmt :: Nil
-      case FieldUpdate(_, _) => stmt :: Nil
-      case _: LocalVar => stmt :: Nil
-      case _: SpecStmt => stmt :: Nil
-      case _: Call => stmt :: Nil
-      case Install(_, _, _) => stmt :: Nil
-      case Share(_, _, _) => stmt :: Nil
-      case Unshare(_) => stmt :: Nil
-      case Acquire(_) => stmt :: Nil
-      case Release(_) => stmt :: Nil
-      case RdAcquire(_) => stmt :: Nil
-      case RdRelease(_) => stmt :: Nil
-      case Downgrade(_) => stmt :: Nil
-      case Free(_) => stmt :: Nil
-      case Fold(_) => stmt :: Nil
-      case Unfold(_) => stmt :: Nil
-      case CallAsync(_, _, _, _, _) => stmt :: Nil
-      case JoinAsync(_, _) => stmt :: Nil
-      case Send(_, _) => stmt :: Nil
-      case Receive(_, _, _) => stmt :: Nil
-      case _: Signal => stmt :: Nil
-      case _: Wait => stmt :: Nil
+      // assumption
+      case Assume(_) =>
+        val assumeSmoke = initSmokeAssert(stmt.pos, "Assumption introduces a contradiction.", in)
+        out = Set(assumeSmoke)
+        stmt :: assumeSmoke.chaliceAssert :: Nil
+      
+      // simple statements that inhale something
+      case Unfold(_) => helper("unfold")
+      case JoinAsync(_, _) => helper("join")
+      case _: Call => helper("method call")
+      case _: SpecStmt => helper("specification")
+      case Receive(_, _, _) => helper("receive")
+      case Acquire(_) => helper("acquire")
+      case RdAcquire(_) => helper("rd acquire")
+      
+      // any other simple statements
+      case Assert(_) => if (Chalice.smokeAll) helper("assert") else stmt :: Nil
+      case Assign(_, _) => if (Chalice.smokeAll) helper("assign") else stmt :: Nil
+      case FieldUpdate(_, _) => if (Chalice.smokeAll) helper("field update") else stmt :: Nil
+      case _: LocalVar => if (Chalice.smokeAll) helper("local variable") else stmt :: Nil
+      case Install(_, _, _) => if (Chalice.smokeAll) helper("reorder") else stmt :: Nil
+      case Share(_, _, _) => if (Chalice.smokeAll) helper("share") else stmt :: Nil
+      case Unshare(_) => if (Chalice.smokeAll) helper("unshare") else stmt :: Nil
+      case Release(_) => if (Chalice.smokeAll) helper("release") else stmt :: Nil
+      case RdRelease(_) => if (Chalice.smokeAll) helper("rd release") else stmt :: Nil
+      case Downgrade(_) => if (Chalice.smokeAll) helper("downgrade") else stmt :: Nil
+      case Free(_) => if (Chalice.smokeAll) helper("free") else stmt :: Nil
+      case Fold(_) => if (Chalice.smokeAll) helper("fold") else stmt :: Nil
+      case CallAsync(_, _, _, _, _) => if (Chalice.smokeAll) helper("fork") else stmt :: Nil
+      case Send(_, _) => if (Chalice.smokeAll) helper("send") else stmt :: Nil
+      case _: Signal => if (Chalice.smokeAll) helper("signal") else stmt :: Nil
+      case _: Wait => if (Chalice.smokeAll) helper("wait") else stmt :: Nil
     }
+    (result, out)
+  }
+  
+  /** Helper method to add a smoke assertion after a simple (non-compound)
+   *  statement.
+   */
+  def smokeSimpleStmt(stmt: Statement, in: Set[SmokeAssert], msg: String): (List[Statement], Set[SmokeAssert]) = {
+    val smoke = initSmokeAssert(stmt.pos, "The statements after the " + msg + " statement are unreachable.", in)
+    (stmt :: smoke.chaliceAssert :: Nil, Set(smoke))
   }
   
   /** Generate an "assert false" with a certain position and a certain error
@@ -137,13 +222,17 @@ object SmokeTest {
    *  not generate warnings for all failing assertions (even if the command
    *  line switch /subsumption:0 is used).
    */
-  private def smokeAssert(pos: Position, error: String) = {
+  def initSmokeAssert(pos: Position, error: String): SmokeAssert = initSmokeAssert(pos, error, Set(SmokeAssertSentinel))
+  def initSmokeAssert(pos: Position, error: String, prev: Set[SmokeAssert]): SmokeAssert = {
     count += 1
-    errorMessages += count -> (pos, error)
-    val assert = Assert(Neq(IntLiteral(1), IntLiteral(1)))
+    val i = IntLiteral(1); i.typ = IntClass
+    val n = Neq(i, i); n.typ = BoolClass
+    val assert = Assert(n)
     assert.smokeErrorNr = Some(count)
     assert.pos = pos
-    assert
+    val sm = SmokeAssert(count, pos, error, prev, assert)
+    smokeAssertions += count -> sm
+    sm
   }
   
   /** Copy the position of an old AST node to a new node (if not already

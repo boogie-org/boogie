@@ -12,11 +12,11 @@ Verification of permission_arithmetic.chalice using parameters=""
   205.10: Location might not be readable.
   220.10: Location might not be readable.
 
+The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
   18.3: Precondition of method a2 is equivalent to false.
-  18.3: The end of method a2 is unreachable.
   24.3: The end of method a3 is unreachable.
-  39.3: The end of method a6 is unreachable.
+  42.5: The statements after the method call statement are unreachable.
   200.3: The end of method a28 is unreachable.
   215.3: The end of method a28b is unreachable.
 
-Boogie program verifier finished with 11 errors and 6 smoke test warnings.
+Boogie program verifier finished with 11 errors and 5 smoke test warnings.

@@ -12,8 +12,6 @@ namespace BytecodeTranslator.Phone {
     private ITypeReference navigationSvcType;
     private ITypeReference typeTraversed;
 
-    private static readonly string[] NAV_CALLS = { /*"GoBack", "GoForward", "Navigate", "StopLoading"*/ "Navigate", "GoBack"};
-
     public PhoneNavigationCodeTraverser(MetadataReaderHost host, ITypeReference typeTraversed) : base() {
       this.host = host;
       this.typeTraversed = typeTraversed;
@@ -32,8 +30,8 @@ namespace BytecodeTranslator.Phone {
 
     public override void Visit(IMethodDefinition method) {
       if (method.IsConstructor && PhoneCodeHelper.isPhoneApplicationClass(typeTraversed, host)) {
-        // TODO initialize current navigation URI to mainpage, using a placeholder for now.
         // TODO BUG doing this is generating a fresh variable definition somewhere that the BCT then translates into two different (identical) declarations
+        // TODO maybe a bug introduced here or a BCT bug
         string mainPageUri = PhoneCodeHelper.PhonePlugin.getMainPageXAML();
         SourceMethodBody sourceBody = method.Body as SourceMethodBody;
         if (sourceBody != null) {
@@ -42,16 +40,17 @@ namespace BytecodeTranslator.Phone {
             Assignment uriInitAssign = new Assignment() {
               Source = new CompileTimeConstant() {
                 Type = host.PlatformType.SystemString,
-                Value = mainPageUri,
+                Value = PhoneCodeHelper.getURIBase(mainPageUri),
               },
               Type = host.PlatformType.SystemString,
               Target = new TargetExpression() {
                 Type = host.PlatformType.SystemString,
                 Definition = new FieldReference() {
-                  ContainingType= typeTraversed,
+                  ContainingType= PhoneCodeHelper.getMainAppTypeReference(),
                   IsStatic=true,
                   Type=host.PlatformType.SystemString,
                   Name=host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
+                  InternFactory= host.InternFactory,
                 },
               },
             };
@@ -96,7 +95,7 @@ namespace BytecodeTranslator.Phone {
         return;
 
       string methodToCallName= methodToCall.Name.Value;
-      if (!NAV_CALLS.Contains(methodToCallName))
+      if (!PhoneCodeHelper.NAV_CALLS.Contains(methodToCallName))
         return;
 
       navCallFound = true;
@@ -214,10 +213,11 @@ namespace BytecodeTranslator.Phone {
           Target = new TargetExpression() {
             Type = host.PlatformType.SystemString,
             Definition = new FieldReference() {
-              ContainingType=typeTraversed,
+              ContainingType=PhoneCodeHelper.getMainAppTypeReference(),
               IsStatic= true,
               Type = host.PlatformType.SystemString,
               Name = host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
+              InternFactory=host.InternFactory,
             },
           },
         };
@@ -244,10 +244,11 @@ namespace BytecodeTranslator.Phone {
           Target = new TargetExpression() {
             Type = host.PlatformType.SystemString,
             Definition = new FieldReference() {
-              ContainingType=typeTraversed,
+              ContainingType = PhoneCodeHelper.getMainAppTypeReference(),
               IsStatic= true,
               Type = host.PlatformType.SystemString,
               Name = host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
+              InternFactory=host.InternFactory,
             },
           },
         };
@@ -301,7 +302,6 @@ namespace BytecodeTranslator.Phone {
 
     // TODO same here. Are there specific methods (and ways to identfy those) that can perform navigation?
     public override void Visit(IMethodDefinition method) {
-
       PhoneNavigationCodeTraverser codeTraverser = new PhoneNavigationCodeTraverser(host, typeBeingTraversed);
       codeTraverser.Visit(method);
     }
