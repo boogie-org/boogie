@@ -46,6 +46,12 @@ namespace BytecodeTranslator {
     [OptionDescription("Phone translation controls configuration")]
     public string phoneControls = null;
 
+    [OptionDescription("Add phone navigation code on translation. Requires /phoneControls. Default false", ShortForm = "wpnav")]
+    public bool phoneNavigationCode= false;
+
+    [OptionDescription("Add phone feedback code on translation. Requires /phoneControls. Default false", ShortForm = "wpfb")]
+    public bool phoneFeedbackCode = false;
+
   }
 
   public class BCT {
@@ -96,7 +102,13 @@ namespace BytecodeTranslator {
             return 1;
         }
 
-        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stub, options.phoneControls);
+        if ((options.phoneFeedbackCode || options.phoneNavigationCode) && (options.phoneControls == null || options.phoneControls == "")) {
+          Console.WriteLine("Options /phoneNavigationCode and /phoneFeedbackCode need /phoneControls option set.");
+          return 1;
+        }
+
+        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stub,
+                                   options.phoneControls, options.phoneNavigationCode, options.phoneFeedbackCode);
 
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed: {0}", e.Message);
@@ -106,7 +118,8 @@ namespace BytecodeTranslator {
       return result;
     }
 
-    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, List<string>/*?*/ libPaths, bool wholeProgram, List<string>/*?*/ stubAssemblies, string phoneControlsConfigFile) {
+    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, List<string>/*?*/ libPaths, bool wholeProgram, List<string>/*?*/ stubAssemblies,
+                                        string phoneControlsConfigFile, bool doPhoneNav, bool doPhoneFeedback) {
       Contract.Requires(assemblyNames != null);
       Contract.Requires(heapFactory != null);
 
@@ -191,10 +204,18 @@ namespace BytecodeTranslator {
       if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
         phonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
         PhoneCodeHelper.PhonePlugin = phonePlugin;
-        PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(host);
-        initTr.InjectPhoneCodeAssemblies(modules);
-        PhoneNavigationMetadataTraverser navTr = new PhoneNavigationMetadataTraverser(host);
-        navTr.InjectPhoneCodeAssemblies(modules);
+        if (doPhoneNav) {
+          PhoneCodeHelper.PhoneNavigationToggled = true;
+          PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(host);
+          initTr.InjectPhoneCodeAssemblies(modules);
+          PhoneNavigationMetadataTraverser navTr = new PhoneNavigationMetadataTraverser(host);
+          navTr.InjectPhoneCodeAssemblies(modules);
+        }
+
+        if (doPhoneFeedback) {
+          PhoneCodeHelper.PhoneFeedbackToggled = true;
+          //PhoneControlFeedbackMetadataTraverser fbMetaDataTraverser= new PhoneControlFeedbackMetadataTraverser(host);
+        }
       }
 
       translator.TranslateAssemblies(modules);

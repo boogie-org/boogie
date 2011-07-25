@@ -126,6 +126,7 @@
     <Compile Include="HeapFactory.cs" />
     <Compile Include="MetadataTraverser.cs" />
     <Compile Include="Phone\PhoneCodeHelper.cs" />
+    <Compile Include="Phone\PhoneControlFeedbackTraverser.cs" />
     <Compile Include="Phone\PhoneInitializationTraverser.cs" />
     <Compile Include="Phone\PhoneNavigationTraverser.cs" />
     <Compile Include="Phone\PhoneCodeWrapperWriter.cs" />

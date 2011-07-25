@@ -511,20 +511,17 @@ namespace BytecodeTranslator
         Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
         this.StmtTraverser.RaiseException(expr);
       } finally {
+        // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
         if (PhoneCodeHelper.PhonePlugin != null) {
           if (PhoneCodeHelper.isNavigationCall(methodCall, sink.host)) {
-            // the block is a potential page changer
-            List<Bpl.AssignLhs> lhs = new List<Bpl.AssignLhs>();
-            List<Bpl.Expr> rhs = new List<Bpl.Expr>();
-            Bpl.Expr value = new Bpl.LiteralExpr(Bpl.Token.NoToken, false);
-            rhs.Add(value);
-            Bpl.SimpleAssignLhs assignee=
-              new Bpl.SimpleAssignLhs(Bpl.Token.NoToken,
-                                      new Bpl.IdentifierExpr(Bpl.Token.NoToken,
-                                                             sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool)));
-            lhs.Add(assignee);
-            Bpl.AssignCmd assignCmd = new Bpl.AssignCmd(Bpl.Token.NoToken, lhs, rhs);
+            Bpl.AssignCmd assignCmd = PhoneCodeHelper.createBoogieNavigationUpdateCmd(sink);
             this.StmtTraverser.StmtBuilder.Add(assignCmd);
+          }
+
+          if (PhoneCodeHelper.PhoneFeedbackToggled && PhoneCodeHelper.isMethodKnownUIChanger(methodCall, sink.host)) {
+            Bpl.AssumeCmd assumeFalse = new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
+            this.StmtTraverser.StmtBuilder.Add(assumeFalse);
+            // FEEDBACK TODO make sure that the call to this method (not the called one but the one in context) is inlined (how?)
           }
         }
       }
@@ -683,6 +680,7 @@ namespace BytecodeTranslator
       var tok = assignment.Token();
 
       ICompileTimeConstant constant= assignment.Source as ICompileTimeConstant;
+      // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
       if (PhoneCodeHelper.PhonePlugin != null && constant != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
         TranslateHavocCurrentURI();
       } else {
@@ -694,6 +692,7 @@ namespace BytecodeTranslator
     /// Patch, to account for URIs that cannot be tracked because of current dataflow restrictions
     /// </summary>
     private void TranslateHavocCurrentURI() {
+      // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
       Bpl.CallCmd havocCall = new Bpl.CallCmd(Bpl.Token.NoToken, PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI, new List<Bpl.Expr>(), new List<Bpl.IdentifierExpr>());
       StmtTraverser.StmtBuilder.Add(havocCall);
     }

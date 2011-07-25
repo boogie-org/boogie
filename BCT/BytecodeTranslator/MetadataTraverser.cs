@@ -395,6 +395,13 @@ namespace BytecodeTranslator {
         Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
         #endregion
 
+        // FEEDBACK TODO what if it is a function?
+        if (PhoneCodeHelper.PhoneFeedbackToggled) {
+          if (PhoneCodeHelper.isMethodInputHandler(method)) {
+            Bpl.AssertCmd falseAssertion = new Bpl.AssertCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
+            stmtTraverser.StmtBuilder.Add(falseAssertion);
+          }
+        }
         var translatedBody = stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken);
 
         #region Add implementation to Boogie program

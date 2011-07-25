@@ -11,8 +11,112 @@ namespace BytecodeTranslator.Phone {
     NOT_STATIC, STATIC_URI_CREATION_ONSITE, STATIC_URI_ROOT_CREATION_ONSITE,
   }
 
+  public enum PHONE_CONTROL_TYPE {
+    None=0x0000, UIElement=0x0001, FrameworkElement= 0x0002, Border=0x0004, Control=0x0008, ContentControl=0x0010, Panel=0x0020, Canvas=0x0040,
+    ToggleButton=0x0080, Grid=0x0100, Image=0x0200, InkPresenter=0x0400, ItemsControl=0x0800, Selector=0x1000, ListBox=0x2000, PasswordBox=0x4000,
+    RangeBase=0x8000, ProgressBar=0x00010000, Slider=0x00020000, StackPanel=0x00040000, RichTextBox=0x00080000, TextBlock=0x00100000,
+    TextBox=0x00200000,
+  }
+
   public static class PhoneCodeHelper {
     // TODO externalize strings
+    private static readonly string[] TextBoxChangeCalls =
+    { "set_BaselineOffset", "set_CaretBrush", "set_FontSource", "set_HorizontalScrollBarVisibility", "set_IsReadOnly", "set_LineHeight",
+      "set_LineStackingStrategy", "set_MaxLength", "set_SelectedText", "set_SelectionBackground", "set_SelectionForeground", "set_SelectionLength",
+      "set_SelectionStart", "set_Text", "set_TextAlignment", "set_TextWrapping", "set_VerticalScrollBarVisibility", "set_Watermark",
+    };
+
+    private static readonly string[] TextBlockChangeCalls =
+    { "set_BaselineOffset", "set_FontFamily", "set_FontSize", "set_FontSource", "set_FontStretch", "set_FontStyle", "set_FontWeight", "set_Foreground",
+      "set_CharacterSpacing", "set_LineHeight", "set_LineStackingStrategy", "set_Padding", "set_Text", "set_TextAlignment", "set_TextDecorations",
+      "set_TextTrimming", "set_TextWrapping", 
+    };
+
+    private static readonly string[] UIElementChangeCalls =
+    { "set_Clip", "set_Opacity", "set_OpacityMask", "set_Projection", "set_RenderTransform",
+      "set_RenderTransformOrigin", "set_Visibility", "Arrange", "InvalidateArrange", "InvalidateMeasure", "SetValue", "ClearValue", // Set/ClearValue are quite unsafe
+      "UpdateLayout", "Measure",
+    };
+
+    private static readonly string[] FrameworkElementChangeCalls =
+    { "set_FlowDirection", "set_Height", "set_HorizontalAlignment", "set_Language", "set_Margin", "set_MaxHeight", "set_MaxWidth", "set_MinHeight",
+      "set_MinWidth", "set_Style", "set_VerticalAlignment", "set_Width", "set_Cursor", 
+    };
+
+    private static readonly string[] BorderChangeCalls =
+    { "set_Background", "set_BorderBrush", "set_BorderThickness", "set_CornerRadius", "set_Padding", 
+    };
+
+    private static readonly string[] ControlChangeCalls =
+    { "set_Background", "set_BorderBrush", "set_BorderThickness", "set_CharacterSpacing", "set_FontFamily", "set_FontSize", "set_FontStretch",
+      "set_FontStyle", "set_FontWeight", "set_Foreground", "set_HorizontalContentAlignment", "set_IsEnabled", "set_Padding", "set_VerticalContentAlignment",
+    };
+
+    private static readonly string[] ContentControlChangeCalls =
+    { "set_Content", 
+    };
+
+    private static readonly string[] PanelChangeCalls =
+    { "set_Background", 
+    };
+
+    private static readonly string[] CanvasChangeCalls =
+    { "set_Left", "set_Top", "set_ZIndex", 
+    };
+
+    private static readonly string[] ToggleButtonChangeCalls =
+    { "set_IsChecked", 
+    };
+
+    private static readonly string[] GridChangeCalls =
+    { "set_ShowGridLines",  "set_Column", "set_ColumnSpan", "set_Row", "set_RowSpan", 
+    };
+
+    private static readonly string[] ImageChangeCalls =
+    { "set_Source", "set_Stretch", 
+    };
+
+    private static readonly string[] InkPresenterChangeCalls =
+    { "set_Strokes",
+    };
+
+    private static readonly string[] ItemsControlChangeCalls =
+    { "set_DisplayMemberPath", "set_ItemsSource", "set_ItemTemplate", 
+    };
+
+    private static readonly string[] SelectorChangeCalls =
+    { "set_SelectedIndex", "set_SelectedItem", "set_SelectedValue", "set_SelectedValuePath",
+    };
+
+    private static readonly string[] ListBoxChangeCalls =
+    { "set_ItemContainerStyle", 
+    };
+
+    private static readonly string[] PasswordBoxChangeCalls =
+    { "set_CaretBrush", "set_FontSource", "set_MaxLength", "set_Password", "set_PasswordChar", "set_SelectionBackground", "set_SelectionForeground",
+    };
+
+    private static readonly string[] RangeBaseChangeCalls =
+    { "set_LargeChange", "set_Maximum", "set_Minimum", "set_SmallChange", "set_Value",
+    };
+
+    private static readonly string[] ProgressBarChangeCalls =
+    { "set_IsIndeterminate",
+    };
+
+    private static readonly string[] SliderChangeCalls =
+    { "set_IsDirectionReversed", "set_Orientation",
+    };
+
+    private static readonly string[] StackPanelChangeCalls =
+    { "set_Orientation", 
+    };
+
+    private static readonly string[] RichTextBoxChangeCalls =
+    { "set_BaselineOffset", "set_CaretBrush", "set_HorizontalScrollBartVisibility", "set_LineHeight", "set_LineStackingStrategy", "set_TextAlignment",
+      "set_TextWrapping", "set_VerticalScrollBarVisibility", "set_Xaml",
+    };
+
     private const string IL_BOOGIE_VAR_PREFIX = "@__BOOGIE_";
     private const string BOOGIE_VAR_PREFIX = "__BOOGIE_";
     public const string IL_CURRENT_NAVIGATION_URI_VARIABLE = IL_BOOGIE_VAR_PREFIX + "CurrentNavigationURI__";
@@ -99,6 +203,98 @@ namespace BytecodeTranslator.Phone {
       return typeRef.isClass(phoneApplicationPageTypeRef);
     }
 
+    public static bool isPhoneControlClass(this ITypeReference typeRef, IMetadataHost host, out PHONE_CONTROL_TYPE controlType) {
+      Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
+      IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
+      AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
+          new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
+                               coreAssemblyRef.PublicKeyToken, "");
+      IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
+      ITypeReference uiElementType = platform.CreateReference(systemAssembly, "System", "Windows", "UIElement");
+      ITypeReference frameworkElementType = platform.CreateReference(systemAssembly, "System", "Windows", "FrameworkElement");
+
+      controlType = PHONE_CONTROL_TYPE.None;
+      if (typeRef.isClass(uiElementType)) {
+        controlType |= PHONE_CONTROL_TYPE.UIElement;
+      }
+
+      if (typeRef.isClass(frameworkElementType)) {
+        controlType |= PHONE_CONTROL_TYPE.FrameworkElement;
+        ITypeReference imageType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "Image");
+        ITypeReference borderType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "Border");
+        ITypeReference winControlType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "Control");
+        ITypeReference panelType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "Panel");
+        ITypeReference textBlockType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "TextBlock");
+
+        if (typeRef.isClass(textBlockType)) {
+          controlType |= PHONE_CONTROL_TYPE.TextBlock;
+        } else if (typeRef.isClass(imageType)) {
+          controlType |= PHONE_CONTROL_TYPE.Image;
+        } else if (typeRef.isClass(borderType)) {
+          controlType |= PHONE_CONTROL_TYPE.Border;
+        } else if (typeRef.isClass(winControlType)) {
+          controlType |= PHONE_CONTROL_TYPE.Control;
+          ITypeReference contentControlType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "ContentControl");
+          ITypeReference itemsControlType= platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "ItemsControl");
+          ITypeReference passwordBoxType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "PasswordBox");
+          ITypeReference rangeBaseType= platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "Primitives","RangeBase");
+          ITypeReference richTextBoxType= platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "RichTextBox");
+          ITypeReference textBoxType= platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "TextBox");
+
+          if (typeRef.isClass(textBoxType)) {
+            controlType |= PHONE_CONTROL_TYPE.TextBox;
+          } else if (typeRef.isClass(contentControlType)) {
+            controlType |= PHONE_CONTROL_TYPE.ContentControl;
+            ITypeReference toggleButtonType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "Primitives", "ToggleButton");
+            if (typeRef.isClass(toggleButtonType)) {
+              controlType |= PHONE_CONTROL_TYPE.ToggleButton;
+            }
+          } else if (typeRef.isClass(itemsControlType)) {
+            controlType |= PHONE_CONTROL_TYPE.ItemsControl;
+            ITypeReference selectorType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "Primitives", "Selector");
+            if (typeRef.isClass(selectorType)) {
+              controlType |= PHONE_CONTROL_TYPE.Selector;
+              ITypeReference listBoxType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "ListBox");
+              if (typeRef.isClass(listBoxType)) {
+                controlType |= PHONE_CONTROL_TYPE.ListBox;
+              }
+            }
+          } else if (typeRef.isClass(passwordBoxType)) {
+            controlType |= PHONE_CONTROL_TYPE.PasswordBox;
+          } else if (typeRef.isClass(rangeBaseType)) {
+            controlType |= PHONE_CONTROL_TYPE.RangeBase;
+            ITypeReference progressBarType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "ProgressBar");
+            ITypeReference sliderType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "Slider");
+            if (typeRef.isClass(progressBarType)) {
+              controlType |= PHONE_CONTROL_TYPE.ProgressBar;
+            } else if (typeRef.isClass(sliderType)) {
+              controlType |= PHONE_CONTROL_TYPE.Slider;
+            }
+          } else if (typeRef.isClass(richTextBoxType)) {
+            controlType |= PHONE_CONTROL_TYPE.RichTextBox;
+          }
+        } else if (typeRef.isClass(panelType)) {
+          controlType |= PHONE_CONTROL_TYPE.Panel;
+          ITypeReference canvasType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "Canvas");
+          ITypeReference gridType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "Grid");
+          ITypeReference stackPanelType= platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "StackPanel");
+          if (typeRef.isClass(canvasType)) {
+            controlType |= PHONE_CONTROL_TYPE.Canvas;
+            ITypeReference inkPresenterType= platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "InkPresenter");
+            if (typeRef.isClass(inkPresenterType)) {
+              controlType |= PHONE_CONTROL_TYPE.InkPresenter;
+            }
+          } else if (typeRef.isClass(gridType)) {
+            controlType |= PHONE_CONTROL_TYPE.Grid;
+          } else if (typeRef.isClass(stackPanelType)) {
+            controlType |= PHONE_CONTROL_TYPE.StackPanel;
+          }
+        }
+      }
+
+      return false;
+    }
+
     public static bool isPhoneApplicationClass(this ITypeReference typeRef, IMetadataHost host) {
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
       IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
@@ -118,8 +314,8 @@ namespace BytecodeTranslator.Phone {
                                new byte[] { 0x24, 0xEE, 0xC0, 0xD8, 0xC8, 0x6C, 0xDA, 0x1E }, "");
 
       IAssemblyReference phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
-      ITypeReference phoneApplicationPageTypeRef = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Controls", "PhoneApplicationPage");
-
+      ITypeReference phoneApplicationPageTypeRef = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Controls" , "PhoneApplicationPage");
+      
       return typeRef.isClass(phoneApplicationPageTypeRef);
     }
 
@@ -221,6 +417,57 @@ namespace BytecodeTranslator.Phone {
 
     public static string getMainAppTypeName() {
       return PhonePlugin.getMainAppTypeName();
+    }
+
+    public static Bpl.AssignCmd createBoogieNavigationUpdateCmd(Sink sink) {
+      // the block is a potential page changer
+      List<Bpl.AssignLhs> lhs = new List<Bpl.AssignLhs>();
+      List<Bpl.Expr> rhs = new List<Bpl.Expr>();
+      Bpl.Expr value = new Bpl.LiteralExpr(Bpl.Token.NoToken, false);
+      rhs.Add(value);
+      Bpl.SimpleAssignLhs assignee =
+        new Bpl.SimpleAssignLhs(Bpl.Token.NoToken,
+                                new Bpl.IdentifierExpr(Bpl.Token.NoToken,
+                                                       sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool)));
+      lhs.Add(assignee);
+      Bpl.AssignCmd assignCmd = new Bpl.AssignCmd(Bpl.Token.NoToken, lhs, rhs);
+      return assignCmd;
+    }
+
+    // TODO do away with these whenever it is possible to make repeated passes at the translator, and handle from Program
+    public static bool PhoneNavigationToggled { get; set; }
+    public static bool PhoneFeedbackToggled { get; set; }
+
+    public static bool isMethodInputHandler(IMethodDefinition method) {
+      // FEEDBACK TODO
+
+      return false;
+    }
+
+    public static bool isMethodKnownUIChanger(IMethodCall methodCall, IMetadataHost host) {
+      // FEEDBACK TODO
+      // FEEDBACK TODO for now, focus only on known Silverlight controls
+      // before any method call checks, make sure the receiving object is a Control
+      IExpression callee = methodCall.ThisArgument;
+      if (callee == null)
+        return false;
+
+      ITypeReference calleeType = callee.Type;
+      PHONE_CONTROL_TYPE controlType;
+      if (calleeType.isPhoneControlClass(host, out controlType)) {
+        return isKnownUIChanger(calleeType, methodCall, controlType); 
+      }
+      return false;
+    }
+
+    public static bool isKnownUIChanger(ITypeReference typeRef, IMethodCall call, PHONE_CONTROL_TYPE controlType) {
+      // FEEDBACK TODO check what to do with Navigation calls and MessageBox
+      bool result= false;
+      if ((controlType & PHONE_CONTROL_TYPE.UIElement) != 0) {
+          result|= UIElementChangeCalls.Contains(call.MethodToCall.Name.Value);
+      }
+
+      return result;
     }
   }
 }
