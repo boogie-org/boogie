@@ -69,10 +69,10 @@ class Parser extends StandardTokenParsers {
             cl
         })
   def channelDecl =
-    "channel" ~> ident ~ formalParameters(true) ~ ("where" ~> expression ?) <~ Semi ^^ {
+    positioned("channel" ~> ident ~ formalParameters(true) ~ ("where" ~> expression ?) <~ Semi ^^ {
       case id ~ ins ~ None => Channel(id, ins, BoolLiteral(true))
       case id ~ ins ~ Some(e) => Channel(id, ins, e)
-    }
+    })
 
   /**
    * Member declarations

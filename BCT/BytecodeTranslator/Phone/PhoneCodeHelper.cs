@@ -12,7 +12,6 @@ namespace BytecodeTranslator.Phone {
   }
 
   public static class PhoneCodeHelper {
-    // TODO ensure this name is unique in the program code, although it is esoteric enough
     // TODO externalize strings
     private const string IL_BOOGIE_VAR_PREFIX = "@__BOOGIE_";
     private const string BOOGIE_VAR_PREFIX = "__BOOGIE_";
@@ -97,15 +96,7 @@ namespace BytecodeTranslator.Phone {
       IAssemblyReference phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
       ITypeReference phoneApplicationPageTypeRef = platform.CreateReference(phoneAssembly, "System", "Windows", "Navigation", "NavigationService");
 
-      ITypeReference baseClass = typeRef.ResolvedType.BaseClasses.FirstOrDefault();
-      while (baseClass != null) {
-        if (baseClass.ResolvedType.Equals(phoneApplicationPageTypeRef.ResolvedType)) {
-          return true;
-        }
-        baseClass = baseClass.ResolvedType.BaseClasses.FirstOrDefault();
-      }
-
-      return false;
+      return typeRef.isClass(phoneApplicationPageTypeRef);
     }
 
     public static bool isPhoneApplicationClass(this ITypeReference typeRef, IMetadataHost host) {
@@ -129,15 +120,7 @@ namespace BytecodeTranslator.Phone {
       IAssemblyReference phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
       ITypeReference phoneApplicationPageTypeRef = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Controls", "PhoneApplicationPage");
 
-      ITypeReference baseClass = typeRef.ResolvedType.BaseClasses.FirstOrDefault();
-      while (baseClass != null) {
-        if (baseClass.ResolvedType.Equals(phoneApplicationPageTypeRef.ResolvedType)) {
-          return true;
-        }
-        baseClass = baseClass.ResolvedType.BaseClasses.FirstOrDefault();
-      }
-
-      return false;
+      return typeRef.isClass(phoneApplicationPageTypeRef);
     }
 
     /// <summary>
@@ -157,7 +140,7 @@ namespace BytecodeTranslator.Phone {
 
       IList<string> constantStrings = new List<string>();
 
-      // TODO this misses so many static strings, but let's start with this for now
+      // TODO this misses so many "static" strings, but let's start with this for now
       IExpression leftOp = stringConcatExpr.Arguments.FirstOrDefault();
       while (leftOp != null && leftOp is ICompileTimeConstant) {
         ICompileTimeConstant strConst = leftOp as ICompileTimeConstant;
@@ -230,6 +213,14 @@ namespace BytecodeTranslator.Phone {
 
     public static void setBoogieStringPageNameForPageClass(string pageClass, string boogieStringName) {
       PhonePlugin.setBoogieStringPageNameForPageClass(pageClass, boogieStringName);
+    }
+
+    public static void setMainAppTypeName(string fullyQualifiedName) {
+      PhonePlugin.setMainAppTypeName(fullyQualifiedName);
+    }
+
+    public static string getMainAppTypeName() {
+      return PhonePlugin.getMainAppTypeName();
     }
   }
 }

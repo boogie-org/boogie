@@ -68,6 +68,7 @@ namespace BytecodeTranslator {
       this.privateTypes = new List<ITypeDefinition>();
 
       trackPageNameVariableName(typeDefinition);
+      trackPhoneApplicationClassname(typeDefinition);
 
       if (typeDefinition.IsClass) {
         bool savedSawCctor = this.sawCctor;
@@ -102,8 +103,17 @@ namespace BytecodeTranslator {
     }
     List<ITypeDefinition> privateTypes = new List<ITypeDefinition>();
 
+    private void trackPhoneApplicationClassname(ITypeDefinition typeDef) {
+      if (PhoneCodeHelper.PhonePlugin != null && typeDef.isPhoneApplicationClass(sink.host)) {
+        INamespaceTypeDefinition namedTypeDef = typeDef as INamespaceTypeDefinition;
+        string fullyQualifiedName = namedTypeDef.ContainingNamespace.Name.Value + "." + namedTypeDef.Name.Value;
+        PhoneCodeHelper.setMainAppTypeReference(typeDef);
+        PhoneCodeHelper.setMainAppTypeName(fullyQualifiedName);
+      }
+    }
+
     private void trackPageNameVariableName(ITypeDefinition typeDef) {
-      if (typeDef.isPhoneApplicationPageClass(sink.host)) {
+      if (PhoneCodeHelper.PhonePlugin != null && typeDef.isPhoneApplicationPageClass(sink.host)) {
         INamespaceTypeDefinition namedTypeDef = typeDef as INamespaceTypeDefinition;
         string fullyQualifiedName = namedTypeDef.ContainingNamespace.Name.Value + "." + namedTypeDef.Name.Value;
         string uriName = PhoneCodeHelper.getURIBase(PhoneCodeHelper.getXAMLForPage(fullyQualifiedName));

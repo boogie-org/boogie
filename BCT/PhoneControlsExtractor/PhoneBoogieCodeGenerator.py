@@ -12,6 +12,8 @@ CONTINUEONPAGE_VAR= "__BOOGIE_ContinueOnPage__"
 
 staticControlsMap= {}
 mainPageXAML= None
+mainAppClassname= None
+appVarName = "__BOOGIE_APP_VAR"
 currentNavigationVariable= None
 originalPageVars= []
 boogiePageVars= []
@@ -40,6 +42,8 @@ def outputPageVariables(file):
   global originalPageVars
   global boogiePageVars
   global boogiePageClasses
+
+  file.write("var " + appVarName + ": Ref;\n")
   for entry in staticControlsMap.keys():
     pageVarName= "__BOOGIE_PAGE_VAR_" + entry
     originalPageVars.append(entry)
@@ -60,10 +64,11 @@ def outputMainProcedure(file):
   file.write("\tvar $isEnabled: bool;\n")
   file.write("\tvar $control: Ref;\n\n")
 
+  file.write("\tcall " + mainAppClassname + ".#ctor(" + appVarName + ");\n")
   for i in range(0,len(boogiePageVars)):
     file.write("\tcall " + boogiePageClasses[i] + ".#ctor(" + boogiePageVars[i]["name"] + ");\n")
 
-  file.write("\t//TODO still need to call Loaded handler on main page and the App ctor.\n")
+  file.write("\t//TODO still need to call Loaded handler on main page.\n")
   file.write("\thavoc $doWork;\n")
   file.write("\twhile ($doWork) {\n")
   file.write("\t\tcall DriveControls();\n")
@@ -159,6 +164,7 @@ def outputBoilerplate(outputFile):
 
 def buildControlInfo(controlInfoFileName):
   global mainPageXAML
+  global mainAppClassname
   global currentNavigationVariable
   global staticControlsMap
 
@@ -167,6 +173,8 @@ def buildControlInfo(controlInfoFileName):
   # <pageClassName>,<page.xaml file>,<xaml boogie string representation>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<BoogieName>
   mainPageXAML= file.readline().strip()
   currentNavigationVariable= file.readline().strip()
+  mainAppClassname= file.readline().strip()
+
   infoLine= file.readline().strip()
   while not infoLine == "":
     pageClass, pageName, pageBoogieStringName, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, bplName= infoLine.split(",")

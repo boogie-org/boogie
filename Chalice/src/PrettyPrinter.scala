@@ -80,8 +80,12 @@ object PrintProgram {
     }
   }
   def Stmt(s: Statement, indent: Int): Unit = s match {
-    case Assert(e) =>
-      print("assert "); Expr(e); println(Semi)
+    case a@Assert(e) =>
+      print("assert "); Expr(e);
+      if (!a.smokeErrorNr.isEmpty)
+        println(Semi + " // smoke assertion: " + SmokeTest.smokeWarningMessage(a.smokeErrorNr.get))
+      else
+        println(Semi)
     case Assume(e) =>
       print("assume "); Expr(e); println(Semi)
     case BlockStmt(ss) =>

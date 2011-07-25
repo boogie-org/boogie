@@ -33,10 +33,15 @@ object SmokeTest {
   private var smokeAssertions: Map[Int,SmokeAssert] = Map()
   private var count: Int = 0 // current error message id
   
+  /** Get the warning message from an ID */
+  def smokeWarningMessage(id: Int) = {
+    smokeAssertions(id).msg
+  }
+  
   /** Process the output of Boogie and generate the correct warnings from smoke testing */
   def processBoogieOutput(out: List[String]): String = {
     var errorCount: Map[String, Int] = Map()
-    val SmokePattern = ".*: SMOKE-TEST-([0-9]+).".r
+    val SmokePattern = ".*: SMOKE-TEST-([0-9]+).*".r
     val SummaryPattern = "Boogie program verifier finished with ([0-9]+) verified, ([0-9]+) errors".r
     var verificationResult = "";
     var smokeErrors: Set[Int] = Set()
@@ -123,6 +128,11 @@ object SmokeTest {
   /** Add smoke assertions for a statement (if necessary). */
   private def smokeStmt(stmt: Statement, in: Set[SmokeAssert]): (List[Statement], Set[SmokeAssert]) = {
     var out = in
+    
+    def helper(name: String): List[Statement] = {
+      val (stmts, sout) = smokeSimpleStmt(stmt, in, name); out = sout; stmts
+    }
+    
     val result = stmt match {
       // composite statements
       case BlockStmt(ss) =>
@@ -169,31 +179,31 @@ object SmokeTest {
         stmt :: assumeSmoke.chaliceAssert :: Nil
       
       // simple statements that inhale something
-      case Unfold(_) => val (stmts, sout) = smokeSimpleStmt(stmt, in, "unfold"); out = sout; stmts
-      case JoinAsync(_, _) => val (stmts, sout) = smokeSimpleStmt(stmt, in, "join"); out = sout; stmts
-      case _: Call => val (stmts, sout) = smokeSimpleStmt(stmt, in, "method call"); out = sout; stmts
-      case _: SpecStmt => val (stmts, sout) = smokeSimpleStmt(stmt, in, "specification"); out = sout; stmts
-      case Receive(_, _, _) => val (stmts, sout) = smokeSimpleStmt(stmt, in, "receive"); out = sout; stmts
-      case Acquire(_) => val (stmts, sout) = smokeSimpleStmt(stmt, in, "acquire"); out = sout; stmts
-      case RdAcquire(_) => val (stmts, sout) = smokeSimpleStmt(stmt, in, "rd acquire"); out = sout; stmts
+      case Unfold(_) => helper("unfold")
+      case JoinAsync(_, _) => helper("join")
+      case _: Call => helper("method call")
+      case _: SpecStmt => helper("specification")
+      case Receive(_, _, _) => helper("receive")
+      case Acquire(_) => helper("acquire")
+      case RdAcquire(_) => helper("rd acquire")
       
       // any other simple statements
-      case Assert(_) => stmt :: Nil
-      case Assign(_, _) => stmt :: Nil
-      case FieldUpdate(_, _) => stmt :: Nil
-      case _: LocalVar => stmt :: Nil
-      case Install(_, _, _) => stmt :: Nil
-      case Share(_, _, _) => stmt :: Nil
-      case Unshare(_) => stmt :: Nil
-      case Release(_) => stmt :: Nil
-      case RdRelease(_) => stmt :: Nil
-      case Downgrade(_) => stmt :: Nil
-      case Free(_) => stmt :: Nil
-      case Fold(_) => stmt :: Nil
-      case CallAsync(_, _, _, _, _) => stmt :: Nil
-      case Send(_, _) => stmt :: Nil
-      case _: Signal => stmt :: Nil
-      case _: Wait => stmt :: Nil
+      case Assert(_) => if (Chalice.smokeAll) helper("assert") else stmt :: Nil
+      case Assign(_, _) => if (Chalice.smokeAll) helper("assign") else stmt :: Nil
+      case FieldUpdate(_, _) => if (Chalice.smokeAll) helper("field update") else stmt :: Nil
+      case _: LocalVar => if (Chalice.smokeAll) helper("local variable") else stmt :: Nil
+      case Install(_, _, _) => if (Chalice.smokeAll) helper("reorder") else stmt :: Nil
+      case Share(_, _, _) => if (Chalice.smokeAll) helper("share") else stmt :: Nil
+      case Unshare(_) => if (Chalice.smokeAll) helper("unshare") else stmt :: Nil
+      case Release(_) => if (Chalice.smokeAll) helper("release") else stmt :: Nil
+      case RdRelease(_) => if (Chalice.smokeAll) helper("rd release") else stmt :: Nil
+      case Downgrade(_) => if (Chalice.smokeAll) helper("downgrade") else stmt :: Nil
+      case Free(_) => if (Chalice.smokeAll) helper("free") else stmt :: Nil
+      case Fold(_) => if (Chalice.smokeAll) helper("fold") else stmt :: Nil
+      case CallAsync(_, _, _, _, _) => if (Chalice.smokeAll) helper("fork") else stmt :: Nil
+      case Send(_, _) => if (Chalice.smokeAll) helper("send") else stmt :: Nil
+      case _: Signal => if (Chalice.smokeAll) helper("signal") else stmt :: Nil
+      case _: Wait => if (Chalice.smokeAll) helper("wait") else stmt :: Nil
     }
     (result, out)
   }

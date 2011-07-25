@@ -13,7 +13,7 @@ channel AckChannel(ch: C) where ch != null && credit(ch, -1); // ack
 
 channel C(msg: bool, n: Node, ackC: AckChannel) where 
   (!msg ==> acc(this.mu, 50) && acc(ackC.mu, 50)) &&
-  (msg ==> n != null && acc(n.next) && acc(n.mu) && credit(ackC, -1)); // cell 
+  (msg ==> n != null && acc(n.next) && acc(n.mu) && ackC != null && credit(ackC, -1)); // cell 
 
 class Node {
   var next: Node;

@@ -23,8 +23,9 @@ class Translator {
   def translateProgram(decls: List[TopLevelDecl]): List[Decl] = {
     decls flatMap {
       case cl: Class => translateClass(cl)
-      case ch: Channel => translateClass(ChannelClass(ch))
-        /* TODO: admissibility check of where clause */
+      case ch: Channel =>
+        translateClass(ChannelClass(ch)) :::
+        translateWhereClause(ch)
         /* TODO: waitlevel not allowed in postcondition of things forked (or, rather, joined) */
     }
   }
@@ -52,7 +53,7 @@ class Translator {
   /**********************************************************************
   *****************            MEMBERS                  *****************
   **********************************************************************/
-
+  
   def translateMember(member: Member): List[Decl] = {
     member match {
       case f: Field =>
@@ -72,6 +73,29 @@ class Translator {
       case ci: CouplingInvariant =>
         Nil
     }
+  }
+  
+  def translateWhereClause(ch: Channel): List[Decl] = {
+    
+    // pick new k
+    val (whereKV, whereK) = Boogie.NewBVar("whereK", tint, true)
+    val whereKStmts = BLocal(whereKV) :: bassume(0 < whereK && 1000*whereK < permissionOnePercent)
+    
+    // check definedness of where clause
+    Proc(ch.channelId + "$whereClause$checkDefinedness",
+      NewBVarWhere("this", new Type(currentClass)) :: (ch.parameters map {i => Variable2BVarWhere(i)}),
+      Nil,
+      GlobalNames,
+      DefaultPrecondition(),
+      whereKStmts :::
+      DefinePreInitialState :::
+      InhaleWithChecking(List(ch.where), "channel where clause", whereK) :::
+      // smoke test: is the where clause equivalent to false?
+      (if (Chalice.smoke) {
+        val a = SmokeTest.initSmokeAssert(ch.pos, "Where clause of channel " + ch.channelId + " is equivalent to false.")
+        translateStatement(a.chaliceAssert, whereK)
+      } else Nil)
+    )
   }
 
   def translateMonitorInvariant(invs: List[MonitorInvariant], pos: Position): List[Decl] = {
@@ -100,6 +124,11 @@ class Translator {
         Havoc(etran.Heap) ::
         // check that invariant is well-defined
         etran.WhereOldIs(h1, m1, c1).Inhale(invs map { mi => mi.e}, "monitor invariant", true, methodK) :::
+        // smoke test: is the monitor invariant equivalent to false?
+        (if (Chalice.smoke) {
+          val a = SmokeTest.initSmokeAssert(pos, "Monitor invariant is equivalent to false.")
+          translateStatement(a.chaliceAssert, methodK)
+        } else Nil) :::
         (if (! Chalice.checkLeaks || invs.length == 0) Nil else
           // check that there are no loops among .mu permissions in monitors
           // !CanWrite[this,mu]
@@ -143,10 +172,16 @@ class Translator {
       GlobalNames,
       DefaultPrecondition(),
       functionKStmts :::
+      //bassume(CanAssumeFunctionDefs) ::
       DefinePreInitialState :::
       // check definedness of the precondition
       InhaleWithChecking(Preconditions(f.spec) map { p => (if(0 < Chalice.defaults) UnfoldPredicatesWithReceiverThis(p) else p)}, "precondition", functionK) :::
       bassume(CurrentModule ==@ VarExpr(ModuleName(currentClass))) :: // verify the body assuming that you are in the module
+      // smoke test: is precondition equivalent to false?
+      (if (Chalice.smoke) {
+        val a = SmokeTest.initSmokeAssert(f.pos, "Precondition of function " + f.Id + " is equivalent to false.")
+        translateStatement(a.chaliceAssert, functionK)
+      } else Nil) :::
       // check definedness of function body
       checkBody :::
       (f.definition match {case Some(e) => BLocal(myresult) :: (Boogie.VarExpr("result") := etran.Tr(e)); case None => Nil}) :::
@@ -301,7 +336,13 @@ class Translator {
       DefaultPrecondition(),
       predicateKStmts :::
       DefinePreInitialState :::
-      InhaleWithChecking(List(DefinitionOf(pred)), "predicate definition", predicateK))
+      InhaleWithChecking(List(DefinitionOf(pred)), "predicate definition", predicateK) :::
+      // smoke test: is the predicate equivalent to false?
+      (if (Chalice.smoke) {
+        val a = SmokeTest.initSmokeAssert(pred.pos, "Predicate " + pred.FullName + " is equivalent to false.")
+        translateStatement(a.chaliceAssert, predicateK)
+      } else Nil)
+    )
   }
 
   def translateMethod(method: Method): List[Decl] = {
@@ -446,7 +487,7 @@ class Translator {
             BLocal(tmpCredits._1) :: (tmpCredits._2 := etran.Credits) ::
             tmpTranslator.Exhale(List((e, ErrorMessage(s.pos, "Assertion might not hold."))), "assert", true, methodK, true)
           case Some(err) =>
-            bassert(e, a.pos, "SMOKE-TEST-" + err + ".", 0) :: Nil
+            bassert(e, a.pos, "SMOKE-TEST-" + err + ". ("+SmokeTest.smokeWarningMessage(err)+")", 0) :: Nil
         }
       case Assume(e) =>
         Comment("assume") ::
@@ -612,7 +653,7 @@ class Translator {
         // pick new k
         val (foldKV, foldK) = Boogie.NewBVar("foldK", tint, true)
         Comment("fold") ::
-        BLocal(foldKV) :: bassume(0 < foldK && 1000*foldK < permissionFull) ::
+        BLocal(foldKV) :: bassume(0 < foldK && 1000*foldK < percentPermission(1) && 1000*foldK < methodK) ::
         isDefined(e) :::
         isDefined(perm) :::
         bassert(nonNull(o), s.pos, "The target of the fold statement might be null.") ::
@@ -628,7 +669,7 @@ class Translator {
         // pick new k
         val (unfoldKV, unfoldK) = Boogie.NewBVar("unfoldK", tint, true)
         Comment("unfold") ::
-        BLocal(unfoldKV) :: bassume(0 < unfoldK && unfoldK < permissionFull) ::
+        BLocal(unfoldKV) :: bassume(0 < unfoldK && unfoldK < percentPermission(1) && 1000*unfoldK < methodK) ::
         isDefined(e) :::
         bassert(nonNull(o), s.pos, "The target of the fold statement might be null.") ::
         isDefined(perm) :::
@@ -651,7 +692,7 @@ class Translator {
         // pick new k for this fork
         val (asyncMethodCallKV, asyncMethodCallK) = Boogie.NewBVar("asyncMethodCallK", tint, true)
         BLocal(asyncMethodCallKV) ::
-        bassume(0 < asyncMethodCallK) :: // upper bounds are later provided by the exhale
+        bassume(0 < asyncMethodCallK && 1000*asyncMethodCallK < percentPermission(1) && 1000*asyncMethodCallK < methodK) ::
         Comment("call " + id) ::
         // declare the local variable, if needed
         { if (c.local == null)
@@ -955,7 +996,7 @@ class Translator {
     // pick new k for this method call
     val (methodCallKV, methodCallK) = Boogie.NewBVar("methodCallK", tint, true)
     BLocal(methodCallKV) ::
-    bassume(0 < methodCallK) :: // upper bounds are later provided by the exhale
+    bassume(0 < methodCallK && 1000*methodCallK < percentPermission(1) && 1000*methodCallK < methodK) ::
     Comment("call " + id) ::
     // introduce formal parameters and pre-state globals
     (for (v <- formalThisV :: formalInsV ::: formalOutsV) yield BLocal(Variable2BVarWhere(v))) :::
@@ -1008,7 +1049,7 @@ class Translator {
     Comment("while") ::
     // pick new k for this method call
     BLocal(whileKV) ::
-    bassume(0 < whileK) :: // upper bounds are later provided by the exhale
+    bassume(0 < whileK && 1000*whileK < percentPermission(1) && 1000*whileK < methodK) ::
     // save globals
     (for (v <- preLoopGlobals) yield BLocal(v)) :::
     (loopEtran.oldEtran.Heap := loopEtran.Heap) ::
@@ -1467,7 +1508,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         List(prove(nonNull(Tr(obj)), obj.pos, "Receiver might be null.")) :::
         // check precondition of the function by exhaling the precondition in tmpHeap/tmpMask/tmpCredits
         Comment("check precondition of call") ::
-        BLocal(funcappKV) :: bassume(0 < funcappK && 1000*funcappK < permissionFull) ::
+        BLocal(funcappKV) :: bassume(0 < funcappK && 1000*funcappK < percentPermission(1)) ::
         bassume(assumption) ::
         BLocal(tmpHeapV) :: (tmpHeap := Heap) ::
         BLocal(tmpMaskV) :: (tmpMask := Mask) :::
@@ -1491,7 +1532,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val (unfoldingKV, unfoldingK) = Boogie.NewBVar("unfoldingK", tint, true)
         
         Comment("unfolding") ::
-        BLocal(unfoldingKV) :: bassume(0 < unfoldingK && 1000*unfoldingK < permissionFull) ::
+        BLocal(unfoldingKV) :: bassume(0 < unfoldingK && 1000*unfoldingK < percentPermission(1)) ::
         // check definedness
         receiverOk ::: isDefined(perm) :::
         // copy state into temporary variables
@@ -1891,7 +1932,6 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   
   def Exhale(predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean, currentK: Expr, exactchecking: Boolean): List[Boogie.Stmt] = {
     if (predicates.size == 0) return Nil;
-    
     val (emV, em) = NewBVar("exhaleMask", tmask, true)
     Comment("begin exhale (" + occasion + ")") ::
     BLocal(emV) :: (em := Mask) ::
@@ -1934,17 +1974,17 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       case PermTimes(lhs, rhs) => {
         val l = needExactChecking(lhs, default);
         val r = needExactChecking(rhs, default);
-        if (l == false || r == false) false else true // if one side doesn't need exact checking, the whole multiplication doesn't
+        (if (l == false || r == false) false else true) // if one side doesn't need exact checking, the whole multiplication doesn't
       }
       case PermPlus(lhs, rhs) => {
         val l = needExactChecking(lhs, default);
         val r = needExactChecking(rhs, default);
-        if (l == true || r == true) true else false // if one side needs exact checking, use exact
+        (if (l == true || r == true) true else false) // if one side needs exact checking, use exact
       }
       case PermMinus(lhs, rhs) => {
         val l = needExactChecking(lhs, default);
         val r = needExactChecking(rhs, default);
-        if (l == true || r == true) true else false // if one side needs exact checking, use exact
+        (if (l == true || r == true) true else false) // if one side needs exact checking, use exact
       }
     }
   }
@@ -2087,7 +2127,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     case MethodEpsilon => (currentK, Nil)
     case ForkEpsilon(token) =>
       val fk = etran.Heap.select(Tr(token), forkK)
-      (fk, bassume(0 < fk && fk < permissionFull) /* this is always true for forkK */)
+      (fk, bassume(0 < fk && fk < percentPermission(1)) /* this is always true for forkK */)
     case Star =>
       val (starKV, starK) = NewBVar("starK", tint, true);
       (starK, BLocal(starKV) :: bassume(starK > 0 /* an upper bound is provided later by DecPermission */) :: Nil)

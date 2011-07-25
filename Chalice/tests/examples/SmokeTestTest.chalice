@@ -2,6 +2,9 @@
 class Cell {
   var f: int;
   
+  invariant acc(this.f) && f == 1
+  invariant f == 2 // SMOKE: contradiction
+  
   method a1()
     requires false // SMOKE: precondition is false
   {}
@@ -109,4 +112,10 @@ class Cell {
   {
     call a13(); // SMOKE: statements afterwards not reachable anymore
   }
+  
+  predicate valid {
+    1 == 2 // SMOKE: contradiction
+  }
 }
+
+channel C(msg: bool) where msg && !msg // SMOKE: contradiction
