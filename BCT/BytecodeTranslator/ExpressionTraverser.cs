@@ -686,7 +686,8 @@ namespace BytecodeTranslator
       ICompileTimeConstant constant= assignment.Source as ICompileTimeConstant;
       // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
       if (PhoneCodeHelper.PhonePlugin != null && PhoneCodeHelper.PhoneNavigationToggled &&
-          constant != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
+          constant != null && constant.Type == sink.host.PlatformType.SystemString &&
+          constant.Value != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
         TranslateHavocCurrentURI();
       } else {
         TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
