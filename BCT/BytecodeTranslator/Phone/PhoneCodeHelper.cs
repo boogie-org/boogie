@@ -20,6 +20,10 @@ namespace BytecodeTranslator.Phone {
 
   public static class PhoneCodeHelper {
     // TODO externalize strings
+    public static readonly string[] IgnoredEvents =
+    { "Loaded",
+    };
+
     private static readonly string[] TextBoxChangeCalls =
     { "set_BaselineOffset", "set_CaretBrush", "set_FontSource", "set_HorizontalScrollBarVisibility", "set_IsReadOnly", "set_LineHeight",
       "set_LineStackingStrategy", "set_MaxLength", "set_SelectedText", "set_SelectionBackground", "set_SelectionForeground", "set_SelectionLength",
@@ -157,11 +161,6 @@ namespace BytecodeTranslator.Phone {
       return ret;
     }
 
-    public static bool isCreateObjectInstance(this IExpression expr) {
-      ICreateObjectInstance createObjExpr = expr as ICreateObjectInstance;
-      return (createObjExpr != null);
-    }
-
     public static bool isClass(this ITypeReference typeRef, ITypeReference targetTypeRef) {
       while (typeRef != null) {
         if (typeRef.ResolvedType.Equals(targetTypeRef.ResolvedType))
@@ -201,6 +200,18 @@ namespace BytecodeTranslator.Phone {
       ITypeReference phoneApplicationPageTypeRef = platform.CreateReference(phoneAssembly, "System", "Windows", "Navigation", "NavigationService");
 
       return typeRef.isClass(phoneApplicationPageTypeRef);
+    }
+
+    public static bool isRoutedEventHandler(this ITypeReference typeRef, IMetadataHost host) {
+      Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
+      IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
+      AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
+          new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
+                               coreAssemblyRef.PublicKeyToken, "");
+      IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
+      ITypeReference routedEvHandlerType = platform.CreateReference(systemAssembly, "System", "Windows", "RoutedEventHandler");
+      return typeRef.isClass(routedEvHandlerType);
+      
     }
 
     public static bool isMessageBoxClass(this ITypeReference typeRef, IMetadataHost host) {
@@ -539,6 +550,21 @@ namespace BytecodeTranslator.Phone {
         result|= TextBoxChangeCalls.Contains(methodName);
 
       return result;
+    }
+
+    private static HashSet<string> ignoredHandlers = new HashSet<string>();
+    public static void ignoreEventHandler(string fullyQualifiedEventHandler) {
+      ignoredHandlers.Add(fullyQualifiedEventHandler);
+    }
+
+    public static bool isMethodIgnoredForFeedback(IMethodDefinition methodTranslated) {
+      INamespaceTypeDefinition type= methodTranslated.ContainingType.ResolvedType as INamespaceTypeDefinition;
+
+      if (type == null)
+        return false;
+
+      string methodName = type.ContainingUnitNamespace.Name.Value + "." + type.Name + "." + methodTranslated.Name.Value;
+      return ignoredHandlers.Contains(methodName);
     }
   }
 }

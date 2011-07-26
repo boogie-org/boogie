@@ -303,6 +303,12 @@ namespace BytecodeTranslator {
       var proc = decl as Bpl.Procedure;
       var formalMap = procInfo.FormalMap;
 
+      // FEEDBACK inline handler methods to avoid more false alarms
+      if (PhoneCodeHelper.PhoneFeedbackToggled && PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(method, sink.host) &&
+          !PhoneCodeHelper.isMethodIgnoredForFeedback(method)) {
+            proc.AddAttribute("inline", new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.ONE));
+      }
+
       try {
         StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
 
