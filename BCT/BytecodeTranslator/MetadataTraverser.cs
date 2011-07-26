@@ -397,7 +397,7 @@ namespace BytecodeTranslator {
 
         // FEEDBACK TODO what if it is a function?
         if (PhoneCodeHelper.PhoneFeedbackToggled) {
-          if (PhoneCodeHelper.isMethodInputHandler(method)) {
+          if (PhoneCodeHelper.isMethodInputHandler(method, sink.host) || PhoneCodeHelper.isMethodKnownUIChangerOverride(method, sink.host)) {
             Bpl.AssertCmd falseAssertion = new Bpl.AssertCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
             stmtTraverser.StmtBuilder.Add(falseAssertion);
           }
@@ -537,8 +537,10 @@ namespace BytecodeTranslator {
     #endregion
 
     private void addPhoneTopLevelDeclarations() {
-      Bpl.Variable continueOnPageVar = sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool);
-      sink.TranslatedProgram.TopLevelDeclarations.Add(continueOnPageVar);
+      if (PhoneCodeHelper.PhoneNavigationToggled) {
+        Bpl.Variable continueOnPageVar = sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool);
+        sink.TranslatedProgram.TopLevelDeclarations.Add(continueOnPageVar);
+      }
     }
 
     #region Public API

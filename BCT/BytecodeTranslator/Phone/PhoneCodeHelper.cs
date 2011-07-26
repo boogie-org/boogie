@@ -203,6 +203,17 @@ namespace BytecodeTranslator.Phone {
       return typeRef.isClass(phoneApplicationPageTypeRef);
     }
 
+    public static bool isMessageBoxClass(this ITypeReference typeRef, IMetadataHost host) {
+      Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
+      IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
+      AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
+          new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
+                               coreAssemblyRef.PublicKeyToken, "");
+      IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
+      ITypeReference mbType = platform.CreateReference(systemAssembly, "System", "Windows", "MessageBox");
+      return typeRef.isClass(mbType);
+    }
+
     public static bool isPhoneControlClass(this ITypeReference typeRef, IMetadataHost host, out PHONE_CONTROL_TYPE controlType) {
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
       IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
@@ -292,7 +303,7 @@ namespace BytecodeTranslator.Phone {
         }
       }
 
-      return false;
+      return controlType != PHONE_CONTROL_TYPE.None;
     }
 
     public static bool isPhoneApplicationClass(this ITypeReference typeRef, IMetadataHost host) {
@@ -438,15 +449,51 @@ namespace BytecodeTranslator.Phone {
     public static bool PhoneNavigationToggled { get; set; }
     public static bool PhoneFeedbackToggled { get; set; }
 
-    public static bool isMethodInputHandler(IMethodDefinition method) {
-      // FEEDBACK TODO
+    public static bool isMethodInputHandler(IMethodDefinition method, IMetadataHost host) {
+      // FEEDBACK TODO: This is extremely coarse. There must be quite a few non-UI routed events
+      Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
+      IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
+      AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
+          new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
+                               coreAssemblyRef.PublicKeyToken, "");
+      IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
+      ITypeReference routedEventType= platform.CreateReference(systemAssembly, "System", "Windows", "RoutedEventArgs");
+      foreach (IParameterDefinition paramDef in method.Parameters) {
+        if (paramDef.Type.isClass(routedEventType))
+          return true;
+      }
+
+      return false;
+    }
+
+    public static bool isMethodKnownUIChangerOverride(IMethodDefinition method, IMetadataHost host) {
+      // FEEDBACK TODO In this case, assume false should be inserted after calls to base(), otherwise esentially work like input handlers
+
+      // TODO what if there is no implementation? will proc be null and still work?
+      Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
+      IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
+      AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
+          new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
+                               coreAssemblyRef.PublicKeyToken, "");
+      IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
+      ITypeReference routedEventType = platform.CreateReference(systemAssembly, "System", "Windows", "RoutedEventArgs");
+      foreach (IParameterDefinition paramDef in method.Parameters) {
+        if (paramDef.Type.isClass(routedEventType))
+          return true;
+      }
 
       return false;
     }
 
     public static bool isMethodKnownUIChanger(IMethodCall methodCall, IMetadataHost host) {
-      // FEEDBACK TODO
-      // FEEDBACK TODO for now, focus only on known Silverlight controls
+      if (methodCall.MethodToCall.ContainingType.isNavigationServiceClass(host)) {
+        return NAV_CALLS.Contains(methodCall.MethodToCall.Name.Value);
+      } else if (methodCall.IsStaticCall && methodCall.MethodToCall.ContainingType.isMessageBoxClass(host) &&
+                 methodCall.MethodToCall.Name.Value == "Show") {
+        return true;
+      }
+
+      // otherwise, it must be a control input call
       // before any method call checks, make sure the receiving object is a Control
       IExpression callee = methodCall.ThisArgument;
       if (callee == null)
@@ -455,17 +502,60 @@ namespace BytecodeTranslator.Phone {
       ITypeReference calleeType = callee.Type;
       PHONE_CONTROL_TYPE controlType;
       if (calleeType.isPhoneControlClass(host, out controlType)) {
-        return isKnownUIChanger(calleeType, methodCall, controlType); 
+        return isKnownUIChanger(calleeType, methodCall, controlType);
+      } else {
+        return false;
       }
-      return false;
     }
 
-    public static bool isKnownUIChanger(ITypeReference typeRef, IMethodCall call, PHONE_CONTROL_TYPE controlType) {
-      // FEEDBACK TODO check what to do with Navigation calls and MessageBox
+    private static bool isKnownUIChanger(ITypeReference typeRef, IMethodCall call, PHONE_CONTROL_TYPE controlType) {
       bool result= false;
-      if ((controlType & PHONE_CONTROL_TYPE.UIElement) != 0) {
-          result|= UIElementChangeCalls.Contains(call.MethodToCall.Name.Value);
-      }
+      string methodName= call.MethodToCall.Name.Value;
+
+      if (!result && (controlType & PHONE_CONTROL_TYPE.UIElement) != 0)
+        result|= UIElementChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.FrameworkElement) != 0)
+        result|= FrameworkElementChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.Border) != 0)
+        result|= BorderChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.Control) != 0)
+        result|= ControlChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.ContentControl) != 0)
+        result|= ContentControlChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.Panel) != 0)
+        result|= PanelChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.Canvas) != 0)
+        result|= CanvasChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.ToggleButton) != 0)
+        result|= ToggleButtonChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.Grid) != 0)
+        result|= GridChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.Image) != 0)
+        result|= ImageChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.InkPresenter) != 0)
+        result|= InkPresenterChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.ItemsControl) != 0)
+        result|= ItemsControlChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.Selector) != 0)
+        result|= SelectorChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.ListBox) != 0)
+        result|= ListBoxChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.PasswordBox) != 0)
+        result|= PasswordBoxChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.RangeBase) != 0)
+        result|= RangeBaseChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.ProgressBar) != 0)
+        result|= ProgressBarChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.Slider) != 0)
+        result|= SliderChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.StackPanel) != 0)
+        result|= StackPanelChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.RichTextBox) != 0)
+        result|= RichTextBoxChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.TextBlock) != 0)
+        result|= TextBlockChangeCalls.Contains(methodName);
+      if (!result && (controlType & PHONE_CONTROL_TYPE.TextBox) != 0)
+        result|= TextBoxChangeCalls.Contains(methodName);
 
       return result;
     }

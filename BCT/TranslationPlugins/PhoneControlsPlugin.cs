@@ -223,6 +223,8 @@ namespace TranslationPlugins {
     }
 
     private void LoadControlStructure(StreamReader configStream) {
+      // FEEDBACK TODO. Easy check on Feedback issue: Button and HyperLinkButton MUST have a Click handler, if not, it is obvious there is no feedback
+
       // TODO it would be nice to have some kind of dynamic definition of config format
       // TODO for now remember that config format is CSV
       // TODO each line is <pageClassName>,<pageXAMLPath>,<pageBoogieStringName>,<controlClassName>,<controlName>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<BPL control name>

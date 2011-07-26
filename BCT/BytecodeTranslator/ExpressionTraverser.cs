@@ -513,9 +513,11 @@ namespace BytecodeTranslator
       } finally {
         // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
         if (PhoneCodeHelper.PhonePlugin != null) {
-          if (PhoneCodeHelper.isNavigationCall(methodCall, sink.host)) {
-            Bpl.AssignCmd assignCmd = PhoneCodeHelper.createBoogieNavigationUpdateCmd(sink);
-            this.StmtTraverser.StmtBuilder.Add(assignCmd);
+          if (PhoneCodeHelper.PhoneNavigationToggled) {
+            if (PhoneCodeHelper.isNavigationCall(methodCall, sink.host)) {
+              Bpl.AssignCmd assignCmd = PhoneCodeHelper.createBoogieNavigationUpdateCmd(sink);
+              this.StmtTraverser.StmtBuilder.Add(assignCmd);
+            }
           }
 
           if (PhoneCodeHelper.PhoneFeedbackToggled && PhoneCodeHelper.isMethodKnownUIChanger(methodCall, sink.host)) {
