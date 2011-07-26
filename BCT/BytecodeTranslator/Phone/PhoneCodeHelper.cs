@@ -449,7 +449,7 @@ namespace BytecodeTranslator.Phone {
     public static bool PhoneNavigationToggled { get; set; }
     public static bool PhoneFeedbackToggled { get; set; }
 
-    public static bool isMethodInputHandler(IMethodDefinition method, IMetadataHost host) {
+    public static bool isMethodInputHandlerOrFeedbackOverride(IMethodDefinition method, IMetadataHost host) {
       // FEEDBACK TODO: This is extremely coarse. There must be quite a few non-UI routed events
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
       IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
@@ -458,25 +458,6 @@ namespace BytecodeTranslator.Phone {
                                coreAssemblyRef.PublicKeyToken, "");
       IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
       ITypeReference routedEventType= platform.CreateReference(systemAssembly, "System", "Windows", "RoutedEventArgs");
-      foreach (IParameterDefinition paramDef in method.Parameters) {
-        if (paramDef.Type.isClass(routedEventType))
-          return true;
-      }
-
-      return false;
-    }
-
-    public static bool isMethodKnownUIChangerOverride(IMethodDefinition method, IMetadataHost host) {
-      // FEEDBACK TODO In this case, assume false should be inserted after calls to base(), otherwise esentially work like input handlers
-
-      // TODO what if there is no implementation? will proc be null and still work?
-      Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
-      IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
-      AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
-          new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
-                               coreAssemblyRef.PublicKeyToken, "");
-      IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
-      ITypeReference routedEventType = platform.CreateReference(systemAssembly, "System", "Windows", "RoutedEventArgs");
       foreach (IParameterDefinition paramDef in method.Parameters) {
         if (paramDef.Type.isClass(routedEventType))
           return true;

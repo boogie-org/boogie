@@ -306,6 +306,22 @@ namespace BytecodeTranslator {
       try {
         StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
 
+        // FEEDBACK if this is a feedback method it will be plagued with false asserts. They will trigger if $Exception becomes other than null
+        // FEEDBACK for modular analysis we need it to be non-null at the start
+        // FEEDBACK also, callee is obviously non null
+        IMethodDefinition translatedMethod= sink.getMethodBeingTranslated();
+        if (PhoneCodeHelper.PhoneFeedbackToggled && translatedMethod != null &&
+            PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(translatedMethod, sink.host)) {
+          // assign null to exception
+          List<Bpl.AssignLhs> assignee= new List<Bpl.AssignLhs>();
+          Bpl.AssignLhs exceptionAssignee= new Bpl.SimpleAssignLhs(Bpl.Token.NoToken, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable));
+          assignee.Add(exceptionAssignee);
+          List<Bpl.Expr> value= new List<Bpl.Expr>();
+          value.Add(Bpl.Expr.Ident(this.sink.Heap.NullRef));
+          Bpl.Cmd exceptionAssign= new Bpl.AssignCmd(Bpl.Token.NoToken, assignee, value);
+          stmtTraverser.StmtBuilder.Add(exceptionAssign);
+        }
+
         #region Add assignments from In-Params to local-Params
 
         foreach (MethodParameter mparam in formalMap.Values) {
@@ -395,13 +411,6 @@ namespace BytecodeTranslator {
         Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
         #endregion
 
-        // FEEDBACK TODO what if it is a function?
-        if (PhoneCodeHelper.PhoneFeedbackToggled) {
-          if (PhoneCodeHelper.isMethodInputHandler(method, sink.host) || PhoneCodeHelper.isMethodKnownUIChangerOverride(method, sink.host)) {
-            Bpl.AssertCmd falseAssertion = new Bpl.AssertCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
-            stmtTraverser.StmtBuilder.Add(falseAssertion);
-          }
-        }
         var translatedBody = stmtTraverser.StmtBuilder.Collect(Bpl.Token.NoToken);
 
         #region Add implementation to Boogie program

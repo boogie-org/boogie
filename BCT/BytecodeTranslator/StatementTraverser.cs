@@ -17,6 +17,7 @@ using Microsoft.Cci.ILToCodeModel;
 using Bpl = Microsoft.Boogie;
 using System.Diagnostics.Contracts;
 using TranslationPlugins;
+using BytecodeTranslator.Phone;
 
 
 namespace BytecodeTranslator
@@ -337,6 +338,17 @@ namespace BytecodeTranslator
         StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
             new Bpl.IdentifierExpr(tok, this.sink.ReturnVariable), etrav.TranslatedExpressions.Pop()));
       }
+
+
+      // FEEDBACK TODO extract into a method
+      if (PhoneCodeHelper.PhoneFeedbackToggled) {
+        IMethodDefinition methodTranslated = sink.getMethodBeingTranslated();
+        if (methodTranslated != null && PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(methodTranslated, sink.host)) {
+          Bpl.AssertCmd falseAssertion = new Bpl.AssertCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
+          StmtBuilder.Add(falseAssertion);
+        }
+      }
+
       StmtBuilder.Add(new Bpl.ReturnCmd(returnStatement.Token()));
     }
     #endregion
@@ -411,6 +423,16 @@ namespace BytecodeTranslator
     private void RaiseExceptionHelper(Bpl.StmtListBuilder builder) {
       int count = this.sink.nestedTryCatchFinallyStatements.Count;
       if (count == 0) {
+        // FEEDBACK TODO unfortunately return statements are created here too 
+        // FEEDBACK TODO extract into a method
+        if (PhoneCodeHelper.PhoneFeedbackToggled) {
+          IMethodDefinition methodTranslated = sink.getMethodBeingTranslated();
+          if (methodTranslated != null && PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(methodTranslated, sink.host)) {
+            Bpl.AssertCmd falseAssertion = new Bpl.AssertCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
+            builder.Add(falseAssertion);
+          }
+        }
+
         builder.Add(new Bpl.ReturnCmd(Bpl.Token.NoToken));
       }
       else {

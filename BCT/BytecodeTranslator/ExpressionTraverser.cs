@@ -520,10 +520,12 @@ namespace BytecodeTranslator
             }
           }
 
-          if (PhoneCodeHelper.PhoneFeedbackToggled && PhoneCodeHelper.isMethodKnownUIChanger(methodCall, sink.host)) {
-            Bpl.AssumeCmd assumeFalse = new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
-            this.StmtTraverser.StmtBuilder.Add(assumeFalse);
-            // FEEDBACK TODO make sure that the call to this method (not the called one but the one in context) is inlined (how?)
+          if (PhoneCodeHelper.PhoneFeedbackToggled) {
+            if (PhoneCodeHelper.isMethodKnownUIChanger(methodCall, sink.host)) {
+              Bpl.AssumeCmd assumeFalse = new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
+              this.StmtTraverser.StmtBuilder.Add(assumeFalse);
+              // FEEDBACK TODO make sure that the call to this method (not the called one but the one in context) is inlined (how?)
+            }
           }
         }
       }
