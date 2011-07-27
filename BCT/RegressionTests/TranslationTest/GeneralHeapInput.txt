@@ -314,9 +314,9 @@ implementation System.String.op_Inequality$System.String$System.String(a$in: Ref
 
 
 
-function isControlEnabled(Ref) : bool;
+var isControlEnabled: [Ref]bool;
 
-function isControlChecked(Ref) : bool;
+var isControlChecked: [Ref]bool;
 
 procedure System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool);
 
@@ -324,7 +324,7 @@ procedure System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Re
 
 implementation System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool)
 {
-    assume isControlEnabled($this) == value$in;
+    isControlEnabled[$this] := value$in;
 }
 
 
@@ -337,7 +337,7 @@ implementation System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns
 {
   var enabledness: bool;
 
-    enabledness := isControlEnabled($this);
+    enabledness := isControlEnabled[$this];
     $result := Box2Ref(Bool2Box(enabledness));
 }
 
@@ -352,7 +352,7 @@ implementation System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$Sys
   var check: bool;
 
     check := Box2Bool(Ref2Box(value$in));
-    assume isControlChecked($this) == check;
+    isControlChecked[$this] := check;
 }
 
 
@@ -365,7 +365,7 @@ implementation System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($th
 {
   var isChecked: bool;
 
-    isChecked := isControlChecked($this);
+    isChecked := isControlChecked[$this];
     $result := Box2Ref(Bool2Box(isChecked));
 }
 
@@ -453,6 +453,10 @@ function BitwiseOr(int, int) : int;
 function BitwiseExclusiveOr(int, int) : int;
 
 function BitwiseNegation(int) : int;
+
+function RightShift(int) : int;
+
+function LeftShift(int) : int;
 
 function $DynamicType(Ref) : Type;
 
