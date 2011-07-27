@@ -26,7 +26,7 @@ object TranslatorPrelude {
   }
   
   // default components
-  private val components: Set[PreludeComponent] = Set(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, ArithmeticPL)
+  private val components: Set[PreludeComponent] = Set(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, ArithmeticPL, StringPL)
 
   // get the prelude (with all components currently included)
   def P: String = {
@@ -46,7 +46,7 @@ object TranslatorPrelude {
 sealed abstract class PreludeComponent {
   // determines the order in which the components are output
   def compare(that: PreludeComponent): Boolean = {
-    val order: List[PreludeComponent] = List(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, PercentageFixedDenominatorPL, PercentageFunctionPL, PercentageUninterpretedFunctionPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, ArithmeticPL, AxiomatizationOfSequencesPL)
+    val order: List[PreludeComponent] = List(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, PercentageFixedDenominatorPL, PercentageFunctionPL, PercentageUninterpretedFunctionPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, ArithmeticPL, StringPL, AxiomatizationOfSequencesPL)
     if (!order.contains(this)) false
     else order.indexOf(this) < order.indexOf(that)
   }
@@ -293,6 +293,14 @@ axiom (forall x:int, y:int :: {x % y}  y < 0  ==>  y < x % y  &&  x % y <= 0);
 // the following axiom has some unfortunate matching, but it does state a property about % that
 // is sometime useful
 axiom (forall a: int, b: int, d: int :: { a % d, b % d } 2 <= d && a % d == b % d && a < b  ==>  a + d <= b);"""
+}
+object StringPL extends PreludeComponent {
+  val text = """
+// ---------------------------------------------------------------
+// -- Strings ----------------------------------------------------
+// ---------------------------------------------------------------
+
+type string = int;"""
 }
 object AxiomatizationOfSequencesPL extends PreludeComponent {
   val text = """

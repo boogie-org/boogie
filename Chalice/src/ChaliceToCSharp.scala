@@ -173,6 +173,7 @@ class ChaliceToCSharp {
       case IntLiteral(n) => "" + n
       case BoolLiteral(b) => "" + b
       case NullLiteral() => "null"
+      case StringLiteral(s) => "\"" + s + "\""
       case th: ThisExpr => "this"
       case VariableExpr(id) => id
       case MemberAccess(target, f) => convertExpression(target) + "." + f
@@ -214,6 +215,7 @@ class ChaliceToCSharp {
       case IntClass => "int"
       case BoolClass => "bool"
       case NullClass => "object"
+      case StringClass => "string"
       case Class(id, _, _, _) => id
     }
   }

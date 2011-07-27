@@ -56,7 +56,7 @@ object Resolver {
  def Resolve(prog: List[TopLevelDecl]): ResolverOutcome = {
    // register the channels as well as the classes and their members
    var decls = Map[String,TopLevelDecl]()
-   for (decl <- BoolClass :: IntClass :: RootClass :: NullClass :: MuClass :: prog) {
+   for (decl <- BoolClass :: IntClass :: RootClass :: NullClass :: StringClass :: MuClass :: prog) {
      if (decls contains decl.id) {
        return Errors(List((decl.pos, "duplicate class/channel name: " + decl.id)))
      } else {
@@ -883,6 +883,8 @@ object Resolver {
      b.typ = BoolClass
    case n:NullLiteral =>
      n.typ = NullClass
+   case s:StringLiteral =>
+     s.typ = StringClass
    case mx:MaxLockLiteral =>
      mx.typ = MuClass
    case mx:LockBottomLiteral =>
