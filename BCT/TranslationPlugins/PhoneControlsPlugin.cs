@@ -109,10 +109,48 @@ namespace TranslationPlugins {
 
     private IDictionary<string, PageStructure> pageStructureInfo;
 
-    public static string getFullyQualifiedControlClass(string controlClass) {
-      // TODO do an actual API discovery. The problem will be differencing 7.0 apps from 7.1 apps
-      return "System.Windows.Controls." + controlClass;
+    public static string getURILastPath(string uri) {
+      // I need to build an absolute URI just to call getComponents() ...
+      Uri mockBaseUri = new Uri("mock://mock/", UriKind.RelativeOrAbsolute);
+      Uri realUri;
+      try {
+        realUri = new Uri(uri, UriKind.Absolute);
+      } catch (UriFormatException) {
+        // uri string is relative
+        realUri = new Uri(mockBaseUri, uri);
+      }
+
+      string str = realUri.GetComponents(UriComponents.Path | UriComponents.StrongAuthority | UriComponents.Scheme, UriFormat.UriEscaped);
+      Uri mockStrippedUri = new Uri(str);
+      return mockBaseUri.MakeRelativeUri(mockStrippedUri).ToString();
     }
+
+    /// <summary>
+    /// uri is a valid URI but possibly partial (incomplete ?arg= values) and overspecified (complete ?arg=values)
+    /// This method returns a base URI
+    /// </summary>
+    /// <param name="uri"></param>
+    /// <returns></returns>
+    public static string getURIBase(string uri) {
+      // I need to build an absolute URI just to call getComponents() ...
+      Uri mockBaseUri = new Uri("mock://mock/", UriKind.RelativeOrAbsolute);
+      Uri realUri;
+      try {
+        realUri = new Uri(uri, UriKind.Absolute);
+      } catch (UriFormatException) {
+        // uri string is relative
+        realUri = new Uri(mockBaseUri, uri);
+      }
+
+      string str = realUri.GetComponents(UriComponents.Path | UriComponents.StrongAuthority | UriComponents.Scheme, UriFormat.UriEscaped);
+      Uri mockStrippedUri = new Uri(str);
+      return mockBaseUri.MakeRelativeUri(mockStrippedUri).ToString();
+    }
+
+    //public static string getFullyQualifiedControlClass(string controlClass) {
+    //  // TODO do an actual API discovery. The problem will be differencing 7.0 apps from 7.1 apps
+    //  return "System.Windows.Controls." + controlClass;
+    //}
     
     public PhoneControlsPlugin(string configFile) {
       pageStructureInfo = new Dictionary<string, PageStructure>();
@@ -152,8 +190,10 @@ namespace TranslationPlugins {
     }
 
     private void setPageAsMainPage(string pageXAML) {
-      
-      KeyValuePair<string,PageStructure> mainPageClass= pageStructureInfo.FirstOrDefault(keyValue => keyValue.Value.PageXAML == pageXAML);
+      int lastDirPos= pageXAML.LastIndexOf('/');
+      if (lastDirPos != -1)
+        pageXAML = pageXAML.Substring(lastDirPos+1);
+      KeyValuePair<string,PageStructure> mainPageClass= pageStructureInfo.FirstOrDefault(keyValue => keyValue.Value.PageXAML.ToLower() == pageXAML.ToLower());
       if (mainPageClass.Equals(default(KeyValuePair<string, PageStructure>))) {
         // the main page doesn't exist because it has no tracked controls. While we cannot track those controls, create a page struct for it
       } else {

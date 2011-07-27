@@ -106,7 +106,8 @@ namespace BytecodeTranslator {
     private void trackPhoneApplicationClassname(ITypeDefinition typeDef) {
       if (PhoneCodeHelper.PhonePlugin != null && typeDef.isPhoneApplicationClass(sink.host)) {
         INamespaceTypeDefinition namedTypeDef = typeDef as INamespaceTypeDefinition;
-        string fullyQualifiedName = namedTypeDef.ContainingNamespace.Name.Value + "." + namedTypeDef.Name.Value;
+        // string fullyQualifiedName = namedTypeDef.ContainingNamespace.Name.Value + "." + namedTypeDef.Name.Value;
+        string fullyQualifiedName = namedTypeDef.ToString();
         PhoneCodeHelper.setMainAppTypeReference(typeDef);
         PhoneCodeHelper.setMainAppTypeName(fullyQualifiedName);
       }
@@ -115,10 +116,13 @@ namespace BytecodeTranslator {
     private void trackPageNameVariableName(ITypeDefinition typeDef) {
       if (PhoneCodeHelper.PhonePlugin != null && typeDef.isPhoneApplicationPageClass(sink.host)) {
         INamespaceTypeDefinition namedTypeDef = typeDef as INamespaceTypeDefinition;
-        string fullyQualifiedName = namedTypeDef.ContainingNamespace.Name.Value + "." + namedTypeDef.Name.Value;
-        string uriName = PhoneCodeHelper.getURIBase(PhoneCodeHelper.getXAMLForPage(fullyQualifiedName));
-        Bpl.Constant uriConstant= sink.FindOrCreateConstant(uriName);
-        PhoneCodeHelper.setBoogieStringPageNameForPageClass(fullyQualifiedName, uriConstant.Name);
+        string fullyQualifiedName = namedTypeDef.ToString();
+        string xamlForClass = PhoneCodeHelper.getXAMLForPage(fullyQualifiedName);
+        if (xamlForClass != null) { // if not it is possibly an abstract page
+          string uriName = PhoneControlsPlugin.getURIBase(xamlForClass);
+          Bpl.Constant uriConstant = sink.FindOrCreateConstant(uriName);
+          PhoneCodeHelper.setBoogieStringPageNameForPageClass(fullyQualifiedName, uriConstant.Name);
+        }
       }
     }
 

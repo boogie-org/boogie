@@ -399,28 +399,6 @@ namespace BytecodeTranslator.Phone {
       return PhoneCodeHelper.NAV_CALLS.Contains(call.MethodToCall.Name.Value);
     }
 
-    /// <summary>
-    /// uri is a valid URI but possibly partial (incomplete ?arg= values) and overspecified (complete ?arg=values)
-    /// This method returns a base URI
-    /// </summary>
-    /// <param name="uri"></param>
-    /// <returns></returns>
-    public static string getURIBase(string uri) {
-      // I need to build an absolute URI just to call getComponents() ...
-      Uri mockBaseUri = new Uri("mock://mock/", UriKind.RelativeOrAbsolute);
-      Uri realUri;
-      try {
-        realUri = new Uri(uri, UriKind.Absolute);
-      } catch (UriFormatException) {
-        // uri string is relative
-        realUri = new Uri(mockBaseUri, uri);
-      }
-
-      string str = realUri.GetComponents(UriComponents.Path | UriComponents.StrongAuthority | UriComponents.Scheme, UriFormat.UriEscaped);
-      Uri mockStrippedUri = new Uri(str);
-      return mockBaseUri.MakeRelativeUri(mockStrippedUri).ToString();
-    }
-
     private static ITypeReference mainAppTypeRef;
     public static void setMainAppTypeReference(ITypeReference appType) {
       mainAppTypeRef = appType;
