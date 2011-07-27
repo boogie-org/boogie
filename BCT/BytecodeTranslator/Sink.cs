@@ -1048,6 +1048,11 @@ namespace BytecodeTranslator {
     public List<Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext>> nestedTryCatchFinallyStatements;
 
     IMethodDefinition methodBeingTranslated;
+
+    public IMethodDefinition getMethodBeingTranslated() {
+      return methodBeingTranslated;
+    }
+
     public void BeginMethod(IMethodDefinition method) {
       this.BeginMethod(method.ContainingType);
       this.methodBeingTranslated = method;

@@ -31,6 +31,7 @@ namespace BytecodeTranslator.Phone {
     private IAssemblyReference coreAssemblyRef;
     private IAssemblyReference phoneAssembly;
     private IAssemblyReference phoneSystemWindowsAssembly;
+    private INamespaceTypeReference appBarIconButtonType;
     private INamespaceTypeReference checkBoxType;
     private INamespaceTypeReference radioButtonType;
     private INamespaceTypeReference buttonType;
@@ -62,6 +63,10 @@ namespace BytecodeTranslator.Phone {
         return radioButtonType;
       } else if (classname == "CheckBox") {
         return checkBoxType;
+      } else if (classname == "ApplicationBarIconButton") {
+        return appBarIconButtonType;
+      } else if (classname == "DummyType") {
+        return Dummy.Type;
       } else {
         // TODO avoid throwing exceptions, just log
         throw new NotImplementedException("Type " + classname + " is not being monitored yet for phone controls");
@@ -90,6 +95,7 @@ namespace BytecodeTranslator.Phone {
       phoneSystemWindowsAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
 
       // TODO determine the needed types dynamically
+      appBarIconButtonType= platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarIconButton");
       checkBoxType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "CheckBox");
       radioButtonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "RadioButton");
       buttonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Button");

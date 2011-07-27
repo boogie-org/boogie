@@ -303,8 +303,30 @@ namespace BytecodeTranslator {
       var proc = decl as Bpl.Procedure;
       var formalMap = procInfo.FormalMap;
 
+      // FEEDBACK inline handler methods to avoid more false alarms
+      if (PhoneCodeHelper.PhoneFeedbackToggled && PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(method, sink.host) &&
+          !PhoneCodeHelper.isMethodIgnoredForFeedback(method)) {
+            proc.AddAttribute("inline", new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.ONE));
+      }
+
       try {
         StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
+
+        // FEEDBACK if this is a feedback method it will be plagued with false asserts. They will trigger if $Exception becomes other than null
+        // FEEDBACK for modular analysis we need it to be non-null at the start
+        // FEEDBACK also, callee is obviously non null
+        IMethodDefinition translatedMethod= sink.getMethodBeingTranslated();
+        if (PhoneCodeHelper.PhoneFeedbackToggled && translatedMethod != null &&
+            PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(translatedMethod, sink.host)) {
+          // assign null to exception
+          List<Bpl.AssignLhs> assignee= new List<Bpl.AssignLhs>();
+          Bpl.AssignLhs exceptionAssignee= new Bpl.SimpleAssignLhs(Bpl.Token.NoToken, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable));
+          assignee.Add(exceptionAssignee);
+          List<Bpl.Expr> value= new List<Bpl.Expr>();
+          value.Add(Bpl.Expr.Ident(this.sink.Heap.NullRef));
+          Bpl.Cmd exceptionAssign= new Bpl.AssignCmd(Bpl.Token.NoToken, assignee, value);
+          stmtTraverser.StmtBuilder.Add(exceptionAssign);
+        }
 
         #region Add assignments from In-Params to local-Params
 
@@ -530,8 +552,10 @@ namespace BytecodeTranslator {
     #endregion
 
     private void addPhoneTopLevelDeclarations() {
-      Bpl.Variable continueOnPageVar = sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool);
-      sink.TranslatedProgram.TopLevelDeclarations.Add(continueOnPageVar);
+      if (PhoneCodeHelper.PhoneNavigationToggled) {
+        Bpl.Variable continueOnPageVar = sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool);
+        sink.TranslatedProgram.TopLevelDeclarations.Add(continueOnPageVar);
+      }
     }
 
     #region Public API

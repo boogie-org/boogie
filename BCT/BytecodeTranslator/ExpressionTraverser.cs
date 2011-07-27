@@ -511,20 +511,21 @@ namespace BytecodeTranslator
         Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
         this.StmtTraverser.RaiseException(expr);
       } finally {
+        // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
         if (PhoneCodeHelper.PhonePlugin != null) {
-          if (PhoneCodeHelper.isNavigationCall(methodCall, sink.host)) {
-            // the block is a potential page changer
-            List<Bpl.AssignLhs> lhs = new List<Bpl.AssignLhs>();
-            List<Bpl.Expr> rhs = new List<Bpl.Expr>();
-            Bpl.Expr value = new Bpl.LiteralExpr(Bpl.Token.NoToken, false);
-            rhs.Add(value);
-            Bpl.SimpleAssignLhs assignee=
-              new Bpl.SimpleAssignLhs(Bpl.Token.NoToken,
-                                      new Bpl.IdentifierExpr(Bpl.Token.NoToken,
-                                                             sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool)));
-            lhs.Add(assignee);
-            Bpl.AssignCmd assignCmd = new Bpl.AssignCmd(Bpl.Token.NoToken, lhs, rhs);
-            this.StmtTraverser.StmtBuilder.Add(assignCmd);
+          if (PhoneCodeHelper.PhoneNavigationToggled) {
+            if (PhoneCodeHelper.isNavigationCall(methodCall, sink.host)) {
+              Bpl.AssignCmd assignCmd = PhoneCodeHelper.createBoogieNavigationUpdateCmd(sink);
+              this.StmtTraverser.StmtBuilder.Add(assignCmd);
+            }
+          }
+
+          if (PhoneCodeHelper.PhoneFeedbackToggled) {
+            if (PhoneCodeHelper.isMethodKnownUIChanger(methodCall, sink.host)) {
+              Bpl.AssumeCmd assumeFalse = new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
+              this.StmtTraverser.StmtBuilder.Add(assumeFalse);
+              // FEEDBACK TODO make sure that the call to this method (not the called one but the one in context) is inlined (how?)
+            }
           }
         }
       }
@@ -683,7 +684,10 @@ namespace BytecodeTranslator
       var tok = assignment.Token();
 
       ICompileTimeConstant constant= assignment.Source as ICompileTimeConstant;
-      if (PhoneCodeHelper.PhonePlugin != null && constant != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
+      // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
+      if (PhoneCodeHelper.PhonePlugin != null && PhoneCodeHelper.PhoneNavigationToggled &&
+          constant != null && constant.Type == sink.host.PlatformType.SystemString &&
+          constant.Value != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
         TranslateHavocCurrentURI();
       } else {
         TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
@@ -694,6 +698,7 @@ namespace BytecodeTranslator
     /// Patch, to account for URIs that cannot be tracked because of current dataflow restrictions
     /// </summary>
     private void TranslateHavocCurrentURI() {
+      // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
       Bpl.CallCmd havocCall = new Bpl.CallCmd(Bpl.Token.NoToken, PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI, new List<Bpl.Expr>(), new List<Bpl.IdentifierExpr>());
       StmtTraverser.StmtBuilder.Add(havocCall);
     }
@@ -1183,6 +1188,29 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, lexp, rexp));
     }
 
+    public override void Visit(IRightShift rightShift) {
+      base.Visit(rightShift);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      Bpl.Expr e = new Bpl.NAryExpr(
+            rightShift.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RightShift),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+      TranslatedExpressions.Push(e);
+    }
+
+    public override void Visit(ILeftShift leftShift) {
+      base.Visit(leftShift);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      Bpl.Expr e = new Bpl.NAryExpr(
+            leftShift.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.LeftShift),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+      TranslatedExpressions.Push(e);
+    }
     /// <summary>
     /// There aren't any logical-and expressions or logical-or expressions in CCI.
     /// Instead they are encoded as "x ? y : 0" for "x && y" and "x ? 1 : y"
