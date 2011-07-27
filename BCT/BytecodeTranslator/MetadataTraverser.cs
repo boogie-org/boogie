@@ -307,6 +307,7 @@ namespace BytecodeTranslator {
       if (PhoneCodeHelper.PhoneFeedbackToggled && PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(method, sink.host) &&
           !PhoneCodeHelper.isMethodIgnoredForFeedback(method)) {
             proc.AddAttribute("inline", new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.ONE));
+            PhoneCodeHelper.trackCallableMethod(proc);
       }
 
       try {

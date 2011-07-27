@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.Cci;
 using Bpl=Microsoft.Boogie;
 using TranslationPlugins;
+using Microsoft.Cci.MutableCodeModel;
 
 namespace BytecodeTranslator.Phone {
   public enum StaticURIMode {
@@ -19,6 +20,11 @@ namespace BytecodeTranslator.Phone {
   }
 
   public static class PhoneCodeHelper {
+    // TODO refactor into Feedbakc and Navigation specific code, this is already a mess
+    public static bool OnBackKeyPressOverriden { get; set; }
+    public static bool BackKeyPressHandlerCancels { get; set; }
+    public static bool BackKeyPressNavigates { get; set; }
+
     // TODO externalize strings
     public static readonly string[] IgnoredEvents =
     { "Loaded",
@@ -192,11 +198,7 @@ namespace BytecodeTranslator.Phone {
 
     public static bool isNavigationServiceClass(this ITypeReference typeRef, IMetadataHost host) {
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
-      AssemblyIdentity MSPhoneAssemblyId =
-          new AssemblyIdentity(host.NameTable.GetNameFor("Microsoft.Phone"), "", new Version("7.0.0.0"),
-                               new byte[] { 0x24, 0xEE, 0xC0, 0xD8, 0xC8, 0x6C, 0xDA, 0x1E }, "");
-
-      IAssemblyReference phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
+      IAssemblyReference phoneAssembly = getPhoneAssemblyReference(host);
       ITypeReference phoneApplicationPageTypeRef = platform.CreateReference(phoneAssembly, "System", "Windows", "Navigation", "NavigationService");
 
       return typeRef.isClass(phoneApplicationPageTypeRef);
@@ -204,11 +206,7 @@ namespace BytecodeTranslator.Phone {
 
     public static bool isRoutedEventHandler(this ITypeReference typeRef, IMetadataHost host) {
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
-      IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
-      AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
-          new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
-                               coreAssemblyRef.PublicKeyToken, "");
-      IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
+      IAssemblyReference systemAssembly = getSystemWindowsAssemblyReference(host);
       ITypeReference routedEvHandlerType = platform.CreateReference(systemAssembly, "System", "Windows", "RoutedEventHandler");
       return typeRef.isClass(routedEvHandlerType);
       
@@ -216,22 +214,14 @@ namespace BytecodeTranslator.Phone {
 
     public static bool isMessageBoxClass(this ITypeReference typeRef, IMetadataHost host) {
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
-      IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
-      AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
-          new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
-                               coreAssemblyRef.PublicKeyToken, "");
-      IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
+      IAssemblyReference systemAssembly = getSystemWindowsAssemblyReference(host);
       ITypeReference mbType = platform.CreateReference(systemAssembly, "System", "Windows", "MessageBox");
       return typeRef.isClass(mbType);
     }
 
     public static bool isPhoneControlClass(this ITypeReference typeRef, IMetadataHost host, out PHONE_CONTROL_TYPE controlType) {
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
-      IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
-      AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
-          new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
-                               coreAssemblyRef.PublicKeyToken, "");
-      IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
+      IAssemblyReference systemAssembly = getSystemWindowsAssemblyReference(host);
       ITypeReference uiElementType = platform.CreateReference(systemAssembly, "System", "Windows", "UIElement");
       ITypeReference frameworkElementType = platform.CreateReference(systemAssembly, "System", "Windows", "FrameworkElement");
 
@@ -317,25 +307,48 @@ namespace BytecodeTranslator.Phone {
       return controlType != PHONE_CONTROL_TYPE.None;
     }
 
+    public static IAssemblyReference getSystemAssemblyReference(IMetadataHost host) {
+      Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
+      IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
+      AssemblyIdentity MSPhoneSystemAssemblyId =
+          new AssemblyIdentity(host.NameTable.GetNameFor("System"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
+                               coreAssemblyRef.PublicKeyToken, "");
+      return host.FindAssembly(MSPhoneSystemAssemblyId);
+    }
+
+    public static bool isCancelEventArgsClass(this ITypeReference typeRef, IMetadataHost host) {
+      Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
+      IAssemblyReference systemAssembly = getSystemAssemblyReference(host);
+      ITypeReference cancelEventArgsClass = platform.CreateReference(systemAssembly, "System", "ComponentModel", "CancelEventArgs");
+      return typeRef.isClass(cancelEventArgsClass);
+    }
+
     public static bool isPhoneApplicationClass(this ITypeReference typeRef, IMetadataHost host) {
+      Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
+      IAssemblyReference systemAssembly= getSystemWindowsAssemblyReference(host);
+      ITypeReference applicationClass = platform.CreateReference(systemAssembly, "System", "Windows", "Application");
+      return typeRef.isClass(applicationClass);
+    }
+
+    public static IAssemblyReference getSystemWindowsAssemblyReference(IMetadataHost host) {
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
       IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
       AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
           new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
                                coreAssemblyRef.PublicKeyToken, "");
+      return host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
+    }
 
-      IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
-      ITypeReference applicationClass = platform.CreateReference(systemAssembly, "System", "Windows", "Application");
-      return typeRef.isClass(applicationClass);
+    public static IAssemblyReference getPhoneAssemblyReference(IMetadataHost host) {
+      AssemblyIdentity MSPhoneAssemblyId =
+          new AssemblyIdentity(host.NameTable.GetNameFor("Microsoft.Phone"), "", new Version("7.0.0.0"),
+                               new byte[] { 0x24, 0xEE, 0xC0, 0xD8, 0xC8, 0x6C, 0xDA, 0x1E }, "");
+      return host.FindAssembly(MSPhoneAssemblyId);
     }
 
     public static bool isPhoneApplicationPageClass(this ITypeReference typeRef, IMetadataHost host) {
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
-      AssemblyIdentity MSPhoneAssemblyId =
-          new AssemblyIdentity(host.NameTable.GetNameFor("Microsoft.Phone"), "", new Version("7.0.0.0"),
-                               new byte[] { 0x24, 0xEE, 0xC0, 0xD8, 0xC8, 0x6C, 0xDA, 0x1E }, "");
-
-      IAssemblyReference phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
+      IAssemblyReference phoneAssembly = getPhoneAssemblyReference(host);
       ITypeReference phoneApplicationPageTypeRef = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Controls" , "PhoneApplicationPage");
       
       return typeRef.isClass(phoneApplicationPageTypeRef);
@@ -463,11 +476,7 @@ namespace BytecodeTranslator.Phone {
     public static bool isMethodInputHandlerOrFeedbackOverride(IMethodDefinition method, IMetadataHost host) {
       // FEEDBACK TODO: This is extremely coarse. There must be quite a few non-UI routed events
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
-      IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
-      AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
-          new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
-                               coreAssemblyRef.PublicKeyToken, "");
-      IAssemblyReference systemAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
+      IAssemblyReference systemAssembly = getSystemWindowsAssemblyReference(host);
       ITypeReference routedEventType= platform.CreateReference(systemAssembly, "System", "Windows", "RoutedEventArgs");
       foreach (IParameterDefinition paramDef in method.Parameters) {
         if (paramDef.Type.isClass(routedEventType))
@@ -565,6 +574,55 @@ namespace BytecodeTranslator.Phone {
 
       string methodName = type.ContainingUnitNamespace.Name.Value + "." + type.Name + "." + methodTranslated.Name.Value;
       return ignoredHandlers.Contains(methodName);
+    }
+
+    private static HashSet<Bpl.Procedure> callableMethods = new HashSet<Bpl.Procedure>();
+    public static void trackCallableMethod(Bpl.Procedure proc) {
+      callableMethods.Add(proc);
+    }
+
+    public static IEnumerable<Bpl.Procedure> getCallableMethods() {
+      return callableMethods;
+    }
+
+    public static void CreateFeedbackCallingMethods(Sink sink) {
+      Bpl.Program translatedProgram= sink.TranslatedProgram;
+      foreach (Bpl.Procedure proc in callableMethods) {
+        addMethodCalling(proc, translatedProgram, sink);
+      }
+    }
+
+    private static void addMethodCalling(Bpl.Procedure proc, Bpl.Program program, Sink sink) {
+      Bpl.Procedure callingProc= new Bpl.Procedure(Bpl.Token.NoToken, "__BOOGIE_CALL_" + proc.Name, new Bpl.TypeVariableSeq(), new Bpl.VariableSeq(),
+                                                   new Bpl.VariableSeq(), new Bpl.RequiresSeq(), new Bpl.IdentifierExprSeq(), new Bpl.EnsuresSeq());
+      sink.TranslatedProgram.TopLevelDeclarations.Add(callingProc);
+
+      Bpl.StmtListBuilder codeBuilder = new Bpl.StmtListBuilder();
+      Bpl.VariableSeq localVars = new Bpl.VariableSeq(proc.InParams);
+      Bpl.IdentifierExprSeq identVars= new Bpl.IdentifierExprSeq();
+
+      for (int i = 0; i < localVars.Length; i++) {
+        identVars.Add(new Bpl.IdentifierExpr(Bpl.Token.NoToken, localVars[i]));
+      }
+      codeBuilder.Add(new Bpl.HavocCmd(Bpl.Token.NoToken, identVars));
+
+      Bpl.ExprSeq callParams = new Bpl.ExprSeq();
+      for (int i = 0; i < identVars.Length; i++) {
+        callParams.Add(identVars[i]);
+      }
+      Bpl.CallCmd callCmd = new Bpl.CallCmd(Bpl.Token.NoToken, proc.Name, callParams, new Bpl.IdentifierExprSeq());
+      codeBuilder.Add(callCmd);
+      Bpl.Implementation impl = new Bpl.Implementation(Bpl.Token.NoToken, callingProc.Name, new Bpl.TypeVariableSeq(), new Bpl.VariableSeq(),
+                                                       new Bpl.VariableSeq(), localVars, codeBuilder.Collect(Bpl.Token.NoToken));
+      sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
+    }
+
+    public static bool isBackKeyPressOverride(this IMethodDefinition method, IMetadataHost host) {
+      if (!method.IsVirtual || method.Name.Value != "OnBackKeyPress" || !method.ContainingType.isPhoneApplicationPageClass(host) ||
+          method.ParameterCount != 1 || !method.Parameters.ToList()[0].Type.isCancelEventArgsClass(host))
+        return false;
+      else
+        return true;
     }
   }
 }

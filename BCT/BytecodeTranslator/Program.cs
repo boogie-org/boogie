@@ -225,12 +225,34 @@ namespace BytecodeTranslator {
         CreateDispatchMethod(sink, pair.Item1, pair.Item2);
       }
 
-      if (phonePlugin != null) {
-        string outputConfigFile = Path.ChangeExtension(phoneControlsConfigFile, "bplout");
-        StreamWriter outputStream = new StreamWriter(outputConfigFile);
-        phonePlugin.DumpControlStructure(outputStream);
-        outputStream.Close();
-        PhoneCodeWrapperWriter.createCodeWrapper(sink);
+      if (PhoneCodeHelper.PhonePlugin != null) {
+        if (PhoneCodeHelper.PhoneFeedbackToggled) {
+          // FEEDBACK TODO create simple callers to callable methods, havoc'ing parameters
+          PhoneCodeHelper.CreateFeedbackCallingMethods(sink);
+        }
+
+        if (PhoneCodeHelper.PhoneNavigationToggled) {
+          string outputConfigFile = Path.ChangeExtension(phoneControlsConfigFile, "bplout");
+          StreamWriter outputStream = new StreamWriter(outputConfigFile);
+          phonePlugin.DumpControlStructure(outputStream);
+          outputStream.Close();
+          PhoneCodeWrapperWriter.createCodeWrapper(sink);
+
+          // NAVIGATION TODO for now I console this out
+          if (!PhoneCodeHelper.OnBackKeyPressOverriden) {
+            Console.Out.WriteLine("No back navigation issues, OnBackKeyPress is not overriden");
+          } else if (!PhoneCodeHelper.BackKeyPressHandlerCancels && !PhoneCodeHelper.BackKeyPressNavigates) {
+            Console.Out.WriteLine("No back navigation issues, BackKeyPress overrides do not alter navigation");
+          } else {
+            if (PhoneCodeHelper.BackKeyPressNavigates) {
+              Console.Out.WriteLine("Back navigation ISSUE: back key press may navigate to pages not in backstack!");
+            }
+
+            if (PhoneCodeHelper.BackKeyPressHandlerCancels) {
+              Console.Out.WriteLine("Back navigation ISSUE: back key press default behaviour may be cancelled!");
+            }
+          }
+        }
       }
 
       Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(primaryModule.Name + ".bpl");
