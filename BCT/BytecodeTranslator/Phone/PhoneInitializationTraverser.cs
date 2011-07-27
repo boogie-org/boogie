@@ -148,14 +148,16 @@ namespace BytecodeTranslator.Phone {
       // TODO check page name against container name
       IEnumerable<ControlInfoStructure> controls= PhoneCodeHelper.PhonePlugin.getControlsForPage(methodBeingTraversed.Container.ToString());
       IEnumerable<IStatement> injectedStatements = new List<IStatement>();
-      foreach (ControlInfoStructure controlInfo in controls) {
-        injectedStatements = injectedStatements.Concat(getCodeForSettingEnabledness(controlInfo));
-        injectedStatements = injectedStatements.Concat(getCodeForSettingCheckedState(controlInfo));
-        injectedStatements = injectedStatements.Concat(getCodeForSettingVisibility(controlInfo));
-      }
+      if (controls != null) {
+        foreach (ControlInfoStructure controlInfo in controls) {
+          injectedStatements = injectedStatements.Concat(getCodeForSettingEnabledness(controlInfo));
+          injectedStatements = injectedStatements.Concat(getCodeForSettingCheckedState(controlInfo));
+          injectedStatements = injectedStatements.Concat(getCodeForSettingVisibility(controlInfo));
+        }
 
-      int stmtPos= block.Statements.IndexOf(statementAfter);
-      block.Statements.InsertRange(stmtPos+1, injectedStatements);
+        int stmtPos = block.Statements.IndexOf(statementAfter);
+        block.Statements.InsertRange(stmtPos + 1, injectedStatements);
+      }
     }
 
     private BoundExpression makeBoundControlFromControlInfo(ControlInfoStructure controlInfo) {

@@ -11,6 +11,7 @@ CONTROL_NAMES= ["Button", "CheckBox", "RadioButton", "ApplicationBarIconButton"]
 # TODO (by directly manipulating the control's enabled value) or the parent becomes enabled
 
 CONTAINER_CONTROL_NAMES= ["Canvas", "Grid", "StackPanel", "ApplicationBar"]
+COMMA_REPLACEMENT="###"
 
 staticControlsMap= {}
 mainPageXAML= None
@@ -82,27 +83,28 @@ def addControlToMap(pageXAML, parentPage, controlNode):
     pass
   
   newControl["Type"]= controlNode.localName
-  newControl["Name"]= controlNode.getAttribute("Name")
+  newControl["Name"]= controlNode.getAttribute("Name").replace(",",COMMA_REPLACEMENT).replace("=",COMMA_REPLACEMENT)
   if (controlNode.hasAttribute("IsEnabled")):
-    newControl["IsEnabled"]= controlNode.getAttribute("IsEnabled")
+    newControl["IsEnabled"]= controlNode.getAttribute("IsEnabled").replace(",",COMMA_REPLACEMENT).replace("=",COMMA_REPLACEMENT)
   else:
     newControl["IsEnabled"]= "true"
   
   if (controlNode.hasAttribute("Visibility")):
-    newControl["Visibility"]= controlNode.getAttribute("Visibility")
+    newControl["Visibility"]= controlNode.getAttribute("Visibility").replace(",",COMMA_REPLACEMENT).replace("=",COMMA_REPLACEMENT)
   else:
     newControl["Visibility"]= "Visible"
 
   # TODO it is possible that more events are of interest, we should add as we discover them in existing applications
-  newControl["Click"] = controlNode.getAttribute("Click")
-  newControl["Checked"] = controlNode.getAttribute("Checked")
-  newControl["Unchecked"] = controlNode.getAttribute("Unchecked")
+  newControl["Click"] = controlNode.getAttribute("Click").replace(",",COMMA_REPLACEMENT).replace("=",COMMA_REPLACEMENT)
+  newControl["Checked"] = controlNode.getAttribute("Checked").replace(",",COMMA_REPLACEMENT).replace("=",COMMA_REPLACEMENT)
+  newControl["Unchecked"] = controlNode.getAttribute("Unchecked").replace(",",COMMA_REPLACEMENT).replace("=",COMMA_REPLACEMENT)
   newControl["XAML"]= pageXAML
   pageControls.append(newControl)
   staticControlsMap[parentPage]= pageControls
 
 def extractPhoneControlsFromPage(pageXAML):
   # maybe it is not a page file
+  print "extracting from " + pageXAML
   pageFile= open(pageXAML, "r")
   if not isPageFile(pageFile):
     return
@@ -112,6 +114,7 @@ def extractPhoneControlsFromPage(pageXAML):
   controls= getControlNodes(pageFileXML)
   ownerPage = getOwnerPage(pageFileXML)
   if (ownerPage != None):
+    print pageXAML + " is not none"
     if (len(controls) == 0):
       # it is either a page with no controls, or controls that are dynamically created, or controls we do not track yet
       # in any case, just add a dummy control so as not to lose the page
@@ -125,13 +128,15 @@ def extractPhoneControlsFromPage(pageXAML):
 
 def getOwnerPage(xmlNode):
   ownerPage= None
-  if (xmlNode.nodeType == xml.dom.Node.ELEMENT_NODE and xmlNode.localName == "PhoneApplicationPage"):
-    ownerPage= xmlNode.getAttribute("x:Class")
+  if (xmlNode.nodeType == xml.dom.Node.ELEMENT_NODE):
+    ownerPage= xmlNode.getAttribute("x:Class").replace(",",COMMA_REPLACEMENT).replace("=",COMMA_REPLACEMENT)
+    if ownerPage == "":
+      ownerPage= None
   else:
-    for child in xmlNode.childNodes:
-      ownerPage= getOwnerPage(child)
-      if (ownerPage != None):
-        break
+   for child in xmlNode.childNodes:
+     ownerPage= getOwnerPage(child)
+     if (ownerPage != None):
+       break
 
   return ownerPage
 
@@ -146,11 +151,22 @@ def outputPhoneControls(outputFileName):
   outputFile.write("dummyMainAppName_unknown\n") # I could possibly deduce it from WMAppManifest.xml, but I'm unsure. Doing it later is safe anyway
   for page in staticControlsMap.keys():
     for control in staticControlsMap[page]:
+    # TODO we still cannot handle bindings, and those we identified through commas and equality signs
       isEnabled= control["IsEnabled"]
+      if (isEnabled.find(COMMA_REPLACEMENT) != -1):
+        isEnabled= ""
       visibility= control["Visibility"]
+      if (visibility.find(COMMA_REPLACEMENT) != -1):
+        visibility= ""
       click= control["Click"]
+      if (click.find(COMMA_REPLACEMENT) != -1):
+        click= ""
       checked= control["Checked"]
+      if (checked.find(COMMA_REPLACEMENT) != -1):
+        checked= ""
       unchecked= control["Unchecked"]
+      if (unchecked.find(COMMA_REPLACEMENT) != -1):
+        unchecked= ""
       pageXAML= control["XAML"]
       # last comma is to account for bpl translation name, that is unknown for now
       # boogie string page name is unknown for now
@@ -163,7 +179,7 @@ def getMainPageXAMLFromManifest(filename):
   manifest= minidom.parse(file)
   file.close()
   # interesting XPath location /App/Tasks/DefaultTask/@NavigationPage
-  return manifest.getElementsByTagName("DefaultTask")[0].getAttribute("NavigationPage")
+  return manifest.getElementsByTagName("DefaultTask")[0].getAttribute("NavigationPage").replace(",",COMMA_REPLACEMENT).replace("=",COMMA_REPLACEMENT)
 
 def extractPhoneControls(sourceDir):
   global mainPageXAML

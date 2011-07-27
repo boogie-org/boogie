@@ -152,9 +152,10 @@ namespace TranslationPlugins {
     }
 
     private void setPageAsMainPage(string pageXAML) {
+      
       KeyValuePair<string,PageStructure> mainPageClass= pageStructureInfo.FirstOrDefault(keyValue => keyValue.Value.PageXAML == pageXAML);
       if (mainPageClass.Equals(default(KeyValuePair<string, PageStructure>))) {
-        // do nothing. Pre is page was already parsed
+        // the main page doesn't exist because it has no tracked controls. While we cannot track those controls, create a page struct for it
       } else {
         mainPageClass.Value.IsMainPage = true;
       }
