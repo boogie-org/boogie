@@ -221,6 +221,10 @@ namespace BytecodeTranslator {
     public Bpl.Function BitwiseExclusiveOr = null;
     [RepresentationFor("BitwiseNegation", "function BitwiseNegation(int): int;")]
     public Bpl.Function BitwiseNegation = null;
+    [RepresentationFor("RightShift", "function RightShift(int): int;")]
+    public Bpl.Function RightShift = null;
+    [RepresentationFor("LeftShift", "function LeftShift(int): int;")]
+    public Bpl.Function LeftShift = null;
     #endregion
 
     #endregion

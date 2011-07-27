@@ -1188,6 +1188,29 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, lexp, rexp));
     }
 
+    public override void Visit(IRightShift rightShift) {
+      base.Visit(rightShift);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      Bpl.Expr e = new Bpl.NAryExpr(
+            rightShift.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RightShift),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+      TranslatedExpressions.Push(e);
+    }
+
+    public override void Visit(ILeftShift leftShift) {
+      base.Visit(leftShift);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      Bpl.Expr e = new Bpl.NAryExpr(
+            leftShift.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.LeftShift),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+      TranslatedExpressions.Push(e);
+    }
     /// <summary>
     /// There aren't any logical-and expressions or logical-or expressions in CCI.
     /// Instead they are encoded as "x ? y : 0" for "x && y" and "x ? 1 : y"
