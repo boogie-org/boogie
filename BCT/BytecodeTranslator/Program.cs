@@ -214,7 +214,8 @@ namespace BytecodeTranslator {
 
         if (doPhoneFeedback) {
           PhoneCodeHelper.PhoneFeedbackToggled = true;
-          //PhoneControlFeedbackMetadataTraverser fbMetaDataTraverser= new PhoneControlFeedbackMetadataTraverser(host);
+          PhoneControlFeedbackMetadataTraverser fbMetaDataTraverser= new PhoneControlFeedbackMetadataTraverser(host);
+          fbMetaDataTraverser.Visit(modules);
         }
       }
 

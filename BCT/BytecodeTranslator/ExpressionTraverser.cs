@@ -685,7 +685,9 @@ namespace BytecodeTranslator
 
       ICompileTimeConstant constant= assignment.Source as ICompileTimeConstant;
       // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
-      if (PhoneCodeHelper.PhonePlugin != null && constant != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
+      if (PhoneCodeHelper.PhonePlugin != null && PhoneCodeHelper.PhoneNavigationToggled &&
+          constant != null && constant.Type == sink.host.PlatformType.SystemString &&
+          constant.Value != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
         TranslateHavocCurrentURI();
       } else {
         TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
@@ -1186,6 +1188,29 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, lexp, rexp));
     }
 
+    public override void Visit(IRightShift rightShift) {
+      base.Visit(rightShift);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      Bpl.Expr e = new Bpl.NAryExpr(
+            rightShift.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RightShift),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+      TranslatedExpressions.Push(e);
+    }
+
+    public override void Visit(ILeftShift leftShift) {
+      base.Visit(leftShift);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      Bpl.Expr e = new Bpl.NAryExpr(
+            leftShift.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.LeftShift),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+      TranslatedExpressions.Push(e);
+    }
     /// <summary>
     /// There aren't any logical-and expressions or logical-or expressions in CCI.
     /// Instead they are encoded as "x ? y : 0" for "x && y" and "x ? 1 : y"

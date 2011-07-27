@@ -343,7 +343,8 @@ namespace BytecodeTranslator
       // FEEDBACK TODO extract into a method
       if (PhoneCodeHelper.PhoneFeedbackToggled) {
         IMethodDefinition methodTranslated = sink.getMethodBeingTranslated();
-        if (methodTranslated != null && PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(methodTranslated, sink.host)) {
+        if (methodTranslated != null && PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(methodTranslated, sink.host) &&
+            !PhoneCodeHelper.isMethodIgnoredForFeedback(methodTranslated)) {
           Bpl.AssertCmd falseAssertion = new Bpl.AssertCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
           StmtBuilder.Add(falseAssertion);
         }
@@ -427,7 +428,8 @@ namespace BytecodeTranslator
         // FEEDBACK TODO extract into a method
         if (PhoneCodeHelper.PhoneFeedbackToggled) {
           IMethodDefinition methodTranslated = sink.getMethodBeingTranslated();
-          if (methodTranslated != null && PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(methodTranslated, sink.host)) {
+          if (methodTranslated != null && PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(methodTranslated, sink.host) &&
+              !PhoneCodeHelper.isMethodIgnoredForFeedback(methodTranslated)) {
             Bpl.AssertCmd falseAssertion = new Bpl.AssertCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
             builder.Add(falseAssertion);
           }

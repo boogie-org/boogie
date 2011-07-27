@@ -4,13 +4,13 @@ import os
 from xml.dom import minidom
 import xml.dom
 
-CONTROL_NAMES= ["Button", "CheckBox", "RadioButton"]
+CONTROL_NAMES= ["Button", "CheckBox", "RadioButton", "ApplicationBarIconButton"]
 
 # TODO maybe a control is enabled but its parent is not, must take this into account
 # TODO a possible solution is to tie the enabled value to that of the parent in the app until it is either overriden
 # TODO (by directly manipulating the control's enabled value) or the parent becomes enabled
 
-CONTAINER_CONTROL_NAMES= ["Canvas", "Grid", "StackPanel"]
+CONTAINER_CONTROL_NAMES= ["Canvas", "Grid", "StackPanel", "ApplicationBar"]
 
 staticControlsMap= {}
 mainPageXAML= None
@@ -54,6 +54,25 @@ def getControlNodes(xmlNode):
 
   return controlNodes
 
+def addDummyControlToMap(pageXAML, parentPage):
+  pageControls=[]
+  newControl={}
+  try:
+    pageControls= staticControlsMap[parentPage]
+  except KeyError:
+    pass
+  
+  newControl["Type"]= "DummyType"
+  newControl["Name"]= "DummyName"
+  newControl["IsEnabled"]= "false"
+  newControl["Visibility"]= "Collapsed"
+  newControl["Click"] = ""
+  newControl["Checked"] = ""
+  newControl["Unchecked"] = ""
+  newControl["XAML"]= pageXAML
+  pageControls.append(newControl)
+  staticControlsMap[parentPage]= pageControls
+
 def addControlToMap(pageXAML, parentPage, controlNode):
   pageControls=[]
   newControl={}
@@ -91,14 +110,31 @@ def extractPhoneControlsFromPage(pageXAML):
   pageFile.close()
   removeBlankElements(pageFileXML)
   controls= getControlNodes(pageFileXML)
-  ownerPage = None
-  for control in controls:
-    parent= control
-    while not parent == None and ownerPage == None:
-      if parent.localName == "PhoneApplicationPage":
-        ownerPage= parent.getAttribute("x:Class")
-      parent= parent.parentNode
-    addControlToMap(pageXAML, ownerPage, control)
+  ownerPage = getOwnerPage(pageFileXML)
+  if (ownerPage != None):
+    if (len(controls) == 0):
+      # it is either a page with no controls, or controls that are dynamically created, or controls we do not track yet
+      # in any case, just add a dummy control so as not to lose the page
+      addDummyControlToMap(pageXAML, ownerPage)
+    else:
+      for control in controls:
+        parent= control
+        while not parent == None and ownerPage == None:
+          parent= parent.parentNode
+        addControlToMap(pageXAML, ownerPage, control)
+
+def getOwnerPage(xmlNode):
+  ownerPage= None
+  if (xmlNode.nodeType == xml.dom.Node.ELEMENT_NODE and xmlNode.localName == "PhoneApplicationPage"):
+    ownerPage= xmlNode.getAttribute("x:Class")
+  else:
+    for child in xmlNode.childNodes:
+      ownerPage= getOwnerPage(child)
+      if (ownerPage != None):
+        break
+
+  return ownerPage
+
 
 def outputPhoneControls(outputFileName):
   outputFile= open(outputFileName, "w")

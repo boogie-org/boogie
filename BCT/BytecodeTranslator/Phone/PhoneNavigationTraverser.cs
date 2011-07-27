@@ -145,13 +145,13 @@ namespace BytecodeTranslator.Phone {
     /// <returns></returns>
     private bool isArgumentURILocallyCreatedStatic(IExpression arg, out string uri) {
       uri = null;
-      if (!arg.isCreateObjectInstance())
+      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
+      if (creationSite == null)
         return false;
 
       if (!arg.Type.isURIClass(host))
         return false;
 
-      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
       IExpression uriTargetArg= creationSite.Arguments.First();
 
       if (!uriTargetArg.Type.isStringClass(host))
@@ -173,13 +173,13 @@ namespace BytecodeTranslator.Phone {
     private bool isArgumentURILocallyCreatedStaticRoot(IExpression arg, out string uri) {
       // Pre: !isArgumentURILocallyCreatedStatic
       uri = null;
-      if (!arg.isCreateObjectInstance())
+      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
+      if (creationSite == null)
         return false;
 
       if (!arg.Type.isURIClass(host))
         return false;
 
-      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
       IExpression uriTargetArg = creationSite.Arguments.First();
 
       if (!uriTargetArg.Type.isStringClass(host))
