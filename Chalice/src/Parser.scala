@@ -33,7 +33,7 @@ class Parser extends StandardTokenParsers {
                        "lock", "fork", "join", "rd", "acc", "credit", "holds", "old", "assigned",
                        "call", "if", "else", "while", "invariant", "lockchange",
                        "returns", "requires", "ensures", "where",
-                       "int", "bool", "false", "true", "null", "waitlevel", "lockbottom",
+                       "int", "bool", "false", "true", "null", "string", "waitlevel", "lockbottom",
                        "module", "external",
                        "predicate", "function", "free", "send", "receive",
                        "ite", "fold", "unfold", "unfolding", "in", "forall", "exists",
@@ -149,12 +149,12 @@ class Parser extends StandardTokenParsers {
     }
   def Ident = positioned(ident ^^ PositionedString)
   def idType = idTypeOpt ^^ {
-      case (id, None) => (id, Type("int", Nil))
+      case (id, None) => (id, Type("int", Nil))  // todo: this feature was once convenient to make some Chalice programs look cleaner, but now that Chalice has grown up a bit, it's a feature that is better removed (or replaced by some type inference)
       case (id, Some(t)) => (id, t) }
   def idTypeOpt =
     Ident ~ (":" ~> typeDecl ?) ^^ { case id ~ optT => (id, optT) }
   def typeDecl: Parser[Type] =
-      positioned(("int" | "bool" | ident | "seq") ~ opt("<" ~> repsep(typeDecl, ",") <~ ">") ^^ { case t ~ parameters => Type(t, parameters.getOrElse(Nil)) }
+      positioned(("int" | "bool" | ident | "string" | "seq") ~ opt("<" ~> repsep(typeDecl, ",") <~ ">") ^^ { case t ~ parameters => Type(t, parameters.getOrElse(Nil)) }
       | ("token" ~ "<") ~> (typeDecl <~ ".") ~ ident <~ ">" ^^ { case c ~ m => TokenType(c, m) }
       )
 
@@ -298,6 +298,7 @@ class Parser extends StandardTokenParsers {
                        rhs match {
                          case Some(NewRhs(tid, _, _, _)) => Type(tid, Nil)
                          case Some(BoolLiteral(b)) => Type("bool", Nil)
+                         case Some(StringLiteral(s)) => Type("string", Nil)
                          case Some(x:BinaryExpr) if x.ResultType != null => new Type(x.ResultType);
                          case Some(x:Contains) => Type("bool", Nil)
                          case Some(x:Quantification) => Type("bool", Nil)
@@ -494,6 +495,7 @@ class Parser extends StandardTokenParsers {
     | "false" ^^^ BoolLiteral(false)
     | "true" ^^^ BoolLiteral(true)
     | "null" ^^^ NullLiteral()
+    | stringLit ^^ { case s => StringLiteral(s) }
     | "waitlevel" ^^^ MaxLockLiteral()
     | "lockbottom" ^^^ LockBottomLiteral()
     | "this" ^^^ ExplicitThisExpr()

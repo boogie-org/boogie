@@ -1455,6 +1455,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       case IntLiteral(n) => Nil
       case BoolLiteral(b) => Nil
       case NullLiteral() => Nil
+      case StringLiteral(s) => Nil
       case MaxLockLiteral() => Nil
       case LockBottomLiteral() => Nil
       case _:ThisExpr => Nil
@@ -1618,6 +1619,10 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     case IntLiteral(n) => n
     case BoolLiteral(b) => b
     case NullLiteral() => bnull
+    case StringLiteral(s) =>
+      // since there currently are no operations defined on string, except == and !=, just translate
+      // each string to a unique number
+      s.hashCode()
     case MaxLockLiteral() => throw new InternalErrorException("waitlevel case should be handled in << and == and !=")
     case LockBottomLiteral() => bLockBottom
     case _:ThisExpr => VarExpr("this")
@@ -2363,6 +2368,8 @@ object TranslationHelper {
       tmu
     } else if(cl.IsInt) {
       tint
+    } else if(cl.IsString) {
+      tstring
     } else if(cl.IsSeq) {
       tseq(type2BType(cl.asInstanceOf[SeqClass].parameter))
     } else {
@@ -2397,6 +2404,7 @@ object TranslationHelper {
   def tbool = NamedType("bool");
   def tmu  = NamedType("Mu");
   def tint = NamedType("int");
+  def tstring = NamedType("string");
   def tseq(arg: BType) = IndexedType("Seq", arg)
   def theap = NamedType("HeapType");
   def tmask = NamedType("MaskType");

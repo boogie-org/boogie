@@ -21,6 +21,7 @@ sealed case class Class(classId: String, parameters: List[Class], module: String
   def IsBool: Boolean = false
   def IsRef: Boolean = true
   def IsNull: Boolean = false
+  def IsString: Boolean = false
   def IsMu: Boolean = false
   def IsSeq: Boolean = false
   def IsToken: Boolean = false
@@ -95,6 +96,11 @@ object BoolClass extends Class("bool", Nil, "default", Nil) {
 }
 object NullClass extends Class("null", Nil, "default", Nil) {
   override def IsNull = true
+  override def IsNormalClass = false
+}
+object StringClass extends Class("string", Nil, "default", Nil) {
+  override def IsRef = false
+  override def IsString = true
   override def IsNormalClass = false
 }
 object MuClass extends Class("$Mu", Nil, "default", Nil) {
@@ -394,6 +400,7 @@ sealed abstract class Literal extends Expression
 case class IntLiteral(n: Int) extends Literal
 case class BoolLiteral(b: Boolean) extends Literal
 case class NullLiteral() extends Literal
+case class StringLiteral(s: String) extends Literal
 case class MaxLockLiteral() extends Literal
 case class LockBottomLiteral() extends Literal
 case class VariableExpr(id: String) extends Expression {

@@ -22,7 +22,7 @@ namespace Demo
           "call", "if", "else", "while",
           "invariant", "lockchange",
           "returns", "requires", "ensures", "where",
-          "int", "bool", "false", "true", "null", "waitlevel", "lockbottom",
+          "int", "bool", "false", "true", "null", "string", "waitlevel", "lockbottom",
           "module", "external",
           "predicate", "function", "free", "send", "receive",
           "ite", "fold", "unfold", "unfolding", "in", "forall", "exists",

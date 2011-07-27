@@ -44,7 +44,7 @@
         "old" "rd" "receive" "release" "reorder" "result" "send" "share"
         "this" "unfold" "unfolding" "unshare" "while"
         "false" "true" "null")) . font-lock-keyword-face)
-   `(,(chalice-regexp-opt '("bool" "int" "seq" "token")) . font-lock-type-face)
+   `(,(chalice-regexp-opt '("bool" "int" "string" "seq" "token")) . font-lock-type-face)
    )
   "Minimal highlighting for Chalice mode")
 
