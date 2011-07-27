@@ -319,6 +319,12 @@ namespace BytecodeTranslator
         TranslatedExpressions.Push(Bpl.Expr.Ident(c));
         return;
       }
+      if (constant.Type.IsEnum) {
+        var lit = Bpl.Expr.Literal((int)constant.Value);
+        lit.Type = Bpl.Type.Int;
+        TranslatedExpressions.Push(lit);
+        return;
+      }
       switch (constant.Type.TypeCode) {
         case PrimitiveTypeCode.Boolean:
           // Decompiler might not have converted the constant back to a boolean? Not sure why,
@@ -331,46 +337,51 @@ namespace BytecodeTranslator
           break;
         case PrimitiveTypeCode.Char: // chars are represented as ints
         case PrimitiveTypeCode.Int8:
-        case PrimitiveTypeCode.Int16:
-          var lit = Bpl.Expr.Literal((short)constant.Value);
-          lit.Type = Bpl.Type.Int;
-          TranslatedExpressions.Push(lit);
-          break;
-        case PrimitiveTypeCode.Int32:
-        case PrimitiveTypeCode.Int64:
-          var lit2 = Bpl.Expr.Literal((int)constant.Value);
-          lit2.Type = Bpl.Type.Int;
-          TranslatedExpressions.Push(lit2);
-          break;
-        case PrimitiveTypeCode.UInt16:
-        case PrimitiveTypeCode.UInt32:
-        case PrimitiveTypeCode.UInt64:
+        case PrimitiveTypeCode.Int16: {
+            var lit = Bpl.Expr.Literal((short)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
+        case PrimitiveTypeCode.Int32: {
+            var lit = Bpl.Expr.Literal((int)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
+        case PrimitiveTypeCode.Int64: {
+            var lit = Bpl.Expr.Literal(Microsoft.Basetypes.BigNum.FromLong((long)constant.Value));
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
         case PrimitiveTypeCode.UInt8:
-          lit = Bpl.Expr.Literal((int)(uint)constant.Value);
-          lit.Type = Bpl.Type.Int;
-          TranslatedExpressions.Push(lit);
-          break;
+        case PrimitiveTypeCode.UInt16:
+        case PrimitiveTypeCode.UInt32: {
+            var lit = Bpl.Expr.Literal((int)(uint)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
+        case PrimitiveTypeCode.UInt64: {
+            var lit = Bpl.Expr.Literal(Microsoft.Basetypes.BigNum.FromULong((ulong)constant.Value));
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
         case PrimitiveTypeCode.Float32: {
             var c = this.sink.FindOrCreateConstant((float)(constant.Value));
             TranslatedExpressions.Push(Bpl.Expr.Ident(c));
-            return;
+            break;
           }
         case PrimitiveTypeCode.Float64: {
             var c = this.sink.FindOrCreateConstant((double)(constant.Value));
             TranslatedExpressions.Push(Bpl.Expr.Ident(c));
-            return;
+            break;
           }
-        case PrimitiveTypeCode.NotPrimitive:
-          if (constant.Type.IsEnum) {
-            lit = Bpl.Expr.Literal((int)constant.Value);
-            lit.Type = Bpl.Type.Int;
-            TranslatedExpressions.Push(lit);
-            return;
-          }
+        default:
           throw new NotImplementedException(String.Format("Can't translate compile-time constant of type '{0}'",
             TypeHelper.GetTypeName(constant.Type)));
-        default:
-          throw new NotImplementedException();
       }
       return;
     }
