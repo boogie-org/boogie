@@ -584,6 +584,15 @@ namespace BytecodeTranslator.Phone {
       }
       codeBuilder.Add(new Bpl.HavocCmd(Bpl.Token.NoToken, identVars));
 
+      // FEEDBACK TODO this is possibly too much, I'm guessing sometimes this args might well be null
+      Bpl.Expr notNullExpr;
+      foreach (Bpl.IdentifierExpr idExpr in identVars) {
+        if (idExpr.Type.Equals(sink.Heap.RefType)) {
+          notNullExpr= Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, idExpr, Bpl.Expr.Ident(sink.Heap.NullRef));
+          codeBuilder.Add(new Bpl.AssumeCmd(Bpl.Token.NoToken, notNullExpr));
+        }
+      }
+
       Bpl.ExprSeq callParams = new Bpl.ExprSeq();
       for (int i = 0; i < identVars.Length; i++) {
         callParams.Add(identVars[i]);
