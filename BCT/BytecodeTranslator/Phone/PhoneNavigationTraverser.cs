@@ -10,22 +10,23 @@ namespace BytecodeTranslator.Phone {
   public class PhoneNavigationCodeTraverser : BaseCodeTraverser {
     private MetadataReaderHost host;
     private ITypeReference navigationSvcType;
+    private ITypeReference cancelEventArgsType;
     private ITypeReference typeTraversed;
+    private IMethodDefinition methodTraversed;
 
-    public PhoneNavigationCodeTraverser(MetadataReaderHost host, ITypeReference typeTraversed) : base() {
+    public PhoneNavigationCodeTraverser(MetadataReaderHost host, ITypeReference typeTraversed, IMethodDefinition methodTraversed) : base() {
       this.host = host;
       this.typeTraversed = typeTraversed;
+      this.methodTraversed = methodTraversed;
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
 
       // TODO obtain version, culture and signature data dynamically
-      AssemblyIdentity MSPhoneAssemblyId =
-          new AssemblyIdentity(host.NameTable.GetNameFor("Microsoft.Phone"), "", new Version("7.0.0.0"),
-                               new byte[] { 0x24, 0xEE, 0xC0, 0xD8, 0xC8, 0x6C, 0xDA, 0x1E }, "");
-
-      IAssembly phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
-
+      IAssemblyReference assembly= PhoneCodeHelper.getPhoneAssemblyReference(host);
       // TODO determine the needed types dynamically
-      navigationSvcType = platform.CreateReference(phoneAssembly, "System", "Windows", "Navigation", "NavigationService");
+      navigationSvcType = platform.CreateReference(assembly, "System", "Windows", "Navigation", "NavigationService");
+
+      assembly = PhoneCodeHelper.getSystemAssemblyReference(host);
+      cancelEventArgsType = platform.CreateReference(assembly, "System", "ComponentModel", "CancelEventArgs");
     }
 
     public override void Visit(IMethodDefinition method) {
@@ -40,7 +41,7 @@ namespace BytecodeTranslator.Phone {
             Assignment uriInitAssign = new Assignment() {
               Source = new CompileTimeConstant() {
                 Type = host.PlatformType.SystemString,
-                Value = PhoneCodeHelper.getURIBase(mainPageUri),
+                Value = PhoneControlsPlugin.getURIBase(mainPageUri),
               },
               Type = host.PlatformType.SystemString,
               Target = new TargetExpression() {
@@ -87,7 +88,49 @@ namespace BytecodeTranslator.Phone {
       injectNavigationUpdateCode(block, staticNavStmts, nonStaticNavStmts);
     }
 
+    private bool isNavigationOnBackKeyPressHandler(IMethodCall call) {
+      if (!methodTraversed.ResolvedMethod.isBackKeyPressOverride(host))
+        return false;
+
+      if (!call.MethodToCall.ContainingType.isNavigationServiceClass(host))
+        return false;
+
+      if (!PhoneCodeHelper.NAV_CALLS.Contains(call.MethodToCall.Name.Value) || call.MethodToCall.Name.Value == "GoBack") // back is actually ok
+        return false;
+
+      return true;
+    }
+
+    private bool isCancelOnBackKeyPressHandler(IMethodCall call) {
+      if (!methodTraversed.ResolvedMethod.isBackKeyPressOverride(host))
+        return false;
+
+      if (!call.MethodToCall.Name.Value.StartsWith("set_Cancel"))
+        return false;
+
+      if (call.Arguments.ToList()[0].Type != host.PlatformType.SystemBoolean)
+        return false;
+
+      ICompileTimeConstant constant = call.Arguments.ToList()[0] as ICompileTimeConstant;
+      if (constant != null && constant.Value != null ) {
+        CompileTimeConstant falseConstant = new CompileTimeConstant() {
+          Type = host.PlatformType.SystemBoolean,
+          Value = false,
+        };
+        if (constant.Value == falseConstant.Value)
+          return false;
+      }
+
+      return true;
+    }
+
     public override void Visit(IMethodCall methodCall) {
+      if (isNavigationOnBackKeyPressHandler(methodCall)) {
+        PhoneCodeHelper.BackKeyPressNavigates = true;
+      } else if (isCancelOnBackKeyPressHandler(methodCall)) {
+        PhoneCodeHelper.BackKeyPressHandlerCancels = true;
+      }
+
       // check whether it is a NavigationService call
       IMethodReference methodToCall= methodCall.MethodToCall;
       ITypeReference callType= methodToCall.ContainingType;
@@ -238,7 +281,7 @@ namespace BytecodeTranslator.Phone {
         Assignment currentURIAssign = new Assignment() {
           Source = new CompileTimeConstant() {
             Type = host.PlatformType.SystemString,
-            Value = PhoneCodeHelper.getURIBase(entry.Item3),
+            Value = PhoneControlsPlugin.getURIBase(entry.Item3),
           },
           Type = host.PlatformType.SystemString,
           Target = new TargetExpression() {
@@ -302,7 +345,11 @@ namespace BytecodeTranslator.Phone {
 
     // TODO same here. Are there specific methods (and ways to identfy those) that can perform navigation?
     public override void Visit(IMethodDefinition method) {
-      PhoneNavigationCodeTraverser codeTraverser = new PhoneNavigationCodeTraverser(host, typeBeingTraversed);
+      if (method.isBackKeyPressOverride(host)) {
+        PhoneCodeHelper.OnBackKeyPressOverriden = true;
+      }
+
+      PhoneNavigationCodeTraverser codeTraverser = new PhoneNavigationCodeTraverser(host, typeBeingTraversed, method);
       codeTraverser.Visit(method);
     }
 
