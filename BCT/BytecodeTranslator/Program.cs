@@ -102,12 +102,13 @@ namespace BytecodeTranslator {
 
       #region If an exclusion file has been specified, read in each line as a regular expression
       List<Regex> exemptionList = null;
-      bool whiteList = true;
+      bool whiteList = false;
       if (!String.IsNullOrWhiteSpace(options.exemptionFile)) {
         int i = 0;
         exemptionList = new List<Regex>();
         string fileName = options.exemptionFile;
         var c = fileName[fileName.Length - 1];
+        whiteList = true;
         if (c == '+' || c == '-') {
           fileName = options.exemptionFile.Remove(fileName.Length - 1);
           if (c == '-') whiteList = false;
