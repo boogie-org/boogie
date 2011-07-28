@@ -199,6 +199,7 @@ namespace BytecodeTranslator.Phone {
       PHONE_UI_CHANGER_METHODS= new Dictionary<string,string[]>();
       IAssemblyReference systemAssembly = PhoneTypeHelper.getSystemAssemblyReference(host);
       IAssemblyReference systemWinAssembly = PhoneTypeHelper.getSystemWindowsAssemblyReference(host);
+      IAssemblyReference phoneAssembly = PhoneTypeHelper.getPhoneAssemblyReference(host);
       
       ITypeReference textBoxType = platform.CreateReference(systemAssembly, "System", "Windows", "Controls", "TextBox");
       PHONE_UI_CHANGER_METHODS[textBoxType.ToString()] =
@@ -291,6 +292,12 @@ namespace BytecodeTranslator.Phone {
       PHONE_UI_CHANGER_METHODS[richTextBoxType.ToString()] =
         new string[] { "set_BaselineOffset", "set_CaretBrush", "set_HorizontalScrollBartVisibility", "set_LineHeight", "set_LineStackingStrategy",
                        "set_TextAlignment", "set_TextWrapping", "set_VerticalScrollBarVisibility", "set_Xaml", };
+
+      ITypeReference webBrowserTaskType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Tasks", "WebBrowserTask");
+      PHONE_UI_CHANGER_METHODS[webBrowserTaskType.ToString()] = new string[] { "Show", };
+
+      ITypeReference appBarIconButtonType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarIconButton");
+      PHONE_UI_CHANGER_METHODS[appBarIconButtonType.ToString()] = new string[] { "set_IsEnabled", "set_IconUri", "set_Text"};
     }
 
     // TODO externalize strings
@@ -410,6 +417,7 @@ namespace BytecodeTranslator.Phone {
     }
 
     public bool isMethodKnownUIChanger(IMethodCall methodCall) {
+      // FEEDBACK TODO join these two with the others
       if (methodCall.MethodToCall.ContainingType.isNavigationServiceClass(host)) {
         return NAV_CALLS.Contains(methodCall.MethodToCall.Name.Value);
       } else if (methodCall.IsStaticCall && methodCall.MethodToCall.ContainingType.isMessageBoxClass(host) &&
@@ -424,11 +432,15 @@ namespace BytecodeTranslator.Phone {
         return false;
 
       ITypeReference calleeType = callee.Type;
-      if (isPhoneUIChangerClass(calleeType)) {
-        return isKnownUIChanger(calleeType, methodCall);
-      } else {
-        return false;
+      while (calleeType.ResolvedType.BaseClasses.Any()) {
+        if (isPhoneUIChangerClass(calleeType) && isKnownUIChanger(calleeType, methodCall)) {
+          return true;
+        }
+
+        calleeType = calleeType.ResolvedType.BaseClasses.First();
       }
+
+      return false;
     }
 
     private bool isKnownUIChanger(ITypeReference typeRef, IMethodCall call) {
