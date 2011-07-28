@@ -19,10 +19,11 @@ using System.Diagnostics.Contracts;
 using Microsoft.Cci.MutableCodeModel.Contracts;
 using TranslationPlugins;
 using BytecodeTranslator.Phone;
+using System.Text.RegularExpressions;
 
 namespace BytecodeTranslator {
 
-  class Options : OptionParsing {
+  public class Options : OptionParsing {
 
     [OptionDescription("The names of the assemblies to use as input", ShortForm = "a")]
     public List<string> assemblies = null;
@@ -52,6 +53,9 @@ namespace BytecodeTranslator {
     [OptionDescription("Add phone feedback code on translation. Requires /phoneControls. Default false", ShortForm = "wpfb")]
     public bool phoneFeedbackCode = false;
 
+    [OptionDescription("File containing white/black list (optionally end file name with + for white list, - for black list, default is white list", ShortForm = "exempt")]
+    public string exemptionFile = "";
+
   }
 
   public class BCT {
@@ -63,7 +67,7 @@ namespace BytecodeTranslator {
       int result = 0;
       int errorReturnValue = -1;
 
-      #region Parse options
+      #region Parse options and check for errors
       var options = new Options();
       options.Parse(args);
       if (options.HelpRequested) {
@@ -73,10 +77,19 @@ namespace BytecodeTranslator {
       if (options.HasErrors) {
         options.PrintErrorsAndExit(Console.Out);
       }
+      if (String.IsNullOrWhiteSpace(options.exemptionFile)) {
+        string fileName = options.exemptionFile;
+        var c = fileName[fileName.Length - 1];
+        if (c == '+' || c == '-') fileName = options.exemptionFile.Remove(fileName.Length - 1);
+        if (!File.Exists(fileName)) {
+          Console.WriteLine("Specified exemption file '{0}' not found.", fileName);
+        }
+      }
 
       if (options.breakIntoDebugger) {
         System.Diagnostics.Debugger.Break();
       }
+
       #endregion
 
       var assemblyNames = options.assemblies;
@@ -86,6 +99,40 @@ namespace BytecodeTranslator {
           assemblyNames.Add(g);
         }
       }
+
+      #region If an exclusion file has been specified, read in each line as a regular expression
+      List<Regex> exemptionList = null;
+      bool whiteList = true;
+      if (!String.IsNullOrWhiteSpace(options.exemptionFile)) {
+        int i = 0;
+        exemptionList = new List<Regex>();
+        string fileName = options.exemptionFile;
+        var c = fileName[fileName.Length - 1];
+        if (c == '+' || c == '-') {
+          fileName = options.exemptionFile.Remove(fileName.Length - 1);
+          if (c == '-') whiteList = false;
+        }
+        try {
+          // Create an instance of StreamReader to read from a file.
+          // The using statement also closes the StreamReader.
+          using (StreamReader sr = new StreamReader(fileName)) {
+            String line;
+            // Read and display lines from the file until the end of 
+            // the file is reached.
+            while ((line = sr.ReadLine()) != null) {
+              exemptionList.Add(new Regex(line));
+              i++;
+            }
+            Console.WriteLine("Read {0} lines from the exclusion file '{1}'.",
+              i, options.exemptionFile);
+          }
+        } catch (Exception e) {
+          Console.WriteLine("Something went wrong reading the exclusion file '{0}'; read in {1} lines, continuing processing.",
+            fileName, i);
+          Console.WriteLine(e.Message);
+        }
+      }
+      #endregion
 
       try {
 
@@ -107,8 +154,7 @@ namespace BytecodeTranslator {
           return 1;
         }
 
-        result = TranslateAssembly(assemblyNames, heap, options.libpaths, options.wholeProgram, options.stub,
-                                   options.phoneControls, options.phoneNavigationCode, options.phoneFeedbackCode);
+        result = TranslateAssembly(assemblyNames, heap, options, exemptionList, whiteList);
 
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed: {0}", e.Message);
@@ -118,10 +164,16 @@ namespace BytecodeTranslator {
       return result;
     }
 
-    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, List<string>/*?*/ libPaths, bool wholeProgram, List<string>/*?*/ stubAssemblies,
-                                        string phoneControlsConfigFile, bool doPhoneNav, bool doPhoneFeedback) {
+    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, Options/*?*/ options, List<Regex> exemptionList, bool whiteList) {
       Contract.Requires(assemblyNames != null);
       Contract.Requires(heapFactory != null);
+
+      var libPaths = options == null ? null : options.libpaths;
+      var wholeProgram = options == null ? false : options.wholeProgram;
+      var/*?*/ stubAssemblies = options == null ? null : options.stub;
+      var phoneControlsConfigFile = options == null ? null : options.phoneControls;
+      var doPhoneNav = options == null ? false : options.phoneNavigationCode;
+      var doPhoneFeedback = options == null ? false : options.phoneFeedbackCode;
 
       var host = new CodeContractAwareHostEnvironment(libPaths != null ? libPaths : Enumerable<string>.Empty, true, true);
       Host = host;
@@ -195,7 +247,7 @@ namespace BytecodeTranslator {
       else
         traverserFactory = new CLRSemantics();
 
-      Sink sink= new Sink(host, traverserFactory, heapFactory);
+      Sink sink= new Sink(host, traverserFactory, heapFactory, exemptionList, whiteList);
       TranslationHelper.tmpVarCounter = 0;
       MetadataTraverser translator;
       translator= traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);

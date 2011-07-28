@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 using Microsoft.Cci;
 using Microsoft.Cci.MetadataReader;
@@ -26,8 +27,10 @@ namespace BytecodeTranslator {
       get { return this.factory; }
     }
     readonly TraverserFactory factory;
+    readonly bool whiteList;
+    readonly List<Regex> exemptionList;
 
-    public Sink(IContractAwareHost host, TraverserFactory factory, HeapFactory heapFactory) {
+    public Sink(IContractAwareHost host, TraverserFactory factory, HeapFactory heapFactory, List<Regex> exemptionList, bool whiteList) {
       Contract.Requires(host != null);
       Contract.Requires(factory != null);
       Contract.Requires(heapFactory != null);
@@ -35,6 +38,8 @@ namespace BytecodeTranslator {
       this.host = host;
       this.factory = factory;
       var b = heapFactory.MakeHeap(this, out this.heap, out this.TranslatedProgram); // TODO: what if it returns false?
+      this.exemptionList = exemptionList;
+      this.whiteList = whiteList;
       if (this.TranslatedProgram == null) {
         this.TranslatedProgram = new Bpl.Program();
       } else {
@@ -1105,6 +1110,37 @@ namespace BytecodeTranslator {
       delegateMethods[defn] = constant;
       return constant;
     }
+
+    public bool TranslateType(ITypeReference t) {
+      if (this.exemptionList == null)
+        return !this.whiteList;
+      var fullName = TypeHelper.GetTypeName(t);
+      var fullerName = "[" + TypeHelper.GetDefiningUnitReference(t).Name.Value + "]" + fullName;
+      foreach (Regex r in this.exemptionList) {
+        Match m = r.Match(fullName);
+        if (m.Success)
+          return this.whiteList;
+        m = r.Match(fullerName);
+        if (m.Success)
+          return this.whiteList;
+      }
+      return !this.whiteList;
+    }
+
+    // TODO: get full namespace name from a namespace definition
+    //public bool TranslateNamespace(INamespaceDefinition nameSpace) {
+    //  if (this.exemptionList == null)
+    //    return !this.whiteList;
+    //  var fullName = TypeHelper.GetNamespaceName(nameSpace, NameFormattingOptions.None);
+    //  foreach (Regex r in this.exemptionList) {
+    //    Match m = r.Match(fullName);
+    //    if (m.Success)
+    //      return this.whiteList;
+    //  }
+    //  return !this.whiteList;
+    //}
+
+
   }
 
 }
