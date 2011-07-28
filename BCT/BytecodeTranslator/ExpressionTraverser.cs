@@ -523,16 +523,16 @@ namespace BytecodeTranslator
         this.StmtTraverser.RaiseException(expr);
       } finally {
         // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
-        if (PhoneCodeHelper.PhonePlugin != null) {
-          if (PhoneCodeHelper.PhoneNavigationToggled) {
-            if (PhoneCodeHelper.isNavigationCall(methodCall, sink.host)) {
-              Bpl.AssignCmd assignCmd = PhoneCodeHelper.createBoogieNavigationUpdateCmd(sink);
+        if (PhoneCodeHelper.instance().PhonePlugin != null) {
+          if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
+            if (PhoneCodeHelper.instance().isNavigationCall(methodCall)) {
+              Bpl.AssignCmd assignCmd = PhoneCodeHelper.instance().createBoogieNavigationUpdateCmd(sink);
               this.StmtTraverser.StmtBuilder.Add(assignCmd);
             }
           }
 
-          if (PhoneCodeHelper.PhoneFeedbackToggled) {
-            if (PhoneCodeHelper.isMethodKnownUIChanger(methodCall, sink.host)) {
+          if (PhoneCodeHelper.instance().PhoneFeedbackToggled) {
+            if (PhoneCodeHelper.instance().isMethodKnownUIChanger(methodCall)) {
               Bpl.AssumeCmd assumeFalse = new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
               this.StmtTraverser.StmtBuilder.Add(assumeFalse);
               // FEEDBACK TODO make sure that the call to this method (not the called one but the one in context) is inlined (how?)
@@ -696,7 +696,7 @@ namespace BytecodeTranslator
 
       ICompileTimeConstant constant= assignment.Source as ICompileTimeConstant;
       // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
-      if (PhoneCodeHelper.PhonePlugin != null && PhoneCodeHelper.PhoneNavigationToggled &&
+      if (PhoneCodeHelper.instance().PhonePlugin != null && PhoneCodeHelper.instance().PhoneNavigationToggled &&
           constant != null && constant.Type == sink.host.PlatformType.SystemString &&
           constant.Value != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
         TranslateHavocCurrentURI();

@@ -146,7 +146,7 @@ namespace BytecodeTranslator.Phone {
 
     private void injectPhoneInitializationCode(BlockStatement block, Statement statementAfter) {
       // TODO check page name against container name
-      IEnumerable<ControlInfoStructure> controls= PhoneCodeHelper.PhonePlugin.getControlsForPage(methodBeingTraversed.Container.ToString());
+      IEnumerable<ControlInfoStructure> controls = PhoneCodeHelper.instance().PhonePlugin.getControlsForPage(methodBeingTraversed.Container.ToString());
       IEnumerable<IStatement> injectedStatements = new List<IStatement>();
       if (controls != null) {
         foreach (ControlInfoStructure controlInfo in controls) {
@@ -303,7 +303,7 @@ namespace BytecodeTranslator.Phone {
     /// 
     public override void Visit(ITypeDefinition typeDefinition) {
       if (typeDefinition.isPhoneApplicationClass(host)) {
-        PhoneCodeHelper.setMainAppTypeReference(typeDefinition);
+        PhoneCodeHelper.instance().setMainAppTypeReference(typeDefinition);
       } else if (typeDefinition.isPhoneApplicationPageClass(host)) {
         base.Visit(typeDefinition);
       }

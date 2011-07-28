@@ -14,7 +14,7 @@ namespace BytecodeTranslator.Phone {
     }
 
     public override void Visit(IMethodCall methodCall) {
-      if (PhoneCodeHelper.PhoneFeedbackToggled) {
+      if (PhoneCodeHelper.instance().PhoneFeedbackToggled) {
         // check for handlers we do not wish to add feedback checks to
         if (methodCall.MethodToCall.Name.Value.StartsWith("add_")) {
           string eventName = methodCall.MethodToCall.Name.Value.Remove(0, "add_".Length);
@@ -26,7 +26,7 @@ namespace BytecodeTranslator.Phone {
                 continue;
 
               ITypeReference typeRef = createDelegate.Type;
-              if (!typeRef.isRoutedEventHandler(host))
+              if (!typeRef.isRoutedEventHandlerClass(host))
                 continue;
 
               eventHandler = createDelegate.MethodToCallViaDelegate;
@@ -38,7 +38,7 @@ namespace BytecodeTranslator.Phone {
               if (namedType != null) {
                 INamespaceTypeDefinition namedTypeDef = namedType.ResolvedType;
                 if (namedTypeDef != null) {
-                  PhoneCodeHelper.ignoreEventHandler(namedTypeDef.ContainingUnitNamespace.Name + "." + namedTypeDef.Name + "."  + eventHandler.Name);
+                  PhoneCodeHelper.instance().ignoreEventHandler(namedTypeDef.ContainingUnitNamespace.Name + "." + namedTypeDef.Name + "." + eventHandler.Name);
                 }
               }
             }

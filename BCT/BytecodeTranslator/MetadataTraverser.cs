@@ -107,24 +107,24 @@ namespace BytecodeTranslator {
     List<ITypeDefinition> privateTypes = new List<ITypeDefinition>();
 
     private void trackPhoneApplicationClassname(ITypeDefinition typeDef) {
-      if (PhoneCodeHelper.PhonePlugin != null && typeDef.isPhoneApplicationClass(sink.host)) {
+      if (PhoneCodeHelper.instance().PhonePlugin != null && typeDef.isPhoneApplicationClass(sink.host)) {
         INamespaceTypeDefinition namedTypeDef = typeDef as INamespaceTypeDefinition;
         // string fullyQualifiedName = namedTypeDef.ContainingNamespace.Name.Value + "." + namedTypeDef.Name.Value;
         string fullyQualifiedName = namedTypeDef.ToString();
-        PhoneCodeHelper.setMainAppTypeReference(typeDef);
-        PhoneCodeHelper.setMainAppTypeName(fullyQualifiedName);
+        PhoneCodeHelper.instance().setMainAppTypeReference(typeDef);
+        PhoneCodeHelper.instance().setMainAppTypeName(fullyQualifiedName);
       }
     }
 
     private void trackPageNameVariableName(ITypeDefinition typeDef) {
-      if (PhoneCodeHelper.PhonePlugin != null && typeDef.isPhoneApplicationPageClass(sink.host)) {
+      if (PhoneCodeHelper.instance().PhonePlugin != null && typeDef.isPhoneApplicationPageClass(sink.host)) {
         INamespaceTypeDefinition namedTypeDef = typeDef as INamespaceTypeDefinition;
         string fullyQualifiedName = namedTypeDef.ToString();
-        string xamlForClass = PhoneCodeHelper.getXAMLForPage(fullyQualifiedName);
+        string xamlForClass = PhoneCodeHelper.instance().getXAMLForPage(fullyQualifiedName);
         if (xamlForClass != null) { // if not it is possibly an abstract page
           string uriName = PhoneControlsPlugin.getURIBase(xamlForClass);
           Bpl.Constant uriConstant = sink.FindOrCreateConstant(uriName);
-          PhoneCodeHelper.setBoogieStringPageNameForPageClass(fullyQualifiedName, uriConstant.Name);
+          PhoneCodeHelper.instance().setBoogieStringPageNameForPageClass(fullyQualifiedName, uriConstant.Name);
         }
       }
     }
@@ -311,10 +311,10 @@ namespace BytecodeTranslator {
       var formalMap = procInfo.FormalMap;
 
       // FEEDBACK inline handler methods to avoid more false alarms
-      if (PhoneCodeHelper.PhoneFeedbackToggled && PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(method, sink.host) &&
-          !PhoneCodeHelper.isMethodIgnoredForFeedback(method)) {
+      if (PhoneCodeHelper.instance().PhoneFeedbackToggled && PhoneCodeHelper.instance().isMethodInputHandlerOrFeedbackOverride(method) &&
+          !PhoneCodeHelper.instance().isMethodIgnoredForFeedback(method)) {
             proc.AddAttribute("inline", new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.ONE));
-            PhoneCodeHelper.trackCallableMethod(proc);
+            PhoneCodeHelper.instance().trackCallableMethod(proc);
       }
 
       try {
@@ -324,8 +324,8 @@ namespace BytecodeTranslator {
         // FEEDBACK for modular analysis we need it to be non-null at the start
         // FEEDBACK also, callee is obviously non null
         IMethodDefinition translatedMethod= sink.getMethodBeingTranslated();
-        if (PhoneCodeHelper.PhoneFeedbackToggled && translatedMethod != null &&
-            PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(translatedMethod, sink.host)) {
+        if (PhoneCodeHelper.instance().PhoneFeedbackToggled && translatedMethod != null &&
+            PhoneCodeHelper.instance().isMethodInputHandlerOrFeedbackOverride(translatedMethod)) {
           // assign null to exception
           List<Bpl.AssignLhs> assignee= new List<Bpl.AssignLhs>();
           Bpl.AssignLhs exceptionAssignee= new Bpl.SimpleAssignLhs(Bpl.Token.NoToken, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable));
@@ -533,7 +533,7 @@ namespace BytecodeTranslator {
       Bpl.Variable fieldVar= this.sink.FindOrCreateFieldVariable(fieldDefinition);
 
       // if tracked by the phone plugin, we need to find out the bpl assigned name for future use
-      if (PhoneCodeHelper.PhonePlugin != null) {
+      if (PhoneCodeHelper.instance().PhonePlugin != null) {
         trackControlVariableName(fieldDefinition, fieldVar);
         trackNavigationVariableName(fieldDefinition, fieldVar);
       }
@@ -541,7 +541,7 @@ namespace BytecodeTranslator {
 
     private static void trackNavigationVariableName(IFieldDefinition fieldDefinition, Bpl.Variable fieldVar) {
       if (fieldDefinition.Name.Value.Equals(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE)) {
-        PhoneCodeHelper.setBoogieNavigationVariable(fieldVar.Name);
+        PhoneCodeHelper.instance().setBoogieNavigationVariable(fieldVar.Name);
       }
     }
 
@@ -549,7 +549,7 @@ namespace BytecodeTranslator {
       INamespaceTypeReference namedContainerRef = fieldDefinition.ContainingType as INamespaceTypeReference;
       if (namedContainerRef != null) {
         string containerName = namedContainerRef.ContainingUnitNamespace.Unit.Name.Value + "." + namedContainerRef.Name.Value;
-        IEnumerable<ControlInfoStructure> controls = PhoneCodeHelper.PhonePlugin.getControlsForPage(containerName);
+        IEnumerable<ControlInfoStructure> controls = PhoneCodeHelper.instance().PhonePlugin.getControlsForPage(containerName);
         if (controls != null) {
           ControlInfoStructure ctrlInfo = controls.FirstOrDefault(ctrl => ctrl.Name == fieldDefinition.Name.Value);
           if (ctrlInfo != null)
@@ -560,7 +560,7 @@ namespace BytecodeTranslator {
     #endregion
 
     private void addPhoneTopLevelDeclarations() {
-      if (PhoneCodeHelper.PhoneNavigationToggled) {
+      if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
         Bpl.Variable continueOnPageVar = sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool);
         sink.TranslatedProgram.TopLevelDeclarations.Add(continueOnPageVar);
       }
@@ -568,7 +568,7 @@ namespace BytecodeTranslator {
 
     #region Public API
     public virtual void TranslateAssemblies(IEnumerable<IUnit> assemblies) {
-      if (PhoneCodeHelper.PhonePlugin != null)
+      if (PhoneCodeHelper.instance().PhonePlugin != null)
         addPhoneTopLevelDeclarations();
 
       foreach (var a in assemblies) {
