@@ -77,7 +77,7 @@ namespace BytecodeTranslator {
       if (options.HasErrors) {
         options.PrintErrorsAndExit(Console.Out);
       }
-      if (String.IsNullOrWhiteSpace(options.exemptionFile)) {
+      if (!String.IsNullOrWhiteSpace(options.exemptionFile)) {
         string fileName = options.exemptionFile;
         var c = fileName[fileName.Length - 1];
         if (c == '+' || c == '-') fileName = options.exemptionFile.Remove(fileName.Length - 1);
