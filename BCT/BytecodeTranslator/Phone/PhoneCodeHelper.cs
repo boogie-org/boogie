@@ -57,6 +57,11 @@ namespace BytecodeTranslator.Phone {
       return host.FindAssembly(MSPhoneSystemAssemblyId);
     }
 
+    public static IAssemblyReference getCoreAssemblyReference(IMetadataHost host) {
+      Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
+      return platform.CoreAssemblyRef;
+    }
+
     public static IAssemblyReference getSystemWindowsAssemblyReference(IMetadataHost host) {
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
       IAssemblyReference coreAssemblyRef = platform.CoreAssemblyRef;
@@ -97,9 +102,6 @@ namespace BytecodeTranslator.Phone {
 
     public static bool isClass(this ITypeReference typeRef, ITypeReference targetTypeRef) {
       while (typeRef != null) {
-        if (targetTypeRef.ResolvedType.Equals(Dummy.Type))
-          return typeRef.ToString().Equals(targetTypeRef.ToString());
-
         if (typeRef.ResolvedType.Equals(targetTypeRef.ResolvedType))
           return true;
 
@@ -300,7 +302,13 @@ namespace BytecodeTranslator.Phone {
       PHONE_UI_CHANGER_METHODS[webBrowserTaskType.ToString()] = new string[] { "Show", };
 
       ITypeReference appBarIconButtonType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarIconButton");
-      PHONE_UI_CHANGER_METHODS[appBarIconButtonType.ToString()] = new string[] { "set_IsEnabled", "set_IconUri", "set_Text"};
+      PHONE_UI_CHANGER_METHODS[appBarIconButtonType.ToString()] = new string[] { "set_IsEnabled", "set_IconUri", "set_Text", };
+
+      ITypeReference emailComposeTaskType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Tasks", "EmailComposeTask");
+      PHONE_UI_CHANGER_METHODS[emailComposeTaskType.ToString()] = new string[] { "Show", };
+
+      ITypeReference scaleTransformType = platform.CreateReference(systemWinAssembly, "System", "Windows", "Media", "ScaleTransform");
+      PHONE_UI_CHANGER_METHODS[scaleTransformType.ToString()] = new string[] { "set_CenterX", "set_CenterY", "set_ScaleX", "set_ScaleY",  };
     }
 
     // TODO externalize strings
@@ -409,8 +417,8 @@ namespace BytecodeTranslator.Phone {
     public bool isMethodInputHandlerOrFeedbackOverride(IMethodDefinition method) {
       // FEEDBACK TODO: This is extremely coarse. There must be quite a few non-UI routed/non-routed events
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
-      IAssemblyReference systemAssembly = PhoneTypeHelper.getSystemWindowsAssemblyReference(host);
-      ITypeReference eventArgsType= platform.CreateReference(systemAssembly, "System", "EventArgs");
+      IAssemblyReference coreAssembly= PhoneTypeHelper.getCoreAssemblyReference(host);
+      ITypeReference eventArgsType= platform.CreateReference(coreAssembly, "System", "EventArgs");
       foreach (IParameterDefinition paramDef in method.Parameters) {
         if (paramDef.Type.isClass(eventArgsType))
           return true;
