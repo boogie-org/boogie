@@ -263,6 +263,7 @@ namespace TranslationPlugins {
       pageStructureInfo[pageClass].PageBoogieName = boogieStringPageName;
     }
 
+    private static int dummyControlNameIndex = 0;
     private void LoadControlStructure(StreamReader configStream) {
       // FEEDBACK TODO. Easy check on Feedback issue: Button and HyperLinkButton MUST have a Click handler, if not, it is obvious there is no feedback
 
@@ -303,17 +304,20 @@ namespace TranslationPlugins {
         if (inputLine.Length != CONFIG_LINE_FIELDS)
           throw new ArgumentException("Config input line contains wrong number of fields: " + inputLine.Length + ", expected " + CONFIG_LINE_FIELDS);
 
-        pageClass = inputLine[PAGE_CLASS_FIELD];
-        pageXAML = inputLine[PAGE_XAML_FIELD];
-        pageBoogieStringName = inputLine[PAGE_BOOGIE_STRING_FIELD];
-        controlClass = inputLine[CONTROL_CLASS_FIELD];
-        controlName = inputLine[CONTROL_NAME_FIELD];
-        enabled = inputLine[ENABLED_FIELD];
-        visibility = inputLine[VISIBILITY_FIELD];
-        clickHandler = inputLine[CLICK_HANDLER_FIELD];
-        checkedHandler = inputLine[CHECKED_HANDLER_FIELD];
-        uncheckedHandler = inputLine[UNCHECKED_HANDLER_FIELD];
-        bplName = inputLine[BPL_NAME_FIELD];
+        pageClass = inputLine[PAGE_CLASS_FIELD].Trim();
+        pageXAML = inputLine[PAGE_XAML_FIELD].Trim();
+        pageBoogieStringName = inputLine[PAGE_BOOGIE_STRING_FIELD].Trim();
+        controlClass = inputLine[CONTROL_CLASS_FIELD].Trim();
+        controlName = inputLine[CONTROL_NAME_FIELD].Trim();
+        if (string.IsNullOrEmpty(controlName))
+          controlName = "__BOOGIE_DUMMY_CONTROLNAME_" + dummyControlNameIndex++;
+
+        enabled = inputLine[ENABLED_FIELD].Trim();
+        visibility = inputLine[VISIBILITY_FIELD].Trim();
+        clickHandler = inputLine[CLICK_HANDLER_FIELD].Trim();
+        checkedHandler = inputLine[CHECKED_HANDLER_FIELD].Trim();
+        uncheckedHandler = inputLine[UNCHECKED_HANDLER_FIELD].Trim();
+        bplName = inputLine[BPL_NAME_FIELD].Trim();
 
         try {
           pageStr = pageStructureInfo[pageClass];

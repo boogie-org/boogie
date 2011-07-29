@@ -97,6 +97,9 @@ namespace BytecodeTranslator.Phone {
 
     public static bool isClass(this ITypeReference typeRef, ITypeReference targetTypeRef) {
       while (typeRef != null) {
+        if (targetTypeRef.ResolvedType.Equals(Dummy.Type))
+          return typeRef.ToString().Equals(targetTypeRef.ToString());
+
         if (typeRef.ResolvedType.Equals(targetTypeRef.ResolvedType))
           return true;
 
@@ -404,12 +407,12 @@ namespace BytecodeTranslator.Phone {
     public bool PhoneFeedbackToggled { get; set; }
 
     public bool isMethodInputHandlerOrFeedbackOverride(IMethodDefinition method) {
-      // FEEDBACK TODO: This is extremely coarse. There must be quite a few non-UI routed events
+      // FEEDBACK TODO: This is extremely coarse. There must be quite a few non-UI routed/non-routed events
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
       IAssemblyReference systemAssembly = PhoneTypeHelper.getSystemWindowsAssemblyReference(host);
-      ITypeReference routedEventType= platform.CreateReference(systemAssembly, "System", "Windows", "RoutedEventArgs");
+      ITypeReference eventArgsType= platform.CreateReference(systemAssembly, "System", "EventArgs");
       foreach (IParameterDefinition paramDef in method.Parameters) {
-        if (paramDef.Type.isClass(routedEventType))
+        if (paramDef.Type.isClass(eventArgsType))
           return true;
       }
 
