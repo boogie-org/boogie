@@ -77,7 +77,7 @@ namespace BytecodeTranslator {
       if (options.HasErrors) {
         options.PrintErrorsAndExit(Console.Out);
       }
-      if (String.IsNullOrWhiteSpace(options.exemptionFile)) {
+      if (!String.IsNullOrWhiteSpace(options.exemptionFile)) {
         string fileName = options.exemptionFile;
         var c = fileName[fileName.Length - 1];
         if (c == '+' || c == '-') fileName = options.exemptionFile.Remove(fileName.Length - 1);
@@ -102,12 +102,13 @@ namespace BytecodeTranslator {
 
       #region If an exclusion file has been specified, read in each line as a regular expression
       List<Regex> exemptionList = null;
-      bool whiteList = true;
+      bool whiteList = false;
       if (!String.IsNullOrWhiteSpace(options.exemptionFile)) {
         int i = 0;
         exemptionList = new List<Regex>();
         string fileName = options.exemptionFile;
         var c = fileName[fileName.Length - 1];
+        whiteList = true;
         if (c == '+' || c == '-') {
           fileName = options.exemptionFile.Remove(fileName.Length - 1);
           if (c == '-') whiteList = false;
@@ -254,10 +255,11 @@ namespace BytecodeTranslator {
 
       PhoneControlsPlugin phonePlugin = null;
       if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
+        PhoneCodeHelper.initialize(host);
         phonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
-        PhoneCodeHelper.PhonePlugin = phonePlugin;
+        PhoneCodeHelper.instance().PhonePlugin = phonePlugin;
         if (doPhoneNav) {
-          PhoneCodeHelper.PhoneNavigationToggled = true;
+          PhoneCodeHelper.instance().PhoneNavigationToggled = true;
           PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(host);
           initTr.InjectPhoneCodeAssemblies(modules);
           PhoneNavigationMetadataTraverser navTr = new PhoneNavigationMetadataTraverser(host);
@@ -265,7 +267,7 @@ namespace BytecodeTranslator {
         }
 
         if (doPhoneFeedback) {
-          PhoneCodeHelper.PhoneFeedbackToggled = true;
+          PhoneCodeHelper.instance().PhoneFeedbackToggled = true;
           PhoneControlFeedbackMetadataTraverser fbMetaDataTraverser= new PhoneControlFeedbackMetadataTraverser(host);
           fbMetaDataTraverser.Visit(modules);
         }
@@ -277,13 +279,13 @@ namespace BytecodeTranslator {
         CreateDispatchMethod(sink, pair.Item1, pair.Item2);
       }
 
-      if (PhoneCodeHelper.PhonePlugin != null) {
-        if (PhoneCodeHelper.PhoneFeedbackToggled) {
+      if (PhoneCodeHelper.instance().PhonePlugin != null) {
+        if (PhoneCodeHelper.instance().PhoneFeedbackToggled) {
           // FEEDBACK TODO create simple callers to callable methods, havoc'ing parameters
-          PhoneCodeHelper.CreateFeedbackCallingMethods(sink);
+          PhoneCodeHelper.instance().CreateFeedbackCallingMethods(sink);
         }
 
-        if (PhoneCodeHelper.PhoneNavigationToggled) {
+        if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
           string outputConfigFile = Path.ChangeExtension(phoneControlsConfigFile, "bplout");
           StreamWriter outputStream = new StreamWriter(outputConfigFile);
           phonePlugin.DumpControlStructure(outputStream);
@@ -291,16 +293,16 @@ namespace BytecodeTranslator {
           PhoneCodeWrapperWriter.createCodeWrapper(sink);
 
           // NAVIGATION TODO for now I console this out
-          if (!PhoneCodeHelper.OnBackKeyPressOverriden) {
+          if (!PhoneCodeHelper.instance().OnBackKeyPressOverriden) {
             Console.Out.WriteLine("No back navigation issues, OnBackKeyPress is not overriden");
-          } else if (!PhoneCodeHelper.BackKeyPressHandlerCancels && !PhoneCodeHelper.BackKeyPressNavigates) {
+          } else if (!PhoneCodeHelper.instance().BackKeyPressHandlerCancels && !PhoneCodeHelper.instance().BackKeyPressNavigates) {
             Console.Out.WriteLine("No back navigation issues, BackKeyPress overrides do not alter navigation");
           } else {
-            if (PhoneCodeHelper.BackKeyPressNavigates) {
+            if (PhoneCodeHelper.instance().BackKeyPressNavigates) {
               Console.Out.WriteLine("Back navigation ISSUE: back key press may navigate to pages not in backstack!");
             }
 
-            if (PhoneCodeHelper.BackKeyPressHandlerCancels) {
+            if (PhoneCodeHelper.instance().BackKeyPressHandlerCancels) {
               Console.Out.WriteLine("Back navigation ISSUE: back key press default behaviour may be cancelled!");
             }
           }

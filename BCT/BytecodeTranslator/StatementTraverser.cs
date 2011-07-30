@@ -341,10 +341,10 @@ namespace BytecodeTranslator
 
 
       // FEEDBACK TODO extract into a method
-      if (PhoneCodeHelper.PhoneFeedbackToggled) {
+      if (PhoneCodeHelper.instance().PhoneFeedbackToggled) {
         IMethodDefinition methodTranslated = sink.getMethodBeingTranslated();
-        if (methodTranslated != null && PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(methodTranslated, sink.host) &&
-            !PhoneCodeHelper.isMethodIgnoredForFeedback(methodTranslated)) {
+        if (methodTranslated != null && PhoneCodeHelper.instance().isMethodInputHandlerOrFeedbackOverride(methodTranslated) &&
+            !PhoneCodeHelper.instance().isMethodIgnoredForFeedback(methodTranslated)) {
           Bpl.AssertCmd falseAssertion = new Bpl.AssertCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
           StmtBuilder.Add(falseAssertion);
         }
@@ -426,10 +426,10 @@ namespace BytecodeTranslator
       if (count == 0) {
         // FEEDBACK TODO unfortunately return statements are created here too 
         // FEEDBACK TODO extract into a method
-        if (PhoneCodeHelper.PhoneFeedbackToggled) {
+        if (PhoneCodeHelper.instance().PhoneFeedbackToggled) {
           IMethodDefinition methodTranslated = sink.getMethodBeingTranslated();
-          if (methodTranslated != null && PhoneCodeHelper.isMethodInputHandlerOrFeedbackOverride(methodTranslated, sink.host) &&
-              !PhoneCodeHelper.isMethodIgnoredForFeedback(methodTranslated)) {
+          if (methodTranslated != null && PhoneCodeHelper.instance().isMethodInputHandlerOrFeedbackOverride(methodTranslated) &&
+              !PhoneCodeHelper.instance().isMethodIgnoredForFeedback(methodTranslated)) {
             Bpl.AssertCmd falseAssertion = new Bpl.AssertCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
             builder.Add(falseAssertion);
           }

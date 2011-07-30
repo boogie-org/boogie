@@ -21,19 +21,19 @@ namespace BytecodeTranslator.Phone {
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
 
       // TODO obtain version, culture and signature data dynamically
-      IAssemblyReference assembly= PhoneCodeHelper.getPhoneAssemblyReference(host);
+      IAssemblyReference assembly= PhoneTypeHelper.getPhoneAssemblyReference(host);
       // TODO determine the needed types dynamically
       navigationSvcType = platform.CreateReference(assembly, "System", "Windows", "Navigation", "NavigationService");
 
-      assembly = PhoneCodeHelper.getSystemAssemblyReference(host);
+      assembly = PhoneTypeHelper.getSystemAssemblyReference(host);
       cancelEventArgsType = platform.CreateReference(assembly, "System", "ComponentModel", "CancelEventArgs");
     }
 
     public override void Visit(IMethodDefinition method) {
-      if (method.IsConstructor && PhoneCodeHelper.isPhoneApplicationClass(typeTraversed, host)) {
+      if (method.IsConstructor && PhoneTypeHelper.isPhoneApplicationClass(typeTraversed, host)) {
         // TODO BUG doing this is generating a fresh variable definition somewhere that the BCT then translates into two different (identical) declarations
         // TODO maybe a bug introduced here or a BCT bug
-        string mainPageUri = PhoneCodeHelper.PhonePlugin.getMainPageXAML();
+        string mainPageUri = PhoneCodeHelper.instance().PhonePlugin.getMainPageXAML();
         SourceMethodBody sourceBody = method.Body as SourceMethodBody;
         if (sourceBody != null) {
           BlockStatement bodyBlock = sourceBody.Block as BlockStatement;
@@ -47,7 +47,7 @@ namespace BytecodeTranslator.Phone {
               Target = new TargetExpression() {
                 Type = host.PlatformType.SystemString,
                 Definition = new FieldReference() {
-                  ContainingType= PhoneCodeHelper.getMainAppTypeReference(),
+                  ContainingType = PhoneCodeHelper.instance().getMainAppTypeReference(),
                   IsStatic=true,
                   Type=host.PlatformType.SystemString,
                   Name=host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
@@ -89,7 +89,7 @@ namespace BytecodeTranslator.Phone {
     }
 
     private bool isNavigationOnBackKeyPressHandler(IMethodCall call) {
-      if (!methodTraversed.ResolvedMethod.isBackKeyPressOverride(host))
+      if (!PhoneCodeHelper.instance().isBackKeyPressOverride(methodTraversed.ResolvedMethod))
         return false;
 
       if (!call.MethodToCall.ContainingType.isNavigationServiceClass(host))
@@ -102,7 +102,7 @@ namespace BytecodeTranslator.Phone {
     }
 
     private bool isCancelOnBackKeyPressHandler(IMethodCall call) {
-      if (!methodTraversed.ResolvedMethod.isBackKeyPressOverride(host))
+      if (!PhoneCodeHelper.instance().isBackKeyPressOverride(methodTraversed.ResolvedMethod))
         return false;
 
       if (!call.MethodToCall.Name.Value.StartsWith("set_Cancel"))
@@ -126,9 +126,9 @@ namespace BytecodeTranslator.Phone {
 
     public override void Visit(IMethodCall methodCall) {
       if (isNavigationOnBackKeyPressHandler(methodCall)) {
-        PhoneCodeHelper.BackKeyPressNavigates = true;
+        PhoneCodeHelper.instance().BackKeyPressNavigates = true;
       } else if (isCancelOnBackKeyPressHandler(methodCall)) {
-        PhoneCodeHelper.BackKeyPressHandlerCancels = true;
+        PhoneCodeHelper.instance().BackKeyPressHandlerCancels = true;
       }
 
       // check whether it is a NavigationService call
@@ -256,7 +256,7 @@ namespace BytecodeTranslator.Phone {
           Target = new TargetExpression() {
             Type = host.PlatformType.SystemString,
             Definition = new FieldReference() {
-              ContainingType=PhoneCodeHelper.getMainAppTypeReference(),
+              ContainingType = PhoneCodeHelper.instance().getMainAppTypeReference(),
               IsStatic= true,
               Type = host.PlatformType.SystemString,
               Name = host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
@@ -287,7 +287,7 @@ namespace BytecodeTranslator.Phone {
           Target = new TargetExpression() {
             Type = host.PlatformType.SystemString,
             Definition = new FieldReference() {
-              ContainingType = PhoneCodeHelper.getMainAppTypeReference(),
+              ContainingType = PhoneCodeHelper.instance().getMainAppTypeReference(),
               IsStatic= true,
               Type = host.PlatformType.SystemString,
               Name = host.NameTable.GetNameFor(PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE),
@@ -345,8 +345,8 @@ namespace BytecodeTranslator.Phone {
 
     // TODO same here. Are there specific methods (and ways to identfy those) that can perform navigation?
     public override void Visit(IMethodDefinition method) {
-      if (method.isBackKeyPressOverride(host)) {
-        PhoneCodeHelper.OnBackKeyPressOverriden = true;
+      if (PhoneCodeHelper.instance().isBackKeyPressOverride(method)) {
+        PhoneCodeHelper.instance().OnBackKeyPressOverriden = true;
       }
 
       PhoneNavigationCodeTraverser codeTraverser = new PhoneNavigationCodeTraverser(host, typeBeingTraversed, method);
