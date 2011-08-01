@@ -299,11 +299,17 @@ namespace BytecodeTranslator {
             Console.Out.WriteLine("No back navigation issues, BackKeyPress overrides do not alter navigation");
           } else {
             if (PhoneCodeHelper.instance().BackKeyPressNavigates) {
-              Console.Out.WriteLine("Back navigation ISSUE: back key press may navigate to pages not in backstack!");
+              Console.Out.WriteLine("Back navigation ISSUE:back key press may navigate to pages not in backstack! From pages:");
+              foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyNavigatingOffenders) {
+                Console.WriteLine("\t" + type.ToString());
+              }
             }
 
             if (PhoneCodeHelper.instance().BackKeyPressHandlerCancels) {
-              Console.Out.WriteLine("Back navigation ISSUE: back key press default behaviour may be cancelled!");
+              Console.Out.WriteLine("Back navigation ISSUE: back key press default behaviour may be cancelled! From pages:");
+              foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyCancellingOffenders) {
+                Console.WriteLine("\t" + type.ToString());
+              }
             }
           }
         }

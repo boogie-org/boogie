@@ -127,8 +127,10 @@ namespace BytecodeTranslator.Phone {
     public override void Visit(IMethodCall methodCall) {
       if (isNavigationOnBackKeyPressHandler(methodCall)) {
         PhoneCodeHelper.instance().BackKeyPressNavigates = true;
+        PhoneCodeHelper.instance().BackKeyNavigatingOffenders.Add(typeTraversed);
       } else if (isCancelOnBackKeyPressHandler(methodCall)) {
         PhoneCodeHelper.instance().BackKeyPressHandlerCancels = true;
+        PhoneCodeHelper.instance().BackKeyCancellingOffenders.Add(typeTraversed);
       }
 
       // check whether it is a NavigationService call

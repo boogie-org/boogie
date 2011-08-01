@@ -42,8 +42,12 @@ namespace BytecodeTranslator.Phone {
         }
       }
 
-      uri = constantStrings.Aggregate((aggr, elem) => aggr + elem);
-      return Uri.IsWellFormedUriString(uri, UriKind.RelativeOrAbsolute);
+      if (constantStrings.Count > 0) {
+        uri = constantStrings.Aggregate((aggr, elem) => aggr + elem);
+        return Uri.IsWellFormedUriString(uri, UriKind.RelativeOrAbsolute);
+      } else {
+        return false;
+      }
     }
   }
 
@@ -169,6 +173,8 @@ namespace BytecodeTranslator.Phone {
     public bool OnBackKeyPressOverriden { get; set; }
     public bool BackKeyPressHandlerCancels { get; set; }
     public bool BackKeyPressNavigates { get; set; }
+    public ICollection<ITypeReference> BackKeyCancellingOffenders= new HashSet<ITypeReference>();
+    public ICollection<ITypeReference> BackKeyNavigatingOffenders= new HashSet<ITypeReference>();
 
     private Dictionary<string, string[]> PHONE_UI_CHANGER_METHODS;
 
@@ -194,10 +200,10 @@ namespace BytecodeTranslator.Phone {
     }
 
     private PhoneCodeHelper(IMetadataHost host) {
-      if (host == null)
-        throw new ArgumentNullException();
-      platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
-      initializeKnownUIChangers();
+      if (host != null) {
+        platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
+        initializeKnownUIChangers();
+      }
     }
 
     private void initializeKnownUIChangers() {
