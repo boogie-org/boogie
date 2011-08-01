@@ -124,8 +124,8 @@ namespace BytecodeTranslator {
               exemptionList.Add(new Regex(line));
               i++;
             }
-            Console.WriteLine("Read {0} lines from the exclusion file '{1}'.",
-              i, options.exemptionFile);
+            //Console.WriteLine("Read {0} lines from the exclusion file '{1}'.",
+            //  i, options.exemptionFile);
           }
         } catch (Exception e) {
           Console.WriteLine("Something went wrong reading the exclusion file '{0}'; read in {1} lines, continuing processing.",

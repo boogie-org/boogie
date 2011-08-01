@@ -800,12 +800,14 @@ namespace BytecodeTranslator {
 
       IGenericTypeParameter gtp = type as IGenericTypeParameter;
       if (gtp != null) {
-        // calculate the index
         int index = gtp.Index;
-        INestedTypeDefinition containingType = gtp.DefiningType as INestedTypeDefinition;
-        while (containingType != null) {
+        var nestedType = gtp.DefiningType as INestedTypeDefinition;
+        while (nestedType != null) {
+          // calculate the consolidated index: the parameter knows only its index
+          // in the type that declares it, not including any outer containing types
+          var containingType = nestedType.ContainingTypeDefinition;
           index += containingType.GenericParameterCount;
-          containingType = containingType.ContainingTypeDefinition as INestedTypeDefinition;
+          nestedType = containingType as INestedTypeDefinition;
         }
 
         ProcedureInfo info = FindOrCreateProcedure(methodBeingTranslated);
@@ -1083,6 +1085,8 @@ namespace BytecodeTranslator {
 
     public void AddDelegate(ITypeDefinition type, IMethodDefinition defn)
     {
+      if (type == Dummy.Type) {
+      }
       uint key = type.InternedKey;
       if (!delegateTypeToDelegates.ContainsKey(key))
         delegateTypeToDelegates[key] = new Tuple<ITypeDefinition, HashSet<IMethodDefinition>>(type, new HashSet<IMethodDefinition>());
@@ -1091,6 +1095,8 @@ namespace BytecodeTranslator {
     }
 
     public void AddDelegateType(ITypeDefinition type) {
+      if (type == Dummy.Type) {
+      }
       uint key = type.InternedKey;
       if (!delegateTypeToDelegates.ContainsKey(key))
         delegateTypeToDelegates[key] = new Tuple<ITypeDefinition, HashSet<IMethodDefinition>>(type, new HashSet<IMethodDefinition>());
