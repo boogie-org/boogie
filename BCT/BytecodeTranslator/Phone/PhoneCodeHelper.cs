@@ -538,5 +538,24 @@ namespace BytecodeTranslator.Phone {
       else
         return true;
     }
+
+    public bool mustInlineMethod(IMethodDefinition method) {
+      if (PhoneFeedbackToggled) {
+        // FEEDBACK TODO this may be too coarse
+        // top level inlined methods are feedback relevant ones. For now, this is basically everything that has EventArgs as parameters
+        if (isMethodInputHandlerOrFeedbackOverride(method))
+          return true;
+      }
+
+      if (PhoneNavigationToggled) {
+        // NAVIGATION TODO this may be too coarse
+        // for now, assume any method in a PhoneApplicationPage is potentially interesting to navigation inlining
+        ITypeReference methodContainer = method.ContainingType;
+        if (PhoneTypeHelper.isPhoneApplicationClass(methodContainer, host) || PhoneTypeHelper.isPhoneApplicationPageClass(methodContainer, host))
+          return true;
+      }
+
+      return false;
+    }
   }
 }
