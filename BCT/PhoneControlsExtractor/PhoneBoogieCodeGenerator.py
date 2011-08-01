@@ -2,6 +2,7 @@ import sys
 import getopt
 import os
 from xml.dom import minidom
+from itertools import product
 import xml.dom
 
 CONTROL_NAMES= ["Button", "CheckBox", "RadioButton"]
@@ -18,6 +19,7 @@ currentNavigationVariable= None
 originalPageVars= []
 boogiePageVars= []
 boogiePageClasses= []
+dummyPageVar= "dummyBoogieStringPageName"
 
 def showUsage():
   print "PhoneBoogieCodeGenerator -- create boilerplate code for Boogie verification of Phone apps"
@@ -56,25 +58,41 @@ def outputPageVariables(file):
     file.write(pageVar)
 
 def outputMainProcedure(file):
-  file.write("procedure __BOOGIE_VERIFICATION_PROCEDURE();\n")
-  file.write("implementation __BOOGIE_VERIFICATION_PROCEDURE() {\n")
-  file.write("\tvar $doWork: bool;\n")
-  file.write("\tvar $activeControl: int;\n")
-  file.write("\tvar $isEnabledRef: Ref;\n")
-  file.write("\tvar $isEnabled: bool;\n")
-  file.write("\tvar $control: Ref;\n\n")
+  for i,j in product(range(0, len(boogiePageVars)),repeat=2):
+    if i == j:
+      continue
+    if (boogiePageVars[i]["boogieStringName"] == dummyPageVar):
+      continue
+    if (boogiePageVars[j]["boogieStringName"] == dummyPageVar):
+      continue
 
-  file.write("\tcall " + mainAppClassname + ".#ctor(" + appVarName + ");\n")
-  for i in range(0,len(boogiePageVars)):
-    file.write("\tcall " + boogiePageClasses[i] + ".#ctor(" + boogiePageVars[i]["name"] + ");\n")
+    print "continuing with i " + str(i) + ", j " + str(j)
+    print boogiePageVars[i]["boogieStringName"]
+    print boogiePageVars[j]["boogieStringName"]
+    file.write("procedure __BOOGIE_VERIFICATION_PROCEDURE_" + str(i) + "_" + str(j) + "();\n")
+    file.write("implementation __BOOGIE_VERIFICATION_PROCEDURE_" + str(i) + "_" + str(j) + "() {\n")
+    file.write("\tvar $doWork: bool;\n")
+    file.write("\tvar $activeControl: int;\n")
+    file.write("\tvar $isEnabledRef: Ref;\n")
+    file.write("\tvar $isEnabled: bool;\n")
+    file.write("\tvar $control: Ref;\n\n")
 
-  file.write("\t//TODO still need to call Loaded handler on main page.\n")
-  file.write("\thavoc $doWork;\n")
-  file.write("\twhile ($doWork) {\n")
-  file.write("\t\tcall DriveControls();\n")
-  file.write("\t\thavoc $doWork;\n")
-  file.write("\t}\n")
-  file.write("}\n")
+    file.write("\tcall " + mainAppClassname + ".#ctor(" + appVarName + ");\n")
+    for k in range(0,len(boogiePageVars)):
+      file.write("\tcall " + boogiePageClasses[k] + ".#ctor(" + boogiePageVars[k]["name"] + ");\n")
+
+    file.write("\t//TODO still need to call Loaded handler on main page.\n")
+    file.write("\thavoc $doWork;\n")
+    file.write("\twhile ($doWork) {\n")
+    file.write("\t\tcall DriveControls();\n")
+    file.write("\t\thavoc $doWork;\n")
+    file.write("\t}\n")
+
+    file.write("\tassume " + currentNavigationVariable + " == " + boogiePageVars[i]["boogieStringName"] + ";\n")
+    file.write("\tcall DriveControls();\n")
+    file.write("\tassume " + currentNavigationVariable + " == " + boogiePageVars[j]["boogieStringName"] + ";\n")
+    file.write("\tassert false;\n");
+    file.write("}\n")
 
 def outputPageControlDriver(file, originalPageName, boogiePageName):
   file.write("procedure drive" + boogiePageName + "Controls();\n")
