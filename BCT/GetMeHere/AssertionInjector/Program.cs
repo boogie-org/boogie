@@ -38,6 +38,10 @@ namespace AssertionInjector {
         return errorValue;
       }
 
+      string originalAssemblyPath;
+      string outputAssemblyPath;
+      string outputPdbFileName;
+
       using (var host = new PeReader.DefaultHost()) {
         IModule/*?*/ module = host.LoadUnitFrom(args[0]) as IModule;
         if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
@@ -61,17 +65,33 @@ namespace AssertionInjector {
             var mutator = new ILMutator(host, pdbReader, fileName, lineNumber, columnNumber);
             module = mutator.Rewrite(module);
 
-            var outputPath = (args.Length == 2) ? args[1] : module.Location + ".pe";
+            originalAssemblyPath = module.Location;
+            var tempDir = Path.GetTempPath();
+            outputAssemblyPath = Path.Combine(tempDir, Path.GetFileName(originalAssemblyPath));
+            outputPdbFileName = Path.ChangeExtension(outputAssemblyPath, "pdb");
 
-            var outputFileName = Path.GetFileNameWithoutExtension(outputPath);
-
-            using (var pdbWriter = new PdbWriter(outputFileName + ".pdb", pdbReader)) {
-              PeWriter.WritePeToStream(module, host, File.Create(outputPath), pdbReader, localScopeProvider, pdbWriter);
+            using (var outputStream = File.Create(outputAssemblyPath)) {
+              using (var pdbWriter = new PdbWriter(outputPdbFileName, pdbReader)) {
+                PeWriter.WritePeToStream(module, host, outputStream, pdbReader, localScopeProvider, pdbWriter);
+              }
             }
           }
         }
-        return 0; // success
       }
+
+      try {
+        File.Copy(outputAssemblyPath, originalAssemblyPath, true);
+        File.Delete(outputAssemblyPath);
+        var originalPdbPath = Path.ChangeExtension(originalAssemblyPath, "pdb");
+        var outputPdbPath = Path.Combine(Path.GetDirectoryName(outputAssemblyPath), outputPdbFileName);
+        File.Copy(outputPdbPath, originalPdbPath, true);
+        File.Delete(outputPdbPath);
+      } catch {
+        Console.WriteLine("Something went wrong with replacing input assembly/pdb");
+        return errorValue;
+      }
+
+      return 0; // success
     }
   }
 
