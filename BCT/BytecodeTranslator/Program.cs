@@ -298,8 +298,12 @@ namespace BytecodeTranslator {
         } else {
           if (PhoneCodeHelper.instance().BackKeyPressNavigates) {
             Console.Out.WriteLine("Back navigation ISSUE:back key press may navigate to pages not in backstack! From pages:");
-            foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyNavigatingOffenders) {
-              Console.WriteLine("\t" + type.ToString());
+            foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyNavigatingOffenders.Keys) {
+              ICollection<string> targets= PhoneCodeHelper.instance().BackKeyNavigatingOffenders[type];
+              Console.WriteLine("\t" + type.ToString() + " may navigate to ");
+              foreach (string target in targets) {
+                Console.WriteLine("\t\t" + target);
+              }
             }
           }
 

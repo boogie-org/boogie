@@ -10,6 +10,60 @@ using Microsoft.Cci.MutableCodeModel;
 namespace BytecodeTranslator.Phone {
   public static class UriHelper {
     /// <summary>
+    /// checks if argument is locally created URI with static URI target
+    /// </summary>
+    /// <param name="arg"></param>
+    /// <returns></returns>
+    public static bool isArgumentURILocallyCreatedStatic(IExpression arg, IMetadataHost host, out string uri) {
+      uri = null;
+      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
+      if (creationSite == null)
+        return false;
+
+      if (!arg.Type.isURIClass(host))
+        return false;
+
+      IExpression uriTargetArg = creationSite.Arguments.First();
+
+      if (!uriTargetArg.Type.isStringClass(host))
+        return false;
+
+      ICompileTimeConstant staticURITarget = uriTargetArg as ICompileTimeConstant;
+      if (staticURITarget == null)
+        return false;
+
+      uri = staticURITarget.Value as string;
+      return true;
+    }
+
+    /// <summary>
+    /// checks if argument is locally created URI where target has statically created URI root
+    /// </summary>
+    /// <param name="arg"></param>
+    /// <returns></returns>
+    public static bool isArgumentURILocallyCreatedStaticRoot(IExpression arg, IMetadataHost host, out string uri) {
+      // Pre: !isArgumentURILocallyCreatedStatic
+      uri = null;
+      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
+      if (creationSite == null)
+        return false;
+
+      if (!arg.Type.isURIClass(host))
+        return false;
+
+      IExpression uriTargetArg = creationSite.Arguments.First();
+
+      if (!uriTargetArg.Type.isStringClass(host))
+        return false;
+
+      if (!uriTargetArg.IsStaticURIRootExtractable(out uri))
+        return false;
+
+      return true;
+    }
+
+    
+    /// <summary>
     /// checks whether a static URI root (a definite page base) can be extracted from the expression 
     /// </summary>
     /// <param name="expr"></param>
@@ -174,7 +228,7 @@ namespace BytecodeTranslator.Phone {
     public bool BackKeyPressHandlerCancels { get; set; }
     public bool BackKeyPressNavigates { get; set; }
     public ICollection<ITypeReference> BackKeyCancellingOffenders= new HashSet<ITypeReference>();
-    public ICollection<ITypeReference> BackKeyNavigatingOffenders= new HashSet<ITypeReference>();
+    public Dictionary<ITypeReference,ICollection<string>> BackKeyNavigatingOffenders= new Dictionary<ITypeReference,ICollection<string>>();
 
     private Dictionary<string, string[]> PHONE_UI_CHANGER_METHODS;
 

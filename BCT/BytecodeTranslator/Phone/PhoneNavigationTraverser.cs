@@ -19,7 +19,7 @@ namespace BytecodeTranslator.Phone {
       this.typeTraversed = typeTraversed;
       this.methodTraversed = methodTraversed;
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
-
+ 
       // TODO obtain version, culture and signature data dynamically
       IAssemblyReference assembly= PhoneTypeHelper.getPhoneAssemblyReference(host);
       // TODO determine the needed types dynamically
@@ -88,7 +88,8 @@ namespace BytecodeTranslator.Phone {
       injectNavigationUpdateCode(block, staticNavStmts, nonStaticNavStmts);
     }
 
-    private bool isNavigationOnBackKeyPressHandler(IMethodCall call) {
+    private bool isNavigationOnBackKeyPressHandler(IMethodCall call, out string target) {
+      target = null;
       if (!PhoneCodeHelper.instance().isBackKeyPressOverride(methodTraversed.ResolvedMethod))
         return false;
 
@@ -97,6 +98,18 @@ namespace BytecodeTranslator.Phone {
 
       if (!PhoneCodeHelper.NAV_CALLS.Contains(call.MethodToCall.Name.Value) || call.MethodToCall.Name.Value == "GoBack") // back is actually ok
         return false;
+
+      if (call.MethodToCall.Name.Value == "Navigate") {
+        try {
+          IExpression expr = call.Arguments.First();
+          bool isStatic = UriHelper.isArgumentURILocallyCreatedStatic(expr, host, out target) ||
+                         UriHelper.isArgumentURILocallyCreatedStaticRoot(expr, host, out target);
+          if (!isStatic)
+            potentialBackKeyNavigationTargets.Add(target);
+          target = "--Other non inferrable target--";
+        } catch (InvalidOperationException) { 
+        }
+      }
 
       return true;
     }
@@ -125,9 +138,15 @@ namespace BytecodeTranslator.Phone {
     }
 
     public override void Visit(IMethodCall methodCall) {
-      if (isNavigationOnBackKeyPressHandler(methodCall)) {
+      string target;
+      if (isNavigationOnBackKeyPressHandler(methodCall, out target)) {
         PhoneCodeHelper.instance().BackKeyPressNavigates = true;
-        PhoneCodeHelper.instance().BackKeyNavigatingOffenders.Add(typeTraversed);
+        ICollection<string> targets = PhoneCodeHelper.instance().BackKeyNavigatingOffenders[typeTraversed];
+        if (targets == null) {
+          targets = new HashSet<string>();
+        }
+        targets.Add(target);
+        PhoneCodeHelper.instance().BackKeyNavigatingOffenders[typeTraversed]= targets;
       } else if (isCancelOnBackKeyPressHandler(methodCall)) {
         PhoneCodeHelper.instance().BackKeyPressHandlerCancels = true;
         PhoneCodeHelper.instance().BackKeyCancellingOffenders.Add(typeTraversed);
@@ -152,16 +171,15 @@ namespace BytecodeTranslator.Phone {
         return;
       } else {
         currentStaticMode = StaticURIMode.NOT_STATIC;
-
         if (methodToCallName == "GoBack") {
           navCallIsStatic = false;
         } else { // Navigate()
           // check for different static patterns that we may be able to verify
           IExpression uriArg = methodCall.Arguments.First();
-          if (isArgumentURILocallyCreatedStatic(uriArg, out unpurifiedFoundURI)) {
+          if (UriHelper.isArgumentURILocallyCreatedStatic(uriArg, host, out unpurifiedFoundURI)) {
             navCallIsStatic = true;
             currentStaticMode = StaticURIMode.STATIC_URI_CREATION_ONSITE;
-          } else if (isArgumentURILocallyCreatedStaticRoot(uriArg, out unpurifiedFoundURI)) {
+          } else if (UriHelper.isArgumentURILocallyCreatedStaticRoot(uriArg, host, out unpurifiedFoundURI)) {
             navCallIsStatic = true;
             currentStaticMode = StaticURIMode.STATIC_URI_ROOT_CREATION_ONSITE;
           } else {
@@ -181,59 +199,6 @@ namespace BytecodeTranslator.Phone {
         //  Console.WriteLine("");
         //}
       }
-    }
-    
-    /// <summary>
-    /// checks if argument is locally created URI with static URI target
-    /// </summary>
-    /// <param name="arg"></param>
-    /// <returns></returns>
-    private bool isArgumentURILocallyCreatedStatic(IExpression arg, out string uri) {
-      uri = null;
-      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
-      if (creationSite == null)
-        return false;
-
-      if (!arg.Type.isURIClass(host))
-        return false;
-
-      IExpression uriTargetArg= creationSite.Arguments.First();
-
-      if (!uriTargetArg.Type.isStringClass(host))
-        return false;
-
-      ICompileTimeConstant staticURITarget = uriTargetArg as ICompileTimeConstant;
-      if (staticURITarget == null)
-        return false;
-
-      uri= staticURITarget.Value as string;
-      return true;
-    }
-
-    /// <summary>
-    /// checks if argument is locally created URI where target has statically created URI root
-    /// </summary>
-    /// <param name="arg"></param>
-    /// <returns></returns>
-    private bool isArgumentURILocallyCreatedStaticRoot(IExpression arg, out string uri) {
-      // Pre: !isArgumentURILocallyCreatedStatic
-      uri = null;
-      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
-      if (creationSite == null)
-        return false;
-
-      if (!arg.Type.isURIClass(host))
-        return false;
-
-      IExpression uriTargetArg = creationSite.Arguments.First();
-
-      if (!uriTargetArg.Type.isStringClass(host))
-        return false;
-
-      if (!uriTargetArg.IsStaticURIRootExtractable(out uri))
-        return false;
-
-      return true;
     }
 
     private void injectNavigationUpdateCode(IBlockStatement block, IEnumerable<Tuple<IStatement,StaticURIMode, string>> staticStmts, IEnumerable<IStatement> nonStaticStmts) {
