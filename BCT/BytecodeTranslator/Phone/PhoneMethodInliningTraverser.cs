@@ -13,10 +13,14 @@ namespace BytecodeTranslator.Phone {
     private bool changedOnLastPass = false;
     private IAssemblyReference assemblyBeingTranslated;
 
+    public int TotalMethodsCount { get; private set; }
+    public int InlinedMethodsCount { get { return methodsToInline.Count(); } }
+
     public PhoneMethodInliningMetadataTraverser(PhoneCodeHelper phoneHelper) {
       methodsToInline = new HashSet<IMethodDefinition>();
       iterMethodsToInline = new HashSet<IMethodDefinition>();
       this.phoneHelper = phoneHelper;
+      TotalMethodsCount = 0;
     }
 
     public override void Visit(IEnumerable<IModule> modules) {
@@ -28,6 +32,9 @@ namespace BytecodeTranslator.Phone {
     }
 
     public override void Visit(IMethodDefinition method) {
+      if (!firstPassDone)
+        TotalMethodsCount++;
+
       if (iterMethodsToInline.Contains(method) || (!firstPassDone && phoneHelper.mustInlineMethod(method))) {
         PhoneMethodInliningCodeTraverser codeTraverser= new PhoneMethodInliningCodeTraverser();
         codeTraverser.Visit(method);
