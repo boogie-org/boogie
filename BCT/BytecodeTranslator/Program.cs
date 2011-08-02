@@ -313,8 +313,9 @@ namespace BytecodeTranslator {
       }
 
       if (PhoneCodeHelper.instance().PhoneFeedbackToggled || PhoneCodeHelper.instance().PhoneNavigationToggled) {
-        PhoneMethodInliningMetadataTraverser inlineTraverser = new PhoneMethodInliningMetadataTraverser(PhoneCodeHelper.instance());
-        inlineTraverser.Visit(modules);
+        PhoneMethodInliningMetadataTraverser inlineTraverser =
+          new PhoneMethodInliningMetadataTraverser(PhoneCodeHelper.instance());
+        inlineTraverser.findAllMethodsToInline(modules);
         updateInlinedMethods(sink, inlineTraverser.getMethodsToInline());
       }
 
