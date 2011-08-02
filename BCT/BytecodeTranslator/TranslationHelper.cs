@@ -153,7 +153,23 @@ namespace BytecodeTranslator {
       s = s.Replace('[', '$');
       s = s.Replace(']', '$');
       s = s.Replace('|', '$');
+      s = GetRidOfSurrogateCharacters(s);
       return s;
+    }
+
+    /// <summary>
+    /// Unicode surrogates cannot be handled by Boogie.
+    /// http://msdn.microsoft.com/en-us/library/dd374069(v=VS.85).aspx
+    /// </summary>
+    private static string GetRidOfSurrogateCharacters(string s) {
+      var cs = s.ToCharArray();
+      var okayChars = new char[cs.Length];
+      for (int i = 0, j = 0; i < cs.Length; i++) {
+        if (Char.IsSurrogate(cs[i])) continue;
+        okayChars[j++] = cs[i];
+      }
+      var raw = String.Concat(okayChars);
+      return raw.Trim(new char[] { '\0' });
     }
 
     public static bool IsStruct(ITypeReference typ) {
