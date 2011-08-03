@@ -1,0 +1,5 @@
+Verification of workitem-10190.chalice using parameters="" 
+
+
+Boogie program verifier finished with 0 verified, 1 error
+

@@ -1,0 +1,88 @@
+class Cell {
+  var val: int
+}
+
+channel Ch(c: Cell) where
+  c != null ==> acc(c.val) && 0 <= c.val && credit(this)
+
+class Program {
+  method Main0() {  // error: debt remains after body
+    var ch := new Ch
+    fork tk0 := Producer(ch)
+    fork tk1 := Consumer(ch)
+    // join tk0
+    join tk1
+  }
+  method Main1() {
+    var ch := new Ch
+    fork tk0 := Producer(ch)
+    fork tk1 := Consumer(ch)
+    join tk0
+    // join tk1
+  }  // no problem
+  method Producer0(ch: Ch)  // error: debt remains after body
+    requires ch != null
+    ensures credit(ch)
+  {
+    var i := 0
+    while (i < 25)
+    {
+      var x := i*i
+      var c := new Cell { val := x }
+      send ch(c)
+      i := i + 1
+    }
+    // send ch(null)
+  }
+  method Producer1(ch: Ch)
+    requires ch != null
+    ensures credit(ch)
+  {
+    var i := 0
+    while (i < 25)
+    {
+      var x := i*i
+      var c := new Cell { val := x }
+      send ch(c)
+      i := i + 1 + c.val  // error: can no longer read c.val
+    }
+    send ch(null)
+  }
+  method Consumer0(ch: Ch)
+    requires rd(ch.mu) && waitlevel << ch.mu
+    requires credit(ch)
+    ensures rd(ch.mu)
+  {
+    var c: Cell
+    receive c := ch
+    while (c != null && c.val == 7)  // this consumer may end early, but that's allowed
+      invariant rd(ch.mu) && waitlevel << ch.mu
+      invariant c != null ==> acc(c.val) && 0 <= c.val && credit(ch)
+    {
+      var i := c.val
+      receive c := ch
+    }
+  }
+  method Consumer1(ch: Ch)
+    requires rd(ch.mu) && waitlevel << ch.mu
+    requires credit(ch)
+    ensures rd(ch.mu)
+  {
+    var c: Cell
+    receive c := ch
+    if (c != null) {
+      assert 0 <= c.val  // follows from where clause
+    }
+  }
+  method Consumer2(ch: Ch)
+    requires rd(ch.mu) && waitlevel << ch.mu
+    requires credit(ch)
+    ensures rd(ch.mu)
+  {
+    var c: Cell
+    receive c := ch
+    if (c != null) {
+      assert c.val < 2  // error: does not follow from where clause
+    }
+  }
+}

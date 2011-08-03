@@ -1,0 +1,5 @@
+Verification of workitem-10194.chalice using parameters="" 
+
+  20.35: Location might not be readable.
+
+Boogie program verifier finished with 1 errors and 0 smoke test warnings.

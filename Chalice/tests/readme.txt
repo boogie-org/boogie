@@ -5,8 +5,13 @@ Chalice Test Suite
 Contents
 --------
 - examples: Various examples how Chalice can be used to verify concurrent
-  programs.
-- permission-model: Regression tests for the permission model of Chalice.
+  programs. These tests represent (the core of) real problems and are therefore
+  well suited for performance and comparison tests (e.g. with other tools).
+- general-tests: Regression tests for various aspects of Chalice.
+- regressions: Regression tests for fixed bugs to ensure they do not occur
+  again.
+- permission-model: Regression tests specifically for the permission model of
+  Chalice.
 - refinements: Regression tests for the refinement extension.
 - test-scripts: Some batch scripts that can be used to execute the tests in an
   easy and automated way. More information below.
@@ -19,6 +24,7 @@ tests in different ways. There are launchers in the test directories (e.g. in
 examples or permission-model) to access them.
 
 Commands (sorted by relevance):
+- runalltests.bat: Executes all tests in all test folders.
 - test.bat <file> [-params]: Execute a test and output the result of the
   verification. Note: <file> must not include the file extension.
 - reg_test.bat <file> [-params]: Execute a tests as a regression test, i.e., run
