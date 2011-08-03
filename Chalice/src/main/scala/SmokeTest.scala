@@ -80,7 +80,7 @@ object SmokeTest {
     })
     
     verificationResult +
-    (if (realErrors > 0) "The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.\n" else "") + 
+    (if (realErrors > 0 && smokeTestWarnings > 0) "The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.\n" else "") + 
     smokeResult + (if (smokeResult != "") "\n" else "") +
     status
   }
