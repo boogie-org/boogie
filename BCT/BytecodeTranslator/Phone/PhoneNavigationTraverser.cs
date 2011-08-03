@@ -140,11 +140,13 @@ namespace BytecodeTranslator.Phone {
       string target;
       if (isNavigationOnBackKeyPressHandler(methodCall, out target)) {
         PhoneCodeHelper.instance().BackKeyPressNavigates = true;
-        ICollection<string> targets = PhoneCodeHelper.instance().BackKeyNavigatingOffenders[typeTraversed];
-        if (targets == null) {
+        ICollection<string> targets;
+        try {
+          targets= PhoneCodeHelper.instance().BackKeyNavigatingOffenders[typeTraversed];
+        } catch (KeyNotFoundException) {
           targets = new HashSet<string>();
         }
-        targets.Add(target);
+        targets.Add("\"" + target + "\"");
         PhoneCodeHelper.instance().BackKeyNavigatingOffenders[typeTraversed]= targets;
       } else if (isCancelOnBackKeyPressHandler(methodCall)) {
         PhoneCodeHelper.instance().BackKeyPressHandlerCancels = true;
