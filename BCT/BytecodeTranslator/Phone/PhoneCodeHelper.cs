@@ -10,6 +10,60 @@ using Microsoft.Cci.MutableCodeModel;
 namespace BytecodeTranslator.Phone {
   public static class UriHelper {
     /// <summary>
+    /// checks if argument is locally created URI with static URI target
+    /// </summary>
+    /// <param name="arg"></param>
+    /// <returns></returns>
+    public static bool isArgumentURILocallyCreatedStatic(IExpression arg, IMetadataHost host, out string uri) {
+      uri = null;
+      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
+      if (creationSite == null)
+        return false;
+
+      if (!arg.Type.isURIClass(host))
+        return false;
+
+      IExpression uriTargetArg = creationSite.Arguments.First();
+
+      if (!uriTargetArg.Type.isStringClass(host))
+        return false;
+
+      ICompileTimeConstant staticURITarget = uriTargetArg as ICompileTimeConstant;
+      if (staticURITarget == null)
+        return false;
+
+      uri = staticURITarget.Value as string;
+      return true;
+    }
+
+    /// <summary>
+    /// checks if argument is locally created URI where target has statically created URI root
+    /// </summary>
+    /// <param name="arg"></param>
+    /// <returns></returns>
+    public static bool isArgumentURILocallyCreatedStaticRoot(IExpression arg, IMetadataHost host, out string uri) {
+      // Pre: !isArgumentURILocallyCreatedStatic
+      uri = null;
+      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
+      if (creationSite == null)
+        return false;
+
+      if (!arg.Type.isURIClass(host))
+        return false;
+
+      IExpression uriTargetArg = creationSite.Arguments.First();
+
+      if (!uriTargetArg.Type.isStringClass(host))
+        return false;
+
+      if (!uriTargetArg.IsStaticURIRootExtractable(out uri))
+        return false;
+
+      return true;
+    }
+
+    
+    /// <summary>
     /// checks whether a static URI root (a definite page base) can be extracted from the expression 
     /// </summary>
     /// <param name="expr"></param>
@@ -42,8 +96,12 @@ namespace BytecodeTranslator.Phone {
         }
       }
 
-      uri = constantStrings.Aggregate((aggr, elem) => aggr + elem);
-      return Uri.IsWellFormedUriString(uri, UriKind.RelativeOrAbsolute);
+      if (constantStrings.Count > 0) {
+        uri = constantStrings.Aggregate((aggr, elem) => aggr + elem);
+        return Uri.IsWellFormedUriString(uri, UriKind.RelativeOrAbsolute);
+      } else {
+        return false;
+      }
     }
   }
 
@@ -169,6 +227,8 @@ namespace BytecodeTranslator.Phone {
     public bool OnBackKeyPressOverriden { get; set; }
     public bool BackKeyPressHandlerCancels { get; set; }
     public bool BackKeyPressNavigates { get; set; }
+    public ICollection<ITypeReference> BackKeyCancellingOffenders= new HashSet<ITypeReference>();
+    public Dictionary<ITypeReference,ICollection<string>> BackKeyNavigatingOffenders= new Dictionary<ITypeReference,ICollection<string>>();
 
     private Dictionary<string, string[]> PHONE_UI_CHANGER_METHODS;
 
@@ -194,10 +254,10 @@ namespace BytecodeTranslator.Phone {
     }
 
     private PhoneCodeHelper(IMetadataHost host) {
-      if (host == null)
-        throw new ArgumentNullException();
-      platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
-      initializeKnownUIChangers();
+      if (host != null) {
+        platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
+        initializeKnownUIChangers();
+      }
     }
 
     private void initializeKnownUIChangers() {
@@ -531,6 +591,25 @@ namespace BytecodeTranslator.Phone {
         return false;
       else
         return true;
+    }
+
+    public bool mustInlineMethod(IMethodDefinition method) {
+      if (PhoneFeedbackToggled) {
+        // FEEDBACK TODO this may be too coarse
+        // top level inlined methods are feedback relevant ones. For now, this is basically everything that has EventArgs as parameters
+        if (isMethodInputHandlerOrFeedbackOverride(method))
+          return true;
+      }
+
+      if (PhoneNavigationToggled) {
+        // NAVIGATION TODO this may be too coarse
+        // for now, assume any method in a PhoneApplicationPage is potentially interesting to navigation inlining
+        ITypeReference methodContainer = method.ContainingType;
+        if (PhoneTypeHelper.isPhoneApplicationClass(methodContainer, host) || PhoneTypeHelper.isPhoneApplicationPageClass(methodContainer, host))
+          return true;
+      }
+
+      return false;
     }
   }
 }

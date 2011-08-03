@@ -7,7 +7,6 @@ syntax: regexp
 ^.*(bin|obj)/([^/]*/)?(Debug|Release|Checked|Debug All|DEBUG ALL)/.*$
 ^Binaries/BytecodeTranslator$
 ^BCT/Binaries/.*$
-^Chalice/bin/
 ^Chalice/tests/(examples|permission-model|refinements)/.*\.bpl
 Test/([^/]*)/Output
 Test/([^/]*)/([^/]*)\.sx
@@ -19,5 +18,7 @@ BCT/TestResults/
 BCT/testimpactdata.sdf
 backup.diff
 BCT/Samples/CodeCounter/console/ClassDiagram1.cd
-Chalice/makestamp
 Jennisys/Jennisys/examples/bak
+Chalice/project/boot
+Chalice/project/target
+Chalice/target

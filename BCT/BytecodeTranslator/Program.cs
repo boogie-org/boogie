@@ -124,8 +124,8 @@ namespace BytecodeTranslator {
               exemptionList.Add(new Regex(line));
               i++;
             }
-            Console.WriteLine("Read {0} lines from the exclusion file '{1}'.",
-              i, options.exemptionFile);
+            //Console.WriteLine("Read {0} lines from the exclusion file '{1}'.",
+            //  i, options.exemptionFile);
           }
         } catch (Exception e) {
           Console.WriteLine("Something went wrong reading the exclusion file '{0}'; read in {1} lines, continuing processing.",
@@ -232,7 +232,6 @@ namespace BytecodeTranslator {
           modules.Add((IModule)mutableModule);
           contractExtractors.Add(module, host.GetContractExtractor(module.UnitIdentity));
           pdbReaders.Add(module, pdbReader);
-
         }
       }
       if (modules.Count == 0) {
@@ -258,6 +257,7 @@ namespace BytecodeTranslator {
         PhoneCodeHelper.initialize(host);
         phonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
         PhoneCodeHelper.instance().PhonePlugin = phonePlugin;
+        
         if (doPhoneNav) {
           PhoneCodeHelper.instance().PhoneNavigationToggled = true;
           PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(host);
@@ -279,34 +279,49 @@ namespace BytecodeTranslator {
         CreateDispatchMethod(sink, pair.Item1, pair.Item2);
       }
 
-      if (PhoneCodeHelper.instance().PhonePlugin != null) {
-        if (PhoneCodeHelper.instance().PhoneFeedbackToggled) {
-          // FEEDBACK TODO create simple callers to callable methods, havoc'ing parameters
-          PhoneCodeHelper.instance().CreateFeedbackCallingMethods(sink);
-        }
+      if (PhoneCodeHelper.instance().PhoneFeedbackToggled) {
+        PhoneCodeHelper.instance().CreateFeedbackCallingMethods(sink);
+      }
 
-        if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
-          string outputConfigFile = Path.ChangeExtension(phoneControlsConfigFile, "bplout");
-          StreamWriter outputStream = new StreamWriter(outputConfigFile);
-          phonePlugin.DumpControlStructure(outputStream);
-          outputStream.Close();
-          PhoneCodeWrapperWriter.createCodeWrapper(sink);
+      if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
+        string outputConfigFile = Path.ChangeExtension(phoneControlsConfigFile, "bplout");
+        StreamWriter outputStream = new StreamWriter(outputConfigFile);
+        phonePlugin.DumpControlStructure(outputStream);
+        outputStream.Close();
+        PhoneCodeWrapperWriter.createCodeWrapper(sink);
 
-          // NAVIGATION TODO for now I console this out
-          if (!PhoneCodeHelper.instance().OnBackKeyPressOverriden) {
-            Console.Out.WriteLine("No back navigation issues, OnBackKeyPress is not overriden");
-          } else if (!PhoneCodeHelper.instance().BackKeyPressHandlerCancels && !PhoneCodeHelper.instance().BackKeyPressNavigates) {
-            Console.Out.WriteLine("No back navigation issues, BackKeyPress overrides do not alter navigation");
-          } else {
-            if (PhoneCodeHelper.instance().BackKeyPressNavigates) {
-              Console.Out.WriteLine("Back navigation ISSUE: back key press may navigate to pages not in backstack!");
+        // NAVIGATION TODO for now I console this out
+        if (!PhoneCodeHelper.instance().OnBackKeyPressOverriden) {
+          Console.Out.WriteLine("No back navigation issues, OnBackKeyPress is not overriden");
+        } else if (!PhoneCodeHelper.instance().BackKeyPressHandlerCancels && !PhoneCodeHelper.instance().BackKeyPressNavigates) {
+          Console.Out.WriteLine("No back navigation issues, BackKeyPress overrides do not alter navigation");
+        } else {
+          if (PhoneCodeHelper.instance().BackKeyPressNavigates) {
+            Console.Out.WriteLine("Back navigation ISSUE:back key press may navigate to pages not in backstack! From pages:");
+            foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyNavigatingOffenders.Keys) {
+              ICollection<string> targets= PhoneCodeHelper.instance().BackKeyNavigatingOffenders[type];
+              Console.WriteLine("\t" + type.ToString() + " may navigate to ");
+              foreach (string target in targets) {
+                Console.WriteLine("\t\t" + target);
+              }
             }
+          }
 
-            if (PhoneCodeHelper.instance().BackKeyPressHandlerCancels) {
-              Console.Out.WriteLine("Back navigation ISSUE: back key press default behaviour may be cancelled!");
+          if (PhoneCodeHelper.instance().BackKeyPressHandlerCancels) {
+            Console.Out.WriteLine("Back navigation ISSUE: back key press default behaviour may be cancelled! From pages:");
+            foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyCancellingOffenders) {
+              Console.WriteLine("\t" + type.ToString());
             }
           }
         }
+      }
+
+      if (PhoneCodeHelper.instance().PhoneFeedbackToggled || PhoneCodeHelper.instance().PhoneNavigationToggled) {
+        PhoneMethodInliningMetadataTraverser inlineTraverser =
+          new PhoneMethodInliningMetadataTraverser(PhoneCodeHelper.instance());
+        inlineTraverser.findAllMethodsToInline(modules);
+        updateInlinedMethods(sink, inlineTraverser.getMethodsToInline());
+        System.Console.WriteLine("Total methods seen: {0}, inlined: {1}", inlineTraverser.TotalMethodsCount, inlineTraverser.InlinedMethodsCount);
       }
 
       Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(primaryModule.Name + ".bpl");
@@ -314,6 +329,13 @@ namespace BytecodeTranslator {
       sink.TranslatedProgram.Emit(writer);
       writer.Close();
       return 0; // success
+    }
+
+    private static void updateInlinedMethods(Sink sink, IEnumerable<IMethodDefinition> doInline) {
+      foreach (IMethodDefinition method in doInline) {
+        Sink.ProcedureInfo procInfo= sink.FindOrCreateProcedure(method);
+        procInfo.Decl.AddAttribute("inline", new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.ONE));
+      }
     }
 
     private static string NameUpToFirstPeriod(string name) {

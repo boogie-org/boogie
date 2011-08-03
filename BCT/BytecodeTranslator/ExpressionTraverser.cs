@@ -335,10 +335,20 @@ namespace BytecodeTranslator
             TranslatedExpressions.Push(((int)constant.Value) != 0 ? Bpl.Expr.True : Bpl.Expr.False);
           }
           break;
-        case PrimitiveTypeCode.Char: // chars are represented as ints
-        case PrimitiveTypeCode.Int8:
+        case PrimitiveTypeCode.Char: {
+            var lit = Bpl.Expr.Literal((int)(char)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
+        case PrimitiveTypeCode.Int8: {
+            var lit = Bpl.Expr.Literal((int)(sbyte)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
         case PrimitiveTypeCode.Int16: {
-            var lit = Bpl.Expr.Literal((short)constant.Value);
+            var lit = Bpl.Expr.Literal((int)(short)constant.Value);
             lit.Type = Bpl.Type.Int;
             TranslatedExpressions.Push(lit);
             break;
@@ -355,8 +365,18 @@ namespace BytecodeTranslator
             TranslatedExpressions.Push(lit);
             break;
           }
-        case PrimitiveTypeCode.UInt8:
-        case PrimitiveTypeCode.UInt16:
+        case PrimitiveTypeCode.UInt8: {
+            var lit = Bpl.Expr.Literal((int)(byte)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
+        case PrimitiveTypeCode.UInt16: {
+            var lit = Bpl.Expr.Literal((int)(ushort)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
         case PrimitiveTypeCode.UInt32: {
             var lit = Bpl.Expr.Literal((int)(uint)constant.Value);
             lit.Type = Bpl.Type.Int;

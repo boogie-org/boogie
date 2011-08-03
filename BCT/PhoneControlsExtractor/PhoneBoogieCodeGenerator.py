@@ -2,6 +2,7 @@ import sys
 import getopt
 import os
 from xml.dom import minidom
+from itertools import product
 import xml.dom
 
 CONTROL_NAMES= ["Button", "CheckBox", "RadioButton"]
@@ -18,6 +19,7 @@ currentNavigationVariable= None
 originalPageVars= []
 boogiePageVars= []
 boogiePageClasses= []
+dummyPageVar= "dummyBoogieStringPageName"
 
 def showUsage():
   print "PhoneBoogieCodeGenerator -- create boilerplate code for Boogie verification of Phone apps"
@@ -55,29 +57,49 @@ def outputPageVariables(file):
     pageVar= "var " + pageVarName + ": Ref;\n"
     file.write(pageVar)
 
-def outputMainProcedure(file):
-  file.write("procedure __BOOGIE_VERIFICATION_PROCEDURE();\n")
-  file.write("implementation __BOOGIE_VERIFICATION_PROCEDURE() {\n")
-  file.write("\tvar $doWork: bool;\n")
-  file.write("\tvar $activeControl: int;\n")
-  file.write("\tvar $isEnabledRef: Ref;\n")
-  file.write("\tvar $isEnabled: bool;\n")
-  file.write("\tvar $control: Ref;\n\n")
+def outputMainProcedures(file, batFile):
+  for i,j in product(range(0, len(boogiePageVars)),repeat=2):
+    if i == j:
+      continue
+    if (boogiePageVars[i]["boogieStringName"] == dummyPageVar):
+      continue
+    if (boogiePageVars[j]["boogieStringName"] == dummyPageVar):
+      continue
 
-  file.write("\tcall " + mainAppClassname + ".#ctor(" + appVarName + ");\n")
-  for i in range(0,len(boogiePageVars)):
-    file.write("\tcall " + boogiePageClasses[i] + ".#ctor(" + boogiePageVars[i]["name"] + ");\n")
+    file.write("procedure {:inline 1} __BOOGIE_VERIFICATION_PROCEDURE_" + str(i) + "_" + str(j) + "();\n")
+    file.write("implementation __BOOGIE_VERIFICATION_PROCEDURE_" + str(i) + "_" + str(j) + "() {\n")
+    file.write("\tvar $doWork: bool;\n")
+    file.write("\tvar $activeControl: int;\n")
+    file.write("\tvar $isEnabledRef: Ref;\n")
+    file.write("\tvar $isEnabled: bool;\n")
+    file.write("\tvar $control: Ref;\n\n")
 
-  file.write("\t//TODO still need to call Loaded handler on main page.\n")
-  file.write("\thavoc $doWork;\n")
-  file.write("\twhile ($doWork) {\n")
-  file.write("\t\tcall DriveControls();\n")
-  file.write("\t\thavoc $doWork;\n")
-  file.write("\t}\n")
-  file.write("}\n")
+    file.write("\tcall " + mainAppClassname + ".#ctor(" + appVarName + ");\n")
+    for k in range(0,len(boogiePageVars)):
+      file.write("\tcall " + boogiePageClasses[k] + ".#ctor(" + boogiePageVars[k]["name"] + ");\n")
+
+    file.write("\t//TODO still need to call Loaded handler on main page.\n")
+    file.write("\thavoc $doWork;\n")
+    file.write("\twhile ($doWork) {\n")
+    file.write("\t\tcall DriveControls();\n")
+    file.write("\t\thavoc $doWork;\n")
+    file.write("\t}\n")
+
+    file.write("\tassume " + currentNavigationVariable + " == " + boogiePageVars[i]["boogieStringName"] + ";\n")
+    file.write("\tcall DriveControls();\n")
+    file.write("\tassume " + currentNavigationVariable + " == " + boogiePageVars[j]["boogieStringName"] + ";\n")
+    file.write("\tassert false;\n");
+    file.write("}\n")
+
+    batFile.write("type BOOGIE_PARTIAL.bpl > BOOGIE_PLACEHOLDER.bpl\n")
+    batFile.write("type BOOGIE_BOILERPLATE.bpl >> BOOGIE_PLACEHOLDER.bpl\n")
+    batFile.write("%POIROT_ROOT%\Corral\BctCleanup.exe BOOGIE_PLACEHOLDER.bpl BOOGIE_PLACEHOLDER_Clean.bpl /main:__BOOGIE_VERIFICATION_PROCEDURE_" + str(i) + "_" + str(j) +"\n");
+    batFile.write("del corral_out_trace.txt\n")
+    batFile.write("%POIROT_ROOT%\corral\corral.exe /k:1 /recursionBound:20 /main:__BOOGIE_VERIFICATION_PROCEDURE_" + str(i) +"_" + str(j) + " BOOGIE_PLACEHOLDER_Clean_" + str(i) + "_" + str(j) + ".bpl\n")
+    batFile.write("if exist corral_out_trace.txt move corral_out_trace.txt corral_out_trace_" + str(i) + "_" + str(j) + ".txt\n")
 
 def outputPageControlDriver(file, originalPageName, boogiePageName):
-  file.write("procedure drive" + boogiePageName + "Controls();\n")
+  file.write("procedure {:inline 1} drive" + boogiePageName + "Controls();\n")
   file.write("implementation drive" + boogiePageName + "Controls() {\n")
   file.write("\tvar $activeControl: int;\n")
   file.write("\tvar $control: Ref;\n")
@@ -89,10 +111,14 @@ def outputPageControlDriver(file, originalPageName, boogiePageName):
   file.write("\thavoc $activeControl;\n")
   file.write("\twhile (" + CONTINUEONPAGE_VAR + ") {\n")
   activeControl=0
+  ifInitialized= False
   for entry in staticControlsMap[originalPageName]["controls"].keys():
     controlInfo= staticControlsMap[originalPageName]["controls"][entry]
-    if activeControl==0:
-      file.write("\t\tif ($activeControl == 0) {\n")
+    if controlInfo["bplName"] == "":
+      continue
+    if not ifInitialized:
+      file.write("\t\tif ($activeControl == " + str(activeControl) + ") {\n")
+      ifInitialized= True
     else:
       file.write("\t\telse if ($activeControl == " + str(activeControl) + ") {\n")
     
@@ -121,18 +147,21 @@ def outputPageControlDriver(file, originalPageName, boogiePageName):
   file.write("}\n")
 
 
-def outputControlDrivers(file):
+def outputControlDrivers(file, batFile):
   for i in range(0,len(boogiePageVars)):
     outputPageControlDriver(file, originalPageVars[i],boogiePageVars[i]["name"])
 
-  file.write("procedure DriveControls();\n")
+  file.write("procedure {:inline 1} DriveControls();\n")
   file.write("implementation DriveControls() {\n")
   for i in range(0,len(boogiePageVars)):
     file.write("\tvar isCurrent" + boogiePageVars[i]["name"] + ": bool;\n")
   file.write("\n")
 
   for i in range(0,len(boogiePageVars)):
-    file.write("\tcall isCurrent" + boogiePageVars[i]["name"] + " := System.String.op_Equality$System.String$System.String(" + currentNavigationVariable + "," + boogiePageVars[i]["boogieStringName"] + ");\n")
+    if boogiePageVars[i]["boogieStringName"] == dummyPageVar:
+      file.write("\tisCurrent" + boogiePageVars[i]["name"] + " := false;\n")
+    else:
+      file.write("\tcall isCurrent" + boogiePageVars[i]["name"] + " := System.String.op_Equality$System.String$System.String(" + currentNavigationVariable + "," + boogiePageVars[i]["boogieStringName"] + ");\n")
 
   firstTime= True
   for i in range(0,len(boogiePageVars)):
@@ -147,20 +176,24 @@ def outputControlDrivers(file):
   file.write("}\n")
 
 def outputURIHavocProcedure(file):
-  file.write("procedure __BOOGIE_Havoc_CurrentURI__();\n")
+  file.write("procedure {:inline 1} __BOOGIE_Havoc_CurrentURI__();\n")
   file.write("implementation __BOOGIE_Havoc_CurrentURI__() {\n")
   file.write("\thavoc " + currentNavigationVariable + ";\n")
   file.write("// TODO write assume statements to filter havoc'd variable to either of all pages\n")
   # file.write("\tassume )
   file.write("}\n")
 
-def outputBoilerplate(outputFile):
+#build a batch file for test running at the same time
+def outputBoilerplate(outputFile, cmdFile):
   file= open(outputFile,"w")
+  batFile= open(cmdFile, "w")
+  batFile.write("del corral_out_trace.txt")
   outputPageVariables(file)
   outputURIHavocProcedure(file)
-  outputControlDrivers(file)
-  outputMainProcedure(file)
+  outputControlDrivers(file, batFile)
+  outputMainProcedures(file, batFile)
   file.close()
+  batFile.close()
 
 def buildControlInfo(controlInfoFileName):
   global mainPageXAML
@@ -220,7 +253,7 @@ def main():
       outputFile= a
 
   buildControlInfo(controlFile)
-  outputBoilerplate(outputFile)
+  outputBoilerplate(outputFile, outputFile + ".bat")
 
 if __name__ == "__main__":
   main()
