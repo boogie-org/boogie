@@ -105,8 +105,7 @@ namespace BytecodeTranslator.Phone {
           bool isStatic = UriHelper.isArgumentURILocallyCreatedStatic(expr, host, out target) ||
                          UriHelper.isArgumentURILocallyCreatedStaticRoot(expr, host, out target);
           if (!isStatic)
-            potentialBackKeyNavigationTargets.Add(target);
-          target = "--Other non inferrable target--";
+            target = "--Other non inferrable target--";
         } catch (InvalidOperationException) { 
         }
       }
