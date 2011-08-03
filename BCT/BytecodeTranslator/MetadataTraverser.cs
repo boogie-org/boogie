@@ -122,7 +122,7 @@ namespace BytecodeTranslator {
         string fullyQualifiedName = namedTypeDef.ToString();
         string xamlForClass = PhoneCodeHelper.instance().getXAMLForPage(fullyQualifiedName);
         if (xamlForClass != null) { // if not it is possibly an abstract page
-          string uriName = PhoneControlsPlugin.getURIBase(xamlForClass);
+          string uriName = UriHelper.getURIBase(xamlForClass);
           Bpl.Constant uriConstant = sink.FindOrCreateConstant(uriName);
           PhoneCodeHelper.instance().setBoogieStringPageNameForPageClass(fullyQualifiedName, uriConstant.Name);
         }

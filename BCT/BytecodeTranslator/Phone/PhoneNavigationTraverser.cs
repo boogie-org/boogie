@@ -41,7 +41,7 @@ namespace BytecodeTranslator.Phone {
             Assignment uriInitAssign = new Assignment() {
               Source = new CompileTimeConstant() {
                 Type = host.PlatformType.SystemString,
-                Value = PhoneControlsPlugin.getURIBase(mainPageUri),
+                Value = UriHelper.getURIBase(mainPageUri),
               },
               Type = host.PlatformType.SystemString,
               Target = new TargetExpression() {
@@ -106,6 +106,8 @@ namespace BytecodeTranslator.Phone {
                          UriHelper.isArgumentURILocallyCreatedStaticRoot(expr, host, out target);
           if (!isStatic)
             target = "--Other non inferrable target--";
+          else
+            target = UriHelper.getURIBase(target);
         } catch (InvalidOperationException) { 
         }
       }
@@ -249,7 +251,7 @@ namespace BytecodeTranslator.Phone {
         Assignment currentURIAssign = new Assignment() {
           Source = new CompileTimeConstant() {
             Type = host.PlatformType.SystemString,
-            Value = PhoneControlsPlugin.getURIBase(entry.Item3),
+            Value = UriHelper.getURIBase(entry.Item3),
           },
           Type = host.PlatformType.SystemString,
           Target = new TargetExpression() {
