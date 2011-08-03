@@ -207,6 +207,9 @@ namespace BytecodeTranslator {
       Bpl.Variable v;
       string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
       fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
+      // Need to append something to the name to avoid name clashes with other members (of a different
+      // type) that have the same name.
+      fieldname += "$field";
       Bpl.IToken tok = field.Token();
 
       if (field.IsStatic) {
