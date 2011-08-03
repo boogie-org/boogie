@@ -238,6 +238,10 @@ namespace BytecodeTranslator {
     {
         string typename = TypeHelper.GetTypeName(type);
         typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
+        // Need to append something to the name to avoid name clashes with other members (of a different
+        // type) that have the same name.
+        typename += "$type";
+
         Bpl.IToken tok = type.Token();
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, typename, this.TypeType);
         Bpl.Constant v = new Bpl.Constant(tok, tident, true /*unique*/, parents, false, null);
@@ -248,6 +252,8 @@ namespace BytecodeTranslator {
       System.Diagnostics.Debug.Assert(parameterCount > 0);
       string typename = TypeHelper.GetTypeName(type);
       typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
+      // Need to append something to the name to avoid name clashes.
+      typename += "$type";
       Bpl.IToken tok = type.Token();
       Bpl.VariableSeq inputs = new Bpl.VariableSeq();
       for (int i = 0; i < parameterCount; i++) {
