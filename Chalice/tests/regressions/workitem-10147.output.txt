@@ -1,0 +1,4 @@
+Verification of workitem-10147.chalice using parameters="" 
+
+The program did not typecheck.
+7.3: duplicate parameter c of method problematic_method in class Cell

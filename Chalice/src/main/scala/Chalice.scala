@@ -115,8 +115,8 @@ object Chalice {
           "0: use multiplication directly (can cause performance problems)\n"+
           "1: fix Permission$denominator as constant (possibly unsound)\n"+
           "2: use a function and provide some (redundant) axioms\n"+
-          "3: use an uninterpreted function and axiomatize the properties of multiplication")/*,
-      "boogieOpt:<arg>, /bo:<arg>" -> "specify additional Boogie options"*/
+          "3: use an uninterpreted function and axiomatize the properties of multiplication"),
+      "boogieOpt:<arg>, /bo:<arg>" -> "specify additional Boogie options"
     )
     lazy val help = {
       val maxLength = math.min((nonBooleanOptions.keys++options.keys).map(s => s.length+1).max,14)
@@ -146,13 +146,20 @@ object Chalice {
          else percentageSupport = in
        } catch { case _ => CommandLineError("/percentageSupport takes integer argument", help); }
      }
-     else if (a.startsWith("-") || a.startsWith("/"))
-			boogieArgs += ("\"" + a + "\"" + " ")
-				// other arguments starting with "-" or "/" are sent to Boogie.exe
-				/* [MHS] Quote whole argument to not confuse Boogie with arguments that
-				 * contain spaces, e.g. if Chalice is invoked as
-				 *   chalice -z3exe:"C:\Program Files\z3\z3.exe" program.chalice
-				 */
+     else if (a.startsWith("-boogieOpt:") || a.startsWith("/boogieOpt:"))
+            boogieArgs += ("\"/" + a.substring(11) + "\"" + " ")
+     else if (a.startsWith("-bo:") || a.startsWith("/bo:"))
+            boogieArgs += ("\"/" + a.substring(4) + "\"" + " ")
+                /* [MHS] Quote whole argument to not confuse Boogie with arguments that
+                 * contain spaces, e.g. if Chalice is invoked as
+                 *   chalice -z3exe:"C:\Program Files\z3\z3.exe" program.chalice
+                 */
+     else if (a.startsWith("-z3opt:") || a.startsWith("/z3opt:"))
+            boogieArgs += ("\"/z3opt:" + a.substring(7) + "\"" + " ")
+     else if (a.startsWith("-") || a.startsWith("/")) {
+       CommandLineError("unkonwn command line parameter: "+a.substring(1), help)
+       return
+     }
      else inputs += a
     }
     
@@ -182,9 +189,10 @@ object Chalice {
     // parse programs
     val parser = new Parser();
     val parseResults = if (files.isEmpty) {
-     List(parser.parseStdin)
+      if (!vsMode) println("No input file provided. Use 'chalice /help' for a list of all available command line options. Reading from stdin...")
+      List(parser.parseStdin)
     } else for (file <- files) yield {
-     parser.parseFile(file)
+      parser.parseFile(file)
     }
 
     // report errors and merge declarations

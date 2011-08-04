@@ -949,7 +949,7 @@ namespace BytecodeTranslator
       var a = this.sink.CreateFreshLocal(creationAST.Type);
 
       sink.AddDelegate(type.ResolvedType, methodToCall.ResolvedMethod);
-      Bpl.Constant constant = sink.FindOrAddDelegateMethodConstant(methodToCall.ResolvedMethod);
+      Bpl.Constant constant = sink.FindOrCreateDelegateMethodConstant(methodToCall.ResolvedMethod);
       Bpl.Expr methodExpr = Bpl.Expr.Ident(constant);
       Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
 

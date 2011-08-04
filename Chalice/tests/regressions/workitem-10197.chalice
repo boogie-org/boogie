@@ -1,0 +1,7 @@
+class Cell { var x: int } 
+
+class Test { 
+	method noop() 
+		ensures old(waitlevel) == waitlevel // previously resulted in Boogie errors
+	{} 
+} 

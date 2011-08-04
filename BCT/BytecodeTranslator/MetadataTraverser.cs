@@ -122,7 +122,7 @@ namespace BytecodeTranslator {
         string fullyQualifiedName = namedTypeDef.ToString();
         string xamlForClass = PhoneCodeHelper.instance().getXAMLForPage(fullyQualifiedName);
         if (xamlForClass != null) { // if not it is possibly an abstract page
-          string uriName = PhoneControlsPlugin.getURIBase(xamlForClass);
+          string uriName = UriHelper.getURIBase(xamlForClass);
           Bpl.Constant uriConstant = sink.FindOrCreateConstant(uriName);
           PhoneCodeHelper.instance().setBoogieStringPageNameForPageClass(fullyQualifiedName, uriConstant.Name);
         }
@@ -223,7 +223,7 @@ namespace BytecodeTranslator {
     private bool sawCctor = false;
 
     private void CreateStaticConstructor(ITypeDefinition typeDefinition) {
-      var typename = TypeHelper.GetTypeName(typeDefinition);
+      var typename = TypeHelper.GetTypeName(typeDefinition, Microsoft.Cci.NameFormattingOptions.DocumentationId);
       typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
       var proc = new Bpl.Procedure(Bpl.Token.NoToken, typename + ".#cctor",
           new Bpl.TypeVariableSeq(),

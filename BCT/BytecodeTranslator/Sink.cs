@@ -27,10 +27,11 @@ namespace BytecodeTranslator {
       get { return this.factory; }
     }
     readonly TraverserFactory factory;
+    private readonly Options options;
     readonly bool whiteList;
     readonly List<Regex> exemptionList;
 
-    public Sink(IContractAwareHost host, TraverserFactory factory, HeapFactory heapFactory, List<Regex> exemptionList, bool whiteList) {
+    public Sink(IContractAwareHost host, TraverserFactory factory, HeapFactory heapFactory, Options options, List<Regex> exemptionList, bool whiteList) {
       Contract.Requires(host != null);
       Contract.Requires(factory != null);
       Contract.Requires(heapFactory != null);
@@ -38,6 +39,7 @@ namespace BytecodeTranslator {
       this.host = host;
       this.factory = factory;
       var b = heapFactory.MakeHeap(this, out this.heap, out this.TranslatedProgram); // TODO: what if it returns false?
+      this.options = options;
       this.exemptionList = exemptionList;
       this.whiteList = whiteList;
       if (this.TranslatedProgram == null) {
@@ -51,6 +53,8 @@ namespace BytecodeTranslator {
         }
       }
     }
+
+    public Options Options { get { return this.options; } }
 
     public Heap Heap {
       get { return this.heap; }
@@ -425,6 +429,10 @@ namespace BytecodeTranslator {
 
       if (!this.declaredMethods.TryGetValue(key, out procInfo)) {
         string MethodName = TranslationHelper.CreateUniqueMethodName(method);
+        // The method can be generic (or have a parameter whose type is a type parameter of the method's
+        // containing class) and then there can be name clashes.
+        MethodName += key.ToString();
+
         if (this.initiallyDeclaredProcedures.TryGetValue(MethodName, out procInfo)) return procInfo;
 
         Bpl.Formal thisVariable = null;
@@ -636,6 +644,8 @@ namespace BytecodeTranslator {
       var key = structType.InternedKey;
       if (!this.declaredStructDefaultCtors.TryGetValue(key, out procAndFormalMap)) {
         var typename = TranslationHelper.TurnStringIntoValidIdentifier(TypeHelper.GetTypeName(structType));
+        // The type can be generic and then there can be name clashes. So append the key to make it unique.
+        typename += key.ToString();
         var tok = structType.Token();
         var selfType = this.CciTypeToBoogie(structType); //new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
         var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), true);
@@ -1105,7 +1115,7 @@ namespace BytecodeTranslator {
     private Dictionary<IMethodDefinition, Bpl.Constant> delegateMethods = new Dictionary<IMethodDefinition, Bpl.Constant>();
     internal IContractAwareHost host;
 
-    public Bpl.Constant FindOrAddDelegateMethodConstant(IMethodDefinition defn)
+    public Bpl.Constant FindOrCreateDelegateMethodConstant(IMethodDefinition defn)
     {
       if (delegateMethods.ContainsKey(defn))
         return delegateMethods[defn];

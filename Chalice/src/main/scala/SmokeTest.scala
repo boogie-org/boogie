@@ -25,7 +25,7 @@ object SmokeTest {
     var warning: Boolean = false // did this "assert false" generate a warning? (i.e. did it not generate a Boogie error?)
   }
   /** Serves as a sentinel for the first assert (which should always cause a
-   *  warning, thus SmokeAssertSentinel.warning = false
+   *  warning, thus SmokeAssertSentinel.warning = false)
    */
   object SmokeAssertSentinel extends SmokeAssert(-1, NoPosition, "", Set(), null)
 
@@ -80,7 +80,7 @@ object SmokeTest {
     })
     
     verificationResult +
-    (if (realErrors > 0) "The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.\n" else "") + 
+    (if (realErrors > 0 && smokeTestWarnings > 0) "The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.\n" else "") + 
     smokeResult + (if (smokeResult != "") "\n" else "") +
     status
   }

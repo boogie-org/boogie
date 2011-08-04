@@ -31,6 +31,9 @@ namespace BytecodeTranslator {
     [OptionDescription("Break into debugger", ShortForm = "break")]
     public bool breakIntoDebugger = false;
 
+    [OptionDescription("Emit a 'capture state' directive after each statement, (default: false)", ShortForm = "c")]
+    public bool captureState = false;
+
     [OptionDescription("Search paths for assembly dependencies.", ShortForm = "lib")]
     public List<string> libpaths = new List<string>();
 
@@ -165,16 +168,16 @@ namespace BytecodeTranslator {
       return result;
     }
 
-    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, Options/*?*/ options, List<Regex> exemptionList, bool whiteList) {
+    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, Options options, List<Regex> exemptionList, bool whiteList) {
       Contract.Requires(assemblyNames != null);
       Contract.Requires(heapFactory != null);
 
-      var libPaths = options == null ? null : options.libpaths;
-      var wholeProgram = options == null ? false : options.wholeProgram;
-      var/*?*/ stubAssemblies = options == null ? null : options.stub;
-      var phoneControlsConfigFile = options == null ? null : options.phoneControls;
-      var doPhoneNav = options == null ? false : options.phoneNavigationCode;
-      var doPhoneFeedback = options == null ? false : options.phoneFeedbackCode;
+      var libPaths = options.libpaths;
+      var wholeProgram = options.wholeProgram;
+      var/*?*/ stubAssemblies = options.stub;
+      var phoneControlsConfigFile = options.phoneControls;
+      var doPhoneNav = options.phoneNavigationCode;
+      var doPhoneFeedback = options.phoneFeedbackCode;
 
       var host = new CodeContractAwareHostEnvironment(libPaths != null ? libPaths : Enumerable<string>.Empty, true, true);
       Host = host;
@@ -247,7 +250,7 @@ namespace BytecodeTranslator {
       else
         traverserFactory = new CLRSemantics();
 
-      Sink sink= new Sink(host, traverserFactory, heapFactory, exemptionList, whiteList);
+      Sink sink= new Sink(host, traverserFactory, heapFactory, options, exemptionList, whiteList);
       TranslationHelper.tmpVarCounter = 0;
       MetadataTraverser translator;
       translator= traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
@@ -322,6 +325,13 @@ namespace BytecodeTranslator {
         inlineTraverser.findAllMethodsToInline(modules);
         updateInlinedMethods(sink, inlineTraverser.getMethodsToInline());
         System.Console.WriteLine("Total methods seen: {0}, inlined: {1}", inlineTraverser.TotalMethodsCount, inlineTraverser.InlinedMethodsCount);
+      }
+
+      if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
+        // TODO integrate into the pipeline and spit out the boogie code
+        foreach (IMethodDefinition def in PhoneNavigationCodeTraverser.NavCallers) {
+          System.Console.WriteLine(def.ToString());
+        }
       }
 
       Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(primaryModule.Name + ".bpl");
@@ -432,9 +442,10 @@ namespace BytecodeTranslator {
           for (index = 0; index < dispatchProcOutvars.Length; index++) {
             outs.Add(Bpl.Expr.Ident(dispatchProcOutvars[index]));
           }
-          Bpl.Constant c = sink.FindOrAddDelegateMethodConstant(defn);
+          Bpl.Constant c = sink.FindOrCreateDelegateMethodConstant(defn);
+          var procInfo = sink.FindOrCreateProcedure(defn);
           Bpl.Expr bexpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, Bpl.Expr.Ident(method), Bpl.Expr.Ident(c));
-          Bpl.CallCmd callCmd = new Bpl.CallCmd(token, c.Name, ins, outs);
+          Bpl.CallCmd callCmd = new Bpl.CallCmd(token, procInfo.Decl.Name, ins, outs);
           ifCmd = BuildIfCmd(bexpr, callCmd, ifCmd);
         }
         Bpl.StmtListBuilder ifStmtBuilder = new Bpl.StmtListBuilder();

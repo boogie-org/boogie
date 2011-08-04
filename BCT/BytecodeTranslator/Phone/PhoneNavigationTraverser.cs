@@ -13,6 +13,8 @@ namespace BytecodeTranslator.Phone {
     private ITypeReference cancelEventArgsType;
     private ITypeReference typeTraversed;
     private IMethodDefinition methodTraversed;
+    private static HashSet<IMethodDefinition> navCallers= new HashSet<IMethodDefinition>();
+    public static IEnumerable<IMethodDefinition> NavCallers { get { return navCallers; } }
 
     public PhoneNavigationCodeTraverser(MetadataReaderHost host, ITypeReference typeTraversed, IMethodDefinition methodTraversed) : base() {
       this.host = host;
@@ -29,10 +31,13 @@ namespace BytecodeTranslator.Phone {
       cancelEventArgsType = platform.CreateReference(assembly, "System", "ComponentModel", "CancelEventArgs");
     }
 
+    public override void  Visit(IEnumerable<IAssemblyReference> assemblyReferences) {
+ 	    base.Visit(assemblyReferences);
+    }
+
+
     public override void Visit(IMethodDefinition method) {
       if (method.IsConstructor && PhoneTypeHelper.isPhoneApplicationClass(typeTraversed, host)) {
-        // TODO BUG doing this is generating a fresh variable definition somewhere that the BCT then translates into two different (identical) declarations
-        // TODO maybe a bug introduced here or a BCT bug
         string mainPageUri = PhoneCodeHelper.instance().PhonePlugin.getMainPageXAML();
         SourceMethodBody sourceBody = method.Body as SourceMethodBody;
         if (sourceBody != null) {
@@ -41,7 +46,7 @@ namespace BytecodeTranslator.Phone {
             Assignment uriInitAssign = new Assignment() {
               Source = new CompileTimeConstant() {
                 Type = host.PlatformType.SystemString,
-                Value = PhoneControlsPlugin.getURIBase(mainPageUri),
+                Value = UriHelper.getURIBase(mainPageUri),
               },
               Type = host.PlatformType.SystemString,
               Target = new TargetExpression() {
@@ -78,10 +83,13 @@ namespace BytecodeTranslator.Phone {
         navCallFound = false;
         navCallIsStatic = false;
         this.Visit(statement);
-        if (navCallFound && navCallIsStatic) {
-          staticNavStmts.Add(new Tuple<IStatement, StaticURIMode, string>(statement, currentStaticMode, unpurifiedFoundURI));
-        } else if (navCallFound) {
-          nonStaticNavStmts.Add(statement);
+        if (navCallFound) {
+          navCallers.Add(methodTraversed);
+          if (navCallIsStatic) {
+            staticNavStmts.Add(new Tuple<IStatement, StaticURIMode, string>(statement, currentStaticMode, unpurifiedFoundURI));
+          } else {
+            nonStaticNavStmts.Add(statement);
+          }
         }
       }
 
@@ -105,8 +113,9 @@ namespace BytecodeTranslator.Phone {
           bool isStatic = UriHelper.isArgumentURILocallyCreatedStatic(expr, host, out target) ||
                          UriHelper.isArgumentURILocallyCreatedStaticRoot(expr, host, out target);
           if (!isStatic)
-            potentialBackKeyNavigationTargets.Add(target);
-          target = "--Other non inferrable target--";
+            target = "--Other non inferrable target--";
+          else
+            target = UriHelper.getURIBase(target);
         } catch (InvalidOperationException) { 
         }
       }
@@ -141,11 +150,13 @@ namespace BytecodeTranslator.Phone {
       string target;
       if (isNavigationOnBackKeyPressHandler(methodCall, out target)) {
         PhoneCodeHelper.instance().BackKeyPressNavigates = true;
-        ICollection<string> targets = PhoneCodeHelper.instance().BackKeyNavigatingOffenders[typeTraversed];
-        if (targets == null) {
+        ICollection<string> targets;
+        try {
+          targets= PhoneCodeHelper.instance().BackKeyNavigatingOffenders[typeTraversed];
+        } catch (KeyNotFoundException) {
           targets = new HashSet<string>();
         }
-        targets.Add(target);
+        targets.Add("\"" + target + "\"");
         PhoneCodeHelper.instance().BackKeyNavigatingOffenders[typeTraversed]= targets;
       } else if (isCancelOnBackKeyPressHandler(methodCall)) {
         PhoneCodeHelper.instance().BackKeyPressHandlerCancels = true;
@@ -248,7 +259,7 @@ namespace BytecodeTranslator.Phone {
         Assignment currentURIAssign = new Assignment() {
           Source = new CompileTimeConstant() {
             Type = host.PlatformType.SystemString,
-            Value = PhoneControlsPlugin.getURIBase(entry.Item3),
+            Value = UriHelper.getURIBase(entry.Item3).ToLower(),
           },
           Type = host.PlatformType.SystemString,
           Target = new TargetExpression() {

@@ -10,6 +10,28 @@ using Microsoft.Cci.MutableCodeModel;
 namespace BytecodeTranslator.Phone {
   public static class UriHelper {
     /// <summary>
+    /// uri is a valid URI but possibly partial (incomplete ?arg= values) and overspecified (complete ?arg=values)
+    /// This method returns a base URI
+    /// </summary>
+    /// <param name="uri"></param>
+    /// <returns></returns>
+    public static string getURIBase(string uri) {
+      // I need to build an absolute URI just to call getComponents() ...
+      Uri mockBaseUri = new Uri("mock://mock/", UriKind.RelativeOrAbsolute);
+      Uri realUri;
+      try {
+        realUri = new Uri(uri, UriKind.Absolute);
+      } catch (UriFormatException) {
+        // uri string is relative
+        realUri = new Uri(mockBaseUri, uri);
+      }
+
+      string str = realUri.GetComponents(UriComponents.Path | UriComponents.StrongAuthority | UriComponents.Scheme, UriFormat.UriEscaped);
+      Uri mockStrippedUri = new Uri(str);
+      return mockBaseUri.MakeRelativeUri(mockStrippedUri).ToString();
+    }
+
+    /// <summary>
     /// checks if argument is locally created URI with static URI target
     /// </summary>
     /// <param name="arg"></param>
@@ -32,7 +54,7 @@ namespace BytecodeTranslator.Phone {
       if (staticURITarget == null)
         return false;
 
-      uri = staticURITarget.Value as string;
+      uri= staticURITarget.Value as string;
       return true;
     }
 
