@@ -190,5 +190,12 @@ namespace RegressionTestInput {
       }
     }
   }
+  public class TestForClassesDifferingOnlyInBeingGeneric {
+    public int x;
+  }
+
+  public class TestForClassesDifferingOnlyInBeingGeneric<T> {
+    public int x;
+  }
 
 }

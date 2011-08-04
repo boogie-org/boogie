@@ -205,11 +205,8 @@ namespace BytecodeTranslator {
     /// </summary>
     public override Bpl.Variable CreateFieldVariable(IFieldReference field) {
       Bpl.Variable v;
-      string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
+      string fieldname = MemberHelper.GetMemberSignature(field, NameFormattingOptions.DocumentationId);
       fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
-      // Need to append something to the name to avoid name clashes with other members (of a different
-      // type) that have the same name.
-      fieldname += "$field";
       Bpl.IToken tok = field.Token();
 
       if (field.IsStatic) {
@@ -227,7 +224,7 @@ namespace BytecodeTranslator {
 
     public override Bpl.Variable CreateEventVariable(IEventDefinition e) {
       Bpl.Variable v;
-      string fieldname = TypeHelper.GetTypeName(e.ContainingType) + "." + e.Name.Value;
+      string fieldname = MemberHelper.GetMemberSignature(e, NameFormattingOptions.DocumentationId);
       fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
       Bpl.IToken tok = e.Token();
 

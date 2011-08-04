@@ -223,7 +223,7 @@ namespace BytecodeTranslator {
     private bool sawCctor = false;
 
     private void CreateStaticConstructor(ITypeDefinition typeDefinition) {
-      var typename = TypeHelper.GetTypeName(typeDefinition);
+      var typename = TypeHelper.GetTypeName(typeDefinition, Microsoft.Cci.NameFormattingOptions.DocumentationId);
       typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
       var proc = new Bpl.Procedure(Bpl.Token.NoToken, typename + ".#cctor",
           new Bpl.TypeVariableSeq(),
