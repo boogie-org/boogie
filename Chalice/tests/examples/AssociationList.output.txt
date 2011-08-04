@@ -1,10 +1,10 @@
 Verification of AssociationList.chalice using parameters="" 
 
-  19.3: The postcondition at 21.13 might not hold. Insufficient fraction at 21.13 for mu.
-  64.9: Method execution before loop might lock/unlock more than allowed by lockchange clause of loop.
+  28.3: The postcondition at 30.13 might not hold. Insufficient fraction at 30.13 for mu.
+  73.9: Method execution before loop might lock/unlock more than allowed by lockchange clause of loop.
 
 The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
-  64.9: The begging of the while-body is unreachable.
-  64.9: The statements after the while-loop are unreachable.
+  73.9: The begging of the while-body is unreachable.
+  73.9: The statements after the while-loop are unreachable.
 
 Boogie program verifier finished with 2 errors and 2 smoke test warnings.
