@@ -169,7 +169,7 @@ def outputPhoneControls(outputFileName):
       unchecked= control["Unchecked"]
       if (unchecked.find(COMMA_REPLACEMENT) != -1):
         unchecked= ""
-      selectionChanged= control["Unchecked"]
+      selectionChanged= control["SelectionChanged"]
       if (selectionChanged.find(COMMA_REPLACEMENT) != -1):
         selectionChanged= ""
       pageXAML= control["XAML"]

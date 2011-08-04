@@ -20,6 +20,8 @@ originalPageVars= []
 boogiePageVars= []
 boogiePageClasses= []
 dummyPageVar= "dummyBoogieStringPageName"
+anonymousControlCount= 0;
+ANONYMOUS_CONTROL_PREFIX= "__BOOGIE_ANONYMOUS_CONTROL_"
 
 def showUsage():
   print "PhoneBoogieCodeGenerator -- create boilerplate code for Boogie verification of Phone apps"
@@ -29,7 +31,14 @@ def showUsage():
   print "\t--controls <app_control_info_file>: Phone app control info. See PhoneControlsExtractor. Short form: -c"
   print "\t--output <code_output_file>: file to write with boilerplate code. Short form: -o\n"
 
+def isAnonymousControl(control):
+  name= control["bplName"]
+  return name.find(ANONYMOUS_CONTROL_PREFIX) != -1
+
 def loadControlInfo(infoMap, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, selectionChangedHandler, bplName):
+  global anonymousControlCount
+  global ANONYMOUS_CONTROL_PREFIX
+
   newControl={}
   newControl["class"]= controlClass
   newControl["enabled"]= enabled
@@ -38,6 +47,10 @@ def loadControlInfo(infoMap, controlClass, controlName, enabled, visible, clickH
   newControl["checkedHandler"]= checkedHandler
   newControl["uncheckedHandler"]= uncheckedHandler
   newControl["selectionChangedHandler"]= selectionChangedHandler
+  if (bplName == ""):
+    # anonymous control, need a dummy boogie var, but we cannot know how it got initialized
+    bplName= ANONYMOUS_CONTROL_PREFIX + str(anonymousControlCount)
+    anonymousControlCount= anonymousControlCount+1
   newControl["bplName"]=bplName
   infoMap[controlName]= newControl
 
@@ -116,7 +129,7 @@ def outputPageControlDriver(file, originalPageName, boogiePageName):
   for entry in staticControlsMap[originalPageName]["controls"].keys():
     controlInfo= staticControlsMap[originalPageName]["controls"][entry]
     if controlInfo["bplName"] == "":
-      continue
+      continue;
     if not ifInitialized:
       file.write("\t\tif ($activeControl == " + str(activeControl) + ") {\n")
       ifInitialized= True

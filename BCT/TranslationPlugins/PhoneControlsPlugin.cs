@@ -15,6 +15,7 @@ namespace TranslationPlugins {
         case Event.Checked:
         case Event.Unchecked:
         case Event.Click:
+        case Event.SelectionChanged:
           return new string[] { "object", "System.WindowsRoutedventArgs" };
         default:
           throw new NotImplementedException("Handlers for event: " + controlEvent + " not supported yet");
@@ -169,6 +170,7 @@ namespace TranslationPlugins {
     }
 
     private void setPageAsMainPage(string pageXAML) {
+      pageXAML = pageXAML.ToLower();
       int lastDirPos= pageXAML.LastIndexOf('/');
       if (lastDirPos != -1)
         pageXAML = pageXAML.Substring(lastDirPos+1);
@@ -199,7 +201,7 @@ namespace TranslationPlugins {
 
       foreach (KeyValuePair<string, PageStructure> entry in this.pageStructureInfo) {
         pageClass = entry.Key;
-        pageXAML = entry.Value.PageXAML;
+        pageXAML = entry.Value.PageXAML.ToLower();
         pageBoogieStringName = entry.Value.PageBoogieName;
         foreach (ControlInfoStructure controlInfo in entry.Value.getAllControlsInfo()) {
           controlClass= controlInfo.ClassName;
@@ -241,7 +243,7 @@ namespace TranslationPlugins {
             selectionChangedHandler = "";
           }
           bplName = controlInfo.BplName;
-          outputStream.WriteLine(pageClass + "," + pageXAML + "," + pageBoogieStringName + "," + controlClass + "," + controlName + "," + enabled + "," +
+          outputStream.WriteLine(pageClass + "," + pageXAML.ToLower() + "," + pageBoogieStringName + "," + controlClass + "," + controlName + "," + enabled + "," +
                                  visibility + "," + clickHandler + "," + checkedHandler + "," + uncheckedHandler + "," + selectionChangedHandler + "," +
                                  bplName);
         }
@@ -273,7 +275,7 @@ namespace TranslationPlugins {
       ControlInfoStructure controlInfoStr;
 
       // first line just states the main page xaml
-      string mainPageXAML= configLine.Trim();
+      string mainPageXAML= configLine.Trim().ToLower();
       configLine = configStream.ReadLine();
 
       // second line states boogie current nav variable, possibly dummy value
@@ -295,7 +297,7 @@ namespace TranslationPlugins {
           throw new ArgumentException("Config input line contains wrong number of fields: " + inputLine.Length + ", expected " + CONFIG_LINE_FIELDS);
 
         pageClass = inputLine[PAGE_CLASS_FIELD].Trim();
-        pageXAML = inputLine[PAGE_XAML_FIELD].Trim();
+        pageXAML = inputLine[PAGE_XAML_FIELD].Trim().ToLower();
         pageBoogieStringName = inputLine[PAGE_BOOGIE_STRING_FIELD].Trim();
         controlClass = inputLine[CONTROL_CLASS_FIELD].Trim();
         controlName = inputLine[CONTROL_NAME_FIELD].Trim();

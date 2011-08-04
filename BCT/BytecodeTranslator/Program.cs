@@ -324,6 +324,13 @@ namespace BytecodeTranslator {
         System.Console.WriteLine("Total methods seen: {0}, inlined: {1}", inlineTraverser.TotalMethodsCount, inlineTraverser.InlinedMethodsCount);
       }
 
+      if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
+        // TODO integrate into the pipeline and spit out the boogie code
+        foreach (IMethodDefinition def in PhoneNavigationCodeTraverser.NavCallers) {
+          System.Console.WriteLine(def.ToString());
+        }
+      }
+
       Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(primaryModule.Name + ".bpl");
       Prelude.Emit(writer);
       sink.TranslatedProgram.Emit(writer);
