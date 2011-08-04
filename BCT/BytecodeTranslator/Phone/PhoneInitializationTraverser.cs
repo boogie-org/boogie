@@ -31,6 +31,7 @@ namespace BytecodeTranslator.Phone {
     private IAssemblyReference coreAssemblyRef;
     private IAssemblyReference phoneAssembly;
     private IAssemblyReference phoneSystemWindowsAssembly;
+    private IAssemblyReference MSPhoneControlsAssembly;
     private INamespaceTypeReference appBarIconButtonType;
     private INamespaceTypeReference checkBoxType;
     private INamespaceTypeReference radioButtonType;
@@ -39,6 +40,7 @@ namespace BytecodeTranslator.Phone {
     private INamespaceTypeReference toggleButtonType;
     private INamespaceTypeReference controlType;
     private INamespaceTypeReference uiElementType;
+    private INamespaceTypeReference pivotType;
 
     private CompileTimeConstant trueConstant;
     private CompileTimeConstant falseConstant;
@@ -65,6 +67,8 @@ namespace BytecodeTranslator.Phone {
         return checkBoxType;
       } else if (classname == "ApplicationBarIconButton") {
         return appBarIconButtonType;
+      } else if (classname == "Pivot") {
+        return pivotType;
       } else if (classname == "DummyType") {
         return Dummy.Type;
       } else {
@@ -87,12 +91,17 @@ namespace BytecodeTranslator.Phone {
       AssemblyIdentity MSPhoneAssemblyId =
           new AssemblyIdentity(host.NameTable.GetNameFor("Microsoft.Phone"), "", new Version("7.0.0.0"),
                                new byte[] { 0x24, 0xEE, 0xC0, 0xD8, 0xC8, 0x6C, 0xDA, 0x1E }, "");
+      AssemblyIdentity MSPhoneControlsAssemblyId=
+          new AssemblyIdentity(host.NameTable.GetNameFor("Microsoft.Phone.Controls"), "", new Version("7.0.0.0"),
+                               new byte[] { 0x24, 0xEE, 0xC0, 0xD8, 0xC8, 0x6C, 0xDA, 0x1E }, "");
+
       AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
           new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
                                coreAssemblyRef.PublicKeyToken, "");
 
       phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
       phoneSystemWindowsAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
+      MSPhoneControlsAssembly= host.FindAssembly(MSPhoneControlsAssemblyId);
 
       // TODO determine the needed types dynamically
       appBarIconButtonType= platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarIconButton");
@@ -103,6 +112,7 @@ namespace BytecodeTranslator.Phone {
       toggleButtonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Primitives", "ToggleButton");
       controlType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Control");
       uiElementType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "UIElement");
+      pivotType = platform.CreateReference(MSPhoneControlsAssembly, "Microsoft", "Phone", "Controls", "Pivot");
 
       trueConstant = new CompileTimeConstant() {
         Type = platform.SystemBoolean,
