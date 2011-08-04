@@ -25,7 +25,7 @@ object SmokeTest {
     var warning: Boolean = false // did this "assert false" generate a warning? (i.e. did it not generate a Boogie error?)
   }
   /** Serves as a sentinel for the first assert (which should always cause a
-   *  warning, thus SmokeAssertSentinel.warning = false
+   *  warning, thus SmokeAssertSentinel.warning = false)
    */
   object SmokeAssertSentinel extends SmokeAssert(-1, NoPosition, "", Set(), null)
 

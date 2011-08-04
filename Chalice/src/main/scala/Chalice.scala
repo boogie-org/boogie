@@ -189,7 +189,7 @@ object Chalice {
     // parse programs
     val parser = new Parser();
     val parseResults = if (files.isEmpty) {
-      println("No input file provided. Use 'chalice /help' for a list of all available command line options. Reading from stdin...")
+      if (!vsMode) println("No input file provided. Use 'chalice /help' for a list of all available command line options. Reading from stdin...")
       List(parser.parseStdin)
     } else for (file <- files) yield {
       parser.parseFile(file)
