@@ -5,7 +5,7 @@ from xml.dom import minidom
 from itertools import product
 import xml.dom
 
-CONTROL_NAMES= ["Button", "CheckBox", "RadioButton"]
+CONTROL_NAMES= ["Button", "CheckBox", "RadioButton", "ApplicationBarIconButton", "Pivot"]
 CONTAINER_CONTROL_NAMES= ["Canvas", "Grid", "StackPanel"]
 
 # TODO externalize strings, share with C# code
@@ -29,7 +29,7 @@ def showUsage():
   print "\t--controls <app_control_info_file>: Phone app control info. See PhoneControlsExtractor. Short form: -c"
   print "\t--output <code_output_file>: file to write with boilerplate code. Short form: -o\n"
 
-def loadControlInfo(infoMap, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, bplName):
+def loadControlInfo(infoMap, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, selectionChangedHandler, bplName):
   newControl={}
   newControl["class"]= controlClass
   newControl["enabled"]= enabled
@@ -37,6 +37,7 @@ def loadControlInfo(infoMap, controlClass, controlName, enabled, visible, clickH
   newControl["clickHandler"]= clickHandler
   newControl["checkedHandler"]= checkedHandler
   newControl["uncheckedHandler"]= uncheckedHandler
+  newControl["selectionChangedHandler"]= selectionChangedHandler
   newControl["bplName"]=bplName
   infoMap[controlName]= newControl
 
@@ -139,6 +140,10 @@ def outputPageControlDriver(file, originalPageName, boogiePageName):
       file.write("\t\t\t\tif ($handlerToActivate == 2) {\n")
       file.write("\t\t\t\t\tcall " + staticControlsMap[originalPageName]["class"] + "." + controlInfo["uncheckedHandler"] + "$System.Object$System.Windows.RoutedEventArgs(" + controlInfo["bplName"] + "[" + boogiePageName + "],null,null);\n")
       file.write("\t\t\t\t}\n")
+    if not controlInfo["selectionChangedHandler"] == "":
+      file.write("\t\t\t\tif ($handlerToActivate == 3) {\n")
+      file.write("\t\t\t\t\tcall " + staticControlsMap[originalPageName]["class"] + "." + controlInfo["selectionChangedHandler"] + "$System.Object$System.Windows.RoutedEventArgs(" + controlInfo["bplName"] + "[" + boogiePageName + "],null,null);\n")
+      file.write("\t\t\t\t}\n")
 
     file.write("\t\t\t}\n")
     file.write("\t\t}\n")
@@ -203,14 +208,14 @@ def buildControlInfo(controlInfoFileName):
 
   file = open(controlInfoFileName, "r")
   # Info file format is first line containing only the main page, another line with boogie's current navigation variable and then one line per
-  # <pageClassName>,<page.xaml file>,<xaml boogie string representation>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<BoogieName>
+  # <pageClassName>,<page.xaml file>,<xaml boogie string representation>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<SelectionChangedValue>,<BoogieName>
   mainPageXAML= file.readline().strip()
   currentNavigationVariable= file.readline().strip()
   mainAppClassname= file.readline().strip()
 
   infoLine= file.readline().strip()
   while not infoLine == "":
-    pageClass, pageName, pageBoogieStringName, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, bplName= infoLine.split(",")
+    pageClass, pageName, pageBoogieStringName, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, selectionChangedHandler, bplName= infoLine.split(",")
     pageInfo={}
     pageInfo["class"]=pageClass
     try:
@@ -224,7 +229,7 @@ def buildControlInfo(controlInfoFileName):
       pageControlInfo= pageInfo["controls"]
     except KeyError:
       pageInfo["controls"]=pageControlInfo
-    loadControlInfo(pageControlInfo, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, bplName)
+    loadControlInfo(pageControlInfo, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, selectionChangedHandler, bplName)
     pageInfo["controls"]= pageControlInfo
     staticControlsMap[pageName]=pageInfo
 

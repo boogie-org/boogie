@@ -4,7 +4,7 @@ import os
 from xml.dom import minidom
 import xml.dom
 
-CONTROL_NAMES= ["Button", "CheckBox", "RadioButton", "ApplicationBarIconButton"]
+CONTROL_NAMES= ["Button", "CheckBox", "RadioButton", "ApplicationBarIconButton", "Pivot"]
 
 # TODO maybe a control is enabled but its parent is not, must take this into account
 # TODO a possible solution is to tie the enabled value to that of the parent in the app until it is either overriden
@@ -70,6 +70,7 @@ def addDummyControlToMap(pageXAML, parentPage):
   newControl["Click"] = ""
   newControl["Checked"] = ""
   newControl["Unchecked"] = ""
+  newControl["SelectionChanged"]= ""
   newControl["XAML"]= pageXAML
   pageControls.append(newControl)
   staticControlsMap[parentPage]= pageControls
@@ -98,6 +99,7 @@ def addControlToMap(pageXAML, parentPage, controlNode):
   newControl["Click"] = controlNode.getAttribute("Click").replace(",",COMMA_REPLACEMENT).replace("=",COMMA_REPLACEMENT)
   newControl["Checked"] = controlNode.getAttribute("Checked").replace(",",COMMA_REPLACEMENT).replace("=",COMMA_REPLACEMENT)
   newControl["Unchecked"] = controlNode.getAttribute("Unchecked").replace(",",COMMA_REPLACEMENT).replace("=",COMMA_REPLACEMENT)
+  newControl["SelectionChanged"] = controlNode.getAttribute("SelectionChanged").replace(",",COMMA_REPLACEMENT).replace("=",COMMA_REPLACEMENT)
   newControl["XAML"]= pageXAML
   pageControls.append(newControl)
   staticControlsMap[parentPage]= pageControls
@@ -145,7 +147,7 @@ def outputPhoneControls(outputFileName):
   outputFile= open(outputFileName, "w")
 
   # Output format is first line containing only the main page, then line containing boogie navigation variable, and then one line per
-  # <pageClassName>,<page.xaml file>,<boogie string page name>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>
+  # <pageClassName>,<page.xaml file>,<boogie string page name>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<SelChangedValue>
   outputFile.write(mainPageXAML + "\n")
   outputFile.write("dummyNavigationVariable_unknown\n")
   outputFile.write("dummyMainAppName_unknown\n") # I could possibly deduce it from WMAppManifest.xml, but I'm unsure. Doing it later is safe anyway
@@ -167,10 +169,14 @@ def outputPhoneControls(outputFileName):
       unchecked= control["Unchecked"]
       if (unchecked.find(COMMA_REPLACEMENT) != -1):
         unchecked= ""
+      selectionChanged= control["Unchecked"]
+      if (selectionChanged.find(COMMA_REPLACEMENT) != -1):
+        selectionChanged= ""
       pageXAML= control["XAML"]
       # last comma is to account for bpl translation name, that is unknown for now
       # boogie string page name is unknown for now
-      outputFile.write(page + "," + os.path.basename(pageXAML) + ",dummyBoogieStringPageName," + control["Type"] + "," + control["Name"] + "," + isEnabled + "," + visibility + "," + click + "," + checked + "," + unchecked + ",\n")
+      outputFile.write(page + "," + os.path.basename(pageXAML) + ",dummyBoogieStringPageName," + control["Type"] + "," + control["Name"] + \
+                       "," + isEnabled + "," + visibility + "," + click + "," + checked + "," + unchecked + "," + selectionChanged + ",\n")
 
   outputFile.close()
 

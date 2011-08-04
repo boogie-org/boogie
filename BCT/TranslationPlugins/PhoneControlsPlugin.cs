@@ -7,7 +7,7 @@ using System.IO;
 namespace TranslationPlugins {
   public enum Visibility { Visible, Collapsed };
 
-  public enum Event { Click, Checked, Unchecked };
+  public enum Event { Click, Checked, Unchecked, SelectionChanged };
 
   public class HandlerSignature {
     public static string[] getParameterTypesForHandler(Event controlEvent) {
@@ -94,7 +94,7 @@ namespace TranslationPlugins {
   public class PhoneControlsPlugin : TranslationPlugin {
     // TODO this will probably need a complete rewrite once it is event based, and make it more push than pull
     // TODO but it doesn't make sense right now to make it BCT or CCI aware
-    private static int CONFIG_LINE_FIELDS= 11;
+    private static int CONFIG_LINE_FIELDS= 12;
     private static int PAGE_CLASS_FIELD= 0;
     private static int PAGE_XAML_FIELD= 1;
     private static int PAGE_BOOGIE_STRING_FIELD = 2;
@@ -105,7 +105,8 @@ namespace TranslationPlugins {
     private static int CLICK_HANDLER_FIELD= 7;
     private static int CHECKED_HANDLER_FIELD= 8;
     private static int UNCHECKED_HANDLER_FIELD = 9;
-    private static int BPL_NAME_FIELD = 10;
+    private static int SELECTIONCHANGED_HANDLER_FIELD = 10;
+    private static int BPL_NAME_FIELD = 11;
 
     private IDictionary<string, PageStructure> pageStructureInfo;
 
@@ -190,7 +191,8 @@ namespace TranslationPlugins {
 
     public void DumpControlStructure(StreamWriter outputStream) {
       // maintain same format as input format
-      string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
+      string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler,
+             checkedHandler, uncheckedHandler, selectionChangedHandler, bplName;
       outputStream.WriteLine(getMainPageXAML());
       outputStream.WriteLine(getBoogieNavigationVariable());
       outputStream.WriteLine(getMainAppTypeName());
@@ -231,8 +233,17 @@ namespace TranslationPlugins {
           } else {
             uncheckedHandler = "";
           }
+
+          handlers = controlInfo.getHandlers(Event.SelectionChanged);
+          if (handlers.Any()) {
+            selectionChangedHandler= handlers.First().Name;
+          } else {
+            selectionChangedHandler = "";
+          }
           bplName = controlInfo.BplName;
-          outputStream.WriteLine(pageClass + "," + pageXAML + "," + pageBoogieStringName + "," + controlClass + "," + controlName + "," + enabled + "," + visibility + "," + clickHandler + "," + checkedHandler + "," + uncheckedHandler + "," + bplName);
+          outputStream.WriteLine(pageClass + "," + pageXAML + "," + pageBoogieStringName + "," + controlClass + "," + controlName + "," + enabled + "," +
+                                 visibility + "," + clickHandler + "," + checkedHandler + "," + uncheckedHandler + "," + selectionChangedHandler + "," +
+                                 bplName);
         }
       }
     }
@@ -254,7 +265,8 @@ namespace TranslationPlugins {
       // TODO the page.xaml value is saved with no directory information: if two pages exist with same name but different directories it will treat them as the same
       // TODO I'm not handling this for now, and I won't be handling relative/absolute URI either for now
 
-      string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
+      string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler,
+             uncheckedHandler, selectionChangedHandler, bplName;
       string configLine = configStream.ReadLine();
       string[] inputLine;
       PageStructure pageStr;
@@ -295,6 +307,7 @@ namespace TranslationPlugins {
         clickHandler = inputLine[CLICK_HANDLER_FIELD].Trim();
         checkedHandler = inputLine[CHECKED_HANDLER_FIELD].Trim();
         uncheckedHandler = inputLine[UNCHECKED_HANDLER_FIELD].Trim();
+        selectionChangedHandler = inputLine[SELECTIONCHANGED_HANDLER_FIELD].Trim();
         bplName = inputLine[BPL_NAME_FIELD].Trim();
 
         try {
@@ -319,6 +332,7 @@ namespace TranslationPlugins {
         controlInfoStr.setHandler(Event.Click, clickHandler);
         controlInfoStr.setHandler(Event.Checked, checkedHandler);
         controlInfoStr.setHandler(Event.Unchecked, uncheckedHandler);
+        controlInfoStr.setHandler(Event.SelectionChanged, selectionChangedHandler);
 
         pageStr.setControlInfo(controlName, controlInfoStr);
         pageStructureInfo[pageClass] = pageStr;
