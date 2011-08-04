@@ -4,24 +4,23 @@
 //
 //-----------------------------------------------------------------------------
 using System;
-using Microsoft.Contracts;
+using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using Microsoft.Boogie;
-using Microsoft.Boogie.Simplify.AST;
+using Microsoft.Boogie.Simplify;
 using VC;
 using Microsoft.Boogie.Z3;
-using Microsoft.AbstractInterpretationFramework;
-using Microsoft.Boogie.AbstractInterpretation;
 using System.Collections;
-using System.Compiler;
 using System.IO;
+using Microsoft.AbstractInterpretationFramework;
+using Graphing;
 
 namespace Microsoft.Boogie.Houdini
 {
 
     class ReadOnlyDictionary<K,V> {
-        private Dictionary<K,V>! dictionary;
-        public ReadOnlyDictionary(Dictionary<K,V>! dictionary) {
+        private Dictionary<K,V> dictionary;
+        public ReadOnlyDictionary(Dictionary<K,V> dictionary) {
           this.dictionary = dictionary;
         }
         
@@ -29,7 +28,7 @@ namespace Microsoft.Boogie.Houdini
           get { return this.dictionary.Keys; }
         }
         
-        public bool TryGetValue(K k, out V? v) {
+        public bool TryGetValue(K k, out V v) {
           return this.dictionary.TryGetValue(k, out v);
         }
 
@@ -39,42 +38,42 @@ namespace Microsoft.Boogie.Houdini
     }
     
     public class CallGraph {
-      
-       private IGraphNavigator! aiCallGraph;
-       
-       public CallGraph(IGraphNavigator! aiCallGraph) {
-         this.aiCallGraph = aiCallGraph; 
+      Graph<Implementation> callGraph;
+       public CallGraph() {
+         //this.callGraph = null; 
        }
        
-       public IEnumerable! PreviousNodes(Implementation! n) {
-         return (!)this.aiCallGraph.PreviousNodes(n);
+      public IEnumerable PreviousNodes(Implementation n) {
+         //return this.callGraph.PreviousNodes(n);
+        return null;
        }       
-       public IEnumerable! NextNodes(Implementation! n) {
-         return (!)this.aiCallGraph.NextNodes(n);
+       public IEnumerable NextNodes(Implementation n) {
+         //return this.callGraph.NextNodes(n);
+         return null;
        }       
     
     }
     
     public abstract class HoudiniObserver {
-      public virtual void UpdateStart(Program! program, int numConstants) {}
+      public virtual void UpdateStart(Program program, int numConstants) {}
       public virtual void UpdateIteration() {}
-      public virtual void UpdateImplementation(Implementation! implementation) {}
-      public virtual void UpdateAssignment(Dictionary<string!,bool>! assignment) {}
+      public virtual void UpdateImplementation(Implementation implementation) {}
+      public virtual void UpdateAssignment(Dictionary<string,bool> assignment) {}
       public virtual void UpdateOutcome(VCGen.Outcome outcome) {}
-      public virtual void UpdateEnqueue(Implementation! implementation) {}
+      public virtual void UpdateEnqueue(Implementation implementation) {}
       public virtual void UpdateDequeue() {}
-      public virtual void UpdateConstant(string! constantName) {}
+      public virtual void UpdateConstant(string constantName) {}
       public virtual void UpdateEnd(bool isNormalEnd) {}
       public virtual void UpdateFlushStart() {}
       public virtual void UpdateFlushFinish() {}
-      public virtual void SeeException(string! msg){}
+      public virtual void SeeException(string msg){}
     }
 
     public class IterationTimer <K> {
-      private Dictionary<K, List<double>!>! times;
+      private Dictionary<K, List<double>> times;
         
       public IterationTimer () {
-        times = new Dictionary<K, List<double>!>();
+        times = new Dictionary<K, List<double>>();
       }
         
       public void AddTime(K key, double timeMS) {
@@ -89,11 +88,11 @@ namespace Microsoft.Boogie.Houdini
         times.Add(key, oldList);
       }
         
-      public void PrintTimes(TextWriter! wr) {
+      public void PrintTimes(TextWriter wr) {
         wr.WriteLine ("Total procedures: {0}", times.Count);
         double total = 0;
         int totalIters = 0;
-        foreach(KeyValuePair<K, List<double>!> kv in times) {
+        foreach(KeyValuePair<K, List<double>> kv in times) {
           int curIter = 0;
           wr.WriteLine("Times for {0}:", kv.Key);
           foreach(double v in kv.Value) {
@@ -112,21 +111,21 @@ namespace Microsoft.Boogie.Houdini
     public class HoudiniTimer : HoudiniObserver {
       private DateTime startT;
       private Implementation curImp;
-      private IterationTimer<string!>! times;
-      private TextWriter! wr;
+      private IterationTimer<string> times;
+      private TextWriter wr;
       
-      public HoudiniTimer(TextWriter! wr) {
+      public HoudiniTimer(TextWriter wr) {
         this.wr = wr;
-        times = new IterationTimer<string!>();
+        times = new IterationTimer<string>();
       }
       public override void UpdateIteration() {
         startT = DateTime.Now;
       }
-      public override void UpdateImplementation(Implementation! implementation){
+      public override void UpdateImplementation(Implementation implementation){
         curImp = implementation;
       }
       public override void UpdateOutcome (VCGen.Outcome o) {
-        assert curImp != null;
+        Contract.Assert(curImp != null);
         DateTime endT = DateTime.Now;
         times.AddTime(curImp.Name, (endT - startT).TotalMilliseconds); // assuming names are unique
       }     
@@ -139,13 +138,13 @@ namespace Microsoft.Boogie.Houdini
     }
     
     public class HoudiniTextReporter: HoudiniObserver {
-      private TextWriter! wr;
+      private TextWriter wr;
       private int currentIteration = -1;
       
-      public HoudiniTextReporter(TextWriter! wr) {
+      public HoudiniTextReporter(TextWriter wr) {
         this.wr = wr;
       }
-      public override void UpdateStart(Program! program, int numConstants) {
+      public override void UpdateStart(Program program, int numConstants) {
         wr.WriteLine("Houdini started:" + program.ToString() + " #constants: " + numConstants.ToString());
         currentIteration = -1;
         wr.Flush();
@@ -156,16 +155,16 @@ namespace Microsoft.Boogie.Houdini
         wr.WriteLine("Houdini iteration #" + currentIteration);
         wr.Flush();
       }
-      public override void UpdateImplementation(Implementation! implementation){
+      public override void UpdateImplementation(Implementation implementation){
         wr.WriteLine("implementation under analysis :" + implementation.Name);
         wr.Flush();
       }
-      public override void UpdateAssignment(Dictionary<string!,bool>! assignment) {
+      public override void UpdateAssignment(Dictionary<string,bool> assignment) {
         bool firstTime = true;
         wr.Write("assignment under analysis : axiom (");
-        foreach (KeyValuePair<string!,bool> kv in assignment) {
+        foreach (KeyValuePair<string,bool> kv in assignment) {
           if (!firstTime) wr.Write(" && "); else firstTime = false;
-          string! valString; // ugliness to get it lower cased
+          string valString; // ugliness to get it lower cased
           if (kv.Value) valString = "true"; else valString = "false";
           wr.Write(kv.Key + " == " + valString);
         }
@@ -176,7 +175,7 @@ namespace Microsoft.Boogie.Houdini
         wr.WriteLine("analysis outcome :" + outcome);
         wr.Flush();
       }
-      public override void UpdateEnqueue(Implementation! implementation) {
+      public override void UpdateEnqueue(Implementation implementation) {
         wr.WriteLine("worklist enqueue :" + implementation.Name);
         wr.Flush();
       }
@@ -184,7 +183,7 @@ namespace Microsoft.Boogie.Houdini
         wr.WriteLine("worklist dequeue");
         wr.Flush();
       }
-      public override void UpdateConstant(string! constantName) {
+      public override void UpdateConstant(string constantName) {
         wr.WriteLine("constant disabled : " + constantName);
         wr.Flush();
       }
@@ -203,7 +202,7 @@ namespace Microsoft.Boogie.Houdini
         wr.WriteLine("Flushing finished");
         wr.Flush();
       }
-      public override void SeeException(string! msg) {
+      public override void SeeException(string msg) {
         wr.WriteLine("Caught exception: " + msg);
         wr.Flush();
       }
@@ -212,96 +211,114 @@ namespace Microsoft.Boogie.Houdini
     
     
     public abstract class ObservableHoudini {
-      private List<HoudiniObserver!>! observers= new List<HoudiniObserver!>();
+      private List<HoudiniObserver> observers = new List<HoudiniObserver>();
       
-      public void AddObserver(HoudiniObserver! observer) {
+      public void AddObserver(HoudiniObserver observer) {
         if (!observers.Contains(observer))
           observers.Add(observer);
       }
-      private delegate void NotifyDelegate(HoudiniObserver! observer);
+      private delegate void NotifyDelegate(HoudiniObserver observer);
       
-      private void Notify(NotifyDelegate! notifyDelegate) {
-        foreach (HoudiniObserver! observer in observers) {
+      private void Notify(NotifyDelegate notifyDelegate) {
+        foreach (HoudiniObserver observer in observers) {
           notifyDelegate(observer);
         }
       }
-      protected void NotifyStart(Program! program, int numConstants) { 
-        NotifyDelegate notifyDelegate = (NotifyDelegate) delegate (HoudiniObserver! r) { r.UpdateStart(program, numConstants); };
+      protected void NotifyStart(Program program, int numConstants) { 
+        NotifyDelegate notifyDelegate = (NotifyDelegate) delegate (HoudiniObserver r) { r.UpdateStart(program, numConstants); };
         Notify(notifyDelegate);
       }
       protected void NotifyIteration() {
-        Notify((NotifyDelegate) delegate (HoudiniObserver! r) { r.UpdateIteration(); });
+        Notify((NotifyDelegate) delegate (HoudiniObserver r) { r.UpdateIteration(); });
       }
-      protected void NotifyImplementation(Implementation! implementation) {
-        Notify((NotifyDelegate) delegate (HoudiniObserver! r) { r.UpdateImplementation(implementation); });
+      protected void NotifyImplementation(Implementation implementation) {
+        Notify((NotifyDelegate) delegate (HoudiniObserver r) { r.UpdateImplementation(implementation); });
       }
-      protected void NotifyAssignment(Dictionary<string!,bool>! assignment) { 
-        Notify((NotifyDelegate) delegate (HoudiniObserver! r) { r.UpdateAssignment(assignment); });
+      protected void NotifyAssignment(Dictionary<string,bool> assignment) { 
+        Notify((NotifyDelegate) delegate (HoudiniObserver r) { r.UpdateAssignment(assignment); });
       }
       protected void NotifyOutcome(VCGen.Outcome outcome) {
-        Notify((NotifyDelegate) delegate (HoudiniObserver! r) { r.UpdateOutcome(outcome); });
+        Notify((NotifyDelegate) delegate (HoudiniObserver r) { r.UpdateOutcome(outcome); });
       }
-      protected void NotifyEnqueue(Implementation! implementation){
-        Notify((NotifyDelegate) delegate (HoudiniObserver! r) { r.UpdateEnqueue(implementation); });
+      protected void NotifyEnqueue(Implementation implementation){
+        Notify((NotifyDelegate) delegate (HoudiniObserver r) { r.UpdateEnqueue(implementation); });
       }
       protected void NotifyDequeue(){
-        Notify((NotifyDelegate) delegate (HoudiniObserver! r) { r.UpdateDequeue(); });
+        Notify((NotifyDelegate) delegate (HoudiniObserver r) { r.UpdateDequeue(); });
       }
-      protected void NotifyConstant(string! constantName){
-        Notify((NotifyDelegate) delegate (HoudiniObserver! r) { r.UpdateConstant(constantName); });
+      protected void NotifyConstant(string constantName){
+        Notify((NotifyDelegate) delegate (HoudiniObserver r) { r.UpdateConstant(constantName); });
       }
       protected void NotifyEnd(bool isNormalEnd) {
-        Notify((NotifyDelegate) delegate (HoudiniObserver! r) { r.UpdateEnd(isNormalEnd); });
+        Notify((NotifyDelegate) delegate (HoudiniObserver r) { r.UpdateEnd(isNormalEnd); });
       }
       protected void NotifyFlushStart() {
-        Notify((NotifyDelegate) delegate (HoudiniObserver! r) { r.UpdateFlushStart(); });
+        Notify((NotifyDelegate) delegate (HoudiniObserver r) { r.UpdateFlushStart(); });
       }
       protected void NotifyFlushFinish() {
-        Notify((NotifyDelegate) delegate (HoudiniObserver! r) { r.UpdateFlushFinish(); });
+        Notify((NotifyDelegate) delegate (HoudiniObserver r) { r.UpdateFlushFinish(); });
       }
       
-      protected void NotifyException(string! msg) {
-        Notify((NotifyDelegate) delegate (HoudiniObserver! r) { r.SeeException(msg); });
+      protected void NotifyException(string msg) {
+        Notify((NotifyDelegate) delegate (HoudiniObserver r) { r.SeeException(msg); });
       }
     }
     
-    public enum HoudiniProver { Z3, Z3API }
-    
     public class Houdini : ObservableHoudini {
-    
-        private Program! program;
-        
-        private ReadOnlyDictionary<string!,IdentifierExpr!>! houdiniConstants;
-        private ReadOnlyDictionary<Implementation!,HdnVCGen!>! vcgenSessions;
-        private CallGraph! callGraph;
+        private Program program;
+        private ReadOnlyDictionary<string, IdentifierExpr> houdiniConstants;
+        private ReadOnlyDictionary<Implementation, HoudiniVCGen> vcgenSessions;
+        private CallGraph callGraph;
         private bool continueAtError;
-        private HoudiniProver houdiniProver;
-        private HdnVCGenFactory! vcgenFactory;
 
-        public Houdini(Program! program, CallGraph! callgraph, bool continueAtError, HoudiniProver houdiniProver) {
-          this.program=program;
-          this.callGraph = callgraph;
+        public Houdini(Program program, bool continueAtError) {
+          this.program = program;
+          this.callGraph = BuildCallGraph(program);
           this.continueAtError = continueAtError;
-          this.houdiniProver = houdiniProver;
-          HdnVCGenFactory factory;
-          switch (this.houdiniProver) {
-            case HoudiniProver.Z3:
-              factory = new Z3HdnVCGenFactory();
-              break;
-            case HoudiniProver.Z3API:
-            default: 
-              factory = new Z3APIHdnVCGenFactory();
-              break;
-          }
-          this.vcgenFactory = factory;
-          HoudiniHelper helper = new HoudiniHelper(factory);
-          this.houdiniConstants = helper.CollectExistentialConstants(program);
-          this.vcgenSessions = helper.PrepareVCGenSessions(program);
+          this.houdiniConstants = CollectExistentialConstants(program);
+          this.vcgenSessions = PrepareVCGenSessions(program);
         }
 
-        private Queue<Implementation!>! BuildWorkList(Program! program) {
-          Queue<Implementation!>! queue = new Queue<Implementation!>();
-          foreach ( Declaration! decl in program.TopLevelDeclarations ) {
+        private ReadOnlyDictionary<Implementation, HoudiniVCGen> PrepareVCGenSessions(Program program) {
+          Dictionary<Implementation, HoudiniVCGen> vcgenSessions = new Dictionary<Implementation, HoudiniVCGen>();
+
+          foreach (Declaration decl in program.TopLevelDeclarations) {
+            Implementation impl = decl as Implementation;
+            if (impl != null) {
+              // make a different simplify log file for each function
+              String simplifyLog = null;
+              if (CommandLineOptions.Clo.SimplifyLogFilePath != null) {
+                simplifyLog = impl.ToString() + CommandLineOptions.Clo.SimplifyLogFilePath;
+              }
+              HoudiniVCGen vcgen = new HoudiniVCGen(program, simplifyLog, CommandLineOptions.Clo.SimplifyLogFileAppend);
+              //vcgen.PrepareVerification(impl, program);
+              vcgenSessions.Add(impl, vcgen);
+            }
+          }
+          return new ReadOnlyDictionary<Implementation, HoudiniVCGen>(vcgenSessions);
+        }
+
+        private ReadOnlyDictionary<string, IdentifierExpr> CollectExistentialConstants(Program program) {
+          Dictionary<string, IdentifierExpr> existentialConstants = new Dictionary<string, IdentifierExpr>();
+          foreach (Declaration decl in program.TopLevelDeclarations) {
+            Constant constant = decl as Constant;
+            if (constant != null) {
+              bool result = false;
+              if (constant.CheckBooleanAttribute("existential", ref result)) {
+                if (result == true)
+                  existentialConstants.Add(constant.Name, new IdentifierExpr(Token.NoToken, constant));
+              }
+            }
+          }
+          return new ReadOnlyDictionary<string, IdentifierExpr>(existentialConstants);
+        }          
+
+        private CallGraph BuildCallGraph(Program program) {
+          return null;
+        }
+        private Queue<Implementation> BuildWorkList(Program program) {
+          Queue<Implementation> queue = new Queue<Implementation>();
+          foreach ( Declaration decl in program.TopLevelDeclarations ) {
               Implementation impl = decl as Implementation;
               if (impl!=null) {
                 queue.Enqueue(impl);
@@ -310,54 +327,13 @@ namespace Microsoft.Boogie.Houdini
           return queue;
         }
 
-        private class HoudiniHelper {
-          private HdnVCGenFactory! vcgenFactory;
-          public HoudiniHelper(HdnVCGenFactory! vcgenFactory) {
-            this.vcgenFactory = vcgenFactory;
-          }
-        
-          public ReadOnlyDictionary<Implementation!,HdnVCGen!>! PrepareVCGenSessions(Program! program) {
-            Dictionary<Implementation!,HdnVCGen!>! vcgenSessions = new Dictionary<Implementation!,HdnVCGen!>();
-            
-            foreach ( Declaration! decl in program.TopLevelDeclarations ) {
-              Implementation impl = decl as Implementation;
-              if (impl!=null) {
-                // make a different simplify log file for each function
-                String simplifyLog = null;
-                if (CommandLineOptions.Clo.SimplifyLogFilePath != null) {
-                    simplifyLog = impl.ToString() + CommandLineOptions.Clo.SimplifyLogFilePath;
-                }
-                HdnVCGen! vcgen = vcgenFactory.BuildVCGen(program, simplifyLog, CommandLineOptions.Clo.SimplifyLogFileAppend);
-                vcgen.PrepareVerification(impl,program);
-                vcgenSessions.Add(impl,vcgen);
-              }
-            }
-            return new ReadOnlyDictionary<Implementation!,HdnVCGen!>(vcgenSessions);
-          }
-          
-          public ReadOnlyDictionary<string!,IdentifierExpr!>! CollectExistentialConstants(Program! program) {
-            Dictionary<string!,IdentifierExpr!>! existentialConstants = new Dictionary<string!,IdentifierExpr!>();
-            foreach ( Declaration! decl in program.TopLevelDeclarations ) {
-              Constant constant = decl as Constant;
-              if (constant!=null) {
-                bool result=false;
-                if (constant.CheckBooleanAttribute("existential",ref result)) {
-                  if (result==true) 
-                    existentialConstants.Add(constant.Name, new IdentifierExpr(Token.NoToken,constant));
-                }
-              }
-            }
-            return new ReadOnlyDictionary<string!,IdentifierExpr!>(existentialConstants);
-          }          
-        }
-        
         private bool MatchCandidate(Expr boogieExpr, out string candidateConstant) {
           candidateConstant = null;
           IExpr antecedent;
           IExpr expr = boogieExpr as IExpr;
-          if (expr!=null && ExprUtil.Match(expr, Prop.Implies, out antecedent)) {
+          if (expr != null && ExprUtil.Match(expr, Prop.Implies, out antecedent)) {
             IdentifierExpr.ConstantFunApp constantFunApp = antecedent as IdentifierExpr.ConstantFunApp;
-            if ((constantFunApp !=null) && (houdiniConstants.ContainsKey(constantFunApp.IdentifierExpr.Name))) {
+            if (constantFunApp != null && houdiniConstants.ContainsKey(constantFunApp.IdentifierExpr.Name)) {
               candidateConstant = constantFunApp.IdentifierExpr.Name;
               return true;
             }
@@ -366,12 +342,12 @@ namespace Microsoft.Boogie.Houdini
         }
         
         
-        private Axiom! BuildAxiom(Dictionary<string!,bool>! currentAssignment) {
+        private Axiom BuildAxiom(Dictionary<string,bool> currentAssignment) {
           Expr axiom = null;
-          foreach (KeyValuePair<string!,bool> kv in currentAssignment) {
+          foreach (KeyValuePair<string,bool> kv in currentAssignment) {
             IdentifierExpr constantExpr;
             houdiniConstants.TryGetValue(kv.Key,out constantExpr);
-            assume (constantExpr!=null);
+            Contract.Assume (constantExpr!=null);
             Expr valueExpr = new LiteralExpr(Token.NoToken, kv.Value);
             Expr constantAssignment = Expr.Binary(Token.NoToken,BinaryOperator.Opcode.Eq,constantExpr,valueExpr);  
             if (axiom==null) 
@@ -384,15 +360,15 @@ namespace Microsoft.Boogie.Houdini
           return new Axiom(Token.NoToken,axiom);
         }
 
-        private Dictionary<string!,bool>! BuildAssignment(Dictionary<string!,IdentifierExpr!>.KeyCollection! constants) {
-           Dictionary<string!,bool>! initial = new Dictionary<string!,bool>();
-           foreach (string! constant in constants)
+        private Dictionary<string,bool> BuildAssignment(Dictionary<string,IdentifierExpr>.KeyCollection constants) {
+           Dictionary<string,bool> initial = new Dictionary<string,bool>();
+           foreach (string constant in constants)
              initial.Add(constant,true);
            return initial;
         }
 
-       private VCGen.Outcome VerifyUsingAxiom(Implementation! implementation, Axiom! axiom, out List<Counterexample!>? errors) {
-            HdnVCGen vcgen;
+       private VCGen.Outcome VerifyUsingAxiom(Implementation implementation, Axiom axiom, out List<Counterexample> errors) {
+            HoudiniVCGen vcgen;
             vcgenSessions.TryGetValue(implementation,out vcgen);
             if(vcgen==null)
               throw new Exception("HdnVCGen not found for implementation: " + implementation.Name);
@@ -404,15 +380,15 @@ namespace Microsoft.Boogie.Houdini
 
 	   // the main procedure that checks a procedure and updates the
 	   // assignment and the worklist
-       private VCGen.Outcome HoudiniVerifyCurrent(HoudiniState! current,
-                                           Program! program,
-                                           out List<Counterexample!>? errors,
+       private VCGen.Outcome HoudiniVerifyCurrent(HoudiniState current,
+                                           Program program,
+                                           out List<Counterexample> errors,
                                            out bool exc) {
-            HdnVCGen vcgen;
+            HoudiniVCGen vcgen;
 			if (current.Implementation == null)
 				throw new Exception("HoudiniVerifyCurrent has null implementation");
 
-            Implementation! implementation = current.Implementation;
+            Implementation implementation = current.Implementation;
             vcgenSessions.TryGetValue(implementation,out vcgen);
             if(vcgen==null)
                 throw new Exception("HdnVCGen not found for implementation: " + implementation.Name);
@@ -421,15 +397,15 @@ namespace Microsoft.Boogie.Houdini
             return outcome;            
        }
 
-       private VCGen.Outcome VerifyCurrent(HoudiniState! current,
-                                           Program! program,
-                                           out List<Counterexample!>? errors,
+       private VCGen.Outcome VerifyCurrent(HoudiniState current,
+                                           Program program,
+                                           out List<Counterexample> errors,
                                            out bool exc) {
-            HdnVCGen vcgen;
+            HoudiniVCGen vcgen;
             if (current.Implementation != null) {
-                Implementation! implementation = current.Implementation;
-                vcgenSessions.TryGetValue(implementation,out vcgen);
-                if(vcgen==null)
+                Implementation implementation = current.Implementation;
+                vcgenSessions.TryGetValue(implementation, out vcgen);
+                if(vcgen == null)
                     throw new Exception("HdnVCGen not found for implementation: " + implementation.Name);
               
                 VCGen.Outcome outcome = TrySpinSameFunc(current, program, vcgen, out errors, out exc);
@@ -439,13 +415,13 @@ namespace Microsoft.Boogie.Houdini
             }
        }
 
-       private bool IsOutcomeNotHoudini(VCGen.Outcome outcome, List<Counterexample!>? errors) {
+       private bool IsOutcomeNotHoudini(VCGen.Outcome outcome, List<Counterexample> errors) {
               switch (outcome) {
                 case VCGen.Outcome.Correct: 
                   return false;
                   break;
                 case VCGen.Outcome.Errors: 
-                  assume (errors!=null);
+                  Contract.Assume (errors!=null);
                   foreach (Counterexample error in errors) {
                     if (ExtractRefutedAnnotation(error)==null)
                       return true;
@@ -462,10 +438,10 @@ namespace Microsoft.Boogie.Houdini
 
 
 	  // returns true if at least one of the violations is non-candidate
-       private bool AnyNonCandidateViolation(VCGen.Outcome outcome, List<Counterexample!>? errors) {
+       private bool AnyNonCandidateViolation(VCGen.Outcome outcome, List<Counterexample> errors) {
               switch (outcome) {
                 case VCGen.Outcome.Errors: 
-                  assert (errors!=null);
+                  Contract.Assert (errors!=null);
                   foreach (Counterexample error in errors) {
                     if (ExtractRefutedAnnotation(error)==null)
                       return true;
@@ -482,21 +458,21 @@ namespace Microsoft.Boogie.Houdini
        }
 	  
 
-       private List<Counterexample!> emptyList = new List<Counterexample!>();
+       private List<Counterexample> emptyList = new List<Counterexample>();
 
        // Record most current Non-Candidate errors found by Boogie, etc.
-       private void UpdateHoudiniOutcome(HoudiniOutcome! houdiniOutcome, 
-                                         Implementation! implementation, 
+       private void UpdateHoudiniOutcome(HoudiniOutcome houdiniOutcome, 
+                                         Implementation implementation, 
                                          VCGen.Outcome verificationOutcome, 
-                                         List<Counterexample!>? errors) {
-         string! implName = implementation.ToString();
+                                         List<Counterexample> errors) {
+         string implName = implementation.ToString();
          houdiniOutcome.implementationOutcomes.Remove(implName);
-         List<Counterexample!> nonCandidateErrors = new List<Counterexample!>();
+         List<Counterexample> nonCandidateErrors = new List<Counterexample>();
          
          switch (verificationOutcome) {
            case VCGen.Outcome.Errors: 
-             assume (errors!=null);
-             foreach (Counterexample! error in errors) {
+             Contract.Assume (errors!=null);
+             foreach (Counterexample error in errors) {
                if (ExtractRefutedAnnotation(error)==null)
                  nonCandidateErrors.Add(error);
              }
@@ -512,7 +488,7 @@ namespace Microsoft.Boogie.Houdini
   
        }
 
-       private void FlushWorkList(HoudiniState! current) {
+       private void FlushWorkList(HoudiniState current) {
             this.NotifyFlushStart();
             Axiom axiom = BuildAxiom(current.Assignment);
             while (current.WorkList.Count>0) {
@@ -521,7 +497,7 @@ namespace Microsoft.Boogie.Houdini
               current.Implementation= current.WorkList.Peek();
               this.NotifyImplementation(current.Implementation);
               
-              List<Counterexample!>? errors;
+              List<Counterexample> errors;
               VCGen.Outcome outcome = VerifyUsingAxiom(current.Implementation,axiom,out errors);
               UpdateHoudiniOutcome(current.Outcome,current.Implementation,outcome,errors);
               this.NotifyOutcome(outcome);
@@ -533,23 +509,23 @@ namespace Microsoft.Boogie.Houdini
            this.NotifyFlushFinish();
        }
 
-       private void UpdateAssignment(HoudiniState! current, RefutedAnnotation! refAnnot){
+       private void UpdateAssignment(HoudiniState current, RefutedAnnotation refAnnot){
             current.Assignment.Remove(refAnnot.Constant);
             current.Assignment.Add(refAnnot.Constant,false);
             this.NotifyConstant(refAnnot.Constant);
        }
 
-       private void AddToWorkList(HoudiniState! current, Implementation! imp) {
+       private void AddToWorkList(HoudiniState current, Implementation imp) {
          if (!current.WorkList.Contains(imp) && !current.isBlackListed(imp.Name)) {
             current.WorkList.Enqueue(imp);
             this.NotifyEnqueue(imp);
          }
        }
 
-       private void UpdateWorkList(HoudiniState! current, 
+       private void UpdateWorkList(HoudiniState current, 
                                    VCGen.Outcome outcome, 
-                                   List<Counterexample!>? errors) {
-       assume (current.Implementation!=null);
+                                   List<Counterexample> errors) {
+       Contract.Assume (current.Implementation!=null);
        
               switch (outcome) {
                 case VCGen.Outcome.Correct: 
@@ -557,12 +533,12 @@ namespace Microsoft.Boogie.Houdini
                   this.NotifyDequeue();
                   break;
                 case VCGen.Outcome.Errors: 
-                  assume (errors!=null);
+                  Contract.Assume (errors!=null);
                   bool dequeue = false;
-                  foreach (Counterexample! error in errors) {
+                  foreach (Counterexample error in errors) {
                     RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
                     if (refutedAnnotation!=null) {
-                      foreach (Implementation! implementation in FindImplementationsToEnqueue(refutedAnnotation,current.Implementation))
+                      foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation,current.Implementation))
                         { AddToWorkList(current, implementation); }
                       UpdateAssignment(current, refutedAnnotation);
                     } 
@@ -592,9 +568,9 @@ namespace Microsoft.Boogie.Houdini
        }
        
        
-       private void AddRelatedToWorkList(HoudiniState! current, RefutedAnnotation! refutedAnnotation) {
-            assume (current.Implementation != null);
-            foreach (Implementation! implementation in FindImplementationsToEnqueue(refutedAnnotation,current.Implementation)) {
+       private void AddRelatedToWorkList(HoudiniState current, RefutedAnnotation refutedAnnotation) {
+            Contract.Assume (current.Implementation != null);
+            foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation,current.Implementation)) {
                 AddToWorkList(current, implementation);
             }
        }
@@ -602,10 +578,10 @@ namespace Microsoft.Boogie.Houdini
        
        // Updates the worklist and current assignment
        // @return true if the current function is kept on the queue
-        private bool UpdateAssignmentWorkList(HoudiniState! current, 
+        private bool UpdateAssignmentWorkList(HoudiniState current, 
                                               VCGen.Outcome outcome, 
-                                              List<Counterexample!>? errors) {
-            assume (current.Implementation!=null);
+                                              List<Counterexample> errors) {
+            Contract.Assume (current.Implementation!=null);
             bool dequeue = true;
 			
             switch (outcome) {
@@ -613,8 +589,8 @@ namespace Microsoft.Boogie.Houdini
                 //yeah, dequeue
                 break;
             case VCGen.Outcome.Errors: 
-                assume (errors!=null);
-                foreach (Counterexample! error in errors) {
+                Contract.Assume (errors!=null);
+                foreach (Counterexample error in errors) {
                     RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
                     if (refutedAnnotation!=null) { // some candidate annotation removed
                         AddRelatedToWorkList(current, refutedAnnotation);
@@ -644,78 +620,67 @@ namespace Microsoft.Boogie.Houdini
 
 
         private class HoudiniState {
-           private Queue<Implementation!>! _workList;
-           private Set<string!>! blackList;
-           private Dictionary<string!,bool>! _assignment;
+           private Queue<Implementation> _workList;
+           private HashSet<string> blackList;
+           private Dictionary<string,bool> _assignment;
            private Implementation _implementation;
-           private HoudiniOutcome! _outcome;
+           private HoudiniOutcome _outcome;
            
-           public HoudiniState(Queue<Implementation!>! workList, Dictionary<string!,bool>! currentAssignment) {
+           public HoudiniState(Queue<Implementation> workList, Dictionary<string,bool> currentAssignment) {
              this._workList = workList;
              this._assignment = currentAssignment;
              this._implementation = null;
              this._outcome = new HoudiniOutcome();
-             this.blackList = new Set<string!>();
+             this.blackList = new HashSet<string>();
            }
            
-           public Queue<Implementation!>! WorkList {
+           public Queue<Implementation> WorkList {
              get { return this._workList; }
            }
-           public Dictionary<string!,bool>! Assignment {
+           public Dictionary<string,bool> Assignment {
              get { return this._assignment; }
            }
            public Implementation Implementation {
              get { return this._implementation; }
              set { this._implementation = value; }
            }
-           public HoudiniOutcome! Outcome {
+           public HoudiniOutcome Outcome {
              get { return this._outcome; }
            }
-           public bool isBlackListed(string! funcName) {
+           public bool isBlackListed(string funcName) {
              return blackList.Contains(funcName);
            }
-           public void addToBlackList(string! funcName) {
+           public void addToBlackList(string funcName) {
              blackList.Add(funcName);
            }
         }
 
-        private void PrintBadList(string kind, List<string!>! list) {
+        private void PrintBadList(string kind, List<string> list) {
             if(list.Count != 0) {
                 Console.WriteLine("----------------------------------------");
                 Console.WriteLine("Functions: {0}", kind);
-                foreach(string! fname in list) {
+                foreach(string fname in list) {
                     Console.WriteLine("\t{0}", fname);
                 }
                 Console.WriteLine("----------------------------------------");
             }
         }
 
-        private void PrintBadOutcomes(List<string!>! timeouts, List<string!>! inconc, List<string!>! errors) {
+        private void PrintBadOutcomes(List<string> timeouts, List<string> inconc, List<string> errors) {
             PrintBadList("TimedOut", timeouts);
             PrintBadList("Inconclusive", inconc);
             PrintBadList("Errors", errors);
         }
 
-        public HoudiniOutcome! VerifyProgram (Program! program) {
-            HoudiniOutcome outcome;
-            switch (this.houdiniProver) {
-            case HoudiniProver.Z3:
-                outcome = VerifyProgramSameFuncFirst(program);
-                //outcome = PerformHoudiniInference(program);
-                break;
-            case HoudiniProver.Z3API: // not that stable
-                outcome = VerifyProgramUnorderedWork(program);
-                break;
-            default:
-                throw new Exception("Unknown HoudiniProver: " + this.houdiniProver.ToString());
-            }
+        public HoudiniOutcome VerifyProgram (Program program) {
+            HoudiniOutcome outcome = VerifyProgramSameFuncFirst(program);
             PrintBadOutcomes(outcome.ListOfTimeouts, outcome.ListOfInconclusives, outcome.ListOfErrors);
             return outcome;
         }
 
         // Old main loop
-        public HoudiniOutcome! VerifyProgramUnorderedWork (Program! program) {
-            HoudiniState current = new HoudiniState(BuildWorkList(program),BuildAssignment((!)houdiniConstants.Keys));
+        public HoudiniOutcome VerifyProgramUnorderedWork (Program program) {
+            HoudiniState current = new HoudiniState(BuildWorkList(program),BuildAssignment(houdiniConstants.Keys));
             this.NotifyStart(program, houdiniConstants.Keys.Count);
 
             while (current.WorkList.Count>0) {
@@ -728,7 +693,7 @@ namespace Microsoft.Boogie.Houdini
               current.Implementation= current.WorkList.Peek();
               this.NotifyImplementation(current.Implementation);
               
-              List<Counterexample!>? errors; 
+              List<Counterexample> errors; 
               VCGen.Outcome outcome = VerifyUsingAxiom(current.Implementation, axiom, out errors);
               this.NotifyOutcome(outcome);
               
@@ -746,8 +711,8 @@ namespace Microsoft.Boogie.Houdini
         }
 		
         // New main loop
-        public HoudiniOutcome! VerifyProgramSameFuncFirst (Program! program) {
-            HoudiniState current = new HoudiniState(BuildWorkList(program),BuildAssignment((!)houdiniConstants.Keys));
+        public HoudiniOutcome VerifyProgramSameFuncFirst (Program program) {
+            HoudiniState current = new HoudiniState(BuildWorkList(program),BuildAssignment(houdiniConstants.Keys));
             this.NotifyStart(program, houdiniConstants.Keys.Count);
 
             while (current.WorkList.Count>0) {
@@ -758,7 +723,7 @@ namespace Microsoft.Boogie.Houdini
               current.Implementation = current.WorkList.Peek();
               this.NotifyImplementation(current.Implementation);
               
-              List<Counterexample!>? errors; 
+              List<Counterexample> errors; 
               VCGen.Outcome outcome = VerifyCurrent(current, program, out errors, out exceptional);
               
               // updates to worklist already done in VerifyCurrent, unless there was an exception
@@ -784,8 +749,8 @@ namespace Microsoft.Boogie.Houdini
 		//Aborts when there is a violation of non-candidate assertion
 		//This can be used in eager mode (continueAfterError) by simply making
 		//all non-candidate annotations as unchecked (free requires/ensures, assumes)
-        public HoudiniOutcome! PerformHoudiniInference(Program! program) {
-            HoudiniState current = new HoudiniState(BuildWorkList(program),BuildAssignment((!)houdiniConstants.Keys));
+        public HoudiniOutcome PerformHoudiniInference(Program program) {
+            HoudiniState current = new HoudiniState(BuildWorkList(program),BuildAssignment(houdiniConstants.Keys));
             this.NotifyStart(program, houdiniConstants.Keys.Count);
             
             Console.WriteLine("Using the new houdini algorithm\n");
@@ -798,7 +763,7 @@ namespace Microsoft.Boogie.Houdini
               current.Implementation = current.WorkList.Peek();
               this.NotifyImplementation(current.Implementation);
               
-              List<Counterexample!>? errors; 
+              List<Counterexample> errors; 
               VCGen.Outcome outcome = HoudiniVerifyCurrent(current, program, out errors, out exceptional);
               
               // updates to worklist already done in VerifyCurrent, unless there was an exception
@@ -820,18 +785,18 @@ namespace Microsoft.Boogie.Houdini
         }
 
         
-        private List<Implementation!>! FindImplementationsToEnqueue(RefutedAnnotation! refutedAnnotation, Implementation! currentImplementation) {
-          List<Implementation!>! implementations = new List<Implementation!>();
+        private List<Implementation> FindImplementationsToEnqueue(RefutedAnnotation refutedAnnotation, Implementation currentImplementation) {
+          List<Implementation> implementations = new List<Implementation>();
           switch (refutedAnnotation.Kind) {
             case RefutedAnnotationKind.REQUIRES: 
-              foreach (Implementation! callee in callGraph.NextNodes(currentImplementation))  {
-                assume (callee.Proc!=null);
+              foreach (Implementation callee in callGraph.NextNodes(currentImplementation))  {
+                Contract.Assume (callee.Proc!=null);
                 if (callee.Proc.Equals(refutedAnnotation.CalleeProc)) 
                   implementations.Add(callee);
               }
             break;
             case RefutedAnnotationKind.ENSURES: 
-               foreach (Implementation! caller in callGraph.PreviousNodes(currentImplementation))
+               foreach (Implementation caller in callGraph.PreviousNodes(currentImplementation))
                   implementations.Add(caller);
             break;
             case RefutedAnnotationKind.ASSERT: //the implementation is already in queue
@@ -846,11 +811,11 @@ namespace Microsoft.Boogie.Houdini
         private enum RefutedAnnotationKind { REQUIRES, ENSURES, ASSERT};
         
         private class RefutedAnnotation {
-          private string! _constant;
+          private string _constant;
           private RefutedAnnotationKind _kind;
           private Procedure _callee;
           
-          private RefutedAnnotation(string! constant, RefutedAnnotationKind kind, Procedure callee) {
+          private RefutedAnnotation(string constant, RefutedAnnotationKind kind, Procedure callee) {
             this._constant = constant;
             this._kind = kind;
             this._callee = callee;
@@ -858,41 +823,41 @@ namespace Microsoft.Boogie.Houdini
           public RefutedAnnotationKind Kind {
             get { return this._kind; }
           }
-          public string! Constant {
+          public string Constant {
             get { return this._constant; }
           }
           public Procedure CalleeProc {
             get { return this._callee; }
           }
-          public static RefutedAnnotation BuildRefutedRequires(string! constant, Procedure! callee) {
+          public static RefutedAnnotation BuildRefutedRequires(string constant, Procedure callee) {
             return new RefutedAnnotation(constant,RefutedAnnotationKind.REQUIRES,callee);
           }
-          public static RefutedAnnotation BuildRefutedEnsures(string! constant) {
+          public static RefutedAnnotation BuildRefutedEnsures(string constant) {
             return new RefutedAnnotation(constant,RefutedAnnotationKind.ENSURES, null);
           }
-          public static RefutedAnnotation BuildRefutedAssert(string! constant) {
+          public static RefutedAnnotation BuildRefutedAssert(string constant) {
             return new RefutedAnnotation(constant,RefutedAnnotationKind.ASSERT, null);
           }
 
         }
         
-        private void PrintRefutedCall(CallCounterexample! err, XmlSink! xmlOut) {
-            Expr! cond = err.FailingRequires.Condition;
+        private void PrintRefutedCall(CallCounterexample err, XmlSink xmlOut) {
+            Expr cond = err.FailingRequires.Condition;
             string houdiniConst;
             if (MatchCandidate(cond, out houdiniConst)) {
                 xmlOut.WriteError("precondition violation", err.FailingCall.tok, err.FailingRequires.tok, err.Trace);
             }
         }
         
-        private void PrintRefutedReturn(ReturnCounterexample! err, XmlSink! xmlOut) {
-            Expr! cond = err.FailingEnsures.Condition;
+        private void PrintRefutedReturn(ReturnCounterexample err, XmlSink xmlOut) {
+            Expr cond = err.FailingEnsures.Condition;
             string houdiniConst;
             if (MatchCandidate(cond, out houdiniConst)) {
                 xmlOut.WriteError("postcondition violation", err.FailingReturn.tok, err.FailingEnsures.tok, err.Trace);
             }
         }
         
-        private void PrintRefutedAssert(AssertCounterexample! err, XmlSink! xmlOut) {
+        private void PrintRefutedAssert(AssertCounterexample err, XmlSink xmlOut) {
             Expr cond = err.FailingAssert.OrigExpr;
             string houdiniConst;
             if (MatchCandidate(cond, out houdiniConst)) {
@@ -901,13 +866,13 @@ namespace Microsoft.Boogie.Houdini
         }
 
 
-        private void DebugRefutedCandidates(Implementation! curFunc, List<Counterexample!> errors) {
+        private void DebugRefutedCandidates(Implementation curFunc, List<Counterexample> errors) {
             XmlSink xmlRefuted = CommandLineOptions.Clo.XmlRefuted;
             if (xmlRefuted != null && errors != null) {
                DateTime start = DateTime.Now;
                xmlRefuted.WriteStartMethod(curFunc.ToString(), start);
             
-               foreach (Counterexample! error in errors) {
+               foreach (Counterexample error in errors) {
                   CallCounterexample ce = error as CallCounterexample;
                   if (ce != null) PrintRefutedCall(ce, xmlRefuted);
                   ReturnCounterexample re = error as ReturnCounterexample;
@@ -925,10 +890,10 @@ namespace Microsoft.Boogie.Houdini
           string houdiniConstant;
           CallCounterexample callCounterexample = error as CallCounterexample;
           if (callCounterexample!=null) {
-            Procedure! failingProcedure = (!)callCounterexample.FailingCall.Proc;
-            Requires! failingRequires  = (!)callCounterexample.FailingRequires;
+            Procedure failingProcedure = callCounterexample.FailingCall.Proc;
+            Requires failingRequires  = callCounterexample.FailingRequires;
             if (MatchCandidate(failingRequires.Condition,out houdiniConstant)) {
-              assert (houdiniConstant!=null);
+              Contract.Assert (houdiniConstant!=null);
               return RefutedAnnotation.BuildRefutedRequires(houdiniConstant, failingProcedure);
             }
           }
@@ -936,7 +901,7 @@ namespace Microsoft.Boogie.Houdini
           if (returnCounterexample!=null) {
             Ensures failingEnsures  =returnCounterexample.FailingEnsures;
             if (MatchCandidate(failingEnsures.Condition,out houdiniConstant)) {
-              assert (houdiniConstant!=null);
+              Contract.Assert (houdiniConstant!=null);
               return RefutedAnnotation.BuildRefutedEnsures(houdiniConstant);
             }
           }
@@ -944,7 +909,7 @@ namespace Microsoft.Boogie.Houdini
           if (assertCounterexample!=null) {
             AssertCmd failingAssert  = assertCounterexample.FailingAssert;
             if (MatchCandidate(failingAssert.OrigExpr,out houdiniConstant)) {
-              assert (houdiniConstant!=null);
+              Contract.Assert (houdiniConstant!=null);
               return RefutedAnnotation.BuildRefutedAssert(houdiniConstant);
             }
           }
@@ -952,16 +917,16 @@ namespace Microsoft.Boogie.Houdini
           return null;
         }
         
-        private VCGen.Outcome TryCatchVerify(HdnVCGen! vcgen, out List<Counterexample!>? errors) {
+        private VCGen.Outcome TryCatchVerify(HoudiniVCGen vcgen, out List<Counterexample> errors) {
           VCGen.Outcome outcome;
           try {
             outcome = vcgen.Verify(out errors);
           } catch (VCGenException e) {
-            assume(e!=null);
+            Contract.Assume(e!=null);
             errors = null;
             outcome = VCGen.Outcome.Inconclusive;
           } catch (UnexpectedProverOutputException upo) {
-            assume(upo!=null);
+            Contract.Assume(upo!=null);
             errors = null;
             outcome = VCGen.Outcome.Inconclusive;
           }   
@@ -970,12 +935,12 @@ namespace Microsoft.Boogie.Houdini
         
         //version of TryCatchVerify that spins on the same function
         //as long as the current assignment is changing
-        private VCGen.Outcome TrySpinSameFunc(HoudiniState! current,
-                                              Program! program,
-                                              HdnVCGen! vcgen, 
-                                              out List<Counterexample!>? errors,
+        private VCGen.Outcome TrySpinSameFunc(HoudiniState current,
+                                              Program program,
+                                              HoudiniVCGen vcgen, 
+                                              out List<Counterexample> errors,
                                               out bool exceptional) {
-            assert (current.Implementation != null);
+            Contract.Assert (current.Implementation != null);
             VCGen.Outcome outcome;
             bool pushed = false;
             errors = null;
@@ -989,7 +954,7 @@ namespace Microsoft.Boogie.Houdini
                         System.GC.Collect();
                         this.NotifyIteration();
                     }
-                    Axiom! currentAx = BuildAxiom(current.Assignment);
+                    Axiom currentAx = BuildAxiom(current.Assignment);
                     this.NotifyAssignment(current.Assignment);
 
                     vcgen.PushAxiom(currentAx);
@@ -1016,7 +981,7 @@ namespace Microsoft.Boogie.Houdini
                 } while (trySameFunc && current.WorkList.Count > 0);
 				
             } catch (VCGenException e) {
-                assume(e!=null);
+                Contract.Assume(e!=null);
                 if (pushed){
                     vcgen.Pop(); // what if session is dead?
                 }
@@ -1024,7 +989,7 @@ namespace Microsoft.Boogie.Houdini
                 exceptional = true;
                 return outcome;
             } catch (UnexpectedProverOutputException upo) {
-                assume(upo!=null);
+                Contract.Assume(upo!=null);
                 if (pushed){
                     vcgen.Pop();
                 }
@@ -1039,12 +1004,12 @@ namespace Microsoft.Boogie.Houdini
 
 
 		//Similar to TrySpinSameFunc except no Candidate logic
-        private VCGen.Outcome HoudiniVerifyCurrentAux(HoudiniState! current,
-                                              Program! program,
-                                              HdnVCGen! vcgen, 
-                                              out List<Counterexample!>? errors,
+        private VCGen.Outcome HoudiniVerifyCurrentAux(HoudiniState current,
+                                              Program program,
+                                              HoudiniVCGen vcgen, 
+                                              out List<Counterexample> errors,
                                               out bool exceptional) {
-            assert (current.Implementation != null);
+            Contract.Assert (current.Implementation != null);
             VCGen.Outcome outcome;
             bool pushed = false;
             errors = null;
@@ -1059,7 +1024,7 @@ namespace Microsoft.Boogie.Houdini
                         this.NotifyIteration();
                     }
                     
-                    Axiom! currentAx = BuildAxiom(current.Assignment);
+                    Axiom currentAx = BuildAxiom(current.Assignment);
                     this.NotifyAssignment(current.Assignment);
 
 					//check the VC with the current assignment
@@ -1088,7 +1053,7 @@ namespace Microsoft.Boogie.Houdini
                 } while (trySameFunc && current.WorkList.Count > 0);
 				
             } catch (VCGenException e) {
-                assume(e!=null);
+                Contract.Assume(e!=null);
                 if (pushed){
                     vcgen.Pop(); // what if session is dead?
                 }
@@ -1096,7 +1061,7 @@ namespace Microsoft.Boogie.Houdini
                 exceptional = true;
                 return outcome;
             } catch (UnexpectedProverOutputException upo) {
-                assume(upo!=null);
+                Contract.Assume(upo!=null);
                 if (pushed){
                     vcgen.Pop();
                 }
@@ -1113,8 +1078,8 @@ namespace Microsoft.Boogie.Houdini
 
   public class VCGenOutcome {
     public VCGen.Outcome outcome;
-    public List<Counterexample!> errors;
-    public VCGenOutcome(VCGen.Outcome outcome, List<Counterexample!> errors) {
+    public List<Counterexample> errors;
+    public VCGenOutcome(VCGen.Outcome outcome, List<Counterexample> errors) {
       this.outcome = outcome;
       this.errors = errors;
     }
@@ -1122,9 +1087,9 @@ namespace Microsoft.Boogie.Houdini
 
   public class HoudiniOutcome {
     // final assignment
-    public Dictionary<string!,bool>! assignment = new Dictionary<string!,bool>();
+    public Dictionary<string,bool> assignment = new Dictionary<string,bool>();
     // boogie errors
-    public Dictionary<string!,VCGenOutcome!>! implementationOutcomes = new Dictionary<string!,VCGenOutcome!>();
+    public Dictionary<string,VCGenOutcome> implementationOutcomes = new Dictionary<string,VCGenOutcome>();
     // outcome kind    
     public HoudiniOutcomeKind kind;
     
@@ -1132,16 +1097,16 @@ namespace Microsoft.Boogie.Houdini
     
     private int CountResults(VCGen.Outcome outcome) {
         int outcomeCount=0;
-        foreach (VCGenOutcome! verifyOutcome in implementationOutcomes.Values) {
+        foreach (VCGenOutcome verifyOutcome in implementationOutcomes.Values) {
           if (verifyOutcome.outcome==outcome)
             outcomeCount++;
         }
         return outcomeCount;
     }
     
-    private List<string!>! ListOutcomeMatches(VCGen.Outcome outcome) {
-        List<string!>! result = new List<string!>();
-        foreach (KeyValuePair<string!, VCGenOutcome!> kvpair in implementationOutcomes) {
+    private List<string> ListOutcomeMatches(VCGen.Outcome outcome) {
+        List<string> result = new List<string>();
+        foreach (KeyValuePair<string, VCGenOutcome> kvpair in implementationOutcomes) {
           if (kvpair.Value.outcome==outcome)
             result.Add(kvpair.Key);
         }
@@ -1168,17 +1133,17 @@ namespace Microsoft.Boogie.Houdini
         return CountResults(VCGen.Outcome.TimedOut);
       }
     }
-    public List<string!>! ListOfTimeouts {
+    public List<string> ListOfTimeouts {
       get {
         return ListOutcomeMatches(VCGen.Outcome.TimedOut);
       }
     }
-    public List<string!>! ListOfInconclusives {
+    public List<string> ListOfInconclusives {
       get {
         return ListOutcomeMatches(VCGen.Outcome.Inconclusive);
       }
     }
-    public List<string!>! ListOfErrors {
+    public List<string> ListOfErrors {
       get {
         return ListOutcomeMatches(VCGen.Outcome.Errors);
       }
