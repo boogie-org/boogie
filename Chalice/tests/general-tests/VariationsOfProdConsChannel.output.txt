@@ -1,0 +1,13 @@
+Verification of VariationsOfProdConsChannel.chalice using parameters="" 
+
+The program did not typecheck.
+11.5: call of undeclared member Producer in class Program
+<undefined position>: Invalid token type. Program does not declare a method Producer.
+12.5: call of undeclared member Consumer in class Program
+<undefined position>: Invalid token type. Program does not declare a method Consumer.
+14.10: the first argument of a join async must be a token
+18.5: call of undeclared member Producer in class Program
+<undefined position>: Invalid token type. Program does not declare a method Producer.
+19.5: call of undeclared member Consumer in class Program
+<undefined position>: Invalid token type. Program does not declare a method Consumer.
+20.10: the first argument of a join async must be a token

@@ -127,6 +127,7 @@ namespace BytecodeTranslator {
       s = s.Replace("[0:,0:,0:,0:,0:]", "5DArray");
       s = s.Replace('!', '$');
       s = s.Replace('*', '$');
+      s = s.Replace('+', '$');
       s = s.Replace('(', '$');
       s = s.Replace(')', '$');
       s = s.Replace(',', '$');

@@ -66,7 +66,7 @@ def outputMainProcedures(file, batFile):
     if (boogiePageVars[j]["boogieStringName"] == dummyPageVar):
       continue
 
-    file.write("procedure __BOOGIE_VERIFICATION_PROCEDURE_" + str(i) + "_" + str(j) + "();\n")
+    file.write("procedure {:inline 1} __BOOGIE_VERIFICATION_PROCEDURE_" + str(i) + "_" + str(j) + "();\n")
     file.write("implementation __BOOGIE_VERIFICATION_PROCEDURE_" + str(i) + "_" + str(j) + "() {\n")
     file.write("\tvar $doWork: bool;\n")
     file.write("\tvar $activeControl: int;\n")
@@ -99,7 +99,7 @@ def outputMainProcedures(file, batFile):
     batFile.write("if exist corral_out_trace.txt move corral_out_trace.txt corral_out_trace_" + str(i) + "_" + str(j) + ".txt\n")
 
 def outputPageControlDriver(file, originalPageName, boogiePageName):
-  file.write("procedure drive" + boogiePageName + "Controls();\n")
+  file.write("procedure {:inline 1} drive" + boogiePageName + "Controls();\n")
   file.write("implementation drive" + boogiePageName + "Controls() {\n")
   file.write("\tvar $activeControl: int;\n")
   file.write("\tvar $control: Ref;\n")
@@ -117,7 +117,7 @@ def outputPageControlDriver(file, originalPageName, boogiePageName):
     if controlInfo["bplName"] == "":
       continue
     if not ifInitialized:
-      file.write("\t\tif ($activeControl == str(activeControl)) {\n")
+      file.write("\t\tif ($activeControl == " + str(activeControl) + ") {\n")
       ifInitialized= True
     else:
       file.write("\t\telse if ($activeControl == " + str(activeControl) + ") {\n")
@@ -151,7 +151,7 @@ def outputControlDrivers(file, batFile):
   for i in range(0,len(boogiePageVars)):
     outputPageControlDriver(file, originalPageVars[i],boogiePageVars[i]["name"])
 
-  file.write("procedure DriveControls();\n")
+  file.write("procedure {:inline 1} DriveControls();\n")
   file.write("implementation DriveControls() {\n")
   for i in range(0,len(boogiePageVars)):
     file.write("\tvar isCurrent" + boogiePageVars[i]["name"] + ": bool;\n")
@@ -176,7 +176,7 @@ def outputControlDrivers(file, batFile):
   file.write("}\n")
 
 def outputURIHavocProcedure(file):
-  file.write("procedure __BOOGIE_Havoc_CurrentURI__();\n")
+  file.write("procedure {:inline 1} __BOOGIE_Havoc_CurrentURI__();\n")
   file.write("implementation __BOOGIE_Havoc_CurrentURI__() {\n")
   file.write("\thavoc " + currentNavigationVariable + ";\n")
   file.write("// TODO write assume statements to filter havoc'd variable to either of all pages\n")

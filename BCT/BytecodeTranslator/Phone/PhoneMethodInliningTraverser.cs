@@ -10,25 +10,41 @@ namespace BytecodeTranslator.Phone {
     private HashSet<IMethodDefinition> iterMethodsToInline;
     private PhoneCodeHelper phoneHelper;
     private bool firstPassDone = false;
+    private bool changedOnLastPass = false;
+    private IAssemblyReference assemblyBeingTranslated;
+
+    public int TotalMethodsCount { get; private set; }
+    public int InlinedMethodsCount { get { return methodsToInline.Count(); } }
 
     public PhoneMethodInliningMetadataTraverser(PhoneCodeHelper phoneHelper) {
       methodsToInline = new HashSet<IMethodDefinition>();
       iterMethodsToInline = new HashSet<IMethodDefinition>();
       this.phoneHelper = phoneHelper;
+      TotalMethodsCount = 0;
     }
 
     public override void Visit(IEnumerable<IModule> modules) {
-      base.Visit(modules);
+      foreach (IModule module in modules) {
+        assemblyBeingTranslated= module.ContainingAssembly;
+        this.Visit(module);
+      }
       firstPassDone = true;
     }
 
     public override void Visit(IMethodDefinition method) {
+      if (!firstPassDone)
+        TotalMethodsCount++;
+
       if (iterMethodsToInline.Contains(method) || (!firstPassDone && phoneHelper.mustInlineMethod(method))) {
         PhoneMethodInliningCodeTraverser codeTraverser= new PhoneMethodInliningCodeTraverser();
         codeTraverser.Visit(method);
         foreach (IMethodDefinition newMethodDef in codeTraverser.getMethodsFound()) {
-          if (!methodsToInline.Contains(newMethodDef))
+          bool isExtern = this.assemblyBeingTranslated != null &&
+                          !TypeHelper.GetDefiningUnitReference(newMethodDef.ContainingType).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity);
+          if (!methodsToInline.Contains(newMethodDef) && !isExtern) {
             iterMethodsToInline.Add(newMethodDef);
+            changedOnLastPass = true;
+          }
         }
         methodsToInline.Add(method);
         iterMethodsToInline.Remove(method);
@@ -40,7 +56,14 @@ namespace BytecodeTranslator.Phone {
     }
 
     public bool isFinished() {
-      return !iterMethodsToInline.Any();
+      return firstPassDone && !changedOnLastPass;
+    }
+
+    public void findAllMethodsToInline(List<IModule> modules) {
+      while (!isFinished()) {
+        changedOnLastPass = false;
+        Visit(modules);
+      }
     }
   }
 

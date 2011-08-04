@@ -238,6 +238,10 @@ namespace BytecodeTranslator {
     {
         string typename = TypeHelper.GetTypeName(type);
         typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
+        // Need to append something to the name to avoid name clashes with other members (of a different
+        // type) that have the same name.
+        typename += "$type";
+
         Bpl.IToken tok = type.Token();
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, typename, this.TypeType);
         Bpl.Constant v = new Bpl.Constant(tok, tident, true /*unique*/, parents, false, null);
@@ -248,6 +252,8 @@ namespace BytecodeTranslator {
       System.Diagnostics.Debug.Assert(parameterCount > 0);
       string typename = TypeHelper.GetTypeName(type);
       typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
+      // Need to append something to the name to avoid name clashes.
+      typename += "$type";
       Bpl.IToken tok = type.Token();
       Bpl.VariableSeq inputs = new Bpl.VariableSeq();
       for (int i = 0; i < parameterCount; i++) {
@@ -485,8 +491,8 @@ procedure DelegateRemoveHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
   }
 }
 
-procedure System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
-procedure System.String.op_Inequality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
+procedure {:inline 1} System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
+procedure {:inline 1} System.String.op_Inequality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
 
 implementation System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool) {
   $result := (a$in == b$in);
@@ -500,19 +506,19 @@ implementation System.String.op_Inequality$System.String$System.String(a$in: Ref
 var isControlEnabled: [Ref]bool;
 var isControlChecked: [Ref]bool;
 
-procedure System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool);
+procedure {:inline 1} System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool);
 implementation System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool) {
   isControlEnabled[$this] := value$in;
 }
 
-procedure System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref);
+procedure {:inline 1} System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref);
 implementation System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref) {
   var enabledness: bool;
   enabledness := isControlEnabled[$this];
   $result := Box2Ref(Bool2Box(enabledness));
 }
 
-procedure System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref);
+procedure {:inline 1} System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref);
 implementation System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref) {
   var check: bool;
 
@@ -520,7 +526,7 @@ implementation System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$Sys
   isControlChecked[$this] := check;
 }
 
-procedure System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref);
+procedure {:inline 1} System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref);
 implementation System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref) {
   var isChecked: bool;
   isChecked := isControlChecked[$this];

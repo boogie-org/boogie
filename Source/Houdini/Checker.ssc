@@ -1,0 +1,460 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) Microsoft Corporation.  All Rights Reserved.
+//
+//-----------------------------------------------------------------------------
+using System;
+using Microsoft.Contracts;
+using System.Collections.Generic;
+using Microsoft.Boogie;
+using Microsoft.Boogie.Simplify.AST;
+using VC;
+using Microsoft.Boogie.Z3;
+using Microsoft.AbstractInterpretationFramework;
+using Microsoft.Boogie.AbstractInterpretation;
+using System.Collections;
+using System.Compiler;
+using System.IO;
+using System.Threading;
+
+namespace Microsoft.Boogie.Houdini {
+
+  public abstract class HdnCheckerFactory {
+    public static HdnChecker! BuildHdnChecker(Checker! checker) {
+      if (checker.TheoremProver is Z3ThreadTheoremProver)
+        return new HoudiniZ3ApiChecker(checker);
+      else if (checker.TheoremProver is Z3ProcessTheoremProver) {
+        if (CommandLineOptions.Clo.houdiniFlags.incremental) {
+          return new HoudiniZ3CheckerIncr(checker);
+        } else {
+          return new HoudiniZ3Checker(checker);
+        }        
+      } else
+        throw new Exception("HdnChecker only works with z3");
+    }
+  }
+
+  public abstract class HdnChecker {
+    public abstract void PrepareCheck(string! _descriptiveName, 
+        VCExpr! _vc, ProverInterface.ErrorHandler! _handler);
+    public abstract void PushAxiom(VCExpr! vc);
+    public abstract void Pop();
+    public abstract void Check();
+    public abstract ProverInterface.Outcome ReadOutcome()
+      throws UnexpectedProverOutputException;
+  }
+  
+  public class HoudiniZ3ApiChecker:HdnChecker {
+
+    private Z3ThreadTheoremProver! z3prover;
+    
+    private ProverInterface.ErrorHandler handler;
+    private ProverInterface.Outcome outcome;
+    private UnexpectedProverOutputException outputExn;
+
+    internal HoudiniZ3ApiChecker(Checker! checker)
+    requires checker.TheoremProver!=null;
+    requires checker.TheoremProver is Z3ThreadTheoremProver;
+    {
+      this.z3prover = (Z3ThreadTheoremProver)checker.TheoremProver;
+    }
+
+    public override void PrepareCheck(string! _descriptiveName, VCExpr! _vc, ProverInterface.ErrorHandler! _handler) {
+      handler = _handler;
+      z3prover.LogComment(_descriptiveName);
+      z3prover.PrepareCheck(_descriptiveName,_vc);
+    }
+    
+    public override void PushAxiom(VCExpr! vc) {
+      z3prover.PushAxiom(vc);
+    }
+    
+    public override void Pop() {
+      z3prover.Pop();
+    }
+    
+    public override void Check() {
+      z3prover.BeginPreparedCheck();
+      try {
+        outcome = z3prover.CheckOutcome((!)handler);
+      } catch (UnexpectedProverOutputException e) {
+        outputExn = e;
+      }
+    }
+
+    public override ProverInterface.Outcome ReadOutcome()
+      throws UnexpectedProverOutputException;
+    {
+      if (outputExn != null) {
+        throw outputExn;
+      }
+      return outcome;
+    }
+  }
+  
+  // version of Z3PTP exposing more of the prover process functionality
+  public class Z3ProcessTPExposed : Z3ProcessTheoremProver { 
+    
+    [NotDelayed]
+    public Z3ProcessTPExposed (TextWriter/*?*/ logFileWriter, VCExpressionGenerator! gen, DeclFreeProverContext! ctx, int timeout, bool typed)
+      throws UnexpectedProverOutputException;
+    {
+      base(logFileWriter, gen, ctx, timeout, typed, "z3.exe");
+    }
+    
+    
+    //MOVED Directly Z3 ProverInterface for now...
+    //To introduce this cleanly, need to add a new subproject under Provers
+    //and must use the commandline option for that, instead of saying /prover:z3
+    //That way, the class is constructed in class Checker the same way
+    //all the other provers are constructed
+  
+  }
+  
+  public class Z3ExposedFactory : Z3.Factory {
+
+  }
+  
+  
+  //Old version
+  public class HoudiniZ3Checker:HdnChecker {
+    private Stack<VCExpr!>! axioms = new Stack<VCExpr!>();
+    private Checker! checker;
+    private string descriptiveName;
+    private VCExpr conjecture;
+    private ProverInterface.ErrorHandler handler;
+        
+    internal HoudiniZ3Checker(Checker! checker) 
+    requires checker.TheoremProver!=null;
+    requires checker.TheoremProver is Z3ProcessTheoremProver;
+    {
+      this.checker = checker;
+    }
+    
+    public override void PrepareCheck(string! _descriptiveName, VCExpr! _vc, ProverInterface.ErrorHandler! _handler) 
+    {
+      this.descriptiveName = _descriptiveName;
+      this.conjecture = _vc;
+      this.handler = _handler;
+    }
+    public override void PushAxiom(VCExpr! vc) {
+      axioms.Push(vc);
+    }
+    public override void Pop() {
+      axioms.Pop();
+    }    
+    private VCExpr! BuildVCAxioms(Stack<VCExpr!>! axioms) 
+    requires axioms.Count>0;
+    {
+      VCExpr vc_axioms = null;
+      foreach (VCExpr! axiom in axioms) {
+        if (vc_axioms==null)
+          vc_axioms=axiom;
+        else
+          vc_axioms = checker.VCExprGen.And(vc_axioms,axiom);
+      }
+      return (!)vc_axioms;
+    }
+    
+    public override void Check() 
+    {
+      assert (descriptiveName!=null);
+      assert (conjecture!=null);
+      assert (handler!=null);
+      outcome = ProverInterface.Outcome.Undetermined;
+      
+      VCExpr! vc;
+      if (axioms.Count>0) {
+        VCExpr vc_axioms = BuildVCAxioms(axioms);
+        vc = checker.VCExprGen.Implies(vc_axioms,conjecture);
+      } else        
+        vc = conjecture;
+
+      checker.BeginCheck(descriptiveName,vc,handler);
+      WaitHandle.WaitAny(new WaitHandle[] {checker.ProverDone});
+    }
+   
+    private ProverInterface.Outcome outcome;
+    private UnexpectedProverOutputException outputExn;
+
+    public override ProverInterface.Outcome ReadOutcome()
+      throws UnexpectedProverOutputException;
+    {
+      try {
+        outcome = checker.ReadOutcome();
+      } catch (UnexpectedProverOutputException e) {
+        throw e;
+      }
+      return outcome;
+    }
+  }
+
+  //new version
+  public class HoudiniZ3CheckerIncr:HdnChecker {
+    private Checker! checker;
+    private string descriptiveName;
+    private VCExpr conjecture;
+    private ProverInterface.ErrorHandler handler;
+    
+    // Hack to delay the exception throwing (from Push/Pop...) for now
+    private UnexpectedProverOutputException delayedExc;
+    private Z3ProcessTheoremProver! thmProver;
+    
+    internal HoudiniZ3CheckerIncr(Checker! checker) 
+    requires checker.TheoremProver!=null;
+    requires checker.TheoremProver is Z3ProcessTheoremProver;
+    {
+      this.checker = checker;
+      this.thmProver = (Z3ProcessTheoremProver!)checker.TheoremProver;
+    }
+    
+    private void delayException(UnexpectedProverOutputException exc) {  
+         if (delayedExc == null) { delayedExc = exc; }
+    }
+    
+    public override void PrepareCheck(string! _descriptiveName, VCExpr! _vc, 
+        ProverInterface.ErrorHandler! _handler) 
+    {
+      this.descriptiveName = _descriptiveName;
+      this.conjecture = _vc;
+      this.handler = _handler;
+      this.thmProver.LogComment(_descriptiveName);
+      try {
+         this.thmProver.PrepareCheck(_descriptiveName,_vc);
+      } catch (UnexpectedProverOutputException exc) {
+         delayException(exc);
+      }
+    }
+    public override void PushAxiom(VCExpr! vc) {
+      string! vcStr = vc.ToString();
+      try {
+         thmProver.PushAxioms(vcStr);
+      } catch (UnexpectedProverOutputException exc) {
+         delayException(exc);
+      }
+    }
+    public override void Pop() {
+      try {
+         thmProver.PopAxioms();
+      } catch (UnexpectedProverOutputException exc) {
+         delayException(exc);
+      }
+    }    
+    
+    public override void Check()
+    {
+      assert (descriptiveName!=null);
+      assert (conjecture!=null);
+      assert (handler!=null);
+      outcome = ProverInterface.Outcome.Undetermined;
+      
+      VCExpr! vc = checker.VCExprGen.False;
+      checker.BeginCheck(descriptiveName,vc,handler);
+      WaitHandle.WaitAny(new WaitHandle[] {checker.ProverDone});
+    }
+   
+    private ProverInterface.Outcome outcome;
+    private UnexpectedProverOutputException outputExn;
+
+    public override ProverInterface.Outcome ReadOutcome()
+      throws UnexpectedProverOutputException;
+    {
+      // HACK
+      if (delayedExc != null) {
+        UnexpectedProverOutputException temp = delayedExc;
+        delayedExc = null;
+        throw temp;
+      }
+      // Normal stuff
+      try {
+        outcome = checker.ReadOutcome();
+      } catch (UnexpectedProverOutputException e) {
+        throw e;
+      }
+      return outcome;
+    }
+  }
+  
+  public abstract class HdnVCGenFactory {
+    public abstract HdnVCGen! BuildVCGen(Program! program, string logFilePath, bool appendLogFile);
+  }
+  public class Z3APIHdnVCGenFactory:HdnVCGenFactory {
+    public override HdnVCGen! BuildVCGen(Program! program, string logFilePath, bool appendLogFile) {
+      return new Z3ApiHdnVCGen(program, logFilePath, appendLogFile);
+    }
+  }
+  public class Z3HdnVCGenFactory:HdnVCGenFactory {
+    public override HdnVCGen! BuildVCGen(Program! program, string logFilePath, bool appendLogFile) {
+      return new Z3HdnVCGen(program, logFilePath, appendLogFile);
+    }
+  }
+  
+  public abstract class HdnVCGen {
+    public abstract void PrepareVerification(Implementation! impl, Program! program);
+    public abstract void PushAxiom(Axiom! axiom);
+    public abstract void Pop();
+    public abstract VC.VCGen.Outcome Verify(out List<Counterexample!>? errors)       
+      throws UnexpectedProverOutputException;
+      
+  }
+  
+  public class Z3HdnVCGen: HdnVCGen {
+    private Program! program;
+    private string logFilePath;
+    private bool appendLogFile;
+    private Implementation implementation;
+    private Axiom axiom;
+    
+    private ExtVCGen vcgen;
+    
+    public Z3HdnVCGen(Program! program, string logFilePath, bool appendLogFile) {
+      this.program = program;
+      this.logFilePath = logFilePath;
+      this.appendLogFile= appendLogFile;
+    }
+
+	public override void PrepareVerification(Implementation! impl, Program! program) {	  
+	  this.implementation = impl;
+	  this.program = program;
+      this.vcgen = new ExtVCGen(program,logFilePath,appendLogFile);
+      this.vcgen.PrepareVerification(this.implementation,this.program); 
+      //watch out for > 1 call -- don't want CFG conversion to happen too many times!!!
+    }
+        
+    public override  void PushAxiom(Axiom! axiom) {
+      assert this.vcgen != null;
+      this.axiom=axiom;
+      this.vcgen.PushAxiom(this.axiom);
+    }
+    
+    public override void Pop() {
+      assert this.vcgen != null;
+      this.vcgen.Pop();
+      this.axiom = null;
+    }
+    
+    public override VC.VCGen.Outcome Verify(out List<Counterexample!>? errors)       
+      throws UnexpectedProverOutputException; {
+      assert(this.vcgen!=null);
+      
+      return vcgen.Verify(out errors);
+    }
+  
+  }
+  
+  public class Z3ApiHdnVCGen: HdnVCGen {
+    private ExtVCGen! vcgen;
+    
+    public Z3ApiHdnVCGen(Program! program, string logFilePath, bool appendLogFile) {
+      this.vcgen = new ExtVCGen(program,logFilePath,appendLogFile);
+    }
+    
+    public override void PrepareVerification(Implementation! impl, Program! program) {
+      vcgen.PrepareVerification(impl,program);
+    }
+    
+    public override  void PushAxiom(Axiom! axiom) {
+      vcgen.PushAxiom(axiom);
+    }
+    
+    public override void Pop() {
+      vcgen.Pop();
+    }
+    
+    public override VC.VCGen.Outcome Verify(out List<Counterexample!>? errors)       
+      throws UnexpectedProverOutputException; {
+      return vcgen.Verify(out errors);
+    }
+      
+  }
+  
+  
+  
+  public class ExtVCGen : VCGen {
+    
+    private HdnChecker hdnChecker;
+    private VCExpressionGenerator gen;
+    CounterexampleCollector! collector = new CounterexampleCollector();
+    
+    public ExtVCGen(Program! program, string logFilePath, bool appendLogFile) {
+      base(program,logFilePath,appendLogFile);
+    }
+    
+    public void PrepareVerification(Implementation! impl, Program! program) {
+      collector.OnProgress("HdnVCGen", 0, 0, 0.0);
+      if (CommandLineOptions.Clo.SoundnessSmokeTest) {
+        throw new Exception("HoudiniVCGen does not support Soundness smoke test.");
+      }
+      
+      ConvertCFG2DAG(impl, program);
+      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program);
+	  Hashtable/*<int, Absy!>*/! label2absy;
+      Checker! checker = new Checker(program, this.logFilePath, this.appendLogFile, impl, CommandLineOptions.Clo.ProverKillTime); 
+      VCExpr! vc = GenerateVC(impl, out label2absy, checker);
+              
+      ErrorReporter reporter;
+      if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
+        reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, incarnationOriginMap, collector);
+      } else {
+        reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, incarnationOriginMap, collector);
+      }
+      this.gen = checker.VCExprGen;
+      this.hdnChecker = HdnCheckerFactory.BuildHdnChecker(checker);
+      this.hdnChecker.PrepareCheck((!) impl.Name, vc, reporter);
+    }
+    
+    
+    public void PushAxiom(Axiom! axiom) 
+    {
+      assume (hdnChecker!=null);
+      assume (gen!=null);
+      VCExpr vc = axiom.Expr.VCView(gen);
+      this.hdnChecker.PushAxiom(vc);
+    }
+    public void Pop() {
+      assume (hdnChecker!=null);
+      hdnChecker.Pop();
+    }
+    
+    public Outcome Verify(out List<Counterexample!>? errors)       
+    throws UnexpectedProverOutputException; {
+      assume (hdnChecker!=null);
+      collector.examples.Clear();
+      hdnChecker.Check();
+      ProverInterface.Outcome proverOutcome;
+      proverOutcome = hdnChecker.ReadOutcome();
+      Outcome verifyOutcome = ReadOutcome(proverOutcome);
+      if (verifyOutcome == Outcome.Errors) {
+        assume (collector.examples!=null);
+        if (collector.examples.Count == 0) {
+            string memStr = System.Convert.ToString(System.GC.GetTotalMemory(false));
+            if (memStr != null)
+                memStr = "?";
+            throw new UnexpectedProverOutputException("Outcome.Errors w/ 0 counter examples. " + memStr + " memory used");
+        }
+        errors = collector.examples;
+      } else {
+        errors = null;
+      }
+      return verifyOutcome;
+    }
+
+    private Outcome ReadOutcome(ProverInterface.Outcome proverOutcome) {
+      switch (proverOutcome) {
+          case ProverInterface.Outcome.Valid:
+            return Outcome.Correct;
+          case ProverInterface.Outcome.Invalid:
+            return Outcome.Errors;
+          case ProverInterface.Outcome.TimeOut:
+            return Outcome.TimedOut;
+          case ProverInterface.Outcome.Undetermined:
+            return Outcome.Inconclusive;
+          default:
+            throw new Exception("Unknown Prover Interface outcome while reading outcome.");
+        }
+    }
+
+  }
+  
+  
+}

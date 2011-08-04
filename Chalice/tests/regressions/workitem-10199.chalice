@@ -1,0 +1,21 @@
+class Test { 
+	var z: int 
+
+	predicate Z { acc(z) } 
+	predicate ZZ { Z } // XXX
+
+	method useZZ() 
+		requires ZZ 
+	{
+			// (ZZ,100)
+		unfold acc(ZZ, 40)
+			// (ZZ, 60), (Z, 40)
+		unfold acc(Z, 20) 
+			// (ZZ, 60), (Z, 20), (z, 20)
+		fold acc(Z, 10)
+			// (ZZ, 60), (Z, 30), (z, 10)
+		fold acc(ZZ, 30)
+			// previoulsy: Fold might fail because the definition of Test.ZZ does not hold. Insufficient fraction at XXX for Test.Z. 
+			// Should be (ZZ, 90), (z, 10)
+	}
+} 

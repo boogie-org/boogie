@@ -298,8 +298,12 @@ namespace BytecodeTranslator {
         } else {
           if (PhoneCodeHelper.instance().BackKeyPressNavigates) {
             Console.Out.WriteLine("Back navigation ISSUE:back key press may navigate to pages not in backstack! From pages:");
-            foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyNavigatingOffenders) {
-              Console.WriteLine("\t" + type.ToString());
+            foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyNavigatingOffenders.Keys) {
+              ICollection<string> targets= PhoneCodeHelper.instance().BackKeyNavigatingOffenders[type];
+              Console.WriteLine("\t" + type.ToString() + " may navigate to ");
+              foreach (string target in targets) {
+                Console.WriteLine("\t\t" + target);
+              }
             }
           }
 
@@ -313,9 +317,11 @@ namespace BytecodeTranslator {
       }
 
       if (PhoneCodeHelper.instance().PhoneFeedbackToggled || PhoneCodeHelper.instance().PhoneNavigationToggled) {
-        PhoneMethodInliningMetadataTraverser inlineTraverser = new PhoneMethodInliningMetadataTraverser(PhoneCodeHelper.instance());
-        inlineTraverser.Visit(modules);
+        PhoneMethodInliningMetadataTraverser inlineTraverser =
+          new PhoneMethodInliningMetadataTraverser(PhoneCodeHelper.instance());
+        inlineTraverser.findAllMethodsToInline(modules);
         updateInlinedMethods(sink, inlineTraverser.getMethodsToInline());
+        System.Console.WriteLine("Total methods seen: {0}, inlined: {1}", inlineTraverser.TotalMethodsCount, inlineTraverser.InlinedMethodsCount);
       }
 
       Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(primaryModule.Name + ".bpl");
@@ -426,9 +432,10 @@ namespace BytecodeTranslator {
           for (index = 0; index < dispatchProcOutvars.Length; index++) {
             outs.Add(Bpl.Expr.Ident(dispatchProcOutvars[index]));
           }
-          Bpl.Constant c = sink.FindOrAddDelegateMethodConstant(defn);
+          Bpl.Constant c = sink.FindOrCreateDelegateMethodConstant(defn);
+          var procInfo = sink.FindOrCreateProcedure(defn);
           Bpl.Expr bexpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, Bpl.Expr.Ident(method), Bpl.Expr.Ident(c));
-          Bpl.CallCmd callCmd = new Bpl.CallCmd(token, c.Name, ins, outs);
+          Bpl.CallCmd callCmd = new Bpl.CallCmd(token, procInfo.Decl.Name, ins, outs);
           ifCmd = BuildIfCmd(bexpr, callCmd, ifCmd);
         }
         Bpl.StmtListBuilder ifStmtBuilder = new Bpl.StmtListBuilder();

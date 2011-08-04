@@ -2,5 +2,4 @@ Verification of linkedlist.chalice using parameters=""
 
   49.39: Precondition at 47.14 might not hold. The expression at 47.31 might not evaluate to true.
 
-The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
 Boogie program verifier finished with 1 errors and 0 smoke test warnings.
