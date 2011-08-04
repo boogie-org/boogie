@@ -432,9 +432,10 @@ namespace BytecodeTranslator {
           for (index = 0; index < dispatchProcOutvars.Length; index++) {
             outs.Add(Bpl.Expr.Ident(dispatchProcOutvars[index]));
           }
-          Bpl.Constant c = sink.FindOrAddDelegateMethodConstant(defn);
+          Bpl.Constant c = sink.FindOrCreateDelegateMethodConstant(defn);
+          var procInfo = sink.FindOrCreateProcedure(defn);
           Bpl.Expr bexpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, Bpl.Expr.Ident(method), Bpl.Expr.Ident(c));
-          Bpl.CallCmd callCmd = new Bpl.CallCmd(token, c.Name, ins, outs);
+          Bpl.CallCmd callCmd = new Bpl.CallCmd(token, procInfo.Decl.Name, ins, outs);
           ifCmd = BuildIfCmd(bexpr, callCmd, ifCmd);
         }
         Bpl.StmtListBuilder ifStmtBuilder = new Bpl.StmtListBuilder();

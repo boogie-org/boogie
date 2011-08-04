@@ -11,7 +11,7 @@ if "%1"=="-no-summary" (
 
 set t=0
 set c=0
-for %%f in (examples permission-model) do (
+for %%f in (examples permission-model general-tests regressions) do (
   echo Running tests in %%f ...
   echo ------------------------------------------------------
   cd %%f
