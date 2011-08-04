@@ -27,10 +27,11 @@ namespace BytecodeTranslator {
       get { return this.factory; }
     }
     readonly TraverserFactory factory;
+    private readonly Options options;
     readonly bool whiteList;
     readonly List<Regex> exemptionList;
 
-    public Sink(IContractAwareHost host, TraverserFactory factory, HeapFactory heapFactory, List<Regex> exemptionList, bool whiteList) {
+    public Sink(IContractAwareHost host, TraverserFactory factory, HeapFactory heapFactory, Options options, List<Regex> exemptionList, bool whiteList) {
       Contract.Requires(host != null);
       Contract.Requires(factory != null);
       Contract.Requires(heapFactory != null);
@@ -38,6 +39,7 @@ namespace BytecodeTranslator {
       this.host = host;
       this.factory = factory;
       var b = heapFactory.MakeHeap(this, out this.heap, out this.TranslatedProgram); // TODO: what if it returns false?
+      this.options = options;
       this.exemptionList = exemptionList;
       this.whiteList = whiteList;
       if (this.TranslatedProgram == null) {
@@ -51,6 +53,8 @@ namespace BytecodeTranslator {
         }
       }
     }
+
+    public Options Options { get { return this.options; } }
 
     public Heap Heap {
       get { return this.heap; }

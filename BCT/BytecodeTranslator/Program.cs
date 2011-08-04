@@ -31,6 +31,9 @@ namespace BytecodeTranslator {
     [OptionDescription("Break into debugger", ShortForm = "break")]
     public bool breakIntoDebugger = false;
 
+    [OptionDescription("Emit a 'capture state' directive after each statement, (default: false)", ShortForm = "c")]
+    public bool captureState = false;
+
     [OptionDescription("Search paths for assembly dependencies.", ShortForm = "lib")]
     public List<string> libpaths = new List<string>();
 
@@ -165,16 +168,16 @@ namespace BytecodeTranslator {
       return result;
     }
 
-    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, Options/*?*/ options, List<Regex> exemptionList, bool whiteList) {
+    public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, Options options, List<Regex> exemptionList, bool whiteList) {
       Contract.Requires(assemblyNames != null);
       Contract.Requires(heapFactory != null);
 
-      var libPaths = options == null ? null : options.libpaths;
-      var wholeProgram = options == null ? false : options.wholeProgram;
-      var/*?*/ stubAssemblies = options == null ? null : options.stub;
-      var phoneControlsConfigFile = options == null ? null : options.phoneControls;
-      var doPhoneNav = options == null ? false : options.phoneNavigationCode;
-      var doPhoneFeedback = options == null ? false : options.phoneFeedbackCode;
+      var libPaths = options.libpaths;
+      var wholeProgram = options.wholeProgram;
+      var/*?*/ stubAssemblies = options.stub;
+      var phoneControlsConfigFile = options.phoneControls;
+      var doPhoneNav = options.phoneNavigationCode;
+      var doPhoneFeedback = options.phoneFeedbackCode;
 
       var host = new CodeContractAwareHostEnvironment(libPaths != null ? libPaths : Enumerable<string>.Empty, true, true);
       Host = host;
@@ -247,7 +250,7 @@ namespace BytecodeTranslator {
       else
         traverserFactory = new CLRSemantics();
 
-      Sink sink= new Sink(host, traverserFactory, heapFactory, exemptionList, whiteList);
+      Sink sink= new Sink(host, traverserFactory, heapFactory, options, exemptionList, whiteList);
       TranslationHelper.tmpVarCounter = 0;
       MetadataTraverser translator;
       translator= traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
