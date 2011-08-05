@@ -323,29 +323,24 @@ namespace BytecodeTranslator {
         PhoneMethodInliningMetadataTraverser inlineTraverser =
           new PhoneMethodInliningMetadataTraverser(PhoneCodeHelper.instance());
         inlineTraverser.findAllMethodsToInline(modules);
-        updateInlinedMethods(sink, inlineTraverser.getMethodsToInline());
+        PhoneCodeHelper.updateInlinedMethods(sink, inlineTraverser.getMethodsToInline());
         System.Console.WriteLine("Total methods seen: {0}, inlined: {1}", inlineTraverser.TotalMethodsCount, inlineTraverser.InlinedMethodsCount);
       }
 
+      string outputFileName = primaryModule.Name + ".bpl";
       if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
-        // TODO integrate into the pipeline and spit out the boogie code
         foreach (IMethodDefinition def in PhoneNavigationCodeTraverser.NavCallers) {
-          System.Console.WriteLine(def.ToString());
+          PhoneCodeHelper.addHandlerStubCaller(sink, def);
         }
+
+        PhoneCodeHelper.instance().createQueriesBatchFile(sink, outputFileName);
       }
 
-      Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(primaryModule.Name + ".bpl");
+      Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(outputFileName);
       Prelude.Emit(writer);
       sink.TranslatedProgram.Emit(writer);
       writer.Close();
       return 0; // success
-    }
-
-    private static void updateInlinedMethods(Sink sink, IEnumerable<IMethodDefinition> doInline) {
-      foreach (IMethodDefinition method in doInline) {
-        Sink.ProcedureInfo procInfo= sink.FindOrCreateProcedure(method);
-        procInfo.Decl.AddAttribute("inline", new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.ONE));
-      }
     }
 
     private static string NameUpToFirstPeriod(string name) {

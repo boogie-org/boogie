@@ -6,6 +6,7 @@ using Microsoft.Cci;
 using Bpl=Microsoft.Boogie;
 using TranslationPlugins;
 using Microsoft.Cci.MutableCodeModel;
+using System.IO;
 
 namespace BytecodeTranslator.Phone {
   public static class UriHelper {
@@ -244,6 +245,9 @@ namespace BytecodeTranslator.Phone {
     private const string BOOGIE_VAR_PREFIX = "__BOOGIE_";
     public const string IL_CURRENT_NAVIGATION_URI_VARIABLE = IL_BOOGIE_VAR_PREFIX + "CurrentNavigationURI__";
     public const string BOOGIE_CONTINUE_ON_PAGE_VARIABLE = BOOGIE_VAR_PREFIX + "ContinueOnPage__";
+    public const string BOOGIE_STARTING_URI_PLACEHOLDER = "BOOGIE_STARTING_URI_PLACEHOLDER";
+    public const string BOOGIE_ENDING_URI_PLACEHOLDER= "BOOGIE_ENDING_URI_PLACEHOLDER";
+
     public static readonly string[] NAV_CALLS = { /*"GoBack", "GoForward", "Navigate", "StopLoading"*/ "Navigate", "GoBack" };
 
     public bool OnBackKeyPressOverriden { get; set; }
@@ -633,5 +637,98 @@ namespace BytecodeTranslator.Phone {
 
       return false;
     }
+
+    public void createQueriesBatchFile(Sink sink, string sourceBPLFile) {
+      StreamWriter outputStream = new StreamWriter("createQueries.bat");
+      IEnumerable<string> xamls= PhonePlugin.getPageXAMLFilenames();
+      string startURI= sink.FindOrCreateConstant(BOOGIE_STARTING_URI_PLACEHOLDER).Name;
+      string endURI = sink.FindOrCreateConstant(BOOGIE_ENDING_URI_PLACEHOLDER).Name;
+      int i=1, j=1;
+      foreach (string x1 in xamls) {
+        string startURIVar= sink.FindOrCreateConstant(x1).Name.ToLower();
+        j = 1;
+        foreach (string x2 in xamls) {
+          string resultFile = sourceBPLFile + "_" + i + "_" + j + ".bpl";
+          string endURIVar= sink.FindOrCreateConstant(x2).Name.ToLower();
+          outputStream.WriteLine("sed s/" + startURI + ";/" + startURIVar + ";/g " + sourceBPLFile + "> " + resultFile);
+          outputStream.WriteLine("sed -i s/" + endURI + ";/" + endURIVar + ";/g " + resultFile);
+          j++;
+        }
+        i++;
+      }
+
+      outputStream.Close();
+    }
+
+
+    public static void addHandlerStubCaller(Sink sink, IMethodDefinition def) {
+      MethodBody callerBody = new MethodBody();
+      MethodDefinition callerDef = new MethodDefinition() {
+        InternFactory = (def as MethodDefinition).InternFactory,
+        ContainingTypeDefinition = def.ContainingTypeDefinition,
+        IsStatic = true,
+        Name = sink.host.NameTable.GetNameFor("BOOGIE_STUB_CALLER_" + def.Name.Value),
+        Type = sink.host.PlatformType.SystemVoid,
+        Body = callerBody,
+      };
+      callerBody.MethodDefinition = callerDef;
+      Sink.ProcedureInfo procInfo = sink.FindOrCreateProcedure(def);
+      Sink.ProcedureInfo callerInfo = sink.FindOrCreateProcedure(callerDef);
+
+      Bpl.LocalVariable[] localVars = new Bpl.LocalVariable[procInfo.Decl.InParams.Length];
+      Bpl.IdentifierExpr[] varExpr = new Bpl.IdentifierExpr[procInfo.Decl.InParams.Length];
+      for (int i = 0; i < procInfo.Decl.InParams.Length; i++) {
+        Bpl.LocalVariable loc = new Bpl.LocalVariable(Bpl.Token.NoToken,
+                                                     new Bpl.TypedIdent(Bpl.Token.NoToken, TranslationHelper.GenerateTempVarName(),
+                                                                        procInfo.Decl.InParams[i].TypedIdent.Type));
+        localVars[i] = loc;
+        varExpr[i] = new Bpl.IdentifierExpr(Bpl.Token.NoToken, loc);
+      }
+
+      Bpl.StmtListBuilder builder = new Bpl.StmtListBuilder();
+      string pageXaml= PhoneCodeHelper.instance().PhonePlugin.getXAMLForPage(def.ContainingTypeDefinition.ToString());
+      Bpl.Variable boogieCurrentURI = sink.FindOrCreateFieldVariable(PhoneCodeHelper.CurrentURIFieldDefinition);
+      Bpl.Constant boogieXamlConstant;
+      if (pageXaml != null)
+        boogieXamlConstant = sink.FindOrCreateConstant(pageXaml);
+      else
+        boogieXamlConstant = null;
+      // NAVIGATION TODO: For now just assume we are in this page to be able to call the handler, this is NOT true for any handler
+      // NAVIGATION TODO: ie, a network event handler
+      if (boogieXamlConstant != null) {
+        Bpl.AssumeCmd assumeCurrentPage =
+          new Bpl.AssumeCmd(Bpl.Token.NoToken,
+                            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieCurrentURI),
+                                            new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieXamlConstant)));
+        builder.Add(assumeCurrentPage);
+      }
+
+      // NAVIGATION TODO: have to do the pair generation all in one go instead of having different files that need to be sed'ed
+      boogieXamlConstant = sink.FindOrCreateConstant(BOOGIE_STARTING_URI_PLACEHOLDER);
+      Bpl.AssumeCmd assumeStartPage = new Bpl.AssumeCmd(Bpl.Token.NoToken,
+                            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieCurrentURI),
+                                            new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieXamlConstant)));
+      builder.Add(assumeStartPage);
+      builder.Add(new Bpl.CallCmd(Bpl.Token.NoToken, procInfo.Decl.Name, new Bpl.ExprSeq(varExpr), new Bpl.IdentifierExprSeq()));
+      boogieXamlConstant = sink.FindOrCreateConstant(BOOGIE_ENDING_URI_PLACEHOLDER);
+      Bpl.AssertCmd assertEndPage = new Bpl.AssertCmd(Bpl.Token.NoToken,
+                            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieCurrentURI),
+                                            new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieXamlConstant)));
+      builder.Add(assertEndPage);
+      Bpl.Implementation impl =
+        new Bpl.Implementation(Bpl.Token.NoToken, callerInfo.Decl.Name, new Bpl.TypeVariableSeq(), new Bpl.VariableSeq(),
+                               new Bpl.VariableSeq(), new Bpl.VariableSeq(localVars), builder.Collect(Bpl.Token.NoToken), null, new Bpl.Errors());
+
+      sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
+    }
+
+    public static void updateInlinedMethods(Sink sink, IEnumerable<IMethodDefinition> doInline) {
+      foreach (IMethodDefinition method in doInline) {
+        Sink.ProcedureInfo procInfo = sink.FindOrCreateProcedure(method);
+        procInfo.Decl.AddAttribute("inline", new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.ONE));
+      }
+    }
+
+    public static FieldDefinition CurrentURIFieldDefinition {get; set;}
   }
 }

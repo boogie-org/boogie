@@ -191,7 +191,7 @@ def extractPhoneControls(sourceDir):
   global mainPageXAML
   fileList= [os.path.join(sourceDir, fileName) for fileName in os.listdir(sourceDir) if os.path.splitext(fileName)[1] == ".xaml" or os.path.splitext(fileName)[1] == ".xml"]
   for fileName in fileList:
-    if os.path.splitext(fileName)[1] == ".xml" and os.path.splitext(os.path.split(fileName)[1])[0].lower() == "wmappmanifest":
+    if os.path.splitext(fileName)[1].lower() == ".xml" and os.path.splitext(os.path.split(fileName)[1])[0].lower() == "wmappmanifest":
       mainPageXAML= getMainPageXAMLFromManifest(fileName)
       break
 
