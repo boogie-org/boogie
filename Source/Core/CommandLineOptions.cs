@@ -299,7 +299,6 @@ namespace Microsoft.Boogie {
     public int VcsCores = 1;
     public bool VcsDumpSplits = false;
 
-    public bool houdiniEnabled = false;
     public bool DebugRefuted = false;
 
     public XmlSink XmlRefuted {
@@ -401,7 +400,6 @@ namespace Microsoft.Boogie {
       Contract.Invariant(cce.NonNullElements(methodsToTranslateMethodQualified, true));
       Contract.Invariant(cce.NonNullElements(methodsToTranslateSubstring, true));
       Contract.Invariant(Ai != null);
-      Contract.Invariant(houdiniFlags != null);
     }
 
     [Rep]
@@ -440,13 +438,6 @@ namespace Microsoft.Boogie {
       }
     }
     public AiFlags/*!*/ Ai = new AiFlags();
-
-    public class HoudiniFlags {
-      public bool continueAtError = false;
-      public bool incremental = false;
-    }
-
-    public HoudiniFlags/*!*/ houdiniFlags = new HoudiniFlags();
 
     [Verify(false)]
     private CommandLineOptions() {
@@ -979,8 +970,6 @@ namespace Microsoft.Boogie {
           case "-contractInfer":
           case "/contractInfer":
             ContractInfer = true;
-            TheProverFactory = ProverFactory.Load("ContractInference");
-            ProverName = "ContractInference".ToUpper();
             break;
 
           case "-subsumption":
@@ -1364,28 +1353,6 @@ namespace Microsoft.Boogie {
           case "/stdlib":
             if (ps.ConfirmArgumentCount(1)) {
               this.StandardLibraryLocation = args[ps.i];
-            }
-            break;
-
-          case "-Houdini":
-          case "/Houdini":
-            this.houdiniEnabled = true;
-            if (ps.hasColonArgument) {
-              if (ps.ConfirmArgumentCount(1)) {
-                foreach (char c in cce.NonNull(args[ps.i])) {
-                  switch (c) {
-                    case 'c':
-                      houdiniFlags.continueAtError = true;
-                      break;
-                    case 'i':
-                      houdiniFlags.incremental = true;
-                      break;
-                    default:
-                      ps.Error("Unknown houdini flag: " + c + "\n");
-                      break;
-                  }
-                }
-              }
             }
             break;
 
@@ -2172,10 +2139,6 @@ namespace Microsoft.Boogie {
                          of every block
   /printInstrumented : print Boogie program after it has been
                    instrumented with invariants
-  /Houdini[:<flags>] : perform procedure Houdini
-                     c = continue when an error found
-                     i = use incremental queries
-  /dbgRefuted    : log refuted Houdini candidates to XmlSink
 
   ---- Debugging and general tracing options ---------------------------------
 

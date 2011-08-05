@@ -42,6 +42,7 @@ namespace BytecodeTranslator {
       var parameterToken = parameterDefinition.Token();
       var typeToken = parameterDefinition.Type.Token();
       var parameterName = TranslationHelper.TurnStringIntoValidIdentifier(parameterDefinition.Name.Value);
+      if (String.IsNullOrWhiteSpace(parameterName)) parameterName = "P" + parameterDefinition.Index.ToString();
 
       this.inParameterCopy = new Bpl.Formal(parameterToken, new Bpl.TypedIdent(typeToken, parameterName + "$in", ptype), true);
       if (parameterDefinition.IsByReference) {
@@ -154,6 +155,7 @@ namespace BytecodeTranslator {
       s = s.Replace('[', '$');
       s = s.Replace(']', '$');
       s = s.Replace('|', '$');
+      s = s.Replace('+', '$');
       s = GetRidOfSurrogateCharacters(s);
       return s;
     }

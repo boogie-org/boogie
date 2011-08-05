@@ -478,7 +478,7 @@ procedure RegressionTestInput.RealNumbers.WriteDouble$System.Double3($this: Ref,
 
 
 
-procedure {:extern} System.Console.WriteLine$System.Double43(value$in: Real);
+procedure {:extern} System.Console.WriteLine$System.Double45(value$in: Real);
 
 
 
@@ -490,7 +490,7 @@ implementation RegressionTestInput.RealNumbers.WriteDouble$System.Double3($this:
 
     d := d$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 162} true;
-    call System.Console.WriteLine$System.Double43(d);
+    call System.Console.WriteLine$System.Double45(d);
     if ($Exception != null)
     {
         return;
@@ -583,7 +583,7 @@ procedure RegressionTestInput.RealNumbers.#ctor6($this: Ref);
 
 
 
-procedure {:extern} System.Object.#ctor44($this: Ref);
+procedure {:extern} System.Object.#ctor46($this: Ref);
 
 
 
@@ -592,7 +592,7 @@ implementation RegressionTestInput.RealNumbers.#ctor6($this: Ref)
   var $localExc: Ref;
   var $label: int;
 
-    call System.Object.#ctor44($this);
+    call System.Object.#ctor46($this);
     if ($Exception != null)
     {
         return;
@@ -603,11 +603,11 @@ implementation RegressionTestInput.RealNumbers.#ctor6($this: Ref)
 
 
 
-procedure RegressionTestInput.RealNumbers.#cctor();
+procedure T$RegressionTestInput.RealNumbers.#cctor();
 
 
 
-implementation RegressionTestInput.RealNumbers.#cctor()
+implementation T$RegressionTestInput.RealNumbers.#cctor()
 {
 }
 
@@ -651,7 +651,7 @@ implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#ctor8($t
 
     RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.x[$this] := 0;
     RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.y[$this] := 0;
-    call System.Object.#ctor44($this);
+    call System.Object.#ctor46($this);
     if ($Exception != null)
     {
         return;
@@ -662,11 +662,11 @@ implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#ctor8($t
 
 
 
-procedure RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#cctor();
+procedure T$RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#cctor();
 
 
 
-implementation RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#cctor()
+implementation T$RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#cctor()
 {
 }
 
@@ -756,7 +756,7 @@ implementation RegressionTestInput.CreateStruct.#ctor11($this: Ref)
   var $localExc: Ref;
   var $label: int;
 
-    call System.Object.#ctor44($this);
+    call System.Object.#ctor46($this);
     if ($Exception != null)
     {
         return;
@@ -767,11 +767,11 @@ implementation RegressionTestInput.CreateStruct.#ctor11($this: Ref)
 
 
 
-procedure RegressionTestInput.CreateStruct.#cctor();
+procedure T$RegressionTestInput.CreateStruct.#cctor();
 
 
 
-implementation RegressionTestInput.CreateStruct.#cctor()
+implementation T$RegressionTestInput.CreateStruct.#cctor()
 {
 }
 
@@ -930,7 +930,7 @@ implementation RegressionTestInput.ClassWithArrayTypes.#ctor16($this: Ref)
   var $label: int;
 
     RegressionTestInput.ClassWithArrayTypes.a[$this] := null;
-    call System.Object.#ctor44($this);
+    call System.Object.#ctor46($this);
     if ($Exception != null)
     {
         return;
@@ -941,13 +941,52 @@ implementation RegressionTestInput.ClassWithArrayTypes.#ctor16($this: Ref)
 
 
 
-procedure RegressionTestInput.ClassWithArrayTypes.#cctor();
+procedure T$RegressionTestInput.ClassWithArrayTypes.#cctor();
 
 
 
-implementation RegressionTestInput.ClassWithArrayTypes.#cctor()
+implementation T$RegressionTestInput.ClassWithArrayTypes.#cctor()
 {
     RegressionTestInput.ClassWithArrayTypes.s := null;
+}
+
+
+
+function RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric$type(arg0: Type) : Type;
+
+function Child0(in: Type) : Type;
+
+axiom (forall arg0: Type :: { RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric$type(arg0) } Child0(RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric$type(arg0)) == arg0);
+
+var RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric.x: [Ref]int;
+
+procedure RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric`1.#ctor17($this: Ref);
+
+
+
+implementation RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric`1.#ctor17($this: Ref)
+{
+  var $localExc: Ref;
+  var $label: int;
+
+    RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric.x[$this] := 0;
+    call System.Object.#ctor46($this);
+    if ($Exception != null)
+    {
+        return;
+    }
+
+    return;
+}
+
+
+
+procedure T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric`1.#cctor();
+
+
+
+implementation T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric`1.#cctor()
+{
 }
 
 
@@ -958,11 +997,11 @@ axiom $Subtype(RegressionTestInput.BitwiseOperations$type, System.Object$type);
 
 axiom $DisjointSubtree(RegressionTestInput.BitwiseOperations$type, System.Object$type);
 
-procedure RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int3217($this: Ref, x$in: int, y$in: int) returns ($result: int);
+procedure RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int3218($this: Ref, x$in: int, y$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int3217($this: Ref, x$in: int, y$in: int) returns ($result: int)
+implementation RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int3218($this: Ref, x$in: int, y$in: int) returns ($result: int)
 {
   var x: int;
   var y: int;
@@ -978,11 +1017,11 @@ implementation RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$Sys
 
 
 
-procedure RegressionTestInput.BitwiseOperations.BitwiseOr$System.Int32$System.Int3218($this: Ref, x$in: int, y$in: int) returns ($result: int);
+procedure RegressionTestInput.BitwiseOperations.BitwiseOr$System.Int32$System.Int3219($this: Ref, x$in: int, y$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.BitwiseOperations.BitwiseOr$System.Int32$System.Int3218($this: Ref, x$in: int, y$in: int) returns ($result: int)
+implementation RegressionTestInput.BitwiseOperations.BitwiseOr$System.Int32$System.Int3219($this: Ref, x$in: int, y$in: int) returns ($result: int)
 {
   var x: int;
   var y: int;
@@ -998,11 +1037,11 @@ implementation RegressionTestInput.BitwiseOperations.BitwiseOr$System.Int32$Syst
 
 
 
-procedure RegressionTestInput.BitwiseOperations.ExclusiveOr$System.Int32$System.Int3219($this: Ref, x$in: int, y$in: int) returns ($result: int);
+procedure RegressionTestInput.BitwiseOperations.ExclusiveOr$System.Int32$System.Int3220($this: Ref, x$in: int, y$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.BitwiseOperations.ExclusiveOr$System.Int32$System.Int3219($this: Ref, x$in: int, y$in: int) returns ($result: int)
+implementation RegressionTestInput.BitwiseOperations.ExclusiveOr$System.Int32$System.Int3220($this: Ref, x$in: int, y$in: int) returns ($result: int)
 {
   var x: int;
   var y: int;
@@ -1018,11 +1057,11 @@ implementation RegressionTestInput.BitwiseOperations.ExclusiveOr$System.Int32$Sy
 
 
 
-procedure RegressionTestInput.BitwiseOperations.BitwiseNegation$System.Int3220($this: Ref, x$in: int) returns ($result: int);
+procedure RegressionTestInput.BitwiseOperations.BitwiseNegation$System.Int3221($this: Ref, x$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.BitwiseOperations.BitwiseNegation$System.Int3220($this: Ref, x$in: int) returns ($result: int)
+implementation RegressionTestInput.BitwiseOperations.BitwiseNegation$System.Int3221($this: Ref, x$in: int) returns ($result: int)
 {
   var x: int;
   var $localExc: Ref;
@@ -1036,16 +1075,16 @@ implementation RegressionTestInput.BitwiseOperations.BitwiseNegation$System.Int3
 
 
 
-procedure RegressionTestInput.BitwiseOperations.#ctor21($this: Ref);
+procedure RegressionTestInput.BitwiseOperations.#ctor22($this: Ref);
 
 
 
-implementation RegressionTestInput.BitwiseOperations.#ctor21($this: Ref)
+implementation RegressionTestInput.BitwiseOperations.#ctor22($this: Ref)
 {
   var $localExc: Ref;
   var $label: int;
 
-    call System.Object.#ctor44($this);
+    call System.Object.#ctor46($this);
     if ($Exception != null)
     {
         return;
@@ -1056,11 +1095,11 @@ implementation RegressionTestInput.BitwiseOperations.#ctor21($this: Ref)
 
 
 
-procedure RegressionTestInput.BitwiseOperations.#cctor();
+procedure T$RegressionTestInput.BitwiseOperations.#cctor();
 
 
 
-implementation RegressionTestInput.BitwiseOperations.#cctor()
+implementation T$RegressionTestInput.BitwiseOperations.#cctor()
 {
 }
 
@@ -1082,20 +1121,20 @@ axiom $Subtype(RegressionTestInput.AsyncAttribute$type, System.Attribute$type);
 
 axiom $DisjointSubtree(RegressionTestInput.AsyncAttribute$type, System.Attribute$type);
 
-procedure RegressionTestInput.AsyncAttribute.#ctor22($this: Ref);
+procedure RegressionTestInput.AsyncAttribute.#ctor23($this: Ref);
 
 
 
-procedure {:extern} System.Attribute.#ctor45($this: Ref);
+procedure {:extern} System.Attribute.#ctor47($this: Ref);
 
 
 
-implementation RegressionTestInput.AsyncAttribute.#ctor22($this: Ref)
+implementation RegressionTestInput.AsyncAttribute.#ctor23($this: Ref)
 {
   var $localExc: Ref;
   var $label: int;
 
-    call System.Attribute.#ctor45($this);
+    call System.Attribute.#ctor47($this);
     if ($Exception != null)
     {
         return;
@@ -1106,11 +1145,11 @@ implementation RegressionTestInput.AsyncAttribute.#ctor22($this: Ref)
 
 
 
-procedure RegressionTestInput.AsyncAttribute.#cctor();
+procedure T$RegressionTestInput.AsyncAttribute.#cctor();
 
 
 
-implementation RegressionTestInput.AsyncAttribute.#cctor()
+implementation T$RegressionTestInput.AsyncAttribute.#cctor()
 {
 }
 
@@ -1122,11 +1161,11 @@ axiom $Subtype(RegressionTestInput.RefParameters$type, System.Object$type);
 
 axiom $DisjointSubtree(RegressionTestInput.RefParameters$type, System.Object$type);
 
-procedure RegressionTestInput.RefParameters.M$System.Int32$23(x$in: int) returns (x$out: int);
+procedure RegressionTestInput.RefParameters.M$System.Int32$24(x$in: int) returns (x$out: int);
 
 
 
-implementation RegressionTestInput.RefParameters.M$System.Int32$23(x$in: int) returns (x$out: int)
+implementation RegressionTestInput.RefParameters.M$System.Int32$24(x$in: int) returns (x$out: int)
 {
   var $localExc: Ref;
   var $label: int;
@@ -1140,16 +1179,16 @@ implementation RegressionTestInput.RefParameters.M$System.Int32$23(x$in: int) re
 
 
 
-procedure RegressionTestInput.RefParameters.#ctor24($this: Ref);
+procedure RegressionTestInput.RefParameters.#ctor25($this: Ref);
 
 
 
-implementation RegressionTestInput.RefParameters.#ctor24($this: Ref)
+implementation RegressionTestInput.RefParameters.#ctor25($this: Ref)
 {
   var $localExc: Ref;
   var $label: int;
 
-    call System.Object.#ctor44($this);
+    call System.Object.#ctor46($this);
     if ($Exception != null)
     {
         return;
@@ -1160,11 +1199,11 @@ implementation RegressionTestInput.RefParameters.#ctor24($this: Ref)
 
 
 
-procedure RegressionTestInput.RefParameters.#cctor();
+procedure T$RegressionTestInput.RefParameters.#cctor();
 
 
 
-implementation RegressionTestInput.RefParameters.#cctor()
+implementation T$RegressionTestInput.RefParameters.#cctor()
 {
 }
 
@@ -1176,16 +1215,16 @@ axiom $Subtype(RegressionTestInput.NestedGeneric$type, System.Object$type);
 
 axiom $DisjointSubtree(RegressionTestInput.NestedGeneric$type, System.Object$type);
 
-procedure RegressionTestInput.NestedGeneric.#ctor27($this: Ref);
+procedure RegressionTestInput.NestedGeneric.#ctor28($this: Ref);
 
 
 
-implementation RegressionTestInput.NestedGeneric.#ctor27($this: Ref)
+implementation RegressionTestInput.NestedGeneric.#ctor28($this: Ref)
 {
   var $localExc: Ref;
   var $label: int;
 
-    call System.Object.#ctor44($this);
+    call System.Object.#ctor46($this);
     if ($Exception != null)
     {
         return;
@@ -1202,16 +1241,16 @@ axiom $Subtype(RegressionTestInput.NestedGeneric.C$type, System.Object$type);
 
 axiom $DisjointSubtree(RegressionTestInput.NestedGeneric.C$type, System.Object$type);
 
-procedure RegressionTestInput.NestedGeneric.C.#ctor26($this: Ref);
+procedure RegressionTestInput.NestedGeneric.C.#ctor27($this: Ref);
 
 
 
-implementation RegressionTestInput.NestedGeneric.C.#ctor26($this: Ref)
+implementation RegressionTestInput.NestedGeneric.C.#ctor27($this: Ref)
 {
   var $localExc: Ref;
   var $label: int;
 
-    call System.Object.#ctor44($this);
+    call System.Object.#ctor46($this);
     if ($Exception != null)
     {
         return;
@@ -1224,11 +1263,9 @@ implementation RegressionTestInput.NestedGeneric.C.#ctor26($this: Ref)
 
 function RegressionTestInput.NestedGeneric.C.G$type(arg0: Type) : Type;
 
-function Child0(in: Type) : Type;
-
 axiom (forall arg0: Type :: { RegressionTestInput.NestedGeneric.C.G$type(arg0) } Child0(RegressionTestInput.NestedGeneric.C.G$type(arg0)) == arg0);
 
-procedure RegressionTestInput.NestedGeneric.C.G`1.#ctor$System.Int3225($this: Ref, x$in: int);
+procedure RegressionTestInput.NestedGeneric.C.G`1.#ctor$System.Int3226($this: Ref, x$in: int);
 
 
 
@@ -1236,7 +1273,7 @@ procedure {:extern} System.Activator.CreateInstance``12(T: Type) returns ($resul
 
 
 
-implementation RegressionTestInput.NestedGeneric.C.G`1.#ctor$System.Int3225($this: Ref, x$in: int)
+implementation RegressionTestInput.NestedGeneric.C.G`1.#ctor$System.Int3226($this: Ref, x$in: int)
 {
   var x: int;
   var CS$0$0000: Box;
@@ -1251,7 +1288,7 @@ implementation RegressionTestInput.NestedGeneric.C.G`1.#ctor$System.Int3225($thi
 
     x := x$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 187} true;
-    call System.Object.#ctor44($this);
+    call System.Object.#ctor46($this);
     if ($Exception != null)
     {
         return;
@@ -1285,31 +1322,31 @@ implementation RegressionTestInput.NestedGeneric.C.G`1.#ctor$System.Int3225($thi
 
 
 
-procedure RegressionTestInput.NestedGeneric.C.G.#cctor();
+procedure T$RegressionTestInput.NestedGeneric.C.G`1.#cctor();
 
 
 
-implementation RegressionTestInput.NestedGeneric.C.G.#cctor()
+implementation T$RegressionTestInput.NestedGeneric.C.G`1.#cctor()
 {
 }
 
 
 
-procedure RegressionTestInput.NestedGeneric.C.#cctor();
+procedure T$RegressionTestInput.NestedGeneric.C.#cctor();
 
 
 
-implementation RegressionTestInput.NestedGeneric.C.#cctor()
+implementation T$RegressionTestInput.NestedGeneric.C.#cctor()
 {
 }
 
 
 
-procedure RegressionTestInput.NestedGeneric.#cctor();
+procedure T$RegressionTestInput.NestedGeneric.#cctor();
 
 
 
-implementation RegressionTestInput.NestedGeneric.#cctor()
+implementation T$RegressionTestInput.NestedGeneric.#cctor()
 {
 }
 
@@ -1335,6 +1372,45 @@ implementation {:inline 1} RegressionTestInput.S.#copy_ctor(this: Ref, other: Re
 
 
 
+const unique RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric$type: Type;
+
+axiom $Subtype(RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric$type, System.Object$type);
+
+axiom $DisjointSubtree(RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric$type, System.Object$type);
+
+var RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric.x: [Ref]int;
+
+procedure RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric.#ctor29($this: Ref);
+
+
+
+implementation RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric.#ctor29($this: Ref)
+{
+  var $localExc: Ref;
+  var $label: int;
+
+    RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric.x[$this] := 0;
+    call System.Object.#ctor46($this);
+    if ($Exception != null)
+    {
+        return;
+    }
+
+    return;
+}
+
+
+
+procedure T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric.#cctor();
+
+
+
+implementation T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric.#cctor()
+{
+}
+
+
+
 const unique RegressionTestInput.Class0$type: Type;
 
 axiom $Subtype(RegressionTestInput.Class0$type, System.Object$type);
@@ -1343,11 +1419,11 @@ axiom $DisjointSubtree(RegressionTestInput.Class0$type, System.Object$type);
 
 var RegressionTestInput.Class0.StaticInt: int;
 
-procedure RegressionTestInput.Class0.StaticMethod$System.Int3228(x$in: int) returns ($result: int);
+procedure RegressionTestInput.Class0.StaticMethod$System.Int3230(x$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.Class0.StaticMethod$System.Int3228(x$in: int) returns ($result: int)
+implementation RegressionTestInput.Class0.StaticMethod$System.Int3230(x$in: int) returns ($result: int)
 {
   var x: int;
   var $localExc: Ref;
@@ -1361,11 +1437,11 @@ implementation RegressionTestInput.Class0.StaticMethod$System.Int3228(x$in: int)
 
 
 
-procedure RegressionTestInput.Class0.M$System.Int3229($this: Ref, x$in: int);
+procedure RegressionTestInput.Class0.M$System.Int3231($this: Ref, x$in: int);
 
 
 
-implementation RegressionTestInput.Class0.M$System.Int3229($this: Ref, x$in: int)
+implementation RegressionTestInput.Class0.M$System.Int3231($this: Ref, x$in: int)
 {
   var x: int;
   var __temp_1: int;
@@ -1396,11 +1472,11 @@ implementation RegressionTestInput.Class0.M$System.Int3229($this: Ref, x$in: int
 
 
 
-procedure RegressionTestInput.Class0.M$System.Int32$System.Int3230($this: Ref, x$in: int, y$in: int);
+procedure RegressionTestInput.Class0.M$System.Int32$System.Int3232($this: Ref, x$in: int, y$in: int);
 
 
 
-implementation RegressionTestInput.Class0.M$System.Int32$System.Int3230($this: Ref, x$in: int, y$in: int)
+implementation RegressionTestInput.Class0.M$System.Int32$System.Int3232($this: Ref, x$in: int, y$in: int)
 {
   var x: int;
   var y: int;
@@ -1415,11 +1491,11 @@ implementation RegressionTestInput.Class0.M$System.Int32$System.Int3230($this: R
 
 
 
-procedure RegressionTestInput.Class0.M$System.Boolean31($this: Ref, b$in: bool);
+procedure RegressionTestInput.Class0.M$System.Boolean33($this: Ref, b$in: bool);
 
 
 
-implementation RegressionTestInput.Class0.M$System.Boolean31($this: Ref, b$in: bool)
+implementation RegressionTestInput.Class0.M$System.Boolean33($this: Ref, b$in: bool)
 {
   var b: bool;
   var $localExc: Ref;
@@ -1432,11 +1508,11 @@ implementation RegressionTestInput.Class0.M$System.Boolean31($this: Ref, b$in: b
 
 
 
-procedure RegressionTestInput.Class0.M$RegressionTestInput.Class032($this: Ref, c$in: Ref);
+procedure RegressionTestInput.Class0.M$RegressionTestInput.Class034($this: Ref, c$in: Ref);
 
 
 
-implementation RegressionTestInput.Class0.M$RegressionTestInput.Class032($this: Ref, c$in: Ref)
+implementation RegressionTestInput.Class0.M$RegressionTestInput.Class034($this: Ref, c$in: Ref)
 {
   var c: Ref;
   var $localExc: Ref;
@@ -1449,18 +1525,18 @@ implementation RegressionTestInput.Class0.M$RegressionTestInput.Class032($this: 
 
 
 
-procedure RegressionTestInput.Class0.NonVoid33($this: Ref) returns ($result: int);
+procedure RegressionTestInput.Class0.NonVoid35($this: Ref) returns ($result: int);
 
 
 
-implementation RegressionTestInput.Class0.NonVoid33($this: Ref) returns ($result: int)
+implementation RegressionTestInput.Class0.NonVoid35($this: Ref) returns ($result: int)
 {
   var $tmp8: int;
   var $localExc: Ref;
   var $label: int;
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 34} true;
-    call $tmp8 := RegressionTestInput.Class0.StaticMethod$System.Int3228(3);
+    call $tmp8 := RegressionTestInput.Class0.StaticMethod$System.Int3230(3);
     if ($Exception != null)
     {
         return;
@@ -1472,11 +1548,11 @@ implementation RegressionTestInput.Class0.NonVoid33($this: Ref) returns ($result
 
 
 
-procedure RegressionTestInput.Class0.OutParam$System.Int32$34($this: Ref, x$in: int) returns (x$out: int, $result: int);
+procedure RegressionTestInput.Class0.OutParam$System.Int32$36($this: Ref, x$in: int) returns (x$out: int, $result: int);
 
 
 
-implementation RegressionTestInput.Class0.OutParam$System.Int32$34($this: Ref, x$in: int) returns (x$out: int, $result: int)
+implementation RegressionTestInput.Class0.OutParam$System.Int32$36($this: Ref, x$in: int) returns (x$out: int, $result: int)
 {
   var $localExc: Ref;
   var $label: int;
@@ -1491,11 +1567,11 @@ implementation RegressionTestInput.Class0.OutParam$System.Int32$34($this: Ref, x
 
 
 
-procedure RegressionTestInput.Class0.RefParam$System.Int32$35($this: Ref, x$in: int) returns (x$out: int, $result: int);
+procedure RegressionTestInput.Class0.RefParam$System.Int32$37($this: Ref, x$in: int) returns (x$out: int, $result: int);
 
 
 
-implementation RegressionTestInput.Class0.RefParam$System.Int32$35($this: Ref, x$in: int) returns (x$out: int, $result: int)
+implementation RegressionTestInput.Class0.RefParam$System.Int32$37($this: Ref, x$in: int) returns (x$out: int, $result: int)
 {
   var $localExc: Ref;
   var $label: int;
@@ -1512,11 +1588,11 @@ implementation RegressionTestInput.Class0.RefParam$System.Int32$35($this: Ref, x
 
 
 
-procedure RegressionTestInput.Class0.AssignToInParam$System.Int3236($this: Ref, x$in: int) returns ($result: int);
+procedure RegressionTestInput.Class0.AssignToInParam$System.Int3238($this: Ref, x$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.Class0.AssignToInParam$System.Int3236($this: Ref, x$in: int) returns ($result: int)
+implementation RegressionTestInput.Class0.AssignToInParam$System.Int3238($this: Ref, x$in: int) returns ($result: int)
 {
   var x: int;
   var $localExc: Ref;
@@ -1534,11 +1610,11 @@ implementation RegressionTestInput.Class0.AssignToInParam$System.Int3236($this: 
 
 
 
-procedure {:RegressionTestInput.Async} RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int3237($this: Ref, x$in: int) returns ($result: int);
+procedure {:RegressionTestInput.Async} RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int3239($this: Ref, x$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int3237($this: Ref, x$in: int) returns ($result: int)
+implementation RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int3239($this: Ref, x$in: int) returns ($result: int)
 {
   var x: int;
   var $localExc: Ref;
@@ -1552,11 +1628,11 @@ implementation RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMetho
 
 
 
-procedure RegressionTestInput.Class0.CallAsyncMethod$System.Int3238($this: Ref, y$in: int) returns ($result: int);
+procedure RegressionTestInput.Class0.CallAsyncMethod$System.Int3240($this: Ref, y$in: int) returns ($result: int);
 
 
 
-implementation RegressionTestInput.Class0.CallAsyncMethod$System.Int3238($this: Ref, y$in: int) returns ($result: int)
+implementation RegressionTestInput.Class0.CallAsyncMethod$System.Int3240($this: Ref, y$in: int) returns ($result: int)
 {
   var y: int;
   var $tmp9: int;
@@ -1565,7 +1641,7 @@ implementation RegressionTestInput.Class0.CallAsyncMethod$System.Int3238($this: 
 
     y := y$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 60} true;
-    call {:async} $tmp9 := RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int3237($this, y);
+    call {:async} $tmp9 := RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int3239($this, y);
     if ($Exception != null)
     {
         return;
@@ -1577,16 +1653,16 @@ implementation RegressionTestInput.Class0.CallAsyncMethod$System.Int3238($this: 
 
 
 
-procedure RegressionTestInput.Class0.#ctor39($this: Ref);
+procedure RegressionTestInput.Class0.#ctor41($this: Ref);
 
 
 
-implementation RegressionTestInput.Class0.#ctor39($this: Ref)
+implementation RegressionTestInput.Class0.#ctor41($this: Ref)
 {
   var $localExc: Ref;
   var $label: int;
 
-    call System.Object.#ctor44($this);
+    call System.Object.#ctor46($this);
     if ($Exception != null)
     {
         return;
@@ -1597,11 +1673,11 @@ implementation RegressionTestInput.Class0.#ctor39($this: Ref)
 
 
 
-procedure RegressionTestInput.Class0.#cctor();
+procedure T$RegressionTestInput.Class0.#cctor();
 
 
 
-implementation RegressionTestInput.Class0.#cctor()
+implementation T$RegressionTestInput.Class0.#cctor()
 {
     RegressionTestInput.Class0.StaticInt := 0;
 }
@@ -1618,11 +1694,11 @@ var RegressionTestInput.ClassWithBoolTypes.staticB: bool;
 
 var RegressionTestInput.ClassWithBoolTypes.b: [Ref]bool;
 
-procedure RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int3240(x$in: int, y$in: int) returns ($result: bool);
+procedure RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int3242(x$in: int, y$in: int) returns ($result: bool);
 
 
 
-implementation RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int3240(x$in: int, y$in: int) returns ($result: bool)
+implementation RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int3242(x$in: int, y$in: int) returns ($result: bool)
 {
   var x: int;
   var y: int;
@@ -1638,11 +1714,11 @@ implementation RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int3
 
 
 
-procedure RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean41($this: Ref, z$in: bool);
+procedure RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean43($this: Ref, z$in: bool);
 
 
 
-implementation RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean41($this: Ref, z$in: bool)
+implementation RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean43($this: Ref, z$in: bool)
 {
   var z: bool;
   var $localExc: Ref;
@@ -1651,7 +1727,7 @@ implementation RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean41($th
     z := z$in;
     RegressionTestInput.ClassWithBoolTypes.b[$this] := false;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 72} true;
-    call System.Object.#ctor44($this);
+    call System.Object.#ctor46($this);
     if ($Exception != null)
     {
         return;
@@ -1674,18 +1750,18 @@ implementation RegressionTestInput.ClassWithBoolTypes.#ctor$System.Boolean41($th
 
 
 
-procedure RegressionTestInput.ClassWithBoolTypes.Main42();
+procedure RegressionTestInput.ClassWithBoolTypes.Main44();
 
 
 
-implementation RegressionTestInput.ClassWithBoolTypes.Main42()
+implementation RegressionTestInput.ClassWithBoolTypes.Main44()
 {
   var $tmp10: bool;
   var $localExc: Ref;
   var $label: int;
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 78} true;
-    call $tmp10 := RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int3240(3, 4);
+    call $tmp10 := RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int3242(3, 4);
     if ($Exception != null)
     {
         return;
@@ -1697,11 +1773,11 @@ implementation RegressionTestInput.ClassWithBoolTypes.Main42()
 
 
 
-procedure RegressionTestInput.ClassWithBoolTypes.#cctor();
+procedure T$RegressionTestInput.ClassWithBoolTypes.#cctor();
 
 
 
-implementation RegressionTestInput.ClassWithBoolTypes.#cctor()
+implementation T$RegressionTestInput.ClassWithBoolTypes.#cctor()
 {
     RegressionTestInput.ClassWithBoolTypes.staticB := false;
 }

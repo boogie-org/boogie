@@ -113,6 +113,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BaseProvider.cs" />
+    <Compile Include="BCTProvider.cs" />
     <Compile Include="DafnyProvider.cs" />
     <Compile Include="DataModel.cs" />
     <Compile Include="Main.cs">

@@ -344,7 +344,6 @@ namespace Graphing {
       Contract.Invariant(naturalLoops == null || Contract.ForAll(naturalLoops.Keys, p => p.Item2 != null && p.Item1 != null));
     }
 
-
     private class PreHeader {
       Node/*!*/ myHeader;
       [ContractInvariantMethod]
@@ -464,7 +463,7 @@ namespace Graphing {
       }
     }
 
-    internal IEnumerable<Node> Predecessors(Node n) {
+    public IEnumerable<Node> Predecessors(Node n) {
       // original A#
       //Set<Node> result = Set{ x : x in Nodes, Edge(x,n) };
 
@@ -472,7 +471,7 @@ namespace Graphing {
       return predCache[n];
     }
 
-    internal IEnumerable<Node> Successors(Node n) {
+    public IEnumerable<Node> Successors(Node n) {
       ComputePredSuccCaches();
       return succCache[n];
     }

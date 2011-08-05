@@ -164,8 +164,8 @@ namespace VC {
       Contract.Invariant(implName2LazyInliningInfo == null || cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
     }
 
-    private Dictionary<string, LazyInliningInfo> implName2LazyInliningInfo;
-    private GlobalVariable errorVariable;
+    protected Dictionary<string, LazyInliningInfo> implName2LazyInliningInfo;
+    protected GlobalVariable errorVariable;
 
     public void GenerateVCsForLazyInlining(Program program) {
       Contract.Requires(program != null);
