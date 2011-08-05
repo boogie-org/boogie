@@ -508,12 +508,14 @@ var isControlChecked: [Ref]bool;
 
 procedure {:inline 1} System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool);
 implementation System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool) {
+  $Exception:=null;
   isControlEnabled[$this] := value$in;
 }
 
 procedure {:inline 1} System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref);
 implementation System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref) {
   var enabledness: bool;
+  $Exception:=null;
   enabledness := isControlEnabled[$this];
   $result := Box2Ref(Bool2Box(enabledness));
 }
@@ -521,7 +523,7 @@ implementation System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns
 procedure {:inline 1} System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref);
 implementation System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref) {
   var check: bool;
-
+  $Exception:=null;
   check := Box2Bool(Ref2Box(value$in));
   isControlChecked[$this] := check;
 }
@@ -529,6 +531,7 @@ implementation System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$Sys
 procedure {:inline 1} System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref);
 implementation System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref) {
   var isChecked: bool;
+  $Exception:=null;
   isChecked := isControlChecked[$this];
   $result := Box2Ref(Bool2Box(isChecked));
 }

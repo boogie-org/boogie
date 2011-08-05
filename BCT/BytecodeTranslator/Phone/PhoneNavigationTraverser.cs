@@ -51,6 +51,7 @@ namespace BytecodeTranslator.Phone {
               Type = host.PlatformType.SystemString,
               Target = new TargetExpression() {
                 Type = host.PlatformType.SystemString,
+                // TODO unify code for current uri fieldreference
                 Definition = new FieldReference() {
                   ContainingType = PhoneCodeHelper.instance().getMainAppTypeReference(),
                   IsStatic=true,
@@ -233,6 +234,7 @@ namespace BytecodeTranslator.Phone {
           Type = host.PlatformType.SystemString,
           Target = new TargetExpression() {
             Type = host.PlatformType.SystemString,
+            // TODO unify code for current uri fieldreference
             Definition = new FieldReference() {
               ContainingType = PhoneCodeHelper.instance().getMainAppTypeReference(),
               IsStatic= true,
@@ -264,6 +266,7 @@ namespace BytecodeTranslator.Phone {
           Type = host.PlatformType.SystemString,
           Target = new TargetExpression() {
             Type = host.PlatformType.SystemString,
+            // TODO unify code for current uri fieldreference
             Definition = new FieldReference() {
               ContainingType = PhoneCodeHelper.instance().getMainAppTypeReference(),
               IsStatic= true,
@@ -307,6 +310,7 @@ namespace BytecodeTranslator.Phone {
       if (typeDefinition.isPhoneApplicationClass(host)) {
         NamespaceTypeDefinition mutableTypeDef = typeDefinition as NamespaceTypeDefinition;
         if (mutableTypeDef != null) {
+          // TODO unify code for current uri fieldreference
           FieldDefinition fieldDef = new FieldDefinition() {
             ContainingTypeDefinition= mutableTypeDef,
             InternFactory= host.InternFactory,
@@ -315,6 +319,7 @@ namespace BytecodeTranslator.Phone {
             Type= host.PlatformType.SystemString,
             Visibility= TypeMemberVisibility.Public,
           };
+          PhoneCodeHelper.CurrentURIFieldDefinition = fieldDef;
           mutableTypeDef.Fields.Add(fieldDef);
         }
       }

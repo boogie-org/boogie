@@ -388,5 +388,14 @@ namespace TranslationPlugins {
         return null;
       }
     }
+
+    public IEnumerable<string> getPageXAMLFilenames() {
+      HashSet<string> pageXAMLs = new HashSet<string>();
+      foreach (string name in this.pageStructureInfo.Keys) {
+        pageXAMLs.Add(pageStructureInfo[name].PageXAML);
+      }
+
+      return pageXAMLs;
+    }
   }
 }
