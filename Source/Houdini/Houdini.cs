@@ -7,6 +7,7 @@ using System;
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using Microsoft.Boogie;
+using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.Simplify;
 using VC;
 using Microsoft.Boogie.Z3;
@@ -256,30 +257,34 @@ namespace Microsoft.Boogie.Houdini {
 
     public Houdini(Program program, bool continueAtError) {
       this.program = program;
-      this.callGraph = BuildCallGraph(program);
+      this.callGraph = BuildCallGraph();
       this.continueAtError = continueAtError;
-      this.houdiniConstants = CollectExistentialConstants(program);
-      this.vcgenSessions = PrepareVCGenSessions(program);
+      this.houdiniConstants = CollectExistentialConstants();
+      this.vcgenSessions = PrepareVCGenSessions();
     }
 
-    private ReadOnlyDictionary<Implementation, HoudiniVCGen> PrepareVCGenSessions(Program program) {
+    private ReadOnlyDictionary<Implementation, HoudiniVCGen> PrepareVCGenSessions() {
+      HashSet<Implementation> impls = new HashSet<Implementation>();
       Dictionary<Implementation, HoudiniVCGen> vcgenSessions = new Dictionary<Implementation, HoudiniVCGen>();
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Implementation impl = decl as Implementation;
         if (impl != null) {
-          // make a different simplify log file for each function
-          String simplifyLog = null;
-          if (CommandLineOptions.Clo.SimplifyLogFilePath != null) {
-            simplifyLog = impl.ToString() + CommandLineOptions.Clo.SimplifyLogFilePath;
-          }
-          HoudiniVCGen vcgen = new HoudiniVCGen(program, impl, simplifyLog, CommandLineOptions.Clo.SimplifyLogFileAppend);
-          vcgenSessions.Add(impl, vcgen);
+          impls.Add(impl);
         }
+      }
+      foreach (Implementation impl in impls) {
+        // make a different simplify log file for each function
+        String simplifyLog = null;
+        if (CommandLineOptions.Clo.SimplifyLogFilePath != null) {
+          simplifyLog = impl.ToString() + CommandLineOptions.Clo.SimplifyLogFilePath;
+        }
+        HoudiniVCGen vcgen = new HoudiniVCGen(program, impl, simplifyLog, CommandLineOptions.Clo.SimplifyLogFileAppend);
+        vcgenSessions.Add(impl, vcgen);
       }
       return new ReadOnlyDictionary<Implementation, HoudiniVCGen>(vcgenSessions);
     }
 
-    private ReadOnlyDictionary<string, IdentifierExpr> CollectExistentialConstants(Program program) {
+    private ReadOnlyDictionary<string, IdentifierExpr> CollectExistentialConstants() {
       Dictionary<string, IdentifierExpr> existentialConstants = new Dictionary<string, IdentifierExpr>();
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Constant constant = decl as Constant;
@@ -294,7 +299,7 @@ namespace Microsoft.Boogie.Houdini {
       return new ReadOnlyDictionary<string, IdentifierExpr>(existentialConstants);
     }
 
-    private Graph<Implementation> BuildCallGraph(Program program) {
+    private Graph<Implementation> BuildCallGraph() {
       Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Implementation impl = decl as Implementation;
@@ -345,17 +350,21 @@ namespace Microsoft.Boogie.Houdini {
       return false;
     }
 
-    private Axiom BuildAxiom(Dictionary<string, bool> currentAssignment) {
-      Expr axiom = new LiteralExpr(Token.NoToken, true);
+    private Axiom BuildAxiom(Dictionary<string, bool> currentAssignment, Boogie2VCExprTranslator exprTranslator) {
+      Expr expr = new LiteralExpr(Token.NoToken, true);
+      expr.Type = Type.Bool;
       foreach (KeyValuePair<string, bool> kv in currentAssignment) {
         IdentifierExpr constantExpr;
         houdiniConstants.TryGetValue(kv.Key, out constantExpr);
         Contract.Assume(constantExpr != null);
         Expr valueExpr = new LiteralExpr(Token.NoToken, kv.Value);
+        valueExpr.Type = Type.Bool;
         Expr constantAssignment = Expr.Binary(Token.NoToken, BinaryOperator.Opcode.Eq, constantExpr, valueExpr);
-        axiom = Expr.Binary(Token.NoToken, BinaryOperator.Opcode.And, axiom, constantAssignment);
+        constantAssignment.Type = Type.Bool;
+        expr = Expr.Binary(Token.NoToken, BinaryOperator.Opcode.And, expr, constantAssignment);
+        expr.Type = Type.Bool;
       }
-      return new Axiom(Token.NoToken, axiom);
+      return new Axiom(Token.NoToken, expr);
     }
 
     private Dictionary<string, bool> BuildAssignment(Dictionary<string, IdentifierExpr>.KeyCollection constants) {
@@ -659,14 +668,14 @@ namespace Microsoft.Boogie.Houdini {
       PrintBadList("Errors", errors);
     }
 
-    public HoudiniOutcome VerifyProgram(Program program) {
-      HoudiniOutcome outcome = VerifyProgramSameFuncFirst(program);
+    public HoudiniOutcome VerifyProgram() {
+      HoudiniOutcome outcome = VerifyProgramSameFuncFirst();
       PrintBadOutcomes(outcome.ListOfTimeouts, outcome.ListOfInconclusives, outcome.ListOfErrors);
       return outcome;
     }
 
     // Old main loop
-    public HoudiniOutcome VerifyProgramUnorderedWork(Program program) {
+    public HoudiniOutcome VerifyProgramUnorderedWork() {
       HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants.Keys));
       this.NotifyStart(program, houdiniConstants.Keys.Count);
 
@@ -699,7 +708,7 @@ namespace Microsoft.Boogie.Houdini {
     }
 
     // New main loop
-    public HoudiniOutcome VerifyProgramSameFuncFirst(Program program) {
+    public HoudiniOutcome VerifyProgramSameFuncFirst() {
       HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants.Keys));
       this.NotifyStart(program, houdiniConstants.Keys.Count);
 
@@ -738,7 +747,7 @@ namespace Microsoft.Boogie.Houdini {
     //Aborts when there is a violation of non-candidate assertion
     //This can be used in eager mode (continueAfterError) by simply making
     //all non-candidate annotations as unchecked (free requires/ensures, assumes)
-    public HoudiniOutcome PerformHoudiniInference(Program program) {
+    public HoudiniOutcome PerformHoudiniInference() {
       HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants.Keys));
       this.NotifyStart(program, houdiniConstants.Keys.Count);
 

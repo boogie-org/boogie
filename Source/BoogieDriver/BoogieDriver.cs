@@ -429,6 +429,11 @@ namespace Microsoft.Boogie {
       // Abstract interpretation -> Always use (at least) intervals, if not specified otherwise (e.g. with the "/noinfer" switch)
       Microsoft.Boogie.AbstractInterpretation.AbstractInterpretation.RunAbstractInterpretation(program);
 
+      if (CommandLineOptions.Clo.ContractInfer) {
+        Houdini.Houdini houdini = new Houdini.Houdini(program, true);
+        houdini.PerformHoudiniInference();
+      }
+
       if (CommandLineOptions.Clo.LoopUnrollCount != -1) {
         program.UnrollLoops(CommandLineOptions.Clo.LoopUnrollCount);
       }
