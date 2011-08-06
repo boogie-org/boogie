@@ -390,7 +390,8 @@ namespace BytecodeTranslator {
       }
 
       try {
-        var decl = sink.FindOrCreateProcedure(invokeMethod).Decl;
+        IMethodDefinition unspecializedInvokeMethod = Sink.Unspecialize(invokeMethod).ResolvedMethod;
+        var decl = sink.FindOrCreateProcedure(unspecializedInvokeMethod).Decl;
         var proc = decl as Bpl.Procedure;
         var invars = proc.InParams;
         var outvars = proc.OutParams;
