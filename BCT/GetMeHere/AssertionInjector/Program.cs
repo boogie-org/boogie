@@ -18,7 +18,7 @@ using Microsoft.Cci.MutableCodeModel;
 namespace AssertionInjector {
 
   class Program {
-    readonly static int errorValue = -1;
+    const int errorValue = -1;
     static int Main(string[] args) {
       if (args == null || args.Length < 4) {
         Console.WriteLine("Usage: AssertionInjector <assembly> <filename+extension> <line number> <column number> [<outputPath>]");
@@ -62,7 +62,7 @@ namespace AssertionInjector {
           }
           using (var pdbReader = new PdbReader(pdbStream, host)) {
             var localScopeProvider = new ILGenerator.LocalScopeProvider(pdbReader);
-            var mutator = new ILMutator(host, pdbReader, fileName, lineNumber, columnNumber);
+            var mutator = new GetMeHereInjector(host, pdbReader, fileName, lineNumber, columnNumber);
             module = mutator.Rewrite(module);
 
             originalAssemblyPath = module.Location;
@@ -97,35 +97,25 @@ namespace AssertionInjector {
 
   /// <summary>
   /// A mutator that modifies method bodies at the IL level.
-  /// It injects a call to Console.WriteLine for each store
-  /// to a local for which the PDB reader is able to provide a name.
-  /// This is meant to distinguish programmer-defined locals from
-  /// those introduced by the compiler.
+  /// It injects a call to GetMeHere.GetMeHere.Assert at the
+  /// specified source location.
+  /// The class GetMeHere is synthesized and injected into the
+  /// rewritten assembly.
   /// </summary>
-  public class ILMutator : MetadataRewriter {
+  public class GetMeHereInjector : MetadataRewriter {
 
     PdbReader pdbReader;
-    IMethodReference contractDotAssert;
     string fileName;
     int lineNumber;
     int columnNumber;
 
-    public ILMutator(IMetadataHost host, PdbReader pdbReader, string fileName, int lineNumber, int columnNumber)
+    public GetMeHereInjector(IMetadataHost host, PdbReader pdbReader, string fileName, int lineNumber, int columnNumber)
       : base(host) {
       this.pdbReader = pdbReader;
       this.fileName = fileName;
       this.lineNumber = lineNumber;
       this.columnNumber = columnNumber;
 
-      #region Get reference to Contract.Assert
-      var platformType = host.PlatformType;
-      this.contractDotAssert = new Microsoft.Cci.MethodReference(
-        this.host, this.host.PlatformType.SystemDiagnosticsContractsContract,
-        CallingConvention.Default,
-        platformType.SystemVoid,
-        host.NameTable.GetNameFor("Assert"),
-        0, platformType.SystemBoolean);
-      #endregion Get reference to Contract.Assert
     }
 
     List<ILocalDefinition> currentLocals;
@@ -133,6 +123,19 @@ namespace AssertionInjector {
     IEnumerator<ILocalScope>/*?*/ scopeEnumerator;
     bool scopeEnumeratorIsValid;
     Stack<ILocalScope> scopeStack = new Stack<ILocalScope>();
+    private NamespaceTypeDefinition getMeHereClass;
+    private MethodDefinition getMeHereAssert;
+
+    public override void RewriteChildren(Module module) {
+      base.RewriteChildren(module);
+      module.AllTypes.Add(this.getMeHereClass);
+    }
+
+    public override void RewriteChildren(RootUnitNamespace rootUnitNamespace) {
+      var ns = this.CreateGetMeHere(rootUnitNamespace); // side effect: sets fields
+      rootUnitNamespace.Members.Add(ns);
+      base.RewriteChildren(rootUnitNamespace);
+    }
 
     public override IMethodBody Rewrite(IMethodBody methodBody) {
       try {
@@ -182,7 +185,7 @@ namespace AssertionInjector {
         if (startLocation.StartLine > this.lineNumber) return;
 
         ProcessOperations(methodBody, operations);
-      } catch (AssertionInjectorException) {
+      } catch (GetMeHereInjectorException) {
         Console.WriteLine("Internal error during IL mutation for the method '{0}'.",
           MemberHelper.GetMemberSignature(methodBody.MethodDefinition, NameFormattingOptions.SmartTypeName));
       }
@@ -337,7 +340,7 @@ namespace AssertionInjector {
           if (location != null) {
             emittedProbe = true;
             generator.Emit(OperationCode.Ldc_I4_0);
-            generator.Emit(OperationCode.Call, this.contractDotAssert);
+            generator.Emit(OperationCode.Call, this.getMeHereAssert);
           }
         }
 
@@ -444,7 +447,7 @@ namespace AssertionInjector {
                   generator.Emit(op.OperationCode, this.Rewrite(typeReference));
                   break;
                 }
-                throw new AssertionInjectorException("Should never get here: no other IOperation argument types should exist");
+                throw new GetMeHereInjectorException("Should never get here: no other IOperation argument types should exist");
               case TypeCode.SByte:
                 generator.Emit(op.OperationCode, (sbyte)op.Value);
                 break;
@@ -467,7 +470,7 @@ namespace AssertionInjector {
                 //case TypeCode.UInt16:
                 //case TypeCode.UInt32:
                 //case TypeCode.UInt64:
-                throw new AssertionInjectorException("Should never get here: no other IOperation argument types should exist");
+                throw new GetMeHereInjectorException("Should never get here: no other IOperation argument types should exist");
             }
             break;
           #endregion Everything else
@@ -511,105 +514,93 @@ namespace AssertionInjector {
       }
     }
 
-    private void EmitStoreLocal(ILGenerator generator, IOperation op) {
+    private NestedUnitNamespace CreateGetMeHere(IUnitNamespace unitNamespace) {
 
-      #region Emit: call Console.WriteLine("foo");
-      //generator.Emit(OperationCode.Ldstr, "foo");
-      //generator.Emit(OperationCode.Call, this.consoleDotWriteLine);
-      #endregion Emit: call Console.WriteLine("foo");
+      var voidType = this.host.PlatformType.SystemVoid;
 
-      string localName;
-      switch (op.OperationCode) {
-        case OperationCode.Stloc:
-        case OperationCode.Stloc_S:
-          ILocalDefinition loc = op.Value as ILocalDefinition;
-          if (loc == null) throw new AssertionInjectorException("Stloc operation found without a valid operand");
-          if (TryGetLocalName(loc, out localName)) {
-            generator.Emit(OperationCode.Ldstr, localName);
-            generator.Emit(OperationCode.Call, this.contractDotAssert);
-          }
-          generator.Emit(op.OperationCode, loc);
-          break;
+      #region Create class
 
-        case OperationCode.Stloc_0:
-          if (this.currentLocals.Count < 1)
-            throw new AssertionInjectorException("stloc.0 operation found but no corresponding local in method body");
-          if (TryGetLocalName(this.currentLocals[0], out localName)) {
-            generator.Emit(OperationCode.Ldstr, localName);
-            generator.Emit(OperationCode.Call, this.contractDotAssert);
-          }
-          generator.Emit(op.OperationCode);
-          break;
+      Microsoft.Cci.MethodReference compilerGeneratedCtor =
+        new Microsoft.Cci.MethodReference(
+          this.host,
+          this.host.PlatformType.SystemRuntimeCompilerServicesCompilerGeneratedAttribute,
+          CallingConvention.HasThis,
+          voidType,
+          this.host.NameTable.Ctor,
+          0);
+      CustomAttribute compilerGeneratedAttribute = new CustomAttribute();
+      compilerGeneratedAttribute.Constructor = compilerGeneratedCtor;
 
-        case OperationCode.Stloc_1:
-          if (this.currentLocals.Count < 2)
-            throw new AssertionInjectorException("stloc.1 operation found but no corresponding local in method body");
-          if (TryGetLocalName(this.currentLocals[1], out localName)) {
-            generator.Emit(OperationCode.Ldstr, localName);
-            generator.Emit(OperationCode.Call, this.contractDotAssert);
-          }
-          generator.Emit(op.OperationCode);
-          break;
+      var getMeHereNamespace = new NestedUnitNamespace() {
+        ContainingUnitNamespace = unitNamespace,
+        Name = this.host.NameTable.GetNameFor("GetMeHere"),
+      };
+      this.getMeHereClass = new NamespaceTypeDefinition() {
+        // NB: The string name must be kept in sync with the code that recognizes GMH methods!!
+        Attributes = new List<ICustomAttribute>(){compilerGeneratedAttribute},
+        BaseClasses = new List<ITypeReference>(){this.host.PlatformType.SystemObject},
+        ContainingUnitNamespace = getMeHereNamespace,
+        InternFactory = this.host.InternFactory,
+        IsBeforeFieldInit = true,
+        IsClass = true,
+        IsSealed = true,
+        Layout = LayoutKind.Auto,
+        Name = this.host.NameTable.GetNameFor("GetMeHere"),
+        StringFormat = StringFormatKind.Ansi,
+      };
+      #endregion
 
-        case OperationCode.Stloc_2:
-          if (this.currentLocals.Count < 3)
-            throw new AssertionInjectorException("stloc.2 operation found but no corresponding local in method body");
-          if (TryGetLocalName(this.currentLocals[2], out localName)) {
-            generator.Emit(OperationCode.Ldstr, localName);
-            generator.Emit(OperationCode.Call, this.contractDotAssert);
-          }
-          generator.Emit(op.OperationCode);
-          break;
+      #region Create methods
+      var body = new MethodBody() {
+        Operations = new List<IOperation>(){new Operation() { OperationCode = OperationCode.Ret, }},
+      };
 
-        case OperationCode.Stloc_3:
-          if (this.currentLocals.Count < 4)
-            throw new AssertionInjectorException("stloc.3 operation found but no corresponding local in method body");
-          if (TryGetLocalName(this.currentLocals[3], out localName)) {
-            generator.Emit(OperationCode.Ldstr, localName);
-            generator.Emit(OperationCode.Call, this.contractDotAssert);
-          }
-          generator.Emit(op.OperationCode);
-          break;
+      this.getMeHereAssert = new MethodDefinition() {
+        Body = body,
+        CallingConvention = CallingConvention.Default, // Isn't it the default for the calling convention to be the default?
+        ContainingTypeDefinition = getMeHereClass,
+        IsStatic = true,
+        InternFactory = this.host.InternFactory,
+        Name = this.host.NameTable.GetNameFor("Assert"),
+        Type = voidType,
+        Visibility = TypeMemberVisibility.Public,
+      };
+      var paramList = new List<IParameterDefinition>();
+      paramList.Add(
+        new ParameterDefinition() {
+          ContainingSignature = getMeHereAssert,
+          Name = this.host.NameTable.GetNameFor("condition"),
+          Type = this.host.PlatformType.SystemBoolean,
+          Index = 0,
+        });
+      getMeHereAssert.Parameters = paramList;
+      body.MethodDefinition = getMeHereAssert;
+      getMeHereClass.Methods = new List<IMethodDefinition> { getMeHereAssert };
+      #endregion
 
-        default:
-          throw new AssertionInjectorException("Should never get here: switch statement was meant to be exhaustive");
-      }
-    }
-
-    private bool TryGetLocalName(ILocalDefinition local, out string localNameFromPDB) {
-      string localName = local.Name.Value;
-      localNameFromPDB = null;
-      if (this.pdbReader != null) {
-        foreach (IPrimarySourceLocation psloc in this.pdbReader.GetPrimarySourceLocationsForDefinitionOf(local)) {
-          if (psloc.Source.Length > 0) {
-            localNameFromPDB = psloc.Source;
-            break;
-          }
-        }
-      }
-      return localNameFromPDB != null;
+      return getMeHereNamespace;
     }
 
     /// <summary>
     /// Exceptions thrown during extraction. Should not escape this class.
     /// </summary>
-    private class AssertionInjectorException : Exception {
+    private class GetMeHereInjectorException : Exception {
       /// <summary>
       /// Exception specific to an error occurring in the contract extractor
       /// </summary>
-      public AssertionInjectorException() { }
+      public GetMeHereInjectorException() { }
       /// <summary>
       /// Exception specific to an error occurring in the contract extractor
       /// </summary>
-      public AssertionInjectorException(string s) : base(s) { }
+      public GetMeHereInjectorException(string s) : base(s) { }
       /// <summary>
       /// Exception specific to an error occurring in the contract extractor
       /// </summary>
-      public AssertionInjectorException(string s, Exception inner) : base(s, inner) { }
+      public GetMeHereInjectorException(string s, Exception inner) : base(s, inner) { }
       /// <summary>
       /// Exception specific to an error occurring in the contract extractor
       /// </summary>
-      public AssertionInjectorException(SerializationInfo info, StreamingContext context) : base(info, context) { }
+      public GetMeHereInjectorException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
   }
 
