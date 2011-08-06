@@ -9,7 +9,7 @@ namespace Microsoft.Boogie.ModelViewer.BCT {
     private Provider() { }
 
     public bool IsMyModel(Model m) {
-      return m.TryGetFunc("Alloc") != null;
+      return m.TryGetFunc("$Alloc") != null;
     }
 
     public ILanguageSpecificModel GetLanguageSpecificModel(Model m, ViewOptions opts) {
@@ -26,7 +26,6 @@ namespace Microsoft.Boogie.ModelViewer.BCT {
   class BCTModel : LanguageModel {
     public readonly Model.Func f_heap_select;
     public readonly Dictionary<Model.Element, Model.Element[]> ArrayLengths = new Dictionary<Model.Element, Model.Element[]>();
-    public readonly Dictionary<Model.Element, Model.FuncTuple> DatatypeValues = new Dictionary<Model.Element, Model.FuncTuple>();
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
     public List<StateNode> states = new List<StateNode>();
 
@@ -46,9 +45,8 @@ namespace Microsoft.Boogie.ModelViewer.BCT {
     public string GetUserVariableName(string name) {
       if (name.StartsWith("$")) 
         return null;
-      var hash = name.IndexOf('#');
-      if (0 < hash)
-        return name.Substring(0, hash);
+      if (name == "isControlChecked" || name == "isControlEnabled")
+        return null;
       return name;
     }
 
@@ -58,71 +56,11 @@ namespace Microsoft.Boogie.ModelViewer.BCT {
         return r.Args[0];
       return null;
     }
-    /*
+    
     public IEnumerable<ElementNode> GetExpansion(StateNode state, Model.Element elt) {
       List<ElementNode> result = new List<ElementNode>();
-
-      if (elt.Kind != Model.ElementKind.Uninterpreted)
-        return result;
-
-      // Perhaps elt is a known datatype value
-      Model.FuncTuple fnTuple;
-      if (DatatypeValues.TryGetValue(elt, out fnTuple)) {
-        // elt is a datatype value
-        int i = 0;
-        foreach (var arg in fnTuple.Args) {
-          var edgname = new EdgeName(this, i.ToString());
-          result.Add(new FieldNode(state, edgname, arg));
-          i++;
-        }
-        return result;
-      }
-
-      // Perhaps elt is a sequence
-      var seqLen = f_seq_length.AppWithArg(0, elt);
-      if (seqLen != null) {
-        // elt is a sequence
-        foreach (var tpl in f_seq_index.AppsWithArg(0, elt)) {
-          var edgname = new EdgeName(this, "[%0]", tpl.Args[1]);
-          result.Add(new FieldNode(state, edgname, Unbox(tpl.Result)));
-        }
-        return result;
-      }
-
-      // Perhaps elt is a set
-      foreach (var tpl in f_set_select.AppsWithArg(0, elt)) {
-        var setElement = tpl.Args[1];
-        var containment = tpl.Result;
-        var edgname = new EdgeName(this, "[%0]", Unbox(setElement));
-        result.Add(new FieldNode(state, edgname, containment));
-      }
-      if (result.Count != 0)
-        return result;  // elt is a set
-
-      // It seems elt is an object or array
-      Model.Element[] lengths;
-      if (ArrayLengths.TryGetValue(elt, out lengths)) {
-        int i = 0;
-        foreach (var len in lengths) {
-          var name = lengths.Length == 1 ? "Length" : "Length" + i;
-          var edgname = new EdgeName(this, name);
-          result.Add(new FieldNode(state, edgname, len));
-          i++;
-        }
-      }
-      var heap = state.State.TryGet("$Heap");
-      if (heap != null) {
-        foreach (var tpl in f_heap_select.AppsWithArgs(0, heap, 1, elt)) {
-          var field = new FieldName(tpl.Args[2], this);
-          if (field.NameFormat != "alloc") {
-            var edgname = new EdgeName(this, field.NameFormat, field.NameArgs);
-            result.Add(new FieldNode(state, edgname, Unbox(tpl.Result)));
-          }
-        }
-      }
       return result;
     }
-     */ 
   }
 
   class StateNode : NamedState {
@@ -186,7 +124,7 @@ namespace Microsoft.Boogie.ModelViewer.BCT {
       : this(st, new EdgeName(name), elt) { }
 
     protected override void ComputeChildren() {
-      //children.AddRange(vm.GetExpansion(stateNode, elt));
+      children.AddRange(vm.GetExpansion(stateNode, elt));
     }
   }
 
