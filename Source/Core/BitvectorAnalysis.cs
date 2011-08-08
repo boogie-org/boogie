@@ -92,6 +92,10 @@ namespace Microsoft.Boogie {
 
     private DisjointSet MakeDisjointSet(Expr expr) {
       if (!exprToDisjointSet.ContainsKey(expr)) {
+        if (expr.Type == null) {
+          expr.Resolve(new ResolutionContext(null));
+          expr.Typecheck(new TypecheckingContext(null));
+        }
         MapType mapType = expr.Type as MapType;
         if (mapType != null) {
           exprToDisjointSet[expr] = new MapDisjointSet(mapType.Arguments.Length);
