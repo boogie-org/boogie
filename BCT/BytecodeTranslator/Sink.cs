@@ -1097,6 +1097,7 @@ namespace BytecodeTranslator {
     {
       if (type == Dummy.Type) {
       }
+      type = Microsoft.Cci.MutableContracts.ContractHelper.Unspecialized(type).ResolvedType;
       uint key = type.InternedKey;
       if (!delegateTypeToDelegates.ContainsKey(key))
         delegateTypeToDelegates[key] = new Tuple<ITypeDefinition, HashSet<IMethodDefinition>>(type, new HashSet<IMethodDefinition>());
@@ -1107,6 +1108,7 @@ namespace BytecodeTranslator {
     public void AddDelegateType(ITypeDefinition type) {
       if (type == Dummy.Type) {
       }
+      type = Microsoft.Cci.MutableContracts.ContractHelper.Unspecialized(type).ResolvedType;
       uint key = type.InternedKey;
       if (!delegateTypeToDelegates.ContainsKey(key))
         delegateTypeToDelegates[key] = new Tuple<ITypeDefinition, HashSet<IMethodDefinition>>(type, new HashSet<IMethodDefinition>());
