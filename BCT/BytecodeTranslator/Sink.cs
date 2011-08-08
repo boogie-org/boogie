@@ -431,7 +431,7 @@ namespace BytecodeTranslator {
         string MethodName = TranslationHelper.CreateUniqueMethodName(method);
         // The method can be generic (or have a parameter whose type is a type parameter of the method's
         // containing class) and then there can be name clashes.
-        MethodName += key.ToString();
+        //MethodName += key.ToString();
 
         if (this.initiallyDeclaredProcedures.TryGetValue(MethodName, out procInfo)) return procInfo;
 

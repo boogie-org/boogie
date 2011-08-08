@@ -34,6 +34,9 @@ namespace BytecodeTranslator {
     [OptionDescription("Emit a 'capture state' directive after each statement, (default: false)", ShortForm = "c")]
     public bool captureState = false;
 
+    [OptionDescription("Translation should be done for Get Me Here functionality, (default: false)", ShortForm = "gmh")]
+    public bool getMeHere = false;
+
     [OptionDescription("Search paths for assembly dependencies.", ShortForm = "lib")]
     public List<string> libpaths = new List<string>();
 

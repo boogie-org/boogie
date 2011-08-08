@@ -158,7 +158,11 @@ namespace BytecodeTranslator
       else {
         System.Diagnostics.Debug.Assert(conditionType == Bpl.Type.Bool);
       }
-      StmtBuilder.Add(new Bpl.AssertCmd(assertStatement.Token(), conditionExpr));
+      if (this.sink.Options.getMeHere) {
+        StmtBuilder.Add(new Bpl.AssumeCmd(assertStatement.Token(), conditionExpr));
+      } else {
+        StmtBuilder.Add(new Bpl.AssertCmd(assertStatement.Token(), conditionExpr));
+      }
     }
 
     public override void Visit(IAssumeStatement assumeStatement) {

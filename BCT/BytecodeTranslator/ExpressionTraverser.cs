@@ -487,6 +487,19 @@ namespace BytecodeTranslator
       }
 
       Bpl.IToken methodCallToken = methodCall.Token();
+
+      if (this.sink.Options.getMeHere) {
+        // TODO: Get a method reference so this isn't a string comparison?
+        var methodName = MemberHelper.GetMethodSignature(methodCall.MethodToCall, NameFormattingOptions.None);
+        if (methodName.Equals("GetMeHere.GetMeHere.Assert")) {
+          // for now, just translate it as "assert e"
+          this.Visit(methodCall.Arguments.First());
+          Bpl.Expr e = this.TranslatedExpressions.Pop();
+          this.StmtTraverser.StmtBuilder.Add(new Bpl.AssertCmd(methodCallToken, e));
+          return;
+        }
+      }
+
       List<Bpl.Expr> inexpr;
       List<Bpl.IdentifierExpr> outvars;
       Bpl.IdentifierExpr thisExpr;
