@@ -392,7 +392,8 @@ namespace TranslationPlugins {
     public IEnumerable<string> getPageXAMLFilenames() {
       HashSet<string> pageXAMLs = new HashSet<string>();
       foreach (string name in this.pageStructureInfo.Keys) {
-        pageXAMLs.Add(pageStructureInfo[name].PageXAML);
+        if (!name.EndsWith("__dummy"))
+          pageXAMLs.Add(pageStructureInfo[name].PageXAML);
       }
 
       return pageXAMLs;

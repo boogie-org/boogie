@@ -643,25 +643,21 @@ namespace BytecodeTranslator.Phone {
       IEnumerable<string> xamls= PhonePlugin.getPageXAMLFilenames();
       string startURI= sink.FindOrCreateConstant(BOOGIE_STARTING_URI_PLACEHOLDER).Name;
       string endURI = sink.FindOrCreateConstant(BOOGIE_ENDING_URI_PLACEHOLDER).Name;
-      int i=1, j=1;
       foreach (string x1 in xamls) {
         string startURIVar= sink.FindOrCreateConstant(x1).Name.ToLower();
-        j = 1;
         foreach (string x2 in xamls) {
-          string resultFile = sourceBPLFile + "_" + i + "_" + j + ".bpl";
+          string resultFile = sourceBPLFile + "_" + x1 + "_" + x2 + ".bpl";
           string endURIVar= sink.FindOrCreateConstant(x2).Name.ToLower();
           outputStream.WriteLine("sed s/" + startURI + ";/" + startURIVar + ";/g " + sourceBPLFile + "> " + resultFile);
           outputStream.WriteLine("sed -i s/" + endURI + ";/" + endURIVar + ";/g " + resultFile);
-          j++;
         }
-        i++;
       }
 
       outputStream.Close();
     }
 
 
-    public static void addHandlerStubCaller(Sink sink, IMethodDefinition def) {
+    public static Bpl.Procedure addHandlerStubCaller(Sink sink, IMethodDefinition def) {
       MethodBody callerBody = new MethodBody();
       MethodDefinition callerDef = new MethodDefinition() {
         InternFactory = (def as MethodDefinition).InternFactory,
@@ -720,6 +716,7 @@ namespace BytecodeTranslator.Phone {
                                new Bpl.VariableSeq(), new Bpl.VariableSeq(localVars), builder.Collect(Bpl.Token.NoToken), null, new Bpl.Errors());
 
       sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
+      return impl.Proc;
     }
 
     public static void updateInlinedMethods(Sink sink, IEnumerable<IMethodDefinition> doInline) {

@@ -22,12 +22,14 @@ boogiePageClasses= []
 dummyPageVar= "dummyBoogieStringPageName"
 anonymousControlCount= 0;
 ANONYMOUS_CONTROL_PREFIX= "__BOOGIE_ANONYMOUS_CONTROL_"
+unrolls= 0
 
 def showUsage():
   print "PhoneBoogieCodeGenerator -- create boilerplate code for Boogie verification of Phone apps"
   print "Usage:"
-  print "\tPhoneBoogieCodeGenerator --controls <app_control_info_file> --output <code_output_file>\n"
+  print "\tPhoneBoogieCodeGenerator --staticUnroll <n> --controls <app_control_info_file> --output <code_output_file>\n"
   print "Options:"
+  print "\t--staticUnroll <n>: Do not generate loops, unroll up to n times. If not set generates loops (default). Short form: -u"
   print "\t--controls <app_control_info_file>: Phone app control info. See PhoneControlsExtractor. Short form: -c"
   print "\t--output <code_output_file>: file to write with boilerplate code. Short form: -o\n"
 
@@ -93,11 +95,15 @@ def outputMainProcedures(file, batFile):
       file.write("\tcall " + boogiePageClasses[k] + ".#ctor(" + boogiePageVars[k]["name"] + ");\n")
 
     file.write("\t//TODO still need to call Loaded handler on main page.\n")
-    file.write("\thavoc $doWork;\n")
-    file.write("\twhile ($doWork) {\n")
-    file.write("\t\tcall DriveControls();\n")
-    file.write("\t\thavoc $doWork;\n")
-    file.write("\t}\n")
+    if (unrolls == 0):
+      file.write("\thavoc $doWork;\n")
+      file.write("\twhile ($doWork) {\n")
+      file.write("\t\tcall DriveControls();\n")
+      file.write("\t\thavoc $doWork;\n")
+      file.write("\t}\n")
+    else:
+      for unr in range(unrolls):
+        file.write("\t\tcall DriveControls();\n")
 
     file.write("\tassume " + currentNavigationVariable + " == " + boogiePageVars[i]["boogieStringName"] + ";\n")
     file.write("\tcall DriveControls();\n")
@@ -123,6 +129,7 @@ def outputPageControlDriver(file, originalPageName, boogiePageName):
 
   file.write("\t" + CONTINUEONPAGE_VAR +":=true;\n")
   file.write("\thavoc $activeControl;\n")
+
   file.write("\twhile (" + CONTINUEONPAGE_VAR + ") {\n")
   activeControl=0
   ifInitialized= False
@@ -196,7 +203,7 @@ def outputControlDrivers(file, batFile):
 def outputURIHavocProcedure(file):
   file.write("procedure {:inline 1} __BOOGIE_Havoc_CurrentURI__();\n")
   file.write("implementation __BOOGIE_Havoc_CurrentURI__() {\n")
-  file.write("\thavoc " + currentNavigationVariable + ";\n")
+  # file.write("\thavoc " + currentNavigationVariable + ";\n")
   file.write("// TODO write assume statements to filter havoc'd variable to either of all pages\n")
   # file.write("\tassume )
   file.write("}\n")
@@ -250,16 +257,18 @@ def buildControlInfo(controlInfoFileName):
   file.close()
 
 def main():
+  global unrolls
   controlFile= ""
   outputFile= ""
+
   try:
-    opts, args= getopt.getopt(sys.argv[1:], "c:o:", ["controls=","output="])
+    opts, args= getopt.getopt(sys.argv[1:], "c:o:u:", ["controls=","output=","staticUnroll="])
   except geopt.error, msg:
     print msg
     showUsage()
     sys.exit(2)
 
-  if not len(opts) == 2:
+  if not len(opts) >= 2:
     print "Missing options"
     showUsage()
     sys.exit(2)
@@ -269,6 +278,8 @@ def main():
       controlFile= a
     if o in ["-o", "--output"]:
       outputFile= a
+    if o in ["-u", "--staticUnroll"]:
+      unrolls= int(a)
 
   buildControlInfo(controlFile)
   outputBoilerplate(outputFile, outputFile + ".bat")
