@@ -89,13 +89,13 @@ namespace Microsoft.Boogie {
     private Dictionary<Expr, DisjointSet> exprToDisjointSet = new Dictionary<Expr, DisjointSet>();
     private Dictionary<Variable, DisjointSet> varToDisjointSet = new Dictionary<Variable, DisjointSet>();
     private Expr uniqueBvExpr = new IdentifierExpr(Token.NoToken, "UniqueBvExpr");
+    public Type UpdatedType(Variable var) {
+      return null;
+    }
 
     private DisjointSet MakeDisjointSet(Expr expr) {
       if (!exprToDisjointSet.ContainsKey(expr)) {
-        if (expr.Type == null) {
-          expr.Resolve(new ResolutionContext(null));
-          expr.Typecheck(new TypecheckingContext(null));
-        }
+        Debug.Assert(expr.Type != null);
         MapType mapType = expr.Type as MapType;
         if (mapType != null) {
           exprToDisjointSet[expr] = new MapDisjointSet(mapType.Arguments.Length);
@@ -123,6 +123,8 @@ namespace Microsoft.Boogie {
     public static void DoBitVectorAnalysis(Program program) {
       BitVectorAnalysis bvAnalyzer = new BitVectorAnalysis();
       bvAnalyzer.Visit(program);
+      BvToIntRewriter bvtoIntRewriter = new BvToIntRewriter(bvAnalyzer);
+      bvtoIntRewriter.Visit(program);
     }
 
     public override Implementation VisitImplementation(Implementation node) {
@@ -177,8 +179,8 @@ namespace Microsoft.Boogie {
         
         if (func.FindStringAttribute("bvbuiltin") != null) {
           // unify each actual argument with uniqueBvExpr
-          for (int i = 0; i < node.Args.Length; i++) {
-            DisjointSet actual = MakeDisjointSet(node.Args[i]);
+          foreach (Expr e in node.Args) {
+            DisjointSet actual = MakeDisjointSet(e);
             actual.Union(MakeDisjointSet(uniqueBvExpr));
           }
         }
@@ -214,11 +216,56 @@ namespace Microsoft.Boogie {
       return base.VisitNAryExpr(node);
     }
 
+    public override BvConcatExpr VisitBvConcatExpr(BvConcatExpr node) {
+      foreach (Expr e in node.Arguments) {
+        DisjointSet actual = MakeDisjointSet(e);
+        actual.Union(MakeDisjointSet(uniqueBvExpr));
+      }
+      return base.VisitBvConcatExpr(node);
+    }
+
+    public override BvExtractExpr VisitBvExtractExpr(BvExtractExpr node) {
+      DisjointSet disjointSet = MakeDisjointSet(node.Bitvector);
+      disjointSet.Union(MakeDisjointSet(uniqueBvExpr));
+      return base.VisitBvExtractExpr(node);
+    }
+
+    public override LiteralExpr VisitLiteralExpr(LiteralExpr node) {
+      if (node.Val is BvConst) {
+        DisjointSet disjointSet = MakeDisjointSet(node);
+        disjointSet.Union(MakeDisjointSet(uniqueBvExpr));
+      }
+      return base.VisitLiteralExpr(node);
+    }
+
     public override Expr VisitIdentifierExpr(IdentifierExpr node) {
       DisjointSet a = MakeDisjointSet(node);
       DisjointSet b = MakeDisjointSet(node.Decl);
       a.Union(b);
       return base.VisitIdentifierExpr(node);
     }
+  }
+
+  class BvToIntRewriter : StandardVisitor {
+    private BitVectorAnalysis bvAnalyzer;
+    public BvToIntRewriter(BitVectorAnalysis bvAnalyzer) {
+      this.bvAnalyzer = bvAnalyzer;
+    }
+    public override Constant VisitConstant(Constant node) {
+      return base.VisitConstant(node);
+    }
+
+    public override GlobalVariable VisitGlobalVariable(GlobalVariable node) {
+      return base.VisitGlobalVariable(node);
+    }
+
+    public override Formal VisitFormal(Formal node) {
+      return base.VisitFormal(node);
+    }
+
+    public override LocalVariable VisitLocalVariable(LocalVariable node) {
+      return base.VisitLocalVariable(node);
+    }
+
   }
 }
