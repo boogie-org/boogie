@@ -1,0 +1,14 @@
+Navigation graph builder
+------------------------
+
+A few points must be taken into account
+- you need the XAML files for the application, and they must reside (flat) in the same directory as the app file. If flatting results in name clashes, rename one of those files clashing
+- if you don't have the XAML files, they usually reside in some form in the resources of the .dll. I am not automatically extracting this yet.
+- the graph building may fail at any step. Usually, it is the bytecode translator that fails to produce a valid Boogie file. For this, there is a hidden ooption --build/-b
+  this option receives a string, where each character encodes an action to take. If the character is present (or no build option is passed), the action takes place.
+  c: extract control information
+  i: inject and translate (if BCT gives you problems, correct .bpl by hand and run *without* this step)
+  t: test the resulting boogie file, useful to see whether to skip 'i' or not
+  b: create the boogie queries. You may choose to skip this if you built them already and it takes too long. I need to optimize this.
+  q: run the queries
+  g: build the graph. It won't work if you don't include 'q' as the intermediate step is not saved yet
