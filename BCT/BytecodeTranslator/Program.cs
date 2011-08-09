@@ -335,7 +335,6 @@ namespace BytecodeTranslator {
         foreach (IMethodDefinition def in PhoneNavigationCodeTraverser.NavCallers) {
           PhoneCodeHelper.addHandlerStubCaller(sink, def);
         }
-
         PhoneCodeHelper.instance().createQueriesBatchFile(sink, outputFileName);
       }
 
@@ -393,8 +392,9 @@ namespace BytecodeTranslator {
       }
 
       try {
-        IMethodDefinition unspecializedInvokeMethod = Sink.Unspecialize(invokeMethod).ResolvedMethod;
-        var decl = sink.FindOrCreateProcedure(unspecializedInvokeMethod).Decl;
+        // IMethodDefinition unspecializedInvokeMethod = Sink.Unspecialize(invokeMethod).ResolvedMethod;
+        // var decl = sink.FindOrCreateProcedure(unspecializedInvokeMethod).Decl;
+        var decl = sink.FindOrCreateProcedure(invokeMethod).Decl;
         var proc = decl as Bpl.Procedure;
         var invars = proc.InParams;
         var outvars = proc.OutParams;

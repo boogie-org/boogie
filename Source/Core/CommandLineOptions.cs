@@ -250,6 +250,7 @@ namespace Microsoft.Boogie {
     }
     public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
     public bool DoModSetAnalysis = false;
+    public bool DoBitVectorAnalysis = false;
     public bool UseAbstractInterpretation = true;          // true iff the user want to use abstract interpretation
     public int  /*0..9*/StepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
 
@@ -1404,7 +1405,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("z3multipleErrors", ref z3AtFlag, false) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
-              ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis)
+              ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
+              ps.CheckBooleanFlag("doBitVectorAnalysis", ref DoBitVectorAnalysis)
               ) {
               // one of the boolean flags matched
             } else if (ps.s.StartsWith("-") || ps.s.StartsWith("/")) {

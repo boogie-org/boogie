@@ -360,6 +360,11 @@ namespace Microsoft.Boogie {
       // Eliminate dead variables
       Microsoft.Boogie.UnusedVarEliminator.Eliminate(program);
 
+      // Do bitvector analysis
+      if (CommandLineOptions.Clo.DoBitVectorAnalysis) {
+        Microsoft.Boogie.BitVectorAnalysis.DoBitVectorAnalysis(program);
+      }
+
       // Collect mod sets
       if (CommandLineOptions.Clo.DoModSetAnalysis) {
         Microsoft.Boogie.ModSetCollector.DoModSetAnalysis(program);

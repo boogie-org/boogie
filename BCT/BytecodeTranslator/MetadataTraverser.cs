@@ -83,7 +83,8 @@ namespace BytecodeTranslator {
         }
         this.sawCctor = savedSawCctor;
       } else if (typeDefinition.IsDelegate) {
-        sink.AddDelegateType(typeDefinition);
+        ITypeDefinition unspecializedType = Microsoft.Cci.MutableContracts.ContractHelper.Unspecialized(typeDefinition).ResolvedType;
+        sink.AddDelegateType(unspecializedType);
       } else if (typeDefinition.IsInterface) {
         sink.FindOrCreateType(typeDefinition);
         base.Visit(typeDefinition);

@@ -961,8 +961,10 @@ namespace BytecodeTranslator
       Bpl.IToken cloc = creationAST.Token();
       var a = this.sink.CreateFreshLocal(creationAST.Type);
 
-      sink.AddDelegate(type.ResolvedType, methodToCall.ResolvedMethod);
-      Bpl.Constant constant = sink.FindOrCreateDelegateMethodConstant(methodToCall.ResolvedMethod);
+      ITypeDefinition unspecializedType = Microsoft.Cci.MutableContracts.ContractHelper.Unspecialized(type.ResolvedType).ResolvedType;
+      IMethodDefinition unspecializedMethod = Sink.Unspecialize(methodToCall.ResolvedMethod).ResolvedMethod;
+      sink.AddDelegate(unspecializedType, unspecializedMethod);
+      Bpl.Constant constant = sink.FindOrCreateDelegateMethodConstant(unspecializedMethod);
       Bpl.Expr methodExpr = Bpl.Expr.Ident(constant);
       Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
 

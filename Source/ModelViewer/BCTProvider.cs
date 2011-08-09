@@ -32,6 +32,10 @@ namespace Microsoft.Boogie.ModelViewer.BCT {
     public BCTModel(Model m, ViewOptions opts)
       : base(m, opts) {
       f_heap_select = m.MkFunc("[3]", 3);
+
+      foreach (Model.Func fn in m.Functions) {
+
+      }
     }
 
     internal void FinishStates() {
@@ -43,7 +47,9 @@ namespace Microsoft.Boogie.ModelViewer.BCT {
     }
 
     public string GetUserVariableName(string name) {
-      if (name.StartsWith("$")) 
+      if (name == "$this")
+        return "this";
+      if (name.Contains("$")) 
         return null;
       if (name == "isControlChecked" || name == "isControlEnabled")
         return null;
