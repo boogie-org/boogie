@@ -743,7 +743,9 @@ namespace BytecodeTranslator
     /// </summary>
     private void TranslateHavocCurrentURI() {
       // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
-      Bpl.CallCmd havocCall = new Bpl.CallCmd(Bpl.Token.NoToken, PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI, new List<Bpl.Expr>(), new List<Bpl.IdentifierExpr>());
+      IMethodReference havocMethod= PhoneCodeHelper.instance().getUriHavocerMethod(sink);
+      Sink.ProcedureInfo procInfo= sink.FindOrCreateProcedure(havocMethod.ResolvedMethod);
+      Bpl.CallCmd havocCall = new Bpl.CallCmd(Bpl.Token.NoToken, procInfo.Decl.Name, new List<Bpl.Expr>(), new List<Bpl.IdentifierExpr>());
       StmtTraverser.StmtBuilder.Add(havocCall);
     }
 

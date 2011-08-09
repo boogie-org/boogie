@@ -335,6 +335,7 @@ namespace BytecodeTranslator {
         foreach (IMethodDefinition def in PhoneNavigationCodeTraverser.NavCallers) {
           PhoneCodeHelper.addHandlerStubCaller(sink, def);
         }
+        PhoneCodeHelper.instance().addNavigationUriHavocer(sink);
         PhoneCodeHelper.instance().createQueriesBatchFile(sink, outputFileName);
       }
 
