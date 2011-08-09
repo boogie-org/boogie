@@ -1,6 +1,7 @@
 import sys
 import getopt
 import os
+import time
 
 BOOGIE_PATH= "%boogie%"
 BCT_PATH="%boogie_bct%"
@@ -8,7 +9,45 @@ CONTROL_EXTRACTOR_PATH="%phonecontrolextractor%"
 WPLIB_PATH="%wplib%"
 DOT_PATH="%dotpath%"
 
+CONTROL_CREATION_TIME=0
+INJECTION_TIME=0
+TEST_TIME=0
+QUERY_CREATION_TIME=0
+QUERY_RUN_TIME=0
+GRAPH_CREATION_TIME=0
+BOOGIE_QUERY_COUNT=0
+PAGE_COUNT=0
+EDGE_COUNT=0
+
 navigation_graph = {}
+
+def createStatsNode(appFile):
+  global CONTROL_CREATION_TIME
+  global INJECTION_TIME
+  global TEST_TIME
+  global QUERY_CREATION_TIME
+  global QUERY_RUN_TIME
+  global GRAPH_CREATION_TIME
+  global BOOGIE_QUERY_COUNT
+  global PAGE_COUNT
+  global EDGE_COUNT
+
+  total= CONTROL_CREATION_TIME + INJECTION_TIME + TEST_TIME + QUERY_CREATION_TIME + QUERY_RUN_TIME + GRAPH_CREATION_TIME
+  statsNode= "node [shape=plaintext, label=" + \
+  "<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">" + \
+  "<TR><TD COLSPAN=\"2\" BGCOLOR=\"lightskyblue\">" + os.path.basename(appFile) + "</TD></TR>" + \
+  "<TR><TD>Control extraction time</TD><TD>" + str(CONTROL_CREATION_TIME) + " s.</TD></TR>" + \
+  "<TR><TD>Injection and translation time</TD><TD>" + str(INJECTION_TIME) + " s.</TD></TR>" + \
+  "<TR><TD>Boogie test time</TD><TD>" + str(TEST_TIME) + " s.</TD></TR>" + \
+  "<TR><TD>Query creation time</TD><TD>" + str(QUERY_CREATION_TIME) + " s.</TD></TR>" + \
+  "<TR><TD>Boogie query run time (" + str(BOOGIE_QUERY_COUNT) + " queries)</TD><TD>" + str(QUERY_RUN_TIME) + " s.</TD></TR>" + \
+  "<TR><TD>Graph creation time</TD><TD>" + str(GRAPH_CREATION_TIME) + " s.</TD></TR>" + \
+  "<TR><TD BGCOLOR=\"olivedrab\">Graph sparseness</TD><TD BGCOLOR=\"olivedrab\">" + str(EDGE_COUNT) + " over " + str(PAGE_COUNT*PAGE_COUNT) + " possible</TD></TR>" + \
+  "<TR><TD BGCOLOR=\"olivedrab\">Total time</TD><TD>" + str(total) + " s.</TD></TR>" + \
+  "</TABLE>>" + \
+  "] statsNode;"
+  # statsNode= statsNode.replace(".","&#47;")
+  return statsNode
 
 def checkEnv():
   retVal= True
@@ -69,22 +108,33 @@ def testBoogieOutput(appFile, outputFile, format):
     return False
   return True
 
+def cleanupQueriesTempFiles():
+  for tempFile in [os.path.abspath(filename) for filename in os.listdir(".") if filename.startswith("sed") and os.path.splitext(filename)[1]==""]:
+    os.remove(tempFile)
+
 def createBoogieQueries(appFile, outputFile, format):
   cmd ="\"" + os.path.dirname(appFile) + "\\createQueries.bat\" > nul"
   error = os.system(cmd)
+  cleanupQueriesTempFiles()
   if error != 0:
     return False
   return True
 
 def runBoogieQueries(appFile, outputFile, format):
   global navigation_graph
+  global BOOGIE_QUERY_COUNT
+  global EDGE_COUNT
+  global PAGE_COUNT
+
   queryFiles= [os.path.abspath(filename) for filename in os.listdir(".") if filename.find("$$") != -1 and os.path.splitext(filename)[1]==".bpl"]
+  BOOGIE_QUERY_COUNT= len(queryFiles)
   for filename in queryFiles:
     start= os.path.splitext(filename.split("$$")[1])[0]
     end= os.path.splitext(filename.split("$$")[3])[0]
     try:
       dests= navigation_graph[start]
     except KeyError:
+      PAGE_COUNT=PAGE_COUNT+1
       dests= []
       navigation_graph[start]= []
     error = os.system(BOOGIE_PATH + " /doModSetAnalysis /prover:SMTLib \"" + filename +"\" > testBpl")
@@ -97,6 +147,7 @@ def runBoogieQueries(appFile, outputFile, format):
     if output.find("might not hold") != -1:
       dests.append(end)
       navigation_graph[start]= dests
+      EDGE_COUNT=EDGE_COUNT+1
   return True
 
 def buildNavigationGraph(appFile, outputFile, format):
@@ -105,10 +156,10 @@ def buildNavigationGraph(appFile, outputFile, format):
   dotFile= open(os.path.splitext(appFile)[0] + ".dot","w")
   graphName= os.path.basename(os.path.splitext(appFile)[0])
   dotFile.write("digraph " + graphName + "{\n")
-  dotFile.write("\tnode [width=\"0\" label=\"\"] n0;\n")
+  dotFile.write("\tnode [style=\"invisible\", label=\"\"] n0;\n")
   nextNode=1
   for pagename in navigation_graph.keys():
-    dotFile.write("\tnode [label=\"" + pagename + "\"] n"+ str(nextNode) + ";\n")
+    dotFile.write("\tnode [style=\"rounded\", shape=\"box\", label=\"" + pagename + "\"] n"+ str(nextNode) + ";\n")
     nameToNode[pagename]=nextNode
     nextNode= nextNode + 1
 
@@ -128,11 +179,13 @@ def buildNavigationGraph(appFile, outputFile, format):
   except KeyError:
     pass
 
+  statsNode= createStatsNode(appFile)
+  dotFile.write("\t" + statsNode + "\n")
   dotFile.write("}")
   dotFile.close()
   
   if format != "dot":
-    os.system(DOT_PATH + " -T" + format + " -o \"" + outputFile + "\" \"" + os.path.splitext(appFile)[0] + ".dot\" > nul")
+    os.system(DOT_PATH + " -T" + format + " -Kfdp -o \"" + outputFile + "\" \"" + os.path.splitext(appFile)[0] + ".dot\" > nul")
   else:
     os.rename("\"" + os.path.splitext(appFile)[0] + ".dot\"", "\"" + outputFile + "\"")
   return True
@@ -147,6 +200,13 @@ def showUsage():
   print "\t--format <graph format>: format to draw the graph into. Short form: -f. Optional, accepts dot output formats, defaults to pdf.\n"
 
 def main():
+  global CONTROL_CREATION_TIME
+  global INJECTION_TIME
+  global TEST_TIME
+  global QUERY_CREATION_TIME
+  global QUERY_RUN_TIME
+  global GRAPH_CREATION_TIME
+
   if (not checkEnv()):
     sys.exit(1)
   
@@ -185,40 +245,52 @@ def main():
   outputFile= os.path.abspath(outputFile)    
 
   if build=="" or build.find("c") != -1:
+    CONTROL_CREATION_TIME= time.clock();
     print "Extracting control information..."
     if (not createAppControlsFile(appFile, outputFile, format)):
       print "Failed to create app controls file"
       sys.exit(1)
+    CONTROL_CREATION_TIME= time.clock() - CONTROL_CREATION_TIME
 
   if build=="" or build.find("i") != -1:
+    INJECTION_TIME= time.clock()
     print "Injecting and translating application binary..."
     if (not bctAppFile(appFile, outputFile, format)):
       print "Failed to translate application library"
       sys.exit(1)
+    INJECTION_TIME= time.clock() - INJECTION_TIME
 
   if build=="" or build.find("t") != -1:
+    TEST_TIME= time.clock()
     print "Testing boogie file..."
     if (not testBoogieOutput(appFile, outputFile, format)):
       print "ByteCode Translator produced erroneous or ambiguous boogie file"
       sys.exit(1)
+    TEST_TIME= time.clock() - TEST_TIME
 
   if build=="" or build.find("b") != -1:
+    QUERY_CREATION_TIME= time.clock()
     print "Creating boogie queries..."
     if (not createBoogieQueries(appFile, outputFile, format)):
       print "Error creating boogie queries"
       sys.exit(1)
+    QUERY_CREATION_TIME= time.clock() - QUERY_CREATION_TIME
 
   if build=="" or build.find("q") != -1:
+    QUERY_RUN_TIME= time.clock()
     print "Running boogie queries..."
     if (not runBoogieQueries(appFile, outputFile, format)):
       print "Error running boogie queries"
       sys.exit(1)
+    QUERY_RUN_TIME= time.clock() - QUERY_RUN_TIME
 
   if build=="" or build.find("g") != -1:
+    GRAPH_CREATION_TIME= time.clock()
     print "Building graph..."
     if (not buildNavigationGraph(appFile, outputFile, format)):
       print "Error creating navigation graph"
       sys.exit(1)
+    GRAPH_CREATION_TIME= time.clock() - GRAPH_CREATION_TIME
 
   print "Success!"
   sys.exit(0)
