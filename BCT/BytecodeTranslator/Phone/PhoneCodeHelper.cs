@@ -646,7 +646,7 @@ namespace BytecodeTranslator.Phone {
       foreach (string x1 in xamls) {
         string startURIVar= sink.FindOrCreateConstant(x1).Name.ToLower();
         foreach (string x2 in xamls) {
-          string resultFile = sourceBPLFile + "_" + x1 + "_" + x2 + ".bpl";
+          string resultFile = sourceBPLFile + "_$$" + x1 + "$$_$$" + x2 + "$$.bpl";
           string endURIVar= sink.FindOrCreateConstant(x2).Name.ToLower();
           outputStream.WriteLine("sed s/" + startURI + ";/" + startURIVar + ";/g " + sourceBPLFile + "> " + resultFile);
           outputStream.WriteLine("sed -i s/" + endURI + ";/" + endURIVar + ";/g " + resultFile);
@@ -727,5 +727,38 @@ namespace BytecodeTranslator.Phone {
     }
 
     public static FieldDefinition CurrentURIFieldDefinition {get; set;}
+
+    public void addNavigationUriHavocer(Sink sink) {
+      Sink.ProcedureInfo procInfo = sink.FindOrCreateProcedure(getUriHavocerMethod(sink).ResolvedMethod);
+      Bpl.StmtListBuilder builder= new Bpl.StmtListBuilder();
+      Bpl.HavocCmd havoc=
+        new Bpl.HavocCmd(Bpl.Token.NoToken,
+                         new Bpl.IdentifierExprSeq(new Bpl.IdentifierExprSeq(new Bpl.IdentifierExpr(Bpl.Token.NoToken,
+                                                                             sink.FindOrCreateFieldVariable(PhoneCodeHelper.CurrentURIFieldDefinition)))));
+      builder.Add(havoc);
+      Bpl.Implementation impl = new Bpl.Implementation(Bpl.Token.NoToken, procInfo.Decl.Name, new Bpl.TypeVariableSeq(),
+                                                       new Bpl.VariableSeq(), new Bpl.VariableSeq(), new Bpl.VariableSeq(),
+                                                       builder.Collect(Bpl.Token.NoToken));
+      sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
+    }
+
+    private IMethodReference uriHavocMethod=null;
+    public IMethodReference getUriHavocerMethod(Sink sink) {
+      if (uriHavocMethod == null) {
+        MethodBody body = new MethodBody();
+        MethodDefinition havocDef = new MethodDefinition() {
+          InternFactory = host.InternFactory,
+          ContainingTypeDefinition = PhoneCodeHelper.instance().getMainAppTypeReference().ResolvedType,
+          IsStatic = true,
+          Name = sink.host.NameTable.GetNameFor(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI),
+          Type = sink.host.PlatformType.SystemVoid,
+          Body = body,
+        };
+        body.MethodDefinition = havocDef;
+        uriHavocMethod = havocDef;
+      }
+
+      return uriHavocMethod;
+    }
   }
 }
