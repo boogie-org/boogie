@@ -74,6 +74,7 @@ namespace BytecodeTranslator.Phone {
 
     private bool navCallFound=false;
     private bool navCallIsStatic = false;
+    private bool navCallIsBack = false;
     private StaticURIMode currentStaticMode= StaticURIMode.NOT_STATIC;
     private string unpurifiedFoundURI="";
 
@@ -83,12 +84,13 @@ namespace BytecodeTranslator.Phone {
       foreach (IStatement statement in block.Statements) {
         navCallFound = false;
         navCallIsStatic = false;
+        navCallIsBack = false;
         this.Visit(statement);
         if (navCallFound) {
           navCallers.Add(methodTraversed);
           if (navCallIsStatic) {
             staticNavStmts.Add(new Tuple<IStatement, StaticURIMode, string>(statement, currentStaticMode, unpurifiedFoundURI));
-          } else {
+          } else if (!navCallIsBack) {
             nonStaticNavStmts.Add(statement);
           }
         }
@@ -185,7 +187,10 @@ namespace BytecodeTranslator.Phone {
         currentStaticMode = StaticURIMode.NOT_STATIC;
         if (methodToCallName == "GoBack") {
           navCallIsStatic = false;
+          navCallIsBack = true;
         } else { // Navigate()
+          navCallIsBack = false;
+
           // check for different static patterns that we may be able to verify
           IExpression uriArg = methodCall.Arguments.First();
           if (UriHelper.isArgumentURILocallyCreatedStatic(uriArg, host, out unpurifiedFoundURI)) {
