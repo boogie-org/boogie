@@ -36,6 +36,10 @@ namespace VC {
 
       if (CommandLineOptions.Clo.LazyInlining > 0) {
         this.GenerateVCsForLazyInlining(program);
+        if (CommandLineOptions.Clo.LazyInlining == 3)
+        {
+            CreateCopiesForLazyInlining(CommandLineOptions.Clo.ProcedureCopyBound, program);
+        }
       }
     }
 
@@ -83,6 +87,8 @@ namespace VC {
       public List<Variable> interfaceVars;
       public Expr assertExpr;
       public VCExpr vcexpr;
+      public VCExpr inside_vc; // (without the quantifiers)
+      public List<VCExprVar> privateVars;
       public Dictionary<Incarnation, Absy> incarnationOriginMap;
       public Hashtable /*Variable->Expr*/ exitIncarnationMap;
       public Hashtable /*GotoCmd->returnCmd*/ gotoCmdOrigins;
@@ -220,6 +226,145 @@ namespace VC {
       }
     }
 
+    // proc name -> k -> interface variables
+    public static Dictionary<string, List<List<VCExprVar>>> interfaceVarCopies;
+    // proc name -> k -> VCExpr
+    Dictionary<string, List<VCExpr>> procVcCopies;
+
+    private void CreateCopiesForLazyInlining(int K, Program program)
+    {
+        interfaceVarCopies = new Dictionary<string, List<List<VCExprVar>>>();
+        procVcCopies = new Dictionary<string, List<VCExpr>>();
+
+        // Duplicate VCs of each procedure K times and remove quantifiers
+        Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);
+        foreach (LazyInliningInfo info in implName2LazyInliningInfo.Values)
+        {
+            Contract.Assert(info != null);
+            CreateCopyForLazyInlining(K, program, info, checker);
+        }
+
+        // Change the procedure calls in each VC
+        // Push all to the theorem prover
+        var bm = new BoundingVCMutator(checker.VCExprGen, interfaceVarCopies);
+        foreach (var kvp in procVcCopies)
+        {
+            for (int i = 0; i < kvp.Value.Count; i++)
+            {
+                kvp.Value[i] = bm.Mutate(kvp.Value[i], true);
+                checker.TheoremProver.PushVCExpression(kvp.Value[i]);
+            }
+        }
+    }
+
+    public class BoundingVCMutator : MutatingVCExprVisitor<bool>
+    {
+        // proc name -> k -> interface variables
+        Dictionary<string, List<List<VCExprVar>>> interfaceVarCopies;
+
+        public BoundingVCMutator(VCExpressionGenerator gen, Dictionary<string, List<List<VCExprVar>>> interfaceVarCopies)
+            : base(gen)
+        {
+            Contract.Requires(gen != null);
+            this.interfaceVarCopies = interfaceVarCopies;
+        }
+
+        protected override VCExpr/*!*/ UpdateModifiedNode(VCExprNAry/*!*/ originalNode,
+                                                      List<VCExpr/*!*/>/*!*/ newSubExprs,
+            // has any of the subexpressions changed?
+                                                      bool changed,
+                                                      bool arg)
+        {
+            //Contract.Requires(originalNode != null);Contract.Requires(newSubExprs != null);
+            Contract.Ensures(Contract.Result<VCExpr>() != null);
+            
+            VCExpr node;
+            if (changed)
+                node = Gen.Function(originalNode.Op,
+                                   newSubExprs, originalNode.TypeArguments);
+            else
+                node = originalNode;
+
+            var expr = node as VCExprNAry;
+            if (expr == null) return node;
+            var op = expr.Op as VCExprBoogieFunctionOp;
+            if (op == null) return node;
+            if (!interfaceVarCopies.ContainsKey(op.Func.Name)) return node;
+
+            // substitute
+            var K = interfaceVarCopies[op.Func.Name].Count;
+            
+
+            VCExpr ret = VCExpressionGenerator.False;
+            for (int k = 0; k < K; k++)
+            {
+                var iv = interfaceVarCopies[op.Func.Name][k];
+                Contract.Assert(op.Arity == iv.Count);
+
+                VCExpr conj = VCExpressionGenerator.True;
+                for (int i = 0; i < iv.Count; i++)
+                {
+                    var c = Gen.Eq(expr[i], iv[i]);
+                    conj = Gen.And(conj, c);
+                }
+                ret = Gen.Or(conj, ret);
+            }
+
+            return ret;
+        }
+
+    } // end BoundingVCMutator
+
+    private static int newVarCnt = 0;
+
+    private void CreateCopyForLazyInlining(int K, Program program, LazyInliningInfo info, Checker checker) 
+    {
+        var translator = checker.TheoremProver.Context.BoogieExprTranslator;
+        interfaceVarCopies.Add(info.impl.Name, new List<List<VCExprVar>>());
+        procVcCopies.Add(info.impl.Name, new List<VCExpr>());
+
+        for (int k = 0; k < K; k++)
+        {
+            var expr = info.inside_vc;
+            // Instantiate the "forall" variables
+            Dictionary<VCExprVar, VCExpr> substForallDict = new Dictionary<VCExprVar, VCExpr>();
+            var ls = new List<VCExprVar>();
+            for (int i = 0; i < info.interfaceVars.Count; i++)
+            {
+                var v = translator.LookupVariable(info.interfaceVars[i]);
+                string newName = v.Name + "_fa_" + k.ToString() + "_" + newVarCnt.ToString();
+                newVarCnt++;
+                //checker.TheoremProver.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, v.Type)), false, null);
+                var vp = checker.VCExprGen.Variable(newName, v.Type);
+                substForallDict.Add(v, vp);
+                ls.Add(vp);
+            }
+            interfaceVarCopies[info.impl.Name].Add(ls);
+            VCExprSubstitution substForall = new VCExprSubstitution(substForallDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
+
+            SubstitutingVCExprVisitor subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
+            Contract.Assert(subst != null);
+            expr = subst.Mutate(expr, substForall);
+
+            // Instantiate and declare the "exists" variables
+            Dictionary<VCExprVar, VCExpr> substExistsDict = new Dictionary<VCExprVar, VCExpr>();
+            foreach (VCExprVar v in info.privateVars)
+            {
+                Contract.Assert(v != null);
+                string newName = v.Name + "_te_" + k.ToString() + "_" + newVarCnt.ToString();
+                newVarCnt++;
+                checker.TheoremProver.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, v.Type)), false, null);
+                substExistsDict.Add(v, checker.VCExprGen.Variable(newName, v.Type));
+            }
+            VCExprSubstitution substExists = new VCExprSubstitution(substExistsDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
+
+            subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
+            expr = subst.Mutate(expr, substExists);
+
+            procVcCopies[info.impl.Name].Add(expr);
+        }
+    }
+
     private void GenerateVCForLazyInlining(Program program, LazyInliningInfo info, Checker checker) {
       Contract.Requires(program != null);
       Contract.Requires(info != null);
@@ -254,6 +399,10 @@ namespace VC {
         Contract.Assert(v != null);
         privateVars.Add(translator.LookupVariable(v));
       }
+
+      info.privateVars = privateVars;
+      info.inside_vc = vcexpr;
+
       if (privateVars.Count > 0) {
         vcexpr = gen.Exists(new List<TypeVariable>(), privateVars, new List<VCTrigger>(),
                             new VCQuantifierInfos(impl.Name, info.uniqueId, false, null), vcexpr);
@@ -275,7 +424,7 @@ namespace VC {
       if (CommandLineOptions.Clo.LazyInlining == 1) {
         vcexpr = gen.Implies(expr, vcexpr);
       } else {
-        Contract.Assert(CommandLineOptions.Clo.LazyInlining == 2);
+        //Contract.Assert(CommandLineOptions.Clo.LazyInlining == 2);
         vcexpr = gen.Eq(expr, vcexpr);
       }
 
@@ -293,7 +442,10 @@ namespace VC {
                           new VCQuantifierInfos(impl.Name, QuantifierExpr.GetNextSkolemId(), false, q), vcexpr);
 
       info.vcexpr = vcexpr;
-      checker.TheoremProver.PushVCExpression(vcexpr);
+      if (CommandLineOptions.Clo.LazyInlining != 3)
+      {
+          checker.TheoremProver.PushVCExpression(vcexpr);
+      }
     }
 
     protected VCExpr GenerateReachVC(Implementation impl, LazyInliningInfo info, Checker ch) {
@@ -1509,6 +1661,12 @@ namespace VC {
 
         VCExpr vc = parent.GenerateVCAux(impl, null, label2absy, checker);
         Contract.Assert(vc != null);
+
+        if (CommandLineOptions.Clo.LazyInlining == 3)
+        {
+            var bm = new BoundingVCMutator(checker.VCExprGen, interfaceVarCopies);
+            vc = bm.Mutate(vc, true);
+        }
 
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
           reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, parent.implName2LazyInliningInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);

@@ -1469,6 +1469,7 @@ namespace Microsoft.Boogie {
         NAryExpr/*!*/ res = Expr.Select(Map.AsExpr, Indexes);
         Contract.Assert(res != null);
         res.TypeParameters = this.TypeParameters;
+        res.Type = Map.AsExpr.Type.AsMap.Result;
         return res;
       }
     }
@@ -1481,6 +1482,7 @@ namespace Microsoft.Boogie {
       NAryExpr/*!*/ newRhs = Expr.Store(Map.AsExpr, Indexes, rhs);
       Contract.Assert(newRhs != null);
       newRhs.TypeParameters = this.TypeParameters;
+      newRhs.Type = Map.Type;
       Map.AsSimpleAssignment(newRhs, out simpleLhs, out simpleRhs);
     }
 

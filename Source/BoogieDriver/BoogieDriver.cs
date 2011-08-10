@@ -155,6 +155,13 @@ namespace Microsoft.Boogie {
           return;
         //BoogiePL.Errors.count = 0;
 
+        // Do bitvector analysis
+        if (CommandLineOptions.Clo.DoBitVectorAnalysis) {
+          Microsoft.Boogie.BitVectorAnalysis.DoBitVectorAnalysis(program);
+          PrintBplFile(CommandLineOptions.Clo.BitVectorAnalysisOutputBplFile, program, false);
+          return;
+        }
+
         oc = EliminateDeadVariablesAndInline(program);
         //BoogiePL.Errors.count = 0;
 
@@ -359,11 +366,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(program != null);
       // Eliminate dead variables
       Microsoft.Boogie.UnusedVarEliminator.Eliminate(program);
-
-      // Do bitvector analysis
-      if (CommandLineOptions.Clo.DoBitVectorAnalysis) {
-        Microsoft.Boogie.BitVectorAnalysis.DoBitVectorAnalysis(program);
-      }
 
       // Collect mod sets
       if (CommandLineOptions.Clo.DoModSetAnalysis) {
