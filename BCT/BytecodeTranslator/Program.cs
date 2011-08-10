@@ -258,11 +258,9 @@ namespace BytecodeTranslator {
       MetadataTraverser translator;
       translator= traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
 
-      PhoneControlsPlugin phonePlugin = null;
       if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
         PhoneCodeHelper.initialize(host);
-        phonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
-        PhoneCodeHelper.instance().PhonePlugin = phonePlugin;
+        PhoneCodeHelper.instance().PhonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
         
         if (doPhoneNav) {
           PhoneCodeHelper.instance().PhoneNavigationToggled = true;
@@ -285,27 +283,54 @@ namespace BytecodeTranslator {
         CreateDispatchMethod(sink, pair.Item1, pair.Item2);
       }
 
+      string outputFileName = primaryModule.Name + ".bpl";
+      callPostTranslationTraversers(modules, sink, phoneControlsConfigFile, outputFileName);
+      Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(outputFileName);
+      Prelude.Emit(writer);
+      sink.TranslatedProgram.Emit(writer);
+      writer.Close();
+      return 0; // success
+    }
+
+    private static void callPostTranslationTraversers(List<IModule> modules, Sink sink, string phoneControlsConfigFile, string outputFileName) {
       if (PhoneCodeHelper.instance().PhoneFeedbackToggled) {
         PhoneCodeHelper.instance().CreateFeedbackCallingMethods(sink);
+      }
+
+      if (PhoneCodeHelper.instance().PhoneFeedbackToggled || PhoneCodeHelper.instance().PhoneNavigationToggled) {
+        PhoneBackKeyCallbackTraverser traverser = new PhoneBackKeyCallbackTraverser(sink.host);
+        traverser.Visit(modules);
+
+        PhoneMethodInliningMetadataTraverser inlineTraverser =
+          new PhoneMethodInliningMetadataTraverser(PhoneCodeHelper.instance());
+        inlineTraverser.findAllMethodsToInline(modules);
+        PhoneCodeHelper.updateInlinedMethods(sink, inlineTraverser.getMethodsToInline());
+        System.Console.WriteLine("Total methods seen: {0}, inlined: {1}", inlineTraverser.TotalMethodsCount, inlineTraverser.InlinedMethodsCount);
       }
 
       if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
         string outputConfigFile = Path.ChangeExtension(phoneControlsConfigFile, "bplout");
         StreamWriter outputStream = new StreamWriter(outputConfigFile);
-        phonePlugin.DumpControlStructure(outputStream);
+        PhoneCodeHelper.instance().PhonePlugin.DumpControlStructure(outputStream);
         outputStream.Close();
         PhoneCodeWrapperWriter.createCodeWrapper(sink);
 
         // NAVIGATION TODO for now I console this out
         if (!PhoneCodeHelper.instance().OnBackKeyPressOverriden) {
           Console.Out.WriteLine("No back navigation issues, OnBackKeyPress is not overriden");
+        } else if (PhoneCodeHelper.instance().BackKeyHandlerOverridenByUnknownDelegate) {
+          Console.Out.WriteLine("Back navigation ISSUE: BackKeyPress is overriden by unidentified delegate and may perform illegal navigation");
+          Console.Out.WriteLine("Offending pages:");
+          foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyUnknownDelegateOffenders) {
+            Console.WriteLine("\t" + type.ToString());
+          }
         } else if (!PhoneCodeHelper.instance().BackKeyPressHandlerCancels && !PhoneCodeHelper.instance().BackKeyPressNavigates) {
           Console.Out.WriteLine("No back navigation issues, BackKeyPress overrides do not alter navigation");
         } else {
           if (PhoneCodeHelper.instance().BackKeyPressNavigates) {
-            Console.Out.WriteLine("Back navigation ISSUE:back key press may navigate to pages not in backstack! From pages:");
+            Console.Out.WriteLine("Back navigation ISSUE: back key press may navigate to pages not in backstack! From pages:");
             foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyNavigatingOffenders.Keys) {
-              ICollection<string> targets= PhoneCodeHelper.instance().BackKeyNavigatingOffenders[type];
+              ICollection<string> targets = PhoneCodeHelper.instance().BackKeyNavigatingOffenders[type];
               Console.WriteLine("\t" + type.ToString() + " may navigate to ");
               foreach (string target in targets) {
                 Console.WriteLine("\t\t" + target);
@@ -322,28 +347,14 @@ namespace BytecodeTranslator {
         }
       }
 
-      if (PhoneCodeHelper.instance().PhoneFeedbackToggled || PhoneCodeHelper.instance().PhoneNavigationToggled) {
-        PhoneMethodInliningMetadataTraverser inlineTraverser =
-          new PhoneMethodInliningMetadataTraverser(PhoneCodeHelper.instance());
-        inlineTraverser.findAllMethodsToInline(modules);
-        PhoneCodeHelper.updateInlinedMethods(sink, inlineTraverser.getMethodsToInline());
-        System.Console.WriteLine("Total methods seen: {0}, inlined: {1}", inlineTraverser.TotalMethodsCount, inlineTraverser.InlinedMethodsCount);
-      }
-
-      string outputFileName = primaryModule.Name + ".bpl";
       if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
         foreach (IMethodDefinition def in PhoneNavigationCodeTraverser.NavCallers) {
-          PhoneCodeHelper.instance().addHandlerStubCaller(sink, def);
+          if (!PhoneCodeHelper.instance().isKnownBackKeyOverride(def))
+            PhoneCodeHelper.instance().addHandlerStubCaller(sink, def);
         }
         PhoneCodeHelper.instance().addNavigationUriHavocer(sink);
         PhoneCodeHelper.instance().createQueriesBatchFile(sink, outputFileName);
       }
-
-      Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(outputFileName);
-      Prelude.Emit(writer);
-      sink.TranslatedProgram.Emit(writer);
-      writer.Close();
-      return 0; // success
     }
 
     private static string NameUpToFirstPeriod(string name) {

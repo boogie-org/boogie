@@ -254,8 +254,11 @@ namespace BytecodeTranslator.Phone {
     public bool OnBackKeyPressOverriden { get; set; }
     public bool BackKeyPressHandlerCancels { get; set; }
     public bool BackKeyPressNavigates { get; set; }
-    public ICollection<ITypeReference> BackKeyCancellingOffenders= new HashSet<ITypeReference>();
-    public Dictionary<ITypeReference,ICollection<string>> BackKeyNavigatingOffenders= new Dictionary<ITypeReference,ICollection<string>>();
+    public bool BackKeyHandlerOverridenByUnknownDelegate { get; set; }
+    public ICollection<ITypeReference> BackKeyCancellingOffenders { get; set; }
+    public ICollection<ITypeReference> BackKeyUnknownDelegateOffenders { get; set; }
+    public Dictionary<ITypeReference, ICollection<string>> BackKeyNavigatingOffenders { get; set; }
+    public ICollection<IMethodReference> KnownBackKeyHandlers { get; set; }
 
     private Dictionary<string, string[]> PHONE_UI_CHANGER_METHODS;
 
@@ -284,6 +287,11 @@ namespace BytecodeTranslator.Phone {
       if (host != null) {
         platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
         initializeKnownUIChangers();
+
+        BackKeyCancellingOffenders= new HashSet<ITypeReference>();
+        BackKeyUnknownDelegateOffenders = new HashSet<ITypeReference>();
+        BackKeyNavigatingOffenders = new Dictionary<ITypeReference, ICollection<string>>();
+        KnownBackKeyHandlers = new HashSet<IMethodReference>();
       }
     }
 
@@ -789,6 +797,11 @@ namespace BytecodeTranslator.Phone {
       rhs.Add(value ? Bpl.IdentifierExpr.True : Bpl.IdentifierExpr.False);
       Bpl.AssignCmd assignCmd = new Bpl.AssignCmd(Bpl.Token.NoToken, lhs, rhs);
       return assignCmd;
+    }
+
+    public bool isKnownBackKeyOverride(IMethodReference method) {
+      return isBackKeyPressOverride(method.ResolvedMethod) ||
+             KnownBackKeyHandlers.Contains(method);
     }
   }
 }

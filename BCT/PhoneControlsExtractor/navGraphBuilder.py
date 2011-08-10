@@ -43,7 +43,7 @@ def createStatsNode(appFile):
   "<TR><TD>Boogie query run time (" + str(BOOGIE_QUERY_COUNT) + " queries)</TD><TD>" + str(QUERY_RUN_TIME) + " s.</TD></TR>" + \
   "<TR><TD>Graph creation time</TD><TD>" + str(GRAPH_CREATION_TIME) + " s.</TD></TR>" + \
   "<TR><TD BGCOLOR=\"olivedrab\">Graph sparseness</TD><TD BGCOLOR=\"olivedrab\">" + str(EDGE_COUNT) + " over " + str(PAGE_COUNT*PAGE_COUNT) + " possible</TD></TR>" + \
-  "<TR><TD BGCOLOR=\"olivedrab\">Total time</TD><TD>" + str(total) + " s.</TD></TR>" + \
+  "<TR><TD BGCOLOR=\"olivedrab\">Total time</TD><TD BGCOLOR=\"olivedrab\">" + str(total) + " s.</TD></TR>" + \
   "</TABLE>>" + \
   "] statsNode;"
   # statsNode= statsNode.replace(".","&#47;")
@@ -187,7 +187,7 @@ def buildNavigationGraph(appFile, outputFile, format):
   dotFile.close()
   
   if format != "dot":
-    os.system(DOT_PATH + " -T" + format + " -Kfdp -o \"" + outputFile + "\" \"" + os.path.splitext(appFile)[0] + ".dot\" > nul")
+    os.system(DOT_PATH + " -T" + format + " -o \"" + outputFile + "\" \"" + os.path.splitext(appFile)[0] + ".dot\" > nul")
   else:
     os.rename("\"" + os.path.splitext(appFile)[0] + ".dot\"", "\"" + outputFile + "\"")
   return True

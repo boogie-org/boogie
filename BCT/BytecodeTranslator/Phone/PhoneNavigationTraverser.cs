@@ -151,6 +151,12 @@ namespace BytecodeTranslator.Phone {
 
     public override void Visit(IMethodCall methodCall) {
       string target;
+
+      if (PhoneCodeHelper.instance().isKnownBackKeyOverride(methodTraversed)) {
+        // NAVIGATION TODO this is turning into a mess, I'd like to decouple both traversals
+        return; // we already seen this
+      }
+
       if (isNavigationOnBackKeyPressHandler(methodCall, out target)) {
         PhoneCodeHelper.instance().BackKeyPressNavigates = true;
         ICollection<string> targets;
