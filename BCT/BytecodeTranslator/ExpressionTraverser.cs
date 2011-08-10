@@ -727,15 +727,24 @@ namespace BytecodeTranslator
       Contract.Assert(TranslatedExpressions.Count == 0);
       var tok = assignment.Token();
 
+      bool translationIntercepted= false;
       ICompileTimeConstant constant= assignment.Source as ICompileTimeConstant;
       // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
-      if (PhoneCodeHelper.instance().PhonePlugin != null && PhoneCodeHelper.instance().PhoneNavigationToggled &&
-          constant != null && constant.Type == sink.host.PlatformType.SystemString &&
-          constant.Value != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
-        TranslateHavocCurrentURI();
-      } else {
-        TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
+      if (PhoneCodeHelper.instance().PhonePlugin != null && PhoneCodeHelper.instance().PhoneNavigationToggled) {
+        IFieldReference target = assignment.Target.Definition as IFieldReference;
+        if (target != null && target.Name.Value == PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE) {
+          if (constant != null && constant.Type == sink.host.PlatformType.SystemString && constant.Value != null &&
+              constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
+            TranslateHavocCurrentURI();
+            translationIntercepted = true;
+          }
+          
+          StmtTraverser.StmtBuilder.Add(PhoneCodeHelper.instance().getAddNavigationCheck(sink));
+        }
       }
+
+      if (!translationIntercepted)
+        TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
     }
 
     /// <summary>
@@ -743,7 +752,9 @@ namespace BytecodeTranslator
     /// </summary>
     private void TranslateHavocCurrentURI() {
       // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
-      Bpl.CallCmd havocCall = new Bpl.CallCmd(Bpl.Token.NoToken, PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI, new List<Bpl.Expr>(), new List<Bpl.IdentifierExpr>());
+      IMethodReference havocMethod= PhoneCodeHelper.instance().getUriHavocerMethod(sink);
+      Sink.ProcedureInfo procInfo= sink.FindOrCreateProcedure(havocMethod.ResolvedMethod);
+      Bpl.CallCmd havocCall = new Bpl.CallCmd(Bpl.Token.NoToken, procInfo.Decl.Name, new List<Bpl.Expr>(), new List<Bpl.IdentifierExpr>());
       StmtTraverser.StmtBuilder.Add(havocCall);
     }
 
@@ -961,8 +972,10 @@ namespace BytecodeTranslator
       Bpl.IToken cloc = creationAST.Token();
       var a = this.sink.CreateFreshLocal(creationAST.Type);
 
-      sink.AddDelegate(type.ResolvedType, methodToCall.ResolvedMethod);
-      Bpl.Constant constant = sink.FindOrCreateDelegateMethodConstant(methodToCall.ResolvedMethod);
+      ITypeDefinition unspecializedType = Microsoft.Cci.MutableContracts.ContractHelper.Unspecialized(type.ResolvedType).ResolvedType;
+      IMethodDefinition unspecializedMethod = Sink.Unspecialize(methodToCall.ResolvedMethod).ResolvedMethod;
+      sink.AddDelegate(unspecializedType, unspecializedMethod);
+      Bpl.Constant constant = sink.FindOrCreateDelegateMethodConstant(unspecializedMethod);
       Bpl.Expr methodExpr = Bpl.Expr.Ident(constant);
       Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
 

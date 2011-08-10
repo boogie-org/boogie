@@ -155,6 +155,13 @@ namespace Microsoft.Boogie {
           return;
         //BoogiePL.Errors.count = 0;
 
+        // Do bitvector analysis
+        if (CommandLineOptions.Clo.DoBitVectorAnalysis) {
+          Microsoft.Boogie.BitVectorAnalysis.DoBitVectorAnalysis(program);
+          PrintBplFile(CommandLineOptions.Clo.BitVectorAnalysisOutputBplFile, program, false);
+          return;
+        }
+
         oc = EliminateDeadVariablesAndInline(program);
         //BoogiePL.Errors.count = 0;
 
