@@ -151,7 +151,9 @@ def runBoogieQueries(appFile, outputFile, format):
   return True
 
 def buildNavigationGraph(appFile, outputFile, format):
+  global GRAPH_CREATION_TIME
   global navigation_graph
+  GRAPH_CREATION_TIME= time.clock()
   nameToNode= {}
   dotFile= open(os.path.splitext(appFile)[0] + ".dot","w")
   graphName= os.path.basename(os.path.splitext(appFile)[0])
@@ -178,7 +180,7 @@ def buildNavigationGraph(appFile, outputFile, format):
     dotFile.write("\tn0 -> n" + str(globalStart) + ";\n")
   except KeyError:
     pass
-
+  GRAPH_CREATION_TIME= time.clock() - GRAPH_CREATION_TIME
   statsNode= createStatsNode(appFile)
   dotFile.write("\t" + statsNode + "\n")
   dotFile.write("}")
@@ -285,12 +287,10 @@ def main():
     QUERY_RUN_TIME= time.clock() - QUERY_RUN_TIME
 
   if build=="" or build.find("g") != -1:
-    GRAPH_CREATION_TIME= time.clock()
     print "Building graph..."
     if (not buildNavigationGraph(appFile, outputFile, format)):
       print "Error creating navigation graph"
       sys.exit(1)
-    GRAPH_CREATION_TIME= time.clock() - GRAPH_CREATION_TIME
 
   print "Success!"
   sys.exit(0)
