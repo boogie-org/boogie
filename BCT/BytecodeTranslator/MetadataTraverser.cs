@@ -564,6 +564,8 @@ namespace BytecodeTranslator {
       if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
         Bpl.Variable continueOnPageVar = sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool);
         sink.TranslatedProgram.TopLevelDeclarations.Add(continueOnPageVar);
+        Bpl.Variable navigationCheckVar = sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_NAVIGATION_CHECK_VARIABLE, Bpl.Type.Bool);
+        sink.TranslatedProgram.TopLevelDeclarations.Add(navigationCheckVar);
       }
     }
 

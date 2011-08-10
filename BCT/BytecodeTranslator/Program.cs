@@ -333,7 +333,7 @@ namespace BytecodeTranslator {
       string outputFileName = primaryModule.Name + ".bpl";
       if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
         foreach (IMethodDefinition def in PhoneNavigationCodeTraverser.NavCallers) {
-          PhoneCodeHelper.addHandlerStubCaller(sink, def);
+          PhoneCodeHelper.instance().addHandlerStubCaller(sink, def);
         }
         PhoneCodeHelper.instance().addNavigationUriHavocer(sink);
         PhoneCodeHelper.instance().createQueriesBatchFile(sink, outputFileName);

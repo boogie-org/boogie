@@ -245,6 +245,7 @@ namespace BytecodeTranslator.Phone {
     private const string BOOGIE_VAR_PREFIX = "__BOOGIE_";
     public const string IL_CURRENT_NAVIGATION_URI_VARIABLE = IL_BOOGIE_VAR_PREFIX + "CurrentNavigationURI__";
     public const string BOOGIE_CONTINUE_ON_PAGE_VARIABLE = BOOGIE_VAR_PREFIX + "ContinueOnPage__";
+    public const string BOOGIE_NAVIGATION_CHECK_VARIABLE = BOOGIE_VAR_PREFIX + "Navigated__";
     public const string BOOGIE_STARTING_URI_PLACEHOLDER = "BOOGIE_STARTING_URI_PLACEHOLDER";
     public const string BOOGIE_ENDING_URI_PLACEHOLDER= "BOOGIE_ENDING_URI_PLACEHOLDER";
 
@@ -657,7 +658,7 @@ namespace BytecodeTranslator.Phone {
     }
 
 
-    public static Bpl.Procedure addHandlerStubCaller(Sink sink, IMethodDefinition def) {
+    public Bpl.Procedure addHandlerStubCaller(Sink sink, IMethodDefinition def) {
       MethodBody callerBody = new MethodBody();
       MethodDefinition callerDef = new MethodDefinition() {
         InternFactory = (def as MethodDefinition).InternFactory,
@@ -682,6 +683,8 @@ namespace BytecodeTranslator.Phone {
       }
 
       Bpl.StmtListBuilder builder = new Bpl.StmtListBuilder();
+      builder.Add(getResetNavigationCheck(sink));
+      
       string pageXaml= PhoneCodeHelper.instance().PhonePlugin.getXAMLForPage(def.ContainingTypeDefinition.ToString());
       Bpl.Variable boogieCurrentURI = sink.FindOrCreateFieldVariable(PhoneCodeHelper.CurrentURIFieldDefinition);
       Bpl.Constant boogieXamlConstant;
@@ -710,7 +713,13 @@ namespace BytecodeTranslator.Phone {
       Bpl.AssertCmd assertEndPage = new Bpl.AssertCmd(Bpl.Token.NoToken,
                             Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieCurrentURI),
                                             new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieXamlConstant)));
-      builder.Add(assertEndPage);
+
+      Bpl.Expr guard= new Bpl.IdentifierExpr(Bpl.Token.NoToken, sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_NAVIGATION_CHECK_VARIABLE, Bpl.Type.Bool));
+      Bpl.StmtListBuilder thenBuilder = new Bpl.StmtListBuilder();
+      thenBuilder.Add(assertEndPage);
+      Bpl.IfCmd ifNavigated = new Bpl.IfCmd(Bpl.Token.NoToken, guard, thenBuilder.Collect(Bpl.Token.NoToken), null, new Bpl.StmtListBuilder().Collect(Bpl.Token.NoToken));
+
+      builder.Add(ifNavigated);
       Bpl.Implementation impl =
         new Bpl.Implementation(Bpl.Token.NoToken, callerInfo.Decl.Name, new Bpl.TypeVariableSeq(), new Bpl.VariableSeq(),
                                new Bpl.VariableSeq(), new Bpl.VariableSeq(localVars), builder.Collect(Bpl.Token.NoToken), null, new Bpl.Errors());
@@ -730,6 +739,7 @@ namespace BytecodeTranslator.Phone {
 
     public void addNavigationUriHavocer(Sink sink) {
       Sink.ProcedureInfo procInfo = sink.FindOrCreateProcedure(getUriHavocerMethod(sink).ResolvedMethod);
+      procInfo.Decl.AddAttribute("inline", new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.ONE));
       Bpl.StmtListBuilder builder= new Bpl.StmtListBuilder();
       Bpl.HavocCmd havoc=
         new Bpl.HavocCmd(Bpl.Token.NoToken,
@@ -740,6 +750,7 @@ namespace BytecodeTranslator.Phone {
                                                        new Bpl.VariableSeq(), new Bpl.VariableSeq(), new Bpl.VariableSeq(),
                                                        builder.Collect(Bpl.Token.NoToken));
       sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
+
     }
 
     private IMethodReference uriHavocMethod=null;
@@ -759,6 +770,25 @@ namespace BytecodeTranslator.Phone {
       }
 
       return uriHavocMethod;
+    }
+
+    public Bpl.Cmd getResetNavigationCheck(Sink sink) {
+      return getNavigationCheckAssign(sink, false);
+    }
+    
+    public Bpl.Cmd getAddNavigationCheck(Sink sink) {
+      return getNavigationCheckAssign(sink, true);
+    }
+
+    private Bpl.Cmd getNavigationCheckAssign(Sink sink, bool value) {
+      List<Bpl.AssignLhs> lhs = new List<Bpl.AssignLhs>();
+      List<Bpl.Expr> rhs = new List<Bpl.Expr>();
+      Bpl.AssignLhs assignee = new Bpl.SimpleAssignLhs(Bpl.Token.NoToken, new Bpl.IdentifierExpr(Bpl.Token.NoToken,
+                               sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_NAVIGATION_CHECK_VARIABLE, Bpl.Type.Bool)));
+      lhs.Add(assignee);
+      rhs.Add(value ? Bpl.IdentifierExpr.True : Bpl.IdentifierExpr.False);
+      Bpl.AssignCmd assignCmd = new Bpl.AssignCmd(Bpl.Token.NoToken, lhs, rhs);
+      return assignCmd;
     }
   }
 }

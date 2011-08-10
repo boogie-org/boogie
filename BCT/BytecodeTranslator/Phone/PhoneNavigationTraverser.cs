@@ -133,7 +133,7 @@ namespace BytecodeTranslator.Phone {
       if (!call.MethodToCall.Name.Value.StartsWith("set_Cancel"))
         return false;
 
-      if (call.Arguments.ToList()[0].Type != host.PlatformType.SystemBoolean)
+      if (call.Arguments.Count() != 1 || call.Arguments.ToList()[0].Type != host.PlatformType.SystemBoolean)
         return false;
 
       ICompileTimeConstant constant = call.Arguments.ToList()[0] as ICompileTimeConstant;

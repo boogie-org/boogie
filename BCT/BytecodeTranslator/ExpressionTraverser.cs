@@ -727,15 +727,24 @@ namespace BytecodeTranslator
       Contract.Assert(TranslatedExpressions.Count == 0);
       var tok = assignment.Token();
 
+      bool translationIntercepted= false;
       ICompileTimeConstant constant= assignment.Source as ICompileTimeConstant;
       // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
-      if (PhoneCodeHelper.instance().PhonePlugin != null && PhoneCodeHelper.instance().PhoneNavigationToggled &&
-          constant != null && constant.Type == sink.host.PlatformType.SystemString &&
-          constant.Value != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
-        TranslateHavocCurrentURI();
-      } else {
-        TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
+      if (PhoneCodeHelper.instance().PhonePlugin != null && PhoneCodeHelper.instance().PhoneNavigationToggled) {
+        IFieldReference target = assignment.Target.Definition as IFieldReference;
+        if (target != null && target.Name.Value == PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE) {
+          if (constant != null && constant.Type == sink.host.PlatformType.SystemString && constant.Value != null &&
+              constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
+            TranslateHavocCurrentURI();
+            translationIntercepted = true;
+          }
+          
+          StmtTraverser.StmtBuilder.Add(PhoneCodeHelper.instance().getAddNavigationCheck(sink));
+        }
       }
+
+      if (!translationIntercepted)
+        TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
     }
 
     /// <summary>
