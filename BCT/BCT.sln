@@ -50,9 +50,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PdbWriter", "..\..\CCICodeB
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Contracts", "..\..\CCICodeBox\Microsoft.Contracts\Microsoft.Contracts.csproj", "{B114E5FF-F2A2-4BE7-8AF1-936FC87030F0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ILGarbageCollect", "..\..\CCICodeBox\Samples\ILGarbageCollect\ILGarbageCollect.csproj", "{60CD0C85-1E4A-4068-A4EC-D15B7981A908}"
+EndProject
 Global
 	GlobalSection(TeamFoundationVersionControl) = preSolution
-		SccNumberOfProjects = 15
+		SccNumberOfProjects = 16
 		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
 		SccTeamFoundationServer = http://vstfcodebox:8080/tfs/psi
 		SccProjectUniqueName0 = ..\\..\\CCICodeBox\\CoreObjectModel\\CodeModel\\CodeModel.csproj
@@ -130,6 +132,11 @@ Global
 		SccAuxPath14 = http://vstfcodebox:8080/tfs/psi
 		SccLocalPath14 = ..\\..\\CCICodeBox\\Microsoft.Contracts
 		SccProvider14 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccProjectUniqueName15 = ..\\..\\CCICodeBox\\Samples\\ILGarbageCollect\\ILGarbageCollect.csproj
+		SccProjectName15 = $/cci/Samples/ILGarbageCollect
+		SccAuxPath15 = http://vstfcodebox:8080/tfs/psi
+		SccLocalPath15 = ..\\..\\CCICodeBox\\Samples\\ILGarbageCollect
+		SccProvider15 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
 	EndGlobalSection
 	GlobalSection(TestCaseManagementSettings) = postSolution
 		CategoryFile = BCT.vsmdi
@@ -755,6 +762,37 @@ Global
 		{B114E5FF-F2A2-4BE7-8AF1-936FC87030F0}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{B114E5FF-F2A2-4BE7-8AF1-936FC87030F0}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{B114E5FF-F2A2-4BE7-8AF1-936FC87030F0}.Release|x86.ActiveCfg = Release|Any CPU
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.CompilerOnly|Any CPU.ActiveCfg = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.CompilerOnly|Mixed Platforms.ActiveCfg = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.CompilerOnly|Mixed Platforms.Build.0 = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.CompilerOnly|x86.ActiveCfg = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.CompilerOnly|x86.Build.0 = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.Debug|Mixed Platforms.ActiveCfg = Debug|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.Debug|Mixed Platforms.Build.0 = Debug|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.Debug|x86.ActiveCfg = Debug|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.Debug|x86.Build.0 = Debug|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.FastpathSim|Any CPU.ActiveCfg = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.FastpathSim|Mixed Platforms.ActiveCfg = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.FastpathSim|Mixed Platforms.Build.0 = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.FastpathSim|x86.ActiveCfg = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.FastpathSim|x86.Build.0 = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.NightlyDebug|Any CPU.ActiveCfg = Debug|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.NightlyDebug|Mixed Platforms.ActiveCfg = Debug|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.NightlyDebug|Mixed Platforms.Build.0 = Debug|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.NightlyDebug|x86.ActiveCfg = Debug|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.NightlyDebug|x86.Build.0 = Debug|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.NightlyRelease|Any CPU.ActiveCfg = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.NightlyRelease|Mixed Platforms.ActiveCfg = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.NightlyRelease|Mixed Platforms.Build.0 = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.NightlyRelease|x86.ActiveCfg = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.NightlyRelease|x86.Build.0 = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.Release|Any CPU.ActiveCfg = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.Release|Mixed Platforms.ActiveCfg = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.Release|Mixed Platforms.Build.0 = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.Release|x86.ActiveCfg = Release|x86
+		{60CD0C85-1E4A-4068-A4EC-D15B7981A908}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

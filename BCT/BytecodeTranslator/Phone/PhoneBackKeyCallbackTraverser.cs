@@ -28,17 +28,18 @@ namespace BytecodeTranslator.Phone {
         bool delegateIsAnonymous = false;
         PhoneCodeHelper.instance().OnBackKeyPressOverriden = true;
         IBlockStatement delegateBody = null;
+        IMethodDefinition delegateMethodRef= null;
         if (methodCall.Arguments.Count() == 1) {
           IExpression delegateArg= methodCall.Arguments.First();
           ICreateDelegateInstance localDelegate = delegateArg as ICreateDelegateInstance;
           if (localDelegate != null) {
             delegateIsIdentified = true;
-            IMethodDefinition delegateRef = localDelegate.MethodToCallViaDelegate.ResolvedMethod;
-            SourceMethodBody body= delegateRef.Body as SourceMethodBody;
+            delegateMethodRef = localDelegate.MethodToCallViaDelegate.ResolvedMethod;
+            SourceMethodBody body= delegateMethodRef.Body as SourceMethodBody;
             if (body != null)
               delegateBody = body.Block;
 
-            PhoneCodeHelper.instance().KnownBackKeyHandlers.Add(delegateRef);
+            PhoneCodeHelper.instance().KnownBackKeyHandlers.Add(delegateMethodRef);
           }
 
           AnonymousDelegate anonDelegate = delegateArg as AnonymousDelegate;
@@ -56,22 +57,33 @@ namespace BytecodeTranslator.Phone {
             ICollection<string> navTargets;
             parseBlockForNavigation(delegateBody, out navigates, out navTargets);
             if (navigates) {
-              ICollection<string> targets = null;
-              PhoneCodeHelper.instance().BackKeyPressNavigates = true;
+              ICollection<Tuple<IMethodReference,string>> targets = null;
               if (!PhoneCodeHelper.instance().BackKeyNavigatingOffenders.TryGetValue(typeBeingTraversed, out targets)) {
-                targets = new HashSet<string>();
+                targets = new HashSet<Tuple<IMethodReference,string>>();
               }
 
-              foreach (string tgt in navTargets)
-                targets.Add("\"" + tgt + "\"");
+              foreach (string tgt in navTargets) {
+                IMethodReference dummyRef=null;
+                if (delegateIsAnonymous) {
+                  dummyRef = new Microsoft.Cci.MutableCodeModel.MethodReference();
+                  (dummyRef as Microsoft.Cci.MutableCodeModel.MethodReference).ContainingType= typeBeingTraversed;
+                  (dummyRef as Microsoft.Cci.MutableCodeModel.MethodReference).Name = Dummy.Name;
+                }
+                targets.Add(Tuple.Create<IMethodReference, string>((delegateIsAnonymous ? dummyRef : delegateMethodRef), "\"" + tgt + "\""));
+              }
 
               PhoneCodeHelper.instance().BackKeyNavigatingOffenders[typeBeingTraversed] = targets;
             }
 
             parseBlockForEventCancellation(delegateBody, out cancelsNav);
             if (cancelsNav) {
-              PhoneCodeHelper.instance().BackKeyPressHandlerCancels = true;
-              PhoneCodeHelper.instance().BackKeyCancellingOffenders.Add(typeBeingTraversed);
+              string reason= "(via delegate ";
+              if (delegateIsIdentified)
+                reason += delegateMethodRef.ContainingType.ToString() + "." + delegateMethodRef.Name.Value;
+              else
+                reason += "anonymous";
+              reason += ")";
+              PhoneCodeHelper.instance().BackKeyCancellingOffenders.Add(Tuple.Create<ITypeReference,string>(typeBeingTraversed, reason));
             }
           }
         }

@@ -186,6 +186,10 @@
       <Project>{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}</Project>
       <Name>PeReader</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\CCICodeBox\Samples\ILGarbageCollect\ILGarbageCollect.csproj">
+      <Project>{60CD0C85-1E4A-4068-A4EC-D15B7981A908}</Project>
+      <Name>ILGarbageCollect</Name>
+    </ProjectReference>
     <ProjectReference Include="..\TranslationPlugins\TranslationPlugins.csproj">
       <Project>{8C242D42-9714-440F-884D-F64F09E78C7B}</Project>
       <Name>TranslationPlugins</Name>
