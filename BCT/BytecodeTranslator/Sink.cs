@@ -233,6 +233,14 @@ namespace BytecodeTranslator {
       var key = field.InternedKey;
       if (!this.declaredFields.TryGetValue(key, out v)) {
         v = this.Heap.CreateFieldVariable(field);
+
+        var isExtern = this.assemblyBeingTranslated != null &&
+                !TypeHelper.GetDefiningUnitReference(field.ContainingType).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity);
+        if (isExtern) {
+          var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "extern", new List<object>(1), null);
+          v.Attributes = attrib;
+        }
+
         this.declaredFields.Add(key, v);
         this.TranslatedProgram.TopLevelDeclarations.Add(v);
       }
@@ -262,6 +270,14 @@ namespace BytecodeTranslator {
 
         if (v == null) {
           v = this.Heap.CreateEventVariable(e);
+
+          var isExtern = this.assemblyBeingTranslated != null &&
+            !TypeHelper.GetDefiningUnitReference(e.ContainingType).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity);
+          if (isExtern) {
+            var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "extern", new List<object>(1), null);
+            v.Attributes = attrib;
+          }
+
           this.TranslatedProgram.TopLevelDeclarations.Add(v);
         }
         this.declaredEvents.Add(e, v);
