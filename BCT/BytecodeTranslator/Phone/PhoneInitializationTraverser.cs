@@ -102,17 +102,38 @@ namespace BytecodeTranslator.Phone {
       phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
       phoneSystemWindowsAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
       MSPhoneControlsAssembly= host.FindAssembly(MSPhoneControlsAssemblyId);
+      // TODO BUG / XAML DEPENDENCE If a control is declared in XAML, it may be one from a library *not* linked! So, assemblies could be dummy here
 
       // TODO determine the needed types dynamically
-      appBarIconButtonType= platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarIconButton");
-      checkBoxType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "CheckBox");
-      radioButtonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "RadioButton");
-      buttonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Button");
-      buttonBaseType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Primitives", "ButtonBase");
-      toggleButtonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Primitives", "ToggleButton");
-      controlType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Control");
-      uiElementType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "UIElement");
-      pivotType = platform.CreateReference(MSPhoneControlsAssembly, "Microsoft", "Phone", "Controls", "Pivot");
+      if (phoneAssembly != Dummy.Assembly) {
+        appBarIconButtonType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarIconButton");
+      } else {
+        appBarIconButtonType = host.PlatformType.SystemObject;
+      }
+
+      if (phoneSystemWindowsAssembly != Dummy.Assembly) {
+        checkBoxType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "CheckBox");
+        radioButtonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "RadioButton");
+        buttonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Button");
+        buttonBaseType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Primitives", "ButtonBase");
+        toggleButtonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Primitives", "ToggleButton");
+        controlType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Control");
+        uiElementType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "UIElement");
+      } else {
+        checkBoxType = host.PlatformType.SystemObject;
+        radioButtonType = host.PlatformType.SystemObject;
+        buttonType = host.PlatformType.SystemObject;
+        buttonBaseType = host.PlatformType.SystemObject;
+        toggleButtonType = host.PlatformType.SystemObject;
+        controlType = host.PlatformType.SystemObject;
+        uiElementType = host.PlatformType.SystemObject;
+      }
+
+      if (MSPhoneControlsAssembly != Dummy.Assembly) {
+        pivotType = platform.CreateReference(MSPhoneControlsAssembly, "Microsoft", "Phone", "Controls", "Pivot");
+      } else {
+        pivotType = host.PlatformType.SystemObject;
+      }
 
       trueConstant = new CompileTimeConstant() {
         Type = platform.SystemBoolean,

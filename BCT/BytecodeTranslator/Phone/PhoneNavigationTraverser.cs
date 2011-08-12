@@ -16,10 +16,16 @@ namespace BytecodeTranslator.Phone {
     private static HashSet<IMethodDefinition> navCallers= new HashSet<IMethodDefinition>();
     public static IEnumerable<IMethodDefinition> NavCallers { get { return navCallers; } }
 
-    public PhoneNavigationCodeTraverser(MetadataReaderHost host, ITypeReference typeTraversed, IMethodDefinition methodTraversed) : base() {
+    private HashSet<IMethodReference> navigationCallers;
+    public IEnumerable<IMethodReference> NavigationCallers { get { return NavigationCallers; } }
+
+    public PhoneNavigationCodeTraverser(MetadataReaderHost host, IEnumerable<IAssemblyReference> assemblies) : base() {
       this.host = host;
-      this.typeTraversed = typeTraversed;
-      this.methodTraversed = methodTraversed;
+      List<IAssembly> assembliesTraversed = new List<IAssembly>();
+      foreach (IAssemblyReference asmRef in assemblies) {
+        assembliesTraversed.Add(asmRef.ResolvedAssembly);
+      }
+
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
  
       // TODO obtain version, culture and signature data dynamically
@@ -29,15 +35,18 @@ namespace BytecodeTranslator.Phone {
 
       assembly = PhoneTypeHelper.getSystemAssemblyReference(host);
       cancelEventArgsType = platform.CreateReference(assembly, "System", "ComponentModel", "CancelEventArgs");
+      navigationCallers = new HashSet<IMethodReference>();
     }
 
-    public override void  Visit(IEnumerable<IAssemblyReference> assemblyReferences) {
- 	    base.Visit(assemblyReferences);
+    public override void Visit(ITypeDefinition typeDef) {
+      this.typeTraversed = typeDef;
+      base.Visit(typeDef);
     }
-
 
     public override void Visit(IMethodDefinition method) {
+      this.methodTraversed = method;
       if (method.IsConstructor && PhoneTypeHelper.isPhoneApplicationClass(typeTraversed, host)) {
+        navigationCallers.Add(method);
         string mainPageUri = PhoneCodeHelper.instance().PhonePlugin.getMainPageXAML();
         SourceMethodBody sourceBody = method.Body as SourceMethodBody;
         if (sourceBody != null) {
@@ -130,14 +139,21 @@ namespace BytecodeTranslator.Phone {
       if (!PhoneCodeHelper.instance().isBackKeyPressOverride(methodTraversed.ResolvedMethod))
         return false;
 
+      return isEventCancellationMethodCall(call);
+    }
+
+    private bool isEventCancellationMethodCall(IMethodCall call) {
       if (!call.MethodToCall.Name.Value.StartsWith("set_Cancel"))
         return false;
 
       if (call.Arguments.Count() != 1 || call.Arguments.ToList()[0].Type != host.PlatformType.SystemBoolean)
         return false;
 
+      if (call.ThisArgument == null || !call.ThisArgument.Type.isCancelEventArgsClass(host))
+        return false;
+
       ICompileTimeConstant constant = call.Arguments.ToList()[0] as ICompileTimeConstant;
-      if (constant != null && constant.Value != null ) {
+      if (constant != null && constant.Value != null) {
         CompileTimeConstant falseConstant = new CompileTimeConstant() {
           Type = host.PlatformType.SystemBoolean,
           Value = false,
@@ -151,25 +167,22 @@ namespace BytecodeTranslator.Phone {
 
     public override void Visit(IMethodCall methodCall) {
       string target;
-
-      if (PhoneCodeHelper.instance().isKnownBackKeyOverride(methodTraversed)) {
-        // NAVIGATION TODO this is turning into a mess, I'd like to decouple both traversals
-        return; // we already seen this
-      }
-
       if (isNavigationOnBackKeyPressHandler(methodCall, out target)) {
-        PhoneCodeHelper.instance().BackKeyPressNavigates = true;
-        ICollection<string> targets;
+        ICollection<Tuple<IMethodReference,string>> targets;
         try {
           targets= PhoneCodeHelper.instance().BackKeyNavigatingOffenders[typeTraversed];
         } catch (KeyNotFoundException) {
-          targets = new HashSet<string>();
+          targets = new HashSet<Tuple<IMethodReference,string>>();
         }
-        targets.Add("\"" + target + "\"");
+        targets.Add(Tuple.Create<IMethodReference,string>(methodTraversed, "\"" + target + "\""));
         PhoneCodeHelper.instance().BackKeyNavigatingOffenders[typeTraversed]= targets;
       } else if (isCancelOnBackKeyPressHandler(methodCall)) {
-        PhoneCodeHelper.instance().BackKeyPressHandlerCancels = true;
-        PhoneCodeHelper.instance().BackKeyCancellingOffenders.Add(typeTraversed);
+        PhoneCodeHelper.instance().BackKeyCancellingOffenders.Add(Tuple.Create<ITypeReference, string>(typeTraversed,""));
+      }
+
+      // re-check whether it is an event cancellation call
+      if (isEventCancellationMethodCall(methodCall)) {
+        PhoneCodeHelper.instance().KnownEventCancellingMethods.Add(methodTraversed);
       }
 
       // check whether it is a NavigationService call
@@ -213,6 +226,11 @@ namespace BytecodeTranslator.Phone {
             //else
             //  notStaticReason = "URI not initialized as a static string";
           }
+        }
+
+        if (navCallFound && !navCallIsBack) {
+          // check this method as a navigation method
+          PhoneCodeHelper.instance().KnownNavigatingMethods.Add(methodTraversed);
         }
 
         //Console.Write("Page navigation event found. Target is static? " + (isStatic ? "YES" : "NO"));
@@ -301,18 +319,16 @@ namespace BytecodeTranslator.Phone {
   public class PhoneNavigationMetadataTraverser : BaseMetadataTraverser {
     private MetadataReaderHost host;
     private ITypeDefinition typeBeingTraversed;
+    private PhoneNavigationCodeTraverser codeTraverser;
 
     public PhoneNavigationMetadataTraverser(MetadataReaderHost host)
       : base() {
       this.host = host;
     }
 
-    public override void Visit(IModule module) {
-      base.Visit(module);
-    }
-
-    public override void Visit(IAssembly assembly) {
-      base.Visit(assembly);
+    public override void Visit(IEnumerable<IAssemblyReference> assemblies) {
+      codeTraverser = new PhoneNavigationCodeTraverser(host, assemblies);
+      base.Visit(assemblies);
     }
 
     // TODO can we avoid visiting every type? Are there only a few, identifiable, types that may perform navigation?
@@ -334,17 +350,18 @@ namespace BytecodeTranslator.Phone {
           mutableTypeDef.Fields.Add(fieldDef);
         }
       }
+
+      codeTraverser.Visit(typeDefinition);
       base.Visit(typeDefinition);
     }
 
     // TODO same here. Are there specific methods (and ways to identfy those) that can perform navigation?
     public override void Visit(IMethodDefinition method) {
       if (PhoneCodeHelper.instance().isBackKeyPressOverride(method)) {
+        PhoneCodeHelper.instance().KnownBackKeyHandlers.Add(method);
         PhoneCodeHelper.instance().OnBackKeyPressOverriden = true;
       }
-
-      PhoneNavigationCodeTraverser codeTraverser = new PhoneNavigationCodeTraverser(host, typeBeingTraversed, method);
-      codeTraverser.Visit(method);
+      base.Visit(method);
     }
 
     public void InjectPhoneCodeAssemblies(IEnumerable<IUnit> assemblies) {
