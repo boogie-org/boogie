@@ -154,6 +154,10 @@
       <Project>{27F2A417-B6ED-43AD-A38E-A0B6142216F6}</Project>
       <Name>ILToCodeModel</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\CCICodeBox\Samples\ILGarbageCollect\ILGarbageCollect.csproj">
+      <Project>{60CD0C85-1E4A-4068-A4EC-D15B7981A908}</Project>
+      <Name>ILGarbageCollect</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\CCICodeBox\CoreObjectModel\CodeModel\CodeModel.csproj">
       <Project>{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}</Project>
       <Name>CodeModel</Name>
@@ -185,10 +189,6 @@
     <ProjectReference Include="..\..\..\CCICodeBox\PEReaderAndWriter\PEReader\PeReader.csproj">
       <Project>{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}</Project>
       <Name>PeReader</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\CCICodeBox\Samples\ILGarbageCollect\ILGarbageCollect.csproj">
-      <Project>{60CD0C85-1E4A-4068-A4EC-D15B7981A908}</Project>
-      <Name>ILGarbageCollect</Name>
     </ProjectReference>
     <ProjectReference Include="..\TranslationPlugins\TranslationPlugins.csproj">
       <Project>{8C242D42-9714-440F-884D-F64F09E78C7B}</Project>
