@@ -424,29 +424,27 @@ namespace BytecodeTranslator {
       ifStmtBuilder.Add(new Bpl.ReturnCmd(b.tok));
       return new Bpl.IfCmd(b.tok, b, ifStmtBuilder.Collect(b.tok), null, null);
     }
-    private static Bpl.AssignCmd BuildAssignment(Sink sink, List<Bpl.Variable> lvars, List<Bpl.Variable> rvars) {
-      List<Bpl.IdentifierExpr> lexprs = new List<Bpl.IdentifierExpr>();
-      List<Bpl.Expr> rexprs = new List<Bpl.Expr>();
+    private static void BuildAssignment(Sink sink, Bpl.StmtListBuilder stmtBuilder, List<Bpl.Variable> lvars, List<Bpl.Variable> rvars) {
       for (int i = 0; i < lvars.Count; i++) {
         Bpl.Variable lvar = lvars[i];
         Bpl.Type ltype = lvar.TypedIdent.Type;
         Bpl.Variable rvar = rvars[i];
         Bpl.Type rtype = rvar.TypedIdent.Type;
-        lexprs.Add(Bpl.Expr.Ident(lvar));
-        if (ltype == rtype) {
-          rexprs.Add(Bpl.Expr.Ident(rvar));
-        }
-        else if (ltype == sink.Heap.BoxType) {
-          rexprs.Add(sink.Heap.Box(Bpl.Token.NoToken, rtype, Bpl.Expr.Ident(rvar)));
+        Bpl.IdentifierExpr lexpr = Bpl.Expr.Ident(lvar);
+        Bpl.Expr rexpr = Bpl.Expr.Ident(rvar);
+        if (rtype == ltype) {
+          // do nothing
+        } else if (ltype == sink.Heap.BoxType) {
+          rexpr = sink.Heap.Box(Bpl.Token.NoToken, rtype, rexpr);
         }
         else if (rtype == sink.Heap.BoxType) {
-          rexprs.Add(sink.Heap.Unbox(Bpl.Token.NoToken, ltype, Bpl.Expr.Ident(rvar)));
+          rexpr = sink.Heap.Unbox(Bpl.Token.NoToken, ltype, rexpr);
         }
         else {
-          System.Diagnostics.Debug.Assert(false);
+          System.Diagnostics.Debug.Assert(ltype == rtype);
         }
+        stmtBuilder.Add(TranslationHelper.BuildAssignCmd(lexpr, rexpr));
       }
-      return TranslationHelper.BuildAssignCmd(lexprs, rexprs);
     }
 
     private static void CreateDispatchMethod(Sink sink, ITypeDefinition type, HashSet<IMethodDefinition> delegates) {
@@ -551,12 +549,12 @@ namespace BytecodeTranslator {
           Bpl.StmtListBuilder ifStmtBuilder = new Bpl.StmtListBuilder();
           System.Diagnostics.Debug.Assert(tempInputs.Count == dispatchProcInExprs.Count);
           if (tempInputs.Count > 0) {
-            ifStmtBuilder.Add(BuildAssignment(sink, tempInputs, dispatchProcInExprs));
+            BuildAssignment(sink, ifStmtBuilder, tempInputs, dispatchProcInExprs);
           }
           ifStmtBuilder.Add(new Bpl.CallCmd(token, delegateProcedure.Name, ins, outs));
           System.Diagnostics.Debug.Assert(tempOutputs.Count == dispatchProcOutExprs.Count);
           if (tempOutputs.Count > 0) {
-            ifStmtBuilder.Add(BuildAssignment(sink, dispatchProcOutExprs, tempOutputs));
+            BuildAssignment(sink, ifStmtBuilder, dispatchProcOutExprs, tempOutputs);
           }
           ifCmd = new Bpl.IfCmd(bexpr.tok, bexpr, ifStmtBuilder.Collect(bexpr.tok), ifCmd, null);
         }
