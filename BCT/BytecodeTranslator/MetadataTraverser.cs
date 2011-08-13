@@ -70,7 +70,7 @@ namespace BytecodeTranslator {
       var savedPrivateTypes = this.privateTypes;
       this.privateTypes = new List<ITypeDefinition>();
 
-      trackPageNameVariableName(typeDefinition);
+      trackPhonePageNameVariableName(typeDefinition);
       trackPhoneApplicationClassname(typeDefinition);
 
       if (typeDefinition.IsClass) {
@@ -117,7 +117,7 @@ namespace BytecodeTranslator {
       }
     }
 
-    private void trackPageNameVariableName(ITypeDefinition typeDef) {
+    private void trackPhonePageNameVariableName(ITypeDefinition typeDef) {
       if (PhoneCodeHelper.instance().PhonePlugin != null && typeDef.isPhoneApplicationPageClass(sink.host)) {
         INamespaceTypeDefinition namedTypeDef = typeDef as INamespaceTypeDefinition;
         string fullyQualifiedName = namedTypeDef.ToString();
@@ -129,6 +129,29 @@ namespace BytecodeTranslator {
         }
       }
     }
+
+    /*
+    private void translateAnonymousControlsForPage(ITypeDefinition typeDef) {
+      if (PhoneCodeHelper.instance().PhonePlugin != null && typeDef.isPhoneApplicationPageClass(sink.host)) {
+        IEnumerable<ControlInfoStructure> pageCtrls= PhoneCodeHelper.instance().PhonePlugin.getControlsForPage(typeDef.ToString());
+        foreach (ControlInfoStructure ctrlInfo in pageCtrls) {
+          if (ctrlInfo.Name.Contains(PhoneControlsPlugin.BOOGIE_DUMMY_CONTROL)) {
+            string anonymousControlName = ctrlInfo.Name;
+            IFieldDefinition fieldDef = new FieldDefinition() {
+              ContainingTypeDefinition = typeDef,
+              Name = sink.host.NameTable.GetNameFor(anonymousControlName),
+              InternFactory = sink.host.InternFactory,
+              Visibility = TypeMemberVisibility.Public,
+              Type = sink.host.PlatformType.SystemObject,
+              IsStatic = false,
+            };
+            (typeDef as Microsoft.Cci.MutableCodeModel.NamespaceTypeDefinition).Fields.Add(fieldDef);
+            //sink.FindOrCreateFieldVariable(fieldDef);
+          }
+        }
+      }
+    }
+     * */
 
     private void CreateDefaultStructConstructor(ITypeDefinition typeDefinition) {
       Contract.Requires(typeDefinition.IsStruct);

@@ -568,7 +568,6 @@ namespace BytecodeTranslator
             if (PhoneCodeHelper.instance().isMethodKnownUIChanger(methodCall)) {
               Bpl.AssumeCmd assumeFalse = new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
               this.StmtTraverser.StmtBuilder.Add(assumeFalse);
-              // FEEDBACK TODO make sure that the call to this method (not the called one but the one in context) is inlined (how?)
             }
           }
         }
@@ -979,9 +978,30 @@ namespace BytecodeTranslator
       Bpl.Expr methodExpr = Bpl.Expr.Ident(constant);
       Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
 
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.DelegateAddHelperName,
-                                                         new Bpl.ExprSeq(Bpl.Expr.Ident(this.sink.Heap.NullRef), Bpl.Expr.Ident(constant), instanceExpr), 
-                                                         new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
+      Bpl.ExprSeq typeParameterExprs = new Bpl.ExprSeq();
+
+      if (unspecializedMethod.IsStatic) {
+        List<ITypeReference> consolidatedTypeArguments = new List<ITypeReference>();
+        Sink.GetConsolidatedTypeArguments(consolidatedTypeArguments, methodToCall.ContainingType);
+        foreach (ITypeReference typeReference in consolidatedTypeArguments) {
+          typeParameterExprs.Add(sink.FindOrCreateType(typeReference));
+        }
+      }
+      IGenericMethodInstanceReference methodInstanceReference = methodToCall as IGenericMethodInstanceReference;
+      if (methodInstanceReference != null) {
+        foreach (ITypeReference typeReference in methodInstanceReference.GenericArguments) {
+          typeParameterExprs.Add(sink.FindOrCreateType(typeReference));
+        }
+      }
+      Bpl.Expr typeParameterExpr =
+        new Bpl.NAryExpr(Bpl.Token.NoToken,
+                         new Bpl.FunctionCall(this.sink.FindOrCreateNaryTypeFunction(typeParameterExprs.Length)),
+                         typeParameterExprs);
+      this.StmtTraverser.StmtBuilder.Add(
+        new Bpl.CallCmd(cloc, this.sink.DelegateAddHelperName,
+                        new Bpl.ExprSeq(Bpl.Expr.Ident(this.sink.Heap.NullRef), 
+                                        this.sink.CreateDelegate(methodExpr, instanceExpr, typeParameterExpr)), 
+                        new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
     

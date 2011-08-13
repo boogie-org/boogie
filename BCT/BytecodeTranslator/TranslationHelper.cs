@@ -91,6 +91,15 @@ namespace BytecodeTranslator {
       return new Bpl.AssignCmd(lhs.tok, lhss, rhss);
     }
 
+    public static Bpl.AssignCmd BuildAssignCmd(List<Bpl.IdentifierExpr> lexprs, List<Bpl.Expr> rexprs) {
+      List<Bpl.AssignLhs> lhss = new List<Bpl.AssignLhs>();
+      foreach (Bpl.IdentifierExpr lexpr in lexprs) {
+        lhss.Add(new Bpl.SimpleAssignLhs(lexpr.tok, lexpr));
+      }
+      List<Bpl.Expr> rhss = new List<Bpl.Expr>();
+      return new Bpl.AssignCmd(Bpl.Token.NoToken, lhss, rexprs);
+    }
+
     public static Bpl.IToken Token(this IObjectWithLocations objectWithLocations) {
       //TODO: use objectWithLocations.Locations!
       Bpl.IToken tok = Bpl.Token.NoToken;

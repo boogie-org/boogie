@@ -109,6 +109,8 @@ namespace TranslationPlugins {
     private static int SELECTIONCHANGED_HANDLER_FIELD = 10;
     private static int BPL_NAME_FIELD = 11;
 
+    public const string BOOGIE_DUMMY_CONTROL = "__BOOGIE_DUMMY_CONTROLNAME_";
+
     private IDictionary<string, PageStructure> pageStructureInfo;
 
     public static string getURILastPath(string uri) {
@@ -302,7 +304,7 @@ namespace TranslationPlugins {
         controlClass = inputLine[CONTROL_CLASS_FIELD].Trim();
         controlName = inputLine[CONTROL_NAME_FIELD].Trim();
         if (string.IsNullOrEmpty(controlName))
-          controlName = "__BOOGIE_DUMMY_CONTROLNAME_" + dummyControlNameIndex++;
+          controlName = BOOGIE_DUMMY_CONTROL + dummyControlNameIndex++;
 
         enabled = inputLine[ENABLED_FIELD].Trim();
         visibility = inputLine[VISIBILITY_FIELD].Trim();

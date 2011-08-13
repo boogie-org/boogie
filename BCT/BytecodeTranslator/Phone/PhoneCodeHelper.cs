@@ -7,6 +7,7 @@ using Bpl=Microsoft.Boogie;
 using TranslationPlugins;
 using Microsoft.Cci.MutableCodeModel;
 using System.IO;
+using ILGarbageCollect;
 
 namespace BytecodeTranslator.Phone {
   public static class UriHelper {
@@ -252,13 +253,15 @@ namespace BytecodeTranslator.Phone {
     public static readonly string[] NAV_CALLS = { /*"GoBack", "GoForward", "Navigate", "StopLoading"*/ "Navigate", "GoBack" };
 
     public bool OnBackKeyPressOverriden { get; set; }
-    public bool BackKeyPressHandlerCancels { get; set; }
-    public bool BackKeyPressNavigates { get; set; }
+    public bool BackKeyPressHandlerCancels { get { return BackKeyCancellingOffenders.Count > 0; } }
+    public bool BackKeyPressNavigates { get { return BackKeyNavigatingOffenders.Keys.Count > 0; } }
     public bool BackKeyHandlerOverridenByUnknownDelegate { get; set; }
-    public ICollection<ITypeReference> BackKeyCancellingOffenders { get; set; }
+    public ICollection<Tuple<ITypeReference,string>> BackKeyCancellingOffenders { get; set; }
     public ICollection<ITypeReference> BackKeyUnknownDelegateOffenders { get; set; }
-    public Dictionary<ITypeReference, ICollection<string>> BackKeyNavigatingOffenders { get; set; }
+    public Dictionary<ITypeReference, ICollection<Tuple<IMethodReference,string>>> BackKeyNavigatingOffenders { get; set; }
     public ICollection<IMethodReference> KnownBackKeyHandlers { get; set; }
+    public ICollection<IMethodReference> KnownNavigatingMethods { get; set; }
+    public ICollection<IMethodReference> KnownEventCancellingMethods { get; set; }
 
     private Dictionary<string, string[]> PHONE_UI_CHANGER_METHODS;
 
@@ -288,10 +291,12 @@ namespace BytecodeTranslator.Phone {
         platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
         initializeKnownUIChangers();
 
-        BackKeyCancellingOffenders= new HashSet<ITypeReference>();
+        BackKeyCancellingOffenders= new HashSet<Tuple<ITypeReference,string>>();
         BackKeyUnknownDelegateOffenders = new HashSet<ITypeReference>();
-        BackKeyNavigatingOffenders = new Dictionary<ITypeReference, ICollection<string>>();
+        BackKeyNavigatingOffenders = new Dictionary<ITypeReference, ICollection<Tuple<IMethodReference,string>>>();
         KnownBackKeyHandlers = new HashSet<IMethodReference>();
+        KnownNavigatingMethods = new HashSet<IMethodReference>();
+        KnownEventCancellingMethods = new HashSet<IMethodReference>();
       }
     }
 
@@ -802,6 +807,51 @@ namespace BytecodeTranslator.Phone {
     public bool isKnownBackKeyOverride(IMethodReference method) {
       return isBackKeyPressOverride(method.ResolvedMethod) ||
              KnownBackKeyHandlers.Contains(method);
+    }
+
+    internal IEnumerable<IMethodDefinition> getIndirectNavigators(IEnumerable<IModule> modules, IMethodReference method) {
+      IEnumerable<IMethodDefinition> reachable = getReachableMethodsFromMethod(method, modules);
+      reachable= reachable.Except(new IMethodDefinition[] { method.ResolvedMethod });
+      return getResolvedMethods(KnownNavigatingMethods).Intersect(reachable);
+    }
+
+    internal IEnumerable<IMethodDefinition> getIndirectCancellations(IEnumerable<IModule> modules, IMethodReference method) {
+      IEnumerable<IMethodDefinition> reachable = getReachableMethodsFromMethod(method, modules);
+      reachable = reachable.Except(new IMethodDefinition[] { method.ResolvedMethod });
+      return getResolvedMethods(KnownEventCancellingMethods).Intersect(reachable);
+    }
+
+    internal IEnumerable<IMethodDefinition> getReachableMethodsFromMethod(IMethodReference method, IEnumerable<IModule> modules) {
+      IEnumerable<IAssembly> assemblies = getAssembliesFromModules(modules);
+      Microsoft.Cci.MetadataReaderHost readerHost = host as Microsoft.Cci.MetadataReaderHost;
+
+      if (readerHost == null)
+        return new List<IMethodDefinition>(); //?
+
+      ILGarbageCollect.Mark.WholeProgram program = new ILGarbageCollect.Mark.WholeProgram(assemblies, readerHost);
+      RapidTypeAnalysis analyzer = new RapidTypeAnalysis(program, TargetProfile.Phone);
+      analyzer.Run(new IMethodReference[] { method });
+      return analyzer.ReachableMethods();
+    }
+
+    internal IEnumerable<IAssembly> getAssembliesFromModules(IEnumerable<IModule> modules) {
+      IList<IAssembly> assemblies = new List<IAssembly>();
+      foreach (IModule module in modules) {
+        IAssembly assembly = module as IAssembly;
+        if (assembly != null)
+          assemblies.Add(assembly);
+      }
+
+      return assemblies;
+    }
+
+    internal IEnumerable<IMethodDefinition> getResolvedMethods(IEnumerable<IMethodReference> methRefs) {
+      IList<IMethodDefinition> methDefs = new List<IMethodDefinition>();
+      foreach (IMethodReference methRef in methRefs) {
+        methDefs.Add(methRef.ResolvedMethod);
+      }
+
+      return methDefs;
     }
   }
 }
