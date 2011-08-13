@@ -226,10 +226,21 @@ object Resolver {
              ResolveExpr(e, ctx, false, true)(true);
              if(!e.typ.IsBool) context.Error(e.pos, "predicate requires a boolean expression (found " + e.typ.FullName + ")")
            case f@Function(id, ins, out, spec, definition) =>
-              // TODO: disallow credit(...) expressions in function specifications
+             def hasCredit(e: Expression) = {
+               var b = false
+               e transform {
+                 case _:Credit => b = true; None
+                 case _ => None
+               }
+               b
+             }
              spec foreach {
-               case Precondition(e) => ResolveExpr(e, context, false, true)(false)
-               case Postcondition(e) => ResolveExpr(e, context, false, true)(false)
+               case p@Precondition(e) =>
+                 ResolveExpr(e, context, false, true)(false)
+                 if (hasCredit(e)) context.Error(p.pos, "the specification of functions cannot contain credit expressions") 
+               case p@Postcondition(e) =>
+                 ResolveExpr(e, context, false, true)(false)
+                 if (hasCredit(e)) context.Error(p.pos, "the specification of functions cannot contain credit expressions") 
                case lc : LockChange => context.Error(lc.pos, "lockchange not allowed on function") 
              }
 
