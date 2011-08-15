@@ -49,8 +49,6 @@ namespace BytecodeTranslator.Phone {
             delegateBody = anonDelegate.Body;
           }
 
-          // NAVIGATION TODO look for reachable method calls
-
           // NAVIGATION TODO what if it has no body?
           if (delegateBody != null) {
             bool navigates= false, cancelsNav= false;

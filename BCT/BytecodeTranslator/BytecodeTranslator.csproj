@@ -131,7 +131,6 @@
     <Compile Include="Phone\PhoneInitializationTraverser.cs" />
     <Compile Include="Phone\PhoneMethodInliningTraverser.cs" />
     <Compile Include="Phone\PhoneNavigationTraverser.cs" />
-    <Compile Include="Phone\PhoneCodeWrapperWriter.cs" />
     <Compile Include="Prelude.cs" />
     <Compile Include="ExpressionTraverser.cs" />
     <Compile Include="Sink.cs" />
