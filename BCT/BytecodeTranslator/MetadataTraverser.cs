@@ -18,6 +18,7 @@ using Bpl = Microsoft.Boogie;
 using System.Diagnostics.Contracts;
 using TranslationPlugins;
 using BytecodeTranslator.Phone;
+using BytecodeTranslator.TranslationPlugins;
 
 
 namespace BytecodeTranslator {
@@ -26,7 +27,7 @@ namespace BytecodeTranslator {
   /// Responsible for traversing all metadata elements (i.e., everything exclusive
   /// of method bodies).
   /// </summary>
-  public class MetadataTraverser : BaseMetadataTraverser {
+  public class MetadataTraverser : BaseMetadataTraverser, ITranslator {
 
     readonly Sink sink;
 

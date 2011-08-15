@@ -138,6 +138,10 @@
     <Compile Include="Program.cs" />
     <Compile Include="TranslationException.cs" />
     <Compile Include="TranslationHelper.cs" />
+    <Compile Include="TranslationPlugins\BytecodeTranslator\BytecodeTranslatorPlugin.cs" />
+    <Compile Include="TranslationPlugins\IContractAwareTranslator.cs" />
+    <Compile Include="TranslationPlugins\ITranslationPlugin.cs" />
+    <Compile Include="TranslationPlugins\ITranslator.cs" />
     <Compile Include="TraverserFactory.cs" />
     <Compile Include="WholeProgram.cs" />
   </ItemGroup>

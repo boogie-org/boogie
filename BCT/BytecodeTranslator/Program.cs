@@ -21,6 +21,8 @@ using Microsoft.Cci.MutableCodeModel.Contracts;
 using TranslationPlugins;
 using BytecodeTranslator.Phone;
 using System.Text.RegularExpressions;
+using BytecodeTranslator.TranslationPlugins;
+using BytecodeTranslator.TranslationPlugins.BytecodeTranslator;
 
 namespace BytecodeTranslator {
 
@@ -262,8 +264,9 @@ namespace BytecodeTranslator {
 
       Sink sink= new Sink(host, bctTraverserFactory, heapFactory, options, exemptionList, whiteList);
       TranslationHelper.tmpVarCounter = 0;
-      MetadataTraverser translator;
-      translator= bctTraverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
+
+      ITranslationPlugin bctPlugin= new BytecodeTranslatorPlugin();
+      ITranslator translator= bctPlugin.getTranslator(sink, contractExtractors, pdbReaders);
 
       if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
         PhoneCodeHelper.initialize(host);
