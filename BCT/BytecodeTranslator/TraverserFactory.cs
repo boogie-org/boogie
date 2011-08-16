@@ -17,19 +17,22 @@ using Microsoft.Cci.ILToCodeModel;
 using TranslationPlugins;
 
 using Bpl = Microsoft.Boogie;
+using BytecodeTranslator.TranslationPlugins;
 
 namespace BytecodeTranslator {
   public abstract class TraverserFactory {
     public int Priority { get; set; }
 
+    public abstract Translator getTranslator(Sink sink, IDictionary<IUnit, IContractProvider> contractProviders, IDictionary<IUnit, PdbReader> reader);
+
     public virtual MetadataTraverser MakeMetadataTraverser(Sink sink,
       IDictionary<IUnit, IContractProvider> contractProviders, // TODO: remove this parameter?
       IDictionary<IUnit, PdbReader> sourceLocationProviders)
     {
-      return new MetadataTraverser(sink, sourceLocationProviders);
+      return new MetadataTraverser(sink, sourceLocationProviders, this);
     }
     public virtual StatementTraverser MakeStatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
-      return new StatementTraverser(sink, pdbReader, contractContext);
+      return new StatementTraverser(sink, pdbReader, contractContext, this);
     }
 
     public virtual ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext) {

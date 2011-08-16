@@ -23,6 +23,7 @@ using BytecodeTranslator.Phone;
 using System.Text.RegularExpressions;
 using BytecodeTranslator.TranslationPlugins;
 using BytecodeTranslator.TranslationPlugins.BytecodeTranslator;
+using BytecodeTranslator.TranslationPlugins.PhoneTranslator;
 
 namespace BytecodeTranslator {
 
@@ -255,23 +256,52 @@ namespace BytecodeTranslator {
       }
 
       var primaryModule = modules[0];
-      TraverserFactory bctTraverserFactory;
-      if (wholeProgram) {
-        bctTraverserFactory = new WholeProgram();
-      } else {
-        bctTraverserFactory = new CLRSemantics();
-      }
-
-      Sink sink= new Sink(host, bctTraverserFactory, heapFactory, options, exemptionList, whiteList);
+      Sink sink= new Sink(host, heapFactory, options, exemptionList, whiteList);
       TranslationHelper.tmpVarCounter = 0;
 
-      ITranslationPlugin bctPlugin= new BytecodeTranslatorPlugin();
-      ITranslator translator= bctPlugin.getTranslator(sink, contractExtractors, pdbReaders);
+      // TODO move away, get all plugin and translators from a config file or alike
+      #region Plugged translators
+      List<Translator> translatorsPlugged = new List<Translator>();      
+      ITranslationPlugin bctPlugin= new BytecodeTranslatorPlugin(wholeProgram);
+      Translator bcTranslator = bctPlugin.getTranslator(sink, contractExtractors, pdbReaders);
+      translatorsPlugged.Add(bcTranslator);
 
       if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
+        // TODO this should be part of the translator initialziation
+        PhoneCodeHelper.initialize(host);
+        PhoneCodeHelper.instance().PhonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
+
+        if (doPhoneNav) {
+          // TODO this should be part of the translator initialziation
+          PhoneCodeHelper.instance().PhoneNavigationToggled = true;
+
+          ITranslationPlugin phoneInitPlugin = new PhoneInitializationPlugin();
+          ITranslationPlugin phoneNavPlugin = new PhoneNavigationPlugin();
+          Translator phInitTranslator = phoneInitPlugin.getTranslator(sink, contractExtractors, pdbReaders);
+          Translator phNavTranslator = phoneNavPlugin.getTranslator(sink, contractExtractors, pdbReaders);
+          translatorsPlugged.Add(phInitTranslator);
+          translatorsPlugged.Add(phNavTranslator);
+        }
+
+        if (doPhoneFeedback) {
+          // TODO this should be part of the translator initialziation
+          PhoneCodeHelper.instance().PhoneFeedbackToggled = true;
+
+          ITranslationPlugin phoneFeedbackPlugin = new PhoneFeedbackPlugin();
+          Translator phFeedbackTranslator = phoneFeedbackPlugin.getTranslator(sink, contractExtractors, pdbReaders);
+          translatorsPlugged.Add(phFeedbackTranslator);
+        }
+      }
+      #endregion
+      sink.TranslationPlugins = translatorsPlugged;
+
+      /*
+      if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
+        // TODO send this all way to initialization of phone plugin translator
         PhoneCodeHelper.initialize(host);
         PhoneCodeHelper.instance().PhonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
         
+        // TODO these parameters will eventually form part of plugin configuration
         if (doPhoneNav) {
           PhoneCodeHelper.instance().PhoneNavigationToggled = true;
           PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(host);
@@ -286,8 +316,17 @@ namespace BytecodeTranslator {
           fbMetaDataTraverser.Visit(modules);
         }
       }
+      */
 
-      translator.TranslateAssemblies(modules);
+      // TODO replace the whole translation by a translator initialization and an orchestrator calling back for each element
+      // TODO for the current BC translator it will possibly just implement onMetadataElement(IModule)
+      // TODO refactor this away, handle priorities between plugged translators
+      IOrderedEnumerable<Translator> prioritizedTranslators = translatorsPlugged.OrderBy(t => t.getPriority());
+      foreach (Translator t in prioritizedTranslators) {
+        t.initialize();
+        if (t.isOneShot())
+          t.TranslateAssemblies(modules);
+      }
 
       foreach (var pair in sink.delegateTypeToDelegates.Values) {
         CreateDispatchMethod(sink, pair.Item1, pair.Item2);

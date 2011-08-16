@@ -69,6 +69,7 @@ namespace BytecodeTranslator {
     public override Bpl.Variable CreateFieldVariable(IFieldReference field) {
       Bpl.Variable v;
       string fieldname = MemberHelper.GetMemberSignature(field, NameFormattingOptions.DocumentationId);
+      
       fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
       Bpl.IToken tok = field.Token();
       Bpl.Type t = this.sink.CciTypeToBoogie(field.Type.ResolvedType);

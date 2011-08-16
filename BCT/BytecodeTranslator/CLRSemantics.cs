@@ -15,10 +15,16 @@ using Microsoft.Cci.Contracts;
 using Microsoft.Cci.ILToCodeModel;
 
 using Bpl = Microsoft.Boogie;
+using BytecodeTranslator.TranslationPlugins;
 
 namespace BytecodeTranslator {
 
   public class CLRSemantics : TraverserFactory {
+
+    public override Translator getTranslator(Sink sink, IDictionary<IUnit, IContractProvider> contractProviders, IDictionary<IUnit, PdbReader> pdbReaders) {
+      Translator translator = new BaseTranslator(this, sink, contractProviders, pdbReaders);
+      return translator;
+    }
 
     public override ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext) {
       return new CLRExpressionSemantics(sink, statementTraverser, contractContext);

@@ -17,27 +17,27 @@ using Microsoft.Cci.ILToCodeModel;
 using System.Diagnostics.Contracts;
 
 using Bpl = Microsoft.Boogie;
+using BytecodeTranslator.TranslationPlugins;
 
 
 namespace BytecodeTranslator {
 
   public class Sink {
 
-    public TraverserFactory Factory {
-      get { return this.factory; }
+    public IEnumerable<Translator> TranslationPlugins {
+      get { return this.translationPlugins; }
+      set { this.translationPlugins= value; }
     }
-    readonly TraverserFactory factory;
+    private IEnumerable<Translator> translationPlugins;
     private readonly Options options;
     readonly bool whiteList;
     readonly List<Regex> exemptionList;
 
-    public Sink(IContractAwareHost host, TraverserFactory factory, HeapFactory heapFactory, Options options, List<Regex> exemptionList, bool whiteList) {
-      Contract.Requires(host != null);
-      Contract.Requires(factory != null);
-      Contract.Requires(heapFactory != null);
 
+    public Sink(IContractAwareHost host, HeapFactory heapFactory, Options options, List<Regex> exemptionList, bool whiteList) {
+      Contract.Requires(host != null);
+      Contract.Requires(heapFactory != null);
       this.host = host;
-      this.factory = factory;
       var b = heapFactory.MakeHeap(this, out this.heap, out this.TranslatedProgram); // TODO: what if it returns false?
       this.options = options;
       this.exemptionList = exemptionList;
@@ -630,35 +630,24 @@ namespace BytecodeTranslator {
 
         if (contract != null) {
           try {
+            foreach (Translator translatorPlugin in translationPlugins) {
+              ContractAwareTranslator translator = translatorPlugin as ContractAwareTranslator;
+              if (translator != null) {
+                IEnumerable<Bpl.Requires> preConds = translator.getPreconditionTranslation(contract);
+                foreach (Bpl.Requires preExpr in preConds) {
+                  boogiePrecondition.Add(preExpr);
+                }
 
-            foreach (IPrecondition pre in contract.Preconditions) {
-              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true);
-              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, stmtTraverser, true);
-              exptravers.Visit(pre.Condition); // TODO
-              // Todo: Deal with Descriptions
-              var req = new Bpl.Requires(pre.Token(), false, exptravers.TranslatedExpressions.Pop(), "");
-              boogiePrecondition.Add(req);
-            }
+                IEnumerable<Bpl.Ensures> ensures = translator.getPostconditionTranslation(contract);
+                foreach (Bpl.Ensures ensuring in ensures) {
+                  boogiePostcondition.Add(ensuring);
+                }
 
-            foreach (IPostcondition post in contract.Postconditions) {
-              var stmtTraverser = this.factory.MakeStatementTraverser(this, null, true);
-              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, stmtTraverser, true);
-              exptravers.Visit(post.Condition);
-              // Todo: Deal with Descriptions
-              var ens = new Bpl.Ensures(post.Token(), false, exptravers.TranslatedExpressions.Pop(), "");
-              boogiePostcondition.Add(ens);
-            }
-
-            foreach (IAddressableExpression mod in contract.ModifiedVariables) {
-              ExpressionTraverser exptravers = this.factory.MakeExpressionTraverser(this, null, true);
-              exptravers.Visit(mod);
-
-              Bpl.IdentifierExpr idexp = exptravers.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
-
-              if (idexp == null) {
-                throw new TranslationException(String.Format("Cannot create IdentifierExpr for Modifyed Variable {0}", mod.ToString()));
+                IEnumerable<Bpl.IdentifierExpr> modifiedExpr = translator.getModifiedIdentifiers(contract);
+                foreach (Bpl.IdentifierExpr ident in modifiedExpr) {
+                  boogieModifies.Add(ident);
+                }
               }
-              boogieModifies.Add(idexp);
             }
           }
           catch (TranslationException te) {

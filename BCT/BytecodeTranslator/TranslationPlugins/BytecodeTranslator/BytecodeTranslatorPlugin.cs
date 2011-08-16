@@ -6,11 +6,22 @@ using Microsoft.Cci;
 using Microsoft.Cci.Contracts;
 
 namespace BytecodeTranslator.TranslationPlugins.BytecodeTranslator {
-  class BytecodeTranslatorPlugin : ITranslationPlugin {
-    public ITranslator getTranslator(Sink sink, IDictionary<IUnit, IContractProvider> contractProviders, IDictionary<IUnit, PdbReader> pdbReaders) {
-      // TODO take whole program options into account here
-      return new CLRSemantics().MakeMetadataTraverser(sink, contractProviders, pdbReaders);
-      // return new WholeProgram().MakeMetadataTraverser(sink, contractProviders, pdbReaders);
+  internal class BytecodeTranslatorPlugin : ITranslationPlugin {
+    private bool isWholeProgram = false;
+
+    public BytecodeTranslatorPlugin(Boolean isWholeProgram) {
+      this.isWholeProgram = isWholeProgram;
+    }
+
+    public Translator getTranslator(Sink sink, IDictionary<IUnit, IContractProvider> contractProviders, IDictionary<IUnit, PdbReader> pdbReaders) {
+      TraverserFactory factory;
+      if (isWholeProgram)
+        factory= new WholeProgram();
+      else
+        factory= new CLRSemantics();
+      // Translator translator= factory.MakeMetadataTraverser(sink, contractProviders, pdbReaders);
+      Translator translator= factory.getTranslator(sink, contractProviders, pdbReaders);
+      return translator;
     }
   }
 }

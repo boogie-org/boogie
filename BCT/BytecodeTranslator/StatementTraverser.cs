@@ -58,9 +58,9 @@ namespace BytecodeTranslator
     private static int captureStateCounter = 0;
 
     #region Constructors
-    public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
+    public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext, TraverserFactory factory) {
       this.sink = sink;
-      this.factory = sink.Factory;
+      this.factory = factory;
       PdbReader = pdbReader;
       this.contractContext = contractContext;
       this.captureState = sink.Options.captureState;

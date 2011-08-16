@@ -27,21 +27,64 @@ namespace BytecodeTranslator {
   /// Responsible for traversing all metadata elements (i.e., everything exclusive
   /// of method bodies).
   /// </summary>
-  public class MetadataTraverser : BaseMetadataTraverser, ITranslator {
+  public class MetadataTraverser : BaseMetadataTraverser {
 
     readonly Sink sink;
-
-    public readonly TraverserFactory factory;
+    public readonly TraverserFactory Factory;
 
     public readonly IDictionary<IUnit, PdbReader> PdbReaders;
     public PdbReader/*?*/ PdbReader;
 
-    public MetadataTraverser(Sink sink, IDictionary<IUnit, PdbReader> pdbReaders)
+    public MetadataTraverser(Sink sink, IDictionary<IUnit, PdbReader> pdbReaders, TraverserFactory factory)
       : base() {
       this.sink = sink;
-      this.factory = sink.Factory;
+      this.Factory = factory;
       this.PdbReaders = pdbReaders;
     }
+
+    public IEnumerable<Bpl.Requires> getPreconditionTranslation(IMethodContract contract) {
+      ICollection<Bpl.Requires> translatedPres = new List<Bpl.Requires>();
+      foreach (IPrecondition pre in contract.Preconditions) {
+        var stmtTraverser = this.Factory.MakeStatementTraverser(sink, null, true);
+        ExpressionTraverser exptravers = this.Factory.MakeExpressionTraverser(sink, stmtTraverser, true);
+        exptravers.Visit(pre.Condition); // TODO
+        // Todo: Deal with Descriptions
+        var req = new Bpl.Requires(pre.Token(), false, exptravers.TranslatedExpressions.Pop(), "");
+        translatedPres.Add(req);
+      }
+
+      return translatedPres;
+    }
+
+    public IEnumerable<Bpl.Ensures> getPostconditionTranslation(IMethodContract contract) {
+      ICollection<Bpl.Ensures> translatedPosts = new List<Bpl.Ensures>();
+      foreach (IPostcondition post in contract.Postconditions) {
+        var stmtTraverser = this.Factory.MakeStatementTraverser(sink, null, true);
+        ExpressionTraverser exptravers = this.Factory.MakeExpressionTraverser(sink, stmtTraverser, true);
+        exptravers.Visit(post.Condition);
+        // Todo: Deal with Descriptions
+        var ens = new Bpl.Ensures(post.Token(), false, exptravers.TranslatedExpressions.Pop(), "");
+        translatedPosts.Add(ens);
+      }
+
+      return translatedPosts;
+    }
+
+    public IEnumerable<Bpl.IdentifierExpr> getModifiedIdentifiers(IMethodContract contract) {
+      ICollection<Bpl.IdentifierExpr> modifiedExpr = new List<Bpl.IdentifierExpr>();
+      foreach (IAddressableExpression mod in contract.ModifiedVariables) {
+        ExpressionTraverser exptravers = this.Factory.MakeExpressionTraverser(sink, null, true);
+        exptravers.Visit(mod);
+        Bpl.IdentifierExpr idexp = exptravers.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
+        if (idexp == null) {
+          throw new TranslationException(String.Format("Cannot create IdentifierExpr for Modifyed Variable {0}", mod.ToString()));
+        }
+        modifiedExpr.Add(idexp);
+      }
+
+      return modifiedExpr;
+    }
+
 
     #region Overrides
 
@@ -136,7 +179,7 @@ namespace BytecodeTranslator {
       if (PhoneCodeHelper.instance().PhonePlugin != null && typeDef.isPhoneApplicationPageClass(sink.host)) {
         IEnumerable<ControlInfoStructure> pageCtrls= PhoneCodeHelper.instance().PhonePlugin.getControlsForPage(typeDef.ToString());
         foreach (ControlInfoStructure ctrlInfo in pageCtrls) {
-          if (ctrlInfo.Name.Contains(PhoneControlsPlugin.BOOGIE_DUMMY_CONTROL)) {
+          if (ctrlInfo.Name.Contains(PhoneControlsPlugin.BOOGIE_DUMMY_CONTROL) || ctrlInfo.Name == Dummy.Name.Value) {
             string anonymousControlName = ctrlInfo.Name;
             IFieldDefinition fieldDef = new FieldDefinition() {
               ContainingTypeDefinition = typeDef,
@@ -152,7 +195,7 @@ namespace BytecodeTranslator {
         }
       }
     }
-     * */
+     */ 
 
     private void CreateDefaultStructConstructor(ITypeDefinition typeDefinition) {
       Contract.Requires(typeDefinition.IsStruct);
@@ -160,7 +203,7 @@ namespace BytecodeTranslator {
       var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typeDefinition);
 
       this.sink.BeginMethod(typeDefinition);
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
+      var stmtTranslator = this.Factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -263,7 +306,7 @@ namespace BytecodeTranslator {
 
       this.sink.BeginMethod(typeDefinition);
 
-      var stmtTranslator = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
+      var stmtTranslator = this.Factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
       var stmts = new List<IStatement>();
 
       foreach (var f in typeDefinition.Fields) {
@@ -343,7 +386,7 @@ namespace BytecodeTranslator {
       }
 
       try {
-        StatementTraverser stmtTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
+        StatementTraverser stmtTraverser = this.Factory.MakeStatementTraverser(this.sink, this.PdbReader, false);
 
         // FEEDBACK if this is a feedback method it will be plagued with false asserts. They will trigger if $Exception becomes other than null
         // FEEDBACK for modular analysis we need it to be non-null at the start
