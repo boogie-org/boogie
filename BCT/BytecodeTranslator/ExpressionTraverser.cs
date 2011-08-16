@@ -407,44 +407,12 @@ namespace BytecodeTranslator
     }
 
     public override void Visit(IDefaultValue defaultValue) {
-
       var typ = defaultValue.Type;
 
-      #region Struct
       if (TranslationHelper.IsStruct(typ)) {
-        // then it is a struct and gets special treatment
-        // translate it as if it were a call to the nullary ctor for the struct type
-        // (which doesn't actually exist, but gets generated for each struct type
-        // encountered during translation)
-
-        var tok = defaultValue.Token();
-
-        var loc = this.sink.CreateFreshLocal(typ);
-        var locExpr = Bpl.Expr.Ident(loc);
-
-        // First generate an Alloc() call
-        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(tok, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(locExpr)));
-
-        // Second, generate the call to the appropriate ctor
-        var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typ);
-        var invars = new List<Bpl.Expr>();
-        invars.Add(locExpr);
-        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, invars, new List<Bpl.IdentifierExpr>()));
-
-        // Generate an assumption about the dynamic type of the just allocated object
-        this.StmtTraverser.StmtBuilder.Add(
-            new Bpl.AssumeCmd(tok,
-              Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
-              this.sink.Heap.DynamicType(locExpr),
-              this.sink.FindOrCreateType(typ)
-              )
-              )
-            );
-
-        this.TranslatedExpressions.Push(locExpr);
+        translateStructDefaultValue(defaultValue, typ);
         return;
       }
-      #endregion
 
       Bpl.Expr e;
       var bplType = this.sink.CciTypeToBoogie(typ);
@@ -468,6 +436,39 @@ namespace BytecodeTranslator
 
       TranslatedExpressions.Push(e);
       return;
+    }
+
+    private void translateStructDefaultValue(IDefaultValue defaultValue, ITypeReference typ) {
+      // then it is a struct and gets special treatment
+      // translate it as if it were a call to the nullary ctor for the struct type
+      // (which doesn't actually exist, but gets generated for each struct type
+      // encountered during translation)
+
+      var tok = defaultValue.Token();
+
+      var loc = this.sink.CreateFreshLocal(typ);
+      var locExpr = Bpl.Expr.Ident(loc);
+
+      // First generate an Alloc() call
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(tok, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(locExpr)));
+
+      // Second, generate the call to the appropriate ctor
+      var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typ);
+      var invars = new List<Bpl.Expr>();
+      invars.Add(locExpr);
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, invars, new List<Bpl.IdentifierExpr>()));
+
+      // Generate an assumption about the dynamic type of the just allocated object
+      this.StmtTraverser.StmtBuilder.Add(
+          new Bpl.AssumeCmd(tok,
+            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
+            this.sink.Heap.DynamicType(locExpr),
+            this.sink.FindOrCreateType(typ)
+            )
+            )
+          );
+
+      this.TranslatedExpressions.Push(locExpr);
     }
 
     #endregion
@@ -729,6 +730,7 @@ namespace BytecodeTranslator
       bool translationIntercepted= false;
       ICompileTimeConstant constant= assignment.Source as ICompileTimeConstant;
       // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
+      // NAVIGATION TODO maybe this will go away if I can handle it with stubs
       if (PhoneCodeHelper.instance().PhonePlugin != null && PhoneCodeHelper.instance().PhoneNavigationToggled) {
         IFieldReference target = assignment.Target.Definition as IFieldReference;
         if (target != null && target.Name.Value == PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE) {
@@ -737,7 +739,6 @@ namespace BytecodeTranslator
             TranslateHavocCurrentURI();
             translationIntercepted = true;
           }
-          
           StmtTraverser.StmtBuilder.Add(PhoneCodeHelper.instance().getAddNavigationCheck(sink));
         }
       }
@@ -1363,6 +1364,8 @@ namespace BytecodeTranslator
       #endregion
       */
 
+
+      // TODO is this code actually needed at all? It seems that all this is already being done in the Statement traverser for the conditional
       StatementTraverser thenStmtTraverser = this.StmtTraverser.factory.MakeStatementTraverser(this.sink, this.StmtTraverser.PdbReader, this.contractContext);
       StatementTraverser elseStmtTraverser = this.StmtTraverser.factory.MakeStatementTraverser(this.sink, this.StmtTraverser.PdbReader, this.contractContext);
       ExpressionTraverser thenExprTraverser = this.StmtTraverser.factory.MakeExpressionTraverser(this.sink, thenStmtTraverser, this.contractContext);

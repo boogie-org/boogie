@@ -86,8 +86,9 @@ namespace AssertionInjector {
         var outputPdbPath = Path.Combine(Path.GetDirectoryName(outputAssemblyPath), outputPdbFileName);
         File.Copy(outputPdbPath, originalPdbPath, true);
         File.Delete(outputPdbPath);
-      } catch {
+      } catch (Exception e) {
         Console.WriteLine("Something went wrong with replacing input assembly/pdb");
+        Console.WriteLine(e.Message);
         return errorValue;
       }
 
@@ -171,7 +172,7 @@ namespace AssertionInjector {
           break;
         }
 
-        if (startLocation == null || !startLocation.Document.Name.Value.Equals(this.fileName)) return;
+        if (startLocation == null || startLocation.StartLine == 0x00feefee || !startLocation.Document.Name.Value.Equals(this.fileName)) return;
 
         ys = this.pdbReader.GetClosestPrimarySourceLocationsFor(operations[operations.Count - 1].Location);
         foreach (var y in ys) {
@@ -181,8 +182,9 @@ namespace AssertionInjector {
           break;
         }
 
-        if (endLocation == null) return;
-        if (startLocation.StartLine > this.lineNumber) return;
+        if (endLocation == null || endLocation.StartLine == 0x00feefee) return;
+        if (!(startLocation.StartLine <= this.lineNumber && this.lineNumber <= endLocation.StartLine)) return;
+
 
         ProcessOperations(methodBody, operations);
       } catch (GetMeHereInjectorException) {
@@ -332,7 +334,7 @@ namespace AssertionInjector {
           IPrimarySourceLocation location = null;
           var locations = this.pdbReader.GetPrimarySourceLocationsFor(op.Location);
           foreach (var x in locations) {
-            if (this.lineNumber <= x.StartLine) {
+            if (x.StartLine != 0x00feefee && this.lineNumber <= x.StartLine) {
               location = x;
               break;
             }
