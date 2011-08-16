@@ -143,7 +143,6 @@ namespace BytecodeTranslator {
       #endregion
 
       try {
-
         HeapFactory heap;
         switch (options.heapRepresentation) {
           case Options.HeapRepresentation.splitFields:
@@ -187,6 +186,7 @@ namespace BytecodeTranslator {
       var host = new CodeContractAwareHostEnvironment(libPaths != null ? libPaths : Enumerable<string>.Empty, true, true);
       Host = host;
 
+      #region Assemlies to translate (via cmd line)
       modules = new List<IModule>();
       var contractExtractors = new Dictionary<IUnit, IContractProvider>();
       var pdbReaders = new Dictionary<IUnit, PdbReader>();
@@ -208,6 +208,9 @@ namespace BytecodeTranslator {
         contractExtractors.Add(module, host.GetContractExtractor(module.UnitIdentity));
         pdbReaders.Add(module, pdbReader);
       }
+      #endregion
+
+      #region Assemblies to translate (stubs)
       if (stubAssemblies != null) {
         foreach (var s in stubAssemblies) {
           var module = host.LoadUnitFrom(s) as IModule;
@@ -242,23 +245,25 @@ namespace BytecodeTranslator {
           pdbReaders.Add(module, pdbReader);
         }
       }
+      #endregion
+
       if (modules.Count == 0) {
         Console.WriteLine("No input assemblies to translate.");
         return -1;
       }
 
       var primaryModule = modules[0];
+      TraverserFactory bctTraverserFactory;
+      if (wholeProgram) {
+        bctTraverserFactory = new WholeProgram();
+      } else {
+        bctTraverserFactory = new CLRSemantics();
+      }
 
-      TraverserFactory traverserFactory;
-      if (wholeProgram)
-        traverserFactory = new WholeProgram();
-      else
-        traverserFactory = new CLRSemantics();
-
-      Sink sink= new Sink(host, traverserFactory, heapFactory, options, exemptionList, whiteList);
+      Sink sink= new Sink(host, bctTraverserFactory, heapFactory, options, exemptionList, whiteList);
       TranslationHelper.tmpVarCounter = 0;
       MetadataTraverser translator;
-      translator= traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
+      translator= bctTraverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
 
       if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
         PhoneCodeHelper.initialize(host);
@@ -287,11 +292,23 @@ namespace BytecodeTranslator {
 
       string outputFileName = primaryModule.Name + ".bpl";
       callPostTranslationTraversers(modules, sink, phoneControlsConfigFile, outputFileName);
+      if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
+        finalizeNavigationAnalysisAndBoogieCode(phoneControlsConfigFile, sink, outputFileName);
+      }
+
       Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(outputFileName);
       Prelude.Emit(writer);
       sink.TranslatedProgram.Emit(writer);
       writer.Close();
       return 0; // success
+    }
+
+    private static void finalizeNavigationAnalysisAndBoogieCode(string phoneControlsConfigFile, Sink sink, string outputFileName) {
+      outputBoogieTrackedControlConfiguration(phoneControlsConfigFile);
+      checkTransitivelyCalledBackKeyNavigations(modules);
+      createPhoneBoogieCallStubs(sink);
+      PhoneCodeHelper.instance().createQueriesBatchFile(sink, outputFileName);
+      outputBackKeyWarnings();
     }
 
     private static void callPostTranslationTraversers(List<IModule> modules, Sink sink, string phoneControlsConfigFile, string outputFileName) {
@@ -310,81 +327,84 @@ namespace BytecodeTranslator {
         traverser.Visit(modules);
 
       }
+    }
 
-      // NAVIGATION TODO: refactor warnings out of here
-      if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
-        string outputConfigFile = Path.ChangeExtension(phoneControlsConfigFile, "bplout");
-        StreamWriter outputStream = new StreamWriter(outputConfigFile);
-        PhoneCodeHelper.instance().PhonePlugin.DumpControlStructure(outputStream);
-        outputStream.Close();
-        PhoneCodeWrapperWriter.createCodeWrapper(sink);
+    private static void outputBoogieTrackedControlConfiguration(string phoneControlsConfigFile) {
+      string outputConfigFile = Path.ChangeExtension(phoneControlsConfigFile, "bplout");
+      StreamWriter outputStream = new StreamWriter(outputConfigFile);
+      PhoneCodeHelper.instance().PhonePlugin.DumpControlStructure(outputStream);
+      outputStream.Close();
+    }
 
-        foreach (IMethodReference navMethod in PhoneCodeHelper.instance().KnownBackKeyHandlers) {
-          // right now we traversed everything so we can see reachability
-          IEnumerable<IMethodDefinition> indirects= PhoneCodeHelper.instance().getIndirectNavigators(modules, navMethod);
-          if (indirects.Count() > 0) {
-            ICollection<Tuple<IMethodReference, string>> targets = null;
-            PhoneCodeHelper.instance().BackKeyNavigatingOffenders.TryGetValue(navMethod.ContainingType, out targets);
-            if (targets == null) {
-              targets = new HashSet<Tuple<IMethodReference, string>>();
+    private static void outputBackKeyWarnings() {
+      // NAVIGATION TODO for now I console this out
+      if (!PhoneCodeHelper.instance().OnBackKeyPressOverriden) {
+        Console.Out.WriteLine("No back navigation issues, OnBackKeyPress is not overriden");
+      } else if (PhoneCodeHelper.instance().BackKeyHandlerOverridenByUnknownDelegate) {
+        Console.Out.WriteLine("Back navigation ISSUE: BackKeyPress is overriden by unidentified delegate and may perform illegal navigation");
+        Console.Out.WriteLine("Offending pages:");
+        foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyUnknownDelegateOffenders) {
+          Console.WriteLine("\t" + type.ToString());
+        }
+      } else if (!PhoneCodeHelper.instance().BackKeyPressHandlerCancels && !PhoneCodeHelper.instance().BackKeyPressNavigates) {
+        Console.Out.WriteLine("No back navigation issues, BackKeyPress overrides do not alter navigation");
+      } else {
+        if (PhoneCodeHelper.instance().BackKeyPressNavigates) {
+          Console.Out.WriteLine("Back navigation ISSUE: back key press may navigate to pages not in backstack! From pages:");
+          foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyNavigatingOffenders.Keys) {
+            ICollection<Tuple<IMethodReference, string>> targets = PhoneCodeHelper.instance().BackKeyNavigatingOffenders[type];
+            Console.WriteLine("\t" + type.ToString() + " may navigate to ");
+            foreach (Tuple<IMethodReference, string> target in targets) {
+              Console.WriteLine("\t\t" + target.Item2 + " via " +
+                                (target.Item1.Name == Dummy.Name ? "anonymous delegate" : target.Item1.ContainingType.ToString() + "." + target.Item1.Name.Value));
             }
-            string indirectTargeting = "<unknown indirect navigation> via (";
-            foreach (IMethodDefinition methDef in indirects) {
-              indirectTargeting += methDef.ContainingType.ToString() + "." + methDef.Name.Value + ", ";
-            }
-            indirectTargeting += ")";
-            targets.Add(Tuple.Create<IMethodReference, string>(navMethod, indirectTargeting));
-            PhoneCodeHelper.instance().BackKeyNavigatingOffenders[navMethod.ContainingType] = targets;
-          }
-
-          indirects = PhoneCodeHelper.instance().getIndirectCancellations(modules, navMethod);
-          if (indirects.Count() > 0) {
-            string indirectTargeting = "(";
-            foreach (IMethodDefinition methDef in indirects) {
-              indirectTargeting += methDef.ContainingType.ToString() + "." + methDef.Name.Value + ", ";
-            }
-            indirectTargeting += ")";
-            PhoneCodeHelper.instance().BackKeyCancellingOffenders.Add(Tuple.Create<ITypeReference,string>(navMethod.ContainingType, indirectTargeting));
           }
         }
 
-        foreach (IMethodDefinition def in PhoneNavigationCodeTraverser.NavCallers) {
-          if (!PhoneCodeHelper.instance().isKnownBackKeyOverride(def))
-            PhoneCodeHelper.instance().addHandlerStubCaller(sink, def);
+        if (PhoneCodeHelper.instance().BackKeyPressHandlerCancels) {
+          Console.Out.WriteLine("Back navigation ISSUE: back key press default behaviour may be cancelled! From pages:");
+          foreach (Tuple<ITypeReference, string> cancellation in PhoneCodeHelper.instance().BackKeyCancellingOffenders) {
+            Console.WriteLine("\t" + cancellation.Item1.ToString() + " via " + cancellation.Item2);
+          }
         }
-        PhoneCodeHelper.instance().addNavigationUriHavocer(sink);
-        PhoneCodeHelper.instance().createQueriesBatchFile(sink, outputFileName);
+      }
+    }
 
-        // NAVIGATION TODO for now I console this out
-        if (!PhoneCodeHelper.instance().OnBackKeyPressOverriden) {
-          Console.Out.WriteLine("No back navigation issues, OnBackKeyPress is not overriden");
-        } else if (PhoneCodeHelper.instance().BackKeyHandlerOverridenByUnknownDelegate) {
-          Console.Out.WriteLine("Back navigation ISSUE: BackKeyPress is overriden by unidentified delegate and may perform illegal navigation");
-          Console.Out.WriteLine("Offending pages:");
-          foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyUnknownDelegateOffenders) {
-            Console.WriteLine("\t" + type.ToString());
-          }
-        } else if (!PhoneCodeHelper.instance().BackKeyPressHandlerCancels && !PhoneCodeHelper.instance().BackKeyPressNavigates) {
-          Console.Out.WriteLine("No back navigation issues, BackKeyPress overrides do not alter navigation");
-        } else {
-          if (PhoneCodeHelper.instance().BackKeyPressNavigates) {
-            Console.Out.WriteLine("Back navigation ISSUE: back key press may navigate to pages not in backstack! From pages:");
-            foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyNavigatingOffenders.Keys) {
-              ICollection<Tuple<IMethodReference,string>> targets = PhoneCodeHelper.instance().BackKeyNavigatingOffenders[type];
-              Console.WriteLine("\t" + type.ToString() + " may navigate to ");
-              foreach (Tuple<IMethodReference,string> target in targets) {
-                Console.WriteLine("\t\t" + target.Item2 + " via " +
-                                  (target.Item1.Name == Dummy.Name ? "anonymous delegate" : target.Item1.ContainingType.ToString() + "." + target.Item1.Name.Value));
-              }
-            }
-          }
+    private static void createPhoneBoogieCallStubs(Sink sink) {
+      foreach (IMethodDefinition def in PhoneNavigationCodeTraverser.NavCallers) {
+        if (!PhoneCodeHelper.instance().isKnownBackKeyOverride(def))
+          PhoneCodeHelper.instance().addHandlerStubCaller(sink, def);
+      }
+      PhoneCodeHelper.instance().addNavigationUriHavocer(sink);
+    }
 
-          if (PhoneCodeHelper.instance().BackKeyPressHandlerCancels) {
-            Console.Out.WriteLine("Back navigation ISSUE: back key press default behaviour may be cancelled! From pages:");
-            foreach (Tuple<ITypeReference,string> cancellation in PhoneCodeHelper.instance().BackKeyCancellingOffenders) {
-              Console.WriteLine("\t" + cancellation.Item1.ToString() + " via " + cancellation.Item2);
-            }
+    private static void checkTransitivelyCalledBackKeyNavigations(List<IModule> modules) {
+      foreach (IMethodReference navMethod in PhoneCodeHelper.instance().KnownBackKeyHandlers) {
+        // right now we traversed everything so we can see reachability
+        IEnumerable<IMethodDefinition> indirects = PhoneCodeHelper.instance().getIndirectNavigators(modules, navMethod);
+        if (indirects.Count() > 0) {
+          ICollection<Tuple<IMethodReference, string>> targets = null;
+          PhoneCodeHelper.instance().BackKeyNavigatingOffenders.TryGetValue(navMethod.ContainingType, out targets);
+          if (targets == null) {
+            targets = new HashSet<Tuple<IMethodReference, string>>();
           }
+          string indirectTargeting = "<unknown indirect navigation> via (";
+          foreach (IMethodDefinition methDef in indirects) {
+            indirectTargeting += methDef.ContainingType.ToString() + "." + methDef.Name.Value + ", ";
+          }
+          indirectTargeting += ")";
+          targets.Add(Tuple.Create<IMethodReference, string>(navMethod, indirectTargeting));
+          PhoneCodeHelper.instance().BackKeyNavigatingOffenders[navMethod.ContainingType] = targets;
+        }
+
+        indirects = PhoneCodeHelper.instance().getIndirectCancellations(modules, navMethod);
+        if (indirects.Count() > 0) {
+          string indirectTargeting = "(";
+          foreach (IMethodDefinition methDef in indirects) {
+            indirectTargeting += methDef.ContainingType.ToString() + "." + methDef.Name.Value + ", ";
+          }
+          indirectTargeting += ")";
+          PhoneCodeHelper.instance().BackKeyCancellingOffenders.Add(Tuple.Create<ITypeReference, string>(navMethod.ContainingType, indirectTargeting));
         }
       }
     }
