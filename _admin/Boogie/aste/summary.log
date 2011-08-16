@@ -1,9 +1,9 @@
-# Aste started: 2011-06-30 07:00:12
+# Aste started: 2011-08-11 07:00:38
 # Host id: Boogiebox
-# [2011-06-30 07:03:09] SpecSharp revision: 8b896b8f359f
-# [2011-06-30 07:03:09] SscBoogie revision: 8b896b8f359f
-# [2011-06-30 07:04:26] Boogie revision: 16582b67c707
-[2011-06-30 07:07:12] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+# [2011-08-11 07:04:37] SpecSharp revision: dc85b77ee5c9
+# [2011-08-11 07:04:37] SscBoogie revision: dc85b77ee5c9
+# [2011-08-11 07:06:10] Boogie revision: 3b524cec7850
+[2011-08-11 07:09:01] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -15,8 +15,9 @@
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1665,11): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1825,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(88,36): warning CS0108: 'VC.StratifiedVCGen.StratifiedInliningInfo.privateVars' hides inherited member 'VC.VCGen.LazyInliningInfo.privateVars'. Use the new keyword if hiding was intended.
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1823,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1983,11): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(668,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -28,8 +29,9 @@
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
+    warning CS0108: 'VC.StratifiedVCGen.StratifiedInliningInfo.privateVars' hides inherited member 'VC.VCGen.LazyInliningInfo.privateVars'. Use the new keyword if hiding was intended.
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-[2011-06-30 07:50:02] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2011-06-30 07:51:05] Released nightly of Boogie
+[2011-08-11 07:51:56] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2011-08-11 07:52:57] Released nightly of Boogie

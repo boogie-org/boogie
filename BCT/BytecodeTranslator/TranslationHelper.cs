@@ -42,6 +42,7 @@ namespace BytecodeTranslator {
       var parameterToken = parameterDefinition.Token();
       var typeToken = parameterDefinition.Type.Token();
       var parameterName = TranslationHelper.TurnStringIntoValidIdentifier(parameterDefinition.Name.Value);
+      if (String.IsNullOrWhiteSpace(parameterName)) parameterName = "P" + parameterDefinition.Index.ToString();
 
       this.inParameterCopy = new Bpl.Formal(parameterToken, new Bpl.TypedIdent(typeToken, parameterName + "$in", ptype), true);
       if (parameterDefinition.IsByReference) {
@@ -90,6 +91,15 @@ namespace BytecodeTranslator {
       return new Bpl.AssignCmd(lhs.tok, lhss, rhss);
     }
 
+    public static Bpl.AssignCmd BuildAssignCmd(List<Bpl.IdentifierExpr> lexprs, List<Bpl.Expr> rexprs) {
+      List<Bpl.AssignLhs> lhss = new List<Bpl.AssignLhs>();
+      foreach (Bpl.IdentifierExpr lexpr in lexprs) {
+        lhss.Add(new Bpl.SimpleAssignLhs(lexpr.tok, lexpr));
+      }
+      List<Bpl.Expr> rhss = new List<Bpl.Expr>();
+      return new Bpl.AssignCmd(Bpl.Token.NoToken, lhss, rexprs);
+    }
+
     public static Bpl.IToken Token(this IObjectWithLocations objectWithLocations) {
       //TODO: use objectWithLocations.Locations!
       Bpl.IToken tok = Bpl.Token.NoToken;
@@ -127,6 +137,7 @@ namespace BytecodeTranslator {
       s = s.Replace("[0:,0:,0:,0:,0:]", "5DArray");
       s = s.Replace('!', '$');
       s = s.Replace('*', '$');
+      s = s.Replace('+', '$');
       s = s.Replace('(', '$');
       s = s.Replace(')', '$');
       s = s.Replace(',', '$');
@@ -153,7 +164,25 @@ namespace BytecodeTranslator {
       s = s.Replace('[', '$');
       s = s.Replace(']', '$');
       s = s.Replace('|', '$');
+      s = s.Replace('+', '$');
+      s = s.Replace('’', '$');
+      s = GetRidOfSurrogateCharacters(s);
       return s;
+    }
+
+    /// <summary>
+    /// Unicode surrogates cannot be handled by Boogie.
+    /// http://msdn.microsoft.com/en-us/library/dd374069(v=VS.85).aspx
+    /// </summary>
+    private static string GetRidOfSurrogateCharacters(string s) {
+      var cs = s.ToCharArray();
+      var okayChars = new char[cs.Length];
+      for (int i = 0, j = 0; i < cs.Length; i++) {
+        if (Char.IsSurrogate(cs[i])) continue;
+        okayChars[j++] = cs[i];
+      }
+      var raw = String.Concat(okayChars);
+      return raw.Trim(new char[] { '\0' });
     }
 
     public static bool IsStruct(ITypeReference typ) {

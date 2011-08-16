@@ -153,15 +153,6 @@ namespace Microsoft.Boogie.AbstractInterpretation {
       return this.lattice.Meet(atReturn, knownAtCallSite);
     }
 
-      /*
-    private Cci.IGraphNavigator callGraph;
-    public Cci.IGraphNavigator CallGraph {
-      get {
-        return this.callGraph;
-      }
-    }
-      */
-
     /// <summary>
     /// Compute the invariants for the program using the underlying abstract domain
     /// </summary>

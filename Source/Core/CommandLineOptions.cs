@@ -250,6 +250,8 @@ namespace Microsoft.Boogie {
     }
     public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
     public bool DoModSetAnalysis = false;
+    public bool DoBitVectorAnalysis = false;
+    public string BitVectorAnalysisOutputBplFile = null;
     public bool UseAbstractInterpretation = true;          // true iff the user want to use abstract interpretation
     public int  /*0..9*/StepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
 
@@ -299,7 +301,6 @@ namespace Microsoft.Boogie {
     public int VcsCores = 1;
     public bool VcsDumpSplits = false;
 
-    public bool houdiniEnabled = false;
     public bool DebugRefuted = false;
 
     public XmlSink XmlRefuted {
@@ -352,6 +353,7 @@ namespace Microsoft.Boogie {
     public bool PrintInlined = false;
     public bool ExtractLoops = false;
     public int LazyInlining = 0;
+    public int ProcedureCopyBound = 1;
     public int StratifiedInlining = 0;
     public int StratifiedInliningOption = 0;
     public bool UseUnsatCoreForInlining = false;
@@ -401,7 +403,6 @@ namespace Microsoft.Boogie {
       Contract.Invariant(cce.NonNullElements(methodsToTranslateMethodQualified, true));
       Contract.Invariant(cce.NonNullElements(methodsToTranslateSubstring, true));
       Contract.Invariant(Ai != null);
-      Contract.Invariant(houdiniFlags != null);
     }
 
     [Rep]
@@ -440,13 +441,6 @@ namespace Microsoft.Boogie {
       }
     }
     public AiFlags/*!*/ Ai = new AiFlags();
-
-    public class HoudiniFlags {
-      public bool continueAtError = false;
-      public bool incremental = false;
-    }
-
-    public HoudiniFlags/*!*/ houdiniFlags = new HoudiniFlags();
 
     [Verify(false)]
     private CommandLineOptions() {
@@ -979,8 +973,6 @@ namespace Microsoft.Boogie {
           case "-contractInfer":
           case "/contractInfer":
             ContractInfer = true;
-            TheProverFactory = ProverFactory.Load("ContractInference");
-            ProverName = "ContractInference".ToUpper();
             break;
 
           case "-subsumption":
@@ -1136,20 +1128,15 @@ namespace Microsoft.Boogie {
           case "-lazyInline":
           case "/lazyInline":
             if (ps.ConfirmArgumentCount(1)) {
-              switch (args[ps.i]) {
-                case "0":
-                  LazyInlining = 0;
-                  break;
-                case "1":
-                  LazyInlining = 1;
-                  break;
-                case "2":
-                  LazyInlining = 2;
-                  break;
-                default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
-              }
+                LazyInlining = Int32.Parse(args[ps.i]);
+                if (LazyInlining > 3) ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+            }
+            break;
+          case "-procCopyBound":
+          case "/procCopyBound":
+            if (ps.ConfirmArgumentCount(1))
+            {
+                ProcedureCopyBound = Int32.Parse(args[ps.i]);
             }
             break;
           case "-stratifiedInline":
@@ -1367,32 +1354,18 @@ namespace Microsoft.Boogie {
             }
             break;
 
-          case "-Houdini":
-          case "/Houdini":
-            this.houdiniEnabled = true;
-            if (ps.hasColonArgument) {
-              if (ps.ConfirmArgumentCount(1)) {
-                foreach (char c in cce.NonNull(args[ps.i])) {
-                  switch (c) {
-                    case 'c':
-                      houdiniFlags.continueAtError = true;
-                      break;
-                    case 'i':
-                      houdiniFlags.incremental = true;
-                      break;
-                    default:
-                      ps.Error("Unknown houdini flag: " + c + "\n");
-                      break;
-                  }
-                }
-              }
-            }
-            break;
-
           case "-z3exe":
           case "/z3exe":
             if (ps.ConfirmArgumentCount(1)) {
               Z3ExecutablePath = args[ps.i];
+            }
+            break;
+
+          case "-doBitVectorAnalysis":
+          case "/doBitVectorAnalysis":
+            DoBitVectorAnalysis = true;
+            if (ps.ConfirmArgumentCount(1)) {
+              BitVectorAnalysisOutputBplFile = args[ps.i];
             }
             break;
 
@@ -2172,10 +2145,6 @@ namespace Microsoft.Boogie {
                          of every block
   /printInstrumented : print Boogie program after it has been
                    instrumented with invariants
-  /Houdini[:<flags>] : perform procedure Houdini
-                     c = continue when an error found
-                     i = use incremental queries
-  /dbgRefuted    : log refuted Houdini candidates to XmlSink
 
   ---- Debugging and general tracing options ---------------------------------
 

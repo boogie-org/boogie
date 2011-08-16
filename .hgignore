@@ -7,11 +7,10 @@ syntax: regexp
 ^.*(bin|obj)/([^/]*/)?(Debug|Release|Checked|Debug All|DEBUG ALL)/.*$
 ^Binaries/BytecodeTranslator$
 ^BCT/Binaries/.*$
-^Chalice/bin/
-^Chalice/tests/(examples|permission-model|refinements)/.*\.bpl
+^Chalice/tests/(examples|permission-model|refinements|general-tests|regressions)/.*\.bpl
 Test/([^/]*)/Output
 Test/([^/]*)/([^/]*)\.sx
-Test/(dafny0|dafny1|VSI-Benchmarks|vacid0|VSComp2010)/(out\.cs|.*\.dll|.*\.pdb|.*\.exe)
+Test/(dafny0|dafny1|VSI-Benchmarks|vacid0|VSComp2010)/(out\.cs|.*\.dll|.*\.pdb|.*\.exe|.*\.tmp)
 Test/desktop/
 ^.*~$
 syntax: glob
@@ -19,5 +18,7 @@ BCT/TestResults/
 BCT/testimpactdata.sdf
 backup.diff
 BCT/Samples/CodeCounter/console/ClassDiagram1.cd
-Chalice/makestamp
 Jennisys/Jennisys/examples/bak
+Chalice/project/boot
+Chalice/project/target
+Chalice/target

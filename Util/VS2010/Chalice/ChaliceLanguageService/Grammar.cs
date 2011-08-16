@@ -10,7 +10,8 @@ namespace Demo
     {
       public Grammar() {
         #region 1. Terminals
-        NumberLiteral n = TerminalFactory.CreateCSharpNumber("number");        
+        NumberLiteral n = TerminalFactory.CreateCSharpNumber("number");
+        StringLiteral s = new StringLiteral("String", "\"", StringFlags.AllowsAllEscapes);
         IdentifierTerminal ident = new IdentifierTerminal("Identifier");
 
         // Copy pasted directly from Parser.scala
@@ -51,7 +52,6 @@ namespace Demo
 
         #region Disabled for a simpler grammar
         /*
-        StringLiteral s = new StringLiteral("String", "'", StringFlags.AllowsDoubledQuote);
         Terminal dot = ToTerm(".", "dot");
         Terminal less = ToTerm("<");
         Terminal greater = ToTerm(">");
@@ -384,7 +384,7 @@ namespace Demo
         NonTerminal Simple = new NonTerminal("SimpleProg");
         NonTerminal Anything = new NonTerminal("Token");
         Simple.Rule = Anything.Star() + Eof;
-        Anything.Rule = n;
+        Anything.Rule = n | s;
         foreach (string keyword in reserved) Anything.Rule = Anything.Rule | ToTerm(keyword);
         Anything.Rule = Anything.Rule | ident;
         foreach (string delimiter in delimiters) Anything.Rule = Anything.Rule | ToTerm(delimiter);

@@ -53,6 +53,7 @@ namespace BytecodeTranslator {
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       if (b) {
         this.BoxType = new Bpl.CtorType(this.BoxTypeDecl.tok, this.BoxTypeDecl, new Bpl.TypeSeq());
+        this.DelegateType = new Bpl.CtorType(this.DelegateTypeDecl.tok, this.DelegateTypeDecl, new Bpl.TypeSeq()); 
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
         this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
         this.RefType = new Bpl.CtorType(this.RefTypeDecl.tok, this.RefTypeDecl, new Bpl.TypeSeq());
@@ -67,7 +68,7 @@ namespace BytecodeTranslator {
     /// </summary>
     public override Bpl.Variable CreateFieldVariable(IFieldReference field) {
       Bpl.Variable v;
-      string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
+      string fieldname = MemberHelper.GetMemberSignature(field, NameFormattingOptions.DocumentationId);
       fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
       Bpl.IToken tok = field.Token();
       Bpl.Type t = this.sink.CciTypeToBoogie(field.Type.ResolvedType);
@@ -191,6 +192,7 @@ namespace BytecodeTranslator {
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       if (b) {
         this.BoxType = new Bpl.CtorType(this.BoxTypeDecl.tok, this.BoxTypeDecl, new Bpl.TypeSeq());
+        this.DelegateType = new Bpl.CtorType(this.DelegateTypeDecl.tok, this.DelegateTypeDecl, new Bpl.TypeSeq()); 
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
         this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
         this.RefType = new Bpl.CtorType(this.RefTypeDecl.tok, this.RefTypeDecl, new Bpl.TypeSeq());
@@ -205,7 +207,7 @@ namespace BytecodeTranslator {
     /// </summary>
     public override Bpl.Variable CreateFieldVariable(IFieldReference field) {
       Bpl.Variable v;
-      string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
+      string fieldname = MemberHelper.GetMemberSignature(field, NameFormattingOptions.DocumentationId);
       fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
       Bpl.IToken tok = field.Token();
 
@@ -224,7 +226,7 @@ namespace BytecodeTranslator {
 
     public override Bpl.Variable CreateEventVariable(IEventDefinition e) {
       Bpl.Variable v;
-      string fieldname = TypeHelper.GetTypeName(e.ContainingType) + "." + e.Name.Value;
+      string fieldname = MemberHelper.GetMemberSignature(e, NameFormattingOptions.DocumentationId);
       fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
       Bpl.IToken tok = e.Token();
 

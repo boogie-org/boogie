@@ -20,6 +20,8 @@ using Bpl = Microsoft.Boogie;
 
 namespace BytecodeTranslator {
   public abstract class TraverserFactory {
+    public int Priority { get; set; }
+
     public virtual MetadataTraverser MakeMetadataTraverser(Sink sink,
       IDictionary<IUnit, IContractProvider> contractProviders, // TODO: remove this parameter?
       IDictionary<IUnit, PdbReader> sourceLocationProviders)

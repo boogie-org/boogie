@@ -158,8 +158,7 @@ let ListMapTryFind key lst =
 let rec ListMapAdd key value lst = 
   match lst with
   | (k,v) :: rest -> if k = key then (k, value) :: rest else (k,v) :: (ListMapAdd key value rest)
-  | [] -> [(key,value)]
-  
+  | [] -> [(key,value)]                                           
 
 //  ==========================
 /// ensures: ret = elem in lst
@@ -220,6 +219,23 @@ let rec ListSet idx v lst =
                   else
                     fs :: ListSet (idx-1) v rest
   | [] -> failwith "index out of range"
+
+exception KeyAlreadyExists
+
+//  =======================================
+/// requires (key |--> value) !in map
+///
+/// ensures ret = map ++ (key |--> value)
+//  =======================================
+let MapAddNew key value map = 
+  match Map.tryFind key map with
+  | Some(existingValue) -> 
+      if existingValue = value then
+        map
+      else 
+        raise KeyAlreadyExists
+  | None -> 
+      map |> Map.add key value
 
 //  =======================================
 /// ensures: forall k,v :: 

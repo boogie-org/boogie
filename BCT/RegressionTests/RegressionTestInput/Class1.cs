@@ -181,4 +181,21 @@ namespace RegressionTestInput {
     public int BitwiseNegation(int x) { return ~x; }
   }
 
+  public class NestedGeneric {
+    public class C {
+      public class G<T> where T : new() {
+        public G(int x) {
+          var y = new T(); // test to make sure index is calculated correctly for type function
+        }
+      }
+    }
+  }
+  public class TestForClassesDifferingOnlyInBeingGeneric {
+    public int x;
+  }
+
+  public class TestForClassesDifferingOnlyInBeingGeneric<T> {
+    public int x;
+  }
+
 }

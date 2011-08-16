@@ -1,3 +1,12 @@
+/*
+  Note: This example seems to be completely broken. The failing assertion
+  about locking/unlocking too much causes an inconsistency and all following
+  assertions pass by default.
+  It seems that the specification, in particular the loop invariant in method
+  Add, is wrong. (see also http://boogie.codeplex.com/workitem/10207)
+  -- August 2011, Stefan Heule
+*/
+
 class Client {
   method Main(d: Data)
     requires d != null

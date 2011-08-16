@@ -1,0 +1,17 @@
+class Cell { var x: int } 
+
+class Test { 
+	method get() returns (c: Cell) 
+		ensures c != null 
+		lockchange c /* previosly, this introduced errors */ 
+	{ 
+		c := new Cell 
+	} 
+	 
+	/* method was needed to get Boogie errors */ 
+	method testRd() // expected ERROR: method might lock/unlock more than allowed
+    {
+        var x: Cell
+		call x := get() 
+	} 
+} 

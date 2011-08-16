@@ -18,6 +18,7 @@ using Bpl = Microsoft.Boogie;
 using System.Diagnostics.Contracts;
 using TranslationPlugins;
 using BytecodeTranslator.Phone;
+using BytecodeTranslator.TranslationPlugins;
 
 
 namespace BytecodeTranslator {
@@ -26,7 +27,7 @@ namespace BytecodeTranslator {
   /// Responsible for traversing all metadata elements (i.e., everything exclusive
   /// of method bodies).
   /// </summary>
-  public class MetadataTraverser : BaseMetadataTraverser {
+  public class MetadataTraverser : BaseMetadataTraverser, ITranslator {
 
     readonly Sink sink;
 
@@ -70,7 +71,7 @@ namespace BytecodeTranslator {
       var savedPrivateTypes = this.privateTypes;
       this.privateTypes = new List<ITypeDefinition>();
 
-      trackPageNameVariableName(typeDefinition);
+      trackPhonePageNameVariableName(typeDefinition);
       trackPhoneApplicationClassname(typeDefinition);
 
       if (typeDefinition.IsClass) {
@@ -83,7 +84,8 @@ namespace BytecodeTranslator {
         }
         this.sawCctor = savedSawCctor;
       } else if (typeDefinition.IsDelegate) {
-        sink.AddDelegateType(typeDefinition);
+        ITypeDefinition unspecializedType = Microsoft.Cci.MutableContracts.ContractHelper.Unspecialized(typeDefinition).ResolvedType;
+        sink.AddDelegateType(unspecializedType);
       } else if (typeDefinition.IsInterface) {
         sink.FindOrCreateType(typeDefinition);
         base.Visit(typeDefinition);
@@ -116,18 +118,41 @@ namespace BytecodeTranslator {
       }
     }
 
-    private void trackPageNameVariableName(ITypeDefinition typeDef) {
+    private void trackPhonePageNameVariableName(ITypeDefinition typeDef) {
       if (PhoneCodeHelper.instance().PhonePlugin != null && typeDef.isPhoneApplicationPageClass(sink.host)) {
         INamespaceTypeDefinition namedTypeDef = typeDef as INamespaceTypeDefinition;
         string fullyQualifiedName = namedTypeDef.ToString();
         string xamlForClass = PhoneCodeHelper.instance().getXAMLForPage(fullyQualifiedName);
         if (xamlForClass != null) { // if not it is possibly an abstract page
-          string uriName = PhoneControlsPlugin.getURIBase(xamlForClass);
+          string uriName = UriHelper.getURIBase(xamlForClass);
           Bpl.Constant uriConstant = sink.FindOrCreateConstant(uriName);
           PhoneCodeHelper.instance().setBoogieStringPageNameForPageClass(fullyQualifiedName, uriConstant.Name);
         }
       }
     }
+
+    /*
+    private void translateAnonymousControlsForPage(ITypeDefinition typeDef) {
+      if (PhoneCodeHelper.instance().PhonePlugin != null && typeDef.isPhoneApplicationPageClass(sink.host)) {
+        IEnumerable<ControlInfoStructure> pageCtrls= PhoneCodeHelper.instance().PhonePlugin.getControlsForPage(typeDef.ToString());
+        foreach (ControlInfoStructure ctrlInfo in pageCtrls) {
+          if (ctrlInfo.Name.Contains(PhoneControlsPlugin.BOOGIE_DUMMY_CONTROL)) {
+            string anonymousControlName = ctrlInfo.Name;
+            IFieldDefinition fieldDef = new FieldDefinition() {
+              ContainingTypeDefinition = typeDef,
+              Name = sink.host.NameTable.GetNameFor(anonymousControlName),
+              InternFactory = sink.host.InternFactory,
+              Visibility = TypeMemberVisibility.Public,
+              Type = sink.host.PlatformType.SystemObject,
+              IsStatic = false,
+            };
+            (typeDef as Microsoft.Cci.MutableCodeModel.NamespaceTypeDefinition).Fields.Add(fieldDef);
+            //sink.FindOrCreateFieldVariable(fieldDef);
+          }
+        }
+      }
+    }
+     * */
 
     private void CreateDefaultStructConstructor(ITypeDefinition typeDefinition) {
       Contract.Requires(typeDefinition.IsStruct);
@@ -223,7 +248,7 @@ namespace BytecodeTranslator {
     private bool sawCctor = false;
 
     private void CreateStaticConstructor(ITypeDefinition typeDefinition) {
-      var typename = TypeHelper.GetTypeName(typeDefinition);
+      var typename = TypeHelper.GetTypeName(typeDefinition, Microsoft.Cci.NameFormattingOptions.DocumentationId);
       typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
       var proc = new Bpl.Procedure(Bpl.Token.NoToken, typename + ".#cctor",
           new Bpl.TypeVariableSeq(),
@@ -563,6 +588,8 @@ namespace BytecodeTranslator {
       if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
         Bpl.Variable continueOnPageVar = sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_CONTINUE_ON_PAGE_VARIABLE, Bpl.Type.Bool);
         sink.TranslatedProgram.TopLevelDeclarations.Add(continueOnPageVar);
+        Bpl.Variable navigationCheckVar = sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_NAVIGATION_CHECK_VARIABLE, Bpl.Type.Bool);
+        sink.TranslatedProgram.TopLevelDeclarations.Add(navigationCheckVar);
       }
     }
 

@@ -11,13 +11,13 @@ if "%1"=="-no-summary" (
 
 set t=0
 set c=0
-for %%f in (examples permission-model) do (
+for %%f in (examples permission-model general-tests regressions) do (
   echo Running tests in %%f ...
   echo ------------------------------------------------------
   cd %%f
   set tt=0
   for %%f in (*.chalice) do set /A tt+=1
-  call reg_test_all.bat -no-summary
+  call reg_test_all.bat -no-summary %1 %2 %3 %4 %5
   set /A c=!c!+!errorlevel!
   set /A t=!t!+!tt!
   cd ..

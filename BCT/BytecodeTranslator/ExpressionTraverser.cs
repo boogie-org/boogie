@@ -335,10 +335,20 @@ namespace BytecodeTranslator
             TranslatedExpressions.Push(((int)constant.Value) != 0 ? Bpl.Expr.True : Bpl.Expr.False);
           }
           break;
-        case PrimitiveTypeCode.Char: // chars are represented as ints
-        case PrimitiveTypeCode.Int8:
+        case PrimitiveTypeCode.Char: {
+            var lit = Bpl.Expr.Literal((int)(char)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
+        case PrimitiveTypeCode.Int8: {
+            var lit = Bpl.Expr.Literal((int)(sbyte)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
         case PrimitiveTypeCode.Int16: {
-            var lit = Bpl.Expr.Literal((short)constant.Value);
+            var lit = Bpl.Expr.Literal((int)(short)constant.Value);
             lit.Type = Bpl.Type.Int;
             TranslatedExpressions.Push(lit);
             break;
@@ -355,8 +365,18 @@ namespace BytecodeTranslator
             TranslatedExpressions.Push(lit);
             break;
           }
-        case PrimitiveTypeCode.UInt8:
-        case PrimitiveTypeCode.UInt16:
+        case PrimitiveTypeCode.UInt8: {
+            var lit = Bpl.Expr.Literal((int)(byte)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
+        case PrimitiveTypeCode.UInt16: {
+            var lit = Bpl.Expr.Literal((int)(ushort)constant.Value);
+            lit.Type = Bpl.Type.Int;
+            TranslatedExpressions.Push(lit);
+            break;
+          }
         case PrimitiveTypeCode.UInt32: {
             var lit = Bpl.Expr.Literal((int)(uint)constant.Value);
             lit.Type = Bpl.Type.Int;
@@ -387,44 +407,12 @@ namespace BytecodeTranslator
     }
 
     public override void Visit(IDefaultValue defaultValue) {
-
       var typ = defaultValue.Type;
 
-      #region Struct
       if (TranslationHelper.IsStruct(typ)) {
-        // then it is a struct and gets special treatment
-        // translate it as if it were a call to the nullary ctor for the struct type
-        // (which doesn't actually exist, but gets generated for each struct type
-        // encountered during translation)
-
-        var tok = defaultValue.Token();
-
-        var loc = this.sink.CreateFreshLocal(typ);
-        var locExpr = Bpl.Expr.Ident(loc);
-
-        // First generate an Alloc() call
-        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(tok, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(locExpr)));
-
-        // Second, generate the call to the appropriate ctor
-        var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typ);
-        var invars = new List<Bpl.Expr>();
-        invars.Add(locExpr);
-        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, invars, new List<Bpl.IdentifierExpr>()));
-
-        // Generate an assumption about the dynamic type of the just allocated object
-        this.StmtTraverser.StmtBuilder.Add(
-            new Bpl.AssumeCmd(tok,
-              Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
-              this.sink.Heap.DynamicType(locExpr),
-              this.sink.FindOrCreateType(typ)
-              )
-              )
-            );
-
-        this.TranslatedExpressions.Push(locExpr);
+        translateStructDefaultValue(defaultValue, typ);
         return;
       }
-      #endregion
 
       Bpl.Expr e;
       var bplType = this.sink.CciTypeToBoogie(typ);
@@ -450,6 +438,39 @@ namespace BytecodeTranslator
       return;
     }
 
+    private void translateStructDefaultValue(IDefaultValue defaultValue, ITypeReference typ) {
+      // then it is a struct and gets special treatment
+      // translate it as if it were a call to the nullary ctor for the struct type
+      // (which doesn't actually exist, but gets generated for each struct type
+      // encountered during translation)
+
+      var tok = defaultValue.Token();
+
+      var loc = this.sink.CreateFreshLocal(typ);
+      var locExpr = Bpl.Expr.Ident(loc);
+
+      // First generate an Alloc() call
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(tok, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(locExpr)));
+
+      // Second, generate the call to the appropriate ctor
+      var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typ);
+      var invars = new List<Bpl.Expr>();
+      invars.Add(locExpr);
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, invars, new List<Bpl.IdentifierExpr>()));
+
+      // Generate an assumption about the dynamic type of the just allocated object
+      this.StmtTraverser.StmtBuilder.Add(
+          new Bpl.AssumeCmd(tok,
+            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
+            this.sink.Heap.DynamicType(locExpr),
+            this.sink.FindOrCreateType(typ)
+            )
+            )
+          );
+
+      this.TranslatedExpressions.Push(locExpr);
+    }
+
     #endregion
 
     #region Translate Method Calls
@@ -467,6 +488,19 @@ namespace BytecodeTranslator
       }
 
       Bpl.IToken methodCallToken = methodCall.Token();
+
+      if (this.sink.Options.getMeHere) {
+        // TODO: Get a method reference so this isn't a string comparison?
+        var methodName = MemberHelper.GetMethodSignature(methodCall.MethodToCall, NameFormattingOptions.None);
+        if (methodName.Equals("GetMeHere.GetMeHere.Assert")) {
+          // for now, just translate it as "assert e"
+          this.Visit(methodCall.Arguments.First());
+          Bpl.Expr e = this.TranslatedExpressions.Pop();
+          this.StmtTraverser.StmtBuilder.Add(new Bpl.AssertCmd(methodCallToken, e));
+          return;
+        }
+      }
+
       List<Bpl.Expr> inexpr;
       List<Bpl.IdentifierExpr> outvars;
       Bpl.IdentifierExpr thisExpr;
@@ -535,7 +569,6 @@ namespace BytecodeTranslator
             if (PhoneCodeHelper.instance().isMethodKnownUIChanger(methodCall)) {
               Bpl.AssumeCmd assumeFalse = new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
               this.StmtTraverser.StmtBuilder.Add(assumeFalse);
-              // FEEDBACK TODO make sure that the call to this method (not the called one but the one in context) is inlined (how?)
             }
           }
         }
@@ -694,15 +727,24 @@ namespace BytecodeTranslator
       Contract.Assert(TranslatedExpressions.Count == 0);
       var tok = assignment.Token();
 
+      bool translationIntercepted= false;
       ICompileTimeConstant constant= assignment.Source as ICompileTimeConstant;
       // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
-      if (PhoneCodeHelper.instance().PhonePlugin != null && PhoneCodeHelper.instance().PhoneNavigationToggled &&
-          constant != null && constant.Type == sink.host.PlatformType.SystemString &&
-          constant.Value != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
-        TranslateHavocCurrentURI();
-      } else {
-        TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
+      // NAVIGATION TODO maybe this will go away if I can handle it with stubs
+      if (PhoneCodeHelper.instance().PhonePlugin != null && PhoneCodeHelper.instance().PhoneNavigationToggled) {
+        IFieldReference target = assignment.Target.Definition as IFieldReference;
+        if (target != null && target.Name.Value == PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE) {
+          if (constant != null && constant.Type == sink.host.PlatformType.SystemString && constant.Value != null &&
+              constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
+            TranslateHavocCurrentURI();
+            translationIntercepted = true;
+          }
+          StmtTraverser.StmtBuilder.Add(PhoneCodeHelper.instance().getAddNavigationCheck(sink));
+        }
       }
+
+      if (!translationIntercepted)
+        TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
     }
 
     /// <summary>
@@ -710,7 +752,9 @@ namespace BytecodeTranslator
     /// </summary>
     private void TranslateHavocCurrentURI() {
       // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
-      Bpl.CallCmd havocCall = new Bpl.CallCmd(Bpl.Token.NoToken, PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI, new List<Bpl.Expr>(), new List<Bpl.IdentifierExpr>());
+      IMethodReference havocMethod= PhoneCodeHelper.instance().getUriHavocerMethod(sink);
+      Sink.ProcedureInfo procInfo= sink.FindOrCreateProcedure(havocMethod.ResolvedMethod);
+      Bpl.CallCmd havocCall = new Bpl.CallCmd(Bpl.Token.NoToken, procInfo.Decl.Name, new List<Bpl.Expr>(), new List<Bpl.IdentifierExpr>());
       StmtTraverser.StmtBuilder.Add(havocCall);
     }
 
@@ -928,14 +972,37 @@ namespace BytecodeTranslator
       Bpl.IToken cloc = creationAST.Token();
       var a = this.sink.CreateFreshLocal(creationAST.Type);
 
-      sink.AddDelegate(type.ResolvedType, methodToCall.ResolvedMethod);
-      Bpl.Constant constant = sink.FindOrAddDelegateMethodConstant(methodToCall.ResolvedMethod);
+      ITypeDefinition unspecializedType = Microsoft.Cci.MutableContracts.ContractHelper.Unspecialized(type.ResolvedType).ResolvedType;
+      IMethodDefinition unspecializedMethod = Sink.Unspecialize(methodToCall.ResolvedMethod).ResolvedMethod;
+      sink.AddDelegate(unspecializedType, unspecializedMethod);
+      Bpl.Constant constant = sink.FindOrCreateDelegateMethodConstant(unspecializedMethod);
       Bpl.Expr methodExpr = Bpl.Expr.Ident(constant);
       Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
 
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.DelegateAddHelperName,
-                                                         new Bpl.ExprSeq(Bpl.Expr.Ident(this.sink.Heap.NullRef), Bpl.Expr.Ident(constant), instanceExpr), 
-                                                         new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
+      Bpl.ExprSeq typeParameterExprs = new Bpl.ExprSeq();
+
+      if (unspecializedMethod.IsStatic) {
+        List<ITypeReference> consolidatedTypeArguments = new List<ITypeReference>();
+        Sink.GetConsolidatedTypeArguments(consolidatedTypeArguments, methodToCall.ContainingType);
+        foreach (ITypeReference typeReference in consolidatedTypeArguments) {
+          typeParameterExprs.Add(sink.FindOrCreateType(typeReference));
+        }
+      }
+      IGenericMethodInstanceReference methodInstanceReference = methodToCall as IGenericMethodInstanceReference;
+      if (methodInstanceReference != null) {
+        foreach (ITypeReference typeReference in methodInstanceReference.GenericArguments) {
+          typeParameterExprs.Add(sink.FindOrCreateType(typeReference));
+        }
+      }
+      Bpl.Expr typeParameterExpr =
+        new Bpl.NAryExpr(Bpl.Token.NoToken,
+                         new Bpl.FunctionCall(this.sink.FindOrCreateNaryTypeFunction(typeParameterExprs.Length)),
+                         typeParameterExprs);
+      this.StmtTraverser.StmtBuilder.Add(
+        new Bpl.CallCmd(cloc, this.sink.DelegateAddHelperName,
+                        new Bpl.ExprSeq(Bpl.Expr.Ident(this.sink.Heap.NullRef), 
+                                        this.sink.CreateDelegate(methodExpr, instanceExpr, typeParameterExpr)), 
+                        new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
     
@@ -1297,6 +1364,8 @@ namespace BytecodeTranslator
       #endregion
       */
 
+
+      // TODO is this code actually needed at all? It seems that all this is already being done in the Statement traverser for the conditional
       StatementTraverser thenStmtTraverser = this.StmtTraverser.factory.MakeStatementTraverser(this.sink, this.StmtTraverser.PdbReader, this.contractContext);
       StatementTraverser elseStmtTraverser = this.StmtTraverser.factory.MakeStatementTraverser(this.sink, this.StmtTraverser.PdbReader, this.contractContext);
       ExpressionTraverser thenExprTraverser = this.StmtTraverser.factory.MakeExpressionTraverser(this.sink, thenStmtTraverser, this.contractContext);

@@ -77,6 +77,10 @@ namespace BytecodeTranslator {
 
     #region Boogie Types
 
+    [RepresentationFor("Delegate", "type Delegate;")]
+    public Bpl.TypeCtorDecl DelegateTypeDecl = null;
+    public Bpl.CtorType DelegateType;
+
     [RepresentationFor("Field", "type Field;")]
     public Bpl.TypeCtorDecl FieldTypeDecl = null;
     public Bpl.CtorType FieldType;
@@ -238,6 +242,10 @@ namespace BytecodeTranslator {
     {
         string typename = TypeHelper.GetTypeName(type);
         typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
+        // Need to append something to the name to avoid name clashes with other members (of a different
+        // type) that have the same name.
+        typename += "$type";
+
         Bpl.IToken tok = type.Token();
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, typename, this.TypeType);
         Bpl.Constant v = new Bpl.Constant(tok, tident, true /*unique*/, parents, false, null);
@@ -248,6 +256,8 @@ namespace BytecodeTranslator {
       System.Diagnostics.Debug.Assert(parameterCount > 0);
       string typename = TypeHelper.GetTypeName(type);
       typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
+      // Need to append something to the name to avoid name clashes.
+      typename += "$type";
       Bpl.IToken tok = type.Token();
       Bpl.VariableSeq inputs = new Bpl.VariableSeq();
       for (int i = 0; i < parameterCount; i++) {
@@ -374,10 +384,13 @@ procedure {:inline 1} Wrapper_System.Threading.ThreadStart.Invoke(this: Ref) {
 }
 procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
 
+axiom (forall m: int, o: Ref, t: Type :: {$DelegateCons(m, o, t)} $DelegateMethod($DelegateCons(m, o, t)) == m);
+axiom (forall m: int, o: Ref, t: Type :: {$DelegateCons(m, o, t)} $DelegateReceiver($DelegateCons(m, o, t)) == o);
+axiom (forall m: int, o: Ref, t: Type :: {$DelegateCons(m, o, t)} $DelegateTypeParameters($DelegateCons(m, o, t)) == t);
+
 procedure DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
 {
-  var m: int;
-  var o: Ref;
+  var d: Delegate;
 
   if (a == null) {
     c := b;
@@ -387,20 +400,18 @@ procedure DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
     return;
   }
 
-  call m, o := GetFirstElement(b);
+  call d := GetFirstElement(b);
   
   call c := Alloc();
   $Head[c] := $Head[a];
   $Next[c] := $Next[a];
-  $Method[c] := $Method[a];
-  $Receiver[c] := $Receiver[a];
-  call c := DelegateAddHelper(c, m, o);
+  $Delegate[c] := $Delegate[a];
+  call c := DelegateAddHelper(c, d);
 }
 
 procedure DelegateRemove(a: Ref, b: Ref) returns (c: Ref)
 {
-  var m: int;
-  var o: Ref;
+  var d: Delegate;
 
   if (a == null) {
     c := null;
@@ -410,25 +421,23 @@ procedure DelegateRemove(a: Ref, b: Ref) returns (c: Ref)
     return;
   }
 
-  call m, o := GetFirstElement(b);
+  call d := GetFirstElement(b);
 
   call c := Alloc();
   $Head[c] := $Head[a];
   $Next[c] := $Next[a];
-  $Method[c] := $Method[a];
-  $Receiver[c] := $Receiver[a];
-  call c := DelegateRemoveHelper(c, m, o);
+  $Delegate[c] := $Delegate[a];
+  call c := DelegateRemoveHelper(c, d);
 }
 
-procedure GetFirstElement(i: Ref) returns (m: int, o: Ref)
+procedure GetFirstElement(i: Ref) returns (d: Delegate)
 {
   var first: Ref;
   first := $Next[i][$Head[i]];
-  m := $Method[i][first];
-  o := $Receiver[i][first]; 
+  d := $Delegate[i][first];
 }
 
-procedure DelegateAddHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
+procedure DelegateAddHelper(oldi: Ref, d: Delegate) returns (i: Ref)
 {
   var x: Ref;
   var h: Ref;
@@ -443,8 +452,7 @@ procedure DelegateAddHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
   }
 
   h := $Head[i];
-  $Method[i] := $Method[i][h := m];
-  $Receiver[i] := $Receiver[i][h := o];
+  $Delegate[i] := $Delegate[i][h := d];
   
   call x := Alloc();
   $Next[i] := $Next[i][x := $Next[i][h]];
@@ -452,7 +460,7 @@ procedure DelegateAddHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
   $Head[i] := x;
 }
 
-procedure DelegateRemoveHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
+procedure DelegateRemoveHelper(oldi: Ref, d: Delegate) returns (i: Ref)
 {
   var prev: Ref;
   var iter: Ref;
@@ -470,7 +478,7 @@ procedure DelegateRemoveHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
     if (niter == $Head[i]) {
       break;
     }
-    if ($Method[i][niter] == m && $Receiver[i][niter] == o) {
+    if ($Delegate[i][niter] == d) {
       prev := iter;
     }
     iter := niter;
@@ -485,8 +493,8 @@ procedure DelegateRemoveHelper(oldi: Ref, m: int, o: Ref) returns (i: Ref)
   }
 }
 
-procedure System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
-procedure System.String.op_Inequality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
+procedure {:inline 1} System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
+procedure {:inline 1} System.String.op_Inequality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
 
 implementation System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool) {
   $result := (a$in == b$in);
@@ -500,29 +508,32 @@ implementation System.String.op_Inequality$System.String$System.String(a$in: Ref
 var isControlEnabled: [Ref]bool;
 var isControlChecked: [Ref]bool;
 
-procedure System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool);
+procedure {:inline 1} System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool);
 implementation System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool) {
+  $Exception:=null;
   isControlEnabled[$this] := value$in;
 }
 
-procedure System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref);
+procedure {:inline 1} System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref);
 implementation System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref) {
   var enabledness: bool;
+  $Exception:=null;
   enabledness := isControlEnabled[$this];
   $result := Box2Ref(Bool2Box(enabledness));
 }
 
-procedure System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref);
+procedure {:inline 1} System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref);
 implementation System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref) {
   var check: bool;
-
+  $Exception:=null;
   check := Box2Bool(Ref2Box(value$in));
   isControlChecked[$this] := check;
 }
 
-procedure System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref);
+procedure {:inline 1} System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref);
 implementation System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref) {
   var isChecked: bool;
+  $Exception:=null;
   isChecked := isControlChecked[$this];
   $result := Box2Ref(Bool2Box(isChecked));
 }
@@ -534,12 +545,21 @@ implementation System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($th
 
     [RepresentationFor("$Next", "var $Next: [Ref][Ref]Ref;")]
     public Bpl.GlobalVariable DelegateNext = null;
-    
-    [RepresentationFor("$Method", "var $Method: [Ref][Ref]int;")]
-    public Bpl.GlobalVariable DelegateMethod = null;
 
-    [RepresentationFor("$Receiver", "var $Receiver: [Ref][Ref]Ref;")]
-    public Bpl.GlobalVariable DelegateReceiver = null;
+    [RepresentationFor("$Delegate", "var $Delegate: [Ref][Ref]Delegate;")]
+    public Bpl.GlobalVariable Delegate = null;
+
+    [RepresentationFor("$DelegateCons", "function $DelegateCons(int, Ref, Type): Delegate;")]
+    public Bpl.Function DelegateCons = null;
+
+    [RepresentationFor("$DelegateMethod", "function $DelegateMethod(Delegate): int;")]
+    public Bpl.Function DelegateMethod = null;
+
+    [RepresentationFor("$DelegateReceiver", "function $DelegateReceiver(Delegate): Ref;")]
+    public Bpl.Function DelegateReceiver = null;
+
+    [RepresentationFor("$DelegateTypeParameters", "function $DelegateTypeParameters(Delegate): Type;")]
+    public Bpl.Function DelegateTypeParameters = null;
 
     [RepresentationFor("$Exception", "var {:thread_local} $Exception: Ref;")]
     public Bpl.GlobalVariable ExceptionVariable = null;

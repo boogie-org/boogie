@@ -54,6 +54,8 @@ namespace BytecodeTranslator
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
     private bool contractContext;
     internal readonly Stack<IExpression> operandStack = new Stack<IExpression>();
+    private bool captureState;
+    private static int captureStateCounter = 0;
 
     #region Constructors
     public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
@@ -61,6 +63,7 @@ namespace BytecodeTranslator
       this.factory = sink.Factory;
       PdbReader = pdbReader;
       this.contractContext = contractContext;
+      this.captureState = sink.Options.captureState;
     }
     #endregion
 
@@ -108,6 +111,14 @@ namespace BytecodeTranslator
 
     public override void Visit(IStatement statement) {
       EmitSourceContext(statement);
+      if (this.sink.Options.captureState) {
+        var tok = statement.Token();
+        var state = String.Format("s{0}", StatementTraverser.captureStateCounter++);
+        var attrib = new Bpl.QKeyValue(tok, "captureState ", new List<object> { state }, null);
+        StmtBuilder.Add(
+          new Bpl.AssumeCmd(tok, Bpl.Expr.True, attrib)
+          );
+      }
       base.Visit(statement);
     }
 
@@ -147,7 +158,11 @@ namespace BytecodeTranslator
       else {
         System.Diagnostics.Debug.Assert(conditionType == Bpl.Type.Bool);
       }
-      StmtBuilder.Add(new Bpl.AssertCmd(assertStatement.Token(), conditionExpr));
+      if (this.sink.Options.getMeHere) {
+        StmtBuilder.Add(new Bpl.AssumeCmd(assertStatement.Token(), conditionExpr));
+      } else {
+        StmtBuilder.Add(new Bpl.AssertCmd(assertStatement.Token(), conditionExpr));
+      }
     }
 
     public override void Visit(IAssumeStatement assumeStatement) {

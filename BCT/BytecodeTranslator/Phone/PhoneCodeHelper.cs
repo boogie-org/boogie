@@ -6,9 +6,87 @@ using Microsoft.Cci;
 using Bpl=Microsoft.Boogie;
 using TranslationPlugins;
 using Microsoft.Cci.MutableCodeModel;
+using System.IO;
+using ILGarbageCollect;
 
 namespace BytecodeTranslator.Phone {
   public static class UriHelper {
+    /// <summary>
+    /// uri is a valid URI but possibly partial (incomplete ?arg= values) and overspecified (complete ?arg=values)
+    /// This method returns a base URI
+    /// </summary>
+    /// <param name="uri"></param>
+    /// <returns></returns>
+    public static string getURIBase(string uri) {
+      // I need to build an absolute URI just to call getComponents() ...
+      Uri mockBaseUri = new Uri("mock://mock/", UriKind.RelativeOrAbsolute);
+      Uri realUri;
+      try {
+        realUri = new Uri(uri, UriKind.Absolute);
+      } catch (UriFormatException) {
+        // uri string is relative
+        realUri = new Uri(mockBaseUri, uri);
+      }
+
+      string str = realUri.GetComponents(UriComponents.Path | UriComponents.StrongAuthority | UriComponents.Scheme, UriFormat.UriEscaped);
+      Uri mockStrippedUri = new Uri(str);
+      return mockBaseUri.MakeRelativeUri(mockStrippedUri).ToString();
+    }
+
+    /// <summary>
+    /// checks if argument is locally created URI with static URI target
+    /// </summary>
+    /// <param name="arg"></param>
+    /// <returns></returns>
+    public static bool isArgumentURILocallyCreatedStatic(IExpression arg, IMetadataHost host, out string uri) {
+      uri = null;
+      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
+      if (creationSite == null)
+        return false;
+
+      if (!arg.Type.isURIClass(host))
+        return false;
+
+      IExpression uriTargetArg = creationSite.Arguments.First();
+
+      if (!uriTargetArg.Type.isStringClass(host))
+        return false;
+
+      ICompileTimeConstant staticURITarget = uriTargetArg as ICompileTimeConstant;
+      if (staticURITarget == null)
+        return false;
+
+      uri= staticURITarget.Value as string;
+      return true;
+    }
+
+    /// <summary>
+    /// checks if argument is locally created URI where target has statically created URI root
+    /// </summary>
+    /// <param name="arg"></param>
+    /// <returns></returns>
+    public static bool isArgumentURILocallyCreatedStaticRoot(IExpression arg, IMetadataHost host, out string uri) {
+      // Pre: !isArgumentURILocallyCreatedStatic
+      uri = null;
+      ICreateObjectInstance creationSite = arg as ICreateObjectInstance;
+      if (creationSite == null)
+        return false;
+
+      if (!arg.Type.isURIClass(host))
+        return false;
+
+      IExpression uriTargetArg = creationSite.Arguments.First();
+
+      if (!uriTargetArg.Type.isStringClass(host))
+        return false;
+
+      if (!uriTargetArg.IsStaticURIRootExtractable(out uri))
+        return false;
+
+      return true;
+    }
+
+    
     /// <summary>
     /// checks whether a static URI root (a definite page base) can be extracted from the expression 
     /// </summary>
@@ -42,8 +120,12 @@ namespace BytecodeTranslator.Phone {
         }
       }
 
-      uri = constantStrings.Aggregate((aggr, elem) => aggr + elem);
-      return Uri.IsWellFormedUriString(uri, UriKind.RelativeOrAbsolute);
+      if (constantStrings.Count > 0) {
+        uri = constantStrings.Aggregate((aggr, elem) => aggr + elem);
+        return Uri.IsWellFormedUriString(uri, UriKind.RelativeOrAbsolute);
+      } else {
+        return false;
+      }
     }
   }
 
@@ -55,6 +137,11 @@ namespace BytecodeTranslator.Phone {
           new AssemblyIdentity(host.NameTable.GetNameFor("System"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
                                coreAssemblyRef.PublicKeyToken, "");
       return host.FindAssembly(MSPhoneSystemAssemblyId);
+    }
+
+    public static IAssemblyReference getCoreAssemblyReference(IMetadataHost host) {
+      Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
+      return platform.CoreAssemblyRef;
     }
 
     public static IAssemblyReference getSystemWindowsAssemblyReference(IMetadataHost host) {
@@ -159,11 +246,22 @@ namespace BytecodeTranslator.Phone {
     private const string BOOGIE_VAR_PREFIX = "__BOOGIE_";
     public const string IL_CURRENT_NAVIGATION_URI_VARIABLE = IL_BOOGIE_VAR_PREFIX + "CurrentNavigationURI__";
     public const string BOOGIE_CONTINUE_ON_PAGE_VARIABLE = BOOGIE_VAR_PREFIX + "ContinueOnPage__";
+    public const string BOOGIE_NAVIGATION_CHECK_VARIABLE = BOOGIE_VAR_PREFIX + "Navigated__";
+    public const string BOOGIE_STARTING_URI_PLACEHOLDER = "BOOGIE_STARTING_URI_PLACEHOLDER";
+    public const string BOOGIE_ENDING_URI_PLACEHOLDER= "BOOGIE_ENDING_URI_PLACEHOLDER";
+
     public static readonly string[] NAV_CALLS = { /*"GoBack", "GoForward", "Navigate", "StopLoading"*/ "Navigate", "GoBack" };
 
     public bool OnBackKeyPressOverriden { get; set; }
-    public bool BackKeyPressHandlerCancels { get; set; }
-    public bool BackKeyPressNavigates { get; set; }
+    public bool BackKeyPressHandlerCancels { get { return BackKeyCancellingOffenders.Count > 0; } }
+    public bool BackKeyPressNavigates { get { return BackKeyNavigatingOffenders.Keys.Count > 0; } }
+    public bool BackKeyHandlerOverridenByUnknownDelegate { get; set; }
+    public ICollection<Tuple<ITypeReference,string>> BackKeyCancellingOffenders { get; set; }
+    public ICollection<ITypeReference> BackKeyUnknownDelegateOffenders { get; set; }
+    public Dictionary<ITypeReference, ICollection<Tuple<IMethodReference,string>>> BackKeyNavigatingOffenders { get; set; }
+    public ICollection<IMethodReference> KnownBackKeyHandlers { get; set; }
+    public ICollection<IMethodReference> KnownNavigatingMethods { get; set; }
+    public ICollection<IMethodReference> KnownEventCancellingMethods { get; set; }
 
     private Dictionary<string, string[]> PHONE_UI_CHANGER_METHODS;
 
@@ -189,10 +287,17 @@ namespace BytecodeTranslator.Phone {
     }
 
     private PhoneCodeHelper(IMetadataHost host) {
-      if (host == null)
-        throw new ArgumentNullException();
-      platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
-      initializeKnownUIChangers();
+      if (host != null) {
+        platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType;
+        initializeKnownUIChangers();
+
+        BackKeyCancellingOffenders= new HashSet<Tuple<ITypeReference,string>>();
+        BackKeyUnknownDelegateOffenders = new HashSet<ITypeReference>();
+        BackKeyNavigatingOffenders = new Dictionary<ITypeReference, ICollection<Tuple<IMethodReference,string>>>();
+        KnownBackKeyHandlers = new HashSet<IMethodReference>();
+        KnownNavigatingMethods = new HashSet<IMethodReference>();
+        KnownEventCancellingMethods = new HashSet<IMethodReference>();
+      }
     }
 
     private void initializeKnownUIChangers() {
@@ -297,7 +402,13 @@ namespace BytecodeTranslator.Phone {
       PHONE_UI_CHANGER_METHODS[webBrowserTaskType.ToString()] = new string[] { "Show", };
 
       ITypeReference appBarIconButtonType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarIconButton");
-      PHONE_UI_CHANGER_METHODS[appBarIconButtonType.ToString()] = new string[] { "set_IsEnabled", "set_IconUri", "set_Text"};
+      PHONE_UI_CHANGER_METHODS[appBarIconButtonType.ToString()] = new string[] { "set_IsEnabled", "set_IconUri", "set_Text", };
+
+      ITypeReference emailComposeTaskType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Tasks", "EmailComposeTask");
+      PHONE_UI_CHANGER_METHODS[emailComposeTaskType.ToString()] = new string[] { "Show", };
+
+      ITypeReference scaleTransformType = platform.CreateReference(systemWinAssembly, "System", "Windows", "Media", "ScaleTransform");
+      PHONE_UI_CHANGER_METHODS[scaleTransformType.ToString()] = new string[] { "set_CenterX", "set_CenterY", "set_ScaleX", "set_ScaleY",  };
     }
 
     // TODO externalize strings
@@ -404,12 +515,12 @@ namespace BytecodeTranslator.Phone {
     public bool PhoneFeedbackToggled { get; set; }
 
     public bool isMethodInputHandlerOrFeedbackOverride(IMethodDefinition method) {
-      // FEEDBACK TODO: This is extremely coarse. There must be quite a few non-UI routed events
+      // FEEDBACK TODO: This is extremely coarse. There must be quite a few non-UI routed/non-routed events
       Microsoft.Cci.Immutable.PlatformType platform = host.PlatformType as Microsoft.Cci.Immutable.PlatformType; ;
-      IAssemblyReference systemAssembly = PhoneTypeHelper.getSystemWindowsAssemblyReference(host);
-      ITypeReference routedEventType= platform.CreateReference(systemAssembly, "System", "Windows", "RoutedEventArgs");
+      IAssemblyReference coreAssembly= PhoneTypeHelper.getCoreAssemblyReference(host);
+      ITypeReference eventArgsType= platform.CreateReference(coreAssembly, "System", "EventArgs");
       foreach (IParameterDefinition paramDef in method.Parameters) {
-        if (paramDef.Type.isClass(routedEventType))
+        if (paramDef.Type.isClass(eventArgsType))
           return true;
       }
 
@@ -520,6 +631,227 @@ namespace BytecodeTranslator.Phone {
         return false;
       else
         return true;
+    }
+
+    public bool mustInlineMethod(IMethodDefinition method) {
+      if (PhoneFeedbackToggled) {
+        // FEEDBACK TODO this may be too coarse
+        // top level inlined methods are feedback relevant ones. For now, this is basically everything that has EventArgs as parameters
+        if (isMethodInputHandlerOrFeedbackOverride(method))
+          return true;
+      }
+
+      if (PhoneNavigationToggled) {
+        // NAVIGATION TODO this may be too coarse
+        // for now, assume any method in a PhoneApplicationPage is potentially interesting to navigation inlining
+        ITypeReference methodContainer = method.ContainingType;
+        if (PhoneTypeHelper.isPhoneApplicationClass(methodContainer, host) || PhoneTypeHelper.isPhoneApplicationPageClass(methodContainer, host))
+          return true;
+      }
+
+      return false;
+    }
+
+    public void createQueriesBatchFile(Sink sink, string sourceBPLFile) {
+      StreamWriter outputStream = new StreamWriter("createQueries.bat");
+      IEnumerable<string> xamls= PhonePlugin.getPageXAMLFilenames();
+      string startURI= sink.FindOrCreateConstant(BOOGIE_STARTING_URI_PLACEHOLDER).Name;
+      string endURI = sink.FindOrCreateConstant(BOOGIE_ENDING_URI_PLACEHOLDER).Name;
+      foreach (string x1 in xamls) {
+        string startURIVar= sink.FindOrCreateConstant(x1).Name.ToLower();
+        foreach (string x2 in xamls) {
+          string resultFile = sourceBPLFile + "_$$" + x1 + "$$_$$" + x2 + "$$.bpl";
+          string endURIVar= sink.FindOrCreateConstant(x2).Name.ToLower();
+          outputStream.WriteLine("sed s/" + startURI + ";/" + startURIVar + ";/g " + sourceBPLFile + "> " + resultFile);
+          outputStream.WriteLine("sed -i s/" + endURI + ";/" + endURIVar + ";/g " + resultFile);
+        }
+      }
+
+      outputStream.Close();
+    }
+
+
+    public Bpl.Procedure addHandlerStubCaller(Sink sink, IMethodDefinition def) {
+      MethodBody callerBody = new MethodBody();
+      MethodDefinition callerDef = new MethodDefinition() {
+        InternFactory = (def as MethodDefinition).InternFactory,
+        ContainingTypeDefinition = def.ContainingTypeDefinition,
+        IsStatic = true,
+        Name = sink.host.NameTable.GetNameFor("BOOGIE_STUB_CALLER_" + def.Name.Value),
+        Type = sink.host.PlatformType.SystemVoid,
+        Body = callerBody,
+      };
+      callerBody.MethodDefinition = callerDef;
+      Sink.ProcedureInfo procInfo = sink.FindOrCreateProcedure(def);
+      Sink.ProcedureInfo callerInfo = sink.FindOrCreateProcedure(callerDef);
+
+      Bpl.LocalVariable[] localVars = new Bpl.LocalVariable[procInfo.Decl.InParams.Length];
+      Bpl.IdentifierExpr[] varExpr = new Bpl.IdentifierExpr[procInfo.Decl.InParams.Length];
+      for (int i = 0; i < procInfo.Decl.InParams.Length; i++) {
+        Bpl.LocalVariable loc = new Bpl.LocalVariable(Bpl.Token.NoToken,
+                                                     new Bpl.TypedIdent(Bpl.Token.NoToken, TranslationHelper.GenerateTempVarName(),
+                                                                        procInfo.Decl.InParams[i].TypedIdent.Type));
+        localVars[i] = loc;
+        varExpr[i] = new Bpl.IdentifierExpr(Bpl.Token.NoToken, loc);
+      }
+
+      Bpl.StmtListBuilder builder = new Bpl.StmtListBuilder();
+      builder.Add(getResetNavigationCheck(sink));
+      
+      string pageXaml= PhoneCodeHelper.instance().PhonePlugin.getXAMLForPage(def.ContainingTypeDefinition.ToString());
+      Bpl.Variable boogieCurrentURI = sink.FindOrCreateFieldVariable(PhoneCodeHelper.CurrentURIFieldDefinition);
+      Bpl.Constant boogieXamlConstant;
+      if (pageXaml != null)
+        boogieXamlConstant = sink.FindOrCreateConstant(pageXaml);
+      else
+        boogieXamlConstant = null;
+      // NAVIGATION TODO: For now just assume we are in this page to be able to call the handler, this is NOT true for any handler
+      // NAVIGATION TODO: ie, a network event handler
+      if (boogieXamlConstant != null) {
+        Bpl.AssumeCmd assumeCurrentPage =
+          new Bpl.AssumeCmd(Bpl.Token.NoToken,
+                            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieCurrentURI),
+                                            new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieXamlConstant)));
+        builder.Add(assumeCurrentPage);
+      }
+
+      // NAVIGATION TODO: have to do the pair generation all in one go instead of having different files that need to be sed'ed
+      boogieXamlConstant = sink.FindOrCreateConstant(BOOGIE_STARTING_URI_PLACEHOLDER);
+      Bpl.AssumeCmd assumeStartPage = new Bpl.AssumeCmd(Bpl.Token.NoToken,
+                            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieCurrentURI),
+                                            new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieXamlConstant)));
+      builder.Add(assumeStartPage);
+      builder.Add(new Bpl.CallCmd(Bpl.Token.NoToken, procInfo.Decl.Name, new Bpl.ExprSeq(varExpr), new Bpl.IdentifierExprSeq()));
+      boogieXamlConstant = sink.FindOrCreateConstant(BOOGIE_ENDING_URI_PLACEHOLDER);
+      Bpl.AssertCmd assertEndPage = new Bpl.AssertCmd(Bpl.Token.NoToken,
+                            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieCurrentURI),
+                                            new Bpl.IdentifierExpr(Bpl.Token.NoToken, boogieXamlConstant)));
+
+      Bpl.Expr guard= new Bpl.IdentifierExpr(Bpl.Token.NoToken, sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_NAVIGATION_CHECK_VARIABLE, Bpl.Type.Bool));
+      Bpl.StmtListBuilder thenBuilder = new Bpl.StmtListBuilder();
+      thenBuilder.Add(assertEndPage);
+      Bpl.IfCmd ifNavigated = new Bpl.IfCmd(Bpl.Token.NoToken, guard, thenBuilder.Collect(Bpl.Token.NoToken), null, new Bpl.StmtListBuilder().Collect(Bpl.Token.NoToken));
+
+      builder.Add(ifNavigated);
+      Bpl.Implementation impl =
+        new Bpl.Implementation(Bpl.Token.NoToken, callerInfo.Decl.Name, new Bpl.TypeVariableSeq(), new Bpl.VariableSeq(),
+                               new Bpl.VariableSeq(), new Bpl.VariableSeq(localVars), builder.Collect(Bpl.Token.NoToken), null, new Bpl.Errors());
+
+      sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
+      return impl.Proc;
+    }
+
+    public static void updateInlinedMethods(Sink sink, IEnumerable<IMethodDefinition> doInline) {
+      foreach (IMethodDefinition method in doInline) {
+        Sink.ProcedureInfo procInfo = sink.FindOrCreateProcedure(method);
+        procInfo.Decl.AddAttribute("inline", new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.ONE));
+      }
+    }
+
+    public static FieldDefinition CurrentURIFieldDefinition {get; set;}
+
+    public void addNavigationUriHavocer(Sink sink) {
+      Sink.ProcedureInfo procInfo = sink.FindOrCreateProcedure(getUriHavocerMethod(sink).ResolvedMethod);
+      procInfo.Decl.AddAttribute("inline", new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.ONE));
+      Bpl.StmtListBuilder builder= new Bpl.StmtListBuilder();
+      Bpl.HavocCmd havoc=
+        new Bpl.HavocCmd(Bpl.Token.NoToken,
+                         new Bpl.IdentifierExprSeq(new Bpl.IdentifierExprSeq(new Bpl.IdentifierExpr(Bpl.Token.NoToken,
+                                                                             sink.FindOrCreateFieldVariable(PhoneCodeHelper.CurrentURIFieldDefinition)))));
+      builder.Add(havoc);
+      Bpl.Implementation impl = new Bpl.Implementation(Bpl.Token.NoToken, procInfo.Decl.Name, new Bpl.TypeVariableSeq(),
+                                                       new Bpl.VariableSeq(), new Bpl.VariableSeq(), new Bpl.VariableSeq(),
+                                                       builder.Collect(Bpl.Token.NoToken));
+      sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
+
+    }
+
+    private IMethodReference uriHavocMethod=null;
+    public IMethodReference getUriHavocerMethod(Sink sink) {
+      if (uriHavocMethod == null) {
+        MethodBody body = new MethodBody();
+        MethodDefinition havocDef = new MethodDefinition() {
+          InternFactory = host.InternFactory,
+          ContainingTypeDefinition = PhoneCodeHelper.instance().getMainAppTypeReference().ResolvedType,
+          IsStatic = true,
+          Name = sink.host.NameTable.GetNameFor(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI),
+          Type = sink.host.PlatformType.SystemVoid,
+          Body = body,
+        };
+        body.MethodDefinition = havocDef;
+        uriHavocMethod = havocDef;
+      }
+
+      return uriHavocMethod;
+    }
+
+    public Bpl.Cmd getResetNavigationCheck(Sink sink) {
+      return getNavigationCheckAssign(sink, false);
+    }
+    
+    public Bpl.Cmd getAddNavigationCheck(Sink sink) {
+      return getNavigationCheckAssign(sink, true);
+    }
+
+    private Bpl.Cmd getNavigationCheckAssign(Sink sink, bool value) {
+      List<Bpl.AssignLhs> lhs = new List<Bpl.AssignLhs>();
+      List<Bpl.Expr> rhs = new List<Bpl.Expr>();
+      Bpl.AssignLhs assignee = new Bpl.SimpleAssignLhs(Bpl.Token.NoToken, new Bpl.IdentifierExpr(Bpl.Token.NoToken,
+                               sink.FindOrCreateGlobalVariable(PhoneCodeHelper.BOOGIE_NAVIGATION_CHECK_VARIABLE, Bpl.Type.Bool)));
+      lhs.Add(assignee);
+      rhs.Add(value ? Bpl.IdentifierExpr.True : Bpl.IdentifierExpr.False);
+      Bpl.AssignCmd assignCmd = new Bpl.AssignCmd(Bpl.Token.NoToken, lhs, rhs);
+      return assignCmd;
+    }
+
+    public bool isKnownBackKeyOverride(IMethodReference method) {
+      return isBackKeyPressOverride(method.ResolvedMethod) ||
+             KnownBackKeyHandlers.Contains(method);
+    }
+
+    internal IEnumerable<IMethodDefinition> getIndirectNavigators(IEnumerable<IModule> modules, IMethodReference method) {
+      IEnumerable<IMethodDefinition> reachable = getReachableMethodsFromMethod(method, modules);
+      reachable= reachable.Except(new IMethodDefinition[] { method.ResolvedMethod });
+      return getResolvedMethods(KnownNavigatingMethods).Intersect(reachable);
+    }
+
+    internal IEnumerable<IMethodDefinition> getIndirectCancellations(IEnumerable<IModule> modules, IMethodReference method) {
+      IEnumerable<IMethodDefinition> reachable = getReachableMethodsFromMethod(method, modules);
+      reachable = reachable.Except(new IMethodDefinition[] { method.ResolvedMethod });
+      return getResolvedMethods(KnownEventCancellingMethods).Intersect(reachable);
+    }
+
+    internal IEnumerable<IMethodDefinition> getReachableMethodsFromMethod(IMethodReference method, IEnumerable<IModule> modules) {
+      IEnumerable<IAssembly> assemblies = getAssembliesFromModules(modules);
+      Microsoft.Cci.MetadataReaderHost readerHost = host as Microsoft.Cci.MetadataReaderHost;
+
+      if (readerHost == null)
+        return new List<IMethodDefinition>(); //?
+
+      ILGarbageCollect.Mark.WholeProgram program = new ILGarbageCollect.Mark.WholeProgram(assemblies, readerHost);
+      RapidTypeAnalysis analyzer = new RapidTypeAnalysis(program, TargetProfile.Phone);
+      analyzer.Run(new IMethodReference[] { method });
+      return analyzer.ReachableMethods();
+    }
+
+    internal IEnumerable<IAssembly> getAssembliesFromModules(IEnumerable<IModule> modules) {
+      IList<IAssembly> assemblies = new List<IAssembly>();
+      foreach (IModule module in modules) {
+        IAssembly assembly = module as IAssembly;
+        if (assembly != null)
+          assemblies.Add(assembly);
+      }
+
+      return assemblies;
+    }
+
+    internal IEnumerable<IMethodDefinition> getResolvedMethods(IEnumerable<IMethodReference> methRefs) {
+      IList<IMethodDefinition> methDefs = new List<IMethodDefinition>();
+      foreach (IMethodReference methRef in methRefs) {
+        methDefs.Add(methRef.ResolvedMethod);
+      }
+
+      return methDefs;
     }
   }
 }
