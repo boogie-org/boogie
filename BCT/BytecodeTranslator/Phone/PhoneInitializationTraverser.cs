@@ -70,7 +70,8 @@ namespace BytecodeTranslator.Phone {
       } else if (classname == "Pivot") {
         return pivotType;
       } else if (classname == "DummyType") {
-        return Dummy.Type;
+        // return Dummy.Type;
+        return host.PlatformType.SystemObject;
       } else {
         // TODO avoid throwing exceptions, just log
         throw new NotImplementedException("Type " + classname + " is not being monitored yet for phone controls");

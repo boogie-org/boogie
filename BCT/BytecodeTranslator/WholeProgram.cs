@@ -15,6 +15,11 @@ using System.Diagnostics.Contracts;
 namespace BytecodeTranslator {
   class WholeProgram : TraverserFactory {
 
+    public override TranslationPlugins.Translator getTranslator(Sink sink, IDictionary<IUnit, IContractProvider> contractProviders, IDictionary<IUnit, PdbReader> pdbReaders) {
+      BaseTranslator translator = new BaseTranslator(this, sink, contractProviders, pdbReaders);
+      return translator;
+    }
+
     /// <summary>
     /// Table to be filled by the metadata traverser before visiting any assemblies.
     /// 
@@ -27,7 +32,7 @@ namespace BytecodeTranslator {
     public override MetadataTraverser MakeMetadataTraverser(Sink sink,
       IDictionary<IUnit, IContractProvider> contractProviders, // TODO: remove this parameter?
       IDictionary<IUnit, PdbReader> pdbReaders) {
-      return new WholeProgramMetadataSemantics(this, sink, pdbReaders);
+      return new WholeProgramMetadataSemantics(this, sink, pdbReaders, this);
     }
 
     public class WholeProgramMetadataSemantics : MetadataTraverser {
@@ -37,8 +42,8 @@ namespace BytecodeTranslator {
 
       readonly Dictionary<IUnit, bool> codeUnderAnalysis = new Dictionary<IUnit, bool>();
 
-      public WholeProgramMetadataSemantics(WholeProgram parent, Sink sink, IDictionary<IUnit, PdbReader> pdbReaders)
-        : base(sink, pdbReaders) {
+      public WholeProgramMetadataSemantics(WholeProgram parent, Sink sink, IDictionary<IUnit, PdbReader> pdbReaders, TraverserFactory factory)
+        : base(sink, pdbReaders, factory) {
         this.parent = parent;
         this.sink = sink;
       }

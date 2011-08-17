@@ -901,7 +901,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       } else if (kind == DataKind.Map) {
         var elTp = tpl.Args[1];
         foreach (var sel in model.Functions)
-          if (sel.Arity == 2 && sel.Name.StartsWith("$select.$map_t")) {
+          if (elt != null && sel.Arity == 2 && sel.Name.StartsWith("$select.$map_t")) {
             foreach (var app in sel.AppsWithArg(0, elt)) {
               var val = WrapForUse(app.Result, elTp);
               var edgname = new EdgeName(this, "[%0]", app.Args[1]);
