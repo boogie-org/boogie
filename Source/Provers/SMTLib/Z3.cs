@@ -152,11 +152,6 @@ namespace Microsoft.Boogie.SMTLib
       options.AddWeakSmtOption("TYPE_CHECK", "true");
       options.AddWeakSmtOption("BV_REFLECT", "true");
 
-      if (CommandLineOptions.Clo.LazyInlining == 2) {
-        options.AddWeakSmtOption("MACRO_EXPANSION", "true");
-        options.AddWeakSmtOption("WARNING", "false");
-      }
-
       if (options.TimeLimit > 0) {
         options.AddWeakSmtOption("SOFT_TIMEOUT", options.TimeLimit.ToString());
         options.AddSolverArgument("/T:" + (options.TimeLimit + 1000) / 1000);
