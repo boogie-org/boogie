@@ -164,8 +164,9 @@ namespace VC {
         for (int i = 0; i < CommandLineOptions.Clo.ProcedureCopyBound; i++) {
           interfaceVarCopies.Add(new List<Variable>());
           foreach (Variable v in interfaceVars) {
-            interfaceVarCopies[i].Add(
-              new Constant(Token.NoToken, new TypedIdent(Token.NoToken, v.Name + temp++, v.TypedIdent.Type)));
+            Constant constant = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, v.Name + temp++, v.TypedIdent.Type));
+            interfaceVarCopies[i].Add(constant);
+            //program.TopLevelDeclarations.Add(constant);
           }
         }
       }
