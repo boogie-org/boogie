@@ -1068,6 +1068,27 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
+    public override void Visit(IModulus modulus) {
+      base.Visit(modulus);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      Bpl.Expr e;
+      switch (modulus.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            modulus.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealModulus),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Mod, lexp, rexp);
+          break;
+      }
+      TranslatedExpressions.Push(e);
+    }
+
     public override void Visit(IDivision division)
     {
       base.Visit(division);
@@ -1144,14 +1165,6 @@ namespace BytecodeTranslator
           break;
       }
       TranslatedExpressions.Push(e);
-    }
-
-    public override void Visit(IModulus modulus)
-    {
-      base.Visit(modulus);
-      Bpl.Expr rexp = TranslatedExpressions.Pop();
-      Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Mod, lexp, rexp));
     }
 
     public override void Visit(IGreaterThan greaterThan)
