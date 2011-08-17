@@ -353,7 +353,7 @@ namespace Microsoft.Boogie {
     public bool PrintInlined = false;
     public bool ExtractLoops = false;
     public int LazyInlining = 0;
-    public int ProcedureCopyBound = 1;
+    public int ProcedureCopyBound = 0;
     public int StratifiedInlining = 0;
     public int StratifiedInliningOption = 0;
     public bool UseUnsatCoreForInlining = false;
