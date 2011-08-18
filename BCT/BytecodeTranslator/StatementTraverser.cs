@@ -58,9 +58,9 @@ namespace BytecodeTranslator
     private static int captureStateCounter = 0;
 
     #region Constructors
-    public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
+    public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext, TraverserFactory factory) {
       this.sink = sink;
-      this.factory = sink.Factory;
+      this.factory = factory;
       PdbReader = pdbReader;
       this.contractContext = contractContext;
       this.captureState = sink.Options.captureState;
@@ -158,7 +158,11 @@ namespace BytecodeTranslator
       else {
         System.Diagnostics.Debug.Assert(conditionType == Bpl.Type.Bool);
       }
-      StmtBuilder.Add(new Bpl.AssertCmd(assertStatement.Token(), conditionExpr));
+      if (this.sink.Options.getMeHere) {
+        StmtBuilder.Add(new Bpl.AssumeCmd(assertStatement.Token(), conditionExpr));
+      } else {
+        StmtBuilder.Add(new Bpl.AssertCmd(assertStatement.Token(), conditionExpr));
+      }
     }
 
     public override void Visit(IAssumeStatement assumeStatement) {

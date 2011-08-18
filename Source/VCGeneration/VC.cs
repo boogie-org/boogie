@@ -27,7 +27,6 @@ namespace VC {
     [NotDelayed]
     public VCGen(Program program, string/*?*/ logFilePath, bool appendLogFile)
       : base(program)
-      // throws ProverException
     {
       Contract.Requires(program != null);
       this.appendLogFile = appendLogFile;
@@ -81,8 +80,10 @@ namespace VC {
       public Function function;
       public Variable controlFlowVariable;
       public List<Variable> interfaceVars;
+      public List<List<Variable>> interfaceVarCopies;
       public Expr assertExpr;
       public VCExpr vcexpr;
+      public List<VCExprVar> privateVars;
       public Dictionary<Incarnation, Absy> incarnationOriginMap;
       public Hashtable /*Variable->Expr*/ exitIncarnationMap;
       public Hashtable /*GotoCmd->returnCmd*/ gotoCmdOrigins;
@@ -157,6 +158,17 @@ namespace VC {
         Contract.Assert(returnVar != null);
         this.function = new Function(Token.NoToken, proc.Name, functionInterfaceVars, returnVar);
         ctxt.DeclareFunction(this.function, "");
+
+        interfaceVarCopies = new List<List<Variable>>();
+        int temp = 0;
+        for (int i = 0; i < CommandLineOptions.Clo.ProcedureCopyBound; i++) {
+          interfaceVarCopies.Add(new List<Variable>());
+          foreach (Variable v in interfaceVars) {
+            Constant constant = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, v.Name + temp++, v.TypedIdent.Type));
+            interfaceVarCopies[i].Add(constant);
+            //program.TopLevelDeclarations.Add(constant);
+          }
+        }
       }
     }
     [ContractInvariantMethod]
@@ -164,8 +176,8 @@ namespace VC {
       Contract.Invariant(implName2LazyInliningInfo == null || cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
     }
 
-    private Dictionary<string, LazyInliningInfo> implName2LazyInliningInfo;
-    private GlobalVariable errorVariable;
+    protected Dictionary<string, LazyInliningInfo> implName2LazyInliningInfo;
+    protected GlobalVariable errorVariable;
 
     public void GenerateVCsForLazyInlining(Program program) {
       Contract.Requires(program != null);
@@ -211,6 +223,25 @@ namespace VC {
           }
           Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(info.function), exprs);
           proc.Ensures.Add(new Ensures(true, freePostExpr));
+
+          if (CommandLineOptions.Clo.ProcedureCopyBound > 0) {
+            Expr ret = new LiteralExpr(Token.NoToken, false);
+            for (int k = 0; k < CommandLineOptions.Clo.ProcedureCopyBound; k++) {
+              var iv = info.interfaceVarCopies[k];
+              Contract.Assert(info.function.InParams.Length == iv.Count);
+
+              Expr conj = new LiteralExpr(Token.NoToken, true);
+              for (int i = 0; i < iv.Count; i++) {
+                Expr eqExpr = new NAryExpr(
+                  Token.NoToken, new BinaryOperator(Token.NoToken, BinaryOperator.Opcode.Eq), new ExprSeq(exprs[i], Expr.Ident(iv[i])));
+                conj =
+                  new NAryExpr(Token.NoToken, new BinaryOperator(Token.NoToken, BinaryOperator.Opcode.And), new ExprSeq(conj, eqExpr));
+              }
+              ret =
+                new NAryExpr(Token.NoToken, new BinaryOperator(Token.NoToken, BinaryOperator.Opcode.Or), new ExprSeq(ret, conj));
+            }
+            proc.Ensures.Add(new Ensures(true, ret));
+          }
         }
       }
 
@@ -244,7 +275,7 @@ namespace VC {
       ResetPredecessors(impl.Blocks);
       VCExpr reachvcexpr = GenerateReachVC(impl, info, checker);
       vcexpr = gen.And(vcexpr, reachvcexpr);
-      
+
       List<VCExprVar> privateVars = new List<VCExprVar>();
       foreach (Variable v in impl.LocVars) {
         Contract.Assert(v != null);
@@ -254,6 +285,9 @@ namespace VC {
         Contract.Assert(v != null);
         privateVars.Add(translator.LookupVariable(v));
       }
+
+      info.privateVars = privateVars;
+
       if (privateVars.Count > 0) {
         vcexpr = gen.Exists(new List<TypeVariable>(), privateVars, new List<VCTrigger>(),
                             new VCQuantifierInfos(impl.Name, info.uniqueId, false, null), vcexpr);
@@ -272,12 +306,7 @@ namespace VC {
       Function function = cce.NonNull(info.function);
       VCExpr expr = gen.Function(function, interfaceExprs);
       Contract.Assert(expr != null);
-      if (CommandLineOptions.Clo.LazyInlining == 1) {
-        vcexpr = gen.Implies(expr, vcexpr);
-      } else {
-        Contract.Assert(CommandLineOptions.Clo.LazyInlining == 2);
-        vcexpr = gen.Eq(expr, vcexpr);
-      }
+      vcexpr = gen.Implies(expr, vcexpr);
 
       List<VCTrigger> triggers = new List<VCTrigger>();
       List<VCExpr> exprs = new List<VCExpr>();

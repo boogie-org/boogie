@@ -104,6 +104,14 @@ def addControlToMap(pageXAML, parentPage, controlNode):
   pageControls.append(newControl)
   staticControlsMap[parentPage]= pageControls
 
+def isPageXAML(pageXAML):
+  pageFile= open(pageXAML, "r")
+  if not isPageFile(pageFile):
+    return False
+  pageFileXML= minidom.parse(pageFile)
+  pageFile.close()
+  return pageFileXML.childNodes[0].nodeName.find("Page") != -1
+
 def extractPhoneControlsFromPage(pageXAML):
   # maybe it is not a page file
   print "extracting from " + pageXAML
@@ -120,7 +128,10 @@ def extractPhoneControlsFromPage(pageXAML):
     if (len(controls) == 0):
       # it is either a page with no controls, or controls that are dynamically created, or controls we do not track yet
       # in any case, just add a dummy control so as not to lose the page
-      addDummyControlToMap(pageXAML, ownerPage)
+      if (not isPageXAML(pageXAML)):
+        addDummyControlToMap(pageXAML, ownerPage + "__dummy")
+      else:
+        addDummyControlToMap(pageXAML, ownerPage)
     else:
       for control in controls:
         parent= control
@@ -191,7 +202,7 @@ def extractPhoneControls(sourceDir):
   global mainPageXAML
   fileList= [os.path.join(sourceDir, fileName) for fileName in os.listdir(sourceDir) if os.path.splitext(fileName)[1] == ".xaml" or os.path.splitext(fileName)[1] == ".xml"]
   for fileName in fileList:
-    if os.path.splitext(fileName)[1] == ".xml" and os.path.splitext(os.path.split(fileName)[1])[0].lower() == "wmappmanifest":
+    if os.path.splitext(fileName)[1].lower() == ".xml" and os.path.splitext(os.path.split(fileName)[1])[0].lower() == "wmappmanifest":
       mainPageXAML= getMainPageXAMLFromManifest(fileName)
       break
 

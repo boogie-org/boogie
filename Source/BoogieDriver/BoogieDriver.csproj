@@ -172,6 +172,10 @@
       <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
       <Name>Graph</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Houdini\Houdini.csproj">
+      <Project>{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}</Project>
+      <Name>Houdini</Name>
+    </ProjectReference>
     <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
       <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
       <Name>ParserHelper</Name>

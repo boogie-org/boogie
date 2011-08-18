@@ -5,6 +5,7 @@
 //-----------------------------------------------------------------------------
 
 using System;
+using System.Linq;
 using System.IO;
 using Microsoft.Cci;
 using Microsoft.Cci.MetadataReader;
@@ -20,6 +21,9 @@ using Microsoft.Cci.MutableCodeModel.Contracts;
 using TranslationPlugins;
 using BytecodeTranslator.Phone;
 using System.Text.RegularExpressions;
+using BytecodeTranslator.TranslationPlugins;
+using BytecodeTranslator.TranslationPlugins.BytecodeTranslator;
+using BytecodeTranslator.TranslationPlugins.PhoneTranslator;
 
 namespace BytecodeTranslator {
 
@@ -33,6 +37,9 @@ namespace BytecodeTranslator {
 
     [OptionDescription("Emit a 'capture state' directive after each statement, (default: false)", ShortForm = "c")]
     public bool captureState = false;
+
+    [OptionDescription("Translation should be done for Get Me Here functionality, (default: false)", ShortForm = "gmh")]
+    public bool getMeHere = false;
 
     [OptionDescription("Search paths for assembly dependencies.", ShortForm = "lib")]
     public List<string> libpaths = new List<string>();
@@ -139,7 +146,6 @@ namespace BytecodeTranslator {
       #endregion
 
       try {
-
         HeapFactory heap;
         switch (options.heapRepresentation) {
           case Options.HeapRepresentation.splitFields:
@@ -168,6 +174,7 @@ namespace BytecodeTranslator {
       return result;
     }
 
+    private static List<IModule> modules;
     public static int TranslateAssembly(List<string> assemblyNames, HeapFactory heapFactory, Options options, List<Regex> exemptionList, bool whiteList) {
       Contract.Requires(assemblyNames != null);
       Contract.Requires(heapFactory != null);
@@ -182,7 +189,8 @@ namespace BytecodeTranslator {
       var host = new CodeContractAwareHostEnvironment(libPaths != null ? libPaths : Enumerable<string>.Empty, true, true);
       Host = host;
 
-      var modules = new List<IModule>();
+      #region Assemlies to translate (via cmd line)
+      modules = new List<IModule>();
       var contractExtractors = new Dictionary<IUnit, IContractProvider>();
       var pdbReaders = new Dictionary<IUnit, PdbReader>();
       foreach (var a in assemblyNames) {
@@ -203,6 +211,9 @@ namespace BytecodeTranslator {
         contractExtractors.Add(module, host.GetContractExtractor(module.UnitIdentity));
         pdbReaders.Add(module, pdbReader);
       }
+      #endregion
+
+      #region Assemblies to translate (stubs)
       if (stubAssemblies != null) {
         foreach (var s in stubAssemblies) {
           var module = host.LoadUnitFrom(s) as IModule;
@@ -237,30 +248,60 @@ namespace BytecodeTranslator {
           pdbReaders.Add(module, pdbReader);
         }
       }
+      #endregion
+
       if (modules.Count == 0) {
         Console.WriteLine("No input assemblies to translate.");
         return -1;
       }
 
       var primaryModule = modules[0];
-
-      TraverserFactory traverserFactory;
-      if (wholeProgram)
-        traverserFactory = new WholeProgram();
-      else
-        traverserFactory = new CLRSemantics();
-
-      Sink sink= new Sink(host, traverserFactory, heapFactory, options, exemptionList, whiteList);
+      Sink sink= new Sink(host, heapFactory, options, exemptionList, whiteList);
       TranslationHelper.tmpVarCounter = 0;
-      MetadataTraverser translator;
-      translator= traverserFactory.MakeMetadataTraverser(sink, contractExtractors, pdbReaders);
 
-      PhoneControlsPlugin phonePlugin = null;
+      // TODO move away, get all plugin and translators from a config file or alike
+      #region Plugged translators
+      List<Translator> translatorsPlugged = new List<Translator>();      
+      ITranslationPlugin bctPlugin= new BytecodeTranslatorPlugin(wholeProgram);
+      Translator bcTranslator = bctPlugin.getTranslator(sink, contractExtractors, pdbReaders);
+      translatorsPlugged.Add(bcTranslator);
+
       if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
+        // TODO this should be part of the translator initialziation
         PhoneCodeHelper.initialize(host);
-        phonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
-        PhoneCodeHelper.instance().PhonePlugin = phonePlugin;
+        PhoneCodeHelper.instance().PhonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
+
+        if (doPhoneNav) {
+          // TODO this should be part of the translator initialziation
+          PhoneCodeHelper.instance().PhoneNavigationToggled = true;
+
+          ITranslationPlugin phoneInitPlugin = new PhoneInitializationPlugin();
+          ITranslationPlugin phoneNavPlugin = new PhoneNavigationPlugin();
+          Translator phInitTranslator = phoneInitPlugin.getTranslator(sink, contractExtractors, pdbReaders);
+          Translator phNavTranslator = phoneNavPlugin.getTranslator(sink, contractExtractors, pdbReaders);
+          translatorsPlugged.Add(phInitTranslator);
+          translatorsPlugged.Add(phNavTranslator);
+        }
+
+        if (doPhoneFeedback) {
+          // TODO this should be part of the translator initialziation
+          PhoneCodeHelper.instance().PhoneFeedbackToggled = true;
+
+          ITranslationPlugin phoneFeedbackPlugin = new PhoneFeedbackPlugin();
+          Translator phFeedbackTranslator = phoneFeedbackPlugin.getTranslator(sink, contractExtractors, pdbReaders);
+          translatorsPlugged.Add(phFeedbackTranslator);
+        }
+      }
+      #endregion
+      sink.TranslationPlugins = translatorsPlugged;
+
+      /*
+      if (phoneControlsConfigFile != null && phoneControlsConfigFile != "") {
+        // TODO send this all way to initialization of phone plugin translator
+        PhoneCodeHelper.initialize(host);
+        PhoneCodeHelper.instance().PhonePlugin = new PhoneControlsPlugin(phoneControlsConfigFile);
         
+        // TODO these parameters will eventually form part of plugin configuration
         if (doPhoneNav) {
           PhoneCodeHelper.instance().PhoneNavigationToggled = true;
           PhoneInitializationMetadataTraverser initTr = new PhoneInitializationMetadataTraverser(host);
@@ -275,76 +316,138 @@ namespace BytecodeTranslator {
           fbMetaDataTraverser.Visit(modules);
         }
       }
+      */
 
-      translator.TranslateAssemblies(modules);
+      // TODO replace the whole translation by a translator initialization and an orchestrator calling back for each element
+      // TODO for the current BC translator it will possibly just implement onMetadataElement(IModule)
+      // TODO refactor this away, handle priorities between plugged translators
+      IOrderedEnumerable<Translator> prioritizedTranslators = translatorsPlugged.OrderBy(t => t.getPriority());
+      foreach (Translator t in prioritizedTranslators) {
+        t.initialize();
+        if (t.isOneShot())
+          t.TranslateAssemblies(modules);
+      }
 
       foreach (var pair in sink.delegateTypeToDelegates.Values) {
         CreateDispatchMethod(sink, pair.Item1, pair.Item2);
       }
 
-      if (PhoneCodeHelper.instance().PhoneFeedbackToggled) {
-        PhoneCodeHelper.instance().CreateFeedbackCallingMethods(sink);
-      }
-
+      string outputFileName = primaryModule.Name + ".bpl";
+      callPostTranslationTraversers(modules, sink, phoneControlsConfigFile, outputFileName);
       if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
-        string outputConfigFile = Path.ChangeExtension(phoneControlsConfigFile, "bplout");
-        StreamWriter outputStream = new StreamWriter(outputConfigFile);
-        phonePlugin.DumpControlStructure(outputStream);
-        outputStream.Close();
-        PhoneCodeWrapperWriter.createCodeWrapper(sink);
-
-        // NAVIGATION TODO for now I console this out
-        if (!PhoneCodeHelper.instance().OnBackKeyPressOverriden) {
-          Console.Out.WriteLine("No back navigation issues, OnBackKeyPress is not overriden");
-        } else if (!PhoneCodeHelper.instance().BackKeyPressHandlerCancels && !PhoneCodeHelper.instance().BackKeyPressNavigates) {
-          Console.Out.WriteLine("No back navigation issues, BackKeyPress overrides do not alter navigation");
-        } else {
-          if (PhoneCodeHelper.instance().BackKeyPressNavigates) {
-            Console.Out.WriteLine("Back navigation ISSUE:back key press may navigate to pages not in backstack! From pages:");
-            foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyNavigatingOffenders.Keys) {
-              ICollection<string> targets= PhoneCodeHelper.instance().BackKeyNavigatingOffenders[type];
-              Console.WriteLine("\t" + type.ToString() + " may navigate to ");
-              foreach (string target in targets) {
-                Console.WriteLine("\t\t" + target);
-              }
-            }
-          }
-
-          if (PhoneCodeHelper.instance().BackKeyPressHandlerCancels) {
-            Console.Out.WriteLine("Back navigation ISSUE: back key press default behaviour may be cancelled! From pages:");
-            foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyCancellingOffenders) {
-              Console.WriteLine("\t" + type.ToString());
-            }
-          }
-        }
+        finalizeNavigationAnalysisAndBoogieCode(phoneControlsConfigFile, sink, outputFileName);
       }
 
-      if (PhoneCodeHelper.instance().PhoneFeedbackToggled || PhoneCodeHelper.instance().PhoneNavigationToggled) {
-        PhoneMethodInliningMetadataTraverser inlineTraverser =
-          new PhoneMethodInliningMetadataTraverser(PhoneCodeHelper.instance());
-        inlineTraverser.findAllMethodsToInline(modules);
-        updateInlinedMethods(sink, inlineTraverser.getMethodsToInline());
-        System.Console.WriteLine("Total methods seen: {0}, inlined: {1}", inlineTraverser.TotalMethodsCount, inlineTraverser.InlinedMethodsCount);
-      }
-
-      if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
-        // TODO integrate into the pipeline and spit out the boogie code
-        foreach (IMethodDefinition def in PhoneNavigationCodeTraverser.NavCallers) {
-          System.Console.WriteLine(def.ToString());
-        }
-      }
-
-      Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(primaryModule.Name + ".bpl");
+      Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(outputFileName);
       Prelude.Emit(writer);
       sink.TranslatedProgram.Emit(writer);
       writer.Close();
       return 0; // success
     }
 
-    private static void updateInlinedMethods(Sink sink, IEnumerable<IMethodDefinition> doInline) {
-      foreach (IMethodDefinition method in doInline) {
-        Sink.ProcedureInfo procInfo= sink.FindOrCreateProcedure(method);
-        procInfo.Decl.AddAttribute("inline", new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.ONE));
+    private static void finalizeNavigationAnalysisAndBoogieCode(string phoneControlsConfigFile, Sink sink, string outputFileName) {
+      outputBoogieTrackedControlConfiguration(phoneControlsConfigFile);
+      checkTransitivelyCalledBackKeyNavigations(modules);
+      createPhoneBoogieCallStubs(sink);
+      PhoneCodeHelper.instance().createQueriesBatchFile(sink, outputFileName);
+      outputBackKeyWarnings();
+    }
+
+    private static void callPostTranslationTraversers(List<IModule> modules, Sink sink, string phoneControlsConfigFile, string outputFileName) {
+      if (PhoneCodeHelper.instance().PhoneFeedbackToggled) {
+        PhoneCodeHelper.instance().CreateFeedbackCallingMethods(sink);
+      }
+
+      if (PhoneCodeHelper.instance().PhoneFeedbackToggled || PhoneCodeHelper.instance().PhoneNavigationToggled) {
+        PhoneMethodInliningMetadataTraverser inlineTraverser =
+          new PhoneMethodInliningMetadataTraverser(PhoneCodeHelper.instance());
+        inlineTraverser.findAllMethodsToInline(modules);
+        PhoneCodeHelper.updateInlinedMethods(sink, inlineTraverser.getMethodsToInline());
+        System.Console.WriteLine("Total methods seen: {0}, inlined: {1}", inlineTraverser.TotalMethodsCount, inlineTraverser.InlinedMethodsCount);
+
+        PhoneBackKeyCallbackTraverser traverser = new PhoneBackKeyCallbackTraverser(sink.host);
+        traverser.Visit(modules);
+
+      }
+    }
+
+    private static void outputBoogieTrackedControlConfiguration(string phoneControlsConfigFile) {
+      string outputConfigFile = Path.ChangeExtension(phoneControlsConfigFile, "bplout");
+      StreamWriter outputStream = new StreamWriter(outputConfigFile);
+      PhoneCodeHelper.instance().PhonePlugin.DumpControlStructure(outputStream);
+      outputStream.Close();
+    }
+
+    private static void outputBackKeyWarnings() {
+      // NAVIGATION TODO for now I console this out
+      if (!PhoneCodeHelper.instance().OnBackKeyPressOverriden) {
+        Console.Out.WriteLine("No back navigation issues, OnBackKeyPress is not overriden");
+      } else if (PhoneCodeHelper.instance().BackKeyHandlerOverridenByUnknownDelegate) {
+        Console.Out.WriteLine("Back navigation ISSUE: BackKeyPress is overriden by unidentified delegate and may perform illegal navigation");
+        Console.Out.WriteLine("Offending pages:");
+        foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyUnknownDelegateOffenders) {
+          Console.WriteLine("\t" + type.ToString());
+        }
+      } else if (!PhoneCodeHelper.instance().BackKeyPressHandlerCancels && !PhoneCodeHelper.instance().BackKeyPressNavigates) {
+        Console.Out.WriteLine("No back navigation issues, BackKeyPress overrides do not alter navigation");
+      } else {
+        if (PhoneCodeHelper.instance().BackKeyPressNavigates) {
+          Console.Out.WriteLine("Back navigation ISSUE: back key press may navigate to pages not in backstack! From pages:");
+          foreach (ITypeReference type in PhoneCodeHelper.instance().BackKeyNavigatingOffenders.Keys) {
+            ICollection<Tuple<IMethodReference, string>> targets = PhoneCodeHelper.instance().BackKeyNavigatingOffenders[type];
+            Console.WriteLine("\t" + type.ToString() + " may navigate to ");
+            foreach (Tuple<IMethodReference, string> target in targets) {
+              Console.WriteLine("\t\t" + target.Item2 + " via " +
+                                (target.Item1.Name == Dummy.Name ? "anonymous delegate" : target.Item1.ContainingType.ToString() + "." + target.Item1.Name.Value));
+            }
+          }
+        }
+
+        if (PhoneCodeHelper.instance().BackKeyPressHandlerCancels) {
+          Console.Out.WriteLine("Back navigation ISSUE: back key press default behaviour may be cancelled! From pages:");
+          foreach (Tuple<ITypeReference, string> cancellation in PhoneCodeHelper.instance().BackKeyCancellingOffenders) {
+            Console.WriteLine("\t" + cancellation.Item1.ToString() + " via " + cancellation.Item2);
+          }
+        }
+      }
+    }
+
+    private static void createPhoneBoogieCallStubs(Sink sink) {
+      foreach (IMethodDefinition def in PhoneNavigationCodeTraverser.NavCallers) {
+        if (!PhoneCodeHelper.instance().isKnownBackKeyOverride(def))
+          PhoneCodeHelper.instance().addHandlerStubCaller(sink, def);
+      }
+      PhoneCodeHelper.instance().addNavigationUriHavocer(sink);
+    }
+
+    private static void checkTransitivelyCalledBackKeyNavigations(List<IModule> modules) {
+      foreach (IMethodReference navMethod in PhoneCodeHelper.instance().KnownBackKeyHandlers) {
+        // right now we traversed everything so we can see reachability
+        IEnumerable<IMethodDefinition> indirects = PhoneCodeHelper.instance().getIndirectNavigators(modules, navMethod);
+        if (indirects.Count() > 0) {
+          ICollection<Tuple<IMethodReference, string>> targets = null;
+          PhoneCodeHelper.instance().BackKeyNavigatingOffenders.TryGetValue(navMethod.ContainingType, out targets);
+          if (targets == null) {
+            targets = new HashSet<Tuple<IMethodReference, string>>();
+          }
+          string indirectTargeting = "<unknown indirect navigation> via (";
+          foreach (IMethodDefinition methDef in indirects) {
+            indirectTargeting += methDef.ContainingType.ToString() + "." + methDef.Name.Value + ", ";
+          }
+          indirectTargeting += ")";
+          targets.Add(Tuple.Create<IMethodReference, string>(navMethod, indirectTargeting));
+          PhoneCodeHelper.instance().BackKeyNavigatingOffenders[navMethod.ContainingType] = targets;
+        }
+
+        indirects = PhoneCodeHelper.instance().getIndirectCancellations(modules, navMethod);
+        if (indirects.Count() > 0) {
+          string indirectTargeting = "(";
+          foreach (IMethodDefinition methDef in indirects) {
+            indirectTargeting += methDef.ContainingType.ToString() + "." + methDef.Name.Value + ", ";
+          }
+          indirectTargeting += ")";
+          PhoneCodeHelper.instance().BackKeyCancellingOffenders.Add(Tuple.Create<ITypeReference, string>(navMethod.ContainingType, indirectTargeting));
+        }
       }
     }
 
@@ -370,7 +473,6 @@ namespace BytecodeTranslator {
           rootUnitNamespace.Unit = this.targetUnit;
         base.RewriteChildren(rootUnitNamespace);
       }
-
     }
 
     private static Bpl.IfCmd BuildIfCmd(Bpl.Expr b, Bpl.Cmd cmd, Bpl.IfCmd ifCmd) {
@@ -384,6 +486,29 @@ namespace BytecodeTranslator {
       ifStmtBuilder.Add(new Bpl.ReturnCmd(b.tok));
       return new Bpl.IfCmd(b.tok, b, ifStmtBuilder.Collect(b.tok), null, null);
     }
+    private static void BuildAssignment(Sink sink, Bpl.StmtListBuilder stmtBuilder, List<Bpl.Variable> lvars, List<Bpl.Variable> rvars) {
+      for (int i = 0; i < lvars.Count; i++) {
+        Bpl.Variable lvar = lvars[i];
+        Bpl.Type ltype = lvar.TypedIdent.Type;
+        Bpl.Variable rvar = rvars[i];
+        Bpl.Type rtype = rvar.TypedIdent.Type;
+        Bpl.IdentifierExpr lexpr = Bpl.Expr.Ident(lvar);
+        Bpl.Expr rexpr = Bpl.Expr.Ident(rvar);
+        if (rtype == ltype) {
+          // do nothing
+        } else if (ltype == sink.Heap.BoxType) {
+          rexpr = sink.Heap.Box(Bpl.Token.NoToken, rtype, rexpr);
+        }
+        else if (rtype == sink.Heap.BoxType) {
+          rexpr = sink.Heap.Unbox(Bpl.Token.NoToken, ltype, rexpr);
+        }
+        else {
+          System.Diagnostics.Debug.Assert(ltype == rtype);
+        }
+        stmtBuilder.Add(TranslationHelper.BuildAssignCmd(lexpr, rexpr));
+      }
+    }
+
     private static void CreateDispatchMethod(Sink sink, ITypeDefinition type, HashSet<IMethodDefinition> delegates) {
       Contract.Assert(type.IsDelegate);
       IMethodDefinition invokeMethod = null;
@@ -395,71 +520,125 @@ namespace BytecodeTranslator {
       }
 
       try {
-        var decl = sink.FindOrCreateProcedure(invokeMethod).Decl;
-        var proc = decl as Bpl.Procedure;
-        var invars = proc.InParams;
-        var outvars = proc.OutParams;
+        IMethodDefinition unspecializedInvokeMethod = Sink.Unspecialize(invokeMethod).ResolvedMethod;
+        Bpl.Procedure invokeProcedure = (Bpl.Procedure) sink.FindOrCreateProcedure(unspecializedInvokeMethod).Decl;
+        var invars = invokeProcedure.InParams;
+        var outvars = invokeProcedure.OutParams;
 
         Bpl.IToken token = invokeMethod.Token();
 
-        Bpl.Formal method = new Bpl.Formal(token, new Bpl.TypedIdent(token, "method", Bpl.Type.Int), true);
-        Bpl.Formal receiver = new Bpl.Formal(token, new Bpl.TypedIdent(token, "receiver", sink.Heap.RefType), true);
-
+        Bpl.Formal delegateVariable = new Bpl.Formal(token, new Bpl.TypedIdent(token, "delegate", sink.Heap.DelegateType), true);
         Bpl.VariableSeq dispatchProcInvars = new Bpl.VariableSeq();
-        dispatchProcInvars.Add(method);
-        dispatchProcInvars.Add(receiver);
+        List<Bpl.Variable> dispatchProcInExprs = new List<Bpl.Variable>();
+        dispatchProcInvars.Add(delegateVariable);
         for (int i = 1; i < invars.Length; i++) {
-          Bpl.Variable f = invars[i];
-          dispatchProcInvars.Add(new Bpl.Formal(token, new Bpl.TypedIdent(token, f.Name, f.TypedIdent.Type), true));
+          Bpl.Variable v = invars[i];
+          Bpl.Formal f = new Bpl.Formal(token, new Bpl.TypedIdent(token, v.Name, v.TypedIdent.Type), true);
+          dispatchProcInvars.Add(f);
+          dispatchProcInExprs.Add(f);
         }
-
         Bpl.VariableSeq dispatchProcOutvars = new Bpl.VariableSeq();
-        foreach (Bpl.Formal f in outvars) {
-          dispatchProcOutvars.Add(new Bpl.Formal(token, new Bpl.TypedIdent(token, f.Name, f.TypedIdent.Type), false));
+        List<Bpl.Variable> dispatchProcOutExprs = new List<Bpl.Variable>();
+        foreach (Bpl.Variable v in outvars) {
+          Bpl.Formal f = new Bpl.Formal(token, new Bpl.TypedIdent(token, v.Name, v.TypedIdent.Type), false);
+          dispatchProcOutvars.Add(f);
+          dispatchProcOutExprs.Add(f);
         }
-
-        Bpl.Procedure dispatchProc =
+        Bpl.Procedure dispatchProcedure =
           new Bpl.Procedure(token,
-            "DispatchOne." + proc.Name,
+            "DispatchOne." + invokeProcedure.Name,
             new Bpl.TypeVariableSeq(),
             dispatchProcInvars,
             dispatchProcOutvars,
             new Bpl.RequiresSeq(),
             new Bpl.IdentifierExprSeq(),
             new Bpl.EnsuresSeq());
-        sink.TranslatedProgram.TopLevelDeclarations.Add(dispatchProc);
+        sink.TranslatedProgram.TopLevelDeclarations.Add(dispatchProcedure);
 
+        Bpl.LocalVariable method = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "method", Bpl.Type.Int));
+        Bpl.LocalVariable receiver = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "receiver", sink.Heap.RefType));
+        Bpl.LocalVariable typeParameter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "typeParameter", sink.Heap.TypeType));
+        Bpl.VariableSeq localVariables = new Bpl.VariableSeq();
+        localVariables.Add(method);
+        localVariables.Add(receiver);
+        localVariables.Add(typeParameter); 
+        
         Bpl.IfCmd ifCmd = BuildIfCmd(Bpl.Expr.True, new Bpl.AssumeCmd(token, Bpl.Expr.False), null);
+        int localCounter = 0;
         foreach (IMethodDefinition defn in delegates) {
+          Sink.ProcedureInfo delegateProcedureInfo = sink.FindOrCreateProcedure(defn);
+          Bpl.Procedure delegateProcedure = (Bpl.Procedure) delegateProcedureInfo.Decl;
+          Bpl.Formal thisVariable = delegateProcedureInfo.ThisVariable;
+          int numArguments = defn.ParameterCount;
+
+          List<Bpl.Variable> tempInputs = new List<Bpl.Variable>();
+          List<Bpl.Variable> tempOutputs = new List<Bpl.Variable>();
+
+          for (int i = 0; i < defn.ParameterCount; i++) {
+            Bpl.Variable v = delegateProcedure.InParams[(thisVariable == null ? 0 : 1) + i];
+            Bpl.LocalVariable localVariable = new Bpl.LocalVariable(Bpl.Token.NoToken,
+              new Bpl.TypedIdent(Bpl.Token.NoToken, "local" + localCounter++, v.TypedIdent.Type));
+            localVariables.Add(localVariable);
+            tempInputs.Add(localVariable);
+          }
+
+          for (int i = 0; i < delegateProcedure.OutParams.Length; i++) {
+            Bpl.Variable v = delegateProcedure.OutParams[i];
+            Bpl.LocalVariable localVariable = new Bpl.LocalVariable(Bpl.Token.NoToken,
+              new Bpl.TypedIdent(Bpl.Token.NoToken, "local" + localCounter++, v.TypedIdent.Type));
+            localVariables.Add(localVariable);
+            tempOutputs.Add(localVariable);
+          }
+
           Bpl.ExprSeq ins = new Bpl.ExprSeq();
           Bpl.IdentifierExprSeq outs = new Bpl.IdentifierExprSeq();
           if (!defn.IsStatic)
             ins.Add(Bpl.Expr.Ident(receiver));
-          int index;
-          for (index = 2; index < dispatchProcInvars.Length; index++) {
-            ins.Add(Bpl.Expr.Ident(dispatchProcInvars[index]));
+          for (int i = 0; i < tempInputs.Count; i++) {
+            ins.Add(Bpl.Expr.Ident(tempInputs[i]));
           }
-          for (index = 0; index < dispatchProcOutvars.Length; index++) {
-            outs.Add(Bpl.Expr.Ident(dispatchProcOutvars[index]));
+          int numTypeParameters = Sink.GetNumberTypeParameters(defn);
+          for (int i = 0; i < numTypeParameters; i++) {
+            ins.Add(new Bpl.NAryExpr(Bpl.Token.NoToken, 
+                                     new Bpl.FunctionCall(sink.FindOrCreateTypeParameterFunction(i)), 
+                                     new Bpl.ExprSeq(Bpl.Expr.Ident(typeParameter))));
+          }
+          for (int i = 0; i < tempOutputs.Count; i++) {
+            outs.Add(Bpl.Expr.Ident(tempOutputs[i]));
           }
           Bpl.Constant c = sink.FindOrCreateDelegateMethodConstant(defn);
-          var procInfo = sink.FindOrCreateProcedure(defn);
           Bpl.Expr bexpr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, Bpl.Expr.Ident(method), Bpl.Expr.Ident(c));
-          Bpl.CallCmd callCmd = new Bpl.CallCmd(token, procInfo.Decl.Name, ins, outs);
-          ifCmd = BuildIfCmd(bexpr, callCmd, ifCmd);
+          Bpl.StmtListBuilder ifStmtBuilder = new Bpl.StmtListBuilder();
+          System.Diagnostics.Debug.Assert(tempInputs.Count == dispatchProcInExprs.Count);
+          if (tempInputs.Count > 0) {
+            BuildAssignment(sink, ifStmtBuilder, tempInputs, dispatchProcInExprs);
+          }
+          ifStmtBuilder.Add(new Bpl.CallCmd(token, delegateProcedure.Name, ins, outs));
+          System.Diagnostics.Debug.Assert(tempOutputs.Count == dispatchProcOutExprs.Count);
+          if (tempOutputs.Count > 0) {
+            BuildAssignment(sink, ifStmtBuilder, dispatchProcOutExprs, tempOutputs);
+          }
+          ifCmd = new Bpl.IfCmd(bexpr.tok, bexpr, ifStmtBuilder.Collect(bexpr.tok), ifCmd, null);
         }
-        Bpl.StmtListBuilder ifStmtBuilder = new Bpl.StmtListBuilder();
-        ifStmtBuilder.Add(ifCmd);
+        Bpl.StmtListBuilder stmtBuilder = new Bpl.StmtListBuilder();
+        stmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(method), 
+                                                         sink.ReadMethod(Bpl.Expr.Ident(delegateVariable))));
+        stmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(receiver), 
+                                                         sink.ReadReceiver(Bpl.Expr.Ident(delegateVariable))));
+        stmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(typeParameter), 
+                                                         sink.ReadTypeParameters(Bpl.Expr.Ident(delegateVariable))));
+        stmtBuilder.Add(ifCmd);
+        
         Bpl.Implementation dispatchImpl =
             new Bpl.Implementation(token,
-                dispatchProc.Name,
+                dispatchProcedure.Name,
                 new Bpl.TypeVariableSeq(),
-                dispatchProc.InParams,
-                dispatchProc.OutParams,
-                new Bpl.VariableSeq(),
-                ifStmtBuilder.Collect(token)
+                dispatchProcedure.InParams,
+                dispatchProcedure.OutParams,
+                localVariables,
+                stmtBuilder.Collect(token)
                 );
-        dispatchImpl.Proc = dispatchProc;
+        dispatchImpl.Proc = dispatchProcedure;
         sink.TranslatedProgram.TopLevelDeclarations.Add(dispatchImpl);
 
         Bpl.LocalVariable iter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "iter", sink.Heap.RefType));
@@ -472,8 +651,7 @@ namespace BytecodeTranslator {
         whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(niter), sink.ReadNext(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(iter))));
         whileStmtBuilder.Add(BuildReturnCmd(Bpl.Expr.Eq(Bpl.Expr.Ident(niter), sink.ReadHead(Bpl.Expr.Ident(invars[0])))));
         Bpl.ExprSeq inExprs = new Bpl.ExprSeq();
-        inExprs.Add(sink.ReadMethod(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(niter)));
-        inExprs.Add(sink.ReadReceiver(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(niter)));
+        inExprs.Add(sink.ReadDelegate(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(niter)));
         for (int i = 1; i < invars.Length; i++) {
           Bpl.Variable f = invars[i];
           inExprs.Add(Bpl.Expr.Ident(f));
@@ -482,7 +660,7 @@ namespace BytecodeTranslator {
         foreach (Bpl.Formal f in outvars) {
           outExprs.Add(Bpl.Expr.Ident(f));
         }
-        whileStmtBuilder.Add(new Bpl.CallCmd(token, dispatchProc.Name, inExprs, outExprs));
+        whileStmtBuilder.Add(new Bpl.CallCmd(token, dispatchProcedure.Name, inExprs, outExprs));
         whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(iter), Bpl.Expr.Ident(niter)));
         Bpl.WhileCmd whileCmd = new Bpl.WhileCmd(token, Bpl.Expr.True, new List<Bpl.PredicateCmd>(), whileStmtBuilder.Collect(token));
 
@@ -490,14 +668,14 @@ namespace BytecodeTranslator {
 
         Bpl.Implementation impl =
             new Bpl.Implementation(token,
-                proc.Name,
+                invokeProcedure.Name,
                 new Bpl.TypeVariableSeq(),
                 invars,
                 outvars,
                 new Bpl.VariableSeq(iter, niter),
                 implStmtBuilder.Collect(token)
                 );
-        impl.Proc = proc;
+        impl.Proc = invokeProcedure;
         sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
       } catch (TranslationException te) {
         throw new NotImplementedException(te.ToString());

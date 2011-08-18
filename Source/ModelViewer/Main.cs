@@ -33,6 +33,7 @@ namespace Microsoft.Boogie.ModelViewer
     // TODO this should be dynamically loaded
     IEnumerable<ILanguageProvider> Providers()
     {
+      yield return BCT.Provider.Instance;
       yield return Vcc.Provider.Instance;
       yield return Dafny.Provider.Instance;
       yield return Base.Provider.Instance;

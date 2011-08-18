@@ -41,4 +41,4 @@ modifies array;
 }
 
 // expected outcome: Correct
-// expected assigment: bi->True forall i
+// expected assigment: bi->False forall i
