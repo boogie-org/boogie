@@ -206,6 +206,8 @@ namespace BytecodeTranslator {
     public Bpl.Function RealTimes = null;
     [RepresentationFor("RealDivide", "function RealDivide(Real, Real): Real;")]
     public Bpl.Function RealDivide = null;
+    [RepresentationFor("RealModulus", "function RealModulus(Real, Real): Real;")]
+    public Bpl.Function RealModulus = null;
     [RepresentationFor("RealLessThan", "function RealLessThan(Real, Real): bool;")]
     public Bpl.Function RealLessThan = null;
     [RepresentationFor("RealLessThanOrEqual", "function RealLessThanOrEqual(Real, Real): bool;")]

@@ -93,7 +93,7 @@ def createAppControlsFile(appFile, outputFile, format):
 
 def bctAppFile(appFile, outputFile, format):
   error = os.system(BCT_PATH + " /heap:splitFields /lib:\"" + WPLIB_PATH + "\" /wpnav /phoneControls:\"" + \
-                    os.path.splitext(appFile)[0] + ".controls\" \"" + appFile + "\" > nul")
+                    os.path.splitext(appFile)[0] + ".controls\" \"" + appFile + "\" > NavigationReport")
   if error != 0 or not os.path.exists(os.path.splitext(appFile)[0] + ".bpl"):
     return False
   return True
