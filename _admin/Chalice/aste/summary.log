@@ -1,4 +1,15 @@
-# Aste started: 2011-08-16 14:25:10
-# Host id: MalteOffice
-[2011-08-16 14:25:10] 58 out of 62 test(s) failed
-['AssociationList.chalice', 'BackgroundComputation.chalice', 'cell.chalice', 'CopyLessMessagePassing-with-ack.chalice', 'CopyLessMessagePassing-with-ack2.chalice', 'CopyLessMessagePassing.chalice', 'dining-philosophers.chalice', 'FictionallyDisjointCells.chalice', 'ForkJoin.chalice', 'HandOverHand.chalice', 'iterator.chalice', 'iterator2.chalice', 'linkedlist.chalice', 'OwickiGries.chalice', 'PetersonsAlgorithm.chalice', 'ProdConsChannel.chalice', 'producer-consumer.chalice', 'RockBand.chalice', 'Sieve.chalice', 'Solver.chalice', 'swap.chalice', 'TreeOfWorker.chalice', 'UnboundedThreads.chalice', 'basic.chalice', 'channels.chalice', 'locks.chalice', 'peculiar.chalice', 'permission_arithmetic.chalice', 'predicates.chalice', 'predicate_error1.chalice', 'predicate_error2.chalice', 'predicate_error3.chalice', 'predicate_error4.chalice', 'scaling.chalice', 'sequences.chalice', 'cell-defaults.chalice', 'counter.chalice', 'ImplicitLocals.chalice', 'LoopLockChange.chalice', 'prog1.chalice', 'prog2.chalice', 'prog3.chalice', 'prog4.chalice', 'quantifiers.chalice', 'RockBand-automagic.chalice', 'SmokeTestTest.chalice', 'workitem-10190.chalice', 'workitem-10192.chalice', 'workitem-10194.chalice', 'workitem-10195.chalice', 'workitem-10196.chalice', 'workitem-10197.chalice', 'workitem-10198.chalice', 'workitem-10199.chalice', 'workitem-10200.chalice', 'workitem-8234.chalice', 'workitem-8236.chalice', 'workitem-9978.chalice']
+# Aste started: 2011-08-19 11:43:57
+# Host id: Boogiebox
+# Configuration: chalice.cfg
+# Task: aste.tasks.chalice.FullBuild
+# [2011-08-19 11:45:10] Chalice revision: 90b6e674ce4f
+[2011-08-19 11:46:30] sbt.bat clean compile
+
+    [warn] D:\temp\aste\Boogie\Chalice\src\main\scala\Ast.scala:77: case class `class SeqClass' has case class ancestor `class Class'.  This has been deprecated for unduly complicating both usage and implementation.  You should instead use extractors for pattern matching on non-leaf nodes.
+    [warn] D:\temp\aste\Boogie\Chalice\src\main\scala\Ast.scala:111: case class `class TokenClass' has case class ancestor `class Class'.  This has been deprecated for unduly complicating both usage and implementation.  You should instead use extractors for pattern matching on non-leaf nodes.
+    [warn] D:\temp\aste\Boogie\Chalice\src\main\scala\Ast.scala:121: case class `class ChannelClass' has case class ancestor `class Class'.  This has been deprecated for unduly complicating both usage and implementation.  You should instead use extractors for pattern matching on non-leaf nodes.
+    [warn] D:\temp\aste\Boogie\Chalice\src\main\scala\Ast.scala:141: case class `class TokenType' has case class ancestor `class Type'.  This has been deprecated for unduly complicating both usage and implementation.  You should instead use extractors for pattern matching on non-leaf nodes.
+    [warn] D:\temp\aste\Boogie\Chalice\src\main\scala\Ast.scala:168: case class `class SpecialField' has case class ancestor `class Field'.  This has been deprecated for unduly complicating both usage and implementation.  You should instead use extractors for pattern matching on non-leaf nodes.
+    [warn] D:\temp\aste\Boogie\Chalice\src\main\scala\Ast.scala:212: case class `class SpecialVariable' has case class ancestor `class Variable'.  This has been deprecated for unduly complicating both usage and implementation.  You should instead use extractors for pattern matching on non-leaf nodes.
+[2011-08-19 11:56:06] 0 out of 62 test(s) failed
+# [2011-08-19 11:57:07] Released nightly of Chalice
