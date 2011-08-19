@@ -30,7 +30,12 @@ namespace BytecodeTranslator.Phone {
 
       string str = realUri.GetComponents(UriComponents.Path | UriComponents.StrongAuthority | UriComponents.Scheme, UriFormat.UriEscaped);
       Uri mockStrippedUri = new Uri(str);
-      return mockBaseUri.MakeRelativeUri(mockStrippedUri).ToString();
+      /* 
+      Uri relativeUri = mockBaseUri.MakeRelativeUri(mockStrippedUri);
+      return relativeUri.ToString();
+       */
+      // TODO PATCH this works for now because we are ignoring non-flat XAML structures
+      return mockStrippedUri.Segments.Last();
     }
 
     /// <summary>
@@ -403,6 +408,9 @@ namespace BytecodeTranslator.Phone {
 
       ITypeReference appBarIconButtonType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarIconButton");
       PHONE_UI_CHANGER_METHODS[appBarIconButtonType.ToString()] = new string[] { "set_IsEnabled", "set_IconUri", "set_Text", };
+
+      ITypeReference appBarMenuItemType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarMenuItem");
+      PHONE_UI_CHANGER_METHODS[appBarMenuItemType.ToString()] = new string[] { "set_IsEnabled", "set_Text", };
 
       ITypeReference emailComposeTaskType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Tasks", "EmailComposeTask");
       PHONE_UI_CHANGER_METHODS[emailComposeTaskType.ToString()] = new string[] { "Show", };

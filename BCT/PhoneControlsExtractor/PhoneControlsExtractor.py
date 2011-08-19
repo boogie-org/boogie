@@ -4,7 +4,7 @@ import os
 from xml.dom import minidom
 import xml.dom
 
-CONTROL_NAMES= ["Button", "CheckBox", "RadioButton", "ApplicationBarIconButton", "Pivot"]
+CONTROL_NAMES= ["Button", "CheckBox", "RadioButton", "ApplicationBarIconButton", "ApplicationBarMenuItem", "Pivot", "ListBox"]
 
 # TODO maybe a control is enabled but its parent is not, must take this into account
 # TODO a possible solution is to tie the enabled value to that of the parent in the app until it is either overriden
