@@ -101,6 +101,14 @@ namespace BytecodeTranslator {
       }
 
       public override void Visit(IMethodCall methodCall) {
+        var resolvedMethod = Sink.Unspecialize(methodCall.MethodToCall).ResolvedMethod;
+
+        bool isEventAdd = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("add_");
+        bool isEventRemove = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("remove_");
+        if (isEventAdd || isEventRemove) {
+          base.Visit(methodCall);
+          return;
+        }
 
         if (!methodCall.IsVirtualCall) {
           base.Visit(methodCall);
@@ -114,7 +122,6 @@ namespace BytecodeTranslator {
         }
         Contract.Assert(0 < subTypesOfContainingType.Count);
         Contract.Assert(!methodCall.IsStaticCall);
-        var resolvedMethod = methodCall.MethodToCall.ResolvedMethod;
         Contract.Assert(!resolvedMethod.IsConstructor);
         var overrides = FindOverrides(containingType, resolvedMethod);
         if (0 == overrides.Count) {

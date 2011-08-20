@@ -84,9 +84,6 @@ namespace Microsoft.Boogie.Z3
       StringBuilder cmdLineArgsBldr = new StringBuilder();
       AppendCmdLineOption(cmdLineArgsBldr, "si");
 
-      if (CommandLineOptions.Clo.LazyInlining == 2) 
-        AppendCmdLineOption(cmdLineArgsBldr, "nw");
-
       if (CommandLineOptions.Clo.z3AtFlag)
         AppendCmdLineOption(cmdLineArgsBldr, "@");
 
@@ -165,9 +162,6 @@ namespace Microsoft.Boogie.Z3
             AddOption(result, "BV_REFLECT", "true");
       }
 
-      if (CommandLineOptions.Clo.LazyInlining == 2)
-        AddOption(result, "MACRO_EXPANSION", "true");
-      
       foreach (string opt in CommandLineOptions.Clo.Z3Options) {
         Contract.Assert(opt != null);
         int eq = opt.IndexOf("=");
