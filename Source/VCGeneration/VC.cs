@@ -1505,7 +1505,7 @@ namespace VC {
             vcgen.CurrentLocalVariables = codeExpr.LocVars;
             // codeExpr.Blocks.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
 
-            vcgen.ComputePredecessors(codeExpr.Blocks);
+            ResetPredecessors(codeExpr.Blocks);
             vcgen.AddBlocksBetween(codeExpr.Blocks);
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), new ModelViewInfo(codeExpr));
             VCExpr startCorrect = VCGen.LetVC(
@@ -2084,7 +2084,7 @@ namespace VC {
       }
       #endregion
 
-      ComputePredecessors(impl.Blocks);
+      ResetPredecessors(impl.Blocks);
       
       #region Convert program CFG into a DAG
 
