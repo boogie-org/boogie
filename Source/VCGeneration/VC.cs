@@ -2090,16 +2090,19 @@ namespace VC {
 
       #region Use the graph library to figure out where the (natural) loops are
 
+      
       #region Create the graph by adding the source node and each edge
       Graph<Block> g = Program.GraphFromImpl(impl);
       #endregion
-
+      
+      //Graph<Block> g = program.ProcessLoops(impl);
+      
       g.ComputeLoops(); // this is the call that does all of the processing
       if (!g.Reducible)
       {
         throw new VCGenException("Irreducible flow graphs are unsupported.");
       }
-
+      
       #endregion
 
       #region Cut the backedges, push assert/assume statements from loop header into predecessors, change them all into assume statements at top of loop, introduce havoc statements
