@@ -331,7 +331,7 @@ namespace TranslationPlugins {
           controlInfoStr.ClassName = controlClass;
           controlInfoStr.BplName = bplName;
         }
-        controlInfoStr.IsEnabled = Boolean.Parse(enabled);
+        controlInfoStr.IsEnabled = enabled.ToLower() == "false" ? false : true;
         controlInfoStr.Visible = visibility == "Collapsed" ? Visibility.Collapsed : Visibility.Visible;
         controlInfoStr.setHandler(Event.Click, clickHandler);
         controlInfoStr.setHandler(Event.Checked, checkedHandler);
