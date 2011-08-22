@@ -4,7 +4,7 @@ import os
 from xml.dom import minidom
 import xml.dom
 
-CONTROL_NAMES= ["Button", "CheckBox", "RadioButton", "ApplicationBarIconButton", "Pivot"]
+CONTROL_NAMES= ["Button", "CheckBox", "RadioButton", "ApplicationBarIconButton", "ApplicationBarMenuItem", "Pivot", "ListBox"]
 
 # TODO maybe a control is enabled but its parent is not, must take this into account
 # TODO a possible solution is to tie the enabled value to that of the parent in the app until it is either overriden
@@ -112,6 +112,16 @@ def isPageXAML(pageXAML):
   pageFile.close()
   return pageFileXML.childNodes[0].nodeName.find("Page") != -1
 
+def getPageNode(pageXML):
+# should be the top element one, ignore otherwise
+  if (pageXML.nodeType == xml.dom.Node.ELEMENT_NODE and pageXML.localName.find("PhoneApplicationPage") != -1):
+    return pageXML
+  else:
+    return None
+    
+
+  
+
 def extractPhoneControlsFromPage(pageXAML):
   # maybe it is not a page file
   print "extracting from " + pageXAML
@@ -121,6 +131,7 @@ def extractPhoneControlsFromPage(pageXAML):
   pageFileXML= minidom.parse(pageFile)
   pageFile.close()
   removeBlankElements(pageFileXML)
+  pageNode= getPageNode(pageFileXML)
   controls= getControlNodes(pageFileXML)
   ownerPage = getOwnerPage(pageFileXML)
   if (ownerPage != None):
