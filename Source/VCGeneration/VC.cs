@@ -1505,7 +1505,7 @@ namespace VC {
             vcgen.CurrentLocalVariables = codeExpr.LocVars;
             // codeExpr.Blocks.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
 
-            vcgen.ComputePredecessors(codeExpr.Blocks);
+            ResetPredecessors(codeExpr.Blocks);
             vcgen.AddBlocksBetween(codeExpr.Blocks);
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), new ModelViewInfo(codeExpr));
             VCExpr startCorrect = VCGen.LetVC(
@@ -2084,22 +2084,25 @@ namespace VC {
       }
       #endregion
 
-      ComputePredecessors(impl.Blocks);
+      ResetPredecessors(impl.Blocks);
       
       #region Convert program CFG into a DAG
 
       #region Use the graph library to figure out where the (natural) loops are
 
+      
       #region Create the graph by adding the source node and each edge
       Graph<Block> g = Program.GraphFromImpl(impl);
       #endregion
-
+      
+      //Graph<Block> g = program.ProcessLoops(impl);
+      
       g.ComputeLoops(); // this is the call that does all of the processing
       if (!g.Reducible)
       {
         throw new VCGenException("Irreducible flow graphs are unsupported.");
       }
-
+      
       #endregion
 
       #region Cut the backedges, push assert/assume statements from loop header into predecessors, change them all into assume statements at top of loop, introduce havoc statements

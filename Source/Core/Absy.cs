@@ -698,19 +698,69 @@ namespace Microsoft.Boogie {
       return g;
     }
     
+    public class IrreducibleLoopException : Exception {}
+
+    public Graph<Block> ProcessLoops(Implementation impl) {
+      while (true) {
+        impl.PruneUnreachableBlocks();
+        impl.ComputePredecessorsForBlocks();
+        Graph<Block/*!*/>/*!*/ g = GraphFromImpl(impl);
+        g.ComputeLoops();
+        if (g.Reducible) {
+          return g;
+        }
+        throw new IrreducibleLoopException();
+        System.Diagnostics.Debug.Assert(g.SplitCandidates.Count > 0);
+        Block splitCandidate = null;
+        foreach (Block b in g.SplitCandidates) {
+          if (b.Predecessors.Length > 1) {
+            splitCandidate = b;
+            break;
+          }
+        }
+        System.Diagnostics.Debug.Assert(splitCandidate != null);
+        int count = 0;
+        foreach (Block b in splitCandidate.Predecessors) {
+          GotoCmd gotoCmd = (GotoCmd)b.TransferCmd;
+          gotoCmd.labelNames.Remove(splitCandidate.Label);
+          gotoCmd.labelTargets.Remove(splitCandidate);
+
+          CodeCopier codeCopier = new CodeCopier(new Hashtable(), new Hashtable());
+          CmdSeq newCmdSeq = codeCopier.CopyCmdSeq(splitCandidate.Cmds);
+          TransferCmd newTransferCmd;
+          GotoCmd splitGotoCmd = splitCandidate.TransferCmd as GotoCmd;
+          if (splitGotoCmd == null) {
+            newTransferCmd = new ReturnCmd(splitCandidate.tok);
+          }
+          else {
+            StringSeq newLabelNames = new StringSeq();
+            newLabelNames.AddRange(splitGotoCmd.labelNames);
+            BlockSeq newLabelTargets = new BlockSeq();
+            newLabelTargets.AddRange(splitGotoCmd.labelTargets);
+            newTransferCmd = new GotoCmd(splitCandidate.tok, newLabelNames, newLabelTargets);
+          }
+          Block copy = new Block(splitCandidate.tok, splitCandidate.Label + count++, newCmdSeq, newTransferCmd);
+
+          impl.Blocks.Add(copy);
+          gotoCmd.AddTarget(copy);
+        }
+      }
+    }
+
     public Dictionary<string, Dictionary<string, Block>> ExtractLoops() {
       List<Implementation/*!*/>/*!*/ loopImpls = new List<Implementation/*!*/>();
       Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
       foreach (Declaration d in this.TopLevelDeclarations) {
         Implementation impl = d as Implementation;
         if (impl != null && impl.Blocks != null && impl.Blocks.Count > 0) {
-          impl.PruneUnreachableBlocks();
-          Graph<Block/*!*/>/*!*/ g = GraphFromImpl(impl);
-          g.ComputeLoops();
-          if (!g.Reducible) {
-            throw new Exception("Irreducible flow graphs are unsupported.");
+          try {
+            Graph<Block> g = ProcessLoops(impl);
+            CreateProceduresForLoops(impl, g, loopImpls, fullMap);
           }
-          CreateProceduresForLoops(impl, g, loopImpls, fullMap);
+          catch (IrreducibleLoopException e) {
+            System.Diagnostics.Debug.Assert(!fullMap.ContainsKey(impl.Name));
+            fullMap[impl.Name] = null;
+          }
         }
       }
       foreach (Implementation/*!*/ loopImpl in loopImpls) {
@@ -2697,7 +2747,7 @@ namespace Microsoft.Boogie {
     /// </summary>
     override public void ComputeStronglyConnectedComponents() {
       if (!this.BlockPredecessorsComputed)
-        ComputedPredecessorsForBlocks();
+        ComputePredecessorsForBlocks();
 
       Adjacency<Block/*!*/> next = new Adjacency<Block/*!*/>(Successors);
       Adjacency<Block/*!*/> prev = new Adjacency<Block/*!*/>(Predecessors);
@@ -2759,7 +2809,10 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Compute the predecessor informations for the blocks
     /// </summary>
-    private void ComputedPredecessorsForBlocks() {
+    public void ComputePredecessorsForBlocks() {
+      foreach (Block b in this.Blocks) {
+        b.Predecessors = new BlockSeq();
+      }
       foreach (Block b in this.Blocks) {
         GotoCmd gtc = b.TransferCmd as GotoCmd;
         if (gtc != null) {

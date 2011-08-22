@@ -984,29 +984,7 @@ namespace VC {
       #endregion
     }
 
-    /// <summary>
-    /// Helperfunction to restore the predecessor relations after loop unrolling
-    /// </summary>
-    protected void ComputePredecessors(List<Block>/*!>!*/ blocks) {
-      Contract.Requires(cce.NonNullElements(blocks));
-      #region Compute and store the Predecessor Relation on the blocks
-      // This code just here to try things out.
-      // Compute the predecessor relation for each block
-      // Store it in the Predecessors field within each block
-      foreach (Block b in blocks) {
-        GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null) {
-          Contract.Assume(gtc.labelTargets != null);
-          foreach (Block dest in gtc.labelTargets) {
-            Contract.Assert(dest != null);
-            dest.Predecessors.Add(b);
-          }
-        }
-      }
-      #endregion Compute and store the Predecessor Relation on the blocks
-    }
-
-    protected static void ResetPredecessors(List<Block/*!>!*/> blocks) {
+    protected static void ResetPredecessors(List<Block> blocks) {
       Contract.Requires(blocks != null);
       foreach (Block b in blocks) {
         Contract.Assert(b != null);
