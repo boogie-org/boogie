@@ -263,7 +263,7 @@ def main():
 
   try:
     opts, args= getopt.getopt(sys.argv[1:], "c:o:u:", ["controls=","output=","staticUnroll="])
-  except geopt.error, msg:
+  except getopt.error, msg:
     print msg
     showUsage()
     sys.exit(2)

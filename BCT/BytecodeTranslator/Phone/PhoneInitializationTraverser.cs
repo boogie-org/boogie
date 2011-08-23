@@ -33,6 +33,7 @@ namespace BytecodeTranslator.Phone {
     private IAssemblyReference phoneSystemWindowsAssembly;
     private IAssemblyReference MSPhoneControlsAssembly;
     private INamespaceTypeReference appBarIconButtonType;
+    private INamespaceTypeReference appBarMenuItemType;
     private INamespaceTypeReference checkBoxType;
     private INamespaceTypeReference radioButtonType;
     private INamespaceTypeReference buttonType;
@@ -41,6 +42,7 @@ namespace BytecodeTranslator.Phone {
     private INamespaceTypeReference controlType;
     private INamespaceTypeReference uiElementType;
     private INamespaceTypeReference pivotType;
+    private INamespaceTypeReference listBoxType;
 
     private CompileTimeConstant trueConstant;
     private CompileTimeConstant falseConstant;
@@ -67,8 +69,12 @@ namespace BytecodeTranslator.Phone {
         return checkBoxType;
       } else if (classname == "ApplicationBarIconButton") {
         return appBarIconButtonType;
+      } else if (classname == "ApplicationBarMenuItem") {
+        return appBarMenuItemType;
       } else if (classname == "Pivot") {
         return pivotType;
+      } else if (classname == "ListBox") {
+        return listBoxType;
       } else if (classname == "DummyType") {
         // return Dummy.Type;
         return host.PlatformType.SystemObject;
@@ -108,8 +114,10 @@ namespace BytecodeTranslator.Phone {
       // TODO determine the needed types dynamically
       if (phoneAssembly != Dummy.Assembly) {
         appBarIconButtonType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarIconButton");
+        appBarMenuItemType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarMenuItem");
       } else {
         appBarIconButtonType = host.PlatformType.SystemObject;
+        appBarMenuItemType = host.PlatformType.SystemObject;
       }
 
       if (phoneSystemWindowsAssembly != Dummy.Assembly) {
@@ -120,6 +128,7 @@ namespace BytecodeTranslator.Phone {
         toggleButtonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Primitives", "ToggleButton");
         controlType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Control");
         uiElementType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "UIElement");
+        listBoxType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "ListBox");
       } else {
         checkBoxType = host.PlatformType.SystemObject;
         radioButtonType = host.PlatformType.SystemObject;
@@ -128,6 +137,7 @@ namespace BytecodeTranslator.Phone {
         toggleButtonType = host.PlatformType.SystemObject;
         controlType = host.PlatformType.SystemObject;
         uiElementType = host.PlatformType.SystemObject;
+        listBoxType = host.PlatformType.SystemObject;
       }
 
       if (MSPhoneControlsAssembly != Dummy.Assembly) {
@@ -135,6 +145,8 @@ namespace BytecodeTranslator.Phone {
       } else {
         pivotType = host.PlatformType.SystemObject;
       }
+
+      
 
       trueConstant = new CompileTimeConstant() {
         Type = platform.SystemBoolean,
