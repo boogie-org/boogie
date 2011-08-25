@@ -49,6 +49,7 @@ namespace BytecodeTranslator {
         foreach (var d in this.TranslatedProgram.TopLevelDeclarations) {
           var p = d as Bpl.Procedure;
           if (p != null) {
+            if (Bpl.QKeyValue.FindBoolAttribute(p.Attributes, "extern")) continue;
             this.initiallyDeclaredProcedures.Add(p.Name, new ProcedureInfo(p));
           }
         }

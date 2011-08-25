@@ -503,7 +503,7 @@ namespace BytecodeTranslator {
           rexpr = sink.Heap.Unbox(Bpl.Token.NoToken, ltype, rexpr);
         }
         else {
-          System.Diagnostics.Debug.Assert(ltype == rtype);
+          System.Diagnostics.Debug.Assert(false);
         }
         stmtBuilder.Add(TranslationHelper.BuildAssignCmd(lexpr, rexpr));
       }
