@@ -153,6 +153,8 @@ namespace BytecodeTranslator {
       s = s.Replace('\t', '$');
       s = s.Replace('\r', '$');
       s = s.Replace('\n', '$');
+      s = s.Replace('\b', '$');
+      s = s.Replace('\x1B', '$');
       s = s.Replace('/', '$');
       s = s.Replace('\\', '$');
       s = s.Replace('=', '$');
