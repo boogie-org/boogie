@@ -85,7 +85,6 @@ namespace VC
 
             public bool initialized;
             public int inline_cnt;
-            public List<VCExprVar> privateVars;
             public List<VCExprVar> interfaceExprVars;
             public VCExpr funcExpr;
             public VCExpr falseExpr;
@@ -235,6 +234,246 @@ namespace VC
 
             info.initialized = true;
         }
+
+        // proc name -> k -> interface variables
+        public static Dictionary<string, List<List<VCExprVar>>> interfaceVarCopies;
+        // proc name -> k -> VCExpr
+        Dictionary<string, List<VCExpr>> procVcCopies;
+        // VC for ProcCopyBounding
+        VCExpr procBoundedVC;
+
+        private void CreateProcedureCopies(int K, Program program, FCallHandler calls, StratifiedCheckerInterface checker)
+        {
+            interfaceVarCopies = new Dictionary<string, List<List<VCExprVar>>>();
+            procVcCopies = new Dictionary<string, List<VCExpr>>();
+            procBoundedVC = VCExpressionGenerator.True;
+
+            // Duplicate VCs of each procedure K times 
+            foreach (var info in implName2StratifiedInliningInfo.Values)
+            {
+                Contract.Assert(info != null);
+                CreateProcedureCopy(K, program, info, checker);
+            }
+            
+            // Change the procedure calls in each VC
+            int cnt = FCallHandler.pcbStartingCandidateId;
+
+            // Build a candidate map: proc name -> k -> candidateId
+            calls.procCopy2Id = new Dictionary<Tuple<string, int>, int>();
+
+            foreach (var kvp in procVcCopies)
+            {
+                for (int i = 0; i < kvp.Value.Count; i++)
+                {
+                    calls.procCopy2Id.Add(Tuple.Create(kvp.Key, i), cnt);
+                    cnt++;
+                }
+            }
+
+            foreach (var kvp in procVcCopies)
+            {
+                for (int i = 0; i < kvp.Value.Count; i++)
+                {
+                    var id = calls.procCopy2Id[Tuple.Create(kvp.Key, i)];
+                    calls.setCurrProc(kvp.Key);
+                    calls.currInlineCount = id;
+                    var bm = new BoundingVCMutator(checker.underlyingChecker.VCExprGen, interfaceVarCopies, calls, id);
+                    kvp.Value[i] = bm.Mutate(kvp.Value[i], true);
+                    //checker.AddAxiom(kvp.Value[i]);
+                    procBoundedVC = checker.underlyingChecker.VCExprGen.And(procBoundedVC, kvp.Value[i]);
+                }
+            }
+        }
+
+        // Return i if (prefix::i) is in labels
+        public static int pcbFindLabel(IList<string> labels, string prefix)
+        {
+            foreach (var s in labels)
+            {
+                if (s.StartsWith(prefix))
+                {
+                    return Int32.Parse(s.Substring(prefix.Length));
+                }
+            }
+            Contract.Assert(false);
+            return -1;
+        }
+
+        public class BoundingVCMutator : MutatingVCExprVisitor<bool>
+        {
+            // proc name -> k -> interface variables
+            Dictionary<string, List<List<VCExprVar>>> interfaceVarCopies;
+            FCallHandler calls;
+            int currId;
+
+            public BoundingVCMutator(VCExpressionGenerator gen, Dictionary<string, List<List<VCExprVar>>> interfaceVarCopies,
+                FCallHandler calls, int currId)
+                : base(gen)
+            {
+                Contract.Requires(gen != null);
+                this.interfaceVarCopies = interfaceVarCopies;
+                this.calls = calls;
+                this.currId = currId;
+            }
+
+            protected override VCExpr/*!*/ UpdateModifiedNode(VCExprNAry/*!*/ originalNode,
+                                                          List<VCExpr/*!*/>/*!*/ newSubExprs,
+                                                          bool changed,
+                                                          bool arg)
+            {
+                //Contract.Requires(originalNode != null);Contract.Requires(newSubExprs != null);
+                Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+                VCExpr node;
+                if (changed)
+                    node = Gen.Function(originalNode.Op,
+                                       newSubExprs, originalNode.TypeArguments);
+                else
+                    node = originalNode;
+
+                VCExprLabelOp lop = originalNode.Op as VCExprLabelOp;
+                if (lop == null) return node;
+                if (!(node is VCExprNAry)) return node;
+
+                VCExprNAry retnary = (VCExprNAry)node;
+                Contract.Assert(retnary != null);
+                string prefix = "si_fcall_"; // from Wlp.ssc::Cmd(...)
+                if (lop.label.Substring(1).StartsWith(prefix))
+                {
+
+                    int id = Int32.Parse(lop.label.Substring(prefix.Length + 1));
+                    Hashtable label2absy = calls.getLabel2absy();
+                    Absy cmd = label2absy[id] as Absy;
+
+                    Contract.Assert(cmd != null);
+                    AssumeCmd acmd = cmd as AssumeCmd;
+                    Contract.Assert(acmd != null);
+                    NAryExpr naryExpr = acmd.Expr as NAryExpr;
+                    Contract.Assert(naryExpr != null);
+
+                    string calleeName = naryExpr.Fun.FunctionName;
+
+                    VCExprNAry callExpr = retnary[0] as VCExprNAry;
+                    Contract.Assert(callExpr != null);
+
+                    if (interfaceVarCopies.ContainsKey(calleeName))
+                    {
+                        var op = callExpr.Op as VCExprBoogieFunctionOp;
+                        Contract.Assert(op != null);
+                        Contract.Assert(calleeName == op.Func.Name);
+
+                        // construct a unique id for (callexpr, currId)
+                        var bexp = new BoogieCallExpr(naryExpr, currId);
+                        var uid = 0;
+                        if (calls.pcbBoogieExpr2Id.ContainsKey(bexp)) uid = calls.pcbBoogieExpr2Id[bexp];
+                        else
+                        {
+                            uid = calls.pcbBoogieExpr2Id.Count;
+                            calls.pcbBoogieExpr2Id.Add(bexp, uid);
+                        }
+
+                        // substitute
+                        var K = interfaceVarCopies[op.Func.Name].Count;
+
+                        VCExpr ret = VCExpressionGenerator.False;
+                        for (int k = 0; k < K; k++)
+                        {
+                            var iv = interfaceVarCopies[op.Func.Name][k];
+                            Contract.Assert(op.Arity == iv.Count);
+
+                            VCExpr conj = VCExpressionGenerator.True;
+                            for (int i = 0; i < iv.Count; i++)
+                            {
+                                var c = Gen.Eq(callExpr[i], iv[i]);
+                                conj = Gen.And(conj, c);
+                            }
+                            // label the conjunct
+                            conj = Gen.LabelPos(string.Format("PCB_{0}_{1}", uid, k), conj);
+                            ret = Gen.Or(conj, ret);
+                        }
+
+                        return ret;
+                    }
+                    else if (calleeName.StartsWith(recordProcName))
+                    {
+                        Debug.Assert(callExpr.Length == 1);
+                        Debug.Assert(callExpr[0] != null);
+                        calls.recordExpr2Var[new BoogieCallExpr(naryExpr, currId)] = callExpr[0];
+                        return callExpr;
+                    }
+                    else
+                    {
+                        return callExpr;
+                    }
+                }
+
+                // Else, rename label
+
+                string newLabel = calls.RenameAbsyLabel(lop.label);
+                if (lop.pos)
+                {
+                    node = Gen.LabelPos(newLabel, retnary[0]);
+                }
+                else
+                {
+                    node = Gen.LabelNeg(newLabel, retnary[0]);
+                }
+
+                return node;
+
+            }
+
+        } // end BoundingVCMutator
+
+        private void CreateProcedureCopy(int K, Program program, StratifiedInliningInfo info, StratifiedCheckerInterface checker)
+        {
+            var translator = checker.underlyingChecker.TheoremProver.Context.BoogieExprTranslator;
+            var Gen = checker.underlyingChecker.VCExprGen;
+
+            interfaceVarCopies.Add(info.impl.Name, new List<List<VCExprVar>>());
+            procVcCopies.Add(info.impl.Name, new List<VCExpr>());
+
+            for (int k = 0; k < K; k++)
+            {
+                var expr = info.vcexpr;
+                // Instantiate the interface variables
+                Dictionary<VCExprVar, VCExpr> substForallDict = new Dictionary<VCExprVar, VCExpr>();
+                var ls = new List<VCExprVar>();
+                for (int i = 0; i < info.interfaceExprVars.Count; i++)
+                {
+                    var v = info.interfaceExprVars[i];
+                    string newName = v.Name + "_iv_" + k.ToString() + "_" + newVarCnt.ToString();
+                    newVarCnt++;
+                    var vp = Gen.Variable(newName, v.Type);
+                    substForallDict.Add(v, vp);
+                    ls.Add(vp);
+                }
+                interfaceVarCopies[info.impl.Name].Add(ls);
+                VCExprSubstitution substForall = new VCExprSubstitution(substForallDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
+
+                SubstitutingVCExprVisitor subst = new SubstitutingVCExprVisitor(Gen);
+                Contract.Assert(subst != null);
+                expr = subst.Mutate(expr, substForall);
+
+                // Instantiate and declare the private variables
+                Dictionary<VCExprVar, VCExpr> substExistsDict = new Dictionary<VCExprVar, VCExpr>();
+                foreach (VCExprVar v in info.privateVars)
+                {
+                    Contract.Assert(v != null);
+                    string newName = v.Name + "_pv_" + k.ToString() + "_" + newVarCnt.ToString();
+                    newVarCnt++;
+                    checker.underlyingChecker.TheoremProver.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, v.Type)), false, null);
+                    substExistsDict.Add(v, Gen.Variable(newName, v.Type));
+                }
+                VCExprSubstitution substExists = new VCExprSubstitution(substExistsDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
+
+                subst = new SubstitutingVCExprVisitor(Gen);
+                expr = subst.Mutate(expr, substExists);
+
+                procVcCopies[info.impl.Name].Add(expr);
+            }
+        }
+
 
         public class CoverageGraphManager
         {
@@ -1125,6 +1364,31 @@ namespace VC
             }
         }
 
+        private bool checkIfRecursive(Implementation impl, Program program)
+        {
+            var impls = new List<Implementation>();
+            foreach (var decl in program.TopLevelDeclarations)
+                if (decl is Implementation) impls.Add(decl as Implementation);
+            impls.Add(impl);
+
+            var callGraph = new Graph<string>();
+            callGraph.AddSource(impl.Name);
+
+            foreach (var proc in impls)
+            {
+                foreach (var blk in proc.Blocks)
+                {
+                    foreach (Cmd cmd in blk.Cmds)
+                    {
+                        var ccmd = cmd as CallCmd;
+                        if (ccmd == null) continue;
+                        callGraph.AddEdge(proc.Name, ccmd.callee);
+                    }
+                }
+            }
+
+            return !Graph<string>.Acyclic(callGraph, impl.Name);
+        }
 
         public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback)
         {
@@ -1156,6 +1420,14 @@ namespace VC
                     createVConDemand = false;
                     break;
             }
+
+            if (CommandLineOptions.Clo.ProcedureCopyBound > 0)
+            {
+                // We're using procedure-copy bounding. We need to eagerly generate
+                // VCs of all procedures
+                createVConDemand = false;
+            }
+
             #endregion
 
             // Get the checker
@@ -1253,6 +1525,13 @@ namespace VC
             }
             #endregion
 
+            // Procedure-Copy-Bounding VC
+            if (CommandLineOptions.Clo.ProcedureCopyBound > 0)
+            {
+                if (checkIfRecursive(impl, program)) Console.WriteLine("Program is recursive!");
+                CreateProcedureCopies(CommandLineOptions.Clo.ProcedureCopyBound, program, calls, vState.checker);
+            }
+
             // Under-approx query is only needed if something was inlined since
             // the last time an under-approx query was made
             // TODO: introduce this
@@ -1262,6 +1541,8 @@ namespace VC
             int bound = 1;
 
             int done = 0;
+
+            int iters = 0;
 
             // Process tasks while not done. We're done when:
             //   case 1: (correct) We didn't find a bug (either an over-approx query was valid
@@ -1311,6 +1592,26 @@ namespace VC
 
                     // Stratified Step
                     ret = stratifiedStep(bound, vState);
+                    iters++;
+                    // AL: temp
+                    if (CommandLineOptions.Clo.ProcedureCopyBound > 0)
+                    {
+                        if (ret == Outcome.Errors)
+                        {
+                            done = 2;
+                            continue;
+                        }
+                        else if (ret == Outcome.Correct)
+                        {
+                            done = 1;
+                            continue;
+                        }
+                        else
+                        {
+                            done = 3;
+                            continue;
+                        }
+                    }
 
                     // Sorry, out of luck (time/memory)
                     if (ret == Outcome.Inconclusive || ret == Outcome.OutOfMemory || ret == Outcome.TimedOut)
@@ -1413,6 +1714,11 @@ namespace VC
                 }
             }
 
+            if (CommandLineOptions.Clo.ProcedureCopyBound > 0)
+            {
+                Console.WriteLine("Num iters: {0}", iters);
+                Console.WriteLine("PCB succeeded: {0}", reporter.procBoundingMode);
+            }
             return ret;
         }
 
@@ -1482,6 +1788,66 @@ namespace VC
             }
 
             Contract.Assert(ret == Outcome.Correct);
+
+            if (CommandLineOptions.Clo.ProcedureCopyBound > 0 && calls.currCandidates.Count > 0)
+            {
+                // Connect candidates with Proc-Copy VC
+                reporter.procBoundingMode = true;
+                checker.Push();
+                // TODO: Still block candidates who have reached the recursion bound?
+
+                var Gen = checker.underlyingChecker.VCExprGen;
+                VCExpr connectVC = VCExpressionGenerator.True;
+                foreach (var id in calls.currCandidates)
+                {
+                    var disj = VCExpressionGenerator.False;
+                    var iv_expr = calls.id2Candidate[id];
+                    var bop = iv_expr.Op as VCExprBoogieFunctionOp;
+                    Contract.Assert(bop != null);
+
+                    for (int k = 0; k < CommandLineOptions.Clo.ProcedureCopyBound; k++)
+                    {
+                        Contract.Assert(iv_expr.Arity == interfaceVarCopies[bop.Func.Name][k].Count);
+                        var conj = VCExpressionGenerator.True;
+                        for (int i = 0; i < iv_expr.Arity; i++)
+                        {
+                            var v1 = iv_expr[i];
+                            var v2 = interfaceVarCopies[bop.Func.Name][k][i];
+                            Contract.Assert(v1 != null && v2 != null);
+                            conj = Gen.And(conj, Gen.Eq(v1, v2));
+                        }
+                        // label the conjunct
+                        conj = Gen.LabelPos(string.Format("PCB_CONNECT_{0}_{1}", id, k), conj);
+                        disj = Gen.Or(disj, conj);
+                    }
+                    connectVC = Gen.And(connectVC, Gen.Implies(calls.id2ControlVar[id], disj));
+                }
+                checker.AddAxiom(Gen.And(connectVC, procBoundedVC));
+                ret = checker.CheckVC();
+                
+                checker.Pop();
+
+                if (ret == Outcome.Errors)
+                {
+                    // don't reset reporter.procBoundingMode here
+                    // (for statistics purposes)
+                    return ret;
+                }
+
+                reporter.procBoundingMode = false;
+
+                // AL: temp
+                return ret;
+
+                if (ret != Outcome.Correct && ret != Outcome.Errors)
+                {
+                    // The query ran out of memory or time, that's it,
+                    // we cannot do better. Give up!
+                    return ret;
+                }
+
+                Contract.Assert(ret == Outcome.Correct);
+            }
 
             checker.LogComment(";;;;;;;;;;;; Overapprox mode begin ;;;;;;;;;;");
 
@@ -1815,6 +2181,22 @@ namespace VC
 
             public HashSet<int> forcedCandidates;
 
+            ////////////////////////////
+            // For Proc-Copy-Bounding
+
+            // candidate Ids for PCB VCs starting from this number. This is to ensure
+            // that there is no clash with the usual candidate Ids
+            public static readonly int pcbStartingCandidateId = 1000000;
+
+            // Unique ID for BoogieCallExpr
+            public Dictionary<BoogieCallExpr, int> pcbBoogieExpr2Id;
+
+            // (Proc, copy number) -> candidate
+            public Dictionary<Tuple<string, int>, int> procCopy2Id;
+
+            ////////////////////////////
+
+
             // User info -- to decrease/increase calculation of recursion bound
             public Dictionary<int, int> recursionIncrement;
 
@@ -1869,12 +2251,20 @@ namespace VC
                 argExprMap = new Dictionary<int, VCExpr>();
                 recordExpr2Var = new Dictionary<BoogieCallExpr, VCExpr>();
 
+                pcbBoogieExpr2Id = new Dictionary<BoogieCallExpr, int>();
+                procCopy2Id = new Dictionary<Tuple<string, int>, int>();
+
                 forcedCandidates = new HashSet<int>();
             }
 
             public void Clear()
             {
                 currCandidates = new HashSet<int>();
+            }
+
+            public bool isPCBCandidate(int id)
+            {
+                return (id >= pcbStartingCandidateId);
             }
 
             // Given a candidate "id", let proc(id) be the
@@ -2036,7 +2426,7 @@ namespace VC
                 return Gen.Eq(VCExpressionGenerator.True, id2ControlVar[candidateId]);
             }
 
-            private Hashtable/*<int,absy>*/ getLabel2absy()
+            public Hashtable/*<int,absy>*/ getLabel2absy()
             {
                 Contract.Ensures(Contract.Result<Hashtable>() != null);
 
@@ -2249,6 +2639,7 @@ namespace VC
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins;
 
             public bool underapproximationMode;
+            public bool procBoundingMode;
             public List<int>/*!*/ candidatesToExpand;
 
             [ContractInvariantMethod]
@@ -2282,6 +2673,7 @@ namespace VC
                 this.program = program;
                 this.mainImpl = mainImpl;
                 this.underapproximationMode = false;
+                this.procBoundingMode = false;
                 this.calls = null;
                 this.candidatesToExpand = new List<int>();
                 this.gotoCmdOrigins = gotoCmdOrigins;
@@ -2485,18 +2877,54 @@ namespace VC
                             continue;
 
                         Contract.Assert(calls != null);
-                        int calleeId = calls.boogieExpr2Id[new BoogieCallExpr(naryExpr, candidateId)];
-                        if (calls.currCandidates.Contains(calleeId))
+
+                        if (calls.isPCBCandidate(candidateId))
                         {
-                            candidatesToExpand.Add(calleeId);
+                            Contract.Assert(procBoundingMode);
+                            // We're already inside PCB VCs. The lookup for procedure calls
+                            // is different here
+                            var uid = calls.pcbBoogieExpr2Id[new BoogieCallExpr(naryExpr, candidateId)];
+                            var pcopy = pcbFindLabel(labels, string.Format("PCB_{0}_", uid));
+                            var actualId = calls.procCopy2Id[Tuple.Create(calleeName, pcopy)];
+
+                            calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
+                                new CalleeCounterexampleInfo(
+                                    cce.NonNull(GenerateTrace(labels, errModel, mvInfo, actualId, implName2StratifiedInliningInfo[calleeName].impl)),
+                                    new List<Model.Element>());
+
                         }
                         else
                         {
+                            int calleeId = calls.boogieExpr2Id[new BoogieCallExpr(naryExpr, candidateId)];
 
-                          calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
-                              new CalleeCounterexampleInfo(
-                                  cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
-                                  new List<Model.Element>());
+                            if (calls.currCandidates.Contains(calleeId))
+                            {
+                                if (procBoundingMode)
+                                {
+                                    // Entering PCB VCs
+                                    var pcopy = pcbFindLabel(labels, string.Format("PCB_CONNECT_{0}_", calleeId));
+                                    Contract.Assert(pcopy >= 0 && pcopy < CommandLineOptions.Clo.ProcedureCopyBound);
+                                    var actualId = calls.procCopy2Id[Tuple.Create(calleeName, pcopy)];
+
+                                    calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
+                                        new CalleeCounterexampleInfo(
+                                            cce.NonNull(GenerateTrace(labels, errModel, mvInfo, actualId, implName2StratifiedInliningInfo[calleeName].impl)),
+                                            new List<Model.Element>());
+
+                                }
+                                else
+                                {
+                                    candidatesToExpand.Add(calleeId);
+                                }
+                            }
+                            else
+                            {
+
+                                calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
+                                    new CalleeCounterexampleInfo(
+                                        cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
+                                        new List<Model.Element>());
+                            }
                         }
                     }
 
