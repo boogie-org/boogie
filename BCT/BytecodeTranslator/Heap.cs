@@ -74,7 +74,7 @@ namespace BytecodeTranslator {
       Bpl.IToken tok = field.Token();
       Bpl.Type t = this.sink.CciTypeToBoogie(field.Type.ResolvedType);
 
-      if (field.IsStatic) {
+      if (field.ResolvedField.IsStatic) {
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.GlobalVariable(tok, tident);
       }
@@ -212,7 +212,7 @@ namespace BytecodeTranslator {
       fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
       Bpl.IToken tok = field.Token();
 
-      if (field.IsStatic) {
+      if (field.ResolvedField.IsStatic) {
         Bpl.Type t = this.sink.CciTypeToBoogie(field.Type.ResolvedType);
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.GlobalVariable(tok, tident);
