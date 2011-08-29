@@ -147,6 +147,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Inspector.cs" />
     <Compile Include="SMTLibProverOptions.cs" />
     <Compile Include="ProverInterface.cs" />
     <Compile Include="SExpr.cs" />
@@ -177,6 +178,10 @@
     <ProjectReference Include="..\..\Model\Model.csproj">
       <Project>{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}</Project>
       <Name>Model</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\ParserHelper\ParserHelper.csproj">
+      <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
+      <Name>ParserHelper</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\VCExpr\VCExpr.csproj">
       <Project>{56FFDBCA-7D14-43B8-A6CA-22A20E417EE1}</Project>

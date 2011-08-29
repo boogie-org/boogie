@@ -157,6 +157,9 @@ namespace Microsoft.Boogie.SMTLib
         options.AddSolverArgument("/T:" + (options.TimeLimit + 1000) / 1000);
       }
 
+      if (options.Inspector != null)
+        options.AddWeakSmtOption("PROGRESS_SAMPLING_FREQ", "200");
+
       // legacy option handling
       if (!CommandLineOptions.Clo.z3AtFlag)
         options.MultiTraces = true;
