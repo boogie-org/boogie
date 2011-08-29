@@ -239,6 +239,8 @@ namespace VC
         public static Dictionary<string, List<List<VCExprVar>>> interfaceVarCopies;
         // proc name -> k -> VCExpr
         Dictionary<string, List<VCExpr>> procVcCopies;
+        // proc name -> k -> CallSite Boolean constant
+        Dictionary<string, List<VCExprVar>> callSiteConstant;
         // VC for ProcCopyBounding
         VCExpr procBoundedVC;
 
@@ -246,6 +248,7 @@ namespace VC
         {
             interfaceVarCopies = new Dictionary<string, List<List<VCExprVar>>>();
             procVcCopies = new Dictionary<string, List<VCExpr>>();
+            callSiteConstant = new Dictionary<string, List<VCExprVar>>();
             procBoundedVC = VCExpressionGenerator.True;
 
             // Duplicate VCs of each procedure K times 
@@ -277,7 +280,7 @@ namespace VC
                     var id = calls.procCopy2Id[Tuple.Create(kvp.Key, i)];
                     calls.setCurrProc(kvp.Key);
                     calls.currInlineCount = id;
-                    var bm = new BoundingVCMutator(checker.underlyingChecker.VCExprGen, interfaceVarCopies, calls, id);
+                    var bm = new BoundingVCMutator(checker.underlyingChecker.VCExprGen, interfaceVarCopies, callSiteConstant, calls, id);
                     kvp.Value[i] = bm.Mutate(kvp.Value[i], true);
                     //checker.AddAxiom(kvp.Value[i]);
                     procBoundedVC = checker.underlyingChecker.VCExprGen.And(procBoundedVC, kvp.Value[i]);
@@ -303,15 +306,21 @@ namespace VC
         {
             // proc name -> k -> interface variables
             Dictionary<string, List<List<VCExprVar>>> interfaceVarCopies;
+            // proc name -> k -> CallSite Boolean constant
+            Dictionary<string, List<VCExprVar>> callSiteConstant;
+
             FCallHandler calls;
             int currId;
 
-            public BoundingVCMutator(VCExpressionGenerator gen, Dictionary<string, List<List<VCExprVar>>> interfaceVarCopies,
+            public BoundingVCMutator(VCExpressionGenerator gen, 
+                Dictionary<string, List<List<VCExprVar>>> interfaceVarCopies,
+                Dictionary<string, List<VCExprVar>> callSiteConstant,
                 FCallHandler calls, int currId)
                 : base(gen)
             {
                 Contract.Requires(gen != null);
                 this.interfaceVarCopies = interfaceVarCopies;
+                this.callSiteConstant = callSiteConstant;
                 this.calls = calls;
                 this.currId = currId;
             }
@@ -387,6 +396,9 @@ namespace VC
                                 var c = Gen.Eq(callExpr[i], iv[i]);
                                 conj = Gen.And(conj, c);
                             }
+                            // Add the call-site constant
+                            conj = Gen.And(conj, callSiteConstant[op.Func.Name][k]);
+
                             // label the conjunct
                             conj = Gen.LabelPos(string.Format("PCB_{0}_{1}", uid, k), conj);
                             ret = Gen.Or(conj, ret);
@@ -432,6 +444,7 @@ namespace VC
 
             interfaceVarCopies.Add(info.impl.Name, new List<List<VCExprVar>>());
             procVcCopies.Add(info.impl.Name, new List<VCExpr>());
+            callSiteConstant.Add(info.impl.Name, new List<VCExprVar>());
 
             for (int k = 0; k < K; k++)
             {
@@ -470,6 +483,14 @@ namespace VC
                 subst = new SubstitutingVCExprVisitor(Gen);
                 expr = subst.Mutate(expr, substExists);
 
+                // create a constant for call sites
+                string cscName = "pcb_csc_" + k.ToString() + "_" + newVarCnt.ToString();
+                newVarCnt++;
+                checker.underlyingChecker.TheoremProver.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, cscName, Microsoft.Boogie.Type.Bool)), false, null);
+                var csc = Gen.Variable(cscName, Microsoft.Boogie.Type.Bool);
+                callSiteConstant[info.impl.Name].Add(csc);
+
+                expr = Gen.Implies(csc, expr);
                 procVcCopies[info.impl.Name].Add(expr);
             }
         }
@@ -1816,6 +1837,7 @@ namespace VC
                             Contract.Assert(v1 != null && v2 != null);
                             conj = Gen.And(conj, Gen.Eq(v1, v2));
                         }
+                        conj = Gen.And(conj, callSiteConstant[bop.Func.Name][k]);
                         // label the conjunct
                         conj = Gen.LabelPos(string.Format("PCB_CONNECT_{0}_{1}", id, k), conj);
                         disj = Gen.Or(disj, conj);

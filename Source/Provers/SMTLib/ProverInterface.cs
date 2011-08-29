@@ -76,7 +76,10 @@ namespace Microsoft.Boogie.SMTLib
       this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions)options, Namer);
 
       if (this.options.UseZ3) {
-        var psi = SMTLibProcess.ComputerProcessStartInfo(Z3.ExecutablePath(), "AUTO_CONFIG=false -smt2 -in");
+        var path = this.options.ProverPath;
+        if (path == null)
+          path = Z3.ExecutablePath();
+        var psi = SMTLibProcess.ComputerProcessStartInfo(path, "AUTO_CONFIG=false -smt2 -in");
         Process = new SMTLibProcess(psi, this.options);
         Process.ErrorHandler += this.HandleProverError;
       }
@@ -238,8 +241,12 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC(vcString);
       FlushLogFile();
 
-      if (Process != null)
+      if (Process != null) {
         Process.PingPong(); // flush any errors
+
+        if (Process.Inspector != null)
+          Process.Inspector.NewProblem(descriptiveName, vc, handler);
+      }
 
       SendThisVC("(check-sat)");
       FlushLogFile();

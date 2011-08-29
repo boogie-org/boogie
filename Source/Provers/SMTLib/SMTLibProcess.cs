@@ -18,6 +18,7 @@ namespace Microsoft.Boogie.SMTLib
   public class SMTLibProcess
   {
     readonly Process prover;
+    readonly Inspector inspector;
     readonly SMTLibProverOptions options;
     readonly Queue<string> proverOutput = new Queue<string>();
     readonly Queue<string> proverErrors = new Queue<string>();
@@ -39,6 +40,10 @@ namespace Microsoft.Boogie.SMTLib
     public SMTLibProcess(ProcessStartInfo psi, SMTLibProverOptions options)
     {
       this.options = options;
+
+      if (options.Inspector != null) {
+        this.inspector = new Inspector(options);
+      }
 
       foreach (var arg in options.SolverArguments)
         psi.Arguments += " " + arg;
@@ -108,6 +113,11 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    internal Inspector Inspector
+    {
+      get { return inspector; }
+    }
+
     public SExpr GetProverResponse()
     {
       toProver.Flush();
@@ -123,8 +133,28 @@ namespace Microsoft.Boogie.SMTLib
             ErrorHandler(resp.Arguments[0].Name);
           else
             ErrorHandler(resp.ToString());
-        } else
+        } else if (resp.Name == "progress") {
+          if (inspector != null) {
+            var sb = new StringBuilder();
+            foreach (var a in resp.Arguments) {
+              if (a.Name == "labels") {
+                sb.Append("STATS LABELS");
+                foreach (var x in a.Arguments)
+                  sb.Append(" ").Append(x.Name);
+              } else if (a.Name.StartsWith(":")) {
+                sb.Append("STATS NAMED_VALUES ").Append(a.Name);
+                foreach (var x in a.Arguments)
+                  sb.Append(" ").Append(x.Name);
+              } else {
+                continue;
+              }
+              inspector.StatsLine(sb.ToString());
+              sb.Clear();
+            }
+          }
+        } else {
           return resp;
+        }
       }
     }
 
