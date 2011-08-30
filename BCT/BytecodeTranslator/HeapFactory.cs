@@ -81,6 +81,22 @@ namespace BytecodeTranslator {
     public Bpl.TypeCtorDecl DelegateTypeDecl = null;
     public Bpl.CtorType DelegateType;
 
+    [RepresentationFor("DelegateMultiset", "type DelegateMultiset = [Delegate]int;")]
+    public Bpl.TypeSynonymDecl DelegateMultisetTypeDecl = null;
+    public Bpl.TypeSynonymAnnotation DelegateMultisetType;
+
+    [RepresentationFor("MultisetEmpty", "const unique MultisetEmpty: DelegateMultiset;")]
+    public Bpl.Constant MultisetEmpty = null;
+
+    [RepresentationFor("MultisetSingleton", "function MultisetSingleton(Delegate): DelegateMultiset;")]
+    public Bpl.Function MultisetSingleton = null;
+
+    [RepresentationFor("MultisetPlus", "function MultisetPlus(DelegateMultiset, DelegateMultiset): DelegateMultiset;")]
+    public  Bpl.Function MultisetPlus = null;
+
+    [RepresentationFor("MultisetMinus", "function MultisetMinus(DelegateMultiset, DelegateMultiset): DelegateMultiset;")]
+    public Bpl.Function MultisetMinus = null;
+
     [RepresentationFor("Field", "type Field;")]
     public Bpl.TypeCtorDecl FieldTypeDecl = null;
     public Bpl.CtorType FieldType;
@@ -390,109 +406,61 @@ axiom (forall m: int, o: Ref, t: Type :: {$DelegateCons(m, o, t)} $DelegateMetho
 axiom (forall m: int, o: Ref, t: Type :: {$DelegateCons(m, o, t)} $DelegateReceiver($DelegateCons(m, o, t)) == o);
 axiom (forall m: int, o: Ref, t: Type :: {$DelegateCons(m, o, t)} $DelegateTypeParameters($DelegateCons(m, o, t)) == t);
 
-procedure DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
+axiom (forall d: Delegate :: { MultisetEmpty[d] } MultisetEmpty[d] == 0);
+axiom (forall x: Delegate :: { MultisetSingleton(x) } MultisetSingleton(x)[x] == 1);
+axiom (forall x: Delegate, d: Delegate :: {MultisetSingleton(x)[d]} MultisetSingleton(x)[d] == (if (x == d) then 1 else 0));
+axiom (forall a: DelegateMultiset, b: DelegateMultiset, d: Delegate :: {MultisetPlus(a, b)[d]} MultisetPlus(a, b)[d] == a[d] + b[d]);
+axiom (forall a: DelegateMultiset, b: DelegateMultiset, d: Delegate :: {MultisetMinus(a, b)[d]} MultisetMinus(a, b)[d] == (if (a[d] > b[d]) then (a[d] - b[d]) else 0));
+
+axiom (forall a: DelegateMultiset, d: Delegate :: { MultisetPlus(a, MultisetSingleton(d)) } MultisetPlus(a, MultisetSingleton(d))[d] == a[d] + 1);
+axiom (forall a: DelegateMultiset, d: Delegate :: { MultisetMinus(a, MultisetSingleton(d)) } MultisetMinus(a, MultisetSingleton(d))[d] == (if (a[d] > 0) then (a[d] - 1) else 0));
+
+procedure {:inline 1} DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
 {
   var d: Delegate;
 
-  if (a == null) {
-    c := b;
-    return;
-  } else if (b == null) {
-    c := a;
-    return;
-  }
-
-  call d := GetFirstElement(b);
-  
-  call c := Alloc();
-  $Head[c] := $Head[a];
-  $Next[c] := $Next[a];
-  $Delegate[c] := $Delegate[a];
-  call c := DelegateAddHelper(c, d);
+    if (a == null)
+    {
+        c := b;
+    }
+    else if (b == null)
+    {
+        c := a;
+    }
+    else 
+    {
+        call c := Alloc();
+        assume $Delegate(c) == MultisetPlus($Delegate(a), $Delegate(b));
+    }
 }
 
-procedure DelegateRemove(a: Ref, b: Ref) returns (c: Ref)
+procedure {:inline 1} DelegateRemove(a: Ref, b: Ref) returns (c: Ref)
 {
   var d: Delegate;
 
-  if (a == null) {
-    c := null;
-    return;
-  } else if (b == null) {
-    c := a;
-    return;
-  }
-
-  call d := GetFirstElement(b);
-
-  call c := Alloc();
-  $Head[c] := $Head[a];
-  $Next[c] := $Next[a];
-  $Delegate[c] := $Delegate[a];
-  call c := DelegateRemoveHelper(c, d);
-}
-
-procedure GetFirstElement(i: Ref) returns (d: Delegate)
-{
-  var first: Ref;
-  first := $Next[i][$Head[i]];
-  d := $Delegate[i][first];
-}
-
-procedure DelegateAddHelper(oldi: Ref, d: Delegate) returns (i: Ref)
-{
-  var x: Ref;
-  var h: Ref;
-
-  if (oldi == null) {
-    call i := Alloc();
-    call x := Alloc();
-    $Head[i] := x;
-    $Next[i] := $Next[i][x := x]; 
-  } else {
-    i := oldi;
-  }
-
-  h := $Head[i];
-  $Delegate[i] := $Delegate[i][h := d];
-  
-  call x := Alloc();
-  $Next[i] := $Next[i][x := $Next[i][h]];
-  $Next[i] := $Next[i][h := x];
-  $Head[i] := x;
-}
-
-procedure DelegateRemoveHelper(oldi: Ref, d: Delegate) returns (i: Ref)
-{
-  var prev: Ref;
-  var iter: Ref;
-  var niter: Ref;
-
-  i := oldi;
-  if (i == null) {
-    return;
-  }
-
-  prev := null;
-  iter := $Head[i];
-  while (true) {
-    niter := $Next[i][iter];
-    if (niter == $Head[i]) {
-      break;
+    if (a == null)
+    {
+        c := null;
     }
-    if ($Delegate[i][niter] == d) {
-      prev := iter;
+    else if (b == null)
+    {
+        c := a;
+    } 
+    else if (MultisetMinus($Delegate(a), $Delegate(b)) == MultisetEmpty)
+    {
+        c := null;
     }
-    iter := niter;
-  }
-  if (prev == null) {
-    return;
-  }
+    else 
+    {
+        call c := Alloc();
+        assume $Delegate(c) == MultisetMinus($Delegate(a), $Delegate(b));
+    }
+}
 
-  $Next[i] := $Next[i][prev := $Next[i][$Next[i][prev]]];
-  if ($Next[i][$Head[i]] == $Head[i]) {
-    i := null;
-  }
+procedure {:inline 1} DelegateCreate(d: Delegate) returns (c: Ref)
+{
+    call c := Alloc();
+    assume $Delegate(c) == MultisetSingleton(d);
 }
 
 procedure {:inline 1} System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
@@ -542,14 +510,8 @@ implementation System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($th
 
 ";
 
-    [RepresentationFor("$Head", "var $Head: [Ref]Ref;")]
-    public Bpl.GlobalVariable DelegateHead = null;
-
-    [RepresentationFor("$Next", "var $Next: [Ref][Ref]Ref;")]
-    public Bpl.GlobalVariable DelegateNext = null;
-
-    [RepresentationFor("$Delegate", "var $Delegate: [Ref][Ref]Delegate;")]
-    public Bpl.GlobalVariable Delegate = null;
+    [RepresentationFor("$Delegate", "function $Delegate(Ref): DelegateMultiset;")]
+    public Bpl.Function Delegate = null;
 
     [RepresentationFor("$DelegateCons", "function $DelegateCons(int, Ref, Type): Delegate;")]
     public Bpl.Function DelegateCons = null;

@@ -522,6 +522,7 @@ namespace BytecodeTranslator {
       try {
         IMethodDefinition unspecializedInvokeMethod = Sink.Unspecialize(invokeMethod).ResolvedMethod;
         Bpl.Procedure invokeProcedure = (Bpl.Procedure) sink.FindOrCreateProcedure(unspecializedInvokeMethod).Decl;
+        invokeProcedure.AddAttribute("inline", Bpl.Expr.Literal(1));
         var invars = invokeProcedure.InParams;
         var outvars = invokeProcedure.OutParams;
 
@@ -553,6 +554,7 @@ namespace BytecodeTranslator {
             new Bpl.RequiresSeq(),
             new Bpl.IdentifierExprSeq(),
             new Bpl.EnsuresSeq());
+        dispatchProcedure.AddAttribute("inline", Bpl.Expr.Literal(1));
         sink.TranslatedProgram.TopLevelDeclarations.Add(dispatchProcedure);
 
         Bpl.LocalVariable method = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "method", Bpl.Type.Int));
@@ -641,17 +643,19 @@ namespace BytecodeTranslator {
         dispatchImpl.Proc = dispatchProcedure;
         sink.TranslatedProgram.TopLevelDeclarations.Add(dispatchImpl);
 
-        Bpl.LocalVariable iter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "iter", sink.Heap.RefType));
-        Bpl.LocalVariable niter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "niter", sink.Heap.RefType));
+        Bpl.LocalVariable iter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "iter", sink.Heap.DelegateMultisetType));
+        Bpl.LocalVariable d = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "d", sink.Heap.DelegateType));
+        Bpl.LocalVariable all = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "all", sink.Heap.DelegateMultisetType));
 
         Bpl.StmtListBuilder implStmtBuilder = new Bpl.StmtListBuilder();
-        implStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(iter), sink.ReadHead(Bpl.Expr.Ident(invars[0]))));
+        implStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(all), sink.ReadDelegate(Bpl.Expr.Ident(invars[0]))));
+        implStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(iter), Bpl.Expr.Ident(sink.Heap.MultisetEmpty)));
 
         Bpl.StmtListBuilder whileStmtBuilder = new Bpl.StmtListBuilder();
-        whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(niter), sink.ReadNext(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(iter))));
-        whileStmtBuilder.Add(BuildReturnCmd(Bpl.Expr.Eq(Bpl.Expr.Ident(niter), sink.ReadHead(Bpl.Expr.Ident(invars[0])))));
+        whileStmtBuilder.Add(BuildReturnCmd(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, Bpl.Expr.Ident(iter), Bpl.Expr.Ident(all))));
+        whileStmtBuilder.Add(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Gt, Bpl.Expr.Select(new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(sink.Heap.MultisetMinus), new Bpl.ExprSeq(Bpl.Expr.Ident(all), Bpl.Expr.Ident(iter))), Bpl.Expr.Ident(d)), new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0)))));
         Bpl.ExprSeq inExprs = new Bpl.ExprSeq();
-        inExprs.Add(sink.ReadDelegate(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(niter)));
+        inExprs.Add(Bpl.Expr.Ident(d));
         for (int i = 1; i < invars.Length; i++) {
           Bpl.Variable f = invars[i];
           inExprs.Add(Bpl.Expr.Ident(f));
@@ -661,7 +665,8 @@ namespace BytecodeTranslator {
           outExprs.Add(Bpl.Expr.Ident(f));
         }
         whileStmtBuilder.Add(new Bpl.CallCmd(token, dispatchProcedure.Name, inExprs, outExprs));
-        whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(iter), Bpl.Expr.Ident(niter)));
+        whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(iter), new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(sink.Heap.MultisetPlus), new Bpl.ExprSeq(Bpl.Expr.Ident(iter), new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(sink.Heap.MultisetSingleton), new Bpl.ExprSeq(Bpl.Expr.Ident(d)))))));
+        whileStmtBuilder.Add(new Bpl.HavocCmd(Bpl.Token.NoToken, new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(d))));
         Bpl.WhileCmd whileCmd = new Bpl.WhileCmd(token, Bpl.Expr.True, new List<Bpl.PredicateCmd>(), whileStmtBuilder.Collect(token));
 
         implStmtBuilder.Add(whileCmd);
@@ -672,7 +677,7 @@ namespace BytecodeTranslator {
                 new Bpl.TypeVariableSeq(),
                 invars,
                 outvars,
-                new Bpl.VariableSeq(iter, niter),
+                new Bpl.VariableSeq(iter, d, all),
                 implStmtBuilder.Collect(token)
                 );
         impl.Proc = invokeProcedure;

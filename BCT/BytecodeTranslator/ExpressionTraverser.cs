@@ -999,9 +999,8 @@ namespace BytecodeTranslator
                          new Bpl.FunctionCall(this.sink.FindOrCreateNaryTypeFunction(typeParameterExprs.Length)),
                          typeParameterExprs);
       this.StmtTraverser.StmtBuilder.Add(
-        new Bpl.CallCmd(cloc, this.sink.DelegateAddHelperName,
-                        new Bpl.ExprSeq(Bpl.Expr.Ident(this.sink.Heap.NullRef), 
-                                        this.sink.CreateDelegate(methodExpr, instanceExpr, typeParameterExpr)), 
+        new Bpl.CallCmd(cloc, this.sink.DelegateCreateName,
+                        new Bpl.ExprSeq(this.sink.CreateDelegate(methodExpr, instanceExpr, typeParameterExpr)), 
                         new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
