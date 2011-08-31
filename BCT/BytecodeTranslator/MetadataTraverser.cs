@@ -369,7 +369,7 @@ namespace BytecodeTranslator {
         procInfo = this.sink.FindOrCreateProcedure(method);
       }
 
-      if (method.IsAbstract) { // we're done, just define the procedure
+      if (method.IsAbstract || method.IsExternal) { // we're done, just define the procedure
         return;
       }
 

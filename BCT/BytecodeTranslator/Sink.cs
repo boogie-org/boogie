@@ -49,6 +49,7 @@ namespace BytecodeTranslator {
         foreach (var d in this.TranslatedProgram.TopLevelDeclarations) {
           var p = d as Bpl.Procedure;
           if (p != null) {
+            if (Bpl.QKeyValue.FindBoolAttribute(p.Attributes, "extern")) continue;
             this.initiallyDeclaredProcedures.Add(p.Name, new ProcedureInfo(p));
           }
         }
@@ -91,20 +92,12 @@ namespace BytecodeTranslator {
     public readonly string StaticFieldFunction = "ClassRepr";
     public readonly string ReferenceTypeName = "Ref";
 
-    public readonly string DelegateAddHelperName = "DelegateAddHelper";
+    public readonly string DelegateCreateName = "DelegateCreate";
     public readonly string DelegateAddName = "DelegateAdd";
     public readonly string DelegateRemoveName = "DelegateRemove";
 
-    public Bpl.Expr ReadHead(Bpl.Expr delegateReference) {
-      return Bpl.Expr.Select(new Bpl.IdentifierExpr(delegateReference.tok, this.heap.DelegateHead), delegateReference);
-    }
-
-    public Bpl.Expr ReadNext(Bpl.Expr delegateReference, Bpl.Expr listNodeReference) {
-      return Bpl.Expr.Select(Bpl.Expr.Select(new Bpl.IdentifierExpr(delegateReference.tok, this.heap.DelegateNext), delegateReference), listNodeReference);
-    }
-
-    public Bpl.Expr ReadDelegate(Bpl.Expr delegateReference, Bpl.Expr listNodeReference) {
-      return Bpl.Expr.Select(Bpl.Expr.Select(new Bpl.IdentifierExpr(delegateReference.tok, this.heap.Delegate), delegateReference), listNodeReference);
+    public Bpl.Expr ReadDelegate(Bpl.Expr delegateReference) {
+      return new Bpl.NAryExpr(delegateReference.tok, new Bpl.FunctionCall(Heap.Delegate), new Bpl.ExprSeq(delegateReference));
     }
 
     public Bpl.Expr ReadMethod(Bpl.Expr delegateExpr) {
