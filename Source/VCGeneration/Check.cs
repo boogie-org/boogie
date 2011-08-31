@@ -134,15 +134,14 @@ namespace Microsoft.Boogie {
         options.LogFilename = logFilePath;
         if (appendLogFile)
           options.AppendLogFile = appendLogFile;
-        options.PostParse();
       }
-
-      options.Parse(CommandLineOptions.Clo.ProverOptions);
 
       if (timeout > 0) {
         options.TimeLimit = timeout * 1000;
       }
       options.BitVectors = this.bitvectors;
+
+      options.Parse(CommandLineOptions.Clo.ProverOptions);
 
       ContextCacheKey key = new ContextCacheKey(prog, this.bitvectors);
       ProverContext ctx;
