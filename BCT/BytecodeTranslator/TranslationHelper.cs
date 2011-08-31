@@ -167,6 +167,8 @@ namespace BytecodeTranslator {
       s = s.Replace(']', '$');
       s = s.Replace('|', '$');
       s = s.Replace('+', '$');
+      s = s.Replace('±', '$');
+      s = s.Replace('√', '$');
       
       s = GetRidOfSurrogateCharacters(s);
       return s;
