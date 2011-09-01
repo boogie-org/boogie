@@ -520,7 +520,12 @@ namespace BytecodeTranslator
           }
         }
 
-        if (resolvedMethod.IsConstructor && resolvedMethod.ContainingTypeDefinition.IsStruct) {
+        var deferringCtorCall = resolvedMethod.IsConstructor && methodCall.ThisArgument is IThisReference;
+        // REVIEW!! Ask Herman: is the above test enough? The following test is used in FindCtorCall.IsDeferringCtor,
+        // but it doesn't work when the type is a struct S because then "this" has a type of "&S".
+          //&& TypeHelper.TypesAreEquivalent(resolvedMethod.ContainingType, methodCall.ThisArgument.Type);
+
+        if (resolvedMethod.IsConstructor && resolvedMethod.ContainingTypeDefinition.IsStruct && !deferringCtorCall) {
           handleStructConstructorCall(methodCall, methodCallToken, inexpr, outvars, thisExpr, proc);
           return;
         }
