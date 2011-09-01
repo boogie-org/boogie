@@ -139,7 +139,21 @@ axiom (forall m: int, o: Ref, t: Type :: { $DelegateCons(m, o, t) } $DelegateRec
 
 axiom (forall m: int, o: Ref, t: Type :: { $DelegateCons(m, o, t) } $DelegateTypeParameters($DelegateCons(m, o, t)) == t);
 
-procedure DelegateAdd(a: Ref, b: Ref) returns (c: Ref);
+axiom (forall d: Delegate :: { MultisetEmpty[d] } MultisetEmpty[d] == 0);
+
+axiom (forall x: Delegate :: { MultisetSingleton(x) } MultisetSingleton(x)[x] == 1);
+
+axiom (forall x: Delegate, d: Delegate :: { MultisetSingleton(x)[d] } MultisetSingleton(x)[d] == (if x == d then 1 else 0));
+
+axiom (forall a: DelegateMultiset, b: DelegateMultiset, d: Delegate :: { MultisetPlus(a, b)[d] } MultisetPlus(a, b)[d] == a[d] + b[d]);
+
+axiom (forall a: DelegateMultiset, b: DelegateMultiset, d: Delegate :: { MultisetMinus(a, b)[d] } MultisetMinus(a, b)[d] == (if a[d] > b[d] then a[d] - b[d] else 0));
+
+axiom (forall a: DelegateMultiset, d: Delegate :: { MultisetPlus(a, MultisetSingleton(d)) } MultisetPlus(a, MultisetSingleton(d))[d] == a[d] + 1);
+
+axiom (forall a: DelegateMultiset, d: Delegate :: { MultisetMinus(a, MultisetSingleton(d)) } MultisetMinus(a, MultisetSingleton(d))[d] == (if a[d] > 0 then a[d] - 1 else 0));
+
+procedure {:inline 1} DelegateAdd(a: Ref, b: Ref) returns (c: Ref);
 
 
 
@@ -150,25 +164,21 @@ implementation DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
     if (a == null)
     {
         c := b;
-        return;
     }
     else if (b == null)
     {
         c := a;
-        return;
     }
-
-    call d := GetFirstElement(b);
-    call c := Alloc();
-    $Head[c] := $Head[a];
-    $Next[c] := $Next[a];
-    $Delegate[c] := $Delegate[a];
-    call c := DelegateAddHelper(c, d);
+    else
+    {
+        call c := Alloc();
+        assume $Delegate(c) == MultisetPlus($Delegate(a), $Delegate(b));
+    }
 }
 
 
 
-procedure DelegateRemove(a: Ref, b: Ref) returns (c: Ref);
+procedure {:inline 1} DelegateRemove(a: Ref, b: Ref) returns (c: Ref);
 
 
 
@@ -179,113 +189,32 @@ implementation DelegateRemove(a: Ref, b: Ref) returns (c: Ref)
     if (a == null)
     {
         c := null;
-        return;
     }
     else if (b == null)
     {
         c := a;
-        return;
     }
-
-    call d := GetFirstElement(b);
-    call c := Alloc();
-    $Head[c] := $Head[a];
-    $Next[c] := $Next[a];
-    $Delegate[c] := $Delegate[a];
-    call c := DelegateRemoveHelper(c, d);
-}
-
-
-
-procedure GetFirstElement(i: Ref) returns (d: Delegate);
-
-
-
-implementation GetFirstElement(i: Ref) returns (d: Delegate)
-{
-  var first: Ref;
-
-    first := $Next[i][$Head[i]];
-    d := $Delegate[i][first];
-}
-
-
-
-procedure DelegateAddHelper(oldi: Ref, d: Delegate) returns (i: Ref);
-
-
-
-implementation DelegateAddHelper(oldi: Ref, d: Delegate) returns (i: Ref)
-{
-  var x: Ref;
-  var h: Ref;
-
-    if (oldi == null)
+    else if (MultisetMinus($Delegate(a), $Delegate(b)) == MultisetEmpty)
     {
-        call i := Alloc();
-        call x := Alloc();
-        $Head[i] := x;
-        $Next[i] := $Next[i][x := x];
+        c := null;
     }
     else
     {
-        i := oldi;
+        call c := Alloc();
+        assume $Delegate(c) == MultisetMinus($Delegate(a), $Delegate(b));
     }
-
-    h := $Head[i];
-    $Delegate[i] := $Delegate[i][h := d];
-    call x := Alloc();
-    $Next[i] := $Next[i][x := $Next[i][h]];
-    $Next[i] := $Next[i][h := x];
-    $Head[i] := x;
 }
 
 
 
-procedure DelegateRemoveHelper(oldi: Ref, d: Delegate) returns (i: Ref);
+procedure {:inline 1} DelegateCreate(d: Delegate) returns (c: Ref);
 
 
 
-implementation DelegateRemoveHelper(oldi: Ref, d: Delegate) returns (i: Ref)
+implementation DelegateCreate(d: Delegate) returns (c: Ref)
 {
-  var prev: Ref;
-  var iter: Ref;
-  var niter: Ref;
-
-    i := oldi;
-    if (i == null)
-    {
-        return;
-    }
-
-    prev := null;
-    iter := $Head[i];
-    while (true)
-    {
-        niter := $Next[i][iter];
-        if (niter == $Head[i])
-        {
-            break;
-        }
-
-        if ($Delegate[i][niter] == d)
-        {
-            prev := iter;
-        }
-
-        iter := niter;
-    }
-
-    if (prev == null)
-    {
-        return;
-    }
-
-    $Next[i] := $Next[i][prev := $Next[i][$Next[i][prev]]];
-    if ($Next[i][$Head[i]] == $Head[i])
-    {
-        i := null;
-    }
+    call c := Alloc();
+    assume $Delegate(c) == MultisetSingleton(d);
 }
 
 
@@ -381,6 +310,16 @@ function $ArrayLength(Ref) : int;
 
 type Delegate;
 
+type DelegateMultiset = [Delegate]int;
+
+const unique MultisetEmpty: DelegateMultiset;
+
+function MultisetSingleton(Delegate) : DelegateMultiset;
+
+function MultisetPlus(DelegateMultiset, DelegateMultiset) : DelegateMultiset;
+
+function MultisetMinus(DelegateMultiset, DelegateMultiset) : DelegateMultiset;
+
 type Field;
 
 type Box;
@@ -430,6 +369,8 @@ function RealTimes(Real, Real) : Real;
 
 function RealDivide(Real, Real) : Real;
 
+function RealModulus(Real, Real) : Real;
+
 function RealLessThan(Real, Real) : bool;
 
 function RealLessThanOrEqual(Real, Real) : bool;
@@ -462,11 +403,7 @@ function $DirectSubtype(Type, Type) : bool;
 
 function $DisjointSubtree(Type, Type) : bool;
 
-var $Head: [Ref]Ref;
-
-var $Next: [Ref][Ref]Ref;
-
-var $Delegate: [Ref][Ref]Delegate;
+function $Delegate(Ref) : DelegateMultiset;
 
 function $DelegateCons(int, Ref, Type) : Delegate;
 
@@ -694,7 +631,7 @@ procedure RegressionTestInput.CreateStruct.Create($this: Ref) returns ($result: 
 
 
 
-procedure RegressionTestInput.S298.#default_ctor(this: Ref);
+procedure RegressionTestInput.S.#default_ctor(this: Ref);
 
 
 
@@ -716,16 +653,21 @@ var F$RegressionTestInput.S.b: [Ref]bool;
 
 implementation RegressionTestInput.CreateStruct.Create($this: Ref) returns ($result: Ref)
 {
-  var $tmp0: Ref;
   var s: Ref;
+  var $tmp0: Ref;
+  var $tmp1: Ref;
   var $localExc: Ref;
   var $label: int;
 
-    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 141} true;
     call $tmp0 := Alloc();
-    call RegressionTestInput.S298.#default_ctor($tmp0);
+    call RegressionTestInput.S.#default_ctor($tmp0);
     assume $DynamicType($tmp0) == RegressionTestInput.S$type;
     s := $tmp0;
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 141} true;
+    call $tmp1 := Alloc();
+    call RegressionTestInput.S.#default_ctor($tmp1);
+    assume $DynamicType($tmp1) == RegressionTestInput.S$type;
+    s := $tmp1;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 142} true;
     assert F$RegressionTestInput.S.x[s] == 0;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 143} true;
@@ -806,24 +748,24 @@ procedure RegressionTestInput.ClassWithArrayTypes.Main1();
 implementation RegressionTestInput.ClassWithArrayTypes.Main1()
 {
   var s: Ref;
-  var $tmp1: Ref;
+  var $tmp0: Ref;
   var t: Ref;
-  var $tmp2: Ref;
+  var $tmp1: Ref;
   var $localExc: Ref;
   var $label: int;
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 86} true;
-    call $tmp1 := Alloc();
-    assume $ArrayLength($tmp1) == 1 * 5;
-    s := $tmp1;
+    call $tmp0 := Alloc();
+    assume $ArrayLength($tmp0) == 1 * 5;
+    s := $tmp0;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 87} true;
     $ArrayContents := $ArrayContents[s := $ArrayContents[s][0 := Int2Box(2)]];
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 88} true;
     assert Box2Int($ArrayContents[s][0]) == 2;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 90} true;
-    call $tmp2 := Alloc();
-    assume $ArrayLength($tmp2) == 1 * 4;
-    t := $tmp2;
+    call $tmp1 := Alloc();
+    assume $ArrayLength($tmp1) == 1 * 4;
+    t := $tmp1;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 91} true;
     $ArrayContents := $ArrayContents[t := $ArrayContents[t][0 := Int2Box(1)]];
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 92} true;
@@ -842,24 +784,24 @@ procedure RegressionTestInput.ClassWithArrayTypes.Main2();
 
 implementation RegressionTestInput.ClassWithArrayTypes.Main2()
 {
-  var $tmp3: Ref;
+  var $tmp0: Ref;
   var t: Ref;
-  var $tmp4: Ref;
+  var $tmp1: Ref;
   var $localExc: Ref;
   var $label: int;
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 100} true;
-    call $tmp3 := Alloc();
-    assume $ArrayLength($tmp3) == 1 * 5;
-    F$RegressionTestInput.ClassWithArrayTypes.s := $tmp3;
+    call $tmp0 := Alloc();
+    assume $ArrayLength($tmp0) == 1 * 5;
+    F$RegressionTestInput.ClassWithArrayTypes.s := $tmp0;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 101} true;
     $ArrayContents := $ArrayContents[F$RegressionTestInput.ClassWithArrayTypes.s := $ArrayContents[F$RegressionTestInput.ClassWithArrayTypes.s][0 := Int2Box(2)]];
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 102} true;
     assert Box2Int($ArrayContents[F$RegressionTestInput.ClassWithArrayTypes.s][0]) == 2;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 104} true;
-    call $tmp4 := Alloc();
-    assume $ArrayLength($tmp4) == 1 * 4;
-    t := $tmp4;
+    call $tmp1 := Alloc();
+    assume $ArrayLength($tmp1) == 1 * 4;
+    t := $tmp1;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 105} true;
     $ArrayContents := $ArrayContents[t := $ArrayContents[t][0 := Int2Box(1)]];
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 106} true;
@@ -1289,11 +1231,11 @@ implementation RegressionTestInput.NestedGeneric.C.G`1.#ctor$System.Int32($this:
 {
   var x: int;
   var CS$0$0000: Box;
-  var $tmp5: Ref;
+  var $tmp0: Ref;
   var __temp_2: Box;
   var __temp_3: Box;
-  var $tmp6: Box;
-  var $tmp7: Box;
+  var $tmp1: Box;
+  var $tmp2: Box;
   var y: Box;
   var $localExc: Ref;
   var $label: int;
@@ -1308,23 +1250,23 @@ implementation RegressionTestInput.NestedGeneric.C.G`1.#ctor$System.Int32($this:
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 188} true;
     CS$0$0000 := $DefaultBox;
-    call $tmp5 := Alloc();
-    $BoxField[$tmp5] := Box2Box(CS$0$0000);
-    if ($tmp5 != null)
+    call $tmp0 := Alloc();
+    $BoxField[$tmp0] := Box2Box(CS$0$0000);
+    if ($tmp0 != null)
     {
         CS$0$0000 := $DefaultBox;
         __temp_2 := CS$0$0000;
     }
     else
     {
-        call $tmp7 := System.Activator.CreateInstance``1(Child0($DynamicType($this)));
-        $tmp6 := Box2Box($tmp7);
+        call $tmp2 := System.Activator.CreateInstance``1(Child0($DynamicType($this)));
+        $tmp1 := Box2Box($tmp2);
         if ($Exception != null)
         {
             return;
         }
 
-        __temp_3 := $tmp6;
+        __temp_3 := $tmp1;
         __temp_2 := __temp_3;
     }
 
@@ -1364,7 +1306,7 @@ implementation T$RegressionTestInput.NestedGeneric.#cctor()
 
 
 
-implementation {:inline 1} RegressionTestInput.S298.#default_ctor(this: Ref)
+implementation {:inline 1} RegressionTestInput.S.#default_ctor(this: Ref)
 {
 }
 
@@ -1543,18 +1485,18 @@ procedure RegressionTestInput.Class0.NonVoid($this: Ref) returns ($result: int);
 
 implementation RegressionTestInput.Class0.NonVoid($this: Ref) returns ($result: int)
 {
-  var $tmp8: int;
+  var $tmp0: int;
   var $localExc: Ref;
   var $label: int;
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 34} true;
-    call $tmp8 := RegressionTestInput.Class0.StaticMethod$System.Int32(3);
+    call $tmp0 := RegressionTestInput.Class0.StaticMethod$System.Int32(3);
     if ($Exception != null)
     {
         return;
     }
 
-    $result := 3 + F$RegressionTestInput.Class0.StaticInt + $tmp8;
+    $result := 3 + F$RegressionTestInput.Class0.StaticInt + $tmp0;
     return;
 }
 
@@ -1647,19 +1589,19 @@ procedure RegressionTestInput.Class0.CallAsyncMethod$System.Int32($this: Ref, y$
 implementation RegressionTestInput.Class0.CallAsyncMethod$System.Int32($this: Ref, y$in: int) returns ($result: int)
 {
   var y: int;
-  var $tmp9: int;
+  var $tmp0: int;
   var $localExc: Ref;
   var $label: int;
 
     y := y$in;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 60} true;
-    call {:async} $tmp9 := RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32($this, y);
+    call {:async} $tmp0 := RegressionTestInput.Class0.MethodThatRepresentsAnAynchronousMethod$System.Int32($this, y);
     if ($Exception != null)
     {
         return;
     }
 
-    $result := $tmp9;
+    $result := $tmp0;
     return;
 }
 
@@ -1768,12 +1710,12 @@ procedure RegressionTestInput.ClassWithBoolTypes.Main();
 
 implementation RegressionTestInput.ClassWithBoolTypes.Main()
 {
-  var $tmp10: bool;
+  var $tmp0: bool;
   var $localExc: Ref;
   var $label: int;
 
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 78} true;
-    call $tmp10 := RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int32(3, 4);
+    call $tmp0 := RegressionTestInput.ClassWithBoolTypes.M$System.Int32$System.Int32(3, 4);
     if ($Exception != null)
     {
         return;

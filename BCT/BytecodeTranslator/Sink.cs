@@ -18,6 +18,7 @@ using System.Diagnostics.Contracts;
 
 using Bpl = Microsoft.Boogie;
 using BytecodeTranslator.TranslationPlugins;
+using System.IO;
 
 
 namespace BytecodeTranslator {
@@ -217,9 +218,9 @@ namespace BytecodeTranslator {
       MethodParameter mp;
       ProcedureInfo procAndFormalMap;
       var sig = param.ContainingSignature;
-      // BUGBUG: If param's signature is not a method reference, then it doesn't have an interned
-      // key. The declaredMethods table needs to use ISignature for its keys.
-      var key = ((IMethodReference)sig).InternedKey;
+      // BUGBUG: If param's signature is not a method reference, then it can't be used as a key.
+      // The declaredMethods table needs to use ISignature for its keys.
+      var key = ((IMethodReference)sig);
       this.declaredMethods.TryGetValue(key, out procAndFormalMap);
       var formalMap = procAndFormalMap.FormalMap;
       formalMap.TryGetValue(param, out mp);
@@ -233,8 +234,7 @@ namespace BytecodeTranslator {
       var specializedField = field as ISpecializedFieldReference;
       if (specializedField != null)
         field = specializedField.UnspecializedVersion;
-      var key = field.InternedKey;
-      if (!this.declaredFields.TryGetValue(key, out v)) {
+      if (!this.declaredFields.TryGetValue(field, out v)) {
         v = this.Heap.CreateFieldVariable(field);
 
         var isExtern = this.assemblyBeingTranslated != null &&
@@ -244,16 +244,26 @@ namespace BytecodeTranslator {
           v.Attributes = attrib;
         }
 
-        this.declaredFields.Add(key, v);
+        this.declaredFields.Add(field, v);
         this.TranslatedProgram.TopLevelDeclarations.Add(v);
       }
       return v;
     }
 
+    class FieldComparer : IEqualityComparer<IFieldReference> {
+      public bool Equals(IFieldReference x, IFieldReference y) {
+        return x.InternedKey == y.InternedKey;
+      }
+
+      public int GetHashCode(IFieldReference obj) {
+        return (int)obj.InternedKey;
+      }
+    }
+
     /// <summary>
-    /// The keys to the table are the interned key of the field.
+    /// The keys to the table are the fields themselves, but the equality of keys is via their interned keys.
     /// </summary>
-    private Dictionary<uint, Bpl.Variable> declaredFields = new Dictionary<uint, Bpl.Variable>();
+    private Dictionary<IFieldReference, Bpl.Variable> declaredFields = new Dictionary<IFieldReference, Bpl.Variable>(new FieldComparer());
 
     public Bpl.Variable FindOrCreateEventVariable(IEventDefinition e) {
       Bpl.Variable v;
@@ -483,7 +493,7 @@ namespace BytecodeTranslator {
 
     public ProcedureInfo FindOrCreateProcedure(IMethodDefinition method) {
       ProcedureInfo procInfo;
-      var key = method.InternedKey;
+      var key = method;
 
       if (!this.declaredMethods.TryGetValue(key, out procInfo)) {
         string MethodName = TranslationHelper.CreateUniqueMethodName(method);
@@ -692,8 +702,6 @@ namespace BytecodeTranslator {
       var key = structType.InternedKey;
       if (!this.declaredStructDefaultCtors.TryGetValue(key, out procAndFormalMap)) {
         var typename = TranslationHelper.TurnStringIntoValidIdentifier(TypeHelper.GetTypeName(structType));
-        // The type can be generic and then there can be name clashes. So append the key to make it unique.
-        typename += key.ToString();
         var tok = structType.Token();
         var selfType = this.CciTypeToBoogie(structType); //new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
         var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), true);
@@ -1049,12 +1057,24 @@ namespace BytecodeTranslator {
     private Dictionary<uint, Bpl.Function> declaredTypeFunctions = new Dictionary<uint, Bpl.Function>();
     private List<Bpl.Function> childFunctions = new List<Bpl.Function>();
 
+
+    class MethodComparer : IEqualityComparer<IMethodReference> {
+      public bool Equals(IMethodReference x, IMethodReference y) {
+        return x.InternedKey == y.InternedKey;
+      }
+
+      public int GetHashCode(IMethodReference obj) {
+        return (int)obj.InternedKey;
+      }
+    }
+
     /// <summary>
-    /// The keys to the table are the interned keys of the methods.
+    /// The keys to the table are the methods. (Equality on keys is determined by their InternedKey.)
     /// The values are pairs: first element is the procedure,
     /// second element is the formal map for the procedure
     /// </summary>
-    private Dictionary<uint, ProcedureInfo> declaredMethods = new Dictionary<uint, ProcedureInfo>();
+    private Dictionary<IMethodReference, ProcedureInfo> declaredMethods = new Dictionary<IMethodReference, ProcedureInfo>(new MethodComparer());
+
     /// <summary>
     /// The values in this table are the procedures
     /// defined in the program created by the heap in the Sink's ctor.
@@ -1132,6 +1152,7 @@ namespace BytecodeTranslator {
     }
 
     public void BeginMethod(IMethodDefinition method) {
+      TranslationHelper.tmpVarCounter = 0; 
       this.BeginMethod(method.ContainingType);
       this.methodBeingTranslated = method;
       this.cciLabels = new Dictionary<IName, int>();
@@ -1215,5 +1236,22 @@ namespace BytecodeTranslator {
     //  return !this.whiteList;
     //}
 
+
+    internal void CreateIdentifierCorrespondenceTable(string baseFileName) {
+      using (var writer = new StreamWriter(baseFileName + "_names.txt")) {
+        foreach (var pair in this.declaredMethods) {
+          var m = pair.Key;
+          var mName = MemberHelper.GetMethodSignature(m, NameFormattingOptions.DocumentationId);
+          var proc = pair.Value;
+          writer.WriteLine("{0}\t\t\t{1}", mName, proc.Decl.Name);
+        }
+        foreach (var pair in this.declaredFields) {
+          var f = pair.Key;
+          var fName = MemberHelper.GetMemberSignature(f, NameFormattingOptions.DocumentationId);
+          var variable = pair.Value;
+          writer.WriteLine("{0}\t\t\t{1}", fName, variable.Name);
+        }
+      }
+    }
   }
 }

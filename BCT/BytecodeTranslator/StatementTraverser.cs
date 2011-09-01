@@ -289,22 +289,27 @@ namespace BytecodeTranslator
 
     /// <summary>
     /// If the local declaration has an initial value, then generate the
-    /// statement "loc := e" from it. Otherwise ignore it.
+    /// statement "loc := e" from it. 
+    /// Special case: if "loc" is a struct, then treat it as a call to 
+    /// the default ctor.
+    /// Otherwise ignore it.
     /// </summary>
     public override void Visit(ILocalDeclarationStatement localDeclarationStatement) {
       var initVal = localDeclarationStatement.InitialValue;
-      if (initVal == null) return;
+      var typ = localDeclarationStatement.LocalVariable.Type;
+      var isStruct = TranslationHelper.IsStruct(typ);
+      if (initVal == null && !isStruct)
+        return;
       var boogieLocal = this.sink.FindOrCreateLocalVariable(localDeclarationStatement.LocalVariable);
       var boogieLocalExpr = Bpl.Expr.Ident(boogieLocal);
       var tok = localDeclarationStatement.Token();
-      var e = ExpressionFor(initVal);
+      Bpl.Expr e = null;
+      
 
-      var typ = initVal.Type;
-      var structCopy = TranslationHelper.IsStruct(typ) && !(initVal is IDefaultValue);
+      var structCopy = isStruct && initVal != null && !(initVal is IDefaultValue);
       // then a struct value of type S is being assigned: "lhs := s"
       // model this as the statement "call lhs := S..#copy_ctor(s)" that does the bit-wise copying
-      Bpl.DeclWithFormals proc = null;
-      if (structCopy) {
+      if (isStruct) {
         var defaultValue = new DefaultValue() {
           DefaultValueType = typ,
           Locations = new List<ILocation>(localDeclarationStatement.Locations),
@@ -312,9 +317,13 @@ namespace BytecodeTranslator
         };
         var e2 = ExpressionFor(defaultValue);
         StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, boogieLocalExpr, e2));
-        proc = this.sink.FindOrCreateProcedureForStructCopy(typ);
-        StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr> { e, boogieLocalExpr, }, new List<Bpl.IdentifierExpr>()));
+        if (structCopy) {
+          var proc = this.sink.FindOrCreateProcedureForStructCopy(typ);
+          e = ExpressionFor(initVal);
+          StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr> { e, boogieLocalExpr, }, new List<Bpl.IdentifierExpr>()));
+        }
       } else {
+        e = ExpressionFor(initVal);
         StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, boogieLocalExpr, e));
       }
       return;
