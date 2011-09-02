@@ -285,17 +285,13 @@ namespace Microsoft.Boogie {
         return true;
       if (func.Name == "INT_NOT")
         return true;
-      if (func.Name == "MINUS_BOTH_PTR_OR_BOTH_INT")
+      if (func.Name == "INT_MINUS_BOTH_PTR_OR_BOTH_INT")
         return true;
-      if (func.Name == "MINUS_LEFT_PTR")
+      if (func.Name == "INT_MINUS_LEFT_PTR")
         return true;
-      if (func.Name == "PLUS")
+      if (func.Name == "INT_PLUS")
         return true;
-      if (func.Name == "MULT")
-        return true;
-      if (func.Name == "DIV")
-        return true;
-      if (func.Name == "BINARY_BOTH_INT")
+      if (func.Name == "INT_BINARY_BOTH_INT")
         return true;
       return false;
     }
@@ -342,10 +338,6 @@ namespace Microsoft.Boogie {
       if (func.Name == "BV32_MINUS_LEFT_PTR")
         return true;
       if (func.Name == "BV32_PLUS")
-        return true;
-      if (func.Name == "BV32_MULT")
-        return true;
-      if (func.Name == "BV32_DIV")
         return true;
       if (func.Name == "BV32_BINARY_BOTH_INT")
         return true;
@@ -519,17 +511,13 @@ namespace Microsoft.Boogie {
         return "BV32_XOR";
       if (name == "INT_NOT")
         return "BV32_NOT";
-      if (name == "MINUS_BOTH_PTR_OR_BOTH_INT")
+      if (name == "INT_MINUS_BOTH_PTR_OR_BOTH_INT")
         return "BV32_MINUS_BOTH_PTR_OR_BOTH_INT";
-      if (name == "MINUS_LEFT_PTR")
+      if (name == "INT_MINUS_LEFT_PTR")
         return "BV32_MINUS_LEFT_PTR";
-      if (name == "PLUS")
+      if (name == "INT_PLUS")
         return "BV32_PLUS";
-      if (name == "MULT")
-        return "BV32_MULT";
-      if (name == "DIV")
-        return "BV32_DIV";
-      if (name == "BINARY_BOTH_INT")
+      if (name == "INT_BINARY_BOTH_INT")
         return "BV32_BINARY_BOTH_INT";
       System.Diagnostics.Debug.Assert(false);
       return "";
