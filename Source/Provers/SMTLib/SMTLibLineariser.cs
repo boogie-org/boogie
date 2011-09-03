@@ -656,8 +656,7 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      public bool VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options)
-      {
+      public bool VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options) {
         VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)node.Op;
         Contract.Assert(op != null);
         string printedName;
@@ -669,11 +668,78 @@ namespace Microsoft.Boogie.SMTLib
           printedName = ExprLineariser.Namer.GetQuotedName(op.Func, op.Func.Name);
         Contract.Assert(printedName != null);
 
+        printedName = CheckMapApply(printedName, node);
+
         WriteApplication(printedName, node, options);
 
         return true;
       }
 
+      private static string CheckMapApply(string name, VCExprNAry node) {
+        MapType mapType = node.Type as MapType;
+        Contract.Assume(mapType != null);
+        if (name == "MapConst") {
+          StringBuilder sb = new StringBuilder();
+          TypeToStringHelper(node.Type, sb);
+          return "(as const " + sb.ToString() + ")";
+        } 
+        else if (name == "MapAdd") {
+          return "(_ map (+ (Int Int) Int))";
+        }
+        else if (name == "MapSub") {
+          return "(_ map (- (Int Int) Int))";
+        }
+        else if (name == "MapMul") {
+          return "(_ map (* (Int Int) Int))";
+        }
+        else if (name == "MapDiv") {
+          return "(_ map (div (Int Int) Int))";
+        }
+        else if (name == "MapMod") {
+          return "(_ map (mod (Int Int) Int))";
+        }
+        else if (name == "MapEq" || name == "MapIff") {
+          MapType argType = node[0].Type as MapType;
+          Contract.Assume(argType != null);
+          StringBuilder sb = new StringBuilder();
+          TypeToStringHelper(argType.Result, sb);
+          string s = sb.ToString();
+          return "(_ map (= (" + s + " " + s + ") Bool))";
+        }
+        else if (name == "MapGt") {
+          return "(_ map (> (Int Int) Int))";
+        }
+        else if (name == "MapGe") {
+          return "(_ map (>= (Int Int) Int))";
+        }
+        else if (name == "MapLt") {
+          return "(_ map (< (Int Int) Int))";
+        }
+        else if (name == "MapLe") {
+          return "(_ map (<= (Int Int) Int))";
+        }
+        else if (name == "MapOr") {
+          return "(_ map or)";
+        }
+        else if (name == "MapAnd") {
+          return "(_ map and)";
+        }
+        else if (name == "MapNot") {
+          return "(_ map not)";
+        }
+        else if (name == "MapImp") {
+          return "(_ map =>)";
+        }
+        else if (name == "MapIte") {
+          StringBuilder sb = new StringBuilder();
+          TypeToStringHelper(mapType.Result, sb);
+          string s = sb.ToString();
+          return "(_ map (ite (Bool " + s + " " + s + ") " + s + "))";
+        }
+        else {
+          return name;
+        }
+      }
     }
   }
 
