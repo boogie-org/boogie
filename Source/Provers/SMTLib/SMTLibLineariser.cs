@@ -668,19 +668,28 @@ namespace Microsoft.Boogie.SMTLib
           printedName = ExprLineariser.Namer.GetQuotedName(op.Func, op.Func.Name);
         Contract.Assert(printedName != null);
 
-        printedName = CheckMapApply(printedName, node);
+        //printedName = CheckMapApply(printedName, node);
 
         WriteApplication(printedName, node, options);
 
         return true;
       }
 
+      private static Type ResultType(Type type) {
+        MapType mapType = type as MapType;
+        if (mapType != null) {
+          return ResultType(mapType.Result);
+        }
+        else {
+          return type;
+        }
+      }
+
       private static string CheckMapApply(string name, VCExprNAry node) {
-        MapType mapType = node.Type as MapType;
-        Contract.Assume(mapType != null);
         if (name == "MapConst") {
           StringBuilder sb = new StringBuilder();
-          TypeToStringHelper(node.Type, sb);
+          Type type = node.Type;
+          TypeToStringHelper(type, sb);
           return "(as const " + sb.ToString() + ")";
         } 
         else if (name == "MapAdd") {
@@ -698,13 +707,15 @@ namespace Microsoft.Boogie.SMTLib
         else if (name == "MapMod") {
           return "(_ map (mod (Int Int) Int))";
         }
-        else if (name == "MapEq" || name == "MapIff") {
-          MapType argType = node[0].Type as MapType;
-          Contract.Assume(argType != null);
+        else if (name == "MapEq") {
+          Type type = ResultType(node[0].Type);
           StringBuilder sb = new StringBuilder();
-          TypeToStringHelper(argType.Result, sb);
+          TypeToStringHelper(type, sb);
           string s = sb.ToString();
           return "(_ map (= (" + s + " " + s + ") Bool))";
+        }
+        else if (name == "MapIff") {
+          return "(_ map (= (Bool Bool) Bool))";
         }
         else if (name == "MapGt") {
           return "(_ map (> (Int Int) Int))";
@@ -731,8 +742,9 @@ namespace Microsoft.Boogie.SMTLib
           return "(_ map =>)";
         }
         else if (name == "MapIte") {
+          Type type = ResultType(node.Type);
           StringBuilder sb = new StringBuilder();
-          TypeToStringHelper(mapType.Result, sb);
+          TypeToStringHelper(type, sb);
           string s = sb.ToString();
           return "(_ map (ite (Bool " + s + " " + s + ") " + s + "))";
         }
