@@ -102,12 +102,9 @@ namespace Microsoft.Boogie.SMTLib
           MapType m = t.AsMap;
           // Contract.Assert(m.MapArity == 1);
           sb.Append("(Array ");
-          foreach (Type tp in m.Arguments) {
-            TypeToStringHelper(tp, sb);
-            sb.Append(" ");
-          }
-          TypeToStringHelper(m.Result, sb);
-          sb.Append(")");
+          foreach (Type tp in m.Arguments)
+            sb.Append(TypeToString(tp)).Append(" ");
+          sb.Append(TypeToString(m.Result)).Append(")");
         } else if (t.IsMap) {
           MapType m = t.AsMap;
           sb.Append('[');
