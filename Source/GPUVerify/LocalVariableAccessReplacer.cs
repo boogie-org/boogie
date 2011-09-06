@@ -33,16 +33,11 @@ namespace GPUVerify
         {
             if (verifier.GetThreadLocalVariables().Contains(node.Decl))
             {
-                Console.WriteLine("Replacing " + node);
-
                 ExprSeq MapNameAndThreadID = new ExprSeq();
                 MapNameAndThreadID.Add(new IdentifierExpr(node.tok, node.Decl));
                 MapNameAndThreadID.Add(verifier.MakeThreadIdExpr(node.tok));
 
-                Expr result = new NAryExpr(node.tok, new MapSelect(node.tok, 1), MapNameAndThreadID);
-
-                Console.WriteLine("with " + result);
-                return result;
+                return new NAryExpr(node.tok, new MapSelect(node.tok, 1), MapNameAndThreadID);
 
             }
 

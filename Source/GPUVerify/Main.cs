@@ -71,17 +71,9 @@ namespace GPUVerify
 
             verifier.ComputeBarrierToBarrierPairs();
 
-            foreach (Variable V in verifier.GetGlobalVariables())
-            {
-                program.TopLevelDeclarations.Add(new Constant(V.tok, new TypedIdent(V.tok, V.Name + "_base", MakeArrayBaseType(V)), true));
-            }
+            verifier.AddArrayBaseDeclarations();
 
-            foreach (Variable V in verifier.GetTileStaticVariables())
-            {
-                program.TopLevelDeclarations.Add(new Constant(V.tok, new TypedIdent(V.tok, V.Name + "_base", MakeArrayBaseType(V)), true));
-            }
-
-            using (TokenTextWriter writer = new TokenTextWriter("<console>", Console.Out))
+            using (TokenTextWriter writer = (CommandLineOptions.outputFile == null ? new TokenTextWriter("<console>", Console.Out) : new TokenTextWriter(CommandLineOptions.outputFile)))
             {
                 program.Emit(writer);
             }
@@ -106,10 +98,6 @@ namespace GPUVerify
 
         }
 
-        private static CtorType MakeArrayBaseType(Variable V)
-        {
-            return new CtorType(V.tok, new TypeCtorDecl(V.tok, "ArrayBase", 0), new TypeSeq());
-        }
 
 
 

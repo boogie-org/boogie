@@ -181,16 +181,6 @@ namespace GPUVerify
 
             replacer.VisitImplementation(KernelImplementation);
 
-            Console.WriteLine("After replacement we have ");
-
-            using (TokenTextWriter writer = new TokenTextWriter("<console>", Console.Out))
-            {
-                KernelImplementation.Emit(writer, 1);
-            }
-
-            Environment.Exit(1);
-
-
             // Check that each barrier has a positive integer id
             // Check that these ids are all distinct
             foreach (Block B in KernelImplementation.Blocks)
@@ -527,6 +517,13 @@ namespace GPUVerify
 
             String NewProcedureName = "Barrier_" + GetBarrierId(B) + "_to_next_barriers";
             Procedure NewProcedure = new Procedure(KernelProcedure.tok, NewProcedureName, KernelProcedure.TypeParameters, KernelProcedure.InParams, KernelProcedure.OutParams, KernelProcedure.Requires, KernelProcedure.Modifies, KernelProcedure.Ensures);
+
+            NewProcedure.Modifies.Add(MakeBaseVariable(B.tok));
+            NewProcedure.Modifies.Add(MakeOffsetXVariable(B.tok));
+            NewProcedure.Modifies.Add(MakeOffsetYVariable(B.tok));
+            NewProcedure.Modifies.Add(MakeOffsetZVariable(B.tok));
+            NewProcedure.Modifies.Add(MakeIsWriteVariable(B.tok));
+
             Implementation NewImplementation = ConstructBarrierToNextBarriersImplementation(B, NewProcedureName);
 
             InstrumentWithRaceDetection(NewImplementation);
@@ -534,6 +531,47 @@ namespace GPUVerify
             Program.TopLevelDeclarations.Add(NewProcedure);
             Program.TopLevelDeclarations.Add(NewImplementation);
 
+        }
+
+        private static CtorType MakeArrayBaseType(IToken tok)
+        {
+            return new CtorType(tok, new TypeCtorDecl(tok, "ArrayBase", 0), new TypeSeq());
+        }
+
+        private IdentifierExpr MakeBaseVariable(IToken tok)
+        {
+            TypeSeq typeSeq = new TypeSeq();
+            typeSeq.Add(ThreadIdType);
+            return new IdentifierExpr(tok, new GlobalVariable(tok, new TypedIdent(tok, "base", new MapType(tok, new TypeVariableSeq(), typeSeq, MakeArrayBaseType(tok)))));
+        }
+
+        private IdentifierExpr MakeOffsetVariable(IToken tok, string Dimension)
+        {
+            TypeSeq typeSeq = new TypeSeq();
+            typeSeq.Add(ThreadIdType);
+            return new IdentifierExpr(tok, new GlobalVariable(tok, new TypedIdent(tok, "offset_" + Dimension, new MapType(tok, new TypeVariableSeq(), typeSeq, Microsoft.Boogie.Type.Int))));
+        }
+
+        private IdentifierExpr MakeOffsetXVariable(IToken tok)
+        {
+            return MakeOffsetVariable(tok, "x");
+        }
+
+        private IdentifierExpr MakeOffsetYVariable(IToken tok)
+        {
+            return MakeOffsetVariable(tok, "y");
+        }
+
+        private IdentifierExpr MakeOffsetZVariable(IToken tok)
+        {
+            return MakeOffsetVariable(tok, "z");
+        }
+
+        private IdentifierExpr MakeIsWriteVariable(IToken tok)
+        {
+            TypeSeq typeSeq = new TypeSeq();
+            typeSeq.Add(ThreadIdType);
+            return new IdentifierExpr(tok, new GlobalVariable(tok, new TypedIdent(tok, "is_write", new MapType(tok, new TypeVariableSeq(), typeSeq, Microsoft.Boogie.Type.Bool))));
         }
 
         private void InstrumentWithRaceDetection(Implementation Impl)
@@ -839,6 +877,19 @@ namespace GPUVerify
         }
 
 
+
+        internal void AddArrayBaseDeclarations()
+        {
+            foreach (Variable V in GetGlobalVariables())
+            {
+                Program.TopLevelDeclarations.Add(new Constant(V.tok, new TypedIdent(V.tok, V.Name + "_base", MakeArrayBaseType(V.tok)), true));
+            }
+
+            foreach (Variable V in GetTileStaticVariables())
+            {
+                Program.TopLevelDeclarations.Add(new Constant(V.tok, new TypedIdent(V.tok, V.Name + "_base", MakeArrayBaseType(V.tok)), true));
+            }
+        }
     }
 
 }
