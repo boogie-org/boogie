@@ -100,12 +100,11 @@ namespace Microsoft.Boogie.SMTLib
       } else {
         if (t.IsMap && CommandLineOptions.Clo.UseArrayTheory) {
           MapType m = t.AsMap;
-          Contract.Assert(m.MapArity == 1);
+          // Contract.Assert(m.MapArity == 1);
           sb.Append("(Array ");
-          TypeToStringHelper(m.Arguments[0], sb);
-          sb.Append(" ");
-          TypeToStringHelper(m.Result, sb);
-          sb.Append(")");
+          foreach (Type tp in m.Arguments)
+            sb.Append(TypeToString(tp)).Append(" ");
+          sb.Append(TypeToString(m.Result)).Append(")");
         } else if (t.IsMap) {
           MapType m = t.AsMap;
           sb.Append('[');
@@ -668,7 +667,7 @@ namespace Microsoft.Boogie.SMTLib
           printedName = ExprLineariser.Namer.GetQuotedName(op.Func, op.Func.Name);
         Contract.Assert(printedName != null);
 
-        //printedName = CheckMapApply(printedName, node);
+        printedName = CheckMapApply(printedName, node);
 
         WriteApplication(printedName, node, options);
 
@@ -687,10 +686,9 @@ namespace Microsoft.Boogie.SMTLib
 
       private static string CheckMapApply(string name, VCExprNAry node) {
         if (name == "MapConst") {
-          StringBuilder sb = new StringBuilder();
           Type type = node.Type;
-          TypeToStringHelper(type, sb);
-          return "(as const " + sb.ToString() + ")";
+          string s = TypeToString(type);
+          return "(as const " + s + ")";
         } 
         else if (name == "MapAdd") {
           return "(_ map (+ (Int Int) Int))";
@@ -709,9 +707,7 @@ namespace Microsoft.Boogie.SMTLib
         }
         else if (name == "MapEq") {
           Type type = ResultType(node[0].Type);
-          StringBuilder sb = new StringBuilder();
-          TypeToStringHelper(type, sb);
-          string s = sb.ToString();
+          string s = TypeToString(type);
           return "(_ map (= (" + s + " " + s + ") Bool))";
         }
         else if (name == "MapIff") {
@@ -743,9 +739,7 @@ namespace Microsoft.Boogie.SMTLib
         }
         else if (name == "MapIte") {
           Type type = ResultType(node.Type);
-          StringBuilder sb = new StringBuilder();
-          TypeToStringHelper(type, sb);
-          string s = sb.ToString();
+          string s = TypeToString(type);
           return "(_ map (ite (Bool " + s + " " + s + ") " + s + "))";
         }
         else {
