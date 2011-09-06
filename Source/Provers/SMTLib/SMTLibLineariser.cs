@@ -100,10 +100,12 @@ namespace Microsoft.Boogie.SMTLib
       } else {
         if (t.IsMap && CommandLineOptions.Clo.UseArrayTheory) {
           MapType m = t.AsMap;
-          Contract.Assert(m.MapArity == 1);
+          // Contract.Assert(m.MapArity == 1);
           sb.Append("(Array ");
-          TypeToStringHelper(m.Arguments[0], sb);
-          sb.Append(" ");
+          foreach (Type tp in m.Arguments) {
+            TypeToStringHelper(tp, sb);
+            sb.Append(" ");
+          }
           TypeToStringHelper(m.Result, sb);
           sb.Append(")");
         } else if (t.IsMap) {
