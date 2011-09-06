@@ -2003,15 +2003,7 @@ namespace VC
                     substExistsDict.Add(v, checker.VCExprGen.Variable(newName, v.Type));
                 }
                 if (CommandLineOptions.Clo.ModelViewFile != null) {
-                  Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
-                  VCExprVar mvStateConstant = translator.LookupVariable(ModelViewInfo.MVState_ConstantDef);
-                  substExistsDict.Add(mvStateConstant, checker.VCExprGen.Integer(BigNum.FromInt(id)));
-                  Dictionary<VCExprVar, VCExpr> mapping = new Dictionary<VCExprVar, VCExpr>();
-                  foreach (var key in substForallDict.Keys)
-                    mapping[key] = substForallDict[key];
-                  foreach (var key in substExistsDict.Keys)
-                    mapping[key] = substExistsDict[key];
-                  calls.id2Vars[id] = mapping;
+                  SaveSubstitution(vState, id, substForallDict, substExistsDict);
                 }
                 VCExprSubstitution substExists = new VCExprSubstitution(substExistsDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
 
@@ -2093,15 +2085,7 @@ namespace VC
                     substExistsDict.Add(v, checker.VCExprGen.Variable(newName, v.Type));
                 }
                 if (CommandLineOptions.Clo.ModelViewFile != null) {
-                  Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
-                  VCExprVar mvStateConstant = translator.LookupVariable(ModelViewInfo.MVState_ConstantDef);
-                  substExistsDict.Add(mvStateConstant, checker.VCExprGen.Integer(BigNum.FromInt(id)));
-                  Dictionary<VCExprVar, VCExpr> mapping = new Dictionary<VCExprVar, VCExpr>();
-                  foreach (var key in substForallDict.Keys)
-                    mapping[key] = substForallDict[key];
-                  foreach (var key in substExistsDict.Keys)
-                    mapping[key] = substExistsDict[key];
-                  calls.id2Vars[id] = mapping;
+                  SaveSubstitution(vState, id, substForallDict, substExistsDict);
                 }
                 VCExprSubstitution substExists = new VCExprSubstitution(substExistsDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
 
@@ -2127,6 +2111,21 @@ namespace VC
 
             vState.updateMainVC(inliner.Mutate(vState.vcMain, true));
             vState.vcSize = SizeComputingVisitor.ComputeSize(vState.vcMain);
+        }
+
+        private void SaveSubstitution(VerificationState vState, int id, 
+          Dictionary<VCExprVar, VCExpr> substForallDict, Dictionary<VCExprVar, VCExpr> substExistsDict) {
+          var checker = vState.checker.underlyingChecker;
+          var calls = vState.calls;
+          Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
+          VCExprVar mvStateConstant = translator.LookupVariable(ModelViewInfo.MVState_ConstantDef);
+          substExistsDict.Add(mvStateConstant, checker.VCExprGen.Integer(BigNum.FromInt(id)));
+          Dictionary<VCExprVar, VCExpr> mapping = new Dictionary<VCExprVar, VCExpr>();
+          foreach (var key in substForallDict.Keys)
+            mapping[key] = substForallDict[key];
+          foreach (var key in substExistsDict.Keys)
+            mapping[key] = substExistsDict[key];
+          calls.id2Vars[id] = mapping;
         }
 
         // Return the VC for the impl (don't pass it to the theorem prover).
@@ -2761,6 +2760,9 @@ namespace VC
               return elt;
             }
 
+            public readonly static int CALL = -1;
+            public readonly static int RETURN = -2;
+
             public void PrintModel(Model model) {
               var filename = CommandLineOptions.Clo.ModelViewFile;
               if (model == null || filename == null) return;
@@ -2792,6 +2794,8 @@ namespace VC
                 m.InitialState.AddBinding(v.Name, GetModelValue(m, v, 0));
               }
 
+              Stack<int> candidateStack = new Stack<int>();
+              candidateStack.Push(0);
               int lastCandidate = 0;
               int lastCapturePoint = 0;
               for (int i = 0; i < this.orderedStateIds.Count; ++i) {
@@ -2801,11 +2805,17 @@ namespace VC
                 string implName = calls.getProc(candidate);
                 ModelViewInfo info = candidate == 0 ? mvInfo : implName2StratifiedInliningInfo[implName].mvInfo;
 
-                if (candidate != lastCandidate) {
-                  var init = m.MkState("InitialState");
+                if (capturePoint == CALL) {
+                  var init = m.MkState("Entering:" + candidate);
                   foreach (Variable v in info.AllVariables) {
                     init.AddBinding(v.Name, GetModelValue(m, v, candidate));
                   }
+                  candidateStack.Push(candidate);
+                  continue;
+                }
+                if (capturePoint == RETURN) {
+                  candidateStack.Pop();
+                  continue;
                 }
 
                 Contract.Assume(0 <= capturePoint && capturePoint < info.CapturePoints.Count);
@@ -2822,7 +2832,7 @@ namespace VC
                   Model.Element elt;
                   if (e is IdentifierExpr) {
                     IdentifierExpr ide = (IdentifierExpr)e;
-                    elt = GetModelValue(m, ide.Decl, 0);
+                    elt = GetModelValue(m, ide.Decl, candidate);
                   }
                   else if (e is LiteralExpr) {
                     LiteralExpr lit = (LiteralExpr)e;
@@ -3045,42 +3055,42 @@ namespace VC
                             var pcopy = pcbFindLabel(labels, string.Format("PCB_{0}_", uid));
                             var actualId = calls.procCopy2Id[Tuple.Create(calleeName, pcopy)];
 
+                            orderedStateIds.Add(new Tuple<int, int>(actualId, StratifiedInliningErrorReporter.CALL));
                             calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                 new CalleeCounterexampleInfo(
                                     cce.NonNull(GenerateTrace(labels, errModel, mvInfo, actualId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
                                     new List<Model.Element>());
-
+                            orderedStateIds.Add(new Tuple<int, int>(actualId, StratifiedInliningErrorReporter.RETURN));
                         }
                         else
                         {
                             int calleeId = calls.boogieExpr2Id[new BoogieCallExpr(naryExpr, candidateId)];
 
-                            if (calls.currCandidates.Contains(calleeId))
-                            {
-                                if (procBoundingMode)
-                                {
-                                    // Entering PCB VCs
-                                    var pcopy = pcbFindLabel(labels, string.Format("PCB_CONNECT_{0}_", calleeId));
-                                    Contract.Assert(pcopy >= 0 && pcopy < CommandLineOptions.Clo.ProcedureCopyBound);
-                                    var actualId = calls.procCopy2Id[Tuple.Create(calleeName, pcopy)];
+                            if (calls.currCandidates.Contains(calleeId)) {
+                              if (procBoundingMode) {
+                                // Entering PCB VCs
+                                var pcopy = pcbFindLabel(labels, string.Format("PCB_CONNECT_{0}_", calleeId));
+                                Contract.Assert(pcopy >= 0 && pcopy < CommandLineOptions.Clo.ProcedureCopyBound);
+                                var actualId = calls.procCopy2Id[Tuple.Create(calleeName, pcopy)];
 
-                                    calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
-                                        new CalleeCounterexampleInfo(
-                                            cce.NonNull(GenerateTrace(labels, errModel, mvInfo, actualId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
-                                            new List<Model.Element>());
-
-                                }
-                                else
-                                {
-                                    candidatesToExpand.Add(calleeId);
-                                }
-                            }
-                            else
-                            {
+                                orderedStateIds.Add(new Tuple<int, int>(actualId, StratifiedInliningErrorReporter.CALL));
                                 calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                     new CalleeCounterexampleInfo(
-                                        cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
+                                        cce.NonNull(GenerateTrace(labels, errModel, mvInfo, actualId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
                                         new List<Model.Element>());
+                                orderedStateIds.Add(new Tuple<int, int>(actualId, StratifiedInliningErrorReporter.RETURN));
+                              }
+                              else {
+                                candidatesToExpand.Add(calleeId);
+                              }
+                            }
+                            else {
+                              orderedStateIds.Add(new Tuple<int, int>(calleeId, StratifiedInliningErrorReporter.CALL));
+                              calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
+                                  new CalleeCounterexampleInfo(
+                                      cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
+                                      new List<Model.Element>());
+                              orderedStateIds.Add(new Tuple<int, int>(calleeId, StratifiedInliningErrorReporter.RETURN));
                             }
                         }
                     }
