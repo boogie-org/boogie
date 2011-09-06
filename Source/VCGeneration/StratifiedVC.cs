@@ -201,6 +201,7 @@ namespace VC
             VCExpr vcexpr = gen.Not(GenerateVC(impl, null, out label2absy, checker));
             Contract.Assert(vcexpr != null);
             info.label2absy = label2absy;
+            info.mvInfo = mvInfo;
 
             Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
             Contract.Assert(translator != null);
@@ -2001,6 +2002,17 @@ namespace VC
                     checker.TheoremProver.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, v.Type)), false, null);
                     substExistsDict.Add(v, checker.VCExprGen.Variable(newName, v.Type));
                 }
+                if (CommandLineOptions.Clo.ModelViewFile != null) {
+                  Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
+                  VCExprVar mvStateConstant = translator.LookupVariable(ModelViewInfo.MVState_ConstantDef);
+                  substExistsDict.Add(mvStateConstant, checker.VCExprGen.Integer(BigNum.FromInt(id)));
+                  Dictionary<VCExprVar, VCExpr> mapping = new Dictionary<VCExprVar, VCExpr>();
+                  foreach (var key in substForallDict.Keys)
+                    mapping[key] = substForallDict[key];
+                  foreach (var key in substExistsDict.Keys)
+                    mapping[key] = substExistsDict[key];
+                  calls.id2Vars[id] = mapping;
+                }
                 VCExprSubstitution substExists = new VCExprSubstitution(substExistsDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
 
                 subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
@@ -2079,6 +2091,17 @@ namespace VC
                     newVarCnt++;
                     checker.TheoremProver.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, v.Type)), false, null);
                     substExistsDict.Add(v, checker.VCExprGen.Variable(newName, v.Type));
+                }
+                if (CommandLineOptions.Clo.ModelViewFile != null) {
+                  Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
+                  VCExprVar mvStateConstant = translator.LookupVariable(ModelViewInfo.MVState_ConstantDef);
+                  substExistsDict.Add(mvStateConstant, checker.VCExprGen.Integer(BigNum.FromInt(id)));
+                  Dictionary<VCExprVar, VCExpr> mapping = new Dictionary<VCExprVar, VCExpr>();
+                  foreach (var key in substForallDict.Keys)
+                    mapping[key] = substForallDict[key];
+                  foreach (var key in substExistsDict.Keys)
+                    mapping[key] = substExistsDict[key];
+                  calls.id2Vars[id] = mapping;
                 }
                 VCExprSubstitution substExists = new VCExprSubstitution(substExistsDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
 
@@ -2241,6 +2264,8 @@ namespace VC
             static int candidateCount = 1;
             public int currInlineCount;
 
+            public Dictionary<int, Dictionary<VCExprVar, VCExpr>> id2Vars;
+
             public FCallHandler(VCExpressionGenerator/*!*/ gen,
                                   Dictionary<string/*!*/, StratifiedInliningInfo/*!*/>/*!*/ implName2StratifiedInliningInfo,
                                   string mainProcName, Hashtable/*<int, Absy!>*//*!*/ mainLabel2absy)
@@ -2277,6 +2302,8 @@ namespace VC
                 procCopy2Id = new Dictionary<Tuple<string, int>, int>();
 
                 forcedCandidates = new HashSet<int>();
+
+                id2Vars = new Dictionary<int, Dictionary<VCExprVar, VCExpr>>();
             }
 
             public void Clear()
@@ -2707,6 +2734,112 @@ namespace VC
                 this.calls = calls;
             }
 
+            List<Tuple<int, int>> orderedStateIds;
+
+            private Model.Element GetModelValue(Model m, Variable v, int candidateId) {
+              Model.Element elt;
+              // first, get the unique name
+              string uniqueName;
+
+              VCExprVar vvar = context.BoogieExprTranslator.TryLookupVariable(v);
+              if (vvar == null) {
+                uniqueName = v.Name;
+              }
+              else {
+                if (candidateId != 0) {
+                  Dictionary<VCExprVar, VCExpr> mapping = calls.id2Vars[candidateId];
+                  vvar = (VCExprVar) mapping[vvar];
+                }
+                uniqueName = context.Lookup(vvar);
+              }
+
+              var f = m.TryGetFunc(uniqueName);
+              if (f == null) {
+                f = m.MkFunc(uniqueName, 0);
+              }
+              elt = f.GetConstant();
+              return elt;
+            }
+
+            public void PrintModel(Model model) {
+              var filename = CommandLineOptions.Clo.ModelViewFile;
+              if (model == null || filename == null) return;
+
+              GetModelWithStates(model);
+
+              if (filename == "-") {
+                model.Write(Console.Out);
+                Console.Out.Flush();
+              }
+              else {
+                using (var wr = new StreamWriter(filename, !Counterexample.firstModelFile)) {
+                  Counterexample.firstModelFile = false;
+                  model.Write(wr);
+                }
+              }
+            }
+
+            private void GetModelWithStates(Model m) {
+              if (m == null) return;
+
+              var mvstates = m.TryGetFunc("@MV_state");
+              if (mvstates == null)
+                return;
+
+              Contract.Assert(mvstates.Arity == 2);
+
+              foreach (Variable v in mvInfo.AllVariables) {
+                m.InitialState.AddBinding(v.Name, GetModelValue(m, v, 0));
+              }
+
+              int lastCandidate = 0;
+              int lastCapturePoint = 0;
+              for (int i = 0; i < this.orderedStateIds.Count; ++i) {
+                var s = orderedStateIds[i];
+                int candidate = s.Item1;
+                int capturePoint = s.Item2;
+                string implName = calls.getProc(candidate);
+                ModelViewInfo info = candidate == 0 ? mvInfo : implName2StratifiedInliningInfo[implName].mvInfo;
+
+                if (candidate != lastCandidate) {
+                  var init = m.MkState("InitialState");
+                  foreach (Variable v in info.AllVariables) {
+                    init.AddBinding(v.Name, GetModelValue(m, v, candidate));
+                  }
+                }
+
+                Contract.Assume(0 <= capturePoint && capturePoint < info.CapturePoints.Count);
+                VC.ModelViewInfo.Mapping map = info.CapturePoints[capturePoint];
+                var prevInc = (i > 0 && candidate == lastCandidate) ? info.CapturePoints[lastCapturePoint].IncarnationMap : new Hashtable();
+                var cs = m.MkState(map.Description);
+
+                foreach (Variable v in info.AllVariables) {
+                  var e = (Expr)map.IncarnationMap[v];
+                  if (e == null) continue;
+
+                  if (prevInc[v] == e) continue; // skip unchanged variables
+
+                  Model.Element elt;
+                  if (e is IdentifierExpr) {
+                    IdentifierExpr ide = (IdentifierExpr)e;
+                    elt = GetModelValue(m, ide.Decl, 0);
+                  }
+                  else if (e is LiteralExpr) {
+                    LiteralExpr lit = (LiteralExpr)e;
+                    elt = m.MkElement(lit.Val.ToString());
+                  }
+                  else {
+                    elt = m.MkFunc(e.ToString(), 0).GetConstant();
+                  }
+                  cs.AddBinding(v.Name, elt);
+                }
+                lastCandidate = candidate;
+                lastCapturePoint = capturePoint;
+              }
+
+              return;
+            }
+
             public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel)
             {
                 candidatesToExpand = new List<int>();
@@ -2716,9 +2849,13 @@ namespace VC
                 {
                     if (errModel == null)
                         return;
-                    var cex = GenerateTraceMain(labels, errModel.ToModel(), mvInfo);
+                    Model model = errModel.ToModel();
+                    var cex = GenerateTraceMain(labels, model, mvInfo);
                     Debug.Assert(candidatesToExpand.Count == 0);
-                    if(cex != null) callback.OnCounterexample(cex, null);
+                    if (cex != null) {
+                      callback.OnCounterexample(cex, null);
+                      this.PrintModel(model);
+                    }
                     return;
                 }
                 
@@ -2726,19 +2863,6 @@ namespace VC
                 Contract.Assert(errModel != null);
 
                 GenerateTraceMain(labels, errModel.ToModel(), mvInfo);
-
-                /*
-                    foreach (string lab in labels)
-                    {
-                        Contract.Assert(lab != null);
-                        int id = calls.GetId(lab);
-                        if (id < 0)
-                            continue;
-                        if (!calls.currCandidates.Contains(id))
-                            continue;
-                        candidatesToExpand.Add(id);
-                    }
-                */
             }
 
             // Construct the interprocedural trace
@@ -2752,8 +2876,9 @@ namespace VC
                     ErrorReporter.ModelWriter.Flush();
                 }
 
+                orderedStateIds = new List<Tuple<int,int>>();
                 Counterexample newCounterexample =
-                  GenerateTrace(labels, errModel, mvInfo, 0, mainImpl);
+                  GenerateTrace(labels, errModel, mvInfo, 0, orderedStateIds, mainImpl);
 
                 if (newCounterexample == null)
                     return null;
@@ -2780,7 +2905,7 @@ namespace VC
             }
 
             private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo,
-                                                 int candidateId, Implementation procImpl)
+                                                 int candidateId, List<Tuple<int,int>> orderedStateIds, Implementation procImpl)
             {
                 Contract.Requires(errModel != null);
                 Contract.Requires(cce.NonNullElements(labels));
@@ -2819,16 +2944,16 @@ namespace VC
                 Contract.Assert(entryBlock != null);
                 Contract.Assert(traceNodes.Contains(entryBlock));
                 trace.Add(entryBlock);
-
+              
                 var calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
-                Counterexample newCounterexample = GenerateTraceRec(labels, errModel, mvInfo, candidateId, entryBlock, traceNodes, trace, calleeCounterexamples);
+                Counterexample newCounterexample = GenerateTraceRec(labels, errModel, mvInfo, candidateId, orderedStateIds, entryBlock, traceNodes, trace, calleeCounterexamples);
 
                 return newCounterexample;
-
             }
 
             private Counterexample GenerateTraceRec(
-                                  IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo, int candidateId,
+                                  IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo, 
+                                  int candidateId, List<Tuple<int,int>> orderedStateIds,
                                   Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace,
                                   Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples)
             {
@@ -2865,8 +2990,19 @@ namespace VC
                         string calleeName = naryExpr.Fun.FunctionName;
                         Contract.Assert(calleeName != null);
 
-                        if (calleeName.StartsWith(recordProcName))
-                        {
+                        BinaryOperator binOp = naryExpr.Fun as BinaryOperator;
+                        if (binOp != null && binOp.Op == BinaryOperator.Opcode.And) {
+                          Expr expr = naryExpr.Args[0];
+                          NAryExpr mvStateExpr = expr as NAryExpr;
+                          if (mvStateExpr != null && mvStateExpr.Fun.FunctionName == ModelViewInfo.MVState_FunctionDef.Name) {
+                            LiteralExpr x = mvStateExpr.Args[1] as LiteralExpr;
+                            Debug.Assert(x != null);
+                            int foo = x.asBigNum.ToInt;
+                            orderedStateIds.Add(new Tuple<int, int>(candidateId, foo));
+                          }
+                        }
+ 
+                        if (calleeName.StartsWith(recordProcName)) {
                             var expr = calls.recordExpr2Var[new BoogieCallExpr(naryExpr, candidateId)];
 
                             // Record concrete value of the argument to this procedure
@@ -2911,7 +3047,7 @@ namespace VC
 
                             calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                 new CalleeCounterexampleInfo(
-                                    cce.NonNull(GenerateTrace(labels, errModel, mvInfo, actualId, implName2StratifiedInliningInfo[calleeName].impl)),
+                                    cce.NonNull(GenerateTrace(labels, errModel, mvInfo, actualId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
                                     new List<Model.Element>());
 
                         }
@@ -2930,7 +3066,7 @@ namespace VC
 
                                     calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                         new CalleeCounterexampleInfo(
-                                            cce.NonNull(GenerateTrace(labels, errModel, mvInfo, actualId, implName2StratifiedInliningInfo[calleeName].impl)),
+                                            cce.NonNull(GenerateTrace(labels, errModel, mvInfo, actualId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
                                             new List<Model.Element>());
 
                                 }
@@ -2941,10 +3077,9 @@ namespace VC
                             }
                             else
                             {
-
                                 calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                     new CalleeCounterexampleInfo(
-                                        cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
+                                        cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
                                         new List<Model.Element>());
                             }
                         }
