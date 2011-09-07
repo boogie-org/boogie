@@ -2884,7 +2884,6 @@ namespace VC
             List<Tuple<int, int>> orderedStateIds;
 
             private Model.Element GetModelValue(Model m, Variable v, int candidateId) {
-              Model.Element elt;
               // first, get the unique name
               string uniqueName;
 
@@ -2906,13 +2905,11 @@ namespace VC
               }
 
               var f = m.TryGetFunc(uniqueName);
-              if (f == null) {
-                f = m.MkFunc(uniqueName, 0);
-              }
-              elt = f.GetConstant();
-              return elt;
+              if (f == null)
+                return m.MkFunc("@undefined", 0).GetConstant();
+              return f.GetConstant();
             }
-
+         
             public readonly static int CALL = -1;
             public readonly static int RETURN = -2;
 
@@ -2947,8 +2944,6 @@ namespace VC
                 m.InitialState.AddBinding(v.Name, GetModelValue(m, v, 0));
               }
 
-              Stack<int> candidateStack = new Stack<int>();
-              candidateStack.Push(0);
               int lastCandidate = 0;
               int lastCapturePoint = 0;
               for (int i = 0; i < this.orderedStateIds.Count; ++i) {
@@ -2963,11 +2958,9 @@ namespace VC
                   foreach (Variable v in info.AllVariables) {
                     init.AddBinding(v.Name, GetModelValue(m, v, candidate));
                   }
-                  candidateStack.Push(candidate);
                   continue;
                 }
                 if (capturePoint == RETURN) {
-                  candidateStack.Pop();
                   continue;
                 }
 
@@ -2992,6 +2985,7 @@ namespace VC
                     elt = m.MkElement(lit.Val.ToString());
                   }
                   else {
+                    Contract.Assume(false);
                     elt = m.MkFunc(e.ToString(), 0).GetConstant();
                   }
                   cs.AddBinding(v.Name, elt);
