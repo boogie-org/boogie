@@ -2747,6 +2747,11 @@ namespace VC
               else {
                 if (candidateId != 0) {
                   Dictionary<VCExprVar, VCExpr> mapping = calls.id2Vars[candidateId];
+                  VCExpr e = mapping[vvar];
+                  if (e is VCExprLiteral) {
+                    VCExprLiteral lit = (VCExprLiteral)e;
+                    return m.MkElement(lit.ToString());
+                  }
                   vvar = (VCExprVar) mapping[vvar];
                 }
                 uniqueName = context.Lookup(vvar);
