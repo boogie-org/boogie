@@ -67,9 +67,21 @@ namespace GPUVerify
 
             verifier.SplitBlocksAtBarriers();
 
-            verifier.ComputeBarrierToNextBarriersProcedures();
 
-            verifier.ComputeBarrierToBarrierPairs();
+            if (CommandLineOptions.formulaSkeletonsFile != null)
+            {
+                Console.WriteLine("Generating skeleton formulas to \"" + CommandLineOptions.formulaSkeletonsFile + "\" and exiting");
+                verifier.GenerateFormulaSkeletons(CommandLineOptions.formulaSkeletonsFile);
+                Environment.Exit(0);
+            }
+
+            verifier.GenerateBarrierToNextBarriersProcedures();
+
+            verifier.GenerateBarrierToBarrierPairProcedures();
+
+            verifier.GenerateBarrierToNextBarriersVCs();
+
+            verifier.GenerateBarrierToBarrierPairVCs();
 
             verifier.AddArrayBaseDeclarations();
 

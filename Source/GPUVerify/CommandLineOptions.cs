@@ -14,6 +14,7 @@ namespace GPUVerify
         public static List<string> inputFiles = new List<string>();
 
         public static string outputFile = null;
+        public static string formulaSkeletonsFile = null;
 
         public static int Parse(string[] args)
         {
@@ -42,6 +43,17 @@ namespace GPUVerify
                         }
                         Debug.Assert(afterColon != null);
                         outputFile = afterColon;
+                    break;
+
+                    case "-generateFormulaSkeletons":
+                    case "/generateFormulaSkeletons":
+                    if (!hasColonArgument)
+                    {
+                        Console.WriteLine("Error: filename expected after " + beforeColon + " argument");
+                        Environment.Exit(1);
+                    }
+                    Debug.Assert(afterColon != null);
+                    formulaSkeletonsFile = afterColon;
                     break;
 
                     default:
