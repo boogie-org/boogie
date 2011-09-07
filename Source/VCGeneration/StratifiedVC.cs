@@ -41,6 +41,12 @@ namespace VC
             : base(program, logFilePath, appendLogFile)
         {
             Contract.Requires(program != null);
+
+            if (CommandLineOptions.Clo.ProcedureCopyBound > 0)
+            {
+                InstrumentForPCB(program);
+            }
+
             implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
 
             this.GenerateVCsForStratifiedInlining(program);
@@ -106,6 +112,8 @@ namespace VC
         {
             Contract.Requires(program != null);
             Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);
+            pcbProcToCounterArgLocation = new Dictionary<string, int>();
+
             foreach (Declaration decl in program.TopLevelDeclarations)
             {
                 Contract.Assert(decl != null);
@@ -121,11 +129,17 @@ namespace VC
                     implName2StratifiedInliningInfo[impl.Name] = info;
                     // We don't need controlFlowVariable for stratified Inlining
                     //impl.LocVars.Add(info.controlFlowVariable);
+                    
+
                     ExprSeq exprs = new ExprSeq();
                     foreach (Variable v in program.GlobalVariables())
                     {
                         Contract.Assert(v != null);
                         exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
+                        if (CommandLineOptions.Clo.ProcedureCopyBound > 0 && v.Name == pcbProcToCounter[impl.Name].Name)
+                        {
+                            pcbProcToCounterArgLocation.Add(impl.Name, exprs.Length - 1);
+                        }
                     }
                     foreach (Variable v in proc.InParams)
                     {
@@ -147,6 +161,12 @@ namespace VC
                     Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(info.function), exprs);
                     proc.Ensures.Add(new Ensures(Token.NoToken, true, freePostExpr, "", new QKeyValue(Token.NoToken, "si_fcall", new List<object>(), null)));
                 }
+            }
+
+            if (CommandLineOptions.Clo.ProcedureCopyBound > 0)
+            {
+                Contract.Assert(pcbProcToCounterArgLocation.Count == pcbProcToCounter.Count,
+                    "Unable to locate all PCB counters");
             }
 
             foreach (var decl in program.TopLevelDeclarations)
@@ -176,6 +196,59 @@ namespace VC
 
                 Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(recordFunc), exprs);
                 proc.Ensures.Add(new Ensures(true, freePostExpr));
+            }
+        }
+
+        private Dictionary<string, GlobalVariable> pcbProcToCounter;
+        private Dictionary<string, int> pcbProcToCounterArgLocation;
+
+        // Instrument program to introduce a counter per procedure
+        private void InstrumentForPCB(Program program)
+        {
+            pcbProcToCounter = new Dictionary<string, GlobalVariable>();
+            foreach (Declaration decl in program.TopLevelDeclarations)
+            {
+                Implementation impl = decl as Implementation;
+                if (impl == null)
+                    continue;
+
+                Procedure proc = cce.NonNull(impl.Proc);
+                if (proc.FindExprAttribute("inline") == null) continue;
+
+                var g = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken,
+                    "counter_" + proc.Name, Bpl.Type.Int));
+
+                pcbProcToCounter.Add(proc.Name, g);
+            }
+
+            program.TopLevelDeclarations.AddRange(pcbProcToCounter.Values);
+
+            foreach (Declaration decl in program.TopLevelDeclarations)
+            {
+                Implementation impl = decl as Implementation;
+                if (impl == null)
+                    continue;
+
+                Procedure proc = cce.NonNull(impl.Proc);
+                if (proc.FindExprAttribute("inline") == null) continue;
+
+                // Each proc can modify all counters (transitively)
+                foreach (var g in pcbProcToCounter.Values)
+                {
+                    proc.Modifies.Add(new IdentifierExpr(Token.NoToken, g));
+                }
+
+                var k = pcbProcToCounter[proc.Name];
+                // free ensures k == old(k) + 1
+                proc.Ensures.Add(new Ensures(true, Expr.Eq(Expr.Ident(k),
+                    Expr.Add(Expr.Literal(1), new OldExpr(Token.NoToken, Expr.Ident(k))))));
+
+                // havoc counter
+                var cmds = new CmdSeq();
+                cmds.Add(new HavocCmd(Token.NoToken, new IdentifierExprSeq(new IdentifierExpr(Token.NoToken, k))));
+                cmds.AddRange(impl.Blocks[0].Cmds);
+                impl.Blocks[0].Cmds = cmds;
+                
             }
         }
 
@@ -274,6 +347,39 @@ namespace VC
                 }
             }
 
+            // Call Graph
+            var succ = new Dictionary<string, HashSet<string>>();
+            var pred = new Dictionary<string, HashSet<string>>();
+
+            foreach (var decl in program.TopLevelDeclarations)
+            {
+                var impl = decl as Implementation;
+                if (impl == null) continue;
+                foreach (var blk in impl.Blocks)
+                {
+                    foreach (Cmd cmd in blk.Cmds)
+                    {
+                        var ccmd = cmd as CallCmd;
+                        if (ccmd == null) continue;
+                        if(!succ.ContainsKey(impl.Name)) succ.Add(impl.Name, new HashSet<string>());
+                        if(!pred.ContainsKey(ccmd.callee)) pred.Add(ccmd.callee, new HashSet<string>());
+                        succ[impl.Name].Add(ccmd.callee);
+                        pred[ccmd.callee].Add(impl.Name);
+                    }
+                }
+            }
+
+            var uniqueCallEdges = new HashSet<Tuple<string, string>>();
+            foreach (var p in succ.Keys)
+            {
+                if (succ[p].Count == 1) uniqueCallEdges.Add(Tuple.Create(p, succ[p].First()));
+            }
+
+            foreach (var p in pred.Keys)
+            {
+                if (pred[p].Count == 1) uniqueCallEdges.Add(Tuple.Create(pred[p].First(), p));
+            }
+
             foreach (var kvp in procVcCopies)
             {
                 for (int i = 0; i < kvp.Value.Count; i++)
@@ -281,7 +387,7 @@ namespace VC
                     var id = calls.procCopy2Id[Tuple.Create(kvp.Key, i)];
                     calls.setCurrProc(kvp.Key);
                     calls.currInlineCount = id;
-                    var bm = new BoundingVCMutator(checker.underlyingChecker.VCExprGen, interfaceVarCopies, callSiteConstant, calls, id);
+                    var bm = new BoundingVCMutator(uniqueCallEdges, checker.underlyingChecker.VCExprGen, interfaceVarCopies, callSiteConstant, pcbProcToCounterArgLocation, calls, kvp.Key, i, id);
                     kvp.Value[i] = bm.Mutate(kvp.Value[i], true);
                     //checker.AddAxiom(kvp.Value[i]);
                     procBoundedVC = checker.underlyingChecker.VCExprGen.And(procBoundedVC, kvp.Value[i]);
@@ -309,14 +415,23 @@ namespace VC
             Dictionary<string, List<List<VCExprVar>>> interfaceVarCopies;
             // proc name -> k -> CallSite Boolean constant
             Dictionary<string, List<VCExprVar>> callSiteConstant;
+            // Call edges (single successor or single predecessor)
+            HashSet<Tuple<string,string>> uniqueCallEdges;
+            // proc name -> location of the counter in argument
+            Dictionary<string, int> pcbProcToCounterArgLocation;
 
             FCallHandler calls;
             int currId;
+            string currentProc;
+            int currCopy;
 
-            public BoundingVCMutator(VCExpressionGenerator gen, 
+            public BoundingVCMutator(HashSet<Tuple<string, string>> uniqueCallEdges,
+                VCExpressionGenerator gen, 
                 Dictionary<string, List<List<VCExprVar>>> interfaceVarCopies,
                 Dictionary<string, List<VCExprVar>> callSiteConstant,
-                FCallHandler calls, int currId)
+                Dictionary<string, int> pcbProcToCounterArgLocation,
+                FCallHandler calls, 
+                string currProc, int currCopy, int currId)
                 : base(gen)
             {
                 Contract.Requires(gen != null);
@@ -324,6 +439,10 @@ namespace VC
                 this.callSiteConstant = callSiteConstant;
                 this.calls = calls;
                 this.currId = currId;
+                this.uniqueCallEdges = uniqueCallEdges;
+                this.currentProc = currProc;
+                this.currCopy = currCopy;
+                this.pcbProcToCounterArgLocation = pcbProcToCounterArgLocation;
             }
 
             protected override VCExpr/*!*/ UpdateModifiedNode(VCExprNAry/*!*/ originalNode,
@@ -385,9 +504,16 @@ namespace VC
                         // substitute
                         var K = interfaceVarCopies[op.Func.Name].Count;
 
+                        // only call currCopy
+                        var onlyCurrCopy = false;
+                        var edge = Tuple.Create(currentProc, op.Func.Name);
+                        if (uniqueCallEdges.Contains(edge)) onlyCurrCopy = true;
+                        
                         VCExpr ret = VCExpressionGenerator.False;
                         for (int k = 0; k < K; k++)
                         {
+                            if (onlyCurrCopy && k != currCopy) continue;
+
                             var iv = interfaceVarCopies[op.Func.Name][k];
                             Contract.Assert(op.Arity == iv.Count);
 
@@ -397,6 +523,9 @@ namespace VC
                                 var c = Gen.Eq(callExpr[i], iv[i]);
                                 conj = Gen.And(conj, c);
                             }
+                            // Add the counter
+                            var counter = callExpr[pcbProcToCounterArgLocation[op.Func.Name]];
+                            conj = Gen.And(conj, Gen.Eq(counter, Gen.Integer(BigNum.FromInt(k))));
                             // Add the call-site constant
                             conj = Gen.And(conj, callSiteConstant[op.Func.Name][k]);
 
@@ -1481,6 +1610,21 @@ namespace VC
             VCExpr vc;
             StratifiedInliningErrorReporter reporter;
             Hashtable/*<int, Absy!>*/ mainLabel2absy;
+            if (CommandLineOptions.Clo.ProcedureCopyBound > 0)
+            {
+                // Initialize all counters to 0
+                Debug.Assert(pcbProcToCounter != null && pcbProcToCounter.Count == implName2StratifiedInliningInfo.Count);
+
+                Expr expr = Expr.Literal(true);
+                foreach (var counter in pcbProcToCounter.Values)
+                {
+                    expr = Expr.And(expr, Expr.Eq(Expr.Literal(0), Expr.Ident(counter)));
+                }
+                var cmds = new CmdSeq();
+                cmds.Add(new AssumeCmd(Token.NoToken, expr));
+                cmds.AddRange(impl.Blocks[0].Cmds);
+                impl.Blocks[0].Cmds = cmds;
+            }
             GetVC(impl, program, callback, out vc, out mainLabel2absy, out reporter);
 
             // Find all procedure calls in vc and put labels on them      
@@ -1838,6 +1982,10 @@ namespace VC
                             Contract.Assert(v1 != null && v2 != null);
                             conj = Gen.And(conj, Gen.Eq(v1, v2));
                         }
+                        // Add the counter
+                        var counter = iv_expr[pcbProcToCounterArgLocation[bop.Func.Name]];
+                        conj = Gen.And(conj, Gen.Eq(counter, Gen.Integer(BigNum.FromInt(k))));
+                        // Call site constant
                         conj = Gen.And(conj, callSiteConstant[bop.Func.Name][k]);
                         // label the conjunct
                         conj = Gen.LabelPos(string.Format("PCB_CONNECT_{0}_{1}", id, k), conj);
