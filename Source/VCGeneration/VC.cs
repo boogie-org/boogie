@@ -88,6 +88,7 @@ namespace VC {
       public Hashtable /*Variable->Expr*/ exitIncarnationMap;
       public Hashtable /*GotoCmd->returnCmd*/ gotoCmdOrigins;
       public Hashtable/*<int, Absy!>*/ label2absy;
+      public ModelViewInfo mvInfo;
 
       public Dictionary<Block, VCExprVar> reachVars;
       public List<VCExprLetBinding> reachVarBindings;
