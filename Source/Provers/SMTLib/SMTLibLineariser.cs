@@ -100,12 +100,11 @@ namespace Microsoft.Boogie.SMTLib
       } else {
         if (t.IsMap && CommandLineOptions.Clo.UseArrayTheory) {
           MapType m = t.AsMap;
-          Contract.Assert(m.MapArity == 1);
+          // Contract.Assert(m.MapArity == 1);
           sb.Append("(Array ");
-          TypeToStringHelper(m.Arguments[0], sb);
-          sb.Append(" ");
-          TypeToStringHelper(m.Result, sb);
-          sb.Append(")");
+          foreach (Type tp in m.Arguments)
+            sb.Append(TypeToString(tp)).Append(" ");
+          sb.Append(TypeToString(m.Result)).Append(")");
         } else if (t.IsMap) {
           MapType m = t.AsMap;
           sb.Append('[');
@@ -656,8 +655,7 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      public bool VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options)
-      {
+      public bool VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options) {
         VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)node.Op;
         Contract.Assert(op != null);
         string printedName;
@@ -669,11 +667,85 @@ namespace Microsoft.Boogie.SMTLib
           printedName = ExprLineariser.Namer.GetQuotedName(op.Func, op.Func.Name);
         Contract.Assert(printedName != null);
 
+        printedName = CheckMapApply(printedName, node);
+
         WriteApplication(printedName, node, options);
 
         return true;
       }
 
+      private static Type ResultType(Type type) {
+        MapType mapType = type as MapType;
+        if (mapType != null) {
+          return ResultType(mapType.Result);
+        }
+        else {
+          return type;
+        }
+      }
+
+      private static string CheckMapApply(string name, VCExprNAry node) {
+        if (name == "MapConst") {
+          Type type = node.Type;
+          string s = TypeToString(type);
+          return "(as const " + s + ")";
+        } 
+        else if (name == "MapAdd") {
+          return "(_ map (+ (Int Int) Int))";
+        }
+        else if (name == "MapSub") {
+          return "(_ map (- (Int Int) Int))";
+        }
+        else if (name == "MapMul") {
+          return "(_ map (* (Int Int) Int))";
+        }
+        else if (name == "MapDiv") {
+          return "(_ map (div (Int Int) Int))";
+        }
+        else if (name == "MapMod") {
+          return "(_ map (mod (Int Int) Int))";
+        }
+        else if (name == "MapEq") {
+          Type type = ResultType(node[0].Type);
+          string s = TypeToString(type);
+          return "(_ map (= (" + s + " " + s + ") Bool))";
+        }
+        else if (name == "MapIff") {
+          return "(_ map (= (Bool Bool) Bool))";
+        }
+        else if (name == "MapGt") {
+          return "(_ map (> (Int Int) Int))";
+        }
+        else if (name == "MapGe") {
+          return "(_ map (>= (Int Int) Int))";
+        }
+        else if (name == "MapLt") {
+          return "(_ map (< (Int Int) Int))";
+        }
+        else if (name == "MapLe") {
+          return "(_ map (<= (Int Int) Int))";
+        }
+        else if (name == "MapOr") {
+          return "(_ map or)";
+        }
+        else if (name == "MapAnd") {
+          return "(_ map and)";
+        }
+        else if (name == "MapNot") {
+          return "(_ map not)";
+        }
+        else if (name == "MapImp") {
+          return "(_ map =>)";
+        }
+        else if (name == "MapIte") {
+          Type type = ResultType(node.Type);
+          string s = TypeToString(type);
+          return "(_ map (ite (Bool " + s + " " + s + ") " + s + "))";
+        }
+        else {
+          return name;
+        }
+      }
     }
   }
 

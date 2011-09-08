@@ -747,28 +747,59 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Dictionary<string, Dictionary<string, Block>> ExtractLoops() {
-      List<Implementation/*!*/>/*!*/ loopImpls = new List<Implementation/*!*/>();
-      Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
-      foreach (Declaration d in this.TopLevelDeclarations) {
-        Implementation impl = d as Implementation;
-        if (impl != null && impl.Blocks != null && impl.Blocks.Count > 0) {
-          try {
-            Graph<Block> g = ProcessLoops(impl);
-            CreateProceduresForLoops(impl, g, loopImpls, fullMap);
-          }
-          catch (IrreducibleLoopException e) {
-            System.Diagnostics.Debug.Assert(!fullMap.ContainsKey(impl.Name));
-            fullMap[impl.Name] = null;
-          }
+    public Dictionary<string, Dictionary<string, Block>> ExtractLoops()
+    {
+        List<Implementation/*!*/>/*!*/ loopImpls = new List<Implementation/*!*/>();
+        Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
+        foreach (Declaration d in this.TopLevelDeclarations)
+        {
+            Implementation impl = d as Implementation;
+            if (impl != null && impl.Blocks != null && impl.Blocks.Count > 0)
+            {
+                try
+                {
+                    Graph<Block> g = ProcessLoops(impl);
+                    CreateProceduresForLoops(impl, g, loopImpls, fullMap);
+                }
+                catch (IrreducibleLoopException e)
+                {
+                    System.Diagnostics.Debug.Assert(!fullMap.ContainsKey(impl.Name));
+                    fullMap[impl.Name] = null;
+
+                    // statically unroll loops in this procedure
+
+                    // First, build a map of the current blocks
+                    var origBlocks = new Dictionary<string, Block>();
+                    foreach (var blk in impl.Blocks) origBlocks.Add(blk.Label, blk);
+
+                    // unroll
+                    Block start = impl.Blocks[0];
+                    impl.Blocks = LoopUnroll.UnrollLoops(start, CommandLineOptions.Clo.RecursionBound);
+
+                    // Now construct the "map back" information
+                    // Resulting block label -> original block
+                    var blockMap = new Dictionary<string, Block>();
+                    foreach (var blk in impl.Blocks)
+                    {
+                        var sl = LoopUnroll.sanitizeLabel(blk.Label);
+                        if (sl == blk.Label) blockMap.Add(blk.Label, blk);
+                        else
+                        {
+                            Contract.Assert(origBlocks.ContainsKey(sl));
+                            blockMap.Add(blk.Label, origBlocks[sl]);
+                        }
+                    }
+                    fullMap[impl.Name] = blockMap;
+                }
+            }
         }
-      }
-      foreach (Implementation/*!*/ loopImpl in loopImpls) {
-        Contract.Assert(loopImpl != null);
-        TopLevelDeclarations.Add(loopImpl);
-        TopLevelDeclarations.Add(loopImpl.Proc);
-      }
-      return fullMap;
+        foreach (Implementation/*!*/ loopImpl in loopImpls)
+        {
+            Contract.Assert(loopImpl != null);
+            TopLevelDeclarations.Add(loopImpl);
+            TopLevelDeclarations.Add(loopImpl.Proc);
+        }
+        return fullMap;
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {

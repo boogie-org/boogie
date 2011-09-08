@@ -2,18 +2,20 @@
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <ProjectGuid>{E5D16606-06D0-434F-A9D7-7D079BC80229}</ProjectGuid>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.Boogie.Houdini</RootNamespace>
-    <AssemblyName>Houdini</AssemblyName>
+    <RootNamespace>GPUVerify</RootNamespace>
+    <AssemblyName>GPUVerify</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -22,19 +24,14 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup>
-    <SignAssembly>true</SignAssembly>
-  </PropertyGroup>
-  <PropertyGroup>
-    <AssemblyOriginatorKeyFile>..\InterimKey.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -46,11 +43,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\version.cs">
-      <Link>version.cs</Link>
-    </Compile>
-    <Compile Include="Checker.cs" />
-    <Compile Include="Houdini.cs" />
+    <Compile Include="AccessCollector.cs" />
+    <Compile Include="AccessRecord.cs" />
+    <Compile Include="CommandLineOptions.cs" />
+    <Compile Include="GPUVerifier.cs" />
+    <Compile Include="LocalVariableAccessReplacer.cs" />
+    <Compile Include="Main.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ReadCollector.cs" />
+    <Compile Include="WriteCollector.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AIFramework\AIFramework.csproj">
@@ -61,41 +62,18 @@
       <Project>{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}</Project>
       <Name>Basetypes</Name>
     </ProjectReference>
-    <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender.csproj">
-      <Project>{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}</Project>
-      <Name>CodeContractsExtender</Name>
+    <ProjectReference Include="..\BoogieDriver\BoogieDriver.csproj">
+      <Project>{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}</Project>
+      <Name>BoogieDriver</Name>
     </ProjectReference>
     <ProjectReference Include="..\Core\Core.csproj">
       <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>
       <Name>Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Graph\Graph.csproj">
-      <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
-      <Name>Graph</Name>
-    </ProjectReference>
     <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
       <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
       <Name>ParserHelper</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Provers\Simplify\Simplify.csproj">
-      <Project>{FEE9F01B-9722-4A76-A24B-72A4016DFA8E}</Project>
-      <Name>Simplify</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Provers\Z3\Z3.csproj">
-      <Project>{BB49B90B-BE21-4BE8-85BA-359FDB55F4DF}</Project>
-      <Name>Z3</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\VCExpr\VCExpr.csproj">
-      <Project>{56FFDBCA-7D14-43B8-A6CA-22A20E417EE1}</Project>
-      <Name>VCExpr</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\VCGeneration\VCGeneration.csproj">
-      <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
-      <Name>VCGeneration</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Properties\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

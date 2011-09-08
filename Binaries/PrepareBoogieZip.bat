@@ -17,6 +17,7 @@ for %%f in (
   Dafny.exe                   Dafny.pdb
   DafnyPipeline.dll           DafnyPipeline.pdb
   Graph.dll                   Graph.pdb
+  Houdini.dll                 Houdini.pdb
   Model.dll                   Model.pdb
   ParserHelper.dll            ParserHelper.pdb
   Provers.Isabelle.dll        Provers.Isabelle.pdb

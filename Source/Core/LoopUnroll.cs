@@ -37,6 +37,20 @@ namespace Microsoft.Boogie {
       return lu.newBlockSeqGlobal;
     }
 
+    // This is supposed to "undo" to effect of loop unrolling
+    // on block labels. It essentially removes the "#num" from the end 
+    // of lab, if there is something like this
+    public static string sanitizeLabel(string lab)
+    {
+        if (!lab.Contains("#"))
+            return lab;
+
+        // Find the last occurrance of "#"
+        int pos = lab.LastIndexOf('#');
+
+        return lab.Substring(0, pos);
+    }
+
     private static System.Collections.IEnumerable/*<GraphNode/*!>/*!*/ Succs(GraphNode n) {
       Contract.Requires(n != null);
       Contract.Ensures(Contract.Result<System.Collections.IEnumerable>() != null);

@@ -153,6 +153,8 @@ namespace BytecodeTranslator {
       s = s.Replace('\t', '$');
       s = s.Replace('\r', '$');
       s = s.Replace('\n', '$');
+      s = s.Replace('\b', '$');
+      s = s.Replace('\x1B', '$');
       s = s.Replace('/', '$');
       s = s.Replace('\\', '$');
       s = s.Replace('=', '$');
@@ -165,11 +167,9 @@ namespace BytecodeTranslator {
       s = s.Replace(']', '$');
       s = s.Replace('|', '$');
       s = s.Replace('+', '$');
-      s = s.Replace('’', '$');
-      s=  s.Replace('€', '$');
-      s = s.Replace('•', '$');
-      s = s.Replace('£', '$');
-      s = s.Replace('¥', '$');
+      s = s.Replace('±', '$');
+      s = s.Replace('√', '$');
+      
       s = GetRidOfSurrogateCharacters(s);
       return s;
     }
@@ -179,6 +179,7 @@ namespace BytecodeTranslator {
     /// http://msdn.microsoft.com/en-us/library/dd374069(v=VS.85).aspx
     /// </summary>
     private static string GetRidOfSurrogateCharacters(string s) {
+      //  TODO this is not enough! Actually Boogie cannot support UTF8
       var cs = s.ToCharArray();
       var okayChars = new char[cs.Length];
       for (int i = 0, j = 0; i < cs.Length; i++) {

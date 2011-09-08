@@ -1,7 +1,7 @@
 syntax: regexp
 ^Source/t$
 ^Source/_ReSharper\.Boogie$
-^(Source|BCT|Jennisys)/.*\.(user|suo|cache)$
+^(Source|BCT|Jennisys)/.*\.(user|suo|cache|vs10x)$
 ^Source/(Core|Dafny)/(Parser|Scanner).cs.old$
 ^Binaries/.*\.(dll|pdb|exe|manifest|config)$
 ^.*(bin|obj)/([^/]*/)?(Debug|Release|Checked|Debug All|DEBUG ALL)/.*$

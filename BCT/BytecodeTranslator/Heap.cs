@@ -53,7 +53,8 @@ namespace BytecodeTranslator {
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       if (b) {
         this.BoxType = new Bpl.CtorType(this.BoxTypeDecl.tok, this.BoxTypeDecl, new Bpl.TypeSeq());
-        this.DelegateType = new Bpl.CtorType(this.DelegateTypeDecl.tok, this.DelegateTypeDecl, new Bpl.TypeSeq()); 
+        this.DelegateType = new Bpl.CtorType(this.DelegateTypeDecl.tok, this.DelegateTypeDecl, new Bpl.TypeSeq());
+        this.DelegateMultisetType = new Bpl.TypeSynonymAnnotation(this.DelegateMultisetTypeDecl.tok, this.DelegateMultisetTypeDecl, new Bpl.TypeSeq());
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
         this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
         this.RefType = new Bpl.CtorType(this.RefTypeDecl.tok, this.RefTypeDecl, new Bpl.TypeSeq());
@@ -74,7 +75,7 @@ namespace BytecodeTranslator {
       Bpl.IToken tok = field.Token();
       Bpl.Type t = this.sink.CciTypeToBoogie(field.Type.ResolvedType);
 
-      if (field.IsStatic) {
+      if (field.ResolvedField.IsStatic) {
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.GlobalVariable(tok, tident);
       }
@@ -193,7 +194,8 @@ namespace BytecodeTranslator {
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       if (b) {
         this.BoxType = new Bpl.CtorType(this.BoxTypeDecl.tok, this.BoxTypeDecl, new Bpl.TypeSeq());
-        this.DelegateType = new Bpl.CtorType(this.DelegateTypeDecl.tok, this.DelegateTypeDecl, new Bpl.TypeSeq()); 
+        this.DelegateType = new Bpl.CtorType(this.DelegateTypeDecl.tok, this.DelegateTypeDecl, new Bpl.TypeSeq());
+        this.DelegateMultisetType = new Bpl.TypeSynonymAnnotation(this.DelegateMultisetTypeDecl.tok, this.DelegateMultisetTypeDecl, new Bpl.TypeSeq());
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
         this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
         this.RefType = new Bpl.CtorType(this.RefTypeDecl.tok, this.RefTypeDecl, new Bpl.TypeSeq());
@@ -212,7 +214,7 @@ namespace BytecodeTranslator {
       fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
       Bpl.IToken tok = field.Token();
 
-      if (field.IsStatic) {
+      if (field.ResolvedField.IsStatic) {
         Bpl.Type t = this.sink.CciTypeToBoogie(field.Type.ResolvedType);
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.GlobalVariable(tok, tident);

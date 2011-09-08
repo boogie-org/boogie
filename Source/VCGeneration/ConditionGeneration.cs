@@ -187,12 +187,12 @@ namespace Microsoft.Boogie {
       }
     }
 
-    static bool firstModelFile = true;
+    public static bool firstModelFile = true;
 
     public void PrintModel()
     {
       var filename = CommandLineOptions.Clo.ModelViewFile;
-      if (Model == null || filename == null) return;
+      if (Model == null || filename == null || CommandLineOptions.Clo.StratifiedInlining > 0) return;
 
       var m = this.GetModelWithStates();
 
@@ -217,7 +217,7 @@ namespace Microsoft.Boogie {
       if (MvInfo == null || mvstates == null)
         return m;
 
-      Contract.Assert(mvstates.Arity == 1);
+      Contract.Assert(mvstates.Arity == 2);
 
       foreach (Variable v in MvInfo.AllVariables) {
         m.InitialState.AddBinding(v.Name, GetModelValue(m, v));
@@ -225,7 +225,7 @@ namespace Microsoft.Boogie {
 
       var states = new List<int>();
       foreach (var t in mvstates.Apps)
-        states.Add(t.Args[0].AsInt());
+        states.Add(t.Args[1].AsInt());
 
       states.Sort();
 
@@ -1279,7 +1279,7 @@ namespace VC {
         if (CommandLineOptions.Clo.ModelViewFile != null && pc is AssumeCmd) {
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
           if (description != null) {
-            Expr mv = new NAryExpr(pc.tok, new FunctionCall(ModelViewInfo.MVState_FunctionDef), new ExprSeq(Bpl.Expr.Literal(mvInfo.CapturePoints.Count)));
+            Expr mv = new NAryExpr(pc.tok, new FunctionCall(ModelViewInfo.MVState_FunctionDef), new ExprSeq(Bpl.Expr.Ident(ModelViewInfo.MVState_ConstantDef), Bpl.Expr.Literal(mvInfo.CapturePoints.Count)));
             copy = Bpl.Expr.And(mv, copy);
             mvInfo.CapturePoints.Add(new ModelViewInfo.Mapping(description, (Hashtable)incarnationMap.Clone()));
           }
@@ -1531,8 +1531,10 @@ namespace VC {
     public readonly List<Variable> AllVariables = new List<Variable>();
     public readonly List<Mapping> CapturePoints = new List<Mapping>();
     public static readonly Function MVState_FunctionDef = new Function(Token.NoToken, "@MV_state",
-      new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true)),
+      new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true),
+                      new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true)),
       new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Bool), false));
+    public static readonly Constant MVState_ConstantDef = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int));
 
     public ModelViewInfo(Program program, Implementation impl) {
       Contract.Requires(program != null);
