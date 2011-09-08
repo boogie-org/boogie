@@ -1,7 +1,5 @@
 procedure {:barrier} BARRIER(); // Used to mark out barriers in the code; parameter simply lets us label each barrier
 
-type {:thread_id} ThreadId = Pair;
-
 type Pair;
 
 function constructPair(int, int) returns (Pair);
@@ -23,20 +21,19 @@ function {:inline} setY(p: Pair, y: int) returns (Pair)
 
 // Thread ids
 
-axiom BLOCK_X == BLOCK_SIZE;
-axiom BLOCK_Y == BLOCK_SIZE;
-axiom TILE_X == BLOCK_SIZE;
-axiom TILE_Y == BLOCK_SIZE;
+type {:thread_id} ThreadId = Pair;
 
-const BLOCK_X: int;
+const GRID_X: int;
 const TILE_X: int;
 const NUM_TILES_X: int;
-axiom TILE_X*NUM_TILES_X == BLOCK_X;
+axiom TILE_X*NUM_TILES_X == GRID_X;
 
-const BLOCK_Y: int;
+const GRID_Y: int;
 const TILE_Y: int;
 const NUM_TILES_Y: int;
-axiom TILE_Y*NUM_TILES_Y == BLOCK_Y;
+axiom TILE_Y*NUM_TILES_Y == GRID_Y;
+
+axiom (forall i: ThreadId :: getX(i) >= 0 && getX(i) < GRID_X && getY(i) >= 0 && getY(i) < GRID_Y);
 
 function {:inline} localId(t: ThreadId) returns (Pair)
 {
@@ -59,6 +56,8 @@ function {:builtin "mod"} mod(int, int) : int;
 // These are the declarations that allow race and divergence checking
 
 var AT_BARRIER : [ThreadId]int;
+
+var REACHED_NEXT_BARRIER : [ThreadId]bool;
 
 type ArrayBase;
 

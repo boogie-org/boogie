@@ -39,6 +39,7 @@ namespace GPUVerify
             ReservedNames.Add("offset_z");
             ReservedNames.Add("is_write");
             ReservedNames.Add("AT_BARRIER");
+            ReservedNames.Add("REACHED_NEXT_BARRIER");
 
             CheckWellFormedness();
         }
@@ -457,6 +458,7 @@ namespace GPUVerify
         private static void AppendDuplicateBlockToStartOfImplementation(Implementation Impl, int i)
         {
             Block NewBlock = CloneBlock(Impl.Blocks[i]);
+            NewBlock.Label = "entry_barrier";
 
             List<Block> NewBlocks = new List<Block>();
 
@@ -645,7 +647,7 @@ namespace GPUVerify
 
             AddInlineAttribute(NewProcedure);
 
-            NewProcedure.Modifies.Add(MakeAtBarrierVariable(B.tok));
+            NewProcedure.Modifies.Add(MakeReachedNextBarrierVariable(B.tok));
 
             Block NewA = NewImplementation.Blocks[0];
             Block NewB = null;
@@ -685,7 +687,7 @@ namespace GPUVerify
 
             NewImplementation.PruneUnreachableBlocks();
 
-            AddBarrierTracking(NewImplementation);
+            AddReachedNextBarrierTracking(NewImplementation, A, B);
 
             Program.TopLevelDeclarations.Add(NewProcedure);
             Program.TopLevelDeclarations.Add(NewImplementation);
@@ -762,11 +764,27 @@ namespace GPUVerify
 
                 }
             }
-            
-
-
 
         }
+
+
+        private void AddReachedNextBarrierTracking(Implementation Impl, Block A, Block B)
+        {
+            Debug.Assert(IsBarrier(Impl.Blocks[0]) && GetBarrierId(Impl.Blocks[0]) == GetBarrierId(A));
+
+            for (int i = 1; i < Impl.Blocks.Count; i++)
+            {
+                if (IsBarrier(Impl.Blocks[i]))
+                {
+                    // At this stage, the barrier should be followed immediately by a return
+                    Debug.Assert(Impl.Blocks[i].Cmds.Length == 1 && GetBarrierId(Impl.Blocks[i]) == GetBarrierId(B));
+
+                    Impl.Blocks[i].Cmds.Add(MakeSetReachedNextBarrier(Impl.Blocks[i].Cmds[0].tok));
+
+                }
+            }
+        }
+
 
         private AssignCmd MakeAssignToAtBarrier(IToken tok, int p)
         {
@@ -774,9 +792,21 @@ namespace GPUVerify
             List<Expr> rhss = new List<Expr>();
 
             List<Expr> indexes = new List<Expr>();
-            indexes.Add(MakeThreadIdExpr(tok, "i"));
+            indexes.Add(MakeThreadIdExpr(tok));
             lhss.Add(new MapAssignLhs(tok, new SimpleAssignLhs(tok, MakeAtBarrierVariable(tok)), indexes));
             rhss.Add(new LiteralExpr(tok, BigNum.FromInt(p)));
+            return new AssignCmd(tok, lhss, rhss);
+        }
+
+        private AssignCmd MakeSetReachedNextBarrier(IToken tok)
+        {
+            List<AssignLhs> lhss = new List<AssignLhs>();
+            List<Expr> rhss = new List<Expr>();
+
+            List<Expr> indexes = new List<Expr>();
+            indexes.Add(MakeThreadIdExpr(tok));
+            lhss.Add(new MapAssignLhs(tok, new SimpleAssignLhs(tok, MakeReachedNextBarrierVariable(tok)), indexes));
+            rhss.Add(new LiteralExpr(tok, true));
             return new AssignCmd(tok, lhss, rhss);
         }
 
@@ -788,11 +818,26 @@ namespace GPUVerify
             return new NAryExpr(tok, new MapSelect(tok, 1), args);
         }
 
+        private NAryExpr MakeReachedNextBarrierAccess(IToken tok, string ThreadIdName)
+        {
+            ExprSeq args = new ExprSeq();
+            args.Add(MakeReachedNextBarrierVariable(tok));
+            args.Add(MakeThreadIdExpr(tok, ThreadIdName));
+            return new NAryExpr(tok, new MapSelect(tok, 1), args);
+        }
+
         private IdentifierExpr MakeAtBarrierVariable(IToken tok)
         {
             TypeSeq IndexType = new TypeSeq();
             IndexType.Add(ThreadIdType);
             return new IdentifierExpr(tok, new GlobalVariable(tok, new TypedIdent(tok, "AT_BARRIER", new MapType(tok, new TypeVariableSeq(), IndexType, Microsoft.Boogie.Type.Int))));
+        }
+
+        private IdentifierExpr MakeReachedNextBarrierVariable(IToken tok)
+        {
+            TypeSeq IndexType = new TypeSeq();
+            IndexType.Add(ThreadIdType);
+            return new IdentifierExpr(tok, new GlobalVariable(tok, new TypedIdent(tok, "REACHED_NEXT_BARRIER", new MapType(tok, new TypeVariableSeq(), IndexType, Microsoft.Boogie.Type.Bool))));
         }
 
         private static HashSet<Block> BlocksReaching(Block B)
@@ -1031,8 +1076,8 @@ namespace GPUVerify
         private void GenerateBarrierToNextBarriersVC(Block B)
         {
             VariableSeq InParams = new VariableSeq();
-            InParams.Add(new LocalVariable(B.tok, new TypedIdent(B.tok, "i", ThreadIdType)));
-            InParams.Add(new LocalVariable(B.tok, new TypedIdent(B.tok, "j", ThreadIdType)));
+            InParams.Add(new LocalVariable(B.tok, new TypedIdent(B.tok, "__i", ThreadIdType)));
+            InParams.Add(new LocalVariable(B.tok, new TypedIdent(B.tok, "__j", ThreadIdType)));
 
             VariableSeq OutParams = new VariableSeq();
 
@@ -1046,13 +1091,13 @@ namespace GPUVerify
 
             RequiresSeq Requires = new RequiresSeq();
             Requires.Add(new Requires(false, MakePreconditionExpr(B)));
-            AddDistinctSameTile(B.tok, Requires, "i", "j");
-            AddNothingInitiallyTracked(B.tok, Requires, "i", "j");
+            AddDistinctSameTile(B.tok, Requires, "__i", "__j");
+            AddNothingInitiallyTracked(B.tok, Requires, "__i", "__j");
 
 
             EnsuresSeq Ensures = new EnsuresSeq();
-            AddNoRace(B.tok, Ensures, "i", "j");
-            AddSameBarrier(B.tok, Ensures, "i", "j");
+            AddNoRace(B.tok, Ensures, "__i", "__j");
+            AddSameBarrier(B.tok, Ensures, "__i", "__j");
 
             string BarrierIsRaceAndDivergenceFree = "Check_Barrier_" + GetBarrierId(B) + "_Race_And_Divergence_Free";
 
@@ -1069,11 +1114,11 @@ namespace GPUVerify
             Blocks[0].Cmds = new CmdSeq();
 
             ExprSeq i = new ExprSeq();
-            i.Add(new IdentifierExpr(B.tok, new LocalVariable(B.tok, new TypedIdent(B.tok, "i", ThreadIdType))));
+            i.Add(new IdentifierExpr(B.tok, new LocalVariable(B.tok, new TypedIdent(B.tok, "__i", ThreadIdType))));
             Blocks[0].Cmds.Add(new CallCmd(B.tok, MakeBarrierToNextBarriersProcedureName(B), i, new IdentifierExprSeq()));
 
             ExprSeq j = new ExprSeq();
-            j.Add(new IdentifierExpr(B.tok, new LocalVariable(B.tok, new TypedIdent(B.tok, "j", ThreadIdType))));
+            j.Add(new IdentifierExpr(B.tok, new LocalVariable(B.tok, new TypedIdent(B.tok, "__j", ThreadIdType))));
             Blocks[0].Cmds.Add(new CallCmd(B.tok, MakeBarrierToNextBarriersProcedureName(B), j, new IdentifierExprSeq()));
 
             Implementation NewImplementation = new Implementation(B.tok, BarrierIsRaceAndDivergenceFree, new TypeVariableSeq(), InParams, OutParams, new VariableSeq(), Blocks);
@@ -1136,7 +1181,7 @@ namespace GPUVerify
         private NAryExpr MakePreconditionExpr(Block B)
         {
             ExprSeq PreconditionArgs = new ExprSeq();
-            foreach (Variable v in MakeFormulaFunctionArguments(B.tok))
+            foreach (Variable v in MakeFormulaFunctionArguments(B.tok, false))
             {
                 PreconditionArgs.Add(new IdentifierExpr(B.tok, v));
             }
@@ -1174,17 +1219,24 @@ namespace GPUVerify
 
         private void GenerateBarrierAToBarrierBVCs(Block A, Block B)
         {
-            GenerateVC_AToBPreconditionA(A, B);
-            GenerateVC_AToBInduction(A, B);
-            GenerateVC_AToBPreconditionB(A, B);
+            GenerateVC_AToB_Pre(A, B);
+            GenerateVC_AToB_Induction(A, B);
+            GenerateVC_AToB_Post(A, B);
         }
 
-        private ForallExpr MakeAllAtBarrierExpr(Block A)
+        private ForallExpr MakeAllReachedNextBarrierExpr(IToken tok)
         {
             VariableSeq i = new VariableSeq();
-            i.Add(MakeThreadIdExpr(A.tok, "i").Decl);
-            Expr body = Expr.Eq(MakeAtBarrierAccess(A.tok, "i"), new LiteralExpr(A.tok, BigNum.FromInt(GetBarrierId(A))));
-            ForallExpr forallexpr = new ForallExpr(A.tok, i, body);
+            i.Add(MakeThreadIdExpr(tok, "__i").Decl);
+            ForallExpr forallexpr = new ForallExpr(tok, i, MakeReachedNextBarrierAccess(tok, "__i"));
+            return forallexpr;
+        }
+
+        private ForallExpr MakeNoneReachedNextBarrierExpr(IToken tok)
+        {
+            VariableSeq i = new VariableSeq();
+            i.Add(MakeThreadIdExpr(tok, "__i").Decl);
+            ForallExpr forallexpr = new ForallExpr(tok, i, Expr.Not(MakeReachedNextBarrierAccess(tok, "__i")));
             return forallexpr;
         }
 
@@ -1197,7 +1249,7 @@ namespace GPUVerify
         private NAryExpr MakeIHExpr(Block A, Block B)
         {
             ExprSeq IHArgs = new ExprSeq();
-            foreach (Variable v in MakeFormulaFunctionArguments(B.tok))
+            foreach (Variable v in MakeFormulaFunctionArguments(B.tok, true))
             {
                 IHArgs.Add(new IdentifierExpr(B.tok, v));
             }
@@ -1206,18 +1258,18 @@ namespace GPUVerify
             return nary;
         }
 
-        private Expr MakeThreadAtBarrierExpr(Block A, string p)
+        private Expr MakeThreadNotReachedNextBarrierExpr(IToken tok, string ThreadIdName)
         {
-            return Expr.Eq(MakeAtBarrierAccess(A.tok, "i"), new LiteralExpr(A.tok, BigNum.FromInt(GetBarrierId(A))));
+            return Expr.Not(MakeReachedNextBarrierAccess(tok, ThreadIdName));
         }
 
-        private void GenerateVC_AToBPreconditionA(Block A, Block B)
+        private void GenerateVC_AToB_Pre(Block A, Block B)
         {
-            string ProcedureName = "Check_" + GetBarrierId(A) + "_to_" + GetBarrierId(B) + "_Precondition_" + GetBarrierId(A);
+            string ProcedureName = "Check_" + GetBarrierId(A) + "_to_" + GetBarrierId(B) + "_Pre";
 
             Procedure NewProcedure = new Procedure(A.tok, ProcedureName, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
             NewProcedure.Requires.Add(new Requires(false, MakePreconditionExpr(A)));
-            NewProcedure.Requires.Add(new Requires(false, MakeAllAtBarrierExpr(A)));
+            NewProcedure.Requires.Add(new Requires(false, MakeNoneReachedNextBarrierExpr(A.tok)));
             NewProcedure.Ensures.Add(new Ensures(false, MakeIHExpr(A, B)));
 
             Implementation NewImplementation = new Implementation(A.tok, ProcedureName, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new VariableSeq(), new List<Block>());
@@ -1226,7 +1278,7 @@ namespace GPUVerify
             Program.TopLevelDeclarations.Add(NewImplementation);
         }
 
-        private void GenerateVC_AToBInduction(Block A, Block B)
+        private void GenerateVC_AToB_Induction(Block A, Block B)
         {
             string ProcedureName = "Check_" + GetBarrierId(A) + "_to_" + GetBarrierId(B) + "_Induction";
 
@@ -1239,11 +1291,11 @@ namespace GPUVerify
                 Modifies.Add(ie);
             }
 
-            AddTrackingVariablesToModifiesSet(A.tok, Modifies);
+            Modifies.Add(MakeReachedNextBarrierVariable(B.tok));
 
             Procedure NewProcedure = new Procedure(A.tok, ProcedureName, new TypeVariableSeq(), InParams, new VariableSeq(), new RequiresSeq(), Modifies, new EnsuresSeq());
             NewProcedure.Requires.Add(new Requires(false, MakeIHExpr(A, B)));
-            NewProcedure.Requires.Add(new Requires(false, MakeThreadAtBarrierExpr(A, "i")));
+            NewProcedure.Requires.Add(new Requires(false, MakeThreadNotReachedNextBarrierExpr(A.tok, ThreadIdParameterName)));
             NewProcedure.Ensures.Add(new Ensures(false, MakeIHExpr(A, B)));
 
             Implementation NewImplementation = new Implementation(A.tok, ProcedureName, new TypeVariableSeq(), InParams, new VariableSeq(), new VariableSeq(), new List<Block>());
@@ -1259,13 +1311,13 @@ namespace GPUVerify
             Program.TopLevelDeclarations.Add(NewImplementation);
         }
 
-        private void GenerateVC_AToBPreconditionB(Block A, Block B)
+        private void GenerateVC_AToB_Post(Block A, Block B)
         {
-            string ProcedureName = "Check_" + GetBarrierId(A) + "_to_" + GetBarrierId(B) + "_Precondition_" + GetBarrierId(B);
+            string ProcedureName = "Check_" + GetBarrierId(A) + "_to_" + GetBarrierId(B) + "_Post";
 
             Procedure NewProcedure = new Procedure(A.tok, ProcedureName, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
             NewProcedure.Requires.Add(new Requires(false, MakeIHExpr(A, B)));
-            NewProcedure.Requires.Add(new Requires(false, MakeAllAtBarrierExpr(B)));
+            NewProcedure.Requires.Add(new Requires(false, MakeAllReachedNextBarrierExpr(B.tok)));
             NewProcedure.Ensures.Add(new Ensures(false, MakePreconditionExpr(B)));
 
             Implementation NewImplementation = new Implementation(A.tok, ProcedureName, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new VariableSeq(), new List<Block>());
@@ -1283,7 +1335,7 @@ namespace GPUVerify
             {
                 if (IsBarrier(B))
                 {
-                    FormulaSkeletons.TopLevelDeclarations.Add(MakeSkeletonFormula(B, MakePreconditionName(B)));
+                    FormulaSkeletons.TopLevelDeclarations.Add(MakeSkeletonFormula(B, MakePreconditionName(B), false));
                 }
             }
 
@@ -1295,7 +1347,7 @@ namespace GPUVerify
                     {
                         if (IsBarrier(B) && BarrierReachesBarrier(A, B))
                         {
-                            FormulaSkeletons.TopLevelDeclarations.Add(MakeSkeletonFormula(B, MakeIHName(A, B)));
+                            FormulaSkeletons.TopLevelDeclarations.Add(MakeSkeletonFormula(B, MakeIHName(A, B), true));
                         }
                     }
                 }
@@ -1314,10 +1366,10 @@ namespace GPUVerify
             return "Pre_" + GetBarrierId(B);
         }
 
-        private Function MakeSkeletonFormula(Block B, string FunctionName)
+        private Function MakeSkeletonFormula(Block B, string FunctionName, bool isIH)
         {
 
-            Function precondition = new Function(B.tok, FunctionName, MakeFormulaFunctionArguments(B.tok), MakeFunctionReturnTemp(B.tok));
+            Function precondition = new Function(B.tok, FunctionName, MakeFormulaFunctionArguments(B.tok, isIH), MakeFunctionReturnTemp(B.tok));
 
             precondition.AddAttribute("inline", new object[] { });
 
@@ -1330,7 +1382,7 @@ namespace GPUVerify
             return new LocalVariable(tok, new TypedIdent(tok, "result", Microsoft.Boogie.Type.Bool));
         }
 
-        private VariableSeq MakeFormulaFunctionArguments(IToken tok)
+        private VariableSeq MakeFormulaFunctionArguments(IToken tok, bool isIH)
         {
             VariableSeq arguments = new VariableSeq();
 
@@ -1349,7 +1401,10 @@ namespace GPUVerify
                 arguments.Add(v);
             }
 
-            arguments.Add(MakeAtBarrierVariable(tok).Decl);
+            if (isIH)
+            {
+                arguments.Add(MakeReachedNextBarrierVariable(tok).Decl);
+            }
             return arguments;
         }
     }
