@@ -20,6 +20,7 @@ namespace Microsoft.Boogie {
   public class CalleeCounterexampleInfo {
     public Counterexample counterexample;
     public List<Model.Element>/*!>!*/ args;
+    public int stateIndex;
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -27,6 +28,14 @@ namespace Microsoft.Boogie {
       Contract.Invariant(cce.NonNullElements(args));
     }
 
+
+    public CalleeCounterexampleInfo(Counterexample cex, List<Model.Element/*!>!*/> x, int i) {
+      Contract.Requires(cex != null);
+      Contract.Requires(cce.NonNullElements(x));
+      counterexample = cex;
+      args = x;
+      stateIndex = i;
+    }
 
     public CalleeCounterexampleInfo(Counterexample cex, List<Model.Element/*!>!*/> x) {
       Contract.Requires(cex != null);
