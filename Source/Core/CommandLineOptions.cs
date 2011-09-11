@@ -394,7 +394,7 @@ namespace Microsoft.Boogie {
     private string methodToBreakOn = null;
     [ContractInvariantMethod]
     void ObjectInvariant5() {
-      Contract.Invariant(cce.NonNullElements(procsToCheck, true));
+      Contract.Invariant(cce.NonNullElements(ProcsToCheck, true));
       Contract.Invariant(cce.NonNullElements(methodsToTranslateClass, true));
       Contract.Invariant(cce.NonNullElements(methodsToTranslateClassQualified, true));
       Contract.Invariant(cce.NonNullElements(methodsToTranslateExclude));
@@ -406,7 +406,7 @@ namespace Microsoft.Boogie {
     }
 
     [Rep]
-    private List<string/*!*/> procsToCheck = null;  // null means "no restriction"
+    public List<string/*!*/> ProcsToCheck = null;  // null means "no restriction"
     [Rep]
     private List<string/*!*/> methodsToTranslateSubstring = null;  // null means "no restriction"
     [Rep]
@@ -606,11 +606,11 @@ namespace Microsoft.Boogie {
 
           case "-proc":
           case "/proc":
-            if (procsToCheck == null) {
-              procsToCheck = new List<string/*!*/>();
+            if (ProcsToCheck == null) {
+              ProcsToCheck = new List<string/*!*/>();
             }
             if (ps.ConfirmArgumentCount(1)) {
-              procsToCheck.Add(cce.NonNull(args[ps.i]));
+              ProcsToCheck.Add(cce.NonNull(args[ps.i]));
             }
             break;
 
@@ -1551,11 +1551,11 @@ namespace Microsoft.Boogie {
 
     public bool UserWantsToCheckRoutine(string methodFullname) {
       Contract.Requires(methodFullname != null);
-      if (procsToCheck == null) {
+      if (ProcsToCheck == null) {
         // no preference
         return true;
       }
-      return Contract.Exists(procsToCheck, s => 0 <= methodFullname.IndexOf(s));
+      return Contract.Exists(ProcsToCheck, s => 0 <= methodFullname.IndexOf(s));
     }
 
 #if CCI
