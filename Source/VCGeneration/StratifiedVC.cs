@@ -2953,17 +2953,7 @@ namespace VC
                 string implName = calls.getProc(candidate);
                 ModelViewInfo info = candidate == 0 ? mvInfo : implName2StratifiedInliningInfo[implName].mvInfo;
 
-                if (capturePoint == CALL) {
-                  var init = m.MkState("Entering:" + candidate);
-                  foreach (Variable v in info.AllVariables) {
-                    init.AddBinding(v.Name, GetModelValue(m, v, candidate));
-                  }
-                  lastCandidate = candidate;
-                  lastCapturePoint = capturePoint;
-                  continue;
-                }
-
-                if (capturePoint == RETURN) {
+                if (capturePoint == CALL || capturePoint == RETURN) {
                   lastCandidate = candidate;
                   lastCapturePoint = capturePoint;
                   continue;
@@ -2979,14 +2969,13 @@ namespace VC
                   var e = (Expr)map.IncarnationMap[v];
 
                   if (e == null) {
-                    if (lastCapturePoint == RETURN) {
-                      Contract.Assert(lastCandidate == candidate);
+                    if (lastCapturePoint == CALL || lastCapturePoint == RETURN) {
                       cs.AddBinding(v.Name, GetModelValue(m, v, candidate));
                     }
                     continue;
                   }
 
-                  if (lastCapturePoint != RETURN && prevInc[v] == e) continue; // skip unchanged variables
+                  if (lastCapturePoint != CALL && lastCapturePoint != RETURN && prevInc[v] == e) continue; // skip unchanged variables
 
                   Model.Element elt;
                   if (e is IdentifierExpr) {
@@ -3220,8 +3209,7 @@ namespace VC
                             calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                 new CalleeCounterexampleInfo(
                                     cce.NonNull(GenerateTrace(labels, errModel, mvInfo, actualId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
-                                    new List<Model.Element>(),
-                                    orderedStateIds.Count - 1);
+                                    new List<Model.Element>());
                             orderedStateIds.Add(new Tuple<int, int>(candidateId, StratifiedInliningErrorReporter.RETURN));
                         }
                         else
@@ -3239,8 +3227,7 @@ namespace VC
                                 calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                     new CalleeCounterexampleInfo(
                                         cce.NonNull(GenerateTrace(labels, errModel, mvInfo, actualId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
-                                        new List<Model.Element>(),
-                                        orderedStateIds.Count - 1);
+                                        new List<Model.Element>());
                                 orderedStateIds.Add(new Tuple<int, int>(candidateId, StratifiedInliningErrorReporter.RETURN));
                               }
                               else {
@@ -3252,8 +3239,7 @@ namespace VC
                               calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                   new CalleeCounterexampleInfo(
                                       cce.NonNull(GenerateTrace(labels, errModel, mvInfo, calleeId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
-                                      new List<Model.Element>(),
-                                      orderedStateIds.Count - 1);
+                                      new List<Model.Element>());
                               orderedStateIds.Add(new Tuple<int, int>(candidateId, StratifiedInliningErrorReporter.RETURN));
                             }
                         }
