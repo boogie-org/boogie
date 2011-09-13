@@ -2917,8 +2917,6 @@ namespace VC
               var filename = CommandLineOptions.Clo.ModelViewFile;
               if (model == null || filename == null) return;
 
-              GetModelWithStates(model);
-
               if (filename == "-") {
                 model.Write(Console.Out);
                 Console.Out.Flush();
@@ -3013,6 +3011,7 @@ namespace VC
                     var cex = GenerateTraceMain(labels, model, mvInfo);
                     Debug.Assert(candidatesToExpand.Count == 0);
                     if (cex != null) {
+                      GetModelWithStates(model);
                       callback.OnCounterexample(cex, null);
                       this.PrintModel(model);
                     }
