@@ -1,0 +1,609 @@
+class AVLTree{
+	var root : AVLTreeNode;
+
+	predicate valid{
+		   acc(root,100)
+		&& (root!=null ==> root.valid)
+		&& (root!=null ==> acc(root.height       ,50))
+		&& (root!=null ==> acc(root.balanceFactor,50))
+	}
+
+	method init()
+		requires acc(root,100);
+		ensures valid;
+	{
+		root := null;
+		fold valid;
+	}
+
+	method insert(k : int)
+		requires valid;
+		ensures valid;
+	{
+		unfold valid;
+		if (root==null){
+			var n : AVLTreeNode := new AVLTreeNode;
+			call n.init(k);
+			root := n;
+		}else{
+			call r := root.insert(k);
+			root := r;
+		}
+		fold valid;
+	}
+
+	method remove(k : int)
+		requires valid;
+		ensures valid;
+	{
+		unfold valid;
+		if (root==null){
+		}else{
+			call r := root.remove(k);
+			root := r;
+		}
+		fold valid;
+	}
+
+	method has(k : int) returns (b : bool)
+		requires valid;
+		ensures valid;
+	{
+		unfold valid;
+		if (root==null){
+			b := false;
+		}else{
+			var bb : bool;
+			call bb:= root.has(k);
+			b := bb;
+		}
+		fold valid;
+	}
+}
+
+class AVLTreeNode{
+	var key    : int;
+	var height : int;
+	var left  : AVLTreeNode;
+	var right : AVLTreeNode;
+	ghost var balanceFactor : int;
+
+	predicate valid{
+		   acc(key   ,100)
+		&& acc(height,50)
+		&& acc(left  ,100)
+		&& acc(right ,100)
+		&& acc(balanceFactor,50)
+		&& (left!=null ==> left.valid)
+		&& (left!=null ==> acc(left.height       ,50))
+		&& (left!=null ==> acc(left.balanceFactor,50))
+		&& (left!=null ==> left.height > 0)
+		&& (right!=null ==> right.valid)
+		&& (right!=null ==> acc(right.height       ,50))
+		&& (right!=null ==> acc(right.balanceFactor,50))
+		&& (right!=null ==> right.height > 0)
+		&& height == ( (left==null?0:left.height)>(right==null?0:right.height) ? (left==null?0:left.height)+1 : (right==null?0:right.height)+1 )
+		&& balanceFactor == (left==null?0:left.height) - (right==null?0:right.height)
+		&& balanceFactor<= 1
+		&& balanceFactor>=-1
+		&& height > 0
+	}
+
+	method init(k : int)
+		requires acc(key   ,100);
+		requires acc(height,100);
+		requires acc(left  ,100);
+		requires acc(right ,100);
+		requires acc(balanceFactor,100)
+		ensures valid;
+		ensures acc(height,50);
+		ensures acc(balanceFactor,50);
+		ensures height == 1;
+		ensures balanceFactor == 0;
+	{
+		left   := null;
+		right  := null;
+		key    := k;
+		call close();
+	}
+
+	method insert(k : int) returns ( r : AVLTreeNode )
+		requires valid;
+		requires acc(height,50);
+		requires acc(balanceFactor,50);
+		ensures r != null;
+		ensures r.valid;
+		ensures acc(r.height,50);
+		ensures acc(r.balanceFactor,50);
+		ensures ( r.height == old(height) ) || ( r.height == old(height) + 1 );
+	{
+		unfold valid;
+		if (key==k){
+			r := this;
+			call r.close();
+		}else{ //key!=k
+			if (k<key){ // insert left
+				var nl : AVLTreeNode;
+				if (left==null){
+					nl := new AVLTreeNode;
+					call nl.init(k);
+				}else{
+					call nl := left.insert(k);
+				}
+				left := nl;
+				var bf : int;
+				call bf := getBalanceFactorI();
+
+				if (bf==2){ //rebalance
+					call r:= rebalanceLeft();
+				}else{ //no rebalance
+					r := this;
+					call r.close();
+				}
+			}else{ // k>key -- insert right
+				var nr : AVLTreeNode;
+				if (right==null){
+					nr := new AVLTreeNode;
+					call nr.init(k);
+				}else{
+					call nr := right.insert(k);
+				}
+				right := nr;
+				
+				var bf : int;
+				call bf := getBalanceFactorI();
+				if (bf==-2){ //rebalance
+					call r := rebalanceRight();
+				}else{//no rebalance
+					r := this;
+					call r.close();
+				}
+			}
+		}
+	}
+
+	method remove(k : int) returns ( r : AVLTreeNode )
+		requires valid;
+		requires acc(height,50);
+		requires acc(balanceFactor,50);
+		ensures r != null ==> r.valid;
+		ensures r != null ==> acc(r.height,50);
+		ensures r != null ==> acc(r.balanceFactor,50);
+		ensures old(height)>1 ==> r!=null;
+		ensures r != null ==> r.height==old(height) || r.height+1==old(height);
+	{
+		unfold valid;
+		if (key==k){
+			if (left==null || right==null){
+				if (left==null){ // replace with right
+					r := right;
+				}else{ // right==null
+					r := left;
+				}
+			}else{ // prune max/min of left/right
+				var bf : int;
+				var nl : AVLTreeNode := left;
+				var nr : AVLTreeNode := right;
+				
+				call bf := getBalanceFactorI();
+				if (bf > 0 ){ // left larger - prune leftmax
+					call nl,r := left.pruneMax();
+				}else{ // right larger equal - prune rightmin
+					call nr,r := right.pruneMin();
+				}
+				unfold r.valid;
+				r.left  := nl;
+				r.right := nr;
+				call r.close();
+			}
+		}else{ //key!=k
+			if (k<key){ // remove left
+				if (left!=null){
+					var nl : AVLTreeNode;
+					call nl := left.remove(k);
+					left := nl;
+
+					var bf : int;
+					call bf := getBalanceFactorI();
+
+					if (bf==-2){ // rebalance
+						call r:=rebalanceRight();
+					}else{ // no rebalance
+						call close();
+						r := this;
+					}
+				}else{
+					r := this;
+					call r.close();
+				}
+			}else{ // k>key -- remove right
+				if (right != null){
+					var nr : AVLTreeNode;
+					call nr := right.remove(k);
+					right := nr;
+					
+					var bf : int;
+					call bf := getBalanceFactorI();
+					if (bf==2){ // rebalance
+						call r := rebalanceLeft();
+					}else{ // no rebalance
+						r := this;
+						call r.close();
+					}
+				}else{
+					r := this;
+					call r.close();
+				}
+			}
+		}
+	}
+
+	method pruneMax() returns ( r : AVLTreeNode, m : AVLTreeNode )
+		requires valid;
+		requires acc(height,50);
+		requires acc(balanceFactor,50);
+		ensures r != null ==> r.valid;
+		ensures r != null ==> acc(r.height,50);
+		ensures r != null ==> acc(r.balanceFactor,50);
+		ensures r != null ==> (r.height == old(height) || r.height+1 == old(height));
+		ensures old(height) >1 ==> r != null;
+		ensures old(height)==1 ==> r == null;
+		ensures old(height)==(r==null?0:r.height) || old(height)==(r==null?0:r.height)+1;
+		ensures m != null;
+		ensures	m.valid;
+		ensures acc(m.height,50);
+		ensures acc(m.balanceFactor,50);
+		ensures m.height == 1;
+	{
+		unfold valid;
+		if (right==null){
+			r := left;
+			left := null;
+			call close();
+			m := this;
+		}else{
+			var nr : AVLTreeNode;
+			call nr,m := right.pruneMax();
+			right := nr;
+			var bf : int;
+			call bf := getBalanceFactorI();
+			if (bf == 2){
+				call r:=rebalanceLeft();
+			}else{
+				call close();
+				r := this;
+			}
+		}
+	}
+	
+	method pruneMin() returns ( r : AVLTreeNode, m : AVLTreeNode )
+		requires valid;
+		requires acc(height,50);
+		requires acc(balanceFactor,50);
+		ensures r != null ==> r.valid;
+		ensures r != null ==> acc(r.height,50);
+		ensures r != null ==> acc(r.balanceFactor,50);
+		ensures r != null ==> (r.height == old(height) || r.height == old(height)-1);
+		ensures old(height) >1 ==> r != null;
+		ensures old(height)==1 ==> r == null;
+		ensures old(height)==(r==null?0:r.height) || old(height)==(r==null?0:r.height)+1;
+		ensures m != null;
+		ensures	m.valid;
+		ensures acc(m.height,50);
+		ensures acc(m.balanceFactor,50);
+		ensures m.height == 1;
+	{
+		unfold valid;
+		if (left==null){
+			r := right;
+			right := null;
+			call close();
+			m := this;
+			assert r!=null ==> (r.height == old(height) || r.height == old(height)-1);
+		}else{
+			var nl : AVLTreeNode;
+			call nl,m := left.pruneMin();
+			left := nl;
+			var bf : int;
+			call bf := getBalanceFactorI();
+			if (bf == -2){
+				call r:=rebalanceRight();
+				assert r != null ==> (r.height == old(height) || r.height == old(height)-1);
+			}else{
+				call close();
+				r := this;
+				assert r != null ==> (r.height == old(height) || r.height == old(height)-1);
+			}
+		}
+	}
+
+	method has(k : int) returns (b : bool)
+		requires valid;
+		ensures valid;
+	{
+		unfold valid;
+		if (k==key){
+			b := true;
+		}else{ //k!=key
+			if (k < key){
+				if (left!=null){
+					call b := left.has(k);
+				}else{
+					b := false;
+				}
+			}else{ //k > key;
+				if (right!=null){
+					call b := right.has(k);
+				}else{
+					b := false;
+				}
+			}
+		}
+		fold valid;
+	}
+
+	method getBalanceFactor() returns ( bf : int ) 
+		requires valid;
+		requires rd(balanceFactor);
+
+		ensures valid;
+		ensures rd(balanceFactor);
+		ensures bf == balanceFactor;
+
+		ensures unfolding valid in bf>0 ==> left !=null;
+		ensures unfolding valid in bf<0 ==> right!=null;
+	{
+		unfold valid;
+		var lh : int := (left ==null ? 0 : left .height );
+		var rh : int := (right==null ? 0 : right.height );
+		bf := lh-rh;
+
+		fold valid;
+	}
+
+	//////////////////////////////////////////////////////////
+	method getBalanceFactorI() returns ( bf : int ) 
+		requires rd(left);
+		requires left!=null ==> left.valid;
+		requires left!=null ==> rd(left.height);
+		requires rd(right);
+		requires right!=null ==> right.valid;
+		requires right!=null ==> rd(right.height);
+		ensures rd(left);
+		ensures left!=null ==> left.valid;
+		ensures left!=null ==> rd(left.height);
+		ensures rd(right);
+		ensures right!=null ==> right.valid;
+		ensures right!=null ==> rd(right.height);
+		ensures bf == (left==null?0:left.height)-(right==null?0:right.height);
+		ensures bf>0 ==> left !=null;
+		ensures bf<0 ==> right!=null;
+	{
+		var lh : int := (left ==null ? 0 : left .height );
+		var rh : int := (right==null ? 0 : right.height );
+		bf := lh-rh;
+		assert right!=null ==> unfolding right.valid in right.height>0;
+		assert left !=null ==> unfolding left .valid in left .height>0;
+		assert lh>=0;
+		assert rh>=0;
+	}
+
+	method close()
+		requires acc(key   ,100);
+		requires acc(height,100);
+		requires acc(left  ,100);
+		requires acc(right ,100);
+		requires acc(balanceFactor,100);
+		requires left!=null ==> left.valid;
+		requires left!=null ==> acc(left.height       ,50);
+		requires left!=null ==> acc(left.balanceFactor,50);
+		requires right!=null ==> right.valid;
+		requires right!=null ==> acc(right.height       ,50);
+		requires right!=null ==> acc(right.balanceFactor,50);
+		requires ( left==null ? 0 : left.height )-( right==null ? 0 : right.height ) <= 1;
+		requires ( left==null ? 0 : left.height )-( right==null ? 0 : right.height ) >=-1;
+		ensures valid;
+		ensures acc(height       ,50);
+		ensures acc(balanceFactor,50);
+		ensures height == 
+			( ( old(left)==null ? 0 : old(left.height) )>( old(right)==null ? 0 : old(right.height) ) 
+				? 
+					( old(left)==null ? 0 : old(left.height) )+1 
+				: 
+					( old(right)==null ? 0 : old(right.height))+1
+			);
+		ensures balanceFactor == 
+			( old(left)==null ? 0 : old(left.height) )-( old(right)==null ? 0 : old(right.height) );
+	{
+		var lh : int := (left ==null ? 0 : left .height );
+		var rh : int := (right==null ? 0 : right.height );
+		
+		assert left !=null ==> unfolding left .valid in left .height>0;
+		assert right!=null ==> unfolding right.valid in right.height>0;
+		height := ( (( left==null ? 0 : left.height )>( right==null ? 0 : right.height )) ? ( left==null ? 0 : left.height )+1 : ( right==null ? 0 : right.height )+1);
+		
+		balanceFactor := ( left==null ? 0 : left.height )-( right==null ? 0 : right.height );
+		
+		fold valid;
+	}
+	
+	method rebalanceLeft() returns ( r : AVLTreeNode )
+		requires acc(key   ,100);
+		requires acc(height,100);
+		requires acc(left  ,100);
+		requires acc(right ,100);
+		requires acc(balanceFactor,100);
+		requires left!=null;
+		requires left.valid;
+		requires acc(left.height       ,50);
+		requires acc(left.balanceFactor,50);
+		requires right!=null ==> right.valid;
+		requires right!=null ==> acc(right.height       ,50)
+		requires right!=null ==> acc(right.balanceFactor,50)
+		requires left.height-(right==null?0:right.height)==2;
+		ensures r != null && r.valid;
+		ensures acc(r.height       ,50);
+		ensures acc(r.balanceFactor,50);
+		ensures r.height == old(left.height) || r.height == old(left.height)+1;
+	{
+		var lbf : int;
+		call lbf := left.getBalanceFactor();
+		if (lbf<0){
+			assert unfolding left.valid in lbf==-1;
+			call r := rebalanceRL();
+		}else{//lbf>=0
+			call r := rebalanceRR();
+		}
+	}
+
+	method rebalanceRL() returns ( r : AVLTreeNode )
+		requires acc(key   ,100);
+		requires acc(height,100);
+		requires acc(left  ,100);
+		requires acc(right ,100);
+		requires acc(balanceFactor,100);
+		requires left!=null;
+		requires left.valid;
+		requires acc(left.height       ,50);
+		requires acc(left.balanceFactor,50);
+		requires right!=null ==> right.valid;
+		requires right!=null ==> acc(right.height       ,50)
+		requires right!=null ==> acc(right.balanceFactor,50)
+		requires left.height-(right==null?0:right.height)==2;
+		requires left.balanceFactor==-1;
+		ensures r != null && r.valid;
+		ensures acc(r.height       ,50);
+		ensures acc(r.balanceFactor,50);
+		ensures r.height == old(left.height);
+	{
+		unfold left.valid;
+		r := left.right;
+		unfold r.valid;
+
+		left.right := r.left;
+		call left.close();
+		r.left     := left;
+		left       := r.right;
+		
+		call close(); 
+		r.right    := this;
+		call r.close();
+	}
+
+	method rebalanceRR() returns ( r : AVLTreeNode )
+		requires acc(key   ,100);
+		requires acc(height,100);
+		requires acc(left  ,100);
+		requires acc(right ,100);
+		requires acc(balanceFactor,100);
+		requires left!=null;
+		requires left.valid;
+		requires acc(left.height       ,50);
+		requires acc(left.balanceFactor,50);
+		requires right!=null ==> right.valid;
+		requires right!=null ==> acc(right.height       ,50)
+		requires right!=null ==> acc(right.balanceFactor,50)
+		requires left.height - (right==null?0:right.height)==2;
+		requires left.balanceFactor>=0;
+		ensures r != null && r.valid;
+		ensures acc(r.height       ,50);
+		ensures acc(r.balanceFactor,50);
+		ensures r.height == old(left.height) || r.height == old(left.height)+1;
+	{
+		unfold left.valid;
+		r       := left;
+		left    := r.right;
+		call close();
+		r.right := this;
+		call r.close();
+	}
+
+	method rebalanceRight() returns ( r : AVLTreeNode )
+		requires acc(key   ,100);
+		requires acc(height,100);
+		requires acc(left  ,100);
+		requires acc(right ,100);
+		requires acc(balanceFactor,100);
+		requires left!=null==>left.valid;
+		requires left!=null==>acc(left.height       ,50);
+		requires left!=null==>acc(left.balanceFactor,50);
+		requires right!=null;
+		requires right.valid;
+		requires acc(right.height       ,50)
+		requires acc(right.balanceFactor,50)
+		requires (left==null?0:left.height)-right.height==-2;
+		ensures r != null && r.valid;
+		ensures acc(r.height       ,50);
+		ensures acc(r.balanceFactor,50);
+		ensures r.height == old(right.height) || r.height == old(right.height)+1;
+	{
+		var rbf : int;
+		call rbf := right.getBalanceFactor();
+		if (rbf>0){
+			assert unfolding right.valid in rbf==1;
+			call r := rebalanceLR();
+		}else{//rbf<=0
+			call r := rebalanceLL();
+		}
+	}
+
+	method rebalanceLR() returns ( r : AVLTreeNode )
+		requires acc(key   ,100);
+		requires acc(height,100);
+		requires acc(left  ,100);
+		requires acc(right ,100);
+		requires acc(balanceFactor,100);
+		requires left!=null==>left.valid;
+		requires left!=null==>acc(left.height       ,50);
+		requires left!=null==>acc(left.balanceFactor,50);
+		requires right!=null;
+		requires right.valid;
+		requires acc(right.height       ,50);
+		requires acc(right.balanceFactor,50);
+		requires (left==null?0:left.height)-right.height==-2;
+		requires right.balanceFactor==1;
+		ensures r != null && r.valid;
+		ensures acc(r.height       ,50);
+		ensures acc(r.balanceFactor,50);
+		ensures r.height == old(right.height);
+	{
+		unfold right.valid;
+		r := right.left;
+		unfold r.valid;
+		right.left := r.right;
+		call right.close();
+		r.right    := right;
+		right      := r.left;
+		call close();
+		r.left     := this;
+		call r.close();
+	}
+
+	method rebalanceLL() returns ( r : AVLTreeNode )
+		requires acc(key   ,100);
+		requires acc(height,100);
+		requires acc(left  ,100);
+		requires acc(right ,100);
+		requires acc(balanceFactor,100);
+		requires left!=null==>left.valid;
+		requires left!=null==>acc(left.height       ,50);
+		requires left!=null==>acc(left.balanceFactor,50);
+		requires right!=null;
+		requires right.valid;
+		requires acc(right.height       ,50);
+		requires acc(right.balanceFactor,50);
+		requires (left==null?0:left.height)-right.height==-2;
+		requires right.balanceFactor<=0;
+		ensures r != null && r.valid;
+		ensures acc(r.height       ,50);
+		ensures acc(r.balanceFactor,50);
+		ensures r.height == old(right.height) || r.height == old(right.height)+1;
+	{
+		unfold right.valid;
+		r       := right;
+		right    := r.left;
+		call close();
+		r.left := this;
+		call r.close();
+	}
+}
