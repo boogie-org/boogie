@@ -443,7 +443,8 @@ namespace Microsoft.Boogie
       List<string> vars = new List<string>();
       Dictionary<string, Element> valuations = new Dictionary<string, Element>();
       readonly CapturedState previous;
-      public readonly string Name;
+      // AL: Dropping "readonly" for corral
+      public /* readonly */ string Name { get; private set; }
 
       public IEnumerable<string> Variables { get { return vars; } }
       public IEnumerable<string> AllVariables { 
@@ -477,6 +478,35 @@ namespace Microsoft.Boogie
         valuations.Add(varname, value);
       }
 
+      // Change name of the state
+      public void ChangeName(string newName)
+      {
+          Name = newName;
+      }
+
+      // Change names of variables in this state
+      // (Used by corral)
+      internal void ChangeVariableNames(Dictionary<string, string> varNameMap)
+      {
+          var oldVars = vars;
+          var oldValuations = valuations;
+
+          vars = new List<string>();
+          valuations = new Dictionary<string, Element>();
+
+          foreach (var v in oldVars)
+          {
+              if (varNameMap.ContainsKey(v)) vars.Add(varNameMap[v]);
+              else vars.Add(v);
+          }
+
+          foreach (var kvp in oldValuations)
+          {
+              if (varNameMap.ContainsKey(kvp.Key)) valuations.Add(varNameMap[kvp.Key], kvp.Value);
+              else valuations.Add(kvp.Key, kvp.Value);
+          }
+      }
+
       internal CapturedState(string name, CapturedState prev)
       {
         Name = name;
@@ -491,6 +521,17 @@ namespace Microsoft.Boogie
       states.Add(s);
       return s;
     }
+
+    // Change names of variables in all captured states
+    // (Used by corral)
+    public void ChangeVariableNames(Dictionary<string, string> varNameMap)
+    {
+        foreach (var s in states)
+        {
+            s.ChangeVariableNames(varNameMap);
+        }
+    }
+
     #endregion
 
     public Model()

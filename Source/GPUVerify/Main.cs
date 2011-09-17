@@ -67,21 +67,25 @@ namespace GPUVerify
 
             verifier.SplitBlocksAtBarriers();
 
-            verifier.ComputeBarrierToNextBarriersProcedures();
 
-            verifier.ComputeBarrierToBarrierPairs();
-
-            foreach (Variable V in verifier.GetGlobalVariables())
+            if (CommandLineOptions.formulaSkeletonsFile != null)
             {
-                program.TopLevelDeclarations.Add(new Constant(V.tok, new TypedIdent(V.tok, V.Name + "_base", MakeArrayBaseType(V)), true));
+                Console.WriteLine("Generating skeleton formulas to \"" + CommandLineOptions.formulaSkeletonsFile + "\" and exiting");
+                verifier.GenerateFormulaSkeletons(CommandLineOptions.formulaSkeletonsFile);
+                Environment.Exit(0);
             }
 
-            foreach (Variable V in verifier.GetTileStaticVariables())
-            {
-                program.TopLevelDeclarations.Add(new Constant(V.tok, new TypedIdent(V.tok, V.Name + "_base", MakeArrayBaseType(V)), true));
-            }
+            verifier.GenerateBarrierToNextBarriersProcedures();
 
-            using (TokenTextWriter writer = new TokenTextWriter("<console>", Console.Out))
+            verifier.GenerateBarrierToBarrierPairProcedures();
+
+            verifier.GenerateBarrierToNextBarriersVCs();
+
+            verifier.GenerateBarrierToBarrierPairVCs();
+
+            verifier.AddArrayBaseDeclarations();
+
+            using (TokenTextWriter writer = (CommandLineOptions.outputFile == null ? new TokenTextWriter("<console>", Console.Out) : new TokenTextWriter(CommandLineOptions.outputFile)))
             {
                 program.Emit(writer);
             }
@@ -106,10 +110,6 @@ namespace GPUVerify
 
         }
 
-        private static CtorType MakeArrayBaseType(Variable V)
-        {
-            return new CtorType(V.tok, new TypeCtorDecl(V.tok, "ArrayBase", 0), new TypeSeq());
-        }
 
 
 

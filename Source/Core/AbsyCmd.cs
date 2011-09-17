@@ -1625,6 +1625,16 @@ namespace Microsoft.Boogie {
   public abstract class CallCommonality : SugaredCmd {
     public QKeyValue Attributes;
 
+    private bool isFree = false;
+    public bool IsFree {
+      get {
+        return isFree;
+      }
+      set {
+        isFree = value;
+      }
+    }
+
     protected CallCommonality(IToken tok, QKeyValue kv)
       : base(tok) {
       Contract.Requires(tok != null);
@@ -1753,7 +1763,11 @@ namespace Microsoft.Boogie {
 
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
-      stream.Write(this, level, "call ");
+      stream.Write(this, level, "");
+      if (IsFree) {
+        stream.Write("free ");
+      }
+      stream.Write("call ");
       EmitAttributes(stream, Attributes);
       string sep = "";
       if (Outs.Count > 0) {
@@ -2029,7 +2043,7 @@ namespace Microsoft.Boogie {
       Expr preConjunction = null;
       for (int i = 0; i < this.Proc.Requires.Length; i++) {
         Requires/*!*/ req = cce.NonNull(this.Proc.Requires[i]);
-        if (!req.Free) {
+        if (!req.Free && !IsFree) {
           if (hasWildcard) {
             Expr pre = Substituter.Apply(s, req.Condition);
             if (preConjunction == null) {
@@ -2211,7 +2225,11 @@ namespace Microsoft.Boogie {
     }
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
-      stream.Write(this, level, "call ");
+      stream.Write(this, level, "");
+      if (IsFree) {
+        stream.Write("free ");
+      }
+      stream.Write("call ");
       EmitAttributes(stream, Attributes);
       stream.Write("forall ");
       stream.Write(TokenTextWriter.SanitizeIdentifier(callee));
@@ -2355,7 +2373,7 @@ namespace Microsoft.Boogie {
       Expr preConjunction = null;
       for (int i = 0; i < this.Proc.Requires.Length; i++) {
         Requires/*!*/ req = cce.NonNull(this.Proc.Requires[i]);
-        if (!req.Free) {
+        if (!req.Free && !IsFree) {
           Expr pre = Substituter.Apply(s, req.Condition);
           if (preConjunction == null) {
             preConjunction = pre;

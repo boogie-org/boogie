@@ -27,7 +27,6 @@ namespace Microsoft.Boogie {
       Contract.Invariant(cce.NonNullElements(args));
     }
 
-
     public CalleeCounterexampleInfo(Counterexample cex, List<Model.Element/*!>!*/> x) {
       Contract.Requires(cex != null);
       Contract.Requires(cce.NonNullElements(x));
