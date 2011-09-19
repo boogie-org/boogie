@@ -1397,7 +1397,7 @@ namespace Microsoft.Boogie {
       : base(tok, typedIdent) {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
-      Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
+      Contract.Requires(typedIdent.Name != null && (!typedIdent.HasName || typedIdent.Name.Length > 0));
       Contract.Requires(typedIdent.WhereExpr == null);
       // base(tok, typedIdent);
       this.Unique = true;
