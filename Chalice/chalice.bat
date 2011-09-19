@@ -2,7 +2,7 @@
 SetLocal EnableDelayedExpansion
 
 set ROOT_DIR=%~dp0
-set JAVA_EXE=java
+set JAVA_EXE=java 
 
 REM Attention: 'where' might not be available on all Windows versions
 call where %JAVA_EXE% > NUL
@@ -39,7 +39,7 @@ set CHALICE_OPTS=%CHALICE_OPTS% /boogieOpt:nologo
 set CHALICE_OPTS=%CHALICE_OPTS% %*
 
 REM Assemble main command
-set CMD=%JAVA_EXE% -cp %CP% %CHALICE_MAIN% %CHALICE_OPTS%
+set CMD=%JAVA_EXE% -cp %CP% -Xss16M %CHALICE_MAIN% %CHALICE_OPTS%
 
 REM echo.
 REM echo %CMD%
