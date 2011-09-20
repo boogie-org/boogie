@@ -45,8 +45,7 @@ namespace Microsoft.Boogie.ModelViewer
 
       smallFont = stateList.Font;
 
-      if (runAsHostedWindow)
-      {
+      if (runAsHostedWindow) {
         this.fileToolStripMenuItem.Enabled = false;
         this.fileToolStripMenuItem.Visible = false;
       }
@@ -73,11 +72,9 @@ namespace Microsoft.Boogie.ModelViewer
         System.Diagnostics.Debugger.Launch();
       }
 
-      if (filename != null)
-      {
+      if (filename != null) {
         var idx = filename.IndexOf(':');
-        if (idx > 0)
-        {
+        if (idx > 0) {
           modelId = int.Parse(filename.Substring(idx + 1));
           filename = filename.Substring(0, idx);
         }
@@ -88,12 +85,9 @@ namespace Microsoft.Boogie.ModelViewer
 
     private void SetWindowTitle(string fileName)
     {
-      if (fileName == null)
-      {
+      if (fileName == null) {
         this.Text = "Boogie Verification Debugger";
-      }
-      else
-      {
+      } else {
         this.Text = Path.GetFileName(fileName) + " - Boogie Verification Debugger";
       }
     }
@@ -103,10 +97,8 @@ namespace Microsoft.Boogie.ModelViewer
       this.lastModelFileName = modelFileName;
       this.langProvider = Base.Provider.Instance;
 
-      if (!string.IsNullOrWhiteSpace(modelFileName) && File.Exists(modelFileName))
-      {
-        using (var rd = File.OpenText(modelFileName))
-        {
+      if (!string.IsNullOrWhiteSpace(modelFileName) && File.Exists(modelFileName)) {
+        using (var rd = File.OpenText(modelFileName)) {
           allModels = Model.ParseModels(rd).ToArray();
         }
 
@@ -118,19 +110,15 @@ namespace Microsoft.Boogie.ModelViewer
         currentModel = allModels[modelId];
         AddModelMenu();
 
-        foreach (var p in Providers())
-        {
-          if (p.IsMyModel(currentModel))
-          {
+        foreach (var p in Providers()) {
+          if (p.IsMyModel(currentModel)) {
             this.langProvider = p;
             break;
           }
         }
 
         LoadModel(modelId);
-      }
-      else
-      {
+      } else {
         currentModel = new Model();
       }
 
@@ -141,7 +129,7 @@ namespace Microsoft.Boogie.ModelViewer
     private void LoadModel(int idx)
     {
       var i = 0;
-      
+
       //var stateIdx = stateList.SelectedIndices.Count == 0 ? 0 : stateList.SelectedIndices[0];
 
       modelId = idx;
@@ -165,8 +153,7 @@ namespace Microsoft.Boogie.ModelViewer
       foreach (var m in allModels) {
         var currIdx = idx++; // this local needs to be in this block
         var menuItem = modelsToolStripMenuItem.DropDownItems.Add(string.Format("Model #&{0}", currIdx), null, (s, a) => LoadModel(currIdx)) as ToolStripMenuItem;
-        if (currIdx <= 9)
-        {
+        if (currIdx <= 9) {
           menuItem.ShortcutKeys = Keys.Control | (Keys)(currIdx + Keys.D0);
         }
       }
@@ -202,10 +189,10 @@ namespace Microsoft.Boogie.ModelViewer
         stateList.Items[0].Selected = true;
         SetColumnSizes();
       } else {
-        var mapping = new Dictionary<SkeletonItem, SkeletonItem>();        
+        var mapping = new Dictionary<SkeletonItem, SkeletonItem>();
         unfoldingRoot.SyncWith(mapping, oldRoot);
         SkeletonItem newIt = null;
-        while (selectedSkel != null) {          
+        while (selectedSkel != null) {
           if (mapping.TryGetValue(selectedSkel, out newIt)) break;
           selectedSkel = selectedSkel.parent;
         }
@@ -303,7 +290,7 @@ namespace Microsoft.Boogie.ModelViewer
         plusBorder.Height = lineHeight / 2;
         plusBorder.Width = lineHeight / 2;
         plusBorder.X += lineHeight / 4;
-        plusBorder.Y += lineHeight / 4;   
+        plusBorder.Y += lineHeight / 4;
         e.Graphics.DrawRectangle(plusPen, plusBorder);
         if (skel.Expandable) {
           float midX = plusBorder.X + plusBorder.Width / 2;
@@ -493,7 +480,7 @@ namespace Microsoft.Boogie.ModelViewer
       }
 
       textBox1.ForeColor = bad ? Color.Red : Color.Black;
-      
+
       var wordsA = words.ToArray();
       var refsA = eltRef.ToArray();
 
@@ -515,7 +502,7 @@ namespace Microsoft.Boogie.ModelViewer
           s.isMatch = newMatch;
         }
       }
-      
+
       if (previousState >= 0)
         stateList.Items[previousState].ForeColor = previousStateBrush.Color;
       stateList.Items[currentState].ForeColor = currentStateBrush.Color;
@@ -534,7 +521,7 @@ namespace Microsoft.Boogie.ModelViewer
     private void matchesList_DoubleClick(object sender, EventArgs e)
     {
       if (matchesList.SelectedItems.Count == 0) return;
-      var sel = (DisplayItem) matchesList.SelectedItems[0];
+      var sel = (DisplayItem)matchesList.SelectedItems[0];
       GotoNode(sel.skel);
     }
 
@@ -687,8 +674,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     private void openModelMenuItem_Click(object sender, EventArgs e)
     {
-      if (this.openModelFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-      {
+      if (this.openModelFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK) {
         this.ReadModels(this.openModelFileDialog.FileName, 0);
       }
     }
@@ -710,7 +696,8 @@ namespace Microsoft.Boogie.ModelViewer
       //label1.Font = font;
     }
 
-    private void Main_Load(object sender, EventArgs e) {
+    private void Main_Load(object sender, EventArgs e)
+    {
 
     }
   }
