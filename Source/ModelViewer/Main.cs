@@ -700,6 +700,36 @@ namespace Microsoft.Boogie.ModelViewer
     {
 
     }
+
+    private void currentStateView_KeyDown(object sender, KeyEventArgs e)
+    {
+      var node = SelectedNode();
+      if (node == null) return;
+
+      if (e.KeyCode == Keys.Right && !node.skel.Expanded && node.skel.Expandable) {
+        node.skel.Expanded = true;
+        SyncCurrentStateView();
+        return;
+      }
+
+      if (e.KeyCode == Keys.Left) {
+        if (node.skel.Expanded) {
+          node.skel.Expanded = false;
+          SyncCurrentStateView();
+          return;
+        } else {
+          var par = node.skel.parent;
+          if (par != null && par.parent != null) {
+            // par.Expanded = false;
+            foreach (DisplayItem it in currentStateView.Items) {
+              it.Selected = it.skel == par;
+              it.Focused = it.skel == par;
+            }
+            SyncCurrentStateView();
+          }
+        }
+      }
+    }
   }
 
   internal class DisplayItem : ListViewItem

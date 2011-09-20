@@ -103,6 +103,7 @@
       this.currentStateView.DrawColumnHeader += new System.Windows.Forms.DrawListViewColumnHeaderEventHandler(this.listView1_DrawColumnHeader);
       this.currentStateView.DrawItem += new System.Windows.Forms.DrawListViewItemEventHandler(this.listView1_DrawItem);
       this.currentStateView.SelectedIndexChanged += new System.EventHandler(this.currentStateView_SelectedIndexChanged);
+      this.currentStateView.KeyDown += new System.Windows.Forms.KeyEventHandler(this.currentStateView_KeyDown);
       this.currentStateView.MouseUp += new System.Windows.Forms.MouseEventHandler(this.listView1_MouseUp);
       this.currentStateView.Resize += new System.EventHandler(this.listView1_Resize);
       // 
@@ -175,9 +176,9 @@
       // 
       // matchesList
       // 
-      this.matchesList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                  | System.Windows.Forms.AnchorStyles.Left)
-                  | System.Windows.Forms.AnchorStyles.Right)));
+      this.matchesList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
       this.matchesList.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.columnHeader4,
             this.columnHeader5});
@@ -233,9 +234,9 @@
       // 
       // textBox1
       // 
-      this.textBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                  | System.Windows.Forms.AnchorStyles.Left)
-                  | System.Windows.Forms.AnchorStyles.Right)));
+      this.textBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
       this.textBox1.Location = new System.Drawing.Point(53, 3);
       this.textBox1.Name = "textBox1";
       this.textBox1.Size = new System.Drawing.Size(477, 20);
