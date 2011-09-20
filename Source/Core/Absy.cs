@@ -2380,7 +2380,6 @@ namespace Microsoft.Boogie {
 
     public Implementation(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq inParams, VariableSeq outParams, VariableSeq localVariables, [Captured] StmtList structuredStmts, QKeyValue kv)
       : this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, kv, new Errors()) {
-      Contract.Requires(kv != null);
       Contract.Requires(structuredStmts != null);
       Contract.Requires(localVariables != null);
       Contract.Requires(outParams != null);
