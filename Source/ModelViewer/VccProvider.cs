@@ -615,16 +615,42 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           else if (tpl.Args[1] == element)
             return tp_object;
 
-        if (tpl.Args.Length == 2 && tpl.Args[0] == element && tpl.Func.Name.StartsWith("$select.$map_t")) {
+        var fname = tpl.Func.Name;
+
+        if (tpl.Args.Length == 2 && tpl.Args[0] == element && fname.StartsWith("$select.$map_t")) {
           var t1 = GuessType(tpl.Args[1]);
           var t2 = GuessType(tpl.Result);
           var t = f_map_t.TryEval(t1, t2);
           if (t != null)
             return t;
         }
+
+        var tpName = DataTypeName(element, tpl);
+        if (tpName != null) {
+          var tp = model.TryGetFunc("^$#" + tpName);
+          if (tp != null)
+            return tp.GetConstant();
+        }
       }
 
       return tp_mathint;
+    }
+
+    string DataTypeName(Model.Element elt, Model.FuncTuple tpl)
+    {
+      var fname = tpl.Func.Name;
+      if (tpl.Args.Length == 1 && tpl.Args[0] == elt && fname.StartsWith("RF#")) {
+        var fldName = tpl.Func.Name.Substring(3);
+        var idx = fldName.LastIndexOf('.');
+        if (idx > 0) {
+          return fldName.Substring(0, idx);
+        }
+      }
+
+      if (tpl.Args.Length == 1 && tpl.Args[0] == elt && (fname.StartsWith("DSZ#") || fname.StartsWith("RSZ#") || fname.StartsWith("DGH#"))) {
+        return fname.Substring(4);
+      }
+      return null;
     }
 
     public DataKind GetKind(Model.Element tp, out Model.FuncTuple tpl)
@@ -919,6 +945,26 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           var edgname = new EdgeName(this, "[%0]", sel.Args[1]);
           result.Add(new MapletNode(state, edgname, sel.Result, tp_bool) { Category = NodeCategory.Maplet });
         }
+      } else if (kind == DataKind.Flat) {
+        foreach (var tupl in elt.References) {
+          if (tupl.Args.Length == 1 && tupl.Args[0] == elt) {
+            var fname = tupl.Func.Name;
+            var idx = fname.LastIndexOf('.');
+            if (fname.StartsWith("RF#") && idx > 0) {
+              fname = fname.Substring(idx + 1);
+            } else if (fname.StartsWith("DP#p")) {
+              fname = fname.Substring(4);
+              idx = fname.IndexOf('#');
+              if (idx > 0)
+                fname = fname.Substring(idx + 1) + "#" + fname.Substring(0, idx);
+            } else {
+              fname = null;
+            }
+
+            if (fname != null)
+              result.Add(new FieldNode(state, new EdgeName(fname), tupl.Result, GuessType(tupl.Result)) { Category = NodeCategory.SpecField });
+          }
+        }
       }
 
       if (elt != null && !(elt is Model.Boolean)) {
@@ -941,6 +987,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           var cat = NodeCategory.MethodologyProperty;
           if (name.StartsWith("F#")) {
             name = name.Substring(2);
+            cat = NodeCategory.UserFunction;
+          }
+
+          if (name.StartsWith("DF#")) {
+            name = name.Substring(3);
             cat = NodeCategory.UserFunction;
           }
 
@@ -1069,8 +1120,24 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           if (fn == f_int_to_version)
             return "version";
 
-        if (fn == f_is_null && tpl.Result == model.True) 
+        if (fn == f_is_null && tpl.Result == model.True)
           isNull = true;
+
+        var dtpName = DataTypeName(elt, tpl);
+        if (dtpName != null) {
+          var dgh = model.TryGetFunc("DGH#" + dtpName);
+          if (dgh != null) {
+            var hd = dgh.TryEval(elt);
+            if (hd != null) {
+              foreach (var nm in hd.References) {
+                if (nm.Func.Arity == 0 && nm.Func.Name.StartsWith("DH#"))
+                  return nm.Func.Name.Substring(3);
+              }
+
+            }
+          }
+          return dtpName;
+        }
       }
 
       var fld = vm.f_field.TryEval(elt);
