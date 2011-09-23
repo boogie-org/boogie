@@ -687,7 +687,18 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       Model.FuncTuple tpl;
       var kind = GetKind(tp, out tpl);
 
-      if (kind == DataKind.Flat) return elt;
+      if (kind == DataKind.Flat) {
+        if (elt.Kind == Model.ElementKind.Integer) {
+          var tpname = TypeName(tp);
+          if(tpname.StartsWith("$")) tpname = tpname.Substring(1);
+          foreach (var tupl in elt.References) {
+            if (tupl.Args.Length == 1 && tupl.Args[0] == elt && tupl.Func.Name.StartsWith("$int_to_") && tupl.Func.Name.EndsWith(tpname)) {
+              return tupl.Result;
+            }
+          }
+        }
+        return elt;
+      }
 
       if (kind == DataKind.Map) {
         if (elt.Kind == Model.ElementKind.Integer) {
