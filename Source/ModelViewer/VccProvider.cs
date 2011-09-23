@@ -618,6 +618,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         var fname = tpl.Func.Name;
 
         if (tpl.Args.Length == 2 && tpl.Args[0] == element && fname.StartsWith("$select.$map_t")) {
+          var mt = model.TryGetFunc("MT#" + fname);
+          if (mt != null && mt.Arity == 0)
+            return mt.GetConstant();
           var t1 = GuessType(tpl.Args[1]);
           var t2 = GuessType(tpl.Result);
           var t = f_map_t.TryEval(t1, t2);
