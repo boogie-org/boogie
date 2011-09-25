@@ -724,6 +724,9 @@ namespace Microsoft.Boogie.ModelViewer
             foreach (DisplayItem it in currentStateView.Items) {
               it.Selected = it.skel == par;
               it.Focused = it.skel == par;
+              if (it.Selected) {
+                it.EnsureVisible();
+              }
             }
             SyncCurrentStateView();
           }
