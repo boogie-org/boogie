@@ -208,6 +208,7 @@ FieldNameType -> *7
 Heap -> *8
 this -> *9
 F -> *10
+@MV_state_const -> 8
 m@0 -> -2
 r@0 -> -2
 x@@4 -> 797
@@ -218,62 +219,62 @@ r -> **r
 m -> **m
 $pow2 -> {
   0 -> 1
-  else -> *22
+  else -> *23
 }
 tickleBool -> {
   false -> true
   true -> true
-  else -> *22
+  else -> *23
 }
 Ctor -> {
   *4 -> 0
   *5 -> 1
   *6 -> 3
   *7 -> 4
-  *18 -> 2
-  else -> *22
+  *19 -> 2
+  else -> *23
 }
 type -> {
-  *8 -> *18
+  *8 -> *19
   *9 -> *6
   *10 -> *7
   -2 -> *4
-  else -> *22
+  else -> *23
 }
 MapType0Type -> {
-  *6 *7 *4 -> *18
-  else -> *22
+  *6 *7 *4 -> *19
+  else -> *23
 }
 MapType0TypeInv2 -> {
-  *18 -> *4
-  else -> *22
+  *19 -> *4
+  else -> *23
 }
 MapType0TypeInv1 -> {
-  *18 -> *7
-  else -> *22
+  *19 -> *7
+  else -> *23
 }
 MapType0TypeInv0 -> {
-  *18 -> *6
-  else -> *22
+  *19 -> *6
+  else -> *23
 }
 @MV_state -> {
-  0 -> true
-  3 -> true
-  4 -> true
-  5 -> true
-  else -> *22
+  8 0 -> true
+  8 3 -> true
+  8 4 -> true
+  8 5 -> true
+  else -> *23
 }
 [3] -> {
   *8 *9 *10 -> -2
-  else -> *22
+  else -> *23
 }
 U_2_int -> {
   -2 -> -2
-  else -> *22
+  else -> *23
 }
 int_2_U -> {
   -2 -> -2
-  else -> *22
+  else -> *23
 }
 *** STATE <initial>
   Heap -> *8
