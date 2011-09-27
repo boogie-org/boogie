@@ -15,6 +15,11 @@ namespace GPUVerify
 
         public static string outputFile = null;
         public static string formulaSkeletonsFile = null;
+        public static string formulasFile = null;
+
+        public static bool NewRaceDetectionMethod = false;
+        public static bool OnlyDivergence = false;
+        public static bool FullAbstraction;
 
         public static int Parse(string[] args)
         {
@@ -54,6 +59,35 @@ namespace GPUVerify
                     }
                     Debug.Assert(afterColon != null);
                     formulaSkeletonsFile = afterColon;
+                    break;
+
+                    case "-formulas":
+                    case "/formulas":
+                    if (!hasColonArgument)
+                    {
+                        Console.WriteLine("Error: filename expected after " + beforeColon + " argument");
+                        Environment.Exit(1);
+                    }
+                    Debug.Assert(afterColon != null);
+                    formulasFile = afterColon;
+                    break;
+
+                    case "-newRaceDetectionMethod":
+                    case "/newRaceDetectionMethod":
+                    NewRaceDetectionMethod = true;
+
+                    break;
+
+                    case "-onlyDivergence":
+                    case "/onlyDivergence":
+                    OnlyDivergence = true;
+
+                    break;
+
+                    case "-fullAbstraction":
+                    case "/fullAbstraction":
+                    FullAbstraction = true;
+
                     break;
 
                     default:

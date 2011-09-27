@@ -10,9 +10,9 @@ namespace GPUVerify
     class LocalVariableAccessReplacer : StandardVisitor
     {
 
-        GPUVerifier verifier;
+        GPUVerifierAsynchronous verifier;
 
-        public LocalVariableAccessReplacer(GPUVerifier verifier)
+        public LocalVariableAccessReplacer(GPUVerifierAsynchronous verifier)
         {
             this.verifier = verifier;
         }
