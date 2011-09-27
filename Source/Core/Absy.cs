@@ -355,20 +355,20 @@ namespace Microsoft.Boogie {
       }
     }
 
-    void CreateProceduresForLoops(Implementation impl, Graph<Block/*!*/>/*!*/ g, 
-                                  List<Implementation/*!*/>/*!*/ loopImpls, 
+    void CreateProceduresForLoops(Implementation impl, Graph<Block/*!*/>/*!*/ g,
+                                  List<Implementation/*!*/>/*!*/ loopImpls,
                                   Dictionary<string, Dictionary<string, Block>> fullMap) {
       Contract.Requires(impl != null);
       Contract.Requires(cce.NonNullElements(loopImpls));
-      // Enumerate the headers 
+      // Enumerate the headers
       // for each header h:
-      //   create implementation p_h with 
+      //   create implementation p_h with
       //     inputs = inputs, outputs, and locals of impl
       //     outputs = outputs and locals of impl
       //     locals = empty set
       //   add call o := p_h(i) at the beginning of the header block
       //   break the back edges whose target is h
-      // Enumerate the headers again to create the bodies of p_h 
+      // Enumerate the headers again to create the bodies of p_h
       // for each header h:
       //   compute the loop corresponding to h
       //   make copies of all blocks in the loop for h
@@ -697,7 +697,7 @@ namespace Microsoft.Boogie {
       }
       return g;
     }
-    
+
     public class IrreducibleLoopException : Exception {}
 
     public Graph<Block> ProcessLoops(Implementation impl) {
@@ -1397,7 +1397,7 @@ namespace Microsoft.Boogie {
       : base(tok, typedIdent) {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
-      Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
+      Contract.Requires(typedIdent.Name != null && (!typedIdent.HasName || typedIdent.Name.Length > 0));
       Contract.Requires(typedIdent.WhereExpr == null);
       // base(tok, typedIdent);
       this.Unique = true;
@@ -2378,6 +2378,18 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public Implementation(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq inParams, VariableSeq outParams, VariableSeq localVariables, [Captured] StmtList structuredStmts, QKeyValue kv)
+      : this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, kv, new Errors()) {
+      Contract.Requires(structuredStmts != null);
+      Contract.Requires(localVariables != null);
+      Contract.Requires(outParams != null);
+      Contract.Requires(inParams != null);
+      Contract.Requires(typeParams != null);
+      Contract.Requires(name != null);
+      Contract.Requires(tok != null);
+      //:this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, new Errors());
+    }
+
     public Implementation(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq inParams, VariableSeq outParams, VariableSeq localVariables, [Captured] StmtList structuredStmts)
       : this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, new Errors()) {
       Contract.Requires(structuredStmts != null);
@@ -3232,11 +3244,11 @@ namespace Microsoft.Boogie {
       Contract.Requires(varSeq != null);
     }
     /*  PR: the following two constructors cause Spec# crashes
-        public TypeVariableSeq(TypeVariable! var) 
+        public TypeVariableSeq(TypeVariable! var)
           : base(new TypeVariable! [] { var })
         {
         }
-        public TypeVariableSeq() 
+        public TypeVariableSeq()
           : base(new TypeVariable![0])
         {
         } */

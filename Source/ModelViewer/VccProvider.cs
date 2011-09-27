@@ -38,7 +38,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
                                f_select_value, f_field, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t, f_select_ptr,
                                f_owners, f_closed, f_roots, f_timestamps, f_select_bool, f_select_int, f_is_null, f_good_state,
                                f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, f_field_plus,
-                               f_is_sequential_field, f_is_volatile_field, f_type_project_0, f_array;
+                               f_is_sequential_field, f_is_volatile_field, f_type_project_0, f_array, f_active_option, f_int_to_field;
     public readonly Model.Element tp_object, tp_mathint, tp_bool, tp_state, tp_ptrset, tp_heaptp;
     public readonly Model.Element elt_me, elt_null;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
@@ -69,6 +69,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_closed = m.MkFunc("$f_closed", 1);
       f_roots = m.MkFunc("$roots", 1);
       f_timestamps = m.MkFunc("$f_timestamp", 1);
+      f_active_option = m.MkFunc("$f_active_option", 1);
       f_field = m.MkFunc("$field", 1);
       f_field_type = m.MkFunc("$field_type", 1);
       f_int_to_ptr = m.MkFunc("$int_to_ptr", 1);
@@ -79,6 +80,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_good_state = m.MkFunc("$good_state", 1);
       f_int_to_version = m.MkFunc("$int_to_version", 1);
       f_int_to_ptrset = m.MkFunc("$int_to_ptrset", 1);
+      f_int_to_field = m.MkFunc("$int_to_field", 1);
       f_set_in0 = m.MkFunc("$set_in0", 2);
       f_is_ghost_field = m.MkFunc("$is_ghost_field", 1);
       f_is_phys_field = m.MkFunc("$is_phys_field", 1);
@@ -518,7 +520,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return res;
     }
 
-    public static readonly string[] synthethic_fields = new string[] { "$f_owns", "$f_ref_cnt", "$f_vol_version", "$f_root", "$f_group_root" };
+    public static readonly string[] synthethic_fields = new string[] { "$f_owns", "$f_ref_cnt", "$f_vol_version", "$f_root", "$f_group_root", "$f_active_option" };
 
     public string ConstantFieldName(Model.Element elt)
     {
@@ -613,16 +615,45 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           else if (tpl.Args[1] == element)
             return tp_object;
 
-        if (tpl.Args.Length == 2 && tpl.Args[0] == element && tpl.Func.Name.StartsWith("$select.$map_t")) {
+        var fname = tpl.Func.Name;
+
+        if (tpl.Args.Length == 2 && tpl.Args[0] == element && fname.StartsWith("$select.$map_t")) {
+          var mt = model.TryGetFunc("MT#" + fname);
+          if (mt != null && mt.Arity == 0)
+            return mt.GetConstant();
           var t1 = GuessType(tpl.Args[1]);
           var t2 = GuessType(tpl.Result);
           var t = f_map_t.TryEval(t1, t2);
           if (t != null)
             return t;
         }
+
+        var tpName = DataTypeName(element, tpl);
+        if (tpName != null) {
+          var tp = model.TryGetFunc("^$#" + tpName);
+          if (tp != null)
+            return tp.GetConstant();
+        }
       }
 
       return tp_mathint;
+    }
+
+    string DataTypeName(Model.Element elt, Model.FuncTuple tpl)
+    {
+      var fname = tpl.Func.Name;
+      if (tpl.Args.Length == 1 && tpl.Args[0] == elt && fname.StartsWith("RF#")) {
+        var fldName = tpl.Func.Name.Substring(3);
+        var idx = fldName.LastIndexOf('.');
+        if (idx > 0) {
+          return fldName.Substring(0, idx);
+        }
+      }
+
+      if (tpl.Args.Length == 1 && tpl.Args[0] == elt && (fname.StartsWith("DSZ#") || fname.StartsWith("RSZ#") || fname.StartsWith("DGH#"))) {
+        return fname.Substring(4);
+      }
+      return null;
     }
 
     public DataKind GetKind(Model.Element tp, out Model.FuncTuple tpl)
@@ -656,7 +687,18 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       Model.FuncTuple tpl;
       var kind = GetKind(tp, out tpl);
 
-      if (kind == DataKind.Flat) return elt;
+      if (kind == DataKind.Flat) {
+        if (elt.Kind == Model.ElementKind.Integer) {
+          var tpname = TypeName(tp);
+          if(tpname.StartsWith("$")) tpname = tpname.Substring(1);
+          foreach (var tupl in elt.References) {
+            if (tupl.Args.Length == 1 && tupl.Args[0] == elt && tupl.Func.Name.StartsWith("$int_to_") && tupl.Func.Name.EndsWith(tpname)) {
+              return tupl.Result;
+            }
+          }
+        }
+        return elt;
+      }
 
       if (kind == DataKind.Map) {
         if (elt.Kind == Model.ElementKind.Integer) {
@@ -847,7 +889,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
                 continue;              
               var addr = f_ptr.TryEval(field, elt);
               if (addr != null) addresses.Add(addr);
-              BuildFieldNode(result, state, addr, field, val, addr);
+              var node = ComputeUnionActiveOption(state, elt, val, field);
+              if (node != null)
+                result.Add(node);
+              else
+                BuildFieldNode(result, state, addr, field, val, addr);
             }
           }
           //result.Sort(CompareFields);
@@ -913,6 +959,26 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           var edgname = new EdgeName(this, "[%0]", sel.Args[1]);
           result.Add(new MapletNode(state, edgname, sel.Result, tp_bool) { Category = NodeCategory.Maplet });
         }
+      } else if (kind == DataKind.Flat) {
+        foreach (var tupl in elt.References) {
+          if (tupl.Args.Length == 1 && tupl.Args[0] == elt) {
+            var fname = tupl.Func.Name;
+            var idx = fname.LastIndexOf('.');
+            if (fname.StartsWith("RF#") && idx > 0) {
+              fname = fname.Substring(idx + 1);
+            } else if (fname.StartsWith("DP#p")) {
+              fname = fname.Substring(4);
+              idx = fname.IndexOf('#');
+              if (idx > 0)
+                fname = fname.Substring(idx + 1) + "#" + fname.Substring(0, idx);
+            } else {
+              fname = null;
+            }
+
+            if (fname != null)
+              result.Add(new FieldNode(state, new EdgeName(fname), tupl.Result, GuessType(tupl.Result)) { Category = NodeCategory.SpecField });
+          }
+        }
       }
 
       if (elt != null && !(elt is Model.Boolean)) {
@@ -935,6 +1001,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           var cat = NodeCategory.MethodologyProperty;
           if (name.StartsWith("F#")) {
             name = name.Substring(2);
+            cat = NodeCategory.UserFunction;
+          }
+
+          if (name.StartsWith("DF#")) {
+            name = name.Substring(3);
             cat = NodeCategory.UserFunction;
           }
 
@@ -972,6 +1043,19 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
 
       return result;
+    }
+
+    private FieldNode ComputeUnionActiveOption(StateNode state, Model.Element elt, Model.Element val, Model.Element field)
+    {
+      if (f_active_option.AppsWithResult(field).FirstOrDefault() != null) {
+        var activeOpt = f_ptr.OptEval(f_int_to_field.OptEval(val), elt);
+        if (activeOpt != null) {
+          var nm = ConstantFieldName(field);
+          var fieldNode = new FieldNode(state, new EdgeName(nm), activeOpt, GuessType(activeOpt)) { Category = NodeCategory.MethodologyProperty };
+          return fieldNode;
+        }
+      }
+      return null;
     }
 
     private void AddCasts(StateNode state, Model.Element elt, List<ElementNode> result)
@@ -1050,8 +1134,24 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           if (fn == f_int_to_version)
             return "version";
 
-        if (fn == f_is_null && tpl.Result == model.True) 
+        if (fn == f_is_null && tpl.Result == model.True)
           isNull = true;
+
+        var dtpName = DataTypeName(elt, tpl);
+        if (dtpName != null) {
+          var dgh = model.TryGetFunc("DGH#" + dtpName);
+          if (dgh != null) {
+            var hd = dgh.TryEval(elt);
+            if (hd != null) {
+              foreach (var nm in hd.References) {
+                if (nm.Func.Arity == 0 && nm.Func.Name.StartsWith("DH#"))
+                  return nm.Func.Name.Substring(3);
+              }
+
+            }
+          }
+          return dtpName;
+        }
       }
 
       var fld = vm.f_field.TryEval(elt);

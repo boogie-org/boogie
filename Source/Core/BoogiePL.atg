@@ -905,7 +905,10 @@ CallCmd<out Cmd/*!*/ c>
      QKeyValue kv = null;
      Expr en;  List<Expr> args;
      c = dummyCmd;
+     bool isFree = false;
   .)
+  [ "free"          (. isFree = true;  .)
+  ]
   "call"                          (. x = t; .)
   { Attribute<ref kv> }
   ( Ident<out first>
@@ -914,7 +917,7 @@ CallCmd<out Cmd/*!*/ c>
         { "," CallForallArg<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; .)
     |
                                   (. ids.Add(new IdentifierExpr(first, first.val)); .)
       [ "," CallOutIdent<out p>  (.
@@ -938,7 +941,7 @@ CallCmd<out Cmd/*!*/ c>
         { "," CallForallArg<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; .)
     )
   | "forall"
     Ident<out first> "("              (. args = new List<Expr>(); .)
@@ -946,7 +949,7 @@ CallCmd<out Cmd/*!*/ c>
       { "," CallForallArg<out en> (. args.Add(en); .)
       }
     ]
-    ")"                           (. c = new CallForallCmd(x, first.val, args, kv); .)
+    ")"                           (. c = new CallForallCmd(x, first.val, args, kv); ((CallForallCmd) c).IsFree = isFree; .)
   | "*"
                                   (. ids.Add(null); .)
       [ "," CallOutIdent<out p>  (.
@@ -970,7 +973,7 @@ CallCmd<out Cmd/*!*/ c>
         { "," CallForallArg<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; .)
   )
   .
 

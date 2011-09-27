@@ -333,7 +333,7 @@ namespace Microsoft.Boogie.Houdini {
       Queue<Implementation> queue = new Queue<Implementation>();
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Implementation impl = decl as Implementation;
-        if (impl != null) {
+        if (impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification) {
           queue.Enqueue(impl);
         }
       }
