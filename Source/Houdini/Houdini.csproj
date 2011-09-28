@@ -110,6 +110,10 @@
       <Project>{FEE9F01B-9722-4A76-A24B-72A4016DFA8E}</Project>
       <Name>Simplify</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj">
+      <Project>{9B163AA3-36BC-4AFB-88AB-79BC9E97E401}</Project>
+      <Name>SMTLib</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Provers\Z3\Z3.csproj">
       <Project>{BB49B90B-BE21-4BE8-85BA-359FDB55F4DF}</Project>
       <Name>Z3</Name>

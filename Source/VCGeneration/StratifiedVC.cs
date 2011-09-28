@@ -3162,8 +3162,9 @@ namespace VC
                             orderedStateIds.Add(new Tuple<int, int>(candidateId, foo));
                           }
                         }
- 
-                        if (calleeName.StartsWith(recordProcName)) {
+
+                        if (calleeName.StartsWith(recordProcName))
+                        {
                             var expr = calls.recordExpr2Var[new BoogieCallExpr(naryExpr, candidateId)];
 
                             // Record concrete value of the argument to this procedure
@@ -3171,6 +3172,14 @@ namespace VC
                             if (expr is VCExprIntLit)
                             {
                                 args.Add(errModel.MkElement((expr as VCExprIntLit).Val.ToString()));
+                            }
+                            else if (expr == VCExpressionGenerator.True)
+                            {
+                                args.Add(errModel.MkElement("true"));
+                            }
+                            else if (expr == VCExpressionGenerator.False)
+                            {
+                                args.Add(errModel.MkElement("false"));
                             }
                             else if (expr is VCExprVar)
                             {
