@@ -38,7 +38,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
                                f_select_value, f_field, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t, f_select_ptr,
                                f_owners, f_closed, f_roots, f_timestamps, f_select_bool, f_select_int, f_is_null, f_good_state,
                                f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, f_field_plus,
-                               f_is_sequential_field, f_is_volatile_field, f_type_project_0, f_array, f_active_option, f_int_to_field;
+                               f_is_sequential_field, f_is_volatile_field, f_type_project_0, f_array, f_active_option, f_int_to_field,
+                               f_blob_type;
     public readonly Model.Element tp_object, tp_mathint, tp_bool, tp_state, tp_ptrset, tp_heaptp;
     public readonly Model.Element elt_me, elt_null;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
@@ -90,6 +91,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_is_volatile_field = m.MkFunc("$is_volatile_field", 1);
       f_type_project_0 = m.MkFunc("$type_project_0", 1);
       f_array = m.MkFunc("$array", 2);
+      f_blob_type = m.MkFunc("$blob_type", 1);
 
       tp_bool = m.GetFunc("^^bool").GetConstant();
       tp_mathint = m.GetFunc("^^mathint").GetConstant();
@@ -472,6 +474,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       deref = Image(elt, f_spec_ptr_to);
       if (deref != null)
         return TypeName(deref) + "^";
+      deref = Image(elt, f_blob_type);
+      if (deref != null)
+        return "_(blob " + CanonicalName(deref) + ")";
       var mapt = f_map_t.AppWithResult(elt);
       if (mapt != null)
         return string.Format("{1}[{0}]", TypeName(mapt.Args[0]), TypeName(mapt.Args[1]));
@@ -959,7 +964,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           var edgname = new EdgeName(this, "[%0]", sel.Args[1]);
           result.Add(new MapletNode(state, edgname, sel.Result, tp_bool) { Category = NodeCategory.Maplet });
         }
-      } else if (kind == DataKind.Flat) {
+      } else if (kind == DataKind.Flat && elt != null) {
         foreach (var tupl in elt.References) {
           if (tupl.Args.Length == 1 && tupl.Args[0] == elt) {
             var fname = tupl.Func.Name;
