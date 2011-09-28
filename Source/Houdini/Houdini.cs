@@ -754,8 +754,6 @@ namespace Microsoft.Boogie.Houdini {
       HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants.Keys));
       this.NotifyStart(program, houdiniConstants.Keys.Count);
 
-      Console.WriteLine("Using the new houdini algorithm\n");
-
       while (current.WorkList.Count > 0) {
         bool exceptional = false;
         System.GC.Collect();
