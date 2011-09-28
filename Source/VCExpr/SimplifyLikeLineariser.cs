@@ -206,6 +206,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
     public static string MakeIdPrintable(string s) {
       Contract.Requires(s != null);
+      Contract.Requires(s != "");
       Contract.Ensures(Contract.Result<string>() != null);
       // make sure that no keywords are used as identifiers
       switch (s) {

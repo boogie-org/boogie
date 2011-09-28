@@ -333,7 +333,7 @@ namespace Microsoft.Boogie.Houdini {
       Queue<Implementation> queue = new Queue<Implementation>();
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Implementation impl = decl as Implementation;
-        if (impl != null) {
+        if (impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification) {
           queue.Enqueue(impl);
         }
       }
@@ -753,8 +753,6 @@ namespace Microsoft.Boogie.Houdini {
     public HoudiniOutcome PerformHoudiniInference() {
       HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants.Keys));
       this.NotifyStart(program, houdiniConstants.Keys.Count);
-
-      Console.WriteLine("Using the new houdini algorithm\n");
 
       while (current.WorkList.Count > 0) {
         bool exceptional = false;

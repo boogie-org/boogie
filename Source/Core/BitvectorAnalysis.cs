@@ -95,7 +95,7 @@ namespace Microsoft.Boogie {
 
     private Dictionary<Expr, DisjointSet> exprToDisjointSet = new Dictionary<Expr, DisjointSet>();
     private Dictionary<Variable, DisjointSet> varToDisjointSet = new Dictionary<Variable, DisjointSet>();
-    private DisjointSet uniqueBv32Set = new DisjointSet();
+    private readonly DisjointSet uniqueBv32Set = new DisjointSet();
 
     public int Bits(Expr expr) {
       DisjointSet disjointSet = MakeDisjointSet(expr);
@@ -183,6 +183,10 @@ namespace Microsoft.Boogie {
       IntToBvRewriter intToBvRewriter = new IntToBvRewriter(program, bvAnalyzer);
       intToBvRewriter.Visit(program);
       program.TopLevelDeclarations.Add(intToBvRewriter.bv32Id);
+    }
+
+    public override Axiom VisitAxiom(Axiom node) {
+      return node;
     }
 
     public override Implementation VisitImplementation(Implementation node) {
@@ -367,27 +371,19 @@ namespace Microsoft.Boogie {
           }
         }
 
-        /*
-          for (int i = 0; i < node.Args.Length; i++) {
-            DisjointSet actual = MakeDisjointSet(node.Args[i]);
-            DisjointSet formal = MakeDisjointSet(func.InParams[i]);
-            actual.Union(formal);
-          }
-          Debug.Assert(func.OutParams.Length == 1);
-          MakeDisjointSet(node).Union(MakeDisjointSet(func.OutParams[0]));
-        */
-
         if (func.Name == "intToBv32") {
-          Debug.Assert(node.Args.Length == 1);
-          Expr e = node.Args[0];
-          DisjointSet actual = MakeDisjointSet(e);
-          actual.Union(uniqueBv32Set);
+          DisjointSet arg0 = MakeDisjointSet(node.Args[0]);
+          arg0.Union(uniqueBv32Set);
         }
 
         if (func.Name == "bv32ToInt") {
-          Debug.Assert(node.Args.Length == 1);
-          DisjointSet actual = MakeDisjointSet(node);
-          actual.Union(uniqueBv32Set);
+          DisjointSet result = MakeDisjointSet(node);
+          result.Union(uniqueBv32Set);
+        }
+
+        if (func.Name == "INT_AND" || func.Name == "INT_OR" || func.Name == "INT_XOR" || func.Name == "INT_NOT") {
+          DisjointSet result = MakeDisjointSet(node);
+          result.Union(uniqueBv32Set);
         }
       }
 

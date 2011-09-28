@@ -1,12 +1,16 @@
-# Aste started: 2011-08-11 07:00:38
+# Aste started: 2011-09-28 07:00:22
 # Host id: Boogiebox
-# [2011-08-11 07:04:37] SpecSharp revision: dc85b77ee5c9
-# [2011-08-11 07:04:37] SscBoogie revision: dc85b77ee5c9
-# [2011-08-11 07:06:10] Boogie revision: 3b524cec7850
-[2011-08-11 07:09:01] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+# Configuration: boogie.cfg
+# Task: aste.tasks.boogie.FullBuild
+# [2011-09-28 07:03:43] SpecSharp revision: f58f89526c0c
+# [2011-09-28 07:03:43] SscBoogie revision: f58f89526c0c
+# [2011-09-28 07:05:29] Boogie revision: 4a3d7e391a05
+[2011-09-28 07:08:07] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+    D:\Temp\aste\Boogie\Source\Core\Absy.cs(713,9): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\Core\Absy.cs(764,49): warning CS0168: The variable 'e' is declared but never used
     D:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\Core\Absy.cs(682,7): warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(111,3): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
@@ -15,12 +19,14 @@
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(88,36): warning CS0108: 'VC.StratifiedVCGen.StratifiedInliningInfo.privateVars' hides inherited member 'VC.VCGen.LazyInliningInfo.privateVars'. Use the new keyword if hiding was intended.
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1823,11): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1983,11): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(668,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1695,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1855,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(2013,17): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(1058,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+    warning CS0162: Unreachable code detected
+    warning CS0168: The variable 'e' is declared but never used
     warning CS0162: Unreachable code detected
     warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
@@ -29,9 +35,9 @@
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
-    warning CS0108: 'VC.StratifiedVCGen.StratifiedInliningInfo.privateVars' hides inherited member 'VC.VCGen.LazyInliningInfo.privateVars'. Use the new keyword if hiding was intended.
+    warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-[2011-08-11 07:51:56] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2011-08-11 07:52:57] Released nightly of Boogie
+[2011-09-28 07:52:02] 0 out of 30 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2011-09-28 07:53:10] Released nightly of Boogie

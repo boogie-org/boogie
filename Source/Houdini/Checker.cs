@@ -10,6 +10,7 @@ using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.Simplify;
 using Microsoft.Boogie.Z3;
+using Microsoft.Boogie.SMTLib;
 using System.Collections;
 using System.IO;
 using System.Threading;
@@ -50,7 +51,7 @@ namespace Microsoft.Boogie.Houdini {
       Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
       Hashtable/*<int, Absy!>*/ label2absy;
       checker = new Checker(this, program, logFilePath, appendLogFile, impl, CommandLineOptions.Clo.ProverKillTime);
-      if (!(checker.TheoremProver is Z3ProcessTheoremProver)) {
+      if (!(checker.TheoremProver is Z3ProcessTheoremProver || checker.TheoremProver is SMTLibProcessTheoremProver)) {
         throw new Exception("HdnChecker only works with z3");
       }
       conjecture = GenerateVC(impl, null, out label2absy, checker);
