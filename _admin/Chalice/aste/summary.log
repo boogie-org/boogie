@@ -1,9 +1,9 @@
-# Aste started: 2011-09-19 11:55:04
+# Aste started: 2011-09-28 08:49:35
 # Host id: Boogiebox
 # Configuration: chalice.cfg
 # Task: aste.tasks.chalice.FullBuild
-# [2011-09-19 11:56:55] Chalice revision: e9fd3ebd8d3e
-[2011-09-19 11:58:18] cmd /c "(set JAVA_OPTS=-Dsbt.ivy.home=D:\temp\.ivy2\) && (sbt.bat clean compile)"
+# [2011-09-28 08:51:21] Chalice revision: 7e0b55e0fb47
+[2011-09-28 08:52:44] cmd /c "(set JAVA_OPTS=-Dsbt.ivy.home=D:\temp\.ivy2\) && (sbt.bat clean compile)"
 
     [warn] D:\temp\aste\Boogie\Chalice\src\main\scala\Ast.scala:77: case class `class SeqClass' has case class ancestor `class Class'.  This has been deprecated for unduly complicating both usage and implementation.  You should instead use extractors for pattern matching on non-leaf nodes.
     [warn] D:\temp\aste\Boogie\Chalice\src\main\scala\Ast.scala:111: case class `class TokenClass' has case class ancestor `class Class'.  This has been deprecated for unduly complicating both usage and implementation.  You should instead use extractors for pattern matching on non-leaf nodes.
@@ -11,6 +11,5 @@
     [warn] D:\temp\aste\Boogie\Chalice\src\main\scala\Ast.scala:141: case class `class TokenType' has case class ancestor `class Type'.  This has been deprecated for unduly complicating both usage and implementation.  You should instead use extractors for pattern matching on non-leaf nodes.
     [warn] D:\temp\aste\Boogie\Chalice\src\main\scala\Ast.scala:168: case class `class SpecialField' has case class ancestor `class Field'.  This has been deprecated for unduly complicating both usage and implementation.  You should instead use extractors for pattern matching on non-leaf nodes.
     [warn] D:\temp\aste\Boogie\Chalice\src\main\scala\Ast.scala:212: case class `class SpecialVariable' has case class ancestor `class Variable'.  This has been deprecated for unduly complicating both usage and implementation.  You should instead use extractors for pattern matching on non-leaf nodes.
-[2011-09-19 12:07:43] 2 out of 64 test(s) failed
-['AVLTree.iterative.output.txt (reference output) not found.\r', 'AVLTree.nokeys.output.txt (reference output) not found.\r']
-# [2011-09-19 12:08:43] Released nightly of Chalice
+[2011-09-28 09:11:22] 0 out of 64 test(s) failed
+# [2011-09-28 09:12:30] Released nightly of Chalice
