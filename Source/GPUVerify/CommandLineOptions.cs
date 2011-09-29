@@ -20,6 +20,7 @@ namespace GPUVerify
         public static bool NewRaceDetectionMethod = false;
         public static bool OnlyDivergence = false;
         public static bool FullAbstraction;
+        public static bool Inference;
 
         public static int Parse(string[] args)
         {
@@ -87,6 +88,12 @@ namespace GPUVerify
                     case "-fullAbstraction":
                     case "/fullAbstraction":
                     FullAbstraction = true;
+
+                    break;
+
+                    case "-inference":
+                    case "/inference":
+                    Inference = true;
 
                     break;
 
