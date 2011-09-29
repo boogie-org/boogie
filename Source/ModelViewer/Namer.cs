@@ -387,9 +387,13 @@ namespace Microsoft.Boogie.ModelViewer
         positions.Sort();
 
         string content = "";
-        try {
-          content = System.IO.File.ReadAllText(kv.Key);
-        } catch {
+        if (System.IO.File.Exists(kv.Key)) {
+          try {
+            content = System.IO.File.ReadAllText(kv.Key);
+          } catch {
+            continue;
+          }
+        } else {
           continue;
         }
 

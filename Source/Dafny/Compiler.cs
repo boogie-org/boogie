@@ -186,15 +186,18 @@ namespace Microsoft.Dafny {
         //   public Dt_Ctor(arguments) {
         //     Fields = arguments;
         //   }
+        //   public override bool Equals(object other) {
+        //     var oth = other as Dt_Dtor;
+        //     return oth != null && equals(_field0, oth._field0) && ... ;
+        //   }
+        //   public override int GetHashCode() {
+        //     return base.GetHashCode();  // surely this can be improved
+        //   }
         // }
         Indent(indent);
         wr.Write("public class {0}", DtCtorName(ctor));
         if (dt.TypeArgs.Count != 0) {
-          wr.Write("<");
-          if (dt.TypeArgs.Count != 0) {
-            wr.Write("{0}", TypeParameters(dt.TypeArgs));
-          }
-          wr.Write(">");
+          wr.Write("<{0}>", TypeParameters(dt.TypeArgs));
         }
         wr.Write(" : Base_{0}", dt.Name);
         if (dt.TypeArgs.Count != 0) {
@@ -225,6 +228,36 @@ namespace Microsoft.Dafny {
           }
         }
         Indent(ind);  wr.WriteLine("}");
+
+        // Equals method
+        Indent(ind); wr.WriteLine("public override bool Equals(object other) {");
+        Indent(ind + IndentAmount);
+        wr.Write("var oth = other as {0}", DtCtorName(ctor));
+        if (dt.TypeArgs.Count != 0) {
+          wr.Write("<{0}>", TypeParameters(dt.TypeArgs));
+        }
+        wr.WriteLine(";");
+        Indent(ind + IndentAmount);
+        wr.Write("return oth != null");
+        i = 0;
+        foreach (Formal arg in ctor.Formals) {
+          if (!arg.IsGhost) {
+            string nm = FormalName(arg, i);
+            if (arg.Type.IsDatatype || arg.Type.IsTypeParameter) {
+              wr.Write(" && this.@{0}.Equals(oth.@{0})", nm);
+            } else {
+              wr.Write(" && this.@{0} == oth.@{0}", nm);
+            }
+            i++;
+          }
+        }
+        wr.WriteLine(";");
+        Indent(ind); wr.WriteLine("}");
+
+        // GetHashCode method
+        Indent(ind); wr.WriteLine("public override int GetHashCode() {");
+        Indent(ind + IndentAmount); wr.WriteLine("return base.GetHashCode();  // surely this can be improved");
+        Indent(ind); wr.WriteLine("}");
 
         Indent(indent);  wr.WriteLine("}");
       }
@@ -604,7 +637,7 @@ namespace Microsoft.Dafny {
       } else if (type is IntType) {
         return "new BigInteger(0)";
       } else if (type.IsRefType) {
-        return "null";
+        return string.Format("({0})null", TypeName(type));
       } else if (type.IsDatatype) {
         UserDefinedType udt = (UserDefinedType)type;
         string s = "@" + udt.Name;
@@ -628,10 +661,56 @@ namespace Microsoft.Dafny {
 
     // ----- Stmt ---------------------------------------------------------------------------------
 
+    void CheckHasNoAssumes(Statement stmt) {
+      Contract.Requires(stmt != null);
+      if (stmt is AssumeStmt) {
+        Error("an assume statement cannot be compiled (line {0})", stmt.Tok.line);
+      } else if (stmt is BlockStmt) {
+        foreach (Statement s in ((BlockStmt)stmt).Body) {
+          CheckHasNoAssumes(s);
+        }
+      } else if (stmt is IfStmt) {
+        IfStmt s = (IfStmt)stmt;
+        CheckHasNoAssumes(s.Thn);
+        if (s.Els != null) {
+          CheckHasNoAssumes(s.Els);
+        }
+      } else if (stmt is AlternativeStmt) {
+        foreach (var alternative in ((AlternativeStmt)stmt).Alternatives) {
+          foreach (Statement s in alternative.Body) {
+            CheckHasNoAssumes(s);
+          }
+        }
+      } else if (stmt is WhileStmt) {
+        WhileStmt s = (WhileStmt)stmt;
+        CheckHasNoAssumes(s.Body);
+      } else if (stmt is AlternativeLoopStmt) {
+        foreach (var alternative in ((AlternativeLoopStmt)stmt).Alternatives) {
+          foreach (Statement s in alternative.Body) {
+            CheckHasNoAssumes(s);
+          }
+        }
+      } else if (stmt is ForeachStmt) {
+        ForeachStmt s = (ForeachStmt)stmt;
+        foreach (PredicateStmt t in s.BodyPrefix) {
+          CheckHasNoAssumes(t);
+        }
+        CheckHasNoAssumes(s.GivenBody);
+      } else if (stmt is MatchStmt) {
+        MatchStmt s = (MatchStmt)stmt;
+        foreach (MatchCaseStmt mc in s.Cases) {
+          foreach (Statement bs in mc.Body) {
+            CheckHasNoAssumes(bs);
+          }
+        }
+      }
+    }
+
     void TrStmt(Statement stmt, int indent)
     {
       Contract.Requires(stmt != null);
       if (stmt.IsGhost) {
+        CheckHasNoAssumes(stmt);
         return;
       }
 
@@ -1178,7 +1257,7 @@ namespace Microsoft.Dafny {
       if (expr is LiteralExpr) {
         LiteralExpr e = (LiteralExpr)expr;
         if (e.Value == null) {
-          wr.Write("null");
+          wr.Write("({0})null", TypeName(e.Type));
         } else if (e.Value is bool) {
           wr.Write((bool)e.Value ? "true" : "false");
         } else if (e.Value is BigInteger) {
