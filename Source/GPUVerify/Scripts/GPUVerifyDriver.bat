@@ -40,7 +40,7 @@ GOTO Generate
 
 :Verify
 echo Verify
-GPUVerify temp_unstructured.bpl /print:temp_ready_to_verify.bpl
+GPUVerify temp_unstructured.bpl /print:temp_ready_to_verify.bpl /newRaceDetectionMethod
 Boogie temp_ready_to_verify.bpl formulas.bpl /prover:smtlib
 del temp_unstructured.bpl
 GOTO End

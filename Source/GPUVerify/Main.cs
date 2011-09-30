@@ -4,6 +4,9 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Diagnostics;
+using System.Windows.Forms;
+
+
 
 using Microsoft.Boogie;
 
@@ -11,7 +14,7 @@ namespace GPUVerify
 {
     class GPUVerify
     {
-
+        static bool ASYNCHRONOUS_METHOD = false;
 
         public static void Main(string[] args)
         {
@@ -38,6 +41,36 @@ namespace GPUVerify
                 }
             }
 
+            if (ASYNCHRONOUS_METHOD)
+            {
+
+                string[] preprocessArguments = new string[CommandLineOptions.inputFiles.Count + 4];
+                preprocessArguments[0] = "/noVerify";
+                preprocessArguments[1] = "/printUnstructured";
+                preprocessArguments[2] = "/print:temp_unstructured.bpl";
+                preprocessArguments[3] = Path.GetDirectoryName(Application.ExecutablePath) + "\\..\\..\\BoogieLibrary\\GPUVerifyLibrary.bpl";
+                for (int i = 0; i < CommandLineOptions.inputFiles.Count; i++)
+                {
+                    preprocessArguments[i + 4] = CommandLineOptions.inputFiles[i];
+                }
+
+                OnlyBoogie.Main(preprocessArguments);
+
+                if ((CommandLineOptions.formulasFile == null && CommandLineOptions.formulaSkeletonsFile == null) || (CommandLineOptions.formulasFile != null && CommandLineOptions.formulaSkeletonsFile != null))
+                {
+                    Console.WriteLine("Error, specify one of /formulas:... or /generateFormulaSkeletons:...");
+                    Environment.Exit(1);
+                }
+
+                CommandLineOptions.inputFiles = new List<string>();
+                CommandLineOptions.inputFiles.Add("temp_unstructured.bpl");
+                if (CommandLineOptions.formulasFile != null)
+                {
+                    CommandLineOptions.inputFiles.Add(CommandLineOptions.formulasFile);
+                }
+
+            }
+
             Program program = ParseBoogieProgram(CommandLineOptions.inputFiles, false);
             if (program == null)
             {
@@ -59,54 +92,10 @@ namespace GPUVerify
                 Environment.Exit(1);
             }
 
-            GPUVerifier verifier = new GPUVerifier(program);
+            GPUVerifier verifier = new GPUVerifierLockStep(program);
 
-            // TODO: check that no non-barrier procedures are called from the kernel
+            verifier.doit();
 
-            verifier.AddInitialAndFinalBarriers();
-
-            verifier.SplitBlocksAtBarriers();
-
-
-            if (CommandLineOptions.formulaSkeletonsFile != null)
-            {
-                Console.WriteLine("Generating skeleton formulas to \"" + CommandLineOptions.formulaSkeletonsFile + "\" and exiting");
-                verifier.GenerateFormulaSkeletons(CommandLineOptions.formulaSkeletonsFile);
-                Environment.Exit(0);
-            }
-
-            verifier.GenerateBarrierToNextBarriersProcedures();
-
-            verifier.GenerateBarrierToBarrierPairProcedures();
-
-            verifier.GenerateBarrierToNextBarriersVCs();
-
-            verifier.GenerateBarrierToBarrierPairVCs();
-
-            verifier.AddArrayBaseDeclarations();
-
-            using (TokenTextWriter writer = (CommandLineOptions.outputFile == null ? new TokenTextWriter("<console>", Console.Out) : new TokenTextWriter(CommandLineOptions.outputFile)))
-            {
-                program.Emit(writer);
-            }
-
-
-            /*            errorCount = program.Resolve();
-                        if (errorCount != 0)
-                        {
-                            Console.WriteLine("{0} name resolution errors detected in {1} after transformation", errorCount, CommandLineOptions.inputFiles[CommandLineOptions.inputFiles.Count - 1]);
-                            Environment.Exit(1);
-                        }
-
-                        errorCount = program.Typecheck();
-
-                        if (errorCount != 0)
-                        {
-                            Console.WriteLine("{0} type checking errors detected in {1} after transformation", errorCount, CommandLineOptions.inputFiles[CommandLineOptions.inputFiles.Count - 1]);
-                            Environment.Exit(1);
-                        }
-            */
-            //Console.ReadLine();
 
         }
 

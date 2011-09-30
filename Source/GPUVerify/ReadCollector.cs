@@ -17,8 +17,8 @@ namespace GPUVerify
 
         public HashSet<AccessRecord> accesses = new HashSet<AccessRecord>();
 
-        public ReadCollector(GPUVerifier verifier)
-            : base(verifier)
+        public ReadCollector(List<Variable> GlobalVariables, List<Variable> TileStaticVariables)
+            : base(GlobalVariables, TileStaticVariables)
         {
         }
 
@@ -38,8 +38,8 @@ namespace GPUVerify
 
                 Variable ReadVariable = null;
                 Expr IndexX = node.Args[1];
-                Expr IndexY = new LiteralExpr(Token.NoToken, BigNum.FromInt(0));
-                Expr IndexZ = new LiteralExpr(Token.NoToken, BigNum.FromInt(0));
+                Expr IndexY = null;
+                Expr IndexZ = null;
 
                 if (node.Args[0] is NAryExpr)
                 {
@@ -83,7 +83,7 @@ namespace GPUVerify
                 this.VisitExpr(node.Args[1]);
 
 
-                if (verifier.GetGlobalVariables().Contains(ReadVariable) || verifier.GetTileStaticVariables().Contains(ReadVariable))
+                if (GlobalVariables.Contains(ReadVariable) || TileStaticVariables.Contains(ReadVariable))
                 {
                     accesses.Add(new AccessRecord(ReadVariable, IndexZ, IndexY, IndexX));
                 }
@@ -100,12 +100,12 @@ namespace GPUVerify
 
         public override Variable VisitVariable(Variable node)
         {
-            if (!(verifier.GetGlobalVariables().Contains(node) || verifier.GetTileStaticVariables().Contains(node)))
+            if (!(GlobalVariables.Contains(node) || TileStaticVariables.Contains(node)))
             {
                 return node;
             }
 
-            accesses.Add(new AccessRecord(node, new LiteralExpr(node.tok, BigNum.FromInt(0)), new LiteralExpr(node.tok, BigNum.FromInt(0)), new LiteralExpr(node.tok, BigNum.FromInt(0))));
+            accesses.Add(new AccessRecord(node, null, null, null));
 
             return node;
         }

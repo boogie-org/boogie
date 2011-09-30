@@ -13,17 +13,17 @@ namespace GPUVerify
 
         private AccessRecord access = null;
 
-        public WriteCollector(GPUVerifier verifier)
-            : base(verifier)
+        public WriteCollector(List<Variable> GlobalVariables, List<Variable> TileStaticVariables)
+            : base(GlobalVariables, TileStaticVariables)
         {
         }
 
         public override AssignLhs VisitSimpleAssignLhs(SimpleAssignLhs node)
         {
             Debug.Assert(NoWrittenVariable());
-            if (verifier.GetGlobalVariables().Contains(node.DeepAssignedVariable) || verifier.GetTileStaticVariables().Contains(node.DeepAssignedVariable))
+            if (GlobalVariables.Contains(node.DeepAssignedVariable) || TileStaticVariables.Contains(node.DeepAssignedVariable))
             {
-                access = new AccessRecord(node.DeepAssignedVariable, new LiteralExpr(node.tok, BigNum.FromInt(0)), new LiteralExpr(node.tok, BigNum.FromInt(0)), new LiteralExpr(node.tok, BigNum.FromInt(0)));
+                access = new AccessRecord(node.DeepAssignedVariable, null, null, null);
             }
             return node;
         }
@@ -37,7 +37,7 @@ namespace GPUVerify
         {
             Debug.Assert(NoWrittenVariable());
 
-            if (!(verifier.GetGlobalVariables().Contains(node.DeepAssignedVariable) || verifier.GetTileStaticVariables().Contains(node.DeepAssignedVariable)))
+            if (!(GlobalVariables.Contains(node.DeepAssignedVariable) || TileStaticVariables.Contains(node.DeepAssignedVariable)))
             {
                 return node;
             }
@@ -48,8 +48,8 @@ namespace GPUVerify
 
             CheckMapIndex(MapAssignX);
             Expr IndexX = MapAssignX.Indexes[0];
-            Expr IndexY = new LiteralExpr(Token.NoToken, BigNum.FromInt(0));
-            Expr IndexZ = new LiteralExpr(Token.NoToken, BigNum.FromInt(0));
+            Expr IndexY = null;
+            Expr IndexZ = null;
 
             if (MapAssignX.Map is MapAssignLhs)
             {
