@@ -92,7 +92,7 @@ namespace GPUVerify
                 Environment.Exit(1);
             }
 
-            GPUVerifier verifier = new GPUVerifierLockStep(program);
+            GPUVerifier verifier = new GPUVerifier(program);
 
             verifier.doit();
 
