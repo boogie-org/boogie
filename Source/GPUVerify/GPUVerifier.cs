@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.IO;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie;
@@ -330,6 +331,8 @@ namespace GPUVerify
 
         private void ComputeInvariant()
         {
+            List<Expr> UserSuppliedInvariants = GetUserSuppliedInvariants();
+            
             invariantGenerationCounter = 0;
 
             HashSet<string> LocalNames = new HashSet<string>();
@@ -339,18 +342,56 @@ namespace GPUVerify
                 LocalNames.Add(basicName);
             }
 
-            AddCandidateInvariants(KernelImplementation.StructuredStmts, LocalNames);
+            AddCandidateInvariants(KernelImplementation.StructuredStmts, LocalNames, UserSuppliedInvariants);
+
         }
 
-        private void AddCandidateInvariants(StmtList stmtList, HashSet<string> LocalNames)
+        private List<Expr> GetUserSuppliedInvariants()
+        {
+            List<Expr> result = new List<Expr>();
+
+            if (CommandLineOptions.invariantsFile == null)
+            {
+                return result;
+            }
+
+            StreamReader sr = new StreamReader(new FileStream(CommandLineOptions.invariantsFile, FileMode.Open, FileAccess.Read));
+            string line;
+            int lineNumber = 1;
+            while ((line = sr.ReadLine()) != null)
+            {
+                string temp_program_text = "axiom (" + line + ");";
+                TokenTextWriter writer = new TokenTextWriter("temp_out.bpl");
+                writer.WriteLine(temp_program_text);
+                writer.Close();
+
+                Program temp_program = GPUVerify.ParseBoogieProgram(new List<string>(new string[] { "temp_out.bpl" }), false);
+
+                if (null == temp_program)
+                {
+                    Console.WriteLine("Ignoring badly formed candidate invariant '" + line + "' at '" + CommandLineOptions.invariantsFile + "' line " + lineNumber);
+                }
+                else
+                {
+                    Debug.Assert(temp_program.TopLevelDeclarations[0] is Axiom);
+                    result.Add((temp_program.TopLevelDeclarations[0] as Axiom).Expr);
+                }
+
+                lineNumber++;
+            }
+
+            return result;
+        }
+
+        private void AddCandidateInvariants(StmtList stmtList, HashSet<string> LocalNames, List<Expr> UserSuppliedInvariants)
         {
             foreach (BigBlock bb in stmtList.BigBlocks)
             {
-                AddCandidateInvariants(bb, LocalNames);
+                AddCandidateInvariants(bb, LocalNames, UserSuppliedInvariants);
             }
         }
 
-        private void AddCandidateInvariants(BigBlock bb, HashSet<string> LocalNames)
+        private void AddCandidateInvariants(BigBlock bb, HashSet<string> LocalNames, List<Expr> UserSuppliedInvariants)
         {
             if (bb.ec is WhileCmd)
             {
@@ -370,7 +411,9 @@ namespace GPUVerify
                     AddRaceCheckingCandidateInvariants(wc);
                 }
 
-                AddCandidateInvariants(wc.Body, LocalNames);
+                AddUserSuppliedInvariants(wc, UserSuppliedInvariants);
+
+                AddCandidateInvariants(wc.Body, LocalNames, UserSuppliedInvariants);
             }
             else if (bb.ec is IfCmd)
             {
@@ -398,6 +441,44 @@ namespace GPUVerify
                 AddReadOrWrittenOffsetIsThreadId(wc, v, "READ");
                 AddReadOrWrittenOffsetIsThreadId(wc, v, "WRITE");
             }
+        }
+
+        private void AddUserSuppliedInvariants(WhileCmd wc, List<Expr> UserSuppliedInvariants)
+        {
+            foreach (Expr e in UserSuppliedInvariants)
+            {
+                wc.Invariants.Add(new AssertCmd(wc.tok, e));
+                TokenTextWriter writer = new TokenTextWriter("temp_out.bpl");
+                Program.Emit(writer);
+                writer.Close();
+                wc.Invariants.RemoveAt(wc.Invariants.Count - 1);
+
+                Program temp_program = GPUVerify.ParseBoogieProgram(new List<string>(new string[] { "temp_out.bpl" }), false);
+
+                if(IsOK(temp_program))
+                {
+                    AddCandidateInvariant(wc, e);
+                }
+            }
+        }
+
+        private bool IsOK(Microsoft.Boogie.Program temp_program)
+        {
+            if(temp_program == null)
+            {
+                return false;
+            }
+
+            if (temp_program.Resolve() != 0)
+            {
+                return false;
+            }
+
+            if (temp_program.Typecheck() != 0)
+            {
+                return false;
+            }
+            return true;
         }
 
         private void AddReadOrWrittenOffsetIsThreadId(WhileCmd wc, Variable v, string ReadOrWrite)
@@ -627,8 +708,12 @@ namespace GPUVerify
             if (AssumeDistinctThreads != null)
             {
                 Debug.Assert(AssumeThreadIdsInRange != null);
-                Program.TopLevelDeclarations.Add(new Axiom(tok, AssumeDistinctThreads));
-                Program.TopLevelDeclarations.Add(new Axiom(tok, AssumeThreadIdsInRange));
+
+                KernelProcedure.Requires.Add(new Requires(false, AssumeDistinctThreads));
+                KernelProcedure.Requires.Add(new Requires(false, AssumeThreadIdsInRange));
+
+                //Program.TopLevelDeclarations.Add(new Axiom(tok, AssumeDistinctThreads));
+                //Program.TopLevelDeclarations.Add(new Axiom(tok, AssumeThreadIdsInRange));
             }
             else
             {
@@ -644,17 +729,28 @@ namespace GPUVerify
             {
                 if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
                 {
-                    Program.TopLevelDeclarations.Add(new Axiom(tok, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetTileSize(dimension)), ZeroBV(tok))));
-                    Program.TopLevelDeclarations.Add(new Axiom(tok, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumTiles(dimension)), ZeroBV(tok))));
-                    Program.TopLevelDeclarations.Add(new Axiom(tok, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetTileId(dimension)), ZeroBV(tok))));
-                    Program.TopLevelDeclarations.Add(new Axiom(tok, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+                    KernelProcedure.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetTileSize(dimension)), ZeroBV(tok))));
+                    KernelProcedure.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumTiles(dimension)), ZeroBV(tok))));
+                    KernelProcedure.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetTileId(dimension)), ZeroBV(tok))));
+                    KernelProcedure.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetTileSize(dimension)), ZeroBV(tok))));
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumTiles(dimension)), ZeroBV(tok))));
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetTileId(dimension)), ZeroBV(tok))));
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
                 }
                 else
                 {
-                    Program.TopLevelDeclarations.Add(new Axiom(tok, Expr.Gt(new IdentifierExpr(tok, GetTileSize(dimension)), Zero(tok))));
-                    Program.TopLevelDeclarations.Add(new Axiom(tok, Expr.Gt(new IdentifierExpr(tok, GetNumTiles(dimension)), Zero(tok))));
-                    Program.TopLevelDeclarations.Add(new Axiom(tok, Expr.Ge(new IdentifierExpr(tok, GetTileId(dimension)), Zero(tok))));
-                    Program.TopLevelDeclarations.Add(new Axiom(tok, Expr.Lt(new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+                    KernelProcedure.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetTileSize(dimension)), Zero(tok))));
+                    KernelProcedure.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetNumTiles(dimension)), Zero(tok))));
+                    KernelProcedure.Requires.Add(new Requires(false, Expr.Ge(new IdentifierExpr(tok, GetTileId(dimension)), Zero(tok))));
+                    KernelProcedure.Requires.Add(new Requires(false, Expr.Lt(new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, Expr.Gt(new IdentifierExpr(tok, GetTileSize(dimension)), Zero(tok))));
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, Expr.Gt(new IdentifierExpr(tok, GetNumTiles(dimension)), Zero(tok))));
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, Expr.Ge(new IdentifierExpr(tok, GetTileId(dimension)), Zero(tok))));
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, Expr.Lt(new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+
                 }
                 Expr AssumeThreadsDistinctInDimension =
                         Expr.Neq(

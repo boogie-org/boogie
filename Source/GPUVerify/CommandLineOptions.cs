@@ -21,6 +21,7 @@ namespace GPUVerify
         public static bool OnlyDivergence = false;
         public static bool FullAbstraction;
         public static bool Inference;
+        public static string invariantsFile = null;
 
         public static int Parse(string[] args)
         {
@@ -94,6 +95,11 @@ namespace GPUVerify
                     case "-inference":
                     case "/inference":
                     Inference = true;
+                    if (hasColonArgument)
+                    {
+                        Debug.Assert(afterColon != null);
+                        invariantsFile = afterColon;
+                    }
 
                     break;
 

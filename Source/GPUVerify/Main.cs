@@ -105,7 +105,7 @@ namespace GPUVerify
 
 
 
-        static Program ParseBoogieProgram(List<string> fileNames, bool suppressTraceOutput)
+        public static Program ParseBoogieProgram(List<string> fileNames, bool suppressTraceOutput)
         {
             Program program = null;
             bool okay = true;
