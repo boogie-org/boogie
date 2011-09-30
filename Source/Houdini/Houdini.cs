@@ -268,7 +268,7 @@ namespace Microsoft.Boogie.Houdini {
       Dictionary<Implementation, HoudiniVCGen> vcgenSessions = new Dictionary<Implementation, HoudiniVCGen>();
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Implementation impl = decl as Implementation;
-        if (impl != null) {
+        if (impl != null && !impl.SkipVerification) {
           impls.Add(impl);
         }
       }
@@ -309,13 +309,13 @@ namespace Microsoft.Boogie.Houdini {
       } 
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Implementation impl = decl as Implementation;
-        if (impl == null) continue;
+        if (impl == null || impl.SkipVerification) continue;
         callGraph.AddSource(impl);
         procToImpls[impl.Proc].Add(impl);
       }
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Implementation impl = decl as Implementation;
-        if (impl == null) continue;
+        if (impl == null || impl.SkipVerification) continue;
         foreach (Block b in impl.Blocks) {
           foreach (Cmd c in b.Cmds) {
             CallCmd cc = c as CallCmd;
@@ -333,9 +333,8 @@ namespace Microsoft.Boogie.Houdini {
       Queue<Implementation> queue = new Queue<Implementation>();
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Implementation impl = decl as Implementation;
-        if (impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification) {
-          queue.Enqueue(impl);
-        }
+        if (impl == null || impl.SkipVerification) continue;
+        queue.Enqueue(impl);
       }
       return queue;
     }
