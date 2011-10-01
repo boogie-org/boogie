@@ -7,6 +7,7 @@ syntax: regexp
 ^.*(bin|obj)/([^/]*/)?(Debug|Release|Checked|Debug All|DEBUG ALL)/.*$
 ^Binaries/BytecodeTranslator$
 ^BCT/Binaries/.*$
+^Chalice/bin
 ^Chalice/tests/(examples|permission-model|refinements|general-tests|regressions)/.*\.bpl
 Test/([^/]*)/Output
 Test/([^/]*)/([^/]*)\.sx
