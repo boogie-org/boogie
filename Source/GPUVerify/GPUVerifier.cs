@@ -335,15 +335,110 @@ namespace GPUVerify
             
             invariantGenerationCounter = 0;
 
-            HashSet<string> LocalNames = new HashSet<string>();
-            foreach (Variable v in KernelImplementation.LocVars)
+            for (int i = 0; i < Program.TopLevelDeclarations.Count; i++)
             {
-                string basicName = StripThreadIdentifier(v.Name);
-                LocalNames.Add(basicName);
+                if (Program.TopLevelDeclarations[i] is Implementation)
+                {
+                    Implementation Impl = Program.TopLevelDeclarations[i] as Implementation;
+
+                    if (QKeyValue.FindIntAttribute(Impl.Attributes, "inline", -1) == 1)
+                    {
+                        continue;
+                    }
+
+                    HashSet<string> LocalNames = new HashSet<string>();
+                    foreach (Variable v in Impl.LocVars)
+                    {
+                        string basicName = StripThreadIdentifier(v.Name);
+                        LocalNames.Add(basicName);
+                    }
+                    foreach (Variable v in Impl.InParams)
+                    {
+                        string basicName = StripThreadIdentifier(v.Name);
+                        LocalNames.Add(basicName);
+                    }
+                    foreach (Variable v in Impl.OutParams)
+                    {
+                        string basicName = StripThreadIdentifier(v.Name);
+                        LocalNames.Add(basicName);
+                    }
+
+                    AddCandidateInvariants(Impl.StructuredStmts, LocalNames, UserSuppliedInvariants);
+                }
+
+                if (Program.TopLevelDeclarations[i] is Procedure)
+                {
+                    Procedure Proc = Program.TopLevelDeclarations[i] as Procedure;
+
+                    if (QKeyValue.FindIntAttribute(Proc.Attributes, "inline", -1) == 1)
+                    {
+                        continue;
+                    }
+
+                    if (Proc == KernelProcedure)
+                    {
+                        continue;
+                    }
+
+                    HashSet<string> InParamNames = new HashSet<string>();
+                    foreach (Variable v in Proc.InParams)
+                    {
+                        string basicName = StripThreadIdentifier(v.Name);
+                        InParamNames.Add(basicName);
+                    }
+                    AddCandidateRequires(Proc, InParamNames); // TODO - add support for user-supplied invariants
+
+                    HashSet<string> OutParamNames = new HashSet<string>();
+                    foreach (Variable v in Proc.OutParams)
+                    {
+                        string basicName = StripThreadIdentifier(v.Name);
+                        OutParamNames.Add(basicName);
+                    }
+                    AddCandidateEnsures(Proc, OutParamNames); // TODO - add support for user-supplied invariants
+                }
+
             }
 
-            AddCandidateInvariants(KernelImplementation.StructuredStmts, LocalNames, UserSuppliedInvariants);
+        }
 
+        private void AddCandidateEnsures(Procedure Proc, HashSet<string> LocalNames)
+        {
+            foreach (string lv in LocalNames)
+            {
+                AddCandidateEnsures(Proc, Expr.Eq(
+                    // Int type used here, but it doesn't matter as we will print and then re-parse the program
+                    new IdentifierExpr(Proc.tok, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, lv + "$1", Microsoft.Boogie.Type.Int))),
+                    new IdentifierExpr(Proc.tok, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, lv + "$2", Microsoft.Boogie.Type.Int)))
+                ));
+            }
+        }
+
+        private void AddCandidateRequires(Procedure Proc, HashSet<string> LocalNames)
+        {
+            foreach (string lv in LocalNames)
+            {
+                AddCandidateRequires(Proc, Expr.Eq(
+                    // Int type used here, but it doesn't matter as we will print and then re-parse the program
+                    new IdentifierExpr(Proc.tok, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, lv + "$1", Microsoft.Boogie.Type.Int))),
+                    new IdentifierExpr(Proc.tok, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, lv + "$2", Microsoft.Boogie.Type.Int)))
+                ));
+            }
+        }
+
+        private void AddCandidateRequires(Procedure Proc, Expr e)
+        {
+            Constant ExistentialBooleanConstant = MakeExistentialBoolean(Proc.tok);
+            IdentifierExpr ExistentialBoolean = new IdentifierExpr(Proc.tok, ExistentialBooleanConstant);
+            Proc.Requires.Add(new Requires(false, Expr.Imp(ExistentialBoolean, e)));
+            Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
+        }
+
+        private void AddCandidateEnsures(Procedure Proc, Expr e)
+        {
+            Constant ExistentialBooleanConstant = MakeExistentialBoolean(Proc.tok);
+            IdentifierExpr ExistentialBoolean = new IdentifierExpr(Proc.tok, ExistentialBooleanConstant);
+            Proc.Ensures.Add(new Ensures(false, Expr.Imp(ExistentialBoolean, e)));
+            Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
         }
 
         private List<Expr> GetUserSuppliedInvariants()
@@ -1329,7 +1424,7 @@ namespace GPUVerify
 
                 ReadOrWriteOffsetXVariable = MakeOffsetXVariable(v, ReadOrWrite);
                 modifies.Add(new IdentifierExpr(v.tok, ReadOrWriteOffsetXVariable));
-                XParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_X", GetTypeOfId("X")));
+                XParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_X_index", mt.Arguments[0]));
                 if (mt.Result is MapType)
                 {
                     MapType mt2 = mt.Result as MapType;
@@ -1337,7 +1432,7 @@ namespace GPUVerify
                     Debug.Assert(IsIntOrBv32(mt2.Arguments[0]));
                     ReadOrWriteOffsetYVariable = MakeOffsetYVariable(v, ReadOrWrite);
                     modifies.Add(new IdentifierExpr(v.tok, ReadOrWriteOffsetYVariable));
-                    YParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_Y", GetTypeOfId("Y")));
+                    YParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_Y_index", mt2.Arguments[0]));
                     if (mt2.Result is MapType)
                     {
                         MapType mt3 = mt2.Arguments[0] as MapType;
@@ -1346,7 +1441,7 @@ namespace GPUVerify
                         Debug.Assert(!(mt3.Result is MapType));
                         ReadOrWriteOffsetZVariable = MakeOffsetZVariable(v, ReadOrWrite);
                         modifies.Add(new IdentifierExpr(v.tok, ReadOrWriteOffsetZVariable));
-                        ZParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_Z", GetTypeOfId("Z")));
+                        ZParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_Z_index", mt3.Arguments[0]));
                     }
                 }
             }
