@@ -1,11 +1,11 @@
-# Aste started: 2011-09-30 07:00:18
+# Aste started: 2011-10-01 07:00:22
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2011-09-30 07:03:29] SpecSharp revision: e3a5b7f471f1
-# [2011-09-30 07:03:29] SscBoogie revision: e3a5b7f471f1
-# [2011-09-30 07:05:19] Boogie revision: b892b87005f1
-[2011-09-30 07:07:57] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+# [2011-10-01 07:03:38] SpecSharp revision: c9d437000a04
+# [2011-10-01 07:03:38] SscBoogie revision: c9d437000a04
+# [2011-10-01 07:05:20] Boogie revision: 8e6b536f450b
+[2011-10-01 07:07:48] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -39,6 +39,5 @@
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-[2011-09-30 07:55:58] 1 out of 31 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-['dafny2']
-# [2011-09-30 07:56:52] Released nightly of Boogie
+[2011-10-01 07:54:49] 0 out of 31 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2011-10-01 07:55:52] Released nightly of Boogie
