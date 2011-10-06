@@ -655,9 +655,12 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      private string ExtractDatatypeSelector(Function func) {
+      private string ExtractDatatype(Function func) {
         if (QKeyValue.FindBoolAttribute(func.Attributes, "selector")) {
           return func.Name.Remove(func.Name.IndexOf('#'));
+        }
+        else if (QKeyValue.FindBoolAttribute(func.Attributes, "membership")) {
+          return func.Name.Replace('#', '-');
         }
         else {
           return null;
@@ -670,7 +673,7 @@ namespace Microsoft.Boogie.SMTLib
         string printedName;
 
         var builtin = ExtractBuiltin(op.Func);
-        var datatype = ExtractDatatypeSelector(op.Func);
+        var datatype = ExtractDatatype(op.Func);
         if (builtin != null)
           printedName = builtin;
         else if (datatype != null)

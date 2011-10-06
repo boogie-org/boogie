@@ -157,6 +157,7 @@ namespace Microsoft.Boogie {
         Formal inv = new Formal(Token.NoToken, f.OutParams[0].TypedIdent, true);
         Formal outv = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false);
         Function isConstructor = new Function(f.tok, "is#" + f.Name, new VariableSeq(inv), outv);
+        isConstructor.AddAttribute("membership");
         program.TopLevelDeclarations.Add(isConstructor);
       }
     }

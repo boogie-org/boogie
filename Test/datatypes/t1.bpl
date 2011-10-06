@@ -16,5 +16,9 @@ procedure foo()
   assert value#node(node(x, nil())) == x;
   assert children#node(node(x, nil())) == nil();
   
-  assert (cons(leaf(), nil()) == nil());
+  assert (cons(leaf(), nil()) != nil());
+
+  assert is#nil(nil());
+
+  assert is#node(leaf());
 }
