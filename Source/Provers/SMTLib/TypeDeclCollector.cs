@@ -55,7 +55,6 @@ void ObjectInvariant()
     private readonly HashSet<string/*!*/>/*!*/ KnownSelectFunctions = new HashSet<string>();
     private readonly HashSet<string> KnownLBL = new HashSet<string>();
 
-
     public List<string/*!>!*/> AllDeclarations { get {
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<string>>() ));
 
@@ -92,7 +91,7 @@ void ObjectInvariant()
       return SMTLibExprLineariser.TypeToString(t);
     }
 
-    private string TypeToStringReg(Type t)
+    public string TypeToStringReg(Type t)
     {
       RegisterType(t);
       return TypeToString(t);
@@ -105,7 +104,7 @@ void ObjectInvariant()
       else if (node.Op is VCExprSelectOp) RegisterSelect(node);
       else {
         VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
-        if (op != null && !KnownFunctions.Contains(op.Func)) {
+        if (op != null && !IsDatatypeConstructor(op.Func) && !KnownFunctions.Contains(op.Func)) {
           Function f = op.Func;
           Contract.Assert(f != null);
           
@@ -184,11 +183,26 @@ void ObjectInvariant()
       if (type.IsBool || type.IsInt || type.IsBv)
         return;
 
-      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
+      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic && !IsDatatype(type)) {
         AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
         KnownTypes.Add(type);
         return;
       }
+    }
+
+    public static bool IsDatatype(Type t) {
+      CtorType ctorType = t.AsCtor;
+      if (t == null)
+        return false;
+      return QKeyValue.FindBoolAttribute(ctorType.Decl.Attributes, "datatype");
+    }
+
+    public static bool IsDatatypeConstructor(Function f) {
+      return QKeyValue.FindBoolAttribute(f.Attributes, "constructor");
+    }
+
+    public static bool IsDatatypeSelector(Function f) {
+      return QKeyValue.FindBoolAttribute(f.Attributes, "selector");
     }
 
     private void RegisterSelect(VCExprNAry node)
