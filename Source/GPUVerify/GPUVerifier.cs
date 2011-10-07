@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.IO;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using Microsoft.Boogie;
 using Microsoft.Basetypes;
 
@@ -10,43 +12,66 @@ namespace GPUVerify
 {
     class GPUVerifier : CheckingContext
     {
-
-        HashSet<string> ReservedNames;
-
         private Program Program;
+
         private Procedure KernelProcedure;
         private Implementation KernelImplementation;
         private Procedure BarrierProcedure;
-        private Microsoft.Boogie.Type ThreadIdType;
-        private String ThreadIdParameterName;
 
-        private HashSet<int> BarrierIds = new HashSet<int>();
-
-        private List<Variable> ThreadLocalVariables = new List<Variable>();
         private List<Variable> TileStaticVariables = new List<Variable>();
         private List<Variable> GlobalVariables = new List<Variable>();
 
+        private HashSet<string> ReservedNames = new HashSet<string>();
+
+        private static int WhileLoopCounter;
+        private static int IfCounter;
+        private static HashSet<Microsoft.Boogie.Type> RequiredHavocVariables;
+
+        private int TempCounter = 0;
+        private int invariantGenerationCounter;
+
+        private Constant _X = null;
+        private Constant _Y = null;
+        private Constant _Z = null;
+
+        private const string _X_name = "_X";
+        private const string _Y_name = "_Y";
+        private const string _Z_name = "_Z";
+
+        private Constant _TILE_SIZE_X = null;
+        private Constant _TILE_SIZE_Y = null;
+        private Constant _TILE_SIZE_Z = null;
+
+        private const string _TILE_SIZE_X_name = "_TILE_SIZE_X";
+        private const string _TILE_SIZE_Y_name = "_TILE_SIZE_Y";
+        private const string _TILE_SIZE_Z_name = "_TILE_SIZE_Z";
+
+        private Constant _TILE_X = null;
+        private Constant _TILE_Y = null;
+        private Constant _TILE_Z = null;
+
+        private const string _TILE_X_name = "_TILE_X";
+        private const string _TILE_Y_name = "_TILE_Y";
+        private const string _TILE_Z_name = "_TILE_Z";
+
+        private Constant _NUM_TILES_X = null;
+        private Constant _NUM_TILES_Y = null;
+        private Constant _NUM_TILES_Z = null;
+
+        private const string _NUM_TILES_X_name = "_NUM_TILES_X";
+        private const string _NUM_TILES_Y_name = "_NUM_TILES_Y";
+        private const string _NUM_TILES_Z_name = "_NUM_TILES_Z";
 
         public GPUVerifier(Program program)
             : base((IErrorSink)null)
         {
             this.Program = program;
-
-            ReservedNames = new HashSet<string>();
-            ReservedNames.Add("base");
-            ReservedNames.Add("offset_x");
-            ReservedNames.Add("offset_y");
-            ReservedNames.Add("offset_z");
-            ReservedNames.Add("is_write");
-            ReservedNames.Add("AT_BARRIER");
-            ReservedNames.Add("REACHED_NEXT_BARRIER");
-
             CheckWellFormedness();
         }
 
         private void CheckWellFormedness()
         {
-            int errorCount = check(Program);
+            int errorCount = Check();
             if (errorCount != 0)
             {
                 Console.WriteLine("{0} GPUVerify format errors detected in {1}", errorCount, CommandLineOptions.inputFiles[CommandLineOptions.inputFiles.Count - 1]);
@@ -54,253 +79,15 @@ namespace GPUVerify
             }
         }
 
-        internal int check(Program program)
+        private Procedure CheckExactlyOneKernelProcedure()
         {
-            BarrierProcedure = CheckExactlyOneBarrierProcedure(program);
-            KernelProcedure = CheckExactlyOneKernelProcedure(program);
-            TypeSynonymDecl ThreadIdDecl = CheckExactlyOneThreadIdType(program);
-            ThreadIdType = new TypeSynonymAnnotation(ThreadIdDecl.tok, ThreadIdDecl, new TypeSeq());
-
-            if (ErrorCount > 0)
-            {
-                return ErrorCount;
-            }
-
-            if (BarrierProcedure.InParams.Length != 0)
-            {
-                Error(BarrierProcedure, "Barrier procedure must not take any arguments");
-            }
-
-            if (BarrierProcedure.OutParams.Length != 0)
-            {
-                Error(BarrierProcedure, "Barrier procedure must not return any results");
-            }
-
-            FindGlobalVariables(program);
-
-            CheckKernelImplementation(program);
-
-            return ErrorCount;
+            return CheckSingleInstanceOfAttributedProcedure(Program, "kernel");
         }
 
-        private void FindGlobalVariables(Program program)
+        private Procedure CheckExactlyOneBarrierProcedure()
         {
-            foreach (Declaration D in program.TopLevelDeclarations)
-            {
-                if (D is Variable && (D as Variable).IsMutable)
-                {
-                    if (!ReservedNames.Contains((D as Variable).Name))
-                    {
-                        GlobalVariables.Add(D as Variable);
-                    }
-                }
-            }
+            return CheckSingleInstanceOfAttributedProcedure(Program, "barrier");
         }
-
-
-        private void CheckKernelImplementation(Program Program)
-        {
-            if (KernelProcedure.InParams.Length != 1)
-            {
-                Error(KernelProcedure, "Kernel procedure must take exactly one argument, of type {0}", ThreadIdType.ToString());
-            }
-            else
-            {
-                if (!KernelProcedure.InParams[0].TypedIdent.Type.Equals(ThreadIdType))
-                {
-                    Error(KernelProcedure, "Argument to kernel procedure has wrong type - {0} instead of {1}", KernelProcedure.InParams[0].TypedIdent.Type.ToString(), ThreadIdType.ToString());
-                }
-
-                ThreadIdParameterName = KernelProcedure.InParams[0].TypedIdent.Name;
-
-            }
-
-            if (KernelProcedure.OutParams.Length != 0)
-            {
-                Error(KernelProcedure, "Kernel procedure must not return any results");
-            }
-
-
-            foreach (Declaration decl in Program.TopLevelDeclarations)
-            {
-                if (!(decl is Implementation))
-                {
-                    continue;
-                }
-
-                Implementation Impl = decl as Implementation;
-
-                if (Impl.Proc == KernelProcedure)
-                {
-                    KernelImplementation = Impl;
-                    break;
-                }
-
-            }
-
-            if (KernelImplementation == null)
-            {
-                Error(Token.NoToken, "*** Error: no implementation of kernel procedure");
-                return;
-            }
-
-            // Collect up the local and tile_static variables
-            foreach (LocalVariable LV in KernelImplementation.LocVars)
-            {
-                if (QKeyValue.FindBoolAttribute(LV.Attributes, "tile_static"))
-                {
-                    TileStaticVariables.Add(LV);
-                }
-                else
-                {
-                    ThreadLocalVariables.Add(LV);
-                }
-            }
-
-            // Clear the local variables
-            KernelImplementation.LocVars = new VariableSeq();
-
-            foreach (LocalVariable LV in ThreadLocalVariables)
-            {
-                // Make each local variable a global map from threadid to the usual type
-                GlobalVariable GV = new GlobalVariable(LV.tok, LV.TypedIdent);
-                TypeSeq IndexType = new TypeSeq();
-                IndexType.Add(ThreadIdType);
-                GV.TypedIdent.Type = new MapType(GV.TypedIdent.Type.tok, new TypeVariableSeq(), IndexType, LV.TypedIdent.Type);
-                Program.TopLevelDeclarations.Add(GV);
-                KernelProcedure.Modifies.Add(new IdentifierExpr(GV.tok, GV));
-            }
-
-            foreach (LocalVariable LV in TileStaticVariables)
-            {
-                // Promote each tile-static variable to global
-                GlobalVariable GV = new GlobalVariable(LV.tok, LV.TypedIdent);
-                GV.TypedIdent.Type = LV.TypedIdent.Type;
-                Program.TopLevelDeclarations.Add(GV);
-                KernelProcedure.Modifies.Add(new IdentifierExpr(GV.tok, GV));
-            }
-
-            LocalVariableAccessReplacer replacer = new LocalVariableAccessReplacer(this);
-
-            replacer.VisitImplementation(KernelImplementation);
-
-            // Check that each barrier has a positive integer id
-            // Check that these ids are all distinct
-            foreach (Block B in KernelImplementation.Blocks)
-            {
-                foreach (Cmd C in B.Cmds)
-                {
-                    if (IsBarrier(C))
-                    {
-                        CallCmd Barrier = C as CallCmd;
-
-                        int BarrierId = QKeyValue.FindIntAttribute(Barrier.Attributes, "barrier_id", -1);
-                        if (BarrierId < 1)
-                        {
-                            Error(Barrier, "Barrier must have positive integer attribute \"barrier_id\"");
-                        }
-                        else if (BarrierIds.Contains(BarrierId))
-                        {
-                            Error(Barrier, "Each barrier call must have a unique integer attribute \"barrier_id\" - duplicate id {0} detected", BarrierId);
-                        }
-                        else
-                        {
-                            BarrierIds.Add(BarrierId);
-                        }
-                    }
-                }
-
-            }
-
-
-        }
-
-
-
-        private Procedure CheckExactlyOneKernelProcedure(Program program)
-        {
-            return CheckSingleInstanceOfAttributedProcedure(program, "kernel");
-        }
-
-        private Procedure CheckExactlyOneBarrierProcedure(Program program)
-        {
-            return CheckSingleInstanceOfAttributedProcedure(program, "barrier");
-        }
-
-        private TypeSynonymDecl CheckExactlyOneThreadIdType(Program program)
-        {
-            return CheckSingleInstanceOfAttributedEntity<TypeSynonymDecl>(program, "thread_id");
-        }
-
-        private T CheckSingleInstanceOfAttributedEntity<T>(Program program, string attribute) where T : Declaration
-        {
-            T attributedEntity = null;
-            foreach (Declaration decl in program.TopLevelDeclarations)
-            {
-                if (!QKeyValue.FindBoolAttribute(decl.Attributes, attribute))
-                {
-                    continue;
-                }
-
-                if (decl is T)
-                {
-                    if (attributedEntity == null)
-                    {
-                        attributedEntity = decl as T;
-                    }
-                    else
-                    {
-                        Error(decl, "\"{0}\" attribute specified for {1}, but it has already been specified for procedure {2}", attribute, decl.ToString(), attributedEntity.ToString());
-                    }
-                }
-                else
-                {
-                    Error(decl, "\"{0}\" attribute applied to wrong sort of declaration {1}", attribute, decl.ToString());
-                }
-            }
-
-            if (attributedEntity == null)
-            {
-                Error(program, "\"{0}\" attribute has not been specified for any procedure.  You must mark exactly one procedure with this attribute", attribute);
-            }
-
-            return attributedEntity;
-        }
-
-
-        internal void AddBarrierId(int BarrierId)
-        {
-            BarrierIds.Add(BarrierId);
-        }
-
-        internal int MaxBarrierId()
-        {
-            int result = -1;
-            foreach (int i in BarrierIds)
-            {
-                if (i > result)
-                {
-                    result = i;
-                }
-            }
-            return result;
-        }
-
-        internal List<Variable> GetGlobalVariables()
-        {
-            return GlobalVariables;
-        }
-
-        internal List<Variable> GetTileStaticVariables()
-        {
-            return TileStaticVariables;
-        }
-
-        internal List<Variable> GetThreadLocalVariables()
-        {
-            return ThreadLocalVariables;
-        }
-
 
         private Procedure CheckSingleInstanceOfAttributedProcedure(Program program, string attribute)
         {
@@ -339,1074 +126,2265 @@ namespace GPUVerify
             return attributedProcedure;
         }
 
-        public void AddInitialAndFinalBarriers()
+        private void CheckLocalVariables()
         {
-            // Add barrier to start of first block, if it doesn't already start with a barrier
-            if (!IsBarrier(KernelImplementation.Blocks[0].Cmds[0]))
+            foreach (LocalVariable LV in KernelImplementation.LocVars)
             {
-                CmdSeq NewCmds = new CmdSeq();
-                NewCmds.Add(MakeBarrierCmd(0));
-                foreach (Cmd C in KernelImplementation.Blocks[0].Cmds)
+                if (QKeyValue.FindBoolAttribute(LV.Attributes, "tile_static"))
                 {
-                    NewCmds.Add(C);
-                }
-                KernelImplementation.Blocks[0].Cmds = NewCmds;
-            }
-
-            CmdSeq FinalBarrierCmdSeq = new CmdSeq();
-
-            int FinalBarrierId = MaxBarrierId() + 1;
-
-            FinalBarrierCmdSeq.Add(MakeBarrierCmd(FinalBarrierId));
-
-            string FinalBarrierLabel = "barrier_label" + FinalBarrierId;
-
-            Block FinalBarrierBlock = new Block(Token.NoToken, FinalBarrierLabel, FinalBarrierCmdSeq, new ReturnCmd(Token.NoToken));
-
-            foreach (Block B in KernelImplementation.Blocks)
-            {
-                if (B.TransferCmd is ReturnCmd)
-                {
-                    BlockSeq BlockSeq = new BlockSeq();
-                    BlockSeq.Add(FinalBarrierBlock);
-                    StringSeq StringSeq = new StringSeq();
-                    StringSeq.Add(FinalBarrierLabel);
-                    B.TransferCmd = new GotoCmd(Token.NoToken, StringSeq, BlockSeq);
+                    Error(LV.tok, "Local variable must not be marked 'tile_static' -- promote the variable to global scope");
                 }
             }
-
-            KernelImplementation.Blocks.Add(FinalBarrierBlock);
-
         }
 
-        private Cmd MakeBarrierCmd(int BarrierId)
+        private void FindNonLocalVariables(Program program)
         {
-            Debug.Assert(!BarrierIds.Contains(BarrierId));
-            AddBarrierId(BarrierId);
-            CallCmd Result = new CallCmd(Token.NoToken, BarrierProcedure.Name, new ExprSeq(), new IdentifierExprSeq());
-            Result.Attributes = new QKeyValue(Token.NoToken, "barrier_id", new List<object>(new object[] { Expr.Literal(BarrierId) }), null);
-            return Result;
-        }
-
-
-        private static Implementation CloneImplementation(Implementation Impl, string NewName)
-        {
-            Implementation Result = new Implementation(Impl.tok, NewName, Impl.TypeParameters, Impl.InParams, Impl.OutParams, Impl.LocVars, new List<Block>());
-
-            Dictionary<Block, Block> OldToNew = new Dictionary<Block, Block>();
-
-            foreach (Block B in Impl.Blocks)
+            foreach (Declaration D in program.TopLevelDeclarations)
             {
-                Block NewB = CloneBlock(B);
-
-                OldToNew.Add(B, NewB);
-
-                Result.Blocks.Add(NewB);
-
-            }
-
-            foreach (Block NewB in Result.Blocks)
-            {
-                if (NewB.TransferCmd is GotoCmd)
+                if (D is Variable && (D as Variable).IsMutable)
                 {
-                    GotoCmd NewGotoCmd = NewB.TransferCmd as GotoCmd;
-
-                    for (int i = 0; i < NewGotoCmd.labelTargets.Length; i++)
+                    if (!ReservedNames.Contains((D as Variable).Name))
                     {
-                        Block NewSuccessor;
-                        bool found = OldToNew.TryGetValue(NewGotoCmd.labelTargets[i], out NewSuccessor);
-                        Debug.Assert(found);
-
-                        NewGotoCmd.labelTargets[i] = NewSuccessor;
-                    }
-
-                }
-            }
-
-            return Result;
-        }
-
-
-        private static Block CloneBlock(Block B)
-        {
-            Block NewB = new Block(B.tok, B.Label, new CmdSeq(), null);
-
-            foreach (Cmd C in B.Cmds)
-            {
-                NewB.Cmds.Add(C); // The contents of each command is *not* cloned
-            }
-
-            if (B.TransferCmd is ReturnCmd)
-            {
-                NewB.TransferCmd = new ReturnCmd((B.TransferCmd as ReturnCmd).tok);
-            }
-            else
-            {
-                GotoCmd GotoCmd = B.TransferCmd as GotoCmd;
-                NewB.TransferCmd = new GotoCmd(GotoCmd.tok, new StringSeq(), new BlockSeq());
-                GotoCmd NewGotoCmd = NewB.TransferCmd as GotoCmd;
-                for (int i = 0; i < GotoCmd.labelNames.Length; i++)
-                {
-                    NewGotoCmd.labelNames.Add(GotoCmd.labelNames[i]);
-                    NewGotoCmd.labelTargets.Add(GotoCmd.labelTargets[i]);
-                }
-            }
-            return NewB;
-        }
-
-
-        private static void AppendDuplicateBlockToStartOfImplementation(Implementation Impl, int i)
-        {
-            Block NewBlock = CloneBlock(Impl.Blocks[i]);
-            NewBlock.Label = "entry_barrier";
-
-            List<Block> NewBlocks = new List<Block>();
-
-            NewBlocks.Add(NewBlock);
-
-            foreach (Block B in Impl.Blocks)
-            {
-                NewBlocks.Add(B);
-            }
-
-            Impl.Blocks = NewBlocks;
-
-        }
-
-        private Implementation ConstructBarrierToNextBarriersImplementation(Block B, String NewProcedureName)
-        {
-            Implementation NewImplementation = CloneImplementation(KernelImplementation, NewProcedureName);
-
-            AppendDuplicateBlockToStartOfImplementation(NewImplementation, KernelImplementation.Blocks.IndexOf(B));
-
-            // Iterate through all blocks except first, immediately following barrier calls with "return"
-
-            for (int i = 1; i < NewImplementation.Blocks.Count; i++)
-            {
-                if (IsBarrier(NewImplementation.Blocks[i]))
-                {
-                    // This is a barrier so we don't want control to get any further.
-                    // To ensure this, we simply remove any commands following the barrier,
-                    // and make the transfer command into a "return".
-                    CmdSeq NewCmdSeq = new CmdSeq();
-                    NewCmdSeq.Add(NewImplementation.Blocks[i].Cmds[0]);
-                    NewImplementation.Blocks[i].Cmds = NewCmdSeq;
-                    NewImplementation.Blocks[i].TransferCmd = new ReturnCmd(Token.NoToken);
-                }
-            }
-
-            NewImplementation.PruneUnreachableBlocks();
-            return NewImplementation;
-        }
-
-        private void SanityCheckKernel()
-        {
-            foreach (Block C in KernelImplementation.Blocks)
-            {
-                if (C.TransferCmd is GotoCmd)
-                {
-                    foreach (Block D in (C.TransferCmd as GotoCmd).labelTargets)
-                    {
-                        Debug.Assert(KernelImplementation.Blocks.Contains(D));
-                    }
-                }
-            }
-        }
-
-
-        private void GenerateBarrierToNextBarriersProcedure(Block B)
-        {
-            SanityCheckKernel();
-            Debug.Assert(IsBarrier(B));
-
-            String NewProcedureName = MakeBarrierToNextBarriersProcedureName(B);
-            Procedure NewProcedure = CloneKernelProcedure(NewProcedureName);
-
-            AddTrackingVariablesToModifiesSet(B.tok, NewProcedure.Modifies);
-
-            AddInlineAttribute(NewProcedure);
-
-            Implementation NewImplementation = ConstructBarrierToNextBarriersImplementation(B, NewProcedureName);
-
-            InstrumentWithRaceDetection(NewImplementation);
-
-            AddBarrierTracking(NewImplementation);
-
-            Program.TopLevelDeclarations.Add(NewProcedure);
-            Program.TopLevelDeclarations.Add(NewImplementation);
-
-        }
-
-        private string MakeBarrierToNextBarriersProcedureName(Block B)
-        {
-            return "Barrier_" + GetBarrierId(B) + "_to_next_barriers";
-        }
-
-        private string MakeBarrierAToBProcedureName(Block A, Block B)
-        {
-            return "Barrier_" + GetBarrierId(A) + "_to_" + GetBarrierId(B);
-        }
-
-        private static CtorType MakeArrayBaseType(IToken tok)
-        {
-            return new CtorType(tok, new TypeCtorDecl(tok, "ArrayBase", 0), new TypeSeq());
-        }
-
-        private IdentifierExpr MakeBaseVariable(IToken tok)
-        {
-            TypeSeq typeSeq = new TypeSeq();
-            typeSeq.Add(ThreadIdType);
-            return new IdentifierExpr(tok, new GlobalVariable(tok, new TypedIdent(tok, "base", new MapType(tok, new TypeVariableSeq(), typeSeq, MakeArrayBaseType(tok)))));
-        }
-
-        private IdentifierExpr MakeOffsetVariable(IToken tok, string Dimension)
-        {
-            TypeSeq typeSeq = new TypeSeq();
-            typeSeq.Add(ThreadIdType);
-            return new IdentifierExpr(tok, new GlobalVariable(tok, new TypedIdent(tok, "offset_" + Dimension, new MapType(tok, new TypeVariableSeq(), typeSeq, Microsoft.Boogie.Type.Int))));
-        }
-
-        private IdentifierExpr MakeOffsetXVariable(IToken tok)
-        {
-            return MakeOffsetVariable(tok, "x");
-        }
-
-        private IdentifierExpr MakeOffsetYVariable(IToken tok)
-        {
-            return MakeOffsetVariable(tok, "y");
-        }
-
-        private IdentifierExpr MakeOffsetZVariable(IToken tok)
-        {
-            return MakeOffsetVariable(tok, "z");
-        }
-
-        private IdentifierExpr MakeIsWriteVariable(IToken tok)
-        {
-            TypeSeq typeSeq = new TypeSeq();
-            typeSeq.Add(ThreadIdType);
-            return new IdentifierExpr(tok, new GlobalVariable(tok, new TypedIdent(tok, "is_write", new MapType(tok, new TypeVariableSeq(), typeSeq, Microsoft.Boogie.Type.Bool))));
-        }
-
-        private void InstrumentWithRaceDetection(Implementation Impl)
-        {
-            foreach (Block B in Impl.Blocks)
-            {
-                CmdSeq NewCmds = new CmdSeq();
-
-                foreach (Cmd C in B.Cmds)
-                {
-                    ReadCollector rc = new ReadCollector(this);
-                    rc.Visit(C);
-                    WriteCollector wc = new WriteCollector(this);
-                    wc.Visit(C);
-
-                    if (wc.FoundWrite())
-                    {
-                        AccessRecord write = wc.GetAccess();
-                        ExprSeq InParams = ConstructLogAccessParameters(C, write);
-                        NewCmds.Add(new CallCmd(C.tok, "LOG_WRITE", InParams, new IdentifierExprSeq()));
-                    }
-
-                    foreach (AccessRecord read in rc.accesses)
-                    {
-                        ExprSeq InParams = ConstructLogAccessParameters(C, read);
-                        NewCmds.Add(new CallCmd(C.tok, "LOG_READ", InParams, new IdentifierExprSeq()));
-                    }
-
-                    NewCmds.Add(C);
-                }
-                B.Cmds = NewCmds;
-            }
-        }
-
-        private ExprSeq ConstructLogAccessParameters(Cmd C, AccessRecord access)
-        {
-            ExprSeq InParams = new ExprSeq();
-            InParams.Add(new IdentifierExpr(C.tok, new GlobalVariable(C.tok, new TypedIdent(C.tok, access.v.Name + "_base", Microsoft.Boogie.Type.Int))));
-            InParams.Add(access.IndexZ);
-            InParams.Add(access.IndexY);
-            InParams.Add(access.IndexX);
-            InParams.Add(MakeThreadIdExpr(C.tok));
-            return InParams;
-        }
-
-        private void GenerateBarrierAToBarrierBProcedure(Block A, Block B)
-        {
-            Debug.Assert(IsBarrier(A));
-            Debug.Assert(IsBarrier(B));
-
-            if (!BarrierReachesBarrier(A, B))
-            {
-                return;
-            }
-
-            String NewProcedureName = MakeBarrierAToBProcedureName(A, B);
-            Procedure NewProcedure = CloneKernelProcedure(NewProcedureName);
-            Implementation NewImplementation = ConstructBarrierToNextBarriersImplementation(A, NewProcedureName);
-
-            AddInlineAttribute(NewProcedure);
-
-            NewProcedure.Modifies.Add(MakeReachedNextBarrierVariable(B.tok));
-
-            Block NewA = NewImplementation.Blocks[0];
-            Block NewB = null;
-            for (int i = 1; i < NewImplementation.Blocks.Count; i++)
-            {
-                if (IsBarrier(NewImplementation.Blocks[i]) && GetBarrierId(B) == GetBarrierId(NewImplementation.Blocks[i]))
-                {
-                    NewB = NewImplementation.Blocks[i];
-                    break;
-                }
-            }
-            Debug.Assert(NewB != null);
-
-            NewImplementation.ComputePredecessorsForBlocks();
-
-            HashSet<Block> NodesToKeep = BlocksReaching(NewB);
-
-            Debug.Assert(NodesToKeep.Count > 1);
-
-            foreach (Block D in NewImplementation.Blocks)
-            {
-                if (D.TransferCmd is GotoCmd)
-                {
-                    GotoCmd GotoCmd = D.TransferCmd as GotoCmd;
-                    GotoCmd NewGotoCmd = new GotoCmd(GotoCmd.tok, new StringSeq(), new BlockSeq());
-                    for (int i = 0; i < GotoCmd.labelNames.Length; i++)
-                    {
-                        if (NodesToKeep.Contains(GotoCmd.labelTargets[i]))
+                        if (QKeyValue.FindBoolAttribute(D.Attributes, "tile_static"))
                         {
-                            NewGotoCmd.labelNames.Add(GotoCmd.labelNames[i]);
-                            NewGotoCmd.labelTargets.Add(GotoCmd.labelTargets[i]);
+                            TileStaticVariables.Add(D as Variable);
+                        }
+                        else
+                        {
+                            GlobalVariables.Add(D as Variable);
                         }
                     }
-                    D.TransferCmd = NewGotoCmd;
                 }
-            }
-
-            NewImplementation.PruneUnreachableBlocks();
-
-            AddReachedNextBarrierTracking(NewImplementation, A, B);
-
-            Program.TopLevelDeclarations.Add(NewProcedure);
-            Program.TopLevelDeclarations.Add(NewImplementation);
-
-        }
-
-        private bool BarrierReachesBarrier(Block A, Block B)
-        {
-            Debug.Assert(IsBarrier(A));
-            Debug.Assert(IsBarrier(B));
-
-            Implementation NewImplementation = ConstructBarrierToNextBarriersImplementation(A, "noname");
-
-            for (int i = 1; i < NewImplementation.Blocks.Count; i++)
-            {
-                if (IsBarrier(NewImplementation.Blocks[i]) && GetBarrierId(B) == GetBarrierId(NewImplementation.Blocks[i]))
+                else if (D is Constant)
                 {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static void AddInlineAttribute(Procedure NewProcedure)
-        {
-            NewProcedure.AddAttribute("inline", new object[] { new LiteralExpr(Token.NoToken, BigNum.FromInt(1)) });
-        }
-
-        private Procedure CloneKernelProcedure(string NewProcedureName)
-        {
-            RequiresSeq NewRequiresSeq = new RequiresSeq();
-            foreach(Requires r in KernelProcedure.Requires)
-            {
-                NewRequiresSeq.Add(r);
-            }
-            EnsuresSeq NewEnsuresSeq = new EnsuresSeq();
-            foreach (Ensures e in KernelProcedure.Ensures)
-            {
-                NewEnsuresSeq.Add(e);
-            }
-            IdentifierExprSeq NewModifiesSeq = new IdentifierExprSeq();
-            foreach (IdentifierExpr ies in KernelProcedure.Modifies)
-            {
-                NewModifiesSeq.Add(ies);
-            }
-            return new Procedure(KernelProcedure.tok, NewProcedureName, KernelProcedure.TypeParameters, KernelProcedure.InParams, KernelProcedure.OutParams, NewRequiresSeq, NewModifiesSeq, NewEnsuresSeq);
-        }
-
-        private void AddBarrierTracking(Implementation Impl)
-        {
-            Debug.Assert(IsBarrier(Impl.Blocks[0]));
-            CmdSeq NewBlock0Commands = new CmdSeq();
-
-            NewBlock0Commands.Add(Impl.Blocks[0].Cmds[0]);
-
-            NewBlock0Commands.Add(MakeAssignToAtBarrier(Impl.Blocks[0].Cmds[0].tok, -1));
-
-            for (int i = 1; i < Impl.Blocks[0].Cmds.Length; i++)
-            {
-                NewBlock0Commands.Add(Impl.Blocks[0].Cmds[i]);
-            }
-
-            Impl.Blocks[0].Cmds = NewBlock0Commands;
-
-            for (int i = 1; i < Impl.Blocks.Count; i++)
-            {
-                if (IsBarrier(Impl.Blocks[i]))
-                {
-                    // At this stage, the barrier should be followed immediately by a return
-                    Debug.Assert(Impl.Blocks[i].Cmds.Length == 1);
-
-                    Impl.Blocks[i].Cmds.Add(MakeAssignToAtBarrier(Impl.Blocks[i].Cmds[0].tok, GetBarrierId(Impl.Blocks[i])));
-
-                }
-            }
-
-        }
-
-
-        private void AddReachedNextBarrierTracking(Implementation Impl, Block A, Block B)
-        {
-            Debug.Assert(IsBarrier(Impl.Blocks[0]) && GetBarrierId(Impl.Blocks[0]) == GetBarrierId(A));
-
-            for (int i = 1; i < Impl.Blocks.Count; i++)
-            {
-                if (IsBarrier(Impl.Blocks[i]))
-                {
-                    // At this stage, the barrier should be followed immediately by a return
-                    Debug.Assert(Impl.Blocks[i].Cmds.Length == 1 && GetBarrierId(Impl.Blocks[i]) == GetBarrierId(B));
-
-                    Impl.Blocks[i].Cmds.Add(MakeSetReachedNextBarrier(Impl.Blocks[i].Cmds[0].tok));
-
-                }
-            }
-        }
-
-
-        private AssignCmd MakeAssignToAtBarrier(IToken tok, int p)
-        {
-            List<AssignLhs> lhss = new List<AssignLhs>();
-            List<Expr> rhss = new List<Expr>();
-
-            List<Expr> indexes = new List<Expr>();
-            indexes.Add(MakeThreadIdExpr(tok));
-            lhss.Add(new MapAssignLhs(tok, new SimpleAssignLhs(tok, MakeAtBarrierVariable(tok)), indexes));
-            rhss.Add(new LiteralExpr(tok, BigNum.FromInt(p)));
-            return new AssignCmd(tok, lhss, rhss);
-        }
-
-        private AssignCmd MakeSetReachedNextBarrier(IToken tok)
-        {
-            List<AssignLhs> lhss = new List<AssignLhs>();
-            List<Expr> rhss = new List<Expr>();
-
-            List<Expr> indexes = new List<Expr>();
-            indexes.Add(MakeThreadIdExpr(tok));
-            lhss.Add(new MapAssignLhs(tok, new SimpleAssignLhs(tok, MakeReachedNextBarrierVariable(tok)), indexes));
-            rhss.Add(new LiteralExpr(tok, true));
-            return new AssignCmd(tok, lhss, rhss);
-        }
-
-        private NAryExpr MakeAtBarrierAccess(IToken tok, string ThreadIdName)
-        {
-            ExprSeq args = new ExprSeq();
-            args.Add(MakeAtBarrierVariable(tok));
-            args.Add(MakeThreadIdExpr(tok, ThreadIdName));
-            return new NAryExpr(tok, new MapSelect(tok, 1), args);
-        }
-
-        private NAryExpr MakeReachedNextBarrierAccess(IToken tok, string ThreadIdName)
-        {
-            ExprSeq args = new ExprSeq();
-            args.Add(MakeReachedNextBarrierVariable(tok));
-            args.Add(MakeThreadIdExpr(tok, ThreadIdName));
-            return new NAryExpr(tok, new MapSelect(tok, 1), args);
-        }
-
-        private IdentifierExpr MakeAtBarrierVariable(IToken tok)
-        {
-            TypeSeq IndexType = new TypeSeq();
-            IndexType.Add(ThreadIdType);
-            return new IdentifierExpr(tok, new GlobalVariable(tok, new TypedIdent(tok, "AT_BARRIER", new MapType(tok, new TypeVariableSeq(), IndexType, Microsoft.Boogie.Type.Int))));
-        }
-
-        private IdentifierExpr MakeReachedNextBarrierVariable(IToken tok)
-        {
-            TypeSeq IndexType = new TypeSeq();
-            IndexType.Add(ThreadIdType);
-            return new IdentifierExpr(tok, new GlobalVariable(tok, new TypedIdent(tok, "REACHED_NEXT_BARRIER", new MapType(tok, new TypeVariableSeq(), IndexType, Microsoft.Boogie.Type.Bool))));
-        }
-
-        private static HashSet<Block> BlocksReaching(Block B)
-        {
-            HashSet<Block> Result = new HashSet<Block>();
-            ComputeReachingBlocksRecursive(B, Result);
-            return Result;
-        }
-
-        private static void ComputeReachingBlocksRecursive(Block B, HashSet<Block> Result)
-        {
-            if (Result.Contains(B))
-            {
-                return;
-            }
-
-            Result.Add(B);
-            foreach (Block C in B.Predecessors)
-            {
-                ComputeReachingBlocksRecursive(C, Result);
-            }
-        }
-
-        private static HashSet<Block> BlocksReachableFrom(Block B)
-        {
-            HashSet<Block> Result = new HashSet<Block>();
-            ComputeReachableBlocksRecursive(B, Result);
-            return Result;
-        }
-
-        private static void ComputeReachableBlocksRecursive(Block B, HashSet<Block> Result)
-        {
-            if (Result.Contains(B))
-            {
-                return;
-            }
-            Result.Add(B);
-            if (B.TransferCmd is GotoCmd)
-            {
-                foreach (Block C in (B.TransferCmd as GotoCmd).labelTargets)
-                {
-                    ComputeReachableBlocksRecursive(C, Result);
-                }
-            }
-        }
-
-
-
-
-        private Block FindBarrierBlock(Implementation Impl, int BarrierId)
-        {
-            foreach (Block B in Impl.Blocks)
-            {
-                if (B.Cmds.Length > 0 && IsBarrier(B.Cmds[0]) && GetBarrierId(B) == BarrierId)
-                {
-                    return B;
-                }
-            }
-
-            Debug.Assert(false);
-
-            return null;
-        }
-
-        private int GetBarrierId(Cmd C)
-        {
-            Debug.Assert(IsBarrier(C));
-            return QKeyValue.FindIntAttribute((C as CallCmd).Attributes, "barrier_id", -1);
-        }
-
-        public int GetBarrierId(Block A)
-        {
-            Debug.Assert(A.Cmds.Length > 0);
-            return GetBarrierId(A.Cmds[0]);
-        }
-
-        public bool IsBarrier(Cmd C)
-        {
-            return C is CallCmd && (C as CallCmd).callee == BarrierProcedure.Name;
-        }
-
-        public bool IsBarrier(Block B)
-        {
-            return B.Cmds.Length > 0 && IsBarrier(B.Cmds[0]);
-        }
-
-
-
-
-        public void SplitBlocksAtBarriers()
-        {
-
-            int NumBlocksBeforeSplitting = KernelImplementation.Blocks.Count;
-
-            for (int i = 0; i < NumBlocksBeforeSplitting; i++)
-            {
-                Block B = KernelImplementation.Blocks[i];
-
-                List<CmdSeq> Segments = new List<CmdSeq>();
-                CmdSeq CurrentSequence = new CmdSeq();
-                foreach (Cmd C in B.Cmds)
-                {
-                    if (IsBarrier(C))
+                    Constant C = D as Constant;
+                    if (C.Name.Equals(_X_name))
                     {
-                        if (CurrentSequence.Length > 0)
-                        {
-                            Segments.Add(CurrentSequence);
-                            CurrentSequence = new CmdSeq();
-                        }
+                        CheckSpecialConstantType(C);
+                        _X = C;
+                    }
+                    if (C.Name.Equals(_Y_name))
+                    {
+                        CheckSpecialConstantType(C);
+                        _Y = C;
+                    }
+                    if (C.Name.Equals(_Z_name))
+                    {
+                        CheckSpecialConstantType(C);
+                        _Z = C;
+                    }
+                    if (C.Name.Equals(_TILE_SIZE_X_name))
+                    {
+                        CheckSpecialConstantType(C);
+                        _TILE_SIZE_X = C;
+                    }
+                    if (C.Name.Equals(_TILE_SIZE_Y_name))
+                    {
+                        CheckSpecialConstantType(C);
+                        _TILE_SIZE_Y = C;
+                    }
+                    if (C.Name.Equals(_TILE_SIZE_Z_name))
+                    {
+                        CheckSpecialConstantType(C);
+                        _TILE_SIZE_Z = C;
+                    }
+                    if (C.Name.Equals(_TILE_X_name))
+                    {
+                        CheckSpecialConstantType(C);
+                        _TILE_X = C;
+                    }
+                    if (C.Name.Equals(_TILE_Y_name))
+                    {
+                        CheckSpecialConstantType(C);
+                        _TILE_Y = C;
+                    }
+                    if (C.Name.Equals(_TILE_Z_name))
+                    {
+                        CheckSpecialConstantType(C);
+                        _TILE_Z = C;
+                    }
+                    if (C.Name.Equals(_NUM_TILES_X_name))
+                    {
+                        CheckSpecialConstantType(C);
+                        _NUM_TILES_X = C;
+                    }
+                    if (C.Name.Equals(_NUM_TILES_Y_name))
+                    {
+                        CheckSpecialConstantType(C);
+                        _NUM_TILES_Y = C;
+                    }
+                    if (C.Name.Equals(_NUM_TILES_Z_name))
+                    {
+                        CheckSpecialConstantType(C);
+                        _NUM_TILES_Z = C;
                     }
 
-                    CurrentSequence.Add(C);
                 }
-                if (CurrentSequence.Length > 0)
-                {
-                    Segments.Add(CurrentSequence);
-                }
-
-                if (Segments.Count > 1)
-                {
-                    TransferCmd OriginalTransferCmd = B.TransferCmd;
-
-                    // Set the block's commands to be the first command sequence
-                    B.Cmds = Segments[0];
-                    B.TransferCmd = new GotoCmd(Token.NoToken, new BlockSeq());
-                    Block LastBlock = B;
-                    for (int j = 1; j < Segments.Count; j++)
-                    {
-                        Block NewBlock = new Block(Token.NoToken, "barrier_label_" + GetBarrierId(Segments[j][0]), Segments[j], new GotoCmd(Token.NoToken, new BlockSeq()));
-                        KernelImplementation.Blocks.Add(NewBlock);
-                        (LastBlock.TransferCmd as GotoCmd).AddTarget(NewBlock);
-                        LastBlock = NewBlock;
-                    }
-                    LastBlock.TransferCmd = OriginalTransferCmd;
-
-                }
-
             }
         }
 
-        private bool ContainsInternalBarrier(Block B)
+        private void CheckSpecialConstantType(Constant C)
         {
-            bool first = true;
-            foreach (Cmd C in B.Cmds)
+            if (!(C.TypedIdent.Type.Equals(Microsoft.Boogie.Type.Int) || C.TypedIdent.Type.Equals(Microsoft.Boogie.Type.GetBvType(32))))
             {
-                if (first)
+                Error(C.tok, "Special constant '" + C.Name + "' must have type 'int' or 'bv32'");
+            }
+        }
+
+        private void GetKernelImplementation()
+        {
+            foreach (Declaration decl in Program.TopLevelDeclarations)
+            {
+                if (!(decl is Implementation))
                 {
-                    first = false;
                     continue;
                 }
 
-                if (C is CallCmd)
+                Implementation Impl = decl as Implementation;
+
+                if (Impl.Proc == KernelProcedure)
                 {
-                    CallCmd Call = C as CallCmd;
-                    if (QKeyValue.FindBoolAttribute(Call.Proc.Attributes, "barrier"))
+                    KernelImplementation = Impl;
+                    break;
+                }
+
+            }
+
+            if (KernelImplementation == null)
+            {
+                Error(Token.NoToken, "*** Error: no implementation of kernel procedure");
+            }
+        }
+
+
+
+
+        protected virtual void CheckKernelImplementation()
+        {
+            CheckKernelParameters();
+            GetKernelImplementation();
+
+            if (KernelImplementation == null)
+            {
+                return;
+            }
+
+            CheckLocalVariables();
+            CheckNoReturns();
+        }
+
+        private void CheckNoReturns()
+        {
+            // TODO!
+        }
+
+        internal List<Variable> GetTileStaticVariables()
+        {
+            return TileStaticVariables;
+        }
+
+        internal List<Variable> GetGlobalVariables()
+        {
+            return GlobalVariables;
+        }
+
+        internal void doit()
+        {
+
+            AddStartAndEndBarriers();
+
+            PullOutNonLocalAccesses();
+
+            if (!CommandLineOptions.OnlyDivergence)
+            {
+                AddRaceCheckingInstrumentation();
+            }
+
+            AbstractSharedState();
+
+            MakeKerenelPredicated();
+
+            MakeKernelDualised();
+
+            GenerateBarrierImplementation();
+
+            GenerateKernelPrecondition();
+
+            if (CommandLineOptions.Inference)
+            {
+                ComputeInvariant();
+            }
+
+            if (CommandLineOptions.outputFile == null)
+            {
+                CommandLineOptions.outputFile = "temp_ready_to_verify.bpl";
+            }
+
+            using (TokenTextWriter writer = new TokenTextWriter(CommandLineOptions.outputFile))
+            {
+                Program.Emit(writer);
+            }
+
+
+
+        }
+
+        private void ComputeInvariant()
+        {
+            List<Expr> UserSuppliedInvariants = GetUserSuppliedInvariants();
+            
+            invariantGenerationCounter = 0;
+
+            for (int i = 0; i < Program.TopLevelDeclarations.Count; i++)
+            {
+                if (Program.TopLevelDeclarations[i] is Implementation)
+                {
+                    Implementation Impl = Program.TopLevelDeclarations[i] as Implementation;
+
+                    if (QKeyValue.FindIntAttribute(Impl.Attributes, "inline", -1) == 1)
                     {
-                        return true;
+                        continue;
                     }
-                }
 
-            }
-
-            return false;
-        }
-
-
-
-        internal Implementation GetKernel()
-        {
-            return KernelImplementation;
-        }
-
-        internal void GenerateBarrierToNextBarriersProcedures()
-        {
-            foreach (Block B in KernelImplementation.Blocks)
-            {
-                if (IsBarrier(B) && (GetBarrierId(B) < MaxBarrierId()))
-                {
-                    GenerateBarrierToNextBarriersProcedure(B);
-                }
-            }
-        }
-
-        internal void GenerateBarrierToBarrierPairProcedures()
-        {
-            foreach (Block A in KernelImplementation.Blocks)
-            {
-                if (IsBarrier(A))
-                {
-                    foreach (Block B in KernelImplementation.Blocks)
+                    HashSet<string> LocalNames = new HashSet<string>();
+                    foreach (Variable v in Impl.LocVars)
                     {
-                        if (IsBarrier(B))
-                        {
-                            GenerateBarrierAToBarrierBProcedure(A, B);
-                        }
+                        string basicName = StripThreadIdentifier(v.Name);
+                        LocalNames.Add(basicName);
                     }
-                }
-            }
-        }
-
-        internal IdentifierExpr MakeThreadIdExpr(IToken tok, string name)
-        {
-            return new IdentifierExpr(tok, new LocalVariable(tok, new TypedIdent(tok, name, ThreadIdType)));
-        }
-
-        internal IdentifierExpr MakeThreadIdExpr(IToken tok)
-        {
-            return MakeThreadIdExpr(tok, ThreadIdParameterName);
-        }
-
-
-        internal void AddArrayBaseDeclarations()
-        {
-            foreach (Variable V in GetGlobalVariables())
-            {
-                Program.TopLevelDeclarations.Add(new Constant(V.tok, new TypedIdent(V.tok, V.Name + "_base", MakeArrayBaseType(V.tok)), true));
-            }
-
-            foreach (Variable V in GetTileStaticVariables())
-            {
-                Program.TopLevelDeclarations.Add(new Constant(V.tok, new TypedIdent(V.tok, V.Name + "_base", MakeArrayBaseType(V.tok)), true));
-            }
-        }
-
-        internal void GenerateBarrierToNextBarriersVCs()
-        {
-            foreach (Block B in KernelImplementation.Blocks)
-            {
-                if (IsBarrier(B) && (GetBarrierId(B) < MaxBarrierId()))
-                {
-                    GenerateBarrierToNextBarriersVC(B);
-                }
-            }
-        }
-
-        private void GenerateBarrierToNextBarriersVC(Block B)
-        {
-            VariableSeq InParams = new VariableSeq();
-            InParams.Add(new LocalVariable(B.tok, new TypedIdent(B.tok, "__i", ThreadIdType)));
-            InParams.Add(new LocalVariable(B.tok, new TypedIdent(B.tok, "__j", ThreadIdType)));
-
-            VariableSeq OutParams = new VariableSeq();
-
-            IdentifierExprSeq Modifies = new IdentifierExprSeq();
-            foreach (IdentifierExpr ie in KernelProcedure.Modifies)
-            {
-                Modifies.Add(ie);
-            }
-
-            AddTrackingVariablesToModifiesSet(B.tok, Modifies);
-
-            RequiresSeq Requires = new RequiresSeq();
-            Requires.Add(new Requires(false, MakePreconditionExpr(B)));
-            AddDistinctSameTile(B.tok, Requires, "__i", "__j");
-            AddNothingInitiallyTracked(B.tok, Requires, "__i", "__j");
-
-
-            EnsuresSeq Ensures = new EnsuresSeq();
-            AddNoRace(B.tok, Ensures, "__i", "__j");
-            AddSameBarrier(B.tok, Ensures, "__i", "__j");
-
-            string BarrierIsRaceAndDivergenceFree = "Check_Barrier_" + GetBarrierId(B) + "_Race_And_Divergence_Free";
-
-            Procedure NewProcedure = new Procedure(B.tok, BarrierIsRaceAndDivergenceFree, new TypeVariableSeq(), InParams, OutParams, Requires, Modifies, Ensures);
-
-            List<Block> Blocks = new List<Block>();
-
-            Blocks.Add(new Block());
-
-            Blocks[0].TransferCmd = new ReturnCmd(B.tok);
-
-            Blocks[0].Label = "entry";
-
-            Blocks[0].Cmds = new CmdSeq();
-
-            ExprSeq i = new ExprSeq();
-            i.Add(new IdentifierExpr(B.tok, new LocalVariable(B.tok, new TypedIdent(B.tok, "__i", ThreadIdType))));
-            Blocks[0].Cmds.Add(new CallCmd(B.tok, MakeBarrierToNextBarriersProcedureName(B), i, new IdentifierExprSeq()));
-
-            ExprSeq j = new ExprSeq();
-            j.Add(new IdentifierExpr(B.tok, new LocalVariable(B.tok, new TypedIdent(B.tok, "__j", ThreadIdType))));
-            Blocks[0].Cmds.Add(new CallCmd(B.tok, MakeBarrierToNextBarriersProcedureName(B), j, new IdentifierExprSeq()));
-
-            Implementation NewImplementation = new Implementation(B.tok, BarrierIsRaceAndDivergenceFree, new TypeVariableSeq(), InParams, OutParams, new VariableSeq(), Blocks);
-
-            Program.TopLevelDeclarations.Add(NewProcedure);
-            Program.TopLevelDeclarations.Add(NewImplementation);
-
-        }
-
-        private void AddNothingInitiallyTracked(IToken tok, RequiresSeq Requires, string i, string j)
-        {
-            Requires.Add(new Requires(false, Expr.And(BaseEqualsNothing(tok, i), BaseEqualsNothing(tok, j))));
-        }
-
-        private Expr BaseEqualsNothing(IToken tok, string i)
-        {
-            ExprSeq MapSelectArgs = new ExprSeq();
-            MapSelectArgs.Add(MakeBaseVariable(tok));
-            MapSelectArgs.Add(MakeThreadIdExpr(tok, i));
-            return Expr.Eq(new NAryExpr(tok, new MapSelect(tok, 1), MapSelectArgs), new IdentifierExpr(tok, new GlobalVariable(tok, new TypedIdent(tok, "nothing", MakeArrayBaseType(tok)))));
-        }
-
-        private void AddSameBarrier(IToken tok, EnsuresSeq Ensures, string i, string j)
-        {
-            ExprSeq args1 = new ExprSeq();
-            args1.Add(MakeAtBarrierVariable(tok));
-            args1.Add(MakeThreadIdExpr(tok, i));
-
-            ExprSeq args2 = new ExprSeq();
-            args2.Add(MakeAtBarrierVariable(tok));
-            args2.Add(MakeThreadIdExpr(tok, j));
-
-            Ensures.Add(new Ensures(false, Expr.Eq( new NAryExpr(tok, new MapSelect(tok, 1), args1), new NAryExpr(tok, new MapSelect(tok, 1), args2) ) ) );
-
-        }
-
-        private void AddNoRace(IToken tok, EnsuresSeq Ensures, string i, string j)
-        {
-            ExprSeq RaceArgs = new ExprSeq();
-            RaceArgs.Add(MakeBaseVariable(tok));
-            RaceArgs.Add(MakeOffsetZVariable(tok));
-            RaceArgs.Add(MakeOffsetYVariable(tok));
-            RaceArgs.Add(MakeOffsetXVariable(tok));
-            RaceArgs.Add(MakeIsWriteVariable(tok));
-            RaceArgs.Add(MakeThreadIdExpr(tok, i));
-            RaceArgs.Add(MakeThreadIdExpr(tok, j));
-
-            NAryExpr RaceExpr = new NAryExpr(tok, new FunctionCall(new IdentifierExpr(tok, "race", Microsoft.Boogie.Type.Bool)), RaceArgs);
-            Ensures.Add(new Ensures(false, Expr.Not(RaceExpr)));
-        }
-
-        private void AddDistinctSameTile(IToken tok, RequiresSeq Requires, string i, string j)
-        {
-            ExprSeq args = new ExprSeq();
-            args.Add(new IdentifierExpr(tok, new LocalVariable(tok, new TypedIdent(tok, i, ThreadIdType))));
-            args.Add(new IdentifierExpr(tok, new LocalVariable(tok, new TypedIdent(tok, j, ThreadIdType))));
-            Requires.Add(new Requires(false, new NAryExpr(tok, new FunctionCall(new IdentifierExpr(tok, "distinct_same_tile", Microsoft.Boogie.Type.Bool)), args)));
-        }
-
-        private NAryExpr MakePreconditionExpr(Block B)
-        {
-            ExprSeq PreconditionArgs = new ExprSeq();
-            foreach (Variable v in MakeFormulaFunctionArguments(B.tok, false))
-            {
-                PreconditionArgs.Add(new IdentifierExpr(B.tok, v));
-            }
-
-            NAryExpr nary = new NAryExpr(B.tok, new FunctionCall(new IdentifierExpr(B.tok, MakePreconditionName(B), Microsoft.Boogie.Type.Bool)), PreconditionArgs);
-            return nary;
-        }
-
-        private void AddTrackingVariablesToModifiesSet(IToken tok, IdentifierExprSeq Modifies)
-        {
-            Modifies.Add(MakeBaseVariable(tok));
-            Modifies.Add(MakeOffsetXVariable(tok));
-            Modifies.Add(MakeOffsetYVariable(tok));
-            Modifies.Add(MakeOffsetZVariable(tok));
-            Modifies.Add(MakeIsWriteVariable(tok));
-            Modifies.Add(MakeAtBarrierVariable(tok));
-        }
-
-        internal void GenerateBarrierToBarrierPairVCs()
-        {
-            foreach (Block A in KernelImplementation.Blocks)
-            {
-                if (IsBarrier(A))
-                {
-                    foreach (Block B in KernelImplementation.Blocks)
+                    foreach (Variable v in Impl.InParams)
                     {
-                        if (IsBarrier(B) && BarrierReachesBarrier(A, B))
-                        {
-                            GenerateBarrierAToBarrierBVCs(A, B);
-                        }
+                        string basicName = StripThreadIdentifier(v.Name);
+                        LocalNames.Add(basicName);
                     }
-                }
-            }
-        }
-
-        private void GenerateBarrierAToBarrierBVCs(Block A, Block B)
-        {
-            GenerateVC_AToB_Pre(A, B);
-            GenerateVC_AToB_Induction(A, B);
-            GenerateVC_AToB_Post(A, B);
-        }
-
-        private ForallExpr MakeAllReachedNextBarrierExpr(IToken tok)
-        {
-            VariableSeq i = new VariableSeq();
-            i.Add(MakeThreadIdExpr(tok, "__i").Decl);
-            ForallExpr forallexpr = new ForallExpr(tok, i, MakeReachedNextBarrierAccess(tok, "__i"));
-            return forallexpr;
-        }
-
-        private ForallExpr MakeNoneReachedNextBarrierExpr(IToken tok)
-        {
-            VariableSeq i = new VariableSeq();
-            i.Add(MakeThreadIdExpr(tok, "__i").Decl);
-            ForallExpr forallexpr = new ForallExpr(tok, i, Expr.Not(MakeReachedNextBarrierAccess(tok, "__i")));
-            return forallexpr;
-        }
-
-        private string MakeIHName(Block A, Block B)
-        {
-            return "IH_" + GetBarrierId(A) + "_" + GetBarrierId(B);
-        }
-
-
-        private NAryExpr MakeIHExpr(Block A, Block B)
-        {
-            ExprSeq IHArgs = new ExprSeq();
-            foreach (Variable v in MakeFormulaFunctionArguments(B.tok, true))
-            {
-                IHArgs.Add(new IdentifierExpr(B.tok, v));
-            }
-
-            NAryExpr nary = new NAryExpr(B.tok, new FunctionCall(new IdentifierExpr(A.tok, MakeIHName(A, B), Microsoft.Boogie.Type.Bool)), IHArgs);
-            return nary;
-        }
-
-        private Expr MakeThreadNotReachedNextBarrierExpr(IToken tok, string ThreadIdName)
-        {
-            return Expr.Not(MakeReachedNextBarrierAccess(tok, ThreadIdName));
-        }
-
-        private void GenerateVC_AToB_Pre(Block A, Block B)
-        {
-            string ProcedureName = "Check_" + GetBarrierId(A) + "_to_" + GetBarrierId(B) + "_Pre";
-
-            Procedure NewProcedure = new Procedure(A.tok, ProcedureName, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
-            NewProcedure.Requires.Add(new Requires(false, MakePreconditionExpr(A)));
-            NewProcedure.Requires.Add(new Requires(false, MakeNoneReachedNextBarrierExpr(A.tok)));
-            NewProcedure.Ensures.Add(new Ensures(false, MakeIHExpr(A, B)));
-
-            Implementation NewImplementation = new Implementation(A.tok, ProcedureName, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new VariableSeq(), new List<Block>());
-
-            Program.TopLevelDeclarations.Add(NewProcedure);
-            Program.TopLevelDeclarations.Add(NewImplementation);
-        }
-
-        private void GenerateVC_AToB_Induction(Block A, Block B)
-        {
-            string ProcedureName = "Check_" + GetBarrierId(A) + "_to_" + GetBarrierId(B) + "_Induction";
-
-            VariableSeq InParams = new VariableSeq();
-            InParams.Add(MakeThreadIdExpr(A.tok).Decl);
-
-            IdentifierExprSeq Modifies = new IdentifierExprSeq();
-            foreach (IdentifierExpr ie in KernelProcedure.Modifies)
-            {
-                Modifies.Add(ie);
-            }
-
-            Modifies.Add(MakeReachedNextBarrierVariable(B.tok));
-
-            Procedure NewProcedure = new Procedure(A.tok, ProcedureName, new TypeVariableSeq(), InParams, new VariableSeq(), new RequiresSeq(), Modifies, new EnsuresSeq());
-            NewProcedure.Requires.Add(new Requires(false, MakeIHExpr(A, B)));
-            NewProcedure.Requires.Add(new Requires(false, MakeThreadNotReachedNextBarrierExpr(A.tok, ThreadIdParameterName)));
-            NewProcedure.Ensures.Add(new Ensures(false, MakeIHExpr(A, B)));
-
-            Implementation NewImplementation = new Implementation(A.tok, ProcedureName, new TypeVariableSeq(), InParams, new VariableSeq(), new VariableSeq(), new List<Block>());
-            NewImplementation.Blocks.Add(new Block());
-            NewImplementation.Blocks[0].Label = "entry";
-            NewImplementation.Blocks[0].TransferCmd = new ReturnCmd(A.tok);
-            NewImplementation.Blocks[0].Cmds = new CmdSeq();
-            ExprSeq i = new ExprSeq();
-            i.Add(MakeThreadIdExpr(A.tok));
-            NewImplementation.Blocks[0].Cmds.Add(new CallCmd(A.tok, MakeBarrierAToBProcedureName(A, B), i, new IdentifierExprSeq()));
-
-            Program.TopLevelDeclarations.Add(NewProcedure);
-            Program.TopLevelDeclarations.Add(NewImplementation);
-        }
-
-        private void GenerateVC_AToB_Post(Block A, Block B)
-        {
-            string ProcedureName = "Check_" + GetBarrierId(A) + "_to_" + GetBarrierId(B) + "_Post";
-
-            Procedure NewProcedure = new Procedure(A.tok, ProcedureName, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
-            NewProcedure.Requires.Add(new Requires(false, MakeIHExpr(A, B)));
-            NewProcedure.Requires.Add(new Requires(false, MakeAllReachedNextBarrierExpr(B.tok)));
-            NewProcedure.Ensures.Add(new Ensures(false, MakePreconditionExpr(B)));
-
-            Implementation NewImplementation = new Implementation(A.tok, ProcedureName, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new VariableSeq(), new List<Block>());
-
-            Program.TopLevelDeclarations.Add(NewProcedure);
-            Program.TopLevelDeclarations.Add(NewImplementation);
-
-        }
-
-        internal void GenerateFormulaSkeletons(string filename)
-        {
-            Program FormulaSkeletons = new Program();
-
-            foreach (Block B in KernelImplementation.Blocks)
-            {
-                if (IsBarrier(B))
-                {
-                    FormulaSkeletons.TopLevelDeclarations.Add(MakeSkeletonFormula(B, MakePreconditionName(B), false));
-                }
-            }
-
-            foreach (Block A in KernelImplementation.Blocks)
-            {
-                if (IsBarrier(A))
-                {
-                    foreach (Block B in KernelImplementation.Blocks)
+                    foreach (Variable v in Impl.OutParams)
                     {
-                        if (IsBarrier(B) && BarrierReachesBarrier(A, B))
-                        {
-                            FormulaSkeletons.TopLevelDeclarations.Add(MakeSkeletonFormula(B, MakeIHName(A, B), true));
-                        }
+                        string basicName = StripThreadIdentifier(v.Name);
+                        LocalNames.Add(basicName);
                     }
+
+                    AddCandidateInvariants(Impl.StructuredStmts, LocalNames, UserSuppliedInvariants);
                 }
+
+                if (Program.TopLevelDeclarations[i] is Procedure)
+                {
+                    Procedure Proc = Program.TopLevelDeclarations[i] as Procedure;
+
+                    if (QKeyValue.FindIntAttribute(Proc.Attributes, "inline", -1) == 1)
+                    {
+                        continue;
+                    }
+
+                    if (Proc == KernelProcedure)
+                    {
+                        continue;
+                    }
+
+                    HashSet<string> InParamNames = new HashSet<string>();
+                    foreach (Variable v in Proc.InParams)
+                    {
+                        string basicName = StripThreadIdentifier(v.Name);
+                        InParamNames.Add(basicName);
+                    }
+                    AddCandidateRequires(Proc, InParamNames); // TODO - add support for user-supplied invariants
+
+                    HashSet<string> OutParamNames = new HashSet<string>();
+                    foreach (Variable v in Proc.OutParams)
+                    {
+                        string basicName = StripThreadIdentifier(v.Name);
+                        OutParamNames.Add(basicName);
+                    }
+                    AddCandidateEnsures(Proc, OutParamNames); // TODO - add support for user-supplied invariants
+                }
+
             }
 
-            using (TokenTextWriter writer = new TokenTextWriter(filename))
+        }
+
+        private void AddCandidateEnsures(Procedure Proc, HashSet<string> LocalNames)
+        {
+            foreach (string lv in LocalNames)
             {
-                FormulaSkeletons.Emit(writer);
+                AddCandidateEnsures(Proc, Expr.Eq(
+                    // Int type used here, but it doesn't matter as we will print and then re-parse the program
+                    new IdentifierExpr(Proc.tok, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, lv + "$1", Microsoft.Boogie.Type.Int))),
+                    new IdentifierExpr(Proc.tok, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, lv + "$2", Microsoft.Boogie.Type.Int)))
+                ));
+            }
+        }
+
+        private void AddCandidateRequires(Procedure Proc, HashSet<string> LocalNames)
+        {
+            foreach (string lv in LocalNames)
+            {
+                AddCandidateRequires(Proc, Expr.Eq(
+                    // Int type used here, but it doesn't matter as we will print and then re-parse the program
+                    new IdentifierExpr(Proc.tok, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, lv + "$1", Microsoft.Boogie.Type.Int))),
+                    new IdentifierExpr(Proc.tok, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, lv + "$2", Microsoft.Boogie.Type.Int)))
+                ));
+            }
+        }
+
+        private void AddCandidateRequires(Procedure Proc, Expr e)
+        {
+            Constant ExistentialBooleanConstant = MakeExistentialBoolean(Proc.tok);
+            IdentifierExpr ExistentialBoolean = new IdentifierExpr(Proc.tok, ExistentialBooleanConstant);
+            Proc.Requires.Add(new Requires(false, Expr.Imp(ExistentialBoolean, e)));
+            Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
+        }
+
+        private void AddCandidateEnsures(Procedure Proc, Expr e)
+        {
+            Constant ExistentialBooleanConstant = MakeExistentialBoolean(Proc.tok);
+            IdentifierExpr ExistentialBoolean = new IdentifierExpr(Proc.tok, ExistentialBooleanConstant);
+            Proc.Ensures.Add(new Ensures(false, Expr.Imp(ExistentialBoolean, e)));
+            Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
+        }
+
+        private List<Expr> GetUserSuppliedInvariants()
+        {
+            List<Expr> result = new List<Expr>();
+
+            if (CommandLineOptions.invariantsFile == null)
+            {
+                return result;
             }
 
-
-        }
-
-        private string MakePreconditionName(Block B)
-        {
-            return "Pre_" + GetBarrierId(B);
-        }
-
-        private Function MakeSkeletonFormula(Block B, string FunctionName, bool isIH)
-        {
-
-            Function precondition = new Function(B.tok, FunctionName, MakeFormulaFunctionArguments(B.tok, isIH), MakeFunctionReturnTemp(B.tok));
-
-            precondition.AddAttribute("inline", new object[] { });
-
-            precondition.Body = new LiteralExpr(B.tok, true);
-            return precondition;
-        }
-
-        private Variable MakeFunctionReturnTemp(IToken tok)
-        {
-            return new LocalVariable(tok, new TypedIdent(tok, "result", Microsoft.Boogie.Type.Bool));
-        }
-
-        private VariableSeq MakeFormulaFunctionArguments(IToken tok, bool isIH)
-        {
-            VariableSeq arguments = new VariableSeq();
-
-            foreach (Variable v in ThreadLocalVariables)
+            StreamReader sr = new StreamReader(new FileStream(CommandLineOptions.invariantsFile, FileMode.Open, FileAccess.Read));
+            string line;
+            int lineNumber = 1;
+            while ((line = sr.ReadLine()) != null)
             {
-                arguments.Add(v);
+                string temp_program_text = "axiom (" + line + ");";
+                TokenTextWriter writer = new TokenTextWriter("temp_out.bpl");
+                writer.WriteLine(temp_program_text);
+                writer.Close();
+
+                Program temp_program = GPUVerify.ParseBoogieProgram(new List<string>(new string[] { "temp_out.bpl" }), false);
+
+                if (null == temp_program)
+                {
+                    Console.WriteLine("Ignoring badly formed candidate invariant '" + line + "' at '" + CommandLineOptions.invariantsFile + "' line " + lineNumber);
+                }
+                else
+                {
+                    Debug.Assert(temp_program.TopLevelDeclarations[0] is Axiom);
+                    result.Add((temp_program.TopLevelDeclarations[0] as Axiom).Expr);
+                }
+
+                lineNumber++;
+            }
+
+            return result;
+        }
+
+        private void AddCandidateInvariants(StmtList stmtList, HashSet<string> LocalNames, List<Expr> UserSuppliedInvariants)
+        {
+            foreach (BigBlock bb in stmtList.BigBlocks)
+            {
+                AddCandidateInvariants(bb, LocalNames, UserSuppliedInvariants);
+            }
+        }
+
+        private void AddCandidateInvariants(BigBlock bb, HashSet<string> LocalNames, List<Expr> UserSuppliedInvariants)
+        {
+            if (bb.ec is WhileCmd)
+            {
+                WhileCmd wc = bb.ec as WhileCmd;
+
+                foreach(string lv in LocalNames)
+                {
+                    AddCandidateInvariant(wc, Expr.Eq(
+                        // Int type used here, but it doesn't matter as we will print and then re-parse the program
+                        new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, lv + "$1", Microsoft.Boogie.Type.Int))),
+                        new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, lv + "$2", Microsoft.Boogie.Type.Int)))
+                    ));
+                }
+
+                if (!CommandLineOptions.OnlyDivergence)
+                {
+                    AddRaceCheckingCandidateInvariants(wc);
+                }
+
+                AddUserSuppliedInvariants(wc, UserSuppliedInvariants);
+
+                AddCandidateInvariants(wc.Body, LocalNames, UserSuppliedInvariants);
+            }
+            else if (bb.ec is IfCmd)
+            {
+                // We should have done predicated execution by now, so we won't have any if statements
+                Debug.Assert(false);
+            }
+            else
+            {
+                Debug.Assert(bb.ec == null);
+            }
+        }
+
+        private void AddRaceCheckingCandidateInvariants(WhileCmd wc)
+        {
+            foreach (Variable v in GlobalVariables)
+            {
+                AddNoReadOrWriteCandidateInvariants(wc, v);
+                AddReadOrWrittenOffsetIsThreadId(wc, v, "READ");
+                AddReadOrWrittenOffsetIsThreadId(wc, v, "WRITE");
             }
 
             foreach (Variable v in TileStaticVariables)
             {
-                arguments.Add(v);
+                AddNoReadOrWriteCandidateInvariants(wc, v);
+                AddReadOrWrittenOffsetIsThreadId(wc, v, "READ");
+                AddReadOrWrittenOffsetIsThreadId(wc, v, "WRITE");
             }
-
-            foreach (Variable v in GlobalVariables)
-            {
-                arguments.Add(v);
-            }
-
-            if (isIH)
-            {
-                arguments.Add(MakeReachedNextBarrierVariable(tok).Decl);
-            }
-            return arguments;
         }
-    }
 
+        private void AddUserSuppliedInvariants(WhileCmd wc, List<Expr> UserSuppliedInvariants)
+        {
+            foreach (Expr e in UserSuppliedInvariants)
+            {
+                wc.Invariants.Add(new AssertCmd(wc.tok, e));
+                TokenTextWriter writer = new TokenTextWriter("temp_out.bpl");
+                Program.Emit(writer);
+                writer.Close();
+                wc.Invariants.RemoveAt(wc.Invariants.Count - 1);
+
+                Program temp_program = GPUVerify.ParseBoogieProgram(new List<string>(new string[] { "temp_out.bpl" }), false);
+
+                if(IsOK(temp_program))
+                {
+                    AddCandidateInvariant(wc, e);
+                }
+            }
+        }
+
+        private bool IsOK(Microsoft.Boogie.Program temp_program)
+        {
+            if(temp_program == null)
+            {
+                return false;
+            }
+
+            if (temp_program.Resolve() != 0)
+            {
+                return false;
+            }
+
+            if (temp_program.Typecheck() != 0)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        private void AddReadOrWrittenOffsetIsThreadId(WhileCmd wc, Variable v, string ReadOrWrite)
+        {
+            if (HasXDimension(v) && IndexTypeOfXDimension(v).Equals(GetTypeOfIdX()))
+            {
+                AddCandidateInvariant(wc,
+                    Expr.Imp(
+                        new IdentifierExpr(wc.tok, new VariableDualiser(1).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
+                        Expr.Eq(new IdentifierExpr(wc.tok, new VariableDualiser(1).VisitVariable(MakeOffsetXVariable(v, ReadOrWrite))), new IdentifierExpr(wc.tok, MakeThreadId(wc.tok, "X", 1))))
+                );
+                AddCandidateInvariant(wc,
+                    Expr.Imp(
+                        new IdentifierExpr(wc.tok, new VariableDualiser(2).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
+                        Expr.Eq(new IdentifierExpr(wc.tok, new VariableDualiser(2).VisitVariable(MakeOffsetXVariable(v, ReadOrWrite))), new IdentifierExpr(wc.tok, MakeThreadId(wc.tok, "X", 2))))
+                );
+            }
+
+            if (HasYDimension(v) && KernelHasIdY() && IndexTypeOfYDimension(v).Equals(GetTypeOfIdY()))
+            {
+                AddCandidateInvariant(wc,
+                    Expr.Imp(
+                        new IdentifierExpr(wc.tok, new VariableDualiser(1).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
+                        Expr.Eq(new IdentifierExpr(wc.tok, new VariableDualiser(1).VisitVariable(MakeOffsetYVariable(v, ReadOrWrite))), new IdentifierExpr(wc.tok, MakeThreadId(wc.tok, "Y", 1))))
+                );
+                AddCandidateInvariant(wc,
+                    Expr.Imp(
+                        new IdentifierExpr(wc.tok, new VariableDualiser(2).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
+                        Expr.Eq(new IdentifierExpr(wc.tok, new VariableDualiser(2).VisitVariable(MakeOffsetYVariable(v, ReadOrWrite))), new IdentifierExpr(wc.tok, MakeThreadId(wc.tok, "Y", 2))))
+                );
+            }
+
+            if (HasZDimension(v) && KernelHasIdZ() && IndexTypeOfZDimension(v).Equals(GetTypeOfIdZ()))
+            {
+                AddCandidateInvariant(wc,
+                    Expr.Imp(
+                        new IdentifierExpr(wc.tok, new VariableDualiser(1).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
+                        Expr.Eq(new IdentifierExpr(wc.tok, new VariableDualiser(1).VisitVariable(MakeOffsetZVariable(v, ReadOrWrite))), new IdentifierExpr(wc.tok, MakeThreadId(wc.tok, "Z", 1))))
+                );
+                AddCandidateInvariant(wc,
+                    Expr.Imp(
+                        new IdentifierExpr(wc.tok, new VariableDualiser(2).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
+                        Expr.Eq(new IdentifierExpr(wc.tok, new VariableDualiser(2).VisitVariable(MakeOffsetZVariable(v, ReadOrWrite))), new IdentifierExpr(wc.tok, MakeThreadId(wc.tok, "Z", 2))))
+                );
+            }
+            
+        }
+
+        private Microsoft.Boogie.Type GetTypeOfIdX()
+        {
+            Contract.Requires(_X != null);
+            return _X.TypedIdent.Type;
+        }
+
+        private Microsoft.Boogie.Type GetTypeOfIdY()
+        {
+            Contract.Requires(_Y != null);
+            return _Y.TypedIdent.Type;
+        }
+
+        private Microsoft.Boogie.Type GetTypeOfIdZ()
+        {
+            Contract.Requires(_Z != null);
+            return _Z.TypedIdent.Type;
+        }
+
+        private Microsoft.Boogie.Type GetTypeOfId(string dimension)
+        {
+            Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
+            if (dimension.Equals("X")) return GetTypeOfIdX();
+            if (dimension.Equals("Y")) return GetTypeOfIdY();
+            if (dimension.Equals("Z")) return GetTypeOfIdZ();
+            Debug.Assert(false);
+            return null;
+        }
+
+        private bool KernelHasIdX()
+        {
+            return _X != null;
+        }
+
+        private bool KernelHasIdY()
+        {
+            return _Y != null;
+        }
+
+        private bool KernelHasIdZ()
+        {
+            return _Z != null;
+        }
+
+        private bool KernelHasTileIdX()
+        {
+            return _TILE_X != null;
+        }
+
+        private bool KernelHasTileIdY()
+        {
+            return _TILE_Y != null;
+        }
+
+        private bool KernelHasTileIdZ()
+        {
+            return _TILE_Z != null;
+        }
+
+        private bool KernelHasNumTilesX()
+        {
+            return _NUM_TILES_X != null;
+        }
+
+        private bool KernelHasNumTilesY()
+        {
+            return _NUM_TILES_Y != null;
+        }
+
+        private bool KernelHasNumTilesZ()
+        {
+            return _NUM_TILES_Z != null;
+        }
+
+        private bool KernelHasTileSizeX()
+        {
+            return _TILE_SIZE_X != null;
+        }
+
+        private bool KernelHasTileSizeY()
+        {
+            return _TILE_SIZE_Y != null;
+        }
+
+        private bool KernelHasTileSizeZ()
+        {
+            return _TILE_SIZE_Z != null;
+        }
+
+        private bool KernelHasId(string dimension)
+        {
+            Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
+            if (dimension.Equals("X")) return KernelHasIdX();
+            if (dimension.Equals("Y")) return KernelHasIdY();
+            if (dimension.Equals("Z")) return KernelHasIdZ();
+            Debug.Assert(false);
+            return false;
+        }
+
+        private void AddNoReadOrWriteCandidateInvariants(WhileCmd wc, Variable v)
+        {
+            AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "1");
+            AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "1");
+            AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "2");
+            AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "2");
+        }
+
+        private void AddNoReadOrWriteCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, string OneOrTwo)
+        {
+                            Variable ReadHasOccurred1 = MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite);
+                            ReadHasOccurred1.Name = ReadHasOccurred1.Name + "$" + OneOrTwo;
+                            ReadHasOccurred1.TypedIdent.Name = ReadHasOccurred1.TypedIdent.Name + "$" + OneOrTwo;
+                            AddCandidateInvariant(wc, Expr.Not(new IdentifierExpr(wc.tok, ReadHasOccurred1)));
+        }
+
+        private void AddCandidateInvariant(WhileCmd wc, Expr e)
+        {
+            Constant ExistentialBooleanConstant = MakeExistentialBoolean(wc.tok);
+            IdentifierExpr ExistentialBoolean = new IdentifierExpr(wc.tok, ExistentialBooleanConstant);
+            wc.Invariants.Add(new AssertCmd(wc.tok, Expr.Imp(ExistentialBoolean, e)));
+            Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
+        }
+
+        private Constant MakeExistentialBoolean(IToken tok)
+        {
+            Constant ExistentialBooleanConstant = new Constant(tok, new TypedIdent(tok, "_b" + invariantGenerationCounter, Microsoft.Boogie.Type.Bool), false);
+            invariantGenerationCounter++;
+            ExistentialBooleanConstant.AddAttribute("existential", new object[] { Expr.True });
+            return ExistentialBooleanConstant;
+        }
+
+        private string StripThreadIdentifier(string p)
+        {
+            return p.Substring(0, p.IndexOf("$"));
+        }
+
+        private void AddStartAndEndBarriers()
+        {
+            CallCmd FirstBarrier = new CallCmd(KernelImplementation.tok, "BARRIER", new ExprSeq(), new IdentifierExprSeq());
+            CallCmd LastBarrier = new CallCmd(KernelImplementation.tok, "BARRIER", new ExprSeq(), new IdentifierExprSeq());
+
+            CmdSeq newCommands = new CmdSeq();
+            newCommands.Add(FirstBarrier);
+            foreach(Cmd c in KernelImplementation.StructuredStmts.BigBlocks[0].simpleCmds)
+            {
+                newCommands.Add(c);
+            }
+            KernelImplementation.StructuredStmts.BigBlocks[0].simpleCmds = newCommands;
+
+            CmdSeq lastCommand = new CmdSeq();
+            lastCommand.Add(LastBarrier);
+            BigBlock bb = new BigBlock(KernelProcedure.tok, "__lastBarrier", lastCommand, null, null);
+
+            KernelImplementation.StructuredStmts.BigBlocks.Add(bb);
+        }
+
+        private void GenerateKernelPrecondition()
+        {
+
+            if (!CommandLineOptions.OnlyDivergence)
+            {
+                foreach (Variable v in GlobalVariables)
+                {
+                    AddRequiresNoPendingAccess(v);
+                }
+                foreach (Variable v in TileStaticVariables)
+                {
+                    AddRequiresNoPendingAccess(v);
+                }
+            }
+
+            Expr AssumeDistinctThreads = null;
+            Expr AssumeThreadIdsInRange = null;
+            IToken tok = KernelImplementation.tok;
+
+            GeneratePreconditionsForDimension(ref AssumeDistinctThreads, ref AssumeThreadIdsInRange, tok, "X");
+            GeneratePreconditionsForDimension(ref AssumeDistinctThreads, ref AssumeThreadIdsInRange, tok, "Y");
+            GeneratePreconditionsForDimension(ref AssumeDistinctThreads, ref AssumeThreadIdsInRange, tok, "Z");
+
+            if (AssumeDistinctThreads != null)
+            {
+                Debug.Assert(AssumeThreadIdsInRange != null);
+
+                KernelProcedure.Requires.Add(new Requires(false, AssumeDistinctThreads));
+                KernelProcedure.Requires.Add(new Requires(false, AssumeThreadIdsInRange));
+
+                //Program.TopLevelDeclarations.Add(new Axiom(tok, AssumeDistinctThreads));
+                //Program.TopLevelDeclarations.Add(new Axiom(tok, AssumeThreadIdsInRange));
+            }
+            else
+            {
+                Debug.Assert(AssumeThreadIdsInRange == null);
+            }
+
+
+        }
+
+        private void GeneratePreconditionsForDimension(ref Expr AssumeDistinctThreads, ref Expr AssumeThreadIdsInRange, IToken tok, String dimension)
+        {
+            if (KernelHasId(dimension))
+            {
+                if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
+                {
+                    KernelProcedure.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetTileSize(dimension)), ZeroBV(tok))));
+                    KernelProcedure.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumTiles(dimension)), ZeroBV(tok))));
+                    KernelProcedure.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetTileId(dimension)), ZeroBV(tok))));
+                    KernelProcedure.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetTileSize(dimension)), ZeroBV(tok))));
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumTiles(dimension)), ZeroBV(tok))));
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetTileId(dimension)), ZeroBV(tok))));
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+                }
+                else
+                {
+                    KernelProcedure.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetTileSize(dimension)), Zero(tok))));
+                    KernelProcedure.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetNumTiles(dimension)), Zero(tok))));
+                    KernelProcedure.Requires.Add(new Requires(false, Expr.Ge(new IdentifierExpr(tok, GetTileId(dimension)), Zero(tok))));
+                    KernelProcedure.Requires.Add(new Requires(false, Expr.Lt(new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, Expr.Gt(new IdentifierExpr(tok, GetTileSize(dimension)), Zero(tok))));
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, Expr.Gt(new IdentifierExpr(tok, GetNumTiles(dimension)), Zero(tok))));
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, Expr.Ge(new IdentifierExpr(tok, GetTileId(dimension)), Zero(tok))));
+                    //Program.TopLevelDeclarations.Add(new Axiom(tok, Expr.Lt(new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+
+                }
+                Expr AssumeThreadsDistinctInDimension =
+                        Expr.Neq(
+                        new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)),
+                        new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2))
+                        );
+
+                AssumeDistinctThreads = (null == AssumeDistinctThreads) ? AssumeThreadsDistinctInDimension : Expr.Or(AssumeDistinctThreads, AssumeThreadsDistinctInDimension);
+
+                Expr AssumeThreadIdsInRangeInDimension =
+                    GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
+                        Expr.And(
+                            Expr.And(
+                            MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), ZeroBV(tok)),
+                            MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), ZeroBV(tok))
+                            ),
+                            Expr.And(
+                            MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetTileSize(dimension))),
+                            MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetTileSize(dimension)))
+                            ))
+                    :
+                        Expr.And(
+                            Expr.And(
+                            Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), Zero(tok)),
+                            Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), Zero(tok))
+                            ),
+                            Expr.And(
+                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetTileSize(dimension))),
+                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetTileSize(dimension)))
+                            ));
+
+                AssumeThreadIdsInRange = (null == AssumeThreadIdsInRange) ? AssumeThreadIdsInRangeInDimension : Expr.And(AssumeThreadIdsInRange, AssumeThreadIdsInRangeInDimension);
+            }
+        }
+
+        private Expr MakeBitVectorBinaryBoolean(string functionName, Expr lhs, Expr rhs)
+        {
+            return new NAryExpr(lhs.tok, new FunctionCall(new Function(lhs.tok, functionName, new VariableSeq(new Variable[] { 
+                new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "arg1", Microsoft.Boogie.Type.GetBvType(32))),
+                new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "arg2", Microsoft.Boogie.Type.GetBvType(32)))
+            }), new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "result", Microsoft.Boogie.Type.Bool)))), new ExprSeq(new Expr[] { lhs, rhs }));
+        }
+
+        private Constant GetTileSize(string dimension)
+        {
+            Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
+            if(dimension.Equals("X")) return _TILE_SIZE_X;
+            if(dimension.Equals("Y")) return _TILE_SIZE_Y;
+            if(dimension.Equals("Z")) return _TILE_SIZE_Z;
+            Debug.Assert(false);
+            return null;
+        }
+
+        private Constant GetNumTiles(string dimension)
+        {
+            Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
+            if (dimension.Equals("X")) return _NUM_TILES_X;
+            if (dimension.Equals("Y")) return _NUM_TILES_Y;
+            if (dimension.Equals("Z")) return _NUM_TILES_Z;
+            Debug.Assert(false);
+            return null;
+        }
+
+        private Constant MakeThreadId(IToken tok, string dimension, int number)
+        {
+            Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
+            string name = null;
+            if (dimension.Equals("X")) name = _X_name;
+            if (dimension.Equals("Y")) name = _Y_name;
+            if (dimension.Equals("Z")) name = _Z_name;
+            Debug.Assert(name != null);
+            name = name + "$" + number;
+            return new Constant(tok, new TypedIdent(tok, "_" + dimension + "$" + number, GetTypeOfId(dimension)));
+        }
+
+        private Constant GetTileId(string dimension)
+        {
+            Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
+            if (dimension.Equals("X")) return _TILE_X;
+            if (dimension.Equals("Y")) return _TILE_Y;
+            if (dimension.Equals("Z")) return _TILE_Z;
+            Debug.Assert(false);
+            return null;
+        }
+
+        private static LiteralExpr Zero(IToken tok)
+        {
+            return new LiteralExpr(tok, BigNum.FromInt(0));
+        }
+
+        private static LiteralExpr ZeroBV(IToken tok)
+        {
+            return new LiteralExpr(tok, BigNum.FromInt(0), 32);
+        }
+
+        private void AddRequiresNoPendingAccess(Variable v)
+        {
+            IdentifierExpr ReadAccessOccurred1 = new IdentifierExpr(v.tok, new VariableDualiser(1).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, "READ")));
+            IdentifierExpr ReadAccessOccurred2 = new IdentifierExpr(v.tok, new VariableDualiser(2).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, "READ")));
+            IdentifierExpr WriteAccessOccurred1 = new IdentifierExpr(v.tok, new VariableDualiser(1).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, "WRITE")));
+            IdentifierExpr WriteAccessOccurred2 = new IdentifierExpr(v.tok, new VariableDualiser(2).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, "WRITE")));
+            KernelProcedure.Requires.Add(new Requires(false, Expr.And(Expr.Not(ReadAccessOccurred1), Expr.And(Expr.Not(ReadAccessOccurred2), Expr.And(Expr.Not(WriteAccessOccurred1), Expr.Not(WriteAccessOccurred2))))));
+        }
+
+        private void GenerateBarrierImplementation()
+        {
+            IToken tok = BarrierProcedure.tok;
+
+            List<BigBlock> bigblocks = new List<BigBlock>();
+            BigBlock checkNonDivergence = new BigBlock(tok, "__BarrierImpl", new CmdSeq(), null, null);
+            bigblocks.Add(checkNonDivergence);
+
+            IdentifierExpr P1 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[0].TypedIdent));
+            IdentifierExpr P2 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[1].TypedIdent));
+
+            checkNonDivergence.simpleCmds.Add(new AssertCmd(tok, Expr.Eq(P1, P2)));
+
+            if (!CommandLineOptions.OnlyDivergence || !CommandLineOptions.FullAbstraction)
+            {
+                List<BigBlock> returnbigblocks = new List<BigBlock>();
+                returnbigblocks.Add(new BigBlock(tok, "__Disabled", new CmdSeq(), null, new ReturnCmd(tok)));
+                StmtList returnstatement = new StmtList(returnbigblocks, BarrierProcedure.tok);
+                checkNonDivergence.ec = new IfCmd(tok, Expr.And(Expr.Not(P1), Expr.Not(P2)), returnstatement, null, null);
+            }
+
+            if (!CommandLineOptions.OnlyDivergence)
+            {
+                BigBlock checkForRaces = new BigBlock(tok, "__CheckForRaces", new CmdSeq(), null, null);
+                bigblocks.Add(checkForRaces);
+                foreach (Variable v in GlobalVariables)
+                {
+                    CheckForRaces(tok, checkForRaces, v);
+                }
+                foreach (Variable v in TileStaticVariables)
+                {
+                    CheckForRaces(tok, checkForRaces, v);
+                }
+
+                foreach (Variable v in GlobalVariables)
+                {
+                    SetNoAccessOccurred(tok, checkForRaces, v);
+                }
+                foreach (Variable v in TileStaticVariables)
+                {
+                    SetNoAccessOccurred(tok, checkForRaces, v);
+                }
+
+            }
+
+            if (!CommandLineOptions.FullAbstraction)
+            {
+                BigBlock havocSharedState = new BigBlock(tok, "__HavocSharedState", new CmdSeq(), null, null);
+                bigblocks.Add(havocSharedState);
+                foreach (Variable v in GlobalVariables)
+                {
+                    HavocAndAssumeEquality(tok, havocSharedState, v);
+                }
+                foreach (Variable v in TileStaticVariables)
+                {
+                    HavocAndAssumeEquality(tok, havocSharedState, v);
+                }
+
+            }
+
+            StmtList statements = new StmtList(bigblocks, BarrierProcedure.tok);
+            Implementation BarrierImplementation = new Implementation(BarrierProcedure.tok, BarrierProcedure.Name, new TypeVariableSeq(), BarrierProcedure.InParams, BarrierProcedure.OutParams, new VariableSeq(), statements);
+
+            BarrierImplementation.AddAttribute("inline", new object[] { new LiteralExpr(tok, BigNum.FromInt(1)) });
+            BarrierProcedure.AddAttribute("inline", new object[] { new LiteralExpr(tok, BigNum.FromInt(1)) });
+
+            Program.TopLevelDeclarations.Add(BarrierImplementation);
+        }
+
+        private void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v)
+        {
+            SetNoAccessOccurred(tok, bb, v, "READ");
+            SetNoAccessOccurred(tok, bb, v, "WRITE");
+        }
+
+        private void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v, string AccessType)
+        {
+            IdentifierExpr AccessOccurred1 = new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, AccessType)));
+            IdentifierExpr AccessOccurred2 = new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, AccessType)));
+
+            BarrierProcedure.Modifies.Add(AccessOccurred1);
+            BarrierProcedure.Modifies.Add(AccessOccurred2);
+
+            List<AssignLhs> lhss = new List<AssignLhs>();
+            lhss.Add(new SimpleAssignLhs(tok, AccessOccurred1));
+            lhss.Add(new SimpleAssignLhs(tok, AccessOccurred2));
+            List<Expr> rhss = new List<Expr>();
+            rhss.Add(Expr.False);
+            rhss.Add(Expr.False);
+            bb.simpleCmds.Add(new AssignCmd(tok, lhss, rhss));
+        }
+
+        private void CheckForRaces(IToken tok, BigBlock bb, Variable v)
+        {
+            bb.simpleCmds.Add(new AssertCmd(tok, Expr.Not(GenerateRaceCondition(tok, v, "WRITE", "WRITE"))));
+            bb.simpleCmds.Add(new AssertCmd(tok, Expr.Not(GenerateRaceCondition(tok, v, "READ", "WRITE"))));
+        }
+
+        private static Expr GenerateRaceCondition(IToken tok, Variable v, string FirstAccessType, string SecondAccessType)
+        {
+            Expr RaceCondition = Expr.And(
+                new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, FirstAccessType))),
+                new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, SecondAccessType))));
+
+            if (HasXDimension(v))
+            {
+                RaceCondition = Expr.And(RaceCondition, Expr.Eq(
+                    new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(MakeOffsetXVariable(v, FirstAccessType))),
+                    new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(MakeOffsetXVariable(v, SecondAccessType)))
+                ));
+            }
+
+            if (HasYDimension(v))
+            {
+                RaceCondition = Expr.And(RaceCondition, Expr.Eq(
+                    new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(MakeOffsetYVariable(v, FirstAccessType))),
+                    new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(MakeOffsetYVariable(v, SecondAccessType)))
+                    ));
+            }
+
+            if (HasZDimension(v))
+            {
+                RaceCondition = Expr.And(RaceCondition, Expr.Eq(
+                    new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(MakeOffsetZVariable(v, FirstAccessType))),
+                    new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(MakeOffsetZVariable(v, SecondAccessType)))
+                    ));
+            }
+
+            return RaceCondition;
+        }
+
+        private static bool HasZDimension(Variable v)
+        {
+            if (v.TypedIdent.Type is MapType)
+            {
+                MapType mt = v.TypedIdent.Type as MapType;
+
+                if (mt.Result is MapType)
+                {
+                    MapType mt2 = mt.Result as MapType;
+                    if (mt2.Result is MapType)
+                    {
+                        Debug.Assert(!((mt2.Result as MapType).Result is MapType));
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private static bool HasYDimension(Variable v)
+        {
+            return v.TypedIdent.Type is MapType && (v.TypedIdent.Type as MapType).Result is MapType;
+        }
+
+        private static bool HasXDimension(Variable v)
+        {
+            return v.TypedIdent.Type is MapType;
+        }
+
+        private void HavocAndAssumeEquality(IToken tok, BigBlock bb, Variable v)
+        {
+            IdentifierExpr v1 = new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(v.Clone() as Variable));
+            IdentifierExpr v2 = new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(v.Clone() as Variable));
+
+            bb.simpleCmds.Add(new HavocCmd(tok, new IdentifierExprSeq(new IdentifierExpr[] { v1, v2 })));
+            bb.simpleCmds.Add(new AssumeCmd(tok, Expr.Eq(v1, v2)));
+            BarrierProcedure.Modifies.Add(v1);
+            BarrierProcedure.Modifies.Add(v2);
+
+            if (!KernelProcedure.Modifies.Has(v1))
+            {
+                Debug.Assert(!KernelProcedure.Modifies.Has(v2));
+                KernelProcedure.Modifies.Add(v1);
+                KernelProcedure.Modifies.Add(v2);
+            }
+
+        }
+
+        private void AbstractSharedState()
+        {
+            if (!CommandLineOptions.FullAbstraction)
+            {
+                return; // There's actually nothing to do here
+            }
+
+            List<Declaration> NewTopLevelDeclarations = new List<Declaration>();
+
+            foreach (Declaration d in Program.TopLevelDeclarations)
+            {
+                if (d is Variable && GlobalVariables.Contains(d as Variable))
+                {
+                    continue;
+                }
+
+                if (d is Implementation)
+                {
+                    PerformFullSharedStateAbstraction(d as Implementation);
+                }
+
+                if (d is Procedure)
+                {
+                    PerformFullSharedStateAbstraction(d as Procedure);
+                }
+
+                NewTopLevelDeclarations.Add(d);
+
+            }
+
+            Program.TopLevelDeclarations = NewTopLevelDeclarations;
+
+        }
+
+        private void PerformFullSharedStateAbstraction(Procedure proc)
+        {
+            IdentifierExprSeq NewModifies = new IdentifierExprSeq();
+
+            foreach (IdentifierExpr e in proc.Modifies)
+            {
+                if (!(GlobalVariables.Contains(e.Decl)))
+                {
+                    NewModifies.Add(e);
+                }
+            }
+
+            proc.Modifies = NewModifies;
+
+        }
+
+        private void PerformFullSharedStateAbstraction(Implementation impl)
+        {
+            VariableSeq NewLocVars = new VariableSeq();
+
+            foreach (Variable v in impl.LocVars)
+            {
+                if (!TileStaticVariables.Contains(v))
+                {
+                    NewLocVars.Add(v);
+                }
+            }
+
+            impl.LocVars = NewLocVars;
+
+            impl.StructuredStmts = PerformFullSharedStateAbstraction(impl.StructuredStmts);
+
+        }
+
+
+        private StmtList PerformFullSharedStateAbstraction(StmtList stmtList)
+        {
+            Contract.Requires(stmtList != null);
+            
+            StmtList result = new StmtList(new List<BigBlock>(), stmtList.EndCurly);
+
+            foreach (BigBlock bodyBlock in stmtList.BigBlocks)
+            {
+                result.BigBlocks.Add(PerformFullSharedStateAbstraction(bodyBlock));
+            }
+            return result;
+        }
+
+        private BigBlock PerformFullSharedStateAbstraction(BigBlock bb)
+        {
+            BigBlock result = new BigBlock(bb.tok, bb.LabelName, new CmdSeq(), null, bb.tc);
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is AssignCmd)
+                {
+                    AssignCmd assign = c as AssignCmd;
+                    Debug.Assert(assign.Lhss.Count == 1);
+                    Debug.Assert(assign.Rhss.Count == 1);
+                    AssignLhs lhs = assign.Lhss[0];
+                    Expr rhs = assign.Rhss[0];
+                    ReadCollector rc = new ReadCollector(GlobalVariables, TileStaticVariables);
+                    rc.Visit(rhs);
+                    if (rc.accesses.Count > 0)
+                    {
+                        Debug.Assert(lhs is SimpleAssignLhs);
+                        result.simpleCmds.Add(new HavocCmd(c.tok, new IdentifierExprSeq(new IdentifierExpr[] { (lhs as SimpleAssignLhs).AssignedVariable })));
+                        continue;
+                    }
+
+                    WriteCollector wc = new WriteCollector(GlobalVariables, TileStaticVariables);
+                    wc.Visit(lhs);
+                    if (wc.GetAccess() != null)
+                    {
+                        continue; // Just remove the write
+                    }
+
+                }
+                result.simpleCmds.Add(c);
+            }
+
+            if (bb.ec is WhileCmd)
+            {
+                WhileCmd WhileCommand = bb.ec as WhileCmd;
+                result.ec = new WhileCmd(WhileCommand.tok, WhileCommand.Guard, WhileCommand.Invariants, PerformFullSharedStateAbstraction(WhileCommand.Body));
+            }
+            else if (bb.ec is IfCmd)
+            {
+                IfCmd IfCommand = bb.ec as IfCmd;
+                Debug.Assert(IfCommand.elseIf == null); // We don't handle else if yet
+                result.ec = new IfCmd(IfCommand.tok, IfCommand.Guard, PerformFullSharedStateAbstraction(IfCommand.thn), IfCommand.elseIf, IfCommand.elseBlock != null ? PerformFullSharedStateAbstraction(IfCommand.elseBlock) : null);
+            }
+            else
+            {
+                Debug.Assert(bb.ec == null);
+            }
+
+            return result;
+
+        }
+
+
+
+
+
+        private void AddRaceCheckingInstrumentation()
+        {
+            foreach(Variable v in GlobalVariables)
+            {
+                AddRaceCheckingInstrumentation(v);
+            }
+            foreach (Variable v in TileStaticVariables)
+            {
+                AddRaceCheckingInstrumentation(v);
+            }
+
+            AddRaceCheckCalls(KernelImplementation);
+
+        }
+
+        private void AddRaceCheckingInstrumentation(Variable v)
+        {
+            IdentifierExprSeq vars = AddRaceCheckingDeclarations(v);
+            foreach (IdentifierExpr e in vars)
+            {
+                KernelProcedure.Modifies.Add(e);
+            }
+            AddRaceCheckingProcedures(v);
+        }
+
+        private void AddRaceCheckCalls(Implementation impl)
+        {
+            impl.StructuredStmts = AddRaceCheckCalls(impl.StructuredStmts);
+        }
+
+        private StmtList AddRaceCheckCalls(StmtList stmtList)
+        {
+            Contract.Requires(stmtList != null);
+            
+            StmtList result = new StmtList(new List<BigBlock>(), stmtList.EndCurly);
+
+            foreach (BigBlock bodyBlock in stmtList.BigBlocks)
+            {
+                result.BigBlocks.Add(AddRaceCheckCalls(bodyBlock));
+            }
+            return result;
+        }
+
+        private BigBlock AddRaceCheckCalls(BigBlock bb)
+        {
+            BigBlock result = new BigBlock(bb.tok, bb.LabelName, new CmdSeq(), null, bb.tc);
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is AssignCmd)
+                {
+                    AssignCmd assign = c as AssignCmd;
+                    Debug.Assert(assign.Lhss.Count == 1);
+                    Debug.Assert(assign.Rhss.Count == 1);
+                    AssignLhs lhs = assign.Lhss[0];
+                    Expr rhs = assign.Rhss[0];
+
+                    ReadCollector rc = new ReadCollector(GlobalVariables, TileStaticVariables);
+                    rc.Visit(rhs);
+                    if (rc.accesses.Count > 0)
+                    {
+                        Debug.Assert(rc.accesses.Count == 1);
+                        AccessRecord ar = rc.accesses.ToList()[0];
+                        ExprSeq inParams = new ExprSeq();
+                        if (ar.IndexZ != null)
+                        {
+                            inParams.Add(ar.IndexZ);
+                        }
+                        if (ar.IndexY != null)
+                        {
+                            inParams.Add(ar.IndexY);
+                        }
+                        if (ar.IndexX != null)
+                        {
+                            inParams.Add(ar.IndexX);
+                        }
+
+                        result.simpleCmds.Add(new CallCmd(c.tok, "_LOG_READ_" + ar.v.Name, inParams, new IdentifierExprSeq()));
+                    }
+
+                    WriteCollector wc = new WriteCollector(GlobalVariables, TileStaticVariables);
+                    wc.Visit(lhs);
+                    if (wc.GetAccess() != null)
+                    {
+                        AccessRecord ar = wc.GetAccess();
+                        ExprSeq inParams = new ExprSeq();
+                        if (ar.IndexZ != null)
+                        {
+                            inParams.Add(ar.IndexZ);
+                        }
+                        if (ar.IndexY != null)
+                        {
+                            inParams.Add(ar.IndexY);
+                        }
+                        if (ar.IndexX != null)
+                        {
+                            inParams.Add(ar.IndexX);
+                        }
+
+                        result.simpleCmds.Add(new CallCmd(c.tok, "_LOG_WRITE_" + ar.v.Name, inParams, new IdentifierExprSeq()));
+                    }
+
+
+
+                }
+                result.simpleCmds.Add(c);
+            }
+
+            if (bb.ec is WhileCmd)
+            {
+                WhileCmd WhileCommand = bb.ec as WhileCmd;
+                result.ec = new WhileCmd(WhileCommand.tok, WhileCommand.Guard, WhileCommand.Invariants, AddRaceCheckCalls(WhileCommand.Body));
+            }
+            else if (bb.ec is IfCmd)
+            {
+                IfCmd IfCommand = bb.ec as IfCmd;
+                Debug.Assert(IfCommand.elseIf == null); // We don't handle else if yet
+                result.ec = new IfCmd(IfCommand.tok, IfCommand.Guard, AddRaceCheckCalls(IfCommand.thn), IfCommand.elseIf, IfCommand.elseBlock != null ? AddRaceCheckCalls(IfCommand.elseBlock) : null);
+            }
+            else
+            {
+                Debug.Assert(bb.ec == null);
+            }
+
+            return result;
+
+        }
+
+        private void AddRaceCheckingProcedures(Variable v)
+        {
+            AddLogAccessProcedure(v, "READ");
+            AddLogAccessProcedure(v, "WRITE");
+        }
+
+        private void AddLogAccessProcedure(Variable v, string ReadOrWrite)
+        {
+            VariableSeq inParams = new VariableSeq();
+            IdentifierExprSeq modifies = new IdentifierExprSeq();
+            Variable ReadOrWriteHasOccurredVariable = MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite);
+            Variable ReadOrWriteOffsetXVariable = null;
+            Variable ReadOrWriteOffsetYVariable = null;
+            Variable ReadOrWriteOffsetZVariable = null;
+            Variable XParameterVariable = null;
+            Variable YParameterVariable = null;
+            Variable ZParameterVariable = null;
+
+            modifies.Add(new IdentifierExpr(v.tok, ReadOrWriteHasOccurredVariable));
+
+            if (v.TypedIdent.Type is MapType)
+            {
+                MapType mt = v.TypedIdent.Type as MapType;
+                Debug.Assert(mt.Arguments.Length == 1);
+                Debug.Assert(IsIntOrBv32(mt.Arguments[0]));
+
+                ReadOrWriteOffsetXVariable = MakeOffsetXVariable(v, ReadOrWrite);
+                modifies.Add(new IdentifierExpr(v.tok, ReadOrWriteOffsetXVariable));
+                XParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_X_index", mt.Arguments[0]));
+                if (mt.Result is MapType)
+                {
+                    MapType mt2 = mt.Result as MapType;
+                    Debug.Assert(mt2.Arguments.Length == 1);
+                    Debug.Assert(IsIntOrBv32(mt2.Arguments[0]));
+                    ReadOrWriteOffsetYVariable = MakeOffsetYVariable(v, ReadOrWrite);
+                    modifies.Add(new IdentifierExpr(v.tok, ReadOrWriteOffsetYVariable));
+                    YParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_Y_index", mt2.Arguments[0]));
+                    if (mt2.Result is MapType)
+                    {
+                        MapType mt3 = mt2.Arguments[0] as MapType;
+                        Debug.Assert(mt3.Arguments.Length == 1);
+                        Debug.Assert(IsIntOrBv32(mt3.Arguments[0]));
+                        Debug.Assert(!(mt3.Result is MapType));
+                        ReadOrWriteOffsetZVariable = MakeOffsetZVariable(v, ReadOrWrite);
+                        modifies.Add(new IdentifierExpr(v.tok, ReadOrWriteOffsetZVariable));
+                        ZParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_Z_index", mt3.Arguments[0]));
+                    }
+                }
+            }
+
+            if (ZParameterVariable != null)
+            {
+                inParams.Add(ZParameterVariable);
+            }
+
+            if (YParameterVariable != null)
+            {
+                inParams.Add(YParameterVariable);
+            }
+
+            if (XParameterVariable != null)
+            {
+                inParams.Add(XParameterVariable);
+            }
+
+            Procedure LogReadOrWriteProcedure = new Procedure(v.tok, "_LOG_" + ReadOrWrite + "_" + v.Name, new TypeVariableSeq(), inParams, new VariableSeq(), new RequiresSeq(), modifies, new EnsuresSeq());
+            LogReadOrWriteProcedure.AddAttribute("inline", new object[] { new LiteralExpr(v.tok, BigNum.FromInt(1)) });
+
+
+            VariableSeq locals = new VariableSeq();
+            Variable TrackVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "track", Microsoft.Boogie.Type.Bool));
+            locals.Add(TrackVariable);
+
+            List<BigBlock> bigblocks = new List<BigBlock>();
+
+            CmdSeq simpleCmds = new CmdSeq();
+
+            simpleCmds.Add(new HavocCmd(v.tok, new IdentifierExprSeq(new IdentifierExpr[] { new IdentifierExpr(v.tok, TrackVariable) })));
+            simpleCmds.Add(MakeConditionalAssignment(ReadOrWriteHasOccurredVariable, new IdentifierExpr(v.tok, TrackVariable), Expr.True));
+            if (ReadOrWriteOffsetXVariable != null)
+            {
+                simpleCmds.Add(MakeConditionalAssignment(ReadOrWriteOffsetXVariable, new IdentifierExpr(v.tok, TrackVariable), new IdentifierExpr(v.tok, XParameterVariable)));
+            }
+            if (ReadOrWriteOffsetYVariable != null)
+            {
+                simpleCmds.Add(MakeConditionalAssignment(ReadOrWriteOffsetYVariable, new IdentifierExpr(v.tok, TrackVariable), new IdentifierExpr(v.tok, YParameterVariable)));
+            }
+            if (ReadOrWriteOffsetZVariable != null)
+            {
+                simpleCmds.Add(MakeConditionalAssignment(ReadOrWriteOffsetZVariable, new IdentifierExpr(v.tok, TrackVariable), new IdentifierExpr(v.tok, ZParameterVariable)));
+            }
+
+
+            bigblocks.Add(new BigBlock(v.tok, "_LOG_" + ReadOrWrite + "", simpleCmds, null, null));
+
+            StmtList statements = new StmtList(bigblocks, v.tok);
+
+            Implementation LogReadOrWriteImplementation = new Implementation(v.tok, "_LOG_" + ReadOrWrite + "_" + v.Name, new TypeVariableSeq(), inParams, new VariableSeq(), locals, statements);
+            LogReadOrWriteImplementation.AddAttribute("inline", new object[] { new LiteralExpr(v.tok, BigNum.FromInt(1)) });
+
+            Program.TopLevelDeclarations.Add(LogReadOrWriteProcedure);
+            Program.TopLevelDeclarations.Add(LogReadOrWriteImplementation);
+        }
+
+        private static GlobalVariable MakeOffsetZVariable(Variable v, string ReadOrWrite)
+        {
+            return new GlobalVariable(v.tok, new TypedIdent(v.tok, "_" + ReadOrWrite + "_OFFSET_Z_" + v.Name, IndexTypeOfZDimension(v)));
+        }
+
+        private static GlobalVariable MakeOffsetYVariable(Variable v, string ReadOrWrite)
+        {
+            return new GlobalVariable(v.tok, new TypedIdent(v.tok, "_" + ReadOrWrite + "_OFFSET_Y_" + v.Name, IndexTypeOfYDimension(v)));
+        }
+
+        private static GlobalVariable MakeOffsetXVariable(Variable v, string ReadOrWrite)
+        {
+            return new GlobalVariable(v.tok, new TypedIdent(v.tok, "_" + ReadOrWrite + "_OFFSET_X_" + v.Name, IndexTypeOfXDimension(v)));
+        }
+
+        private static GlobalVariable MakeReadOrWriteHasOccurredVariable(Variable v, string ReadOrWrite)
+        {
+            return new GlobalVariable(v.tok, new TypedIdent(v.tok, "_" + ReadOrWrite + "_HAS_OCCURRED_" + v.Name, Microsoft.Boogie.Type.Bool));
+        }
+
+        private static Microsoft.Boogie.Type IndexTypeOfZDimension(Variable v)
+        {
+            Contract.Requires(HasZDimension(v));
+            MapType mt = v.TypedIdent.Type as MapType;
+            MapType mt2 = mt.Result as MapType;
+            MapType mt3 = mt2.Result as MapType;
+            return mt3.Arguments[0];
+        }
+
+        private static Microsoft.Boogie.Type IndexTypeOfYDimension(Variable v)
+        {
+            Contract.Requires(HasYDimension(v));
+            MapType mt = v.TypedIdent.Type as MapType;
+            MapType mt2 = mt.Result as MapType;
+            return mt2.Arguments[0];
+        }
+
+        private static Microsoft.Boogie.Type IndexTypeOfXDimension(Variable v)
+        {
+            Contract.Requires(HasXDimension(v));
+            MapType mt = v.TypedIdent.Type as MapType;
+            return mt.Arguments[0];
+        }
+
+        private AssignCmd MakeConditionalAssignment(Variable lhs, Expr condition, Expr rhs)
+        {
+            List<AssignLhs> lhss = new List<AssignLhs>();
+            List<Expr> rhss = new List<Expr>();
+            lhss.Add(new SimpleAssignLhs(lhs.tok, new IdentifierExpr(lhs.tok, lhs)));
+            rhss.Add(new NAryExpr(rhs.tok, new IfThenElse(rhs.tok), new ExprSeq(new Expr[] { condition, rhs, new IdentifierExpr(lhs.tok, lhs) })));
+            return new AssignCmd(lhs.tok, lhss, rhss);
+        }
+
+        private IdentifierExprSeq AddRaceCheckingDeclarations(Variable v)
+        {
+            IdentifierExprSeq result = new IdentifierExprSeq();
+
+            Variable ReadHasOccurred = new GlobalVariable(v.tok, new TypedIdent(v.tok, "_READ_HAS_OCCURRED_" + v.Name, Microsoft.Boogie.Type.Bool));
+            Variable WriteHasOccurred = new GlobalVariable(v.tok, new TypedIdent(v.tok, "_WRITE_HAS_OCCURRED_" + v.Name, Microsoft.Boogie.Type.Bool));
+
+            result.Add(new IdentifierExpr(v.tok, ReadHasOccurred));
+            result.Add(new IdentifierExpr(v.tok, WriteHasOccurred));
+
+            Program.TopLevelDeclarations.Add(ReadHasOccurred);
+            Program.TopLevelDeclarations.Add(WriteHasOccurred);
+            if (v.TypedIdent.Type is MapType)
+            {
+                MapType mt = v.TypedIdent.Type as MapType;
+                Debug.Assert(mt.Arguments.Length == 1);
+                Debug.Assert(IsIntOrBv32(mt.Arguments[0]));
+
+                Variable ReadOffsetX = MakeOffsetXVariable(v, "READ");
+                Variable WriteOffsetX = MakeOffsetXVariable(v, "WRITE");
+                result.Add(new IdentifierExpr(v.tok, ReadOffsetX));
+                result.Add(new IdentifierExpr(v.tok, WriteOffsetX));
+                Program.TopLevelDeclarations.Add(ReadOffsetX);
+                Program.TopLevelDeclarations.Add(WriteOffsetX);
+
+                if (mt.Result is MapType)
+                {
+                    MapType mt2 = mt.Result as MapType;
+                    Debug.Assert(mt2.Arguments.Length == 1);
+                    Debug.Assert(IsIntOrBv32(mt2.Arguments[0]));
+
+                    Variable ReadOffsetY = MakeOffsetYVariable(v, "READ");
+                    Variable WriteOffsetY = MakeOffsetYVariable(v, "WRITE");
+                    result.Add(new IdentifierExpr(v.tok, ReadOffsetY));
+                    result.Add(new IdentifierExpr(v.tok, WriteOffsetY));
+                    Program.TopLevelDeclarations.Add(ReadOffsetY);
+                    Program.TopLevelDeclarations.Add(WriteOffsetY);
+
+                    if (mt2.Result is MapType)
+                    {
+                        MapType mt3 = mt2.Arguments[0] as MapType;
+                        Debug.Assert(mt3.Arguments.Length == 1);
+                        Debug.Assert(IsIntOrBv32(mt3.Arguments[0]));
+                        Debug.Assert(!(mt3.Result is MapType));
+
+                        Variable ReadOffsetZ = MakeOffsetZVariable(v, "READ");
+                        Variable WriteOffsetZ = MakeOffsetZVariable(v, "WRITE");
+                        result.Add(new IdentifierExpr(v.tok, ReadOffsetZ));
+                        result.Add(new IdentifierExpr(v.tok, WriteOffsetZ));
+                        Program.TopLevelDeclarations.Add(ReadOffsetZ);
+                        Program.TopLevelDeclarations.Add(WriteOffsetZ);
+
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private bool IsIntOrBv32(Microsoft.Boogie.Type type)
+        {
+            return type.Equals(Microsoft.Boogie.Type.Int) || type.Equals(Microsoft.Boogie.Type.GetBvType(32));
+        }
+
+        private void PullOutNonLocalAccesses()
+        {
+            KernelImplementation.StructuredStmts = PullOutNonLocalAccesses(KernelImplementation.StructuredStmts);
+        }
+
+        private StmtList PullOutNonLocalAccesses(StmtList stmtList)
+        {
+            Contract.Requires(stmtList != null);            
+
+            StmtList result = new StmtList(new List<BigBlock>(), stmtList.EndCurly);
+
+            foreach (BigBlock bodyBlock in stmtList.BigBlocks)
+            {
+                result.BigBlocks.Add(PullOutNonLocalAccesses(bodyBlock));
+            }
+
+            return result;
+        }
+
+        private BigBlock PullOutNonLocalAccesses(BigBlock bb)
+        {
+
+            BigBlock result = new BigBlock(bb.tok, bb.LabelName, new CmdSeq(), null, bb.tc);
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+
+                if (c is CallCmd)
+                {
+                    CallCmd call = c as CallCmd;
+
+                    List<Expr> newIns = new List<Expr>();
+
+                    for (int i = 0; i < call.Ins.Count; i++)
+                    {
+                        Expr e = call.Ins[i];
+
+                        while (NonLocalAccessCollector.ContainsNonLocalAccess(e, GlobalVariables, TileStaticVariables))
+                        {
+                            AssignCmd assignToTemp;
+                            LocalVariable tempDecl;
+                            e = ExtractLocalAccessToTemp(e, out assignToTemp, out tempDecl);
+                            result.simpleCmds.Add(assignToTemp);
+                            KernelImplementation.LocVars.Add(tempDecl);
+                        }
+
+                        newIns.Add(e);
+
+                    }
+
+                    result.simpleCmds.Add(new CallCmd(call.tok, call.callee, newIns, call.Outs));
+                }
+                else if (c is AssignCmd)
+                {
+                    AssignCmd assign = c as AssignCmd;
+
+                    Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
+
+                    AssignLhs lhs = assign.Lhss.ElementAt(0);
+                    Expr rhs = assign.Rhss.ElementAt(0);
+
+                    if (!NonLocalAccessCollector.ContainsNonLocalAccess(rhs, GlobalVariables, TileStaticVariables) || (!NonLocalAccessCollector.ContainsNonLocalAccess(lhs, GlobalVariables, TileStaticVariables) && NonLocalAccessCollector.IsNonLocalAccess(rhs, GlobalVariables, TileStaticVariables)))
+                    {
+                        result.simpleCmds.Add(c);
+                    }
+                    else
+                    {
+                        rhs = PullOutNonLocalAccessesIntoTemps(result, rhs);
+                        List<AssignLhs> newLhss = new List<AssignLhs>();
+                        newLhss.Add(lhs);
+                        List<Expr> newRhss = new List<Expr>();
+                        newRhss.Add(rhs);
+                        result.simpleCmds.Add(new AssignCmd(assign.tok, newLhss, newRhss));
+                    }
+
+                }
+                else if (c is HavocCmd)
+                {
+                    result.simpleCmds.Add(c);
+                }
+                else if (c is AssertCmd)
+                {
+                    result.simpleCmds.Add(new AssertCmd(c.tok, PullOutNonLocalAccessesIntoTemps(result, (c as AssertCmd).Expr)));
+                }
+                else if (c is AssumeCmd)
+                {
+                    result.simpleCmds.Add(new AssumeCmd(c.tok, PullOutNonLocalAccessesIntoTemps(result, (c as AssumeCmd).Expr)));
+                }
+                else
+                {
+                    Console.WriteLine(c);
+                    Debug.Assert(false);
+                }
+            }
+
+            if (bb.ec is WhileCmd)
+            {
+                WhileCmd WhileCommand = bb.ec as WhileCmd;
+                while (NonLocalAccessCollector.ContainsNonLocalAccess(WhileCommand.Guard, GlobalVariables, TileStaticVariables))
+                {
+                    AssignCmd assignToTemp;
+                    LocalVariable tempDecl;
+                    WhileCommand.Guard = ExtractLocalAccessToTemp(WhileCommand.Guard, out assignToTemp, out tempDecl);
+                    result.simpleCmds.Add(assignToTemp);
+                    KernelImplementation.LocVars.Add(tempDecl);
+                }
+                result.ec = new WhileCmd(WhileCommand.tok, WhileCommand.Guard, WhileCommand.Invariants, PullOutNonLocalAccesses(WhileCommand.Body));
+            }
+            else if(bb.ec is IfCmd)
+            {
+                IfCmd IfCommand = bb.ec as IfCmd;
+                Debug.Assert(IfCommand.elseIf == null); // We don't handle else if yet
+                while (NonLocalAccessCollector.ContainsNonLocalAccess(IfCommand.Guard, GlobalVariables, TileStaticVariables))
+                {
+                    AssignCmd assignToTemp;
+                    LocalVariable tempDecl;
+                    IfCommand.Guard = ExtractLocalAccessToTemp(IfCommand.Guard, out assignToTemp, out tempDecl);
+                    result.simpleCmds.Add(assignToTemp);
+                    KernelImplementation.LocVars.Add(tempDecl);
+                }
+                result.ec = new IfCmd(IfCommand.tok, IfCommand.Guard, PullOutNonLocalAccesses(IfCommand.thn), IfCommand.elseIf, IfCommand.elseBlock != null ? PullOutNonLocalAccesses(IfCommand.elseBlock) : null);
+            }
+            else
+            {
+                Debug.Assert(bb.ec == null);
+            }
+
+            return result;
+
+        }
+
+        private Expr PullOutNonLocalAccessesIntoTemps(BigBlock result, Expr e)
+        {
+            while (NonLocalAccessCollector.ContainsNonLocalAccess(e, GlobalVariables, TileStaticVariables))
+            {
+                AssignCmd assignToTemp;
+                LocalVariable tempDecl;
+                e = ExtractLocalAccessToTemp(e, out assignToTemp, out tempDecl);
+                result.simpleCmds.Add(assignToTemp);
+                KernelImplementation.LocVars.Add(tempDecl);
+            }
+            return e;
+        }
+
+        private Expr ExtractLocalAccessToTemp(Expr rhs, out AssignCmd tempAssignment, out LocalVariable tempDeclaration)
+        {
+            NonLocalAccessExtractor extractor = new NonLocalAccessExtractor(TempCounter, GlobalVariables, TileStaticVariables);
+            TempCounter++;
+            rhs = extractor.VisitExpr(rhs);
+            tempAssignment = extractor.Assignment;
+            tempDeclaration = extractor.Declaration;
+            return rhs;
+        }
+
+        private void MakeKernelDualised()
+        {
+
+            List<Declaration> NewTopLevelDeclarations = new List<Declaration>();
+
+            foreach (Declaration d in Program.TopLevelDeclarations)
+            {
+                if (d is Procedure)
+                {
+                    // DuplicateParameters
+                    Procedure proc = d as Procedure;
+                    proc.InParams = DualiseVariableSequence(proc.InParams);
+                    proc.OutParams = DualiseVariableSequence(proc.OutParams);
+                    IdentifierExprSeq NewModifies = new IdentifierExprSeq();
+                    foreach (IdentifierExpr v in proc.Modifies)
+                    {
+                        NewModifies.Add(new VariableDualiser(1).VisitIdentifierExpr((IdentifierExpr)v.Clone()));
+                    }
+                    foreach (IdentifierExpr v in proc.Modifies)
+                    {
+                        NewModifies.Add(new VariableDualiser(2).VisitIdentifierExpr((IdentifierExpr)v.Clone()));
+                    }
+                    proc.Modifies = NewModifies;
+
+                    NewTopLevelDeclarations.Add(proc);
+
+                    continue;
+
+                }
+
+                if (d is Implementation)
+                {
+                    // DuplicateParameters
+                    Implementation impl = d as Implementation;
+                    impl.InParams = DualiseVariableSequence(impl.InParams);
+                    impl.OutParams = DualiseVariableSequence(impl.OutParams);
+                    MakeDualLocalVariables(impl);
+                    impl.StructuredStmts = MakeDual(impl.StructuredStmts);
+
+                    NewTopLevelDeclarations.Add(impl);
+
+                    continue;
+
+                }
+
+                if (d is Variable && ((d as Variable).IsMutable || IsThreadLocalIdConstant(d as Variable)))
+                {
+                    NewTopLevelDeclarations.Add(new VariableDualiser(1).VisitVariable((Variable)d.Clone()));
+                    NewTopLevelDeclarations.Add(new VariableDualiser(2).VisitVariable((Variable)d.Clone()));
+
+                    continue;
+                }
+
+                NewTopLevelDeclarations.Add(d);
+
+            }
+
+            Program.TopLevelDeclarations = NewTopLevelDeclarations;
+
+        }
+
+        private static VariableSeq DualiseVariableSequence(VariableSeq seq)
+        {
+            VariableSeq result = new VariableSeq();
+            foreach (Variable v in seq)
+            {
+                result.Add(new VariableDualiser(1).VisitVariable((Variable)v.Clone()));
+            }
+            foreach (Variable v in seq)
+            {
+                result.Add(new VariableDualiser(2).VisitVariable((Variable)v.Clone()));
+            }
+            return result;
+        }
+
+        private void MakeKerenelPredicated()
+        {
+            foreach (Declaration d in Program.TopLevelDeclarations)
+            {
+                if (d is Procedure)
+                {
+                    if (d != KernelProcedure)
+                    {
+                        // Add predicate to start of parameter list
+                        Procedure proc = d as Procedure;
+                        VariableSeq NewIns = new VariableSeq();
+                        NewIns.Add(new LocalVariable(proc.tok, new TypedIdent(proc.tok, "_P", Microsoft.Boogie.Type.Bool)));
+                        foreach (Variable v in proc.InParams)
+                        {
+                            NewIns.Add(v);
+                        }
+                        proc.InParams = NewIns;
+                    }
+
+                }
+                else if (d is Implementation)
+                {
+                    MakePredicated(d as Implementation, d != KernelImplementation);
+                }
+            }
+
+        }
+
+        private void MakePredicated(Implementation impl, bool AddPredicateParameter)
+        {
+            Expr Predicate;
+
+            if (AddPredicateParameter)
+            {
+                VariableSeq NewIns = new VariableSeq();
+                Variable PredicateVariable = new LocalVariable(impl.tok, new TypedIdent(impl.tok, "_P", Microsoft.Boogie.Type.Bool));
+                NewIns.Add(PredicateVariable);
+                foreach (Variable v in impl.InParams)
+                {
+                    NewIns.Add(v);
+                }
+                impl.InParams = NewIns;
+                Predicate = new IdentifierExpr(impl.tok, PredicateVariable);
+            }
+            else
+            {
+                Predicate = Expr.True;
+            }
+
+            WhileLoopCounter = 0;
+            IfCounter = 0;
+            RequiredHavocVariables = new HashSet<Microsoft.Boogie.Type>();
+            impl.StructuredStmts = MakePredicated(impl.StructuredStmts, Predicate);
+            AddPredicateLocalVariables(impl);
+        }
+
+        private StmtList MakeDual(StmtList stmtList)
+        {
+            Contract.Requires(stmtList != null);
+
+            StmtList result = new StmtList(new List<BigBlock>(), stmtList.EndCurly);
+
+            foreach (BigBlock bodyBlock in stmtList.BigBlocks)
+            {
+                result.BigBlocks.Add(MakeDual(bodyBlock));
+            }
+
+            return result;
+        }
+
+        private BigBlock MakeDual(BigBlock bb)
+        {
+            // Not sure what to do about the transfer command
+
+            BigBlock result = new BigBlock(bb.tok, bb.LabelName, new CmdSeq(), null, bb.tc);
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is CallCmd)
+                {
+                    CallCmd Call = c as CallCmd;
+
+                    List<Expr> newIns = new List<Expr>();
+                    foreach (Expr e in Call.Ins)
+                    {
+                        newIns.Add(new VariableDualiser(1).VisitExpr(e));
+                    }
+                    foreach (Expr e in Call.Ins)
+                    {
+                        newIns.Add(new VariableDualiser(2).VisitExpr(e));
+                    }
+
+                    List<IdentifierExpr> newOuts = new List<IdentifierExpr>();
+                    foreach (IdentifierExpr ie in Call.Outs)
+                    {
+                        newOuts.Add(new VariableDualiser(1).VisitIdentifierExpr(ie.Clone() as IdentifierExpr) as IdentifierExpr);
+                    }
+                    foreach (IdentifierExpr ie in Call.Outs)
+                    {
+                        newOuts.Add(new VariableDualiser(2).VisitIdentifierExpr(ie.Clone() as IdentifierExpr) as IdentifierExpr);
+                    }
+
+                    CallCmd NewCallCmd = new CallCmd(Call.tok, Call.callee, newIns, newOuts);
+
+                    result.simpleCmds.Add(NewCallCmd);
+                }
+                else if (c is AssignCmd)
+                {
+                    AssignCmd assign = c as AssignCmd;
+
+                    Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
+
+                    List<AssignLhs> newLhss = new List<AssignLhs>();
+
+                    newLhss.Add(new VariableDualiser(1).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
+                    newLhss.Add(new VariableDualiser(2).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
+
+                    List<Expr> newRhss = new List<Expr>();
+
+                    newRhss.Add(new VariableDualiser(1).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
+                    newRhss.Add(new VariableDualiser(2).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
+
+                    AssignCmd newAssign = new AssignCmd(assign.tok, newLhss, newRhss);
+
+                    result.simpleCmds.Add(newAssign);
+                }
+                else if (c is HavocCmd)
+                {
+                    HavocCmd havoc = c as HavocCmd;
+                    Debug.Assert(havoc.Vars.Length == 1);
+                    HavocCmd newHavoc = new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
+                        (IdentifierExpr)(new VariableDualiser(1).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr)), 
+                        (IdentifierExpr)(new VariableDualiser(2).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr))
+                    }));
+                    result.simpleCmds.Add(newHavoc);
+                }
+                else if (c is AssertCmd)
+                {
+                    AssertCmd ass = c as AssertCmd;
+                    result.simpleCmds.Add(new AssertCmd(c.tok, Expr.And(new VariableDualiser(1).VisitExpr(ass.Expr.Clone() as Expr), new VariableDualiser(2).VisitExpr(ass.Expr.Clone() as Expr))));
+                }
+                else if (c is AssumeCmd)
+                {
+                    AssumeCmd ass = c as AssumeCmd;
+                    result.simpleCmds.Add(new AssumeCmd(c.tok, Expr.And(new VariableDualiser(1).VisitExpr(ass.Expr.Clone() as Expr), new VariableDualiser(2).VisitExpr(ass.Expr.Clone() as Expr))));
+                }
+                else
+                {
+                    Debug.Assert(false);
+                }
+            }
+
+            if (bb.ec is WhileCmd)
+            {
+                result.ec = new WhileCmd(bb.ec.tok, Expr.Or(new VariableDualiser(1).VisitExpr((bb.ec as WhileCmd).Guard), new VariableDualiser(2).VisitExpr((bb.ec as WhileCmd).Guard)), (bb.ec as WhileCmd).Invariants, MakeDual((bb.ec as WhileCmd).Body));
+            }
+            else
+            {
+                Debug.Assert(bb.ec == null);
+            }
+
+            return result;
+
+        }
+
+        private void MakeDualLocalVariables(Implementation impl)
+        {
+            VariableSeq NewLocalVars = new VariableSeq();
+
+            foreach (LocalVariable v in impl.LocVars)
+            {
+                NewLocalVars.Add(new LocalVariable(v.tok, new TypedIdent(v.tok, v.Name + "$1", v.TypedIdent.Type)));
+                NewLocalVars.Add(new LocalVariable(v.tok, new TypedIdent(v.tok, v.Name + "$2", v.TypedIdent.Type)));
+            }
+
+            impl.LocVars = NewLocalVars;
+        }
+
+        private void AddPredicateLocalVariables(Implementation impl)
+        {
+            for (int i = 0; i < IfCounter; i++)
+            {
+                impl.LocVars.Add(new LocalVariable(impl.tok, new TypedIdent(impl.tok, "_P" + i, Microsoft.Boogie.Type.Bool)));
+            }
+            for (int i = 0; i < WhileLoopCounter; i++)
+            {
+                impl.LocVars.Add(new LocalVariable(impl.tok, new TypedIdent(impl.tok, "_LC" + i, Microsoft.Boogie.Type.Bool)));
+            }
+            foreach (Microsoft.Boogie.Type t in RequiredHavocVariables)
+            {
+                impl.LocVars.Add(new LocalVariable(impl.tok, new TypedIdent(impl.tok, "_HAVOC_" + t.ToString(), t)));
+            }
+
+        }
+
+        private StmtList MakePredicated(StmtList sl, Expr predicate)
+        {
+            StmtList result = new StmtList(new List<BigBlock>(), sl.EndCurly);
+
+            foreach (BigBlock bodyBlock in sl.BigBlocks)
+            {
+                List<BigBlock> newBigBlocks = MakePredicated(bodyBlock, predicate);
+                foreach (BigBlock newBigBlock in newBigBlocks)
+                {
+                    result.BigBlocks.Add(newBigBlock);
+                }
+            }
+
+            return result;
+
+        }
+
+        private List<BigBlock> MakePredicated(BigBlock b, Expr IncomingPredicate)
+        {
+            // Not sure what to do about the transfer command
+
+            List<BigBlock> result = new List<BigBlock>();
+
+            BigBlock firstBigBlock = new BigBlock(b.tok, b.LabelName, new CmdSeq(), null, b.tc);
+            result.Add(firstBigBlock);
+
+            foreach (Cmd c in b.simpleCmds)
+            {
+                if (c is CallCmd)
+                {
+
+                    CallCmd Call = c as CallCmd;
+
+                    List<Expr> NewIns = new List<Expr>();
+                    NewIns.Add(IncomingPredicate);
+
+                    foreach (Expr e in Call.Ins)
+                    {
+                        NewIns.Add(e);
+                    }
+
+                    CallCmd NewCallCmd = new CallCmd(Call.tok, Call.callee, NewIns, Call.Outs);
+
+                    firstBigBlock.simpleCmds.Add(NewCallCmd);
+                } 
+                else if (IncomingPredicate.Equals(Expr.True))
+                {
+                    firstBigBlock.simpleCmds.Add(c);
+                }
+                else if (c is AssignCmd)
+                {
+                    AssignCmd assign = c as AssignCmd;
+                    Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
+
+                    ExprSeq iteArgs = new ExprSeq();
+                    iteArgs.Add(IncomingPredicate);
+                    iteArgs.Add(assign.Rhss.ElementAt(0));
+                    iteArgs.Add(assign.Lhss.ElementAt(0).AsExpr);
+                    NAryExpr ite = new NAryExpr(assign.tok, new IfThenElse(assign.tok), iteArgs);
+
+                    List<Expr> newRhs = new List<Expr>();
+                    newRhs.Add(ite);
+
+                    AssignCmd newAssign = new AssignCmd(assign.tok, assign.Lhss, newRhs);
+
+                    firstBigBlock.simpleCmds.Add(newAssign);
+                }
+                else if (c is HavocCmd)
+                {
+                    HavocCmd havoc = c as HavocCmd;
+                    Debug.Assert(havoc.Vars.Length == 1);
+
+                    Microsoft.Boogie.Type type = havoc.Vars[0].Decl.TypedIdent.Type;
+                    Debug.Assert(type != null);
+
+                    RequiredHavocVariables.Add(type);
+
+                    IdentifierExpr HavocTempExpr = new IdentifierExpr(havoc.tok, new LocalVariable(havoc.tok, new TypedIdent(havoc.tok, "_HAVOC_" + type.ToString(), type)));
+                    firstBigBlock.simpleCmds.Add(new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
+                        HavocTempExpr 
+                    })));
+
+                    List<AssignLhs> lhss = new List<AssignLhs>();
+                    lhss.Add(new SimpleAssignLhs(havoc.tok, havoc.Vars[0]));
+
+                    List<Expr> rhss = new List<Expr>();
+                    rhss.Add(new NAryExpr(havoc.tok, new IfThenElse(havoc.tok), new ExprSeq(new Expr[] { IncomingPredicate, HavocTempExpr, havoc.Vars[0] })));
+
+                    firstBigBlock.simpleCmds.Add(new AssignCmd(havoc.tok, lhss, rhss));
+
+                }
+                else
+                {
+                    Debug.Assert(false);
+                }
+            }
+
+            if (b.ec is WhileCmd)
+            {
+                string LoopPredicate = "_LC" + WhileLoopCounter;
+                WhileLoopCounter++;
+
+                IdentifierExpr PredicateExpr = new IdentifierExpr(b.ec.tok, new LocalVariable(b.ec.tok, new TypedIdent(b.ec.tok, LoopPredicate, Microsoft.Boogie.Type.Bool)));
+                Expr GuardExpr = (b.ec as WhileCmd).Guard;
+
+                List<AssignLhs> WhilePredicateLhss = new List<AssignLhs>();
+                WhilePredicateLhss.Add(new SimpleAssignLhs(b.ec.tok, PredicateExpr));
+
+                List<Expr> WhilePredicateRhss = new List<Expr>();
+                WhilePredicateRhss.Add(IncomingPredicate.Equals(Expr.True) ? GuardExpr : Expr.And(IncomingPredicate, GuardExpr));
+
+                firstBigBlock.simpleCmds.Add(new AssignCmd(b.ec.tok, WhilePredicateLhss, WhilePredicateRhss));
+
+                WhileCmd NewWhile = new WhileCmd(b.ec.tok, PredicateExpr, (b.ec as WhileCmd).Invariants, MakePredicated((b.ec as WhileCmd).Body, PredicateExpr));
+
+                List<Expr> UpdatePredicateRhss = new List<Expr>();
+                UpdatePredicateRhss.Add(Expr.And(PredicateExpr, GuardExpr));
+
+                CmdSeq updateCmd = new CmdSeq();
+                updateCmd.Add(new AssignCmd(b.ec.tok, WhilePredicateLhss, UpdatePredicateRhss));
+
+                NewWhile.Body.BigBlocks.Add(new BigBlock(b.ec.tok, "update_" + LoopPredicate, updateCmd, null, null));
+
+                firstBigBlock.ec = NewWhile;
+
+            }
+            else if (b.ec is IfCmd)
+            {
+                IfCmd IfCommand = b.ec as IfCmd;
+
+                string IfPredicate = "_P" + IfCounter;
+                IfCounter++;
+
+                IdentifierExpr PredicateExpr = new IdentifierExpr(b.ec.tok, new LocalVariable(b.ec.tok, new TypedIdent(b.ec.tok, IfPredicate, Microsoft.Boogie.Type.Bool)));
+                Expr GuardExpr = IfCommand.Guard;
+
+                List<AssignLhs> IfPredicateLhss = new List<AssignLhs>();
+                IfPredicateLhss.Add(new SimpleAssignLhs(b.ec.tok, PredicateExpr));
+
+                List<Expr> IfPredicateRhss = new List<Expr>();
+                IfPredicateRhss.Add(GuardExpr);
+
+                firstBigBlock.simpleCmds.Add(new AssignCmd(b.ec.tok, IfPredicateLhss, IfPredicateRhss));
+
+                Debug.Assert(IfCommand.elseIf == null); // We need to preprocess these away
+
+                StmtList PredicatedThen = MakePredicated(IfCommand.thn, Expr.And(IncomingPredicate, PredicateExpr));
+
+                foreach (BigBlock bb in PredicatedThen.BigBlocks)
+                {
+                    result.Add(bb);
+                }
+
+                if (IfCommand.elseBlock != null)
+                {
+                    StmtList PredicatedElse = MakePredicated(IfCommand.elseBlock, Expr.And(IncomingPredicate, Expr.Not(PredicateExpr)));
+
+                    foreach (BigBlock bb in PredicatedElse.BigBlocks)
+                    {
+                        result.Add(bb);
+                    }
+                }
+
+
+
+
+            }
+            else
+            {
+                Debug.Assert(b.ec == null);
+            }
+
+            return result;
+        }
+
+        private void CheckKernelParameters()
+        {
+            if (KernelProcedure.InParams.Length != 0)
+            {
+                Error(KernelProcedure.tok, "Kernel should not take any parameters");
+            }
+            if (KernelProcedure.OutParams.Length != 0)
+            {
+                Error(KernelProcedure.tok, "Kernel should not take return anything");
+            }
+        }
+
+
+        private int Check()
+        {
+            BarrierProcedure = CheckExactlyOneBarrierProcedure();
+            KernelProcedure = CheckExactlyOneKernelProcedure();
+
+            if (ErrorCount > 0)
+            {
+                return ErrorCount;
+            }
+
+            if (BarrierProcedure.InParams.Length != 0)
+            {
+                Error(BarrierProcedure, "Barrier procedure must not take any arguments");
+            }
+
+            if (BarrierProcedure.OutParams.Length != 0)
+            {
+                Error(BarrierProcedure, "Barrier procedure must not return any results");
+            }
+
+            FindNonLocalVariables(Program);
+
+            CheckKernelImplementation();
+
+            if (!KernelHasIdX())
+            {
+                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _X_name + "'");
+            }
+
+            if (!KernelHasTileSizeX())
+            {
+                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _TILE_SIZE_X_name + "'");
+            }
+
+            if (!KernelHasNumTilesX())
+            {
+                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _NUM_TILES_X_name + "'");
+            }
+
+            if (!KernelHasTileIdX())
+            {
+                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _TILE_X_name + "'");
+            }
+
+            if (KernelHasIdY() || KernelHasTileSizeY() || KernelHasNumTilesY() || KernelHasTileIdY())
+            {
+
+                if (!KernelHasIdY())
+                {
+                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _Y_name + "'");
+                }
+
+                if (!KernelHasTileSizeY())
+                {
+                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _TILE_SIZE_Y_name + "'");
+                }
+
+                if (!KernelHasNumTilesY())
+                {
+                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _NUM_TILES_Y_name + "'");
+                }
+
+                if (!KernelHasTileIdY())
+                {
+                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _TILE_Y_name + "'");
+                }
+
+            }
+
+            if (KernelHasIdZ() || KernelHasTileSizeZ() || KernelHasNumTilesZ() || KernelHasTileIdZ())
+            {
+
+                if (!KernelHasIdY())
+                {
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _Y_name + "'");
+                }
+
+                if (!KernelHasTileSizeY())
+                {
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _TILE_SIZE_Y_name + "'");
+                }
+
+                if (!KernelHasNumTilesY())
+                {
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _NUM_TILES_Y_name + "'");
+                }
+
+                if (!KernelHasTileIdY())
+                {
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _TILE_Y_name + "'");
+                }
+
+                if (!KernelHasIdZ())
+                {
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _Z_name + "'");
+                }
+
+                if (!KernelHasTileSizeZ())
+                {
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _TILE_SIZE_Z_name + "'");
+                }
+
+                if (!KernelHasNumTilesZ())
+                {
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _NUM_TILES_Z_name + "'");
+                }
+
+                if (!KernelHasTileIdZ())
+                {
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _TILE_Z_name + "'");
+                }
+
+            }
+
+            return ErrorCount;
+        }
+
+        private bool HasNamedConstant(string dimension, string Name)
+        {
+            foreach (Declaration d in Program.TopLevelDeclarations)
+            {
+                if (d is Variable && (d as Variable).Name.Equals(Name + dimension))
+                {
+                    Variable v = d as Variable;
+                    if (v is Constant && IsIntOrBv32(v.TypedIdent.Type))
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        Error(v.tok, "Declaration '" + Name + dimension + "' must be a constant integer");
+                    }
+                }
+            }
+            return false;
+        }
+
+        private bool HasTileId(string dimension)
+        {
+            return HasNamedConstant(dimension, "_tile_");
+        }
+
+        private bool HasNumTiles(string dimension)
+        {
+            return HasNamedConstant(dimension, "NUM_TILES_");
+        }
+
+        private bool HasTileSize(string dimension)
+        {
+            return HasNamedConstant(dimension, "TILE_SIZE_");
+        }
+
+        public static bool IsThreadLocalIdConstant(Variable variable)
+        {
+            return variable is Constant && (variable.Name.Equals(_X_name) || variable.Name.Equals(_Y_name) || variable.Name.Equals(_Z_name));
+        }
+
+    }
 }

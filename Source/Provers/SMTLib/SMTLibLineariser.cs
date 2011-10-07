@@ -655,14 +655,29 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
+      private string ExtractDatatype(Function func) {
+        if (QKeyValue.FindBoolAttribute(func.Attributes, "selector")) {
+          return func.Name.Remove(func.Name.IndexOf('#'));
+        }
+        else if (QKeyValue.FindBoolAttribute(func.Attributes, "membership")) {
+          return func.Name.Replace('#', '-');
+        }
+        else {
+          return null;
+        }
+      }
+
       public bool VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options) {
         VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)node.Op;
         Contract.Assert(op != null);
         string printedName;
 
         var builtin = ExtractBuiltin(op.Func);
+        var datatype = ExtractDatatype(op.Func);
         if (builtin != null)
           printedName = builtin;
+        else if (datatype != null)
+          printedName = datatype;
         else
           printedName = ExprLineariser.Namer.GetQuotedName(op.Func, op.Func.Name);
         Contract.Assert(printedName != null);

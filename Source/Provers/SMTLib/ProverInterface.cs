@@ -161,6 +161,32 @@ namespace Microsoft.Boogie.SMTLib
 
         SendCommon("; done setting options\n");
         SendCommon(_backgroundPredicates);
+
+        
+        if (ctx.KnownDatatypeConstructors.Count > 0) {
+          string datatypeString = "";
+          foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys) {
+            datatypeString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " ";
+            foreach (Function f in ctx.KnownDatatypeConstructors[datatype]) {
+              if (f.InParams.Length == 0) {
+                datatypeString += f.Name + " ";
+              }
+              else {
+                datatypeString += "(" + f.Name + " ";
+                foreach (Variable v in f.InParams) {
+                  datatypeString += "(" + v.Name + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
+                }
+                datatypeString += ") ";
+              }
+            }
+            datatypeString += ") ";
+          }
+          List<string> decls = DeclCollector.GetNewDeclarations();
+          foreach (string decl in decls) {
+            SendCommon(decl);
+          }
+          SendCommon("(declare-datatypes () (" + datatypeString + "))");
+        }
       }
 
       if (!AxiomsAreSetup) {
@@ -524,6 +550,8 @@ namespace Microsoft.Boogie.SMTLib
       DeclCollector.Collect(sortedExpr);
       FeedTypeDeclsToProver();
 
+      
+
       AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options));
       string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options);
       Contract.Assert(res != null);
@@ -638,6 +666,8 @@ namespace Microsoft.Boogie.SMTLib
   {
     internal SMTLibProcessTheoremProver parent;
 
+    public readonly Dictionary<CtorType, List<Function>> KnownDatatypeConstructors = new Dictionary<CtorType, List<Function>>();
+
     public SMTLibProverContext(VCExpressionGenerator gen,
                                VCGenerationOptions genOptions)
       : base(gen, genOptions)
@@ -661,6 +691,16 @@ namespace Microsoft.Boogie.SMTLib
         var = v;
       }
       return parent.Namer.Lookup(var);
+    }
+
+    public override void DeclareFunction(Function f, string attributes) {
+      if (QKeyValue.FindBoolAttribute(f.Attributes, "constructor")) {
+        CtorType datatype = (CtorType) f.OutParams[0].TypedIdent.Type;
+        if (!KnownDatatypeConstructors.ContainsKey(datatype))
+          KnownDatatypeConstructors[datatype] = new List<Function>();
+        KnownDatatypeConstructors[datatype].Add(f);
+      }
+      base.DeclareFunction(f, attributes);
     }
   }
 

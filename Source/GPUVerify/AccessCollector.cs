@@ -8,11 +8,13 @@ namespace GPUVerify
 {
     abstract class AccessCollector : StandardVisitor
     {
-        protected GPUVerifier verifier;
+        protected List<Variable> GlobalVariables;
+        protected List<Variable> TileStaticVariables;
 
-        public AccessCollector(GPUVerifier verifier)
+        public AccessCollector(List<Variable> GlobalVariables, List<Variable> TileStaticVariables)
         {
-            this.verifier = verifier;
+            this.GlobalVariables = GlobalVariables;
+            this.TileStaticVariables = TileStaticVariables;
         }
 
         protected void MultiDimensionalMapError()
