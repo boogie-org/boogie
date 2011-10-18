@@ -20,7 +20,7 @@ codeexpr         Use    Tests code expressions
 prover           Use    Tests checking various prover options
 test17           Postponed    Tests inference of parameterized contracts
 z3api            Postponed    Test for Z3 Managed .NET API prover
-houdini          Postponed    Test for Houdini decision procedure
+houdini          Use    Test for Houdini decision procedure
 dafny0           Use    Dafny functionality tests
 dafny1           Use    Various Dafny examples
 dafny2           Use    More Dafny examples
