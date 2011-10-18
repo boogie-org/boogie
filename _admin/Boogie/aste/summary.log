@@ -1,15 +1,15 @@
-# Aste started: 2011-10-17 07:00:02
+# Aste started: 2011-10-18 07:00:02
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2011-10-17 07:02:43] SpecSharp revision: aa0abbd10821
-# [2011-10-17 07:02:43] SscBoogie revision: aa0abbd10821
-# [2011-10-17 07:04:19] Boogie revision: dd1917515598
-[2011-10-17 07:05:54] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
+# [2011-10-18 07:02:55] SpecSharp revision: 54d1db5bff19
+# [2011-10-18 07:02:55] SscBoogie revision: 54d1db5bff19
+# [2011-10-18 07:04:27] Boogie revision: 656ed26ba0c5
+[2011-10-18 07:05:55] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
 
     1>corflags : warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
     warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-[2011-10-17 07:06:58] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+[2011-10-18 07:07:01] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -41,5 +41,5 @@
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-[2011-10-17 07:55:38] 0 out of 31 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2011-10-17 07:56:43] Released nightly of Boogie
+[2011-10-18 07:58:26] 0 out of 32 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2011-10-18 07:59:32] Released nightly of Boogie
