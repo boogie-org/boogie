@@ -558,7 +558,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           }
           if (name.Contains('#')) score -= 1;
         } else if (synthethic_fields.Contains(t.Func.Name)) {
-          name = string.Format("{0}<{1}>", t.Func.Name.Substring(3), TypeName(t.Args[0]));
+          name = string.Format("{0}<{1}>", t.Func.Name.Substring(3).Replace("root", "alloc_root"), TypeName(t.Args[0]));
           score = 5;
         }
         if (score > bestScore) {
@@ -696,9 +696,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         if (elt.Kind == Model.ElementKind.Integer) {
           var tpname = TypeName(tp);
           if(tpname.StartsWith("$")) tpname = tpname.Substring(1);
-          foreach (var tupl in elt.References) {
-            if (tupl.Args.Length == 1 && tupl.Args[0] == elt && tupl.Func.Name.StartsWith("$int_to_") && tupl.Func.Name.EndsWith(tpname)) {
-              return tupl.Result;
+          if (tpname.StartsWith("#")) {
+            foreach (var tupl in elt.References) {
+              if (tupl.Args.Length == 1 && tupl.Args[0] == elt && tupl.Func.Name.StartsWith("$int_to_") && tupl.Func.Name.EndsWith(tpname)) {
+                return tupl.Result;
+              }
             }
           }
         }
