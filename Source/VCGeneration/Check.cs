@@ -870,6 +870,7 @@ namespace Microsoft.Boogie {
       public abstract void Check();
       public abstract void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore);
       public abstract void Push();
+      public virtual void SetTimeOut(int ms) { }
   }
 
   public class ProverException : Exception {

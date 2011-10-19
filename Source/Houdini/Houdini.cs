@@ -264,15 +264,8 @@ namespace Microsoft.Boogie.Houdini {
     }
 
     private ReadOnlyDictionary<Implementation, HoudiniVCGen> PrepareVCGenSessions() {
-      HashSet<Implementation> impls = new HashSet<Implementation>();
       Dictionary<Implementation, HoudiniVCGen> vcgenSessions = new Dictionary<Implementation, HoudiniVCGen>();
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        Implementation impl = decl as Implementation;
-        if (impl != null && !impl.SkipVerification) {
-          impls.Add(impl);
-        }
-      }
-      foreach (Implementation impl in impls) {
+      foreach (Implementation impl in callGraph.Nodes) {
         // make a different simplify log file for each function
         String simplifyLog = null;
         if (CommandLineOptions.Clo.SimplifyLogFilePath != null) {
@@ -328,8 +321,23 @@ namespace Microsoft.Boogie.Houdini {
       }
       return callGraph;
     }
-
+    
     private Queue<Implementation> BuildWorkList(Program program) {
+      // adding implementations to the workqueue from the bottom of the call graph upwards
+      Queue<Implementation> queue = new Queue<Implementation>();
+      StronglyConnectedComponents<Implementation> sccs =
+        new StronglyConnectedComponents<Implementation>(callGraph.Nodes,
+          new Adjacency<Implementation>(callGraph.Predecessors),
+          new Adjacency<Implementation>(callGraph.Successors));
+      sccs.Compute();
+      foreach (SCC<Implementation> scc in sccs) {
+        foreach (Implementation impl in scc) {
+          queue.Enqueue(impl);
+        }
+      }
+      return queue;
+      
+      /*
       Queue<Implementation> queue = new Queue<Implementation>();
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Implementation impl = decl as Implementation;
@@ -337,6 +345,7 @@ namespace Microsoft.Boogie.Houdini {
         queue.Enqueue(impl);
       }
       return queue;
+       */
     }
 
     private bool MatchCandidate(Expr boogieExpr, out string candidateConstant) {

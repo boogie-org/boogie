@@ -1524,7 +1524,7 @@ namespace Microsoft.Boogie {
         UseArrayTheory = true;
         UseAbstractInterpretation = false;
         MaxProverMemory = 0; // no max: avoids restarts
-        if (ProverName == "Z3API")
+        if (ProverName == "Z3API" || ProverName == "SMTLIB")
         {
             ProverCCLimit = 1;
         }

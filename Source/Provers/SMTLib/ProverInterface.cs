@@ -22,7 +22,7 @@ using System.Text;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  public class SMTLibProcessTheoremProver : ProverInterface
+  public class SMTLibProcessTheoremProver : ApiProverInterface
   {
     private readonly SMTLibProverContext ctx;
     private readonly VCExpressionGenerator gen;
@@ -83,6 +83,19 @@ namespace Microsoft.Boogie.SMTLib
         Process = new SMTLibProcess(psi, this.options);
         Process.ErrorHandler += this.HandleProverError;
       }
+
+      if (CommandLineOptions.Clo.StratifiedInlining > 0)
+      {
+          // Prepare for ApiChecker usage
+          if (options.LogFilename != null && currentLogFile == null)
+          {
+              currentLogFile = OpenOutputFile("");
+          }
+          SendThisVC("(set-option :produce-unsat-cores true)");
+          PrepareCommon();
+      }
+      prevOutcomeAvailable = false;
+      pendingPop = false;
     }
 
     public override ProverContext Context
@@ -219,7 +232,7 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(assert " + s + ")");
       }
       Axioms.Clear();
-      FlushPushedAssertions();
+      //FlushPushedAssertions();
     }
 
     private void CloseLogFile()
@@ -385,7 +398,16 @@ namespace Microsoft.Boogie.SMTLib
           }
         }
 
-        SendThisVC("(pop 1)");
+        if (CommandLineOptions.Clo.StratifiedInlining == 0)
+        {
+            SendThisVC("(pop 1)");
+        }
+        else if (CommandLineOptions.Clo.StratifiedInlining > 0 && pendingPop)
+        {
+            pendingPop = false;
+            SendThisVC("(pop 1)");
+        }
+
         FlushLogFile();
 
         return globalResult;
@@ -457,6 +479,13 @@ namespace Microsoft.Boogie.SMTLib
 
     private Outcome GetResponse()
     {
+      if (prevOutcomeAvailable)
+      {
+          Contract.Assert(CommandLineOptions.Clo.StratifiedInlining > 0);
+          prevOutcomeAvailable = false;
+          return prevOutcome;
+      }
+
       var result = Outcome.Undetermined;
       var wasUnknown = false;
 
@@ -623,8 +652,9 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     //// Push/pop interface
-    List<string> pushedAssertions = new List<string>();
-    int numRealPushes;
+
+    //List<string> pushedAssertions = new List<string>();
+    //int numRealPushes;
     public override string VCExpressionToString(VCExpr vc)
     {
       return VCExpr2String(vc, 1);
@@ -632,34 +662,116 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void PushVCExpression(VCExpr vc)
     {
-      pushedAssertions.Add(VCExpressionToString(vc));
+        throw new NotImplementedException();
+
     }
 
     public override void Pop()
     {
-      if (pushedAssertions.Count > 0) {
-        pushedAssertions.RemoveRange(pushedAssertions.Count - 1, 1);
-      } else {
-        Contract.Assert(numRealPushes > 0);
-        numRealPushes--;
-        SendThisVC("(pop 1)");
-      }
+      SendThisVC("(pop 1)");
+      DeclCollector.Pop();
     }
 
     public override int NumAxiomsPushed()
     {
-      return numRealPushes + pushedAssertions.Count;
+        throw new NotImplementedException();
+        //return numRealPushes + pushedAssertions.Count;
     }
 
     private void FlushPushedAssertions()
     {
-      foreach (var a in pushedAssertions) {
-        SendThisVC("(push 1)");
-        SendThisVC("(assert " + a + ")");
-        numRealPushes++;
-      }
-      pushedAssertions.Clear();
+        throw new NotImplementedException();
     }
+
+    // For implementing ApiProverInterface
+    public override void Assert(VCExpr vc, bool polarity)
+    {
+        string a = "";
+        if (polarity)
+        {
+            a = "(assert " + VCExpr2String(vc, 1) + ")";
+        }
+        else
+        {
+            a = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+        }
+        AssertAxioms();
+        SendThisVC(a);
+    }
+
+    public override void AssertAxioms()
+    {
+        FlushAxioms();
+    }
+
+    public override void Check()
+    {
+        Contract.Assert(pendingPop == false && prevOutcomeAvailable == false);
+
+        PrepareCommon();
+        SendThisVC("(check-sat)");
+        FlushLogFile();
+    }
+
+    public override void SetTimeOut(int ms)
+    {
+        SendThisVC("(set-option :SOFT_TIMEOUT " + ms.ToString() + ")\n");
+    }
+
+    /// <summary>
+    /// Extra state for ApiChecker (used by stratifiedInlining)
+    /// </summary>
+    bool prevOutcomeAvailable;
+    bool pendingPop;
+    Outcome prevOutcome;
+    static int nameCounter = 0;
+
+    public override void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
+    {
+        Contract.Assert(pendingPop == false && prevOutcomeAvailable == false);
+
+        Push();
+        unsatCore = new List<int>();
+
+        // Name the assumptions
+        var nameToAssumption = new Dictionary<string, int>();
+        int i = 0;
+        foreach (var vc in assumptions)
+        {
+            var name = "a" + nameCounter.ToString();
+            nameCounter++;
+            nameToAssumption.Add(name, i);
+
+            SendThisVC(string.Format("(assert (! {0} :named {1}))", VCExpr2String(vc, 1), name));
+            i++;
+        }
+        Check();
+
+        prevOutcome = GetResponse();
+        prevOutcomeAvailable = true;
+        if (prevOutcome != Outcome.Valid)
+        {
+            pendingPop = true;
+            return;
+        }
+
+        SendThisVC("(get-unsat-core)");
+        var resp = Process.GetProverResponse();
+        unsatCore = new List<int>();
+        if(resp.Name != "") unsatCore.Add(nameToAssumption[resp.Name]);
+        foreach (var s in resp.Arguments) unsatCore.Add(nameToAssumption[s.Name]);
+
+        Pop();
+
+        FlushLogFile();
+    }
+
+    public override void Push()
+    {
+        SendThisVC("(push 1)");
+        DeclCollector.Push();
+    }
+
   }
 
   public class SMTLibProverContext : DeclFreeProverContext
