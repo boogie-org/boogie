@@ -812,6 +812,10 @@ namespace VC
 
                 return ret;
             }
+            virtual public void SetTimeOut(int msec)
+            {
+                // default behavior is to ignore this timeout
+            }
         }
 
         public class NormalChecker : StratifiedCheckerInterface
@@ -1016,6 +1020,11 @@ namespace VC
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
             }
+          }
+
+          public override void SetTimeOut(int msec)
+          {
+              TheoremProver.SetTimeOut(msec);
           }
         }
 
@@ -1793,7 +1802,7 @@ namespace VC
                 ret = checker.CheckVC();
                 checker.Pop();
 
-                if (ret == Outcome.Errors) {
+                if (ret == Outcome.Errors || ret == Outcome.TimedOut) {
                   curr = Gen.And(cs.callSiteConstant, curr);
                   relevantCallSites.Add(cs);
                   relevantUnsatCore.Add(cs.callSiteConstant);
@@ -1916,6 +1925,10 @@ namespace VC
         {
             Outcome ret;
             List<int> unsatCore;
+
+            // No need of computing Unsat cores for stratified inlining
+            if (!CommandLineOptions.Clo.UseUnsatCoreForInlining && CommandLineOptions.Clo.ProverName == "SMTLIB") 
+                ApiChecker.UseCheckAssumptions = false;
 
             var reporter = vState.reporter as StratifiedInliningErrorReporter;
             var calls = vState.calls;

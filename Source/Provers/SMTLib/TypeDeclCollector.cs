@@ -36,6 +36,7 @@ void ObjectInvariant()
       Contract.Requires(namer != null);
       this.Namer = namer;
       this.Options = opts;
+      InitializeKnownDecls();
     }
 
     // not used
@@ -47,13 +48,79 @@ void ObjectInvariant()
     private readonly List<string/*!>!*/> AllDecls = new List<string/*!*/> ();
     private readonly List<string/*!>!*/> IncDecls = new List<string/*!*/> ();
 
-    private readonly HashSet<Function/*!*/>/*!*/ KnownFunctions = new HashSet<Function/*!*/>();
-    private readonly HashSet<VCExprVar/*!*/>/*!*/ KnownVariables = new HashSet<VCExprVar/*!*/>();
+    // In order to support push/pop interface of the theorem prover, the "known" declarations
+    // must be kept in a stack
 
-    private readonly HashSet<Type/*!*/>/*!*/ KnownTypes = new HashSet<Type>();
-    private readonly HashSet<string/*!*/>/*!*/ KnownStoreFunctions = new HashSet<string>();
-    private readonly HashSet<string/*!*/>/*!*/ KnownSelectFunctions = new HashSet<string>();
-    private readonly HashSet<string> KnownLBL = new HashSet<string>();
+    private HashSet<Function/*!*/>/*!*/ KnownFunctions
+    {
+        get { return _KnownFunctions.Peek(); }
+    }
+
+    private HashSet<VCExprVar/*!*/>/*!*/ KnownVariables
+    {
+        get { return _KnownVariables.Peek(); }
+    }
+
+    private HashSet<Type/*!*/>/*!*/ KnownTypes
+    {
+        get { return _KnownTypes.Peek(); }
+    }
+
+    private HashSet<string/*!*/>/*!*/ KnownStoreFunctions
+    {
+        get { return _KnownStoreFunctions.Peek(); }
+    }
+
+    private HashSet<string/*!*/>/*!*/ KnownSelectFunctions
+    {
+        get { return _KnownSelectFunctions.Peek(); }
+    }
+
+    private HashSet<string> KnownLBL
+    {
+        get { return _KnownLBL.Peek(); }
+    }
+
+    // ------
+    private readonly Stack<HashSet<Function/*!*/>/*!*/> _KnownFunctions = new Stack<HashSet<Function/*!*/>>();
+    private readonly Stack<HashSet<VCExprVar/*!*/>/*!*/> _KnownVariables = new Stack<HashSet<VCExprVar/*!*/>>();
+
+    private readonly Stack<HashSet<Type/*!*/>/*!*/> _KnownTypes = new Stack<HashSet<Type>>();
+    private readonly Stack<HashSet<string/*!*/>/*!*/> _KnownStoreFunctions = new Stack<HashSet<string>>();
+    private readonly Stack<HashSet<string/*!*/>/*!*/> _KnownSelectFunctions = new Stack<HashSet<string>>();
+    private readonly Stack<HashSet<string>> _KnownLBL = new Stack<HashSet<string>>();
+
+    private void InitializeKnownDecls()
+    {
+        _KnownFunctions.Push(new HashSet<Function>());
+        _KnownVariables.Push(new HashSet<VCExprVar>());
+        _KnownTypes.Push(new HashSet<Type>());
+        _KnownStoreFunctions.Push(new HashSet<string>());
+        _KnownSelectFunctions.Push(new HashSet<string>());
+        _KnownLBL.Push(new HashSet<string>());
+    }
+
+    public void Push()
+    {
+        Contract.Assert(_KnownFunctions.Count > 0);
+        _KnownFunctions.Push(new HashSet<Function>(_KnownFunctions.Peek()));
+        _KnownVariables.Push(new HashSet<VCExprVar>(_KnownVariables.Peek()));
+        _KnownTypes.Push(new HashSet<Type>(_KnownTypes.Peek()));
+        _KnownStoreFunctions.Push(new HashSet<string>(_KnownStoreFunctions.Peek()));
+        _KnownSelectFunctions.Push(new HashSet<string>(_KnownSelectFunctions.Peek()));
+        _KnownLBL.Push(new HashSet<string>(_KnownLBL.Peek()));
+    }
+
+    public void Pop()
+    {
+        Contract.Assert(_KnownFunctions.Count > 1);
+        _KnownFunctions.Pop();
+        _KnownVariables.Pop();
+        _KnownTypes.Pop();
+        _KnownStoreFunctions.Pop();
+        _KnownSelectFunctions.Pop();
+        _KnownLBL.Pop();
+    }
 
     public List<string/*!>!*/> AllDeclarations { get {
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<string>>() ));
