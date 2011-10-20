@@ -241,6 +241,31 @@ namespace Microsoft.Boogie
       /// </summary>
       public Element TryEval(params Element[] args)
       {
+        for (int i = 0; i < args.Length; ++i)
+          if(args[i]==null)
+            throw new ArgumentException();
+
+        if (apps.Count > 10) {
+          var best = apps;
+          for (int i = 0; i < args.Length; ++i)
+            if (args[i].references.Count < best.Count)
+              best = args[i].references;
+          if (best != apps) {
+            foreach (var tpl in best) {
+              bool same = true;
+              if (tpl.Func != this)
+                continue;
+              for (int i = 0; i < args.Length; ++i)
+                if (tpl.Args[i] != args[i]) {
+                  same = false;
+                  break;
+                }
+              if (same) return tpl.Result;
+            }
+            return null;
+          }
+        }
+
         foreach (var tpl in apps) {
           bool same = true;
           for (int i = 0; i < args.Length; ++i)

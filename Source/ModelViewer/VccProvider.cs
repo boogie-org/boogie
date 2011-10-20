@@ -44,6 +44,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     public readonly Model.Element elt_me, elt_null;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
     Dictionary<Model.Element, string> literalName = new Dictionary<Model.Element, string>();
+    Dictionary<Model.Element, Model.Element> guessedType = new Dictionary<Model.Element,Model.Element>();
     public List<StateNode> states = new List<StateNode>();
     public Dictionary<string, string> localVariableNames = new Dictionary<string, string>();
 
@@ -557,7 +558,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             name = name.Substring(dotIdx + 1);
           }
           if (name.Contains('#')) score -= 1;
-        } else if (synthethic_fields.Contains(t.Func.Name)) {
+        } else if (t.Func.Name.StartsWith("$f_") && synthethic_fields.Contains(t.Func.Name)) {
           name = string.Format("{0}<{1}>", t.Func.Name.Substring(3).Replace("root", "alloc_root"), TypeName(t.Args[0]));
           score = 5;
         }
@@ -583,6 +584,16 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     }
 
     Model.Element GuessType(Model.Element element)
+    {
+      Model.Element res;
+      if (!guessedType.TryGetValue(element, out res)) {
+        res = GuessTypeCore(element);
+        guessedType[element] = res;
+      }
+      return res;
+    }
+
+    Model.Element GuessTypeCore(Model.Element element)
     {
       if (element is Model.Boolean)
         return tp_bool;
@@ -887,7 +898,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           heap = f_heap.TryEval(heap);
         var addresses = new HashSet<Model.Element>();
 
-        if (heap != null) {
+        if (heap != null && elt != null) {
           foreach (var fld in f_select_field.AppsWithArg(0, heap)) {
             var val = f_select_value.TryEval(fld.Result, elt);
             if (val != null) {
@@ -992,12 +1003,23 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         var curState = state.State.TryGet("$s");
 
         foreach (var tupl in elt.References) {
-          if (!tupl.Args.Contains(elt)) continue; // not looking for aliases (maybe we should?)
-          if (tupl.Args.Any(IsSomeState) && !tupl.Args.Any(s => IsThisState(curState, s)))
-            continue;
+          {
+            var seenSelf = false;
+            var seenState = false;
+            var seenThisState = false;
+            var args = tupl.Args;
+            for (int i = 0; i < args.Length; ++i) {
+              if (args[i] == elt) seenSelf = true;
+              else if (IsThisState(curState, args[i])) seenThisState = true;
+              else if (IsSomeState(args[i])) seenState = true;
+            }
+            if (!seenSelf) continue; // not looking for aliases (maybe we should?)
+            if (seenState && !seenThisState) continue;
+          }
+
           var argsFmt = new StringBuilder();
           var name = tupl.Func.Name;
-          
+
           var score = FunctionScore(name);
           if (score >= viewOpts.ViewLevel)
             continue;
@@ -1030,22 +1052,25 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             }
           }
 
-          argsFmt.Append(name).Append("(");
-          var args = new List<Model.Element>();
-          foreach (var a in tupl.Args) {
-            if (IsThisState(curState, a))
-              argsFmt.Append("\\now, ");
-            else if (a == elt)
-              argsFmt.Append(selfMarker + ", ");
-            else {
-              argsFmt.AppendFormat("%{0}, ", args.Count);
-              args.Add(a);
+          {
+            argsFmt.Append(name).Append("(");
+            var args = new List<Model.Element>();
+            foreach (var a in tupl.Args) {
+              if (IsThisState(curState, a))
+                argsFmt.Append("\\now, ");
+              else if (a == elt)
+                argsFmt.Append(selfMarker + ", ");
+              else {
+                argsFmt.AppendFormat("%{0}, ", args.Count);
+                args.Add(a);
+              }
             }
+            argsFmt.Length -= 2;
+            argsFmt.Append(")");
+            var edgeName = new EdgeName(this, argsFmt.ToString(), args.ToArray());
+            result.Add(new MapletNode(state, edgeName, retVal, retTp) { ViewLevel = score, Category = cat });
           }
-          argsFmt.Length -= 2;
-          argsFmt.Append(")");
-          var edgeName = new EdgeName(this, argsFmt.ToString(), args.ToArray());
-          result.Add(new MapletNode(state, edgeName, retVal, retTp) { ViewLevel = score, Category = cat });
+
         }
       }
 
