@@ -363,8 +363,6 @@
       // 
       // normalToolStripMenuItem
       // 
-      this.normalToolStripMenuItem.Checked = true;
-      this.normalToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
       this.normalToolStripMenuItem.Name = "normalToolStripMenuItem";
       this.normalToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.N)));
       this.normalToolStripMenuItem.Size = new System.Drawing.Size(240, 22);
@@ -373,6 +371,8 @@
       // 
       // expertToolStripMenuItem
       // 
+      this.expertToolStripMenuItem.Checked = true;
+      this.expertToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
       this.expertToolStripMenuItem.Name = "expertToolStripMenuItem";
       this.expertToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.X)));
       this.expertToolStripMenuItem.Size = new System.Drawing.Size(240, 22);

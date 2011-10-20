@@ -7,7 +7,11 @@ namespace Microsoft.Boogie.ModelViewer
 {
   public class ViewOptions
   {
-    public int ViewLevel;
+    // 0 - Normal
+    // 1 - Expert
+    // 2 - Everything
+    // 3 - Include the kitchen sink
+    public int ViewLevel = 1;
     public bool DebugMode;
   }
 
