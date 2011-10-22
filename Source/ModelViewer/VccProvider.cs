@@ -39,7 +39,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
                                f_owners, f_closed, f_roots, f_timestamps, f_select_bool, f_select_int, f_is_null, f_good_state,
                                f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, f_field_plus,
                                f_is_sequential_field, f_is_volatile_field, f_type_project_0, f_array, f_active_option, f_int_to_field,
-                               f_blob_type;
+                               f_blob_type, f_array_emb, f_addr, f_address_root;
     public readonly Model.Element tp_object, tp_mathint, tp_bool, tp_state, tp_ptrset, tp_heaptp;
     public readonly Model.Element elt_me, elt_null;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
@@ -93,6 +93,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_type_project_0 = m.MkFunc("$type_project_0", 1);
       f_array = m.MkFunc("$array", 2);
       f_blob_type = m.MkFunc("$blob_type", 1);
+      f_array_emb = m.MkFunc("$array_emb", 2);
+      f_addr = m.MkFunc("$addr", 1);
+      f_address_root = m.MkFunc("$address_root", 2);
 
       tp_bool = m.GetFunc("^^bool").GetConstant();
       tp_mathint = m.GetFunc("^^mathint").GetConstant();
@@ -560,6 +563,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           if (name.Contains('#')) score -= 1;
         } else if (t.Func.Name.StartsWith("$f_") && synthethic_fields.Contains(t.Func.Name)) {
           name = string.Format("{0}<{1}>", t.Func.Name.Substring(3).Replace("root", "alloc_root"), TypeName(t.Args[0]));
+          score = 6;
+        } else if (t.Func == f_array_emb) {
+          name = string.Format("[0] (of {0}[{1}])", TypeName(t.Args[0]), t.Args[1].ToString());
           score = 5;
         }
         if (score > bestScore) {
@@ -1099,6 +1105,15 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       foreach (var app in f_spec_ptr_cast.AppsWithArg(0, elt)) {
         if (app.Result != elt)
           result.Add(new MapletNode(state, new EdgeName(this, "(" + TypeName(app.Args[1]) + "^)..."), app.Result, PtrTo(app.Args[1], f_spec_ptr_to)));
+      }
+      var addr = f_addr.TryEval(elt);
+      if (addr != null) {
+        foreach (var app in f_blob_type.Apps) {
+          var blob = f_address_root.TryEval(addr, app.Result);
+          if (blob != null) {
+            result.Add(new MapletNode(state, new EdgeName(this, TypeName(app.Result) + "..."), blob, app.Result));
+          }
+        }
       }
     }
 
