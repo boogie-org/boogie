@@ -135,7 +135,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         sn.SetupVars();
         states.Add(sn);
       }
+
       var allStates = states.ToArray();
+      if (allStates.Length == 1 && allStates[0].vars.Count == 0) {
+        throw new Exception("This VCC model doesn't contain any variables. Was it saved with the -bvd option?");
+      }
       states.Clear();
       var i = 0;
       while (i < allStates.Length) {
