@@ -56,12 +56,6 @@ namespace Microsoft.Boogie.VCExprAST {
       get;
     }
 
-    public virtual CommandLineOptions.BvHandling Bitvectors {
-      get {
-        return CommandLineOptions.BvHandling.None;
-      }
-    }
-
     // variables representing formulas in let-bindings have to be
     // printed in a different way than other variables
     public virtual List<VCExprVar/*!*/>/*!*/ LetVariables {
@@ -87,19 +81,6 @@ namespace Microsoft.Boogie.VCExprAST {
     [ContractInvariantMethod]
     void ObjectInvarinat() {
       Contract.Invariant(EmptyList != null);
-    }
-
-
-    public bool NativeBv {
-      get {
-        return Bitvectors == CommandLineOptions.BvHandling.Z3Native;
-      }
-    }
-
-    public bool IntBv {
-      get {
-        return Bitvectors == CommandLineOptions.BvHandling.ToInt;
-      }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////

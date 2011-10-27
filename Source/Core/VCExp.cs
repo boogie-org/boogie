@@ -29,7 +29,6 @@ namespace Microsoft.Boogie {
     public bool ForceLogStatus = false;
     public int TimeLimit = 0;
     public int MemoryLimit = 0;
-    public CommandLineOptions.BvHandling BitVectors = CommandLineOptions.BvHandling.None;
     public int Verbosity = 0;
     public string ProverPath;
 

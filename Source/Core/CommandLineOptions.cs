@@ -236,11 +236,6 @@ namespace Microsoft.Boogie {
     public string/*?*/ ModelViewFile = null;
     public int EnhancedErrorMessages = 0;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
-    public enum BvHandling {
-      None,
-      Z3Native,
-      ToInt
-    }
     public bool UseArrayTheory = false;
     public bool MonomorphicArrays {
       get {

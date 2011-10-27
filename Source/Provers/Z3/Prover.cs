@@ -156,11 +156,8 @@ namespace Microsoft.Boogie.Z3
       if (opts.Inspector != null)
         AddOption(result, "PROGRESS_SAMPLING_FREQ", "100");
 
-      if (opts.Typed) {
-        AddOption(result, "TYPE_CHECK", "true");
-        if (opts.BitVectors == CommandLineOptions.BvHandling.Z3Native)
-            AddOption(result, "BV_REFLECT", "true");
-      }
+      AddOption(result, "TYPE_CHECK", "true");
+      AddOption(result, "BV_REFLECT", "true");
 
       foreach (string opt in CommandLineOptions.Clo.Z3Options) {
         Contract.Assert(opt != null);
