@@ -49,19 +49,7 @@ namespace Microsoft.Boogie {
     public readonly AutoResetEvent ProverDone = new AutoResetEvent(false);
 
     private static CommandLineOptions.BvHandling BvHandlingForImpl(Implementation impl) {
-      if (impl == null)
-        return CommandLineOptions.Clo.Bitvectors;
-      bool force_int = false;
-      bool force_native = false;
-      cce.NonNull(impl.Proc).CheckBooleanAttribute("forceBvInt", ref force_int);
-      impl.Proc.CheckBooleanAttribute("forceBvZ3Native", ref force_native);
-      impl.CheckBooleanAttribute("forceBvInt", ref force_int);
-      impl.CheckBooleanAttribute("forceBvZ3Native", ref force_native);
-      if (force_native)
-        return CommandLineOptions.BvHandling.Z3Native;
-      if (force_int)
-        return CommandLineOptions.BvHandling.ToInt;
-      return CommandLineOptions.Clo.Bitvectors;
+      return CommandLineOptions.BvHandling.Z3Native;
     }
 
     public bool WillingToHandle(Implementation impl, int timeout) {

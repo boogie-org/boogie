@@ -241,7 +241,6 @@ namespace Microsoft.Boogie {
       Z3Native,
       ToInt
     }
-    public BvHandling Bitvectors = BvHandling.Z3Native;
     public bool UseArrayTheory = false;
     public bool MonomorphicArrays {
       get {
@@ -943,31 +942,6 @@ namespace Microsoft.Boogie {
           case "-forceBplErrors":
           case "/forceBplErrors":
             ForceBplErrors = true;
-            break;
-
-          case "-bv":
-          case "/bv":
-            if (ps.ConfirmArgumentCount(1)) {
-              if (TheProverFactory == null) {
-                TheProverFactory = ProverFactory.Load("Z3");
-                ProverName = "Z3".ToUpper();
-              }
-
-              switch (args[ps.i]) {
-                case "n":
-                  Bitvectors = BvHandling.None;
-                  break;
-                case "z":
-                  Bitvectors = BvHandling.Z3Native;
-                  break;
-                case "i":
-                  Bitvectors = BvHandling.ToInt;
-                  break;
-                default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
-              }
-            }
             break;
 
           case "-contractInfer":
@@ -1918,15 +1892,6 @@ namespace Microsoft.Boogie {
      {:verify false}
        Skip verification of an implementation.
 
-     {:forceBvZ3Native true}
-       Verify the given implementation with the native Z3 bitvector
-       handling. Only works if /bv:i (or /bv:z, but then it does not do
-       anything) is given on the command line.
-
-     {:forceBvInt true}
-       Use int translation for the given implementation. Only work with
-       /bv:z (or /bv:i).
-
      {:vcs_max_cost N}
      {:vcs_max_splits N}
      {:vcs_max_keep_going_splits N}
@@ -1942,12 +1907,9 @@ namespace Microsoft.Boogie {
 
   ---- On functions ----------------------------------------------------------
 
+     {:builtin ""spec""}
      {:bvbuiltin ""spec""}
-       Z3 specific, used only with /bv:z.
-
-     {:bvint ""fn""}
-       With /bv:i rewrite the function to function symbol 'fn', except if
-       the 'fn' is 'id', in which case just strip the function altogether.
+       Rewrite the function to built-in prover function symbol 'fn'.
 
      {:never_pattern true}
        Terms starting with this function symbol will never be
@@ -2177,10 +2139,6 @@ namespace Microsoft.Boogie {
                    statement in that position) is ignored in checking contexts
                    (like other free things); this option includes these free
                    loop invariants as assumes in both contexts
-  /bv:<bv>       : bitvector handling
-                   n = none
-                   z = native Z3 bitvectors (default)
-                   i = unsoundly translate bitvectors to integers
   /inline:<i>    : use inlining strategy <i> for procedures with the :inline
                    attribute, see /attrHelp for details:
                    none
