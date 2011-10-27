@@ -199,7 +199,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant((0 <= PrintErrorModel && PrintErrorModel <= 2) || PrintErrorModel == 4);
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
       Contract.Invariant(0 <= StepsBeforeWidening && StepsBeforeWidening <= 9);
-      Contract.Invariant(-1 <= BracketIdsInVC && BracketIdsInVC <= 1);
+      Contract.Invariant(-1 <= BracketIdsInVC && BracketIdsInVC < 2);
       Contract.Invariant(cce.NonNullElements(ProverOptions));
 
 
@@ -1470,8 +1470,8 @@ namespace Microsoft.Boogie {
       if (TheProverFactory == null) {
         cce.BeginExpose(this);
         {
-          TheProverFactory = ProverFactory.Load("Z3");
-          ProverName = "Z3".ToUpper();
+          TheProverFactory = ProverFactory.Load("SMTLIB");
+          ProverName = "SMTLIB".ToUpper();
         }
         cce.EndExpose();
       }
@@ -2164,10 +2164,11 @@ namespace Microsoft.Boogie {
                            1 - remove empty blocks (default)
   /coalesceBlocks:<c> : 0 = do not coalesce blocks
                         1 = coalesce blocks (default)
-  /vc:<variety>  : n = nested block (default for non-/prover:z3),
+  /vc:<variety>  : n = nested block (default for /prover:Simplify),
                    m = nested block reach,
                    b = flat block, r = flat block reach,
-                   s = structured, l = local, d = dag (default with /prover:z3)
+                   s = structured, l = local,
+                   d = dag (default, except with /prover:Simplify)
                    doomed = doomed
   /traceverify   : print debug output during verification condition generation
   /subsumption:<c> : apply subsumption to asserted conditions:
@@ -2261,17 +2262,17 @@ namespace Microsoft.Boogie {
                     1 (default) - include useful Trace labels in error output,
                     2 - include all Trace labels in the error output
   /vcBrackets:<b> : bracket odd-charactered identifier names with |'s.  <b> is:
-                   0 - no (default with /prover:Z3),
+                   0 - no (default with non-/prover:Simplify),
                    1 - yes (default with /prover:Simplify)
   /prover:<tp>   : use theorem prover <tp>, where <tp> is either the name of
                    a DLL containing the prover interface located in the
                    Boogie directory, or a full path to a DLL containing such
                    an interface. The standard interfaces shipped include:
-                   Z3 (default)
-                   Simplify
-                   SMTLib (only writes to a file)
-                   ContractInference (uses Z3)
-                   Z3api (Z3 using Managed .NET API)
+                     SMTLib (default, uses the SMTLib2 format and calls Z3)
+                     Z3 (uses Z3 with the Simplify format)
+                     Simplify
+                     ContractInference (uses Z3)
+                     Z3api (Z3 using Managed .NET API)
   /proverOpt:KEY[=VALUE] : Provide a prover-specific option (short form /p).
   /proverLog:<file> : Log input for the theorem prover.  Like filenames
                    supplied as arguments to other options, <file> can use the
