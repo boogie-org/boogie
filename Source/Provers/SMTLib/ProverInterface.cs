@@ -75,14 +75,7 @@ namespace Microsoft.Boogie.SMTLib
       ctx.parent = this;
       this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions)options, Namer);
 
-      if (this.options.UseZ3) {
-        var path = this.options.ProverPath;
-        if (path == null)
-          path = Z3.ExecutablePath();
-        var psi = SMTLibProcess.ComputerProcessStartInfo(path, "AUTO_CONFIG=false -smt2 -in");
-        Process = new SMTLibProcess(psi, this.options);
-        Process.ErrorHandler += this.HandleProverError;
-      }
+      SetupProcess();
 
       if (CommandLineOptions.Clo.StratifiedInlining > 0)
       {
@@ -98,6 +91,32 @@ namespace Microsoft.Boogie.SMTLib
       pendingPop = false;
     }
 
+    void SetupProcess()
+    {
+      if (!this.options.UseZ3)
+        return;
+
+      if (Process != null) return;
+
+      var path = this.options.ProverPath;
+      if (path == null)
+        path = Z3.ExecutablePath();
+      var psi = SMTLibProcess.ComputerProcessStartInfo(path, "AUTO_CONFIG=false -smt2 -in");
+      Process = new SMTLibProcess(psi, this.options);
+      Process.ErrorHandler += this.HandleProverError;
+    }
+
+
+    void PossiblyRestart()
+    {
+      if (Process != null && Process.NeedsRestart) {
+        Process.Close();
+        Process = null;
+        SetupProcess();
+        Process.Send(common.ToString());
+      }
+    }
+
     public override ProverContext Context
     {
       get
@@ -111,7 +130,7 @@ namespace Microsoft.Boogie.SMTLib
     internal readonly TypeAxiomBuilder AxBuilder;
     internal readonly UniqueNamer Namer;
     readonly TypeDeclCollector DeclCollector;
-    readonly SMTLibProcess Process;
+    SMTLibProcess Process;
     readonly List<string> proverErrors = new List<string>();
     readonly List<string> proverWarnings = new List<string>();
     readonly StringBuilder common = new StringBuilder();
@@ -275,6 +294,8 @@ namespace Microsoft.Boogie.SMTLib
       string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
       FlushAxioms();
 
+      PossiblyRestart();
+
       SendThisVC("(push 1)");
       SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
       SendThisVC(vcString);
@@ -410,6 +431,9 @@ namespace Microsoft.Boogie.SMTLib
 
         FlushLogFile();
 
+        if (CommandLineOptions.Clo.RestartProverPerVC && Process != null)
+          Process.NeedsRestart = true;
+
         return globalResult;
 
       } finally {
@@ -527,6 +551,7 @@ namespace Microsoft.Boogie.SMTLib
               case "memout":
                 currentErrorHandler.OnResourceExceeded("memory");
                 result = Outcome.OutOfMemory;
+                Process.NeedsRestart = true;
                 break;
               case "timeout":
                 currentErrorHandler.OnResourceExceeded("timeout");
