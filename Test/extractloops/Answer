@@ -64,6 +64,10 @@ Boogie program verifier finished with 1 verified, 0 errors
 t3.bpl(38,5): Error BP5001: This assertion might not hold.
 Execution trace:
     t3.bpl(19,3): anon0
+    t3.bpl(23,3): anon3_LoopHead
+    Inlined call to procedure foo begins
+        t3.bpl(11,5): anon0
+    Inlined call to procedure foo ends
     t3.bpl(27,3): anon3_LoopBody
     t3.bpl(23,3): anon3_LoopHead
     Inlined call to procedure foo begins

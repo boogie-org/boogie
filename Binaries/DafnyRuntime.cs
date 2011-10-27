@@ -298,6 +298,12 @@ namespace Dafny
         return elmts;
       }
     }
+    public IEnumerable<T> UniqueElements {
+      get {
+        var st = Set<T>.FromElements(elmts);
+        return st.Elements;
+      }
+    }
     public T Select(BigInteger index) {
       return elmts[(int)index];
     }

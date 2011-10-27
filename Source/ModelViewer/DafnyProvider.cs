@@ -92,9 +92,13 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     {
       if (name.StartsWith("$")) // this covers $Heap and $_Frame and $nw...
         return null;
+      if (name.Contains("##"))  // a temporary variable of the translation
+        return null;
+#if SOMETIME_AGAIN
       var hash = name.IndexOf('#');
       if (0 < hash)
         return name.Substring(0, hash);
+#endif
       return name;
     }
 

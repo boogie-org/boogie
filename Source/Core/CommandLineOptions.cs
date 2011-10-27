@@ -199,7 +199,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant((0 <= PrintErrorModel && PrintErrorModel <= 2) || PrintErrorModel == 4);
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
       Contract.Invariant(0 <= StepsBeforeWidening && StepsBeforeWidening <= 9);
-      Contract.Invariant(-1 <= BracketIdsInVC && BracketIdsInVC <= 1);
+      Contract.Invariant(-1 <= BracketIdsInVC && BracketIdsInVC < 2);
       Contract.Invariant(cce.NonNullElements(ProverOptions));
 
 
@@ -236,12 +236,6 @@ namespace Microsoft.Boogie {
     public string/*?*/ ModelViewFile = null;
     public int EnhancedErrorMessages = 0;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
-    public enum BvHandling {
-      None,
-      Z3Native,
-      ToInt
-    }
-    public BvHandling Bitvectors = BvHandling.Z3Native;
     public bool UseArrayTheory = false;
     public bool MonomorphicArrays {
       get {
@@ -945,31 +939,6 @@ namespace Microsoft.Boogie {
             ForceBplErrors = true;
             break;
 
-          case "-bv":
-          case "/bv":
-            if (ps.ConfirmArgumentCount(1)) {
-              if (TheProverFactory == null) {
-                TheProverFactory = ProverFactory.Load("Z3");
-                ProverName = "Z3".ToUpper();
-              }
-
-              switch (args[ps.i]) {
-                case "n":
-                  Bitvectors = BvHandling.None;
-                  break;
-                case "z":
-                  Bitvectors = BvHandling.Z3Native;
-                  break;
-                case "i":
-                  Bitvectors = BvHandling.ToInt;
-                  break;
-                default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
-              }
-            }
-            break;
-
           case "-contractInfer":
           case "/contractInfer":
             ContractInfer = true;
@@ -1470,8 +1439,8 @@ namespace Microsoft.Boogie {
       if (TheProverFactory == null) {
         cce.BeginExpose(this);
         {
-          TheProverFactory = ProverFactory.Load("Z3");
-          ProverName = "Z3".ToUpper();
+          TheProverFactory = ProverFactory.Load("SMTLIB");
+          ProverName = "SMTLIB".ToUpper();
         }
         cce.EndExpose();
       }
@@ -1918,15 +1887,6 @@ namespace Microsoft.Boogie {
      {:verify false}
        Skip verification of an implementation.
 
-     {:forceBvZ3Native true}
-       Verify the given implementation with the native Z3 bitvector
-       handling. Only works if /bv:i (or /bv:z, but then it does not do
-       anything) is given on the command line.
-
-     {:forceBvInt true}
-       Use int translation for the given implementation. Only work with
-       /bv:z (or /bv:i).
-
      {:vcs_max_cost N}
      {:vcs_max_splits N}
      {:vcs_max_keep_going_splits N}
@@ -1942,12 +1902,9 @@ namespace Microsoft.Boogie {
 
   ---- On functions ----------------------------------------------------------
 
+     {:builtin ""spec""}
      {:bvbuiltin ""spec""}
-       Z3 specific, used only with /bv:z.
-
-     {:bvint ""fn""}
-       With /bv:i rewrite the function to function symbol 'fn', except if
-       the 'fn' is 'id', in which case just strip the function altogether.
+       Rewrite the function to built-in prover function symbol 'fn'.
 
      {:never_pattern true}
        Terms starting with this function symbol will never be
@@ -2164,10 +2121,11 @@ namespace Microsoft.Boogie {
                            1 - remove empty blocks (default)
   /coalesceBlocks:<c> : 0 = do not coalesce blocks
                         1 = coalesce blocks (default)
-  /vc:<variety>  : n = nested block (default for non-/prover:z3),
+  /vc:<variety>  : n = nested block (default for /prover:Simplify),
                    m = nested block reach,
                    b = flat block, r = flat block reach,
-                   s = structured, l = local, d = dag (default with /prover:z3)
+                   s = structured, l = local,
+                   d = dag (default, except with /prover:Simplify)
                    doomed = doomed
   /traceverify   : print debug output during verification condition generation
   /subsumption:<c> : apply subsumption to asserted conditions:
@@ -2176,10 +2134,6 @@ namespace Microsoft.Boogie {
                    statement in that position) is ignored in checking contexts
                    (like other free things); this option includes these free
                    loop invariants as assumes in both contexts
-  /bv:<bv>       : bitvector handling
-                   n = none
-                   z = native Z3 bitvectors (default)
-                   i = unsoundly translate bitvectors to integers
   /inline:<i>    : use inlining strategy <i> for procedures with the :inline
                    attribute, see /attrHelp for details:
                    none
@@ -2261,17 +2215,17 @@ namespace Microsoft.Boogie {
                     1 (default) - include useful Trace labels in error output,
                     2 - include all Trace labels in the error output
   /vcBrackets:<b> : bracket odd-charactered identifier names with |'s.  <b> is:
-                   0 - no (default with /prover:Z3),
+                   0 - no (default with non-/prover:Simplify),
                    1 - yes (default with /prover:Simplify)
   /prover:<tp>   : use theorem prover <tp>, where <tp> is either the name of
                    a DLL containing the prover interface located in the
                    Boogie directory, or a full path to a DLL containing such
                    an interface. The standard interfaces shipped include:
-                   Z3 (default)
-                   Simplify
-                   SMTLib (only writes to a file)
-                   ContractInference (uses Z3)
-                   Z3api (Z3 using Managed .NET API)
+                     SMTLib (default, uses the SMTLib2 format and calls Z3)
+                     Z3 (uses Z3 with the Simplify format)
+                     Simplify
+                     ContractInference (uses Z3)
+                     Z3api (Z3 using Managed .NET API)
   /proverOpt:KEY[=VALUE] : Provide a prover-specific option (short form /p).
   /proverLog:<file> : Log input for the theorem prover.  Like filenames
                    supplied as arguments to other options, <file> can use the

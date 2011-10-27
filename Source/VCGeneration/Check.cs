@@ -33,7 +33,6 @@ namespace Microsoft.Boogie {
     private readonly VCExpressionGenerator gen;
 
     private ProverInterface thmProver;
-    private CommandLineOptions.BvHandling bitvectors;
     private int timeout;
 
     // state for the async interface
@@ -48,24 +47,8 @@ namespace Microsoft.Boogie {
 
     public readonly AutoResetEvent ProverDone = new AutoResetEvent(false);
 
-    private static CommandLineOptions.BvHandling BvHandlingForImpl(Implementation impl) {
-      if (impl == null)
-        return CommandLineOptions.Clo.Bitvectors;
-      bool force_int = false;
-      bool force_native = false;
-      cce.NonNull(impl.Proc).CheckBooleanAttribute("forceBvInt", ref force_int);
-      impl.Proc.CheckBooleanAttribute("forceBvZ3Native", ref force_native);
-      impl.CheckBooleanAttribute("forceBvInt", ref force_int);
-      impl.CheckBooleanAttribute("forceBvZ3Native", ref force_native);
-      if (force_native)
-        return CommandLineOptions.BvHandling.Z3Native;
-      if (force_int)
-        return CommandLineOptions.BvHandling.ToInt;
-      return CommandLineOptions.Clo.Bitvectors;
-    }
-
     public bool WillingToHandle(Implementation impl, int timeout) {
-      return !closed && timeout == this.timeout && bitvectors == BvHandlingForImpl(impl);
+      return !closed && timeout == this.timeout;
     }
 
     public VCExpressionGenerator VCExprGen {
@@ -91,13 +74,10 @@ namespace Microsoft.Boogie {
       }
 
       public readonly Program program;
-      public readonly CommandLineOptions.BvHandling bitvectors;
 
-      public ContextCacheKey(Program prog,
-                             CommandLineOptions.BvHandling bitvectors) {
+      public ContextCacheKey(Program prog) {
         Contract.Requires(prog != null);
         this.program = prog;
-        this.bitvectors = bitvectors;
       }
 
       [Pure]
@@ -105,15 +85,14 @@ namespace Microsoft.Boogie {
       public override bool Equals(object that) {
         if (that is ContextCacheKey) {
           ContextCacheKey thatKey = (ContextCacheKey)that;
-          return this.program.Equals(thatKey.program) &&
-                 this.bitvectors.Equals(thatKey.bitvectors);
+          return this.program.Equals(thatKey.program);
         }
         return false;
       }
 
       [Pure]
       public override int GetHashCode() {
-        return this.program.GetHashCode() + this.bitvectors.GetHashCode();
+        return this.program.GetHashCode();
       }
     }
 
@@ -125,7 +104,6 @@ namespace Microsoft.Boogie {
     public Checker(VC.ConditionGeneration vcgen, Program prog, string/*?*/ logFilePath, bool appendLogFile, Implementation impl, int timeout) {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
-      this.bitvectors = BvHandlingForImpl(impl);
       this.timeout = timeout;
 
       ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
@@ -139,11 +117,10 @@ namespace Microsoft.Boogie {
       if (timeout > 0) {
         options.TimeLimit = timeout * 1000;
       }
-      options.BitVectors = this.bitvectors;
 
       options.Parse(CommandLineOptions.Clo.ProverOptions);
 
-      ContextCacheKey key = new ContextCacheKey(prog, this.bitvectors);
+      ContextCacheKey key = new ContextCacheKey(prog);
       ProverContext ctx;
       ProverInterface prover;
 

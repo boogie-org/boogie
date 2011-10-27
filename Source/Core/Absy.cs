@@ -761,7 +761,7 @@ namespace Microsoft.Boogie {
                     Graph<Block> g = ProcessLoops(impl);
                     CreateProceduresForLoops(impl, g, loopImpls, fullMap);
                 }
-                catch (IrreducibleLoopException e)
+                catch (IrreducibleLoopException)
                 {
                     System.Diagnostics.Debug.Assert(!fullMap.ContainsKey(impl.Name));
                     fullMap[impl.Name] = null;

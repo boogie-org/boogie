@@ -494,8 +494,6 @@ namespace Microsoft.Boogie {
 
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
-      if (Val is BvConst && CommandLineOptions.Clo.Verify && CommandLineOptions.Clo.Bitvectors == CommandLineOptions.BvHandling.None)
-        tc.Error(this, "no bitvector handling specified, please use /bv:i or /bv:z flag");
       this.Type = ShallowType;
     }
 
@@ -2241,9 +2239,6 @@ namespace Microsoft.Boogie {
                TypeParameters == null) {
         TypeParamInstantiation tpInsts;
         Type = Fun.Typecheck(ref Args, out tpInsts, tc);
-        if (Type != null && Type.IsBv && CommandLineOptions.Clo.Verify && CommandLineOptions.Clo.Bitvectors == CommandLineOptions.BvHandling.None) {
-          tc.Error(this, "no bitvector handling specified, please use /bv:i or /bv:z flag");
-        }
         TypeParameters = tpInsts;
       }
       IOverloadedAppliable oa = Fun as IOverloadedAppliable;
