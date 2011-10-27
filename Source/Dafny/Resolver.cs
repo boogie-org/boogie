@@ -12,7 +12,7 @@ using Microsoft.Boogie;
 namespace Microsoft.Dafny {
   public class Resolver {
     public int ErrorCount = 0;
-    protected virtual void Error(IToken tok, string msg, params object[] args) {
+    void Error(IToken tok, string msg, params object[] args) {
       Contract.Requires(tok != null);
       Contract.Requires(msg != null);
       ConsoleColor col = Console.ForegroundColor;
@@ -42,6 +42,16 @@ namespace Microsoft.Dafny {
       Contract.Requires(e != null);
       Contract.Requires(msg != null);
       Error(e.tok, msg, args);
+    }
+    void Warning(IToken tok, string msg, params object[] args) {
+      Contract.Requires(tok != null);
+      Contract.Requires(msg != null);
+      ConsoleColor col = Console.ForegroundColor;
+      Console.ForegroundColor = ConsoleColor.Yellow;
+      Console.WriteLine("{0}({1},{2}): Warning: {3}",
+          tok.filename, tok.line, tok.col - 1,
+          string.Format(msg, args));
+      Console.ForegroundColor = col;
     }
 
     readonly BuiltIns builtIns;
@@ -311,8 +321,8 @@ namespace Microsoft.Dafny {
     Function currentFunction;
     readonly Scope<TypeParameter>/*!*/ allTypeParameters = new Scope<TypeParameter>();
     readonly Scope<IVariable>/*!*/ scope = new Scope<IVariable>();
-    readonly Scope<Statement>/*!*/ labeledStatements = new Scope<Statement>();
-    readonly List<Statement> loopStack = new List<Statement>();  // the enclosing loops (from which it is possible to break out)
+    Scope<Statement>/*!*/ labeledStatements = new Scope<Statement>();
+    List<Statement> loopStack = new List<Statement>();  // the enclosing loops (from which it is possible to break out)
     readonly Dictionary<Statement, bool> inSpecOnlyContext = new Dictionary<Statement, bool>();  // invariant: domain contain union of the domains of "labeledStatements" and "loopStack"
 
     /// <summary>
@@ -580,15 +590,6 @@ namespace Microsoft.Dafny {
         Contract.Assert(aa != null);
         if (aa.E != null) {
           ResolveExpression(aa.E, twoState);
-        }
-      }
-    }
-
-    void ResolveTriggers(Triggers trigs, bool twoState) {
-      // order does not matter for resolution, so resolve them in reverse order
-      for (; trigs != null; trigs = trigs.Prev) {
-        foreach (Expression e in trigs.Terms) {
-          ResolveExpression(e, twoState);
         }
       }
     }
@@ -1258,7 +1259,7 @@ namespace Microsoft.Dafny {
         AssignStmt s = (AssignStmt)stmt;
         int prevErrorCount = ErrorCount;
         if (s.Lhs is SeqSelectExpr) {
-          ResolveSeqSelectExpr((SeqSelectExpr)s.Lhs, true, true);  // allow ghosts for now, tighted up below
+          ResolveSeqSelectExpr((SeqSelectExpr)s.Lhs, true, false);  // allow ghosts for now, tighted up below
         } else {
           ResolveExpression(s.Lhs, true);  // allow ghosts for now, tighted up below
         }
@@ -1311,7 +1312,7 @@ namespace Microsoft.Dafny {
               Error(stmt, "Assignment to array element is not allowed in this context (because this is a ghost method or because the statement is guarded by a specification-only expression)");
             }
             if (!slhs.SelectOne) {
-              Error(stmt, "cannot assign to multiple array elements (try a foreach).");
+              Error(stmt, "cannot assign to a range of array elements (try the 'parallel' statement)");
             }
           }
 
@@ -1327,7 +1328,7 @@ namespace Microsoft.Dafny {
         s.IsGhost = lvalueIsGhost;
         Type lhsType = s.Lhs.Type;
         if (lhs is SeqSelectExpr && !((SeqSelectExpr)lhs).SelectOne) {
-          Error(stmt, "cannot assign to multiple array elements (try a foreach).");
+          Error(stmt, "cannot assign to a range of array elements (try the 'parallel' statement)");
           //lhsType = UserDefinedType.ArrayElementType(lhsType);
         } else {
           if (s.Rhs is ExprRhs) {
@@ -1473,61 +1474,78 @@ namespace Microsoft.Dafny {
           // any type is fine
         }
 
-      } else if (stmt is ForeachStmt) {
-        ForeachStmt s = (ForeachStmt)stmt;
+      } else if (stmt is ParallelStmt) {
+        var s = (ParallelStmt)stmt;
 
-        ResolveExpression(s.Collection, true);
-        Contract.Assert(s.Collection.Type != null);  // follows from postcondition of ResolveExpression
-        if (!UnifyTypes(s.Collection.Type, new CollectionTypeProxy(s.BoundVar.Type))) {
-          Error(s.Collection, "The type is expected to be a collection of {0} (instead got {1})", s.BoundVar.Type, s.Collection.Type);
-        }
-
-        scope.PushMarker();
-        bool b = scope.Push(s.BoundVar.Name, s.BoundVar);
-        Contract.Assert(b);  // since we just pushed a marker, we expect the Push to succeed
-        ResolveType(s.BoundVar.tok, s.BoundVar.Type);
         int prevErrorCount = ErrorCount;
-
-        ResolveExpression(s.Range, true);
-        Contract.Assert(s.Range.Type != null);  // follows from postcondition of ResolveExpression
-        if (!UnifyTypes(s.Range.Type, Type.Bool)) {
-          Error(s.Range, "range condition is expected to be of type {0}, but is {1}", Type.Bool, s.Range.Type);
+        scope.PushMarker();
+        foreach (BoundVar v in s.BoundVars) {
+          if (!scope.Push(v.Name, v)) {
+            Error(v, "Duplicate bound-variable name: {0}", v.Name);
+          }
+          ResolveType(v.tok, v.Type);
         }
-        bool successfullyResolvedCollectionAndRange = ErrorCount == prevErrorCount;
-
-        foreach (PredicateStmt ss in s.BodyPrefix) {
-          ResolveStatement(ss, specContextOnly, method);
-        }
-
-        bool specOnly = specContextOnly ||
-                        (successfullyResolvedCollectionAndRange && (UsesSpecFeatures(s.Collection) || UsesSpecFeatures(s.Range)));
-        s.IsGhost = specOnly;
-        ResolveStatement(s.GivenBody, specOnly, method);
-        // check for correct usage of BoundVar in LHS and RHS of this assignment
-        if (s.GivenBody is AssignStmt) {
-          s.BodyAssign = (AssignStmt)s.GivenBody;
-        } else if (s.GivenBody is ConcreteSyntaxStatement) {
-          var css = (ConcreteSyntaxStatement)s.GivenBody;
-          if (css.ResolvedStatements.Count == 1 && css.ResolvedStatements[0] is AssignStmt) {
-            s.BodyAssign = (AssignStmt)css.ResolvedStatements[0];
+        if (s.Range != null) {
+          ResolveExpression(s.Range, true);
+          Contract.Assert(s.Range.Type != null);  // follows from postcondition of ResolveExpression
+          if (!UnifyTypes(s.Range.Type, Type.Bool)) {
+            Error(stmt, "range restriction in parallel statement must be of type bool (instead got {0})", s.Range.Type);
           }
         }
-        if (s.BodyAssign == null) {
-          Error(s, "update statement inside foreach must be a single assignment statement");
-        } else {
-          FieldSelectExpr lhs = s.BodyAssign.Lhs as FieldSelectExpr;
-          IdentifierExpr obj = lhs == null ? null : lhs.Obj as IdentifierExpr;
-          if (obj == null || obj.Var != s.BoundVar) {
-            Error(s, "assignment inside foreach must assign to a field of the bound variable of the foreach statement");
+        foreach (var ens in s.Ens) {
+          ResolveExpression(ens.E, true);
+          Contract.Assert(ens.E.Type != null);  // follows from postcondition of ResolveExpression
+          if (!UnifyTypes(ens.E.Type, Type.Bool)) {
+            Error(ens.E, "ensures condition is expected to be of type {0}, but is {1}", Type.Bool, ens.E.Type);
+          }
+        }
+        // Since the range and postconditions are more likely to infer the types of the bound variables, resolve them
+        // first (above) and only then resolve the attributes (below).
+        ResolveAttributes(s.Attributes, true);
+
+        bool bodyMustBeSpecOnly = specContextOnly || (prevErrorCount == ErrorCount && UsesSpecFeatures(s.Range));
+        if (!bodyMustBeSpecOnly && prevErrorCount == ErrorCount) {
+          var missingBounds = new List<BoundVar>();
+          s.Bounds = DiscoverBounds(s.Tok, s.BoundVars, s.Range, true, missingBounds);
+          if (missingBounds.Count != 0) {
+            bodyMustBeSpecOnly = true;
+          }
+        }
+        s.IsGhost = bodyMustBeSpecOnly;
+
+        // clear the labels for the duration of checking the body, because break statements are not allowed to leave a parallel statement 
+        var prevLblStmts = labeledStatements;
+        var prevLoopStack = loopStack;
+        labeledStatements = new Scope<Statement>();
+        loopStack = new List<Statement>();
+        ResolveStatement(s.Body, bodyMustBeSpecOnly, method);
+        labeledStatements = prevLblStmts;
+        loopStack = prevLoopStack;
+        scope.PopMarker();
+
+        if (prevErrorCount == ErrorCount) {
+          // determine the Kind and run some additional checks on the body
+          if (s.Ens.Count != 0) {
+            // The only supported kind with ensures clauses is Proof.
+            s.Kind = ParallelStmt.ParBodyKind.Proof;
           } else {
-            var rhs = s.BodyAssign.Rhs as ExprRhs;
-            if (rhs != null && rhs.Expr is UnaryExpr && ((UnaryExpr)rhs.Expr).Op == UnaryExpr.Opcode.SetChoose) {
-              Error(s, "foreach statement does not support 'choose' statements");
+            // There are two special cases:
+            // * Assign, which is the only kind of the parallel statement that allows a heap update.
+            // * Call, which is a single call statement with no side effects or output parameters.
+            // The effect of Assign and the postcondition of Call will be seen outside the parallel
+            // statement.
+            Statement s0 = s.S0;
+            if (s0 is AssignStmt) {
+              s.Kind = ParallelStmt.ParBodyKind.Assign;
+            } else if (s0 is CallStmt) {
+              s.Kind = ParallelStmt.ParBodyKind.Call;
+            } else {
+              s.Kind = ParallelStmt.ParBodyKind.Proof;
+              Warning(s.Tok, "the conclusion of the body of this parallel statement will not be known outside the parallel statement; consider using an 'ensures' clause");
             }
           }
+          CheckParallelBodyRestrictions(s.Body, s.Kind == ParallelStmt.ParBodyKind.Assign);
         }
-
-        scope.PopMarker();
 
       } else if (stmt is MatchStmt) {
         MatchStmt s = (MatchStmt)stmt;
@@ -1649,23 +1667,19 @@ namespace Microsoft.Dafny {
           var tr = (TypeRhs)rhs;
           ResolveTypeRhs(tr, s, specContextOnly, method);
           isEffectful = tr.InitCall != null;
-        }
-        else if (rhs is HavocRhs) {
+        } else if (rhs is HavocRhs) {
           isEffectful = false;
-        }
-        else {
+        } else {
           var er = (ExprRhs)rhs;
           if (er.Expr is IdentifierSequence) {
             var cRhs = ResolveIdentifierSequence((IdentifierSequence)er.Expr, true, true);
             isEffectful = cRhs != null;
             callRhs = callRhs ?? cRhs;
-          }
-          else if (er.Expr is FunctionCallExpr) {
+          } else if (er.Expr is FunctionCallExpr) {
             var cRhs = ResolveFunctionCallExpr((FunctionCallExpr)er.Expr, true, true);
             isEffectful = cRhs != null;
             callRhs = callRhs ?? cRhs;
-          }
-          else {
+          } else {
             ResolveExpression(er.Expr, true);
             isEffectful = false;
           }
@@ -1681,8 +1695,7 @@ namespace Microsoft.Dafny {
         if (ie != null) {
           if (lhsNameSet.ContainsKey(ie.Name)) {
             Error(s, "Duplicate variable in left-hand side of {1} statement: {0}", ie.Name, callRhs != null ? "call" : "assignment");
-          }
-          else {
+          } else {
             lhsNameSet.Add(ie.Name, null);
           }
         }
@@ -1989,6 +2002,124 @@ namespace Microsoft.Dafny {
         }
         ResolveStatement(ss, specContextOnly, method);
         labeledStatements.PopMarker();
+      }
+    }
+
+    /// <summary>
+    /// This method performs some additional checks on the body "stmt" of a parallel statement
+    /// </summary>
+    public void CheckParallelBodyRestrictions(Statement stmt, bool allowHeapUpdates) {
+      Contract.Requires(stmt != null);
+      if (stmt is PredicateStmt) {
+        // cool
+      } else if (stmt is PrintStmt) {
+        Error(stmt, "print statement is not allowed inside a parallel statement");
+      } else if (stmt is BreakStmt) {
+        // this case can be checked already in the first pass through the parallel body, by doing so from an empty set of labeled statements and resetting the loop-stack
+      } else if (stmt is ReturnStmt) {
+        Error(stmt, "return statement is not allowed inside a parallel statement");
+      } else if (stmt is ConcreteSyntaxStatement) {
+        var s = (ConcreteSyntaxStatement)stmt;
+        foreach (var ss in s.ResolvedStatements) {
+          CheckParallelBodyRestrictions(ss, allowHeapUpdates);
+        }
+      } else if (stmt is AssignStmt) {
+        var s = (AssignStmt)stmt;
+        var idExpr = s.Lhs.Resolved as IdentifierExpr;
+        if (idExpr != null) {
+          if (scope.ContainsDecl(idExpr.Var)) {
+            Error(stmt, "body of parallel statement is attempting to update a variable declared outside the parallel statement");
+          }
+        } else if (!allowHeapUpdates) {
+          Error(stmt, "the body of the enclosing parallel statement may not update heap locations");
+        }
+        var rhs = s.Rhs;  // ExprRhs and HavocRhs are fine, but TypeRhs is not
+        if (rhs is TypeRhs) {
+          Error(rhs.Tok, "new allocation not supported in parallel statements");
+        } else if (rhs is ExprRhs) {
+          var r = ((ExprRhs)rhs).Expr.Resolved;
+          if (r is UnaryExpr && ((UnaryExpr)r).Op == UnaryExpr.Opcode.SetChoose) {
+            Error(r, "set choose operator not supported inside parallel statement");
+          }
+        }
+      } else if (stmt is VarDecl) {
+        // cool
+      } else if (stmt is CallStmt) {
+        var s = (CallStmt)stmt;
+        foreach (var lhs in s.Lhs) {
+          var idExpr = lhs as IdentifierExpr;
+          if (idExpr != null) {
+            if (scope.ContainsDecl(idExpr.Var)) {
+              Error(stmt, "body of parallel statement is attempting to update a variable declared outside the parallel statement");
+            }
+          } else {
+            Error(stmt, "the body of the enclosing parallel statement may not update heap locations");
+          }
+        }
+        if (s.Method.Mod.Count != 0) {
+          Error(s, "in the body of a parallel statement, every method called must have an empty modifies list");
+        }
+
+      } else if (stmt is BlockStmt) {
+        var s = (BlockStmt)stmt;
+        scope.PushMarker();
+        foreach (var ss in s.Body) {
+          CheckParallelBodyRestrictions(ss, allowHeapUpdates);
+        }
+        scope.PopMarker();
+
+      } else if (stmt is IfStmt) {
+        var s = (IfStmt)stmt;
+        CheckParallelBodyRestrictions(s.Thn, allowHeapUpdates);
+        if (s.Els != null) {
+          CheckParallelBodyRestrictions(s.Els, allowHeapUpdates);
+        }
+
+      } else if (stmt is AlternativeStmt) {
+        var s = (AlternativeStmt)stmt;
+        foreach (var alt in s.Alternatives) {
+          foreach (var ss in alt.Body) {
+            CheckParallelBodyRestrictions(ss, allowHeapUpdates);
+          }
+        }
+
+      } else if (stmt is WhileStmt) {
+        WhileStmt s = (WhileStmt)stmt;
+        CheckParallelBodyRestrictions(s.Body, allowHeapUpdates);
+
+      } else if (stmt is AlternativeLoopStmt) {
+        var s = (AlternativeLoopStmt)stmt;
+        foreach (var alt in s.Alternatives) {
+          foreach (var ss in alt.Body) {
+            CheckParallelBodyRestrictions(ss, allowHeapUpdates);
+          }
+        }
+
+      } else if (stmt is ParallelStmt) {
+        var s = (ParallelStmt)stmt;
+        switch (s.Kind) {
+          case ParallelStmt.ParBodyKind.Assign:
+            Error(stmt, "a parallel statement with heap updates is not allowed inside the body of another parallel statement");
+            break;
+          case ParallelStmt.ParBodyKind.Call:
+          case ParallelStmt.ParBodyKind.Proof:
+            // these are fine, since they don't update any non-local state
+            break;
+          default:
+            Contract.Assert(false);  // unexpected kind
+            break;
+        }
+
+      } else if (stmt is MatchStmt) {
+        var s = (MatchStmt)stmt;
+        foreach (var kase in s.Cases) {
+          foreach (var ss in kase.Body) {
+            CheckParallelBodyRestrictions(ss, allowHeapUpdates);
+          }
+        }
+
+      } else {
+        Contract.Assert(false); throw new cce.UnreachableException();
       }
     }
 
@@ -2603,9 +2734,8 @@ namespace Microsoft.Dafny {
           Error(expr, "body of quantifier must be of type bool (instead got {0})", e.Term.Type);
         }
         // Since the body is more likely to infer the types of the bound variables, resolve it
-        // first (above) and only then resolve the attributes and triggers (below).
+        // first (above) and only then resolve the attributes (below).
         ResolveAttributes(e.Attributes, twoState);
-        ResolveTriggers(e.Trigs, twoState);
         scope.PopMarker();
         expr.Type = Type.Bool;
 
@@ -3709,10 +3839,10 @@ namespace Microsoft.Dafny {
         return cce.NonNull(e.Var).IsGhost;
       } else if (expr is DatatypeValue) {
         DatatypeValue dtv = (DatatypeValue)expr;
-        return Contract.Exists(dtv.Arguments, arg=> UsesSpecFeatures(arg));
+        return dtv.Arguments.Exists(arg => UsesSpecFeatures(arg));
       } else if (expr is DisplayExpression) {
         DisplayExpression e = (DisplayExpression)expr;
-        return Contract.Exists( e.Elements,ee=> UsesSpecFeatures(ee));
+        return e.Elements.Exists(ee => UsesSpecFeatures(ee));
       } else if (expr is FieldSelectExpr) {
         FieldSelectExpr e = (FieldSelectExpr)expr;
         return cce.NonNull(e.Field).IsGhost || UsesSpecFeatures(e.Obj);
@@ -3734,7 +3864,7 @@ namespace Microsoft.Dafny {
         if (cce.NonNull(e.Function).IsGhost) {
           return true;
         }
-        return Contract.Exists( e.Args,arg=> UsesSpecFeatures(arg));
+        return e.Args.Exists(arg => UsesSpecFeatures(arg));
       } else if (expr is OldExpr) {
         OldExpr e = (OldExpr)expr;
         return UsesSpecFeatures(e.E);
@@ -3751,9 +3881,14 @@ namespace Microsoft.Dafny {
           return true;
         }
         return UsesSpecFeatures(e.E0) || UsesSpecFeatures(e.E1);
-      } else if (expr is QuantifierExpr) {
-        var e = (QuantifierExpr)expr;
-        return e.Bounds == null;  // if the resolver found bounds, then the quantifier can be compiled
+      } else if (expr is ComprehensionExpr) {
+        if (expr is QuantifierExpr && ((QuantifierExpr)expr).Bounds == null) {
+          return true;  // the quantifier cannot be compiled if the resolver found no bounds
+        }
+        return Contract.Exists(expr.SubExpressions, se => UsesSpecFeatures(se));
+      } else if (expr is SetComprehension) {
+        var e = (SetComprehension)expr;
+        return (e.Range != null && UsesSpecFeatures(e.Range)) || (e.Term != null && UsesSpecFeatures(e.Term));
       } else if (expr is WildcardExpr) {
         return false;
       } else if (expr is ITEExpr) {
@@ -3764,7 +3899,7 @@ namespace Microsoft.Dafny {
         if (UsesSpecFeatures(me.Source)) {
           return true;
         }
-        return Contract.Exists( me.Cases,mc=> UsesSpecFeatures(mc.Body));
+        return me.Cases.Exists(mc => UsesSpecFeatures(mc.Body));
       } else if (expr is ConcreteSyntaxExpression) {
         var e = (ConcreteSyntaxExpression)expr;
         return e.ResolvedExpression != null && UsesSpecFeatures(e.ResolvedExpression);
@@ -3849,6 +3984,10 @@ namespace Microsoft.Dafny {
     public Thing Find(string name) {
       Contract.Requires(name != null);
       return Find(name, false);
+    }
+
+    public bool ContainsDecl(Thing t) {
+      return things.Exists(thing => thing == t);
     }
   }
 }

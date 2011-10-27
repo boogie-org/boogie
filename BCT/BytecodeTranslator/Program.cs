@@ -95,6 +95,10 @@ namespace BytecodeTranslator {
           Console.WriteLine("Specified exemption file '{0}' not found.", fileName);
         }
       }
+      if (options.stub != null) {
+        Console.WriteLine("/s is no longer used to specify stub assemblies");
+        return errorReturnValue;
+      }
 
       if (options.breakIntoDebugger) {
         System.Diagnostics.Debugger.Break();
@@ -337,6 +341,32 @@ namespace BytecodeTranslator {
       if (PhoneCodeHelper.instance().PhoneNavigationToggled) {
         finalizeNavigationAnalysisAndBoogieCode(phoneControlsConfigFile, sink, outputFileName);
       }
+
+      //sink.CreateIdentifierCorrespondenceTable(primaryModule.Name.Value);
+
+      //var rc = new Bpl.ResolutionContext((Bpl.IErrorSink)null);
+      //foreach (var decl in sink.TranslatedProgram.TopLevelDeclarations) {
+      //  decl.Register(rc);
+      //}
+      //sink.TranslatedProgram.Resolve(rc);
+      //var goodDecls = new List<Bpl.Declaration>();
+      //var tc = new Bpl.TypecheckingContext(null);
+      //foreach (var decl in sink.TranslatedProgram.TopLevelDeclarations) {
+      //  var impl = decl as Bpl.Implementation;
+      //  if (impl == null) {
+      //    goodDecls.Add(decl);
+      //    continue;
+      //  }
+      //  try {
+      //    //var tc = new Bpl.TypecheckingContext(null);
+      //    impl.Typecheck(tc);
+      //    goodDecls.Add(impl);
+      //  } catch {
+      //    Console.WriteLine("Deleting implementation for: " + impl.Name);
+      //    // nothing to do, just continue
+      //  }
+      //}
+      //sink.TranslatedProgram.TopLevelDeclarations = goodDecls;
 
       Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(outputFileName);
       Prelude.Emit(writer);

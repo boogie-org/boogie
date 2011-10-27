@@ -251,7 +251,6 @@ namespace DafnyLanguage
                 case "exists":
                 case "false":
                 case "forall":
-                case "foreach":
                 case "free":
                 case "fresh":
                 case "function":
@@ -272,6 +271,7 @@ namespace DafnyLanguage
                 case "null":
                 case "object":
                 case "old":
+                case "parallel":
                 case "print":
                 case "reads":
                 case "refines":

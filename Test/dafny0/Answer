@@ -58,7 +58,7 @@ class C {
 Dafny program verifier finished with 0 verified, 0 errors
 
 -------------------- TypeTests.dfy --------------------
-TypeTests.dfy(84,9): Error: sorry, cannot instantiate collection type with a subrange type
+TypeTests.dfy(89,9): Error: sorry, cannot instantiate collection type with a subrange type
 TypeTests.dfy(4,13): Error: incorrect type of function argument 0 (expected C, got D)
 TypeTests.dfy(4,13): Error: incorrect type of function argument 1 (expected D, got C)
 TypeTests.dfy(5,13): Error: incorrect type of function argument 0 (expected C, got int)
@@ -74,14 +74,25 @@ TypeTests.dfy(58,8): Error: Duplicate local-variable name: x
 TypeTests.dfy(61,6): Error: Duplicate local-variable name: y
 TypeTests.dfy(68,17): Error: member F in type C does not refer to a method
 TypeTests.dfy(69,17): Error: a method called as an initialization method must not have any result arguments
-TypeTests.dfy(78,10): Error: cannot assign to multiple array elements (try a foreach).
-TypeTests.dfy(78,10): Error: cannot assign to multiple array elements (try a foreach).
-TypeTests.dfy(79,10): Error: cannot assign to multiple array elements (try a foreach).
-TypeTests.dfy(79,10): Error: cannot assign to multiple array elements (try a foreach).
-TypeTests.dfy(85,9): Error: sorry, cannot instantiate type parameter with a subrange type
-TypeTests.dfy(86,8): Error: sorry, cannot instantiate 'array' type with a subrange type
-TypeTests.dfy(87,8): Error: sorry, cannot instantiate 'array' type with a subrange type
-23 resolution/type errors detected in TypeTests.dfy
+TypeTests.dfy(78,10): Error: cannot assign to a range of array elements (try the 'parallel' statement)
+TypeTests.dfy(78,10): Error: cannot assign to a range of array elements (try the 'parallel' statement)
+TypeTests.dfy(79,10): Error: cannot assign to a range of array elements (try the 'parallel' statement)
+TypeTests.dfy(79,10): Error: cannot assign to a range of array elements (try the 'parallel' statement)
+TypeTests.dfy(80,10): Error: cannot assign to a range of array elements (try the 'parallel' statement)
+TypeTests.dfy(80,10): Error: cannot assign to a range of array elements (try the 'parallel' statement)
+TypeTests.dfy(82,2): Error: LHS of array assignment must denote an array element (found seq<C>)
+TypeTests.dfy(82,10): Error: cannot assign to a range of array elements (try the 'parallel' statement)
+TypeTests.dfy(82,10): Error: cannot assign to a range of array elements (try the 'parallel' statement)
+TypeTests.dfy(83,2): Error: LHS of array assignment must denote an array element (found seq<C>)
+TypeTests.dfy(83,10): Error: cannot assign to a range of array elements (try the 'parallel' statement)
+TypeTests.dfy(83,10): Error: cannot assign to a range of array elements (try the 'parallel' statement)
+TypeTests.dfy(84,2): Error: LHS of array assignment must denote an array element (found seq<C>)
+TypeTests.dfy(84,10): Error: cannot assign to a range of array elements (try the 'parallel' statement)
+TypeTests.dfy(84,10): Error: cannot assign to a range of array elements (try the 'parallel' statement)
+TypeTests.dfy(90,9): Error: sorry, cannot instantiate type parameter with a subrange type
+TypeTests.dfy(91,8): Error: sorry, cannot instantiate 'array' type with a subrange type
+TypeTests.dfy(92,8): Error: sorry, cannot instantiate 'array' type with a subrange type
+34 resolution/type errors detected in TypeTests.dfy
 
 -------------------- NatTypes.dfy --------------------
 NatTypes.dfy(7,5): Error: value assigned to a nat must be non-negative
@@ -162,11 +173,18 @@ SmallTests.dfy(131,9): Error: call may violate context's modifies clause
 Execution trace:
     (0,0): anon0
     (0,0): anon3_Else
-SmallTests.dfy(171,11): Error: foreach assignment may update an object not in the enclosing method's modifies clause
+SmallTests.dfy(171,9): Error: assignment may update an object field not in the enclosing context's modifies clause
 Execution trace:
     (0,0): anon0
-    (0,0): anon4_Else
-    (0,0): anon3
+    (0,0): anon22_Else
+    (0,0): anon5
+    (0,0): anon24_Else
+    (0,0): anon11
+    (0,0): anon26_Else
+    (0,0): anon16
+    (0,0): anon28_Then
+    (0,0): anon29_Then
+    (0,0): anon19
 SmallTests.dfy(199,14): Error: assertion violation
 Execution trace:
     (0,0): anon0
@@ -363,46 +381,37 @@ Execution trace:
     (0,0): anon23_Then
     (0,0): anon24_Then
     (0,0): anon11
-Definedness.dfy(199,24): Error: possible violation of function precondition
+Definedness.dfy(193,19): Error: possible division by zero
 Execution trace:
     (0,0): anon0
-Definedness.dfy(201,11): Error: foreach assignment may update an object not in the enclosing method's modifies clause
-Execution trace:
-    (0,0): anon0
-Definedness.dfy(203,33): Error: range expression must be well defined
-Execution trace:
-    (0,0): anon0
-Definedness.dfy(218,19): Error: possible division by zero
-Execution trace:
-    (0,0): anon0
-    Definedness.dfy(216,5): anon7_LoopHead
+    Definedness.dfy(191,5): anon7_LoopHead
     (0,0): anon7_LoopBody
     (0,0): anon8_Then
-Definedness.dfy(218,23): Error BP5004: This loop invariant might not hold on entry.
+Definedness.dfy(193,23): Error BP5004: This loop invariant might not hold on entry.
 Execution trace:
     (0,0): anon0
-Definedness.dfy(218,28): Error: possible division by zero
+Definedness.dfy(193,28): Error: possible division by zero
 Execution trace:
     (0,0): anon0
-    Definedness.dfy(216,5): anon7_LoopHead
+    Definedness.dfy(191,5): anon7_LoopHead
     (0,0): anon7_LoopBody
     (0,0): anon8_Then
-Definedness.dfy(239,46): Error: possible violation of function postcondition
+Definedness.dfy(214,46): Error: possible violation of function postcondition
 Execution trace:
     (0,0): anon0
     (0,0): anon5_Else
-Definedness.dfy(246,22): Error: target object may be null
+Definedness.dfy(221,22): Error: target object may be null
 Execution trace:
     (0,0): anon5_Then
     (0,0): anon2
     (0,0): anon6_Then
-Definedness.dfy(262,24): Error: possible violation of function postcondition
+Definedness.dfy(237,24): Error: possible violation of function postcondition
 Execution trace:
     (0,0): anon7_Then
     (0,0): anon2
     (0,0): anon8_Else
 
-Dafny program verifier finished with 23 verified, 39 errors
+Dafny program verifier finished with 22 verified, 36 errors
 
 -------------------- FunctionSpecifications.dfy --------------------
 FunctionSpecifications.dfy(28,13): Error: possible violation of function postcondition
@@ -947,6 +956,103 @@ Execution trace:
 
 Dafny program verifier finished with 27 verified, 6 errors
 
+-------------------- ParallelResolveErrors.dfy --------------------
+ParallelResolveErrors.dfy(8,6): Error: LHS of assignment must denote a mutable variable or field
+ParallelResolveErrors.dfy(13,6): Error: body of parallel statement is attempting to update a variable declared outside the parallel statement
+ParallelResolveErrors.dfy(31,6): Error: Assignment to non-ghost variable is not allowed in this context (because this is a ghost method or because the statement is guarded by a specification-only expression)
+ParallelResolveErrors.dfy(43,13): Error: set choose operator not supported inside parallel statement
+ParallelResolveErrors.dfy(48,13): Error: new allocation not supported in parallel statements
+ParallelResolveErrors.dfy(53,13): Error: new allocation not supported in parallel statements
+ParallelResolveErrors.dfy(60,19): Error: trying to break out of more loop levels than there are enclosing loops
+ParallelResolveErrors.dfy(64,18): Error: return statement is not allowed inside a parallel statement
+ParallelResolveErrors.dfy(71,21): Error: trying to break out of more loop levels than there are enclosing loops
+ParallelResolveErrors.dfy(72,20): Error: trying to break out of more loop levels than there are enclosing loops
+ParallelResolveErrors.dfy(73,20): Error: break label is undefined or not in scope: OutsideLoop
+ParallelResolveErrors.dfy(82,24): Error: trying to break out of more loop levels than there are enclosing loops
+ParallelResolveErrors.dfy(83,24): Error: break label is undefined or not in scope: OutsideLoop
+13 resolution/type errors detected in ParallelResolveErrors.dfy
+
+-------------------- Parallel.dfy --------------------
+Parallel.dfy(31,5): Error BP5002: A precondition for this call might not hold.
+Parallel.dfy(57,14): Related location: This is the precondition that might not hold.
+Execution trace:
+    (0,0): anon0
+    (0,0): anon29_Else
+    (0,0): anon7
+    (0,0): anon32_Else
+    (0,0): anon10
+    (0,0): anon33_Then
+    (0,0): anon34_Then
+    (0,0): anon35_Then
+    (0,0): anon14
+Parallel.dfy(35,5): Error: target object may be null
+Execution trace:
+    (0,0): anon0
+    (0,0): anon29_Else
+    (0,0): anon7
+    (0,0): anon32_Else
+    (0,0): anon10
+    (0,0): anon33_Else
+    (0,0): anon16
+    (0,0): anon36_Then
+    (0,0): anon37_Then
+    (0,0): anon38_Then
+    (0,0): anon20
+Parallel.dfy(39,18): Error: possible violation of postcondition of parallel statement
+Execution trace:
+    (0,0): anon0
+    (0,0): anon29_Else
+    (0,0): anon7
+    (0,0): anon32_Else
+    (0,0): anon10
+    (0,0): anon33_Else
+    (0,0): anon16
+    (0,0): anon36_Else
+    (0,0): anon22
+    (0,0): anon39_Then
+    (0,0): anon40_Then
+    (0,0): anon26
+Parallel.dfy(44,19): Error: assertion violation
+Execution trace:
+    (0,0): anon0
+    (0,0): anon29_Else
+    (0,0): anon7
+    (0,0): anon32_Else
+    (0,0): anon10
+    (0,0): anon33_Else
+    (0,0): anon16
+    (0,0): anon36_Else
+    (0,0): anon22
+    (0,0): anon39_Then
+    (0,0): anon40_Then
+Parallel.dfy(90,19): Error: assertion violation
+Execution trace:
+    (0,0): anon0
+    (0,0): anon10_Else
+    (0,0): anon3
+    (0,0): anon11_Then
+Parallel.dfy(96,20): Error: possible violation of postcondition of parallel statement
+Execution trace:
+    (0,0): anon0
+    (0,0): anon10_Else
+    (0,0): anon3
+    (0,0): anon11_Then
+    (0,0): anon12_Then
+Parallel.dfy(119,12): Error: value assigned to a nat must be non-negative
+Execution trace:
+    (0,0): anon0
+    (0,0): anon6_Then
+    (0,0): anon7_Then
+    (0,0): anon3
+Parallel.dfy(182,12): Error: left-hand sides for different parallel-statement bound variables may refer to the same location
+Execution trace:
+    (0,0): anon0
+    (0,0): anon19_Then
+    (0,0): anon20_Then
+    (0,0): anon5
+
+Dafny program verifier finished with 20 verified, 8 errors
+
 -------------------- TypeParameters.dfy --------------------
 TypeParameters.dfy(44,22): Error: assertion violation
 Execution trace:
@@ -1020,21 +1126,25 @@ TypeAntecedents.dfy(55,1): Error BP5003: A postcondition might not hold on this 
 TypeAntecedents.dfy(54,15): Related location: This is the postcondition that might not hold.
 Execution trace:
     (0,0): anon0
-    (0,0): anon15_Then
+    (0,0): anon25_Then
     (0,0): anon6
-    (0,0): anon18_Then
+    (0,0): anon28_Then
     (0,0): anon8
-    (0,0): anon19_Then
-    (0,0): anon10
-    (0,0): anon20_Then
-    (0,0): anon21_Then
-    (0,0): anon14
+    (0,0): anon29_Else
+    (0,0): anon13
+    (0,0): anon31_Else
+    (0,0): anon18
+    (0,0): anon33_Then
+    (0,0): anon20
+    (0,0): anon34_Then
+    (0,0): anon35_Then
+    (0,0): anon24
 TypeAntecedents.dfy(63,16): Error: assertion violation
 Execution trace:
     (0,0): anon0
-    (0,0): anon15_Else
-    (0,0): anon16_Then
-    (0,0): anon17_Else
+    (0,0): anon25_Else
+    (0,0): anon26_Then
+    (0,0): anon27_Else
 
 Dafny program verifier finished with 12 verified, 3 errors
 

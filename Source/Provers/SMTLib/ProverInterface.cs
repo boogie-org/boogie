@@ -525,9 +525,11 @@ namespace Microsoft.Boogie.SMTLib
           if (resp.ArgCount == 1 && resp.Name == ":reason-unknown") {
             switch (resp[0].Name) {
               case "memout":
+                currentErrorHandler.OnResourceExceeded("memory");
                 result = Outcome.OutOfMemory;
                 break;
               case "timeout":
+                currentErrorHandler.OnResourceExceeded("timeout");
                 result = Outcome.TimeOut;
                 break;
               default:

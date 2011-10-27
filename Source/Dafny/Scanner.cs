@@ -526,11 +526,11 @@ public class Scanner {
 			case "while": t.kind = 59; break;
 			case "invariant": t.kind = 60; break;
 			case "match": t.kind = 61; break;
-			case "foreach": t.kind = 62; break;
-			case "in": t.kind = 63; break;
-			case "assert": t.kind = 64; break;
-			case "assume": t.kind = 65; break;
-			case "print": t.kind = 66; break;
+			case "assert": t.kind = 62; break;
+			case "assume": t.kind = 63; break;
+			case "print": t.kind = 64; break;
+			case "parallel": t.kind = 65; break;
+			case "in": t.kind = 79; break;
 			case "false": t.kind = 89; break;
 			case "true": t.kind = 90; break;
 			case "null": t.kind = 91; break;
@@ -669,30 +669,30 @@ public class Scanner {
 				if (ch == '>') {AddCh(); goto case 30;}
 				else {goto case 0;}
 			case 30:
-				{t.kind = 67; break;}
+				{t.kind = 66; break;}
 			case 31:
-				{t.kind = 68; break;}
+				{t.kind = 67; break;}
 			case 32:
-				{t.kind = 69; break;}
+				{t.kind = 68; break;}
 			case 33:
-				{t.kind = 70; break;}
+				{t.kind = 69; break;}
 			case 34:
 				if (ch == '&') {AddCh(); goto case 35;}
 				else {goto case 0;}
 			case 35:
-				{t.kind = 71; break;}
+				{t.kind = 70; break;}
 			case 36:
-				{t.kind = 72; break;}
+				{t.kind = 71; break;}
 			case 37:
-				{t.kind = 73; break;}
+				{t.kind = 72; break;}
 			case 38:
-				{t.kind = 74; break;}
+				{t.kind = 73; break;}
 			case 39:
-				{t.kind = 77; break;}
+				{t.kind = 76; break;}
 			case 40:
-				{t.kind = 78; break;}
+				{t.kind = 77; break;}
 			case 41:
-				{t.kind = 79; break;}
+				{t.kind = 78; break;}
 			case 42:
 				{t.kind = 81; break;}
 			case 43:
@@ -751,13 +751,13 @@ public class Scanner {
 				else if (ch == '!') {AddCh(); goto case 41;}
 				else {t.kind = 80; break;}
 			case 62:
-				recEnd = pos; recKind = 75;
+				recEnd = pos; recKind = 74;
 				if (ch == '>') {AddCh(); goto case 32;}
-				else {t.kind = 75; break;}
+				else {t.kind = 74; break;}
 			case 63:
-				recEnd = pos; recKind = 76;
+				recEnd = pos; recKind = 75;
 				if (ch == '=') {AddCh(); goto case 29;}
-				else {t.kind = 76; break;}
+				else {t.kind = 75; break;}
 
 		}
 		t.val = new String(tval, 0, tlen);

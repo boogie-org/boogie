@@ -106,6 +106,7 @@ namespace Microsoft.Boogie.ModelViewer
     public virtual string CanonicalName(Model.Element elt)
     {
       string res;
+      if (elt == null) return "?";
       if (canonicalName.TryGetValue(elt, out res)) return res;
       NameSeqSuffix suff;
       var baseName = CanonicalBaseName(elt, out suff);
@@ -530,7 +531,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     protected virtual string Format()
     {
-      if (args.Length == 0)
+      if (args == null || args.Length == 0)
         return format;
 
       var res = new StringBuilder(format.Length);
