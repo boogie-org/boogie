@@ -160,8 +160,7 @@ namespace Microsoft.Boogie {
           Contract.Assert(decl != null);
           bool expand = false;
           Axiom ax = decl as Axiom;
-          decl.CheckBooleanAttribute("inline", ref expand);
-          if (!expand && ax != null) {
+          if (ax != null) {
             ctx.AddAxiom(ax, null);
           }
         }

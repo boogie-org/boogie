@@ -312,9 +312,6 @@ namespace Microsoft.Boogie {
           seeker.Visit(d);
         }
       }
-
-      AxiomExpander expander = new AxiomExpander(this, tc);
-      expander.CollectExpansions();
     }
 
     public void ComputeStronglyConnectedComponents() {
@@ -1796,13 +1793,7 @@ namespace Microsoft.Boogie {
 
     // the body is only set if the function is declared with {:inline}
     public Expr Body;
-    public List<Expansion/*!*/> expansions;
     public bool doingExpansion;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(expansions, true));
-    }
-
 
     private bool neverTrigger;
     private bool neverTriggerComputed;

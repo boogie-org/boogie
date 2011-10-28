@@ -1448,26 +1448,15 @@ Execution trace:
     test5.bpl(34,10): anon0$2
 
 Boogie program verifier finished with 4 verified, 1 error
--------------------- expansion.bpl --------------------
-expansion.bpl(29,14): Error: invalid type for argument 0 in application of foo1: bool (expected: int)
-expansion.bpl(13,16): Error: expansion: {:inline ...} expects either true or false as the argument
-expansion.bpl(14,22): Error: expansion: identifier was not quantified over
-expansion.bpl(15,22): Error: expansion: identifier was not quantified over
-expansion.bpl(16,22): Error: expansion: more variables quantified over, than used in function
-expansion.bpl(18,21): Error: expansion: axiom to be expanded must have form (forall VARS :: f(VARS) == expr(VARS))
-expansion.bpl(19,53): Error: expansion: only identifiers supported as function arguments
-expansion.bpl(33,22): Error: expansion: an identifier was used more than once
-8 type checking errors detected in expansion.bpl
 -------------------- expansion3.bpl --------------------
 *** detected expansion loop on foo3
 *** detected expansion loop on foo3
 *** detected expansion loop on foo3
-*** more than one possible expansion for x1
-expansion3.bpl(18,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    expansion3.bpl(18,3): anon0
 
-Boogie program verifier finished with 1 verified, 1 error
+Boogie program verifier finished with 1 verified, 0 errors
+-------------------- expansion4.bpl --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
 -------------------- Elevator.bpl --------------------
 Elevator.bpl(17,5): Error BP5005: This loop invariant might not be maintained by the loop.
 Execution trace:

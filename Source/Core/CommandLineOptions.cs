@@ -1856,14 +1856,6 @@ namespace Microsoft.Boogie {
       one of them to keep; otherwise, Boogie ignore the :extern declaration
       and keeps the other.
 
-  ---- On axioms -------------------------------------------------------------
-
-    {:inline true}
-      Works on axiom of the form:
-        (forall VARS :: f(VARS) = expr(VARS))
-      Makes Boogie replace f(VARS) with expr(VARS) everywhere just before
-      doing VC generation.
-
   ---- On implementations and procedures -------------------------------------
 
      {:inline N}
@@ -1896,6 +1888,10 @@ namespace Microsoft.Boogie {
      {:builtin ""spec""}
      {:bvbuiltin ""spec""}
        Rewrite the function to built-in prover function symbol 'fn'.
+
+     {:inline}
+     {:inline true}
+       Expand function according to its definition before going to the prover.
 
      {:never_pattern true}
        Terms starting with this function symbol will never be
