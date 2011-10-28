@@ -17,6 +17,7 @@ using Microsoft.Basetypes;
 namespace Microsoft.Boogie.VCExprAST {
   using Microsoft.Boogie;
 
+  // TODO: in future we might use that for defining symbols for Boogie's conditional compilation 
   public class VCGenerationOptions {
     private readonly List<string/*!*/>/*!*/ SupportedProverCommands;
     [ContractInvariantMethod]

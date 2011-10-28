@@ -192,7 +192,7 @@ namespace Microsoft.Boogie.Isabelle {
     public readonly bool AllTypes;
 
     public IsabelleContext(string outputFilename, bool allTypes)
-      : base(new VCExpressionGenerator(), new VCGenerationOptions(new List<string/*!*/> { "bvInt", "bvDefSem", "bvint", "bvz", "external" })) {
+      : base(new VCExpressionGenerator(), new VCGenerationOptions(new List<string/*!*/> { "isabelle", "external" })) {
       Contract.Requires(outputFilename != null);
 
       this.OutputFilename = outputFilename;

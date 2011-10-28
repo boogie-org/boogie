@@ -393,10 +393,8 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
       Z3InstanceOptions opts = cce.NonNull((Z3InstanceOptions)options);
       VCExpressionGenerator gen = new VCExpressionGenerator ();
       List<string/*!>!*/> proverCommands = new List<string/*!*/> ();
-      proverCommands.Add("all");
       proverCommands.Add("z3");
       proverCommands.Add("simplifyLike");
-      proverCommands.Add("bvDefSem");
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
       
       return NewProverContext(gen, genOptions, opts);

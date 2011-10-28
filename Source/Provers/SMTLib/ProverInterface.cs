@@ -863,11 +863,12 @@ namespace Microsoft.Boogie.SMTLib
 
       VCExpressionGenerator gen = new VCExpressionGenerator();
       List<string>/*!>!*/ proverCommands = new List<string/*!*/>();
-      proverCommands.Add("all");
       proverCommands.Add("smtlib");
       var opts = (SMTLibProverOptions)options ;
       if (opts.UseZ3)
         proverCommands.Add("z3");
+      else
+        proverCommands.Add("external");
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
       return new SMTLibProverContext(gen, genOptions);
     }

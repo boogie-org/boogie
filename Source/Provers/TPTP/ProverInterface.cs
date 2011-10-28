@@ -323,10 +323,8 @@ USE_PREDICATES=<bool>     Try to use SMT predicates for functions returning bool
 
       VCExpressionGenerator gen = new VCExpressionGenerator();
       List<string>/*!>!*/ proverCommands = new List<string/*!*/>();
-      // TODO: what is supported?
-      //      proverCommands.Add("all");
-      //      proverCommands.Add("simplify");
-      //      proverCommands.Add("simplifyLike");
+      proverCommands.Add("tptp");
+      proverCommands.Add("external");
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
       Contract.Assert(genOptions != null);
 

@@ -1846,7 +1846,6 @@ namespace Microsoft.Boogie {
 
     {:ignore}
       Ignore the declaration (after checking for duplicate names).
-      See also below for more options when :ignore is used with axioms.
 
     {:extern}
       If two top-level declarations introduce the same name (for example, two
@@ -1864,14 +1863,6 @@ namespace Microsoft.Boogie {
         (forall VARS :: f(VARS) = expr(VARS))
       Makes Boogie replace f(VARS) with expr(VARS) everywhere just before
       doing VC generation.
-
-    {:ignore ""p,q..""}
-      Exclude the axiom when generating VC for a prover supporting any
-      of the features 'p', 'q', ...
-      All the provers support the feature 'all'.
-      Simplify supports 'simplify' and 'simplifyLike'.
-      Z3 supports 'z3', 'simplifyLike' and either 'bvInt' (if the /bv:i
-      option is passed) or 'bvDefSem' (for /bv:z).
 
   ---- On implementations and procedures -------------------------------------
 
