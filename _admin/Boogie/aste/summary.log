@@ -1,35 +1,33 @@
-# Aste started: 2011-10-20 07:00:04
+# Aste started: 2011-10-28 10:25:32
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2011-10-20 07:03:18] SpecSharp revision: 435d3b691ea1
-# [2011-10-20 07:03:18] SscBoogie revision: 435d3b691ea1
-# [2011-10-20 07:04:52] Boogie revision: 77f2ac339c61
-[2011-10-20 07:06:25] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
+# [2011-10-28 10:28:35] SpecSharp revision: 3f9272efc13d
+# [2011-10-28 10:28:35] SscBoogie revision: 3f9272efc13d
+# [2011-10-28 10:30:04] Boogie revision: d5c2ce9c06dc
+[2011-10-28 10:31:42] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
 
     1>corflags : warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
     warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-[2011-10-20 07:07:35] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+[2011-10-28 10:32:49] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(713,9): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(764,49): warning CS0168: The variable 'e' is declared but never used
+    D:\Temp\aste\Boogie\Source\Core\Absy.cs(710,9): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(682,7): warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
+    D:\Temp\aste\Boogie\Source\Core\Absy.cs(679,7): warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(111,3): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(116,5): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)' overrides 'Microsoft.Boogie.Expr.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(119,65): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.ComputeFreeVariables(Microsoft.Boogie.Set)' overrides 'Microsoft.Boogie.Expr.ComputeFreeVariables(Microsoft.Boogie.Set)', thus cannot add Requires.
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(111,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(290,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(309,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(247,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(266,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1695,11): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1855,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(161,16): warning CS0219: The variable 'expand' is assigned but its value is never used
     D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(849,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0162: Unreachable code detected
-    warning CS0168: The variable 'e' is declared but never used
     warning CS0162: Unreachable code detected
     warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
@@ -39,7 +37,7 @@
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
-    warning CS0162: Unreachable code detected
+    warning CS0219: The variable 'expand' is assigned but its value is never used
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-[2011-10-20 07:55:56] 0 out of 31 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2011-10-20 07:57:01] Released nightly of Boogie
+[2011-10-28 11:26:40] 0 out of 31 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2011-10-28 11:27:44] Released nightly of Boogie

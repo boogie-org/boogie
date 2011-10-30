@@ -13,7 +13,7 @@ for %%f in (test1.bpl test2.bpl test3.bpl test4.bpl test6.bpl) do (
   %BGEXE% %* /inline:spec /print:- /env:0 /printInlined /noinfer %%f
 )
 
-for %%f in (test5.bpl expansion.bpl expansion3.bpl Elevator.bpl) do (
+for %%f in (test5.bpl expansion3.bpl expansion4.bpl Elevator.bpl) do (
   echo -------------------- %%f --------------------
   %BGEXE% %* %%f
 )

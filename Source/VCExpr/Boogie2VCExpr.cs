@@ -17,6 +17,7 @@ using Microsoft.Basetypes;
 namespace Microsoft.Boogie.VCExprAST {
   using Microsoft.Boogie;
 
+  // TODO: in future we might use that for defining symbols for Boogie's conditional compilation 
   public class VCGenerationOptions {
     private readonly List<string/*!*/>/*!*/ SupportedProverCommands;
     [ContractInvariantMethod]
@@ -1085,7 +1086,7 @@ namespace Microsoft.Boogie.VCExprAST {
         return null;
       }
 
-      Expansion exp = FindExpansion(app.Func);
+      var exp = app.Func.Body;
       if (exp == null)
         return null;
 
@@ -1098,11 +1099,12 @@ namespace Microsoft.Boogie.VCExprAST {
 
         // first bind the formals to VCExpr variables, which are later
         // substituted with the actual parameters
-        for (int i = 0; i < exp.formals.Length; ++i)
-          subst[BaseTranslator.BindVariable(cce.NonNull(exp.formals)[i])] = args[i];
+        var inParams = app.Func.InParams;
+        for (int i = 0; i < inParams.Length; ++i)
+          subst[BaseTranslator.BindVariable(inParams[i])] = args[i];
 
         // recursively translate the body of the expansion
-        translatedBody = BaseTranslator.Translate(exp.body);
+        translatedBody = BaseTranslator.Translate(exp);
       } finally {
         BaseTranslator.PopFormalsScope();
         BaseTranslator.PopBoundVariableScope();
@@ -1110,32 +1112,12 @@ namespace Microsoft.Boogie.VCExprAST {
       }
 
       // substitute the formals with the actual parameters in the body
-      Contract.Assert(typeArgs.Count == exp.TypeParameters.Length);
+      var tparms = app.Func.TypeParameters;
+      Contract.Assert(typeArgs.Count == tparms.Length);
       for (int i = 0; i < typeArgs.Count; ++i)
-        subst[exp.TypeParameters[i]] = typeArgs[i];
+        subst[tparms[i]] = typeArgs[i];
       SubstitutingVCExprVisitor/*!*/ substituter = new SubstitutingVCExprVisitor(Gen);
       return substituter.Mutate(translatedBody, subst);
-    }
-
-    private Expansion FindExpansion(Function func) {
-      Contract.Requires(func != null);
-      if (func.expansions == null)
-        return null;
-
-      Expansion exp = null;
-      foreach (Expansion e in func.expansions) {
-        Contract.Assert(e != null);
-        if (e.ignore == null || !GenerationOptions.IsAnyProverCommandSupported(e.ignore)) {
-          if (exp == null) {
-            exp = e;
-          } else {
-            System.Console.WriteLine("*** more than one possible expansion for {0}", func);
-            return null;
-          }
-        }
-      }
-
-      return exp;
     }
   }
 }
