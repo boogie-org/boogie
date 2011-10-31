@@ -6,7 +6,7 @@ using Microsoft.Cci;
 using Microsoft.Cci.MutableCodeModel;
 
 namespace BytecodeTranslator.Phone {
-  class PhoneBackKeyCallbackTraverser : BaseCodeTraverser {
+  class PhoneBackKeyCallbackTraverser : CodeTraverser {
     private ITypeReference typeBeingTraversed;
     private IMetadataHost host;
 
@@ -14,12 +14,12 @@ namespace BytecodeTranslator.Phone {
       this.host = host;
     }
 
-    public override void Visit(ITypeDefinition typeDef) {
+    public override void TraverseChildren(ITypeDefinition typeDef) {
       typeBeingTraversed = typeDef;
-      base.Visit(typeDef);
+      base.TraverseChildren(typeDef);
     }
-    
-    public override void Visit(IMethodCall methodCall) {
+
+    public override void TraverseChildren(IMethodCall methodCall) {
       if (methodCall.MethodToCall.ResolvedMethod.IsSpecialName && methodCall.MethodToCall.Name.Value == "add_BackKeyPress") {
         // check if it is a back key handler and if it is...
         // NAVIGATION TODO this only catches really locally delegate expressions. If it is created before, we see it as a BoundExpression
@@ -91,24 +91,24 @@ namespace BytecodeTranslator.Phone {
           PhoneCodeHelper.instance().BackKeyUnknownDelegateOffenders.Add(typeBeingTraversed);
         }
       }
-      base.Visit(methodCall);
+      base.TraverseChildren(methodCall);
     }
 
     private void parseBlockForNavigation(IBlockStatement block, out bool navigates, out ICollection<string> navTargets) {
       PhoneNavigationCallsTraverser traverser = new PhoneNavigationCallsTraverser(host);
-      traverser.Visit(block);
+      traverser.Traverse(block);
       navigates = traverser.CodeDoesNavigation;
       navTargets = traverser.NavigationTargets;
     }
 
     private void parseBlockForEventCancellation(IBlockStatement block, out bool cancels) {
       PhoneNavigationCallsTraverser traverser = new PhoneNavigationCallsTraverser(host);
-      traverser.Visit(block);
+      traverser.Traverse(block);
       cancels = traverser.CancelsEvents;
     }
   }
 
-  public class PhoneNavigationCallsTraverser : BaseCodeTraverser {
+  public class PhoneNavigationCallsTraverser : CodeTraverser {
     private IMetadataHost host;
 
     public bool CancelsEvents { get; private set; }
@@ -120,7 +120,7 @@ namespace BytecodeTranslator.Phone {
       this.host = host;
     }
 
-    public override void Visit(IMethodCall call) {
+    public override void TraverseChildren(IMethodCall call) {
       checkMethodCallForEventCancellation(call);
       checkMethodCallForNavigation(call);
     }

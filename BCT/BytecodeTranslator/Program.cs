@@ -210,6 +210,9 @@ namespace BytecodeTranslator {
           pdbReader = new PdbReader(pdbStream, host);
         }
         module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader) as IModule;
+        // The decompiler does not turn calls to Assert/Assume into Code Model nodes
+        module = new Microsoft.Cci.MutableContracts.ContractExtractor.AssertAssumeExtractor(host, pdbReader).Rewrite(module);
+
         host.RegisterAsLatest(module);
         modules.Add(module);
         contractExtractors.Add(module, host.GetContractExtractor(module.UnitIdentity));
@@ -396,7 +399,7 @@ namespace BytecodeTranslator {
         System.Console.WriteLine("Total methods seen: {0}, inlined: {1}", inlineTraverser.TotalMethodsCount, inlineTraverser.InlinedMethodsCount);
 
         PhoneBackKeyCallbackTraverser traverser = new PhoneBackKeyCallbackTraverser(sink.host);
-        traverser.Visit(modules);
+        traverser.Traverse(modules);
 
       }
     }

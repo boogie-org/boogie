@@ -25,11 +25,11 @@ namespace BytecodeTranslator {
 
     public abstract Translator getTranslator(Sink sink, IDictionary<IUnit, IContractProvider> contractProviders, IDictionary<IUnit, PdbReader> reader);
 
-    public virtual MetadataTraverser MakeMetadataTraverser(Sink sink,
+    public virtual BCTMetadataTraverser MakeMetadataTraverser(Sink sink,
       IDictionary<IUnit, IContractProvider> contractProviders, // TODO: remove this parameter?
       IDictionary<IUnit, PdbReader> sourceLocationProviders)
     {
-      return new MetadataTraverser(sink, sourceLocationProviders, this);
+      return new BCTMetadataTraverser(sink, sourceLocationProviders, this);
     }
     public virtual StatementTraverser MakeStatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext) {
       return new StatementTraverser(sink, pdbReader, contractContext, this);

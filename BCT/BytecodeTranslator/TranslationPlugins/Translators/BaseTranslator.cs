@@ -12,7 +12,7 @@ namespace BytecodeTranslator {
     private Sink sink;
     private IDictionary<IUnit, IContractProvider> contractProviders;
     private IDictionary<IUnit, PdbReader> pdbReaders;
-    private MetadataTraverser traverser;
+    private BCTMetadataTraverser traverser;
 
     public BaseTranslator(TraverserFactory factory, Sink sink, IDictionary<IUnit, IContractProvider> contractProviders, IDictionary<IUnit, PdbReader> pdbReaders) {
       Factory = factory;

@@ -22,18 +22,18 @@ using BytecodeTranslator.Phone;
 
 namespace BytecodeTranslator
 {
-  public class MostNestedTryStatementTraverser : BaseCodeTraverser {
+  public class MostNestedTryStatementTraverser : CodeTraverser {
     Dictionary<IName, ITryCatchFinallyStatement> mostNestedTryStatement = new Dictionary<IName, ITryCatchFinallyStatement>();
     ITryCatchFinallyStatement currStatement = null;
-    public override void Visit(ILabeledStatement labeledStatement) {
+    public override void TraverseChildren(ILabeledStatement labeledStatement) {
       if (currStatement != null)
         mostNestedTryStatement.Add(labeledStatement.Label, currStatement);
-      base.Visit(labeledStatement);
+      base.TraverseChildren(labeledStatement);
     }
-    public override void Visit(ITryCatchFinallyStatement tryCatchFinallyStatement) {
+    public override void TraverseChildren(ITryCatchFinallyStatement tryCatchFinallyStatement) {
       ITryCatchFinallyStatement savedStatement = currStatement;
       currStatement = tryCatchFinallyStatement;
-      base.Visit(tryCatchFinallyStatement);
+      base.TraverseChildren(tryCatchFinallyStatement);
       currStatement = savedStatement;
     }
     public ITryCatchFinallyStatement MostNestedTryStatement(IName label) {
@@ -43,7 +43,7 @@ namespace BytecodeTranslator
     }
   }
 
-  public class StatementTraverser : BaseCodeTraverser {
+  public class StatementTraverser : CodeTraverser {
 
     public readonly TraverserFactory factory;
 
@@ -64,6 +64,7 @@ namespace BytecodeTranslator
       PdbReader = pdbReader;
       this.contractContext = contractContext;
       this.captureState = sink.Options.captureState;
+      this.PreorderVisitor = new SourceContextEmitter(this);
     }
     #endregion
 
@@ -71,7 +72,7 @@ namespace BytecodeTranslator
 
     Bpl.Expr ExpressionFor(IExpression expression) {
       ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
-      etrav.Visit(expression);
+      etrav.Traverse(expression);
       Contract.Assert(etrav.TranslatedExpressions.Count == 1);
       return etrav.TranslatedExpressions.Pop();
     }
@@ -87,8 +88,51 @@ namespace BytecodeTranslator
         var remover = new AnonymousDelegateRemover(this.sink.host, this.PdbReader);
         newTypes = remover.RemoveAnonymousDelegates(methodBody.MethodDefinition, block);
       }
-      this.Visit(methodBody);
+      this.Traverse(methodBody);
       return newTypes;
+    }
+    #endregion
+
+    #region Helper Classes
+    class SourceContextEmitter : CodeVisitor {
+      StatementTraverser parent;
+      public SourceContextEmitter(StatementTraverser parent) {
+        this.parent = parent;
+      }
+
+      public override void Visit(IStatement statement) {
+        EmitSourceContext(statement);
+        if (this.parent.sink.Options.captureState) {
+          var tok = statement.Token();
+          var state = String.Format("s{0}", StatementTraverser.captureStateCounter++);
+          var attrib = new Bpl.QKeyValue(tok, "captureState ", new List<object> { state }, null);
+          this.parent.StmtBuilder.Add(
+            new Bpl.AssumeCmd(tok, Bpl.Expr.True, attrib)
+            );
+        }
+      }
+
+      private void EmitSourceContext(IStatement statement) {
+        if (statement is IEmptyStatement) return;
+        var tok = statement.Token();
+        string fileName = null;
+        int lineNumber = 0;
+        if (this.parent.PdbReader != null) {
+          var slocs = this.parent.PdbReader.GetClosestPrimarySourceLocationsFor(statement.Locations);
+          foreach (var sloc in slocs) {
+            fileName = sloc.Document.Location;
+            lineNumber = sloc.StartLine;
+            break;
+          }
+          if (fileName != null) {
+            var attrib = new Bpl.QKeyValue(tok, "sourceLine", new List<object> { Bpl.Expr.Literal((int)lineNumber) }, null);
+            attrib = new Bpl.QKeyValue(tok, "sourceFile", new List<object> { fileName }, attrib);
+            this.parent.StmtBuilder.Add(
+              new Bpl.AssertCmd(tok, Bpl.Expr.True, attrib)
+              );
+          }
+        }
+      }
     }
     #endregion
 
@@ -103,50 +147,15 @@ namespace BytecodeTranslator
     //  base.Visit(methodBody);
     //}
 
-    public override void Visit(IBlockStatement block) {
+    public override void TraverseChildren(IBlockStatement block) {
       foreach (var s in block.Statements) {
-        this.Visit(s);
-      }
-    }
-
-    public override void Visit(IStatement statement) {
-      EmitSourceContext(statement);
-      if (this.sink.Options.captureState) {
-        var tok = statement.Token();
-        var state = String.Format("s{0}", StatementTraverser.captureStateCounter++);
-        var attrib = new Bpl.QKeyValue(tok, "captureState ", new List<object> { state }, null);
-        StmtBuilder.Add(
-          new Bpl.AssumeCmd(tok, Bpl.Expr.True, attrib)
-          );
-      }
-      base.Visit(statement);
-    }
-
-    private void EmitSourceContext(IStatement statement) {
-      if (statement is IEmptyStatement) return;
-      var tok = statement.Token();
-      string fileName = null;
-      int lineNumber = 0;
-      if (this.PdbReader != null) {
-        var slocs = this.PdbReader.GetClosestPrimarySourceLocationsFor(statement.Locations);
-        foreach (var sloc in slocs) {
-          fileName = sloc.Document.Location;
-          lineNumber = sloc.StartLine;
-          break;
-        }
-        if (fileName != null) {
-          var attrib = new Bpl.QKeyValue(tok, "sourceLine", new List<object> { Bpl.Expr.Literal((int)lineNumber) }, null);
-          attrib = new Bpl.QKeyValue(tok, "sourceFile", new List<object> { fileName }, attrib);
-          StmtBuilder.Add(
-            new Bpl.AssertCmd(tok, Bpl.Expr.True, attrib)
-            );
-        }
+        this.Traverse(s);
       }
     }
 
     #region Basic Statements
 
-    public override void Visit(IAssertStatement assertStatement) {
+    public override void TraverseChildren(IAssertStatement assertStatement) {
       Bpl.Expr conditionExpr = ExpressionFor(assertStatement.Condition);
       Bpl.Type conditionType = this.sink.CciTypeToBoogie(assertStatement.Condition.Type);
       if (conditionType == this.sink.Heap.RefType) {
@@ -165,7 +174,7 @@ namespace BytecodeTranslator
       }
     }
 
-    public override void Visit(IAssumeStatement assumeStatement) {
+    public override void TraverseChildren(IAssumeStatement assumeStatement) {
       Bpl.Expr conditionExpr = ExpressionFor(assumeStatement.Condition);
       Bpl.Type conditionType = this.sink.CciTypeToBoogie(assumeStatement.Condition.Type);
       if (conditionType == this.sink.Heap.RefType) {
@@ -185,13 +194,13 @@ namespace BytecodeTranslator
     /// </summary>
     /// <remarks>(mschaef) Works, but still a stub</remarks>
     /// <param name="conditionalStatement"></param>
-    public override void Visit(IConditionalStatement conditionalStatement) {
+    public override void TraverseChildren(IConditionalStatement conditionalStatement) {
       StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
       StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
       ExpressionTraverser condTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
-      condTraverser.Visit(conditionalStatement.Condition);
-      thenTraverser.Visit(conditionalStatement.TrueBranch);
-      elseTraverser.Visit(conditionalStatement.FalseBranch);
+      condTraverser.Traverse(conditionalStatement.Condition);
+      thenTraverser.Traverse(conditionalStatement.TrueBranch);
+      elseTraverser.Traverse(conditionalStatement.FalseBranch);
 
       Bpl.Expr conditionExpr = condTraverser.TranslatedExpressions.Pop();
       Bpl.Type conditionType = this.sink.CciTypeToBoogie(conditionalStatement.Condition.Type);
@@ -221,9 +230,9 @@ namespace BytecodeTranslator
     /// </summary>
     /// <param name="expressionStatement"></param>
     /// <remarks> TODO: might be wrong for the general case</remarks>
-    public override void Visit(IExpressionStatement expressionStatement) {
+    public override void TraverseChildren(IExpressionStatement expressionStatement) {
       ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
-      etrav.Visit(expressionStatement.Expression);
+      etrav.Traverse(expressionStatement.Expression);
     }
 
     /// <summary>
@@ -231,18 +240,18 @@ namespace BytecodeTranslator
     /// </summary>
     /// <remarks>(mschaef) Not Implemented</remarks>
     /// <param name="breakStatement"></param>
-    public override void Visit(IBreakStatement breakStatement) {
+    public override void TraverseChildren(IBreakStatement breakStatement) {
       throw new TranslationException("Break statements are not handled");
       //StmtBuilder.Add(new Bpl.BreakCmd(breakStatement.Token(), "I dont know"));
     }
 
-    public override void Visit(IContinueStatement continueStatement) {
+    public override void TraverseChildren(IContinueStatement continueStatement) {
       throw new TranslationException("Continue statements are not handled");
     }
 
-    public override void Visit(ISwitchStatement switchStatement) {
+    public override void TraverseChildren(ISwitchStatement switchStatement) {
       var eTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
-      eTraverser.Visit(switchStatement.Expression);
+      eTraverser.Traverse(switchStatement.Expression);
       var conditionExpr = eTraverser.TranslatedExpressions.Pop();
 
       // Can't depend on default case existing or its index in the collection.
@@ -258,7 +267,7 @@ namespace BytecodeTranslator
       Bpl.StmtList defaultStmts = null;
       if (defaultCase != null) {
         var defaultBodyTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
-        defaultBodyTraverser.Visit(defaultCase.Body);
+        defaultBodyTraverser.Traverse(defaultCase.Body);
         defaultStmts = defaultBodyTraverser.StmtBuilder.Collect(defaultCase.Token());
       }
 
@@ -269,12 +278,12 @@ namespace BytecodeTranslator
         var switchCase = switchCases[i];
 
         var scTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
-        scTraverser.Visit(switchCase.Expression);
+        scTraverser.Traverse(switchCase.Expression);
         var scConditionExpr = scTraverser.TranslatedExpressions.Pop();
         var condition = Bpl.Expr.Eq(conditionExpr, scConditionExpr);
 
         var scBodyTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
-        scBodyTraverser.Visit(switchCase.Body);
+        scBodyTraverser.Traverse(switchCase.Body);
 
         ifCmd = new Bpl.IfCmd(switchCase.Token(),
           condition,
@@ -294,7 +303,7 @@ namespace BytecodeTranslator
     /// the default ctor.
     /// Otherwise ignore it.
     /// </summary>
-    public override void Visit(ILocalDeclarationStatement localDeclarationStatement) {
+    public override void TraverseChildren(ILocalDeclarationStatement localDeclarationStatement) {
       var initVal = localDeclarationStatement.InitialValue;
       var typ = localDeclarationStatement.LocalVariable.Type;
       var isStruct = TranslationHelper.IsStruct(typ);
@@ -329,7 +338,7 @@ namespace BytecodeTranslator
       return;
     }
 
-    public override void Visit(IPushStatement pushStatement) {
+    public override void TraverseChildren(IPushStatement pushStatement) {
       var tok = pushStatement.Token();
       var val = pushStatement.ValueToPush;
       var dup = val as IDupValue;
@@ -348,12 +357,12 @@ namespace BytecodeTranslator
     /// </summary>
     /// <remarks>(mschaef) not implemented</remarks>
     /// <param name="returnStatement"></param>
-    public override void Visit(IReturnStatement returnStatement) {
+    public override void TraverseChildren(IReturnStatement returnStatement) {
       Bpl.IToken tok = returnStatement.Token();
 
       if (returnStatement.Expression != null) {
         ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
-        etrav.Visit(returnStatement.Expression);
+        etrav.Traverse(returnStatement.Expression);
 
         if (this.sink.ReturnVariable == null || etrav.TranslatedExpressions.Count < 1) {
           throw new TranslationException(String.Format("{0} returns a value that is not supported by the function", returnStatement.ToString()));
@@ -380,7 +389,7 @@ namespace BytecodeTranslator
 
     #region Goto and Labels
 
-    public override void Visit(IGotoStatement gotoStatement) {
+    public override void TraverseChildren(IGotoStatement gotoStatement) {
       IName target = gotoStatement.TargetStatement.Label;
       ITryCatchFinallyStatement targetStatement = this.sink.MostNestedTryStatement(target);
       int count = 0;
@@ -406,24 +415,24 @@ namespace BytecodeTranslator
     /// </summary>
     /// <remarks> (mschaef) not sure if there is more work to do</remarks>
     /// <param name="labeledStatement"></param>
-    public override void Visit(ILabeledStatement labeledStatement) {
+    public override void TraverseChildren(ILabeledStatement labeledStatement) {
       StmtBuilder.AddLabelCmd(labeledStatement.Label.Value);
-      base.Visit(labeledStatement.Statement);
+      base.Traverse(labeledStatement.Statement);
     }
 
     #endregion
 
     #region Looping Statements
 
-    public override void Visit(IWhileDoStatement whileDoStatement) {
+    public override void TraverseChildren(IWhileDoStatement whileDoStatement) {
       throw new TranslationException("WhileDo statements are not handled");
     }
 
-    public override void Visit(IForEachStatement forEachStatement) {
+    public override void TraverseChildren(IForEachStatement forEachStatement) {
       throw new TranslationException("ForEach statements are not handled");
     }
 
-    public override void Visit(IForStatement forStatement) {
+    public override void TraverseChildren(IForStatement forStatement) {
       throw new TranslationException("For statements are not handled");
     }
 
@@ -489,9 +498,9 @@ namespace BytecodeTranslator
       StmtBuilder.Add(ifCmd);
     }
 
-    public override void Visit(ITryCatchFinallyStatement tryCatchFinallyStatement) {
+    public override void TraverseChildren(ITryCatchFinallyStatement tryCatchFinallyStatement) {
       this.sink.nestedTryCatchFinallyStatements.Add(new Tuple<ITryCatchFinallyStatement, Sink.TryCatchFinallyContext>(tryCatchFinallyStatement, Sink.TryCatchFinallyContext.InTry));
-      this.Visit(tryCatchFinallyStatement.TryBody);
+      this.Traverse(tryCatchFinallyStatement.TryBody);
       StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LabelVariable), Bpl.Expr.Literal(-1)));
       StmtBuilder.Add(new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(this.sink.FindOrCreateFinallyLabel(tryCatchFinallyStatement))));
       this.sink.nestedTryCatchFinallyStatements.RemoveAt(this.sink.nestedTryCatchFinallyStatements.Count - 1);
@@ -503,13 +512,13 @@ namespace BytecodeTranslator
       List<Bpl.Expr> typeReferences = new List<Bpl.Expr>();
       this.sink.nestedTryCatchFinallyStatements.Add(new Tuple<ITryCatchFinallyStatement, Sink.TryCatchFinallyContext>(tryCatchFinallyStatement, Sink.TryCatchFinallyContext.InCatch));
       foreach (ICatchClause catchClause in tryCatchFinallyStatement.CatchClauses) {
-        typeReferences.Insert(0, this.sink.FindOrCreateType(catchClause.ExceptionType));
+        typeReferences.Insert(0, this.sink.FindOrCreateTypeReference(catchClause.ExceptionType));
         StatementTraverser catchTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
         if (catchClause.ExceptionContainer != Dummy.LocalVariable) {
           Bpl.Variable catchClauseVariable = this.sink.FindOrCreateLocalVariable(catchClause.ExceptionContainer);
           catchTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(catchClauseVariable), Bpl.Expr.Ident(this.sink.LocalExcVariable)));
         }
-        catchTraverser.Visit(catchClause.Body);
+        catchTraverser.Traverse(catchClause.Body);
         catchTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LabelVariable), Bpl.Expr.Literal(-1)));
         catchTraverser.StmtBuilder.Add(new Bpl.GotoCmd(Bpl.Token.NoToken, new Bpl.StringSeq(this.sink.FindOrCreateFinallyLabel(tryCatchFinallyStatement))));
         catchStatements.Insert(0, catchTraverser.StmtBuilder.Collect(catchClause.Token()));
@@ -532,7 +541,7 @@ namespace BytecodeTranslator
         Bpl.Variable savedLabelVariable = this.sink.CreateFreshLocal(Bpl.Type.Int);
         StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(savedExcVariable), Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable)));
         StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(savedLabelVariable), Bpl.Expr.Ident(this.sink.LabelVariable)));
-        Visit(tryCatchFinallyStatement.FinallyBody);
+        this.Traverse(tryCatchFinallyStatement.FinallyBody);
         StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(savedExcVariable)));
         StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LabelVariable), Bpl.Expr.Ident(savedLabelVariable)));
         this.sink.nestedTryCatchFinallyStatements.RemoveAt(this.sink.nestedTryCatchFinallyStatements.Count - 1);
@@ -543,14 +552,14 @@ namespace BytecodeTranslator
       RaiseException(raiseExpr);
     }
 
-    public override void Visit(IThrowStatement throwStatement) {
+    public override void TraverseChildren(IThrowStatement throwStatement) {
       ExpressionTraverser exceptionTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
-      exceptionTraverser.Visit(throwStatement.Exception);
+      exceptionTraverser.Traverse(throwStatement.Exception);
       StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), exceptionTraverser.TranslatedExpressions.Pop()));
       RaiseException();
     }
 
-    public override void Visit(IRethrowStatement rethrowStatement) {
+    public override void TraverseChildren(IRethrowStatement rethrowStatement) {
       StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.LocalExcVariable)));
       RaiseException();
     }

@@ -7,7 +7,7 @@ using Microsoft.Cci.MutableCodeModel;
 using TranslationPlugins;
 
 namespace BytecodeTranslator.Phone {
-  public class PhoneNavigationCodeTraverser : BaseCodeTraverser {
+  public class PhoneNavigationCodeTraverser : CodeTraverser {
     private MetadataReaderHost host;
     private ITypeReference navigationSvcType;
     private ITypeReference cancelEventArgsType;
@@ -38,12 +38,12 @@ namespace BytecodeTranslator.Phone {
       navigationCallers = new HashSet<IMethodReference>();
     }
 
-    public override void Visit(ITypeDefinition typeDef) {
+    public override void TraverseChildren(ITypeDefinition typeDef) {
       this.typeTraversed = typeDef;
-      base.Visit(typeDef);
+      base.TraverseChildren(typeDef);
     }
 
-    public override void Visit(IMethodDefinition method) {
+    public override void TraverseChildren(IMethodDefinition method) {
       this.methodTraversed = method;
       if (method.IsConstructor && PhoneTypeHelper.isPhoneApplicationClass(typeTraversed, host)) {
         navigationCallers.Add(method);
@@ -77,7 +77,7 @@ namespace BytecodeTranslator.Phone {
           }
         }
       }
-      base.Visit(method);
+      base.TraverseChildren(method);
     }
 
 
@@ -87,14 +87,14 @@ namespace BytecodeTranslator.Phone {
     private StaticURIMode currentStaticMode= StaticURIMode.NOT_STATIC;
     private string unpurifiedFoundURI="";
 
-    public override void Visit(IBlockStatement block) {
+    public override void TraverseChildren(IBlockStatement block) {
       IList<Tuple<IStatement,StaticURIMode,string>> staticNavStmts = new List<Tuple<IStatement,StaticURIMode,string>>();
       IList<IStatement> nonStaticNavStmts = new List<IStatement>();
       foreach (IStatement statement in block.Statements) {
         navCallFound = false;
         navCallIsStatic = false;
         navCallIsBack = false;
-        this.Visit(statement);
+        this.Traverse(statement);
         if (navCallFound) {
           navCallers.Add(methodTraversed);
           if (navCallIsStatic) {
@@ -165,7 +165,7 @@ namespace BytecodeTranslator.Phone {
       return true;
     }
 
-    public override void Visit(IMethodCall methodCall) {
+    public override void TraverseChildren(IMethodCall methodCall) {
       string target;
       if (isNavigationOnBackKeyPressHandler(methodCall, out target)) {
         ICollection<Tuple<IMethodReference,string>> targets;
@@ -316,7 +316,7 @@ namespace BytecodeTranslator.Phone {
   /// <summary>
   /// Traverse metadata looking only for PhoneApplicationPage's constructors
   /// </summary>
-  public class PhoneNavigationMetadataTraverser : BaseMetadataTraverser {
+  public class PhoneNavigationMetadataTraverser : MetadataTraverser {
     private MetadataReaderHost host;
     private ITypeDefinition typeBeingTraversed;
     private PhoneNavigationCodeTraverser codeTraverser;
@@ -326,13 +326,15 @@ namespace BytecodeTranslator.Phone {
       this.host = host;
     }
 
-    public override void Visit(IEnumerable<IAssemblyReference> assemblies) {
-      codeTraverser = new PhoneNavigationCodeTraverser(host, assemblies);
-      base.Visit(assemblies);
+    public override void TraverseChildren(IModule module) {
+      codeTraverser = new PhoneNavigationCodeTraverser(host, module.AssemblyReferences);
+      base.Traverse(module.AssemblyReferences);
+      base.TraverseChildren(module);
     }
 
+
     // TODO can we avoid visiting every type? Are there only a few, identifiable, types that may perform navigation?
-    public override void Visit(ITypeDefinition typeDefinition) {
+    public override void TraverseChildren(ITypeDefinition typeDefinition) {
       typeBeingTraversed = typeDefinition;
       if (typeDefinition.isPhoneApplicationClass(host)) {
         NamespaceTypeDefinition mutableTypeDef = typeDefinition as NamespaceTypeDefinition;
@@ -351,22 +353,22 @@ namespace BytecodeTranslator.Phone {
         }
       }
 
-      codeTraverser.Visit(typeDefinition);
-      base.Visit(typeDefinition);
+      codeTraverser.Traverse(typeDefinition);
+      base.TraverseChildren(typeDefinition);
     }
 
     // TODO same here. Are there specific methods (and ways to identfy those) that can perform navigation?
-    public override void Visit(IMethodDefinition method) {
+    public override void TraverseChildren(IMethodDefinition method) {
       if (PhoneCodeHelper.instance().isBackKeyPressOverride(method)) {
         PhoneCodeHelper.instance().KnownBackKeyHandlers.Add(method);
         PhoneCodeHelper.instance().OnBackKeyPressOverriden = true;
       }
-      base.Visit(method);
+      base.TraverseChildren(method);
     }
 
     public void InjectPhoneCodeAssemblies(IEnumerable<IUnit> assemblies) {
       foreach (var a in assemblies) {
-        a.Dispatch(this);
+        this.Traverse((IAssembly)a);
       }
     }
   }
