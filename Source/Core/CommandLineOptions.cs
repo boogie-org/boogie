@@ -137,6 +137,8 @@ namespace Microsoft.Boogie {
     public bool OverlookBoogieTypeErrors = false;
     public bool Verify = true;
     public bool DisallowSoundnessCheating = false;
+    public int DafnyInduction = 3;
+    public int DafnyInductionHeuristic = 3;
     public bool TraceVerify = false;
     public int /*(0:3)*/ ErrorTrace = 1;
     public bool IntraproceduralInfer = true;
@@ -201,12 +203,6 @@ namespace Microsoft.Boogie {
       Contract.Invariant(0 <= StepsBeforeWidening && StepsBeforeWidening <= 9);
       Contract.Invariant(-1 <= BracketIdsInVC && BracketIdsInVC < 2);
       Contract.Invariant(cce.NonNullElements(ProverOptions));
-
-
-
-
-
-
     }
 
     public int CheckingLevel = 2;
@@ -718,6 +714,16 @@ namespace Microsoft.Boogie {
               }
               break;
             }
+
+          case "-induction":
+          case "/induction":
+            ps.GetNumericArgument(ref DafnyInduction, 4);
+            break;
+
+          case "-inductionHeuristic":
+          case "/inductionHeuristic":
+            ps.GetNumericArgument(ref DafnyInductionHeuristic, 4);
+            break;
 
           case "-contracts":
           case "/contracts":
@@ -2038,6 +2044,17 @@ namespace Microsoft.Boogie {
                        out.cs, regardless of verification outcome
   /noCheating:<n> : 0 (default) - allow assume statements and free invariants
                     1 - treat all assumptions as asserts, and drop free.
+  /induction:<n> : 0 - never do induction, not even when attributes request it
+                   1 - only apply induction when attributes request it
+                   2 - apply induction as requested (by attributes) and also
+                       for heuristically chosen quantifiers
+                   3 (default) - apply induction as requested, and for
+                       heuristically chosen quantifiers and ghost methods
+  /inductionHeuristic: 0 - least discriminating induction heuristic (that is,
+                           lean toward applying induction more often)
+                       1 - more discriminating
+                       2 - even more discriminating
+                       3 (default) - most discriminating
 
   ---- Boogie options --------------------------------------------------------
 
