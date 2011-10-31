@@ -27,7 +27,7 @@ namespace BytecodeTranslator {
   /// Responsible for traversing all metadata elements (i.e., everything exclusive
   /// of method bodies).
   /// </summary>
-  public class MetadataTraverser : BaseMetadataTraverser {
+  public class BCTMetadataTraverser : MetadataTraverser {
 
     readonly Sink sink;
     public readonly TraverserFactory Factory;
@@ -35,7 +35,7 @@ namespace BytecodeTranslator {
     public readonly IDictionary<IUnit, PdbReader> PdbReaders;
     public PdbReader/*?*/ PdbReader;
 
-    public MetadataTraverser(Sink sink, IDictionary<IUnit, PdbReader> pdbReaders, TraverserFactory factory)
+    public BCTMetadataTraverser(Sink sink, IDictionary<IUnit, PdbReader> pdbReaders, TraverserFactory factory)
       : base() {
       this.sink = sink;
       this.Factory = factory;
@@ -47,7 +47,7 @@ namespace BytecodeTranslator {
       foreach (IPrecondition pre in contract.Preconditions) {
         var stmtTraverser = this.Factory.MakeStatementTraverser(sink, null, true);
         ExpressionTraverser exptravers = this.Factory.MakeExpressionTraverser(sink, stmtTraverser, true);
-        exptravers.Visit(pre.Condition); // TODO
+        exptravers.Traverse(pre.Condition); // TODO
         // Todo: Deal with Descriptions
         var req = new Bpl.Requires(pre.Token(), false, exptravers.TranslatedExpressions.Pop(), "");
         translatedPres.Add(req);
@@ -61,7 +61,7 @@ namespace BytecodeTranslator {
       foreach (IPostcondition post in contract.Postconditions) {
         var stmtTraverser = this.Factory.MakeStatementTraverser(sink, null, true);
         ExpressionTraverser exptravers = this.Factory.MakeExpressionTraverser(sink, stmtTraverser, true);
-        exptravers.Visit(post.Condition);
+        exptravers.Traverse(post.Condition);
         // Todo: Deal with Descriptions
         var ens = new Bpl.Ensures(post.Token(), false, exptravers.TranslatedExpressions.Pop(), "");
         translatedPosts.Add(ens);
@@ -74,7 +74,7 @@ namespace BytecodeTranslator {
       ICollection<Bpl.IdentifierExpr> modifiedExpr = new List<Bpl.IdentifierExpr>();
       foreach (IAddressableExpression mod in contract.ModifiedVariables) {
         ExpressionTraverser exptravers = this.Factory.MakeExpressionTraverser(sink, null, true);
-        exptravers.Visit(mod);
+        exptravers.Traverse(mod);
         Bpl.IdentifierExpr idexp = exptravers.TranslatedExpressions.Pop() as Bpl.IdentifierExpr;
         if (idexp == null) {
           throw new TranslationException(String.Format("Cannot create IdentifierExpr for Modifyed Variable {0}", mod.ToString()));
@@ -88,16 +88,16 @@ namespace BytecodeTranslator {
 
     #region Overrides
 
-    public override void Visit(IModule module) {
+    public override void TraverseChildren(IModule module) {
       this.PdbReaders.TryGetValue(module, out this.PdbReader);
-      base.Visit(module);
+      base.TraverseChildren(module);
     }
 
-    public override void Visit(IAssembly assembly) {
+    public override void TraverseChildren(IAssembly assembly) {
       this.PdbReaders.TryGetValue(assembly, out this.PdbReader);
       this.sink.BeginAssembly(assembly);
       try {
-        base.Visit(assembly);
+        base.TraverseChildren(assembly);
       } finally {
         this.sink.EndAssembly(assembly);
       }
@@ -107,7 +107,7 @@ namespace BytecodeTranslator {
     /// Translate the type definition.
     /// </summary>
     /// 
-    public override void Visit(ITypeDefinition typeDefinition) {
+    public override void TraverseChildren(ITypeDefinition typeDefinition) {
 
       if (!this.sink.TranslateType(typeDefinition)) return;
 
@@ -117,11 +117,16 @@ namespace BytecodeTranslator {
       trackPhonePageNameVariableName(typeDefinition);
       trackPhoneApplicationClassname(typeDefinition);
 
+      var gtp = typeDefinition as IGenericTypeParameter;
+      if (gtp != null) {
+        return;
+      }
+
       if (typeDefinition.IsClass) {
         bool savedSawCctor = this.sawCctor;
         this.sawCctor = false;
-        sink.FindOrCreateType(typeDefinition);
-        base.Visit(typeDefinition);
+        sink.FindOrCreateTypeReference(typeDefinition);
+        base.TraverseChildren(typeDefinition);
         if (!this.sawCctor) {
           CreateStaticConstructor(typeDefinition);
         }
@@ -130,23 +135,23 @@ namespace BytecodeTranslator {
         ITypeDefinition unspecializedType = Microsoft.Cci.MutableContracts.ContractHelper.Unspecialized(typeDefinition).ResolvedType;
         sink.AddDelegateType(unspecializedType);
       } else if (typeDefinition.IsInterface) {
-        sink.FindOrCreateType(typeDefinition);
-        base.Visit(typeDefinition);
+        sink.FindOrCreateTypeReference(typeDefinition);
+        base.TraverseChildren(typeDefinition);
       } else if (typeDefinition.IsEnum) {
         return; // enums just are translated as ints
       } else if (typeDefinition.IsStruct) {
-        sink.FindOrCreateType(typeDefinition);
+        sink.FindOrCreateTypeReference(typeDefinition);
         CreateDefaultStructConstructor(typeDefinition);
         CreateStructCopyConstructor(typeDefinition);
-        base.Visit(typeDefinition);
+        base.TraverseChildren(typeDefinition);
       } else {
         Console.WriteLine("Unknown kind of type definition '{0}' was found",
           TypeHelper.GetTypeName(typeDefinition));
         throw new NotImplementedException(String.Format("Unknown kind of type definition '{0}'.", TypeHelper.GetTypeName(typeDefinition)));
       }
-      this.Visit(typeDefinition.PrivateHelperMembers);
+      this.Traverse(typeDefinition.PrivateHelperMembers);
       foreach (var t in this.privateTypes) {
-        this.Visit(t);
+        this.Traverse(t);
       }
     }
     List<ITypeDefinition> privateTypes = new List<ITypeDefinition>();
@@ -221,7 +226,7 @@ namespace BytecodeTranslator {
         };
       }
 
-      stmtTranslator.Visit(stmts);
+      stmtTranslator.Traverse(stmts);
       var translatedStatements = stmtTranslator.StmtBuilder.Collect(Bpl.Token.NoToken);
 
       var lit = Bpl.Expr.Literal(1);
@@ -325,7 +330,7 @@ namespace BytecodeTranslator {
           });
       }
 
-      stmtTranslator.Visit(stmts);
+      stmtTranslator.Traverse(stmts);
       var translatedStatements = stmtTranslator.StmtBuilder.Collect(Bpl.Token.NoToken);
 
       List<Bpl.Variable> vars = new List<Bpl.Variable>();
@@ -352,7 +357,7 @@ namespace BytecodeTranslator {
     /// <summary>
     /// 
     /// </summary>
-    public override void Visit(IMethodDefinition method) {
+    public override void TraverseChildren(IMethodDefinition method) {
 
       if (method.IsStaticConstructor) this.sawCctor = true;
 
@@ -406,7 +411,7 @@ namespace BytecodeTranslator {
 
         #region Add assignments from In-Params to local-Params
 
-        foreach (MethodParameter mparam in formalMap.Values) {
+        foreach (MethodParameter mparam in formalMap) {
           if (mparam.inParameterCopy != null) {
             Bpl.IToken tok = method.Token();
             stmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok,
@@ -420,7 +425,9 @@ namespace BytecodeTranslator {
         #region For non-deferring ctors and all cctors, initialize all fields to null-equivalent values
         var inits = InitializeFieldsInConstructor(method);
         if (0 < inits.Count) {
-          new BlockStatement() { Statements = inits, }.Dispatch(stmtTraverser);
+          foreach (var s in inits) {
+            stmtTraverser.Traverse(s);
+          }
         }
         #endregion
 
@@ -481,7 +488,7 @@ namespace BytecodeTranslator {
 
         #region Create Local Vars For Implementation
         List<Bpl.Variable> vars = new List<Bpl.Variable>();
-        foreach (MethodParameter mparam in formalMap.Values) {
+        foreach (MethodParameter mparam in formalMap) {
           if (!mparam.underlyingParameter.IsByReference)
             vars.Add(mparam.outParameterCopy);
         }
@@ -597,7 +604,7 @@ namespace BytecodeTranslator {
       return referencedTypeDefinition;
     }
 
-    public override void Visit(IFieldDefinition fieldDefinition) {
+    public override void TraverseChildren(IFieldDefinition fieldDefinition) {
       Bpl.Variable fieldVar= this.sink.FindOrCreateFieldVariable(fieldDefinition);
 
       // if tracked by the phone plugin, we need to find out the bpl assigned name for future use
@@ -642,31 +649,30 @@ namespace BytecodeTranslator {
         addPhoneTopLevelDeclarations();
 
       foreach (var a in assemblies) {
-        a.Dispatch(this);
+        this.Traverse((IAssembly)a);
       }
     }
     #endregion
 
     #region Helpers
-    private class FindCtorCall : BaseCodeTraverser {
+    private class FindCtorCall : CodeTraverser {
       private bool isDeferringCtor = false;
       public ITypeReference containingType;
       public static bool IsDeferringCtor(IMethodDefinition method, IBlockStatement body) {
         var fcc = new FindCtorCall(method.ContainingType);
-        fcc.Visit(body);
+        fcc.Traverse(body);
         return fcc.isDeferringCtor;
       }
       private FindCtorCall(ITypeReference containingType) {
         this.containingType = containingType;
       }
-      public override void Visit(IMethodCall methodCall) {
+      public override void TraverseChildren(IMethodCall methodCall) {
         var md = methodCall.MethodToCall.ResolvedMethod;
         if (md != null && md.IsConstructor && methodCall.ThisArgument is IThisReference) {
           this.isDeferringCtor = TypeHelper.TypesAreEquivalent(md.ContainingType, containingType);
-          this.stopTraversal = true;
           return;
         }
-        base.Visit(methodCall);
+        base.TraverseChildren(methodCall);
       }
     }
 

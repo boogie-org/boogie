@@ -5,7 +5,7 @@ using System.Text;
 using Microsoft.Cci;
 
 namespace BytecodeTranslator.Phone {
-  public class PhoneMethodInliningMetadataTraverser : BaseMetadataTraverser {
+  public class PhoneMethodInliningMetadataTraverser : MetadataTraverser {
     private HashSet<IMethodDefinition> methodsToInline;
     private HashSet<IMethodDefinition> iterMethodsToInline;
     private PhoneCodeHelper phoneHelper;
@@ -23,21 +23,21 @@ namespace BytecodeTranslator.Phone {
       TotalMethodsCount = 0;
     }
 
-    public override void Visit(IEnumerable<IModule> modules) {
-      foreach (IModule module in modules) {
-        assemblyBeingTranslated= module.ContainingAssembly;
-        this.Visit(module);
+    public override void TraverseChildren(IAssembly assembly) {
+      foreach (IModule module in assembly.MemberModules) {
+        assemblyBeingTranslated = module.ContainingAssembly;
+        this.Traverse(module);
       }
       firstPassDone = true;
     }
 
-    public override void Visit(IMethodDefinition method) {
+    public override void TraverseChildren(IMethodDefinition method) {
       if (!firstPassDone)
         TotalMethodsCount++;
 
       if (iterMethodsToInline.Contains(method) || (!firstPassDone && phoneHelper.mustInlineMethod(method))) {
         PhoneMethodInliningCodeTraverser codeTraverser= new PhoneMethodInliningCodeTraverser();
-        codeTraverser.Visit(method);
+        codeTraverser.TraverseChildren(method);
         foreach (IMethodDefinition newMethodDef in codeTraverser.getMethodsFound()) {
           bool isExtern = this.assemblyBeingTranslated != null &&
                           !TypeHelper.GetDefiningUnitReference(newMethodDef.ContainingType).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity);
@@ -62,15 +62,15 @@ namespace BytecodeTranslator.Phone {
     public void findAllMethodsToInline(List<IModule> modules) {
       while (!isFinished()) {
         changedOnLastPass = false;
-        Visit(modules);
+        this.Traverse(modules);
       }
     }
   }
 
-  class PhoneMethodInliningCodeTraverser : BaseCodeTraverser {
+  class PhoneMethodInliningCodeTraverser : CodeTraverser {
     private HashSet<IMethodDefinition> foundMethods = new HashSet<IMethodDefinition>();
 
-    public override void Visit(IMethodCall methodCall) {
+    public override void TraverseChildren(IMethodCall methodCall) {
       foundMethods.Add(methodCall.MethodToCall.ResolvedMethod);
     }
 

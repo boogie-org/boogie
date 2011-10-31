@@ -28,7 +28,9 @@ namespace BytecodeTranslator.TranslationPlugins.Translators {
     }
 
     public override void TranslateAssemblies(IEnumerable<Microsoft.Cci.IUnit> assemblies) {
-      traverser.Visit(assemblies);
+      foreach (var a in assemblies) {
+        traverser.Traverse((IAssembly)a);
+      }
     }
   }
 }

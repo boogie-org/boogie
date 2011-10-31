@@ -1452,7 +1452,7 @@ namespace BytecodeTranslator
       //  new Bpl.FunctionCall(this.sink.Heap.TypeOfFunction),
       //  new Bpl.ExprSeq(new Bpl.IdentifierExpr(checkIfInstance.Token(), v))
       //  );
-      base.TraverseChildren(checkIfInstance.Operand);
+      base.Traverse(checkIfInstance.Operand);
       var exp = TranslatedExpressions.Pop();
       var dynTypeOfOperand = this.sink.Heap.DynamicType(exp);
       //var subtype = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Subtype, dynTypeOfOperand, e);
