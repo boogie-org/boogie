@@ -483,23 +483,27 @@ namespace Microsoft.Boogie.SMTLib
           ExprLineariser.Linearise(VCExpressionGenerator.True, options);
         } else {
           var groupings = node.GroupBy(e => e.Type).Where(g => g.Count() > 1).ToArray();
+          if (groupings.Length == 0) {
+            ExprLineariser.Linearise(VCExpressionGenerator.True, options);
+          } else {
+            if (groupings.Length > 1)
+              wr.Write("(and ");
 
-          if (groupings.Length > 1)
-            wr.Write("(and ");
-
-          foreach (var g in groupings) {
-            wr.Write("(distinct");
-            foreach (VCExpr e in g) {
-              Contract.Assert(e != null);
-              wr.Write(" ");
-              ExprLineariser.Linearise(e, options);
+            foreach (var g in groupings) {
+              wr.Write("(distinct");
+              foreach (VCExpr e in g) {
+                Contract.Assert(e != null);
+                wr.Write(" ");
+                ExprLineariser.Linearise(e, options);
+              }
+              wr.Write(")");
             }
-            wr.Write(")");
-          }
 
-          if (groupings.Length > 1)
-            wr.Write(")");
-          wr.Write("\n");
+            if (groupings.Length > 1)
+              wr.Write(")");
+
+            wr.Write("\n");
+          }
         }
 
         return true;

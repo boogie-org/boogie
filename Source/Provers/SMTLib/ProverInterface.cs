@@ -201,10 +201,10 @@ namespace Microsoft.Boogie.SMTLib
             datatypeString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " ";
             foreach (Function f in ctx.KnownDatatypeConstructors[datatype]) {
               if (f.InParams.Length == 0) {
-                datatypeString += f.Name + " ";
+                datatypeString += Namer.GetQuotedName(f, f.Name) + " ";
               }
               else {
-                datatypeString += "(" + f.Name + " ";
+                datatypeString += "(" + Namer.GetQuotedName(f, f.Name) + " ";
                 foreach (Variable v in f.InParams) {
                   datatypeString += "(" + v.Name + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
                 }
