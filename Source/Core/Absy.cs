@@ -1763,30 +1763,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class Expansion {
-    public string ignore; // when to ignore
-    public Expr/*!*/ body;
-    public TypeVariableSeq/*!*/ TypeParameters;
-    public Variable[]/*!*/ formals;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(body != null);
-      Contract.Invariant(TypeParameters != null);
-      Contract.Invariant(formals != null);
-    }
-
-
-    public Expansion(string ignore, Expr body,
-                     TypeVariableSeq/*!*/ typeParams, Variable[] formals) {
-      Contract.Requires(typeParams != null);
-      Contract.Requires(formals != null);
-      Contract.Requires(body != null);
-      this.ignore = ignore;
-      this.body = body;
-      this.TypeParameters = typeParams;
-      this.formals = formals;
-    }
-  }
+  
 
   public class Function : DeclWithFormals {
     public string Comment;
