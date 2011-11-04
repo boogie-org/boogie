@@ -950,7 +950,10 @@ namespace BytecodeTranslator {
                       !TypeHelper.GetDefiningUnitReference(type).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity);
       if (isExtern) {
         var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "extern", new List<object>(1), null);
-        f.Attributes = attrib;
+        if (f.Attributes == null)
+          f.Attributes = attrib;
+        else
+          f.Attributes.AddLast(attrib);
       }
       return f;
     }
