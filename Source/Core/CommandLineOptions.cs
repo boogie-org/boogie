@@ -138,7 +138,7 @@ namespace Microsoft.Boogie {
     public bool Verify = true;
     public bool DisallowSoundnessCheating = false;
     public int DafnyInduction = 3;
-    public int DafnyInductionHeuristic = 5;
+    public int DafnyInductionHeuristic = 6;
     public bool TraceVerify = false;
     public int /*(0:3)*/ ErrorTrace = 1;
     public bool IntraproceduralInfer = true;
@@ -722,7 +722,7 @@ namespace Microsoft.Boogie {
 
           case "-inductionHeuristic":
           case "/inductionHeuristic":
-            ps.GetNumericArgument(ref DafnyInductionHeuristic, 6);
+            ps.GetNumericArgument(ref DafnyInductionHeuristic, 7);
             break;
 
           case "-contracts":
@@ -2052,8 +2052,10 @@ namespace Microsoft.Boogie {
                        heuristically chosen quantifiers and ghost methods
   /inductionHeuristic: 0 - least discriminating induction heuristic (that is,
                            lean toward applying induction more often)
-                       1,2,3,4 - more and more discriminating
-                       5 (default) - most discriminating
+                       1,2,3,4,5 - levels in between, ordered as follows as
+                           far as how discriminating they are:
+                           0 < 1 < 2 < (3,4) < 5 < 6
+                       6 (default) - most discriminating
 
   ---- Boogie options --------------------------------------------------------
 
