@@ -123,23 +123,27 @@ namespace Microsoft.Boogie
       public override string ToString() { return string.Format("as-array[{0}]", Value.Name); }
     }
 
-    public class DataValue : Element 
+    public class DatatypeValue : Element 
     {
       public readonly string ConstructorName;
-      public readonly List<Element> Arguments;
-      internal DataValue(Model p, string name, List<Element> args) : base(p) { ConstructorName = name; Arguments = args; }
+      public readonly Element[] Arguments;
+      internal DatatypeValue(Model p, string name, List<Element> args) : base(p) { 
+        ConstructorName = name; 
+        Arguments = args.ToArray(); 
+      }
       public override ElementKind Kind { get { return ElementKind.DataValue; } }
       public override string ToString() {
-        string str = ConstructorName + "(";
+        StringBuilder builder = new StringBuilder();
+        builder.Append(ConstructorName + "(");
         int count = 0;
-        foreach (DataValue arg in Arguments) {
+        foreach (DatatypeValue arg in Arguments) {
           count++;
-          str = str + arg;
-          if (count < Arguments.Count)
-            str = str + ", ";
+          builder.Append(arg);
+          if (count < Arguments.Length)
+            builder.Append(", ");
         }
-        str = str + ")";
-        return str;
+        builder.Append(")");
+        return builder.ToString();
       }
     }
     #endregion
@@ -438,7 +442,7 @@ namespace Microsoft.Boogie
         var fnName = name.Substring(9, name.Length - 10);
         return new Array(this, MkFunc(fnName, 1));
       } else {
-        return new DataValue(this, name, new List<Element>());
+        return new DatatypeValue(this, name, new List<Element>());
       }
     }
 
@@ -775,7 +779,7 @@ namespace Microsoft.Boogie
         for (int i = 1; i < os.Count; i++) {
           args.Add(GetElt(os[i]));
         }
-        return new DataValue(currModel, (string)os[0], args);
+        return new DatatypeValue(currModel, (string)os[0], args);
       }
 
       Element GetElt(string name)
