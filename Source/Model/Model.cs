@@ -34,6 +34,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text;
+using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
@@ -46,7 +47,8 @@ namespace Microsoft.Boogie
       BitVector,
       Boolean,
       Uninterpreted,
-      Array
+      Array,
+      DataValue
     }
 
     abstract public class Element
@@ -119,6 +121,26 @@ namespace Microsoft.Boogie
       internal Array(Model p, Func v) : base(p) { Value = v; }
       public override ElementKind Kind { get { return ElementKind.Array; } }
       public override string ToString() { return string.Format("as-array[{0}]", Value.Name); }
+    }
+
+    public class DataValue : Element 
+    {
+      public readonly string ConstructorName;
+      public readonly List<Element> Arguments;
+      internal DataValue(Model p, string name, List<Element> args) : base(p) { ConstructorName = name; Arguments = args; }
+      public override ElementKind Kind { get { return ElementKind.DataValue; } }
+      public override string ToString() {
+        string str = ConstructorName + "(";
+        int count = 0;
+        foreach (DataValue arg in Arguments) {
+          count++;
+          str = str + arg;
+          if (count < Arguments.Count)
+            str = str + ", ";
+        }
+        str = str + ")";
+        return str;
+      }
     }
     #endregion
 
@@ -416,7 +438,7 @@ namespace Microsoft.Boogie
         var fnName = name.Substring(9, name.Length - 10);
         return new Array(this, MkFunc(fnName, 1));
       } else {
-        return null;
+        return new DataValue(this, name, new List<Element>());
       }
     }
 
@@ -666,6 +688,66 @@ namespace Microsoft.Boogie
 
       static char[] seps = new char[] { ' ' };
 
+      int CountOpenParentheses(string s, int n) {
+        int f = n;
+        foreach (char c in s) {
+          if (c == '(')
+            f++;
+          else if (c == ')')
+            f--;
+        }
+        if (f < 0) BadModel("mismatched parentheses in datatype term");
+        return f;
+      }
+
+      List<object> GetFunctionTuple() {
+        string newLine = ReadLine();
+        if (newLine == null)
+          return null;
+        string line = newLine;
+        int openParenCounter = CountOpenParentheses(newLine, 0);
+        if (!newLine.Contains("}")) {
+          while (openParenCounter > 0) {
+            newLine = ReadLine();
+            if (newLine == null) {
+              return null;
+            }
+            line += newLine;
+            openParenCounter = CountOpenParentheses(newLine, openParenCounter);
+          }
+        }
+
+        line = line.Replace("(", " ( ");
+        line = line.Replace(")", " ) ");
+        var tuple = line.Split(seps, StringSplitOptions.RemoveEmptyEntries);
+
+        List<object> newTuple = new List<object>();
+        Stack<List<object>> wordStack = new Stack<List<object>>();
+        for (int i = 0; i < tuple.Length; i++) {
+          string elem = tuple[i];
+          if (elem == "(") {
+            List<object> ls = new List<object>();
+            wordStack.Push(ls);
+          }
+          else if (elem == ")") {
+            List<object> ls = wordStack.Pop();
+            if (wordStack.Count > 0) {
+              wordStack.Peek().Add(ls);
+            }
+            else {
+              newTuple.Add(ls);
+            }
+          }
+          else if (wordStack.Count > 0) {
+            wordStack.Peek().Add(elem);
+          }
+          else {
+            newTuple.Add(elem);
+          }
+        }
+        return newTuple;
+      }
+
       string[] GetWords(string line)
       {
         if (line == null)
@@ -682,6 +764,18 @@ namespace Microsoft.Boogie
           lastLine = l;
         }
         return l;
+      }
+
+      Element GetElt(object o) {
+        string s = o as string;
+        if (s != null)
+          return GetElt(s);
+        List<object> os = (List<object>)o;
+        List<Element> args = new List<Element>();
+        for (int i = 1; i < os.Count; i++) {
+          args.Add(GetElt(os[i]));
+        }
+        return new DataValue(currModel, (string)os[0], args);
       }
 
       Element GetElt(string name)
@@ -782,43 +876,36 @@ namespace Microsoft.Boogie
             var funName = words[0];
 
             if (lastWord == "{") {
-              for (; ; ) {
-                var tuple = GetWords(ReadLine());
+              for ( ; ; ) {
+                var tuple = GetFunctionTuple();
                 if (tuple == null) BadModel("EOF in function table");
-                if (tuple.Length == 0) continue;
-                if (tuple.Length == 1 && tuple[0] == "}") break;
-
-                var resultName = tuple[tuple.Length - 1];
-                var isElse = false;
-
-                if (tuple.Length == 1 && fn == null)
-                  isElse = true;
-
-                if (!isElse && (tuple.Length < 3 || tuple[tuple.Length - 2] != "->")) BadModel("invalid function tuple definition");
-
-                if (isElse || tuple[0] == "else") {
-                  var hasBrace = false;
-                  if (resultName.EndsWith("}")) {
-                    hasBrace = true;
-                    resultName = resultName.Substring(0, resultName.Length - 1);
-                  }
-                  if (!resultName.StartsWith("#unspec")) {
-                    if (fn == null)
-                      fn = currModel.TryGetFunc(funName);
-                    // if it's still null, we don't know the arity, so just skip it
-                    if (fn != null) {
-                      fn.Else = GetElt(resultName);
-                    }
-                  }
-
-                  if (hasBrace)                  
+                if (tuple.Count == 0) continue;
+                string tuple0 = tuple[0] as string;
+                if (tuple.Count == 1) {
+                  if (fn != null) {
+                    if (tuple0 != "}") BadModel("invalid function tuple definition");
                     break;
-                  else
+                  }
+                  else {
+                    fn = currModel.TryGetFunc(funName);
+                    if (fn == null)
+                      fn = currModel.MkFunc(funName, 1);
+                    fn.Else = GetElt(tuple0);
                     continue;
+                  }
+                }
+                string tuplePenultimate = tuple[tuple.Count - 2] as string;
+                if (tuplePenultimate != "->") BadModel("invalid function tuple definition");
+                var resultName = tuple[tuple.Count - 1];
+                if (tuple0 == "else") {
+                  if (fn != null && !(resultName is string && ((string)resultName) == "#unspecified")) {
+                    fn.Else = GetElt(resultName);
+                  }
+                  continue;
                 }
 
                 if (fn == null)
-                  fn = currModel.MkFunc(funName, tuple.Length - 2);
+                  fn = currModel.MkFunc(funName, tuple.Count - 2);
                 var args = new Element[fn.Arity];
                 for (int i = 0; i < fn.Arity; ++i)
                   args[i] = GetElt(tuple[i]);

@@ -365,6 +365,9 @@ namespace Microsoft.Boogie {
           case Model.ElementKind.Array:
             val = null;
             break;
+          case Model.ElementKind.DataValue:
+            val = null;
+            break;
           default:
             Contract.Assert(false);
             val = null;
