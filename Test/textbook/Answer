@@ -18,3 +18,7 @@ Boogie program verifier finished with 2 verified, 0 errors
 ------------------------------ McCarthy-91.bpl ---------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
+
+------------------------------ TuringFactorial.bpl ---------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
