@@ -1630,6 +1630,7 @@ namespace VC
           var Gen = checker.underlyingChecker.VCExprGen;
           var callee = cs.calleeName;
           var caller = cs.callerName;
+          Helpers.ExtraTraceInformation("inlining call from " + caller + "to " + callee);
           var expr = cs.callExpr;
           VCExpr expansion = procVcCopies[callee];
           List<VCExprVar> interfaceExprVars = interfaceVarCopies[callee];
@@ -1685,138 +1686,123 @@ namespace VC
           calleeToCallSites[callee].Remove(cs);
         }
 
+        private Outcome FindUnsatCoreInMainCallees(Implementation impl, StratifiedCheckerInterface checker, VCExpressionGenerator Gen, PCBErrorReporter reporter, List<VCExpr> assumptions, out HashSet<VCExprVar> unsatCore) {
+          Debug.Assert(checker is ApiChecker);
+          unsatCore = null;
+          List<int> unsatCoreIndices;
+          Outcome ret;
+          ret = checker.CheckAssumptions(assumptions, out unsatCoreIndices);
+          if (ret == Outcome.Errors) return ret;
+          unsatCore = new HashSet<VCExprVar>();
+          HashSet<VCExprVar> implCallees = new HashSet<VCExprVar>();
+          foreach (CallSite cs in callerToCallSites[impl.Name]) {
+            implCallees.Add(cs.callSiteConstant);
+          }
+          for (int i = 0; i < unsatCoreIndices.Count; i++) {
+            VCExprVar assumption = (VCExprVar)assumptions[unsatCoreIndices[i]];
+            if (implCallees.Contains(assumption)) {
+              unsatCore.Add(assumption);
+            }
+          }
+          return Outcome.Correct;
+        }
+
         private Outcome FindUnsatCore(Implementation impl, StratifiedCheckerInterface checker, VCExpressionGenerator Gen, PCBErrorReporter reporter, List<VCExpr> assumptions, out HashSet<VCExprVar> unsatCore) {
           Helpers.ExtraTraceInformation("Number of assumptions = " + assumptions.Count);
-
-          if (checker is NormalChecker) {
-            Outcome ret;
-            unsatCore = null;
-            for (int i = 0; i < assumptions.Count; i++) {
-              checker.Push();
-              checker.AddAxiom(assumptions[i]);
-            }
-
-            ret = checker.CheckVC();
-            if (ret == Outcome.Errors) {
-              for (int i = 0; i < assumptions.Count; i++) {
-                checker.Pop();
-              }
-              return ret;
-            }
-
-            Helpers.ExtraTraceInformation("VC checked");
-
-            reporter.unsatCoreMode = true;
-            VCExpr curr = VCExpressionGenerator.True;
-            unsatCore = new HashSet<VCExprVar>();
-            int index = assumptions.Count;
-            while (index > 0) {
-              checker.Pop();
-
-              checker.Push();
-              checker.AddAxiom(curr);
-              ret = checker.CheckVC();
-              checker.Pop();
-
-              if (ret == Outcome.Errors) {
-                VCExprVar assumption = (VCExprVar)assumptions[index - 1];
-                curr = Gen.And(assumption, curr);
-                unsatCore.Add(assumption);
-              }
-              index--;
-            }
-            reporter.unsatCoreMode = false;
-            Helpers.ExtraTraceInformation("Number of elements in unsat core = " + unsatCore.Count);
-            return Outcome.Correct;
+          unsatCore = null;
+          List<int> unsatCoreIndices;
+          Outcome ret;
+          ret = checker.CheckAssumptions(assumptions, out unsatCoreIndices);
+          if (ret == Outcome.Errors) return ret;
+          unsatCore = new HashSet<VCExprVar>();
+          for (int i = 0; i < unsatCoreIndices.Count; i++) {
+            unsatCore.Add((VCExprVar)assumptions[unsatCoreIndices[i]]);
           }
-          else {
-            Debug.Assert(checker is ApiChecker);
-            unsatCore = null;
-            List<int> unsatCoreIndices;
-            Outcome ret;
-            ret = checker.CheckAssumptions(assumptions, out unsatCoreIndices);
-            if (ret == Outcome.Errors) return ret;
-            unsatCore = new HashSet<VCExprVar>();
-            for (int i = 0; i < unsatCoreIndices.Count; i++) {
-              unsatCore.Add((VCExprVar)assumptions[unsatCoreIndices[i]]);
-            }
 
-            Helpers.ExtraTraceInformation("Number of elements in unsat core = " + unsatCore.Count);
-            
-            HashSet<CallSite> reachableCallSites = new HashSet<CallSite>();
-            Stack<string> stack = new Stack<string>();
-            HashSet<string> set = new HashSet<string>();
-            stack.Push(impl.Name);
-            while (stack.Count > 0) {
-              string caller = stack.Peek();
-              stack.Pop();
-              if (set.Contains(caller)) continue;
-              set.Add(caller);
-              foreach (CallSite cs in callerToCallSites[caller]) {
-                if (unsatCore.Contains(cs.callSiteConstant)) {
-                  reachableCallSites.Add(cs);
-                  stack.Push(cs.calleeName);
-                }
+          Helpers.ExtraTraceInformation("Number of elements in unsat core = " + unsatCore.Count);
+
+          HashSet<CallSite> reachableCallSites = new HashSet<CallSite>();
+          Stack<string> stack = new Stack<string>();
+          HashSet<string> set = new HashSet<string>();
+          stack.Push(impl.Name);
+          while (stack.Count > 0) {
+            string caller = stack.Peek();
+            stack.Pop();
+            if (set.Contains(caller)) continue;
+            set.Add(caller);
+            foreach (CallSite cs in callerToCallSites[caller]) {
+              if (unsatCore.Contains(cs.callSiteConstant)) {
+                reachableCallSites.Add(cs);
+                stack.Push(cs.calleeName);
               }
             }
-
-            Graph<CallSite> callGraph = new Graph<CallSite>();
-            foreach (CallSite cs1 in reachableCallSites) {
-              callGraph.AddSource(cs1);
-              foreach (CallSite cs2 in calleeToCallSites[cs1.callerName]) {
-                if (reachableCallSites.Contains(cs2)) {
-                  callGraph.AddEdge(cs1, cs2);
-                }
-              }
-            }
-
-            List<CallSite> sortedCallSites = new List<CallSite>();
-            foreach (CallSite cs in callGraph.TopologicalSort()) {
-              checker.Push();
-              checker.AddAxiom(cs.callSiteConstant);
-              sortedCallSites.Add(cs);
-            }
-
-            ret = checker.CheckVC();
-            Debug.Assert(ret == Outcome.Correct);
-
-            reporter.unsatCoreMode = true;
-            VCExpr curr = VCExpressionGenerator.True;
-            HashSet<CallSite> relevantCallSites = new HashSet<CallSite>();
-            HashSet<VCExprVar> relevantUnsatCore = new HashSet<VCExprVar>();
-            int index = sortedCallSites.Count;
-            int queries = 0;
-            while (index > 0) {
-              checker.Pop();
-              CallSite cs = sortedCallSites[index - 1];
-              //Helpers.ExtraTraceInformation("Examining callsite: " + "caller = " + cs.callerName + ", callee = " + cs.calleeName);
-
-              bool check = (cs.callerName == impl.Name);
-              foreach (CallSite x in calleeToCallSites[cs.callerName]) {
-                check = check || relevantCallSites.Contains(x);
-              }
-              if (check) {
-                queries++;
-                checker.Push();
-                checker.AddAxiom(curr);
-                ret = checker.CheckVC();
-                checker.Pop();
-
-                if (ret == Outcome.Errors || ret == Outcome.TimedOut) {
-                  curr = Gen.And(cs.callSiteConstant, curr);
-                  relevantCallSites.Add(cs);
-                  relevantUnsatCore.Add(cs.callSiteConstant);
-                }
-              }
-              index--;
-            }
-            reporter.unsatCoreMode = false;
-
-            unsatCore = relevantUnsatCore;
-            Helpers.ExtraTraceInformation("Number of queries = " + queries);
-            Helpers.ExtraTraceInformation("Unsat core after pruning = " + unsatCore.Count);
-            return Outcome.Correct;
           }
+
+          Graph<CallSite> callGraph = new Graph<CallSite>();
+          foreach (CallSite cs1 in reachableCallSites) {
+            callGraph.AddSource(cs1);
+            foreach (CallSite cs2 in calleeToCallSites[cs1.callerName]) {
+              if (reachableCallSites.Contains(cs2)) {
+                callGraph.AddEdge(cs1, cs2);
+              }
+            }
+          }
+
+          List<CallSite> sortedCallSites = new List<CallSite>();
+          foreach (CallSite cs in callGraph.TopologicalSort()) {
+            checker.Push();
+            checker.AddAxiom(cs.callSiteConstant);
+            sortedCallSites.Add(cs);
+          }
+
+          ret = checker.CheckVC();
+          Debug.Assert(ret == Outcome.Correct);
+
+          reporter.unsatCoreMode = true;
+          VCExpr curr = VCExpressionGenerator.True;
+          HashSet<CallSite> relevantCallSites = new HashSet<CallSite>();
+          HashSet<VCExprVar> relevantUnsatCore = new HashSet<VCExprVar>();
+          int index = sortedCallSites.Count;
+          int queries = 0;
+          while (index > 0) {
+            checker.Pop();
+            index--;
+            CallSite cs = sortedCallSites[index];
+            bool check = (cs.callerName == impl.Name);
+            foreach (CallSite x in calleeToCallSites[cs.callerName]) {
+              check = check || relevantCallSites.Contains(x);
+            }
+            if (!check) continue;
+            bool relevant = (cs.callerName != impl.Name);
+            foreach (CallSite x in calleeToCallSites[cs.calleeName]) {
+              if (x.callSiteConstant == cs.callSiteConstant) continue;
+              relevant = relevant && !reachableCallSites.Contains(x);
+            }
+            if (relevant) {
+              curr = Gen.And(cs.callSiteConstant, curr);
+              relevantCallSites.Add(cs);
+              relevantUnsatCore.Add(cs.callSiteConstant);
+              continue;
+            }
+
+            queries++;
+            checker.Push();
+            checker.AddAxiom(curr);
+            ret = checker.CheckVC();
+            checker.Pop();
+
+            if (ret == Outcome.Errors || ret == Outcome.TimedOut) {
+              curr = Gen.And(cs.callSiteConstant, curr);
+              relevantCallSites.Add(cs);
+              relevantUnsatCore.Add(cs.callSiteConstant);
+            }
+          }
+          reporter.unsatCoreMode = false;
+
+          unsatCore = relevantUnsatCore;
+          Helpers.ExtraTraceInformation("Number of queries = " + queries);
+          Helpers.ExtraTraceInformation("Unsat core after pruning = " + unsatCore.Count);
+          return Outcome.Correct;
         }
 
         HashSet<string> ComputeReachableImplementations(Implementation impl) {
@@ -1835,6 +1821,57 @@ namespace VC
           return set;
         }
 
+        private bool Verified(HashSet<VCExprVar> unsatCore) {
+          bool verified = true;
+          foreach (string name in calleeToCallSites.Keys) {
+            int numInlined = 0;
+            foreach (CallSite cs in calleeToCallSites[name]) {
+              if (unsatCore.Contains(cs.callSiteConstant))
+                numInlined++;
+            }
+            if (numInlined > 1) {
+              Helpers.ExtraTraceInformation("callee name = " + name);
+              Helpers.ExtraTraceInformation("number of inlines = " + numInlined);
+              verified = false;
+            }
+          }
+          return verified;
+        }
+
+        private void InlineBottomUp(StratifiedCheckerInterface checker, HashSet<VCExprVar> unsatCore) {
+          Graph<string> callGraph = new Graph<string>();
+          foreach (string name in calleeToCallSites.Keys) {
+            callGraph.AddSource(name);
+            foreach (CallSite cs in calleeToCallSites[name]) {
+              callGraph.AddEdge(name, cs.callerName);
+            }
+          }
+          foreach (string name in callGraph.TopologicalSort()) {
+            HashSet<CallSite> toBeInlined = new HashSet<CallSite>();
+            foreach (CallSite cs in calleeToCallSites[name]) {
+              if (unsatCore.Contains(cs.callSiteConstant)) {
+                Debug.Assert(name == cs.calleeName);
+                toBeInlined.Add(cs);
+              }
+            }
+            foreach (CallSite cs in toBeInlined) {
+              InlineCallSite(cs, checker);
+            }
+          }
+        }
+
+        private void InlineIntoMain(StratifiedCheckerInterface checker, Implementation impl, HashSet<VCExprVar> unsatCore) {
+          HashSet<CallSite> toBeInlined = new HashSet<CallSite>();
+          foreach (CallSite cs in callerToCallSites[impl.Name]) {
+            if (unsatCore.Contains(cs.callSiteConstant)) {
+              toBeInlined.Add(cs);
+            }
+          }
+          foreach (CallSite cs in toBeInlined) {
+            InlineCallSite(cs, checker);
+          }
+        }
+
         private Outcome SuperAwesomeMethod(Checker underlyingChecker, Implementation impl, VCExpr vcMain) {
           // Create the call graph
           // while (true) 
@@ -1847,22 +1884,13 @@ namespace VC
           var Gen = underlyingChecker.VCExprGen;
           PCBErrorReporter reporter = new PCBErrorReporter(impl);
           StratifiedCheckerInterface checker;
-          if (underlyingChecker.TheoremProver is ApiProverInterface) {
-            checker = new ApiChecker(VCExpressionGenerator.False, reporter, underlyingChecker);
-          }
-          else {
-            checker = new NormalChecker(null, reporter, underlyingChecker);
-          }
+          checker = new ApiChecker(VCExpressionGenerator.False, reporter, underlyingChecker);
           CreateProcedureCopies(impl, program, checker, vcMain);
 
           int iter = 0;
           while (true) {
             Helpers.ExtraTraceInformation("Iteration number " + iter++);
-
             Outcome ret;
-            if (checker is NormalChecker) {
-              checker.updateMainVC(procVcCopies[impl.Name]);
-            }
 
             checker.Push();
 
@@ -1871,9 +1899,7 @@ namespace VC
             foreach (string name in reachableImpls) {
               VCExpr expr = procVcCopies[name];
               if (name == impl.Name) {
-                if (checker is ApiChecker) {
-                  checker.AddAxiom(Gen.Not(expr));
-                }
+                checker.AddAxiom(Gen.Not(expr));
                 continue;
               }
               var cscExpr = VCExpressionGenerator.False;
@@ -1891,32 +1917,14 @@ namespace VC
             
             checker.Pop();
 
-            if (ret == Outcome.Errors) return ret;
+            if (ret == Outcome.Errors) 
+              return ret;
 
-            Graph<string> callGraph = new Graph<string>();
-            foreach (string name in calleeToCallSites.Keys) {
-              callGraph.AddSource(name);
-              foreach (CallSite cs in calleeToCallSites[name]) {
-                callGraph.AddEdge(name, cs.callerName);
-              }
-            }
+            if (Verified(unsatCore))
+              return Outcome.Correct;
 
-            bool verified = true;
-            foreach (string name in callGraph.TopologicalSort()) {
-              HashSet<CallSite> toBeInlined = new HashSet<CallSite>();
-              foreach (CallSite cs in calleeToCallSites[name]) {
-                if (unsatCore.Contains(cs.callSiteConstant)) {
-                  Debug.Assert(name == cs.calleeName);
-                  toBeInlined.Add(cs);
-                }
-              }
-              verified = verified && toBeInlined.Count <= 1;
-              foreach (CallSite cs in toBeInlined) {
-                InlineCallSite(cs, checker);
-              }
-            }
-
-            if (verified) return Outcome.Correct;
+            //InlineBottomUp(checker, unsatCore);
+            InlineIntoMain(checker, impl, unsatCore);
           }
         }
 
