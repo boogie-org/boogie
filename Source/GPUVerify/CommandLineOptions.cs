@@ -22,6 +22,14 @@ namespace GPUVerify
         public static bool FullAbstraction;
         public static bool Inference;
         public static string invariantsFile = null;
+        public static bool DividedArray = false;
+        public static bool DividedAccesses = false;
+        public static bool Eager = false;
+
+        public static bool Symmetry = false;
+        public static bool SetEncoding = false;
+
+        public static bool RaceCheckingContract = false;
 
         public static int Parse(string[] args)
         {
@@ -92,6 +100,44 @@ namespace GPUVerify
 
                     break;
 
+                    case "-dividedArray":
+                    case "/dividedArray":
+                    DividedArray = true;
+
+                    break;
+
+                    case "-dividedAccesses":
+                    case "/dividedAccesses":
+                    DividedAccesses = true;
+
+                    break;
+
+                    case "-divided":
+                    case "/divided":
+                    DividedAccesses = true;
+                    DividedArray = true;
+                    break;
+
+                    case "-symmetry":
+                    case "/symmetry":
+                    Symmetry = true;
+                    break;
+
+                    case "-setEncoding":
+                    case "/setEncoding":
+                    SetEncoding = true;
+                    break;
+
+                    case "-eager":
+                    case "/eager":
+                    Eager = true;
+                    break;
+
+                    case "-raceCheckingContract":
+                    case "/raceCheckingContract":
+                    RaceCheckingContract = true;
+                    break;
+
                     case "-inference":
                     case "/inference":
                     Inference = true;
@@ -106,6 +152,12 @@ namespace GPUVerify
                     default:
                         inputFiles.Add(args[i]);
                         break;
+                }
+
+                if (OnlyDivergence)
+                {
+                    DividedArray = false;
+                    DividedAccesses = false;
                 }
             }
             return 0;

@@ -13,7 +13,7 @@ namespace GPUVerify
 
         private AccessRecord access = null;
 
-        public WriteCollector(List<Variable> GlobalVariables, List<Variable> TileStaticVariables)
+        public WriteCollector(ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
             : base(GlobalVariables, TileStaticVariables)
         {
         }

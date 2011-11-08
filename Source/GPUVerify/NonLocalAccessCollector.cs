@@ -12,16 +12,16 @@ namespace GPUVerify
     {
         public HashSet<Expr> Accesses = new HashSet<Expr>();
 
-        private List<Variable> GlobalVariables;
-        private List<Variable> TileStaticVariables;
+        private ICollection<Variable> GlobalVariables;
+        private ICollection<Variable> TileStaticVariables;
 
-        public NonLocalAccessCollector(List<Variable> GlobalVariables, List<Variable> TileStaticVariables)
+        public NonLocalAccessCollector(ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
         {
             this.GlobalVariables = GlobalVariables;
             this.TileStaticVariables = TileStaticVariables;
         }
 
-        public static bool IsNonLocalAccess(Expr n, List<Variable> GlobalVariables, List<Variable> TileStaticVariables)
+        public static bool IsNonLocalAccess(Expr n, ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
         {
             if (n is NAryExpr)
             {
@@ -50,7 +50,7 @@ namespace GPUVerify
             return false;
         }
 
-        public static bool ContainsNonLocalAccess(AssignLhs lhs, List<Variable> GlobalVariables, List<Variable> TileStaticVariables)
+        public static bool ContainsNonLocalAccess(AssignLhs lhs, ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
         {
             NonLocalAccessCollector collector = new NonLocalAccessCollector(GlobalVariables, TileStaticVariables);
             if (lhs is SimpleAssignLhs)
@@ -65,7 +65,7 @@ namespace GPUVerify
             return collector.Accesses.Count > 0;
         }
 
-        public static bool ContainsNonLocalAccess(Expr rhs, List<Variable> GlobalVariables, List<Variable> TileStaticVariables)
+        public static bool ContainsNonLocalAccess(Expr rhs, ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
         {
             NonLocalAccessCollector collector = new NonLocalAccessCollector(GlobalVariables, TileStaticVariables);
             collector.VisitExpr(rhs);

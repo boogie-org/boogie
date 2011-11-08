@@ -8,10 +8,10 @@ namespace GPUVerify
 {
     abstract class AccessCollector : StandardVisitor
     {
-        protected List<Variable> GlobalVariables;
-        protected List<Variable> TileStaticVariables;
+        protected ICollection<Variable> GlobalVariables;
+        protected ICollection<Variable> TileStaticVariables;
 
-        public AccessCollector(List<Variable> GlobalVariables, List<Variable> TileStaticVariables)
+        public AccessCollector(ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
         {
             this.GlobalVariables = GlobalVariables;
             this.TileStaticVariables = TileStaticVariables;

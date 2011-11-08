@@ -14,10 +14,10 @@ namespace GPUVerify
         public LocalVariable Declaration = null;
         public bool done = false;
 
-        private List<Variable> GlobalVariables;
-        private List<Variable> TileStaticVariables;
+        private ICollection<Variable> GlobalVariables;
+        private ICollection<Variable> TileStaticVariables;
 
-        public NonLocalAccessExtractor(int TempId, List<Variable> GlobalVariables, List<Variable> TileStaticVariables)
+        public NonLocalAccessExtractor(int TempId, ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
         {
             this.TempId = TempId;
             this.GlobalVariables = GlobalVariables;
