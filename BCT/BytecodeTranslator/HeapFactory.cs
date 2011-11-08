@@ -114,7 +114,7 @@ namespace BytecodeTranslator {
     [RepresentationFor("null", "const unique null : Ref;")]
     public Bpl.Constant NullRef;
 
-    [RepresentationFor("Type", "type Type;")]
+    [RepresentationFor("Type", "type {:datatype} Type;")]
     public Bpl.TypeCtorDecl TypeTypeDecl = null;
     public Bpl.CtorType TypeType;
 
@@ -258,12 +258,8 @@ namespace BytecodeTranslator {
     /// </summary>
     public Bpl.Variable CreateTypeVariable(ITypeReference type, List<Bpl.ConstantParent> parents)
     {
-        string typename = TypeHelper.GetTypeName(type);
+      string typename = TypeHelper.GetTypeName(type, NameFormattingOptions.DocumentationId);
         typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
-        // Need to append something to the name to avoid name clashes with other members (of a different
-        // type) that have the same name.
-        typename += "$type";
-
         Bpl.IToken tok = type.Token();
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, typename, this.TypeType);
         Bpl.Constant v = new Bpl.Constant(tok, tident, true /*unique*/, parents, false, null);
@@ -271,18 +267,21 @@ namespace BytecodeTranslator {
     }
 
     public Bpl.Function CreateTypeFunction(ITypeReference type, int parameterCount) {
-      System.Diagnostics.Debug.Assert(parameterCount > 0);
-      string typename = TypeHelper.GetTypeName(type);
+      System.Diagnostics.Debug.Assert(parameterCount >= 0);
+      string typename = TypeHelper.GetTypeName(type, NameFormattingOptions.DocumentationId);
       typename = TranslationHelper.TurnStringIntoValidIdentifier(typename);
-      // Need to append something to the name to avoid name clashes.
-      typename += "$type";
       Bpl.IToken tok = type.Token();
       Bpl.VariableSeq inputs = new Bpl.VariableSeq();
-      for (int i = 0; i < parameterCount; i++) {
-        inputs.Add(new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "arg"+i, this.TypeType), true));
+      //for (int i = 0; i < parameterCount; i++) {
+      //  inputs.Add(new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "arg"+i, this.TypeType), true));
+      //}
+      foreach (var t in type.ResolvedType.GenericParameters) {
+        inputs.Add(new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, t.Name.Value, this.TypeType), true));
       }
       Bpl.Variable output = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "result", this.TypeType), false);
       Bpl.Function func = new Bpl.Function(tok, typename, inputs, output);
+      var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "constructor", new List<object>(1), null);
+      func.Attributes = attrib;
       return func;
     }
     

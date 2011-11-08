@@ -35,7 +35,7 @@ void ObjectInvariant()
 
     [NotDelayed]
     public Z3ProcessTheoremProver(VCExpressionGenerator gen,
-                                  DeclFreeProverContext ctx, Z3InstanceOptions opts):base(opts, gen, ctx, opts.ExeName,opts.Typed ? "TypedUnivBackPred2.sx" : "UnivBackPred2.sx")
+                                  DeclFreeProverContext ctx, Z3InstanceOptions opts):base(opts, gen, ctx, opts.ExeName, "TypedUnivBackPred2.sx")
     {
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
@@ -88,11 +88,6 @@ void ObjectInvariant()
   public class Z3InstanceOptions : ProverOptions
   {
     public int Timeout { get { return TimeLimit / 1000; } }
-    public bool Typed {
-      get { 
-        return CommandLineOptions.Clo.Z3types || BitVectors == CommandLineOptions.BvHandling.Z3Native;
-      } 
-    }
     public int Lets {
       get
         {
@@ -164,10 +159,6 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
     }
 
 
-    public override CommandLineOptions.BvHandling Bitvectors { get {
-      return opts.BitVectors;
-    } }
- 
     public Z3LineariserOptions(bool asTerm, Z3InstanceOptions opts, List<VCExprVar/*!>!*/> letVariables):base(asTerm) {
     Contract.Requires(opts != null);
       Contract.Requires(cce.NonNullElements(letVariables));
@@ -181,7 +172,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
     } }
 
     public override bool UseTypes { get {
-      return opts.Typed;
+      return true;
     } }
 
     public override bool QuantifierIds { get {
@@ -254,7 +245,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
       UniqueNamer namer = new UniqueNamer ();
       Namer = namer;
       this.DeclCollector =
-        new TypeDeclCollector (namer, opts.BitVectors == CommandLineOptions.BvHandling.Z3Native);
+        new TypeDeclCollector (namer, true);
     }
 
     private Z3VCExprTranslator(Z3VCExprTranslator tl) :base(tl){
@@ -332,16 +323,9 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
       VCExpr sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
       Contract.Assert(sortedAxioms!=null);
 
-      if (Opts.Typed) {
-        DeclCollector.Collect(sortedAxioms);
-        DeclCollector.Collect(sortedExpr);
-        FeedTypeDeclsToProver();
-      } else {
-        TermFormulaFlattener flattener = new TermFormulaFlattener (Gen);
-        Contract.Assert(flattener!=null);
-        sortedExpr = flattener.Flatten(sortedExpr);
-        sortedAxioms = flattener.Flatten(sortedAxioms);
-      }
+      DeclCollector.Collect(sortedAxioms);
+      DeclCollector.Collect(sortedExpr);
+      FeedTypeDeclsToProver();
       if (Opts.Lets != 3) {
         // replace let expressions with implies
         Let2ImpliesMutator letImplier = new Let2ImpliesMutator(Gen, Opts.Lets == 1, Opts.Lets == 2);
@@ -409,13 +393,8 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
       Z3InstanceOptions opts = cce.NonNull((Z3InstanceOptions)options);
       VCExpressionGenerator gen = new VCExpressionGenerator ();
       List<string/*!>!*/> proverCommands = new List<string/*!*/> ();
-      proverCommands.Add("all");
       proverCommands.Add("z3");
       proverCommands.Add("simplifyLike");
-      if (opts.BitVectors == CommandLineOptions.BvHandling.Z3Native)
-        proverCommands.Add("bvDefSem");
-      if (opts.BitVectors == CommandLineOptions.BvHandling.ToInt)
-        proverCommands.Add("bvInt");
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
       
       return NewProverContext(gen, genOptions, opts);

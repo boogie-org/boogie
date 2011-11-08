@@ -33,7 +33,7 @@ namespace Microsoft.Boogie.SMTLib
 
     static void FindExecutable()
     // throws ProverException, System.IO.FileNotFoundException;
-    {      
+    {
       Contract.Ensures(_proverPath != null);
 
       var proverExe = "z3.exe";
@@ -65,6 +65,8 @@ namespace Microsoft.Boogie.SMTLib
           z3Dirs.AddRange(Directory.GetDirectories(msrDir, "Z3-*"));
         }
 
+        int minMajor = 3, minMinor = 2;
+
         // Look for the most recent version of Z3.
         int minor = 0, major = 0;
         string winner = null;
@@ -86,6 +88,7 @@ namespace Microsoft.Boogie.SMTLib
         if (major == 0 && minor == 0) {
           throw new ProverException("Cannot find executable: " + firstTry);
         }
+
         Contract.Assert(winner != null);
 
         _proverPath = Path.Combine(Path.Combine(winner, "bin"), proverExe);
@@ -95,6 +98,12 @@ namespace Microsoft.Boogie.SMTLib
 
         if (CommandLineOptions.Clo.Trace) {
           Console.WriteLine("[TRACE] Using prover: " + _proverPath);
+        }
+
+        if (major < minMajor || (major == minMajor && minor < minMinor)) {
+          throw new ProverException(string.Format("Found version {0}.{1} of Z3. Please install version {2}.{3} or later. " +
+                                                  "(More conservative users might opt to supply -prover:Z3 option instead to get the historic Simplify back-end)",
+                                                  major, minor, minMajor, minMinor));
         }
       }
     }
@@ -137,7 +146,7 @@ namespace Microsoft.Boogie.SMTLib
       options.AddWeakSmtOption("NNF_SK_HACK", "true");
 
       // don't use model-based quantifier instantiation; it never finishes on non-trivial Boogie problems
-      options.AddWeakSmtOption("MBQI", "false");      
+      options.AddWeakSmtOption("MBQI", "false");
 
       // More or less like MAM=0.
       options.AddWeakSmtOption("QI_EAGER_THRESHOLD", "100");

@@ -330,7 +330,7 @@ type Ref;
 
 const unique null: Ref;
 
-type Type;
+type {:datatype} Type;
 
 type Real;
 
@@ -415,13 +415,13 @@ function $DelegateTypeParameters(Delegate) : Type;
 
 var {:thread_local} $Exception: Ref;
 
-const unique RegressionTestInput.RealNumbers$type: Type;
+function {:constructor} T$RegressionTestInput.RealNumbers() : Type;
 
-const {:extern} unique System.Object$type: Type;
+function {:extern} T$System.Object() : Type;
 
-axiom $Subtype(RegressionTestInput.RealNumbers$type, System.Object$type);
+axiom $Subtype(T$RegressionTestInput.RealNumbers(), T$System.Object());
 
-axiom $DisjointSubtree(RegressionTestInput.RealNumbers$type, System.Object$type);
+axiom $DisjointSubtree(T$RegressionTestInput.RealNumbers(), T$System.Object());
 
 procedure RegressionTestInput.RealNumbers.WriteDouble$System.Double($this: Ref, d$in: Real);
 
@@ -562,11 +562,11 @@ implementation T$RegressionTestInput.RealNumbers.#cctor()
 
 
 
-const unique RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap$type: Type;
+function {:constructor} T$RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap() : Type;
 
-axiom $Subtype(RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap$type, System.Object$type);
+axiom $Subtype(T$RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap(), T$System.Object());
 
-axiom $DisjointSubtree(RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap$type, System.Object$type);
+axiom $DisjointSubtree(T$RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap(), T$System.Object());
 
 var F$RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.x: [Ref]int;
 
@@ -621,11 +621,11 @@ implementation T$RegressionTestInput.WriteToTheHeapAValueReadFromTheHeap.#cctor(
 
 
 
-const unique RegressionTestInput.CreateStruct$type: Type;
+function {:constructor} T$RegressionTestInput.CreateStruct() : Type;
 
-axiom $Subtype(RegressionTestInput.CreateStruct$type, System.Object$type);
+axiom $Subtype(T$RegressionTestInput.CreateStruct(), T$System.Object());
 
-axiom $DisjointSubtree(RegressionTestInput.CreateStruct$type, System.Object$type);
+axiom $DisjointSubtree(T$RegressionTestInput.CreateStruct(), T$System.Object());
 
 procedure RegressionTestInput.CreateStruct.Create($this: Ref) returns ($result: Ref);
 
@@ -635,17 +635,17 @@ procedure RegressionTestInput.S.#default_ctor(this: Ref);
 
 
 
-const unique RegressionTestInput.S$type: Type;
+function {:constructor} T$RegressionTestInput.S() : Type;
 
-const {:extern} unique System.ValueType$type: Type;
+function {:extern} T$System.ValueType() : Type;
 
-axiom $Subtype(System.ValueType$type, System.Object$type);
+axiom $Subtype(T$System.ValueType(), T$System.Object());
 
-axiom $DisjointSubtree(System.ValueType$type, System.Object$type);
+axiom $DisjointSubtree(T$System.ValueType(), T$System.Object());
 
-axiom $Subtype(RegressionTestInput.S$type, System.ValueType$type);
+axiom $Subtype(T$RegressionTestInput.S(), T$System.ValueType());
 
-axiom $DisjointSubtree(RegressionTestInput.S$type, System.ValueType$type);
+axiom $DisjointSubtree(T$RegressionTestInput.S(), T$System.ValueType());
 
 var F$RegressionTestInput.S.x: [Ref]int;
 
@@ -661,12 +661,12 @@ implementation RegressionTestInput.CreateStruct.Create($this: Ref) returns ($res
 
     call $tmp0 := Alloc();
     call RegressionTestInput.S.#default_ctor($tmp0);
-    assume $DynamicType($tmp0) == RegressionTestInput.S$type;
+    assume $DynamicType($tmp0) == T$RegressionTestInput.S();
     s := $tmp0;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 141} true;
     call $tmp1 := Alloc();
     call RegressionTestInput.S.#default_ctor($tmp1);
-    assume $DynamicType($tmp1) == RegressionTestInput.S$type;
+    assume $DynamicType($tmp1) == T$RegressionTestInput.S();
     s := $tmp1;
     assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 142} true;
     assert F$RegressionTestInput.S.x[s] == 0;
@@ -731,11 +731,11 @@ implementation T$RegressionTestInput.CreateStruct.#cctor()
 
 
 
-const unique RegressionTestInput.ClassWithArrayTypes$type: Type;
+function {:constructor} T$RegressionTestInput.ClassWithArrayTypes() : Type;
 
-axiom $Subtype(RegressionTestInput.ClassWithArrayTypes$type, System.Object$type);
+axiom $Subtype(T$RegressionTestInput.ClassWithArrayTypes(), T$System.Object());
 
-axiom $DisjointSubtree(RegressionTestInput.ClassWithArrayTypes$type, System.Object$type);
+axiom $DisjointSubtree(T$RegressionTestInput.ClassWithArrayTypes(), T$System.Object());
 
 var F$RegressionTestInput.ClassWithArrayTypes.s: Ref;
 
@@ -906,11 +906,11 @@ implementation T$RegressionTestInput.ClassWithArrayTypes.#cctor()
 
 
 
-function RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric$type(arg0: Type) : Type;
+function {:constructor} T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric`1(T: Type) : Type;
 
-function Child0(in: Type) : Type;
+axiom (forall T: Type :: { T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric`1(T) } $Subtype(T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric`1(T), T$System.Object()));
 
-axiom (forall arg0: Type :: { RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric$type(arg0) } Child0(RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric$type(arg0)) == arg0);
+axiom (forall T: Type :: { T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric`1(T) } $DisjointSubtree(T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric`1(T), T$System.Object()));
 
 var F$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric`1.x: [Ref]int;
 
@@ -945,11 +945,11 @@ implementation T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric`1
 
 
 
-const unique RegressionTestInput.BitwiseOperations$type: Type;
+function {:constructor} T$RegressionTestInput.BitwiseOperations() : Type;
 
-axiom $Subtype(RegressionTestInput.BitwiseOperations$type, System.Object$type);
+axiom $Subtype(T$RegressionTestInput.BitwiseOperations(), T$System.Object());
 
-axiom $DisjointSubtree(RegressionTestInput.BitwiseOperations$type, System.Object$type);
+axiom $DisjointSubtree(T$RegressionTestInput.BitwiseOperations(), T$System.Object());
 
 procedure RegressionTestInput.BitwiseOperations.BitwiseAnd$System.Int32$System.Int32($this: Ref, x$in: int, y$in: int) returns ($result: int);
 
@@ -1059,21 +1059,21 @@ implementation T$RegressionTestInput.BitwiseOperations.#cctor()
 
 
 
-const unique RegressionTestInput.AsyncAttribute$type: Type;
+function {:constructor} T$RegressionTestInput.AsyncAttribute() : Type;
 
-const {:extern} unique System.Attribute$type: Type;
+function {:extern} T$System.Attribute() : Type;
 
-axiom $Subtype(System.Attribute$type, System.Object$type);
+axiom $Subtype(T$System.Attribute(), T$System.Object());
 
-axiom $DisjointSubtree(System.Attribute$type, System.Object$type);
+axiom $DisjointSubtree(T$System.Attribute(), T$System.Object());
 
-const {:extern} unique System.Runtime.InteropServices._Attribute$type: Type;
+function {:extern} T$System.Runtime.InteropServices._Attribute() : Type;
 
-axiom $Subtype(System.Attribute$type, System.Runtime.InteropServices._Attribute$type);
+axiom $Subtype(T$System.Attribute(), T$System.Runtime.InteropServices._Attribute());
 
-axiom $Subtype(RegressionTestInput.AsyncAttribute$type, System.Attribute$type);
+axiom $Subtype(T$RegressionTestInput.AsyncAttribute(), T$System.Attribute());
 
-axiom $DisjointSubtree(RegressionTestInput.AsyncAttribute$type, System.Attribute$type);
+axiom $DisjointSubtree(T$RegressionTestInput.AsyncAttribute(), T$System.Attribute());
 
 procedure RegressionTestInput.AsyncAttribute.#ctor($this: Ref);
 
@@ -1109,11 +1109,11 @@ implementation T$RegressionTestInput.AsyncAttribute.#cctor()
 
 
 
-const unique RegressionTestInput.RefParameters$type: Type;
+function {:constructor} T$RegressionTestInput.RefParameters() : Type;
 
-axiom $Subtype(RegressionTestInput.RefParameters$type, System.Object$type);
+axiom $Subtype(T$RegressionTestInput.RefParameters(), T$System.Object());
 
-axiom $DisjointSubtree(RegressionTestInput.RefParameters$type, System.Object$type);
+axiom $DisjointSubtree(T$RegressionTestInput.RefParameters(), T$System.Object());
 
 procedure RegressionTestInput.RefParameters.M$System.Int32$(x$in: int) returns (x$out: int);
 
@@ -1163,11 +1163,11 @@ implementation T$RegressionTestInput.RefParameters.#cctor()
 
 
 
-const unique RegressionTestInput.NestedGeneric$type: Type;
+function {:constructor} T$RegressionTestInput.NestedGeneric() : Type;
 
-axiom $Subtype(RegressionTestInput.NestedGeneric$type, System.Object$type);
+axiom $Subtype(T$RegressionTestInput.NestedGeneric(), T$System.Object());
 
-axiom $DisjointSubtree(RegressionTestInput.NestedGeneric$type, System.Object$type);
+axiom $DisjointSubtree(T$RegressionTestInput.NestedGeneric(), T$System.Object());
 
 procedure RegressionTestInput.NestedGeneric.#ctor($this: Ref);
 
@@ -1189,11 +1189,11 @@ implementation RegressionTestInput.NestedGeneric.#ctor($this: Ref)
 
 
 
-const unique RegressionTestInput.NestedGeneric.C$type: Type;
+function {:constructor} T$RegressionTestInput.NestedGeneric.C() : Type;
 
-axiom $Subtype(RegressionTestInput.NestedGeneric.C$type, System.Object$type);
+axiom $Subtype(T$RegressionTestInput.NestedGeneric.C(), T$System.Object());
 
-axiom $DisjointSubtree(RegressionTestInput.NestedGeneric.C$type, System.Object$type);
+axiom $DisjointSubtree(T$RegressionTestInput.NestedGeneric.C(), T$System.Object());
 
 procedure RegressionTestInput.NestedGeneric.C.#ctor($this: Ref);
 
@@ -1215,9 +1215,11 @@ implementation RegressionTestInput.NestedGeneric.C.#ctor($this: Ref)
 
 
 
-function RegressionTestInput.NestedGeneric.C.G$type(arg0: Type) : Type;
+function {:constructor} T$RegressionTestInput.NestedGeneric.C.G`1(T: Type) : Type;
 
-axiom (forall arg0: Type :: { RegressionTestInput.NestedGeneric.C.G$type(arg0) } Child0(RegressionTestInput.NestedGeneric.C.G$type(arg0)) == arg0);
+axiom (forall T: Type :: { T$RegressionTestInput.NestedGeneric.C.G`1(T) } $Subtype(T$RegressionTestInput.NestedGeneric.C.G`1(T), T$System.Object()));
+
+axiom (forall T: Type :: { T$RegressionTestInput.NestedGeneric.C.G`1(T) } $DisjointSubtree(T$RegressionTestInput.NestedGeneric.C.G`1(T), T$System.Object()));
 
 procedure RegressionTestInput.NestedGeneric.C.G`1.#ctor$System.Int32($this: Ref, x$in: int);
 
@@ -1259,7 +1261,7 @@ implementation RegressionTestInput.NestedGeneric.C.G`1.#ctor$System.Int32($this:
     }
     else
     {
-        call $tmp2 := System.Activator.CreateInstance``1(Child0($DynamicType($this)));
+        call $tmp2 := System.Activator.CreateInstance``1(T);
         $tmp1 := Box2Box($tmp2);
         if ($Exception != null)
         {
@@ -1326,11 +1328,11 @@ implementation {:inline 1} RegressionTestInput.S.#copy_ctor(this: Ref, other: Re
 
 
 
-const unique RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric$type: Type;
+function {:constructor} T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric() : Type;
 
-axiom $Subtype(RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric$type, System.Object$type);
+axiom $Subtype(T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric(), T$System.Object());
 
-axiom $DisjointSubtree(RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric$type, System.Object$type);
+axiom $DisjointSubtree(T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric(), T$System.Object());
 
 var F$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric.x: [Ref]int;
 
@@ -1365,11 +1367,11 @@ implementation T$RegressionTestInput.TestForClassesDifferingOnlyInBeingGeneric.#
 
 
 
-const unique RegressionTestInput.Class0$type: Type;
+function {:constructor} T$RegressionTestInput.Class0() : Type;
 
-axiom $Subtype(RegressionTestInput.Class0$type, System.Object$type);
+axiom $Subtype(T$RegressionTestInput.Class0(), T$System.Object());
 
-axiom $DisjointSubtree(RegressionTestInput.Class0$type, System.Object$type);
+axiom $DisjointSubtree(T$RegressionTestInput.Class0(), T$System.Object());
 
 var F$RegressionTestInput.Class0.StaticInt: int;
 
@@ -1638,11 +1640,11 @@ implementation T$RegressionTestInput.Class0.#cctor()
 
 
 
-const unique RegressionTestInput.ClassWithBoolTypes$type: Type;
+function {:constructor} T$RegressionTestInput.ClassWithBoolTypes() : Type;
 
-axiom $Subtype(RegressionTestInput.ClassWithBoolTypes$type, System.Object$type);
+axiom $Subtype(T$RegressionTestInput.ClassWithBoolTypes(), T$System.Object());
 
-axiom $DisjointSubtree(RegressionTestInput.ClassWithBoolTypes$type, System.Object$type);
+axiom $DisjointSubtree(T$RegressionTestInput.ClassWithBoolTypes(), T$System.Object());
 
 var F$RegressionTestInput.ClassWithBoolTypes.staticB: bool;
 

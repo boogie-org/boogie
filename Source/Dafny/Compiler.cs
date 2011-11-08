@@ -690,12 +690,6 @@ namespace Microsoft.Dafny {
             CheckHasNoAssumes(s);
           }
         }
-      } else if (stmt is ForeachStmt) {
-        ForeachStmt s = (ForeachStmt)stmt;
-        foreach (PredicateStmt t in s.BodyPrefix) {
-          CheckHasNoAssumes(t);
-        }
-        CheckHasNoAssumes(s.GivenBody);
       } else if (stmt is ParallelStmt) {
         var s = (ParallelStmt)stmt;
         CheckHasNoAssumes(s.Body);
@@ -773,50 +767,8 @@ namespace Microsoft.Dafny {
 
       } else if (stmt is AssignStmt) {
         AssignStmt s = (AssignStmt)stmt;
-        if (s.Lhs is SeqSelectExpr && !((SeqSelectExpr)s.Lhs).SelectOne) {
-          SeqSelectExpr sel = (SeqSelectExpr)s.Lhs;
-          if (!(s.Rhs is HavocRhs)) {
-            // Generate the following:
-            //   tmpArr = sel.Seq;
-            //   tmpLow = sel.E0;  // or 0 if sel.E0==null
-            //   tmpHigh = sel.Eq;  // or arr.Length if sel.E1==null
-            //   tmpRhs = s.Rhs;
-            //   for (int tmpI = tmpLow; tmpI < tmpHigh; tmpI++) {
-            //     tmpArr[tmpI] = tmpRhs;
-            //   }
-            string arr = "_arr" + tmpVarCount;
-            string low = "_low" + tmpVarCount;
-            string high = "_high" + tmpVarCount;
-            string rhs = "_rhs" + tmpVarCount;
-            string i = "_i" + tmpVarCount;
-            tmpVarCount++;
-            Indent(indent); wr.Write("{0} {1} = ", TypeName(cce.NonNull(sel.Seq.Type)), arr); TrExpr(sel.Seq); wr.WriteLine(";");
-            Indent(indent); wr.Write("int {0} = ", low);
-            if (sel.E0 == null) {
-              wr.Write("0");
-            } else {
-              TrExpr(sel.E0);
-            }
-            wr.WriteLine(";");
-            Indent(indent); wr.Write("int {0} = ", high);
-            if (sel.E1 == null) {
-              wr.Write("new BigInteger(arr.Length)");
-            } else {
-              TrExpr(sel.E1);
-            }
-            wr.WriteLine(";");
-            Indent(indent); wr.Write("{0} {1} = ", TypeName(cce.NonNull(sel.Type)), rhs); TrAssignmentRhs(s.Rhs); wr.WriteLine(";");
-            Indent(indent);
-            wr.WriteLine("for (BigInteger {0} = {1}; {0} < {2}; {0}++) {{", i, low, high);
-            Indent(indent + IndentAmount);
-            wr.WriteLine("{0}[(int)({1})] = {2};", arr, i, rhs);
-            Indent(indent);
-            wr.WriteLine(";");
-          }
-
-        } else {
-          TrRhs(null, s.Lhs, s.Rhs, indent);
-        }
+        Contract.Assert(!(s.Lhs is SeqSelectExpr) || ((SeqSelectExpr)s.Lhs).SelectOne);  // multi-element array assignments are not allowed
+        TrRhs(null, s.Lhs, s.Rhs, indent);
 
       } else if (stmt is VarDecl) {
         TrVarDecl((VarDecl)stmt, true, indent);
@@ -895,61 +847,179 @@ namespace Microsoft.Dafny {
 
       } else if (stmt is ParallelStmt) {
         var s = (ParallelStmt)stmt;
-        Error("parallel statements are not yet supported by the Dafny compiler; stay tuned");
-        // TODO
-        
-      } else if (stmt is ForeachStmt) {
-        ForeachStmt s = (ForeachStmt)stmt;
-        // List<Pair<TType,RhsType>> pendingUpdates = new List<Pair<TType,RhsType>>();
-        // foreach (TType x in S) {
-        //   if (Range(x)) {
-        //     assert/assume ...;
-        //     pendingUpdates.Add(new Pair(x,RHS));
+        if (s.Kind != ParallelStmt.ParBodyKind.Assign) {
+          // Call and Proof have no side effects, so they can simply be optimized away.
+          return;
+        }
+        var s0 = (AssignStmt)s.S0;
+        if (s0.Rhs is HavocRhs) {
+          // The parallel statement says to havoc a bunch of things.  This can be efficiently compiled
+          // into doing nothing.
+          return;
+        }
+        var rhs = ((ExprRhs)s0.Rhs).Expr;
+
+        // Compile:
+        //   parallel (w,x,y,z | Range(w,x,y,z)) {
+        //     LHS(w,x,y,z) := RHS(w,x,y,z);
         //   }
-        // }
-        // foreach (Pair<TType,RhsType> p in pendingUpdates) {
-        //   p.Car.m = p.Cdr;
-        // }
-        string pu = "_pendingUpdates" + tmpVarCount;
-        string pr = "_pair" + tmpVarCount;
+        // where w,x,y,z have types seq<W>,set<X>,int,bool and LHS has L-1 top-level subexpressions
+        // (that is, L denotes the number of top-level subexpressions of LHS plus 1),
+        // into:
+        //   var ingredients = new List< L-Tuple >();
+        //   foreach (W w in sq.UniqueElements) {
+        //     foreach (X x in st.Elements) {
+        //       for (BigInteger y = Lo; j < Hi; j++) {
+        //         for (bool z in Helper.AllBooleans) {
+        //           if (Range(w,x,y,z)) {
+        //             ingredients.Add(new L-Tuple( LHS0(w,x,y,z), LHS1(w,x,y,z), ..., RHS(w,x,y,z) ));
+        //           }
+        //         }
+        //       }
+        //     }
+        //   }
+        //   foreach (L-Tuple l in ingredients) {
+        //     LHS[ l0, l1, l2, ..., l(L-2) ] = l(L-1);
+        //   }
+        //
+        // Note, because the .NET Tuple class only supports up to 8 components, the compiler implementation
+        // here supports arrays only up to 6 dimensions.  This does not seem like a serious practical limitation.
+        // However, it may be more noticeable if the parallel statement supported parallel assignments in its
+        // body.  To support cases where tuples would need more than 8 components, .NET Tuple's would have to
+        // be nested.
+
+        // Temporary names
+        string ingredients = "_ingredients" + tmpVarCount;
+        string tup = "_tup" + tmpVarCount;
         tmpVarCount++;
-        string TType = TypeName(s.BoundVar.Type);
-        string RhsType = TypeName(cce.NonNull(s.BodyAssign.Lhs.Type));
 
-        Indent(indent);
-        wr.WriteLine("List<Pair<{0},{1}>> {2} = new List<Pair<{0},{1}>>();", TType, RhsType, pu);
-
-        Indent(indent);
-        wr.Write("foreach ({0} @{1} in (", TType, s.BoundVar.Name);
-        TrExpr(s.Collection);
-        wr.WriteLine(").Elements) {");
-
-        Indent(indent + IndentAmount);
-        wr.Write("if (");
-        TrExpr(s.Range);
-        wr.WriteLine(") {");
-
-        foreach (PredicateStmt p in s.BodyPrefix) {
-          TrStmt(p, indent + 2*IndentAmount);
-        }
-        Indent(indent + 2*IndentAmount);
-        wr.Write("{0}.Add(new Pair<{1},{2}>(@{3}, ", pu, TType, RhsType, s.BoundVar.Name);
-        ExprRhs rhsExpr = s.BodyAssign.Rhs as ExprRhs;
-        if (rhsExpr != null) {
-          TrExpr(rhsExpr.Expr);
+        // Compute L
+        int L;
+        string tupleTypeArgs;
+        if (s0.Lhs is FieldSelectExpr) {
+          var lhs = (FieldSelectExpr)s0.Lhs;
+          L = 2;
+          tupleTypeArgs = TypeName(lhs.Obj.Type);
+        } else if (s0.Lhs is SeqSelectExpr) {
+          var lhs = (SeqSelectExpr)s0.Lhs;
+          L = 3;
+          // note, we might as well do the BigInteger-to-int cast for array indices here, before putting things into the Tuple rather than when they are extracted from the Tuple
+          tupleTypeArgs = TypeName(lhs.Seq.Type) + ",int";
         } else {
-          wr.Write(DefaultValue(s.BodyAssign.Lhs.Type));
+          var lhs = (MultiSelectExpr)s0.Lhs;
+          L = 2 + lhs.Indices.Count;
+          if (8 < L) {
+            Error("compiler currently does not support assignments to more-than-6-dimensional arrays in parallel statements");
+            return;
+          }
+          tupleTypeArgs = TypeName(lhs.Array.Type);
+          for (int i = 0; i < lhs.Indices.Count; i++) {
+            // note, we might as well do the BigInteger-to-int cast for array indices here, before putting things into the Tuple rather than when they are extracted from the Tuple
+            tupleTypeArgs += ",int";
+          }
         }
-        wr.WriteLine("))");
+        tupleTypeArgs += "," + TypeName(rhs.Type);
 
-        Indent(indent + IndentAmount);  wr.WriteLine("}");
-        Indent(indent);  wr.WriteLine("}");
+        // declare and construct "ingredients"
+        Indent(indent);
+        wr.WriteLine("var {0} = new List<System.Tuple<{1}>>();", ingredients, tupleTypeArgs);
 
-        Indent(indent);  wr.WriteLine("foreach (Pair<{0},{1}> {2} in {3}) {{", TType, RhsType, pr, pu);
+        var n = s.BoundVars.Count;
+        Contract.Assert(s.Bounds.Count == n);
+        for (int i = 0; i < n; i++) {
+          Indent(indent + i * IndentAmount);
+          var bound = s.Bounds[i];
+          var bv = s.BoundVars[i];
+          if (bound is QuantifierExpr.BoolBoundedPool) {
+            wr.Write("foreach (var @{0} in Dafny.Helpers.AllBooleans) {{ ", bv.Name);
+          } else if (bound is QuantifierExpr.IntBoundedPool) {
+            var b = (QuantifierExpr.IntBoundedPool)bound;
+            wr.Write("for (var @{0} = ", bv.Name);
+            TrExpr(b.LowerBound);
+            wr.Write("; @{0} < ", bv.Name);
+            TrExpr(b.UpperBound);
+            wr.Write("; @{0}++) {{ ", bv.Name);
+          } else if (bound is QuantifierExpr.SetBoundedPool) {
+            var b = (QuantifierExpr.SetBoundedPool)bound;
+            wr.Write("foreach (var @{0} in (", bv.Name);
+            TrExpr(b.Set);
+            wr.Write(").Elements) { ");
+          } else if (bound is QuantifierExpr.SeqBoundedPool) {
+            var b = (QuantifierExpr.SeqBoundedPool)bound;
+            wr.Write("foreach (var @{0} in (", bv.Name);
+            TrExpr(b.Seq);
+            wr.Write(").UniqueElements) { ");
+          } else {
+            Contract.Assert(false); throw new cce.UnreachableException();  // unexpected BoundedPool type
+          }
+          wr.WriteLine();
+        }
+
+        // if (range) {
+        //   ingredients.Add(new L-Tuple( LHS0(w,x,y,z), LHS1(w,x,y,z), ..., RHS(w,x,y,z) ));
+        // }
+        Indent(indent + n * IndentAmount);
+        wr.Write("if ");
+        TrParenExpr(s.Range);
+        wr.WriteLine(" {");
+
+        Indent(indent + (n + 1) * IndentAmount);
+        wr.Write("{0}.Add(new System.Tuple<{1}>(", ingredients, tupleTypeArgs);
+        if (s0.Lhs is FieldSelectExpr) {
+          var lhs = (FieldSelectExpr)s0.Lhs;
+          TrExpr(lhs.Obj);
+        } else if (s0.Lhs is SeqSelectExpr) {
+          var lhs = (SeqSelectExpr)s0.Lhs;
+          TrExpr(lhs.Seq);
+          wr.Write(", (int)(");
+          TrExpr(lhs.E0);
+          wr.Write(")");
+        } else {
+          var lhs = (MultiSelectExpr)s0.Lhs;
+          TrExpr(lhs.Array);
+          for (int i = 0; i < lhs.Indices.Count; i++) {
+            wr.Write(", (int)(");
+            TrExpr(lhs.Indices[i]);
+            wr.Write(")");
+          }
+          wr.WriteLine("] = {0}.Item{1};", tup, L);
+        }
+        wr.Write(", ");
+        TrExpr(rhs);
+        wr.WriteLine("));");
+
+        Indent(indent + n * IndentAmount);
+        wr.WriteLine("}");
+
+        for (int i = n; 0 <= --i; ) {
+          Indent(indent + i * IndentAmount);
+          wr.WriteLine("}");
+        }
+
+        //   foreach (L-Tuple l in ingredients) {
+        //     LHS[ l0, l1, l2, ..., l(L-2) ] = l(L-1);
+        //   }
+        Indent(indent);
+        wr.WriteLine("foreach (var {0} in {1}) {{", tup, ingredients);
         Indent(indent + IndentAmount);
-        FieldSelectExpr fse = (FieldSelectExpr)s.BodyAssign.Lhs;
-        wr.WriteLine("{0}.Car.{1} = {0}.Cdr;", pr, fse.FieldName);
-        Indent(indent);  wr.WriteLine("}");
+        if (s0.Lhs is FieldSelectExpr) {
+          var lhs = (FieldSelectExpr)s0.Lhs;
+          wr.WriteLine("{0}.Item1.@{1} = {0}.Item2;", tup, lhs.FieldName);
+        } else if (s0.Lhs is SeqSelectExpr) {
+          var lhs = (SeqSelectExpr)s0.Lhs;
+          wr.WriteLine("{0}.Item1[{0}.Item2] = {0}.Item3;", tup);
+        } else {
+          var lhs = (MultiSelectExpr)s0.Lhs;
+          wr.Write("{0}.Item1[");
+          string sep = "";
+          for (int i = 0; i < lhs.Indices.Count; i++) {
+            wr.Write("{0}{1}.Item{2}", sep, tup, i + 2);
+            sep = ", ";
+          }
+          wr.WriteLine("] = {0}.Item{1};", tup, L);
+        }
+        Indent(indent);
+        wr.WriteLine("}");
 
       } else if (stmt is MatchStmt) {
         MatchStmt s = (MatchStmt)stmt;

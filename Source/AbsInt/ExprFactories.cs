@@ -10,7 +10,8 @@ using Microsoft.Basetypes;
 
 namespace Microsoft.Boogie.AbstractInterpretation {
 
-  public class BoogiePropFactory : BoogieFactory, AI.IQuantPropExprFactory {
+  public class BoogiePropFactory : BoogieFactory, AI.IPropExprFactory
+  {
     public AI.IFunApp False {
       get {
         Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
@@ -61,56 +62,12 @@ namespace Microsoft.Boogie.AbstractInterpretation {
 
       return (AI.IFunApp)(new ExistsExpr(Token.NoToken, new VariableSeq((Variable)p.Param), IExpr2Expr(p.Body))).IExpr;
     }
-    public AI.IFunApp Exists(AI.AIType paramType, AI.FunctionBody bodygen) {
-      //Contract.Requires(bodygen != null);
-      Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
-
-      // generate a fresh new variable
-      Variable var = FreshBoundVariable(paramType);
-      Contract.Assert(var != null);
-      Expr expr = IExpr2Expr(bodygen(var));
-      Contract.Assert(expr != null);
-      return (AI.IFunApp)(new ExistsExpr(Token.NoToken, new VariableSeq(var), expr)).IExpr;
-    }
 
     public AI.IFunApp Forall(AI.IFunction p) {
       //Contract.Requires(p != null);
       Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
 
       return (AI.IFunApp)(new ForallExpr(Token.NoToken, new VariableSeq((Variable)p.Param), IExpr2Expr(p.Body))).IExpr;
-    }
-    public AI.IFunApp Forall(AI.AIType paramType, AI.FunctionBody bodygen) {
-      //Contract.Requires(bodygen != null);
-      Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
-
-      // generate a fresh new variable
-      Variable var = FreshBoundVariable(paramType);
-      Contract.Assert(var != null);
-      Expr expr = IExpr2Expr(bodygen(var));
-      Contract.Assert(expr != null);
-      return (AI.IFunApp)(new ForallExpr(Token.NoToken, new VariableSeq(var), expr)).IExpr;
-    }
-
-    private static int freshVarNum = 0;
-    private static Variable FreshBoundVariable(AI.AIType paramType) {
-      Contract.Ensures(Contract.Result<Variable>() != null);
-
-      // TODO: Should use the AI.AIType given in Exists and Forall to determine what Boogie type
-      // to make this new variable?  For now, we use Type.Any.
-      Type t = Type.Int;
-      Contract.Assert(t != null);
-      /*
-        if (paramType is AI.Ref)
-          t = Type.Ref;
-        else if (paramType is AI.FieldName)
-          t = Type.Name;
-        else
-          System.Console.WriteLine("*** unsupported type in AI {0}", paramType); */
-      Contract.Assert(false);
-      throw new cce.UnreachableException();
-      TypedIdent id = new TypedIdent(Token.NoToken, "propfactory_freshvar" + freshVarNum, t);
-      freshVarNum++;
-      return new BoundVariable(Token.NoToken, id);
     }
   }
 

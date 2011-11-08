@@ -1040,6 +1040,19 @@ namespace Microsoft.Dafny {
     }
   }
 
+  /// <summary>
+  /// A "ThisSurrogate" is used during translation time to make the treatment of the receiver more similar to
+  /// the treatment of other in-parameters.
+  /// </summary>
+  public class ThisSurrogate : Formal
+  {
+    public ThisSurrogate(IToken tok, Type type)
+      : base(tok, "this", type, true, false) {
+      Contract.Requires(tok != null);
+      Contract.Requires(type != null);
+    }
+  }
+
   public class BoundVar : NonglobalVariable {
     public override bool IsMutable {
       get {
@@ -1753,40 +1766,6 @@ namespace Microsoft.Dafny {
     }
   }
 
-  public class ForeachStmt : Statement
-  {
-    public readonly BoundVar/*!*/ BoundVar;
-    public readonly Expression/*!*/ Collection;
-    public readonly Expression/*!*/ Range;
-    public readonly List<PredicateStmt/*!*/>/*!*/ BodyPrefix;
-    public readonly Statement GivenBody;  // used only until resolution; afterwards, use BodyAssign
-    public AssignStmt/*!*/ BodyAssign;  // filled in during resolution
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(BoundVar != null);
-      Contract.Invariant(Collection != null);
-      Contract.Invariant(Range != null);
-      Contract.Invariant(cce.NonNullElements(BodyPrefix));
-      Contract.Invariant(GivenBody != null);
-    }
-
-    public ForeachStmt(IToken tok, BoundVar boundVar, Expression collection, Expression range,
-      List<PredicateStmt/*!*/>/*!*/ bodyPrefix, Statement givenBody)
-      : base(tok) {
-      Contract.Requires(tok != null);
-      Contract.Requires(boundVar != null);
-      Contract.Requires(collection != null);
-      Contract.Requires(range != null);
-      Contract.Requires(cce.NonNullElements(bodyPrefix));
-      Contract.Requires(givenBody != null);
-      this.BoundVar = boundVar;
-      this.Collection = collection;
-      this.Range = range;
-      this.BodyPrefix = bodyPrefix;
-      this.GivenBody = givenBody;
-    }
-  }
-
   public class ParallelStmt : Statement
   {
     public readonly List<BoundVar/*!*/> BoundVars;
@@ -2043,7 +2022,6 @@ namespace Microsoft.Dafny {
       : base(tok) {  // represents the Dafny literal "null"
       Contract.Requires(tok != null);
       this.Value = null;
-
     }
 
     public LiteralExpr(IToken tok, BigInteger n)
@@ -2052,7 +2030,6 @@ namespace Microsoft.Dafny {
       Contract.Requires(0 <= n.Sign);
 
       this.Value = n;
-
     }
 
     public LiteralExpr(IToken tok, int n) :base(tok){
@@ -2331,7 +2308,9 @@ namespace Microsoft.Dafny {
 
     public override IEnumerable<Expression> SubExpressions {
       get {
-        yield return Receiver;
+        if (!Function.IsStatic) {
+          yield return Receiver;
+        }
         foreach (var e in Args) {
           yield return e;
         }

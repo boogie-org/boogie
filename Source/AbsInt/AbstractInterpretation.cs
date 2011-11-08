@@ -686,7 +686,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
     static public AbstractAlgebra BuildIntervalsAbstractDomain() {
       Contract.Ensures(Contract.Result<AbstractAlgebra>() != null);
 
-      AI.IQuantPropExprFactory propfactory = new BoogiePropFactory();
+      AI.IPropExprFactory propfactory = new BoogiePropFactory();
       AI.ILinearExprFactory linearfactory = new BoogieLinearFactory();
       AI.IValueExprFactory valuefactory = new BoogieValueFactory();
       IComparer variableComparer = new VariableComparer();
@@ -709,7 +709,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
 
       AI.Lattice returnLattice;
 
-      AI.IQuantPropExprFactory propfactory = new BoogiePropFactory();
+      AI.IPropExprFactory propfactory = new BoogiePropFactory();
       AI.ILinearExprFactory linearfactory = new BoogieLinearFactory();
       AI.IIntExprFactory intfactory = new BoogieIntFactory();
       AI.IValueExprFactory valuefactory = new BoogieValueFactory();
@@ -772,7 +772,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
     [Peer]
     private AI.Lattice lattice;
     [Peer]
-    private AI.IQuantPropExprFactory propFactory;
+    private AI.IPropExprFactory propFactory;
     [Peer]
     private AI.ILinearExprFactory linearFactory;
     [Peer]
@@ -797,7 +797,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
       }
     }
 
-    public AI.IQuantPropExprFactory PropositionFactory {
+    public AI.IPropExprFactory PropositionFactory {
       get {
         return this.propFactory;
       }
@@ -835,7 +835,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
 
     [Captured]
     public AbstractAlgebra(AI.Lattice lattice,
-                          AI.IQuantPropExprFactory propFactory,
+                          AI.IPropExprFactory propFactory,
                           AI.ILinearExprFactory linearFactory,
                           AI.IIntExprFactory intFactory,
                           AI.IValueExprFactory valueFactory,

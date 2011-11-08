@@ -6,14 +6,14 @@ using Microsoft.Cci;
 using Microsoft.Cci.MutableCodeModel;
 
 namespace BytecodeTranslator.Phone {
-  class PhoneControlFeedbackCodeTraverser : BaseCodeTraverser {
+  class PhoneControlFeedbackCodeTraverser : CodeTraverser {
     private IMetadataReaderHost host;
 
     public PhoneControlFeedbackCodeTraverser(IMetadataReaderHost host) : base() {
       this.host = host;
     }
 
-    public override void Visit(IMethodCall methodCall) {
+    public override void TraverseChildren(IMethodCall methodCall) {
       if (PhoneCodeHelper.instance().PhoneFeedbackToggled) {
         // check for handlers we do not wish to add feedback checks to
         if (methodCall.MethodToCall.Name.Value.StartsWith("add_")) {
@@ -49,16 +49,16 @@ namespace BytecodeTranslator.Phone {
 
   }
 
-  class PhoneControlFeedbackMetadataTraverser : BaseMetadataTraverser {
+  class PhoneControlFeedbackMetadataTraverser : MetadataTraverser {
     private IMetadataReaderHost host;
 
     public PhoneControlFeedbackMetadataTraverser(IMetadataReaderHost host) : base() {
       this.host = host;
     }
 
-    public override void Visit(IMethodDefinition method) {
+    public override void TraverseChildren(IMethodDefinition method) {
       PhoneControlFeedbackCodeTraverser codeTraverser = new PhoneControlFeedbackCodeTraverser(host);
-      codeTraverser.Visit(method);
+      codeTraverser.TraverseChildren(method);
     }
   }
 }

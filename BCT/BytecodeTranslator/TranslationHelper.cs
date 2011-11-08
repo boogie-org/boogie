@@ -15,7 +15,7 @@ using Microsoft.Cci.Contracts;
 using Microsoft.Cci.ILToCodeModel;
 
 using Bpl = Microsoft.Boogie;
-
+using System.Text.RegularExpressions;
 
 namespace BytecodeTranslator {
 
@@ -131,44 +131,25 @@ namespace BytecodeTranslator {
     }
 
     public static string TurnStringIntoValidIdentifier(string s) {
+
+      // Do this specially just to make the resulting string a little bit more readable.
+      // REVIEW: Just let the main replacement take care of it?
       s = s.Replace("[0:,0:]", "2DArray"); // TODO: Do this programmatically to handle arbitrary arity
       s = s.Replace("[0:,0:,0:]", "3DArray");
       s = s.Replace("[0:,0:,0:,0:]", "4DArray");
       s = s.Replace("[0:,0:,0:,0:,0:]", "5DArray");
-      s = s.Replace('!', '$');
-      s = s.Replace('*', '$');
-      s = s.Replace('+', '$');
-      s = s.Replace('(', '$');
-      s = s.Replace(')', '$');
-      s = s.Replace(',', '$');
       s = s.Replace("[]", "array");
-      s = s.Replace('<', '$');
-      s = s.Replace('>', '$');
-      s = s.Replace(':', '$');
-      s = s.Replace(' ', '$');
-      s = s.Replace('{', '$');
-      s = s.Replace('}', '$');
-      s = s.Replace('-', '$');
-      s = s.Replace(' ', '$');
-      s = s.Replace('\t', '$');
-      s = s.Replace('\r', '$');
-      s = s.Replace('\n', '$');
-      s = s.Replace('\b', '$');
-      s = s.Replace('\x1B', '$');
-      s = s.Replace('/', '$');
-      s = s.Replace('\\', '$');
-      s = s.Replace('=', '$');
-      s = s.Replace('@', '$');
-      s = s.Replace(';', '$');
-      s = s.Replace('%', '$');
-      s = s.Replace('&', '$');
-      s = s.Replace('"', '$');
-      s = s.Replace('[', '$');
-      s = s.Replace(']', '$');
-      s = s.Replace('|', '$');
-      s = s.Replace('+', '$');
-      s = s.Replace('±', '$');
-      s = s.Replace('√', '$');
+
+      // The definition of a Boogie identifier is from BoogiePL.atg.
+      // Just negate that to get which characters should be replaced with a dollar sign.
+
+      // letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".
+      // digit = "0123456789".
+      // special = "'~#$^_.?`".
+      // nondigit = letter + special.
+      // ident =  [ '\\' ] nondigit {nondigit | digit}.
+
+      s = Regex.Replace(s, "[^A-Za-z0-9'~#$^_.?`]", "$");
       
       s = GetRidOfSurrogateCharacters(s);
       return s;

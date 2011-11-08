@@ -28,12 +28,6 @@ Boogie program verifier finished with 1 verified, 0 errors
 bv7.bpl(4,14): error: arguments of extract need to be integer literals
 bv7.bpl(5,15): error: parentheses around bitvector bounds are not allowed
 2 parse errors detected in bv7.bpl
--------------------- bv4.bpl - /bv:n --------------------
-bv4.bpl(3,6): Error: no bitvector handling specified, please use /bv:i or /bv:z flag
-bv4.bpl(3,13): Error: no bitvector handling specified, please use /bv:i or /bv:z flag
-bv4.bpl(5,6): Error: no bitvector handling specified, please use /bv:i or /bv:z flag
-bv4.bpl(5,14): Error: no bitvector handling specified, please use /bv:i or /bv:z flag
-4 type checking errors detected in bv4.bpl
 -------------------- bv5.bpl --------------------
 bv5.bpl(10,3): Error BP5001: This assertion might not hold.
 Execution trace:
@@ -52,6 +46,6 @@ Boogie program verifier finished with 2 verified, 0 errors
 -------------------- bv10.bpl --------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
--------------------- bv9.bpl /bv:z /proverOpt:OPTIMIZE_FOR_BV=true --------------------
+-------------------- bv9.bpl /proverOpt:OPTIMIZE_FOR_BV=true --------------------
 
 Boogie program verifier finished with 1 verified, 0 errors

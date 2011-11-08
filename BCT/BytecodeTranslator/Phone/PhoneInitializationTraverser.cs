@@ -23,7 +23,7 @@ namespace BytecodeTranslator.Phone {
   /// <summary>
   /// Traverse code looking for phone specific points of interest, possibly injecting necessary code in-between
   /// </summary>
-  public class PhoneInitializationCodeTraverser : BaseCodeTraverser {
+  public class PhoneInitializationCodeTraverser : CodeTraverser {
     private readonly IMethodDefinition methodBeingTraversed;
     private static bool initializationFound= false;
     private MetadataReaderHost host;
@@ -185,7 +185,7 @@ namespace BytecodeTranslator.Phone {
     }
 
     public void injectPhoneControlsCode(BlockStatement block) {
-      this.Visit(block);
+      this.Traverse(block);
     }
 
     private void injectPhoneInitializationCode(BlockStatement block, Statement statementAfter) {
@@ -300,9 +300,9 @@ namespace BytecodeTranslator.Phone {
       return new List<IStatement>();
     }
 
-    public override void Visit(IBlockStatement block) {
+    public override void TraverseChildren(IBlockStatement block) {
       foreach (IStatement statement in block.Statements) {
-        this.Visit(statement);
+        this.Traverse(statement);
         if (initializationFound) {
           injectPhoneInitializationCode(block as BlockStatement, statement as Statement);
           initializationFound = false;
@@ -311,7 +311,7 @@ namespace BytecodeTranslator.Phone {
       }
     }
 
-    public override void Visit(IMethodCall methodCall) {
+    public override void TraverseChildren(IMethodCall methodCall) {
       if (methodCall.IsStaticCall ||
           !methodCall.MethodToCall.ContainingType.ResolvedType.Equals(methodBeingTraversed.Container) ||
           methodCall.MethodToCall.Name.Value != "InitializeComponent" ||
@@ -325,7 +325,7 @@ namespace BytecodeTranslator.Phone {
   /// <summary>
   /// Traverse metadata looking only for PhoneApplicationPage's constructors
   /// </summary>
-  public class PhoneInitializationMetadataTraverser : BaseMetadataTraverser {
+  public class PhoneInitializationMetadataTraverser : MetadataTraverser {
     private MetadataReaderHost host;
 
     public PhoneInitializationMetadataTraverser(MetadataReaderHost host)
@@ -333,30 +333,30 @@ namespace BytecodeTranslator.Phone {
         this.host = host;
     }
 
-    public override void Visit(IModule module) {
-      base.Visit(module);
+    public override void TraverseChildren(IModule module) {
+      base.TraverseChildren(module);
     }
 
-    public override void Visit(IAssembly assembly) {
-      base.Visit(assembly);
+    public override void TraverseChildren(IAssembly assembly) {
+      base.TraverseChildren(assembly);
     }
 
     /// <summary>
     /// Check if the type being defined is a PhoneApplicationPage, uninteresting otherwise
     /// </summary>
     /// 
-    public override void Visit(ITypeDefinition typeDefinition) {
+    public override void TraverseChildren(ITypeDefinition typeDefinition) {
       if (typeDefinition.isPhoneApplicationClass(host)) {
         PhoneCodeHelper.instance().setMainAppTypeReference(typeDefinition);
       } else if (typeDefinition.isPhoneApplicationPageClass(host)) {
-        base.Visit(typeDefinition);
+        base.TraverseChildren(typeDefinition);
       }
     }
 
     /// <summary>
     /// Check if it is traversing a constructor. If so, place necessary code after InitializeComponent() call
     /// </summary>
-    public override void Visit(IMethodDefinition method) {
+    public override void TraverseChildren(IMethodDefinition method) {
       if (!method.IsConstructor)
         return;
 
@@ -370,7 +370,7 @@ namespace BytecodeTranslator.Phone {
 
     public void InjectPhoneCodeAssemblies(IEnumerable<IUnit> assemblies) {
       foreach (var a in assemblies) {
-        a.Dispatch(this);
+        this.Traverse((IAssembly)a);
       }
     }
   }

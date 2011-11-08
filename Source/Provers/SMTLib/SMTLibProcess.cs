@@ -26,6 +26,7 @@ namespace Microsoft.Boogie.SMTLib
     readonly int smtProcessId;
     static int smtProcessIdSeq = 0;
     ConsoleCancelEventHandler cancelEvent;
+    public bool NeedsRestart;
 
     public static ProcessStartInfo ComputerProcessStartInfo(string executable, string options)
     {
@@ -110,6 +111,7 @@ namespace Microsoft.Boogie.SMTLib
       while (true) {
         var sx = GetProverResponse();
         if (sx == null) {
+          this.NeedsRestart = true;
           HandleError("Prover died");
           return;
         }
