@@ -15,9 +15,9 @@ namespace GPUVerify
     class ReadCollector : AccessCollector
     {
 
-        public HashSet<AccessRecord> accesses = new HashSet<AccessRecord>();
+        public List<AccessRecord> accesses = new List<AccessRecord>();
 
-        public ReadCollector(List<Variable> GlobalVariables, List<Variable> TileStaticVariables)
+        public ReadCollector(ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
             : base(GlobalVariables, TileStaticVariables)
         {
         }

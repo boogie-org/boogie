@@ -9,6 +9,7 @@ using System.Windows.Forms;
 
 
 using Microsoft.Boogie;
+using System.Diagnostics.Contracts;
 
 namespace GPUVerify
 {
@@ -71,6 +72,11 @@ namespace GPUVerify
 
             }
 
+            parseProcessOutput();
+        }
+
+        public static Program parse()
+        {
             Program program = ParseBoogieProgram(CommandLineOptions.inputFiles, false);
             if (program == null)
             {
@@ -92,14 +98,121 @@ namespace GPUVerify
                 Environment.Exit(1);
             }
 
-            GPUVerifier verifier = new GPUVerifier(program);
+            return program;
+        }
 
-            verifier.doit();
+        private static Variable findClonedVar(Variable v1, ICollection<Variable> vars)
+        {
+            foreach (Variable v2 in vars)
+            {
+                if (v1.Name.Equals(v2.Name))
+                {
+                    return v2;
+                }
+            }
+            return null;
+        }
 
+        public static bool doit(string filename, Variable v, int a1, int a2)
+        {
+            Program newProgram = parse();
+            RaceInstrumenterBase ri = CommandLineOptions.SetEncoding ? (RaceInstrumenterBase)new SetEncodingRaceInstrumenter() : (RaceInstrumenterBase) new ElementEncodingRaceInstrumenter();
+            GPUVerifier newGp = new GPUVerifier(filename, newProgram, ri);
+            ri.setVerifier(newGp);
+
+            
+            Variable newG = findClonedVar(v, newGp.GlobalVariables);
+            Variable newT = findClonedVar(v, newGp.TileStaticVariables);
+            Contract.Assert(newG == null || newT == null);
+            
+            ri.globalVarsToCheck.Clear();
+            ri.tileStaticVarsToCheck.Clear();
+            ri.onlyLog1 = a1;
+            ri.onlyLog2 = a2;
+
+            if (newG != null)
+            {
+                ri.globalVarsToCheck.Add(newG);
+            }
+
+            if (newT != null)
+            {
+                ri.globalVarsToCheck.Add(newT);
+            }
+            
+            newGp.doit();
+
+            return !ri.failedToFindSecondAccess;
 
         }
 
+        public static IList<GPUVerifier> parseProcessOutput()
+        {
+            string fn = "temp";
+            if (CommandLineOptions.outputFile != null)
+            {
+                fn = CommandLineOptions.outputFile;
+            }
+            Program program = parse();
+            IList<GPUVerifier> result = new List<GPUVerifier>();
+            GPUVerifier g = new GPUVerifier(fn, program, new NullRaceInstrumenter());
 
+            if (CommandLineOptions.DividedArray)
+            {
+                List<Variable> nonLocalVars = new List<Variable>();
+                nonLocalVars.AddRange(g.GlobalVariables);
+                nonLocalVars.AddRange(g.TileStaticVariables);
+
+                foreach (Variable v in nonLocalVars)
+                {
+                    if (CommandLineOptions.DividedAccesses)
+                    {
+                        int i = 0;
+                        int j = 0;
+                        while (true)
+                        {
+                            bool res = doit(fn + "." + v.Name + "." + i + "." + (i + j), v, i, j);
+                            if (!res)
+                            {
+                                if (j == 0)
+                                {
+                                    break;
+                                }
+                                else
+                                {
+                                    i++;
+                                    j = 0;
+                                }
+                            }
+                            else
+                            {
+                                j++;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        doit("temp_" + v.Name + ".bpl", v, -1, -1);
+                    }
+                }
+            }
+            else
+            {
+                if (!CommandLineOptions.OnlyDivergence)
+                {
+                    RaceInstrumenterBase ri = CommandLineOptions.SetEncoding ? (RaceInstrumenterBase)new SetEncodingRaceInstrumenter() : (RaceInstrumenterBase)new ElementEncodingRaceInstrumenter();
+                    ri.setVerifier(g);
+                    g.setRaceInstrumenter(ri);
+                }
+
+                g.doit();
+                result.Add(g);
+
+            }
+
+            return result;
+            
+        }
 
 
 
