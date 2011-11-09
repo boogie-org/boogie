@@ -395,6 +395,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         return name.Substring(2);
       }
 
+      if (name.StartsWith("OP#")) {
+        kind = "out-param";
+        return name.Substring(3);
+      }
+
       if (name.StartsWith("SL#")) {
         kind = "spec local";
         return name.Substring(3);
