@@ -14,14 +14,12 @@ namespace GPUVerify
         public LocalVariable Declaration = null;
         public bool done = false;
 
-        private ICollection<Variable> GlobalVariables;
-        private ICollection<Variable> TileStaticVariables;
+        private INonLocalState NonLocalState;
 
-        public NonLocalAccessExtractor(int TempId, ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
+        public NonLocalAccessExtractor(int TempId, INonLocalState NonLocalState)
         {
             this.TempId = TempId;
-            this.GlobalVariables = GlobalVariables;
-            this.TileStaticVariables = TileStaticVariables;
+            this.NonLocalState = NonLocalState;
         }
 
 
@@ -32,7 +30,7 @@ namespace GPUVerify
                 return node;
             }
 
-            if (!NonLocalAccessCollector.IsNonLocalAccess(node, GlobalVariables, TileStaticVariables))
+            if (!NonLocalAccessCollector.IsNonLocalAccess(node, NonLocalState))
             {
                 return base.VisitNAryExpr(node);
             }
@@ -42,7 +40,7 @@ namespace GPUVerify
             {
                 Debug.Assert((temp as NAryExpr).Args.Length == 2);
 
-                if (NonLocalAccessCollector.ContainsNonLocalAccess((temp as NAryExpr).Args[1], GlobalVariables, TileStaticVariables))
+                if (NonLocalAccessCollector.ContainsNonLocalAccess((temp as NAryExpr).Args[1], NonLocalState))
                 {
                     return VisitExpr((temp as NAryExpr).Args[1]);
                 }
@@ -77,7 +75,7 @@ namespace GPUVerify
                 return node;
             }
 
-            if (NonLocalAccessCollector.IsNonLocalAccess(node, GlobalVariables, TileStaticVariables))
+            if (NonLocalAccessCollector.IsNonLocalAccess(node, NonLocalState))
             {
                 done = true;
                 Declaration = new LocalVariable(node.tok, new TypedIdent(node.tok, "_temp" + TempId, node.Decl.TypedIdent.Type));

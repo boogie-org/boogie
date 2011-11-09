@@ -14,10 +14,7 @@ namespace GPUVerify
         public static List<string> inputFiles = new List<string>();
 
         public static string outputFile = null;
-        public static string formulaSkeletonsFile = null;
-        public static string formulasFile = null;
 
-        public static bool NewRaceDetectionMethod = false;
         public static bool OnlyDivergence = false;
         public static bool FullAbstraction;
         public static bool Inference;
@@ -49,6 +46,12 @@ namespace GPUVerify
 
                 switch (beforeColon)
                 {
+                    case "-help":
+                    case "/help":
+                    case "-?":
+                    case "/?":
+                    return -1;
+                    
                     case "-print":
                     case "/print":
                         if (!hasColonArgument)
@@ -58,34 +61,6 @@ namespace GPUVerify
                         }
                         Debug.Assert(afterColon != null);
                         outputFile = afterColon;
-                    break;
-
-                    case "-generateFormulaSkeletons":
-                    case "/generateFormulaSkeletons":
-                    if (!hasColonArgument)
-                    {
-                        Console.WriteLine("Error: filename expected after " + beforeColon + " argument");
-                        Environment.Exit(1);
-                    }
-                    Debug.Assert(afterColon != null);
-                    formulaSkeletonsFile = afterColon;
-                    break;
-
-                    case "-formulas":
-                    case "/formulas":
-                    if (!hasColonArgument)
-                    {
-                        Console.WriteLine("Error: filename expected after " + beforeColon + " argument");
-                        Environment.Exit(1);
-                    }
-                    Debug.Assert(afterColon != null);
-                    formulasFile = afterColon;
-                    break;
-
-                    case "-newRaceDetectionMethod":
-                    case "/newRaceDetectionMethod":
-                    NewRaceDetectionMethod = true;
-
                     break;
 
                     case "-onlyDivergence":
@@ -162,6 +137,36 @@ namespace GPUVerify
             }
             return 0;
         }
+
+        private static bool printedHelp = false;
+
+        public static void Usage()
+        {
+            // Ensure that we only print the help message once
+            if (printedHelp)
+            {
+                return;
+            }
+            printedHelp = true;
+
+            Console.WriteLine(@"GPUVerify: usage:  GPUVerify [ option ... ] [ filename ... ]
+  where <option> is one of
+
+  /help            : this message
+  /fullAbstraction : apply full state abstraction
+  /onlyDivergence  : only check for divergence-freedom, not race-freedom
+  /symmetry        : apply symmetry breaking
+  /eager           : check races eagerly, rather than waiting for barrier
+  /inference:file  : use automatic invariant inference.  Optional file can include manually supplied candidates
+  /raceCheckingContract : try to infer race-freedom contracts for procedures
+  /setEncoding     : check races using set encoding
+  /divided         : check individual pairs of possibly racing statements separately
+  /dividedArray    : check races on arrays one at a time
+  /dividedElement  : ???
+
+");
+        }
+
 
     }
 }

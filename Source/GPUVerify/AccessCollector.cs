@@ -8,13 +8,11 @@ namespace GPUVerify
 {
     abstract class AccessCollector : StandardVisitor
     {
-        protected ICollection<Variable> GlobalVariables;
-        protected ICollection<Variable> TileStaticVariables;
+        protected INonLocalState NonLocalState;
 
-        public AccessCollector(ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
+        public AccessCollector(INonLocalState NonLocalState)
         {
-            this.GlobalVariables = GlobalVariables;
-            this.TileStaticVariables = TileStaticVariables;
+            this.NonLocalState = NonLocalState;
         }
 
         protected void MultiDimensionalMapError()

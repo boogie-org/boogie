@@ -12,8 +12,8 @@ namespace GPUVerify
     abstract class RaceInstrumenterBase : IRaceInstrumenter
     {
         protected GPUVerifier verifier;
-        public ICollection<Variable> globalVarsToCheck;
-        public ICollection<Variable> tileStaticVarsToCheck;
+
+        public INonLocalState NonLocalStateToCheck;
 
         public int onlyLog1;
         public int onlyLog2;
@@ -33,8 +33,15 @@ namespace GPUVerify
         public void setVerifier(GPUVerifier verifier)
         {
             this.verifier = verifier;
-            globalVarsToCheck = new HashSet<Variable>(verifier.GlobalVariables);
-            tileStaticVarsToCheck = new HashSet<Variable>(verifier.TileStaticVariables);
+            NonLocalStateToCheck = new NonLocalStateLists();
+            foreach(Variable v in verifier.NonLocalState.getGlobalVariables())
+            {
+                NonLocalStateToCheck.getGlobalVariables().Add(v);
+            }
+            foreach(Variable v in verifier.NonLocalState.getTileStaticVariables())
+            {
+                NonLocalStateToCheck.getTileStaticVariables().Add(v);
+            }
         }
 
         protected abstract void AddRequiresNoPendingAccess(Variable v);
@@ -80,13 +87,7 @@ namespace GPUVerify
 
         public void AddRaceCheckingCandidateInvariants(WhileCmd wc)
         {
-            foreach (Variable v in globalVarsToCheck)
-            {
-                AddNoReadOrWriteCandidateInvariants(wc, v);
-                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(wc, v);
-            }
-
-            foreach (Variable v in tileStaticVarsToCheck)
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
                 AddNoReadOrWriteCandidateInvariants(wc, v);
                 AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(wc, v);
@@ -134,12 +135,7 @@ namespace GPUVerify
 
         public void AddKernelPrecondition()
         {
-            foreach (Variable v in globalVarsToCheck)
-            {
-                AddRequiresNoPendingAccess(v);
-            }
-
-            foreach (Variable v in tileStaticVarsToCheck)
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
                 AddRequiresNoPendingAccess(v);
             }
@@ -163,12 +159,7 @@ namespace GPUVerify
             if (failedToFindSecondAccess || !addedLogWrite)
                 return false;
 
-            foreach (Variable v in globalVarsToCheck)
-            {
-                AddRaceCheckingDecsAndProcsForVar(v);
-            }
-
-            foreach (Variable v in tileStaticVarsToCheck)
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
                 AddRaceCheckingDecsAndProcsForVar(v);
             }
@@ -179,12 +170,29 @@ namespace GPUVerify
 
         private void AddRaceCheckingDecsAndProcsForVar(Variable v)
         {
-            AddLogRaceDeclarations(v, "READ");
-            AddLogRaceDeclarations(v, "WRITE");
+            IdentifierExprSeq ReadDeclsResetAtBarrier;
+            IdentifierExprSeq WriteDeclsResetAtBarrier;
+            IdentifierExprSeq ReadDeclsModifiedAtLogRead;
+            IdentifierExprSeq WriteDeclsModifiedAtLogWrite;
+                
+            AddLogRaceDeclarations(v, "READ", out ReadDeclsResetAtBarrier, out ReadDeclsModifiedAtLogRead);
+            AddLogRaceDeclarations(v, "WRITE", out WriteDeclsResetAtBarrier, out WriteDeclsModifiedAtLogWrite);
             AddLogAccessProcedure(v, "READ");
             AddLogAccessProcedure(v, "WRITE");
-        }
 
+            HashSet<string> MayCallBarrier = verifier.GetProceduresThatIndirectlyCallProcedure(verifier.BarrierProcedure.Name);
+
+            verifier.ExtendModifiesSetOfProcedures(ReadDeclsResetAtBarrier, MayCallBarrier);
+            verifier.ExtendModifiesSetOfProcedures(WriteDeclsResetAtBarrier, MayCallBarrier);
+
+            HashSet<string> MayCallLogRead = verifier.GetProceduresThatIndirectlyCallProcedure("_LOG_READ_" + v.Name);
+            HashSet<string> MayCallLogWrite = verifier.GetProceduresThatIndirectlyCallProcedure("_LOG_WRITE_" + v.Name);
+
+            verifier.ExtendModifiesSetOfProcedures(ReadDeclsModifiedAtLogRead, MayCallLogRead);
+            verifier.ExtendModifiesSetOfProcedures(WriteDeclsModifiedAtLogWrite, MayCallLogWrite);
+
+        }
+        
         private StmtList AddRaceCheckCalls(StmtList stmtList)
         {
             Contract.Requires(stmtList != null);
@@ -242,7 +250,7 @@ namespace GPUVerify
                     AssignLhs lhs = assign.Lhss[0];
                     Expr rhs = assign.Rhss[0];
 
-                    ReadCollector rc = new ReadCollector(globalVarsToCheck, tileStaticVarsToCheck);
+                    ReadCollector rc = new ReadCollector(NonLocalStateToCheck);
                     rc.Visit(rhs);
                     if (rc.accesses.Count > 0)
                     {
@@ -271,7 +279,7 @@ namespace GPUVerify
                         }
                     }
 
-                    WriteCollector wc = new WriteCollector(globalVarsToCheck, tileStaticVarsToCheck);
+                    WriteCollector wc = new WriteCollector(NonLocalStateToCheck);
                     wc.Visit(lhs);
                     if (wc.GetAccess() != null)
                     {
@@ -331,7 +339,7 @@ namespace GPUVerify
         }
 
 
-        protected abstract void AddLogRaceDeclarations(Variable v, String ReadOrWrite);
+        protected abstract void AddLogRaceDeclarations(Variable v, String ReadOrWrite, out IdentifierExprSeq ResetAtBarrier, out IdentifierExprSeq ModifiedAtLog);
 
         protected abstract void AddLogAccessProcedure(Variable v, string ReadOrWrite);
 
@@ -341,21 +349,13 @@ namespace GPUVerify
             BigBlock checkForRaces = new BigBlock(tok, "__CheckForRaces", new CmdSeq(), null, null);
             if (!CommandLineOptions.Eager)
             {
-                foreach (Variable v in globalVarsToCheck)
-                {
-                    CheckForRaces(tok, checkForRaces, v);
-                }
-                foreach (Variable v in tileStaticVarsToCheck)
+                foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
                 {
                     CheckForRaces(tok, checkForRaces, v);
                 }
             }
 
-            foreach (Variable v in globalVarsToCheck)
-            {
-                SetNoAccessOccurred(tok, checkForRaces, v);
-            }
-            foreach (Variable v in tileStaticVarsToCheck)
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
                 SetNoAccessOccurred(tok, checkForRaces, v);
             }
@@ -431,13 +431,7 @@ namespace GPUVerify
 
         public void AddRaceCheckingCandidateRequires(Procedure Proc)
         {
-            foreach (Variable v in globalVarsToCheck)
-            {
-                AddNoReadOrWriteCandidateRequires(Proc, v);
-                AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Proc, v);
-            }
-
-            foreach (Variable v in tileStaticVarsToCheck)
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
                 AddNoReadOrWriteCandidateRequires(Proc, v);
                 AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Proc, v);
@@ -446,13 +440,7 @@ namespace GPUVerify
 
         public void AddRaceCheckingCandidateEnsures(Procedure Proc)
         {
-            foreach (Variable v in globalVarsToCheck)
-            {
-                AddNoReadOrWriteCandidateEnsures(Proc, v);
-                AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Proc, v);
-            }
-
-            foreach (Variable v in tileStaticVarsToCheck)
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
                 AddNoReadOrWriteCandidateEnsures(Proc, v);
                 AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Proc, v);

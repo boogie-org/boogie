@@ -13,15 +13,15 @@ namespace GPUVerify
 
         private AccessRecord access = null;
 
-        public WriteCollector(ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
-            : base(GlobalVariables, TileStaticVariables)
+        public WriteCollector(INonLocalState NonLocalState)
+            : base(NonLocalState)
         {
         }
 
         public override AssignLhs VisitSimpleAssignLhs(SimpleAssignLhs node)
         {
             Debug.Assert(NoWrittenVariable());
-            if (GlobalVariables.Contains(node.DeepAssignedVariable) || TileStaticVariables.Contains(node.DeepAssignedVariable))
+            if (NonLocalState.Contains(node.DeepAssignedVariable))
             {
                 access = new AccessRecord(node.DeepAssignedVariable, null, null, null);
             }
@@ -37,7 +37,7 @@ namespace GPUVerify
         {
             Debug.Assert(NoWrittenVariable());
 
-            if (!(GlobalVariables.Contains(node.DeepAssignedVariable) || TileStaticVariables.Contains(node.DeepAssignedVariable)))
+            if (!NonLocalState.Contains(node.DeepAssignedVariable))
             {
                 return node;
             }

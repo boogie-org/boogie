@@ -17,8 +17,8 @@ namespace GPUVerify
 
         public List<AccessRecord> accesses = new List<AccessRecord>();
 
-        public ReadCollector(ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
-            : base(GlobalVariables, TileStaticVariables)
+        public ReadCollector(INonLocalState NonLocalState)
+            : base(NonLocalState)
         {
         }
 
@@ -83,7 +83,7 @@ namespace GPUVerify
                 this.VisitExpr(node.Args[1]);
 
 
-                if (GlobalVariables.Contains(ReadVariable) || TileStaticVariables.Contains(ReadVariable))
+                if (NonLocalState.Contains(ReadVariable))
                 {
                     accesses.Add(new AccessRecord(ReadVariable, IndexZ, IndexY, IndexX));
                 }
@@ -100,7 +100,7 @@ namespace GPUVerify
 
         public override Variable VisitVariable(Variable node)
         {
-            if (!(GlobalVariables.Contains(node) || TileStaticVariables.Contains(node)))
+            if (!NonLocalState.Contains(node))
             {
                 return node;
             }

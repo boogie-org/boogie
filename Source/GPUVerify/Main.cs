@@ -15,11 +15,16 @@ namespace GPUVerify
 {
     class GPUVerify
     {
-        static bool ASYNCHRONOUS_METHOD = false;
 
         public static void Main(string[] args)
         {
-            CommandLineOptions.Parse(args);
+            int showHelp = CommandLineOptions.Parse(args);
+
+            if (showHelp == -1)
+            {
+                CommandLineOptions.Usage();
+                System.Environment.Exit(0);
+            }
 
             if (CommandLineOptions.inputFiles.Count < 1)
             {
@@ -40,36 +45,6 @@ namespace GPUVerify
                         extension == null ? "" : extension);
                     Environment.Exit(1);
                 }
-            }
-
-            if (ASYNCHRONOUS_METHOD)
-            {
-
-                string[] preprocessArguments = new string[CommandLineOptions.inputFiles.Count + 4];
-                preprocessArguments[0] = "/noVerify";
-                preprocessArguments[1] = "/printUnstructured";
-                preprocessArguments[2] = "/print:temp_unstructured.bpl";
-                preprocessArguments[3] = Path.GetDirectoryName(Application.ExecutablePath) + "\\..\\..\\BoogieLibrary\\GPUVerifyLibrary.bpl";
-                for (int i = 0; i < CommandLineOptions.inputFiles.Count; i++)
-                {
-                    preprocessArguments[i + 4] = CommandLineOptions.inputFiles[i];
-                }
-
-                OnlyBoogie.Main(preprocessArguments);
-
-                if ((CommandLineOptions.formulasFile == null && CommandLineOptions.formulaSkeletonsFile == null) || (CommandLineOptions.formulasFile != null && CommandLineOptions.formulaSkeletonsFile != null))
-                {
-                    Console.WriteLine("Error, specify one of /formulas:... or /generateFormulaSkeletons:...");
-                    Environment.Exit(1);
-                }
-
-                CommandLineOptions.inputFiles = new List<string>();
-                CommandLineOptions.inputFiles.Add("temp_unstructured.bpl");
-                if (CommandLineOptions.formulasFile != null)
-                {
-                    CommandLineOptions.inputFiles.Add(CommandLineOptions.formulasFile);
-                }
-
             }
 
             parseProcessOutput();
@@ -121,23 +96,23 @@ namespace GPUVerify
             ri.setVerifier(newGp);
 
             
-            Variable newG = findClonedVar(v, newGp.GlobalVariables);
-            Variable newT = findClonedVar(v, newGp.TileStaticVariables);
+            Variable newG = findClonedVar(v, newGp.NonLocalState.getGlobalVariables());
+            Variable newT = findClonedVar(v, newGp.NonLocalState.getTileStaticVariables());
             Contract.Assert(newG == null || newT == null);
-            
-            ri.globalVarsToCheck.Clear();
-            ri.tileStaticVarsToCheck.Clear();
+
+            ri.NonLocalStateToCheck.getGlobalVariables().Clear();
+            ri.NonLocalStateToCheck.getTileStaticVariables().Clear();
             ri.onlyLog1 = a1;
             ri.onlyLog2 = a2;
 
             if (newG != null)
             {
-                ri.globalVarsToCheck.Add(newG);
+                ri.NonLocalStateToCheck.getGlobalVariables().Add(newG);
             }
 
             if (newT != null)
             {
-                ri.globalVarsToCheck.Add(newT);
+                ri.NonLocalStateToCheck.getTileStaticVariables().Add(newT);
             }
             
             newGp.doit();
@@ -159,11 +134,7 @@ namespace GPUVerify
 
             if (CommandLineOptions.DividedArray)
             {
-                List<Variable> nonLocalVars = new List<Variable>();
-                nonLocalVars.AddRange(g.GlobalVariables);
-                nonLocalVars.AddRange(g.TileStaticVariables);
-
-                foreach (Variable v in nonLocalVars)
+                foreach (Variable v in g.NonLocalState.getAllNonLocalVariables())
                 {
                     if (CommandLineOptions.DividedAccesses)
                     {
