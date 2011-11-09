@@ -307,6 +307,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         res = 1;
       else if (name.EndsWith("#frame"))
         res = 2;
+      else if (name.Contains("#limited#"))
+        res = 2;
       else {
         for (int i = 0; i < prefixes.Length; ++i)
           foreach (var p in prefixes[i])
@@ -314,7 +316,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
               res = i;
               //goto stop;
             }
-      //stop: ;
+        //stop: ;
       }
 
       if (res == -1)
