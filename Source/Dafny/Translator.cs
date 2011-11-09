@@ -54,6 +54,7 @@ namespace Microsoft.Dafny {
       public readonly Bpl.Type DtCtorId;
       public readonly Bpl.Expr Null;
       private readonly Bpl.Constant allocField;
+      public readonly Bpl.Constant ClassDotArray;
       [ContractInvariantMethod]
       void ObjectInvariant() {
         Contract.Invariant(RefType != null);
@@ -71,6 +72,7 @@ namespace Microsoft.Dafny {
         Contract.Invariant(DtCtorId != null);
         Contract.Invariant(Null != null);
         Contract.Invariant(allocField != null);
+        Contract.Invariant(ClassDotArray != null);
       }
 
 
@@ -116,7 +118,7 @@ namespace Microsoft.Dafny {
                              Bpl.TypeSynonymDecl setTypeCtor, Bpl.TypeSynonymDecl multiSetTypeCtor, Bpl.Function arrayLength, Bpl.TypeCtorDecl seqTypeCtor, Bpl.TypeCtorDecl fieldNameType,
                              Bpl.GlobalVariable heap, Bpl.TypeCtorDecl classNameType,
                              Bpl.TypeCtorDecl datatypeType, Bpl.TypeCtorDecl dtCtorId,
-                             Bpl.Constant allocField) {
+                             Bpl.Constant allocField, Bpl.Constant classDotArray) {
         #region Non-null preconditions on parameters
         Contract.Requires(refType != null);
         Contract.Requires(boxType != null);
@@ -130,6 +132,7 @@ namespace Microsoft.Dafny {
         Contract.Requires(datatypeType != null);
         Contract.Requires(dtCtorId != null);
         Contract.Requires(allocField != null);
+        Contract.Requires(classDotArray != null);
         #endregion
 
         Bpl.CtorType refT = new Bpl.CtorType(Token.NoToken, refType, new Bpl.TypeSeq());
@@ -148,6 +151,7 @@ namespace Microsoft.Dafny {
         this.DtCtorId = new Bpl.CtorType(Token.NoToken, dtCtorId, new Bpl.TypeSeq());
         this.allocField = allocField;
         this.Null = new Bpl.IdentifierExpr(Token.NoToken, "null", refT);
+        this.ClassDotArray = classDotArray;
       }
     }
 
@@ -171,6 +175,7 @@ namespace Microsoft.Dafny {
       Bpl.TypeCtorDecl tickType = null;
       Bpl.GlobalVariable heap = null;
       Bpl.Constant allocField = null;
+      Bpl.Constant classDotArray = null;
       foreach (var d in prog.TopLevelDeclarations) {
         if (d is Bpl.TypeCtorDecl) {
           Bpl.TypeCtorDecl dt = (Bpl.TypeCtorDecl)d;
@@ -203,6 +208,8 @@ namespace Microsoft.Dafny {
           Bpl.Constant c = (Bpl.Constant)d;
           if (c.Name == "alloc") {
             allocField = c;
+          } else if (c.Name == "class.array") {
+            classDotArray = c;
           }
         } else if (d is Bpl.GlobalVariable) {
           Bpl.GlobalVariable v = (Bpl.GlobalVariable)d;
@@ -241,10 +248,12 @@ namespace Microsoft.Dafny {
         Console.WriteLine("Error: Dafny prelude is missing declaration of $Heap");
       } else if (allocField == null) {
         Console.WriteLine("Error: Dafny prelude is missing declaration of constant alloc");
+      } else if (classDotArray == null) {
+        Console.WriteLine("Error: Dafny prelude is missing declaration of class.array");
       } else {
         return new PredefinedDecls(refType, boxType, tickType,
                                    setTypeCtor, multiSetTypeCtor, arrayLength, seqTypeCtor, fieldNameType, heap, classNameType, datatypeType, dtCtorId,
-                                   allocField);
+                                   allocField, classDotArray);
       }
       return null;
     }
@@ -520,7 +529,11 @@ namespace Microsoft.Dafny {
     {
       Contract.Requires(sink != null && predef != null);
       Contract.Requires(c != null);
-      sink.TopLevelDeclarations.Add(GetClass(c));
+      if (c.Name == "array") {
+        classes.Add(c, predef.ClassDotArray);
+      } else {
+        sink.TopLevelDeclarations.Add(GetClass(c));
+      }
 
       foreach (MemberDecl member in c.Members) {
         if (member is Field) {
@@ -1514,6 +1527,25 @@ namespace Microsoft.Dafny {
       //   }
       // Here go the postconditions (termination checks included, but no reads checks)
       StmtListBuilder postCheckBuilder = new StmtListBuilder();
+      // Assume the type returned by the call itself respects its type (this matter if the type is "nat", for example)
+      {
+        var args = new Bpl.ExprSeq();
+        args.Add(etran.HeapExpr);
+        if (!f.IsStatic) {
+          args.Add(new Bpl.IdentifierExpr(f.tok, etran.This, predef.RefType));
+        }
+        foreach (var p in f.Formals) {
+          args.Add(new Bpl.IdentifierExpr(p.tok, p.UniqueName, TrType(p.Type)));
+        }
+        Bpl.IdentifierExpr funcID = new Bpl.IdentifierExpr(f.tok, FunctionName(f, 1), TrType(f.ResultType));
+        Bpl.Expr funcAppl = new Bpl.NAryExpr(f.tok, new Bpl.FunctionCall(funcID), args);
+
+        var wh = GetWhereClause(f.tok, funcAppl, f.ResultType, etran);
+        if (wh != null) {
+          postCheckBuilder.Add(new Bpl.AssumeCmd(f.tok, wh));
+        }
+      }
+      // Now for the ensures clauses
       foreach (Expression p in f.Ens) {
         CheckWellformed(p, new WFOptions(f, f, false), locals, postCheckBuilder, etran);
         // assume the postcondition for the benefit of checking the remaining postconditions
@@ -3109,7 +3141,7 @@ namespace Microsoft.Dafny {
       } else if (type.IsRefType) {
         // object and class types translate to ref
         return predef.RefType;
-      } else if (type.IsDatatype) {
+      } else if (type.IsDatatype || type is DatatypeProxy) {
         return predef.DatatypeType;
       } else if (type is SetType) {
         return predef.SetType(Token.NoToken, predef.BoxType);
@@ -4513,13 +4545,14 @@ namespace Microsoft.Dafny {
         Bpl.Expr xSubT = Bpl.Expr.Gt(Bpl.Expr.SelectTok(tok, x, t), Bpl.Expr.Literal(0));
         Bpl.Expr unboxT = ExpressionTranslator.ModeledAsBoxType(st.Arg) ? t : FunctionCall(tok, BuiltinFunction.Unbox, TrType(st.Arg), t);
 
+        Bpl.Expr isGoodMultiset = FunctionCall(tok, BuiltinFunction.IsGoodMultiSet, null, x);
         Bpl.Expr wh = GetWhereClause(tok, unboxT, st.Arg, etran);
         if (wh != null) {
           Bpl.Trigger tr = new Bpl.Trigger(tok, true, new Bpl.ExprSeq(xSubT));
-          return Bpl.Expr.And(FunctionCall(tok, BuiltinFunction.IsGoodMultiSet, Bpl.Type.Bool, x),
-                              new Bpl.ForallExpr(tok, new Bpl.VariableSeq(tVar), tr, Bpl.Expr.Imp(xSubT, wh)));
+          var q = new Bpl.ForallExpr(tok, new Bpl.VariableSeq(tVar), tr, Bpl.Expr.Imp(xSubT, wh));
+          isGoodMultiset = Bpl.Expr.And(isGoodMultiset, q);
         }
-        return FunctionCall(tok, BuiltinFunction.IsGoodMultiSet, null, x);
+        return isGoodMultiset;
       } else if (type is SeqType) {
         SeqType st = (SeqType)type;
         // (forall i: int :: { Seq#Index(x,i) }

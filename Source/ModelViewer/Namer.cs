@@ -159,7 +159,13 @@ namespace Microsoft.Boogie.ModelViewer
 
       Action<IEnumerable<IDisplayNode>> addList = (IEnumerable<IDisplayNode> nodes) =>
       {
-        var ch = nodes.ToDictionary(x => x.Name);
+        var ch = new Dictionary<string, IDisplayNode>();
+        foreach (var x in nodes) {
+          if (ch.ContainsKey(x.Name)) {
+            // throw new System.InvalidOperationException("duplicated model entry: " + x.Name);
+          }
+          ch[x.Name] = x;
+        }
         foreach (var k in SortFields(nodes))
           workList.Enqueue(ch[k]);
       };

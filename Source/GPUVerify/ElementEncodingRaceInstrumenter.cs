@@ -89,9 +89,10 @@ namespace GPUVerify
             verifier.Program.TopLevelDeclarations.Add(LogReadOrWriteImplementation);
         }
 
-        protected override void AddLogRaceDeclarations(Variable v, String ReadOrWrite)
+        protected override void AddLogRaceDeclarations(Variable v, String ReadOrWrite, out IdentifierExprSeq ResetAtBarrier, out IdentifierExprSeq ModifiedAtLog)
         {
-            IdentifierExprSeq newVars = new IdentifierExprSeq();
+            ModifiedAtLog = new IdentifierExprSeq();
+            ResetAtBarrier = new IdentifierExprSeq();
 
             Variable AccessHasOccurred = new GlobalVariable(v.tok, new TypedIdent(v.tok, "_" + ReadOrWrite + "_HAS_OCCURRED_" + v.Name, Microsoft.Boogie.Type.Bool));
 
@@ -100,7 +101,8 @@ namespace GPUVerify
                 verifier.HalfDualisedVariableNames.Add(AccessHasOccurred.Name);
             }
 
-            newVars.Add(new IdentifierExpr(v.tok, AccessHasOccurred));
+            ModifiedAtLog.Add(new IdentifierExpr(v.tok, AccessHasOccurred));
+            ResetAtBarrier.Add(new IdentifierExpr(v.tok, AccessHasOccurred));
 
             verifier.Program.TopLevelDeclarations.Add(AccessHasOccurred);
             if (v.TypedIdent.Type is MapType)
@@ -116,7 +118,7 @@ namespace GPUVerify
                     verifier.HalfDualisedVariableNames.Add(AccessOffsetX.Name);
                 }
 
-                newVars.Add(new IdentifierExpr(v.tok, AccessOffsetX));
+                ModifiedAtLog.Add(new IdentifierExpr(v.tok, AccessOffsetX));
                 verifier.Program.TopLevelDeclarations.Add(AccessOffsetX);
 
                 if (mt.Result is MapType)
@@ -132,7 +134,7 @@ namespace GPUVerify
                         verifier.HalfDualisedVariableNames.Add(AccessOffsetY.Name);
                     }
 
-                    newVars.Add(new IdentifierExpr(v.tok, AccessOffsetY));
+                    ModifiedAtLog.Add(new IdentifierExpr(v.tok, AccessOffsetY));
                     verifier.Program.TopLevelDeclarations.Add(AccessOffsetY);
 
                     if (mt2.Result is MapType)
@@ -149,18 +151,14 @@ namespace GPUVerify
                             verifier.HalfDualisedVariableNames.Add(AccessOffsetZ.Name);
                         }
 
-                        newVars.Add(new IdentifierExpr(v.tok, AccessOffsetZ));
+                        ModifiedAtLog.Add(new IdentifierExpr(v.tok, AccessOffsetZ));
                         verifier.Program.TopLevelDeclarations.Add(AccessOffsetZ);
                     }
                 }
             }
 
-            foreach (IdentifierExpr e in newVars)
-            {
-                // TODO: add modiies to every procedure that calls BARRIER
-                verifier.KernelProcedure.Modifies.Add(e);
-            }
         }
+
 
         private static AssignCmd MakeConditionalAssignment(Variable lhs, Expr condition, Expr rhs)
         {
@@ -179,7 +177,6 @@ namespace GPUVerify
             List<AssignLhs> lhss = new List<AssignLhs>();
             List<Expr> rhss = new List<Expr>();
 
-            verifier.BarrierProcedure.Modifies.Add(AccessOccurred1);
             lhss.Add(new SimpleAssignLhs(tok, AccessOccurred1));
             rhss.Add(Expr.False);
 
@@ -187,7 +184,6 @@ namespace GPUVerify
             {
                 lhss.Add(new SimpleAssignLhs(tok, AccessOccurred2));
                 rhss.Add(Expr.False);
-                verifier.BarrierProcedure.Modifies.Add(AccessOccurred2);
             }
 
             bb.simpleCmds.Add(new AssignCmd(tok, lhss, rhss));

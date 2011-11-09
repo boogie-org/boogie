@@ -11,7 +11,7 @@ namespace GPUVerify
     class SetEncodingRaceInstrumenter : RaceInstrumenterBase
     {
 
-        protected override void AddLogRaceDeclarations(Variable v, String ReadOrWrite)
+        protected override void AddLogRaceDeclarations(Variable v, String ReadOrWrite, out IdentifierExprSeq ResetAtBarrier, out IdentifierExprSeq ModifiedAtLog)
         {
             Variable AccessSet = MakeAccessSetVariable(v, ReadOrWrite);
 
@@ -22,9 +22,9 @@ namespace GPUVerify
 
             verifier.Program.TopLevelDeclarations.Add(AccessSet);
 
-            // TODO: add modiies to every procedure that calls BARRIER
+            ResetAtBarrier = new IdentifierExprSeq(new IdentifierExpr[] { new IdentifierExpr(v.tok, AccessSet) });
+            ModifiedAtLog = ResetAtBarrier;
 
-            verifier.KernelProcedure.Modifies.Add(new IdentifierExpr(v.tok, AccessSet));
         }
 
         private static Variable MakeAccessSetVariable(Variable v, String ReadOrWrite)
@@ -192,13 +192,11 @@ namespace GPUVerify
                             MakeAccessSetVariable(v, AccessType)));
             IdentifierExprSeq VariablesToHavoc = new IdentifierExprSeq();
             VariablesToHavoc.Add(AccessSet1);
-            verifier.BarrierProcedure.Modifies.Add(AccessSet1);
             if (!CommandLineOptions.Symmetry || !AccessType.Equals("READ"))
             {
                 IdentifierExpr AccessSet2 = new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(
                                 MakeAccessSetVariable(v, AccessType)));
                 VariablesToHavoc.Add(AccessSet2);
-                verifier.BarrierProcedure.Modifies.Add(AccessSet2);
             }
             bb.simpleCmds.Add(new HavocCmd(tok, VariablesToHavoc));
 
