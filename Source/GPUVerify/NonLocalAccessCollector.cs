@@ -12,16 +12,14 @@ namespace GPUVerify
     {
         public HashSet<Expr> Accesses = new HashSet<Expr>();
 
-        private ICollection<Variable> GlobalVariables;
-        private ICollection<Variable> TileStaticVariables;
+        private INonLocalState NonLocalState;
 
-        public NonLocalAccessCollector(ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
+        public NonLocalAccessCollector(INonLocalState NonLocalState)
         {
-            this.GlobalVariables = GlobalVariables;
-            this.TileStaticVariables = TileStaticVariables;
+            this.NonLocalState = NonLocalState;
         }
 
-        public static bool IsNonLocalAccess(Expr n, ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
+        public static bool IsNonLocalAccess(Expr n, INonLocalState NonLocalState)
         {
             if (n is NAryExpr)
             {
@@ -37,22 +35,22 @@ namespace GPUVerify
 
                     Variable v = (temp as IdentifierExpr).Decl;
 
-                    return (GlobalVariables.Contains(v) || TileStaticVariables.Contains(v));
+                    return (NonLocalState.Contains(v));
                 }
             }
 
             if (n is IdentifierExpr)
             {
                 IdentifierExpr node = n as IdentifierExpr;
-                return GlobalVariables.Contains(node.Decl) || TileStaticVariables.Contains(node.Decl);
+                return NonLocalState.Contains(node.Decl);
             }
 
             return false;
         }
 
-        public static bool ContainsNonLocalAccess(AssignLhs lhs, ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
+        public static bool ContainsNonLocalAccess(AssignLhs lhs, INonLocalState NonLocalState)
         {
-            NonLocalAccessCollector collector = new NonLocalAccessCollector(GlobalVariables, TileStaticVariables);
+            NonLocalAccessCollector collector = new NonLocalAccessCollector(NonLocalState);
             if (lhs is SimpleAssignLhs)
             {
                 collector.VisitSimpleAssignLhs(lhs as SimpleAssignLhs);
@@ -65,9 +63,9 @@ namespace GPUVerify
             return collector.Accesses.Count > 0;
         }
 
-        public static bool ContainsNonLocalAccess(Expr rhs, ICollection<Variable> GlobalVariables, ICollection<Variable> TileStaticVariables)
+        public static bool ContainsNonLocalAccess(Expr rhs, INonLocalState NonLocalState)
         {
-            NonLocalAccessCollector collector = new NonLocalAccessCollector(GlobalVariables, TileStaticVariables);
+            NonLocalAccessCollector collector = new NonLocalAccessCollector(NonLocalState);
             collector.VisitExpr(rhs);
             return collector.Accesses.Count > 0;
         }
@@ -75,7 +73,7 @@ namespace GPUVerify
 
         public override Expr VisitNAryExpr(NAryExpr node)
         {
-            if (IsNonLocalAccess(node, GlobalVariables, TileStaticVariables))
+            if (IsNonLocalAccess(node, NonLocalState))
             {
                 Accesses.Add(node);
                 return node;
@@ -85,7 +83,7 @@ namespace GPUVerify
 
         public override Expr VisitIdentifierExpr(IdentifierExpr node)
         {
-            if (IsNonLocalAccess(node, GlobalVariables, TileStaticVariables))
+            if (IsNonLocalAccess(node, NonLocalState))
             {
                 Accesses.Add(node);
                 return node;

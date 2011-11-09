@@ -19,17 +19,12 @@ namespace GPUVerify
         public Implementation KernelImplementation;
         public Procedure BarrierProcedure;
 
-        public ICollection<Variable> TileStaticVariables = new List<Variable>();
-        public ICollection<Variable> GlobalVariables = new List<Variable>();
+        public INonLocalState NonLocalState = new NonLocalStateLists();
 
         private HashSet<string> ReservedNames = new HashSet<string>();
 
         internal HashSet<string> HalfDualisedProcedureNames = new HashSet<string>();
         internal HashSet<string> HalfDualisedVariableNames = new HashSet<string>();
-
-        private static int WhileLoopCounter;
-        private static int IfCounter;
-        private static HashSet<Microsoft.Boogie.Type> RequiredHavocVariables;
 
         private int TempCounter = 0;
         private int invariantGenerationCounter;
@@ -165,11 +160,11 @@ namespace GPUVerify
                     {
                         if (QKeyValue.FindBoolAttribute(D.Attributes, "tile_static"))
                         {
-                            TileStaticVariables.Add(D as Variable);
+                            NonLocalState.getTileStaticVariables().Add(D as Variable);
                         }
                         else
                         {
-                            GlobalVariables.Add(D as Variable);
+                            NonLocalState.getGlobalVariables().Add(D as Variable);
                         }
                     }
                 }
@@ -296,16 +291,6 @@ namespace GPUVerify
             // TODO!
         }
 
-        internal ICollection<Variable> GetTileStaticVariables()
-        {
-            return TileStaticVariables;
-        }
-
-        internal ICollection<Variable> GetGlobalVariables()
-        {
-            return GlobalVariables;
-        }
-
         internal void preProcess()
         {
             RemoveElseIfs();
@@ -331,7 +316,7 @@ namespace GPUVerify
 
             AbstractSharedState();
 
-            MakeKerenelPredicated();
+            MakeKernelPredicated();
 
             MakeKernelDualised();
 
@@ -399,7 +384,7 @@ namespace GPUVerify
 
         private void AddEagerRaceChecking()
         {
-            foreach(Variable v in GlobalVariables)
+            foreach(Variable v in NonLocalState.getAllNonLocalVariables())
             {
                 foreach (Declaration d in Program.TopLevelDeclarations)
                 {
@@ -417,32 +402,6 @@ namespace GPUVerify
                         StmtList newStatements = new StmtList(new List<BigBlock>(), v.tok);
                         
                         foreach(BigBlock bb2 in impl.StructuredStmts.BigBlocks)
-                        {
-                            newStatements.BigBlocks.Add(bb2);
-                        }
-                        newStatements.BigBlocks.Add(bb);
-                        impl.StructuredStmts = newStatements;
-                    }
-                }
-            }
-            foreach (Variable v in TileStaticVariables)
-            {
-                foreach (Declaration d in Program.TopLevelDeclarations)
-                {
-                    if (!(d is Implementation))
-                    {
-                        continue;
-                    }
-
-                    Implementation impl = d as Implementation;
-
-                    if (impl.Name.Equals("_LOG_READ_" + v.Name) || impl.Name.Equals("_LOG_WRITE_" + v.Name))
-                    {
-                        BigBlock bb = new BigBlock(v.tok, "__CheckForRaces", new CmdSeq(), null, null);
-                        RaceInstrumenter.CheckForRaces(v.tok, bb, v);
-                        StmtList newStatements = new StmtList(new List<BigBlock>(), v.tok);
-                        
-                        foreach (BigBlock bb2 in impl.StructuredStmts.BigBlocks)
                         {
                             newStatements.BigBlocks.Add(bb2);
                         }
@@ -735,12 +694,7 @@ namespace GPUVerify
 
                 if (!CommandLineOptions.FullAbstraction)
                 {
-                    foreach (Variable v in GlobalVariables)
-                    {
-                        AddEqualityCandidateInvariant(wc, LoopPredicate, v);
-                    }
-
-                    foreach (Variable v in TileStaticVariables)
+                    foreach (Variable v in NonLocalState.getAllNonLocalVariables())
                     {
                         AddEqualityCandidateInvariant(wc, LoopPredicate, v);
                     }
@@ -855,21 +809,23 @@ namespace GPUVerify
             return true;
         }
 
+        
+
         public Microsoft.Boogie.Type GetTypeOfIdX()
         {
-            Contract.Assert(_X != null);
+            Contract.Requires(_X != null);
             return _X.TypedIdent.Type;
         }
 
         public Microsoft.Boogie.Type GetTypeOfIdY()
         {
-            Contract.Assert(_Y != null);
+            Contract.Requires(_Y != null);
             return _Y.TypedIdent.Type;
         }
 
         public Microsoft.Boogie.Type GetTypeOfIdZ()
         {
-            Contract.Assert(_Z != null);
+            Contract.Requires(_Z != null);
             return _Z.TypedIdent.Type;
         }
 
@@ -1164,11 +1120,7 @@ namespace GPUVerify
             {
                 BigBlock havocSharedState = new BigBlock(tok, "__HavocSharedState", new CmdSeq(), null, null);
                 bigblocks.Add(havocSharedState);
-                foreach (Variable v in GlobalVariables)
-                {
-                    HavocAndAssumeEquality(tok, havocSharedState, v);
-                }
-                foreach (Variable v in TileStaticVariables)
+                foreach (Variable v in NonLocalState.getAllNonLocalVariables())
                 {
                     HavocAndAssumeEquality(tok, havocSharedState, v);
                 }
@@ -1219,35 +1171,18 @@ namespace GPUVerify
             IdentifierExpr v1 = new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(v.Clone() as Variable));
             IdentifierExpr v2 = new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(v.Clone() as Variable));
 
-            bb.simpleCmds.Add(new HavocCmd(tok, new IdentifierExprSeq(new IdentifierExpr[] { v1, v2 })));
+            IdentifierExprSeq ModifiedVars = new IdentifierExprSeq(new IdentifierExpr[] { v1, v2 });
+            bb.simpleCmds.Add(new HavocCmd(tok, ModifiedVars));
             bb.simpleCmds.Add(new AssumeCmd(tok, Expr.Eq(v1, v2)));
-            BarrierProcedure.Modifies.Add(v1);
-            BarrierProcedure.Modifies.Add(v2);
 
-            foreach (Declaration d in Program.TopLevelDeclarations)
-            {
-                if (d is Implementation)
-                {
-                    Implementation impl = d as Implementation;
-                    if (CallsBarrier(impl))
-                    {
-                        Procedure proc = impl.Proc;
-                        if (!ModifiesSetContains(proc.Modifies, v1))
-                        {
-                            Debug.Assert(!ModifiesSetContains(proc.Modifies, v2));
-                            proc.Modifies.Add(v1);
-                            proc.Modifies.Add(v2);
-                        }
-                    }
-                }
-            }
-
+            HashSet<string> MayCallBarrier = GetProceduresThatIndirectlyCallProcedure(BarrierProcedure.Name);
+            ExtendModifiesSetOfProcedures(ModifiedVars, MayCallBarrier);
 
         }
 
-        private bool ModifiesSetContains(IdentifierExprSeq seq, IdentifierExpr v)
+        internal static bool ModifiesSetContains(IdentifierExprSeq Modifies, IdentifierExpr v)
         {
-            foreach (IdentifierExpr ie in seq)
+            foreach (IdentifierExpr ie in Modifies)
             {
                 if (ie.Name.Equals(v.Name))
                 {
@@ -1257,7 +1192,7 @@ namespace GPUVerify
             return false;
         }
 
-        private bool CallsBarrier(Implementation impl)
+/*        private bool CallsBarrier(Implementation impl)
         {
             return CallsBarrier(impl.StructuredStmts);
         }
@@ -1292,7 +1227,7 @@ namespace GPUVerify
                 Debug.Assert(bb.ec == null);
                 return false;
             }
-        }
+        }*/
 
         private void AbstractSharedState()
         {
@@ -1305,7 +1240,7 @@ namespace GPUVerify
 
             foreach (Declaration d in Program.TopLevelDeclarations)
             {
-                if (d is Variable && GlobalVariables.Contains(d as Variable) || TileStaticVariables.Contains(d as Variable))
+                if (d is Variable && NonLocalState.Contains(d as Variable))
                 {
                     continue;
                 }
@@ -1334,7 +1269,7 @@ namespace GPUVerify
 
             foreach (IdentifierExpr e in proc.Modifies)
             {
-                if (!(GlobalVariables.Contains(e.Decl) || TileStaticVariables.Contains(e.Decl)))
+                if (!NonLocalState.Contains(e.Decl))
                 {
                     NewModifies.Add(e);
                 }
@@ -1350,10 +1285,8 @@ namespace GPUVerify
 
             foreach (Variable v in impl.LocVars)
             {
-                if (!TileStaticVariables.Contains(v))
-                {
-                    NewLocVars.Add(v);
-                }
+                Debug.Assert(!NonLocalState.getTileStaticVariables().Contains(v));
+                NewLocVars.Add(v);
             }
 
             impl.LocVars = NewLocVars;
@@ -1389,7 +1322,7 @@ namespace GPUVerify
                     Debug.Assert(assign.Rhss.Count == 1);
                     AssignLhs lhs = assign.Lhss[0];
                     Expr rhs = assign.Rhss[0];
-                    ReadCollector rc = new ReadCollector(GlobalVariables, TileStaticVariables);
+                    ReadCollector rc = new ReadCollector(NonLocalState);
                     rc.Visit(rhs);
                     if (rc.accesses.Count > 0)
                     {
@@ -1398,7 +1331,7 @@ namespace GPUVerify
                         continue;
                     }
 
-                    WriteCollector wc = new WriteCollector(GlobalVariables, TileStaticVariables);
+                    WriteCollector wc = new WriteCollector(NonLocalState);
                     wc.Visit(lhs);
                     if (wc.GetAccess() != null)
                     {
@@ -1642,7 +1575,7 @@ namespace GPUVerify
                     {
                         Expr e = call.Ins[i];
 
-                        while (NonLocalAccessCollector.ContainsNonLocalAccess(e, GlobalVariables, TileStaticVariables))
+                        while (NonLocalAccessCollector.ContainsNonLocalAccess(e, NonLocalState))
                         {
                             AssignCmd assignToTemp;
                             LocalVariable tempDecl;
@@ -1666,7 +1599,9 @@ namespace GPUVerify
                     AssignLhs lhs = assign.Lhss.ElementAt(0);
                     Expr rhs = assign.Rhss.ElementAt(0);
 
-                    if (!NonLocalAccessCollector.ContainsNonLocalAccess(rhs, GlobalVariables, TileStaticVariables) || (!NonLocalAccessCollector.ContainsNonLocalAccess(lhs, GlobalVariables, TileStaticVariables) && NonLocalAccessCollector.IsNonLocalAccess(rhs, GlobalVariables, TileStaticVariables)))
+                    if (!NonLocalAccessCollector.ContainsNonLocalAccess(rhs, NonLocalState) || 
+                        (!NonLocalAccessCollector.ContainsNonLocalAccess(lhs, NonLocalState) && 
+                          NonLocalAccessCollector.IsNonLocalAccess(rhs, NonLocalState)))
                     {
                         result.simpleCmds.Add(c);
                     }
@@ -1703,7 +1638,7 @@ namespace GPUVerify
             if (bb.ec is WhileCmd)
             {
                 WhileCmd WhileCommand = bb.ec as WhileCmd;
-                while (NonLocalAccessCollector.ContainsNonLocalAccess(WhileCommand.Guard, GlobalVariables, TileStaticVariables))
+                while (NonLocalAccessCollector.ContainsNonLocalAccess(WhileCommand.Guard, NonLocalState))
                 {
                     AssignCmd assignToTemp;
                     LocalVariable tempDecl;
@@ -1716,8 +1651,8 @@ namespace GPUVerify
             else if (bb.ec is IfCmd)
             {
                 IfCmd IfCommand = bb.ec as IfCmd;
-                Debug.Assert(IfCommand.elseIf == null); // We don't handle else if yet
-                while (NonLocalAccessCollector.ContainsNonLocalAccess(IfCommand.Guard, GlobalVariables, TileStaticVariables))
+                Debug.Assert(IfCommand.elseIf == null); // "else if" must have been eliminated by this phase
+                while (NonLocalAccessCollector.ContainsNonLocalAccess(IfCommand.Guard, NonLocalState))
                 {
                     AssignCmd assignToTemp;
                     LocalVariable tempDecl;
@@ -1742,7 +1677,7 @@ namespace GPUVerify
 
         private Expr PullOutNonLocalAccessesIntoTemps(BigBlock result, Expr e, Implementation impl)
         {
-            while (NonLocalAccessCollector.ContainsNonLocalAccess(e, GlobalVariables, TileStaticVariables))
+            while (NonLocalAccessCollector.ContainsNonLocalAccess(e, NonLocalState))
             {
                 AssignCmd assignToTemp;
                 LocalVariable tempDecl;
@@ -1755,7 +1690,7 @@ namespace GPUVerify
 
         private Expr ExtractLocalAccessToTemp(Expr rhs, out AssignCmd tempAssignment, out LocalVariable tempDeclaration)
         {
-            NonLocalAccessExtractor extractor = new NonLocalAccessExtractor(TempCounter, GlobalVariables, TileStaticVariables);
+            NonLocalAccessExtractor extractor = new NonLocalAccessExtractor(TempCounter, NonLocalState);
             TempCounter++;
             rhs = extractor.VisitExpr(rhs);
             tempAssignment = extractor.Assignment;
@@ -1860,7 +1795,7 @@ namespace GPUVerify
             return result;
         }
 
-        private void MakeKerenelPredicated()
+        private void MakeKernelPredicated()
         {
             foreach (Declaration d in Program.TopLevelDeclarations)
             {
@@ -1882,38 +1817,12 @@ namespace GPUVerify
                 }
                 else if (d is Implementation)
                 {
-                    MakePredicated(d as Implementation, d != KernelImplementation);
+                    new Predicator(d != KernelImplementation).transform(d as Implementation);
+
+                    //MakePredicated(d as Implementation, d != KernelImplementation);
                 }
             }
 
-        }
-
-        private void MakePredicated(Implementation impl, bool AddPredicateParameter)
-        {
-            Expr Predicate;
-
-            if (AddPredicateParameter)
-            {
-                VariableSeq NewIns = new VariableSeq();
-                Variable PredicateVariable = new LocalVariable(impl.tok, new TypedIdent(impl.tok, "_P", Microsoft.Boogie.Type.Bool));
-                NewIns.Add(PredicateVariable);
-                foreach (Variable v in impl.InParams)
-                {
-                    NewIns.Add(v);
-                }
-                impl.InParams = NewIns;
-                Predicate = new IdentifierExpr(impl.tok, PredicateVariable);
-            }
-            else
-            {
-                Predicate = Expr.True;
-            }
-
-            WhileLoopCounter = 0;
-            IfCounter = 0;
-            RequiredHavocVariables = new HashSet<Microsoft.Boogie.Type>();
-            impl.StructuredStmts = MakePredicated(impl.StructuredStmts, Predicate, null);
-            AddPredicateLocalVariables(impl);
         }
 
         private StmtList MakeDual(StmtList stmtList, bool HalfDualise)
@@ -2081,208 +1990,6 @@ namespace GPUVerify
             impl.LocVars = NewLocalVars;
         }
 
-        private void AddPredicateLocalVariables(Implementation impl)
-        {
-            for (int i = 0; i < IfCounter; i++)
-            {
-                impl.LocVars.Add(new LocalVariable(impl.tok, new TypedIdent(impl.tok, "_P" + i, Microsoft.Boogie.Type.Bool)));
-            }
-            for (int i = 0; i < WhileLoopCounter; i++)
-            {
-                impl.LocVars.Add(new LocalVariable(impl.tok, new TypedIdent(impl.tok, "_LC" + i, Microsoft.Boogie.Type.Bool)));
-            }
-            foreach (Microsoft.Boogie.Type t in RequiredHavocVariables)
-            {
-                impl.LocVars.Add(new LocalVariable(impl.tok, new TypedIdent(impl.tok, "_HAVOC_" + t.ToString(), t)));
-            }
-
-        }
-
-        private StmtList MakePredicated(StmtList sl, Expr predicate, IdentifierExpr EnclosingLoopPredicate)
-        {
-            StmtList result = new StmtList(new List<BigBlock>(), sl.EndCurly);
-
-            foreach (BigBlock bodyBlock in sl.BigBlocks)
-            {
-                List<BigBlock> newBigBlocks = MakePredicated(bodyBlock, predicate, EnclosingLoopPredicate);
-                foreach (BigBlock newBigBlock in newBigBlocks)
-                {
-                    result.BigBlocks.Add(newBigBlock);
-                }
-            }
-
-            return result;
-
-        }
-
-        private List<BigBlock> MakePredicated(BigBlock b, Expr IncomingPredicate, IdentifierExpr EnclosingLoopPredicate)
-        {
-            // Not sure what to do about the transfer command
-
-            List<BigBlock> result = new List<BigBlock>();
-
-            BigBlock firstBigBlock = new BigBlock(b.tok, b.LabelName, new CmdSeq(), null, b.tc);
-            result.Add(firstBigBlock);
-
-            foreach (Cmd c in b.simpleCmds)
-            {
-                if (c is CallCmd)
-                {
-
-                    CallCmd Call = c as CallCmd;
-
-                    List<Expr> NewIns = new List<Expr>();
-                    NewIns.Add(IncomingPredicate);
-
-                    foreach (Expr e in Call.Ins)
-                    {
-                        NewIns.Add(e);
-                    }
-
-                    CallCmd NewCallCmd = new CallCmd(Call.tok, Call.callee, NewIns, Call.Outs);
-
-                    firstBigBlock.simpleCmds.Add(NewCallCmd);
-                }
-                else if (IncomingPredicate.Equals(Expr.True))
-                {
-                    firstBigBlock.simpleCmds.Add(c);
-                }
-                else if (c is AssignCmd)
-                {
-                    AssignCmd assign = c as AssignCmd;
-                    Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
-
-                    ExprSeq iteArgs = new ExprSeq();
-                    iteArgs.Add(IncomingPredicate);
-                    iteArgs.Add(assign.Rhss.ElementAt(0));
-                    iteArgs.Add(assign.Lhss.ElementAt(0).AsExpr);
-                    NAryExpr ite = new NAryExpr(assign.tok, new IfThenElse(assign.tok), iteArgs);
-
-                    List<Expr> newRhs = new List<Expr>();
-                    newRhs.Add(ite);
-
-                    AssignCmd newAssign = new AssignCmd(assign.tok, assign.Lhss, newRhs);
-
-                    firstBigBlock.simpleCmds.Add(newAssign);
-                }
-                else if (c is HavocCmd)
-                {
-                    HavocCmd havoc = c as HavocCmd;
-                    Debug.Assert(havoc.Vars.Length == 1);
-
-                    Microsoft.Boogie.Type type = havoc.Vars[0].Decl.TypedIdent.Type;
-                    Debug.Assert(type != null);
-
-                    RequiredHavocVariables.Add(type);
-
-                    IdentifierExpr HavocTempExpr = new IdentifierExpr(havoc.tok, new LocalVariable(havoc.tok, new TypedIdent(havoc.tok, "_HAVOC_" + type.ToString(), type)));
-                    firstBigBlock.simpleCmds.Add(new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
-                        HavocTempExpr 
-                    })));
-
-                    List<AssignLhs> lhss = new List<AssignLhs>();
-                    lhss.Add(new SimpleAssignLhs(havoc.tok, havoc.Vars[0]));
-
-                    List<Expr> rhss = new List<Expr>();
-                    rhss.Add(new NAryExpr(havoc.tok, new IfThenElse(havoc.tok), new ExprSeq(new Expr[] { IncomingPredicate, HavocTempExpr, havoc.Vars[0] })));
-
-                    firstBigBlock.simpleCmds.Add(new AssignCmd(havoc.tok, lhss, rhss));
-
-                }
-                else
-                {
-                    Debug.Assert(false);
-                }
-            }
-
-            if (b.ec is WhileCmd)
-            {
-                string LoopPredicate = "_LC" + WhileLoopCounter;
-                WhileLoopCounter++;
-
-                IdentifierExpr PredicateExpr = new IdentifierExpr(b.ec.tok, new LocalVariable(b.ec.tok, new TypedIdent(b.ec.tok, LoopPredicate, Microsoft.Boogie.Type.Bool)));
-                Expr GuardExpr = (b.ec as WhileCmd).Guard;
-
-                List<AssignLhs> WhilePredicateLhss = new List<AssignLhs>();
-                WhilePredicateLhss.Add(new SimpleAssignLhs(b.ec.tok, PredicateExpr));
-
-                List<Expr> WhilePredicateRhss = new List<Expr>();
-                WhilePredicateRhss.Add(IncomingPredicate.Equals(Expr.True) ? GuardExpr : Expr.And(IncomingPredicate, GuardExpr));
-
-                firstBigBlock.simpleCmds.Add(new AssignCmd(b.ec.tok, WhilePredicateLhss, WhilePredicateRhss));
-
-                WhileCmd NewWhile = new WhileCmd(b.ec.tok, PredicateExpr, (b.ec as WhileCmd).Invariants, MakePredicated((b.ec as WhileCmd).Body, PredicateExpr, PredicateExpr));
-
-                List<Expr> UpdatePredicateRhss = new List<Expr>();
-                UpdatePredicateRhss.Add(Expr.And(PredicateExpr, GuardExpr));
-
-                CmdSeq updateCmd = new CmdSeq();
-                updateCmd.Add(new AssignCmd(b.ec.tok, WhilePredicateLhss, UpdatePredicateRhss));
-
-                NewWhile.Body.BigBlocks.Add(new BigBlock(b.ec.tok, "update_" + LoopPredicate, updateCmd, null, null));
-
-                firstBigBlock.ec = NewWhile;
-
-            }
-            else if (b.ec is IfCmd)
-            {
-                IfCmd IfCommand = b.ec as IfCmd;
-
-                string IfPredicate = "_P" + IfCounter;
-                IfCounter++;
-
-                IdentifierExpr PredicateExpr = new IdentifierExpr(b.ec.tok, new LocalVariable(b.ec.tok, new TypedIdent(b.ec.tok, IfPredicate, Microsoft.Boogie.Type.Bool)));
-                Expr GuardExpr = IfCommand.Guard;
-
-                List<AssignLhs> IfPredicateLhss = new List<AssignLhs>();
-                IfPredicateLhss.Add(new SimpleAssignLhs(b.ec.tok, PredicateExpr));
-
-                List<Expr> IfPredicateRhss = new List<Expr>();
-                IfPredicateRhss.Add(GuardExpr);
-
-                firstBigBlock.simpleCmds.Add(new AssignCmd(b.ec.tok, IfPredicateLhss, IfPredicateRhss));
-
-                Debug.Assert(IfCommand.elseIf == null); // We need to preprocess these away
-
-                StmtList PredicatedThen = MakePredicated(IfCommand.thn, Expr.And(IncomingPredicate, PredicateExpr), EnclosingLoopPredicate);
-
-                foreach (BigBlock bb in PredicatedThen.BigBlocks)
-                {
-                    result.Add(bb);
-                }
-
-                if (IfCommand.elseBlock != null)
-                {
-                    StmtList PredicatedElse = MakePredicated(IfCommand.elseBlock, Expr.And(IncomingPredicate, Expr.Not(PredicateExpr)), EnclosingLoopPredicate);
-
-                    foreach (BigBlock bb in PredicatedElse.BigBlocks)
-                    {
-                        result.Add(bb);
-                    }
-                }
-
-
-
-
-            }
-            else if (b.ec is BreakCmd)
-            {
-
-
-                firstBigBlock.simpleCmds.Add(new AssignCmd(b.tok,
-                    new List<AssignLhs>(new AssignLhs[] { new SimpleAssignLhs(b.tok, EnclosingLoopPredicate) }),
-                    new List<Expr>(new Expr[] { new NAryExpr(b.tok, new IfThenElse(b.tok), new ExprSeq(new Expr[] { IncomingPredicate, Expr.False, EnclosingLoopPredicate })) })
-                    ));
-                firstBigBlock.ec = null;            
-            
-            }
-            else
-            {
-                Debug.Assert(b.ec == null);
-            }
-
-            return result;
-        }
 
         private void CheckKernelParameters()
         {
@@ -2452,6 +2159,88 @@ namespace GPUVerify
         public static bool IsThreadLocalIdConstant(Variable variable)
         {
             return variable is Constant && (variable.Name.Equals(_X_name) || variable.Name.Equals(_Y_name) || variable.Name.Equals(_Z_name));
+        }
+
+        internal HashSet<string> GetProceduresThatIndirectlyCallProcedure(string Name)
+        {
+            HashSet<string> MayCallProc = new HashSet<string>();
+            MayCallProc.Add(Name);
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                foreach (Declaration d in Program.TopLevelDeclarations)
+                {
+                    if (d is Implementation && !MayCallProc.Contains((d as Implementation).Name))
+                    {
+                        HashSet<string> CalledProcedures = GetCalledProcedures(d as Implementation);
+                        foreach (string p in CalledProcedures)
+                        {
+                            if (MayCallProc.Contains(p))
+                            {
+                                changed = true;
+                                MayCallProc.Add((d as Implementation).Name);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            return MayCallProc;
+        }
+
+        private HashSet<string> GetCalledProcedures(Implementation impl)
+        {
+            HashSet<string> result = new HashSet<string>();
+            return GetCalledProcedures(impl.StructuredStmts, result);
+        }
+
+        private HashSet<string> GetCalledProcedures(StmtList statements, HashSet<string> result)
+        {
+            foreach (BigBlock bb in statements.BigBlocks)
+            {
+                foreach (Cmd c in bb.simpleCmds)
+                {
+                    if (c is CallCmd)
+                    {
+                        result.Add((c as CallCmd).callee);
+                    }
+                }
+
+                if (bb.ec is WhileCmd)
+                {
+                    result = GetCalledProcedures((bb.ec as WhileCmd).Body, result);
+                }
+                else if (bb.ec is IfCmd)
+                {
+                    result = GetCalledProcedures((bb.ec as IfCmd).thn, result);
+                    Debug.Assert((bb.ec as IfCmd).elseIf == null);
+                    if ((bb.ec as IfCmd).elseBlock != null)
+                    {
+                        result = GetCalledProcedures((bb.ec as IfCmd).elseBlock, result);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        internal void ExtendModifiesSetOfProcedures(IdentifierExprSeq ModifiedVariables, HashSet<string> Procedures)
+        {
+            foreach (Declaration d in Program.TopLevelDeclarations)
+            {
+                if (d is Procedure && Procedures.Contains((d as Procedure).Name))
+                {
+                    Procedure P = d as Procedure;
+                    foreach (IdentifierExpr e in ModifiedVariables)
+                    {
+                        if (!GPUVerifier.ModifiesSetContains(P.Modifies, e))
+                        {
+                            P.Modifies.Add(e);
+                        }
+                    }
+                }
+            }
         }
 
     }
