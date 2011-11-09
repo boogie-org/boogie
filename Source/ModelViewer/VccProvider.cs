@@ -507,7 +507,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
       foreach (var app in elt.Names)
         if (app.Func.Arity == 0 && app.Func.Name.StartsWith("^")) {
-          var n = app.Func.Name.Substring(1); 
+          var n = app.Func.Name.Substring(1);
           switch (n) {
             case "^i1": return "int8_t";
             case "^u1": return "uint8_t";
@@ -518,8 +518,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             case "^i8": return "int64_t";
             case "^u8": return "uint64_t";
             case "^bool": return "bool";
-            default: return n;
-          }          
+            default:
+              var pref = "_vcc_math_type_";
+              if (n.StartsWith(pref)) n = n.Substring(pref.Length);
+              return n;
+          }
         }
 
       return null;
@@ -683,12 +686,12 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         var fldName = tpl.Func.Name.Substring(3);
         var idx = fldName.LastIndexOf('.');
         if (idx > 0) {
-          return fldName.Substring(0, idx);
+          return fldName.Substring(0, idx).Replace("_vcc_math_type_", "");
         }
       }
 
       if (tpl.Args.Length == 1 && tpl.Args[0] == elt && (fname.StartsWith("DSZ#") || fname.StartsWith("RSZ#") || fname.StartsWith("DGH#"))) {
-        return fname.Substring(4);
+        return fname.Substring(4).Replace("_vcc_math_type_", "");
       }
       return null;
     }
