@@ -855,23 +855,21 @@ namespace GPUVerify
             return true;
         }
 
-        
-
         public Microsoft.Boogie.Type GetTypeOfIdX()
         {
-            Contract.Requires(_X != null);
+            Contract.Assert(_X != null);
             return _X.TypedIdent.Type;
         }
 
         public Microsoft.Boogie.Type GetTypeOfIdY()
         {
-            Contract.Requires(_Y != null);
+            Contract.Assert(_Y != null);
             return _Y.TypedIdent.Type;
         }
 
         public Microsoft.Boogie.Type GetTypeOfIdZ()
         {
-            Contract.Requires(_Z != null);
+            Contract.Assert(_Z != null);
             return _Z.TypedIdent.Type;
         }
 
