@@ -152,11 +152,19 @@ namespace Microsoft.Boogie {
           Formal outVar = new Formal(Token.NoToken, v.TypedIdent, false);
           Function selector = new Function(f.tok, v.Name + "#" + f.Name, new VariableSeq(inVar), outVar);
           selector.AddAttribute("selector");
+          for (QKeyValue kv = f.Attributes; kv != null; kv = kv.Next) {
+            if (kv.Key == "constructor") continue;
+            selector.AddAttribute(kv.Key, kv.Params.ToArray());
+          }
           program.TopLevelDeclarations.Add(selector);
         }
         Formal inv = new Formal(Token.NoToken, f.OutParams[0].TypedIdent, true);
         Formal outv = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false);
         Function isConstructor = new Function(f.tok, "is#" + f.Name, new VariableSeq(inv), outv);
+        for (QKeyValue kv = f.Attributes; kv != null; kv = kv.Next) {
+          if (kv.Key == "constructor") continue;
+          isConstructor.AddAttribute(kv.Key, kv.Params.ToArray());
+        } 
         isConstructor.AddAttribute("membership");
         program.TopLevelDeclarations.Add(isConstructor);
       }
