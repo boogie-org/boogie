@@ -275,8 +275,10 @@ namespace BytecodeTranslator {
       //for (int i = 0; i < parameterCount; i++) {
       //  inputs.Add(new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "arg"+i, this.TypeType), true));
       //}
-      foreach (var t in type.ResolvedType.GenericParameters) {
-        inputs.Add(new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, t.Name.Value, this.TypeType), true));
+      foreach (var t in TranslationHelper.ConsolidatedGenericParameters(type)) {
+        var n = t.Name.Value;
+        var n2 = TranslationHelper.TurnStringIntoValidIdentifier(n);
+        inputs.Add(new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, n2, this.TypeType), true));
       }
       Bpl.Variable output = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "result", this.TypeType), false);
       Bpl.Function func = new Bpl.Function(tok, typename, inputs, output);

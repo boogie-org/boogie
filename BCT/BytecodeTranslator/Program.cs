@@ -211,7 +211,7 @@ namespace BytecodeTranslator {
         }
         module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader) as IModule;
         // The decompiler does not turn calls to Assert/Assume into Code Model nodes
-        module = new Microsoft.Cci.MutableContracts.ContractExtractor.AssertAssumeExtractor(host, pdbReader).Visit(module);
+        module = new Microsoft.Cci.MutableContracts.ContractExtractor.AssertAssumeExtractor(host, pdbReader).Rewrite(module);
 
         host.RegisterAsLatest(module);
         modules.Add(module);
@@ -632,11 +632,20 @@ namespace BytecodeTranslator {
           for (int i = 0; i < tempInputs.Count; i++) {
             ins.Add(Bpl.Expr.Ident(tempInputs[i]));
           }
-          int numTypeParameters = Sink.GetNumberTypeParameters(defn);
-          for (int i = 0; i < numTypeParameters; i++) {
-            ins.Add(new Bpl.NAryExpr(Bpl.Token.NoToken, 
-                                     new Bpl.FunctionCall(sink.FindOrCreateTypeParameterFunction(i)), 
-                                     new Bpl.ExprSeq(Bpl.Expr.Ident(typeParameter))));
+          if (defn.IsGeneric) {
+            for (int i = 0; i < defn.GenericParameterCount; i++) {
+              ins.Add(new Bpl.NAryExpr(Bpl.Token.NoToken,
+                                       new Bpl.FunctionCall(sink.FindOrCreateTypeParameterFunction(i)),
+                                       new Bpl.ExprSeq(Bpl.Expr.Ident(typeParameter))));
+            }
+          }
+          if (defn.IsStatic) {
+            int numTypeParameters = Sink.ConsolidatedGenericParameterCount(defn.ContainingType);
+            for (int i = 0; i < numTypeParameters; i++) {
+              ins.Add(new Bpl.NAryExpr(Bpl.Token.NoToken,
+                                       new Bpl.FunctionCall(sink.FindOrCreateTypeParameterFunction(i)),
+                                       new Bpl.ExprSeq(Bpl.Expr.Ident(typeParameter))));
+            }
           }
           for (int i = 0; i < tempOutputs.Count; i++) {
             outs.Add(Bpl.Expr.Ident(tempOutputs[i]));

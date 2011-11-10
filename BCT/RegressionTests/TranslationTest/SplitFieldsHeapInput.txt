@@ -417,7 +417,7 @@ var {:thread_local} $Exception: Ref;
 
 function {:constructor} T$RegressionTestInput.RealNumbers() : Type;
 
-function {:extern} T$System.Object() : Type;
+function {:constructor} {:extern} T$System.Object() : Type;
 
 axiom $Subtype(T$RegressionTestInput.RealNumbers(), T$System.Object());
 
@@ -637,7 +637,7 @@ procedure RegressionTestInput.S.#default_ctor(this: Ref);
 
 function {:constructor} T$RegressionTestInput.S() : Type;
 
-function {:extern} T$System.ValueType() : Type;
+function {:constructor} {:extern} T$System.ValueType() : Type;
 
 axiom $Subtype(T$System.ValueType(), T$System.Object());
 
@@ -1061,13 +1061,13 @@ implementation T$RegressionTestInput.BitwiseOperations.#cctor()
 
 function {:constructor} T$RegressionTestInput.AsyncAttribute() : Type;
 
-function {:extern} T$System.Attribute() : Type;
+function {:constructor} {:extern} T$System.Attribute() : Type;
 
 axiom $Subtype(T$System.Attribute(), T$System.Object());
 
 axiom $DisjointSubtree(T$System.Attribute(), T$System.Object());
 
-function {:extern} T$System.Runtime.InteropServices._Attribute() : Type;
+function {:constructor} {:extern} T$System.Runtime.InteropServices._Attribute() : Type;
 
 axiom $Subtype(T$System.Attribute(), T$System.Runtime.InteropServices._Attribute());
 
@@ -1261,7 +1261,7 @@ implementation RegressionTestInput.NestedGeneric.C.G`1.#ctor$System.Int32($this:
     }
     else
     {
-        call $tmp2 := System.Activator.CreateInstance``1(T);
+        call $tmp2 := System.Activator.CreateInstance``1(T#T$RegressionTestInput.NestedGeneric.C.G`1($DynamicType($this)));
         $tmp1 := Box2Box($tmp2);
         if ($Exception != null)
         {

@@ -286,13 +286,23 @@ namespace BytecodeTranslator
     }
 
     /// <summary>
-    /// If the expression is a struct, then this returns a "boxed" struct.
+    /// If the expression's type is a generic parameter (either method or type),
+    /// then this returns a "unboxed" expression, i.e., the value as a ref.
     /// Otherwise it just translates the expression and skips the address-of
     /// operation.
     /// </summary>
     public override void TraverseChildren(IAddressOf addressOf)
     {
-      this.Traverse(addressOf.Expression);
+      var t = addressOf.Expression.Type;
+      if (t is IGenericParameterReference) {
+        // then the expression will be represented by something of type Box
+        // but the address of it must be a ref, so do the conversion
+        this.Traverse(addressOf.Expression);
+        var e = this.TranslatedExpressions.Pop();
+        this.TranslatedExpressions.Push(this.sink.Heap.Unbox(addressOf.Token(), this.sink.Heap.RefType, e));
+      } else {
+        this.Traverse(addressOf.Expression);
+      }
     }
     #endregion
 
@@ -646,10 +656,12 @@ namespace BytecodeTranslator
         var e = this.TranslatedExpressions.Pop();
         var identifierExpr = e as Bpl.IdentifierExpr;
         if (identifierExpr == null) {
-          var newLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(thisArg.Type));
+          var newLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(methodToCall.ContainingType));
           var cmd = Bpl.Cmd.SimpleAssign(token, newLocal, e);
           this.StmtTraverser.StmtBuilder.Add(cmd);
           e = newLocal;
+        } else {
+
         }
         inexpr.Add(e);
         thisExpr = (Bpl.IdentifierExpr) e;

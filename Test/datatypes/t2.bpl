@@ -38,6 +38,7 @@ axiom (forall u : DotNetType :: $Subtype(D(u), GenericType1(u)));
 function {:constructor} GenericType2(T:DotNetType, U:DotNetType) : DotNetType;
 axiom (forall t : DotNetType, u : DotNetType :: $Subtype(GenericType2(t,u), System.Object()));
 
+
 procedure foo(t : DotNetType) 
 {
   assert System.Object() != GenericType1(t);
@@ -52,3 +53,10 @@ procedure bar(t : DotNetType, u : DotNetType)
   assert GenericType1(t) != GenericType1(u);
 }
 
+function IntToType(x : int) : DotNetType;
+procedure baz(i : int)
+{
+  var t : DotNetType;
+  t := IntToType(i);
+  assert T#GenericType1(t) == System.Object();
+}

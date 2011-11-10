@@ -163,11 +163,19 @@ namespace BytecodeTranslator {
         foreach (var typeMethodPair in overrides) {
           var t = typeMethodPair.Item1;
           var m = typeMethodPair.Item2;
-          var typeForT = this.sink.FindOrCreateTypeReference(t);
-          if (typeForT == null) {
+
+          // guard: is#T($DynamicType(local_variable))
+          var typeFunction = this.sink.FindOrDefineType(t);
+          if (typeFunction == null) {
             // BUGBUG!! This just silently skips the branch that would dispatch to t's implementation of the method!
             continue;
           }
+          var funcName = String.Format("is#{0}", typeFunction.Name);
+          var identExpr = Bpl.Expr.Ident(new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, funcName, Bpl.Type.Bool)));
+          var funcCall = new Bpl.FunctionCall(identExpr);
+          var exprs = new Bpl.ExprSeq(this.sink.Heap.DynamicType(inexpr[0]));
+          var guard = new Bpl.NAryExpr(token, funcCall, exprs);
+
           var thenBranch = new Bpl.StmtListBuilder();
           methodname = TranslationHelper.CreateUniqueMethodName(m); // REVIEW: Shouldn't this be call to FindOrCreateProcedure?
           if (attrib != null)
@@ -175,11 +183,9 @@ namespace BytecodeTranslator {
           else
             call = new Bpl.CallCmd(token, methodname, inexpr, outvars);
           thenBranch.Add(call);
+
           ifcmd = new Bpl.IfCmd(token,
-            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
-            this.sink.Heap.DynamicType(inexpr[0]),
-            typeForT
-            ),
+            guard,
             thenBranch.Collect(token),
             null,
             elseBranch.Collect(token)

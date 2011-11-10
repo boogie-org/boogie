@@ -820,7 +820,7 @@ namespace BytecodeTranslator {
       return result;
     }
 
-    private static ushort ConsolidatedGenericParameterCount(ITypeReference typeReference) {
+    public static ushort ConsolidatedGenericParameterCount(ITypeReference typeReference) {
       Contract.Requires(typeReference != null);
 
       var typeDefinition = typeReference.ResolvedType;
@@ -857,15 +857,9 @@ namespace BytecodeTranslator {
       if (nestedTypeReference != null) GetConsolidatedTypeArguments(consolidatedTypeArguments, nestedTypeReference.ContainingType);
     }
 
+    [Obsolete]
     public static int GetNumberTypeParameters(IMethodDefinition method) {
-      int count = 0;
-      if (method.IsStatic) {
-        List<ITypeReference> consolidatedTypeArguments = new List<ITypeReference>();
-        Sink.GetConsolidatedTypeArguments(consolidatedTypeArguments, method.ContainingType);
-        count += consolidatedTypeArguments.Count;
-      }
-      count += method.GenericParameterCount;
-      return count;
+      return method.GenericParameterCount + ConsolidatedGenericParameterCount(method.ContainingType);
     }
 
     /// <summary>
@@ -888,14 +882,18 @@ namespace BytecodeTranslator {
 
       IGenericTypeParameter gtp = type as IGenericTypeParameter;
       if (gtp != null) {
-        Bpl.Variable v;
-        if (!this.declaredTypeVariables.TryGetValue(gtp.InternedKey, out v)) {
-          var loc = Bpl.Token.NoToken;
-          var t = CciTypeToBoogie(gtp);
-          v = new Bpl.LocalVariable(loc, new Bpl.TypedIdent(loc, gtp.Name.Value, t));
-          this.declaredTypeVariables.Add(gtp.InternedKey, v);
-        }
-        return Bpl.Expr.Ident(v);
+        var selectorName = gtp.Name.Value;
+        selectorName = TranslationHelper.TurnStringIntoValidIdentifier(selectorName);
+        var typeName = TypeHelper.GetTypeName(gtp.DefiningType, NameFormattingOptions.DocumentationId);
+        typeName = TranslationHelper.TurnStringIntoValidIdentifier(typeName);
+        var funcName = String.Format("{0}#{1}", selectorName, typeName);
+        Bpl.IToken tok = Bpl.Token.NoToken;
+        var identExpr = Bpl.Expr.Ident(new Bpl.LocalVariable(tok, new Bpl.TypedIdent(tok, funcName, this.Heap.TypeType)));
+        var funcCall = new Bpl.FunctionCall(identExpr);
+        var thisArg = new Bpl.IdentifierExpr(tok, this.ThisVariable);
+        var dynType = this.Heap.DynamicType(thisArg);
+        var nary = new Bpl.NAryExpr(Bpl.Token.NoToken, funcCall, new Bpl.ExprSeq(dynType));
+        return nary;
       }
 
       IGenericMethodParameter gmp = type as IGenericMethodParameter;
@@ -931,7 +929,7 @@ namespace BytecodeTranslator {
     /// The Heap has to decide how to represent the type. 
     /// All the Sink cares about is adding a declaration for it.
     /// </summary>
-    private Bpl.Function FindOrDefineType(ITypeReference type) {
+    public Bpl.Function FindOrDefineType(ITypeReference type) {
 
       Bpl.Function f;
 
@@ -968,26 +966,31 @@ namespace BytecodeTranslator {
       return;
     }
     private void DeclareSuperType(Bpl.Function typeDefinitionAsBplFunction, ITypeReference superType) {
-      var superType_prime = FindOrCreateTypeReference(superType);
+      var superTypeFunction = FindOrDefineType(superType);
       var numberOfGenericParameters = typeDefinitionAsBplFunction.InParams.Length;
 
       var qvars = new Bpl.VariableSeq();
       var exprs = new Bpl.ExprSeq();
+      var superTypeArgs = new Bpl.ExprSeq();
       for (int i = 0; i < numberOfGenericParameters; i++) {
         var t = typeDefinitionAsBplFunction.InParams[i];
         qvars.Add(t);
-        exprs.Add(Bpl.Expr.Ident(t));
+        var identForT = Bpl.Expr.Ident(t);
+        exprs.Add(identForT);
+        if (i < superTypeFunction.InParams.Length)
+          superTypeArgs.Add(identForT);
       }
 
       // G(t,u)
       var callToG = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(typeDefinitionAsBplFunction), exprs);
+      var callToSuperType = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(superTypeFunction), superTypeArgs);
       // Subtype(G(t,u), super)
-      Bpl.Expr subtype = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.Heap.Subtype), new Bpl.ExprSeq(callToG, superType_prime));
+      Bpl.Expr subtype = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.Heap.Subtype), new Bpl.ExprSeq(callToG, callToSuperType));
       Bpl.Expr disjointSubtree = null;
       var isDisjoint = !superType.ResolvedType.IsInterface;
       if (isDisjoint) {
         // DisjointSubtree(G(t,u), super)
-        disjointSubtree = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.Heap.DisjointSubtree), new Bpl.ExprSeq(callToG, superType_prime));
+        disjointSubtree = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.Heap.DisjointSubtree), new Bpl.ExprSeq(callToG, callToSuperType));
       }
 
       if (0 < numberOfGenericParameters) {
@@ -1037,7 +1040,6 @@ namespace BytecodeTranslator {
     /// <summary>
     /// The keys to the table are the interned key of the type.
     /// </summary>
-    private Dictionary<uint, Bpl.Variable> declaredTypeVariables = new Dictionary<uint, Bpl.Variable>();
     private Dictionary<uint, Bpl.Function> declaredTypeFunctions = new Dictionary<uint, Bpl.Function>();
     private List<Bpl.Function> childFunctions = new List<Bpl.Function>();
 

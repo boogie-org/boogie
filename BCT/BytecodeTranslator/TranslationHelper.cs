@@ -16,6 +16,7 @@ using Microsoft.Cci.ILToCodeModel;
 
 using Bpl = Microsoft.Boogie;
 using System.Text.RegularExpressions;
+using System.Diagnostics.Contracts;
 
 namespace BytecodeTranslator {
 
@@ -119,6 +120,20 @@ namespace BytecodeTranslator {
     internal static int finallyClauseCounter = 0;
     public static string GenerateFinallyClauseName() {
       return "finally" + (finallyClauseCounter++).ToString();
+    }
+
+    public static List<IGenericTypeParameter> ConsolidatedGenericParameters(ITypeReference typeReference) {
+      Contract.Requires(typeReference != null);
+
+      var typeDefinition = typeReference.ResolvedType;
+      var totalParameters = new List<IGenericTypeParameter>(typeDefinition.GenericParameters);
+      var nestedTypeDefinition = typeDefinition as INestedTypeDefinition;
+      while (nestedTypeDefinition != null) {
+        var containingType = nestedTypeDefinition.ContainingType.ResolvedType;
+        totalParameters.AddRange(containingType.GenericParameters);
+        nestedTypeDefinition = containingType as INestedTypeDefinition;
+      }
+      return totalParameters;
     }
 
     public static string CreateUniqueMethodName(IMethodReference method) {
