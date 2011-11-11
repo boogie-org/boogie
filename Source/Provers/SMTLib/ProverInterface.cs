@@ -27,6 +27,7 @@ namespace Microsoft.Boogie.SMTLib
     private readonly SMTLibProverContext ctx;
     private readonly VCExpressionGenerator gen;
     private readonly SMTLibProverOptions options;
+    private bool usingUnsatCore;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -54,6 +55,7 @@ namespace Microsoft.Boogie.SMTLib
       this.options = (SMTLibProverOptions)options;
       this.ctx = ctx;
       this.gen = gen;
+      this.usingUnsatCore = false;
 
       TypeAxiomBuilder axBuilder;
       switch (CommandLineOptions.Clo.TypeEncodingMethod) {
@@ -84,7 +86,11 @@ namespace Microsoft.Boogie.SMTLib
           {
               currentLogFile = OpenOutputFile("");
           }
-          SendThisVC("(set-option :produce-unsat-cores true)");
+          if (CommandLineOptions.Clo.ProcedureCopyBound > 0 || CommandLineOptions.Clo.UseUnsatCoreForInlining)
+          {
+              SendThisVC("(set-option :produce-unsat-cores true)");
+              this.usingUnsatCore = true;
+          }
           PrepareCommon();
       }
       prevOutcomeAvailable = false;
@@ -781,7 +787,7 @@ namespace Microsoft.Boogie.SMTLib
             pendingPop = true;
             return;
         }
-
+        Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
         SendThisVC("(get-unsat-core)");
         var resp = Process.GetProverResponse();
         unsatCore = new List<int>();
