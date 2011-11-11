@@ -211,6 +211,44 @@ namespace Microsoft.Boogie {
       stream.SetToken(this);
       Emitter.Declarations(this.TopLevelDeclarations, stream);
     }
+
+    void CreateDatatypeSelectorsAndTesters() {
+      HashSet<string> functions = new HashSet<string>();
+      List<Function> constructors = new List<Function>();
+      foreach (Declaration decl in TopLevelDeclarations) {
+        Function func = decl as Function;
+        if (func == null) continue;
+        functions.Add(func.Name);
+        if (QKeyValue.FindBoolAttribute(func.Attributes, "constructor"))
+          constructors.Add(func);
+      }
+
+      foreach (Function f in constructors) {
+        foreach (Variable v in f.InParams) {
+          Formal inVar = new Formal(Token.NoToken, f.OutParams[0].TypedIdent, true);
+          Formal outVar = new Formal(Token.NoToken, v.TypedIdent, false);
+          Function selector = new Function(f.tok, v.Name + "#" + f.Name, new VariableSeq(inVar), outVar);
+          selector.AddAttribute("selector");
+          for (QKeyValue kv = f.Attributes; kv != null; kv = kv.Next) {
+            if (kv.Key == "constructor") continue;
+            selector.AddAttribute(kv.Key, kv.Params.ToArray());
+          }
+          if (!functions.Contains(selector.Name))
+            TopLevelDeclarations.Add(selector);
+        }
+        Formal inv = new Formal(Token.NoToken, f.OutParams[0].TypedIdent, true);
+        Formal outv = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false);
+        Function isConstructor = new Function(f.tok, "is#" + f.Name, new VariableSeq(inv), outv);
+        for (QKeyValue kv = f.Attributes; kv != null; kv = kv.Next) {
+          if (kv.Key == "constructor") continue;
+          isConstructor.AddAttribute(kv.Key, kv.Params.ToArray());
+        }
+        isConstructor.AddAttribute("membership");
+        if (!functions.Contains(isConstructor.Name))
+          TopLevelDeclarations.Add(isConstructor);
+      }
+    }
+
     /// <summary>
     /// Returns the number of name resolution errors.
     /// </summary>
@@ -228,6 +266,8 @@ namespace Microsoft.Boogie {
     public override void Resolve(ResolutionContext rc) {
       //Contract.Requires(rc != null);
       Helpers.ExtraTraceInformation("Starting resolution");
+
+      CreateDatatypeSelectorsAndTesters();
 
       foreach (Declaration d in TopLevelDeclarations) {
         d.Register(rc);
@@ -263,7 +303,6 @@ namespace Microsoft.Boogie {
         }
       }
     }
-
 
     private void ResolveTypes(ResolutionContext rc) {
       Contract.Requires(rc != null);
