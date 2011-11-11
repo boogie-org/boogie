@@ -139,37 +139,6 @@ namespace Microsoft.Boogie {
       Dafny
     };
 
-    static void CreateDatatypeSelectors(Program program) {
-      List<Function> constructors = new List<Function>();
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        if (decl is Function && QKeyValue.FindBoolAttribute(decl.Attributes, "constructor"))
-          constructors.Add((Function)decl);
-      }
-
-      foreach (Function f in constructors) {
-        foreach (Variable v in f.InParams) {
-          Formal inVar = new Formal(Token.NoToken, f.OutParams[0].TypedIdent, true);
-          Formal outVar = new Formal(Token.NoToken, v.TypedIdent, false);
-          Function selector = new Function(f.tok, v.Name + "#" + f.Name, new VariableSeq(inVar), outVar);
-          selector.AddAttribute("selector");
-          for (QKeyValue kv = f.Attributes; kv != null; kv = kv.Next) {
-            if (kv.Key == "constructor") continue;
-            selector.AddAttribute(kv.Key, kv.Params.ToArray());
-          }
-          program.TopLevelDeclarations.Add(selector);
-        }
-        Formal inv = new Formal(Token.NoToken, f.OutParams[0].TypedIdent, true);
-        Formal outv = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false);
-        Function isConstructor = new Function(f.tok, "is#" + f.Name, new VariableSeq(inv), outv);
-        for (QKeyValue kv = f.Attributes; kv != null; kv = kv.Next) {
-          if (kv.Key == "constructor") continue;
-          isConstructor.AddAttribute(kv.Key, kv.Params.ToArray());
-        } 
-        isConstructor.AddAttribute("membership");
-        program.TopLevelDeclarations.Add(isConstructor);
-      }
-    }
-
     static void ProcessFiles(List<string> fileNames) {
       Contract.Requires(cce.NonNullElements(fileNames));
       using (XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1])) {
@@ -180,8 +149,6 @@ namespace Microsoft.Boogie {
         if (CommandLineOptions.Clo.PrintFile != null) {
           PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false);
         }
-
-        CreateDatatypeSelectors(program);
 
         PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1]);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
