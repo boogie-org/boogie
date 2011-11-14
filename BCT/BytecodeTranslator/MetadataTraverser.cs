@@ -125,7 +125,7 @@ namespace BytecodeTranslator {
       if (typeDefinition.IsClass) {
         bool savedSawCctor = this.sawCctor;
         this.sawCctor = false;
-        sink.FindOrCreateTypeReference(typeDefinition);
+        sink.FindOrDefineType(typeDefinition);
         base.TraverseChildren(typeDefinition);
         if (!this.sawCctor) {
           CreateStaticConstructor(typeDefinition);

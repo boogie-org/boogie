@@ -165,7 +165,7 @@ namespace BytecodeTranslator {
           var m = typeMethodPair.Item2;
 
           // guard: is#T($DynamicType(local_variable))
-          var typeFunction = this.sink.FindOrDefineType(t);
+          var typeFunction = this.sink.FindOrDefineType(t.ResolvedType);
           if (typeFunction == null) {
             // BUGBUG!! This just silently skips the branch that would dispatch to t's implementation of the method!
             continue;
