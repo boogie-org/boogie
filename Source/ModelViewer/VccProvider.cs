@@ -422,6 +422,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         return name.Substring(5);
       }
 
+      if (name == "$result") {
+        kind = "function return value";
+        return "\\result";
+      }
+
       if (name.StartsWith("res__") && viewOpts.ViewLevel >= 1) {
         kind = "call result";
         return name; 
