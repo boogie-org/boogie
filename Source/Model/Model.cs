@@ -680,8 +680,6 @@ namespace Microsoft.Boogie
       internal System.IO.TextReader rd;
       string lastLine = "";
       int lineNo;
-      bool v1model = false;
-      Dictionary<string, Element> partitionMapping = new Dictionary<string, Element>(); // only used when v1model is true
       internal List<Model> resModels = new List<Model>();
       Model currModel;
 
@@ -704,8 +702,7 @@ namespace Microsoft.Boogie
         return f;
       }
 
-      List<object> GetFunctionTuple() {
-        string newLine = ReadLine();
+      List<object> GetFunctionTuple(string newLine) {
         if (newLine == null)
           return null;
         string line = newLine;
@@ -782,26 +779,15 @@ namespace Microsoft.Boogie
         return new DatatypeValue(currModel, (string)os[0], args);
       }
 
-      Element GetElt(string name)
-      {
-        Element ret;
-
-        if (v1model) {
-          if (!partitionMapping.TryGetValue(name, out ret))
-            BadModel("undefined partition " + name);
-        } else {
-          ret = currModel.TryMkElement(name);
-          if (ret == null)
-            BadModel("invalid element name " + name);
-        }
-
+      Element GetElt(string name) {
+        Element ret = currModel.TryMkElement(name);
+        if (ret == null)
+          BadModel("invalid element name " + name);
         return ret;
       }
 
       void NewModel()
       {
-        v1model = false;
-        partitionMapping.Clear();
         lastLine = "";
         currModel = new Model();
         resModels.Add(currModel);
@@ -822,14 +808,10 @@ namespace Microsoft.Boogie
             continue;
           if (line == "END_OF_MODEL" || line == "." || line == "*** END_MODEL")
             continue;
-          if (line == "partitions:" || line == "function interpretations:") {
-            v1model = true;
-            continue;
-          }
 
-          var words = GetWords(line);
-          if (words.Length == 0) continue;
-          var lastWord = words[words.Length - 1];
+          var words = GetFunctionTuple(line);
+          if (words.Count == 0) continue;
+          var lastWord = words[words.Count - 1];
 
           if (currModel == null)
             BadModel("model begin marker not found");
@@ -853,35 +835,13 @@ namespace Microsoft.Boogie
             continue;
           }
 
-          if (v1model && words[0][0] == '*') {
-            var partName = words[0];
-            var len = words.Length;
-            Element elt;
-            if (len >= 3 && words[len - 2] == "->") {
-              elt = currModel.TryMkElement(lastWord);
-              if (elt == null) BadModel("bad parition value " + lastWord);
-              len -= 2;
-            } else {
-              elt = currModel.MkElement(words[0]);
-            }
-            partitionMapping.Add(partName, elt);
-            for (int i = 1; i < len; ++i) {
-              var name = words[i];
-              if (i == 1 && name[0] == '{')
-                name = name.Substring(1);
-              if (i == len - 1 && name.EndsWith("}"))
-                name = name.Substring(0, name.Length - 1);
-              var cnst = currModel.MkFunc(name, 0);
-              cnst.SetConstant(elt);
-            }
-
-          } else if (words.Length == 3 && words[1] == "->") {
+          if (words.Count == 3 && words[1] is string && ((string) words[1]) == "->") {
             Func fn = null;
-            var funName = words[0];
+            var funName = (string) words[0];
 
-            if (lastWord == "{") {
+            if (lastWord is string && ((string) lastWord) == "{") {
               for ( ; ; ) {
-                var tuple = GetFunctionTuple();
+                var tuple = GetFunctionTuple(ReadLine());
                 if (tuple == null) BadModel("EOF in function table");
                 if (tuple.Count == 0) continue;
                 string tuple0 = tuple[0] as string;
