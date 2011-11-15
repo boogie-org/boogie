@@ -597,7 +597,7 @@ namespace GPUVerify
 
 
 
-        private void AddCandidateRequires(Procedure Proc, Expr e)
+        internal void AddCandidateRequires(Procedure Proc, Expr e)
         {
             Constant ExistentialBooleanConstant = MakeExistentialBoolean(Proc.tok);
             IdentifierExpr ExistentialBoolean = new IdentifierExpr(Proc.tok, ExistentialBooleanConstant);
@@ -605,7 +605,7 @@ namespace GPUVerify
             Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
         }
 
-        private void AddCandidateEnsures(Procedure Proc, Expr e)
+        internal void AddCandidateEnsures(Procedure Proc, Expr e)
         {
             Constant ExistentialBooleanConstant = MakeExistentialBoolean(Proc.tok);
             IdentifierExpr ExistentialBoolean = new IdentifierExpr(Proc.tok, ExistentialBooleanConstant);
