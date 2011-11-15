@@ -27,6 +27,7 @@ dafny2           Use    More Dafny examples
 havoc0           Use    HAVOC-generated bpl files
 VSI-Benchmarks   Use    Solutions to Verified Software Initiative verification challenges
 vacid0           Use    Dafny attempts to VACID Edition 0 benchmarks
+vstte2012        Use    Dafny solutions for the VSTTE 2012 program verification competition
 livevars         Use    STORM benchmarks for testing correctness of live variable analysis
 lazyinline       Postponed    Lazy inlining benchmarks
 stratifiedinline Use    Stratified inlining benchmarks
