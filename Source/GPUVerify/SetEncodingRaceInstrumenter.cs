@@ -567,7 +567,7 @@ namespace GPUVerify
             verifier.AddCandidateInvariant(wc, NoReadOrWriteExpr(v, ReadOrWrite, OneOrTwo));
         }
 
-        private static Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwoString)
+        protected override Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwoString)
         {
             int OneOrTwo = Int32.Parse(OneOrTwoString);
             Expr expr = null;
@@ -756,7 +756,7 @@ namespace GPUVerify
 
             if (expr != null)
             {
-                Proc.Requires.Add(new Requires(false, expr));
+                verifier.AddCandidateRequires(Proc, expr);
             }
         }
 
@@ -766,18 +766,8 @@ namespace GPUVerify
 
             if (expr != null)
             {
-                Proc.Ensures.Add(new Ensures(false, expr));
+                verifier.AddCandidateEnsures(Proc, expr);
             }
-        }
-
-        protected override void AddNoReadOrWriteCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, string OneOrTwo)
-        {
-            Proc.Requires.Add(new Requires(false, NoReadOrWriteExpr(v, ReadOrWrite, OneOrTwo)));
-        }
-
-        protected override void AddNoReadOrWriteCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, string OneOrTwo)
-        {
-            Proc.Ensures.Add(new Ensures(false, NoReadOrWriteExpr(v, ReadOrWrite, OneOrTwo)));
         }
 
     }
