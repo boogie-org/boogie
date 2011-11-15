@@ -81,10 +81,6 @@ namespace GPUVerify
 
         protected abstract void AddNoReadOrWriteCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, string OneOrTwo);
 
-        protected abstract void AddNoReadOrWriteCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, string OneOrTwo);
-
-        protected abstract void AddNoReadOrWriteCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, string OneOrTwo);
-
         public void AddRaceCheckingCandidateInvariants(WhileCmd wc)
         {
             foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
@@ -154,7 +150,13 @@ namespace GPUVerify
                 failedToFindSecondAccess = false;
             }
 
-            AddRaceCheckCalls(verifier.KernelImplementation);
+            foreach (Declaration d in verifier.Program.TopLevelDeclarations)
+            {
+                if (d is Implementation)
+                {
+                    AddRaceCheckCalls(d as Implementation);
+                }
+            }
 
             if (failedToFindSecondAccess || !addedLogWrite)
                 return false;
@@ -446,6 +448,20 @@ namespace GPUVerify
                 AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Proc, v);
             }
         }
+
+        private void AddNoReadOrWriteCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, string OneOrTwo)
+        {
+            verifier.AddCandidateRequires(Proc, NoReadOrWriteExpr(v, ReadOrWrite, OneOrTwo));
+        }
+
+        private void AddNoReadOrWriteCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, string OneOrTwo)
+        {
+            verifier.AddCandidateEnsures(Proc, NoReadOrWriteExpr(v, ReadOrWrite, OneOrTwo));
+        }
+
+        protected abstract Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwo);
+
+
 
     }
 }

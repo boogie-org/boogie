@@ -1439,6 +1439,197 @@ implementation bar()
 
 
 Boogie program verifier finished with 5 verified, 0 errors
+-------------------- test7.bpl --------------------
+
+var g: int;
+
+procedure main();
+  modifies g;
+
+
+
+implementation main()
+{
+
+  anon0:
+    g := 0;
+    call foo();
+    assert g == 1;
+    return;
+}
+
+
+
+procedure foo();
+  modifies g;
+
+
+
+implementation foo()
+{
+
+  anon0:
+    g := g + 1;
+    return;
+}
+
+
+after inlining procedure calls
+procedure main();
+  modifies g;
+
+
+implementation main()
+{
+  var inline$foo$0$g: int;
+
+  anon0:
+    g := 0;
+    goto inline$foo$0$Entry;
+
+  inline$foo$0$Entry:
+    inline$foo$0$g := g;
+    goto inline$foo$0$anon0;
+
+  inline$foo$0$anon0:
+    g := g + 1;
+    goto inline$foo$0$Return;
+
+  inline$foo$0$Return:
+    goto anon0$1;
+
+  anon0$1:
+    assert g == 1;
+    return;
+}
+
+
+
+Boogie program verifier finished with 2 verified, 0 errors
+-------------------- test8.bpl --------------------
+
+var g: int;
+
+procedure main();
+  modifies g;
+
+
+
+implementation main()
+{
+
+  anon0:
+    g := 0;
+    call foo();
+    assert g == 1;
+    return;
+}
+
+
+
+procedure {:inline 1} foo();
+  modifies g;
+
+
+
+implementation foo()
+{
+
+  anon0:
+    call bar();
+    return;
+}
+
+
+
+procedure bar();
+  modifies g;
+
+
+
+implementation bar()
+{
+
+  anon0:
+    g := g + 1;
+    return;
+}
+
+
+after inlining procedure calls
+procedure main();
+  modifies g;
+
+
+implementation main()
+{
+  var inline$foo$0$g: int;
+  var inline$bar$0$g: int;
+
+  anon0:
+    g := 0;
+    goto inline$foo$0$Entry;
+
+  inline$foo$0$Entry:
+    inline$foo$0$g := g;
+    goto inline$foo$0$anon0;
+
+  inline$foo$0$anon0:
+    goto inline$bar$0$Entry;
+
+  inline$bar$0$Entry:
+    inline$bar$0$g := g;
+    goto inline$bar$0$anon0;
+
+  inline$bar$0$anon0:
+    g := g + 1;
+    goto inline$bar$0$Return;
+
+  inline$bar$0$Return:
+    goto inline$foo$0$anon0$1;
+
+  inline$foo$0$anon0$1:
+    goto inline$foo$0$Return;
+
+  inline$foo$0$Return:
+    goto anon0$1;
+
+  anon0$1:
+    assert g == 1;
+    return;
+}
+
+
+after inlining procedure calls
+procedure {:inline 1} foo();
+  modifies g;
+
+
+implementation foo()
+{
+  var inline$bar$0$g: int;
+
+  anon0:
+    goto inline$bar$0$Entry;
+
+  inline$bar$0$Entry:
+    inline$bar$0$g := g;
+    goto inline$bar$0$anon0;
+
+  inline$bar$0$anon0:
+    g := g + 1;
+    goto inline$bar$0$Return;
+
+  inline$bar$0$Return:
+    goto anon0$1;
+
+  anon0$1:
+    return;
+}
+
+
+
+Boogie program verifier finished with 3 verified, 0 errors
 -------------------- test5.bpl --------------------
 test5.bpl(37,3): Error BP5001: This assertion might not hold.
 Execution trace:

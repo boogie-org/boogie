@@ -389,8 +389,8 @@ namespace Microsoft.Boogie {
             inline = true;
           }
         }
-        if (inline && CommandLineOptions.Clo.LazyInlining == 0 &&
-          CommandLineOptions.Clo.StratifiedInlining == 0) {
+        if ((inline && CommandLineOptions.Clo.LazyInlining == 0 && CommandLineOptions.Clo.StratifiedInlining == 0) ||
+            CommandLineOptions.Clo.InlineDepth >= 0) {
           foreach (Declaration d in TopLevelDeclarations) {
             Implementation impl = d as Implementation;
             if (impl != null) {

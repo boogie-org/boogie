@@ -143,6 +143,7 @@ namespace Microsoft.Boogie {
     public int /*(0:3)*/ ErrorTrace = 1;
     public bool IntraproceduralInfer = true;
     public bool ContractInfer = false;
+    public int InlineDepth = -1;
     public bool UseUncheckedContracts = false;
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
@@ -949,7 +950,10 @@ namespace Microsoft.Boogie {
           case "/contractInfer":
             ContractInfer = true;
             break;
-
+          case "-inlineDepth":
+          case "/inlineDepth":
+            ps.GetNumericArgument(ref InlineDepth);
+            break;
           case "-subsumption":
           case "/subsumption": {
               int s = 0;

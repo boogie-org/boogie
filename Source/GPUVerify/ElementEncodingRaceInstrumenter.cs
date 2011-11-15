@@ -261,7 +261,7 @@ namespace GPUVerify
             verifier.AddCandidateInvariant(wc, NoReadOrWriteExpr(v, ReadOrWrite, OneOrTwo));
         }
 
-        private static Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwo)
+        protected override Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwo)
         {
             Variable ReadOrWriteHasOccurred = ElementEncodingRaceInstrumenter.MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite);
             ReadOrWriteHasOccurred.Name = ReadOrWriteHasOccurred.Name + "$" + OneOrTwo;
@@ -355,22 +355,12 @@ namespace GPUVerify
             AddReadOrWrittenZOffsetIsThreadIdCandidateEnsures(Proc, v, ReadOrWrite, Thread);
         }
 
-        protected override void AddNoReadOrWriteCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, string OneOrTwo)
-        {
-            Proc.Requires.Add(new Requires(false, NoReadOrWriteExpr(v, ReadOrWrite, OneOrTwo)));
-        }
-
-        protected override void AddNoReadOrWriteCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, string OneOrTwo)
-        {
-            Proc.Ensures.Add(new Ensures(false, NoReadOrWriteExpr(v, ReadOrWrite, OneOrTwo)));
-        }
-
         private void AddReadOrWrittenXOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
         {
             Expr expr = ReadOrWrittenXOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
             if (expr != null)
             {
-                Proc.Requires.Add(new Requires(false, expr));
+                verifier.AddCandidateRequires(Proc, expr);
             }
         }
 
@@ -379,7 +369,7 @@ namespace GPUVerify
             Expr expr = ReadOrWrittenYOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
             if (expr != null)
             {
-                Proc.Requires.Add(new Requires(false, expr));
+                verifier.AddCandidateRequires(Proc, expr);
             }
         }
 
@@ -388,7 +378,7 @@ namespace GPUVerify
             Expr expr = ReadOrWrittenZOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
             if (expr != null)
             {
-                Proc.Requires.Add(new Requires(false, expr));
+                verifier.AddCandidateRequires(Proc, expr);
             }
         }
 
@@ -397,7 +387,7 @@ namespace GPUVerify
             Expr expr = ReadOrWrittenXOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
             if (expr != null)
             {
-                Proc.Ensures.Add(new Ensures(false, expr));
+                verifier.AddCandidateEnsures(Proc, expr);
             }
         }
 
@@ -406,7 +396,7 @@ namespace GPUVerify
             Expr expr = ReadOrWrittenYOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
             if (expr != null)
             {
-                Proc.Ensures.Add(new Ensures(false, expr));
+                verifier.AddCandidateEnsures(Proc, expr);
             }
         }
 
@@ -415,7 +405,7 @@ namespace GPUVerify
             Expr expr = ReadOrWrittenZOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
             if (expr != null)
             {
-                Proc.Ensures.Add(new Ensures(false, expr));
+                verifier.AddCandidateEnsures(Proc, expr);
             }
         }
 
