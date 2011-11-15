@@ -512,7 +512,7 @@ namespace BytecodeTranslator
       List<Bpl.Expr> typeReferences = new List<Bpl.Expr>();
       this.sink.nestedTryCatchFinallyStatements.Add(new Tuple<ITryCatchFinallyStatement, Sink.TryCatchFinallyContext>(tryCatchFinallyStatement, Sink.TryCatchFinallyContext.InCatch));
       foreach (ICatchClause catchClause in tryCatchFinallyStatement.CatchClauses) {
-        typeReferences.Insert(0, this.sink.FindOrCreateTypeReference(catchClause.ExceptionType));
+        typeReferences.Insert(0, this.sink.FindOrCreateTypeReference(catchClause.ExceptionType, true));
         StatementTraverser catchTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
         if (catchClause.ExceptionContainer != Dummy.LocalVariable) {
           Bpl.Variable catchClauseVariable = this.sink.FindOrCreateLocalVariable(catchClause.ExceptionContainer);

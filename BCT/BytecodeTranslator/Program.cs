@@ -211,7 +211,7 @@ namespace BytecodeTranslator {
         }
         module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader) as IModule;
         // The decompiler does not turn calls to Assert/Assume into Code Model nodes
-        module = new Microsoft.Cci.MutableContracts.ContractExtractor.AssertAssumeExtractor(host, pdbReader).Visit(module);
+        module = new Microsoft.Cci.MutableContracts.ContractExtractor.AssertAssumeExtractor(host, pdbReader).Rewrite(module);
 
         host.RegisterAsLatest(module);
         modules.Add(module);

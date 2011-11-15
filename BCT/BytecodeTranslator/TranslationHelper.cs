@@ -126,14 +126,25 @@ namespace BytecodeTranslator {
       Contract.Requires(typeReference != null);
 
       var typeDefinition = typeReference.ResolvedType;
-      var totalParameters = new List<IGenericTypeParameter>(typeDefinition.GenericParameters);
-      var nestedTypeDefinition = typeDefinition as INestedTypeDefinition;
-      while (nestedTypeDefinition != null) {
-        var containingType = nestedTypeDefinition.ContainingType.ResolvedType;
-        totalParameters.AddRange(containingType.GenericParameters);
-        nestedTypeDefinition = containingType as INestedTypeDefinition;
-      }
+      var totalParameters = new List<IGenericTypeParameter>();
+      ConsolidatedGenericParameters(typeDefinition, totalParameters);
       return totalParameters;
+
+      //var nestedTypeDefinition = typeDefinition as INestedTypeDefinition;
+      //while (nestedTypeDefinition != null) {
+      //  var containingType = nestedTypeDefinition.ContainingType.ResolvedType;
+      //  totalParameters.AddRange(containingType.GenericParameters);
+      //  nestedTypeDefinition = containingType as INestedTypeDefinition;
+      //}
+      //totalParameters.AddRange(typeDefinition.GenericParameters);
+      //return totalParameters;
+    }
+    private static void ConsolidatedGenericParameters(ITypeDefinition typeDefinition, List<IGenericTypeParameter> consolidatedParameters){
+      var nestedTypeDefinition = typeDefinition as INestedTypeDefinition;
+      if (nestedTypeDefinition != null){
+        ConsolidatedGenericParameters(nestedTypeDefinition.ContainingTypeDefinition, consolidatedParameters);
+      }
+      consolidatedParameters.AddRange(typeDefinition.GenericParameters);
     }
 
     public static string CreateUniqueMethodName(IMethodReference method) {
