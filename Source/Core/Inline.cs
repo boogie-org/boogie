@@ -421,7 +421,7 @@ namespace Microsoft.Boogie {
       // inject non-free requires
       for (int i = 0; i < proc.Requires.Length; i++) {
         Requires/*!*/ req = cce.NonNull(proc.Requires[i]);
-        if (!req.Free) {
+        if (!req.Free && !QKeyValue.FindBoolAttribute(req.Attributes, "candidate")) {
           Requires/*!*/ reqCopy = (Requires/*!*/)cce.NonNull(req.Clone());
           reqCopy.Condition = codeCopier.CopyExpr(req.Condition);
           AssertCmd/*!*/ a = new AssertRequiresCmd(callCmd, reqCopy);
@@ -486,7 +486,7 @@ namespace Microsoft.Boogie {
       // inject non-free ensures
       for (int i = 0; i < proc.Ensures.Length; i++) {
         Ensures/*!*/ ens = cce.NonNull(proc.Ensures[i]);
-        if (!ens.Free) {
+        if (!ens.Free && !QKeyValue.FindBoolAttribute(ens.Attributes, "candidate")) {
           Ensures/*!*/ ensCopy = (Ensures/*!*/)cce.NonNull(ens.Clone());
           ensCopy.Condition = codeCopier.CopyExpr(ens.Condition);
           AssertCmd/*!*/ a = new AssertEnsuresCmd(ensCopy);
