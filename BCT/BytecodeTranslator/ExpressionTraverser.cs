@@ -54,6 +54,15 @@ namespace BytecodeTranslator
       return this.sink.FindOrCreateTypeReference(typeReference);
     }
 
+    private static IMethodDefinition ResolveUnspecializedMethodOrThrow(IMethodReference methodReference) {
+      var resolvedMethod = Sink.Unspecialize(methodReference).ResolvedMethod;
+      if (resolvedMethod == Dummy.Method) { // avoid downstream errors, fail early
+        throw new TranslationException(ExceptionType.UnresolvedMethod, MemberHelper.GetMethodSignature(methodReference, NameFormattingOptions.None));
+      }
+      return resolvedMethod;
+    }
+
+
     #region Constructors
 
     ///// <summary>
@@ -511,12 +520,7 @@ namespace BytecodeTranslator
     /// <param name="methodCall"></param>
     /// <remarks>Stub, This one really needs comments!</remarks>
     public override void TraverseChildren(IMethodCall methodCall) {
-      var resolvedMethod = Sink.Unspecialize(methodCall.MethodToCall).ResolvedMethod;
-      if (resolvedMethod == Dummy.Method) {
-        throw new TranslationException(
-          ExceptionType.UnresolvedMethod,
-          MemberHelper.GetMethodSignature(methodCall.MethodToCall, NameFormattingOptions.None));
-      }
+      var resolvedMethod = ResolveUnspecializedMethodOrThrow(methodCall.MethodToCall);
 
       Bpl.IToken methodCallToken = methodCall.Token();
 
@@ -707,10 +711,15 @@ namespace BytecodeTranslator
           if (unboxed == null) {
             throw new TranslationException("Trying to pass a complex expression for an out or ref parameter");
           }
-          if (penum.Current.Type is IGenericTypeParameter || penum.Current.Type is IGenericMethodParameter) {
-            Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(sink.CreateFreshLocal(this.sink.Heap.BoxType));
-            toBoxed[unboxed] = boxed;
-            outvars.Add(boxed);
+          if (penum.Current.Type is IGenericParameter) {
+            var boogieType = this.sink.CciTypeToBoogie(penum.Current.Type);
+            if (boogieType == this.sink.Heap.BoxType) {
+              Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(sink.CreateFreshLocal(this.sink.Heap.BoxType));
+              toBoxed[unboxed] = boxed;
+              outvars.Add(boxed);
+            } else {
+              outvars.Add(unboxed);
+            }
           } else {
             outvars.Add(unboxed);
           }
@@ -738,10 +747,15 @@ namespace BytecodeTranslator
         if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
           Bpl.Variable v = this.sink.CreateFreshLocal(methodToCall.ResolvedMethod.Type.ResolvedType);
           Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(token, v);
-          if (resolvedMethod.Type is IGenericTypeParameter || resolvedMethod.Type is IGenericMethodParameter) {
-            Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
-            toBoxed[unboxed] = boxed;
-            outvars.Add(boxed);
+          if (resolvedMethod.Type is IGenericParameter) {
+            var boogieType = this.sink.CciTypeToBoogie(methodToCall.Type);
+            if (boogieType == this.sink.Heap.BoxType) {
+              Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
+              toBoxed[unboxed] = boxed;
+              outvars.Add(boxed);
+            } else {
+              outvars.Add(unboxed);
+            }
           } else {
             outvars.Add(unboxed);
           }
@@ -932,7 +946,8 @@ namespace BytecodeTranslator
     public override void TraverseChildren(ICreateObjectInstance createObjectInstance)
     {
       var ctor = createObjectInstance.MethodToCall;
-      var resolvedMethod = Sink.Unspecialize(ctor).ResolvedMethod;
+      var resolvedMethod = ResolveUnspecializedMethodOrThrow(ctor);
+
       Bpl.IToken token = createObjectInstance.Token();
 
       var a = this.sink.CreateFreshLocal(createObjectInstance.Type);
@@ -974,7 +989,6 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
 
-
     public override void TraverseChildren(ICreateArray createArrayInstance)
     {
       Bpl.IToken cloc = createArrayInstance.Token();
@@ -1012,7 +1026,7 @@ namespace BytecodeTranslator
       var a = this.sink.CreateFreshLocal(creationAST.Type);
 
       ITypeDefinition unspecializedType = Microsoft.Cci.MutableContracts.ContractHelper.Unspecialized(type.ResolvedType).ResolvedType;
-      IMethodDefinition unspecializedMethod = Sink.Unspecialize(methodToCall.ResolvedMethod).ResolvedMethod;
+      IMethodDefinition unspecializedMethod = ResolveUnspecializedMethodOrThrow(methodToCall);
       sink.AddDelegate(unspecializedType, unspecializedMethod);
       Bpl.Constant constant = sink.FindOrCreateDelegateMethodConstant(unspecializedMethod);
       Bpl.Expr methodExpr = Bpl.Expr.Ident(constant);
