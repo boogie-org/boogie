@@ -1011,13 +1011,19 @@ namespace Microsoft.Boogie.Houdini {
                                           out bool exceptional) {
       Contract.Assert(current.Implementation != null);
       ProverInterface.Outcome outcome;
+      // the following initialization is there just to satisfy the compiler 
+      // which apparently does not understand the semantics of do-while statements
       errors = null;
       outcome = ProverInterface.Outcome.Undetermined;
+
       try {
         bool trySameFunc = true;
         bool pastFirstIter = false; //see if this new loop is even helping
 
         do {
+          errors = null;
+          outcome = ProverInterface.Outcome.Undetermined;
+
           if (pastFirstIter) {
             System.GC.Collect();
             this.NotifyIteration();
@@ -1041,13 +1047,9 @@ namespace Microsoft.Boogie.Houdini {
           }
           else { //continue
             trySameFunc = UpdateAssignmentWorkList(current, outcome, errors);
-            //reset for the next round
-            errors = null;
-            outcome = ProverInterface.Outcome.Undetermined;
           }
           pastFirstIter = true;
         } while (trySameFunc && current.WorkList.Count > 0);
-
       }
       catch (VCGenException e) {
         Contract.Assume(e != null);
