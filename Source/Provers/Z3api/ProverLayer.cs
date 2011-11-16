@@ -7,7 +7,6 @@ using System.Diagnostics;
 using Microsoft.Boogie.AbstractInterpretation;
 using Microsoft.Boogie;
 using Microsoft.Boogie.Z3;
-using Microsoft.Z3;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.Simplify;
 

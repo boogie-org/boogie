@@ -12,103 +12,353 @@ using System.Diagnostics;
 using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie {
-  public class CommandLineOptions {
+  public class CommandLineOptionEngine
+  {
+    public readonly string ToolName;
+    public readonly string DescriptiveToolName;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(ToolName != null);
+      Contract.Invariant(DescriptiveToolName != null);
+      Contract.Invariant(Environment != null);
+      Contract.Invariant(cce.NonNullElements(Files));
+    }
+
+    public string/*!*/ Environment = "";
+    public List<string/*!*/>/*!*/ Files = new List<string/*!*/>();
+    public bool HelpRequested = false;
+    public bool AttrHelpRequested = false;
+
+    public CommandLineOptionEngine(string toolName, string descriptiveName) {
+      Contract.Requires(toolName != null);
+      Contract.Requires(descriptiveName != null);
+      ToolName = toolName;
+      DescriptiveToolName = descriptiveName;
+    }
+
     public static string/*!*/ VersionNumber {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
         return cce.NonNull(cce.NonNull(System.Diagnostics.FileVersionInfo.GetVersionInfo(System.Reflection.Assembly.GetExecutingAssembly().Location)).FileVersion);
       }
     }
-    public const string ToolNameBoogie = "Boogie program verifier";
-    public const string ToolNameSpecSharp = "Spec# program verifier";
-    public const string ToolNameDafny = "Dafny program verifier";
     public static string/*!*/ VersionSuffix {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
         return " version " + VersionNumber + ", Copyright (c) 2003-2011, Microsoft.";
       }
     }
-    public string/*!*/ InputFileExtension {
-      set {
-        Contract.Requires(value != null);
-        //modifies _toolname, _version;
-        switch (value) {
-          case ".bpl":
-            _toolname = ToolNameBoogie;
-            break;
-          case ".dfy":
-            _toolname = ToolNameDafny;
-            break;
-          default:
-            _toolname = ToolNameSpecSharp;
-            break;
-        }
-        _version = _toolname + VersionSuffix;
-      }
-    }
-    string/*!*/ _toolname = ToolNameBoogie;
-    string/*!*/ _version = ToolNameBoogie + VersionSuffix;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(_toolname != null);
-      Contract.Invariant(_version != null);
-      Contract.Invariant(Environment != null);
-      Contract.Invariant(FileName != null);
-      Contract.Invariant(cce.NonNullElements(Files));
-      Contract.Invariant(cce.NonNullElements(ContractAssemblies));
-      Contract.Invariant(FileTimestamp != null);
-    }
-
-    public string/*!*/ ToolName {
-      get {
-        Contract.Ensures(Contract.Result<string>() != null);
-        return _toolname;
-      }
-    }
     public string/*!*/ Version {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
-        return _version;
+        return DescriptiveToolName + VersionSuffix;
       }
     }
 
-    private static CommandLineOptions clo = new CommandLineOptions();
-    public static CommandLineOptions/*!*/ Clo
-    {
-      get { return clo; }
-    }
-
-    public string/*!*/ Environment = "";
-    public string/*!*/ FileName = "unknown";
-
-    public const long Megabyte = 1048576;
-
-    // Flags and arguments
-
-    public bool RunningBoogieFromCommandLine = false;  // "false" means running Boogie from the plug-in
-    public bool RunningBoogieOnSsc = true; // "true" means running Boogie on ssc input while false means running it on bpl input
-
-    public bool AttrHelpRequested = false;
-
-    [Peer]
-    public List<string/*!*/>/*!*/ Files = new List<string/*!*/>();
-    public List<string/*!*/>/*!*/ ContractAssemblies = new List<string/*!*/>();
-
     public string/*!*/ FileTimestamp = cce.NonNull(DateTime.Now.ToString("o")).Replace(':', '.');
-    public void ExpandFilename(ref string pattern) {
+    public void ExpandFilename(ref string pattern, string logPrefix, string fileTimestamp) {
       if (pattern != null) {
-        pattern = pattern.Replace("@PREFIX@", LogPrefix).Replace("@TIME@", FileTimestamp);
+        pattern = pattern.Replace("@PREFIX@", logPrefix).Replace("@TIME@", fileTimestamp);
         string fn = Files.Count == 0 ? "" : Files[Files.Count - 1];
         fn = fn.Replace('/', '-').Replace('\\', '-');
         pattern = pattern.Replace("@FILE@", fn);
       }
     }
 
+    /// <summary>
+    /// Process the option and modify "ps" accordingly.
+    /// Return true if the option is one that is recognized.
+    /// </summary>
+    protected virtual bool ParseOption(string name, CommandLineParseState ps) {
+      Contract.Requires(name != null);
+      Contract.Requires(ps != null);
+
+      switch (name) {
+        case "help":
+        case "?":
+          if (ps.ConfirmArgumentCount(0)) {
+            HelpRequested = true;
+          }
+          return true;
+        case "attrHelp":
+          if (ps.ConfirmArgumentCount(0)) {
+            AttrHelpRequested = true;
+          }
+          return true;
+        default:
+          break;
+      }
+      return false;  // unrecognized option
+    }
+
+    protected class CommandLineParseState
+    {
+      public string s;
+      public bool hasColonArgument;
+      public readonly string[]/*!*/ args;
+      public int i;
+      public int nextIndex;
+      public bool EncounteredErrors;
+      public readonly string ToolName;
+      [ContractInvariantMethod]
+      void ObjectInvariant() {
+        Contract.Invariant(args != null);
+        Contract.Invariant(0 <= i && i <= args.Length);
+        Contract.Invariant(0 <= nextIndex && nextIndex <= args.Length);
+      }
+
+
+      public CommandLineParseState(string[] args, string toolName) {
+        Contract.Requires(args != null);
+        Contract.Requires(Contract.ForAll(0, args.Length, i => args[i] != null));
+        Contract.Requires(toolName != null);
+        Contract.Ensures(this.args == args);
+        this.ToolName = toolName;
+        this.s = null;  // set later by client
+        this.hasColonArgument = false;  // set later by client
+        this.args = args;
+        this.i = 0;
+        this.nextIndex = 0;  // set later by client
+        this.EncounteredErrors = false;
+      }
+
+      public bool CheckBooleanFlag(string flagName, ref bool flag, bool valueWhenPresent) {
+        Contract.Requires(flagName != null);
+        //modifies nextIndex, encounteredErrors, Console.Error.*;
+        bool flagPresent = false;
+
+        if ((s == "/" + flagName || s == "-" + flagName) && ConfirmArgumentCount(0)) {
+          flag = valueWhenPresent;
+          flagPresent = true;
+        }
+        return flagPresent;
+      }
+
+      public bool CheckBooleanFlag(string flagName, ref bool flag) {
+        Contract.Requires(flagName != null);
+        //modifies nextIndex, encounteredErrors, Console.Error.*;
+        return CheckBooleanFlag(flagName, ref flag, true);
+      }
+
+      /// <summary>
+      /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
+      /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
+      /// </summary>
+      public bool GetNumericArgument(ref int arg) {
+        //modifies nextIndex, encounteredErrors, Console.Error.*;
+        if (this.ConfirmArgumentCount(1)) {
+          try {
+            Contract.Assume(args[i] != null);
+            Contract.Assert(args[i] is string);  // needed to prove args[i].IsPeerConsistent
+            int d = Convert.ToInt32(this.args[this.i]);
+            if (0 <= d) {
+              arg = d;
+              return true;
+            }
+          } catch (System.FormatException) {
+          } catch (System.OverflowException) {
+          }
+        } else {
+          return false;
+        }
+        Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
+        return false;
+      }
+
+      /// <summary>
+      /// If there is one argument and it is a non-negative integer less than "limit",
+      /// then set "arg" to that number and return "true".
+      /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
+      /// </summary>
+      public bool GetNumericArgument(ref int arg, int limit) {
+        Contract.Requires(this.i < args.Length);
+        //modifies nextIndex, encounteredErrors, Console.Error.*;
+        int a = arg;
+        if (!GetNumericArgument(ref a)) {
+          return false;
+        } else if (a < limit) {
+          arg = a;
+          return true;
+        } else {
+          Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
+          return false;
+        }
+      }
+
+      /// <summary>
+      /// If there is one argument and it is a non-negative real, then set "arg" to that number and return "true".
+      /// Otherwise, emit an error message, leave "arg" unchanged, and return "false".
+      /// </summary>
+      public bool GetNumericArgument(ref double arg) {
+        //modifies nextIndex, encounteredErrors, Console.Error.*;
+        if (this.ConfirmArgumentCount(1)) {
+          try {
+            Contract.Assume(args[i] != null);
+            Contract.Assert(args[i] is string);  // needed to prove args[i].IsPeerConsistent
+            double d = Convert.ToDouble(this.args[this.i]);
+            if (0 <= d) {
+              arg = d;
+              return true;
+            }
+          } catch (System.FormatException) {
+          } catch (System.OverflowException) {
+          }
+        } else {
+          return false;
+        }
+        Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
+        return false;
+      }
+
+      public bool ConfirmArgumentCount(int argCount) {
+        Contract.Requires(0 <= argCount);
+        //modifies nextIndex, encounteredErrors, Console.Error.*;
+        Contract.Ensures(Contract.Result<bool>() == (!(hasColonArgument && argCount != 1) && !(args.Length < i + argCount)));
+        if (hasColonArgument && argCount != 1) {
+          Error("\"{0}\" cannot take a colon argument", s);
+          nextIndex = args.Length;
+          return false;
+        } else if (args.Length < i + argCount) {
+          Error("\"{0}\" expects {1} argument{2}", s, argCount.ToString(), (string)(argCount == 1 ? "" : "s"));
+          nextIndex = args.Length;
+          return false;
+        } else {
+          nextIndex = i + argCount;
+          return true;
+        }
+      }
+
+      public void Error(string message, params string[] args) {
+        Contract.Requires(args != null);
+        Contract.Requires(message != null);
+        //modifies encounteredErrors, Console.Error.*;
+        Console.Error.WriteLine("{0}: Error: {1}", ToolName, String.Format(message, args));
+        EncounteredErrors = true;
+      }
+    }
+
+    public virtual void Usage() {
+      Console.WriteLine("{0}: usage:  {0} [ option ... ] [ filename ... ]", ToolName);
+      Console.WriteLine(@"  where <option> is one of
+
+  ---- General options -------------------------------------------------------
+
+  /help         this message
+  /attrHelp     print a message about declaration attributes supported by
+                this implementation");
+    }
+
+    public virtual void AttributeUsage() {
+    }
+
+    /// <summary>
+    /// This method is called after all parsing is done, if no parse errors were encountered.
+    /// </summary>
+    protected virtual void ApplyDefaultOptions() {
+    }
+      
+    /// <summary>
+    /// Parses the command-line arguments "args" into the global flag variables.  Returns true
+    /// if there were no errors.
+    /// </summary>
+    /// <param name="args">Consumed ("captured" and possibly modified) by the method.</param>
+    public bool Parse([Captured] string[]/*!*/ args) {
+      Contract.Requires(cce.NonNullElements(args));
+      Contract.Ensures(-2 <= Contract.Result<int>() && Contract.Result<int>() <= 2 && Contract.Result<int>() != 0);
+
+      // save the command line options for the log files
+      Environment += "Command Line Options: " + args.Concat(" ");
+      args = cce.NonNull((string[])args.Clone());  // the operations performed may mutate the array, so make a copy
+      var ps = new CommandLineParseState(args, ToolName);
+
+      while (ps.i < args.Length) {
+        cce.LoopInvariant(ps.args == args);
+        ps.s = args[ps.i];
+        Contract.Assert(ps.s != null);
+        ps.s = ps.s.Trim();
+
+        bool isOption = ps.s.StartsWith("-") || ps.s.StartsWith("/");
+        int colonIndex = ps.s.IndexOf(':');
+        if (0 <= colonIndex && isOption) {
+          ps.hasColonArgument = true;
+          args[ps.i] = ps.s.Substring(colonIndex + 1);
+          ps.s = ps.s.Substring(0, colonIndex);
+        } else {
+          ps.i++;
+          ps.hasColonArgument = false;
+        }
+        ps.nextIndex = ps.i;
+
+        if (isOption) {
+          if (!ParseOption(ps.s.Substring(1), ps)) {
+            ps.Error("unknown switch: {0}", ps.s);
+          }
+        } else if (ps.ConfirmArgumentCount(0)) {
+          string filename = ps.s;
+          Files.Add(filename);
+        }
+        ps.i = ps.nextIndex;
+      }
+
+      if (HelpRequested) {
+        Usage();
+      } else if (AttrHelpRequested) {
+        AttributeUsage();
+      } else if (ps.EncounteredErrors) {
+        Console.WriteLine("Use /help for available options");
+      }
+
+      if (ps.EncounteredErrors) {
+        return false;
+      } else {
+        this.ApplyDefaultOptions();
+        return true;
+      }
+    }
+
+  }
+
+  /// <summary>
+  /// Boogie command-line options (other tools can subclass this class in order to support a
+  /// superset of Boogie's options.
+  /// </summary>
+  public class CommandLineOptions : CommandLineOptionEngine {
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(FileTimestamp != null);
+    }
+
+    public CommandLineOptions()
+      : base("Boogie", "Boogie program verifier") {
+    }
+
+    protected CommandLineOptions(string toolName, string descriptiveName)
+      : base(toolName, descriptiveName) {
+      Contract.Requires(toolName != null);
+      Contract.Requires(descriptiveName != null);
+    }
+
+    private static CommandLineOptions clo;
+    public static CommandLineOptions/*!*/ Clo
+    {
+      get { return clo; }
+    }
+
+    public static void Install(CommandLineOptions options) {
+      Contract.Requires(options != null);
+      clo = options;
+    }
+
+    public const long Megabyte = 1048576;
+
+    // Flags and arguments
+
+    public bool RunningBoogieFromCommandLine = false;  // "false" means running Boogie from the plug-in
+
     [ContractInvariantMethod]
     void ObjectInvariant2() {
       Contract.Invariant(LogPrefix != null);
       Contract.Invariant(0 <= PrintUnstructured && PrintUnstructured < 3);  // 0 = print only structured,  1 = both structured and unstructured,  2 = only unstructured
-
     }
 
     public string PrintFile = null;
@@ -136,9 +386,6 @@ namespace Microsoft.Boogie {
     public bool NoTypecheck = false;
     public bool OverlookBoogieTypeErrors = false;
     public bool Verify = true;
-    public bool DisallowSoundnessCheating = false;
-    public int DafnyInduction = 3;
-    public int DafnyInductionHeuristic = 6;
     public bool TraceVerify = false;
     public int /*(0:3)*/ ErrorTrace = 1;
     public bool IntraproceduralInfer = true;
@@ -148,23 +395,6 @@ namespace Microsoft.Boogie {
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
     public string Z3ExecutablePath = null;
-
-    private bool noConsistencyChecks = false;
-    public bool NoConsistencyChecks {
-      get {
-        return !Verify ? true : noConsistencyChecks;
-      }
-      set
-        //modifies noConsistencyChecks;
-        {
-        noConsistencyChecks = value;
-      }
-    }
-
-    public string DafnyPrelude = null;
-    public string DafnyPrintFile = null;
-    public bool Compile = true;
-    public bool ForceCompile = false;
 
     public enum ProverWarnings {
       None,
@@ -192,11 +422,6 @@ namespace Microsoft.Boogie {
     public bool DontShowLogo = false;
     [ContractInvariantMethod]
     void ObjectInvariant3() {
-      Contract.Invariant(0 <= CheckingLevel && CheckingLevel < 3);
-      Contract.Invariant(0 <= OrderStrength && OrderStrength < 2);
-      Contract.Invariant(0 <= SummationAxiomStrength && SummationAxiomStrength < 2);
-      Contract.Invariant(0 <= InductiveMinMax && InductiveMinMax < 6);
-      Contract.Invariant(0 <= FCOStrength && FCOStrength < 6);
       Contract.Invariant(-1 <= LoopFrameConditions && LoopFrameConditions < 3);
       Contract.Invariant(0 <= ModifiesDefault && ModifiesDefault < 7);
       Contract.Invariant((0 <= PrintErrorModel && PrintErrorModel <= 2) || PrintErrorModel == 4);
@@ -206,17 +431,6 @@ namespace Microsoft.Boogie {
       Contract.Invariant(cce.NonNullElements(ProverOptions));
     }
 
-    public int CheckingLevel = 2;
-    public enum Methodology {
-      Boogie,
-      VisibleState
-    }
-    public Methodology MethodologySelection = Methodology.Boogie;
-    public int OrderStrength = 0;
-    public bool UseArithDistributionAxioms = false;
-    public int SummationAxiomStrength = 1;
-    public int InductiveMinMax = 0;
-    public int FCOStrength = 5;
     public int LoopUnrollCount = -1;  // -1 means don't unroll loops
     public int LoopFrameConditions = -1;  // -1 means not specified -- this will be replaced by the "implications" section below
     public int ModifiesDefault = 5;
@@ -373,45 +587,16 @@ namespace Microsoft.Boogie {
         TraceListenerCollection/*!*/ dbl = Debug.Listeners;
         Contract.Assert(dbl != null);
         Contract.Assume(cce.IsPeerConsistent(dbl));  // hangs off static field
-#if WHIDBEY
-        dbl.Add(new ConsoleTraceListener());
-#else
         dbl.Add(new DefaultTraceListener());
-#endif
       }
     }
 
-    private string methodToLog = null;
-    private string methodToBreakOn = null;
+    public List<string/*!*/> ProcsToCheck = null;  // null means "no restriction"
     [ContractInvariantMethod]
     void ObjectInvariant5() {
       Contract.Invariant(cce.NonNullElements(ProcsToCheck, true));
-      Contract.Invariant(cce.NonNullElements(methodsToTranslateClass, true));
-      Contract.Invariant(cce.NonNullElements(methodsToTranslateClassQualified, true));
-      Contract.Invariant(cce.NonNullElements(methodsToTranslateExclude));
-      Contract.Invariant(cce.NonNullElements(methodsToTranslateFile, true));
-      Contract.Invariant(cce.NonNullElements(methodsToTranslateMethod, true));
-      Contract.Invariant(cce.NonNullElements(methodsToTranslateMethodQualified, true));
-      Contract.Invariant(cce.NonNullElements(methodsToTranslateSubstring, true));
       Contract.Invariant(Ai != null);
     }
-
-    [Rep]
-    public List<string/*!*/> ProcsToCheck = null;  // null means "no restriction"
-    [Rep]
-    private List<string/*!*/> methodsToTranslateSubstring = null;  // null means "no restriction"
-    [Rep]
-    private List<string/*!*/> methodsToTranslateMethod = null;  // null means "no restriction"
-    [Rep]
-    private List<string/*!*/> methodsToTranslateMethodQualified = null;  // null means "no restriction"
-    [Rep]
-    private List<string/*!*/> methodsToTranslateClass = null;  // null means "no restriction"
-    [Rep]
-    private List<string/*!*/> methodsToTranslateClassQualified = null;  // null means "no restriction"
-    [Rep]
-    private List<string/*!*/> methodsToTranslateFile = null;  // null means "no restriction"
-    [Rep]
-    private List<string/*!*/>/*!*/ methodsToTranslateExclude = new List<string/*!*/>();
 
     public class AiFlags {
       public bool Intervals = false;
@@ -433,932 +618,572 @@ namespace Microsoft.Boogie {
     }
     public AiFlags/*!*/ Ai = new AiFlags();
 
-    [Verify(false)]
-    private CommandLineOptions() {
-      // this is just to suppress verification.
-    }
-
-    [Verify(false)]
-    public static void ResetClo()
-    {
-      clo = new CommandLineOptions();
-    }
-
-
-    /// <summary>
-    /// Parses the command-line arguments "args" into the global flag variables.  The possible result
-    /// values are:
-    /// -2: an error occurred and help was requested
-    /// -1: no error occurred and help was requested
-    ///  1: no error occurred and help was not requested
-    ///  2: an error occurred and help was not requested
-    /// </summary>
-    /// <param name="args">Consumed ("captured" and possibly modified) by the method.</param>
-    [Verify(false)]
-    public int Parse([Captured] string[]/*!*/ args) {
-      Contract.Requires(cce.NonNullElements(args));
-      Contract.Ensures(TheProverFactory != null);
-      Contract.Ensures(vcVariety != VCVariety.Unspecified);
-      Contract.Ensures(-2 <= Contract.Result<int>() && Contract.Result<int>() <= 2 && Contract.Result<int>() != 0);
-      // save the command line options for the log files
-      Environment += "Command Line Options:";
-      foreach (string s in args)
-        Environment += " " + s;
-      args = cce.NonNull((string[])args.Clone());  // the operations performed may mutate the array, so make a copy
-      CommandLineParseState/*!*/ ps = new CommandLineParseState(args);
-      Contract.Assert(ps != null);
-      int res = 1;  // the result value
-
-      while (ps.i < args.Length) {
-        cce.LoopInvariant(cce.IsPeerConsistent(ps));
-        cce.LoopInvariant(ps.args == args);
-        ps.s = args[ps.i];
-        Contract.Assert(ps.s != null);
-        ps.s = ps.s.Trim();
-
-        int colonIndex = ps.s.IndexOf(':');
-        if (colonIndex >= 0 && (ps.s.StartsWith("-") || ps.s.StartsWith("/"))) {
-          ps.hasColonArgument = true;
-          args[ps.i] = ps.s.Substring(colonIndex + 1);
-          ps.s = ps.s.Substring(0, colonIndex);
-        } else {
-          cce.BeginExpose(ps);
-          {
-            ps.i++;
+    protected override bool ParseOption(string name, CommandLineOptionEngine.CommandLineParseState ps) {
+      var args = ps.args;  // convenient synonym
+      switch (name) {
+        case "infer":
+          if (ps.ConfirmArgumentCount(1)) {
+            foreach (char c in cce.NonNull(args[ps.i])) {
+              switch (c) {
+                case 'i':
+                  Ai.Intervals = true;
+                  UseAbstractInterpretation = true;
+                  break;
+                case 'c':
+                  Ai.Constant = true;
+                  UseAbstractInterpretation = true;
+                  break;
+                case 'd':
+                  Ai.DynamicType = true;
+                  UseAbstractInterpretation = true;
+                  break;
+                case 'n':
+                  Ai.Nullness = true;
+                  UseAbstractInterpretation = true;
+                  break;
+                case 'p':
+                  Ai.Polyhedra = true;
+                  UseAbstractInterpretation = true;
+                  break;
+                case 's':
+                  Ai.DebugStatistics = true;
+                  UseAbstractInterpretation = true;
+                  break;
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                  StepsBeforeWidening = (int)char.GetNumericValue(c);
+                  break;
+                default:
+                  ps.Error("Invalid argument '{0}' to option {1}", c.ToString(), ps.s);
+                  break;
+              }
+            }
           }
-          cce.EndExpose();
-          ps.hasColonArgument = false;
-        }
-        ps.nextIndex = ps.i;
+          return true;
 
+        case "noinfer":
+          if (ps.ConfirmArgumentCount(0)) {
+            UseAbstractInterpretation = false;
+          }
+          return true;
 
-        switch (ps.s) {
-          case "-help":
-          case "/help":
-          case "-?":
-          case "/?":
-            if (ps.ConfirmArgumentCount(0)) {
-              res = -1;  // help requested
-            }
-            break;
-
-          case "-attrHelp":
-          case "/attrHelp":
-            if (ps.ConfirmArgumentCount(0)) {
-              AttrHelpRequested = true;
-            }
-            break;
-
-          case "-infer":
-          case "/infer":
-            if (ps.ConfirmArgumentCount(1)) {
-              foreach (char c in cce.NonNull(args[ps.i])) {
-                switch (c) {
-                  case 'i':
-                    Ai.Intervals = true;
-                    UseAbstractInterpretation = true;
-                    break;
-                  case 'c':
-                    Ai.Constant = true;
-                    UseAbstractInterpretation = true;
-                    break;
-                  case 'd':
-                    Ai.DynamicType = true;
-                    UseAbstractInterpretation = true;
-                    break;
-                  case 'n':
-                    Ai.Nullness = true;
-                    UseAbstractInterpretation = true;
-                    break;
-                  case 'p':
-                    Ai.Polyhedra = true;
-                    UseAbstractInterpretation = true;
-                    break;
-                  case 's':
-                    Ai.DebugStatistics = true;
-                    UseAbstractInterpretation = true;
-                    break;
-                  case '0':
-                  case '1':
-                  case '2':
-                  case '3':
-                  case '4':
-                  case '5':
-                  case '6':
-                  case '7':
-                  case '8':
-                  case '9':
-                    StepsBeforeWidening = (int)char.GetNumericValue(c);
-                    break;
-                  default:
-                    ps.Error("Invalid argument '{0}' to option {1}", c.ToString(), ps.s);
-                    break;
-                }
-              }
-            }
-            break;
-
-          case "-noinfer":
-          case "/noinfer":
-            if (ps.ConfirmArgumentCount(0)) {
-              UseAbstractInterpretation = false;
-            }
-            break;
-
-          case "-log":
-          case "/log":
-            if (ps.hasColonArgument) {
-              methodToLog = args[ps.i];
-              ps.nextIndex = ps.i + 1;
-            } else {
-              methodToLog = "*";
-            }
-            break;
-
-          case "-logInfer":
-          case "/logInfer":
+        case "logInfer":
+          if (ps.ConfirmArgumentCount(0)) {
             Microsoft.AbstractInterpretationFramework.Lattice.LogSwitch = true;
-            break;
+          }
+          return true;
 
-          case "-break":
-          case "/break":
-            if (ps.hasColonArgument) {
-              methodToBreakOn = args[ps.i];
-              ps.nextIndex = ps.i + 1;
-            } else {
-              System.Diagnostics.Debugger.Break();
-            }
-            break;
-
-          case "-launch":
-          case "/launch":
+        case "break":
+        case "launch":
+          if (ps.ConfirmArgumentCount(0)) {
             System.Diagnostics.Debugger.Launch();
-            break;
+          }
+          return true;
 
-          case "-proc":
-          case "/proc":
-            if (ProcsToCheck == null) {
-              ProcsToCheck = new List<string/*!*/>();
-            }
-            if (ps.ConfirmArgumentCount(1)) {
-              ProcsToCheck.Add(cce.NonNull(args[ps.i]));
-            }
-            break;
+        case "proc":
+          if (ProcsToCheck == null) {
+            ProcsToCheck = new List<string/*!*/>();
+          }
+          if (ps.ConfirmArgumentCount(1)) {
+            ProcsToCheck.Add(cce.NonNull(args[ps.i]));
+          }
+          return true;
 
-          case "-translate":
-          case "/translate":
-            if (methodsToTranslateSubstring == null) {
-              methodsToTranslateSubstring = new List<string/*!*/>();
-            }
-            if (ps.ConfirmArgumentCount(1)) {
-              methodsToTranslateSubstring.Add(cce.NonNull(args[ps.i]));
-            }
-            break;
+        case "xml":
+          if (ps.ConfirmArgumentCount(1)) {
+            XmlSinkFilename = args[ps.i];
+          }
+          return true;
 
-          case "-trMethod":
-          case "/trMethod":
-            if (ps.ConfirmArgumentCount(1)) {
-              string m = cce.NonNull(args[ps.i]);
-              if (0 <= m.IndexOf('.')) {
-                if (methodsToTranslateMethodQualified == null) {
-                  methodsToTranslateMethodQualified = new List<string/*!*/>();
-                }
-                methodsToTranslateMethodQualified.Add(m);
-              } else {
-                if (methodsToTranslateMethod == null) {
-                  methodsToTranslateMethod = new List<string/*!*/>();
-                }
-                methodsToTranslateMethod.Add(m);
+        case "print":
+          if (ps.ConfirmArgumentCount(1)) {
+            PrintFile = args[ps.i];
+          }
+          return true;
+
+        case "proverLog":
+          if (ps.ConfirmArgumentCount(1)) {
+            SimplifyLogFilePath = args[ps.i];
+          }
+          return true;
+
+        case "logPrefix":
+          if (ps.ConfirmArgumentCount(1)) {
+            string s = cce.NonNull(args[ps.i]);
+            LogPrefix += s.Replace('/', '-').Replace('\\', '-');
+          }
+          return true;
+
+        case "proverShutdownLimit":
+          ps.GetNumericArgument(ref ProverShutdownLimit);
+          return true;
+
+        case "errorTrace":
+          ps.GetNumericArgument(ref ErrorTrace, 3);
+          return true;
+
+        case "proverWarnings": {
+            int pw = 0;
+            if (ps.GetNumericArgument(ref pw, 3)) {
+              switch (pw) {
+                case 0:
+                  PrintProverWarnings = ProverWarnings.None;
+                  break;
+                case 1:
+                  PrintProverWarnings = ProverWarnings.Stdout;
+                  break;
+                case 2:
+                  PrintProverWarnings = ProverWarnings.Stderr;
+                  break;
+                default: {
+                    Contract.Assert(false);
+                    throw new cce.UnreachableException();
+                  } // postcondition of GetNumericArgument guarantees that we don't get here
               }
             }
-            break;
+            return true;
+          }
 
-          case "-trClass":
-          case "/trClass":
-            if (ps.ConfirmArgumentCount(1)) {
-              string m = cce.NonNull(args[ps.i]);
-              if (0 <= m.IndexOf('.')) {
-                if (methodsToTranslateClassQualified == null) {
-                  methodsToTranslateClassQualified = new List<string/*!*/>();
-                }
-                methodsToTranslateClassQualified.Add(m);
-              } else {
-                if (methodsToTranslateClass == null) {
-                  methodsToTranslateClass = new List<string/*!*/>();
-                }
-                methodsToTranslateClass.Add(m);
+        case "env": {
+            int e = 0;
+            if (ps.GetNumericArgument(ref e, 3)) {
+              switch (e) {
+                case 0:
+                  ShowEnv = ShowEnvironment.Never;
+                  break;
+                case 1:
+                  ShowEnv = ShowEnvironment.DuringPrint;
+                  break;
+                case 2:
+                  ShowEnv = ShowEnvironment.Always;
+                  break;
+                default: {
+                    Contract.Assert(false);
+                    throw new cce.UnreachableException();
+                  } // postcondition of GetNumericArgument guarantees that we don't get here
               }
             }
-            break;
+            return true;
+          }
 
-          case "-trFile":
-          case "/trFile":
-            if (methodsToTranslateFile == null) {
-              methodsToTranslateFile = new List<string/*!*/>();
+        case "loopUnroll":
+          ps.GetNumericArgument(ref LoopUnrollCount);
+          return true;
+
+        case "printModel":
+          if (ps.ConfirmArgumentCount(1)) {
+            switch (args[ps.i]) {
+              case "0":
+                PrintErrorModel = 0;
+                break;
+              case "1":
+                PrintErrorModel = 1;
+                break;
+              case "2":
+                PrintErrorModel = 2;
+                break;
+              case "4":
+                PrintErrorModel = 4;
+                break;
+              default:
+                ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                break;
             }
-            if (ps.ConfirmArgumentCount(1)) {
-              methodsToTranslateFile.Add(cce.NonNull(args[ps.i]));
-            }
-            break;
+          }
+          return true;
 
-          case "-trExclude":
-          case "/trExclude":
-            if (ps.ConfirmArgumentCount(1)) {
-              methodsToTranslateExclude.Add(cce.NonNull(args[ps.i]));
-            }
-            break;
+        case "mv":
+          if (ps.ConfirmArgumentCount(1)) {
+            ModelViewFile = args[ps.i];
+          }
+          return true;
 
-          case "-xml":
-          case "/xml":
-            if (ps.ConfirmArgumentCount(1)) {
-              XmlSinkFilename = args[ps.i];
-            }
-            break;
+        case "printModelToFile":
+          if (ps.ConfirmArgumentCount(1)) {
+            PrintErrorModelFile = args[ps.i];
+          }
+          return true;
 
-          case "-print":
-          case "/print":
-            if (ps.ConfirmArgumentCount(1)) {
-              PrintFile = args[ps.i];
-            }
-            break;
+        case "enhancedErrorMessages":
+          ps.GetNumericArgument(ref EnhancedErrorMessages, 2);
+          return true;
 
-          case "-dprelude":
-          case "/dprelude":
-            if (ps.ConfirmArgumentCount(1))
-            {
-                DafnyPrelude = args[ps.i];
-            }
-            break;
+        case "contractInfer":
+          ContractInfer = true;
+          return true;
 
-          case "-dprint":
-          case "/dprint":
-            if (ps.ConfirmArgumentCount(1)) {
-              DafnyPrintFile = args[ps.i];
-            }
-            break;
+        case "inlineDepth":
+          ps.GetNumericArgument(ref InlineDepth);
+          return true;
 
-          case "-compile":
-          case "/compile": {
-              int compile = 0;
-              if (ps.GetNumericArgument(ref compile, 3)) {
-                Compile = compile == 1 || compile == 2;
-                ForceCompile = compile == 2;
-              }
-              break;
-            }
-
-          case "-noCheating":
-          case "/noCheating": {
-              int cheat = 0; // 0 is default, allows cheating
-              if (ps.GetNumericArgument(ref cheat, 2)) {
-                DisallowSoundnessCheating = cheat == 1;
-              }
-              break;
-            }
-
-          case "-induction":
-          case "/induction":
-            ps.GetNumericArgument(ref DafnyInduction, 4);
-            break;
-
-          case "-inductionHeuristic":
-          case "/inductionHeuristic":
-            ps.GetNumericArgument(ref DafnyInductionHeuristic, 7);
-            break;
-
-          case "-contracts":
-          case "/contracts":
-          case "-c":
-          case "/c":
-            if (ps.ConfirmArgumentCount(1)) {
-              ContractAssemblies.Add(cce.NonNull(args[ps.i]));
-            }
-            break;
-
-          case "-proverLog":
-          case "/proverLog":
-            if (ps.ConfirmArgumentCount(1)) {
-              SimplifyLogFilePath = args[ps.i];
-            }
-            break;
-
-          case "-logPrefix":
-          case "/logPrefix":
-            if (ps.ConfirmArgumentCount(1)) {
-              string s = cce.NonNull(args[ps.i]);
-              LogPrefix += s.Replace('/', '-').Replace('\\', '-');
-            }
-            break;
-
-          case "-proverShutdownLimit":
-          case "/proverShutdownLimit":
-            ps.GetNumericArgument(ref ProverShutdownLimit);
-            break;
-
-          case "-errorTrace":
-          case "/errorTrace":
-            ps.GetNumericArgument(ref ErrorTrace, 3);
-            break;
-
-          case "-level":
-          case "/level":
-            ps.GetNumericArgument(ref CheckingLevel, 3);
-            break;
-
-          case "-methodology":
-          case "/methodology":
-            if (ps.ConfirmArgumentCount(1)) {
-              switch (args[ps.i]) {
-                case "b":
-                case "Boogie":
-                case "boogie":
-                  MethodologySelection = Methodology.Boogie;
+        case "subsumption": {
+            int s = 0;
+            if (ps.GetNumericArgument(ref s, 3)) {
+              switch (s) {
+                case 0:
+                  UseSubsumption = SubsumptionOption.Never;
                   break;
-                case "vs":
-                case "visible-state":
-                  MethodologySelection = Methodology.VisibleState;
+                case 1:
+                  UseSubsumption = SubsumptionOption.NotForQuantifiers;
                   break;
-                default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                case 2:
+                  UseSubsumption = SubsumptionOption.Always;
                   break;
+                default: {
+                    Contract.Assert(false);
+                    throw new cce.UnreachableException();
+                  } // postcondition of GetNumericArgument guarantees that we don't get here
               }
             }
-            break;
+            return true;
+          }
 
-          case "-proverWarnings":
-          case "/proverWarnings": {
-              int pw = 0;
-              if (ps.GetNumericArgument(ref pw, 3)) {
-                switch (pw) {
-                  case 0:
-                    PrintProverWarnings = ProverWarnings.None;
-                    break;
-                  case 1:
-                    PrintProverWarnings = ProverWarnings.Stdout;
-                    break;
-                  case 2:
-                    PrintProverWarnings = ProverWarnings.Stderr;
-                    break;
-                  default: {
-                      Contract.Assert(false);
-                      throw new cce.UnreachableException();
-                    } // postcondition of GetNumericArgument guarantees that we don't get here
-                }
+        case "liveVariableAnalysis": {
+            int lva = 0;
+            if (ps.GetNumericArgument(ref lva, 3)) {
+              LiveVariableAnalysis = lva;
+            }
+            return true;
+          }
+
+        case "removeEmptyBlocks": {
+            int reb = 0;
+            if (ps.GetNumericArgument(ref reb, 2)) {
+              RemoveEmptyBlocks = reb == 1;
+            }
+            return true;
+          }
+
+        case "coalesceBlocks": {
+            int cb = 0;
+            if (ps.GetNumericArgument(ref cb, 2)) {
+              CoalesceBlocks = cb == 1;
+            }
+            return true;
+          }
+
+        case "vc":
+          if (ps.ConfirmArgumentCount(1)) {
+            switch (args[ps.i]) {
+              case "s":
+              case "structured":
+                vcVariety = VCVariety.Structured;
+                break;
+              case "b":
+              case "block":
+                vcVariety = VCVariety.Block;
+                break;
+              case "l":
+              case "local":
+                vcVariety = VCVariety.Local;
+                break;
+              case "n":
+              case "nested":
+                vcVariety = VCVariety.BlockNested;
+                break;
+              case "m":
+                vcVariety = VCVariety.BlockNestedReach;
+                break;
+              case "r":
+                vcVariety = VCVariety.BlockReach;
+                break;
+              case "d":
+              case "dag":
+                vcVariety = VCVariety.Dag;
+                break;
+              case "i":
+                vcVariety = VCVariety.DagIterative;
+                break;
+              case "doomed":
+                vcVariety = VCVariety.Doomed;
+                break;
+              default:
+                ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                break;
+            }
+          }
+          return true;
+
+        case "prover":
+          if (ps.ConfirmArgumentCount(1)) {
+            TheProverFactory = ProverFactory.Load(cce.NonNull(args[ps.i]));
+            ProverName = cce.NonNull(args[ps.i]).ToUpper();
+          }
+          return true;
+
+        case "p":
+        case "proverOpt":
+          if (ps.ConfirmArgumentCount(1)) {
+            ProverOptions.Add(cce.NonNull(args[ps.i]));
+          }
+          return true;
+
+        case "DoomStrategy":
+          ps.GetNumericArgument(ref DoomStrategy);
+          return true;
+
+        case "DoomRestartTP":
+          if (ps.ConfirmArgumentCount(0)) {
+            DoomRestartTP = true;
+          }
+          return true;
+
+        case "extractLoops":
+          if (ps.ConfirmArgumentCount(0)) {
+            ExtractLoops = true;
+          }
+          return true;
+
+        case "inline":
+          if (ps.ConfirmArgumentCount(1)) {
+            switch (args[ps.i]) {
+              case "none":
+                ProcedureInlining = Inlining.None;
+                break;
+              case "assert":
+                ProcedureInlining = Inlining.Assert;
+                break;
+              case "assume":
+                ProcedureInlining = Inlining.Assume;
+                break;
+              case "spec":
+                ProcedureInlining = Inlining.Spec;
+                break;
+              default:
+                ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                break;
+            }
+          }
+          return true;
+
+        case "lazyInline":
+          if (ps.ConfirmArgumentCount(1)) {
+            LazyInlining = Int32.Parse(args[ps.i]);
+            if (LazyInlining > 3) ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+          }
+          return true;
+
+        case "procCopyBound":
+          if (ps.ConfirmArgumentCount(1)) {
+            ProcedureCopyBound = Int32.Parse(args[ps.i]);
+          }
+          return true;
+
+        case "stratifiedInline":
+          if (ps.ConfirmArgumentCount(1)) {
+            switch (args[ps.i]) {
+              case "0":
+                StratifiedInlining = 0;
+                break;
+              case "1":
+                StratifiedInlining = 1;
+                break;
+              default:
+                StratifiedInlining = Int32.Parse(cce.NonNull(args[ps.i]));
+                //ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                break;
+            }
+          }
+          return true;
+
+        case "recursionBound":
+          if (ps.ConfirmArgumentCount(1)) {
+            RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
+          }
+          return true;
+
+        case "coverageReporter":
+          if (ps.ConfirmArgumentCount(1)) {
+            CoverageReporterPath = args[ps.i];
+          }
+          return true;
+
+        case "stratifiedInlineOption":
+          if (ps.ConfirmArgumentCount(1)) {
+            StratifiedInliningOption = Int32.Parse(cce.NonNull(args[ps.i]));
+          }
+          return true;
+
+        case "useUnsatCoreForInlining":
+          UseUnsatCoreForInlining = true;
+          return true;
+
+        case "inferLeastForUnsat":
+          if (ps.ConfirmArgumentCount(1)) {
+            inferLeastForUnsat = args[ps.i];
+          }
+          return true;
+
+        case "typeEncoding":
+          if (ps.ConfirmArgumentCount(1)) {
+            switch (args[ps.i]) {
+              case "n":
+              case "none":
+                TypeEncodingMethod = TypeEncoding.None;
+                break;
+              case "p":
+              case "predicates":
+                TypeEncodingMethod = TypeEncoding.Predicates;
+                break;
+              case "a":
+              case "arguments":
+                TypeEncodingMethod = TypeEncoding.Arguments;
+                break;
+              case "m":
+              case "monomorphic":
+                TypeEncodingMethod = TypeEncoding.Monomorphic;
+                break;
+              default:
+                ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                break;
+            }
+          }
+          return true;
+
+        case "instrumentInfer":
+          if (ps.ConfirmArgumentCount(1)) {
+            switch (args[ps.i]) {
+              case "e":
+                InstrumentInfer = InstrumentationPlaces.Everywhere;
+                break;
+              case "h":
+                InstrumentInfer = InstrumentationPlaces.LoopHeaders;
+                break;
+              default:
+                ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                break;
+            }
+          }
+          return true;
+
+        case "vcBrackets":
+          ps.GetNumericArgument(ref BracketIdsInVC, 2);
+          return true;
+
+        case "proverMemoryLimit": {
+            int d = 0;
+            if (ps.GetNumericArgument(ref d)) {
+              MaxProverMemory = d * Megabyte;
+            }
+            return true;
+          }
+
+        case "vcsMaxCost":
+          ps.GetNumericArgument(ref VcsMaxCost);
+          return true;
+
+        case "vcsPathJoinMult":
+          ps.GetNumericArgument(ref VcsPathJoinMult);
+          return true;
+
+        case "vcsPathCostMult":
+          ps.GetNumericArgument(ref VcsPathCostMult);
+          return true;
+
+        case "vcsAssumeMult":
+          ps.GetNumericArgument(ref VcsAssumeMult);
+          return true;
+
+        case "vcsPathSplitMult":
+          ps.GetNumericArgument(ref VcsPathSplitMult);
+          return true;
+
+        case "vcsMaxSplits":
+          ps.GetNumericArgument(ref VcsMaxSplits);
+          return true;
+
+        case "vcsMaxKeepGoingSplits":
+          ps.GetNumericArgument(ref VcsMaxKeepGoingSplits);
+          return true;
+
+        case "vcsFinalAssertTimeout":
+          ps.GetNumericArgument(ref VcsFinalAssertTimeout);
+          return true;
+
+        case "vcsKeepGoingTimeout":
+          ps.GetNumericArgument(ref VcsKeepGoingTimeout);
+          return true;
+
+        case "vcsCores":
+          ps.GetNumericArgument(ref VcsCores);
+          return true;
+
+        case "simplifyMatchDepth":
+          ps.GetNumericArgument(ref SimplifyProverMatchDepth);
+          return true;
+
+        case "timeLimit":
+          ps.GetNumericArgument(ref ProverKillTime);
+          return true;
+
+        case "smokeTimeout":
+          ps.GetNumericArgument(ref SmokeTimeout);
+          return true;
+
+        case "errorLimit":
+          ps.GetNumericArgument(ref ProverCCLimit);
+          return true;
+
+        case "z3opt":
+          if (ps.ConfirmArgumentCount(1)) {
+            Z3Options.Add(cce.NonNull(args[ps.i]));
+          }
+          return true;
+
+        case "z3lets":
+          ps.GetNumericArgument(ref Z3lets, 4);
+          return true;
+
+        case "platform":
+          if (ps.ConfirmArgumentCount(1)) {
+            StringCollection platformOptions = this.ParseNamedArgumentList(args[ps.i]);
+            if (platformOptions != null && platformOptions.Count > 0) {
+              try {
+                this.TargetPlatform = (PlatformType)cce.NonNull(Enum.Parse(typeof(PlatformType), cce.NonNull(platformOptions[0])));
+              } catch {
+                ps.Error("Bad /platform type '{0}'", platformOptions[0]);
+                break;
               }
-              break;
-            }
-
-          case "-env":
-          case "/env": {
-              int e = 0;
-              if (ps.GetNumericArgument(ref e, 3)) {
-                switch (e) {
-                  case 0:
-                    ShowEnv = ShowEnvironment.Never;
-                    break;
-                  case 1:
-                    ShowEnv = ShowEnvironment.DuringPrint;
-                    break;
-                  case 2:
-                    ShowEnv = ShowEnvironment.Always;
-                    break;
-                  default: {
-                      Contract.Assert(false);
-                      throw new cce.UnreachableException();
-                    } // postcondition of GetNumericArgument guarantees that we don't get here
-                }
-              }
-              break;
-            }
-
-          case "-loopUnroll":
-          case "/loopUnroll":
-            ps.GetNumericArgument(ref LoopUnrollCount);
-            break;
-
-          case "-modifiesOnLoop":
-          case "/modifiesOnLoop":
-            ps.GetNumericArgument(ref LoopFrameConditions, 3);
-            break;
-
-          case "-modifiesDefault":
-          case "/modifiesDefault":
-            ps.GetNumericArgument(ref ModifiesDefault, 7);
-            break;
-
-          case "-localModifiesChecks":
-          case "/localModifiesChecks": {
-              int localChecks = 0;
-              ps.GetNumericArgument(ref localChecks, 2);
-              LocalModifiesChecks = (localChecks != 0);
-            }
-            break;
-
-          case "-orderStrength":
-          case "/orderStrength":
-            ps.GetNumericArgument(ref OrderStrength, 2);
-            break;
-
-          case "-summationStrength":
-          case "/summationStrength":
-            ps.GetNumericArgument(ref SummationAxiomStrength, 2);
-            break;
-
-          case "-inductiveMinMax":
-          case "/inductiveMinMax":
-            ps.GetNumericArgument(ref InductiveMinMax, 6);
-            break;
-
-          case "-fcoStrength":
-          case "/fcoStrength":
-            ps.GetNumericArgument(ref FCOStrength, 6);
-            break;
-
-          case "-ownerModelEncoding":
-          case "/ownerModelEncoding":
-            if (ps.ConfirmArgumentCount(1)) {
-              switch (args[ps.i]) {
-                case "s":
-                case "standard":
-                  OwnershipModelEncoding = OwnershipModelOption.Standard;
+              if (platformOptions.Count > 1) {
+                this.TargetPlatformLocation = platformOptions[1];
+                if (!Directory.Exists(platformOptions[1])) {
+                  ps.Error("/platform directory '{0}' does not exist", platformOptions[1]);
                   break;
-                case "e":
-                case "experimental":
-                  OwnershipModelEncoding = OwnershipModelOption.Experimental;
-                  break;
-                case "t":
-                case "trivial":
-                  OwnershipModelEncoding = OwnershipModelOption.Trivial;
-                  break;
-                default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
-              }
-            }
-            break;
-
-          case "-printModel":
-          case "/printModel":
-            if (ps.ConfirmArgumentCount(1)) {
-              switch (args[ps.i]) {
-                case "0":
-                  PrintErrorModel = 0;
-                  break;
-                case "1":
-                  PrintErrorModel = 1;
-                  break;
-                case "2":
-                  PrintErrorModel = 2;
-                  break;
-                case "4":
-                  PrintErrorModel = 4;
-                  break;
-                default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
-              }
-            }
-            break;
-
-
-          case "-mv":
-          case "/mv":
-            if (ps.ConfirmArgumentCount(1)) {
-              ModelViewFile = args[ps.i];
-            }
-            break;
-
-          case "-printModelToFile":
-          case "/printModelToFile":
-            if (ps.ConfirmArgumentCount(1)) {
-              PrintErrorModelFile = args[ps.i];
-            }
-            break;
-
-
-          case "-enhancedErrorMessages":
-          case "/enhancedErrorMessages":
-            ps.GetNumericArgument(ref EnhancedErrorMessages, 2);
-            break;
-
-          case "-forceBplErrors":
-          case "/forceBplErrors":
-            ForceBplErrors = true;
-            break;
-
-          case "-contractInfer":
-          case "/contractInfer":
-            ContractInfer = true;
-            break;
-          case "-inlineDepth":
-          case "/inlineDepth":
-            ps.GetNumericArgument(ref InlineDepth);
-            break;
-          case "-subsumption":
-          case "/subsumption": {
-              int s = 0;
-              if (ps.GetNumericArgument(ref s, 3)) {
-                switch (s) {
-                  case 0:
-                    UseSubsumption = SubsumptionOption.Never;
-                    break;
-                  case 1:
-                    UseSubsumption = SubsumptionOption.NotForQuantifiers;
-                    break;
-                  case 2:
-                    UseSubsumption = SubsumptionOption.Always;
-                    break;
-                  default: {
-                      Contract.Assert(false);
-                      throw new cce.UnreachableException();
-                    } // postcondition of GetNumericArgument guarantees that we don't get here
-                }
-              }
-              break;
-            }
-
-          case "-liveVariableAnalysis":
-          case "/liveVariableAnalysis": {
-              int lva = 0;
-              if (ps.GetNumericArgument(ref lva, 3)) {
-                LiveVariableAnalysis = lva;
-              }
-              break;
-            }
-
-          case "-removeEmptyBlocks":
-          case "/removeEmptyBlocks": {
-              int reb = 0;
-              if (ps.GetNumericArgument(ref reb, 2)) {
-                RemoveEmptyBlocks = reb == 1;
-              }
-              break;
-            }
-
-          case "-coalesceBlocks":
-          case "/coalesceBlocks": {
-              int cb = 0;
-              if (ps.GetNumericArgument(ref cb, 2)) {
-                CoalesceBlocks = cb == 1;
-              }
-              break;
-            }
-
-          case "-vc":
-          case "/vc":
-            if (ps.ConfirmArgumentCount(1)) {
-              switch (args[ps.i]) {
-                case "s":
-                case "structured":
-                  vcVariety = VCVariety.Structured;
-                  break;
-                case "b":
-                case "block":
-                  vcVariety = VCVariety.Block;
-                  break;
-                case "l":
-                case "local":
-                  vcVariety = VCVariety.Local;
-                  break;
-                case "n":
-                case "nested":
-                  vcVariety = VCVariety.BlockNested;
-                  break;
-                case "m":
-                  vcVariety = VCVariety.BlockNestedReach;
-                  break;
-                case "r":
-                  vcVariety = VCVariety.BlockReach;
-                  break;
-                case "d":
-                case "dag":
-                  vcVariety = VCVariety.Dag;
-                  break;
-                case "i":
-                  vcVariety = VCVariety.DagIterative;
-                  break;
-                case "doomed":
-                  vcVariety = VCVariety.Doomed;
-                  break;
-                default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
-              }
-            }
-            break;
-
-          case "-prover":
-          case "/prover":
-            if (ps.ConfirmArgumentCount(1)) {
-              TheProverFactory = ProverFactory.Load(cce.NonNull(args[ps.i]));
-              ProverName = cce.NonNull(args[ps.i]).ToUpper();
-            }
-            break;
-
-          case "-p":
-          case "/p":
-          case "-proverOpt":
-          case "/proverOpt":
-            if (ps.ConfirmArgumentCount(1)) {
-              ProverOptions.Add(cce.NonNull(args[ps.i]));
-            }
-            break;
-
-          case "-DoomStrategy":
-          case "/DoomStrategy":
-            ps.GetNumericArgument(ref DoomStrategy);
-            break;
-          case "-DoomRestartTP":
-          case "/DoomRestartTP":
-            if (ps.ConfirmArgumentCount(0))
-            {
-                DoomRestartTP = true;
-            }
-            break;
-
-          case "-extractLoops":
-          case "/extractLoops":
-            if (ps.ConfirmArgumentCount(0)) {
-              ExtractLoops = true;
-            }
-            break;
-          case "-inline":
-          case "/inline":
-            if (ps.ConfirmArgumentCount(1)) {
-              switch (args[ps.i]) {
-                case "none":
-                  ProcedureInlining = Inlining.None;
-                  break;
-                case "assert":
-                  ProcedureInlining = Inlining.Assert;
-                  break;
-                case "assume":
-                  ProcedureInlining = Inlining.Assume;
-                  break;
-                case "spec":
-                  ProcedureInlining = Inlining.Spec;
-                  break;
-                default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
-              }
-            }
-            break;
-          case "-lazyInline":
-          case "/lazyInline":
-            if (ps.ConfirmArgumentCount(1)) {
-                LazyInlining = Int32.Parse(args[ps.i]);
-                if (LazyInlining > 3) ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-            }
-            break;
-          case "-procCopyBound":
-          case "/procCopyBound":
-            if (ps.ConfirmArgumentCount(1))
-            {
-                ProcedureCopyBound = Int32.Parse(args[ps.i]);
-            }
-            break;
-          case "-stratifiedInline":
-          case "/stratifiedInline":
-            if (ps.ConfirmArgumentCount(1)) {
-              switch (args[ps.i]) {
-                case "0":
-                  StratifiedInlining = 0;
-                  break;
-                case "1":
-                  StratifiedInlining = 1;
-                  break;
-                default:
-                  StratifiedInlining = Int32.Parse(cce.NonNull(args[ps.i]));
-                  //ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
-              }
-            }
-            break;
-          case "-recursionBound":
-          case "/recursionBound":
-            if(ps.ConfirmArgumentCount(1)){
-              RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
-            }
-            break;
-          case "-coverageReporter":
-          case "/coverageReporter":
-            if (ps.ConfirmArgumentCount(1)) {
-              CoverageReporterPath = args[ps.i];
-            }
-            break;
-          case "-stratifiedInlineOption":
-          case "/stratifiedInlineOption":
-            if (ps.ConfirmArgumentCount(1)) {
-              StratifiedInliningOption=Int32.Parse(cce.NonNull(args[ps.i]));
-            }
-            break;
-          case "-useUnsatCoreForInlining":
-          case "/useUnsatCoreForInlining":
-            UseUnsatCoreForInlining = true;
-            break;
-          case "-inferLeastForUnsat":
-          case "/inferLeastForUnsat":
-            if (ps.ConfirmArgumentCount(1))
-            {
-                inferLeastForUnsat = args[ps.i];
-            }
-            break;
-          case "-typeEncoding":
-          case "/typeEncoding":
-            if (ps.ConfirmArgumentCount(1)) {
-              switch (args[ps.i]) {
-                case "n":
-                case "none":
-                  TypeEncodingMethod = TypeEncoding.None;
-                  break;
-                case "p":
-                case "predicates":
-                  TypeEncodingMethod = TypeEncoding.Predicates;
-                  break;
-                case "a":
-                case "arguments":
-                  TypeEncodingMethod = TypeEncoding.Arguments;
-                  break;
-                case "m":
-                case "monomorphic":
-                  TypeEncodingMethod = TypeEncoding.Monomorphic;
-                  break;
-                default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
-              }
-            }
-            break;
-
-          case "-instrumentInfer":
-          case "/instrumentInfer":
-            if (ps.ConfirmArgumentCount(1)) {
-              switch (args[ps.i]) {
-                case "e":
-                  InstrumentInfer = InstrumentationPlaces.Everywhere;
-                  break;
-                case "h":
-                  InstrumentInfer = InstrumentationPlaces.LoopHeaders;
-                  break;
-                default:
-                  ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-                  break;
-              }
-            }
-            break;
-
-          case "-vcBrackets":
-          case "/vcBrackets":
-            ps.GetNumericArgument(ref BracketIdsInVC, 2);
-            break;
-
-          case "-proverMemoryLimit":
-          case "/proverMemoryLimit": {
-              int d = 0;
-              if (ps.GetNumericArgument(ref d)) {
-                MaxProverMemory = d * Megabyte;
-              }
-              break;
-            }
-
-          case "-vcsMaxCost":
-          case "/vcsMaxCost":
-            ps.GetNumericArgument(ref VcsMaxCost);
-            break;
-
-          case "-vcsPathJoinMult":
-          case "/vcsPathJoinMult":
-            ps.GetNumericArgument(ref VcsPathJoinMult);
-            break;
-
-          case "-vcsPathCostMult":
-          case "/vcsPathCostMult":
-            ps.GetNumericArgument(ref VcsPathCostMult);
-            break;
-
-          case "-vcsAssumeMult":
-          case "/vcsAssumeMult":
-            ps.GetNumericArgument(ref VcsAssumeMult);
-            break;
-
-          case "-vcsPathSplitMult":
-          case "/vcsPathSplitMult":
-            ps.GetNumericArgument(ref VcsPathSplitMult);
-            break;
-
-          case "-vcsMaxSplits":
-          case "/vcsMaxSplits":
-            ps.GetNumericArgument(ref VcsMaxSplits);
-            break;
-
-          case "-vcsMaxKeepGoingSplits":
-          case "/vcsMaxKeepGoingSplits":
-            ps.GetNumericArgument(ref VcsMaxKeepGoingSplits);
-            break;
-
-          case "-vcsFinalAssertTimeout":
-          case "/vcsFinalAssertTimeout":
-            ps.GetNumericArgument(ref VcsFinalAssertTimeout);
-            break;
-
-          case "-vcsKeepGoingTimeout":
-          case "/vcsKeepGoingTimeout":
-            ps.GetNumericArgument(ref VcsKeepGoingTimeout);
-            break;
-
-          case "-vcsCores":
-          case "/vcsCores":
-            ps.GetNumericArgument(ref VcsCores);
-            break;
-
-          case "-simplifyMatchDepth":
-          case "/simplifyMatchDepth":
-            ps.GetNumericArgument(ref SimplifyProverMatchDepth);
-            break;
-
-          case "-timeLimit":
-          case "/timeLimit":
-            ps.GetNumericArgument(ref ProverKillTime);
-            break;
-
-          case "-smokeTimeout":
-          case "/smokeTimeout":
-            ps.GetNumericArgument(ref SmokeTimeout);
-            break;
-
-          case "-errorLimit":
-          case "/errorLimit":
-            ps.GetNumericArgument(ref ProverCCLimit);
-            break;
-
-          case "-z3opt":
-          case "/z3opt":
-            if (ps.ConfirmArgumentCount(1)) {
-              Z3Options.Add(cce.NonNull(args[ps.i]));
-            }
-            break;
-
-          case "-z3lets":
-          case "/z3lets":
-            ps.GetNumericArgument(ref Z3lets, 4);
-            break;
-
-          case "-platform":
-          case "/platform":
-            if (ps.ConfirmArgumentCount(1)) {
-              StringCollection platformOptions = this.ParseNamedArgumentList(args[ps.i]);
-              if (platformOptions != null && platformOptions.Count > 0) {
-                try {
-                  this.TargetPlatform = (PlatformType)cce.NonNull(Enum.Parse(typeof(PlatformType), cce.NonNull(platformOptions[0])));
-                } catch {
-                  ps.Error("Bad /platform type '{0}'", platformOptions[0]);
-                  break;
-                }
-                if (platformOptions.Count > 1) {
-                  this.TargetPlatformLocation = platformOptions[1];
-                  if (!Directory.Exists(platformOptions[1])) {
-                    ps.Error("/platform directory '{0}' does not exist", platformOptions[1]);
-                    break;
-                  }
                 }
               }
             }
-            break;
+          }
+          return true;
 
-          case "-stdlib":
-          case "/stdlib":
-            if (ps.ConfirmArgumentCount(1)) {
-              this.StandardLibraryLocation = args[ps.i];
-            }
-            break;
+        case "z3exe":
+          if (ps.ConfirmArgumentCount(1)) {
+            Z3ExecutablePath = args[ps.i];
+          }
+          return true;
 
-          case "-z3exe":
-          case "/z3exe":
-            if (ps.ConfirmArgumentCount(1)) {
-              Z3ExecutablePath = args[ps.i];
-            }
-            break;
+        case "doBitVectorAnalysis":
+          DoBitVectorAnalysis = true;
+          if (ps.ConfirmArgumentCount(1)) {
+            BitVectorAnalysisOutputBplFile = args[ps.i];
+          }
+          return true;
 
-          case "-doBitVectorAnalysis":
-          case "/doBitVectorAnalysis":
-            DoBitVectorAnalysis = true;
-            if (ps.ConfirmArgumentCount(1)) {
-              BitVectorAnalysisOutputBplFile = args[ps.i];
-            }
-            break;
+        default:
+          bool optionValue = false;
+          if (ps.CheckBooleanFlag("printUnstructured", ref optionValue)) {
+            PrintUnstructured = optionValue ? 1 : 0;
+            return true;
+          }
 
-          default:
-            Contract.Assume(true);
-            bool option = false;
-            if (ps.CheckBooleanFlag("printUnstructured", ref option)) {
-              cce.BeginExpose(this);
-              {
-                PrintUnstructured = option ? 1 : 0;
-              }
-              cce.EndExpose();
-            } else if (
-              ps.CheckBooleanFlag("printDesugared", ref PrintDesugarings) ||
+          if (ps.CheckBooleanFlag("printDesugared", ref PrintDesugarings) ||
               ps.CheckBooleanFlag("printInstrumented", ref PrintInstrumented) ||
               ps.CheckBooleanFlag("printWithUniqueIds", ref PrintWithUniqueASTIds) ||
               ps.CheckBooleanFlag("wait", ref Wait) ||
@@ -1369,17 +1194,13 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("overlookTypeErrors", ref OverlookBoogieTypeErrors) ||
               ps.CheckBooleanFlag("noVerify", ref Verify, false) ||
               ps.CheckBooleanFlag("traceverify", ref TraceVerify) ||
-              ps.CheckBooleanFlag("noConsistencyChecks", ref noConsistencyChecks, true) ||
               ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", ref AlwaysAssumeFreeLoopInvariants, true) ||
               ps.CheckBooleanFlag("nologo", ref DontShowLogo) ||
-              ps.CheckBooleanFlag("noVerifyByDefault", ref NoVerifyByDefault) ||
-              ps.CheckBooleanFlag("useUncheckedContracts", ref UseUncheckedContracts) ||
               ps.CheckBooleanFlag("proverLogAppend", ref SimplifyLogFileAppend) ||
               ps.CheckBooleanFlag("checkInfer", ref InstrumentWithAsserts) ||
               ps.CheckBooleanFlag("interprocInfer", ref IntraproceduralInfer, false) ||
               ps.CheckBooleanFlag("restartProver", ref RestartProverPerVC) ||
               ps.CheckBooleanFlag("printInlined", ref PrintInlined) ||
-              ps.CheckBooleanFlag("arithDistributionAxioms", ref UseArithDistributionAxioms) ||
               ps.CheckBooleanFlag("smoke", ref SoundnessSmokeTest) ||
               ps.CheckBooleanFlag("vcsDumpSplits", ref VcsDumpSplits) ||
               ps.CheckBooleanFlag("dbgRefuted", ref DebugRefuted) ||
@@ -1391,55 +1212,26 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis)
               ) {
-              // one of the boolean flags matched
-            } else if (ps.s.StartsWith("-") || ps.s.StartsWith("/")) {
-              ps.Error("unknown switch: {0}", ps.s);
-            } else if (ps.ConfirmArgumentCount(0)) {
-              string filename = ps.s;
-              string extension = Path.GetExtension(filename);
-              if (extension != null) {
-                InputFileExtension = extension.ToLower();
-              }
-              Files.Add(filename);
-              FileName = filename;
-            }
-            break;
-        }
-        cce.BeginExpose(ps);
-        ps.i = ps.nextIndex;
-        cce.EndExpose();
+            // one of the boolean flags matched
+            return true;
+          }
+          break;
       }
 
-      Contract.Assume(true);
-      if (ps.encounteredErrors)
-        res *= 2;
-      if (res < 0) {  // help requested
-        Usage();
-      } else if (AttrHelpRequested) {
-        AttributeUsage();
-      } else if (ps.encounteredErrors) {
-        Console.WriteLine("Use /help for available options");
-      }
-
-      SetProverOptions();
-
-      if (Trace) {
-        BoogieDebug.DoPrinting = true;
-      } // reuse the -trace option for debug printing
-      return res;
+      return base.ParseOption(name, ps);  // defer to superclass
     }
 
-    private void SetProverOptions() {
-      //modifies this.*;
+    protected override void ApplyDefaultOptions() {
       Contract.Ensures(TheProverFactory != null);
       Contract.Ensures(vcVariety != VCVariety.Unspecified);
+
+      base.ApplyDefaultOptions();
+
       // expand macros in filenames, now that LogPrefix is fully determined
-      ExpandFilename(ref XmlSinkFilename);
-      ExpandFilename(ref PrintFile);
-      ExpandFilename(ref DafnyPrelude);
-      ExpandFilename(ref DafnyPrintFile);
-      ExpandFilename(ref SimplifyLogFilePath);
-      ExpandFilename(ref PrintErrorModelFile);
+      ExpandFilename(ref XmlSinkFilename, LogPrefix, FileTimestamp);
+      ExpandFilename(ref PrintFile, LogPrefix, FileTimestamp);
+      ExpandFilename(ref SimplifyLogFilePath, LogPrefix, FileTimestamp);
+      ExpandFilename(ref PrintErrorModelFile, LogPrefix, FileTimestamp);
 
       Contract.Assume(XmlSink == null);  // XmlSink is to be set here
       if (XmlSinkFilename != null) {
@@ -1447,40 +1239,12 @@ namespace Microsoft.Boogie {
       }
 
       if (TheProverFactory == null) {
-        cce.BeginExpose(this);
-        {
-          TheProverFactory = ProverFactory.Load("SMTLIB");
-          ProverName = "SMTLIB".ToUpper();
-        }
-        cce.EndExpose();
+        TheProverFactory = ProverFactory.Load("SMTLIB");
+        ProverName = "SMTLIB".ToUpper();
       }
 
       if (vcVariety == VCVariety.Unspecified) {
         vcVariety = TheProverFactory.DefaultVCVariety;
-      }
-
-      if (LoopFrameConditions == -1) {
-        // /modifiesOnLoop not specified.  Set its default depending on /localModifiesChecks
-        if (LocalModifiesChecks) {
-          LoopFrameConditions = 1;
-        } else {
-          LoopFrameConditions = 2;
-        }
-      }
-
-      switch (InductiveMinMax) {
-        case 1:
-        case 2:
-        case 4:
-        case 5:
-          ReflectAdd = true;  // these InductiveMinMax modes imply ReflectAdd
-          break;
-        default:
-          break;
-      }
-
-      if (MethodologySelection == Methodology.VisibleState) {
-        OwnershipModelEncoding = OwnershipModelOption.Trivial;
       }
 
       if (UseArrayTheory) {
@@ -1493,9 +1257,8 @@ namespace Microsoft.Boogie {
         UseAbstractInterpretation = false;
       }
 
-      if (inferLeastForUnsat != null)
-      {
-          StratifiedInlining = 1;
+      if (inferLeastForUnsat != null) {
+        StratifiedInlining = 1;
       }
 
       if (StratifiedInlining > 0) {
@@ -1503,30 +1266,17 @@ namespace Microsoft.Boogie {
         UseArrayTheory = true;
         UseAbstractInterpretation = false;
         MaxProverMemory = 0; // no max: avoids restarts
-        if (ProverName == "Z3API" || ProverName == "SMTLIB")
-        {
-            ProverCCLimit = 1;
+        if (ProverName == "Z3API" || ProverName == "SMTLIB") {
+          ProverCCLimit = 1;
         }
       }
-    }
 
-
-
-    public bool UserWantsMethodLogging(string methodFullName) {
-      Contract.Requires(methodFullName != null);
-      if (methodToLog == null) {
-        return false;
+      if (Trace) {
+        BoogieDebug.DoPrinting = true;  // reuse the -trace option for debug printing
       }
-      return methodToLog == "*" || methodFullName.IndexOf(methodToLog) >= 0;
     }
 
-    public bool UserWantsToBreak(string methodFullName) {
-      Contract.Requires(methodFullName != null);
-      if (methodToBreakOn == null) {
-        return false;
-      }
-      return methodFullName.IndexOf(methodToBreakOn) >= 0;
-    }
+
 
     public bool UserWantsToCheckRoutine(string methodFullname) {
       Contract.Requires(methodFullname != null);
@@ -1535,284 +1285,6 @@ namespace Microsoft.Boogie {
         return true;
       }
       return Contract.Exists(ProcsToCheck, s => 0 <= methodFullname.IndexOf(s));
-    }
-
-#if CCI
-    public bool UserWantsToTranslateRoutine(Cci.Method method, string methodFullname) {
-      Contract.Requires(methodFullname != null);
-      Contract.Requires(method != null);
-      return UserWantsToTranslateRoutineInclude(method, methodFullname) &&
-        !Contract.Exists(methodsToTranslateExclude, s => 0 <= methodFullname.IndexOf(s));
-    }
-
-    public bool UserWantsToTranslateRoutineInclude(Cci.Method method, string methodFullname) {
-      Contract.Requires(methodFullname != null);
-      Contract.Requires(method != null);
-      if (methodsToTranslateSubstring == null &&
-          methodsToTranslateClass == null &&
-          methodsToTranslateClassQualified == null &&
-          methodsToTranslateFile == null &&
-          methodsToTranslateMethod == null &&
-          methodsToTranslateMethodQualified == null) {
-        // no preference
-        return true;
-      }
-      if (methodsToTranslateSubstring != null) {
-        if (Contract.Exists(methodsToTranslateSubstring, s => 0 <= methodFullname.IndexOf(s))) {
-          return true;
-        }
-      }
-      if (methodsToTranslateMethod != null) {
-        string methodName = method.Name.Name;
-        Contract.Assert(methodsToTranslateMethod != null);
-        if (methodsToTranslateMethod.Contains(methodName)) {
-          return true;
-        }
-      }
-      if (methodsToTranslateMethodQualified != null && method.DeclaringType != null) {
-        string methodName = method.DeclaringType.Name.Name + "." + method.Name.Name;
-        Contract.Assert(methodsToTranslateMethodQualified != null);
-        if (methodsToTranslateMethodQualified.Contains(methodName)) {
-          return true;
-        }
-      }
-      if (method.DeclaringType != null) {
-        if (methodsToTranslateClass != null) {
-          string className = method.DeclaringType.Name.Name;
-          if (methodsToTranslateClass.Contains(className)) {
-            return true;
-          }
-        }
-        if (methodsToTranslateClassQualified != null) {
-          string className = method.DeclaringType.FullName;
-          if (className != null) {
-            className = className.Replace('+', '.');
-            if (methodsToTranslateClassQualified.Contains(className)) {
-              return true;
-            }
-          }
-        }
-      }
-      if (methodsToTranslateFile != null) {
-        string methodFilename = GetSourceDocument(method);
-        if (methodFilename != null) {
-          string path = methodFilename;
-          if (path != null) {
-            string filename = Path.GetFileName(path);
-            if (methodsToTranslateFile.Contains(filename)) {
-              return true;
-            }
-          }
-        }
-      }
-      // the method is not among the desired routines
-      return false;
-    }
-
-    /// <summary>
-    /// Returns the file containing "method".  Returns null f that information is not available.
-    /// </summary>
-    static string GetSourceDocument(Cci.Method method) {
-      Contract.Requires(method != null);
-      // Start by looking for a source context in the method itself.  However, if the program
-      // was read from a binary, then there is no source location for the method.  If so, there
-      // some other ways we might find a source location.
-      if (method.SourceContext.Document != null) {
-        return method.SourceContext.Document.Name;
-      }
-      // Try to find a source location in the method's contract
-      if (method.Contract != null) {
-        if (method.Contract.Requires != null) {
-          foreach (Cci.Requires c in method.Contract.Requires) {
-            if (c != null && c.SourceContext.Document != null) {
-              return c.SourceContext.Document.Name;
-            }
-          }
-        }
-        if (method.Contract.Modifies != null) {
-          foreach (Cci.Expression c in method.Contract.Modifies) {
-            if (c != null && c.SourceContext.Document != null) {
-              return c.SourceContext.Document.Name;
-            }
-          }
-        }
-        if (method.Contract.Ensures != null) {
-          foreach (Cci.Ensures c in method.Contract.Ensures) {
-            if (c != null && c.SourceContext.Document != null) {
-              return c.SourceContext.Document.Name;
-            }
-          }
-        }
-      }
-      // As a last attempt, look for a source location among the statements
-      if (method.Body != null) {
-        return GetSourceDocumentFromStatements(method.Body.Statements);
-      }
-      return null;  // no source location found
-    }
-
-    [Pure]
-    static string GetSourceDocumentFromStatements(Cci.StatementList list) {
-      if (list != null) {
-        foreach (Cci.Statement c in list) {
-          if (c != null && c.SourceContext.Document != null) {
-            return c.SourceContext.Document.Name;
-          }
-          if (c is Cci.Block) {
-            Cci.Block b = (Cci.Block)c;
-            string n = GetSourceDocumentFromStatements(b.Statements);
-            if (n != null) {
-              return n;
-            }
-          }
-        }
-      }
-      return null;
-    }
-#endif
-
-    class CommandLineParseState {
-      public string s;
-      public bool hasColonArgument;
-      public readonly string[]/*!*/ args;
-      public int i;
-      public int nextIndex;
-      public bool encounteredErrors;
-      [ContractInvariantMethod]
-      void ObjectInvariant() {
-        Contract.Invariant(args != null);
-        Contract.Invariant(0 <= i && i <= args.Length);
-        Contract.Invariant(0 <= nextIndex && nextIndex <= args.Length);
-
-      }
-
-
-
-      public CommandLineParseState(string[] args) {
-        Contract.Requires(args != null);
-        Contract.Requires(Contract.ForAll(0, args.Length, i => args[i] != null));
-        Contract.Ensures(this.args == args);
-        this.s = null;  // set later by client
-        this.hasColonArgument = false;  // set later by client
-        this.args = args;
-        this.i = 0;
-        this.nextIndex = 0;  // set later by client
-        this.encounteredErrors = false;
-      }
-
-      public bool CheckBooleanFlag(string flagName, ref bool flag, bool valueWhenPresent) {
-        Contract.Requires(flagName != null);
-        //modifies nextIndex, encounteredErrors, Console.Error.*;
-        bool flagPresent = false;
-
-        if ((s == "/" + flagName || s == "-" + flagName) && ConfirmArgumentCount(0)) {
-          flag = valueWhenPresent;
-          flagPresent = true;
-        }
-        return flagPresent;
-      }
-
-      public bool CheckBooleanFlag(string flagName, ref bool flag) {
-        Contract.Requires(flagName != null);
-        //modifies nextIndex, encounteredErrors, Console.Error.*;
-        return CheckBooleanFlag(flagName, ref flag, true);
-      }
-
-      /// <summary>
-      /// If there is one argument and it is a non-negative integer, then set "arg" to that number and return "true".
-      /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
-      /// </summary>
-      public bool GetNumericArgument(ref int arg) {
-        //modifies nextIndex, encounteredErrors, Console.Error.*;
-        if (this.ConfirmArgumentCount(1)) {
-          try {
-            Contract.Assume(args[i] != null);
-            Contract.Assert(args[i] is string);  // needed to prove args[i].IsPeerConsistent
-            int d = Convert.ToInt32(this.args[this.i]);
-            if (0 <= d) {
-              arg = d;
-              return true;
-            }
-          } catch (System.FormatException) {
-          } catch (System.OverflowException) {
-          }
-        } else {
-          return false;
-        }
-        Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
-        return false;
-      }
-
-      /// <summary>
-      /// If there is one argument and it is a non-negative integer less than "limit",
-      /// then set "arg" to that number and return "true".
-      /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
-      /// </summary>
-      public bool GetNumericArgument(ref int arg, int limit) {
-        Contract.Requires(this.i < args.Length);
-        //modifies nextIndex, encounteredErrors, Console.Error.*;
-        int a = arg;
-        if (!GetNumericArgument(ref a)) {
-          return false;
-        } else if (a < limit) {
-          arg = a;
-          return true;
-        } else {
-          Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
-          return false;
-        }
-      }
-
-      /// <summary>
-      /// If there is one argument and it is a non-negative real, then set "arg" to that number and return "true".
-      /// Otherwise, emit an error message, leave "arg" unchanged, and return "false".
-      /// </summary>
-      public bool GetNumericArgument(ref double arg) {
-        //modifies nextIndex, encounteredErrors, Console.Error.*;
-        if (this.ConfirmArgumentCount(1)) {
-          try {
-            Contract.Assume(args[i] != null);
-            Contract.Assert(args[i] is string);  // needed to prove args[i].IsPeerConsistent
-            double d = Convert.ToDouble(this.args[this.i]);
-            if (0 <= d) {
-              arg = d;
-              return true;
-            }
-          } catch (System.FormatException) {
-          } catch (System.OverflowException) {
-          }
-        } else {
-          return false;
-        }
-        Error("Invalid argument \"{0}\" to option {1}", args[this.i], this.s);
-        return false;
-      }
-
-      public bool ConfirmArgumentCount(int argCount) {
-        Contract.Requires(0 <= argCount);
-        //modifies nextIndex, encounteredErrors, Console.Error.*;
-        Contract.Ensures(Contract.Result<bool>() == (!(hasColonArgument && argCount != 1) && !(args.Length < i + argCount)));
-        if (hasColonArgument && argCount != 1) {
-          Error("\"{0}\" cannot take a colon argument", s);
-          nextIndex = args.Length;
-          return false;
-        } else if (args.Length < i + argCount) {
-          Error("\"{0}\" expects {1} argument{2}", s, argCount.ToString(), (string)(argCount == 1 ? "" : "s"));
-          nextIndex = args.Length;
-          return false;
-        } else {
-          nextIndex = i + argCount;
-          return true;
-        }
-      }
-
-      public void Error(string message, params string[] args) {
-        Contract.Requires(args != null);
-        Contract.Requires(message != null);
-        //modifies encounteredErrors, Console.Error.*;
-        Console.Error.WriteLine("Boogie: Error: " + String.Format(message, args));
-        encounteredErrors = true;
-      }
     }
 
     public virtual StringCollection ParseNamedArgumentList(string argList) {
@@ -1848,7 +1320,7 @@ namespace Microsoft.Boogie {
       return semicolonIndex;
     }
 
-    public static void AttributeUsage() {
+    public override void AttributeUsage() {
       Console.WriteLine(
 @"Boogie: The following attributes are supported by this implementation.
 
@@ -1928,138 +1400,14 @@ namespace Microsoft.Boogie {
 ");
     }
 
-    private static bool printedHelp = false;
-
-    public static void Usage() {
-      // Ensure that we only print the help message once,
-      // no matter how many enabling conditions for printing
-      // help were triggered.
-      if (printedHelp) {
-        return;
-      }
-      printedHelp = true;
-
-      Console.WriteLine(@"Boogie: usage:  Boogie [ option ... ] [ filename ... ]
-  where <option> is one of
-
-  ---- General options -------------------------------------------------------
-
-  /help          : this message
-  /attrHelp      : print a message about declaration attributes supported by
-                   this implementation
-  /nologo        : suppress printing of version number, copyright message
-  /env:<n>       : print command line arguments
-                   0 - never, 1 (default) - during BPL print and prover log,
-                   2 - like 1 and also to standard output
-  /wait          : await Enter from keyboard before terminating program
-  /xml:<file>    : also produce output in XML format to <file>
-
-  ---- Spec# options ---------------------------------------------------------
-
-  If any of the following switches is included, only those methods specified
-  by some switch are translated into Boogie.  Furthermore, a method is
-  not translated if a [Verify(false)] attribute applies to it or if the
-  flag /trExclude applies (see below).
-  /translate:<str> : include method if its full name contains substring <str>
-  /trMethod:<method> : include method if its name is <method>
-                       Format:  Name or Class.Name
-  /trClass:<class>   : include method if the enclosing class is <class>
-                       Format:  Name or Qualification.Name
-  /trFile:<filename> : include method if it is contained in file <filename>
-                       Format:  Filename.ssc
-
-  /trExclude:<str> : exclude method it its full name contains substring <str>
-
-  /c[ontracts]:<file>
-                 : apply the contracts from <file> to
-                   the referenced assemblies of the input assembly.
-                   Note: the contracts for Xyz must be in Xyz.Contracts
-  /methodology:<m> : selects the specification and verification methodology
-                   b = boogie (default)
-                   vs = visible-state
-  /level:<n>     : 0 - reduced checks,
-                   1 - no modifies checking, 2 - full (default)
-  /useUncheckedContracts : generate purity axioms even when the postconditions
-                   could not be checked to be sound (this option only for
-                   experts and dare devils)
-  /modifiesDefault:<n> :
-                   0 - just what is declared
-                   1 - what is declared plus E.snapshot for every top-level
-                       E.f, E.*, E.**, E[i], or E[*] in the modifies clause
-                   2 - (1) but also for nested E's
-                   3 - (1) plus this.snapshot
-                   4 - (2) plus this.snapshot
-                   5 - (default) (1) plus p.* for receiver parameter p not
-                       occurring at the top-level of modifies clause as
-                       p.f, p.*, p.**, p[i], p[*], or p.0
-                   6 - (5) but for every parameter p
-  /modifiesOnLoop:<n> : 0 - never, 1 - assume only (default),
-                        2 - assume and check (default with
-                            /localModifiesChecks:0)
-  /localModifiesChecks: 0 - check modifies-clause as post-condition of a
-                            procedure
-                        1 - check violations of modifies-clause at each
-                            assignment and method call (default)
-  /loopUnroll:<n>  : unroll loops, following up to n back edges (and then some)
-  /noVerifyByDefault : change the default to [Verify(false)]
-  /orderStrength:<n> : 0 (default) - only few properties of subtyping
-                                     axiomatized,
-                       1 - full strength
-  /summationStrength:<n> : 0 - less applicable triggers in the axioms
-                           1 - (default) default set of axioms for summation-
-                           like quantifiers;
-  /arithDistributionAxioms : emit +/* distribution axioms
-  /inductiveMinMax:<n> : 0 (default) - extreme axioms for min/max;
-                         1 - inductive axioms for min/max;
-                         2 - both extreme and inductive axioms for min/max
-                         3,4,5 - like 0,1,2 but adding the plus-over-min/max
-                             distribution axiom
-                         Modes 1,2,4,5 imply /reflectAdd.
-  /fcoStrength:<n> : adjusts the amount of information encoded about 'first
-                     consistent owners'
-                     0 - no FCO axiom, 1 - cheaper but weaker FCO axiom,
-                     2 - pure-method FCO axiom,
-                     3, 4, 5 (default) - like 0,1,2 plus more specific
-                       FCO information on pure-method return
-  /ownerModelEncoding:<enc> : s = standard (default)
-                              e = experimental
-                              t = trivial (implied by /methodology:vs)
-  /printModel:<n> : 0 (default) - do not print Z3's error model
-                    1 - print Z3's error model
-                    2 - print Z3's error model plus reverse mappings
-                    4 - print Z3's error model in a more human readable way
-  /printModelToFile:<file> : print model to <file> instead of console
-  /mv:<file>        Specify file where to save the model in BVD format
-  /enhancedErrorMessages:<n> : 0 (default) - no enhanced error messages
-                               1 - Z3 error model enhanced error messages
-
-  ---- Dafny options ---------------------------------------------------------
-
-  Multiple .dfy files supplied on the command line are concatenated into one
-  Dafny program.
-
-  /dprelude:<file> : choose Dafny prelude file
-  /dprint:<file> : print Dafny program after parsing it
-                   (use - as <file> to print to console)
-  /compile:<n>   : 0 - do not compile Dafny program
-                   1 (default) - upon successful verification of the Dafny
-                       program, compile Dafny program to C# program out.cs
-                   2 - always attempt to compile Dafny program to C# program
-                       out.cs, regardless of verification outcome
-  /noCheating:<n> : 0 (default) - allow assume statements and free invariants
-                    1 - treat all assumptions as asserts, and drop free.
-  /induction:<n> : 0 - never do induction, not even when attributes request it
-                   1 - only apply induction when attributes request it
-                   2 - apply induction as requested (by attributes) and also
-                       for heuristically chosen quantifiers
-                   3 (default) - apply induction as requested, and for
-                       heuristically chosen quantifiers and ghost methods
-  /inductionHeuristic: 0 - least discriminating induction heuristic (that is,
-                           lean toward applying induction more often)
-                       1,2,3,4,5 - levels in between, ordered as follows as
-                           far as how discriminating they are:
-                           0 < 1 < 2 < (3,4) < 5 < 6
-                       6 (default) - most discriminating
+    public override void Usage() {
+      Console.WriteLine(@"
+  /nologo       suppress printing of version number, copyright message
+  /env:<n>      print command line arguments
+                  0 - never, 1 (default) - during BPL print and prover log,
+                  2 - like 1 and also to standard output
+  /wait         await Enter from keyboard before terminating program
+  /xml:<file>   also produce output in XML format to <file>
 
   ---- Boogie options --------------------------------------------------------
 
@@ -2080,10 +1428,25 @@ namespace Microsoft.Boogie {
   /overlookTypeErrors : skip any implementation with resolution or type
                         checking errors
 
+  /loopUnroll:<n>
+                unroll loops, following up to n back edges (and then some)
+  /printModel:<n>
+                0 (default) - do not print Z3's error model
+                1 - print Z3's error model
+                2 - print Z3's error model plus reverse mappings
+                4 - print Z3's error model in a more human readable way
+  /printModelToFile:<file>
+                print model to <file> instead of console
+  /mv:<file>    Specify file where to save the model in BVD format
+  /enhancedErrorMessages:<n>
+                0 (default) - no enhanced error messages
+                1 - Z3 error model enhanced error messages
+
   ---- Inference options -----------------------------------------------------
 
-  /infer:<flags> : use abstract interpretation to infer invariants
-                   The default is /infer:i"
+  /infer:<flags>
+                use abstract interpretation to infer invariants
+                The default is /infer:i"
         // This is not 100% true, as the /infer ALWAYS creates
         // a multilattice, whereas if nothing is specified then
         // intervals are isntantiated WITHOUT being embedded in
@@ -2097,185 +1460,228 @@ namespace Microsoft.Boogie {
                    p = polyhedra for linear inequalities
                    s = debug statistics
                 0..9 = number of iterations before applying a widen (default=0)
-  /noinfer       : turn off the default inference, and overrides the /infer
-                   switch on its left
-  /checkInfer    : instrument inferred invariants as asserts to be checked by
-                   theorem prover
-  /interprocInfer : perform interprocedural inference (deprecated, not
-                    supported)
-  /contractInfer : perform procedure contract inference
-  /logInfer      : print debug output during inference
-  /instrumentInfer : h - instrument inferred invariants only at beginning of
-                         loop headers (default)
-                     e - instrument inferred invariants at beginning and end
-                         of every block
-  /printInstrumented : print Boogie program after it has been
-                   instrumented with invariants
+  /noinfer      turn off the default inference, and overrides the /infer
+                switch on its left
+  /checkInfer   instrument inferred invariants as asserts to be checked by
+                theorem prover
+  /interprocInfer
+                perform interprocedural inference (deprecated, not supported)
+  /contractInfer
+                perform procedure contract inference
+  /logInfer     print debug output during inference
+  /instrumentInfer
+                h - instrument inferred invariants only at beginning of
+                    loop headers (default)
+                e - instrument inferred invariants at beginning and end
+                    of every block
+  /printInstrumented
+                print Boogie program after it has been instrumented with
+                invariants
 
   ---- Debugging and general tracing options ---------------------------------
 
-  /trace         : blurt out various debug trace information
-  /traceTimes    : output timing information at certain points in the pipeline
-  /log[:method]  : Print debug output during translation
+  /trace        blurt out various debug trace information
+  /traceTimes   output timing information at certain points in the pipeline
+  /log[:method] Print debug output during translation
 
-  /break[:method] : break into debugger
+  /break        launch and break into debugger
 
   ---- Verification-condition generation options -----------------------------
 
-  /liveVariableAnalysis:<c> : 0 = do not perform live variable analysis
-                              1 = perform live variable analysis (default)
-                              2 = perform interprocedural live variable analysis
-  /noVerify      : skip VC generation and invocation of the theorem prover
-  /removeEmptyBlocks:<c> : 0 - do not remove empty blocks during VC generation
-                           1 - remove empty blocks (default)
-  /coalesceBlocks:<c> : 0 = do not coalesce blocks
-                        1 = coalesce blocks (default)
-  /vc:<variety>  : n = nested block (default for /prover:Simplify),
-                   m = nested block reach,
-                   b = flat block, r = flat block reach,
-                   s = structured, l = local,
-                   d = dag (default, except with /prover:Simplify)
-                   doomed = doomed
-  /traceverify   : print debug output during verification condition generation
-  /subsumption:<c> : apply subsumption to asserted conditions:
-                    0 - never, 1 - not for quantifiers, 2 (default) - always
-  /alwaysAssumeFreeLoopInvariants : usually, a free loop invariant (or assume
-                   statement in that position) is ignored in checking contexts
-                   (like other free things); this option includes these free
-                   loop invariants as assumes in both contexts
-  /inline:<i>    : use inlining strategy <i> for procedures with the :inline
-                   attribute, see /attrHelp for details:
-                   none
-                   assume (default)
-                   assert
-                   spec
-  /printInlined  : print the implementation after inlining calls to
-                   procedures with the :inline attribute (works with /inline)
-  /lazyInline:1  : Use the lazy inlining algorithm
-  /stratifiedInline:1 : Use the stratified inlining algorithm
-  /recursionBound:<n> : Set the recursion bound for stratified inlining to
-                        be n (default 500)
-  /inferLeastForUnsat:<str> : Infer the least number of constants (whose names
-                              are prefixed by <str>) that need to be set to
-                              true for the program to be correct. This turns
-                              on stratified inlining.
-  /smoke         : Soundness Smoke Test: try to stick assert false; in some
-                   places in the BPL and see if we can still prove it
-  /smokeTimeout:<n> : Timeout, in seconds, for a single theorem prover
-                   invocation during smoke test, defaults to 10.
-  /causalImplies : Translate Boogie's A ==> B into prover's A ==> A && B.
-  /typeEncoding:<m> : how to encode types when sending VC to theorem prover
+  /liveVariableAnalysis:<c>
+                0 = do not perform live variable analysis
+                1 = perform live variable analysis (default)
+                2 = perform interprocedural live variable analysis
+  /noVerify     skip VC generation and invocation of the theorem prover
+  /removeEmptyBlocks:<c>
+                0 - do not remove empty blocks during VC generation
+                1 - remove empty blocks (default)
+  /coalesceBlocks:<c>
+                0 = do not coalesce blocks
+                1 = coalesce blocks (default)
+  /vc:<variety> n = nested block (default for /prover:Simplify),
+                m = nested block reach,
+                b = flat block, r = flat block reach,
+                s = structured, l = local,
+                d = dag (default, except with /prover:Simplify)
+                doomed = doomed
+  /traceverify  print debug output during verification condition generation
+  /subsumption:<c>
+                apply subsumption to asserted conditions:
+                0 - never, 1 - not for quantifiers, 2 (default) - always
+  /alwaysAssumeFreeLoopInvariants
+                usually, a free loop invariant (or assume
+                statement in that position) is ignored in checking contexts
+                (like other free things); this option includes these free
+                loop invariants as assumes in both contexts
+  /inline:<i>   use inlining strategy <i> for procedures with the :inline
+                attribute, see /attrHelp for details:
+                  none
+                  assume (default)
+                  assert
+                  spec
+  /printInlined
+                print the implementation after inlining calls to
+                procedures with the :inline attribute (works with /inline)
+  /lazyInline:1
+                Use the lazy inlining algorithm
+  /stratifiedInline:1
+                Use the stratified inlining algorithm
+  /recursionBound:<n>
+                Set the recursion bound for stratified inlining to
+                be n (default 500)
+  /inferLeastForUnsat:<str>
+                Infer the least number of constants (whose names
+                are prefixed by <str>) that need to be set to
+                true for the program to be correct. This turns
+                on stratified inlining.
+  /smoke        Soundness Smoke Test: try to stick assert false; in some
+                places in the BPL and see if we can still prove it
+  /smokeTimeout:<n>
+                Timeout, in seconds, for a single theorem prover
+                invocation during smoke test, defaults to 10.
+  /causalImplies
+                Translate Boogie's A ==> B into prover's A ==> A && B.
+  /typeEncoding:<m>
+                how to encode types when sending VC to theorem prover
                    n = none (unsound)
                    p = predicates (default)
                    a = arguments
-  /monomorphize    Do not abstract map types in the encoding (this is an
-                   experimental feature that will not do the right thing if
-                   the program uses polymorphism)
-  /reflectAdd      In the VC, generate an auxiliary symbol, elsewhere defined
-                   to be +, instead of +.
+  /monomorphize   
+                Do not abstract map types in the encoding (this is an
+                experimental feature that will not do the right thing if
+                the program uses polymorphism)
+  /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
+                to be +, instead of +.
 
   ---- Verification-condition splitting --------------------------------------
 
-  /vcsMaxCost:<f>   : VC will not be split unless the cost of a VC exceeds this
-                      number, defaults to 2000.0. This does NOT apply in the
-                      keep-going mode after first round of splitting.
-  /vcsMaxSplits:<n> : Maximal number of VC generated per method. In keep
-                      going mode only applies to the first round.
-                      Defaults to 1.
-  /vcsMaxKeepGoingSplits:<n> : If set to more than 1, activates the keep
-                      going mode, where after the first round of splitting,
-                      VCs that timed out are split into <n> pieces and retried
-                      until we succeed proving them, or there is only one
-                      assertion on a single path and it timeouts (in which
-                      case error is reported for that assertion).
-                      Defaults to 1.
-  /vcsKeepGoingTimeout:<n> : Timeout in seconds for a single theorem prover
-                      invocation in keep going mode, except for the final
-                      single-assertion case. Defaults to 1s.
-  /vcsFinalAssertTimeout:<n> : Timeout in seconds for the single last
-                      assertion in the keep going mode. Defaults to 30s.
-  /vcsPathJoinMult:<f> : If more than one path join at a block, by how much
-                      multiply the number of paths in that block, to accomodate
-                      for the fact that the prover will learn something on one
-                      paths, before proceeding to another. Defaults to 0.8.
+  /vcsMaxCost:<f>
+                VC will not be split unless the cost of a VC exceeds this
+                number, defaults to 2000.0. This does NOT apply in the
+                keep-going mode after first round of splitting.
+  /vcsMaxSplits:<n>
+                Maximal number of VC generated per method. In keep
+                going mode only applies to the first round.
+                Defaults to 1.
+  /vcsMaxKeepGoingSplits:<n>
+                If set to more than 1, activates the keep
+                going mode, where after the first round of splitting,
+                VCs that timed out are split into <n> pieces and retried
+                until we succeed proving them, or there is only one
+                assertion on a single path and it timeouts (in which
+                case error is reported for that assertion).
+                Defaults to 1.
+  /vcsKeepGoingTimeout:<n>
+                Timeout in seconds for a single theorem prover
+                invocation in keep going mode, except for the final
+                single-assertion case. Defaults to 1s.
+  /vcsFinalAssertTimeout:<n>
+                Timeout in seconds for the single last
+                assertion in the keep going mode. Defaults to 30s.
+  /vcsPathJoinMult:<f>
+                If more than one path join at a block, by how much
+                multiply the number of paths in that block, to accomodate
+                for the fact that the prover will learn something on one
+                paths, before proceeding to another. Defaults to 0.8.
   /vcsPathCostMult:<f1>
-  /vcsAssumeMult:<f2> : The cost of a block is
-         (<assert-cost> + <f2>*<assume-cost>)*(1.0 + <f1>*<entering-paths>)
-                      <f1> defaults to 1.0, <f2> defaults to 0.01.
-                      The cost of a single assertion or assumption is
-                      currently always 1.0.
-  /vcsPathSplitMult:<f> : If the best path split of a VC of cost A is into
-                      VCs of cost B and C, then the split is applied if
-                      A >= <f>*(B+C), otherwise assertion splitting will be
-                      applied. Defaults to 0.5 (always do path splitting if
-                      possible), set to more to do less path splitting
-                      and more assertion splitting.
-  /vcsDumpSplits      For split #n dump split.n.dot and split.n.bpl.
-                      Warning: Affects error reporting.
-  /vcsCores:<n>     : Try to verify <n> VCs at once. Defaults to 1.
+  /vcsAssumeMult:<f2>
+                The cost of a block is
+                    (<assert-cost> + <f2>*<assume-cost>) * 
+                    (1.0 + <f1>*<entering-paths>)
+                <f1> defaults to 1.0, <f2> defaults to 0.01.
+                The cost of a single assertion or assumption is
+                currently always 1.0.
+  /vcsPathSplitMult:<f>
+                If the best path split of a VC of cost A is into
+                VCs of cost B and C, then the split is applied if
+                A >= <f>*(B+C), otherwise assertion splitting will be
+                applied. Defaults to 0.5 (always do path splitting if
+                possible), set to more to do less path splitting
+                and more assertion splitting.
+  /vcsDumpSplits
+                For split #n dump split.n.dot and split.n.bpl.
+                Warning: Affects error reporting.
+  /vcsCores:<n>
+                Try to verify <n> VCs at once. Defaults to 1.
 
   ---- Prover options --------------------------------------------------------
 
-  /errorLimit:<num> : Limit the number of errors produced for each procedure
-                      (default is 5, some provers may support only 1)
-  /timeLimit:<num>  : Limit the number of seconds spent trying to verify
-                      each procedure
-  /errorTrace:<n> : 0 - no Trace labels in the error output,
-                    1 (default) - include useful Trace labels in error output,
-                    2 - include all Trace labels in the error output
-  /vcBrackets:<b> : bracket odd-charactered identifier names with |'s.  <b> is:
+  /errorLimit:<num>
+                Limit the number of errors produced for each procedure
+                (default is 5, some provers may support only 1)
+  /timeLimit:<num>
+                Limit the number of seconds spent trying to verify
+                each procedure
+  /errorTrace:<n>
+                0 - no Trace labels in the error output,
+                1 (default) - include useful Trace labels in error output,
+                2 - include all Trace labels in the error output
+  /vcBrackets:<b>
+                bracket odd-charactered identifier names with |'s.  <b> is:
                    0 - no (default with non-/prover:Simplify),
                    1 - yes (default with /prover:Simplify)
-  /prover:<tp>   : use theorem prover <tp>, where <tp> is either the name of
-                   a DLL containing the prover interface located in the
-                   Boogie directory, or a full path to a DLL containing such
-                   an interface. The standard interfaces shipped include:
-                     SMTLib (default, uses the SMTLib2 format and calls Z3)
-                     Z3 (uses Z3 with the Simplify format)
-                     Simplify
-                     ContractInference (uses Z3)
-                     Z3api (Z3 using Managed .NET API)
-  /proverOpt:KEY[=VALUE] : Provide a prover-specific option (short form /p).
-  /proverLog:<file> : Log input for the theorem prover.  Like filenames
-                   supplied as arguments to other options, <file> can use the
-                   following macros:
-                     @TIME@    expands to the current time
-                     @PREFIX@  expands to the concatenation of strings given
-                               by /logPrefix options
-                     @FILE@    expands to the last filename specified on the
-                               command line
-                   In addition, /proverLog can also use the macro '@PROC@',
-                   which causes there to be one prover log file per
-                   verification condition, and the macro then expands to the
-                   name of the procedure that the verification condition is
-                   for.
-  /logPrefix:<str> : Defines the expansion of the macro '@PREFIX@', which can
-                   be used in various filenames specified by other options.
-  /proverLogAppend : Append (not overwrite) the specified prover log file
-  /proverWarnings : 0 (default) - don't print, 1 - print to stdout,
-                    2 - print to stderr
-  /proverMemoryLimit:<num>  : Limit on the virtual memory for prover before
-                             restart in MB (default:100MB)
-  /restartProver            : Restart the prover after each query
-  /proverShutdownLimit<num> : Time between closing the stream to the prover and
-                              killing the prover process (default: 0s)
+  /prover:<tp>  use theorem prover <tp>, where <tp> is either the name of
+                a DLL containing the prover interface located in the
+                Boogie directory, or a full path to a DLL containing such
+                an interface. The standard interfaces shipped include:
+                    SMTLib (default, uses the SMTLib2 format and calls Z3)
+                    Z3 (uses Z3 with the Simplify format)
+                    Simplify
+                    ContractInference (uses Z3)
+                    Z3api (Z3 using Managed .NET API)
+  /proverOpt:KEY[=VALUE]
+                Provide a prover-specific option (short form /p).
+  /proverLog:<file>
+                Log input for the theorem prover.  Like filenames
+                supplied as arguments to other options, <file> can use the
+                following macros:
+                    @TIME@    expands to the current time
+                    @PREFIX@  expands to the concatenation of strings given
+                              by /logPrefix options
+                    @FILE@    expands to the last filename specified on the
+                              command line
+                In addition, /proverLog can also use the macro '@PROC@',
+                which causes there to be one prover log file per
+                verification condition, and the macro then expands to the
+                name of the procedure that the verification condition is for.
+  /logPrefix:<str>
+                Defines the expansion of the macro '@PREFIX@', which can
+                be used in various filenames specified by other options.
+  /proverLogAppend
+                Append (not overwrite) the specified prover log file
+  /proverWarnings
+                0 (default) - don't print, 1 - print to stdout,
+                2 - print to stderr
+  /proverMemoryLimit:<num>
+                Limit on the virtual memory for prover before
+                restart in MB (default:100MB)
+  /restartProver
+                Restart the prover after each query
+  /proverShutdownLimit<num>
+                Time between closing the stream to the prover and
+                killing the prover process (default: 0s)
   /platform:<ptype>,<location>
-                 : ptype = v11,v2,cli1
-                 : location = platform libraries directory
+                ptype = v11,v2,cli1
+                location = platform libraries directory
 
   Simplify specific options:
-  /simplifyMatchDepth:<num> : Set Simplify prover's matching depth limit
+  /simplifyMatchDepth:<num>
+                Set Simplify prover's matching depth limit
 
   Z3 specific options:
-  /z3opt:<arg>   : specify additional Z3 options
-  /z3multipleErrors : report multiple counterexamples for each error
-  /useArrayTheory : use Z3's native theory (as opposed to axioms).  Currently
-                    implies /monomorphize.
+  /z3opt:<arg>  specify additional Z3 options
+  /z3multipleErrors
+                report multiple counterexamples for each error
+  /useArrayTheory
+                use Z3's native theory (as opposed to axioms).  Currently
+                implies /monomorphize.
 
-  /z3types       : generate multi-sorted VC that make use of Z3 types
-  /z3lets:<n>    : 0 - no LETs, 1 - only LET TERM, 2 - only LET FORMULA,
-                   3 - (default) any
-  /z3exe:<path>  : path to Z3 executable
+  /z3types      generate multi-sorted VC that make use of Z3 types
+  /z3lets:<n>   0 - no LETs, 1 - only LET TERM, 2 - only LET FORMULA,
+                3 - (default) any
+  /z3exe:<path>
+                path to Z3 executable
 ");
     }
   }

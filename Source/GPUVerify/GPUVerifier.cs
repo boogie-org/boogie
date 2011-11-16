@@ -414,7 +414,6 @@ namespace GPUVerify
 
         private void ComputeInvariant()
         {
-            List<Expr> UserSuppliedInvariants = GetUserSuppliedInvariants();
 
             invariantGenerationCounter = 0;
 
@@ -429,6 +428,8 @@ namespace GPUVerify
                     {
                         continue;
                     }
+
+                    List<Expr> UserSuppliedInvariants = GetUserSuppliedInvariants(Impl.Name);
 
                     HashSet<string> LocalNames = new HashSet<string>();
                     foreach (Variable v in Impl.LocVars)
@@ -613,7 +614,7 @@ namespace GPUVerify
             Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
         }
 
-        private List<Expr> GetUserSuppliedInvariants()
+        private List<Expr> GetUserSuppliedInvariants(string ProcedureName)
         {
             List<Expr> result = new List<Expr>();
 
@@ -627,6 +628,24 @@ namespace GPUVerify
             int lineNumber = 1;
             while ((line = sr.ReadLine()) != null)
             {
+                string[] components = line.Split(':');
+
+                if (components.Length != 1 && components.Length != 2)
+                {
+                    Console.WriteLine("Ignoring badly formed candidate invariant '" + line + "' at '" + CommandLineOptions.invariantsFile + "' line " + lineNumber);
+                    continue;
+                }
+
+                if (components.Length == 2)
+                {
+                    if (!components[0].Trim().Equals(ProcedureName))
+                    {
+                        continue;
+                    }
+
+                    line = components[1];
+                }
+
                 string temp_program_text = "axiom (" + line + ");";
                 TokenTextWriter writer = new TokenTextWriter("temp_out.bpl");
                 writer.WriteLine(temp_program_text);

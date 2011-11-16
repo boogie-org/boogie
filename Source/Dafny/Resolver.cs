@@ -12,7 +12,12 @@ using Microsoft.Boogie;
 namespace Microsoft.Dafny {
   public class Resolver {
     public int ErrorCount = 0;
-    void Error(IToken tok, string msg, params object[] args) {
+    public virtual void HereIsASillyTest() {
+    }
+    /// <summary>
+    /// This method is virtual, because it is overridden in the VSX plug-in for Dafny.
+    /// </summary>
+    protected virtual void Error(IToken tok, string msg, params object[] args) {
       Contract.Requires(tok != null);
       Contract.Requires(msg != null);
       ConsoleColor col = Console.ForegroundColor;
@@ -254,7 +259,7 @@ namespace Microsoft.Dafny {
                 if (members.ContainsKey(formal.Name)) {
                   Error(ctor, "Name of deconstructor is used by another member of the datatype: {0}", formal.Name);
                 } else {
-                  dtor = new SpecialField(formal.tok, formal.Name, "dtor_" + formal.Name, "", "", false, false, formal.Type, null);
+                  dtor = new DatatypeDestructor(formal.tok, ctor, formal.Name, "dtor_" + formal.Name, "", "", formal.IsGhost, formal.Type, null);
                   dtor.EnclosingClass = dt;  // resolve here
                   members.Add(formal.Name, dtor);
                 }
@@ -2750,6 +2755,30 @@ namespace Microsoft.Dafny {
             Contract.Assert(false); throw new cce.UnreachableException();  // unexpected operator
         }
         e.ResolvedOp = ResolveOp(e.Op, e.E1.Type);
+
+      } else if (expr is LetExpr) {
+        var e = (LetExpr)expr;
+        foreach (var rhs in e.RHSs) {
+          ResolveExpression(rhs, twoState);
+        }
+        scope.PushMarker();
+        if (e.Vars.Count != e.RHSs.Count) {
+          Error(expr, "let expression must have same number of bound variables (found {0}) as RHSs (found {1})", e.Vars.Count, e.RHSs.Count);
+        }
+        int i = 0;
+        foreach (var v in e.Vars) {
+          if (!scope.Push(v.Name, v)) {
+            Error(v, "Duplicate let-variable name: {0}", v.Name);
+          }
+          ResolveType(v.tok, v.Type);
+          if (i < e.RHSs.Count && !UnifyTypes(v.Type, e.RHSs[i].Type)) {
+            Error(e.RHSs[i].tok, "type of RHS ({0}) does not match type of bound variable ({1})", e.RHSs[i].Type, v.Type);
+          }
+          i++;
+        }
+        ResolveExpression(e.Body, twoState);
+        scope.PopMarker();
+        expr.Type = e.Body.Type;
 
       } else if (expr is QuantifierExpr) {
         QuantifierExpr e = (QuantifierExpr)expr;
