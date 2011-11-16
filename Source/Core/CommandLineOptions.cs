@@ -264,7 +264,6 @@ namespace Microsoft.Boogie {
     /// <param name="args">Consumed ("captured" and possibly modified) by the method.</param>
     public bool Parse([Captured] string[]/*!*/ args) {
       Contract.Requires(cce.NonNullElements(args));
-      Contract.Ensures(-2 <= Contract.Result<int>() && Contract.Result<int>() <= 2 && Contract.Result<int>() != 0);
 
       // save the command line options for the log files
       Environment += "Command Line Options: " + args.Concat(" ");
