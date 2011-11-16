@@ -204,6 +204,8 @@ namespace GPUVerify
 
         public static Program ParseBoogieProgram(List<string> fileNames, bool suppressTraceOutput)
         {
+            Microsoft.Boogie.CommandLineOptions.Install(new Microsoft.Boogie.CommandLineOptions());
+
             Program program = null;
             bool okay = true;
             for (int fileId = 0; fileId < fileNames.Count; fileId++)
