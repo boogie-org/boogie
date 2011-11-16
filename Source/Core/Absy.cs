@@ -2112,6 +2112,7 @@ namespace Microsoft.Boogie {
         stream.WriteLine(this, level, "// " + Comment);
       }
       stream.Write(this, level, "{0}ensures ", Free ? "free " : "");
+      Cmd.EmitAttributes(stream, Attributes);
       this.Condition.Emit(stream);
       stream.WriteLine(";");
     }
