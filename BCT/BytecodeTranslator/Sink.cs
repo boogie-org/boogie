@@ -133,9 +133,15 @@ namespace BytecodeTranslator {
         return heap.RefType; // structs are kept on the heap with special rules about assignment
       else if (type.IsEnum)
         return Bpl.Type.Int; // The underlying type of an enum is always some kind of integer
-      else if (type is IGenericTypeParameter || type is IGenericMethodParameter)
+      else if (type is IGenericParameter) {
+        var gp = type as IGenericParameter;
+        if (gp.MustBeReferenceType || gp.MustBeValueType)
+          return heap.RefType;
+        foreach (var c in gp.Constraints){
+          return CciTypeToBoogie(c);
+        }
         return heap.BoxType;
-      else
+      } else
         return heap.RefType;
     }
 
@@ -148,17 +154,19 @@ namespace BytecodeTranslator {
     public Bpl.Variable CreateFreshLocal(ITypeReference typeReference) {
       Bpl.IToken loc = Bpl.Token.NoToken; // Helper Variables do not have a location
       Bpl.Type t = CciTypeToBoogie(typeReference);
-      Bpl.LocalVariable v = new Bpl.LocalVariable(loc, new Bpl.TypedIdent(loc, TranslationHelper.GenerateTempVarName(), t));
+      var localName = TranslationHelper.GenerateTempVarName();
+      Bpl.LocalVariable v = new Bpl.LocalVariable(loc, new Bpl.TypedIdent(loc, localName, t));
       ILocalDefinition dummy = new LocalDefinition(); // Creates a dummy entry for the Dict, since only locals in the dict are translated to boogie
-      localVarMap.Add(dummy, v);
+      localVarMap.Add(localName, v);
       return v;
     }
 
     public Bpl.Variable CreateFreshLocal(Bpl.Type t) {
       Bpl.IToken loc = Bpl.Token.NoToken; // Helper Variables do not have a location
-      Bpl.LocalVariable v = new Bpl.LocalVariable(loc, new Bpl.TypedIdent(loc, TranslationHelper.GenerateTempVarName(), t));
+      var localName = TranslationHelper.GenerateTempVarName();
+      Bpl.LocalVariable v = new Bpl.LocalVariable(loc, new Bpl.TypedIdent(loc, localName, t));
       ILocalDefinition dummy = new LocalDefinition(); // Creates a dummy entry for the Dict, since only locals in the dict are translated to boogie
-      localVarMap.Add(dummy, v);
+      localVarMap.Add(localName, v);
       return v;
     }
 
@@ -182,9 +190,10 @@ namespace BytecodeTranslator {
 
     /// <summary>
     /// State that gets re-initialized per method
+    /// Keys are the mangled names to avoid name clashes.
     /// </summary>
-    private Dictionary<ILocalDefinition, Bpl.LocalVariable> localVarMap = null;
-    public Dictionary<ILocalDefinition, Bpl.LocalVariable> LocalVarMap {
+    private Dictionary<string, Bpl.LocalVariable> localVarMap = null;
+    public Dictionary<string, Bpl.LocalVariable> LocalVarMap {
       get { return this.localVarMap; }
     }
     private int localCounter;
@@ -199,11 +208,14 @@ namespace BytecodeTranslator {
       Bpl.LocalVariable v;
       Bpl.IToken tok = local.Token();
       Bpl.Type t = CciTypeToBoogie(local.Type.ResolvedType);
-      if (!localVarMap.TryGetValue(local, out v)) {
-        var name = local.Name.Value;
-        name = TranslationHelper.TurnStringIntoValidIdentifier(name);
+      var name = local.Name.Value;
+      name = TranslationHelper.TurnStringIntoValidIdentifier(name);
+      var typeName = t.ToString();
+      typeName = TranslationHelper.TurnStringIntoValidIdentifier(typeName);
+      var mangledName = String.Format("{0}_{1}", name, typeName);
+      if (!localVarMap.TryGetValue(mangledName, out v)) {
         v = new Bpl.LocalVariable(tok, new Bpl.TypedIdent(tok, name, t));
-        localVarMap.Add(local, v);
+        localVarMap.Add(mangledName, v);
       }
       return v;
     }
@@ -684,7 +696,15 @@ namespace BytecodeTranslator {
       return procInfo;
     }
 
-    private Dictionary<uint, ProcedureInfo> declaredStructDefaultCtors = new Dictionary<uint, ProcedureInfo>();
+    /// <summary>
+    /// The keys are the mangled names for the ctors. That is avoid generating name conflicts in the translated
+    /// program. This is needed for things like System.Drawing.Rect, which was referenced in both System.Drawing v2
+    /// as well as System.Drawing v4. Since those assemblies are not unified, the two types are distinct, but
+    /// the (generated) name for the default struct ctors clash.
+    /// NB: This means that if there are two different types with the same full name (minus the assembly name),
+    /// then this will implicitly unify them. This could lead to big trouble!
+    /// </summary>
+    private Dictionary<string, ProcedureInfo> declaredStructDefaultCtors = new Dictionary<string, ProcedureInfo>();
     /// <summary>
     /// Struct "creation" (source code that looks like "new S()" for a struct type S) is modeled
     /// by a call to the nullary "ctor" that initializes all of the structs fields to zero-
@@ -699,14 +719,14 @@ namespace BytecodeTranslator {
       Contract.Requires(structType.IsValueType);
 
       ProcedureInfo procAndFormalMap;
-      var key = structType.InternedKey;
-      if (!this.declaredStructDefaultCtors.TryGetValue(key, out procAndFormalMap)) {
-        var typename = TranslationHelper.TurnStringIntoValidIdentifier(TypeHelper.GetTypeName(structType));
+      var typename = TranslationHelper.TurnStringIntoValidIdentifier(TypeHelper.GetTypeName(structType));
+      var procName = typename + ".#default_ctor";
+      if (!this.declaredStructDefaultCtors.TryGetValue(procName, out procAndFormalMap)) {
         var tok = structType.Token();
         var selfType = this.CciTypeToBoogie(structType); //new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
         var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), true);
         var invars = new Bpl.Formal[] { selfIn };
-        var proc = new Bpl.Procedure(Bpl.Token.NoToken, typename + ".#default_ctor",
+        var proc = new Bpl.Procedure(Bpl.Token.NoToken, procName,
           new Bpl.TypeVariableSeq(),
           new Bpl.VariableSeq(invars),
           new Bpl.VariableSeq(), // out
@@ -716,12 +736,20 @@ namespace BytecodeTranslator {
           );
         this.TranslatedProgram.TopLevelDeclarations.Add(proc);
         procAndFormalMap = new ProcedureInfo(proc, new MethodParameter[0]);
-        this.declaredStructDefaultCtors.Add(key, procAndFormalMap);
+        this.declaredStructDefaultCtors.Add(procName, procAndFormalMap);
       }
       return procAndFormalMap.Decl;
     }
 
-    private Dictionary<uint, ProcedureInfo> declaredStructCopyCtors = new Dictionary<uint, ProcedureInfo>();
+    /// <summary>
+    /// The keys are the mangled names for the ctors. That is avoid generating name conflicts in the translated
+    /// program. This is needed for things like System.Drawing.Rect, which was referenced in both System.Drawing v2
+    /// as well as System.Drawing v4. Since those assemblies are not unified, the two types are distinct, but
+    /// the (generated) name for the default struct ctors clash.
+    /// NB: This means that if there are two different types with the same full name (minus the assembly name),
+    /// then this will implicitly unify them. This could lead to big trouble!
+    /// </summary>
+    private Dictionary<string, ProcedureInfo> declaredStructCopyCtors = new Dictionary<string, ProcedureInfo>();
     private Dictionary<uint, ProcedureInfo> declaredStructEqualityOperators = new Dictionary<uint, ProcedureInfo>();
     /// <summary>
     /// The assignment of one struct value to another is modeled by a method that makes a field-by-field
@@ -736,9 +764,9 @@ namespace BytecodeTranslator {
       Contract.Requires(structType.IsValueType);
 
       ProcedureInfo procAndFormalMap;
-      var key = structType.InternedKey;
-      if (!this.declaredStructCopyCtors.TryGetValue(key, out procAndFormalMap)) {
-        var typename = TranslationHelper.TurnStringIntoValidIdentifier(TypeHelper.GetTypeName(structType));
+      var typename = TranslationHelper.TurnStringIntoValidIdentifier(TypeHelper.GetTypeName(structType));
+      var procName = typename + ".#copy_ctor";
+      if (!this.declaredStructCopyCtors.TryGetValue(procName, out procAndFormalMap)) {
         var tok = structType.Token();
         var selfType = this.CciTypeToBoogie(structType); //new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
         var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), true);
@@ -750,7 +778,7 @@ namespace BytecodeTranslator {
         var req = new Bpl.Requires(true, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, selfInExpr, otherInExpr));
         var ens = new Bpl.Ensures(true, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, selfInExpr, otherInExpr));
 
-        var proc = new Bpl.Procedure(Bpl.Token.NoToken, typename + ".#copy_ctor",
+        var proc = new Bpl.Procedure(Bpl.Token.NoToken, procName,
           new Bpl.TypeVariableSeq(),
           new Bpl.VariableSeq(invars),
           new Bpl.VariableSeq(outvars),
@@ -760,7 +788,7 @@ namespace BytecodeTranslator {
           );
         this.TranslatedProgram.TopLevelDeclarations.Add(proc);
         procAndFormalMap = new ProcedureInfo(proc, new MethodParameter[0]);
-        this.declaredStructCopyCtors.Add(key, procAndFormalMap);
+        this.declaredStructCopyCtors.Add(procName, procAndFormalMap);
       }
       return procAndFormalMap.Decl;
     }
@@ -1124,7 +1152,7 @@ namespace BytecodeTranslator {
     public Dictionary<string, ProcedureInfo> initiallyDeclaredProcedures = new Dictionary<string, ProcedureInfo>();
 
     public void BeginMethod(ITypeReference containingType) {
-      this.localVarMap = new Dictionary<ILocalDefinition, Bpl.LocalVariable>();
+      this.localVarMap = new Dictionary<string, Bpl.LocalVariable>();
       this.localCounter = 0;
       this.methodBeingTranslated = null;
     }
