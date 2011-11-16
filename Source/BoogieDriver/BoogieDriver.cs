@@ -35,8 +35,10 @@ namespace Microsoft.Boogie {
 
     public static void Main(string[] args) {
       Contract.Requires(cce.NonNullElements(args));
+      CommandLineOptions.Install(new CommandLineOptions());
+
       CommandLineOptions.Clo.RunningBoogieFromCommandLine = true;
-      if (CommandLineOptions.Clo.Parse(args) != 1) {
+      if (!CommandLineOptions.Clo.Parse(args)) {
         goto END;
       }
       if (CommandLineOptions.Clo.Files.Count == 0) {
@@ -77,7 +79,6 @@ namespace Microsoft.Boogie {
           goto END;
         }
       }
-      CommandLineOptions.Clo.RunningBoogieOnSsc = false;
       ProcessFiles(CommandLineOptions.Clo.Files);
 
     END:
@@ -223,9 +224,9 @@ namespace Microsoft.Boogie {
       Contract.Requires(0 <= errors && 0 <= inconclusives && 0 <= timeOuts && 0 <= outOfMemories);
       Console.WriteLine();
       if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-        Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.ToolName, verified, errors, errors == 1 ? "" : "s");
+        Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
       } else {
-        Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.ToolName, verified, errors, errors == 1 ? "" : "s");
+        Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
       }
       if (inconclusives != 0) {
         Console.Write(", {0} inconclusive{1}", inconclusives, inconclusives == 1 ? "" : "s");

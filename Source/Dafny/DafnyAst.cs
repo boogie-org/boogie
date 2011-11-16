@@ -867,6 +867,17 @@ namespace Microsoft.Dafny {
     }
   }
 
+  public class DatatypeDestructor : SpecialField
+  {
+    public readonly DatatypeCtor EnclosingCtor;
+
+    public DatatypeDestructor(IToken tok, DatatypeCtor enclosingCtor, string name, string compiledName, string preString, string postString, bool isGhost, Type type, Attributes attributes)
+      : base(tok, name, compiledName, preString, postString, isGhost, false, type, attributes)
+    {
+      EnclosingCtor = enclosingCtor;
+    }
+  }
+
   public class CouplingInvariant : MemberDecl {
     public readonly Expression Expr;
     public readonly List<IToken/*!*/>/*!*/ Toks;
@@ -2578,6 +2589,27 @@ namespace Microsoft.Dafny {
       get {
         yield return E0;
         yield return E1;
+      }
+    }
+  }
+
+  public class LetExpr : Expression
+  {
+    public readonly List<BoundVar> Vars;
+    public readonly List<Expression> RHSs;
+    public readonly Expression Body;
+    public LetExpr(IToken tok, List<BoundVar> vars, List<Expression> rhss, Expression body)
+      : base(tok) {
+      Vars = vars;
+      RHSs = rhss;
+      Body = body;
+    }
+    public override IEnumerable<Expression> SubExpressions {
+      get {
+        foreach (var rhs in RHSs) {
+          yield return rhs;
+        }
+        yield return Body;
       }
     }
   }

@@ -197,27 +197,35 @@ namespace BytecodeTranslator {
       modules = new List<IModule>();
       var contractExtractors = new Dictionary<IUnit, IContractProvider>();
       var pdbReaders = new Dictionary<IUnit, PdbReader>();
+      #region Load *all* of the assemblies before doing anything else so that they can all vote on unification matters
       foreach (var a in assemblyNames) {
         var module = host.LoadUnitFrom(a) as IModule;
         if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
           Console.WriteLine(a + " is not a PE file containing a CLR module or assembly, or an error occurred when loading it.");
           Console.WriteLine("Skipping it, continuing with other input assemblies");
         }
+        modules.Add(module);
+      }
+      #endregion
+      #region Decompile all of the assemblies
+      var decompiledModules = new List<IModule>();
+      foreach (var m in modules) {
         PdbReader/*?*/ pdbReader = null;
-        string pdbFile = Path.ChangeExtension(module.Location, "pdb");
+        string pdbFile = Path.ChangeExtension(m.Location, "pdb");
         if (File.Exists(pdbFile)) {
           Stream pdbStream = File.OpenRead(pdbFile);
           pdbReader = new PdbReader(pdbStream, host);
         }
-        module = Decompiler.GetCodeModelFromMetadataModel(host, module, pdbReader) as IModule;
+        var m2 = Decompiler.GetCodeModelFromMetadataModel(host, m, pdbReader) as IModule;
         // The decompiler does not turn calls to Assert/Assume into Code Model nodes
-        module = new Microsoft.Cci.MutableContracts.ContractExtractor.AssertAssumeExtractor(host, pdbReader).Rewrite(module);
-
-        host.RegisterAsLatest(module);
-        modules.Add(module);
-        contractExtractors.Add(module, host.GetContractExtractor(module.UnitIdentity));
-        pdbReaders.Add(module, pdbReader);
+        m2 = new Microsoft.Cci.MutableContracts.ContractExtractor.AssertAssumeExtractor(host, pdbReader).Rewrite(m2);
+        decompiledModules.Add(m2);
+        host.RegisterAsLatest(m2);
+        contractExtractors.Add(m2, host.GetContractExtractor(m2.UnitIdentity));
+        pdbReaders.Add(m2, pdbReader);
       }
+      modules = decompiledModules;
+      #endregion
       #endregion
 
       #region Assemblies to translate (stubs)
