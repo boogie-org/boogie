@@ -909,7 +909,7 @@ namespace VC {
     }
 
 
-    protected class CounterexampleCollector : VerifierCallback {
+    public class CounterexampleCollector : VerifierCallback {
       [ContractInvariantMethod]
       void ObjectInvariant() {
         Contract.Invariant(cce.NonNullElements(examples));
