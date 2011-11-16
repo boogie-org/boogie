@@ -48,8 +48,6 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     public List<StateNode> states = new List<StateNode>();
     public Dictionary<string, string> localVariableNames = new Dictionary<string, string>();
 
-    Dictionary<string, int> datatypePrefixUse = new Dictionary<string, int>();
-    Dictionary<Model.Element, string> datatypeShortName = new Dictionary<Model.Element, string>();
     Dictionary<Model.Element, string> datatypeLongName = new Dictionary<Model.Element, string>();
 
     Dictionary<int, string> fileNameMapping = new Dictionary<int, string>();
@@ -1222,27 +1220,29 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
 
       if (dataTypeType != null) {
-        if (ctor != null && ctor.Args.Length == 0)
+        if (ctor != null)
           sb.Append(ctor.Func.Name.Substring(3));
         else
           sb.Append(DataTypeShortName(elt, dataTypeType));
-        if (level > 0 && ctor != null && ctor.Args.Length > 0) {
-          sb.Append("(");
-          for (int i = 0; i < ctor.Args.Length; ++i) {
-            if (i != 0) sb.Append(", ");
-            len += DataTypeToString(sb, level - 1, ctor.Args[i]);
+        if (ctor != null && ctor.Args.Length > 0) {
+          if (level <= 0) sb.Append("(...)");
+          else {
+            sb.Append("(");
+            for (int i = 0; i < ctor.Args.Length; ++i) {
+              if (i != 0) sb.Append(", ");
+              len += DataTypeToString(sb, level - 1, ctor.Args[i]);
+            }
+            sb.Append(")");
           }
-          sb.Append(")");
         }
+      } else  {
+        sb.Append(CanonicalName(elt));
       }
       return len;
     }
 
     private string DataTypeShortName(Model.Element elt, string tp)
     {
-      string res;
-      if (datatypeShortName.TryGetValue(elt, out res)) return res;
-
       var baseName = tp;
 
       var hd = model.MkFunc("DGH#" + tp, 1).TryEval(elt);
@@ -1253,14 +1253,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         }
       }
 
-      var useCnt = 0;
-      if (!datatypePrefixUse.TryGetValue(baseName, out useCnt))
-        useCnt = -1;
-      useCnt++;
-      datatypePrefixUse[baseName] = useCnt;
-      res = baseName + "." + useCnt.ToString();
-      datatypeShortName[elt] = res;
-      return res;
+      return baseName;
     }
 
     private string CanonicalBaseNameCore(string name, Model.Element elt, bool doDatatypes, ref NameSeqSuffix suff)
@@ -1297,6 +1290,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         if (dtpName != null) {
           var sb = new StringBuilder();
           string prev = null;
+          datatypeLongName[elt] = "*SELF*"; // in case we recurse (but this shouldn't happen)
           for (int lev = 0; lev < 10; lev++) {
             sb.Length = 0;
             var len = DataTypeToString(sb, lev, elt);
@@ -1305,7 +1299,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           }
 
           datatypeLongName[elt] = prev;
-          suff = NameSeqSuffix.None;
+          suff = NameSeqSuffix.WhenNonZero;
           return prev;
         }
       }
@@ -1334,7 +1328,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         return lit;
       }
       if (datatypeLongName.TryGetValue(elt, out lit)) {
-        suff = NameSeqSuffix.None;
+        suff = NameSeqSuffix.WhenNonZero;
         return lit;
       }
       
