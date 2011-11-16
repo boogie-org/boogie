@@ -894,7 +894,7 @@ namespace VC {
       string log = logFilePath;
       if (log != null && !log.Contains("@PROC@") && checkers.Count > 0)
         log = log + "." + checkers.Count;
-      Checker ch = new Checker(this, program, log, appendLogFile, impl, timeout);
+      Checker ch = new Checker(this, program, log, appendLogFile, timeout);
       Contract.Assert(ch != null);
       checkers.Add(ch);
       return ch;

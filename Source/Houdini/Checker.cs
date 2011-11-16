@@ -50,7 +50,7 @@ namespace Microsoft.Boogie.Houdini {
       ModelViewInfo mvInfo;
       Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
       Hashtable/*<int, Absy!>*/ label2absy;
-      checker = new Checker(this, program, logFilePath, appendLogFile, impl, CommandLineOptions.Clo.ProverKillTime);
+      checker = new Checker(this, program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime);
       if (!(checker.TheoremProver is Z3ProcessTheoremProver || checker.TheoremProver is SMTLibProcessTheoremProver)) {
         throw new Exception("HdnChecker only works with z3");
       }
