@@ -25,6 +25,7 @@ namespace VC
         private Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
         public bool PersistCallTree;
         public static Dictionary<string, int> callTree = null;
+        public int numInlined = 0;
         public readonly static string recordProcName = "boogie_si_record";
 
         [ContractInvariantMethod]
@@ -1575,6 +1576,8 @@ namespace VC
             }
             #endregion
             coverageManager.stop();
+
+            numInlined = (calls.candidateParent.Keys.Count + 1) - (calls.currCandidates.Count);
 
             // Store current call tree
             if (PersistCallTree && (ret == Outcome.Correct || ret == Outcome.Errors || ret == Outcome.ReachedBound))
