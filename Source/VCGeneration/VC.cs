@@ -2964,10 +2964,11 @@ namespace VC {
             if (!(kvp.Key is LiteralExpr) && kvp.Key.ToString() != o.ToString()) {
               string boogieExpr;
               // check whether we are handling BPL or SSC input
-              if (CommandLineOptions.Clo.RunningBoogieOnSsc) {
-                boogieExpr = Helpers.PrettyPrintBplExpr(kvp.Key);
-              } else {
+              bool runningOnBpl = CommandLineOptions.Clo.Files.Exists(fn => Path.GetExtension(fn).ToLower() == "bpl");
+              if (runningOnBpl) {
                 boogieExpr = kvp.Key.ToString();
+              } else {
+                boogieExpr = Helpers.PrettyPrintBplExpr(kvp.Key);
               }
               relatedInformation.Add("(internal state dump): " + string.Format("{0} == {1}", boogieExpr, o));
             }
