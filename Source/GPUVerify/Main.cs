@@ -134,6 +134,8 @@ namespace GPUVerify
 
             if (CommandLineOptions.DividedArray)
             {
+                bool FoundArray = CommandLineOptions.ArrayToCheck == null;
+
                 foreach (Variable v in g.NonLocalState.getAllNonLocalVariables())
                 {
                     if (CommandLineOptions.DividedAccesses)
@@ -163,9 +165,20 @@ namespace GPUVerify
                     }
                     else
                     {
-                        doit("temp_" + v.Name + ".bpl", v, -1, -1);
+                        if (CommandLineOptions.ArrayToCheck == null || CommandLineOptions.ArrayToCheck.Equals(v.Name))
+                        {
+                            FoundArray = true;
+                            doit("temp_" + v.Name, v, -1, -1);
+                        }
                     }
                 }
+
+                if (!FoundArray)
+                {
+                    Console.WriteLine("Did not find a non-local array named " + CommandLineOptions.ArrayToCheck);
+                    Environment.Exit(1);
+                }
+
             }
             else
             {

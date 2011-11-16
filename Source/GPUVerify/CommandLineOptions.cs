@@ -20,6 +20,7 @@ namespace GPUVerify
         public static bool Inference;
         public static string invariantsFile = null;
         public static bool DividedArray = false;
+        public static string ArrayToCheck = null;
         public static bool DividedAccesses = false;
         public static bool Eager = false;
 
@@ -77,6 +78,10 @@ namespace GPUVerify
 
                     case "-dividedArray":
                     case "/dividedArray":
+                    if (hasColonArgument)
+                    {
+                        ArrayToCheck = afterColon;
+                    }
                     DividedArray = true;
 
                     break;
