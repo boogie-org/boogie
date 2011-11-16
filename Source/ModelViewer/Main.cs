@@ -444,7 +444,7 @@ namespace Microsoft.Boogie.ModelViewer
     private void ExpandParents(SkeletonItem item)
     {
       item = item.parent;
-      while (item != null && !item.Expanded) {
+      while (item != null) {
         item.Expanded = true;
         item = item.parent;
       }
