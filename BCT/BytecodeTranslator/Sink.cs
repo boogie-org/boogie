@@ -133,11 +133,12 @@ namespace BytecodeTranslator {
         return heap.RefType; // structs are kept on the heap with special rules about assignment
       else if (type.IsEnum)
         return Bpl.Type.Int; // The underlying type of an enum is always some kind of integer
-      else if (type is IGenericParameter) {
-        var gp = type as IGenericParameter;
-        if (gp.MustBeReferenceType || gp.MustBeValueType)
+      else if (type is IGenericParameterReference) {
+        var gp = type.ResolvedType as IGenericParameter;
+        if (gp.MustBeReferenceType)// || gp.MustBeValueType)
           return heap.RefType;
-        foreach (var c in gp.Constraints){
+        foreach (var c in gp.Constraints) {
+          if (TypeHelper.TypesAreEquivalent(c, type.PlatformType.SystemValueType)) continue;
           return CciTypeToBoogie(c);
         }
         return heap.BoxType;
@@ -214,7 +215,7 @@ namespace BytecodeTranslator {
       typeName = TranslationHelper.TurnStringIntoValidIdentifier(typeName);
       var mangledName = String.Format("{0}_{1}", name, typeName);
       if (!localVarMap.TryGetValue(mangledName, out v)) {
-        v = new Bpl.LocalVariable(tok, new Bpl.TypedIdent(tok, name, t));
+        v = new Bpl.LocalVariable(tok, new Bpl.TypedIdent(tok, mangledName, t));
         localVarMap.Add(mangledName, v);
       }
       return v;

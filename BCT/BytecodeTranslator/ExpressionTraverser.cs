@@ -318,20 +318,32 @@ namespace BytecodeTranslator
     /// <summary>
     /// If the expression's type is a generic parameter (either method or type),
     /// then this returns a "unboxed" expression, i.e., the value as a ref.
-    /// Otherwise it just translates the expression and skips the address-of
-    /// operation.
+    /// Otherwise it just translates the underlying expression and boxes it.
     /// </summary>
     public override void TraverseChildren(IAddressOf addressOf)
     {
       var t = addressOf.Expression.Type;
+      var boogieT = this.sink.CciTypeToBoogie(t);
+
       if (t is IGenericParameterReference) {
-        // then the expression will be represented by something of type Box
-        // but the address of it must be a ref, so do the conversion
-        this.Traverse(addressOf.Expression);
-        var e = this.TranslatedExpressions.Pop();
-        this.TranslatedExpressions.Push(this.sink.Heap.Unbox(addressOf.Token(), this.sink.Heap.RefType, e));
+        if (boogieT == this.sink.Heap.BoxType) {
+          // then the expression will be represented by something of type Box
+          // but the address of it must be a ref, so do the conversion
+          this.Traverse(addressOf.Expression);
+          var e = this.TranslatedExpressions.Pop();
+          this.TranslatedExpressions.Push(this.sink.Heap.Unbox(addressOf.Token(), this.sink.Heap.RefType, e));
+        } else {
+          this.Traverse(addressOf.Expression);
+        }
       } else {
         this.Traverse(addressOf.Expression);
+        var e = this.TranslatedExpressions.Pop();
+
+        Bpl.Variable a = this.sink.CreateFreshLocal(addressOf.Type);
+        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(Bpl.Token.NoToken, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
+        this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(Bpl.Token.NoToken, Bpl.Expr.Ident(a), Bpl.Expr.Ident(this.sink.Heap.BoxField), e, AccessType.Heap, boogieT));
+        this.TranslatedExpressions.Push(Bpl.Expr.Ident(a));
+
       }
     }
     #endregion
@@ -676,6 +688,16 @@ namespace BytecodeTranslator
       #region Create the 'this' argument for the function call
       thisExpr = null;
       if (thisArg != null) {
+
+        // Special case! thisArg is going to be an AddressOf expression if the receiver is a value-type
+        // But if the method's containing type is something that doesn't get translated as a Ref, then
+        // the AddressOf node should be ignored.
+        var addrOf = thisArg as IAddressOf;
+        var boogieType = this.sink.CciTypeToBoogie(methodToCall.ContainingType);
+        if (addrOf != null && boogieType != this.sink.Heap.RefType) {
+          thisArg = addrOf.Expression;
+        }
+
         this.Traverse(thisArg);
 
         var e = this.TranslatedExpressions.Pop();
@@ -700,10 +722,27 @@ namespace BytecodeTranslator
         if (penum.Current == null) {
           throw new TranslationException("More arguments than parameters in method call");
         }
-        this.Traverse(exp);
+
+        var expressionToTraverse = exp;
+        Bpl.Type boogieTypeOfExpression;
+
+        // Special case! exp can be an AddressOf expression if it is a value type being passed by reference.
+        // But since we pass reference parameters by in-out value passing, need to short-circuit the
+        // AddressOf node if the underlying type is not a Ref.
+        var addrOf = exp as IAddressOf;
+        if (addrOf != null) {
+          boogieTypeOfExpression = this.sink.CciTypeToBoogie(addrOf.Expression.Type);
+          if (boogieTypeOfExpression != this.sink.Heap.RefType) {
+            expressionToTraverse = addrOf.Expression;
+          }
+        }
+
+        boogieTypeOfExpression = this.sink.CciTypeToBoogie(expressionToTraverse.Type);
+        this.Traverse(expressionToTraverse);
+
         Bpl.Expr e = this.TranslatedExpressions.Pop();
-        if (penum.Current.Type is IGenericTypeParameter || penum.Current.Type is IGenericMethodParameter)
-          inexpr.Add(sink.Heap.Box(token, this.sink.CciTypeToBoogie(exp.Type), e));
+        if (penum.Current.Type is IGenericParameterReference && this.sink.CciTypeToBoogie(penum.Current.Type) == this.sink.Heap.BoxType)
+          inexpr.Add(sink.Heap.Box(token, this.sink.CciTypeToBoogie(expressionToTraverse.Type), e));
         else
           inexpr.Add(e);
         if (penum.Current.IsByReference) {
@@ -711,7 +750,7 @@ namespace BytecodeTranslator
           if (unboxed == null) {
             throw new TranslationException("Trying to pass a complex expression for an out or ref parameter");
           }
-          if (penum.Current.Type is IGenericParameter) {
+          if (penum.Current.Type is IGenericParameterReference) {
             var boogieType = this.sink.CciTypeToBoogie(penum.Current.Type);
             if (boogieType == this.sink.Heap.BoxType) {
               Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(sink.CreateFreshLocal(this.sink.Heap.BoxType));
@@ -747,8 +786,8 @@ namespace BytecodeTranslator
         if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
           Bpl.Variable v = this.sink.CreateFreshLocal(methodToCall.ResolvedMethod.Type.ResolvedType);
           Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(token, v);
-          if (resolvedMethod.Type is IGenericParameter) {
-            var boogieType = this.sink.CciTypeToBoogie(methodToCall.Type);
+          if (resolvedMethod.Type is IGenericParameterReference) {
+            var boogieType = this.sink.CciTypeToBoogie(resolvedMethod.Type);
             if (boogieType == this.sink.Heap.BoxType) {
               Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
               toBoxed[unboxed] = boxed;
