@@ -158,7 +158,6 @@ namespace Microsoft.Boogie {
         }
         foreach (Declaration decl in prog.TopLevelDeclarations) {
           Contract.Assert(decl != null);
-          bool expand = false;
           Axiom ax = decl as Axiom;
           if (ax != null) {
             ctx.AddAxiom(ax, null);
