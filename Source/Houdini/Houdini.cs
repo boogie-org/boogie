@@ -686,7 +686,7 @@ namespace Microsoft.Boogie.Houdini {
       this.NotifyStart(program, houdiniConstants.Keys.Count);
 
       while (current.WorkList.Count > 0) {
-        System.GC.Collect();
+        //System.GC.Collect();
         this.NotifyIteration();
 
         VCExpr axiom = BuildAxiom(current.Assignment);
@@ -722,7 +722,7 @@ namespace Microsoft.Boogie.Houdini {
 
       while (current.WorkList.Count > 0) {
         bool exceptional = false;
-        System.GC.Collect();
+        //System.GC.Collect();
         this.NotifyIteration();
 
         current.Implementation = current.WorkList.Peek();
@@ -763,7 +763,7 @@ namespace Microsoft.Boogie.Houdini {
 
       while (current.WorkList.Count > 0) {
         bool exceptional = false;
-        System.GC.Collect();
+        //System.GC.Collect();
         this.NotifyIteration();
 
         current.Implementation = current.WorkList.Peek();
@@ -960,7 +960,7 @@ namespace Microsoft.Boogie.Houdini {
 
         do {
           if (pastFirstIter) {
-            System.GC.Collect();
+            //System.GC.Collect();
             this.NotifyIteration();
           }
 
@@ -1027,7 +1027,7 @@ namespace Microsoft.Boogie.Houdini {
           outcome = ProverInterface.Outcome.Undetermined;
 
           if (pastFirstIter) {
-            System.GC.Collect();
+            //System.GC.Collect();
             this.NotifyIteration();
           }
 

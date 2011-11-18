@@ -585,7 +585,6 @@ Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
   | { Spec<pre, mods, post> }
     ImplBody<out locals, out stmtList>
     (.
-      // here we attach kv only to the Procedure, not its implementation
       impl = new Implementation(x, x.val, typeParams,
                                 Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
     .)
