@@ -388,6 +388,27 @@ namespace Microsoft.Boogie {
       codeCopier.OldSubst = null;
     }
 
+    private Cmd InlinedRequires(Implementation impl, CallCmd callCmd, Requires req) {
+      Requires/*!*/ reqCopy = (Requires/*!*/)cce.NonNull(req.Clone());
+      if (req.Free)
+        reqCopy.Condition = Expr.True;
+      else 
+        reqCopy.Condition = codeCopier.CopyExpr(req.Condition);
+      AssertCmd/*!*/ a = new AssertRequiresCmd(callCmd, reqCopy);
+      a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
+      return a;
+    }
+
+    private Cmd InlinedEnsures(Implementation impl, CallCmd callCmd, Ensures ens) {
+      if (impl.FindExprAttribute("inline") != null && !ens.Free) {
+        Ensures/*!*/ ensCopy = (Ensures/*!*/)cce.NonNull(ens.Clone());
+        ensCopy.Condition = codeCopier.CopyExpr(ens.Condition);
+        return new AssertEnsuresCmd(ensCopy);
+      }
+      else {
+        return new AssumeCmd(ens.tok, codeCopier.CopyExpr(ens.Condition));
+      }
+    }
 
     // result[0] is the entry block
     protected List<Block/*!*/>/*!*/ CreateInlinedBlocks(CallCmd callCmd, Implementation impl, string nextBlockLabel) {
@@ -418,17 +439,20 @@ namespace Microsoft.Boogie {
         inCmds.Add(cmd);
       }
 
-      // inject non-free requires
+      // inject requires
       for (int i = 0; i < proc.Requires.Length; i++) {
         Requires/*!*/ req = cce.NonNull(proc.Requires[i]);
+        inCmds.Add(InlinedRequires(impl, callCmd, req));
+        /*
         if (!req.Free && !QKeyValue.FindBoolAttribute(req.Attributes, "candidate")) {
-          Requires/*!*/ reqCopy = (Requires/*!*/)cce.NonNull(req.Clone());
+          Requires reqCopy = (Requires)cce.NonNull(req.Clone());
           reqCopy.Condition = codeCopier.CopyExpr(req.Condition);
-          AssertCmd/*!*/ a = new AssertRequiresCmd(callCmd, reqCopy);
+          AssertCmd a = new AssertRequiresCmd(callCmd, reqCopy);
           Contract.Assert(a != null);
           a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
           inCmds.Add(a);
         }
+        */
       }
 
       VariableSeq locVars = cce.NonNull(impl.OriginalLocVars);
@@ -483,16 +507,19 @@ namespace Microsoft.Boogie {
       // create out block
       CmdSeq outCmds = new CmdSeq();
 
-      // inject non-free ensures
+      // inject ensures
       for (int i = 0; i < proc.Ensures.Length; i++) {
         Ensures/*!*/ ens = cce.NonNull(proc.Ensures[i]);
+        outCmds.Add(InlinedEnsures(impl, callCmd, ens));
+        /*
         if (!ens.Free && !QKeyValue.FindBoolAttribute(ens.Attributes, "candidate")) {
-          Ensures/*!*/ ensCopy = (Ensures/*!*/)cce.NonNull(ens.Clone());
+          Ensures ensCopy = (Ensures)cce.NonNull(ens.Clone());
           ensCopy.Condition = codeCopier.CopyExpr(ens.Condition);
-          AssertCmd/*!*/ a = new AssertEnsuresCmd(ensCopy);
+          AssertCmd a = new AssertEnsuresCmd(ensCopy);
           Contract.Assert(a != null);
           outCmds.Add(a);
         }
+        */
       }
 
       // assign out params

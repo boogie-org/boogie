@@ -32,7 +32,7 @@ procedure {:inline 1} incdec(x: int, y: int) returns (z: int);
 
 
 
-implementation incdec(x: int, y: int) returns (z: int)
+implementation {:inline 1} incdec(x: int, y: int) returns (z: int)
 {
 
   anon0:
@@ -49,7 +49,7 @@ procedure {:inline 1} inc(x: int, i: int) returns (y: int);
 
 
 
-implementation inc(x: int, i: int) returns (y: int)
+implementation {:inline 1} inc(x: int, i: int) returns (y: int)
 {
 
   anon0:
@@ -65,7 +65,7 @@ procedure {:inline 1} dec(x: int, i: int) returns (y: int);
 
 
 
-implementation dec(x: int, i: int) returns (y: int)
+implementation {:inline 1} dec(x: int, i: int) returns (y: int)
 {
 
   anon0:
@@ -160,7 +160,7 @@ procedure {:inline 1} incdec(x: int, y: int) returns (z: int);
   ensures z == x + 1 - y;
 
 
-implementation incdec(x: int, y: int) returns (z: int)
+implementation {:inline 1} incdec(x: int, y: int) returns (z: int)
 {
   var inline$dec$0$x: int;
   var inline$dec$0$i: int;
@@ -220,7 +220,7 @@ procedure {:inline 1} increase(i: int) returns (k: int);
 
 
 
-implementation increase(i: int) returns (k: int)
+implementation {:inline 1} increase(i: int) returns (k: int)
 {
   var j: int;
 
@@ -298,7 +298,7 @@ procedure {:inline 3} recursive(x: int) returns (y: int);
 
 
 
-implementation recursive(x: int) returns (y: int)
+implementation {:inline 3} recursive(x: int) returns (y: int)
 {
   var k: int;
 
@@ -421,7 +421,7 @@ after inlining procedure calls
 procedure {:inline 3} recursive(x: int) returns (y: int);
 
 
-implementation recursive(x: int) returns (y: int)
+implementation {:inline 3} recursive(x: int) returns (y: int)
 {
   var k: int;
   var inline$recursive$0$k: int;
@@ -560,7 +560,7 @@ procedure {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: int, fo
 
 
 
-implementation find(A: [int]int, size: int, x: int) returns (ret: int, found: bool)
+implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: int, found: bool)
 {
   var i: int;
   var b: bool;
@@ -606,7 +606,7 @@ procedure {:inline 3} check(A: [int]int, i: int, c: int) returns (ret: bool);
 
 
 
-implementation check(A: [int]int, i: int, c: int) returns (ret: bool)
+implementation {:inline 3} check(A: [int]int, i: int, c: int) returns (ret: bool)
 {
 
   anon0:
@@ -746,7 +746,7 @@ after inlining procedure calls
 procedure {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: int, found: bool);
 
 
-implementation find(A: [int]int, size: int, x: int) returns (ret: int, found: bool)
+implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: int, found: bool)
 {
   var i: int;
   var b: bool;
@@ -866,7 +866,7 @@ procedure {:inline 2} foo();
 
 
 
-implementation foo()
+implementation {:inline 2} foo()
 {
 
   anon0:
@@ -882,7 +882,7 @@ procedure {:inline 2} foo1();
 
 
 
-implementation foo1()
+implementation {:inline 2} foo1()
 {
 
   anon0:
@@ -898,7 +898,7 @@ procedure {:inline 2} foo2();
 
 
 
-implementation foo2()
+implementation {:inline 2} foo2()
 {
 
   anon0:
@@ -914,7 +914,7 @@ procedure {:inline 2} foo3();
 
 
 
-implementation foo3()
+implementation {:inline 2} foo3()
 {
 
   anon0:
@@ -947,7 +947,7 @@ procedure {:inline 2} foo();
   modifies x;
 
 
-implementation foo()
+implementation {:inline 2} foo()
 {
   var inline$foo$0$x: int;
   var inline$foo$1$x: int;
@@ -992,7 +992,7 @@ procedure {:inline 2} foo1();
   modifies x;
 
 
-implementation foo1()
+implementation {:inline 2} foo1()
 {
   var inline$foo2$0$x: int;
   var inline$foo3$0$x: int;
@@ -1097,7 +1097,7 @@ procedure {:inline 2} foo2();
   modifies x;
 
 
-implementation foo2()
+implementation {:inline 2} foo2()
 {
   var inline$foo3$0$x: int;
   var inline$foo1$0$x: int;
@@ -1202,7 +1202,7 @@ procedure {:inline 2} foo3();
   modifies x;
 
 
-implementation foo3()
+implementation {:inline 2} foo3()
 {
   var inline$foo1$0$x: int;
   var inline$foo2$0$x: int;
@@ -1532,7 +1532,7 @@ procedure {:inline 1} foo();
 
 
 
-implementation foo()
+implementation {:inline 1} foo()
 {
 
   anon0:
@@ -1605,7 +1605,7 @@ procedure {:inline 1} foo();
   modifies g;
 
 
-implementation foo()
+implementation {:inline 1} foo()
 {
   var inline$bar$0$g: int;
 

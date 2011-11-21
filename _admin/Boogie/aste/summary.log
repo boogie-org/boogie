@@ -1,15 +1,15 @@
-# Aste started: 2011-11-16 07:00:04
+# Aste started: 2011-11-21 07:00:05
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2011-11-16 07:03:29] SpecSharp revision: 441525d3599d
-# [2011-11-16 07:03:29] SscBoogie revision: 441525d3599d
-# [2011-11-16 07:05:22] Boogie revision: 2953138bd568
-[2011-11-16 07:06:54] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
+# [2011-11-21 07:03:42] SpecSharp revision: fcf3177ec66b
+# [2011-11-21 07:03:42] SscBoogie revision: fcf3177ec66b
+# [2011-11-21 07:05:30] Boogie revision: 1af8119efee0
+[2011-11-21 07:06:49] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
 
     1>corflags : warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
     warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-[2011-11-16 07:07:49] [Error] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+[2011-11-21 07:08:17] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -20,48 +20,11 @@
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(111,3): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(116,5): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)' overrides 'Microsoft.Boogie.Expr.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(119,65): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.ComputeFreeVariables(Microsoft.Boogie.Set)' overrides 'Microsoft.Boogie.Expr.ComputeFreeVariables(Microsoft.Boogie.Set)', thus cannot add Requires.
-    D:\Temp\aste\Boogie\Source\Core\CommandLineOptions.cs(267,7): error CC1002: In method Microsoft.Boogie.CommandLineOptionEngine.Parse(System.String[]): Detected a call to Result with 'System.Int32', should be 'System.Boolean'.
-    D:\Temp\aste\Boogie\Source\Core\CommandLineOptions.cs(267,7): error CC1002: In method Microsoft.Boogie.CommandLineOptionEngine.Parse(System.String[]): Detected a call to Result with 'System.Int32', should be 'System.Boolean'.
-    D:\Temp\aste\Boogie\Source\Core\CommandLineOptions.cs(267,7): error CC1002: In method Microsoft.Boogie.CommandLineOptionEngine.Parse(System.String[]): Detected a call to Result with 'System.Int32', should be 'System.Boolean'.
-    C:\Program Files (x86)\Microsoft\Contracts\MsBuild\v4.0\Microsoft.CodeContracts.targets(240,5): error MSB3073: The command ""C:\Program Files (x86)\Microsoft\Contracts\Bin\ccrewrite" "@Coreccrewrite.rsp"" exited with code 3.
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Checked\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Checked\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Checked\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Checked\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Checked\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Checked\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Checked\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Checked\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Checked\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Checked\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Checked\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Checked\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Checked\Provers.Simplify.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Checked\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Checked\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Checked\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Checked\Provers.Simplify.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Checked\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Checked\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Checked\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Checked\Provers.Simplify.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\AbsInt\bin\Checked\AbsInt.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Checked\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Checked\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Z3\bin\Checked\Provers.Z3.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCExpr\bin\Checked\VCExpr.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Checked\Provers.Simplify.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\bin\Checked\Provers.SMTLib.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Checked\Core.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\VCGeneration\bin\Checked\VCGeneration.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Z3\bin\Checked\Provers.Z3.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\TPTP\bin\Checked\Provers.TPTP.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Isabelle\bin\Checked\Provers.Isabelle.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\Simplify\bin\Checked\Provers.Simplify.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Provers\SMTLib\bin\Checked\Provers.SMTLib.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Houdini\bin\Checked\Houdini.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\AbsInt\bin\Checked\AbsInt.dll' could not be found
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Core\bin\Checked\Core.dll' could not be found
+    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(247,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(266,7): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1695,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1855,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(852,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0162: Unreachable code detected
@@ -71,14 +34,10 @@
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)' overrides 'Microsoft.Boogie.Expr.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.ComputeFreeVariables(Microsoft.Boogie.Set)' overrides 'Microsoft.Boogie.Expr.ComputeFreeVariables(Microsoft.Boogie.Set)', thus cannot add Requires.
-    1 error
-    1 error
-    2 error
-    3 error
-    3 error
-    4 error
-    4 error
-    5 error
-    6 error
-    9 error
-    11 failed
+    warning CS0162: Unreachable code detected
+    warning CS0162: Unreachable code detected
+    warning CS0162: Unreachable code detected
+    warning CS0162: Unreachable code detected
+    warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
+[2011-11-21 08:04:18] 0 out of 32 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2011-11-21 08:04:59] Released nightly of Boogie

@@ -27,6 +27,7 @@ namespace VC
         public static Dictionary<string, int> callTree = null;
         public int numInlined = 0;
         public readonly static string recordProcName = "boogie_si_record";
+        private bool useSummary;
 
         [ContractInvariantMethod]
         void ObjectInvariant()
@@ -47,6 +48,7 @@ namespace VC
 
             this.GenerateVCsForStratifiedInlining(program);
             PersistCallTree = false;
+            useSummary = false;
         }
 
         public static RECORD_TYPES getRecordType(Bpl.Type type)
@@ -1053,9 +1055,11 @@ namespace VC
                     return checker.numQueries;
                 }
             }
+            // For making summary queries on the side
+            public StratifiedCheckerInterface checker2;
 
             public VerificationState(VCExpr vcMain, FCallHandler calls,
-                ProverInterface.ErrorHandler reporter, Checker checker)
+                ProverInterface.ErrorHandler reporter, Checker checker, Checker checker2)
             {
                 this.vcMain = vcMain;
                 this.calls = calls;
@@ -1063,13 +1067,18 @@ namespace VC
                 if (checker.TheoremProver is ApiProverInterface)
                 {
                     this.checker = new ApiChecker(vcMain, reporter , checker);
+                    if(checker2 != null)
+                      this.checker2 = new ApiChecker(VCExpressionGenerator.False, new EmptyErrorHandler(), checker2); 
                 }
                 else
                 {
                     this.checker = new NormalChecker(vcMain, reporter, checker);
+                    if(checker2 != null)
+                      this.checker2 = new NormalChecker(VCExpressionGenerator.False, new EmptyErrorHandler(), checker2); 
                 }
                 vcSize = 0;
                 expansionCount = 0;
+                
             }
 
             public void updateMainVC(VCExpr vcMain)
@@ -1121,7 +1130,7 @@ namespace VC
             vcMain = calls.Mutate(vcMain, true);
 
             // Put all of the necessary state into one object
-            var vState = new VerificationState(vcMain, calls, new EmptyErrorHandler(), checker);
+            var vState = new VerificationState(vcMain, calls, new EmptyErrorHandler(), checker, null);
             vState.coverageManager = null;
 
             // We'll restore the original state of the theorem prover at the end
@@ -1326,13 +1335,23 @@ namespace VC
                     incrementalSearch = false;
                     createVConDemand = false;
                     break;
+                case 6:
+                    incrementalSearch = true;
+                    createVConDemand = true;
+                    useSummary = true;
+                    break;
             }
 
             #endregion
 
             // Get the checker
             Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime); Contract.Assert(checker != null);
-            
+            Checker checker2 = null;
+            if (useSummary)
+            {
+                checker2 = new Checker(this, program, "checker2.txt", true, CommandLineOptions.Clo.ProverKillTime);
+            }
+
             // Record current time
             var startTime = DateTime.Now;
 
@@ -1370,13 +1389,17 @@ namespace VC
             calls.setCurrProcAsMain();
             vc = calls.Mutate(vc, true);
             reporter.SetCandidateHandler(calls);
+            calls.id2VC.Add(0, vc);
+
+            // Identify summary candidates: Match ensure clauses with the appropriate call site
+            if (useSummary) calls.matchSummaries();
 
             // create a process for displaying coverage information
             var coverageManager = new CoverageGraphManager(calls);
             coverageManager.addMain();
 
             // Put all of the necessary state into one object
-            var vState = new VerificationState(vc, calls, reporter, checker);
+            var vState = new VerificationState(vc, calls, reporter, checker, checker2);
             vState.vcSize += SizeComputingVisitor.ComputeSize(vc);
             vState.coverageManager = coverageManager;
             
@@ -1441,6 +1464,9 @@ namespace VC
 
             int iters = 0;
 
+            // for blocking candidates (and focussing on a counterexample)
+            var block = new HashSet<int>();
+
             // Process tasks while not done. We're done when:
             //   case 1: (correct) We didn't find a bug (either an over-approx query was valid
             //                     or we reached the recursion bound) and the task is "step"
@@ -1487,9 +1513,21 @@ namespace VC
                         break;
                     }
 
+                    var summary = calls.getSummary();
+                    if (useSummary && summary != null)
+                    {
+                        vState.checker.Push();
+                        vState.checker.AddAxiom(summary);
+                    }
+
                     // Stratified Step
-                    ret = stratifiedStep(bound, vState);
+                    ret = stratifiedStep(bound, vState, block);
                     iters++;
+
+                    if (useSummary && summary != null)
+                    {
+                        vState.checker.Pop();
+                    }
 
                     // Sorry, out of luck (time/memory)
                     if (ret == Outcome.Inconclusive || ret == Outcome.OutOfMemory || ret == Outcome.TimedOut)
@@ -1507,27 +1545,45 @@ namespace VC
                     }
                     else if (ret == Outcome.Correct)
                     {
-                        // Correct
-                        done = 1;
-                        coverageManager.reportCorrect();
+                        if (block.Count == 0)
+                        {
+                            // Correct
+                            done = 1;
+                            coverageManager.reportCorrect();
+                        }
+                        else
+                        {
+                            Contract.Assert(useSummary);
+                            // reset blocked and continue loop
+                            block.Clear();
+                        }
                     }
                     else if (ret == Outcome.ReachedBound)
                     {
-                        // Increment bound
-                        var minRecReached = CommandLineOptions.Clo.RecursionBound + 1;
-                        foreach (var id in calls.currCandidates)
+                        if (block.Count == 0)
                         {
-                            var rb = calls.getRecursionBound(id);
-                            if (rb <= bound) continue;
-                            if (rb < minRecReached) minRecReached = rb;
-                        }
-                        bound = minRecReached;
+                            // Increment bound
+                            var minRecReached = CommandLineOptions.Clo.RecursionBound + 1;
+                            foreach (var id in calls.currCandidates)
+                            {
+                                var rb = calls.getRecursionBound(id);
+                                if (rb <= bound) continue;
+                                if (rb < minRecReached) minRecReached = rb;
+                            }
+                            bound = minRecReached;
 
-                        if (bound > CommandLineOptions.Clo.RecursionBound)
+                            if (bound > CommandLineOptions.Clo.RecursionBound)
+                            {
+                                // Correct under bound
+                                done = 1;
+                                coverageManager.reportCorrect(bound);
+                            }
+                        }
+                        else
                         {
-                            // Correct under bound
-                            done = 1;
-                            coverageManager.reportCorrect(bound);
+                            Contract.Assert(useSummary);
+                            // reset blocked and continue loop
+                            block.Clear();
                         }
                     }
                     else
@@ -1535,6 +1591,12 @@ namespace VC
                         // Do inlining
                         Debug.Assert(ret == Outcome.Errors && !reporter.underapproximationMode);
                         Contract.Assert(reporter.candidatesToExpand.Count != 0);
+                        if (useSummary)
+                        {
+                            // compute candidates to block  
+                            block = new HashSet<int>(calls.currCandidates);
+                            block.ExceptWith(reporter.candidatesToExpand);
+                        }
 
                         #region expand call tree
 
@@ -1593,7 +1655,7 @@ namespace VC
                     callTree.Add(calls.getPersistentId(id), 0);
                 }
             }
-
+            if (checker2 != null) checker2.Close();
             return ret;
         }
 
@@ -1932,7 +1994,7 @@ namespace VC
         }
 
         // A step of the stratified inlining algorithm: both under-approx and over-approx queries
-        private Outcome stratifiedStep(int bound, VerificationState vState)
+        private Outcome stratifiedStep(int bound, VerificationState vState, HashSet<int> block)
         {
             Outcome ret;
             List<int> unsatCore;
@@ -1959,7 +2021,6 @@ namespace VC
                     assumptions.Add(calls.getFalseExpr(id));
                     ids.Add(id);
                 }
-
                 ret = checker.CheckAssumptions(assumptions, out unsatCore);
                 if (!CommandLineOptions.Clo.UseUnsatCoreForInlining) break;
                 if (ret != Outcome.Correct) break;
@@ -2016,8 +2077,18 @@ namespace VC
             {
                 if (calls.getRecursionBound(id) <= bound)
                 {
-                    //checker.TheoremProver.PushVCExpression(calls.getTrueExpr(id));
-                    allFalse = false;
+                    if (block.Contains(id))
+                    {
+                        Contract.Assert(useSummary);
+                        //checker.AddAxiom(calls.getFalseExpr(id));
+                        assumptions.Add(calls.getFalseExpr(id));
+                        allTrue = false;
+                    }
+                    else
+                    {
+                        //checker.TheoremProver.PushVCExpression(calls.getTrueExpr(id));
+                        allFalse = false;
+                    }
                 }
                 else
                 {
@@ -2053,6 +2124,41 @@ namespace VC
                     return ret;
                 }
 
+                if (useSummary)
+                {
+                    // Find the set of candidates with valid summaries
+                    var assumeTrueCandidates = new HashSet<int>(vState.calls.currCandidates);
+                    assumeTrueCandidates.ExceptWith(block);
+                    // Find all nodes that have children only in assumeTrueCandidates
+                    var overApproxNodes = FindNodes(vState.calls.candidateParent, vState.calls.currCandidates, assumeTrueCandidates);
+                    overApproxNodes.IntersectWith(calls.summaryCandidates.Keys);
+                    foreach (var id in overApproxNodes)
+                    {
+                        var post = getPostOrder(vState.calls.candidateParent, id);
+                        var summary = calls.getSummary();
+                        vState.checker2.Push();
+                        vState.checker2.AddAxiom(summary);
+                        foreach (var cid in post) vState.checker2.AddAxiom(calls.id2VC[cid]);
+                        vState.checker2.AddAxiom(calls.id2ControlVar[id]);
+
+                        foreach (var tup in calls.summaryCandidates[id])
+                        {
+                            Console.WriteLine("Going to try ({0} ==> {1}) on {2}", tup.Item1, tup.Item2, id);
+                            Console.WriteLine("Call expr: {0}", calls.id2Candidate[id]);
+                            vState.checker2.Push();
+                            vState.checker2.AddAxiom(vState.checker2.underlyingChecker.VCExprGen.Not(tup.Item2));
+                            var outcome = vState.checker2.CheckVC();
+                            vState.checker2.Pop();
+                            if (outcome == Outcome.Correct)
+                            {
+                                Console.WriteLine("Found summary: {0}", tup.Item1);
+                                calls.trueSummaryConst.Add(tup.Item1);
+                            }
+                        }
+                        vState.checker2.Pop();
+                    }
+                }
+
                 // Nothing more can be done with current recursion bound. 
                 return Outcome.ReachedBound;
             }
@@ -2060,6 +2166,55 @@ namespace VC
             Contract.Assert(ret == Outcome.Errors);
 
             checker.LogComment(";;;;;;;;;;;; Overapprox mode end ;;;;;;;;;;");
+
+            return ret;
+        }
+
+        // returns children of root in post order
+        static List<int> getPostOrder(Dictionary<int, int> parents, int root)
+        {
+            var children = new Dictionary<int, HashSet<int>>();
+            foreach (var id in parents.Keys) children.Add(id, new HashSet<int>());
+            children.Add(0, new HashSet<int>());
+            foreach (var kvp in parents) children[kvp.Value].Add(kvp.Key);
+            return getPostOrder(children, root);
+        }
+        static List<int> getPostOrder(Dictionary<int, HashSet<int>> children, int root)
+        {
+            var ret = new List<int>();
+            foreach (var ch in children[root]) ret.AddRange(getPostOrder(children, ch));
+            ret.Add(root);
+            return ret;
+        }
+
+        // Returns the set of candidates whose child leaves are all "good"
+        static HashSet<int> FindNodes(Dictionary<int, int> parents, HashSet<int> allLeaves, 
+            HashSet<int> goodLeaves)
+        {
+            var ret = new HashSet<int>();
+            var leaves = new Dictionary<int, HashSet<int>>();
+            leaves.Add(0, new HashSet<int>());
+            parents.Keys.Iter(n => leaves.Add(n, new HashSet<int>()));
+            allLeaves.Iter(l => leaves[l].Add(l));
+
+            foreach (var l in allLeaves)
+            {
+                var curr = l;
+                leaves[curr].Add(l);
+                while (parents.ContainsKey(curr))
+                {
+                    curr = parents[curr];
+                    leaves[curr].Add(l);
+                }
+            }
+
+            foreach (var kvp in leaves)
+            {
+                if (kvp.Value.IsSubsetOf(goodLeaves))
+                {
+                    ret.Add(kvp.Key);
+                }
+            }
 
             return ret;
         }
@@ -2149,9 +2304,11 @@ namespace VC
                 calls.setCurrProc(procName);
                 expansion = calls.Mutate(expansion, true);
                 if(vState.coverageManager != null) vState.coverageManager.addRecentEdges(id);
-
+                if(useSummary) calls.matchSummaries();
+                
                 //expansion = checker.VCExprGen.Eq(calls.id2ControlVar[id], expansion);
                 expansion = checker.VCExprGen.Implies(calls.id2ControlVar[id], expansion);
+                calls.id2VC.Add(id, expansion);
 
                 exprToPush = checker.VCExprGen.And(exprToPush, expansion);
             }
@@ -2227,6 +2384,7 @@ namespace VC
                 calls.currCandidates.Remove(id);
 
                 // Record the new set of candidates and rename absy labels
+                
                 calls.currInlineCount = id;
                 calls.setCurrProc(procName);
                 expansion = calls.Mutate(expansion, true);
@@ -2321,6 +2479,7 @@ namespace VC
             public Dictionary<BoogieCallExpr/*!*/, VCExpr>/*!*/ recordExpr2Var;
             public Dictionary<int, VCExprNAry/*!*/>/*!*/ id2Candidate;
             public Dictionary<int, VCExprVar/*!*/>/*!*/ id2ControlVar;
+            public Dictionary<int, VCExpr> id2VC;
             public Dictionary<string/*!*/, int>/*!*/ label2Id;
             // Stores the candidate from which this one originated
             public Dictionary<int, int> candidateParent;
@@ -2339,6 +2498,14 @@ namespace VC
             // A map from candidate id to the VCExpr that represents its
             // first argument (used for obtaining concrete values in error trace)
             public Dictionary<int, VCExpr> argExprMap;
+
+            // map from candidate to summary candidates
+            public Dictionary<int, List<Tuple<VCExprVar, VCExpr>>> summaryCandidates;
+            private Dictionary<string, List<Tuple<VCExprVar, VCExpr>>> summaryTemp;
+            // set of all boolean guards of summaries
+            public HashSet<VCExprVar> allSummaryConst;
+            // The summary: boolean guards that are true
+            public HashSet<VCExprVar> trueSummaryConst;
 
             public HashSet<int> forcedCandidates;
 
@@ -2420,6 +2587,11 @@ namespace VC
                 forcedCandidates = new HashSet<int>();
 
                 id2Vars = new Dictionary<int, Dictionary<VCExprVar, VCExpr>>();
+                summaryCandidates = new Dictionary<int, List<Tuple<VCExprVar, VCExpr>>>();
+                summaryTemp = new Dictionary<string, List<Tuple<VCExprVar, VCExpr>>>();
+                allSummaryConst = new HashSet<VCExprVar>();
+                trueSummaryConst = new HashSet<VCExprVar>();
+                id2VC = new Dictionary<int, VCExpr>();
             }
 
             public void Clear()
@@ -2711,6 +2883,23 @@ namespace VC
                     }
                 }
 
+                // summary candidate
+                if (lop.label.Substring(1).StartsWith("candidate_"))
+                {
+                    var pname = lop.label.Substring("candidate_".Length + 1);
+
+                    if (!summaryTemp.ContainsKey(pname))
+                        summaryTemp.Add(pname, new List<Tuple<VCExprVar, VCExpr>>());
+                    
+                    var expr = retnary[0] as VCExprNAry;
+                    if (expr == null) return retnary[0];
+                    if (expr.Op != VCExpressionGenerator.ImpliesOp) return retnary[0];
+                    var tup = Tuple.Create(expr[0] as VCExprVar, expr[1]);
+                    summaryTemp[pname].Add(tup);
+
+                    return retnary[0];
+                }
+
                 // Else, rename label
                 string newLabel = RenameAbsyLabel(lop.label);
                 if (lop.pos)
@@ -2724,8 +2913,84 @@ namespace VC
 
             }
 
+            // Upgrades summaryTemp to summaryCandidates by matching ensure clauses with
+            // the appropriate candidate they came from
+            public void matchSummaries()
+            {
+                var id2Set = new Dictionary<string, List<Tuple<int, HashSet<VCExprVar>>>>();
+                foreach (var id in recentlyAddedCandidates)
+                {
+                    var collect = new CollectVCVars();
+                    var proc = getProc(id);
+                    if (!id2Set.ContainsKey(proc)) id2Set.Add(proc, new List<Tuple<int, HashSet<VCExprVar>>>());
+                    id2Set[proc].Add(Tuple.Create(id, collect.Collect(id2Candidate[id], true)));
+                }
+                
+                foreach (var kvp in summaryTemp)
+                {
+                    Contract.Assert (id2Set.ContainsKey(kvp.Key));
+                    var ls = id2Set[kvp.Key];
+                    foreach (var tup in kvp.Value)
+                    {
+                        var collect = new CollectVCVars();
+                        var s1 = collect.Collect(tup.Item2, true);
+                        var found = false;
+                        foreach (var t in ls)
+                        {
+                            var s2 = t.Item2;
+                            if (s1.IsSubsetOf(s2))
+                            {
+                                if (!summaryCandidates.ContainsKey(t.Item1))
+                                    summaryCandidates.Add(t.Item1, new List<Tuple<VCExprVar, VCExpr>>());
+                                summaryCandidates[t.Item1].Add(tup);
+                                allSummaryConst.Add(tup.Item1);
+                                found = true;
+                                break;
+                            }
+                        }
+                        Contract.Assert(found);
+                    }
+                }
+                summaryTemp.Clear();
+            }
+
+            public VCExpr getSummary()
+            {
+                if (allSummaryConst.Count == 0) return null;
+
+                var ret = VCExpressionGenerator.True;
+                foreach (var c in allSummaryConst)
+                {
+                    if (trueSummaryConst.Contains(c))
+                    {
+                        ret = Gen.And(ret, c);
+                    }
+                    else
+                    {
+                        ret = Gen.And(ret, Gen.Not(c));
+                    }
+                }
+                return ret;
+            }
         } // end FCallHandler
 
+        // Collects the set of all VCExprVar in a given VCExpr
+        class CollectVCVars : CollectingVCExprVisitor<HashSet<VCExprVar>, bool>
+        {
+            public override HashSet<VCExprVar> Visit(VCExprVar node, bool arg)
+            {
+                var ret = new HashSet<VCExprVar>();
+                ret.Add(node);
+                return ret;
+            }
+
+            protected override HashSet<VCExprVar> CombineResults(List<HashSet<VCExprVar>> results, bool arg)
+            {
+                var ret = new HashSet<VCExprVar>();
+                results.ForEach(s => ret.UnionWith(s));
+                return ret;
+            }
+        }
 
         public class FCallInliner : MutatingVCExprVisitor<bool>
         {

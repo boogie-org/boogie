@@ -101,7 +101,7 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Constructor.  Initialize a checker with the program and log file.
     /// </summary>
-    public Checker(VC.ConditionGeneration vcgen, Program prog, string/*?*/ logFilePath, bool appendLogFile, Implementation impl, int timeout) {
+    public Checker(VC.ConditionGeneration vcgen, Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout) {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
       this.timeout = timeout;
@@ -158,7 +158,6 @@ namespace Microsoft.Boogie {
         }
         foreach (Declaration decl in prog.TopLevelDeclarations) {
           Contract.Assert(decl != null);
-          bool expand = false;
           Axiom ax = decl as Axiom;
           if (ax != null) {
             ctx.AddAxiom(ax, null);

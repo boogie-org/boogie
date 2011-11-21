@@ -177,7 +177,7 @@ namespace VC {
       Contract.Invariant(implName2LazyInliningInfo == null || cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
     }
 
-    protected Dictionary<string, LazyInliningInfo> implName2LazyInliningInfo;
+    public Dictionary<string, LazyInliningInfo> implName2LazyInliningInfo;
     protected GlobalVariable errorVariable;
 
     public void GenerateVCsForLazyInlining(Program program) {
@@ -1611,7 +1611,7 @@ namespace VC {
     }
     #endregion
 
-    protected VCExpr GenerateVC(Implementation/*!*/ impl, Variable controlFlowVariable, out Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch)
+    public VCExpr GenerateVC(Implementation/*!*/ impl, Variable controlFlowVariable, out Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch)
     {
       Contract.Requires(impl != null);
       Contract.Requires(ch != null);
@@ -2059,7 +2059,7 @@ namespace VC {
         }
       }
     }
-    protected void ConvertCFG2DAG(Implementation impl, Program program)
+    public void ConvertCFG2DAG(Implementation impl, Program program)
     {
     Contract.Requires(impl != null);
     Contract.Requires(program != null);
@@ -2274,7 +2274,7 @@ namespace VC {
       #endregion
     }
 
-    protected Hashtable/*TransferCmd->ReturnCmd*/ PassifyImpl(Implementation impl, Program program, out ModelViewInfo mvInfo)
+    public Hashtable/*TransferCmd->ReturnCmd*/ PassifyImpl(Implementation impl, Program program, out ModelViewInfo mvInfo)
     {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);

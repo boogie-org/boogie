@@ -48,9 +48,12 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     public List<StateNode> states = new List<StateNode>();
     public Dictionary<string, string> localVariableNames = new Dictionary<string, string>();
 
+    Dictionary<Model.Element, string> datatypeLongName = new Dictionary<Model.Element, string>();
+
     Dictionary<int, string> fileNameMapping = new Dictionary<int, string>();
 
     public const string selfMarker = "\\self";
+    public const int maxDatatypeNameLength = 5;
 
     public VccModel(Model m, ViewOptions opts)
       : base(m, opts)
@@ -420,6 +423,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       if (name.StartsWith("addr.")) {
         kind = "stack-allocated struct";
         return name.Substring(5);
+      }
+
+      if (name == "$result") {
+        kind = "function return value";
+        return "\\result";
       }
 
       if (name.StartsWith("res__") && viewOpts.ViewLevel >= 1) {
@@ -1197,7 +1205,58 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
     }
 
-    private string CanonicalBaseNameCore(string name, Model.Element elt)
+    private int DataTypeToString(StringBuilder sb, int level, Model.Element elt)
+    {
+      Model.FuncTuple ctor = null;
+      int len = 1;
+      string dataTypeType = null;
+      foreach (var app in elt.References) {
+        var n = app.Func.Name;
+        if (app.Result == elt && n.StartsWith("DF#")) {
+          ctor = app;
+        }
+        var tmp = DataTypeName(elt, app);
+        if (tmp != null) dataTypeType = tmp;
+      }
+
+      if (dataTypeType != null) {
+        if (ctor != null)
+          sb.Append(ctor.Func.Name.Substring(3));
+        else
+          sb.Append(DataTypeShortName(elt, dataTypeType));
+        if (ctor != null && ctor.Args.Length > 0) {
+          if (level <= 0) sb.Append("(...)");
+          else {
+            sb.Append("(");
+            for (int i = 0; i < ctor.Args.Length; ++i) {
+              if (i != 0) sb.Append(", ");
+              len += DataTypeToString(sb, level - 1, ctor.Args[i]);
+            }
+            sb.Append(")");
+          }
+        }
+      } else  {
+        sb.Append(CanonicalName(elt));
+      }
+      return len;
+    }
+
+    private string DataTypeShortName(Model.Element elt, string tp)
+    {
+      var baseName = tp;
+
+      var hd = model.MkFunc("DGH#" + tp, 1).TryEval(elt);
+      if (hd != null) {
+        foreach (var nm in hd.References) {
+          if (nm.Func.Arity == 0 && nm.Func.Name.StartsWith("DH#"))
+            baseName = nm.Func.Name.Substring(3);
+        }
+      }
+
+      return baseName;
+    }
+
+    private string CanonicalBaseNameCore(string name, Model.Element elt, bool doDatatypes, ref NameSeqSuffix suff)
     {
       var vm = this;
 
@@ -1229,18 +1288,19 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
         var dtpName = DataTypeName(elt, tpl);
         if (dtpName != null) {
-          var dgh = model.TryGetFunc("DGH#" + dtpName);
-          if (dgh != null) {
-            var hd = dgh.TryEval(elt);
-            if (hd != null) {
-              foreach (var nm in hd.References) {
-                if (nm.Func.Arity == 0 && nm.Func.Name.StartsWith("DH#"))
-                  return nm.Func.Name.Substring(3);
-              }
-
-            }
+          var sb = new StringBuilder();
+          string prev = null;
+          datatypeLongName[elt] = "*SELF*"; // in case we recurse (but this shouldn't happen)
+          for (int lev = 0; lev < 10; lev++) {
+            sb.Length = 0;
+            var len = DataTypeToString(sb, lev, elt);
+            if (prev == null || len <= maxDatatypeNameLength)
+              prev = sb.ToString();
           }
-          return dtpName;
+
+          datatypeLongName[elt] = prev;
+          suff = NameSeqSuffix.WhenNonZero;
+          return prev;
         }
       }
 
@@ -1267,9 +1327,13 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         suff = NameSeqSuffix.None;
         return lit;
       }
+      if (datatypeLongName.TryGetValue(elt, out lit)) {
+        suff = NameSeqSuffix.WhenNonZero;
+        return lit;
+      }
       
       var name = base.CanonicalBaseName(elt, out suff);
-      name = CanonicalBaseNameCore(name, elt);
+      name = CanonicalBaseNameCore(name, elt, true, ref suff);
      
       return name;
     }
