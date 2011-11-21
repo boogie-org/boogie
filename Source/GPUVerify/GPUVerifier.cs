@@ -398,7 +398,7 @@ namespace GPUVerify
                     if (impl.Name.Equals("_LOG_READ_" + v.Name) || impl.Name.Equals("_LOG_WRITE_" + v.Name))
                     {
                         BigBlock bb = new BigBlock(v.tok, "__CheckForRaces", new CmdSeq(), null, null);
-                        RaceInstrumenter.CheckForRaces(v.tok, bb, v);
+                        RaceInstrumenter.CheckForRaces(v.tok, bb, v, impl.Name.Equals("_LOG_READ_" + v.Name));
                         StmtList newStatements = new StmtList(new List<BigBlock>(), v.tok);
                         
                         foreach(BigBlock bb2 in impl.StructuredStmts.BigBlocks)
@@ -463,18 +463,11 @@ namespace GPUVerify
                     }
 
                     AddCandidateRequires(Proc);
-                    if (CommandLineOptions.RaceCheckingContract)
-                    {
-                        RaceInstrumenter.AddRaceCheckingCandidateRequires(Proc);
-                    }
-
+                    RaceInstrumenter.AddRaceCheckingCandidateRequires(Proc);
                     AddUserSuppliedCandidateRequires(Proc, UserSuppliedInvariants);
 
                     AddCandidateEnsures(Proc);
-                    if (CommandLineOptions.RaceCheckingContract)
-                    {
-                        RaceInstrumenter.AddRaceCheckingCandidateEnsures(Proc);
-                    }
+                    RaceInstrumenter.AddRaceCheckingCandidateEnsures(Proc);
                     AddUserSuppliedCandidateEnsures(Proc, UserSuppliedInvariants);
 
                 }
@@ -987,35 +980,169 @@ namespace GPUVerify
             {
                 Debug.Assert(AssumeThreadIdsInRange != null);
 
-                KernelProcedure.Requires.Add(new Requires(false, AssumeDistinctThreads));
-                KernelProcedure.Requires.Add(new Requires(false, AssumeThreadIdsInRange));
+                foreach (Declaration D in Program.TopLevelDeclarations)
+                {
+                    if (!(D is Procedure))
+                    {
+                        continue;
+                    }
+                    Procedure Proc = D as Procedure;
+                    if (QKeyValue.FindIntAttribute(Proc.Attributes, "inline", -1) == 1)
+                    {
+                        continue;
+                    }
+
+                    Proc.Requires.Add(new Requires(false, AssumeDistinctThreads));
+                    Proc.Requires.Add(new Requires(false, AssumeThreadIdsInRange));
+                }
             }
             else
             {
                 Debug.Assert(AssumeThreadIdsInRange == null);
             }
 
+            foreach (Declaration D in Program.TopLevelDeclarations)
+            {
+                if (!(D is Implementation))
+                {
+                    continue;
+                }
+                Implementation Impl = D as Implementation;
+                if (QKeyValue.FindIntAttribute(Impl.Proc.Attributes, "inline", -1) == 1)
+                {
+                    continue;
+                }
+                if (Impl.Proc == KernelProcedure)
+                {
+                    continue;
+                }
 
+                EnsureDisabledThreadHasNoEffect(Impl);
+
+            }
+
+        }
+
+        private void EnsureDisabledThreadHasNoEffect(Implementation Impl)
+        {
+            foreach (IdentifierExpr iex in Impl.Proc.Modifies)
+            {
+                // For some reason, this does not work well with maps
+                if (iex.Decl.TypedIdent.Type is MapType)
+                {
+                    continue;
+                }
+
+                Expr NoEffectExpr = Expr.Imp(
+                        Expr.Not(new IdentifierExpr(iex.tok, new LocalVariable(iex.tok, new TypedIdent(iex.tok, "_P$" + GetThreadSuffix(iex.Name), Microsoft.Boogie.Type.Bool)))),
+                        Expr.Eq(iex, new OldExpr(iex.tok, iex))
+                    );
+
+                Impl.Proc.Ensures.Add(new Ensures(false,
+                    NoEffectExpr
+                ));
+
+                AddInvariantToAllLoops(NoEffectExpr, Impl.StructuredStmts);
+
+            }
+
+            AddEnablednessInvariantToAllLoops(Impl.StructuredStmts);
+        }
+
+        private void AddEnablednessInvariantToAllLoops(StmtList stmtList)
+        {
+            foreach (BigBlock bb in stmtList.BigBlocks)
+            {
+                AddEnablednessInvariantToAllLoops(bb);
+            }
+        }
+
+        private void AddEnablednessInvariantToAllLoops(BigBlock bb)
+        {
+            if (bb.ec is WhileCmd)
+            {
+                WhileCmd wc = bb.ec as WhileCmd;
+                Debug.Assert(wc.Guard is NAryExpr);
+                Debug.Assert((wc.Guard as NAryExpr).Fun is BinaryOperator);
+                Debug.Assert((wc.Guard as NAryExpr).Args[0] is IdentifierExpr);
+                string LoopPredicate = ((wc.Guard as NAryExpr).Args[0] as IdentifierExpr).Name;
+                LoopPredicate = StripThreadIdentifier(LoopPredicate);
+
+                wc.Invariants.Add(
+                    new AssertCmd(wc.tok,
+                        Expr.Imp(
+                            Expr.Not(new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, "_P$1", Microsoft.Boogie.Type.Bool)))),
+                            Expr.Not(new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$1", Microsoft.Boogie.Type.Bool))))
+                    )));
+
+                wc.Invariants.Add(
+                    new AssertCmd(wc.tok,
+                        Expr.Imp(
+                            Expr.Not(new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, "_P$2", Microsoft.Boogie.Type.Bool)))),
+                            Expr.Not(new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$2", Microsoft.Boogie.Type.Bool))))
+                    )));
+
+                AddEnablednessInvariantToAllLoops(wc.Body);
+            }
+
+        }
+
+        private void AddInvariantToAllLoops(Expr Invariant, StmtList stmtList)
+        {
+            foreach (BigBlock bb in stmtList.BigBlocks)
+            {
+                AddInvariantToAllLoops(Invariant, bb);
+            }
+        }
+
+        private void AddInvariantToAllLoops(Expr Invariant, BigBlock bb)
+        {
+            if (bb.ec is WhileCmd)
+            {
+                WhileCmd wc = bb.ec as WhileCmd;
+                wc.Invariants.Add(new AssertCmd(wc.tok, Invariant));
+                AddInvariantToAllLoops(Invariant, wc.Body);
+            }
+            Debug.Assert(!(bb.ec is IfCmd));
+        }
+
+        private int GetThreadSuffix(string p)
+        {
+            return Int32.Parse(p.Substring(p.IndexOf("$") + 1, p.Length - (p.IndexOf("$") + 1)));
         }
 
         private void GeneratePreconditionsForDimension(ref Expr AssumeDistinctThreads, ref Expr AssumeThreadIdsInRange, IToken tok, String dimension)
         {
             if (KernelHasId(dimension))
             {
-                if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
+                foreach (Declaration D in Program.TopLevelDeclarations)
                 {
-                    KernelProcedure.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetTileSize(dimension)), ZeroBV(tok))));
-                    KernelProcedure.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumTiles(dimension)), ZeroBV(tok))));
-                    KernelProcedure.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetTileId(dimension)), ZeroBV(tok))));
-                    KernelProcedure.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+                    if (!(D is Procedure))
+                    {
+                        continue;
+                    }
+                    Procedure Proc = D as Procedure;
+                    if (QKeyValue.FindIntAttribute(Proc.Attributes, "inline", -1) == 1)
+                    {
+                        continue;
+                    }
+
+                    if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
+                    {
+                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetTileSize(dimension)), ZeroBV(tok))));
+                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumTiles(dimension)), ZeroBV(tok))));
+                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetTileId(dimension)), ZeroBV(tok))));
+                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+                    }
+                    else
+                    {
+                        Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetTileSize(dimension)), Zero(tok))));
+                        Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetNumTiles(dimension)), Zero(tok))));
+                        Proc.Requires.Add(new Requires(false, Expr.Ge(new IdentifierExpr(tok, GetTileId(dimension)), Zero(tok))));
+                        Proc.Requires.Add(new Requires(false, Expr.Lt(new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+                    }
                 }
-                else
-                {
-                    KernelProcedure.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetTileSize(dimension)), Zero(tok))));
-                    KernelProcedure.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetNumTiles(dimension)), Zero(tok))));
-                    KernelProcedure.Requires.Add(new Requires(false, Expr.Ge(new IdentifierExpr(tok, GetTileId(dimension)), Zero(tok))));
-                    KernelProcedure.Requires.Add(new Requires(false, Expr.Lt(new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
-                }
+
                 Expr AssumeThreadsDistinctInDimension =
                         Expr.Neq(
                         new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)),
@@ -1130,7 +1257,10 @@ namespace GPUVerify
                 List<BigBlock> returnbigblocks = new List<BigBlock>();
                 returnbigblocks.Add(new BigBlock(tok, "__Disabled", new CmdSeq(), null, new ReturnCmd(tok)));
                 StmtList returnstatement = new StmtList(returnbigblocks, BarrierProcedure.tok);
-                checkNonDivergence.ec = new IfCmd(tok, Expr.And(Expr.Not(P1), Expr.Not(P2)), returnstatement, null, null);
+                // We make this an "Or", not an "And", because "And" is implied by the assertion that the variables
+                // are equal, together with the "Or".  The weaker "Or" ensures that many auxiliary assertions will not
+                // fail if divergence has not been proved.
+                checkNonDivergence.ec = new IfCmd(tok, Expr.Or(Expr.Not(P1), Expr.Not(P2)), returnstatement, null, null);
             }
 
             bigblocks.Add(RaceInstrumenter.MakeRaceCheckingStatements(tok));
@@ -1151,6 +1281,8 @@ namespace GPUVerify
 
             BarrierImplementation.AddAttribute("inline", new object[] { new LiteralExpr(tok, BigNum.FromInt(1)) });
             BarrierProcedure.AddAttribute("inline", new object[] { new LiteralExpr(tok, BigNum.FromInt(1)) });
+
+            BarrierImplementation.Proc = BarrierProcedure;
 
             Program.TopLevelDeclarations.Add(BarrierImplementation);
         }

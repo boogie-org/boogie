@@ -182,6 +182,8 @@ namespace GPUVerify
             Implementation LogReadOrWriteImplementation = new Implementation(v.tok, "_LOG_" + ReadOrWrite + "_" + v.Name, new TypeVariableSeq(), LogReadOrWriteProcedure.InParams, new VariableSeq(), new VariableSeq(), statements);
             LogReadOrWriteImplementation.AddAttribute("inline", new object[] { new LiteralExpr(v.tok, BigNum.FromInt(1)) });
 
+            LogReadOrWriteImplementation.Proc = LogReadOrWriteProcedure;
+
             verifier.Program.TopLevelDeclarations.Add(LogReadOrWriteProcedure);
             verifier.Program.TopLevelDeclarations.Add(LogReadOrWriteImplementation);
         }
@@ -200,17 +202,167 @@ namespace GPUVerify
             }
             bb.simpleCmds.Add(new HavocCmd(tok, VariablesToHavoc));
 
+            AddAssumeNoAccess(bb, v, AccessType);
+
+        }
+
+        public override void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly)
+        {
+            if (!ReadWriteOnly)
+            {
+                AddRaceCheck(bb, v, "WRITE", "WRITE");
+            }
+            AddRaceCheck(bb, v, "READ", "WRITE");
+            if (!CommandLineOptions.Symmetry)
+            {
+                AddRaceCheck(bb, v, "WRITE", "READ");
+            }
+
+
+        }
+
+
+
+        private static Microsoft.Boogie.Type GetIndexType(Variable v, int index)
+        {
+            Debug.Assert(index == 1 || index == 2 || index == 3);
+
+            Debug.Assert(v.TypedIdent.Type is MapType);
+            MapType mt = v.TypedIdent.Type as MapType;
+            Debug.Assert(mt.Arguments.Length == 1);
+            Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
+
+            if (index == 1)
+            {
+                return mt.Arguments[0];
+            }
+
+            Debug.Assert(mt.Result is MapType);
+            MapType mt2 = mt.Result as MapType;
+            Debug.Assert(mt2.Arguments.Length == 1);
+            Debug.Assert(GPUVerifier.IsIntOrBv32(mt2.Arguments[0]));
+
+            if (index == 2)
+            {
+                return mt2.Arguments[0];
+            }
+
+            Debug.Assert(mt2.Result is MapType);
+            MapType mt3 = mt2.Arguments[0] as MapType;
+            Debug.Assert(mt3.Arguments.Length == 1);
+            Debug.Assert(GPUVerifier.IsIntOrBv32(mt3.Arguments[0]));
+            Debug.Assert(!(mt3.Result is MapType));
+
+            Debug.Assert(index == 3);
+            return mt3.Arguments[0];
+        }
+
+        private static void AddRaceCheck(BigBlock bb, Variable v, String Access1, String Access2)
+        {
+            VariableSeq DummyVars1;
+            Expr SetExpr1 = AccessExpr(v, Access1, 1, out DummyVars1);
+
+            VariableSeq DummyVars2;
+            Expr SetExpr2 = AccessExpr(v, Access2, 2, out DummyVars2);
+            
+            Debug.Assert(DummyVars1.Length == DummyVars2.Length);
+            for (int i = 0; i < DummyVars1.Length; i++)
+            {
+                Debug.Assert(DummyVars1[i].Name.Equals(DummyVars2[i].Name));
+            }
+
+            Expr AssertExpr = Expr.And(SetExpr1, SetExpr2);
+
+            if (Access1.Equals("WRITE") && Access2.Equals("WRITE") && !CommandLineOptions.FullAbstraction)
+            {
+                VariableSeq DummyVarsAccess1;
+                VariableSeq DummyVarsAccess2;
+                Expr IndexExpr1 = QuantifiedIndexExpr(v, new VariableDualiser(1).VisitVariable(v.Clone() as Variable), out DummyVarsAccess1);
+                Expr IndexExpr2 = QuantifiedIndexExpr(v, new VariableDualiser(2).VisitVariable(v.Clone() as Variable), out DummyVarsAccess2);
+                Debug.Assert(DummyVarsAccess1.Length == DummyVarsAccess2.Length);
+                Debug.Assert(DummyVars1.Length == DummyVarsAccess1.Length);
+                for (int i = 0; i < DummyVars1.Length; i++)
+                {
+                    Debug.Assert(DummyVarsAccess1[i].Name.Equals(DummyVarsAccess2[i].Name));
+                    Debug.Assert(DummyVars1[i].Name.Equals(DummyVarsAccess1[i].Name));
+                }
+                AssertExpr = Expr.And(AssertExpr, Expr.Neq(IndexExpr1, IndexExpr2));
+            }
+
+            AssertExpr = Expr.Not(AssertExpr);
+            if (DummyVars1.Length > 0)
+            {
+                AssertExpr = new ForallExpr(v.tok, DummyVars1, AssertExpr);
+            }
+
+            bb.simpleCmds.Add(new AssertCmd(v.tok, AssertExpr));
+        }
+
+        private static void SetNameDeep(IdentifierExpr e, string name)
+        {
+            e.Name = e.Decl.Name = e.Decl.TypedIdent.Name = name;
+        }
+
+        private static LocalVariable MakeDummy(Variable v, int index)
+        {
+            return new LocalVariable(v.tok, new TypedIdent(v.tok, "__dummy", GetIndexType(v, index)));
+        }
+
+        private static void AddAssumeNoAccess(BigBlock bb, Variable v, String AccessType)
+        {
+            bb.simpleCmds.Add(new AssumeCmd(v.tok, NoAccessExpr(v, AccessType, 1)));
+
+            if (!CommandLineOptions.Symmetry || !AccessType.Equals("READ"))
+            {
+                bb.simpleCmds.Add(new AssumeCmd(v.tok, NoAccessExpr(v, AccessType, 2)));
+            }
+        }
+
+        private static Expr NoAccessExpr(Variable v, String AccessType, int Thread)
+        {
+            VariableSeq DummyVars;
+            Expr result = AccessExpr(v, AccessType, Thread, out DummyVars);
+
+            result = Expr.Not(result);
+
+            if (DummyVars.Length > 0)
+            {
+                result = new ForallExpr(v.tok, DummyVars, result);
+            }
+            return result;
+
+        }
+
+        private static Expr AccessExpr(Variable v, String AccessType, int Thread, out VariableSeq DummyVars)
+        {
+            return QuantifiedIndexExpr(v, new VariableDualiser(Thread).VisitVariable(MakeAccessSetVariable(v, AccessType)), out DummyVars);
+        }
+
+        private static Expr QuantifiedIndexExpr(Variable v, Variable AccessSetVariable, out VariableSeq DummyVars)
+        {
+            DummyVars = new VariableSeq();
+            Expr result = new IdentifierExpr(v.tok, AccessSetVariable);
+
             if (v.TypedIdent.Type is MapType)
             {
+                IdentifierExprSeq DummyIdentifierExprs = new IdentifierExprSeq();
                 MapType mt = v.TypedIdent.Type as MapType;
                 Debug.Assert(mt.Arguments.Length == 1);
                 Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
+
+                DummyVars.Add(MakeDummy(v, 1));
+                DummyIdentifierExprs.Add(new IdentifierExpr(v.tok, DummyVars[0]));
+                result = Expr.Select(result, new Expr[] { DummyIdentifierExprs[0] });
 
                 if (mt.Result is MapType)
                 {
                     MapType mt2 = mt.Result as MapType;
                     Debug.Assert(mt2.Arguments.Length == 1);
                     Debug.Assert(GPUVerifier.IsIntOrBv32(mt2.Arguments[0]));
+
+                    DummyVars.Add(MakeDummy(v, 2));
+                    DummyIdentifierExprs.Add(new IdentifierExpr(v.tok, DummyVars[1]));
+                    result = Expr.Select(result, new Expr[] { DummyIdentifierExprs[1] });
 
                     if (mt2.Result is MapType)
                     {
@@ -219,260 +371,26 @@ namespace GPUVerify
                         Debug.Assert(GPUVerifier.IsIntOrBv32(mt3.Arguments[0]));
                         Debug.Assert(!(mt3.Result is MapType));
 
-                        Add3DAssumeNoAccess(tok, bb, v, AccessType, mt.Arguments[0], mt2.Arguments[0], mt3.Arguments[0]);
+                        DummyVars.Add(MakeDummy(v, 3));
+                        DummyIdentifierExprs.Add(new IdentifierExpr(v.tok, DummyVars[2]));
+                        result = Expr.Select(result, new Expr[] { DummyIdentifierExprs[2] });
 
+                        SetNameDeep(DummyIdentifierExprs[0], "__z");
+                        SetNameDeep(DummyIdentifierExprs[1], "__y");
+                        SetNameDeep(DummyIdentifierExprs[2], "__x");
                     }
                     else
                     {
-                        Add2DAssumeNoAccess(tok, bb, v, AccessType, mt.Arguments[0], mt2.Arguments[0]);
+                        SetNameDeep(DummyIdentifierExprs[0], "__y");
+                        SetNameDeep(DummyIdentifierExprs[1], "__x");
                     }
                 }
                 else
                 {
-                    Add1DAssumeNoAccess(tok, bb, v, AccessType, mt.Arguments[0]);
+                    SetNameDeep(DummyIdentifierExprs[0], "__x");
                 }
             }
-            else
-            {
-                Add0DAssumeNoAccess(tok, bb, v, AccessType);
-            }
-        }
-
-        public override void CheckForRaces(IToken tok, BigBlock bb, Variable v)
-        {
-            if (v.TypedIdent.Type is MapType)
-            {
-                MapType mt = v.TypedIdent.Type as MapType;
-                Debug.Assert(mt.Arguments.Length == 1);
-                Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
-
-                if (mt.Result is MapType)
-                {
-                    MapType mt2 = mt.Result as MapType;
-                    Debug.Assert(mt2.Arguments.Length == 1);
-                    Debug.Assert(GPUVerifier.IsIntOrBv32(mt2.Arguments[0]));
-
-                    if (mt2.Result is MapType)
-                    {
-                        MapType mt3 = mt2.Arguments[0] as MapType;
-                        Debug.Assert(mt3.Arguments.Length == 1);
-                        Debug.Assert(GPUVerifier.IsIntOrBv32(mt3.Arguments[0]));
-                        Debug.Assert(!(mt3.Result is MapType));
-
-                        Add3DRaceCheck(tok, bb, v, "WRITE", "WRITE", mt.Arguments[0], mt2.Arguments[0], mt3.Arguments[0]);
-                        Add3DRaceCheck(tok, bb, v, "READ", "WRITE", mt.Arguments[0], mt2.Arguments[0], mt3.Arguments[0]);
-                        if (!CommandLineOptions.Symmetry)
-                        {
-                            Add3DRaceCheck(tok, bb, v, "WRITE", "READ", mt.Arguments[0], mt2.Arguments[0], mt3.Arguments[0]);
-                        }
-
-
-                    }
-                    else
-                    {
- 
-                        Add2DRaceCheck(tok, bb, v, "WRITE", "WRITE", mt.Arguments[0], mt2.Arguments[0]);
-                        Add2DRaceCheck(tok, bb, v, "READ", "WRITE", mt.Arguments[0], mt2.Arguments[0]);
-                        if (!CommandLineOptions.Symmetry)
-                        {
-                            Add2DRaceCheck(tok, bb, v, "WRITE", "READ", mt.Arguments[0], mt2.Arguments[0]);
-                        }
-                    }
-                }
-                else
-                {
-                    Add1DRaceCheck(tok, bb, v, "WRITE", "WRITE", mt.Arguments[0]);
-                    Add1DRaceCheck(tok, bb, v, "READ", "WRITE", mt.Arguments[0]);
-                    if (!CommandLineOptions.Symmetry)
-                    {
-                        Add1DRaceCheck(tok, bb, v, "WRITE", "READ", mt.Arguments[0]);
-                    }
-                }
-            }
-            else
-            {
-                Add0DRaceCheck(tok, bb, v, "WRITE", "WRITE");
-                Add0DRaceCheck(tok, bb, v, "READ", "WRITE");
-                if (!CommandLineOptions.Symmetry)
-                {
-                    Add0DRaceCheck(tok, bb, v, "WRITE", "READ");
-                }
-            }
-        }
-
-        private static void Add0DRaceCheck(IToken tok, BigBlock bb, Variable v, String Access1, String Access2)
-        {
-            bb.simpleCmds.Add(new AssertCmd(tok, Expr.Not(Expr.And(
-                new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(MakeAccessSetVariable(v, Access1))),
-                new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(MakeAccessSetVariable(v, Access2)))
-                ))));
-        }
-
-        private static void Add1DRaceCheck(IToken tok, BigBlock bb, Variable v, String Access1, String Access2, Microsoft.Boogie.Type IndexType)
-        {
-            Variable DummyX = new LocalVariable(tok, new TypedIdent(tok, "__x", IndexType));
-            bb.simpleCmds.Add(new AssertCmd(tok,
-                new ForallExpr(tok, new VariableSeq(new Variable[] { DummyX }),
-                    Expr.Not(Expr.And(
-                        Expr.Select(new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(MakeAccessSetVariable(v, Access1))), new Expr[] { new IdentifierExpr(tok, DummyX) }),
-                        Expr.Select(new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(MakeAccessSetVariable(v, Access2))), new Expr[] { new IdentifierExpr(tok, DummyX) })
-                    ))
-                )
-            ));
-        }
-
-        private static void Add2DRaceCheck(IToken tok, BigBlock bb, Variable v, String Access1, String Access2, Microsoft.Boogie.Type IndexTypeY, Microsoft.Boogie.Type IndexTypeX)
-        {
-            Variable DummyX = new LocalVariable(tok, new TypedIdent(tok, "__x", IndexTypeX));
-            Variable DummyY = new LocalVariable(tok, new TypedIdent(tok, "__y", IndexTypeX));
-            bb.simpleCmds.Add(new AssertCmd(tok,
-                new ForallExpr(tok, new VariableSeq(new Variable[] { DummyY, DummyX }),
-                    Expr.Not(Expr.And(
-                        Expr.Select(
-                            Expr.Select(new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(MakeAccessSetVariable(v, Access1))), new Expr[] { new IdentifierExpr(tok, DummyY) }),
-                            new Expr[] { new IdentifierExpr(tok, DummyX) }
-                        ),
-                        Expr.Select(
-                            Expr.Select(new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(MakeAccessSetVariable(v, Access2))), new Expr[] { new IdentifierExpr(tok, DummyY) }),
-                            new Expr[] { new IdentifierExpr(tok, DummyX) }
-                        )
-                    ))
-                )
-            ));
-        }
-
-        private static void Add3DRaceCheck(IToken tok, BigBlock bb, Variable v, String Access1, String Access2, Microsoft.Boogie.Type IndexTypeZ, Microsoft.Boogie.Type IndexTypeY, Microsoft.Boogie.Type IndexTypeX)
-        {
-            Variable DummyX = new LocalVariable(tok, new TypedIdent(tok, "__x", IndexTypeX));
-            Variable DummyY = new LocalVariable(tok, new TypedIdent(tok, "__y", IndexTypeX));
-            Variable DummyZ = new LocalVariable(tok, new TypedIdent(tok, "__z", IndexTypeX));
-            bb.simpleCmds.Add(new AssertCmd(tok,
-                new ForallExpr(tok, new VariableSeq(new Variable[] { DummyZ, DummyY, DummyX }),
-                    Expr.Not(Expr.And(
-                        Expr.Select(
-                            Expr.Select(
-                                Expr.Select(new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(MakeAccessSetVariable(v, Access1))), new Expr[] { new IdentifierExpr(tok, DummyZ) }),
-                                new Expr[] { new IdentifierExpr(tok, DummyY) }
-                            ),
-                            new Expr[] { new IdentifierExpr(tok, DummyX) }
-                        ),
-                        Expr.Select(
-                            Expr.Select(
-                                Expr.Select(new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(MakeAccessSetVariable(v, Access2))), new Expr[] { new IdentifierExpr(tok, DummyZ) }),
-                                new Expr[] { new IdentifierExpr(tok, DummyY) }
-                            ),
-                            new Expr[] { new IdentifierExpr(tok, DummyX) }
-                        )
-                    ))
-                )
-            ));
-        }
-
-
-        private static void Add0DAssumeNoAccess(IToken tok, BigBlock bb, Variable v, String AccessType)
-        {
-            bb.simpleCmds.Add(new AssumeCmd(tok,
-                NoAccess0DExpr(tok, v, AccessType, 1)
-            ));
-
-            if (!CommandLineOptions.Symmetry || !AccessType.Equals("READ"))
-            {
-                bb.simpleCmds.Add(new AssumeCmd(tok,
-                    NoAccess0DExpr(tok, v, AccessType, 2)
-                ));
-            }
-        }
-
-
-        private static void Add1DAssumeNoAccess(IToken tok, BigBlock bb, Variable v, String AccessType, Microsoft.Boogie.Type IndexTypeX)
-        {
-            Variable DummyX = new LocalVariable(tok, new TypedIdent(tok, "__x", IndexTypeX));
-            bb.simpleCmds.Add(new AssumeCmd(tok,
-                NoAccess1DExpr(tok, v, AccessType, IndexTypeX, 1)
-            ));
-
-            if (!CommandLineOptions.Symmetry || !AccessType.Equals("READ"))
-            {
-                bb.simpleCmds.Add(new AssumeCmd(tok,
-                    NoAccess1DExpr(tok, v, AccessType, IndexTypeX, 2)
-                ));
-            }
-        }
-
-
-        private static void Add2DAssumeNoAccess(IToken tok, BigBlock bb, Variable v, String AccessType, Microsoft.Boogie.Type IndexTypeY, Microsoft.Boogie.Type IndexTypeX)
-        {
-            Variable DummyX = new LocalVariable(tok, new TypedIdent(tok, "__x", IndexTypeX));
-            Variable DummyY = new LocalVariable(tok, new TypedIdent(tok, "__y", IndexTypeX));
-            bb.simpleCmds.Add(new AssumeCmd(tok,
-                NoAccess2DExpr(tok, v, AccessType, IndexTypeY, IndexTypeX, 1)
-            ));
-
-            if (!CommandLineOptions.Symmetry || !AccessType.Equals("READ"))
-            {
-                bb.simpleCmds.Add(new AssumeCmd(tok,
-                    NoAccess2DExpr(tok, v, AccessType, IndexTypeY, IndexTypeX, 2)
-                ));
-            }
-        }
-
-
-        private static void Add3DAssumeNoAccess(IToken tok, BigBlock bb, Variable v, String AccessType, Microsoft.Boogie.Type IndexTypeZ, Microsoft.Boogie.Type IndexTypeY, Microsoft.Boogie.Type IndexTypeX)
-        {
-            bb.simpleCmds.Add(new AssumeCmd(tok,
-                NoAccess3DExpr(tok, v, AccessType, IndexTypeZ, IndexTypeY, IndexTypeX, 1)
-            ));
-
-            if (!CommandLineOptions.Symmetry || !AccessType.Equals("READ"))
-            {
-                bb.simpleCmds.Add(new AssumeCmd(tok,
-                    NoAccess3DExpr(tok, v, AccessType, IndexTypeZ, IndexTypeY, IndexTypeX, 2)
-                ));
-            }
-        }
-
-        private static Expr NoAccess3DExpr(IToken tok, Variable v, String AccessType, Microsoft.Boogie.Type IndexTypeZ, Microsoft.Boogie.Type IndexTypeY, Microsoft.Boogie.Type IndexTypeX, int Thread)
-        {
-            Variable DummyX = new LocalVariable(tok, new TypedIdent(tok, "__x", IndexTypeX));
-            Variable DummyY = new LocalVariable(tok, new TypedIdent(tok, "__y", IndexTypeY));
-            Variable DummyZ = new LocalVariable(tok, new TypedIdent(tok, "__z", IndexTypeZ));
-            return new ForallExpr(tok, new VariableSeq(new Variable[] { DummyZ, DummyY, DummyX }),
-                                Expr.Not(
-                                    Expr.Select(
-                                        Expr.Select(
-                                            Expr.Select(new IdentifierExpr(tok, new VariableDualiser(Thread).VisitVariable(MakeAccessSetVariable(v, AccessType))), new Expr[] { new IdentifierExpr(tok, DummyZ) }),
-                                            new Expr[] { new IdentifierExpr(tok, DummyY) }
-                                        ),
-                                        new Expr[] { new IdentifierExpr(tok, DummyX) }
-                                    )
-                                )
-                            )
-            ;
-        }
-
-        private static Expr NoAccess2DExpr(IToken tok, Variable v, String AccessType, Microsoft.Boogie.Type IndexTypeY, Microsoft.Boogie.Type IndexTypeX, int Thread)
-        {
-            Variable DummyX = new LocalVariable(tok, new TypedIdent(tok, "__x", IndexTypeX));
-            Variable DummyY = new LocalVariable(tok, new TypedIdent(tok, "__y", IndexTypeY));
-            return new ForallExpr(tok, new VariableSeq(new Variable[] { DummyY, DummyX }),
-                                Expr.Not(
-                                    Expr.Select(
-                                        Expr.Select(new IdentifierExpr(tok, new VariableDualiser(Thread).VisitVariable(MakeAccessSetVariable(v, AccessType))), new Expr[] { new IdentifierExpr(tok, DummyY) }),
-                                        new Expr[] { new IdentifierExpr(tok, DummyX) }
-                                    )
-                                )
-                            )
-            ;
-        }
-
-        private static Expr NoAccess1DExpr(IToken tok, Variable v, String AccessType, Microsoft.Boogie.Type IndexTypeX, int Thread)
-        {
-            Variable DummyX = new LocalVariable(tok, new TypedIdent(tok, "__x", IndexTypeX));
-            return new ForallExpr(tok, new VariableSeq(new Variable[] { DummyX }),
-                                Expr.Not(
-                                    Expr.Select(new IdentifierExpr(tok, new VariableDualiser(Thread).VisitVariable(MakeAccessSetVariable(v, AccessType))), new Expr[] { new IdentifierExpr(tok, DummyX) })
-                                )
-                            );
+            return result;
         }
 
         private static Expr NoAccess0DExpr(IToken tok, Variable v, String AccessType, int Thread)
@@ -483,82 +401,12 @@ namespace GPUVerify
 
         protected override void AddRequiresNoPendingAccess(Variable v)
         {
-            if (v.TypedIdent.Type is MapType)
+            verifier.KernelProcedure.Requires.Add(new Requires(false, NoAccessExpr(v, "WRITE", 1)));
+            verifier.KernelProcedure.Requires.Add(new Requires(false, NoAccessExpr(v, "WRITE", 2)));
+            verifier.KernelProcedure.Requires.Add(new Requires(false, NoAccessExpr(v, "READ", 1)));
+            if(!CommandLineOptions.Symmetry)
             {
-                MapType mt = v.TypedIdent.Type as MapType;
-                Debug.Assert(mt.Arguments.Length == 1);
-                Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
-
-                if (mt.Result is MapType)
-                {
-                    MapType mt2 = mt.Result as MapType;
-                    Debug.Assert(mt2.Arguments.Length == 1);
-                    Debug.Assert(GPUVerifier.IsIntOrBv32(mt2.Arguments[0]));
-
-                    if (mt2.Result is MapType)
-                    {
-                        MapType mt3 = mt2.Arguments[0] as MapType;
-                        Debug.Assert(mt3.Arguments.Length == 1);
-                        Debug.Assert(GPUVerifier.IsIntOrBv32(mt3.Arguments[0]));
-                        Debug.Assert(!(mt3.Result is MapType));
-
-                        verifier.KernelProcedure.Requires.Add(new Requires(false,
-                            NoAccess3DExpr(v.tok, v, "WRITE", mt.Arguments[0], mt2.Arguments[0], mt3.Arguments[0], 1)));
-                        verifier.KernelProcedure.Requires.Add(new Requires(false,
-                            NoAccess3DExpr(v.tok, v, "WRITE", mt.Arguments[0], mt2.Arguments[0], mt3.Arguments[0], 2)));
-                        verifier.KernelProcedure.Requires.Add(new Requires(false,
-                            NoAccess3DExpr(v.tok, v, "READ", mt.Arguments[0], mt2.Arguments[0], mt3.Arguments[0], 1)));
-                        if (!CommandLineOptions.Symmetry)
-                        {
-                            verifier.KernelProcedure.Requires.Add(new Requires(false,
-                                NoAccess3DExpr(v.tok, v, "READ", mt.Arguments[0], mt2.Arguments[0], mt3.Arguments[0], 2)));
-                        }
-
-
-                    }
-                    else
-                    {
-                        verifier.KernelProcedure.Requires.Add(new Requires(false, 
-                            NoAccess2DExpr(v.tok, v, "WRITE", mt.Arguments[0], mt2.Arguments[0], 1)));
-                        verifier.KernelProcedure.Requires.Add(new Requires(false, 
-                            NoAccess2DExpr(v.tok, v, "WRITE", mt.Arguments[0], mt2.Arguments[0], 2)));
-                        verifier.KernelProcedure.Requires.Add(new Requires(false, 
-                            NoAccess2DExpr(v.tok, v, "READ", mt.Arguments[0], mt2.Arguments[0], 1)));
-                        if(!CommandLineOptions.Symmetry)
-                        {
-                            verifier.KernelProcedure.Requires.Add(new Requires(false, 
-                                NoAccess2DExpr(v.tok, v, "READ", mt.Arguments[0], mt2.Arguments[0], 2)));
-                        }
-                    }
-                }
-                else
-                {
-                    verifier.KernelProcedure.Requires.Add(new Requires(false, 
-                        NoAccess1DExpr(v.tok, v, "WRITE", mt.Arguments[0], 1)));
-                    verifier.KernelProcedure.Requires.Add(new Requires(false, 
-                        NoAccess1DExpr(v.tok, v, "WRITE", mt.Arguments[0], 2)));
-                    verifier.KernelProcedure.Requires.Add(new Requires(false, 
-                        NoAccess1DExpr(v.tok, v, "READ", mt.Arguments[0], 1)));
-                    if(!CommandLineOptions.Symmetry)
-                    {
-                        verifier.KernelProcedure.Requires.Add(new Requires(false, 
-                            NoAccess1DExpr(v.tok, v, "READ", mt.Arguments[0], 2)));
-                    }
-                }
-            }
-            else
-            {
-                verifier.KernelProcedure.Requires.Add(new Requires(false, 
-                    NoAccess0DExpr(v.tok, v, "WRITE", 1)));
-                verifier.KernelProcedure.Requires.Add(new Requires(false, 
-                    NoAccess0DExpr(v.tok, v, "WRITE", 2)));
-                verifier.KernelProcedure.Requires.Add(new Requires(false, 
-                    NoAccess0DExpr(v.tok, v, "READ", 1)));
-                if(!CommandLineOptions.Symmetry)
-                {
-                    verifier.KernelProcedure.Requires.Add(new Requires(false, 
-                        NoAccess0DExpr(v.tok, v, "READ", 2)));
-                }
+                verifier.KernelProcedure.Requires.Add(new Requires(false, NoAccessExpr(v, "READ", 2)));
             }
         }
 
@@ -569,44 +417,7 @@ namespace GPUVerify
 
         protected override Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwoString)
         {
-            int OneOrTwo = Int32.Parse(OneOrTwoString);
-            Expr expr = null;
-
-            if (v.TypedIdent.Type is MapType)
-            {
-                MapType mt = v.TypedIdent.Type as MapType;
-                Debug.Assert(mt.Arguments.Length == 1);
-                Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
-
-                if (mt.Result is MapType)
-                {
-                    MapType mt2 = mt.Result as MapType;
-                    Debug.Assert(mt2.Arguments.Length == 1);
-                    Debug.Assert(GPUVerifier.IsIntOrBv32(mt2.Arguments[0]));
-
-                    if (mt2.Result is MapType)
-                    {
-                        MapType mt3 = mt2.Arguments[0] as MapType;
-                        Debug.Assert(mt3.Arguments.Length == 1);
-                        Debug.Assert(GPUVerifier.IsIntOrBv32(mt3.Arguments[0]));
-                        Debug.Assert(!(mt3.Result is MapType));
-                        expr = NoAccess3DExpr(v.tok, v, ReadOrWrite, mt.Arguments[0], mt2.Arguments[0], mt3.Arguments[0], OneOrTwo);
-                    }
-                    else
-                    {
-                        expr = NoAccess2DExpr(v.tok, v, ReadOrWrite, mt.Arguments[0], mt2.Arguments[0], OneOrTwo);
-                    }
-                }
-                else
-                {
-                    expr = NoAccess1DExpr(v.tok, v, ReadOrWrite, mt.Arguments[0], OneOrTwo);
-                }
-            }
-            else
-            {
-                expr = NoAccess0DExpr(v.tok, v, ReadOrWrite, OneOrTwo);
-            }
-            return expr;
+            return NoAccessExpr(v, ReadOrWrite, Int32.Parse(OneOrTwoString));
         }
 
 
@@ -623,131 +434,48 @@ namespace GPUVerify
 
         private Expr AccessOnlyAtThreadId(Variable v, string ReadOrWrite, int Thread)
         {
-            Expr expr = null;
+            VariableSeq Dummies;
+            Expr Access = AccessExpr(v, ReadOrWrite, Thread, out Dummies);
 
-            if (v.TypedIdent.Type is MapType)
+            if (Dummies.Length == 0)
             {
-                MapType mt = v.TypedIdent.Type as MapType;
-                Debug.Assert(mt.Arguments.Length == 1);
-                Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
-
-                if (mt.Result is MapType)
-                {
-                    MapType mt2 = mt.Result as MapType;
-                    Debug.Assert(mt2.Arguments.Length == 1);
-                    Debug.Assert(GPUVerifier.IsIntOrBv32(mt2.Arguments[0]));
-
-                    if (mt2.Result is MapType)
-                    {
-                        MapType mt3 = mt2.Arguments[0] as MapType;
-                        Debug.Assert(mt3.Arguments.Length == 1);
-                        Debug.Assert(GPUVerifier.IsIntOrBv32(mt3.Arguments[0]));
-                        Debug.Assert(!(mt3.Result is MapType));
-
-                        if (verifier.KernelHasIdZ() && mt.Arguments[0].Equals(verifier.GetTypeOfIdZ()) &&
-                            mt2.Arguments[0].Equals(verifier.GetTypeOfIdY()) &&
-                            mt3.Arguments[0].Equals(verifier.GetTypeOfIdX()))
-                        {
-                            expr = No3DAccessExceptAtThreadId(v, ReadOrWrite, Thread);
-                        }
-
-                    }
-                    else
-                    {
-                        if (verifier.KernelHasIdY() && mt.Arguments[0].Equals(verifier.GetTypeOfIdY()) &&
-                            mt2.Arguments[0].Equals(verifier.GetTypeOfIdX()))
-                        {
-                            expr = No2DAccessExceptAtThreadId(v, ReadOrWrite, Thread);
-                        }
-                    }
-                }
-                else
-                {
-                    if (mt.Arguments[0].Equals(verifier.GetTypeOfIdX()))
-                    {
-                        expr = No1DAccessExceptAtThreadId(v, ReadOrWrite, Thread);
-                    }
-                }
+                return null;
             }
-            return expr;
-        }
 
-        private Expr No1DAccessExceptAtThreadId(Variable v, string ReadOrWrite, int Thread)
-        {
-            Variable DummyX = new LocalVariable(v.tok, new TypedIdent(v.tok, "__x", verifier.GetTypeOfIdX()));
+            Expr ImplicationLhs;
 
-            return new ForallExpr(v.tok,
-                new VariableSeq(new Variable[] { DummyX }),
-                Expr.Imp(
-                    Expr.Neq(new IdentifierExpr(v.tok, DummyX), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "X", Thread))),
-                    Expr.Not(
-                        Expr.Select(
-                            new IdentifierExpr(v.tok, new VariableDualiser(Thread).VisitVariable(MakeAccessSetVariable(v, ReadOrWrite))),
-                            new IdentifierExpr(v.tok, DummyX)
-                        )
-                    )
-                )
-            );
-        }
-
-
-        private Expr No2DAccessExceptAtThreadId(Variable v, string ReadOrWrite, int Thread)
-        {
-            Variable DummyX = new LocalVariable(v.tok, new TypedIdent(v.tok, "__x", verifier.GetTypeOfIdX()));
-            Variable DummyY = new LocalVariable(v.tok, new TypedIdent(v.tok, "__y", verifier.GetTypeOfIdY()));
-
-            return new ForallExpr(v.tok,
-                new VariableSeq(new Variable[] { DummyY, DummyX }),
-                Expr.Imp(
+            if (Dummies.Length == 1)
+            {
+                ImplicationLhs = Expr.Neq(new IdentifierExpr(v.tok, Dummies[0]), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "X", Thread)));
+            }
+            else if (Dummies.Length == 2)
+            {
+                if (!verifier.KernelHasIdY())
+                {
+                    return null;
+                }
+                ImplicationLhs = Expr.Or(
+                        Expr.Neq(new IdentifierExpr(v.tok, Dummies[1]), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "X", Thread))),
+                        Expr.Neq(new IdentifierExpr(v.tok, Dummies[0]), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "Y", Thread)))
+                    );
+            }
+            else
+            {
+                Debug.Assert(Dummies.Length == 3);
+                if (!verifier.KernelHasIdZ())
+                {
+                    return null;
+                }
+                ImplicationLhs = Expr.Or(
                     Expr.Or(
-                        Expr.Neq(new IdentifierExpr(v.tok, DummyX), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "X", Thread))),
-                        Expr.Neq(new IdentifierExpr(v.tok, DummyY), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "Y", Thread)))
+                        Expr.Neq(new IdentifierExpr(v.tok, Dummies[2]), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "X", Thread))),
+                        Expr.Neq(new IdentifierExpr(v.tok, Dummies[1]), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "Y", Thread)))
                     ),
+                    Expr.Neq(new IdentifierExpr(v.tok, Dummies[0]), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "Z", Thread)))
+                );
+            }
 
-                    Expr.Not(
-                        Expr.Select(
-                            Expr.Select(
-                                new IdentifierExpr(v.tok, new VariableDualiser(Thread).VisitVariable(MakeAccessSetVariable(v, ReadOrWrite))),
-                                new IdentifierExpr(v.tok, DummyY)
-                            ),
-                            new IdentifierExpr(v.tok, DummyX)
-                        )
-                    )
-                )
-            );
-        }
-
-        private Expr No3DAccessExceptAtThreadId(Variable v, string ReadOrWrite, int Thread)
-        {
-            Variable DummyX = new LocalVariable(v.tok, new TypedIdent(v.tok, "__x", verifier.GetTypeOfIdX()));
-            Variable DummyY = new LocalVariable(v.tok, new TypedIdent(v.tok, "__y", verifier.GetTypeOfIdY()));
-            Variable DummyZ = new LocalVariable(v.tok, new TypedIdent(v.tok, "__z", verifier.GetTypeOfIdY()));
-
-            return new ForallExpr(v.tok,
-                new VariableSeq(new Variable[] { DummyY, DummyX }),
-                Expr.Imp(
-                    Expr.Or(
-                        Expr.Or(
-                            Expr.Neq(new IdentifierExpr(v.tok, DummyX), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "X", Thread))),
-                            Expr.Neq(new IdentifierExpr(v.tok, DummyY), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "Y", Thread)))
-                        ),
-                        Expr.Neq(new IdentifierExpr(v.tok, DummyZ), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "Z", Thread)))
-                    ),
-
-                    Expr.Not(
-                        Expr.Select(
-                            Expr.Select(
-                                Expr.Select(
-                                    new IdentifierExpr(v.tok, new VariableDualiser(Thread).VisitVariable(MakeAccessSetVariable(v, ReadOrWrite))),
-                                    new IdentifierExpr(v.tok, DummyZ)
-                                ),
-                                new IdentifierExpr(v.tok, DummyY)
-                            ),
-                            new IdentifierExpr(v.tok, DummyX)
-                        )
-                    )
-                )
-            );
+            return new ForallExpr(v.tok, Dummies, Expr.Imp(ImplicationLhs, Expr.Not(Access)));
         }
 
         protected override void AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
