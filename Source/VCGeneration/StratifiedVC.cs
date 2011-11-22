@@ -28,6 +28,7 @@ namespace VC
         public int numInlined = 0;
         public readonly static string recordProcName = "boogie_si_record";
         private bool useSummary;
+        private SummaryComputation summaryComputation;
 
         [ContractInvariantMethod]
         void ObjectInvariant()
@@ -305,6 +306,236 @@ namespace VC
             }
             Contract.Assert(false);
             return -1;
+        }
+
+        public class SummaryComputation
+        {
+            // The verification state
+            VerificationState vState;
+            // The call tree
+            FCallHandler calls;
+            // Fully-inlined guys we have already queried
+            HashSet<string> fullyInlinedCache;
+
+            // The summary: boolean guards that are true
+            HashSet<VCExprVar> trueSummaryConst;
+            HashSet<VCExprVar> trueSummaryConstUndeBound;
+
+            // Compute summaries under recursion bound or not?
+            bool ComputeUnderBound;
+
+            public SummaryComputation(VerificationState vState, bool ComputeUnderBound)
+            {
+                this.vState = vState;
+                this.calls = vState.calls;
+                this.fullyInlinedCache = new HashSet<string>();
+                this.trueSummaryConst = new HashSet<VCExprVar>();
+                this.trueSummaryConstUndeBound = new HashSet<VCExprVar>();
+                this.ComputeUnderBound = ComputeUnderBound;
+            }
+
+            public void boundChanged()
+            {
+                if (ComputeUnderBound)
+                {
+                    var s = "";
+                    trueSummaryConstUndeBound.Iter(v => s = s + v.ToString() + ",");
+                    Console.WriteLine("Clearing summaries: {{0}}", s);
+
+                    // start from scratch
+                    trueSummaryConst.ExceptWith(trueSummaryConstUndeBound);
+                    trueSummaryConstUndeBound = new HashSet<VCExprVar>();
+                }
+            }
+
+            public void compute(HashSet<int> goodCandidates, int bound)
+            {
+                // Find all nodes that have children only in goodCandidates
+                var overApproxNodes = FindNodes(calls.candidateParent, calls.currCandidates, goodCandidates);
+                overApproxNodes.IntersectWith(calls.summaryCandidates.Keys);
+                
+                var roots = FindTopMostAncestors(calls.candidateParent, overApproxNodes);
+                var checker2 = vState.checker2;
+
+                checker2.Push();
+
+                // candidates to block
+                var block = new HashSet<int>();
+                var usesBound = new HashSet<int>();
+                if (ComputeUnderBound)
+                {
+                    calls.currCandidates.Iter(id => { if (calls.getRecursionBound(id) > bound) block.Add(id); });
+                    foreach (var id in block)
+                    {
+                        checker2.AddAxiom(calls.getFalseExpr(id));
+                        var curr = id;
+                        usesBound.Add(id);
+                        while (curr != 0)
+                        {
+                            curr = calls.candidateParent[curr];
+                            usesBound.Add(curr);
+                        }
+                    }
+
+                }
+                
+                // Iterate over the roots
+                foreach (var id in roots)
+                {
+                    // inline procedures in post order
+                    var post = getPostOrder(calls.candidateParent, id);
+
+                    vState.checker2.Push();
+                    foreach (var cid in post)
+                    {
+                        if (goodCandidates.Contains(cid)) continue;
+
+                        checker2.AddAxiom(calls.id2VC[cid]);
+                        if (!overApproxNodes.Contains(cid)) continue;
+                        checker2.AddAxiom(calls.id2ControlVar[cid]);
+
+                        foreach (var tup in calls.summaryCandidates[cid])
+                        {
+                            if (trueSummaryConst.Contains(tup.Item1)) continue;
+
+                            //Console.WriteLine("Going to try ({0} ==> {1}) on {2}", tup.Item1, tup.Item2, id);
+                            //Console.WriteLine("Call expr: {0}", calls.id2Candidate[id]);
+                            
+                            // It is OK to assume the summary while trying to prove it
+                            var summary = getSummary(tup.Item1);
+
+                            checker2.Push();
+                            checker2.AddAxiom(summary);
+                            checker2.AddAxiom(checker2.underlyingChecker.VCExprGen.Not(tup.Item2));
+                            var outcome = checker2.CheckVC();
+                            checker2.Pop();
+                            if (outcome == Outcome.Correct)
+                            {
+                                Console.WriteLine("Found summary: {0}", tup.Item1);
+                                trueSummaryConst.Add(tup.Item1);
+                                if (usesBound.Contains(cid)) trueSummaryConstUndeBound.Add(tup.Item1);
+                            }
+                        }
+                    }
+                    checker2.Pop();
+                }
+                checker2.Pop();
+            }
+
+
+            public VCExpr getSummary()
+            {
+                return getSummary(new HashSet<VCExprVar>());
+            }
+
+            public VCExpr getSummary(params VCExprVar[] p)
+            {
+                var s = new HashSet<VCExprVar>();
+                p.Iter(v => s.Add(v));
+                return getSummary(s);
+            }
+
+            public VCExpr getSummary(HashSet<VCExprVar> extraToSet)
+            {
+                if (calls.allSummaryConst.Count == 0) return null;
+                // TODO: does it matter which checker we use here?
+                var Gen = vState.checker.underlyingChecker.VCExprGen;
+
+                var ret = VCExpressionGenerator.True;
+                foreach (var c in calls.allSummaryConst)
+                {
+                    if (trueSummaryConst.Contains(c) || extraToSet.Contains(c))
+                    {
+                        ret = Gen.And(ret, c);
+                    }
+                    else
+                    {
+                        ret = Gen.And(ret, Gen.Not(c));
+                    }
+                }
+                return ret;
+            }
+
+            // Return a subset of nodes such that all other nodes are their decendent
+            private HashSet<int> FindTopMostAncestors(Dictionary<int, int> parents, HashSet<int> nodes)
+            {
+                var ret = new HashSet<int>();
+                //var ancestorFound = new HashSet<int>();
+                foreach (var n in nodes)
+                {
+                    var ancestor = n;
+                    var curr = n;
+                    while (curr != 0)
+                    {
+                        curr = parents[curr];
+                        if (nodes.Contains(curr)) ancestor = curr;
+                    }
+                    ret.Add(ancestor);
+                }
+                return ret;
+            }
+
+            // Returns the set of candidates whose child leaves are all "good". Remove fully inlined ones.
+            HashSet<int> FindNodes(Dictionary<int, int> parents, HashSet<int> allLeaves,
+                HashSet<int> goodLeaves)
+            {
+                var ret = new HashSet<int>();
+                var leaves = new Dictionary<int, HashSet<int>>();
+                leaves.Add(0, new HashSet<int>());
+                parents.Keys.Iter(n => leaves.Add(n, new HashSet<int>()));
+                allLeaves.Iter(l => leaves[l].Add(l));
+
+                foreach (var l in allLeaves)
+                {
+                    var curr = l;
+                    leaves[curr].Add(l);
+                    while (parents.ContainsKey(curr))
+                    {
+                        curr = parents[curr];
+                        leaves[curr].Add(l);
+                    }
+                }
+
+                foreach (var kvp in leaves)
+                {
+                    if (kvp.Value.Count == 0)
+                    {
+                        var proc = calls.getProc(kvp.Key);
+                        if (fullyInlinedCache.Contains(proc)) continue;
+                        else
+                        {
+                            ret.Add(kvp.Key);
+                            fullyInlinedCache.Add(proc);
+                        }
+                    }
+
+                    if (kvp.Value.IsSubsetOf(goodLeaves))
+                    {
+                        ret.Add(kvp.Key);
+                    }
+                }
+
+                return ret;
+            }
+
+
+            // returns children of root in post order
+            static List<int> getPostOrder(Dictionary<int, int> parents, int root)
+            {
+                var children = new Dictionary<int, HashSet<int>>();
+                foreach (var id in parents.Keys) children.Add(id, new HashSet<int>());
+                children.Add(0, new HashSet<int>());
+                foreach (var kvp in parents) children[kvp.Value].Add(kvp.Key);
+                return getPostOrder(children, root);
+            }
+            static List<int> getPostOrder(Dictionary<int, HashSet<int>> children, int root)
+            {
+                var ret = new List<int>();
+                foreach (var ch in children[root]) ret.AddRange(getPostOrder(children, ch));
+                ret.Add(root);
+                return ret;
+            }
+
         }
 
         public class BoundingVCMutator : MutatingVCExprVisitor<bool> {
@@ -599,7 +830,6 @@ namespace VC
 
             public void addMain()
             {
-                if (coverageProcess == null) return;
                 newNodes.Add(0);
                 foreach (var n in calls.currCandidates)
                 {
@@ -1309,6 +1539,7 @@ namespace VC
         public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback)
         {
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+            var computeUnderBound = true;
 
             #region stratified inlining options
             // This flag control the nature of queries made by Stratified VerifyImplementation
@@ -1340,6 +1571,12 @@ namespace VC
                     createVConDemand = true;
                     useSummary = true;
                     break;
+                case 7:
+                    incrementalSearch = true;
+                    createVConDemand = true;
+                    useSummary = true;
+                    computeUnderBound = false;
+                    break;
             }
 
             #endregion
@@ -1349,6 +1586,7 @@ namespace VC
             Checker checker2 = null;
             if (useSummary)
             {
+                
                 checker2 = new Checker(this, program, "checker2.txt", true, CommandLineOptions.Clo.ProverKillTime);
             }
 
@@ -1393,6 +1631,7 @@ namespace VC
 
             // Identify summary candidates: Match ensure clauses with the appropriate call site
             if (useSummary) calls.matchSummaries();
+            
 
             // create a process for displaying coverage information
             var coverageManager = new CoverageGraphManager(calls);
@@ -1402,7 +1641,9 @@ namespace VC
             var vState = new VerificationState(vc, calls, reporter, checker, checker2);
             vState.vcSize += SizeComputingVisitor.ComputeSize(vc);
             vState.coverageManager = coverageManager;
-            
+
+            if (useSummary) summaryComputation = new SummaryComputation(vState, computeUnderBound);
+
             // We'll restore the original state of the theorem prover at the end
             // of this procedure
             vState.checker.Push();
@@ -1513,7 +1754,9 @@ namespace VC
                         break;
                     }
 
-                    var summary = calls.getSummary();
+                    VCExpr summary = null;
+                    if (useSummary) summary = summaryComputation.getSummary();
+
                     if (useSummary && summary != null)
                     {
                         vState.checker.Push();
@@ -1571,6 +1814,7 @@ namespace VC
                                 if (rb < minRecReached) minRecReached = rb;
                             }
                             bound = minRecReached;
+                            if (useSummary) summaryComputation.boundChanged();
 
                             if (bound > CommandLineOptions.Clo.RecursionBound)
                             {
@@ -2126,37 +2370,10 @@ namespace VC
 
                 if (useSummary)
                 {
-                    // Find the set of candidates with valid summaries
+                    // Find the set of candidates with valid over-approximations
                     var assumeTrueCandidates = new HashSet<int>(vState.calls.currCandidates);
                     assumeTrueCandidates.ExceptWith(block);
-                    // Find all nodes that have children only in assumeTrueCandidates
-                    var overApproxNodes = FindNodes(vState.calls.candidateParent, vState.calls.currCandidates, assumeTrueCandidates);
-                    overApproxNodes.IntersectWith(calls.summaryCandidates.Keys);
-                    foreach (var id in overApproxNodes)
-                    {
-                        var post = getPostOrder(vState.calls.candidateParent, id);
-                        var summary = calls.getSummary();
-                        vState.checker2.Push();
-                        vState.checker2.AddAxiom(summary);
-                        foreach (var cid in post) vState.checker2.AddAxiom(calls.id2VC[cid]);
-                        vState.checker2.AddAxiom(calls.id2ControlVar[id]);
-
-                        foreach (var tup in calls.summaryCandidates[id])
-                        {
-                            Console.WriteLine("Going to try ({0} ==> {1}) on {2}", tup.Item1, tup.Item2, id);
-                            Console.WriteLine("Call expr: {0}", calls.id2Candidate[id]);
-                            vState.checker2.Push();
-                            vState.checker2.AddAxiom(vState.checker2.underlyingChecker.VCExprGen.Not(tup.Item2));
-                            var outcome = vState.checker2.CheckVC();
-                            vState.checker2.Pop();
-                            if (outcome == Outcome.Correct)
-                            {
-                                Console.WriteLine("Found summary: {0}", tup.Item1);
-                                calls.trueSummaryConst.Add(tup.Item1);
-                            }
-                        }
-                        vState.checker2.Pop();
-                    }
+                    summaryComputation.compute(assumeTrueCandidates, bound);
                 }
 
                 // Nothing more can be done with current recursion bound. 
@@ -2166,55 +2383,6 @@ namespace VC
             Contract.Assert(ret == Outcome.Errors);
 
             checker.LogComment(";;;;;;;;;;;; Overapprox mode end ;;;;;;;;;;");
-
-            return ret;
-        }
-
-        // returns children of root in post order
-        static List<int> getPostOrder(Dictionary<int, int> parents, int root)
-        {
-            var children = new Dictionary<int, HashSet<int>>();
-            foreach (var id in parents.Keys) children.Add(id, new HashSet<int>());
-            children.Add(0, new HashSet<int>());
-            foreach (var kvp in parents) children[kvp.Value].Add(kvp.Key);
-            return getPostOrder(children, root);
-        }
-        static List<int> getPostOrder(Dictionary<int, HashSet<int>> children, int root)
-        {
-            var ret = new List<int>();
-            foreach (var ch in children[root]) ret.AddRange(getPostOrder(children, ch));
-            ret.Add(root);
-            return ret;
-        }
-
-        // Returns the set of candidates whose child leaves are all "good"
-        static HashSet<int> FindNodes(Dictionary<int, int> parents, HashSet<int> allLeaves, 
-            HashSet<int> goodLeaves)
-        {
-            var ret = new HashSet<int>();
-            var leaves = new Dictionary<int, HashSet<int>>();
-            leaves.Add(0, new HashSet<int>());
-            parents.Keys.Iter(n => leaves.Add(n, new HashSet<int>()));
-            allLeaves.Iter(l => leaves[l].Add(l));
-
-            foreach (var l in allLeaves)
-            {
-                var curr = l;
-                leaves[curr].Add(l);
-                while (parents.ContainsKey(curr))
-                {
-                    curr = parents[curr];
-                    leaves[curr].Add(l);
-                }
-            }
-
-            foreach (var kvp in leaves)
-            {
-                if (kvp.Value.IsSubsetOf(goodLeaves))
-                {
-                    ret.Add(kvp.Key);
-                }
-            }
 
             return ret;
         }
@@ -2303,8 +2471,8 @@ namespace VC
                 calls.currInlineCount = id;
                 calls.setCurrProc(procName);
                 expansion = calls.Mutate(expansion, true);
-                if(vState.coverageManager != null) vState.coverageManager.addRecentEdges(id);
-                if(useSummary) calls.matchSummaries();
+                if (useSummary) calls.matchSummaries();
+                vState.coverageManager.addRecentEdges(id);
                 
                 //expansion = checker.VCExprGen.Eq(calls.id2ControlVar[id], expansion);
                 expansion = checker.VCExprGen.Implies(calls.id2ControlVar[id], expansion);
@@ -2504,8 +2672,6 @@ namespace VC
             private Dictionary<string, List<Tuple<VCExprVar, VCExpr>>> summaryTemp;
             // set of all boolean guards of summaries
             public HashSet<VCExprVar> allSummaryConst;
-            // The summary: boolean guards that are true
-            public HashSet<VCExprVar> trueSummaryConst;
 
             public HashSet<int> forcedCandidates;
 
@@ -2590,7 +2756,6 @@ namespace VC
                 summaryCandidates = new Dictionary<int, List<Tuple<VCExprVar, VCExpr>>>();
                 summaryTemp = new Dictionary<string, List<Tuple<VCExprVar, VCExpr>>>();
                 allSummaryConst = new HashSet<VCExprVar>();
-                trueSummaryConst = new HashSet<VCExprVar>();
                 id2VC = new Dictionary<int, VCExpr>();
             }
 
@@ -2602,6 +2767,14 @@ namespace VC
             public bool isPCBCandidate(int id)
             {
                 return (id >= pcbStartingCandidateId);
+            }
+
+            // Return the set of all candidates
+            public HashSet<int> getAllCandidates()
+            {
+                var ret = new HashSet<int>(candidateParent.Keys);
+                ret.Add(0);
+                return ret;
             }
 
             // Given a candidate "id", let proc(id) be the
@@ -2954,24 +3127,6 @@ namespace VC
                 summaryTemp.Clear();
             }
 
-            public VCExpr getSummary()
-            {
-                if (allSummaryConst.Count == 0) return null;
-
-                var ret = VCExpressionGenerator.True;
-                foreach (var c in allSummaryConst)
-                {
-                    if (trueSummaryConst.Contains(c))
-                    {
-                        ret = Gen.And(ret, c);
-                    }
-                    else
-                    {
-                        ret = Gen.And(ret, Gen.Not(c));
-                    }
-                }
-                return ret;
-            }
         } // end FCallHandler
 
         // Collects the set of all VCExprVar in a given VCExpr
