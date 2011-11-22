@@ -349,6 +349,26 @@ namespace Microsoft.Boogie {
       // not present in the relevant levels
       return null;
     }
+    Hashtable axioms = new Hashtable();
+
+    public void AddAxiom(Axiom axiom) {
+      string axiomName = QKeyValue.FindStringAttribute(axiom.Attributes, "name");
+      if (axiomName == null)
+        return;
+      var previous = (Axiom)axioms[axiomName];
+      if (previous == null) {
+        axioms.Add(axiomName, axiom);
+      }
+      else {
+        var r = (Axiom)SelectNonExtern(axiom, previous);
+        if (r == null) {
+          Error(axiom, "more than one declaration of axiom name: {0}", axiomName);
+        }
+        else {
+          axioms[axiomName] = r;
+        }
+      }
+    }
 
     // ------------------------------  Functions/Procedures  ------------------------------
 

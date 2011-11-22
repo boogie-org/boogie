@@ -1044,7 +1044,7 @@ namespace Microsoft.Boogie {
     }
     public override void Register(ResolutionContext rc) {
       //Contract.Requires(rc != null);
-      // nothing to register
+      rc.AddAxiom(this);
     }
     public override void Resolve(ResolutionContext rc) {
       //Contract.Requires(rc != null);
