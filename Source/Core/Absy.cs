@@ -308,7 +308,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(rc != null);
       // first resolve type constructors
       foreach (Declaration d in TopLevelDeclarations) {
-        if (d is TypeCtorDecl)
+        if (d is TypeCtorDecl && !QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
           d.Resolve(rc);
       }
 
@@ -316,7 +316,7 @@ namespace Microsoft.Boogie {
       List<TypeSynonymDecl/*!*/>/*!*/ synonymDecls = new List<TypeSynonymDecl/*!*/>();
       foreach (Declaration d in TopLevelDeclarations) {
         Contract.Assert(d != null);
-        if (d is TypeSynonymDecl)
+        if (d is TypeSynonymDecl && !QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
           synonymDecls.Add((TypeSynonymDecl)d);
       }
 
