@@ -322,9 +322,9 @@ namespace Microsoft.Boogie.Houdini {
       return callGraph;
     }
     
-    private Queue<Implementation> BuildWorkList(Program program) {
+    private WorkQueue BuildWorkList(Program program) {
       // adding implementations to the workqueue from the bottom of the call graph upwards
-      Queue<Implementation> queue = new Queue<Implementation>();
+      WorkQueue queue = new WorkQueue();
       StronglyConnectedComponents<Implementation> sccs =
         new StronglyConnectedComponents<Implementation>(callGraph.Nodes,
           new Adjacency<Implementation>(callGraph.Predecessors),
@@ -494,10 +494,10 @@ namespace Microsoft.Boogie.Houdini {
     private void FlushWorkList(HoudiniState current) {
       this.NotifyFlushStart();
       VCExpr axiom = BuildAxiom(current.Assignment);
-      while (current.WorkList.Count > 0) {
+      while (current.WorkQueue.Count > 0) {
         this.NotifyIteration();
 
-        current.Implementation = current.WorkList.Peek();
+        current.Implementation = current.WorkQueue.Peek();
         this.NotifyImplementation(current.Implementation);
 
         HoudiniSession session;
@@ -507,7 +507,7 @@ namespace Microsoft.Boogie.Houdini {
         UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
         this.NotifyOutcome(outcome);
 
-        current.WorkList.Dequeue();
+        current.WorkQueue.Dequeue();
         this.NotifyDequeue();
 
       }
@@ -521,8 +521,8 @@ namespace Microsoft.Boogie.Houdini {
     }
 
     private void AddToWorkList(HoudiniState current, Implementation imp) {
-      if (!current.WorkList.Contains(imp) && !current.isBlackListed(imp.Name)) {
-        current.WorkList.Enqueue(imp);
+      if (!current.WorkQueue.Contains(imp) && !current.isBlackListed(imp.Name)) {
+        current.WorkQueue.Enqueue(imp);
         this.NotifyEnqueue(imp);
       }
     }
@@ -534,7 +534,7 @@ namespace Microsoft.Boogie.Houdini {
 
       switch (outcome) {
         case ProverInterface.Outcome.Valid:
-          current.WorkList.Dequeue();
+          current.WorkQueue.Dequeue();
           this.NotifyDequeue();
           break;
         case ProverInterface.Outcome.Invalid:
@@ -551,19 +551,19 @@ namespace Microsoft.Boogie.Houdini {
             }
           }
           if (dequeue) {
-            current.WorkList.Dequeue();
+            current.WorkQueue.Dequeue();
             this.NotifyDequeue();
           }
           break;
         case ProverInterface.Outcome.TimeOut:
           // TODO: reset session instead of blocking timed out funcs?
           current.addToBlackList(current.Implementation.Name);
-          current.WorkList.Dequeue();
+          current.WorkQueue.Dequeue();
           this.NotifyDequeue();
           break;
         case ProverInterface.Outcome.OutOfMemory:
         case ProverInterface.Outcome.Undetermined:
-          current.WorkList.Dequeue();
+          current.WorkQueue.Dequeue();
           this.NotifyDequeue();
           break;
         default:
@@ -615,29 +615,58 @@ namespace Microsoft.Boogie.Houdini {
           throw new Exception("Unknown vcgen outcome");
       }
       if (dequeue) {
-        current.WorkList.Dequeue();
+        current.WorkQueue.Dequeue();
         this.NotifyDequeue();
       }
       return !dequeue;
     }
 
+    private class WorkQueue {
+      private Queue<Implementation> queue;
+      private HashSet<Implementation> set;
+      public WorkQueue() {
+        queue = new Queue<Implementation>();
+        set = new HashSet<Implementation>();
+      }
+      public void Enqueue(Implementation impl) {
+        if (set.Contains(impl))
+          return;
+        queue.Enqueue(impl);
+        set.Add(impl);
+      }
+      public Implementation Dequeue() {
+        Implementation impl = queue.Dequeue();
+        set.Remove(impl);
+        return impl;
+      }
+      public Implementation Peek() {
+        return queue.Peek();
+      }
+      public int Count {
+        get { return queue.Count; }
+      }
+      public bool Contains(Implementation impl) {
+        return set.Contains(impl);
+      }
+    }
+
     private class HoudiniState {
-      private Queue<Implementation> _workList;
+      private WorkQueue _workQueue;
       private HashSet<string> blackList;
       private Dictionary<string, bool> _assignment;
       private Implementation _implementation;
       private HoudiniOutcome _outcome;
 
-      public HoudiniState(Queue<Implementation> workList, Dictionary<string, bool> currentAssignment) {
-        this._workList = workList;
+      public HoudiniState(WorkQueue workQueue, Dictionary<string, bool> currentAssignment) {
+        this._workQueue = workQueue;
         this._assignment = currentAssignment;
         this._implementation = null;
         this._outcome = new HoudiniOutcome();
         this.blackList = new HashSet<string>();
       }
 
-      public Queue<Implementation> WorkList {
-        get { return this._workList; }
+      public WorkQueue WorkQueue {
+        get { return this._workQueue; }
       }
       public Dictionary<string, bool> Assignment {
         get { return this._assignment; }
@@ -685,14 +714,14 @@ namespace Microsoft.Boogie.Houdini {
       HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants.Keys));
       this.NotifyStart(program, houdiniConstants.Keys.Count);
 
-      while (current.WorkList.Count > 0) {
+      while (current.WorkQueue.Count > 0) {
         //System.GC.Collect();
         this.NotifyIteration();
 
         VCExpr axiom = BuildAxiom(current.Assignment);
         this.NotifyAssignment(current.Assignment);
 
-        current.Implementation = current.WorkList.Peek();
+        current.Implementation = current.WorkQueue.Peek();
         this.NotifyImplementation(current.Implementation);
 
         List<Counterexample> errors;
@@ -703,7 +732,7 @@ namespace Microsoft.Boogie.Houdini {
 
         UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
         if (IsOutcomeNotHoudini(outcome, errors) && !continueAtError) {
-          current.WorkList.Dequeue();
+          current.WorkQueue.Dequeue();
           this.NotifyDequeue();
           FlushWorkList(current);
         }
@@ -720,12 +749,12 @@ namespace Microsoft.Boogie.Houdini {
       HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants.Keys));
       this.NotifyStart(program, houdiniConstants.Keys.Count);
 
-      while (current.WorkList.Count > 0) {
+      while (current.WorkQueue.Count > 0) {
         bool exceptional = false;
         //System.GC.Collect();
         this.NotifyIteration();
 
-        current.Implementation = current.WorkList.Peek();
+        current.Implementation = current.WorkQueue.Peek();
         this.NotifyImplementation(current.Implementation);
 
         HoudiniSession session;
@@ -738,7 +767,7 @@ namespace Microsoft.Boogie.Houdini {
           this.NotifyOutcome(outcome);
           UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
           if (IsOutcomeNotHoudini(outcome, errors) && !continueAtError) {
-            current.WorkList.Dequeue();
+            current.WorkQueue.Dequeue();
             this.NotifyDequeue();
             FlushWorkList(current);
           }
@@ -761,12 +790,12 @@ namespace Microsoft.Boogie.Houdini {
       HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants.Keys));
       this.NotifyStart(program, houdiniConstants.Keys.Count);
 
-      while (current.WorkList.Count > 0) {
+      while (current.WorkQueue.Count > 0) {
         bool exceptional = false;
         //System.GC.Collect();
         this.NotifyIteration();
 
-        current.Implementation = current.WorkList.Peek();
+        current.Implementation = current.WorkQueue.Peek();
         this.NotifyImplementation(current.Implementation);
 
         List<Counterexample> errors;
@@ -779,7 +808,7 @@ namespace Microsoft.Boogie.Houdini {
           this.NotifyOutcome(outcome);
           UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
           if (AnyNonCandidateViolation(outcome, errors)) { //abort
-            current.WorkList.Dequeue();
+            current.WorkQueue.Dequeue();
             this.NotifyDequeue();
             FlushWorkList(current);
           }
@@ -973,7 +1002,7 @@ namespace Microsoft.Boogie.Houdini {
           DebugRefutedCandidates(current.Implementation, errors);
           UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
           if (!continueAtError && IsOutcomeNotHoudini(outcome, errors)) {
-            current.WorkList.Dequeue();
+            current.WorkQueue.Dequeue();
             this.NotifyDequeue();
             trySameFunc = false;
             FlushWorkList(current);
@@ -985,7 +1014,7 @@ namespace Microsoft.Boogie.Houdini {
             outcome = ProverInterface.Outcome.Undetermined;
           }
           pastFirstIter = true;
-        } while (trySameFunc && current.WorkList.Count > 0);
+        } while (trySameFunc && current.WorkQueue.Count > 0);
 
       }
       catch (VCGenException e) {
@@ -1042,7 +1071,7 @@ namespace Microsoft.Boogie.Houdini {
           UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
 
           if (AnyNonCandidateViolation(outcome, errors)) { //abort
-            current.WorkList.Dequeue();
+            current.WorkQueue.Dequeue();
             this.NotifyDequeue();
             trySameFunc = false;
             FlushWorkList(current);
@@ -1051,7 +1080,7 @@ namespace Microsoft.Boogie.Houdini {
             trySameFunc = UpdateAssignmentWorkList(current, outcome, errors);
           }
           pastFirstIter = true;
-        } while (trySameFunc && current.WorkList.Count > 0);
+        } while (trySameFunc && current.WorkQueue.Count > 0);
       }
       catch (VCGenException e) {
         Contract.Assume(e != null);
