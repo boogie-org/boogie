@@ -244,6 +244,7 @@ namespace GPUVerify
 
             foreach (Cmd c in bb.simpleCmds)
             {
+                result.simpleCmds.Add(c);
                 if (c is AssignCmd)
                 {
                     AssignCmd assign = c as AssignCmd;
@@ -313,7 +314,6 @@ namespace GPUVerify
 
 
                 }
-                result.simpleCmds.Add(c);
             }
 
             if (bb.ec is WhileCmd)
@@ -353,7 +353,7 @@ namespace GPUVerify
             {
                 foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
                 {
-                    CheckForRaces(tok, checkForRaces, v);
+                    CheckForRaces(tok, checkForRaces, v, false);
                 }
             }
 
@@ -372,7 +372,7 @@ namespace GPUVerify
 
         protected abstract void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v, string AccessType);
 
-        public abstract void CheckForRaces(IToken tok, BigBlock bb, Variable v);
+        public abstract void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly);
 
         protected void MakeLogAccessProcedureHeader(Variable v, string ReadOrWrite, out Variable XParameterVariable, out Variable YParameterVariable, out Variable ZParameterVariable, out Procedure LogReadOrWriteProcedure)
         {

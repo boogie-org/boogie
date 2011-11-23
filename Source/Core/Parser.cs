@@ -503,7 +503,7 @@ private class BvBounds : Expr {
 			}
 			ImplBody(out locals, out stmtList);
 			impl = new Implementation(x, x.val, typeParams,
-			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, null, this.errors);
+			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
 		} else SynErr(91);
 		proc = new Procedure(x, x.val, typeParams, ins, outs, pre, mods, post, kv); 

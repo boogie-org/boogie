@@ -10,7 +10,7 @@ procedure {:inline 1} Alloc() returns (x: Ref);
 
 
 
-implementation Alloc() returns (x: Ref)
+implementation {:inline 1} Alloc() returns (x: Ref)
 {
     assume $Alloc[x] == false && x != null;
     $Alloc[x] := true;
@@ -38,7 +38,7 @@ procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref);
 
 
 
-implementation System.Object.GetType(this: Ref) returns ($result: Ref)
+implementation {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref)
 {
     $result := $TypeOf($DynamicType(this));
 }
@@ -63,7 +63,7 @@ procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.Parameteriz
 
 
 
-implementation System.Threading.Thread.#ctor$System.Threading.ParameterizedThreadStart(this: Ref, start$in: Ref)
+implementation {:inline 1} System.Threading.Thread.#ctor$System.Threading.ParameterizedThreadStart(this: Ref, start$in: Ref)
 {
     assume $ThreadDelegate(this) == start$in;
 }
@@ -74,7 +74,7 @@ procedure {:inline 1} System.Threading.Thread.Start$System.Object(this: Ref, par
 
 
 
-implementation System.Threading.Thread.Start$System.Object(this: Ref, parameter$in: Ref)
+implementation {:inline 1} System.Threading.Thread.Start$System.Object(this: Ref, parameter$in: Ref)
 {
     call {:async} Wrapper_System.Threading.ParameterizedThreadStart.Invoke$System.Object($ThreadDelegate(this), parameter$in);
 }
@@ -85,7 +85,7 @@ procedure {:inline 1} Wrapper_System.Threading.ParameterizedThreadStart.Invoke$S
 
 
 
-implementation Wrapper_System.Threading.ParameterizedThreadStart.Invoke$System.Object(this: Ref, obj$in: Ref)
+implementation {:inline 1} Wrapper_System.Threading.ParameterizedThreadStart.Invoke$System.Object(this: Ref, obj$in: Ref)
 {
     $Exception := null;
     call System.Threading.ParameterizedThreadStart.Invoke$System.Object(this, obj$in);
@@ -101,7 +101,7 @@ procedure {:inline 1} System.Threading.Thread.#ctor$System.Threading.ThreadStart
 
 
 
-implementation System.Threading.Thread.#ctor$System.Threading.ThreadStart(this: Ref, start$in: Ref)
+implementation {:inline 1} System.Threading.Thread.#ctor$System.Threading.ThreadStart(this: Ref, start$in: Ref)
 {
     assume $ThreadDelegate(this) == start$in;
 }
@@ -112,7 +112,7 @@ procedure {:inline 1} System.Threading.Thread.Start(this: Ref);
 
 
 
-implementation System.Threading.Thread.Start(this: Ref)
+implementation {:inline 1} System.Threading.Thread.Start(this: Ref)
 {
     call {:async} Wrapper_System.Threading.ThreadStart.Invoke($ThreadDelegate(this));
 }
@@ -123,7 +123,7 @@ procedure {:inline 1} Wrapper_System.Threading.ThreadStart.Invoke(this: Ref);
 
 
 
-implementation Wrapper_System.Threading.ThreadStart.Invoke(this: Ref)
+implementation {:inline 1} Wrapper_System.Threading.ThreadStart.Invoke(this: Ref)
 {
     $Exception := null;
     call System.Threading.ThreadStart.Invoke(this);
@@ -159,7 +159,7 @@ procedure {:inline 1} DelegateAdd(a: Ref, b: Ref) returns (c: Ref);
 
 
 
-implementation DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
+implementation {:inline 1} DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
 {
   var d: Delegate;
 
@@ -184,7 +184,7 @@ procedure {:inline 1} DelegateRemove(a: Ref, b: Ref) returns (c: Ref);
 
 
 
-implementation DelegateRemove(a: Ref, b: Ref) returns (c: Ref)
+implementation {:inline 1} DelegateRemove(a: Ref, b: Ref) returns (c: Ref)
 {
   var d: Delegate;
 
@@ -213,7 +213,7 @@ procedure {:inline 1} DelegateCreate(d: Delegate) returns (c: Ref);
 
 
 
-implementation DelegateCreate(d: Delegate) returns (c: Ref)
+implementation {:inline 1} DelegateCreate(d: Delegate) returns (c: Ref)
 {
     call c := Alloc();
     assume $Delegate(c) == MultisetSingleton(d);

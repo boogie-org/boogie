@@ -20,7 +20,7 @@ namespace GPUVerify
 
         BigBlock MakeRaceCheckingStatements(IToken tok);
 
-        void CheckForRaces(IToken tok, BigBlock bb, Variable v);
+        void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly);
 
         void AddRaceCheckingCandidateRequires(Procedure Proc);
 

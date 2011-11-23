@@ -2161,6 +2161,11 @@ namespace Microsoft.Boogie {
         {
             assume.Attributes = Attributes;
         }
+        if (QKeyValue.FindBoolAttribute(e.Attributes, "candidate"))
+        {
+            assume.Attributes = new QKeyValue(Token.NoToken, "candidate", new List<object>(), assume.Attributes);
+            assume.Attributes.Params.Add(this.callee);
+        }
         #endregion
         newBlockBody.Add(assume);
       }

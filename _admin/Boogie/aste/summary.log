@@ -1,15 +1,15 @@
-# Aste started: 2011-11-17 07:00:04
+# Aste started: 2011-11-21 07:00:05
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2011-11-17 07:03:22] SpecSharp revision: 441525d3599d
-# [2011-11-17 07:03:22] SscBoogie revision: 441525d3599d
-# [2011-11-17 07:05:04] Boogie revision: d837d1c8382c
-[2011-11-17 07:06:14] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
+# [2011-11-21 07:03:42] SpecSharp revision: fcf3177ec66b
+# [2011-11-21 07:03:42] SscBoogie revision: fcf3177ec66b
+# [2011-11-21 07:05:30] Boogie revision: 1af8119efee0
+[2011-11-21 07:06:49] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
 
     1>corflags : warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
     warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-[2011-11-17 07:07:38] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+[2011-11-21 07:08:17] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -24,8 +24,7 @@
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(266,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1695,11): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1855,11): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\Check.cs(161,16): warning CS0219: The variable 'expand' is assigned but its value is never used
-    D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(850,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
+    D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(852,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0162: Unreachable code detected
@@ -39,15 +38,6 @@
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
-    warning CS0219: The variable 'expand' is assigned but its value is never used
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
-[2011-11-17 07:07:49] [Error] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Dafny.sln /Rebuild Checked
-
-    D:\Temp\aste\Boogie\Source\Dafny\Translator.cs(5071,9): error CC1022: Bad use of method 'Contract.Invariant' in method body 'Microsoft.Dafny.Translator+ExpressionTranslator.#ctor(Microsoft.Dafny.Translator,Microsoft.Dafny.Translator+PredefinedDecls,Microsoft.Boogie.Expr,System.String,Microsoft.Dafny.Function,System.Int32,System.String)'
-    D:\Temp\aste\Boogie\Source\Dafny\Translator.cs(5072,9): error CC1022: Bad use of method 'Contract.Invariant' in method body 'Microsoft.Dafny.Translator+ExpressionTranslator.#ctor(Microsoft.Dafny.Translator,Microsoft.Dafny.Translator+PredefinedDecls,Microsoft.Boogie.Expr,System.String,Microsoft.Dafny.Function,System.Int32,System.String)'
-    D:\Temp\aste\Boogie\Source\Dafny\DafnyOptions.cs(36,7): warning CC1032: Method 'Microsoft.Dafny.DafnyOptions.ParseOption(System.String,Microsoft.Boogie.CommandLineOptionEngine+CommandLineParseState)' overrides 'Microsoft.Boogie.CommandLineOptionEngine.ParseOption(System.String,Microsoft.Boogie.CommandLineOptionEngine+CommandLineParseState)', thus cannot add Requires.
-    C:\Program Files (x86)\Microsoft\Contracts\MsBuild\v4.0\Microsoft.CodeContracts.targets(240,5): error MSB3073: The command ""C:\Program Files (x86)\Microsoft\Contracts\Bin\ccrewrite" "@DafnyPipelineccrewrite.rsp"" exited with code 2.
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Dafny\bin\Checked\DafnyPipeline.dll' could not be found
-    warning CC1032: Method 'Microsoft.Dafny.DafnyOptions.ParseOption(System.String,Microsoft.Boogie.CommandLineOptionEngine+CommandLineParseState)' overrides 'Microsoft.Boogie.CommandLineOptionEngine.ParseOption(System.String,Microsoft.Boogie.CommandLineOptionEngine+CommandLineParseState)', thus cannot add Requires.
-    1 error
-    2 failed
+[2011-11-21 08:04:18] 0 out of 32 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2011-11-21 08:04:59] Released nightly of Boogie

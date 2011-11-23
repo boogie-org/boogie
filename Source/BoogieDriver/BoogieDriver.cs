@@ -444,6 +444,9 @@ namespace Microsoft.Boogie {
         foreach (var x in outcome.assignment) {
           Console.WriteLine(x.Key + " = " + x.Value);
         }
+        if (CommandLineOptions.Clo.Trace) {
+          Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime);
+        }
         errorCount = outcome.ErrorCount;
         verified = outcome.Verified;
         inconclusives = outcome.Inconclusives;

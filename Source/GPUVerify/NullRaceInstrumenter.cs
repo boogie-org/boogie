@@ -19,7 +19,7 @@ namespace GPUVerify
             
         }
 
-        public void CheckForRaces(IToken tok, BigBlock bb, Variable v)
+        public void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly)
         {
         }
 

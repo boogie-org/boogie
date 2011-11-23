@@ -85,6 +85,8 @@ namespace GPUVerify
             Implementation LogReadOrWriteImplementation = new Implementation(v.tok, "_LOG_" + ReadOrWrite + "_" + v.Name, new TypeVariableSeq(), LogReadOrWriteProcedure.InParams, new VariableSeq(), locals, statements);
             LogReadOrWriteImplementation.AddAttribute("inline", new object[] { new LiteralExpr(v.tok, BigNum.FromInt(1)) });
 
+            LogReadOrWriteImplementation.Proc = LogReadOrWriteProcedure;
+
             verifier.Program.TopLevelDeclarations.Add(LogReadOrWriteProcedure);
             verifier.Program.TopLevelDeclarations.Add(LogReadOrWriteImplementation);
         }
@@ -189,9 +191,12 @@ namespace GPUVerify
             bb.simpleCmds.Add(new AssignCmd(tok, lhss, rhss));
         }
 
-        public override void CheckForRaces(IToken tok, BigBlock bb, Variable v)
+        public override void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly)
         {
-            bb.simpleCmds.Add(new AssertCmd(tok, Expr.Not(GenerateRaceCondition(tok, v, "WRITE", "WRITE"))));
+            if (!ReadWriteOnly)
+            {
+                bb.simpleCmds.Add(new AssertCmd(tok, Expr.Not(GenerateRaceCondition(tok, v, "WRITE", "WRITE"))));
+            }
             bb.simpleCmds.Add(new AssertCmd(tok, Expr.Not(GenerateRaceCondition(tok, v, "READ", "WRITE"))));
             if (!CommandLineOptions.Symmetry)
             {
@@ -229,7 +234,55 @@ namespace GPUVerify
                     ));
             }
 
+            if (FirstAccessType.Equals("WRITE") && SecondAccessType.Equals("WRITE") && !CommandLineOptions.FullAbstraction)
+            {
+                RaceCondition = Expr.And(RaceCondition, Expr.Neq(
+                    MakeWrittenIndex(v, 1),
+                    MakeWrittenIndex(v, 2)
+                    ));
+            }
+
             return RaceCondition;
+        }
+
+        private static Expr MakeWrittenIndex(Variable v, int OneOrTwo)
+        {
+            Expr result = new IdentifierExpr(v.tok, new VariableDualiser(OneOrTwo).VisitVariable(v.Clone() as Variable));
+
+            if (v.TypedIdent.Type is MapType)
+            {
+                MapType mt = v.TypedIdent.Type as MapType;
+                Debug.Assert(mt.Arguments.Length == 1);
+                Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
+
+                result = Expr.Select(result,
+                    new Expr[] { new IdentifierExpr(v.tok, new VariableDualiser(OneOrTwo).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, "WRITE"))) });
+
+                if (mt.Result is MapType)
+                {
+                    MapType mt2 = mt.Result as MapType;
+                    Debug.Assert(mt2.Arguments.Length == 1);
+                    Debug.Assert(GPUVerifier.IsIntOrBv32(mt2.Arguments[0]));
+
+                    result = Expr.Select(result,
+                        new Expr[] { new IdentifierExpr(v.tok, new VariableDualiser(OneOrTwo).VisitVariable(GPUVerifier.MakeOffsetYVariable(v, "WRITE"))) });
+
+                    if (mt2.Result is MapType)
+                    {
+                        MapType mt3 = mt2.Arguments[0] as MapType;
+                        Debug.Assert(mt3.Arguments.Length == 1);
+                        Debug.Assert(GPUVerifier.IsIntOrBv32(mt3.Arguments[0]));
+                        Debug.Assert(!(mt3.Result is MapType));
+
+                        result = Expr.Select(result,
+                            new Expr[] { new IdentifierExpr(v.tok, new VariableDualiser(OneOrTwo).VisitVariable(GPUVerifier.MakeOffsetZVariable(v, "WRITE"))) });
+
+                    }
+                }
+            }
+
+            return result;
+
         }
 
         internal static GlobalVariable MakeReadOrWriteHasOccurredVariable(Variable v, string ReadOrWrite)
