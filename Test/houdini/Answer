@@ -99,3 +99,13 @@ b6 = False
 b7 = False
 
 Boogie program verifier finished with 1 verified, 0 errors
+.
+-------------------- test7.bpl --------------------
+Assignment computed by Houdini:
+
+Boogie program verifier finished with 2 verified, 0 errors
+.
+-------------------- test8.bpl --------------------
+Assignment computed by Houdini:
+
+Boogie program verifier finished with 3 verified, 0 errors

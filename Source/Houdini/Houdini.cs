@@ -261,6 +261,7 @@ namespace Microsoft.Boogie.Houdini {
       this.callGraph = BuildCallGraph();
       this.continueAtError = continueAtError;
       this.houdiniConstants = CollectExistentialConstants();
+      Inline();
       this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
       this.checker = new Checker(vcgen, program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
 
@@ -275,6 +276,22 @@ namespace Microsoft.Boogie.Houdini {
         houdiniSessions.Add(impl, session);
       }
       this.houdiniSessions = new ReadOnlyDictionary<Implementation, HoudiniSession>(houdiniSessions);
+    }
+
+    private void Inline() {
+      if (CommandLineOptions.Clo.InlineDepth < 0)
+        return;
+      foreach (Implementation impl in callGraph.Nodes) {
+        impl.OriginalBlocks = impl.Blocks;
+        impl.OriginalLocVars = impl.LocVars;
+      }
+      foreach (Implementation impl in callGraph.Nodes) {
+        Inliner.ProcessImplementationForHoudini(program, impl);
+      }
+      foreach (Implementation impl in callGraph.Nodes) {
+        impl.OriginalBlocks = null;
+        impl.OriginalLocVars = null;
+      }
     }
 
     private ReadOnlyDictionary<string, IdentifierExpr> CollectExistentialConstants() {
