@@ -19,6 +19,7 @@ using VC;
 namespace Microsoft.Boogie.Houdini {
   public class HoudiniSession {
     public static double proverTime = 0;
+    public static int numProverQueries = 0;
     private string descriptiveName;
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
@@ -56,6 +57,7 @@ namespace Microsoft.Boogie.Houdini {
       WaitHandle.WaitAny(new WaitHandle[] { checker.ProverDone });
       ProverInterface.Outcome proverOutcome = checker.ReadOutcome();
       proverTime += (DateTime.Now - now).TotalSeconds;
+      numProverQueries++;
 
       if (proverOutcome == ProverInterface.Outcome.Invalid) {
         Contract.Assume(collector.examples != null);

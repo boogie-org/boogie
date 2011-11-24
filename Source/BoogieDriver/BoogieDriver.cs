@@ -439,12 +439,18 @@ namespace Microsoft.Boogie {
       if (CommandLineOptions.Clo.ContractInfer) {
         Houdini.Houdini houdini = new Houdini.Houdini(program, true);
         Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
+        int numTrueAssigns = 0;
         Console.WriteLine("Assignment computed by Houdini:");
         foreach (var x in outcome.assignment) {
           Console.WriteLine(x.Key + " = " + x.Value);
+          if (x.Value)
+            numTrueAssigns++;
         }
         if (CommandLineOptions.Clo.Trace) {
+          Console.WriteLine("Number of true assignments = " + numTrueAssigns);
+          Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
           Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime);
+          Console.WriteLine("Number of prover queries = " + Houdini.HoudiniSession.numProverQueries);
         }
         errorCount = outcome.ErrorCount;
         verified = outcome.Verified;
