@@ -2483,7 +2483,7 @@ namespace VC
                 calls.setCurrProc(procName);
                 expansion = calls.Mutate(expansion, true);
                 if (useSummary) calls.matchSummaries();
-                vState.coverageManager.addRecentEdges(id);
+                if(vState.coverageManager != null) vState.coverageManager.addRecentEdges(id);
                 
                 //expansion = checker.VCExprGen.Eq(calls.id2ControlVar[id], expansion);
                 expansion = checker.VCExprGen.Implies(calls.id2ControlVar[id], expansion);
