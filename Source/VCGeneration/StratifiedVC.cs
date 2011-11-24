@@ -331,7 +331,7 @@ namespace VC
                 this.fullyInlinedCache = new HashSet<string>();
                 this.trueSummaryConst = new HashSet<VCExprVar>();
                 this.trueSummaryConstUndeBound = new HashSet<VCExprVar>();
-                this.ComputeUnderBound = ComputeUnderBound;
+                this.ComputeUnderBound = false;
             }
 
             public void boundChanged()
@@ -340,7 +340,7 @@ namespace VC
                 {
                     var s = "";
                     trueSummaryConstUndeBound.Iter(v => s = s + v.ToString() + ",");
-                    Console.WriteLine("Clearing summaries: {{0}}", s);
+                    Console.WriteLine("Clearing summaries: {0}", s);
 
                     // start from scratch
                     trueSummaryConst.ExceptWith(trueSummaryConstUndeBound);
@@ -350,6 +350,11 @@ namespace VC
 
             public void compute(HashSet<int> goodCandidates, int bound)
             {
+                var start = DateTime.Now;
+                goodCandidates = calls.currCandidates;
+
+                var found = 0;
+
                 // Find all nodes that have children only in goodCandidates
                 var overApproxNodes = FindNodes(calls.candidateParent, calls.currCandidates, goodCandidates);
                 overApproxNodes.IntersectWith(calls.summaryCandidates.Keys);
@@ -411,7 +416,8 @@ namespace VC
                             checker2.Pop();
                             if (outcome == Outcome.Correct)
                             {
-                                Console.WriteLine("Found summary: {0}", tup.Item1);
+                                //Console.WriteLine("Found summary: {0}", tup.Item1);
+                                found++;
                                 trueSummaryConst.Add(tup.Item1);
                                 if (usesBound.Contains(cid)) trueSummaryConstUndeBound.Add(tup.Item1);
                             }
@@ -420,6 +426,11 @@ namespace VC
                     checker2.Pop();
                 }
                 checker2.Pop();
+
+                var end = DateTime.Now;
+                Console.WriteLine("Summary computation took {0} sec and inferred {1} of {2} contracts", 
+                    (end - start).TotalSeconds, found, calls.allSummaryConst.Count);
+
             }
 
 
@@ -2472,7 +2483,7 @@ namespace VC
                 calls.setCurrProc(procName);
                 expansion = calls.Mutate(expansion, true);
                 if (useSummary) calls.matchSummaries();
-                vState.coverageManager.addRecentEdges(id);
+                if(vState.coverageManager != null) vState.coverageManager.addRecentEdges(id);
                 
                 //expansion = checker.VCExprGen.Eq(calls.id2ControlVar[id], expansion);
                 expansion = checker.VCExprGen.Implies(calls.id2ControlVar[id], expansion);
