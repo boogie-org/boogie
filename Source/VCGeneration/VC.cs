@@ -770,7 +770,6 @@ namespace VC {
         void ObjectInvariant() {
           Contract.Invariant(cce.NonNullElements(virtual_successors));
           Contract.Invariant(cce.NonNullElements(virtual_predecesors));
-          Contract.Invariant(cce.NonNull(reachable_blocks));
           Contract.Invariant(block != null);
         }
 

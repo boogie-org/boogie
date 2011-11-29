@@ -43,12 +43,12 @@ namespace Microsoft.Boogie.SMTLib
 
     public bool ExpectingModel()
     {
-      return CommandLineOptions.Clo.PrintErrorModel >= 1 ||
-             CommandLineOptions.Clo.EnhancedErrorMessages == 1 ||
-             CommandLineOptions.Clo.ModelViewFile != null ||
-             CommandLineOptions.Clo.ContractInfer ||
-             CommandLineOptions.Clo.LazyInlining > 0 ||
-             CommandLineOptions.Clo.StratifiedInlining > 0;
+        return CommandLineOptions.Clo.PrintErrorModel >= 1 ||
+               CommandLineOptions.Clo.EnhancedErrorMessages == 1 ||
+               CommandLineOptions.Clo.ModelViewFile != null ||
+               CommandLineOptions.Clo.ContractInfer ||
+               CommandLineOptions.Clo.LazyInlining > 0 ||
+               (CommandLineOptions.Clo.StratifiedInlining > 0 && !CommandLineOptions.Clo.StratifiedInliningWithoutModels);
     }
 
     public void AddSolverArgument(string s)

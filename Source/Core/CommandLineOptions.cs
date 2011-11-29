@@ -560,6 +560,7 @@ namespace Microsoft.Boogie {
     public int ProcedureCopyBound = 0;
     public int StratifiedInlining = 0;
     public int StratifiedInliningOption = 0;
+    public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
     public bool UseUnsatCoreForInlining = false;
     public int RecursionBound = 500;
     public string inferLeastForUnsat = null;

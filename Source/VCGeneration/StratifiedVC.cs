@@ -3417,15 +3417,16 @@ namespace VC
             public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel)
             {
               //if (procBoundingMode) return; // shaz hack
+                Contract.Assert(CommandLineOptions.Clo.StratifiedInliningWithoutModels || errModel != null);
 
                 candidatesToExpand = new List<int>();
+
+                Model model = null;
+                if (errModel != null) model = errModel.ToModel();
 
                 //Contract.Requires(cce.NonNullElements(labels));
                 if (underapproximationMode)
                 {
-                    if (errModel == null)
-                        return;
-                    Model model = errModel.ToModel();
                     var cex = GenerateTraceMain(labels, model, mvInfo);
                     Debug.Assert(candidatesToExpand.Count == 0);
                     if (cex != null) {
@@ -3437,15 +3438,13 @@ namespace VC
                 }
                 
                 Contract.Assert(calls != null);
-                Contract.Assert(errModel != null);
 
-                GenerateTraceMain(labels, errModel.ToModel(), mvInfo);
+                GenerateTraceMain(labels, model, mvInfo);
             }
 
             // Construct the interprocedural trace
             private Counterexample GenerateTraceMain(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo)
             {
-                Contract.Requires(errModel != null);
                 Contract.Requires(cce.NonNullElements(labels));
                 if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null)
                 {
@@ -3484,7 +3483,6 @@ namespace VC
             private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo,
                                                  int candidateId, List<Tuple<int,int>> orderedStateIds, Implementation procImpl)
             {
-                Contract.Requires(errModel != null);
                 Contract.Requires(cce.NonNullElements(labels));
                 Contract.Requires(procImpl != null);
 
@@ -3535,7 +3533,6 @@ namespace VC
                                   Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples)
             {
                 Contract.Requires(cce.NonNullElements(labels));
-                Contract.Requires(errModel != null);
                 Contract.Requires(b != null);
                 Contract.Requires(traceNodes != null);
                 Contract.Requires(trace != null);
@@ -3579,7 +3576,7 @@ namespace VC
                           }
                         }
 
-                        if (calleeName.StartsWith(recordProcName))
+                        if (calleeName.StartsWith(recordProcName) && errModel != null)
                         {
                             var expr = calls.recordExpr2Var[new BoogieCallExpr(naryExpr, candidateId)];
 
