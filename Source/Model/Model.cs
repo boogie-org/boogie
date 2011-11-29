@@ -836,10 +836,11 @@ namespace Microsoft.Boogie
           }
 
           if (words.Count == 3 && words[1] is string && ((string) words[1]) == "->") {
-            Func fn = null;
             var funName = (string) words[0];
+            Func fn = null;
 
             if (lastWord is string && ((string) lastWord) == "{") {
+              fn = currModel.TryGetFunc(funName);
               for ( ; ; ) {
                 var tuple = GetFunctionTuple(ReadLine());
                 if (tuple == null) BadModel("EOF in function table");
