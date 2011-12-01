@@ -847,17 +847,11 @@ namespace Microsoft.Boogie
                 if (tuple.Count == 0) continue;
                 string tuple0 = tuple[0] as string;
                 if (tuple.Count == 1) {
-                  if (fn != null) {
-                    if (tuple0 != "}") BadModel("invalid function tuple definition");
-                    break;
-                  }
-                  else {
-                    fn = currModel.TryGetFunc(funName);
-                    if (fn == null)
-                      fn = currModel.MkFunc(funName, 1);
-                    fn.Else = GetElt(tuple0);
-                    continue;
-                  }
+                  if (fn == null)
+                    fn = currModel.MkFunc(funName, 1);
+                  if (tuple0 == "}") break;
+                  fn.Else = GetElt(tuple0);
+                  continue;
                 }
                 string tuplePenultimate = tuple[tuple.Count - 2] as string;
                 if (tuplePenultimate != "->") BadModel("invalid function tuple definition");
