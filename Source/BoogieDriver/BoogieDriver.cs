@@ -67,7 +67,22 @@ namespace Microsoft.Boogie {
 
       Helpers.ExtraTraceInformation("Becoming sentient");
 
+      List<string> fileList = new List<string>();
       foreach (string file in CommandLineOptions.Clo.Files) {
+        string extension = Path.GetExtension(file);
+        if (extension != null) {
+          extension = extension.ToLower();
+        }
+        if (extension == ".txt") {
+          StreamReader stream = new StreamReader(file);
+          string s = stream.ReadToEnd();
+          fileList.AddRange(s.Split(new char[3] {' ', '\n', '\r'}, StringSplitOptions.RemoveEmptyEntries));
+        }
+        else {
+          fileList.Add(file);
+        }
+      }
+      foreach (string file in fileList) {
         Contract.Assert(file != null);
         string extension = Path.GetExtension(file);
         if (extension != null) {
@@ -79,7 +94,7 @@ namespace Microsoft.Boogie {
           goto END;
         }
       }
-      ProcessFiles(CommandLineOptions.Clo.Files);
+      ProcessFiles(fileList);
 
     END:
       if (CommandLineOptions.Clo.XmlSink != null) {
