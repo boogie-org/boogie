@@ -381,6 +381,14 @@ Execution trace:
 
 Boogie program verifier finished with 1 verified, 3 errors
 
+-------------------- LambdaOldExpressions.bpl --------------------
+LambdaOldExpressions.bpl(27,1): Error BP5003: A postcondition might not hold on this return path.
+LambdaOldExpressions.bpl(21,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    LambdaOldExpressions.bpl(25,7): anon0
+
+Boogie program verifier finished with 2 verified, 1 error
+
 -------------------- SelectiveChecking.bpl --------------------
 SelectiveChecking.bpl(17,3): Error BP5001: This assertion might not hold.
 Execution trace:
