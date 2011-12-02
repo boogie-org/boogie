@@ -1201,14 +1201,7 @@ namespace VC {
       Contract.Assert(sortedNodes != null);
       #endregion
 
-      // Create substitution for old expressions
-      Hashtable/*Variable!->Expr!*/ oldFrameMap = new Hashtable();
-      foreach (IdentifierExpr ie in modifies) {
-        Contract.Assert(ie != null);
-        if (!oldFrameMap.Contains(cce.NonNull(ie.Decl)))
-          oldFrameMap.Add(ie.Decl, ie);
-      }
-      Substitution oldFrameSubst = Substituter.SubstitutionFromHashtable(oldFrameMap);
+      Substitution oldFrameSubst = ComputeOldExpressionSubstitution(modifies);
 
       // Now we can process the nodes in an order so that we're guaranteed to have
       // processed all of a node's predecessors before we process the node.
@@ -1254,6 +1247,21 @@ namespace VC {
       #endregion Convert to Passive Commands
 
       return exitIncarnationMap;
+    }
+
+    /// <summary>
+    /// Compute the substitution for old expressions.
+    /// </summary>
+    protected static Substitution ComputeOldExpressionSubstitution(IdentifierExprSeq modifies)
+    {
+      Hashtable/*Variable!->Expr!*/ oldFrameMap = new Hashtable();
+      foreach (IdentifierExpr ie in modifies)
+      {
+        Contract.Assert(ie != null);
+        if (!oldFrameMap.Contains(cce.NonNull(ie.Decl)))
+          oldFrameMap.Add(ie.Decl, ie);
+      }
+      return Substituter.SubstitutionFromHashtable(oldFrameMap);
     }
 
     /// <summary>

@@ -2388,6 +2388,10 @@ namespace VC {
           Block entryBlock = cce.NonNull( impl.Blocks[0]);
           cmds.AddRange(entryBlock.Cmds);
           entryBlock.Cmds = cmds;
+          // Make sure that all added commands are passive commands.
+          Hashtable incarnationMap = ComputeIncarnationMap(entryBlock, new Hashtable());
+          TurnIntoPassiveBlock(entryBlock, incarnationMap, mvInfo,
+                               ComputeOldExpressionSubstitution(impl.Proc.Modifies));
         }
       }
 
