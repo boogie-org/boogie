@@ -39,7 +39,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
                                f_owners, f_closed, f_roots, f_timestamps, f_select_bool, f_select_int, f_is_null, f_good_state,
                                f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, f_field_plus,
                                f_is_sequential_field, f_is_volatile_field, f_type_project_0, f_array, f_active_option, f_int_to_field,
-                               f_blob_type, f_array_emb, f_addr, f_address_root, f_base, f_field_arr_size, f_field_arr_root, f_field_arr_index;
+                               f_blob_type, f_array_emb, f_addr, f_address_root, f_base, f_field_arr_size, f_field_arr_root, f_field_arr_index,
+                               f_dot, f_prim_emb;
     public readonly Model.Element tp_object, tp_mathint, tp_bool, tp_state, tp_ptrset, tp_heaptp;
     public readonly Model.Element elt_me, elt_null;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
@@ -80,6 +81,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_int_to_ptr = m.MkFunc("$int_to_ptr", 1);
       f_ptr_to_int = m.MkFunc("$ptr_to_int", 1);
       f_ptr = m.MkFunc("$ptr", 2);
+      f_dot = m.MkFunc("$dot", 2);
       f_map_t = m.MkFunc("$map_t", 2);
       f_is_null = m.MkFunc("$is_null", 1);
       f_good_state = m.MkFunc("$good_state", 1);
@@ -99,6 +101,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_array_emb = m.MkFunc("$array_emb", 2);
       f_addr = m.MkFunc("$addr", 1);
       f_base = m.MkFunc("$base", 1);
+      f_prim_emb = m.MkFunc("$prim_emb", 1);
       f_address_root = m.MkFunc("$address_root", 2);
       f_field_arr_index = m.MkFunc("$field_arr_index", 1);
       f_field_arr_size = m.MkFunc("$field_arr_size", 1);
@@ -941,13 +944,14 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         var addresses = new HashSet<Model.Element>();
 
         if (heap != null && elt != null) {
+          var basePtr = f_base.TryEval(elt);
           foreach (var fld in f_select_field.AppsWithArg(0, heap)) {
             var val = f_select_value.TryEval(fld.Result, elt);
             if (val != null) {
               var field = fld.Args[1];
               if (!IsConstantField(field) && viewOpts.ViewLevel <= 2)
-                continue;              
-              var addr = f_ptr.TryEval(field, elt);
+                continue;
+              var addr = f_dot.TryEval(elt, field);
               if (addr != null) addresses.Add(addr);
               var node = ComputeUnionActiveOption(state, elt, val, field);
               if (node != null)
@@ -965,18 +969,18 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           if (eltBase != null && eltField != null) {
             foreach (var app in f_field_plus.AppsWithArg(0, eltField)) {
               var fieldName = app.Result;
-              var addr = f_ptr.TryEval(fieldName, eltBase);
+              var addr = f_dot.TryEval(eltBase, fieldName);
               if (addr == null) continue;
 
               Model.Element val = null, atp = tp;
 
               addresses.Add(addr);
 
-              foreach (var papp in f_ptr.AppsWithResult(addr)) {
-                var tmp = f_select_value.OptEval(f_select_field.OptEval(heap, papp.Args[0]), papp.Args[1]);
+              foreach (var papp in f_dot.AppsWithResult(addr)) {
+                var tmp = f_select_value.OptEval(f_select_field.OptEval(heap, papp.Args[1]), papp.Args[0]);
                 if (tmp != null) {
                   val = tmp;
-                  var tt = f_field_type.TryEval(papp.Args[0]);
+                  var tt = f_field_type.TryEval(papp.Args[1]);
                   if (tt != null) atp = tt;
                 }
               }
@@ -991,16 +995,16 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         }
 
         if (elt != null) {
-          foreach (var ptr in f_ptr.AppsWithArg(1, elt)) {
+          foreach (var ptr in f_dot.AppsWithArg(0, elt)) {
             if (addresses.Contains(ptr.Result)) continue;
-            var fld = ptr.Args[0];
+            var fld = ptr.Args[1];
             var idx = f_field_arr_index.TryEval(fld);
             if (idx != null) {
               var xtp = f_field_type.TryEval(fld);
               result.Add(new MapletNode(state, new EdgeName(this, "&[%0] of %1", idx, f_field_arr_size.TryEval(fld)), ptr.Result, GuessPtrTo(xtp)) { Category = NodeCategory.Maplet });
             }
-            if (!IsConstantField(ptr.Args[0])) continue;
-            BuildFieldNode(result, state, ptr.Result, ptr.Args[0], null, ptr.Result);
+            if (!IsConstantField(ptr.Args[1])) continue;
+            BuildFieldNode(result, state, ptr.Result, ptr.Args[1], null, ptr.Result);
           }
         }
 
@@ -1008,7 +1012,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         AddSpecialField(state, elt, result, "\\owner", f_owners);
         AddSpecialField(state, elt, result, "\\root", f_roots);
         AddSpecialField(state, elt, result, "\\timestamp", f_timestamps);
-        AddPointerFunction(state, elt, result, "\\embedding", f_base, tp_object);
+        AddPointerFunction(state, elt, result, "\\embedding", f_prim_emb, tp_object);
         AddPointerFunction(state, elt, result, "\\addr", f_addr, tp_mathint);
 
         if (viewOpts.ViewLevel >= 1 && elt != null) {
@@ -1137,7 +1141,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     private FieldNode ComputeUnionActiveOption(StateNode state, Model.Element elt, Model.Element val, Model.Element field)
     {
       if (f_active_option.AppsWithResult(field).FirstOrDefault() != null) {
-        var activeOpt = f_ptr.OptEval(f_int_to_field.OptEval(val), elt);
+        var activeOpt = f_dot.OptEval(elt, f_int_to_field.OptEval(val));
         if (activeOpt != null) {
           var nm = ConstantFieldName(field);
           var fieldNode = new FieldNode(state, new EdgeName(nm), activeOpt, GuessType(activeOpt)) { Category = NodeCategory.MethodologyProperty };
