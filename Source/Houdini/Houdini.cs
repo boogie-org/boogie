@@ -308,25 +308,30 @@ namespace Microsoft.Boogie.Houdini {
         impl.OriginalLocVars = impl.LocVars;
       }
       foreach (Implementation impl in callGraph.Nodes) {
+        CommandLineOptions.Inlining savedOption = CommandLineOptions.Clo.ProcedureInlining;
+        CommandLineOptions.Clo.ProcedureInlining = CommandLineOptions.Inlining.Spec;
         Inliner.ProcessImplementationForHoudini(program, impl);
+        CommandLineOptions.Clo.ProcedureInlining = savedOption;
       }
       foreach (Implementation impl in callGraph.Nodes) {
         impl.OriginalBlocks = null;
         impl.OriginalLocVars = null;
       }
 
-      int count = CommandLineOptions.Clo.InlineDepth;
       Graph<Implementation> oldCallGraph = callGraph;
+      callGraph = new Graph<Implementation>();
+      foreach (Tuple<Implementation, Implementation> edge in oldCallGraph.Edges) {
+        callGraph.AddEdge(edge.Item1, edge.Item2);
+      }
+      int count = CommandLineOptions.Clo.InlineDepth;
       while (count > 0) {
-        callGraph = new Graph<Implementation>();
-        foreach (Tuple<Implementation, Implementation> edge in oldCallGraph.Edges) {
-          callGraph.AddEdge(edge.Item1, edge.Item2);
-        }
         foreach (Implementation impl in oldCallGraph.Nodes) {
-          foreach (Implementation succ0 in oldCallGraph.Successors(impl)) {
-            foreach (Implementation succ1 in oldCallGraph.Successors(succ0)) {
-              callGraph.AddEdge(impl, succ1);
-            }
+          List<Implementation> newNodes = new List<Implementation>();
+          foreach (Implementation succ in callGraph.Successors(impl)) {
+            newNodes.AddRange(oldCallGraph.Successors(succ));
+          }
+          foreach (Implementation newNode in newNodes) {
+            callGraph.AddEdge(impl, newNode);
           }
         }
         count--;
