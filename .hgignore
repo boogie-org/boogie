@@ -11,7 +11,7 @@ syntax: regexp
 ^Chalice/tests/(examples|permission-model|refinements|general-tests|regressions)/.*\.bpl
 Test/([^/]*)/Output
 Test/([^/]*)/([^/]*)\.sx
-Test/(dafny0|dafny1|VSI-Benchmarks|vacid0|VSComp2010)/(out\.cs|.*\.dll|.*\.pdb|.*\.exe|.*\.tmp)
+Test/(dafny0|dafny1|dafny2|VSI-Benchmarks|vacid0|VSComp2010|vstte2012)/(out\.cs|.*\.dll|.*\.pdb|.*\.exe|.*\.tmp)
 Test/desktop/
 ^.*~$
 syntax: glob
