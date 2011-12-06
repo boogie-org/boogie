@@ -800,6 +800,7 @@ namespace Microsoft.Boogie {
     };     // used by WidenPoints.Compute
     public VisitState TraversingStatus;
 
+    public int aiId;  // block ID used by the abstract interpreter, which may change these numbers with each AI run
     public bool widenBlock;
     public int iterations;         // Count the number of time we visited the block during fixpoint computation. Used to decide if we widen or not
 

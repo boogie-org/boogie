@@ -75,6 +75,12 @@ namespace Microsoft.Basetypes {
       }
     }
 
+    public BIM ToBigInteger {
+      get {
+        return val;
+      }
+    }
+
     // Convert to int; assert that no overflows occur
     public int ToIntSafe {
       get {

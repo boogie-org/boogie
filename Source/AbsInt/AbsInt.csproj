@@ -147,12 +147,16 @@
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.Data" />
+    <Reference Include="System.Numerics" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AbstractInterpretation.cs" />
     <Compile Include="ExprFactories.cs" />
+    <Compile Include="IntervalDomain.cs" />
     <Compile Include="LoopInvariantsOnDemand.cs" />
+    <Compile Include="TrivialDomain.cs" />
+    <Compile Include="NativeLattice.cs" />
     <Compile Include="Traverse.cs" />
     <Compile Include="..\version.cs" />
   </ItemGroup>

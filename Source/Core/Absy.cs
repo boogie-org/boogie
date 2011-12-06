@@ -2745,13 +2745,15 @@ namespace Microsoft.Boogie {
             CmdSeq newCommands = new CmdSeq();
             if (instrumentEntry) {
               Expr inv = (Expr)b.Lattice.ToPredicate(b.PreInvariant); /*b.PreInvariantBuckets.GetDisjunction(b.Lattice);*/
-              PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken, inv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv);
+              var kv = new QKeyValue(Token.NoToken, "inferred", new List<object>(), null);
+              PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken, inv, kv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv, kv);
               newCommands.Add(cmd);
             }
             newCommands.AddRange(b.Cmds);
             if (instrumentExit) {
               Expr inv = (Expr)b.Lattice.ToPredicate(b.PostInvariant);
-              PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken, inv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv);
+              var kv = new QKeyValue(Token.NoToken, "inferred", new List<object>(), null);
+              PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken, inv, kv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv, kv);
               newCommands.Add(cmd);
             }
             b.Cmds = newCommands;
@@ -3535,12 +3537,6 @@ namespace Microsoft.Boogie {
           stream.WriteLine();
         }
         d.Emit(stream, 0);
-      }
-    }
-    public void InstrumentWithInvariants() {
-      foreach (Declaration/*!*/ d in this) {
-        Contract.Assert(d != null);
-        d.InstrumentWithInvariants();
       }
     }
   }

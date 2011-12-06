@@ -438,6 +438,7 @@ namespace Microsoft.Boogie {
       : base(tok) {
       Contract.Requires(tok != null);
       Val = b;
+      Type = Type.Bool;
     }
     /// <summary>
     /// Creates a literal expression for the integer value "v".
@@ -448,6 +449,7 @@ namespace Microsoft.Boogie {
       : base(tok) {
       Contract.Requires(tok != null);
       Val = v;
+      Type = Type.Int;
     }
 
     /// <summary>
@@ -456,7 +458,9 @@ namespace Microsoft.Boogie {
     public LiteralExpr(IToken/*!*/ tok, BigNum v, int b)
       : base(tok) {
       Contract.Requires(tok != null);
+      Contract.Requires(0 <= b);
       Val = new BvConst(v, b);
+      Type = Type.GetBvType(b);
     }
 
     [Pure]

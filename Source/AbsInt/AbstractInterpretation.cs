@@ -70,7 +70,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
       this.callReturnWorkItems = new Queue();
     }
 
-    private Dictionary<Procedure, Implementation[]> ComputeProcImplMap(Program program) {
+    public static Dictionary<Procedure, Implementation[]> ComputeProcImplMap(Program program) {
       Contract.Requires(program != null);
       // Since implementations call procedures (impl. signatures) 
       // rather than directly calling other implementations, we first
@@ -541,20 +541,18 @@ namespace Microsoft.Boogie.AbstractInterpretation {
     }
 
     /// <summary>
-    /// Flat an expresion in the form P AND Q ... AND R into a list [P, Q, ..., R]
+    /// Flatten an expresion in the form P AND Q ... AND R into a list [P, Q, ..., R]
     /// </summary>
     private List<Expr/*!>!*/> flatConjunction(Expr embeddedExpr) {
       Contract.Requires(embeddedExpr != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Expr>>()));
 
-
-      List<Expr/*!>!*/> retValue = new List<Expr/*!*/>();//No asserts necessarry.  It is the return value, and thus will be subject to the postcondition
+      var retValue = new List<Expr/*!*/>();
       NAryExpr e = embeddedExpr as NAryExpr;
       if (e != null && e.Fun.FunctionName.CompareTo("&&") == 0) {    // if it is a conjunction
         foreach (Expr arg in e.Args) {
           Contract.Assert(arg != null);
-          List<Expr/*!*/>/*!*/  newConjuncts = flatConjunction(arg);
-          Contract.Assert(cce.NonNullElements(newConjuncts));
+          var newConjuncts = flatConjunction(arg);
           retValue.AddRange(newConjuncts);
         }
       } else {

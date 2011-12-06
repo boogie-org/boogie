@@ -163,8 +163,7 @@ namespace Microsoft.Boogie {
           return;
         }
 
-        oc = EliminateDeadVariablesAndInline(program);
-        //BoogiePL.Errors.count = 0;
+        EliminateDeadVariablesAndInline(program);
 
         int errorCount, verified, inconclusives, timeOuts, outOfMemories;
         oc = InferAndVerify(program, out errorCount, out verified, out inconclusives, out timeOuts, out outOfMemories);
@@ -363,7 +362,7 @@ namespace Microsoft.Boogie {
       return PipelineOutcome.ResolvedAndTypeChecked;
     }
 
-    static PipelineOutcome EliminateDeadVariablesAndInline(Program program) {
+    static void EliminateDeadVariablesAndInline(Program program) {
       Contract.Requires(program != null);
       // Eliminate dead variables
       Microsoft.Boogie.UnusedVarEliminator.Eliminate(program);
@@ -379,33 +378,31 @@ namespace Microsoft.Boogie {
       }
 
       // Inline
-      // In Spec#, there was no run-time test. The type was just List<Declaration!>
-      List<Declaration> TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
-      
+      var TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
       
       if (CommandLineOptions.Clo.ProcedureInlining != CommandLineOptions.Inlining.None) {
         bool inline = false;
-        foreach (Declaration d in TopLevelDeclarations) {
+        foreach (var d in TopLevelDeclarations) {
           if (d.FindExprAttribute("inline") != null) {
             inline = true;
           }
         }
         if (inline && CommandLineOptions.Clo.LazyInlining == 0 && CommandLineOptions.Clo.StratifiedInlining == 0) {
-          foreach (Declaration d in TopLevelDeclarations) {
-            Implementation impl = d as Implementation;
+          foreach (var d in TopLevelDeclarations) {
+            var impl = d as Implementation;
             if (impl != null) {
               impl.OriginalBlocks = impl.Blocks;
               impl.OriginalLocVars = impl.LocVars;
             }
           }
-          foreach (Declaration d in TopLevelDeclarations) {
-            Implementation impl = d as Implementation;
+          foreach (var d in TopLevelDeclarations) {
+            var impl = d as Implementation;
             if (impl != null && !impl.SkipVerification) {
               Inliner.ProcessImplementation(program, impl);
             }
           }
-          foreach (Declaration d in TopLevelDeclarations) {
-            Implementation impl = d as Implementation;
+          foreach (var d in TopLevelDeclarations) {
+            var impl = d as Implementation;
             if (impl != null) {
               impl.OriginalBlocks = null;
               impl.OriginalLocVars = null;
@@ -413,7 +410,6 @@ namespace Microsoft.Boogie {
           }
         }
       }
-      return PipelineOutcome.Done;
     }
 
     /// <summary>
@@ -434,7 +430,11 @@ namespace Microsoft.Boogie {
       // ---------- Infer invariants --------------------------------------------------------
 
       // Abstract interpretation -> Always use (at least) intervals, if not specified otherwise (e.g. with the "/noinfer" switch)
-      Microsoft.Boogie.AbstractInterpretation.AbstractInterpretation.RunAbstractInterpretation(program);
+      if (CommandLineOptions.Clo.Ai.J_Intervals || CommandLineOptions.Clo.Ai.J_Trivial) {
+        Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
+      } else {
+        Microsoft.Boogie.AbstractInterpretation.AbstractInterpretation.RunAbstractInterpretation(program);
+      }
 
       if (CommandLineOptions.Clo.ContractInfer) {
         Houdini.Houdini houdini = new Houdini.Houdini(program, true);

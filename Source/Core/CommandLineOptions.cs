@@ -604,6 +604,8 @@ namespace Microsoft.Boogie {
       public bool DynamicType = false;
       public bool Nullness = false;
       public bool Polyhedra = false;
+      public bool J_Trivial = false;
+      public bool J_Intervals = false;
       public bool DebugStatistics = false;
 
       public bool AnySet {
@@ -612,7 +614,9 @@ namespace Microsoft.Boogie {
               || Constant
               || DynamicType
               || Nullness
-              || Polyhedra;
+              || Polyhedra
+              || J_Trivial
+              || J_Intervals;
         }
       }
     }
@@ -643,6 +647,14 @@ namespace Microsoft.Boogie {
                   break;
                 case 'p':
                   Ai.Polyhedra = true;
+                  UseAbstractInterpretation = true;
+                  break;
+                case 't':
+                  Ai.J_Trivial = true;
+                  UseAbstractInterpretation = true;
+                  break;
+                case 'j':
+                  Ai.J_Intervals = true;
                   UseAbstractInterpretation = true;
                   break;
                 case 's':
@@ -1458,6 +1470,11 @@ namespace Microsoft.Boogie {
                    d = dynamic type
                    n = nullness
                    p = polyhedra for linear inequalities
+                   t = trivial bottom/top lattice (cannot be combined with
+                       other domains)
+                   j = stronger intervals (cannot be combined with other
+                       domains)
+                or the following (which denote options, not domains):
                    s = debug statistics
                 0..9 = number of iterations before applying a widen (default=0)
   /noinfer      turn off the default inference, and overrides the /infer
@@ -1473,7 +1490,8 @@ namespace Microsoft.Boogie {
                 h - instrument inferred invariants only at beginning of
                     loop headers (default)
                 e - instrument inferred invariants at beginning and end
-                    of every block
+                    of every block (this mode is intended for use in
+                    debugging of abstract domains)
   /printInstrumented
                 print Boogie program after it has been instrumented with
                 invariants
