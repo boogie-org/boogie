@@ -390,6 +390,8 @@ namespace Microsoft.Boogie {
 
       // Coalesce blocks
       if (CommandLineOptions.Clo.CoalesceBlocks) {
+        if (CommandLineOptions.Clo.Trace)
+          Console.WriteLine("Coalescing blocks...");
         Microsoft.Boogie.BlockCoalescer.CoalesceBlocks(program);
       }
 

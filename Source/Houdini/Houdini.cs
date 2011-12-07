@@ -255,25 +255,48 @@ namespace Microsoft.Boogie.Houdini {
     private Checker checker;
     private Graph<Implementation> callGraph;
     private bool continueAtError;
+    private HashSet<Implementation> vcgenFailures;
 
     public Houdini(Program program, bool continueAtError) {
       this.program = program;
-      this.callGraph = BuildCallGraph();
       this.continueAtError = continueAtError;
+
+      if (CommandLineOptions.Clo.Trace)
+        Console.WriteLine("Collecting existential constants...");
       this.houdiniConstants = CollectExistentialConstants();
+      
+      if (CommandLineOptions.Clo.Trace)
+        Console.WriteLine("Building call graph...");
+      this.callGraph = BuildCallGraph();
+      if (CommandLineOptions.Clo.Trace)
+        Console.WriteLine("Number of implementations = {0}", callGraph.Nodes.Count);
+
       Inline();
+      
       this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
       this.checker = new Checker(vcgen, program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
 
+      vcgenFailures = new HashSet<Implementation>();
       Dictionary<Implementation, HoudiniSession> houdiniSessions = new Dictionary<Implementation, HoudiniSession>();
+      if (CommandLineOptions.Clo.Trace)
+        Console.WriteLine("Beginning VC generation for Houdini...");
       foreach (Implementation impl in callGraph.Nodes) {
-        // make a different simplify log file for each function
-        String simplifyLog = null;
-        if (CommandLineOptions.Clo.SimplifyLogFilePath != null) {
-          simplifyLog = impl.ToString() + CommandLineOptions.Clo.SimplifyLogFilePath;
+        try {
+          if (CommandLineOptions.Clo.Trace)
+            Console.WriteLine("Generating VC for {0}", impl.Name);
+          // make a different simplify log file for each function
+          String simplifyLog = null;
+          if (CommandLineOptions.Clo.SimplifyLogFilePath != null) {
+            simplifyLog = impl.ToString() + CommandLineOptions.Clo.SimplifyLogFilePath;
+          }
+          HoudiniSession session = new HoudiniSession(vcgen, checker, program, impl, simplifyLog, CommandLineOptions.Clo.SimplifyLogFileAppend);
+          houdiniSessions.Add(impl, session);
         }
-        HoudiniSession session = new HoudiniSession(vcgen, checker, program, impl, simplifyLog, CommandLineOptions.Clo.SimplifyLogFileAppend);
-        houdiniSessions.Add(impl, session);
+        catch (VCGenException) {
+          if (CommandLineOptions.Clo.Trace)
+            Console.WriteLine("VC generation failed");
+          vcgenFailures.Add(impl);
+        }
       }
       this.houdiniSessions = new ReadOnlyDictionary<Implementation, HoudiniSession>(houdiniSessions);
     }
@@ -281,16 +304,42 @@ namespace Microsoft.Boogie.Houdini {
     private void Inline() {
       if (CommandLineOptions.Clo.InlineDepth < 0)
         return;
+
       foreach (Implementation impl in callGraph.Nodes) {
         impl.OriginalBlocks = impl.Blocks;
         impl.OriginalLocVars = impl.LocVars;
       }
       foreach (Implementation impl in callGraph.Nodes) {
+        CommandLineOptions.Inlining savedOption = CommandLineOptions.Clo.ProcedureInlining;
+        CommandLineOptions.Clo.ProcedureInlining = CommandLineOptions.Inlining.Spec;
         Inliner.ProcessImplementationForHoudini(program, impl);
+        CommandLineOptions.Clo.ProcedureInlining = savedOption;
       }
       foreach (Implementation impl in callGraph.Nodes) {
         impl.OriginalBlocks = null;
         impl.OriginalLocVars = null;
+      }
+
+      Graph<Implementation> oldCallGraph = callGraph;
+      callGraph = new Graph<Implementation>();
+      foreach (Implementation impl in oldCallGraph.Nodes) {
+        callGraph.AddSource(impl);
+      }
+      foreach (Tuple<Implementation, Implementation> edge in oldCallGraph.Edges) {
+        callGraph.AddEdge(edge.Item1, edge.Item2);
+      }
+      int count = CommandLineOptions.Clo.InlineDepth;
+      while (count > 0) {
+        foreach (Implementation impl in oldCallGraph.Nodes) {
+          List<Implementation> newNodes = new List<Implementation>();
+          foreach (Implementation succ in callGraph.Successors(impl)) {
+            newNodes.AddRange(oldCallGraph.Successors(succ));
+          }
+          foreach (Implementation newNode in newNodes) {
+            callGraph.AddEdge(impl, newNode);
+          }
+        }
+        count--;
       }
     }
 
@@ -349,6 +398,7 @@ namespace Microsoft.Boogie.Houdini {
       sccs.Compute();
       foreach (SCC<Implementation> scc in sccs) {
         foreach (Implementation impl in scc) {
+          if (vcgenFailures.Contains(impl)) continue;
           queue.Enqueue(impl);
         }
       }
@@ -806,6 +856,9 @@ namespace Microsoft.Boogie.Houdini {
     public HoudiniOutcome PerformHoudiniInference() {
       HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants.Keys));
       this.NotifyStart(program, houdiniConstants.Keys.Count);
+      foreach (Implementation impl in vcgenFailures) {
+        current.addToBlackList(impl.Name);
+      }
 
       while (current.WorkQueue.Count > 0) {
         bool exceptional = false;
