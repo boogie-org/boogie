@@ -18,7 +18,7 @@ namespace Microsoft.Boogie {
   using System.Diagnostics.Contracts;
   using Microsoft.Basetypes;
 
-  using Set = GSet<object>;
+  using Set = GSet<object>; // not that the set used is not a set of Variable only, as it also contains TypeVariables
 
 
   //---------------------------------------------------------------------
