@@ -322,6 +322,9 @@ namespace Microsoft.Boogie.Houdini {
 
       Graph<Implementation> oldCallGraph = callGraph;
       callGraph = new Graph<Implementation>();
+      foreach (Implementation impl in oldCallGraph.Nodes) {
+        callGraph.AddSource(impl);
+      }
       foreach (Tuple<Implementation, Implementation> edge in oldCallGraph.Edges) {
         callGraph.AddEdge(edge.Item1, edge.Item2);
       }
