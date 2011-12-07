@@ -16,7 +16,7 @@ long:
 	$(MAKE) TESTS="$(NORMAL) $(LONG)" all
 
 run-%:
-	@if ls -f $*/*.dfy >/dev/null 2>&1 ; then true ; else ./runtest.bat $* $(FLAGS) ; fi || :
+	@if ls -f $*/*.dfy >/dev/null 2>&1 ; then true ; else cmd /c "runtest.bat $* $(FLAGS)" ; fi || :
 
 rundfy-%:
-	@if ls -f $*/*.dfy >/dev/null 2>&1 ; then ./runtest.bat $* $(FLAGS) ; fi || :
+	@if ls -f $*/*.dfy >/dev/null 2>&1 ; then cmd /c "runtest.bat $* $(FLAGS)" ; fi || :
