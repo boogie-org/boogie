@@ -17,6 +17,7 @@ namespace Microsoft.Boogie {
   using System.Diagnostics.Contracts;
   using Microsoft.Basetypes;
 
+  using Set = GSet<object>;
 
   //---------------------------------------------------------------------
   // Quantifiers and general binders

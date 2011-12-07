@@ -8,8 +8,8 @@ namespace Microsoft.AbstractInterpretationFramework {
   using System;
   using System.Diagnostics.Contracts;
   using Microsoft.Basetypes;
-  using IMutableSet = Microsoft.Boogie.Set;
-  using HashSet = Microsoft.Boogie.Set;
+  using IMutableSet = Microsoft.Boogie.GSet<object>;
+  using HashSet = Microsoft.Boogie.GSet<object>;
 
 
   /// <summary>

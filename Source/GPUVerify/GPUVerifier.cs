@@ -37,29 +37,29 @@ namespace GPUVerify
         private const string _Y_name = "_Y";
         private const string _Z_name = "_Z";
 
-        private Constant _TILE_SIZE_X = null;
-        private Constant _TILE_SIZE_Y = null;
-        private Constant _TILE_SIZE_Z = null;
+        private Constant _GROUP_SIZE_X = null;
+        private Constant _GROUP_SIZE_Y = null;
+        private Constant _GROUP_SIZE_Z = null;
 
-        private const string _TILE_SIZE_X_name = "_TILE_SIZE_X";
-        private const string _TILE_SIZE_Y_name = "_TILE_SIZE_Y";
-        private const string _TILE_SIZE_Z_name = "_TILE_SIZE_Z";
+        private const string _GROUP_SIZE_X_name = "_GROUP_SIZE_X";
+        private const string _GROUP_SIZE_Y_name = "_GROUP_SIZE_Y";
+        private const string _GROUP_SIZE_Z_name = "_GROUP_SIZE_Z";
 
-        private Constant _TILE_X = null;
-        private Constant _TILE_Y = null;
-        private Constant _TILE_Z = null;
+        private Constant _GROUP_X = null;
+        private Constant _GROUP_Y = null;
+        private Constant _GROUP_Z = null;
 
-        private const string _TILE_X_name = "_TILE_X";
-        private const string _TILE_Y_name = "_TILE_Y";
-        private const string _TILE_Z_name = "_TILE_Z";
+        private const string _GROUP_X_name = "_GROUP_X";
+        private const string _GROUP_Y_name = "_GROUP_Y";
+        private const string _GROUP_Z_name = "_GROUP_Z";
 
-        private Constant _NUM_TILES_X = null;
-        private Constant _NUM_TILES_Y = null;
-        private Constant _NUM_TILES_Z = null;
+        private Constant _NUM_GROUPS_X = null;
+        private Constant _NUM_GROUPS_Y = null;
+        private Constant _NUM_GROUPS_Z = null;
 
-        private const string _NUM_TILES_X_name = "_NUM_TILES_X";
-        private const string _NUM_TILES_Y_name = "_NUM_TILES_Y";
-        private const string _NUM_TILES_Z_name = "_NUM_TILES_Z";
+        private const string _NUM_GROUPS_X_name = "_NUM_GROUPS_X";
+        private const string _NUM_GROUPS_Y_name = "_NUM_GROUPS_Y";
+        private const string _NUM_GROUPS_Z_name = "_NUM_GROUPS_Z";
 
         public IRaceInstrumenter RaceInstrumenter;
 
@@ -113,6 +113,11 @@ namespace GPUVerify
                     continue;
                 }
 
+                if (decl is Implementation)
+                {
+                    continue;
+                }
+
                 if (decl is Procedure)
                 {
                     if (attributedProcedure == null)
@@ -143,9 +148,9 @@ namespace GPUVerify
         {
             foreach (LocalVariable LV in KernelImplementation.LocVars)
             {
-                if (QKeyValue.FindBoolAttribute(LV.Attributes, "tile_static"))
+                if (QKeyValue.FindBoolAttribute(LV.Attributes, "group_shared"))
                 {
-                    Error(LV.tok, "Local variable must not be marked 'tile_static' -- promote the variable to global scope");
+                    Error(LV.tok, "Local variable must not be marked 'group_shared' -- promote the variable to global scope");
                 }
             }
         }
@@ -158,11 +163,11 @@ namespace GPUVerify
                 {
                     if (!ReservedNames.Contains((D as Variable).Name))
                     {
-                        if (QKeyValue.FindBoolAttribute(D.Attributes, "tile_static"))
+                        if (QKeyValue.FindBoolAttribute(D.Attributes, "group_shared"))
                         {
-                            NonLocalState.getTileStaticVariables().Add(D as Variable);
+                            NonLocalState.getGroupSharedVariables().Add(D as Variable);
                         }
-                        else
+                        else if(QKeyValue.FindBoolAttribute(D.Attributes, "global"))
                         {
                             NonLocalState.getGlobalVariables().Add(D as Variable);
                         }
@@ -186,50 +191,50 @@ namespace GPUVerify
                         CheckSpecialConstantType(C);
                         _Z = C;
                     }
-                    if (C.Name.Equals(_TILE_SIZE_X_name))
+                    if (C.Name.Equals(_GROUP_SIZE_X_name))
                     {
                         CheckSpecialConstantType(C);
-                        _TILE_SIZE_X = C;
+                        _GROUP_SIZE_X = C;
                     }
-                    if (C.Name.Equals(_TILE_SIZE_Y_name))
+                    if (C.Name.Equals(_GROUP_SIZE_Y_name))
                     {
                         CheckSpecialConstantType(C);
-                        _TILE_SIZE_Y = C;
+                        _GROUP_SIZE_Y = C;
                     }
-                    if (C.Name.Equals(_TILE_SIZE_Z_name))
+                    if (C.Name.Equals(_GROUP_SIZE_Z_name))
                     {
                         CheckSpecialConstantType(C);
-                        _TILE_SIZE_Z = C;
+                        _GROUP_SIZE_Z = C;
                     }
-                    if (C.Name.Equals(_TILE_X_name))
+                    if (C.Name.Equals(_GROUP_X_name))
                     {
                         CheckSpecialConstantType(C);
-                        _TILE_X = C;
+                        _GROUP_X = C;
                     }
-                    if (C.Name.Equals(_TILE_Y_name))
+                    if (C.Name.Equals(_GROUP_Y_name))
                     {
                         CheckSpecialConstantType(C);
-                        _TILE_Y = C;
+                        _GROUP_Y = C;
                     }
-                    if (C.Name.Equals(_TILE_Z_name))
+                    if (C.Name.Equals(_GROUP_Z_name))
                     {
                         CheckSpecialConstantType(C);
-                        _TILE_Z = C;
+                        _GROUP_Z = C;
                     }
-                    if (C.Name.Equals(_NUM_TILES_X_name))
+                    if (C.Name.Equals(_NUM_GROUPS_X_name))
                     {
                         CheckSpecialConstantType(C);
-                        _NUM_TILES_X = C;
+                        _NUM_GROUPS_X = C;
                     }
-                    if (C.Name.Equals(_NUM_TILES_Y_name))
+                    if (C.Name.Equals(_NUM_GROUPS_Y_name))
                     {
                         CheckSpecialConstantType(C);
-                        _NUM_TILES_Y = C;
+                        _NUM_GROUPS_Y = C;
                     }
-                    if (C.Name.Equals(_NUM_TILES_Z_name))
+                    if (C.Name.Equals(_NUM_GROUPS_Z_name))
                     {
                         CheckSpecialConstantType(C);
-                        _NUM_TILES_Z = C;
+                        _NUM_GROUPS_Z = C;
                     }
 
                 }
@@ -866,49 +871,49 @@ namespace GPUVerify
             return _Z != null;
         }
 
-        public bool KernelHasTileIdX()
+        public bool KernelHasGroupIdX()
         {
-            return _TILE_X != null;
+            return _GROUP_X != null;
         }
 
-        public bool KernelHasTileIdY()
+        public bool KernelHasGroupIdY()
         {
-            return _TILE_Y != null;
+            return _GROUP_Y != null;
         }
 
-        public bool KernelHasTileIdZ()
+        public bool KernelHasGroupIdZ()
         {
-            return _TILE_Z != null;
+            return _GROUP_Z != null;
         }
 
-        public bool KernelHasNumTilesX()
+        public bool KernelHasNumGroupsX()
         {
-            return _NUM_TILES_X != null;
+            return _NUM_GROUPS_X != null;
         }
 
-        public bool KernelHasNumTilesY()
+        public bool KernelHasNumGroupsY()
         {
-            return _NUM_TILES_Y != null;
+            return _NUM_GROUPS_Y != null;
         }
 
-        public bool KernelHasNumTilesZ()
+        public bool KernelHasNumGroupsZ()
         {
-            return _NUM_TILES_Z != null;
+            return _NUM_GROUPS_Z != null;
         }
 
-        public bool KernelHasTileSizeX()
+        public bool KernelHasGroupSizeX()
         {
-            return _TILE_SIZE_X != null;
+            return _GROUP_SIZE_X != null;
         }
 
-        public bool KernelHasTileSizeY()
+        public bool KernelHasGroupSizeY()
         {
-            return _TILE_SIZE_Y != null;
+            return _GROUP_SIZE_Y != null;
         }
 
-        public bool KernelHasTileSizeZ()
+        public bool KernelHasGroupSizeZ()
         {
-            return _TILE_SIZE_Z != null;
+            return _GROUP_SIZE_Z != null;
         }
 
         public bool KernelHasId(string dimension)
@@ -1129,17 +1134,17 @@ namespace GPUVerify
 
                     if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
                     {
-                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetTileSize(dimension)), ZeroBV(tok))));
-                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumTiles(dimension)), ZeroBV(tok))));
-                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetTileId(dimension)), ZeroBV(tok))));
-                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV(tok))));
+                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV(tok))));
+                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV(tok))));
+                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
                     }
                     else
                     {
-                        Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetTileSize(dimension)), Zero(tok))));
-                        Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetNumTiles(dimension)), Zero(tok))));
-                        Proc.Requires.Add(new Requires(false, Expr.Ge(new IdentifierExpr(tok, GetTileId(dimension)), Zero(tok))));
-                        Proc.Requires.Add(new Requires(false, Expr.Lt(new IdentifierExpr(tok, GetTileId(dimension)), new IdentifierExpr(tok, GetNumTiles(dimension)))));
+                        Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetGroupSize(dimension)), Zero(tok))));
+                        Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetNumGroups(dimension)), Zero(tok))));
+                        Proc.Requires.Add(new Requires(false, Expr.Ge(new IdentifierExpr(tok, GetGroupId(dimension)), Zero(tok))));
+                        Proc.Requires.Add(new Requires(false, Expr.Lt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
                     }
                 }
 
@@ -1159,8 +1164,8 @@ namespace GPUVerify
                             MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), ZeroBV(tok))
                             ),
                             Expr.And(
-                            MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetTileSize(dimension))),
-                            MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetTileSize(dimension)))
+                            MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
+                            MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
                             ))
                     :
                         Expr.And(
@@ -1169,8 +1174,8 @@ namespace GPUVerify
                             Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), Zero(tok))
                             ),
                             Expr.And(
-                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetTileSize(dimension))),
-                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetTileSize(dimension)))
+                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
+                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
                             ));
 
                 AssumeThreadIdsInRange = (null == AssumeThreadIdsInRange) ? AssumeThreadIdsInRangeInDimension : Expr.And(AssumeThreadIdsInRange, AssumeThreadIdsInRangeInDimension);
@@ -1185,22 +1190,22 @@ namespace GPUVerify
             }), new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "result", Microsoft.Boogie.Type.Bool)))), new ExprSeq(new Expr[] { lhs, rhs }));
         }
 
-        private Constant GetTileSize(string dimension)
+        private Constant GetGroupSize(string dimension)
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
-            if (dimension.Equals("X")) return _TILE_SIZE_X;
-            if (dimension.Equals("Y")) return _TILE_SIZE_Y;
-            if (dimension.Equals("Z")) return _TILE_SIZE_Z;
+            if (dimension.Equals("X")) return _GROUP_SIZE_X;
+            if (dimension.Equals("Y")) return _GROUP_SIZE_Y;
+            if (dimension.Equals("Z")) return _GROUP_SIZE_Z;
             Debug.Assert(false);
             return null;
         }
 
-        private Constant GetNumTiles(string dimension)
+        private Constant GetNumGroups(string dimension)
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
-            if (dimension.Equals("X")) return _NUM_TILES_X;
-            if (dimension.Equals("Y")) return _NUM_TILES_Y;
-            if (dimension.Equals("Z")) return _NUM_TILES_Z;
+            if (dimension.Equals("X")) return _NUM_GROUPS_X;
+            if (dimension.Equals("Y")) return _NUM_GROUPS_Y;
+            if (dimension.Equals("Z")) return _NUM_GROUPS_Z;
             Debug.Assert(false);
             return null;
         }
@@ -1217,12 +1222,12 @@ namespace GPUVerify
             return new Constant(tok, new TypedIdent(tok, "_" + dimension + "$" + number, GetTypeOfId(dimension)));
         }
 
-        private Constant GetTileId(string dimension)
+        private Constant GetGroupId(string dimension)
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
-            if (dimension.Equals("X")) return _TILE_X;
-            if (dimension.Equals("Y")) return _TILE_Y;
-            if (dimension.Equals("Z")) return _TILE_Z;
+            if (dimension.Equals("X")) return _GROUP_X;
+            if (dimension.Equals("Y")) return _GROUP_Y;
+            if (dimension.Equals("Z")) return _GROUP_Z;
             Debug.Assert(false);
             return null;
         }
@@ -1436,7 +1441,7 @@ namespace GPUVerify
 
             foreach (Variable v in impl.LocVars)
             {
-                Debug.Assert(!NonLocalState.getTileStaticVariables().Contains(v));
+                Debug.Assert(!NonLocalState.getGroupSharedVariables().Contains(v));
                 NewLocVars.Add(v);
             }
 
@@ -2184,22 +2189,22 @@ namespace GPUVerify
                 Error(KernelProcedure.tok, "Kernel must declare global constant '" + _X_name + "'");
             }
 
-            if (!KernelHasTileSizeX())
+            if (!KernelHasGroupSizeX())
             {
-                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _TILE_SIZE_X_name + "'");
+                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _GROUP_SIZE_X_name + "'");
             }
 
-            if (!KernelHasNumTilesX())
+            if (!KernelHasNumGroupsX())
             {
-                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _NUM_TILES_X_name + "'");
+                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _NUM_GROUPS_X_name + "'");
             }
 
-            if (!KernelHasTileIdX())
+            if (!KernelHasGroupIdX())
             {
-                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _TILE_X_name + "'");
+                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _GROUP_X_name + "'");
             }
 
-            if (KernelHasIdY() || KernelHasTileSizeY() || KernelHasNumTilesY() || KernelHasTileIdY())
+            if (KernelHasIdY() || KernelHasGroupSizeY() || KernelHasNumGroupsY() || KernelHasGroupIdY())
             {
 
                 if (!KernelHasIdY())
@@ -2207,24 +2212,24 @@ namespace GPUVerify
                     Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _Y_name + "'");
                 }
 
-                if (!KernelHasTileSizeY())
+                if (!KernelHasGroupSizeY())
                 {
-                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _TILE_SIZE_Y_name + "'");
+                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _GROUP_SIZE_Y_name + "'");
                 }
 
-                if (!KernelHasNumTilesY())
+                if (!KernelHasNumGroupsY())
                 {
-                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _NUM_TILES_Y_name + "'");
+                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _NUM_GROUPS_Y_name + "'");
                 }
 
-                if (!KernelHasTileIdY())
+                if (!KernelHasGroupIdY())
                 {
-                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _TILE_Y_name + "'");
+                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _GROUP_Y_name + "'");
                 }
 
             }
 
-            if (KernelHasIdZ() || KernelHasTileSizeZ() || KernelHasNumTilesZ() || KernelHasTileIdZ())
+            if (KernelHasIdZ() || KernelHasGroupSizeZ() || KernelHasNumGroupsZ() || KernelHasGroupIdZ())
             {
 
                 if (!KernelHasIdY())
@@ -2232,19 +2237,19 @@ namespace GPUVerify
                     Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _Y_name + "'");
                 }
 
-                if (!KernelHasTileSizeY())
+                if (!KernelHasGroupSizeY())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _TILE_SIZE_Y_name + "'");
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _GROUP_SIZE_Y_name + "'");
                 }
 
-                if (!KernelHasNumTilesY())
+                if (!KernelHasNumGroupsY())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _NUM_TILES_Y_name + "'");
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _NUM_GROUPS_Y_name + "'");
                 }
 
-                if (!KernelHasTileIdY())
+                if (!KernelHasGroupIdY())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _TILE_Y_name + "'");
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _GROUP_Y_name + "'");
                 }
 
                 if (!KernelHasIdZ())
@@ -2252,59 +2257,24 @@ namespace GPUVerify
                     Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _Z_name + "'");
                 }
 
-                if (!KernelHasTileSizeZ())
+                if (!KernelHasGroupSizeZ())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _TILE_SIZE_Z_name + "'");
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _GROUP_SIZE_Z_name + "'");
                 }
 
-                if (!KernelHasNumTilesZ())
+                if (!KernelHasNumGroupsZ())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _NUM_TILES_Z_name + "'");
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _NUM_GROUPS_Z_name + "'");
                 }
 
-                if (!KernelHasTileIdZ())
+                if (!KernelHasGroupIdZ())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _TILE_Z_name + "'");
+                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _GROUP_Z_name + "'");
                 }
 
             }
 
             return ErrorCount;
-        }
-
-        private bool HasNamedConstant(string dimension, string Name)
-        {
-            foreach (Declaration d in Program.TopLevelDeclarations)
-            {
-                if (d is Variable && (d as Variable).Name.Equals(Name + dimension))
-                {
-                    Variable v = d as Variable;
-                    if (v is Constant && IsIntOrBv32(v.TypedIdent.Type))
-                    {
-                        return true;
-                    }
-                    else
-                    {
-                        Error(v.tok, "Declaration '" + Name + dimension + "' must be a constant integer");
-                    }
-                }
-            }
-            return false;
-        }
-
-        private bool HasTileId(string dimension)
-        {
-            return HasNamedConstant(dimension, "_tile_");
-        }
-
-        private bool HasNumTiles(string dimension)
-        {
-            return HasNamedConstant(dimension, "NUM_TILES_");
-        }
-
-        private bool HasTileSize(string dimension)
-        {
-            return HasNamedConstant(dimension, "TILE_SIZE_");
         }
 
         public static bool IsThreadLocalIdConstant(Variable variable)

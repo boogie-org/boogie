@@ -95,6 +95,7 @@ namespace Microsoft.Boogie {
   using Microsoft.Boogie.AbstractInterpretation;
   using AI = Microsoft.AbstractInterpretationFramework;
   using Graphing;
+  using Set = GSet<object>;
 
   [ContractClass(typeof(AbsyContracts))]
   public abstract class Absy {

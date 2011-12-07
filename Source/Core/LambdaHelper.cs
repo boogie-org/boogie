@@ -11,6 +11,7 @@ namespace Microsoft.Boogie {
   using System.Collections.Generic;
   using System.Diagnostics;
   using System.Diagnostics.Contracts;
+  using Set = GSet<object>;
 
   public static class LambdaHelper {
     public static Absy Desugar(Absy node, out List<Expr/*!*/>/*!*/ axioms, out List<Function/*!*/>/*!*/ functions) {

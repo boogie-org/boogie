@@ -15,6 +15,7 @@ namespace Microsoft.Boogie {
   using Microsoft.Boogie.AbstractInterpretation;
   using AI = Microsoft.AbstractInterpretationFramework;
   using System.Diagnostics.Contracts;
+  using Set = GSet<object>;
 
 
   //---------------------------------------------------------------------
