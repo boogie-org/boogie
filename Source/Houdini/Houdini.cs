@@ -268,7 +268,9 @@ namespace Microsoft.Boogie.Houdini {
       if (CommandLineOptions.Clo.Trace)
         Console.WriteLine("Building call graph...");
       this.callGraph = BuildCallGraph();
-      
+      if (CommandLineOptions.Clo.Trace)
+        Console.WriteLine("Number of implementations = {0}", callGraph.Nodes.Count);
+
       Inline();
       
       this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
