@@ -10,12 +10,12 @@ namespace GPUVerify
     class NonLocalStateLists : INonLocalState
     {
         private List<Variable> GlobalVariables;
-        private List<Variable> TileStaticVariables;
+        private List<Variable> GroupSharedVariables;
 
         public NonLocalStateLists()
         {
             GlobalVariables = new List<Variable>();
-            TileStaticVariables = new List<Variable>();
+            GroupSharedVariables = new List<Variable>();
         }
 
         public ICollection<Variable> getGlobalVariables()
@@ -23,16 +23,16 @@ namespace GPUVerify
             return GlobalVariables;
         }
 
-        public ICollection<Variable> getTileStaticVariables()
+        public ICollection<Variable> getGroupSharedVariables()
         {
-            return TileStaticVariables;
+            return GroupSharedVariables;
         }
 
         public ICollection<Variable> getAllNonLocalVariables()
         {
             List<Variable> all = new List<Variable>();
             all.AddRange(GlobalVariables);
-            all.AddRange(TileStaticVariables);
+            all.AddRange(GroupSharedVariables);
             return all;
         }
 

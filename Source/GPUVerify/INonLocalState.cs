@@ -11,7 +11,7 @@ namespace GPUVerify
 
         ICollection<Variable> getGlobalVariables();
 
-        ICollection<Variable> getTileStaticVariables();
+        ICollection<Variable> getGroupSharedVariables();
 
         ICollection<Variable> getAllNonLocalVariables();
 

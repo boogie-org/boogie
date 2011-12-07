@@ -38,9 +38,9 @@ namespace GPUVerify
             {
                 NonLocalStateToCheck.getGlobalVariables().Add(v);
             }
-            foreach(Variable v in verifier.NonLocalState.getTileStaticVariables())
+            foreach(Variable v in verifier.NonLocalState.getGroupSharedVariables())
             {
-                NonLocalStateToCheck.getTileStaticVariables().Add(v);
+                NonLocalStateToCheck.getGroupSharedVariables().Add(v);
             }
         }
 

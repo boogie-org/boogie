@@ -97,11 +97,11 @@ namespace GPUVerify
 
             
             Variable newG = findClonedVar(v, newGp.NonLocalState.getGlobalVariables());
-            Variable newT = findClonedVar(v, newGp.NonLocalState.getTileStaticVariables());
+            Variable newT = findClonedVar(v, newGp.NonLocalState.getGroupSharedVariables());
             Contract.Assert(newG == null || newT == null);
 
             ri.NonLocalStateToCheck.getGlobalVariables().Clear();
-            ri.NonLocalStateToCheck.getTileStaticVariables().Clear();
+            ri.NonLocalStateToCheck.getGroupSharedVariables().Clear();
             ri.onlyLog1 = a1;
             ri.onlyLog2 = a2;
 
@@ -112,7 +112,7 @@ namespace GPUVerify
 
             if (newT != null)
             {
-                ri.NonLocalStateToCheck.getTileStaticVariables().Add(newT);
+                ri.NonLocalStateToCheck.getGroupSharedVariables().Add(newT);
             }
             
             newGp.doit();

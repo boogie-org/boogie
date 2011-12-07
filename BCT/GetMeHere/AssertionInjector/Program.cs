@@ -42,6 +42,8 @@ namespace AssertionInjector {
       string outputAssemblyPath;
       string outputPdbFileName;
 
+      var returnValue = errorValue;
+
       using (var host = new PeReader.DefaultHost()) {
         IModule/*?*/ module = host.LoadUnitFrom(args[0]) as IModule;
         if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
@@ -64,6 +66,8 @@ namespace AssertionInjector {
             var localScopeProvider = new ILGenerator.LocalScopeProvider(pdbReader);
             var mutator = new GetMeHereInjector(host, pdbReader, fileName, lineNumber, columnNumber);
             module = mutator.Rewrite(module);
+            //Console.WriteLine("Emitted probe: {0}", mutator.emittedProbe);
+            if (mutator.emittedProbe) returnValue = 0;
 
             originalAssemblyPath = module.Location;
             var tempDir = Path.GetTempPath();
@@ -92,7 +96,7 @@ namespace AssertionInjector {
         return errorValue;
       }
 
-      return 0; // success
+      return returnValue; // success
     }
   }
 
@@ -126,6 +130,7 @@ namespace AssertionInjector {
     Stack<ILocalScope> scopeStack = new Stack<ILocalScope>();
     private NamespaceTypeDefinition getMeHereClass;
     private MethodDefinition getMeHereAssert;
+    public bool emittedProbe;
 
     public override void RewriteChildren(Module module) {
       base.RewriteChildren(module);
@@ -157,7 +162,7 @@ namespace AssertionInjector {
 
     public override void RewriteChildren(MethodBody methodBody) {
       this.currentLocals = methodBody.LocalVariables;
-
+      //Console.WriteLine("{0}", MemberHelper.GetMethodSignature(methodBody.MethodDefinition));
       try {
         var operations = methodBody.Operations;
         if (operations == null || operations.Count == 0) return;
@@ -174,16 +179,18 @@ namespace AssertionInjector {
 
         if (startLocation == null || startLocation.StartLine == 0x00feefee || !startLocation.Document.Name.Value.Equals(this.fileName)) return;
 
-        ys = this.pdbReader.GetClosestPrimarySourceLocationsFor(operations[operations.Count - 1].Location);
-        foreach (var y in ys) {
-          //Console.WriteLine("{0}:{1}({2},{3})", y.Document.Name.Value, MemberHelper.GetMethodSignature(methodBody.MethodDefinition, NameFormattingOptions.None),
-          //  y.StartLine, y.StartColumn);
-          endLocation = y;
-          break;
-        }
-
-        if (endLocation == null || endLocation.StartLine == 0x00feefee) return;
-        if (!(startLocation.StartLine <= this.lineNumber && this.lineNumber <= endLocation.StartLine)) return;
+        var lastIndex = operations.Count;
+        do {
+          lastIndex--;
+          ys = this.pdbReader.GetClosestPrimarySourceLocationsFor(operations[lastIndex].Location);
+          foreach (var y in ys) {
+            //Console.WriteLine("{0}:{1}({2},{3})", y.Document.Name.Value, MemberHelper.GetMethodSignature(methodBody.MethodDefinition, NameFormattingOptions.None),
+            //  y.StartLine, y.StartColumn);
+            endLocation = y;
+            break;
+          }
+        } while (0 <= lastIndex && (endLocation == null || endLocation.StartLine == 0x00feefee));
+        if (lastIndex == -1 || !(startLocation.StartLine <= this.lineNumber && this.lineNumber <= endLocation.StartLine)) return;
 
 
         ProcessOperations(methodBody, operations);
@@ -280,7 +287,7 @@ namespace AssertionInjector {
       #endregion Pass 1: Make a label for each branch target
 
       #region Pass 2: Emit each operation, along with labels
-      bool emittedProbe = false; // don't do it more than once
+      this.emittedProbe = false; // don't do it more than once
       for (int i = 0; i < count; i++) {
         IOperation op = operations[i];
         ILGeneratorLabel label;
@@ -330,7 +337,7 @@ namespace AssertionInjector {
 
         #region Emit operation along with any injection
 
-        if (!emittedProbe) {
+        if (!this.emittedProbe) {
           IPrimarySourceLocation location = null;
           var locations = this.pdbReader.GetPrimarySourceLocationsFor(op.Location);
           foreach (var x in locations) {
@@ -340,7 +347,7 @@ namespace AssertionInjector {
             }
           }
           if (location != null) {
-            emittedProbe = true;
+            this.emittedProbe = true;
             generator.Emit(OperationCode.Ldc_I4_0);
             generator.Emit(OperationCode.Call, this.getMeHereAssert);
           }

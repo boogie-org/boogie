@@ -9,8 +9,8 @@ for %%f in (houd1.bpl houd2.bpl houd3.bpl houd4.bpl houd5.bpl houd6.bpl houd7.bp
   %BGEXE% %* /nologo /noinfer /contractInfer %%f
 )
 
-for %%f in (test1.bpl test2.bpl test7.bpl test8.bpl) do (
+for %%f in (test1.bpl test2.bpl test7.bpl test8.bpl test9.bpl) do (
   echo .
   echo -------------------- %%f --------------------
-  %BGEXE% %* /nologo /noinfer /contractInfer /inline:spec /inlineDepth:1 %%f
+  %BGEXE% %* /nologo /noinfer /contractInfer /inlineDepth:1 %%f
 )
