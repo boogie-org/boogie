@@ -9,9 +9,10 @@ namespace Microsoft.AbstractInterpretationFramework {
   //using System.Compiler;
   using System.Collections;
   using Microsoft.Basetypes;
-  using IMutableSet = Microsoft.Boogie.Set;
-  using HashSet = Microsoft.Boogie.Set;
-  using ISet = Microsoft.Boogie.Set;
+  using Set = Microsoft.Boogie.GSet<object>;
+  using IMutableSet = Microsoft.Boogie.GSet<object>; 
+  using HashSet = Microsoft.Boogie.GSet<object>;
+  using ISet = Microsoft.Boogie.GSet<object>;
 
 
   /// <summary>

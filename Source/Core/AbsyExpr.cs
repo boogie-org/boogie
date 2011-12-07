@@ -18,6 +18,8 @@ namespace Microsoft.Boogie {
   using System.Diagnostics.Contracts;
   using Microsoft.Basetypes;
 
+  using Set = GSet<object>;
+
 
   //---------------------------------------------------------------------
   // Expressions

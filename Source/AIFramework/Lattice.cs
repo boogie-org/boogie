@@ -11,11 +11,12 @@ namespace Microsoft.AbstractInterpretationFramework {
   using System.Diagnostics;
   using Microsoft.AbstractInterpretationFramework.Collections;
   using Microsoft.Boogie;
-  using IMutableSet = Microsoft.Boogie.Set;
-  using ISet = Microsoft.Boogie.Set;
-  using HashSet = Microsoft.Boogie.Set;
-  using ArraySet = Microsoft.Boogie.Set;
 
+  using ArraySet = Microsoft.Boogie.GSet<object>;
+  using IMutableSet = Microsoft.Boogie.GSet<object>; 
+  using HashSet = Microsoft.Boogie.GSet<object>;
+  using ISet = Microsoft.Boogie.GSet<object>;
+  using Set = Microsoft.Boogie.GSet<object>;
 
 
   /// <summary>

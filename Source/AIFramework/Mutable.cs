@@ -11,7 +11,7 @@ namespace Microsoft.AbstractInterpretationFramework.Collections {
   /// <summary>
   ///  Extend sets for using as a IWorkList.
   /// </summary>
-  public class WorkSet : Microsoft.Boogie.Set, Microsoft.Boogie.IWorkList {
+  public class WorkSet : Microsoft.Boogie.GSet<object>, Microsoft.Boogie.IWorkList {
 
     // See Bug #148 for an explanation of why this is here.
     // Without it, the contract inheritance rules will complain since it

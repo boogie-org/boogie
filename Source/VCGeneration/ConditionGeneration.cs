@@ -15,8 +15,10 @@ using AI = Microsoft.AbstractInterpretationFramework;
 using System.Diagnostics.Contracts;
 using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;
+using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie {
+
   public class CalleeCounterexampleInfo {
     public Counterexample counterexample;
     public List<Model.Element>/*!>!*/ args;
