@@ -699,14 +699,14 @@ namespace Microsoft.Boogie.AbstractInterpretation
               // this uses an incomplete approximation that could be tightened up
               if (lo0 != null && lo1 != null && 0 <= (BigInteger)lo0 && 0 <= (BigInteger)lo1) {
                 Lo = new BigInteger(0);
-                Hi = lo0 - 1;
+                Hi = hi0;
               }
               break;
             case BinaryOperator.Opcode.Mod:
               // this uses an incomplete approximation that could be tightened up
               if (lo0 != null && lo1 != null && 0 <= (BigInteger)lo0 && 0 <= (BigInteger)lo1) {
                 Lo = new BigInteger(0);
-                Hi = lo1;
+                Hi = hi1;
               }
               break;
             default:
