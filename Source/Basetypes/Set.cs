@@ -22,6 +22,7 @@ namespace Microsoft.Boogie {
     void ObjectInvariant() {
       Contract.Invariant(ht != null);
       Contract.Invariant(arr != null);
+      Contract.Invariant(ht.Count == arr.Count);
     }
 
 
@@ -78,19 +79,29 @@ namespace Microsoft.Boogie {
     /// this.SetElements =  this.SetElements_old \setminus {o};
     /// </summary>
     public void Remove(T o) {
-      ht.Remove(o);
+      int idx;
+      if (ht.TryGetValue(o, out idx)) {
+        var last = arr[arr.Count - 1];
+        arr.RemoveAt(arr.Count - 1);
+        if (idx != arr.Count) {
+          arr[idx] = last;
+          ht[last] = idx;
+        }
+        ht.Remove(o);
+      }
     }
 
     /// <summary>
-    /// this.GSet<T>Elements =  this.GSet<T>Elements_old \setminus s.GSet<T>Elements;
+    /// this.SetElements =  this.SetElements_old \setminus s.SetElements;
     /// </summary>
     public void RemoveRange(IEnumerable<T> s) {
       Contract.Requires(s != null);
       if (s == this) {
         ht.Clear();
+        arr.Clear();
       } else {
         foreach (T o in s) {
-          ht.Remove(o);
+          Remove(o);
         }
       }
     }
@@ -110,7 +121,6 @@ namespace Microsoft.Boogie {
     /// </summary>
     public T Take() {
       Contract.Requires((Count > 0));
-      Contract.Ensures(Contract.Result<object>() != null);
       Contract.Ensures(Count == Contract.OldValue(Count) - 1);
       T r = Choose();
       Remove(r);
@@ -119,9 +129,10 @@ namespace Microsoft.Boogie {
 
     public void Intersect(GSet<T>/*!*/ s) {
       Contract.Requires(s != null);
+      if (s == this) return;
       ht.Clear();
       var newArr = new List<T>();
-      foreach (T key in this) {
+      foreach (T key in arr) {
         if (s.ht.ContainsKey(key)) {
           ht[key] = newArr.Count;
           newArr.Add(key);
@@ -154,10 +165,7 @@ namespace Microsoft.Boogie {
     /// <returns></returns>
     [Pure]
     public bool Contains(T o) {
-      if (!this.ht.ContainsKey(o)) {
-        return false;
-      }
-      return true;
+      return this.ht.ContainsKey(o);
     }
 
     /// <summary>
