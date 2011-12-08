@@ -9,10 +9,6 @@ using System.Collections.Generic;
 using System.Text;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie;
-using IMutableSet = Microsoft.Boogie.Set;
-using ISet = Microsoft.Boogie.Set;
-using HashSet = Microsoft.Boogie.Set;
-using ArraySet = Microsoft.Boogie.Set;
 
 namespace Microsoft.Boogie.AbstractInterpretation
 {
