@@ -7,41 +7,51 @@ namespace Microsoft.Boogie {
   using System;
   using System.IO;
   using System.Collections;
+  using System.Collections.Generic;
   using System.Diagnostics.Contracts;
 
   /// <summary>
   /// A class representing a mathematical set.
   /// </summary>
-  public class Set : ICloneable, IEnumerable {
+  public class GSet<T> : ICloneable, IEnumerable, IEnumerable<T> {
     /*[Own]*/
-    Hashtable ht;
+    Dictionary<T, int> ht;
+    List<T> arr; // keep elements in a well-defined order; otherwise iteration is non-deterministic
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(ht != null);
+      Contract.Invariant(arr != null);
+      Contract.Invariant(ht.Count == arr.Count);
     }
 
 
-    public Set() {
-      ht = new Hashtable();
+    public GSet() {
+      ht = new Dictionary<T, int>();
+      arr = new List<T>();
       //:base();
     }
 
-    private Set(Hashtable/*!*/ ht) {
+    private GSet(Dictionary<T,int>/*!*/ ht, List<T> arr) {
       Contract.Requires(ht != null);
+      Contract.Requires(arr != null);
       this.ht = ht;
+      this.arr = arr;
       //:base();
     }
 
-    public Set(int capacity) {
-      ht = new Hashtable(capacity);
+    public GSet(int capacity) {
+      ht = new Dictionary<T, int>(capacity);
+      arr = new List<T>(capacity);
       //:base();
     }
 
 
-    public readonly static Set/*!*/ Empty = new Set();
+    public readonly static GSet<T>/*!*/ Empty = new GSet<T>();
 
     public void Clear() {
       ht.Clear();
+      arr.Clear();
     }
 
     /// <summary>
@@ -49,18 +59,18 @@ namespace Microsoft.Boogie {
     /// In notation:
     ///   this.SetElements =  this.SetElements_old \union {o};
     /// </summary>
-    public void Add(object/*!*/ o) {
-      Contract.Requires(o != null);
-      ht[o] = o;
+    public void Add(T o) {
+      if (!ht.ContainsKey(o)) {
+        ht[o] = arr.Count;
+        arr.Add(o);
+      }
     }
 
     /// <summary>
-    /// this.SetElements =  this.SetElements_old \union s.SetElements;
+    /// this.SetElements =  this.SetElements_old \union s.GSet<T>Elements;
     /// </summary>
-    public void AddRange(Set/*!*/ s) {
-      Contract.Requires(s != null);
-      foreach (object/*!*/ o in s) {
-        Contract.Assert(o != null);
+    public void AddRange(IEnumerable<T> s) {
+      foreach (T o in s) {
         Add(o);
       }
     }
@@ -68,22 +78,30 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// this.SetElements =  this.SetElements_old \setminus {o};
     /// </summary>
-    public void Remove(object/*!*/ o) {
-      Contract.Requires(o != null);
-      ht.Remove(o);
+    public void Remove(T o) {
+      int idx;
+      if (ht.TryGetValue(o, out idx)) {
+        var last = arr[arr.Count - 1];
+        arr.RemoveAt(arr.Count - 1);
+        if (idx != arr.Count) {
+          arr[idx] = last;
+          ht[last] = idx;
+        }
+        ht.Remove(o);
+      }
     }
 
     /// <summary>
     /// this.SetElements =  this.SetElements_old \setminus s.SetElements;
     /// </summary>
-    public void RemoveRange(Set/*!*/ s) {
+    public void RemoveRange(IEnumerable<T> s) {
       Contract.Requires(s != null);
       if (s == this) {
         ht.Clear();
+        arr.Clear();
       } else {
-        foreach (object/*!*/ o in s) {
-          Contract.Assert(o != null);
-          ht.Remove(o);
+        foreach (T o in s) {
+          Remove(o);
         }
       }
     }
@@ -91,45 +109,44 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Returns an arbitrary element from the set.
     /// </summary>
-    public object/*!*/ Choose() {
+    public T Choose() {
       Contract.Requires((Count > 0));
-      Contract.Ensures(Contract.Result<object>() != null);
-      IEnumerator iter = GetEnumerator();
-      iter.MoveNext();
-      return cce.NonNull(iter.Current);
+      foreach(var e in this) 
+        return e;
+      return default(T);
     }
 
     /// <summary>
     /// Picks an arbitrary element from the set, removes it, and returns it.
     /// </summary>
-    public object/*!*/ Take() {
+    public T Take() {
       Contract.Requires((Count > 0));
-      Contract.Ensures(Contract.Result<object>() != null);
       Contract.Ensures(Count == Contract.OldValue(Count) - 1);
-      object r = Choose();
+      T r = Choose();
       Remove(r);
       return r;
     }
 
-    public void Intersect(Set/*!*/ s) {
+    public void Intersect(GSet<T>/*!*/ s) {
       Contract.Requires(s != null);
-      Hashtable h = new Hashtable(ht.Count);
-      foreach (object/*!*/ key in ht.Keys) {
-        Contract.Assert(key != null);
+      if (s == this) return;
+      ht.Clear();
+      var newArr = new List<T>();
+      foreach (T key in arr) {
         if (s.ht.ContainsKey(key)) {
-          h.Add(key, key);
+          ht[key] = newArr.Count;
+          newArr.Add(key);
         }
       }
-      ht = h;
+      arr = newArr;
     }
 
     /// <summary>
     /// The getter returns true iff "o" is in the set.
     /// The setter adds the value "o" (for "true") or removes "o" (for "false")
     /// </summary>
-    public bool this[object/*!*/ o] {
+    public bool this[T o] {
       get {
-        Contract.Requires(o != null);
         return ht.ContainsKey(o);
       }
       set {
@@ -147,12 +164,8 @@ namespace Microsoft.Boogie {
     /// <param name="o"></param>
     /// <returns></returns>
     [Pure]
-    public bool Contains(object/*!*/ o) {
-      Contract.Requires(o != null);
-      if (!this.ht.ContainsKey(o)) {
-        return false;
-      }
-      return true;
+    public bool Contains(T o) {
+      return this.ht.ContainsKey(o);
     }
 
     /// <summary>
@@ -161,11 +174,10 @@ namespace Microsoft.Boogie {
     /// </summary>
     /// <param name="s"></param>
     /// <returns></returns>
-    public bool ContainsRange(Set/*!*/ s) {
+    public bool ContainsRange(IEnumerable<T> s) {
       Contract.Requires(s != null);
       if (s != this) {
-        foreach (object/*!*/ key in s.ht.Keys) {
-          Contract.Assert(key != null);
+        foreach (T key in s) {
           if (!this.ht.ContainsKey(key)) {
             return false;
           }
@@ -176,19 +188,13 @@ namespace Microsoft.Boogie {
 
     public object/*!*/ Clone() {
       Contract.Ensures(Contract.Result<object>() != null);
-      return new Set((Hashtable/*!*/)cce.NonNull(ht.Clone()));
+      return new GSet<T>(new Dictionary<T,int>(ht), new List<T>(arr));
     }
 
     public virtual int Count {
       get {
         return ht.Count;
       }
-    }
-
-    [Pure]
-    public IEnumerator/*!*/ GetEnumerator() {
-      Contract.Ensures(Contract.Result<IEnumerator>() != null);
-      return ht.Keys.GetEnumerator();
     }
 
     [Pure]
@@ -211,46 +217,38 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public bool AddAll(IEnumerable/*!*/ objs) {
-      Contract.Requires(objs != null);
-      foreach (object/*!*/ o in objs) {
-        Contract.Assert(o != null);
-        this.Add(o);
-      }
-      return true;
-    }
     //----------------------------- Static Methods ---------------------------------
 
     // Functional Intersect
-    public static Set/*!*/ Intersect(Set/*!*/ a, Set/*!*/ b) {
+    public static GSet<T>/*!*/ Intersect(GSet<T>/*!*/ a, GSet<T>/*!*/ b) {
       Contract.Requires(b != null);
       Contract.Requires(a != null);
-      Contract.Ensures(Contract.Result<Set>() != null);
+      Contract.Ensures(Contract.Result<GSet<T>>() != null);
       //Contract.Ensures(Contract.ForAll(result, x => a[x] && b[x] ));
-      Set/*!*/ res = (Set/*!*/)cce.NonNull(a.Clone());
+      GSet<T>/*!*/ res = (GSet<T>/*!*/)cce.NonNull(a.Clone());
       res.Intersect(b);
       return res;
     }
     // Functional Union
-    public static Set/*!*/ Union(Set/*!*/ a, Set/*!*/ b) {
+    public static GSet<T>/*!*/ Union(GSet<T>/*!*/ a, GSet<T>/*!*/ b) {
       Contract.Requires(a != null);
       Contract.Requires(b != null);
-      Contract.Ensures(Contract.Result<Set>() != null);
+      Contract.Ensures(Contract.Result<GSet<T>>() != null);
       //  Contract.Ensures(Contract.ForAll(result, x => a[x] || b[x] ));
-      Set/*!*/ res = (Set/*!*/)cce.NonNull(a.Clone());
+      GSet<T>/*!*/ res = (GSet<T>/*!*/)cce.NonNull(a.Clone());
       res.AddRange(b);
       return res;
     }
 
     public delegate bool SetFilter(object/*!*/ obj);
 
-    public static Set/*!*/ Filter(Set/*!*/ a, SetFilter/*!*/ filter) {
+    public static GSet<T>/*!*/ Filter(GSet<T>/*!*/ a, Func<T,bool> filter) {
       Contract.Requires(filter != null);
       Contract.Requires(a != null);
-      Contract.Ensures(Contract.Result<Set>() != null);
-      Set inter = new Set();
+      Contract.Ensures(Contract.Result<GSet<T>>() != null);
+      GSet<T> inter = new GSet<T>();
 
-      foreach (object/*!*/ elem in a) {
+      foreach (T elem in a) {
         Contract.Assert(elem != null);
         if (filter(elem)) {
           inter.Add(elem);
@@ -259,7 +257,23 @@ namespace Microsoft.Boogie {
       return inter;
     }
 
+    public IEnumerator<T> GetEnumerator()
+    {
+      return arr.GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+      return ((IEnumerable)arr).GetEnumerator();
+    }
+
+    public bool AddAll(IEnumerable s)
+    {
+      foreach (T e in s) Add(e);
+      return true;
+    }
   }
+
 
   public interface IWorkList : ICollection {
     bool Add(object o);

@@ -11,9 +11,10 @@ namespace Microsoft.AbstractInterpretationFramework {
   //using Microsoft.SpecSharp.Collections;
   using System.Diagnostics.Contracts;
   using Microsoft.Basetypes;
-  using IMutableSet = Microsoft.Boogie.Set;
-  using HashSet = Microsoft.Boogie.Set;
-  using ISet = Microsoft.Boogie.Set;
+
+  using IMutableSet = Microsoft.Boogie.GSet<object>;
+  using ISet = Microsoft.Boogie.GSet<object>;
+  using HashSet = Microsoft.Boogie.GSet<object>;
 
   /// <summary>
   /// Represents a system of linear constraints (constraint/frame representations).

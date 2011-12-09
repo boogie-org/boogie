@@ -18,6 +18,8 @@ namespace Microsoft.Boogie {
   using System.Diagnostics.Contracts;
   using Microsoft.Basetypes;
 
+  using Set = GSet<object>; // not that the set used is not a set of Variable only, as it also contains TypeVariables
+
 
   //---------------------------------------------------------------------
   // Expressions
@@ -438,6 +440,7 @@ namespace Microsoft.Boogie {
       : base(tok) {
       Contract.Requires(tok != null);
       Val = b;
+      Type = Type.Bool;
     }
     /// <summary>
     /// Creates a literal expression for the integer value "v".
@@ -448,6 +451,7 @@ namespace Microsoft.Boogie {
       : base(tok) {
       Contract.Requires(tok != null);
       Val = v;
+      Type = Type.Int;
     }
 
     /// <summary>
@@ -456,7 +460,9 @@ namespace Microsoft.Boogie {
     public LiteralExpr(IToken/*!*/ tok, BigNum v, int b)
       : base(tok) {
       Contract.Requires(tok != null);
+      Contract.Requires(0 <= b);
       Val = new BvConst(v, b);
+      Type = Type.GetBvType(b);
     }
 
     [Pure]

@@ -11,9 +11,8 @@ namespace Microsoft.AbstractInterpretationFramework {
   using System.Diagnostics.Contracts;
   using Microsoft.Basetypes;
 
-  using ISet = Microsoft.Boogie.Set;
-  using HashSet = Microsoft.Boogie.Set;
-
+  using ISet = Microsoft.Boogie.GSet<object>;
+  using HashSet = Microsoft.Boogie.GSet<object>;
 
   /// <summary>
   /// Represents an invariant over linear variable constraints, represented by a polyhedron.

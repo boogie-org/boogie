@@ -11,7 +11,9 @@ namespace Microsoft.AbstractInterpretationFramework {
   using Microsoft.AbstractInterpretationFramework.Collections;
 
   using Microsoft.Boogie;
-  using ISet = Microsoft.Boogie.Set;
+
+  using ISet = Microsoft.Boogie.GSet<object>;
+  using Set = Microsoft.Boogie.GSet<object>;
 
 
   /// <summary>
