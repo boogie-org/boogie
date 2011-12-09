@@ -27,6 +27,8 @@ namespace GPUVerify
         public static bool Symmetry = false;
         public static bool SetEncoding = false;
 
+        public static bool ShowStages = false;
+
         public static int Parse(string[] args)
         {
             for (int i = 0; i < args.Length; i++)
@@ -109,6 +111,11 @@ namespace GPUVerify
                     case "-eager":
                     case "/eager":
                     Eager = true;
+                    break;
+
+                    case "-showStages":
+                    case "/showStages":
+                    ShowStages = true;
                     break;
 
                     case "-inference":
