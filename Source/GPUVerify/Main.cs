@@ -58,13 +58,15 @@ namespace GPUVerify
                 Environment.Exit(1);
             }
 
+            Microsoft.Boogie.CommandLineOptions.Clo.DoModSetAnalysis = true;
+
             int errorCount = program.Resolve();
             if (errorCount != 0)
             {
                 Console.WriteLine("{0} name resolution errors detected in {1}", errorCount, CommandLineOptions.inputFiles[CommandLineOptions.inputFiles.Count - 1]);
                 Environment.Exit(1);
             }
-
+            
             errorCount = program.Typecheck();
 
             if (errorCount != 0)

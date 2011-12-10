@@ -658,6 +658,7 @@ namespace Microsoft.Boogie.ModelViewer
           }
           sourceView.largeFont = largeFontToolStripMenuItem.Checked;
           sourceView.SetSourceLocation(r);
+          sourceView.BringToFront();
         }
       }
     }

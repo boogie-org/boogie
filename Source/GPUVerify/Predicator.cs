@@ -139,6 +139,10 @@ namespace GPUVerify
                     firstBigBlock.simpleCmds.Add(new AssignCmd(havoc.tok, lhss, rhss));
 
                 }
+                else if (c is AssertCmd)
+                {
+                    firstBigBlock.simpleCmds.Add(new AssertCmd(c.tok, Expr.Imp(IncomingPredicate, (c as AssertCmd).Expr)));
+                }
                 else
                 {
                     Debug.Assert(false);

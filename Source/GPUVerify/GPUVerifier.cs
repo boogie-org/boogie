@@ -12,7 +12,7 @@ namespace GPUVerify
 {
     class GPUVerifier : CheckingContext
     {
-        public string ouputFilename;
+        public string outputFilename;
         public Program Program;
 
         public Procedure KernelProcedure;
@@ -70,7 +70,7 @@ namespace GPUVerify
         public GPUVerifier(string filename, Program program, IRaceInstrumenter raceInstrumenter, bool skipCheck)
             : base((IErrorSink)null)
         {
-            this.ouputFilename = filename;
+            this.outputFilename = filename;
             this.Program = program;
             this.RaceInstrumenter = raceInstrumenter;
             if(!skipCheck)
@@ -314,16 +314,41 @@ namespace GPUVerify
 
             preProcess();
 
+            if (CommandLineOptions.ShowStages)
+            {
+                emitProgram(outputFilename + "_preprocessed");
+            }
+
             if (RaceInstrumenter.AddRaceCheckingInstrumentation() == false)
             {
                 return;
             }
 
+            if (CommandLineOptions.ShowStages)
+            {
+                emitProgram(outputFilename + "_instrumented");
+            }
+
             AbstractSharedState();
+
+            if (CommandLineOptions.ShowStages)
+            {
+                emitProgram(outputFilename + "_abstracted");
+            }
 
             MakeKernelPredicated();
 
+            if (CommandLineOptions.ShowStages)
+            {
+                emitProgram(outputFilename + "_predicated");
+            }
+
             MakeKernelDualised();
+
+            if (CommandLineOptions.ShowStages)
+            {
+                emitProgram(outputFilename + "_dualised");
+            }
 
             if (CommandLineOptions.Eager)
             {
@@ -334,22 +359,23 @@ namespace GPUVerify
 
             GenerateKernelPrecondition();
 
+            if (CommandLineOptions.ShowStages)
+            {
+                emitProgram(outputFilename + "_ready_to_verify");
+            }
+
             if (CommandLineOptions.Inference)
             {
                 ComputeInvariant();
             }
-            
 
-            using (TokenTextWriter writer = new TokenTextWriter(ouputFilename + ".bpl"))
-            {
-                Program.Emit(writer);
-            }
+            emitProgram(outputFilename);
 
 
             if (CommandLineOptions.DividedAccesses)
             {
 
-                Program p = GPUVerify.ParseBoogieProgram(new List<string>(new string[] { ouputFilename + ".bpl" }), true);
+                Program p = GPUVerify.ParseBoogieProgram(new List<string>(new string[] { outputFilename + ".bpl" }), true);
                 p.Resolve();
                 p.Typecheck();
 
@@ -370,7 +396,7 @@ namespace GPUVerify
                 Contract.Assert(opt.NumLogCalls() <= 2);
                 if (opt.NumLogCalls() == 2 && !opt.HasConflicting())
                 {
-                    FileInfo f = new FileInfo(ouputFilename);
+                    FileInfo f = new FileInfo(outputFilename);
                     
                     string newName = f.Directory.FullName + "\\" + "NO_CONFLICTS_" + f.Name + ".bpl";
                     //File.Delete(newName);
@@ -378,13 +404,21 @@ namespace GPUVerify
                     {
                         File.Delete(newName);
                     }
-                    File.Move(ouputFilename + ".bpl", newName);
+                    File.Move(outputFilename + ".bpl", newName);
                     //Console.WriteLine("Renamed " + ouputFilename + "; no conflicting accesses (that are not already tested by other output files).");
                 }
 
                
             }
 
+        }
+
+        private void emitProgram(string filename)
+        {
+            using (TokenTextWriter writer = new TokenTextWriter(filename + ".bpl"))
+            {
+                Program.Emit(writer);
+            }
         }
 
         private void AddEagerRaceChecking()
@@ -2149,10 +2183,6 @@ namespace GPUVerify
 
         private void CheckKernelParameters()
         {
-            if (KernelProcedure.InParams.Length != 0)
-            {
-                Error(KernelProcedure.tok, "Kernel should not take any parameters");
-            }
             if (KernelProcedure.OutParams.Length != 0)
             {
                 Error(KernelProcedure.tok, "Kernel should not take return anything");
