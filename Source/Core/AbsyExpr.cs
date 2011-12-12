@@ -197,13 +197,13 @@ namespace Microsoft.Boogie {
           } else if (op.Op == BinaryOperator.Opcode.Neq) {
             return Eq(arg0, arg1);
           } else if (op.Op == BinaryOperator.Opcode.Lt) {
-            return Ge(arg0, arg1);
+            return Le(arg1, arg0);
           } else if (op.Op == BinaryOperator.Opcode.Le) {
-            return Gt(arg0, arg1);
+            return Lt(arg1, arg0);
           } else if (op.Op == BinaryOperator.Opcode.Ge) {
-            return Lt(arg0, arg1);
+            return Gt(arg1, arg0);
           } else if (op.Op == BinaryOperator.Opcode.Gt) {
-            return Le(arg0, arg1);
+            return Ge(arg1, arg0);
           }
         }
       }
