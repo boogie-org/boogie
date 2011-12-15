@@ -985,8 +985,8 @@ namespace GPUVerify
 
         private void AddStartAndEndBarriers()
         {
-            CallCmd FirstBarrier = new CallCmd(KernelImplementation.tok, "BARRIER", new ExprSeq(), new IdentifierExprSeq());
-            CallCmd LastBarrier = new CallCmd(KernelImplementation.tok, "BARRIER", new ExprSeq(), new IdentifierExprSeq());
+            CallCmd FirstBarrier = new CallCmd(KernelImplementation.tok, BarrierProcedure.Name, new ExprSeq(), new IdentifierExprSeq());
+            CallCmd LastBarrier = new CallCmd(KernelImplementation.tok, BarrierProcedure.Name, new ExprSeq(), new IdentifierExprSeq());
 
             CmdSeq newCommands = new CmdSeq();
             newCommands.Add(FirstBarrier);
