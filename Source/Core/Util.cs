@@ -167,6 +167,16 @@ namespace Microsoft.Boogie {
       //base();
     }
 
+    public TokenTextWriter(string filename, bool setTokens)
+      : base() {//BASEMOVE DANGER
+      Contract.Requires(writer != null);
+      Contract.Requires(filename != null);
+      this.filename = filename;
+      this.writer = new StreamWriter(filename);
+      this.setTokens = setTokens;
+      //base();
+    }
+
     public TokenTextWriter(string filename, TextWriter writer, bool setTokens)
       : base() {//BASEMOVE DANGER
       Contract.Requires(writer != null);
