@@ -46,6 +46,13 @@ namespace Microsoft.Boogie.AbstractInterpretation
     public abstract Element Update(Element element, AssignCmd cmd);  // requiers 'cmd' to be a simple (possibly parallel) assignment command
     public abstract Element Eliminate(Element element, Variable v);
 
+    /// <summary>
+    /// Specialize the lattice to implementation "impl", if non-null.
+    /// If "impl" is null, remove specialization.
+    /// </summary>
+    public virtual void Specialize(Implementation impl) {
+    }
+
     public virtual void Validate() {
       Contract.Assert(IsTop(Top));
       Contract.Assert(IsBottom(Bottom));
@@ -136,7 +143,10 @@ namespace Microsoft.Boogie.AbstractInterpretation
               Expr e = Substituter.Apply(formalProcImplSubst, pre.Condition);
               start = lattice.Constrain(start, e);
             }
+
+            lattice.Specialize(impl);
             Analyze(impl, lattice, start);
+            lattice.Specialize(null);
           }
         }
       }

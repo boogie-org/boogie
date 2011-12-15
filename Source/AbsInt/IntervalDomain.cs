@@ -182,6 +182,40 @@ namespace Microsoft.Boogie.AbstractInterpretation
       }
     }
 
+    List<BigInteger> upThresholds;  // invariant: thresholds are sorted
+    List<BigInteger> downThresholds;  // invariant: thresholds are sorted
+
+    /// <summary>
+    /// Requires "thresholds" to be sorted.
+    /// </summary>
+    public NativeIntervallDomain() {
+      upThresholds = new List<BigInteger>();
+      downThresholds = new List<BigInteger>();
+    }
+
+    public override void Specialize(Implementation impl) {
+      if (impl == null) {
+        // remove thresholds
+        upThresholds = new List<BigInteger>();
+        downThresholds = new List<BigInteger>();
+      } else {
+        var tf = new ThresholdFinder(impl);
+        tf.Find(out downThresholds, out upThresholds);
+#if DEBUG_PRINT
+        Console.Write("DEBUG: for implementation '{0}', setting downs to [", impl.Name);
+        foreach (var i in downThresholds) {
+          Console.Write(" {0}", i);
+        }
+        Console.Write(" ] and ups to [");
+        foreach (var i in upThresholds) {
+          Console.Write(" {0}", i);
+        }
+        Console.WriteLine(" ]");
+#endif
+      }
+      base.Specialize(impl);
+    }
+
     private E_Common top = new E();
     private E_Common bottom = new E_Bottom();
 
@@ -310,13 +344,23 @@ namespace Microsoft.Boogie.AbstractInterpretation
           if (x != null && y != null) {
             BigInteger? lo, hi;
             lo = hi = null;
-            if (x.Lo == null || (y.Lo != null && x.Lo <= y.Lo)) {
-              // okay, we keep the lower bound
-              lo = x.Lo;
+            if (x.Lo != null && y.Lo != null) {
+              if (x.Lo <= y.Lo) {
+                // okay, we keep the lower bound
+                lo = x.Lo;
+              } else {
+                // set "lo" to the threshold that is below (or equal) y.Lo
+                lo = RoundDown((BigInteger)y.Lo);
+              }
             }
-            if (x.Hi == null || (y.Hi != null && y.Hi <= x.Hi)) {
-              // okay, we keep the upper bound
-              hi = x.Hi;
+            if (x.Hi != null && y.Hi != null) {
+              if (y.Hi <= x.Hi) {
+                // okay, we keep the upper bound
+                hi = x.Hi;
+              } else {
+                // set "hi" to the threshold that is above (or equal) y.Hi
+                hi = RoundUp((BigInteger)y.Hi);
+              }
             }
             if (lo != null || hi != null) {
               var n = new Node(x.V, lo, hi);
@@ -331,6 +375,56 @@ namespace Microsoft.Boogie.AbstractInterpretation
         }
         return new E(head);
       }
+    }
+
+    /// <summary>
+    /// For a proof of correctness of this method, see Test/dafny2/Intervals.dfy.
+    /// A difference is that the this method returns:
+    ///     let d = Dafny_RoundDown(k);
+    ///     return d == -1 ? null : downThresholds[d];
+    /// </summary>
+    BigInteger? RoundDown(BigInteger k)
+    {
+      if (downThresholds.Count == 0 || k < downThresholds[0]) {
+        return null;
+      }
+      var i = 0;
+      var j = downThresholds.Count - 1;
+      while (i < j)
+      {
+        var mid = i + (j - i + 1) / 2;
+        if (downThresholds[mid] <= k) {
+          i = mid;
+        } else {
+          j = mid - 1;
+        }
+      }
+      return downThresholds[i];
+    }
+
+    /// <summary>
+    /// For a proof of correctness of this method, see Test/dafny2/Intervals.dfy.
+    /// A difference is that the this method returns:
+    ///     let d = Dafny_RoundUp(k);
+    ///     return d == thresholds.Count ? null : upThresholds[d];
+    /// </summary>
+    BigInteger? RoundUp(BigInteger k)
+    {
+      if (upThresholds.Count == 0 || upThresholds[upThresholds.Count - 1] < k) {
+        return null;
+      }
+      var i = 0;
+      var j = upThresholds.Count - 1;
+      while (i < j)
+      {
+        var mid = i + (j - i) / 2;
+        if (upThresholds[mid] < k) {
+          i = mid + 1;
+        } else {
+          j = mid;
+        }
+      }
+      return upThresholds[i];
     }
 
     public override Element Constrain(Element element, Expr expr) {
@@ -855,6 +949,129 @@ namespace Microsoft.Boogie.AbstractInterpretation
       var e = Expr.Lt(a, b);
       e.Type = Type.Bool;
       return e;
+    }
+  }
+
+  public class ThresholdFinder : StandardVisitor
+  {
+    readonly Implementation Impl;
+    public ThresholdFinder(Implementation impl) {
+      Contract.Requires(impl != null);
+      Impl = impl;
+    }
+    HashSet<BigInteger> downs = new HashSet<BigInteger>();
+    HashSet<BigInteger> ups = new HashSet<BigInteger>();
+    public void Find(out List<BigInteger> downThresholds, out List<BigInteger> upThresholds) {
+      // always include -1, 0, 1 as down-thresholds
+      downs.Clear();
+      downs.Add(-1);
+      downs.Add(0);
+      downs.Add(1);
+      // always include 0 and 1 as up-thresholds
+      ups.Clear();
+      ups.Add(0);
+      ups.Add(1);
+
+      foreach (Requires p in Impl.Proc.Requires) {
+        Visit(p.Condition);
+      }
+      foreach (Ensures p in Impl.Proc.Ensures) {
+        Visit(p.Condition);
+      }
+      foreach (var b in Impl.Blocks) {
+        foreach (Cmd c in b.Cmds) {
+          Visit(c);
+        }
+      }
+
+      // convert the HashSets to sorted Lists and return
+      downThresholds = new List<BigInteger>();
+      foreach (var i in downs) {
+        downThresholds.Add(i);
+      }
+      downThresholds.Sort();
+      upThresholds = new List<BigInteger>();
+      foreach (var i in ups) {
+        upThresholds.Add(i);
+      }
+      upThresholds.Sort();
+    }
+
+    public override Expr VisitNAryExpr(NAryExpr node) {
+      if (node.Fun is BinaryOperator) {
+        var op = (BinaryOperator)node.Fun;
+        Contract.Assert(node.Args.Length == 2);
+        var arg0 = node.Args[0];
+        var arg1 = node.Args[1];
+        BigInteger? k;
+        switch (op.Op) {
+          case BinaryOperator.Opcode.Eq:
+          case BinaryOperator.Opcode.Neq:
+            k = AsIntLiteral(arg0);
+            if (k != null) {
+              var i = (BigInteger)k;
+              downs.Add(i - 1);
+              downs.Add(i);
+              ups.Add(i + 1);
+              ups.Add(i + 2);
+            }
+            k = AsIntLiteral(arg1);
+            if (k != null) {
+              var i = (BigInteger)k;
+              downs.Add(i - 1);
+              downs.Add(i);
+              ups.Add(i + 1);
+              ups.Add(i + 2);
+            }
+            break;
+          case BinaryOperator.Opcode.Le:
+            k = AsIntLiteral(arg0);
+            if (k != null) {
+              var i = (BigInteger)k;
+              downs.Add(i - 1);
+              downs.Add(i);
+            }
+            k = AsIntLiteral(arg1);
+            if (k != null) {
+              var i = (BigInteger)k;
+              ups.Add(i + 1);
+              ups.Add(i + 2);
+            }
+            break;
+          case BinaryOperator.Opcode.Lt:
+            k = AsIntLiteral(arg0);
+            if (k != null) {
+              var i = (BigInteger)k;
+              downs.Add(i);
+              downs.Add(i + 1);
+            }
+            k = AsIntLiteral(arg1);
+            if (k != null) {
+              var i = (BigInteger)k;
+              ups.Add(i);
+              ups.Add(i + 1);
+            }
+            break;
+          case BinaryOperator.Opcode.Ge:
+            { var tmp = arg0; arg0 = arg1; arg1 = tmp; }
+            goto case BinaryOperator.Opcode.Le;
+          case BinaryOperator.Opcode.Gt:
+            { var tmp = arg0; arg0 = arg1; arg1 = tmp; }
+            goto case BinaryOperator.Opcode.Lt;
+          default:
+            break;
+        }
+      }
+      return base.VisitNAryExpr(node);
+    }
+
+    BigInteger? AsIntLiteral(Expr e) {
+      var lit = e as LiteralExpr;
+      if (lit != null && lit.isBigNum) {
+        BigNum bn = lit.asBigNum;
+        return bn.ToBigInteger;
+      }
+      return null;
     }
   }
 

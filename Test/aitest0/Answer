@@ -109,5 +109,15 @@ implementation Evaluate()
 
 
 Boogie program verifier finished with 0 verified, 0 errors
+Intervals.bpl(62,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Intervals.bpl(57,5): anon0
+    Intervals.bpl(58,3): anon3_LoopHead
+    Intervals.bpl(58,3): anon3_LoopDone
+Intervals.bpl(73,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Intervals.bpl(68,5): anon0
+    Intervals.bpl(69,3): anon3_LoopHead
+    Intervals.bpl(69,3): anon3_LoopDone
 
-Boogie program verifier finished with 1 verified, 0 errors
+Boogie program verifier finished with 4 verified, 2 errors
