@@ -169,7 +169,6 @@ namespace Microsoft.Boogie {
 
     public TokenTextWriter(string filename, bool setTokens)
       : base() {//BASEMOVE DANGER
-      Contract.Requires(writer != null);
       Contract.Requires(filename != null);
       this.filename = filename;
       this.writer = new StreamWriter(filename);
