@@ -146,3 +146,12 @@ b15 = False
 b16 = False
 
 Boogie program verifier finished with 5 verified, 0 errors
+.
+-------------------- test10.bpl --------------------
+Assignment computed by Houdini:
+b1 = True
+b2 = True
+b3 = True
+b4 = True
+
+Boogie program verifier finished with 5 verified, 0 errors

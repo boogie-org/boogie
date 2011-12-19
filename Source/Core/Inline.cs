@@ -406,6 +406,16 @@ namespace Microsoft.Boogie {
       }
     }
 
+    private CmdSeq RemoveAsserts(CmdSeq cmds) {
+      CmdSeq newCmdSeq = new CmdSeq();
+      for (int i = 0; i < cmds.Length; i++) {
+        Cmd cmd = cmds[i];
+        if (cmd is AssertCmd) continue;
+        newCmdSeq.Add(cmd);
+      }
+      return newCmdSeq;
+    }
+
     // result[0] is the entry block
     protected List<Block/*!*/>/*!*/ CreateInlinedBlocks(CallCmd callCmd, Implementation impl, string nextBlockLabel) {
       Contract.Requires(nextBlockLabel != null);
@@ -439,16 +449,6 @@ namespace Microsoft.Boogie {
       for (int i = 0; i < proc.Requires.Length; i++) {
         Requires/*!*/ req = cce.NonNull(proc.Requires[i]);
         inCmds.Add(InlinedRequires(impl, callCmd, req));
-        /*
-        if (!req.Free && !QKeyValue.FindBoolAttribute(req.Attributes, "candidate")) {
-          Requires reqCopy = (Requires)cce.NonNull(req.Clone());
-          reqCopy.Condition = codeCopier.CopyExpr(req.Condition);
-          AssertCmd a = new AssertRequiresCmd(callCmd, reqCopy);
-          Contract.Assert(a != null);
-          a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
-          inCmds.Add(a);
-        }
-        */
       }
 
       VariableSeq locVars = cce.NonNull(impl.OriginalLocVars);
@@ -495,6 +495,9 @@ namespace Microsoft.Boogie {
       Block intBlock;
       foreach (Block block in implBlocks) {
         CmdSeq copyCmds = codeCopier.CopyCmdSeq(block.Cmds);
+        if (0 <= inlineDepth) {
+          copyCmds = RemoveAsserts(copyCmds);
+        }
         TransferCmd transferCmd = CreateInlinedTransferCmd(cce.NonNull(block.TransferCmd), GetInlinedProcLabel(proc.Name));
         intBlock = new Block(block.tok, GetInlinedProcLabel(proc.Name) + "$" + block.Label, copyCmds, transferCmd);
         inlinedBlocks.Add(intBlock);
@@ -507,15 +510,6 @@ namespace Microsoft.Boogie {
       for (int i = 0; i < proc.Ensures.Length; i++) {
         Ensures/*!*/ ens = cce.NonNull(proc.Ensures[i]);
         outCmds.Add(InlinedEnsures(impl, callCmd, ens));
-        /*
-        if (!ens.Free && !QKeyValue.FindBoolAttribute(ens.Attributes, "candidate")) {
-          Ensures ensCopy = (Ensures)cce.NonNull(ens.Clone());
-          ensCopy.Condition = codeCopier.CopyExpr(ens.Condition);
-          AssertCmd a = new AssertEnsuresCmd(ensCopy);
-          Contract.Assert(a != null);
-          outCmds.Add(a);
-        }
-        */
       }
 
       // assign out params

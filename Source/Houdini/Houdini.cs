@@ -247,6 +247,49 @@ namespace Microsoft.Boogie.Houdini {
     }
   }
 
+  public class InlineRequiresVisitor : StandardVisitor {
+    public override CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {
+      Contract.Requires(cmdSeq != null);
+      Contract.Ensures(Contract.Result<CmdSeq>() != null);
+      CmdSeq newCmdSeq = new CmdSeq();
+      for (int i = 0, n = cmdSeq.Length; i < n; i++) {
+        Cmd cmd = cmdSeq[i];
+        CallCmd callCmd = cmd as CallCmd;
+        if (callCmd != null) {
+          newCmdSeq.AddRange(InlineRequiresForCallCmd(callCmd));
+        }
+        else {
+          newCmdSeq.Add((Cmd)this.Visit(cmd));
+        }
+      }
+      return newCmdSeq;
+    }
+    private CmdSeq InlineRequiresForCallCmd(CallCmd node) {
+      Hashtable substMap = new Hashtable();
+      for (int i = 0; i < node.Proc.InParams.Length; i++) {
+        substMap.Add(node.Proc.InParams[i], node.Ins[i]);
+      }
+      Substitution substitution = Substituter.SubstitutionFromHashtable(substMap);
+      CmdSeq cmds = new CmdSeq();
+      foreach (Requires requires in node.Proc.Requires) {
+        if (requires.Free) continue;
+        Requires requiresCopy = new Requires(false, Substituter.Apply(substitution, requires.Condition));
+        cmds.Add(new AssertRequiresCmd(node, requiresCopy));
+      }
+      cmds.Add(node);
+      return cmds;
+    }
+  }
+
+  public class FreeRequiresVisitor : StandardVisitor {
+    public override Requires VisitRequires(Requires requires) {
+      if (requires.Free)
+        return base.VisitRequires(requires);
+      else 
+        return new Requires(true, requires.Condition);
+    }
+  }
+
   public class Houdini : ObservableHoudini {
     private Program program;
     private ReadOnlyDictionary<string, IdentifierExpr> houdiniConstants;
@@ -304,6 +347,16 @@ namespace Microsoft.Boogie.Houdini {
     private void Inline() {
       if (CommandLineOptions.Clo.InlineDepth < 0)
         return;
+
+      foreach (Implementation impl in callGraph.Nodes) {
+        InlineRequiresVisitor inlineRequiresVisitor = new InlineRequiresVisitor();
+        inlineRequiresVisitor.Visit(impl);
+      }
+
+      foreach (Implementation impl in callGraph.Nodes) {
+        FreeRequiresVisitor freeRequiresVisitor = new FreeRequiresVisitor();
+        freeRequiresVisitor.Visit(impl);
+      }
 
       foreach (Implementation impl in callGraph.Nodes) {
         impl.OriginalBlocks = impl.Blocks;
