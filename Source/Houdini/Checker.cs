@@ -25,7 +25,7 @@ namespace Microsoft.Boogie.Houdini {
     private ProverInterface.ErrorHandler handler;
     ConditionGeneration.CounterexampleCollector collector;
 
-    public HoudiniSession(VCGen vcgen, Checker checker, Program program, Implementation impl, string logFilePath, bool appendLogFile) {
+    public HoudiniSession(VCGen vcgen, Checker checker, Program program, Implementation impl) {
       descriptiveName = impl.Name;
       collector = new ConditionGeneration.CounterexampleCollector();
       collector.OnProgress("HdnVCGen", 0, 0, 0.0);

@@ -327,12 +327,7 @@ namespace Microsoft.Boogie.Houdini {
         try {
           if (CommandLineOptions.Clo.Trace)
             Console.WriteLine("Generating VC for {0}", impl.Name);
-          // make a different simplify log file for each function
-          String simplifyLog = null;
-          if (CommandLineOptions.Clo.SimplifyLogFilePath != null) {
-            simplifyLog = impl.ToString() + CommandLineOptions.Clo.SimplifyLogFilePath;
-          }
-          HoudiniSession session = new HoudiniSession(vcgen, checker, program, impl, simplifyLog, CommandLineOptions.Clo.SimplifyLogFileAppend);
+          HoudiniSession session = new HoudiniSession(vcgen, checker, program, impl);
           houdiniSessions.Add(impl, session);
         }
         catch (VCGenException) {
