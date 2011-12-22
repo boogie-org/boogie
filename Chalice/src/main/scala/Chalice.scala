@@ -157,7 +157,7 @@ object Chalice {
      else if (a.startsWith("-z3opt:") || a.startsWith("/z3opt:"))
             boogieArgs += ("\"/z3opt:" + a.substring(7) + "\"" + " ")
      else if (a.startsWith("-") || a.startsWith("/")) {
-       CommandLineError("unkonwn command line parameter: "+a.substring(1), help)
+       CommandLineError("unknown command line parameter: "+a.substring(1), help)
        return
      }
      else inputs += a
@@ -225,11 +225,14 @@ object Chalice {
            PrintProgram.P(program)
          }
          if (doTranslate) {
-           // checking if Boogie.exe exists
+           // checking if Boogie.exe exists (on non-Linux machine)
            val boogieFile = new File(boogiePath);
-           if(! boogieFile.exists() || ! boogieFile.isFile()) {
-             CommandLineError("Boogie.exe not found at " + boogiePath, help); return
+           if ((! boogieFile.exists() || ! boogieFile.isFile()) 
+            && (System.getProperty("os.name") != "Linux")) {
+             CommandLineError("Boogie.exe not found at " + boogiePath, help); 
+             return;
            }
+           
            // translate program to Boogie
            val translator = new Translator();
            var bplProg: List[Boogie.Decl] = Nil

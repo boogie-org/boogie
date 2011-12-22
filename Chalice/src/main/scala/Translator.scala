@@ -1123,13 +1123,13 @@ class Translator {
     // concrete expression translate
     val conGlobals = etran.FreshGlobals("concrete")
     val conTran = new ExpressionTranslator(conGlobals map {v => new VarExpr(v)}, etran.oldEtran.Globals, currentClass);
-    // shared locals before block (excluding immutable)
+    // shared locals existing before the block (excluding immutable)
     val before = for (v <- r.before; if (! v.isImmutable)) yield v;
-    // shared locals in block
+    // shared locals declared in the block
     val (duringA, duringC) = r.during;
-    // save locals before (to restore for abstract block)
+    // variables for locals before (to restore for the abstract version)
     val beforeV = for (v <- before) yield new Variable(v.id, v.t)
-    // save locals after (to compare with abstract block)
+    // variables for locals after (to compare with the abstract version)
     val afterV = for (v <- before) yield new Variable(v.id, v.t)
 
     Comment("refinement block") ::
@@ -1142,26 +1142,26 @@ class Translator {
     // run concrete C on the fresh heap
     {
       etran = conTran;
-      Comment("run concrete program:") ::
+      Comment("concrete program:") ::
       tag(translateStatements(r.con, todoiparam), keepTag)
     } :::
     // run angelically A on the old heap
-    Comment("run abstract program:") ::
+    Comment("abstract program:") ::
     { etran = absTran;
     r.abs match {
       case List(s: SpecStmt) =>
         var (m, me) = NewBVar("specMask", tmask, true)
 
         tag(
-          Comment("give witnesses to declared local variables") ::
+          Comment("give witnesses to the declared local variables") ::
           (for (v <- duringA) yield BLocal(Variable2BVarWhere(v))) :::
           (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
           BLocal(m) ::
           (me := absTran.Mask) ::
-          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam, false) :::
-          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam, true) :::
+          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy the specification statement post-condition."), false, todoiparam, todobparam, false) :::
+          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy the specification statement post-condition."), false, todoiparam, todobparam, true) :::
           (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
-             bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable not in frame of the specification statement: " + v.id)),
+             bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable outside of the frame of the specification statement: " + v.id)),
           keepTag)
       case _ =>
         // save locals after
@@ -1173,9 +1173,9 @@ class Translator {
         // assert equality on shared locals
         tag(
           (for ((v, w) <- afterV zip before) yield
-            bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce different value for pre-state local variable: " + v.id)) :::
+            bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce a different value for the pre-state local variable: " + v.id)) :::
           (for ((v, w) <- duringA zip duringC) yield
-            bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce different value for a declared local variable: " + v.id)),
+            bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce a different value for the declared variable: " + v.id)),
           keepTag)
     }} :::
     {
@@ -1198,10 +1198,10 @@ class Translator {
       // assert equality on shared globals (except those that are replaced)
       tag(
         for (f <- currentClass.refines.Fields; if ! currentClass.CouplingInvariants.exists(_.fields.contains(f)))
-          yield bassert((absTran.Heap.select(ve, f.FullName) ==@ conTran.Heap.select(ve, f.FullName)).forall(v), r.pos, "Refinement may change value of field " + f.FullName),
+          yield bassert((absTran.Heap.select(ve, f.FullName) ==@ conTran.Heap.select(ve, f.FullName)).forall(v), r.pos, "Refinement may change the value of the field " + f.FullName),
         keepTag)            
     } :::
-    Comment("end of refinement block")
+    Comment("end of the refinement block")
   }
 
   def UpdateMu(o: Expr, allowOnlyFromBottom: Boolean, justAssumeValue: Boolean,
