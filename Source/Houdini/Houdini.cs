@@ -288,6 +288,14 @@ namespace Microsoft.Boogie.Houdini {
       else 
         return new Requires(true, requires.Condition);
     }
+
+    public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node) {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      node.Requires = base.VisitRequires(node.Requires);
+      node.Expr = this.VisitExpr(node.Expr);
+      return node;
+    }
   }
 
   public class Houdini : ObservableHoudini {
