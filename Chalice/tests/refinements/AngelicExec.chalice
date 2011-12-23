@@ -2,7 +2,7 @@ class A0 {
   method m(b: bool) {
     var x;
     if (b) {
-      var x [0 <= x && x < 3];
+      spec x [0 <= x && x < 3];
     } else {
       x := 1;
     }

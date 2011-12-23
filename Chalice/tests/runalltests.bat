@@ -24,6 +24,11 @@ for %%f in (examples permission-model general-tests regressions) do (
   echo ------------------------------------------------------
 )
 
+REM Run refinement regression tests
+cd refinements
+call test.bat
+cd ..
+
 if !nosummary!==0 (
     echo.
     if !c!==0 (echo SUMMARY: completed !t! tests successfully.) else (echo SUMMARY: !c! of !t! tests failed.)
