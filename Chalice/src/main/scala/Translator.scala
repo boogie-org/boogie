@@ -1170,7 +1170,6 @@ class Translator {
           BLocal(m) ::
           (me := absTran.Mask) ::
           absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy the specification statement post-condition."), false, methodK, false, false) :::
-          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy the specification statement post-condition."), false, methodK, false, true) :::
           (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
              bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable outside of the frame of the specification statement: " + v.id)),
           keepTag)
