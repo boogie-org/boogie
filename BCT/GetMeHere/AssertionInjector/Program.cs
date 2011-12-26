@@ -14,6 +14,8 @@ using System.IO;
 using System.Runtime.Serialization; // needed for defining exception .ctors
 using Microsoft.Cci;
 using Microsoft.Cci.MutableCodeModel;
+using Bpl = Microsoft.Boogie;
+using System.Diagnostics;
 
 namespace AssertionInjector {
 
@@ -24,8 +26,6 @@ namespace AssertionInjector {
         Console.WriteLine("Usage: AssertionInjector <assembly> <filename+extension> <line number> <column number> [<outputPath>]");
         return errorValue;
       }
-
-      var fileName = args[1];
 
       int lineNumber;
       if (!Int32.TryParse(args[2], out lineNumber)) {
@@ -38,6 +38,39 @@ namespace AssertionInjector {
         return errorValue;
       }
 
+      if (args[0].EndsWith(".bpl"))
+        return InjectAssertionInBpl(args[0], args[1], lineNumber, columnNumber);
+      else
+        return InjectAssertionInAssembly(args[0], args[1], lineNumber, columnNumber);
+    }
+
+    static int InjectAssertionInBpl(string bplFileName, string fileName, int lineNumber, int columnNumber) {
+      Bpl.CommandLineOptions.Install(new Bpl.CommandLineOptions());
+      Bpl.CommandLineOptions.Clo.DoModSetAnalysis = true;
+      var returnValue = errorValue; 
+      Bpl.Program program;
+      Bpl.Parser.Parse(bplFileName, new List<string>(), out program);
+      int errorCount = program.Resolve();
+      if (errorCount != 0) {
+        Console.WriteLine("{0} name resolution errors detected in {1}", errorCount, bplFileName);
+        return returnValue;
+      }
+      errorCount = program.Typecheck();
+      if (errorCount != 0) {
+        Console.WriteLine("{0} type checking errors detected in {1}", errorCount, bplFileName);
+        return returnValue;
+      }
+
+      GetMeHereBplInjector bplInjector = new GetMeHereBplInjector(fileName, lineNumber, columnNumber);
+      bplInjector.Visit(program);
+      using (Bpl.TokenTextWriter writer = new Bpl.TokenTextWriter(bplFileName)) {
+        Bpl.CommandLineOptions.Clo.PrintInstrumented = true;
+        program.Emit(writer);
+      }
+      return returnValue;
+    }
+
+    static int InjectAssertionInAssembly(string assemblyName, string fileName, int lineNumber, int columnNumber) {
       string originalAssemblyPath;
       string outputAssemblyPath;
       string outputPdbFileName;
@@ -45,9 +78,9 @@ namespace AssertionInjector {
       var returnValue = errorValue;
 
       using (var host = new PeReader.DefaultHost()) {
-        IModule/*?*/ module = host.LoadUnitFrom(args[0]) as IModule;
+        IModule/*?*/ module = host.LoadUnitFrom(assemblyName) as IModule;
         if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
-          Console.WriteLine(args[0] + " is not a PE file containing a CLR assembly, or an error occurred when loading it.");
+          Console.WriteLine(assemblyName + " is not a PE file containing a CLR assembly, or an error occurred when loading it.");
           return errorValue;
         }
         module = new MetadataDeepCopier(host).Copy(module);
@@ -64,7 +97,7 @@ namespace AssertionInjector {
           }
           using (var pdbReader = new PdbReader(pdbStream, host)) {
             var localScopeProvider = new ILGenerator.LocalScopeProvider(pdbReader);
-            var mutator = new GetMeHereInjector(host, pdbReader, fileName, lineNumber, columnNumber);
+            var mutator = new GetMeHereAssemblyInjector(host, pdbReader, fileName, lineNumber, columnNumber);
             module = mutator.Rewrite(module);
             //Console.WriteLine("Emitted probe: {0}", mutator.emittedProbe);
             if (mutator.emittedProbe) returnValue = 0;
@@ -90,7 +123,8 @@ namespace AssertionInjector {
         var outputPdbPath = Path.Combine(Path.GetDirectoryName(outputAssemblyPath), outputPdbFileName);
         File.Copy(outputPdbPath, originalPdbPath, true);
         File.Delete(outputPdbPath);
-      } catch (Exception e) {
+      }
+      catch (Exception e) {
         Console.WriteLine("Something went wrong with replacing input assembly/pdb");
         Console.WriteLine(e.Message);
         return errorValue;
@@ -100,6 +134,63 @@ namespace AssertionInjector {
     }
   }
 
+  public class GetMeHereBplInjector : Bpl.StandardVisitor {
+    string fileName;
+    int lineNumber;
+    int columnNumber;
+
+    public GetMeHereBplInjector(string fileName, int lineNumber, int columnNumber) {
+      this.fileName = fileName;
+      this.lineNumber = lineNumber;
+      this.columnNumber = columnNumber;
+    }
+
+    public override Bpl.CmdSeq VisitCmdSeq(Bpl.CmdSeq cmdSeq) {
+      Bpl.CmdSeq newCmdSeq = new Bpl.CmdSeq();
+      for (int i = 0; i < cmdSeq.Length; i++) {
+        Bpl.Cmd cmd = cmdSeq[i];
+        if (IsRelevant(cmd))
+          newCmdSeq.Add(new Bpl.AssertCmd(cmd.tok, Bpl.Expr.False));
+        newCmdSeq.Add(cmd);
+      }
+      return newCmdSeq;
+    }
+
+    private bool IsRelevant(Bpl.Cmd cmd) {
+      Bpl.AssertCmd assertCmd = cmd as Bpl.AssertCmd;
+      if (assertCmd == null)
+        return false;
+      string sourceFile = Bpl.QKeyValue.FindStringAttribute(assertCmd.Attributes, "sourceFile");
+      if (sourceFile == null)
+        return false;
+      string[] ds = sourceFile.Split('\\');
+      if (sourceFile != fileName && ds[ds.Length - 1] != fileName)
+        return false;
+      int sourceLine = Bpl.QKeyValue.FindIntAttribute(assertCmd.Attributes, "sourceLine", -1);
+      Debug.Assert(sourceLine != -1);
+      if (sourceLine != lineNumber)
+        return false;
+      return true;
+    }
+
+    /*
+    public override Bpl.Cmd VisitAssertCmd(Bpl.AssertCmd node) {
+      string sourceFile = Bpl.QKeyValue.FindStringAttribute(node.Attributes, "sourceFile");
+      if (sourceFile == null)
+        return base.VisitAssertCmd(node);
+      string[] ds = sourceFile.Split('\\');
+      if (sourceFile != fileName && ds[ds.Length-1] != fileName)
+        return base.VisitAssertCmd(node);
+      int sourceLine = Bpl.QKeyValue.FindIntAttribute(node.Attributes, "sourceLine", -1);
+      Debug.Assert (sourceLine != -1);
+      if (sourceLine != lineNumber)
+        return base.VisitAssertCmd(node);
+      node.Expr = Bpl.Expr.False;
+      return node;
+    }
+     */ 
+  }
+
   /// <summary>
   /// A mutator that modifies method bodies at the IL level.
   /// It injects a call to GetMeHere.GetMeHere.Assert at the
@@ -107,20 +198,18 @@ namespace AssertionInjector {
   /// The class GetMeHere is synthesized and injected into the
   /// rewritten assembly.
   /// </summary>
-  public class GetMeHereInjector : MetadataRewriter {
-
+  public class GetMeHereAssemblyInjector : MetadataRewriter {
     PdbReader pdbReader;
     string fileName;
     int lineNumber;
     int columnNumber;
 
-    public GetMeHereInjector(IMetadataHost host, PdbReader pdbReader, string fileName, int lineNumber, int columnNumber)
+    public GetMeHereAssemblyInjector(IMetadataHost host, PdbReader pdbReader, string fileName, int lineNumber, int columnNumber)
       : base(host) {
       this.pdbReader = pdbReader;
       this.fileName = fileName;
       this.lineNumber = lineNumber;
       this.columnNumber = columnNumber;
-
     }
 
     List<ILocalDefinition> currentLocals;
