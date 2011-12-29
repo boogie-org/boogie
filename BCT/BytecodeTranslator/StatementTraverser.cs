@@ -198,6 +198,17 @@ namespace BytecodeTranslator
       StatementTraverser thenTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
       StatementTraverser elseTraverser = this.factory.MakeStatementTraverser(this.sink, this.PdbReader, this.contractContext);
       ExpressionTraverser condTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
+
+      if (this.sink.Options.instrumentBranches) {
+        var tok = conditionalStatement.Token();
+        thenTraverser.StmtBuilder.Add(
+          new Bpl.AssumeCmd(tok, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.NextUniqueNumber()) }, null))
+          );
+        elseTraverser.StmtBuilder.Add(
+          new Bpl.AssumeCmd(tok, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.NextUniqueNumber()) }, null))
+          );
+      }
+
       condTraverser.Traverse(conditionalStatement.Condition);
       thenTraverser.Traverse(conditionalStatement.TrueBranch);
       elseTraverser.Traverse(conditionalStatement.FalseBranch);
@@ -224,6 +235,12 @@ namespace BytecodeTranslator
       StmtBuilder.Add(ifcmd);
 
     }
+
+    private static int counter = 0;
+    internal int NextUniqueNumber() {
+      return counter++;
+    }
+
 
     /// <summary>
     /// 

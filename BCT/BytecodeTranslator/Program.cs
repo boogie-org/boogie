@@ -66,6 +66,9 @@ namespace BytecodeTranslator {
     [OptionDescription("File containing white/black list (optionally end file name with + for white list, - for black list, default is white list", ShortForm = "exempt")]
     public string exemptionFile = "";
 
+    [OptionDescription("Instrument branches with unique counter values", ShortForm = "ib")]
+    public bool instrumentBranches = false;
+
   }
 
   public class BCT {
@@ -248,7 +251,7 @@ namespace BytecodeTranslator {
         }
         var m2 = Decompiler.GetCodeModelFromMetadataModel(host, m, pdbReader) as IModule;
         // The decompiler does not turn calls to Assert/Assume into Code Model nodes
-        m2 = new Microsoft.Cci.MutableContracts.ContractExtractor.AssertAssumeExtractor(host, pdbReader).Visit(m2);
+        m2 = new Microsoft.Cci.MutableContracts.ContractExtractor.AssertAssumeExtractor(host, pdbReader).Rewrite(m2);
         decompiledModules.Add(m2);
         host.RegisterAsLatest(m2);
         contractExtractors.Add(m2, host.GetContractExtractor(m2.UnitIdentity));
