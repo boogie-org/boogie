@@ -172,23 +172,6 @@ namespace AssertionInjector {
         return false;
       return true;
     }
-
-    /*
-    public override Bpl.Cmd VisitAssertCmd(Bpl.AssertCmd node) {
-      string sourceFile = Bpl.QKeyValue.FindStringAttribute(node.Attributes, "sourceFile");
-      if (sourceFile == null)
-        return base.VisitAssertCmd(node);
-      string[] ds = sourceFile.Split('\\');
-      if (sourceFile != fileName && ds[ds.Length-1] != fileName)
-        return base.VisitAssertCmd(node);
-      int sourceLine = Bpl.QKeyValue.FindIntAttribute(node.Attributes, "sourceLine", -1);
-      Debug.Assert (sourceLine != -1);
-      if (sourceLine != lineNumber)
-        return base.VisitAssertCmd(node);
-      node.Expr = Bpl.Expr.False;
-      return node;
-    }
-     */ 
   }
 
   /// <summary>
