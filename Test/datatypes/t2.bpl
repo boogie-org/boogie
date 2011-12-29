@@ -1,62 +1,24 @@
+type TT;
+type {:datatype} Tree;
+function {:constructor} leaf`0() : Tree;
+function {:constructor} node`2(value:TT, children:TreeList) : Tree;
 
-type {:datatype} DotNetType;
+type {:datatype} TreeList;
+function {:constructor} cons`2(car:Tree, cdr:TreeList) : TreeList;
+function {:constructor} nil`0() : TreeList;
 
-/*\
- *  Subtype Axioms
-\*/
-function $Subtype(DotNetType, DotNetType) : bool;
-// reflexive
-axiom (forall t: DotNetType :: $Subtype(t, t));
-// anti-symmetric
-axiom (forall t0: DotNetType, t1: DotNetType :: { $Subtype(t0, t1), $Subtype(t1, t0) } $Subtype(t0, t1) && $Subtype(t1, t0) ==> t0 == t1);
-// transitive
-axiom (forall t0: DotNetType, t1: DotNetType, t2: DotNetType :: { $Subtype(t0, t1), $Subtype(t1, t2) } $Subtype(t0, t1) && $Subtype(t1, t2) ==> $Subtype(t0, t2));
-
-/*\
- *  Type Declarations
-\*/
-// class System.Object { ... }
-function {:constructor} System.Object() : DotNetType;
-
-// class B : System.Object { ... }
-function {:constructor} B() : DotNetType;
-axiom $Subtype(B(), System.Object());
-
-// class GenericType1<T> : System.Object { ... }
-function {:constructor} GenericType1(T:DotNetType) : DotNetType;
-axiom (forall t : DotNetType :: $Subtype(GenericType1(t), System.Object()));
-
-// class C : GenericType1<object>
-function {:constructor} C() : DotNetType;
-axiom $Subtype(C(), GenericType1(System.Object()));
-
-// class D<U> : GenericType1<U>
-function {:constructor} D(U:DotNetType) : DotNetType;
-axiom (forall u : DotNetType :: $Subtype(D(u), GenericType1(u)));
-
-// class GenericType2<T,U> : System.Object { ... }
-function {:constructor} GenericType2(T:DotNetType, U:DotNetType) : DotNetType;
-axiom (forall t : DotNetType, u : DotNetType :: $Subtype(GenericType2(t,u), System.Object()));
-
-
-procedure foo(t : DotNetType) 
+procedure foo() 
 {
-  assert System.Object() != GenericType1(t);
-  assert System.Object() != B();
-}
+  var a: Tree;
+  var b: TreeList;
+  var x: TT;
 
-procedure bar(t : DotNetType, u : DotNetType) 
-  requires t != u;
-{
-  assert System.Object() != GenericType1(t);
-  assert System.Object() != B();
-  assert GenericType1(t) != GenericType1(u);
-}
+  assert value#node`2(node`2(x, nil`0())) == x;
+  assert children#node`2(node`2(x, nil`0())) == nil`0();
+  
+  assert (cons`2(leaf`0(), nil`0()) != nil`0());
 
-function IntToType(x : int) : DotNetType;
-procedure baz(i : int)
-{
-  var t : DotNetType;
-  t := IntToType(i);
-  assert T#GenericType1(t) == System.Object();
+  assert is#nil`0(nil`0());
+
+  assert is#node`2(leaf`0());
 }

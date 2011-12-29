@@ -206,13 +206,15 @@ namespace Microsoft.Boogie.SMTLib
           foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys) {
             datatypeString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " ";
             foreach (Function f in ctx.KnownDatatypeConstructors[datatype]) {
+              string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
               if (f.InParams.Length == 0) {
-                datatypeString += Namer.GetQuotedName(f, f.Name) + " ";
+                datatypeString += quotedConstructorName + " ";
               }
               else {
-                datatypeString += "(" + Namer.GetQuotedName(f, f.Name) + " ";
+                datatypeString += "(" + quotedConstructorName + " ";
                 foreach (Variable v in f.InParams) {
-                  datatypeString += "(" + v.Name + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
+                  string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
+                  datatypeString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
                 }
                 datatypeString += ") ";
               }

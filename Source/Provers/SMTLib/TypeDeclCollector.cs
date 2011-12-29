@@ -171,7 +171,7 @@ void ObjectInvariant()
       else if (node.Op is VCExprSelectOp) RegisterSelect(node);
       else {
         VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
-        if (op != null && !IsDatatypeConstructor(op.Func) && !KnownFunctions.Contains(op.Func)) {
+        if (op != null && !IsDatatypeFunction(op.Func) && !KnownFunctions.Contains(op.Func)) {
           Function f = op.Func;
           Contract.Assert(f != null);
           
@@ -264,12 +264,11 @@ void ObjectInvariant()
       return QKeyValue.FindBoolAttribute(ctorType.Decl.Attributes, "datatype");
     }
 
-    public static bool IsDatatypeConstructor(Function f) {
-      return QKeyValue.FindBoolAttribute(f.Attributes, "constructor");
-    }
-
-    public static bool IsDatatypeSelector(Function f) {
-      return QKeyValue.FindBoolAttribute(f.Attributes, "selector");
+    public static bool IsDatatypeFunction(Function f) {
+      return
+        QKeyValue.FindBoolAttribute(f.Attributes, "constructor") ||
+        f is DatatypeSelector ||
+        f is DatatypeMembership;
     }
 
     private void RegisterSelect(VCExprNAry node)

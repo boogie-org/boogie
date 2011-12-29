@@ -214,39 +214,27 @@ namespace Microsoft.Boogie {
     }
 
     void CreateDatatypeSelectorsAndTesters() {
-      HashSet<string> functions = new HashSet<string>();
-      List<Function> constructors = new List<Function>();
+      Dictionary<string, Function> constructors = new Dictionary<string, Function>();
+      List<Declaration> prunedTopLevelDeclarations = new List<Declaration>();
       foreach (Declaration decl in TopLevelDeclarations) {
         Function func = decl as Function;
-        if (func == null) continue;
-        functions.Add(func.Name);
-        if (QKeyValue.FindBoolAttribute(func.Attributes, "constructor"))
-          constructors.Add(func);
+        if (func == null || !QKeyValue.FindBoolAttribute(decl.Attributes, "constructor")) {
+          prunedTopLevelDeclarations.Add(decl);
+          continue;
+        }
+        if (constructors.ContainsKey(func.Name)) continue;
+        constructors.Add(func.Name, func);
+        prunedTopLevelDeclarations.Add(func);
       }
+      TopLevelDeclarations = prunedTopLevelDeclarations;
 
-      foreach (Function f in constructors) {
-        foreach (Variable v in f.InParams) {
-          Formal inVar = new Formal(Token.NoToken, f.OutParams[0].TypedIdent, true);
-          Formal outVar = new Formal(Token.NoToken, v.TypedIdent, false);
-          Function selector = new Function(f.tok, v.Name + "#" + f.Name, new VariableSeq(inVar), outVar);
-          selector.AddAttribute("selector");
-          for (QKeyValue kv = f.Attributes; kv != null; kv = kv.Next) {
-            if (kv.Key == "constructor") continue;
-            selector.AddAttribute(kv.Key, kv.Params.ToArray());
-          }
-          if (!functions.Contains(selector.Name))
-            TopLevelDeclarations.Add(selector);
+      foreach (Function f in constructors.Values) {
+        for (int i = 0; i < f.InParams.Length; i++) {
+          DatatypeSelector selector = new DatatypeSelector(f, i);
+          TopLevelDeclarations.Add(selector);
         }
-        Formal inv = new Formal(Token.NoToken, f.OutParams[0].TypedIdent, true);
-        Formal outv = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false);
-        Function isConstructor = new Function(f.tok, "is#" + f.Name, new VariableSeq(inv), outv);
-        for (QKeyValue kv = f.Attributes; kv != null; kv = kv.Next) {
-          if (kv.Key == "constructor") continue;
-          isConstructor.AddAttribute(kv.Key, kv.Params.ToArray());
-        }
-        isConstructor.AddAttribute("membership");
-        if (!functions.Contains(isConstructor.Name))
-          TopLevelDeclarations.Add(isConstructor);
+        DatatypeMembership membership = new DatatypeMembership(f);
+        TopLevelDeclarations.Add(membership);
       }
     }
 
@@ -1803,7 +1791,34 @@ namespace Microsoft.Boogie {
     }
   }
 
-  
+  public class DatatypeSelector : Function {
+    public Function constructor;
+    public int index;
+    public DatatypeSelector(Function constructor, int index)
+      : base(constructor.tok, 
+             constructor.InParams[index].Name + "#" + constructor.Name,
+             new VariableSeq(new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type), true)),
+             new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.InParams[index].TypedIdent.Type), false)) 
+    {
+      this.constructor = constructor;
+      this.index = index;
+    }
+    public override void Emit(TokenTextWriter stream, int level) { }
+  }
+
+  public class DatatypeMembership : Function {
+    public Function constructor;
+    public DatatypeMembership(Function constructor)
+      : base(constructor.tok, 
+             "is#" + constructor.Name,
+             new VariableSeq(new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type), true)),
+             new Formal(constructor.tok, new TypedIdent(constructor.tok, "", Type.Bool), false)) 
+    {
+      this.constructor = constructor;
+    }
+    public override void Emit(TokenTextWriter stream, int level) {
+    }
+  }
 
   public class Function : DeclWithFormals {
     public string Comment;

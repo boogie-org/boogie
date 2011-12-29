@@ -25,12 +25,10 @@ namespace Microsoft.Boogie {
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(counterexample != null);
       Contract.Invariant(cce.NonNullElements(args));
     }
 
     public CalleeCounterexampleInfo(Counterexample cex, List<Model.Element/*!>!*/> x) {
-      Contract.Requires(cex != null);
       Contract.Requires(cce.NonNullElements(x));
       counterexample = cex;
       args = x;

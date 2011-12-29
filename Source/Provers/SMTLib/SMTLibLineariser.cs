@@ -660,11 +660,14 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       private string ExtractDatatype(Function func) {
-        if (QKeyValue.FindBoolAttribute(func.Attributes, "selector")) {
-          return func.Name.Remove(func.Name.IndexOf('#'));
+        if (func is DatatypeSelector) {
+          DatatypeSelector selector = (DatatypeSelector) func;
+          Variable v = selector.constructor.InParams[selector.index];
+          return ExprLineariser.Namer.GetQuotedName(v, v.Name + "#" + selector.constructor.Name);
         }
-        else if (QKeyValue.FindBoolAttribute(func.Attributes, "membership")) {
-          return func.Name.Replace('#', '-');
+        else if (func is DatatypeMembership) {
+          DatatypeMembership membership = (DatatypeMembership)func;
+          return ExprLineariser.Namer.GetQuotedName(membership, "is-" + membership.constructor.Name);
         }
         else {
           return null;
