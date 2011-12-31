@@ -266,7 +266,7 @@ void ObjectInvariant()
 
     public static bool IsDatatypeFunction(Function f) {
       return
-        QKeyValue.FindBoolAttribute(f.Attributes, "constructor") ||
+        f is DatatypeConstructor ||
         f is DatatypeSelector ||
         f is DatatypeMembership;
     }

@@ -77,7 +77,6 @@ namespace BytecodeTranslator {
 
     static int Main(string[] args)
     {
-      int result = 0;
       int errorReturnValue = -1;
 
       #region Parse options and check for errors

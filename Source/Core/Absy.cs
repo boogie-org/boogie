@@ -213,8 +213,8 @@ namespace Microsoft.Boogie {
       Emitter.Declarations(this.TopLevelDeclarations, stream);
     }
 
-    void CreateDatatypeSelectorsAndTesters() {
-      Dictionary<string, Function> constructors = new Dictionary<string, Function>();
+    public void ProcessDatatypeConstructors() {
+      Dictionary<string, DatatypeConstructor> constructors = new Dictionary<string, DatatypeConstructor>();
       List<Declaration> prunedTopLevelDeclarations = new List<Declaration>();
       foreach (Declaration decl in TopLevelDeclarations) {
         Function func = decl as Function;
@@ -223,17 +223,20 @@ namespace Microsoft.Boogie {
           continue;
         }
         if (constructors.ContainsKey(func.Name)) continue;
-        constructors.Add(func.Name, func);
-        prunedTopLevelDeclarations.Add(func);
+        DatatypeConstructor constructor = new DatatypeConstructor(func);
+        constructors.Add(func.Name, constructor);
+        prunedTopLevelDeclarations.Add(constructor);
       }
       TopLevelDeclarations = prunedTopLevelDeclarations;
-
-      foreach (Function f in constructors.Values) {
+    
+      foreach (DatatypeConstructor f in constructors.Values) {
         for (int i = 0; i < f.InParams.Length; i++) {
           DatatypeSelector selector = new DatatypeSelector(f, i);
+          f.selectors.Add(selector);
           TopLevelDeclarations.Add(selector);
         }
         DatatypeMembership membership = new DatatypeMembership(f);
+        f.membership = membership;
         TopLevelDeclarations.Add(membership);
       }
     }
@@ -255,8 +258,6 @@ namespace Microsoft.Boogie {
     public override void Resolve(ResolutionContext rc) {
       //Contract.Requires(rc != null);
       Helpers.ExtraTraceInformation("Starting resolution");
-
-      CreateDatatypeSelectorsAndTesters();
 
       foreach (Declaration d in TopLevelDeclarations) {
         d.Register(rc);
@@ -1788,6 +1789,17 @@ namespace Microsoft.Boogie {
         Contract.Assert(p != null);
         p.Typecheck(tc);
       }
+    }
+  }
+
+  public class DatatypeConstructor : Function {
+    public List<DatatypeSelector> selectors;
+    public DatatypeMembership membership;
+
+    public DatatypeConstructor(Function func) 
+    : base(func.tok, func.Name, func.TypeParameters, func.InParams, func.OutParams[0], func.Comment, func.Attributes)
+    {
+      selectors = new List<DatatypeSelector>();
     }
   }
 

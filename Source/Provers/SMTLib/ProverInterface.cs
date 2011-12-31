@@ -841,7 +841,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     public override void DeclareFunction(Function f, string attributes) {
-      if (QKeyValue.FindBoolAttribute(f.Attributes, "constructor")) {
+      if (f is DatatypeConstructor) {
         CtorType datatype = (CtorType) f.OutParams[0].TypedIdent.Type;
         if (!KnownDatatypeConstructors.ContainsKey(datatype))
           KnownDatatypeConstructors[datatype] = new List<Function>();

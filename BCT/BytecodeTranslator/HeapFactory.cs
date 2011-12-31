@@ -77,7 +77,7 @@ namespace BytecodeTranslator {
 
     #region Boogie Types
 
-    [RepresentationFor("Delegate", "type Delegate;")]
+    [RepresentationFor("Delegate", "type {:datatype} Delegate;")]
     public Bpl.TypeCtorDecl DelegateTypeDecl = null;
     public Bpl.CtorType DelegateType;
 
@@ -403,10 +403,6 @@ procedure {:inline 1} Wrapper_System.Threading.ThreadStart.Invoke(this: Ref) {
 }
 procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
 
-axiom (forall m: int, o: Ref, t: Type :: {$DelegateCons(m, o, t)} $DelegateMethod($DelegateCons(m, o, t)) == m);
-axiom (forall m: int, o: Ref, t: Type :: {$DelegateCons(m, o, t)} $DelegateReceiver($DelegateCons(m, o, t)) == o);
-axiom (forall m: int, o: Ref, t: Type :: {$DelegateCons(m, o, t)} $DelegateTypeParameters($DelegateCons(m, o, t)) == t);
-
 axiom (forall d: Delegate :: { MultisetEmpty[d] } MultisetEmpty[d] == 0);
 axiom (forall x: Delegate :: { MultisetSingleton(x) } MultisetSingleton(x)[x] == 1);
 axiom (forall x: Delegate, d: Delegate :: {MultisetSingleton(x)[d]} MultisetSingleton(x)[d] == (if (x == d) then 1 else 0));
@@ -514,17 +510,20 @@ implementation System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($th
     [RepresentationFor("$Delegate", "function $Delegate(Ref): DelegateMultiset;")]
     public Bpl.Function Delegate = null;
 
-    [RepresentationFor("$DelegateCons", "function $DelegateCons(int, Ref, Type): Delegate;")]
-    public Bpl.Function DelegateCons = null;
+    [RepresentationFor("$DelegateCons", "function {:constructor} $DelegateCons($Method: int, $Receiver: Ref, $TypeParameters: Type): Delegate;")]
+    public Bpl.DatatypeConstructor DelegateCons = null;
 
-    [RepresentationFor("$DelegateMethod", "function $DelegateMethod(Delegate): int;")]
-    public Bpl.Function DelegateMethod = null;
+    public Bpl.Function DelegateMethod {
+      get { return DelegateCons.selectors[0]; }
+    }
 
-    [RepresentationFor("$DelegateReceiver", "function $DelegateReceiver(Delegate): Ref;")]
-    public Bpl.Function DelegateReceiver = null;
+    public Bpl.Function DelegateReceiver {
+      get { return DelegateCons.selectors[1]; }
+    }
 
-    [RepresentationFor("$DelegateTypeParameters", "function $DelegateTypeParameters(Delegate): Type;")]
-    public Bpl.Function DelegateTypeParameters = null;
+    public Bpl.Function DelegateTypeParameters {
+      get { return DelegateCons.selectors[2]; }
+    }
 
     [RepresentationFor("$Exception", "var {:thread_local} $Exception: Ref;")]
     public Bpl.GlobalVariable ExceptionVariable = null;

@@ -85,6 +85,7 @@ Contract.Requires(cce.NonNullElements(defines,true));
     if (parser.errors.count == 0)
     {
       program = Pgm;
+      program.ProcessDatatypeConstructors();
       return 0;
     }
     else
