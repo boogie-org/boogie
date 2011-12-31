@@ -88,13 +88,13 @@ namespace BytecodeTranslator {
     [RepresentationFor("MultisetEmpty", "const unique MultisetEmpty: DelegateMultiset;")]
     public Bpl.Constant MultisetEmpty = null;
 
-    [RepresentationFor("MultisetSingleton", "function MultisetSingleton(Delegate): DelegateMultiset;")]
+    [RepresentationFor("MultisetSingleton", "function {:inline} MultisetSingleton(x: Delegate): DelegateMultiset { MultisetEmpty[x := 1] }")]
     public Bpl.Function MultisetSingleton = null;
 
-    [RepresentationFor("MultisetPlus", "function MultisetPlus(DelegateMultiset, DelegateMultiset): DelegateMultiset;")]
+    [RepresentationFor("MultisetPlus", "function {:inline} MultisetPlus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { mapadd(x, y) }")]
     public  Bpl.Function MultisetPlus = null;
 
-    [RepresentationFor("MultisetMinus", "function MultisetMinus(DelegateMultiset, DelegateMultiset): DelegateMultiset;")]
+    [RepresentationFor("MultisetMinus", "function {:inline} MultisetMinus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { mapiteint(mapgt(x, y), mapsub(x, y), mapconstint(0)) }")]
     public Bpl.Function MultisetMinus = null;
 
     [RepresentationFor("Field", "type Field;")]
@@ -336,6 +336,27 @@ procedure {:inline 1} Alloc() returns (x: Ref)
   $Alloc[x] := true;
 }
 
+function {:builtin ""MapAdd""} mapadd([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapSub""} mapsub([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapMul""} mapmul([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapDiv""} mapdiv([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapMod""} mapmod([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapConst""} mapconstint(int) : [Delegate]int;
+function {:builtin ""MapConst""} mapconstbool(bool) : [Delegate]bool;
+function {:builtin ""MapAnd""} mapand([Delegate]bool, [Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapOr""} mapor([Delegate]bool, [Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapNot""} mapnot([Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapIte""} mapiteint([Delegate]bool, [Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapIte""} mapitebool([Delegate]bool, [Delegate]bool, [Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapLe""} maple([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapLt""} maplt([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapGe""} mapge([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapGt""} mapgt([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapEq""} mapeq([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapIff""} mapiff([Delegate]bool, [Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapImp""} mapimp([Delegate]bool, [Delegate]bool) : [Delegate]bool;
+axiom MultisetEmpty == mapconstint(0);
+
 // Subtype is reflexive
 axiom (forall t: Type :: $Subtype(t, t) );
 
@@ -402,15 +423,6 @@ procedure {:inline 1} Wrapper_System.Threading.ThreadStart.Invoke(this: Ref) {
   call System.Threading.ThreadStart.Invoke(this);
 }
 procedure {:extern} System.Threading.ThreadStart.Invoke(this: Ref);
-
-axiom (forall d: Delegate :: { MultisetEmpty[d] } MultisetEmpty[d] == 0);
-axiom (forall x: Delegate :: { MultisetSingleton(x) } MultisetSingleton(x)[x] == 1);
-axiom (forall x: Delegate, d: Delegate :: {MultisetSingleton(x)[d]} MultisetSingleton(x)[d] == (if (x == d) then 1 else 0));
-axiom (forall a: DelegateMultiset, b: DelegateMultiset, d: Delegate :: {MultisetPlus(a, b)[d]} MultisetPlus(a, b)[d] == a[d] + b[d]);
-axiom (forall a: DelegateMultiset, b: DelegateMultiset, d: Delegate :: {MultisetMinus(a, b)[d]} MultisetMinus(a, b)[d] == (if (a[d] > b[d]) then (a[d] - b[d]) else 0));
-
-axiom (forall a: DelegateMultiset, d: Delegate :: { MultisetPlus(a, MultisetSingleton(d)) } MultisetPlus(a, MultisetSingleton(d))[d] == a[d] + 1);
-axiom (forall a: DelegateMultiset, d: Delegate :: { MultisetMinus(a, MultisetSingleton(d)) } MultisetMinus(a, MultisetSingleton(d))[d] == (if (a[d] > 0) then (a[d] - 1) else 0));
 
 procedure {:inline 1} DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
 {
