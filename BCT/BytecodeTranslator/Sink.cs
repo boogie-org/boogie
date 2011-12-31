@@ -1034,7 +1034,7 @@ namespace BytecodeTranslator {
 
       this.declaredTypeFunctions.Add(key, f);
       this.TranslatedProgram.TopLevelDeclarations.Add(f);
-      DeclareParents(type, f);
+      DeclareParentsNew(type, f);
 
       bool isExtern = this.assemblyBeingTranslated != null &&
                       !TypeHelper.GetDefiningUnitReference(type).UnitIdentity.Equals(this.assemblyBeingTranslated.UnitIdentity);
@@ -1043,6 +1043,48 @@ namespace BytecodeTranslator {
         f.Attributes.AddLast(attrib);
       }
       return f;
+    }
+
+    private void DeclareParentsNew(ITypeDefinition typeDefinition, Bpl.Function typeDefinitionAsBplFunction) {
+      List<Bpl.Expr> superTypeExprs = new List<Bpl.Expr>();
+      foreach (var p in typeDefinition.BaseClasses) {
+        superTypeExprs.Add(FindOrCreateTypeReference(p));
+      }
+      foreach (var j in typeDefinition.Interfaces) {
+        superTypeExprs.Add(FindOrCreateTypeReference(j));
+      }
+
+      var numberOfGenericParameters = typeDefinitionAsBplFunction.InParams.Length;
+
+      var qvars = new Bpl.VariableSeq();
+      var exprs1 = new Bpl.ExprSeq();
+      var exprs2 = new Bpl.ExprSeq();
+      var exprs3 = new Bpl.ExprSeq();
+      for (int i = 0; i < numberOfGenericParameters; i++) {
+        var t = typeDefinitionAsBplFunction.InParams[i];
+        qvars.Add(t);
+        exprs1.Add(Bpl.Expr.Ident(t));
+        exprs2.Add(Bpl.Expr.Ident(t));
+        exprs3.Add(Bpl.Expr.Ident(t));
+      }
+
+      // G(t,u)
+      var callToG1 = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(typeDefinitionAsBplFunction), exprs1);
+      var callToG2 = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(typeDefinitionAsBplFunction), exprs2);
+      var callToG3 = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(typeDefinitionAsBplFunction), exprs3);
+
+      // T
+      Bpl.BoundVariable boundTypeVar = new Bpl.BoundVariable(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$T", this.Heap.TypeType));
+      qvars.Add(boundTypeVar);
+      var lhs = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.Heap.Subtype), new Bpl.ExprSeq(callToG1, Bpl.Expr.Ident(boundTypeVar)));
+      var rhs = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, callToG2, Bpl.Expr.Ident(boundTypeVar));
+      foreach (var superTypeExpr in superTypeExprs) {
+        var subtype = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.Heap.Subtype), new Bpl.ExprSeq(superTypeExpr, Bpl.Expr.Ident(boundTypeVar)));
+        rhs = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or, rhs, subtype);
+      }
+      var trigger = new Bpl.Trigger(Bpl.Token.NoToken, true, new Bpl.ExprSeq(new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.Heap.Subtype), new Bpl.ExprSeq(callToG3, Bpl.Expr.Ident(boundTypeVar)))));
+      var forall = new Bpl.ForallExpr(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), qvars, null, trigger, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Iff, lhs, rhs));
+      this.TranslatedProgram.TopLevelDeclarations.Add(new Bpl.Axiom(Bpl.Token.NoToken, forall));
     }
 
     private void DeclareParents(ITypeDefinition typeDefinition, Bpl.Function typeDefinitionAsBplFunction) {

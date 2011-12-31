@@ -320,9 +320,6 @@ namespace BytecodeTranslator {
     [RepresentationFor("$Subtype", "function $Subtype(Type, Type): bool;")]
     public Bpl.Function Subtype = null;
 
-    [RepresentationFor("$DirectSubtype", "function $DirectSubtype(Type, Type): bool;")]
-    public Bpl.Function DirectSubtype = null;
-
     [RepresentationFor("$DisjointSubtree", "function $DisjointSubtree(Type, Type): bool;")]
     public Bpl.Function DisjointSubtree = null;
 
@@ -357,6 +354,7 @@ function {:builtin ""MapIff""} mapiff([Delegate]bool, [Delegate]bool) : [Delegat
 function {:builtin ""MapImp""} mapimp([Delegate]bool, [Delegate]bool) : [Delegate]bool;
 axiom MultisetEmpty == mapconstint(0);
 
+/*
 // Subtype is reflexive
 axiom (forall t: Type :: $Subtype(t, t) );
 
@@ -368,15 +366,11 @@ axiom (forall t0 : Type, t1 : Type :: { $Subtype(t0, t1), $Subtype(t1, t0) }
 axiom (forall t0 : Type, t1 : Type, t2 : Type :: { $Subtype(t0, t1), $Subtype(t1, t2) }
         $Subtype(t0, t1) && $Subtype(t1, t2) ==> $Subtype(t0, t2) );
 
-// Direct subtype definition
-axiom (forall C : Type, D : Type :: { $DirectSubtype(D, C) }
-        $DirectSubtype(D, C) <==> $Subtype(D, C) && (forall z : Type :: $Subtype(D, z) && $Subtype(z, C) ==> z == C || z == D )
-      );
-
 // Incomparable subtypes: the subtrees are disjoint for (some) subtypes (those that imply single inheritance)
 function oneDown(t0 : Type, t1 : Type) : Type; // uninterpreted function with no axioms
 axiom (forall C : Type, D : Type :: { $DisjointSubtree(D, C) }
         $DisjointSubtree(D, C) <==> (forall z : Type :: $Subtype(z, D) ==> oneDown(C,z) == D) );
+*/
 
 function $TypeOfInv(Ref): Type;
 axiom (forall t: Type :: {$TypeOf(t)} $TypeOfInv($TypeOf(t)) == t);
