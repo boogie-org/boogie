@@ -337,12 +337,15 @@ namespace BytecodeTranslator
         }
       } else {
         this.Traverse(addressOf.Expression);
-        var e = this.TranslatedExpressions.Pop();
+        return;
+        // TODO: Sometimes the value must still be boxed: for anythign that is not going to be represented as a Ref in Boogie!
+        //this.Traverse(addressOf.Expression);
+        //var e = this.TranslatedExpressions.Pop();
 
-        Bpl.Variable a = this.sink.CreateFreshLocal(addressOf.Type);
-        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(Bpl.Token.NoToken, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
-        this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(Bpl.Token.NoToken, Bpl.Expr.Ident(a), Bpl.Expr.Ident(this.sink.Heap.BoxField), e, AccessType.Heap, boogieT));
-        this.TranslatedExpressions.Push(Bpl.Expr.Ident(a));
+        //Bpl.Variable a = this.sink.CreateFreshLocal(addressOf.Type);
+        //this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(Bpl.Token.NoToken, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
+        //this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(Bpl.Token.NoToken, Bpl.Expr.Ident(a), Bpl.Expr.Ident(this.sink.Heap.BoxField), e, AccessType.Heap, boogieT));
+        //this.TranslatedExpressions.Push(Bpl.Expr.Ident(a));
 
       }
     }
