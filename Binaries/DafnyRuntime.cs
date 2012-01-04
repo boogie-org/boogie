@@ -455,5 +455,9 @@ namespace Dafny
     public static Sequence<T> SeqFromArray<T>(T[] array) {
       return new Sequence<T>(array);
     }
+    public static U ExpressionSequence<T, U>(T t, U u)
+    {
+      return u;
+    }
   }
 }
