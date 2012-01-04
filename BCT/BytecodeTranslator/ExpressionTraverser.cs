@@ -744,10 +744,21 @@ namespace BytecodeTranslator
         this.Traverse(expressionToTraverse);
 
         Bpl.Expr e = this.TranslatedExpressions.Pop();
-        if (penum.Current.Type is IGenericParameterReference && this.sink.CciTypeToBoogie(penum.Current.Type) == this.sink.Heap.BoxType)
+        var currentType = penum.Current.Type;
+        if (currentType is IGenericParameterReference && this.sink.CciTypeToBoogie(currentType) == this.sink.Heap.BoxType)
           inexpr.Add(sink.Heap.Box(token, this.sink.CciTypeToBoogie(expressionToTraverse.Type), e));
-        else
+        else {
+          // Need to check if a struct value is being passed as an argument. If so, don't pass the struct,
+          // but pass a copy of it.
+          if (TranslationHelper.IsStruct(currentType)) {
+            var proc = this.sink.FindOrCreateProcedureForStructCopy(currentType);
+            var bplLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(e.Type));
+            var cmd = new Bpl.CallCmd(token, proc.Name, new List<Bpl.Expr> { e, bplLocal, }, new List<Bpl.IdentifierExpr>());
+            this.StmtTraverser.StmtBuilder.Add(cmd);
+            e = bplLocal;
+          }
           inexpr.Add(e);
+        }
         if (penum.Current.IsByReference) {
           Bpl.IdentifierExpr unboxed = e as Bpl.IdentifierExpr;
           if (unboxed == null) {

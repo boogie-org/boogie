@@ -66,10 +66,13 @@ namespace BytecodeTranslator {
 
     public Bpl.Formal ThisVariable {
       get {
-        ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
-        return info.ThisVariable;
+        return this.thisVariable;
+        //ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
+        //return info.ThisVariable;
       }
     }
+    private Bpl.Formal thisVariable;
+
     public Bpl.Formal ReturnVariable {
       get {
         ProcedureInfo info = FindOrCreateProcedure(this.methodBeingTranslated);
@@ -725,7 +728,7 @@ namespace BytecodeTranslator {
       if (!this.declaredStructDefaultCtors.TryGetValue(procName, out procAndFormalMap)) {
         var tok = structType.Token();
         var selfType = this.CciTypeToBoogie(structType); //new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
-        var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), true);
+        var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "$this", selfType), true);
         var invars = new Bpl.Formal[] { selfIn };
         var proc = new Bpl.Procedure(Bpl.Token.NoToken, procName,
           new Bpl.TypeVariableSeq(),
@@ -1198,6 +1201,8 @@ namespace BytecodeTranslator {
       this.localVarMap = new Dictionary<string, Bpl.LocalVariable>();
       this.localCounter = 0;
       this.methodBeingTranslated = null;
+      var selfType = CciTypeToBoogie(containingType);
+      this.thisVariable = new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "$this", selfType), true);
     }
 
     public Dictionary<IName, int> cciLabels;

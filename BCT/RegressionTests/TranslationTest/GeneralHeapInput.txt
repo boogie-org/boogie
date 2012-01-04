@@ -654,7 +654,7 @@ procedure RegressionTestInput.CreateStruct.Create($this: Ref) returns ($result: 
 
 
 
-procedure RegressionTestInput.S.#default_ctor(this: Ref);
+procedure RegressionTestInput.S.#default_ctor($this: Ref);
 
 
 
@@ -1309,8 +1309,10 @@ implementation T$RegressionTestInput.NestedGeneric.#cctor()
 
 
 
-implementation {:inline 1} RegressionTestInput.S.#default_ctor(this: Ref)
+implementation {:inline 1} RegressionTestInput.S.#default_ctor($this: Ref)
 {
+    $Heap := Write($Heap, $this, F$RegressionTestInput.S.x, Int2Box(0));
+    $Heap := Write($Heap, $this, F$RegressionTestInput.S.b, Bool2Box(false));
 }
 
 

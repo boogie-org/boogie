@@ -224,6 +224,7 @@ namespace BytecodeTranslator {
             Type = f.Type,
           },
         };
+        stmts.Add(s);
       }
 
       stmtTranslator.Traverse(stmts);
@@ -276,7 +277,7 @@ namespace BytecodeTranslator {
       var lit = Bpl.Expr.Literal(1);
       lit.Type = Bpl.Type.Int;
       var args = new List<object> { lit };
-      var attrib = new Bpl.QKeyValue(typeDefinition.Token(), "inline", args, null); // TODO: Need to have it be {:inine 1} (and not just {:inline})?
+      var attrib = new Bpl.QKeyValue(typeDefinition.Token(), "inline", args, null);
       Bpl.Implementation impl =
         new Bpl.Implementation(Bpl.Token.NoToken,
         proc.Name,

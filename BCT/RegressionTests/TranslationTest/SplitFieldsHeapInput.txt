@@ -640,7 +640,7 @@ procedure RegressionTestInput.CreateStruct.Create($this: Ref) returns ($result: 
 
 
 
-procedure RegressionTestInput.S.#default_ctor(this: Ref);
+procedure RegressionTestInput.S.#default_ctor($this: Ref);
 
 
 
@@ -1295,8 +1295,10 @@ implementation T$RegressionTestInput.NestedGeneric.#cctor()
 
 
 
-implementation {:inline 1} RegressionTestInput.S.#default_ctor(this: Ref)
+implementation {:inline 1} RegressionTestInput.S.#default_ctor($this: Ref)
 {
+    F$RegressionTestInput.S.x[$this] := 0;
+    F$RegressionTestInput.S.b[$this] := false;
 }
 
 
