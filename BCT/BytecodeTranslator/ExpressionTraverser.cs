@@ -752,8 +752,8 @@ namespace BytecodeTranslator
           // but pass a copy of it.
           if (TranslationHelper.IsStruct(currentType)) {
             var proc = this.sink.FindOrCreateProcedureForStructCopy(currentType);
-            var bplLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(e.Type));
-            var cmd = new Bpl.CallCmd(token, proc.Name, new List<Bpl.Expr> { e, }, new List<Bpl.IdentifierExpr>{ bplLocal, });
+            var bplLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(currentType));
+            var cmd = new Bpl.CallCmd(token, proc.Name, new List<Bpl.Expr> { e, }, new List<Bpl.IdentifierExpr> { bplLocal, });
             this.StmtTraverser.StmtBuilder.Add(cmd);
             e = bplLocal;
           }
