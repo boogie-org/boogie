@@ -346,7 +346,7 @@ namespace BytecodeTranslator
         if (structCopy) {
           var proc = this.sink.FindOrCreateProcedureForStructCopy(typ);
           e = ExpressionFor(initVal);
-          StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr> { e, boogieLocalExpr, }, new List<Bpl.IdentifierExpr>()));
+          StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr> { e, }, new List<Bpl.IdentifierExpr>{ boogieLocalExpr, }));
         }
       } else {
         e = ExpressionFor(initVal);

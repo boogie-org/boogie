@@ -1317,14 +1317,15 @@ implementation {:inline 1} RegressionTestInput.S.#default_ctor($this: Ref)
 
 
 
-procedure RegressionTestInput.S.#copy_ctor(this: Ref, other: Ref);
-  free requires this != other;
+procedure RegressionTestInput.S.#copy_ctor(this: Ref) returns (other: Ref);
   free ensures this != other;
 
 
 
-implementation {:inline 1} RegressionTestInput.S.#copy_ctor(this: Ref, other: Ref)
+implementation {:inline 1} RegressionTestInput.S.#copy_ctor(this: Ref) returns (other: Ref)
 {
+    call other := Alloc();
+    assume $DynamicType(other) == T$RegressionTestInput.S();
     $Heap := Write($Heap, other, F$RegressionTestInput.S.x, Int2Box(Box2Int(Read($Heap, this, F$RegressionTestInput.S.x))));
     $Heap := Write($Heap, other, F$RegressionTestInput.S.b, Bool2Box(Box2Bool(Read($Heap, this, F$RegressionTestInput.S.b))));
 }

@@ -753,7 +753,7 @@ namespace BytecodeTranslator
           if (TranslationHelper.IsStruct(currentType)) {
             var proc = this.sink.FindOrCreateProcedureForStructCopy(currentType);
             var bplLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(e.Type));
-            var cmd = new Bpl.CallCmd(token, proc.Name, new List<Bpl.Expr> { e, bplLocal, }, new List<Bpl.IdentifierExpr>());
+            var cmd = new Bpl.CallCmd(token, proc.Name, new List<Bpl.Expr> { e, }, new List<Bpl.IdentifierExpr>{ bplLocal, });
             this.StmtTraverser.StmtBuilder.Add(cmd);
             e = bplLocal;
           }
@@ -888,7 +888,7 @@ namespace BytecodeTranslator
         var e = this.TranslatedExpressions.Pop();
         var bplLocal = Bpl.Expr.Ident(this.sink.FindOrCreateLocalVariable(local));
         if (structCopy) {
-          cmd = new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr>{ e, bplLocal, }, new List<Bpl.IdentifierExpr>());
+          cmd = new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr>{ e, }, new List<Bpl.IdentifierExpr>{ bplLocal, });
         } else {
           cmd = Bpl.Cmd.SimpleAssign(tok, bplLocal, e);
         }

@@ -774,19 +774,19 @@ namespace BytecodeTranslator {
         var tok = structType.Token();
         var selfType = this.CciTypeToBoogie(structType); //new Bpl.MapType(Bpl.Token.NoToken, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(Heap.FieldType), Heap.BoxType);
         var selfIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "this", selfType), true);
-        var otherIn = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "other", selfType), true);
-        var invars = new Bpl.Formal[] { selfIn, otherIn, };
-        var outvars = new Bpl.Formal[0];
+        var otherOut = new Bpl.Formal(tok, new Bpl.TypedIdent(tok, "other", selfType), true);
+        var invars = new Bpl.Formal[] { selfIn, };
+        var outvars = new Bpl.Formal[] { otherOut, };
         var selfInExpr = Bpl.Expr.Ident(selfIn);
-        var otherInExpr = Bpl.Expr.Ident(otherIn);
-        var req = new Bpl.Requires(true, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, selfInExpr, otherInExpr));
+        var otherInExpr = Bpl.Expr.Ident(otherOut);
+        //var req = new Bpl.Requires(true, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, selfInExpr, otherInExpr));
         var ens = new Bpl.Ensures(true, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, selfInExpr, otherInExpr));
 
         var proc = new Bpl.Procedure(Bpl.Token.NoToken, procName,
           new Bpl.TypeVariableSeq(),
           new Bpl.VariableSeq(invars),
           new Bpl.VariableSeq(outvars),
-          new Bpl.RequiresSeq(req),
+          new Bpl.RequiresSeq(/*req*/),
           new Bpl.IdentifierExprSeq(), // modifies
           new Bpl.EnsuresSeq(ens)
           );

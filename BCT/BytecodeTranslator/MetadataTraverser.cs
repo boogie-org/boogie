@@ -256,7 +256,7 @@ namespace BytecodeTranslator {
       impl.Proc = (Bpl.Procedure) proc; // TODO: get rid of cast
       this.sink.TranslatedProgram.TopLevelDeclarations.Add(impl);
     }
-    
+
     private void CreateStructCopyConstructor(ITypeDefinition typeDefinition) {
       Contract.Requires(typeDefinition.IsStruct);
 
@@ -264,14 +264,35 @@ namespace BytecodeTranslator {
 
       var stmtBuilder = new Bpl.StmtListBuilder();
 
+      var tok = Bpl.Token.NoToken;
+
+      var o = Bpl.Expr.Ident(proc.OutParams[0]);
+
+      // other := Alloc();
+      stmtBuilder.Add(new Bpl.CallCmd(tok, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(o)));
+      // assume DynamicType(other) == S;
+      stmtBuilder.Add(
+        new Bpl.AssumeCmd(tok, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, this.sink.Heap.DynamicType(o), this.sink.FindOrCreateTypeReference(typeDefinition, true)))
+        );
+
       foreach (var f in typeDefinition.Fields) {
         if (f.IsStatic) continue;
-        var boogieType = sink.CciTypeToBoogie(f.Type);
+
         var fExp = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(f));
-        var e = this.sink.Heap.ReadHeap(Bpl.Expr.Ident(proc.InParams[0]), fExp, AccessType.Struct, boogieType);
-        var o = Bpl.Expr.Ident(proc.InParams[1]);
-        var c = this.sink.Heap.WriteHeap(Bpl.Token.NoToken, o, fExp, e, AccessType.Struct, boogieType);
-        stmtBuilder.Add(c);
+        var boogieType = sink.CciTypeToBoogie(f.Type);
+
+        if (TranslationHelper.IsStruct(f.Type)) {
+          // generate a call to the copy constructor to copy the contents of f
+          var proc2 = this.sink.FindOrCreateProcedureForStructCopy(f.Type);
+          var e = this.sink.Heap.ReadHeap(Bpl.Expr.Ident(proc.InParams[0]), fExp, AccessType.Struct, boogieType);
+          var cmd = new Bpl.CallCmd(tok, proc2.Name, new List<Bpl.Expr> { e, }, new List<Bpl.IdentifierExpr>{ o, });
+          stmtBuilder.Add(cmd);
+        } else {
+          // just generate a normal assignment to the field f
+          var e = this.sink.Heap.ReadHeap(Bpl.Expr.Ident(proc.InParams[0]), fExp, AccessType.Struct, boogieType);
+          var c = this.sink.Heap.WriteHeap(tok, o, fExp, e, AccessType.Struct, boogieType);
+          stmtBuilder.Add(c);
+        }
       }
 
       var lit = Bpl.Expr.Literal(1);
