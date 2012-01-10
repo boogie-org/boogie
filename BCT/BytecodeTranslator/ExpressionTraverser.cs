@@ -745,18 +745,19 @@ namespace BytecodeTranslator
 
         Bpl.Expr e = this.TranslatedExpressions.Pop();
         var currentType = penum.Current.Type;
+
+        // If the argument is a struct, then make a copy of it to pass to the procedure.
+        if (TranslationHelper.IsStruct(exp.Type)) {
+          var proc = this.sink.FindOrCreateProcedureForStructCopy(exp.Type);
+          var bplLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(exp.Type));
+          var cmd = new Bpl.CallCmd(token, proc.Name, new List<Bpl.Expr> { e, }, new List<Bpl.IdentifierExpr> { bplLocal, });
+          this.StmtTraverser.StmtBuilder.Add(cmd);
+          e = bplLocal;
+        }
+
         if (currentType is IGenericParameterReference && this.sink.CciTypeToBoogie(currentType) == this.sink.Heap.BoxType)
           inexpr.Add(sink.Heap.Box(token, this.sink.CciTypeToBoogie(expressionToTraverse.Type), e));
         else {
-          // Need to check if a struct value is being passed as an argument. If so, don't pass the struct,
-          // but pass a copy of it.
-          if (TranslationHelper.IsStruct(currentType)) {
-            var proc = this.sink.FindOrCreateProcedureForStructCopy(currentType);
-            var bplLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(currentType));
-            var cmd = new Bpl.CallCmd(token, proc.Name, new List<Bpl.Expr> { e, }, new List<Bpl.IdentifierExpr> { bplLocal, });
-            this.StmtTraverser.StmtBuilder.Add(cmd);
-            e = bplLocal;
-          }
           inexpr.Add(e);
         }
         if (penum.Current.IsByReference) {
