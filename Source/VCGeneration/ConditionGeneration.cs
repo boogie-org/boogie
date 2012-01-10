@@ -479,6 +479,8 @@ namespace VC {
       Contract.Invariant(program != null);
     }
 
+    public int CumulativeAssertionCount;  // for statistics
+
     protected readonly List<Checker>/*!>!*/ checkers = new List<Checker>();
     protected VariableSeq CurrentLocalVariables = null;
 

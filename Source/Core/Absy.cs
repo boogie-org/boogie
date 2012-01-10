@@ -736,6 +736,7 @@ namespace Microsoft.Boogie {
           return g;
         }
         throw new IrreducibleLoopException();
+#if USED_CODE
         System.Diagnostics.Debug.Assert(g.SplitCandidates.Count > 0);
         Block splitCandidate = null;
         foreach (Block b in g.SplitCandidates) {
@@ -770,6 +771,7 @@ namespace Microsoft.Boogie {
           impl.Blocks.Add(copy);
           gotoCmd.AddTarget(copy);
         }
+#endif
       }
     }
 

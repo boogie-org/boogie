@@ -23,6 +23,7 @@ namespace VC {
     [Rep] public readonly Hashtable/*<int, Absy!>*/ Label2absy;
     [Rep] public readonly ProverContext Ctxt;
     public readonly Variable ControlFlowVariable;
+    public int AssertionCount;  // counts the number of assertions for which Wlp has been computed
     
     public VCContext(Hashtable/*<int, Absy!>*/ label2absy, ProverContext ctxt)
     {
@@ -85,9 +86,8 @@ namespace VC {
     /// <summary>
     /// Computes the wlp for an assert or assume command "cmd".
     /// </summary>
-    public static VCExpr Cmd(Block b, Cmd cmd, VCExpr N, VCContext ctxt)
-    {
-      Contract.Requires(cmd!= null);
+    public static VCExpr Cmd(Block b, Cmd cmd, VCExpr N, VCContext ctxt) {
+      Contract.Requires(cmd != null);
       Contract.Requires(N != null);
       Contract.Requires(ctxt != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -99,8 +99,7 @@ namespace VC {
         VCExpr C = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
           return gen.Implies(C, N);
-        }
-        else {
+        } else {
           int id = ac.UniqueId;
           if (ctxt.Label2absy != null) {
             ctxt.Label2absy[id] = ac;
@@ -126,11 +125,11 @@ namespace VC {
           if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
             return gen.Implies(C, N);
 
+          ctxt.AssertionCount++;
           if (ctxt.ControlFlowVariable == null) {
             Contract.Assert(ctxt.Label2absy != null);
             return gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), C), N);
-          }
-          else {
+          } else {
             VCExpr controlFlowVariableExpr = ctxt.Ctxt.BoogieExprTranslator.LookupVariable(ctxt.ControlFlowVariable);
             Contract.Assert(controlFlowVariableExpr != null);
             VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(b.UniqueId)));
@@ -138,8 +137,7 @@ namespace VC {
             VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(ac.UniqueId)));
             if (ctxt.Label2absy == null) {
               return gen.AndSimp(gen.Implies(assertFailure, C), gen.Implies(C, N));
-            }
-            else {
+            } else {
               return gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), gen.Implies(assertFailure, C)), gen.Implies(C, N));
             }
           }
@@ -148,12 +146,11 @@ namespace VC {
       } else if (cmd is AssumeCmd) {
         AssumeCmd ac = (AssumeCmd)cmd;
 
-        if(CommandLineOptions.Clo.StratifiedInlining > 0) {
-            var pname = QKeyValue.FindStringAttribute(ac.Attributes, "candidate");
-            if(pname != null)
-            {
-                return gen.ImpliesSimp(gen.LabelPos("candidate_" + pname.ToString(), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N);
-            }
+        if (CommandLineOptions.Clo.StratifiedInlining > 0) {
+          var pname = QKeyValue.FindStringAttribute(ac.Attributes, "candidate");
+          if (pname != null) {
+            return gen.ImpliesSimp(gen.LabelPos("candidate_" + pname.ToString(), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N);
+          }
 
           // Label the assume if it is a procedure call
           NAryExpr naryExpr = ac.Expr as NAryExpr;
@@ -165,12 +162,12 @@ namespace VC {
             }
           }
         }
-        
+
         return gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N);
 
       } else {
-      Console.WriteLine(cmd.ToString());
-        Contract.Assert(false);throw new cce.UnreachableException();  // unexpected command
+        Console.WriteLine(cmd.ToString());
+        Contract.Assert(false); throw new cce.UnreachableException();  // unexpected command
       }
     }
     

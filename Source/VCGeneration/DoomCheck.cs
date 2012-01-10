@@ -170,7 +170,7 @@ void ObjectInvariant()
         }
 
         [NotDelayed]
-        public DoomCheck (Implementation passive_impl, Block unifiedExit, Checker check, List<Block> uncheckable) {
+        public DoomCheck (Implementation passive_impl, Block unifiedExit, Checker check, List<Block> uncheckable, out int assertionCount) {
           Contract.Requires(passive_impl != null);
           Contract.Requires(check != null);
           Contract.Requires(uncheckable != null);
@@ -217,7 +217,7 @@ void ObjectInvariant()
             Label2Absy = new Hashtable(); // This is only a dummy
             m_Evc = new Evc(check);
             Hashtable l2a = null;
-            VCExpr vce = this.GenerateEVC(passive_impl, out l2a, check);
+            VCExpr vce = this.GenerateEVC(passive_impl, out l2a, check, out assertionCount);
             Contract.Assert(vce != null);
             Contract.Assert( l2a!=null);
             Label2Absy = l2a;
@@ -233,7 +233,8 @@ void ObjectInvariant()
             Label2Absy = new Hashtable(); // This is only a dummy
             m_Evc = new Evc(check);
             Hashtable l2a = null;
-            VCExpr vce = this.GenerateEVC(passive_impl, out l2a, check);
+            int assertionCount;  // compute and then ignore
+            VCExpr vce = this.GenerateEVC(passive_impl, out l2a, check, out assertionCount);
             Contract.Assert(vce != null);
             Contract.Assert(l2a != null);
             Label2Absy = l2a;
@@ -293,42 +294,41 @@ void ObjectInvariant()
             CommandLineOptions.Clo.vcVariety = CommandLineOptions.VCVariety.Doomed;
             #endregion
 
-       */ 
-       
-        VCExpr GenerateEVC(Implementation impl, out Hashtable label2absy, Checker ch)
-        {
+       */
+
+        VCExpr GenerateEVC(Implementation impl, out Hashtable label2absy, Checker ch, out int assertionCount) {
           Contract.Requires(impl != null);
           Contract.Requires(ch != null);
           Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-			    TypecheckingContext tc = new TypecheckingContext(null);
-			    impl.Typecheck(tc);
-			    label2absy = new Hashtable/*<int, Absy!>*/();
-			    VCExpr vc;
-			    switch (CommandLineOptions.Clo.vcVariety) {
-				    case CommandLineOptions.VCVariety.Doomed:
-                        
-                        vc = LetVC(cce.NonNull(impl.Blocks[0]), label2absy, ch.TheoremProver.Context);
-				    					    
-					    break;
-					    
-				    default:
-					    Contract.Assert(false);throw new cce.UnreachableException();  // unexpected enumeration value
-			    }
-			    return vc;
+          TypecheckingContext tc = new TypecheckingContext(null);
+          impl.Typecheck(tc);
+          label2absy = new Hashtable/*<int, Absy!>*/();
+          VCExpr vc;
+          switch (CommandLineOptions.Clo.vcVariety) {
+            case CommandLineOptions.VCVariety.Doomed:
+              vc = LetVC(cce.NonNull(impl.Blocks[0]), label2absy, ch.TheoremProver.Context, out assertionCount);
+              break;
+
+            default:
+              Contract.Assert(false); throw new cce.UnreachableException();  // unexpected enumeration value
+          }
+          return vc;
         }
 
         public VCExpr LetVC(Block startBlock,
-                             Hashtable/*<int, Absy!>*/ label2absy,
-                             ProverContext proverCtxt)
-        {Contract.Requires(startBlock != null);
+                            Hashtable/*<int, Absy!>*/ label2absy,
+                            ProverContext proverCtxt,
+                            out int assertionCount)
+        {
+          Contract.Requires(startBlock != null);
           Contract.Requires(label2absy != null);
           Contract.Requires(proverCtxt != null);
           Contract.Ensures(Contract.Result<VCExpr>() != null);
 
           Hashtable/*<Block, LetVariable!>*/ blockVariables = new Hashtable/*<Block, LetVariable!!>*/();
           List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
-          VCExpr startCorrect = LetVC(startBlock, label2absy, blockVariables, bindings, proverCtxt);
+          VCExpr startCorrect = LetVC(startBlock, label2absy, blockVariables, bindings, proverCtxt, out assertionCount);
           if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
             return proverCtxt.ExprGen.Let(bindings, proverCtxt.ExprGen.Not(startCorrect) );
           } else {
@@ -337,17 +337,19 @@ void ObjectInvariant()
         }
 
         VCExpr LetVC(Block block,
-                             Hashtable/*<int, Absy!>*/ label2absy,
-                             Hashtable/*<Block, VCExprVar!>*/ blockVariables,
-                             List<VCExprLetBinding> bindings,
-                             ProverContext proverCtxt)
+                     Hashtable/*<int, Absy!>*/ label2absy,
+                     Hashtable/*<Block, VCExprVar!>*/ blockVariables,
+                     List<VCExprLetBinding> bindings,
+                     ProverContext proverCtxt,
+                     out int assertionCount)
         {
-      Contract.Requires(label2absy != null);
-      Contract.Requires(blockVariables != null);
-      Contract.Requires(proverCtxt != null);
-      Contract.Requires(cce.NonNullElements(bindings));
+          Contract.Requires(label2absy != null);
+          Contract.Requires(blockVariables != null);
+          Contract.Requires(proverCtxt != null);
+          Contract.Requires(cce.NonNullElements(bindings));
           Contract.Ensures(Contract.Result<VCExpr>() != null);
 
+          assertionCount = 0;
           VCExpressionGenerator gen = proverCtxt.ExprGen;
           Contract.Assert(gen != null);
           VCExprVar v = (VCExprVar)blockVariables[block];
@@ -371,17 +373,19 @@ void ObjectInvariant()
               List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Length);
               foreach (Block successor in gotocmd.labelTargets) {
                 Contract.Assert(successor != null);
-                VCExpr s = LetVC(successor, label2absy, blockVariables, bindings, proverCtxt);
+                int ac;
+                VCExpr s = LetVC(successor, label2absy, blockVariables, bindings, proverCtxt, out ac);
+                assertionCount += ac;
                 SuccCorrectVars.Add(s);
               }
               SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
             }
 
             VCContext context = new VCContext(label2absy, proverCtxt);
-    //        m_Context = context;
+            //        m_Context = context;
 
             VCExpr vc = Wlp.Block(block, SuccCorrect, context);
-
+            assertionCount += context.AssertionCount;
             v = gen.Variable(block.Label + "_correct", Microsoft.Boogie.Type.Bool);
             
             bindings.Add(gen.LetBinding(v, vc));

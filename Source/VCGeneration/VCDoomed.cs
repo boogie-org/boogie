@@ -121,7 +121,9 @@ namespace VC {
     
       Checker checker = FindCheckerFor(impl, 1000);
       Contract.Assert(checker != null);
-      DoomCheck dc = new DoomCheck(impl, this.exitBlock, checker, m_UncheckableBlocks);
+      int assertionCount;
+      DoomCheck dc = new DoomCheck(impl, this.exitBlock, checker, m_UncheckableBlocks, out assertionCount);
+      CumulativeAssertionCount += assertionCount;
 
       //EmitImpl(impl, false);
       

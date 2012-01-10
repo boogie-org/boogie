@@ -1692,7 +1692,9 @@ namespace VC
                         }
                     }
                     if (toExpand.Count == 0) expand = false;
-                    else DoExpansion(incrementalSearch, toExpand, vState);
+                    else {
+                      DoExpansion(incrementalSearch, toExpand, vState);
+                    }
                 }
             }
             #endregion
@@ -2402,14 +2404,13 @@ namespace VC
         static int newVarCnt = 0;
 
         // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.
-        private void DoExpansion(bool incremental, List<int>/*!*/ candidates, VerificationState vState)
-        {
-            vState.expansionCount += candidates.Count;
+        private void DoExpansion(bool incremental, List<int>/*!*/ candidates, VerificationState vState) {
+          vState.expansionCount += candidates.Count;
 
-            if (incremental)
-                DoExpansionAndPush(candidates, vState);
-            else
-                DoExpansionAndInline(candidates, vState);
+          if (incremental)
+            DoExpansionAndPush(candidates, vState);
+          else
+            DoExpansionAndInline(candidates, vState);
         }
 
         // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.

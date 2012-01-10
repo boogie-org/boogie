@@ -271,7 +271,9 @@ namespace VC {
 
       TypecheckingContext tc = new TypecheckingContext(null);
       impl.Typecheck(tc);
-      VCExpr vcexpr = gen.Not(LetVC(impl.Blocks[0], info.controlFlowVariable, null, checker.TheoremProver.Context));
+      int assertionCount;
+      VCExpr vcexpr = gen.Not(LetVC(impl.Blocks[0], info.controlFlowVariable, null, checker.TheoremProver.Context, out assertionCount));
+      CumulativeAssertionCount += assertionCount;
       Contract.Assert(vcexpr != null);
       ResetPredecessors(impl.Blocks);
       VCExpr reachvcexpr = GenerateReachVC(impl, info, checker);
@@ -1484,7 +1486,7 @@ namespace VC {
         }
       }
 
-      public void BeginCheck(VerifierCallback callback, ModelViewInfo mvInfo, int no, int timeout) {
+      public void BeginCheck(VerifierCallback callback, ModelViewInfo mvInfo, int no, int timeout, out int assertionCount) {
         Contract.Requires(callback != null);
         splitNo = no;
 
@@ -1508,13 +1510,8 @@ namespace VC {
             ResetPredecessors(codeExpr.Blocks);
             vcgen.AddBlocksBetween(codeExpr.Blocks);
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), new ModelViewInfo(codeExpr));
-            VCExpr startCorrect = VCGen.LetVC(
-		      codeExpr.Blocks[0],
-              null,
-              label2absy,
-		      blockVariables,
-		      bindings,
-		      ctx);
+            int ac;  // computed, but then ignored for this CodeExpr
+            VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks[0], null, label2absy, blockVariables, bindings, ctx, out ac);
             VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
 
             if (vcgen.CurrentLocalVariables.Length != 0) {
@@ -1536,8 +1533,10 @@ namespace VC {
           }
 		  ));
 
+        int prev = parent.CumulativeAssertionCount;
         VCExpr vc = parent.GenerateVCAux(impl, null, label2absy, checker);
         Contract.Assert(vc != null);
+        assertionCount = parent.CumulativeAssertionCount - prev;
 
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
           reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, parent.implName2LazyInliningInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);
@@ -1630,42 +1629,44 @@ namespace VC {
       impl.Typecheck(tc);
 
       VCExpr vc;
+      int assertionCount;
       switch (CommandLineOptions.Clo.vcVariety) {
         case CommandLineOptions.VCVariety.Structured:
-          vc = VCViaStructuredProgram(impl, label2absy, ch.TheoremProver.Context);
+          vc = VCViaStructuredProgram(impl, label2absy, ch.TheoremProver.Context, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Block:
-          vc = FlatBlockVC(impl, label2absy, false, false, false, ch.TheoremProver.Context);
+          vc = FlatBlockVC(impl, label2absy, false, false, false, ch.TheoremProver.Context, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.BlockReach:
-          vc = FlatBlockVC(impl, label2absy, false, true, false, ch.TheoremProver.Context);
+          vc = FlatBlockVC(impl, label2absy, false, true, false, ch.TheoremProver.Context, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Local:
-          vc = FlatBlockVC(impl, label2absy, true, false, false, ch.TheoremProver.Context);
+          vc = FlatBlockVC(impl, label2absy, true, false, false, ch.TheoremProver.Context, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.BlockNested:
-          vc = NestedBlockVC(impl, label2absy, false, ch.TheoremProver.Context);
+          vc = NestedBlockVC(impl, label2absy, false, ch.TheoremProver.Context, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.BlockNestedReach:
-          vc = NestedBlockVC(impl, label2absy, true, ch.TheoremProver.Context);
+          vc = NestedBlockVC(impl, label2absy, true, ch.TheoremProver.Context, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Dag:
           if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags) {
-            vc = DagVC(cce.NonNull(impl.Blocks[0]), label2absy, new Hashtable/*<Block, VCExpr!>*/(), ch.TheoremProver.Context);
+            vc = DagVC(cce.NonNull(impl.Blocks[0]), label2absy, new Hashtable/*<Block, VCExpr!>*/(), ch.TheoremProver.Context, out assertionCount);
           } else {
-            vc = LetVC(cce.NonNull(impl.Blocks[0]), controlFlowVariable, label2absy, ch.TheoremProver.Context);
+            vc = LetVC(cce.NonNull(impl.Blocks[0]), controlFlowVariable, label2absy, ch.TheoremProver.Context, out assertionCount);
           }
           break;
         case CommandLineOptions.VCVariety.DagIterative:
-          vc = LetVCIterative(impl.Blocks, controlFlowVariable, label2absy, ch.TheoremProver.Context);
+          vc = LetVCIterative(impl.Blocks, controlFlowVariable, label2absy, ch.TheoremProver.Context, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Doomed:
-          vc = FlatBlockVC(impl, label2absy, false, false, true, ch.TheoremProver.Context);
+          vc = FlatBlockVC(impl, label2absy, false, false, true, ch.TheoremProver.Context, out assertionCount);
           break;
         default:
           Contract.Assert(false);
           throw new cce.UnreachableException();  // unexpected enumeration value
       }
+      CumulativeAssertionCount += assertionCount;
       return vc;
     }
 
@@ -1677,11 +1678,12 @@ namespace VC {
       }
     }
 
-    public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback){
+    public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback) {
       //Contract.Requires(impl != null);
       //Contract.Requires(program != null);
       //Contract.Requires(callback != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+
       if (impl.SkipVerification) {
         return Outcome.Inconclusive; // not sure about this one
       }
@@ -1756,10 +1758,13 @@ namespace VC {
             }
             callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
 
+            int assertionCount;
             s.BeginCheck(callback, mvInfo, no, 
               (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
                 keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
-                             CommandLineOptions.Clo.ProverKillTime);
+                             CommandLineOptions.Clo.ProverKillTime,
+              out assertionCount);
+            CumulativeAssertionCount += assertionCount;
 
             no++;
 
@@ -3421,7 +3426,8 @@ namespace VC {
     static VCExpr LetVC(Block startBlock,
                         Variable controlFlowVariable,
                         Hashtable/*<int, Absy!>*/ label2absy,
-                        ProverContext proverCtxt) {
+                        ProverContext proverCtxt,
+                        out int assertionCount) {
       Contract.Requires(startBlock != null);
       Contract.Requires(proverCtxt != null);
 
@@ -3429,17 +3435,20 @@ namespace VC {
 
       Hashtable/*<Block, LetVariable!>*/ blockVariables = new Hashtable/*<Block, LetVariable!!>*/();
       List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
-      VCExpr startCorrect = LetVC(startBlock, controlFlowVariable, label2absy, blockVariables, bindings, proverCtxt);
+      VCExpr startCorrect = LetVC(startBlock, controlFlowVariable, label2absy, blockVariables, bindings, proverCtxt, out assertionCount);
       return proverCtxt.ExprGen.Let(bindings, startCorrect);
     }
 
     static VCExpr LetVCIterative(List<Block> blocks,
                                  Variable controlFlowVariable,
                                  Hashtable label2absy,
-                                 ProverContext proverCtxt) {
+                                 ProverContext proverCtxt,
+                                 out int assertionCount) {
       Contract.Requires(blocks != null);
       Contract.Requires(proverCtxt != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+      assertionCount = 0;
 
       Graph<Block> dag = new Graph<Block>();
       dag.AddSource(blocks[0]); 
@@ -3491,6 +3500,7 @@ namespace VC {
 
         VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariable);
         VCExpr vc = Wlp.Block(block, SuccCorrect, context);
+        assertionCount += context.AssertionCount;
 
         VCExprVar v = gen.Variable(block.Label + "_correct", Bpl.Type.Bool);
         bindings.Add(gen.LetBinding(v, vc));
@@ -3505,7 +3515,8 @@ namespace VC {
                         Hashtable/*<int, Absy!>*/ label2absy,
                         Hashtable/*<Block, VCExprVar!>*/ blockVariables,
                         List<VCExprLetBinding/*!*/>/*!*/ bindings,
-                        ProverContext proverCtxt)
+                        ProverContext proverCtxt,
+                        out int assertionCount)
     {
       Contract.Requires(block != null);
       Contract.Requires(blockVariables!= null);
@@ -3513,6 +3524,8 @@ namespace VC {
       Contract.Requires(proverCtxt != null);
 
       Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+      assertionCount = 0;
 
       VCExpressionGenerator gen = proverCtxt.ExprGen;
       Contract.Assert(gen != null);
@@ -3536,8 +3549,11 @@ namespace VC {
         } else {
           Contract.Assert( gotocmd.labelTargets != null);
           List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Length);
-          foreach (Block successor in gotocmd.labelTargets) {Contract.Assert(successor != null);
-            VCExpr s = LetVC(successor, controlFlowVariable, label2absy, blockVariables, bindings, proverCtxt);
+          foreach (Block successor in gotocmd.labelTargets) {
+            Contract.Assert(successor != null);
+            int ac;
+            VCExpr s = LetVC(successor, controlFlowVariable, label2absy, blockVariables, bindings, proverCtxt, out ac);
+            assertionCount += ac;
             if (controlFlowVariable != null) 
             {
               VCExprVar controlFlowVariableExpr = proverCtxt.BoogieExprTranslator.LookupVariable(controlFlowVariable);
@@ -3553,6 +3569,7 @@ namespace VC {
         
         VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariable);
         VCExpr vc = Wlp.Block(block, SuccCorrect, context);
+        assertionCount += context.AssertionCount;
         
         v = gen.Variable(block.Label + "_correct", Bpl.Type.Bool);
         bindings.Add(gen.LetBinding(v, vc));
@@ -3564,7 +3581,8 @@ namespace VC {
     static VCExpr DagVC(Block block,
                          Hashtable/*<int, Absy!>*/ label2absy,
                          Hashtable/*<Block, VCExpr!>*/ blockEquations,
-                         ProverContext proverCtxt)
+                         ProverContext proverCtxt,
+                         out int assertionCount)
     {
       Contract.Requires(block != null);
       Contract.Requires(label2absy != null);
@@ -3572,6 +3590,7 @@ namespace VC {
       Contract.Requires(proverCtxt != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
+      assertionCount = 0;
       VCExpressionGenerator gen = proverCtxt.ExprGen;
       Contract.Assert(gen != null);
       VCExpr vc = (VCExpr)blockEquations[block];
@@ -3589,7 +3608,9 @@ namespace VC {
       {
         foreach (Block successor in cce.NonNull(gotocmd.labelTargets)) {
           Contract.Assert(successor != null);
-          VCExpr c = DagVC(successor, label2absy, blockEquations, proverCtxt);
+          int ac;
+          VCExpr c = DagVC(successor, label2absy, blockEquations, proverCtxt, out ac);
+          assertionCount += ac;
           SuccCorrect = SuccCorrect == null ? c : gen.And(SuccCorrect, c);
         }
       }
@@ -3599,6 +3620,7 @@ namespace VC {
 
       VCContext context = new VCContext(label2absy, proverCtxt);
       vc = Wlp.Block(block, SuccCorrect, context);
+      assertionCount += context.AssertionCount;
       
       //  gen.MarkAsSharedFormula(vc);  PR: don't know yet what to do with this guy
 
@@ -3609,7 +3631,8 @@ namespace VC {
     static VCExpr FlatBlockVC(Implementation impl,
                               Hashtable/*<int, Absy!>*/ label2absy,
                               bool local, bool reach, bool doomed,
-                              ProverContext proverCtxt)
+                              ProverContext proverCtxt,
+                              out int assertionCount)
     {
       Contract.Requires(impl != null);
       Contract.Requires(label2absy != null);
@@ -3680,6 +3703,7 @@ namespace VC {
         programSemantics.Add(binding);
       }
 
+      assertionCount = context.AssertionCount;
       return gen.Let(programSemantics, proofObligation);
     }
 
@@ -3743,7 +3767,8 @@ namespace VC {
     static VCExpr NestedBlockVC(Implementation impl,
                                 Hashtable/*<int, Absy!>*/ label2absy,
                                 bool reach,
-                                ProverContext proverCtxt){
+                                ProverContext proverCtxt,
+                                out int assertionCount){
       Contract.Requires(impl != null);
       Contract.Requires(label2absy != null);
       Contract.Requires(proverCtxt != null);
@@ -3766,10 +3791,10 @@ namespace VC {
       {
         List<Block> blocks = impl.Blocks;
         
-     // block sorting is now done on the VCExpr
-     //   if (((!)CommandLineOptions.Clo.TheProverFactory).NeedsBlockSorting) {
-     //     blocks = SortBlocks(blocks);
-     //   }
+        // block sorting is now done on the VCExpr
+        //   if (((!)CommandLineOptions.Clo.TheProverFactory).NeedsBlockSorting) {
+        //     blocks = SortBlocks(blocks);
+        //   }
         int i = 0;
         foreach (Block b in blocks) {
           Contract.Assert(b != null);
@@ -3781,7 +3806,8 @@ namespace VC {
       VCExprLetBinding programSemantics = NestedBlockEquation(cce.NonNull(impl.Blocks[0]), BlkCorrect, BlkReached, totalOrder, context, g, gen);
       List<VCExprLetBinding> ps = new List<VCExprLetBinding>(1);
       ps.Add(programSemantics);
-      
+
+      assertionCount = context.AssertionCount;
       return gen.Let(ps, proofObligation);
     }
 
@@ -3863,12 +3889,13 @@ namespace VC {
 
     static VCExpr VCViaStructuredProgram
                   (Implementation impl, Hashtable/*<int, Absy!>*/ label2absy,
-                   ProverContext proverCtxt)
+                   ProverContext proverCtxt,
+                   out int assertionCount)
     {
-    Contract.Requires(impl != null);
-    Contract.Requires(label2absy != null);
-    Contract.Requires(proverCtxt != null);
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+      Contract.Requires(impl != null);
+      Contract.Requires(label2absy != null);
+      Contract.Requires(proverCtxt != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       #region Convert block structure back to a "regular expression"
       RE r = DAG2RE.Transform(cce.NonNull(impl.Blocks[0]));
@@ -3878,7 +3905,9 @@ namespace VC {
       VCContext ctxt = new VCContext(label2absy, proverCtxt);
       Contract.Assert(ctxt != null);
       #region Send wlp(program,true) to Simplify
-      return Wlp.RegExpr(r, VCExpressionGenerator.True, ctxt);
+      var vcexp = Wlp.RegExpr(r, VCExpressionGenerator.True, ctxt);
+      assertionCount = ctxt.AssertionCount;
+      return vcexp;
       #endregion
     }
 

@@ -516,7 +516,7 @@ namespace Microsoft.Boogie {
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
           vcgen = new DCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
         } else if(CommandLineOptions.Clo.StratifiedInlining > 0) {
-            vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+          vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
         } else {
           vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
         }
@@ -529,6 +529,7 @@ namespace Microsoft.Boogie {
       var decls = program.TopLevelDeclarations.ToArray();
       foreach (Declaration decl in decls) {
         Contract.Assert(decl != null);
+        int prevAssertionCount = vcgen.CumulativeAssertionCount;
         Implementation impl = decl as Implementation;
         if (impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification) {
           List<Counterexample/*!*/>/*?*/ errors;
@@ -550,7 +551,7 @@ namespace Microsoft.Boogie {
               if (CommandLineOptions.Clo.inferLeastForUnsat != null)
               {
                   var svcgen = vcgen as VC.StratifiedVCGen;
-                  Debug.Assert(svcgen != null);
+                  Contract.Assert(svcgen != null);
                   var ss = new HashSet<string>();
                   foreach (var tdecl in program.TopLevelDeclarations)
                   {
@@ -587,7 +588,7 @@ namespace Microsoft.Boogie {
           TimeSpan elapsed = end - start;
           if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.XmlSink != null) {
             if (CommandLineOptions.Clo.Trace) {
-              timeIndication = string.Format("  [{0} s]  ", elapsed.TotalSeconds);
+              timeIndication = string.Format("  [{0} s, {1} proof obligations]  ", elapsed.TotalSeconds, vcgen.CumulativeAssertionCount - prevAssertionCount);
             }
           }
 

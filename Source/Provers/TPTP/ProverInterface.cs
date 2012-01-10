@@ -240,7 +240,7 @@ USE_PREDICATES=<bool>     Try to use SMT predicates for functions returning bool
       if (CommandLineOptions.Clo.Trace) {
         DateTime end = DateTime.Now;
         TimeSpan elapsed = end - start;
-        Console.WriteLine("finished   [{0} s]  ", elapsed.TotalSeconds);
+        Console.WriteLine("finished   [{0} s]", elapsed.TotalSeconds);
       }
       return res;
     }

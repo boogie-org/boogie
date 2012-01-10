@@ -350,7 +350,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
 
       if (CommandLineOptions.Clo.Trace) {
         TimeSpan elapsed = DateTime.Now - start;
-        Console.WriteLine("finished   [{0} s]  ", elapsed.TotalSeconds);
+        Console.WriteLine("finished   [{0} s]", elapsed.TotalSeconds);
       }
       return res;
     }
