@@ -813,7 +813,7 @@ namespace VC {
       int assertion_count;
       double assertion_cost; // without multiplication by paths
       Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins;
-      VCGen/*!*/ parent;
+      readonly public VCGen/*!*/ parent;
       Implementation/*!*/ impl;
 
       Dictionary<Block/*!*/, Block/*!*/>/*!*/ copies = new Dictionary<Block/*!*/, Block/*!*/>();
@@ -1486,7 +1486,10 @@ namespace VC {
         }
       }
 
-      public void BeginCheck(VerifierCallback callback, ModelViewInfo mvInfo, int no, int timeout, out int assertionCount) {
+      /// <summary>
+      /// As a side effect, updates "this.parent.CumulativeAssertionCount".
+      /// </summary>
+      public void BeginCheck(VerifierCallback callback, ModelViewInfo mvInfo, int no, int timeout) {
         Contract.Requires(callback != null);
         splitNo = no;
 
@@ -1533,10 +1536,8 @@ namespace VC {
           }
 		  ));
 
-        int prev = parent.CumulativeAssertionCount;
         VCExpr vc = parent.GenerateVCAux(impl, null, label2absy, checker);
         Contract.Assert(vc != null);
-        assertionCount = parent.CumulativeAssertionCount - prev;
 
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
           reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, parent.implName2LazyInliningInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);
@@ -1758,13 +1759,11 @@ namespace VC {
             }
             callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
 
-            int assertionCount;
+            Contract.Assert(s.parent == this);
             s.BeginCheck(callback, mvInfo, no, 
               (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
                 keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
-                             CommandLineOptions.Clo.ProverKillTime,
-              out assertionCount);
-            CumulativeAssertionCount += assertionCount;
+                             CommandLineOptions.Clo.ProverKillTime);
 
             no++;
 
