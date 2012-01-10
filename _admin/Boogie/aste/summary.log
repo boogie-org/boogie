@@ -1,19 +1,18 @@
-# Aste started: 2012-01-06 07:00:04
+# Aste started: 2012-01-10 07:00:11
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2012-01-06 07:03:08] SpecSharp revision: 0ad0b7a3ec27
-# [2012-01-06 07:03:08] SscBoogie revision: 0ad0b7a3ec27
-# [2012-01-06 07:05:08] Boogie revision: dd4d34600871
-[2012-01-06 07:06:27] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
+# [2012-01-10 07:03:15] SpecSharp revision: 0c4056f6d0bd
+# [2012-01-10 07:03:15] SscBoogie revision: 0c4056f6d0bd
+# [2012-01-10 07:05:11] Boogie revision: c6698bea5cb9
+[2012-01-10 07:06:40] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
 
     1>corflags : warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
     warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-[2012-01-06 07:08:01] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+[2012-01-10 07:08:16] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(739,9): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\Core\Absy.cs(708,7): warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
     EXEC : warning CC1079: Type Microsoft.Boogie.Variable implements Microsoft.AbstractInterpretationFramework.IVariable.get_Name by inheriting Microsoft.Boogie.NamedDeclaration.get_Name causing the interface contract to not be checked at runtime. Consider adding a wrapper method.
@@ -23,14 +22,13 @@
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(247,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(266,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\IntervalDomain.cs(49,9): warning CC1036: Detected call to method 'Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node.StrictlyBefore(Microsoft.Boogie.Variable,Microsoft.Boogie.Variable)' without [Pure] in contracts of method 'Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node.#ctor(Microsoft.Boogie.Variable,System.Nullable`1<System.Numerics.BigInteger>,System.Nullable`1<System.Numerics.BigInteger>,Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node)'.
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1694,11): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1854,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1697,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1858,11): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(1093,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     EXEC : warning CC1032: Method 'Microsoft.Boogie.Houdini.InlineRequiresVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)' overrides 'Microsoft.Boogie.StandardVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)', thus cannot add Requires.
     EXEC : warning CC1032: Method 'Microsoft.Boogie.Houdini.FreeRequiresVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)' overrides 'Microsoft.Boogie.StandardVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)', thus cannot add Requires.
     warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
-    warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
     warning CC1079: Type Microsoft.Boogie.Variable implements Microsoft.AbstractInterpretationFramework.IVariable.get_Name by inheriting Microsoft.Boogie.NamedDeclaration.get_Name causing the interface contract to not be checked at runtime. Consider adding a wrapper method.
@@ -45,5 +43,12 @@
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Houdini.InlineRequiresVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)' overrides 'Microsoft.Boogie.StandardVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Houdini.FreeRequiresVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)' overrides 'Microsoft.Boogie.StandardVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)', thus cannot add Requires.
-[2012-01-06 08:07:48] 0 out of 33 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2012-01-06 08:08:31] Released nightly of Boogie
+[2012-01-10 07:08:27] [Error] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Dafny.sln /Rebuild Checked
+
+    D:\Temp\aste\Boogie\Source\Dafny\Translator.cs(3117,7): error CC1002: In method Microsoft.Dafny.Translator.Assert(Microsoft.Boogie.IToken,Microsoft.Boogie.Expr,System.String): Detected a call to Result with 'Microsoft.Boogie.AssertCmd', should be 'Microsoft.Boogie.PredicateCmd'.
+    D:\Temp\aste\Boogie\Source\Dafny\Translator.cs(3134,7): error CC1002: In method Microsoft.Dafny.Translator.AssertNS(Microsoft.Boogie.IToken,Microsoft.Boogie.Expr,System.String): Detected a call to Result with 'Microsoft.Boogie.AssertCmd', should be 'Microsoft.Boogie.PredicateCmd'.
+    D:\Temp\aste\Boogie\Source\Dafny\Translator.cs(3153,7): error CC1002: In method Microsoft.Dafny.Translator.Assert(Microsoft.Boogie.IToken,Microsoft.Boogie.Expr,System.String,Microsoft.Boogie.QKeyValue): Detected a call to Result with 'Microsoft.Boogie.AssertCmd', should be 'Microsoft.Boogie.PredicateCmd'.
+    C:\Program Files (x86)\Microsoft\Contracts\MsBuild\v4.0\Microsoft.CodeContracts.targets(240,5): error MSB3073: The command ""C:\Program Files (x86)\Microsoft\Contracts\Bin\ccrewrite" "@DafnyPipelineccrewrite.rsp"" exited with code 3.
+    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Dafny\bin\Checked\DafnyPipeline.dll' could not be found
+    1 error
+    2 failed
