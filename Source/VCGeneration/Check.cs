@@ -255,7 +255,7 @@ namespace Microsoft.Boogie {
 
       Contract.Assert(busy);
       hasOutput = true;
-      proverRunTime = DateTime.Now - proverStart;
+      proverRunTime = DateTime.UtcNow - proverStart;
 
       ProverDone.Set();
     }
@@ -272,7 +272,7 @@ namespace Microsoft.Boogie {
       outputExn = null;
       this.handler = handler;
 
-      proverStart = DateTime.Now;
+      proverStart = DateTime.UtcNow;
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 

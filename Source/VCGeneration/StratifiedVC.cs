@@ -350,7 +350,7 @@ namespace VC
 
             public void compute(HashSet<int> goodCandidates, int bound)
             {
-                var start = DateTime.Now;
+                var start = DateTime.UtcNow;
                 goodCandidates = calls.currCandidates;
 
                 var found = 0;
@@ -427,7 +427,7 @@ namespace VC
                 }
                 checker2.Pop();
 
-                var end = DateTime.Now;
+                var end = DateTime.UtcNow;
                 Console.WriteLine("Summary computation took {0} sec and inferred {1} of {2} contracts", 
                     (end - start).TotalSeconds, found, calls.allSummaryConst.Count);
 
@@ -1334,7 +1334,7 @@ namespace VC
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
             // Record current time
-            var startTime = DateTime.Now;
+            var startTime = DateTime.UtcNow;
 
             // No Max: avoids theorem prover restarts
             CommandLineOptions.Clo.MaxProverMemory = 0;
@@ -1602,7 +1602,7 @@ namespace VC
             }
 
             // Record current time
-            var startTime = DateTime.Now;
+            var startTime = DateTime.UtcNow;
 
             // Run live variable analysis
             if (CommandLineOptions.Clo.LiveVariableAnalysis == 2)
@@ -1731,7 +1731,7 @@ namespace VC
                 // Check timeout
                 if (CommandLineOptions.Clo.ProverKillTime != -1)
                 {
-                    if ((DateTime.Now - startTime).TotalSeconds > CommandLineOptions.Clo.ProverKillTime)
+                    if ((DateTime.UtcNow - startTime).TotalSeconds > CommandLineOptions.Clo.ProverKillTime)
                     {
                         ret = Outcome.TimedOut;
                         break;

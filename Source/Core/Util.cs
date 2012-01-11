@@ -518,12 +518,12 @@ namespace Microsoft.Boogie {
       return e.ToString();
     }
 
-    private static readonly DateTime StartUp = DateTime.Now;
+    private static readonly DateTime StartUp = DateTime.UtcNow;
 
     public static void ExtraTraceInformation(string point) {
       Contract.Requires(point != null);
       if (CommandLineOptions.Clo.TraceTimes) {
-        DateTime now = DateTime.Now;
+        DateTime now = DateTime.UtcNow;
         TimeSpan timeSinceStartUp = now - StartUp;
         Console.WriteLine(">>> {0}   [{1} s]", point, timeSinceStartUp.TotalSeconds);
       }

@@ -296,7 +296,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
       //Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
-      DateTime start = DateTime.Now;
+      DateTime start = DateTime.UtcNow;
       if (CommandLineOptions.Clo.Trace)
         Console.Write("Linearising ... ");
 
@@ -349,7 +349,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
       Contract.Assert(res!=null);
 
       if (CommandLineOptions.Clo.Trace) {
-        TimeSpan elapsed = DateTime.Now - start;
+        TimeSpan elapsed = DateTime.UtcNow - start;
         Console.WriteLine("finished   [{0} s]", elapsed.TotalSeconds);
       }
       return res;

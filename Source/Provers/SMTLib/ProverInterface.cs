@@ -583,7 +583,7 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
-      DateTime start = DateTime.Now;
+      DateTime start = DateTime.UtcNow;
       //if (CommandLineOptions.Clo.Trace)
       //  Console.Write("Linearising ... ");
 
@@ -621,7 +621,7 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Assert(res != null);
 
       if (CommandLineOptions.Clo.Trace) {
-        DateTime end = DateTime.Now;
+        DateTime end = DateTime.UtcNow;
         TimeSpan elapsed = end - start;
         if (elapsed.TotalSeconds > 0.5)
           Console.WriteLine("Linearising   [{0} s]", elapsed.TotalSeconds);

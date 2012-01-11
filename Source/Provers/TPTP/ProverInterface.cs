@@ -201,7 +201,7 @@ USE_PREDICATES=<bool>     Try to use SMT predicates for functions returning bool
       Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
-      DateTime start = DateTime.Now;
+      DateTime start = DateTime.UtcNow;
       if (CommandLineOptions.Clo.Trace)
         Console.Write("Linearising ... ");
 
@@ -238,7 +238,7 @@ USE_PREDICATES=<bool>     Try to use SMT predicates for functions returning bool
       Contract.Assert(res != null);
 
       if (CommandLineOptions.Clo.Trace) {
-        DateTime end = DateTime.Now;
+        DateTime end = DateTime.UtcNow;
         TimeSpan elapsed = end - start;
         Console.WriteLine("finished   [{0} s]", elapsed.TotalSeconds);
       }

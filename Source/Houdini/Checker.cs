@@ -52,11 +52,11 @@ namespace Microsoft.Boogie.Houdini {
       collector.examples.Clear();
       VCExpr vc = checker.VCExprGen.Implies(axiom, conjecture);
 
-      DateTime now = DateTime.Now;
+      DateTime now = DateTime.UtcNow;
       checker.BeginCheck(descriptiveName, vc, handler);
       WaitHandle.WaitAny(new WaitHandle[] { checker.ProverDone });
       ProverInterface.Outcome proverOutcome = checker.ReadOutcome();
-      proverTime += (DateTime.Now - now).TotalSeconds;
+      proverTime += (DateTime.UtcNow - now).TotalSeconds;
       numProverQueries++;
 
       if (proverOutcome == ProverInterface.Outcome.Invalid) {

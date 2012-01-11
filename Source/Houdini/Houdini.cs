@@ -103,14 +103,14 @@ namespace Microsoft.Boogie.Houdini {
       times = new IterationTimer<string>();
     }
     public override void UpdateIteration() {
-      startT = DateTime.Now;
+      startT = DateTime.UtcNow;
     }
     public override void UpdateImplementation(Implementation implementation) {
       curImp = implementation;
     }
     public override void UpdateOutcome(ProverInterface.Outcome o) {
       Contract.Assert(curImp != null);
-      DateTime endT = DateTime.Now;
+      DateTime endT = DateTime.UtcNow;
       times.AddTime(curImp.Name, (endT - startT).TotalMilliseconds); // assuming names are unique
     }
     public void PrintTimes() {
@@ -1031,7 +1031,7 @@ namespace Microsoft.Boogie.Houdini {
     private void DebugRefutedCandidates(Implementation curFunc, List<Counterexample> errors) {
       XmlSink xmlRefuted = CommandLineOptions.Clo.XmlRefuted;
       if (xmlRefuted != null && errors != null) {
-        DateTime start = DateTime.Now;
+        DateTime start = DateTime.UtcNow;
         xmlRefuted.WriteStartMethod(curFunc.ToString(), start);
 
         foreach (Counterexample error in errors) {
@@ -1043,7 +1043,7 @@ namespace Microsoft.Boogie.Houdini {
           if (ae != null) PrintRefutedAssert(ae, xmlRefuted);
         }
 
-        DateTime end = DateTime.Now;
+        DateTime end = DateTime.UtcNow;
         xmlRefuted.WriteEndMethod("errors", end, end.Subtract(start));
       }
     }

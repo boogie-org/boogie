@@ -580,7 +580,7 @@ namespace VC {
             return false;
         }
 
-        DateTime start = DateTime.Now;
+        DateTime start = DateTime.UtcNow;
         if (CommandLineOptions.Clo.Trace) {
           System.Console.Write("    soundness smoke test #{0} ... ", id);
         }
@@ -620,7 +620,7 @@ namespace VC {
         ProverInterface.Outcome outcome = ch.ReadOutcome();
         parent.CurrentLocalVariables = null;
 
-        DateTime end = DateTime.Now;
+        DateTime end = DateTime.UtcNow;
         TimeSpan elapsed = end - start;
         if (CommandLineOptions.Clo.Trace) {
           System.Console.WriteLine("  [{0} s] {1}", elapsed.TotalSeconds,

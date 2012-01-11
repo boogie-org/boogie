@@ -874,7 +874,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
         if (CommandLineOptions.Clo.Trace) {
           Console.WriteLine();
           Console.WriteLine("Running abstract interpretation...");
-          start = DateTime.Now;
+          start = DateTime.UtcNow;
         }
 
         WidenPoints.Compute(program);
@@ -897,7 +897,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
         program.InstrumentWithInvariants();
 
         if (CommandLineOptions.Clo.Trace) {
-          DateTime end = DateTime.Now;
+          DateTime end = DateTime.UtcNow;
           TimeSpan elapsed = end - start;
           Console.WriteLine("  [{0} s]", elapsed.TotalSeconds);
           Console.Out.Flush();

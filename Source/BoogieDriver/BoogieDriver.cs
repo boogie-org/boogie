@@ -536,7 +536,7 @@ namespace Microsoft.Boogie {
 
           DateTime start = new DateTime();  // to please compiler's definite assignment rules
           if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.XmlSink != null) {
-            start = DateTime.Now;
+            start = DateTime.UtcNow;
             if (CommandLineOptions.Clo.Trace) {
               Console.WriteLine();
               Console.WriteLine("Verifying {0} ...", impl.Name);
@@ -584,7 +584,7 @@ namespace Microsoft.Boogie {
 
           string timeIndication = "";
 
-          DateTime end = DateTime.Now;
+          DateTime end = DateTime.UtcNow;
           TimeSpan elapsed = end - start;
           if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.XmlSink != null) {
             if (CommandLineOptions.Clo.Trace) {
