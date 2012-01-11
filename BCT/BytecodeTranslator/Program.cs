@@ -197,10 +197,11 @@ namespace BytecodeTranslator {
         var fileName = assemblyNames[0];
         fileName = Path.GetFileNameWithoutExtension(fileName);
         string outputFileName = fileName + ".bpl";
-        Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(outputFileName);
-        Prelude.Emit(writer);
-        pgm.Emit(writer);
-        writer.Close();
+        using (var writer = new Microsoft.Boogie.TokenTextWriter(outputFileName)) {
+          Prelude.Emit(writer);
+          pgm.Emit(writer);
+          writer.Close();
+        }
         return 0; // success
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed: {0}", e.Message);

@@ -442,11 +442,97 @@ var {:thread_local} $Exception: Ref;
 
 
 
-function {:constructor} T$RegressionTestInput.RealNumbers() : Type;
+function {:constructor} T$RegressionTestInput.StructContainingStruct() : Type;
+
+function {:constructor} {:extern} T$System.ValueType() : Type;
 
 function {:constructor} {:extern} T$System.Object() : Type;
 
 axiom (forall $T: Type :: { $Subtype(T$System.Object(), $T) } $Subtype(T$System.Object(), $T) <==> T$System.Object() == $T);
+
+axiom (forall $T: Type :: { $Subtype(T$System.ValueType(), $T) } $Subtype(T$System.ValueType(), $T) <==> T$System.ValueType() == $T || $Subtype(T$System.Object(), $T));
+
+axiom (forall $T: Type :: { $Subtype(T$RegressionTestInput.StructContainingStruct(), $T) } $Subtype(T$RegressionTestInput.StructContainingStruct(), $T) <==> T$RegressionTestInput.StructContainingStruct() == $T || $Subtype(T$System.ValueType(), $T));
+
+procedure RegressionTestInput.StructContainingStruct.#default_ctor($this: Ref);
+
+
+
+const unique F$RegressionTestInput.StructContainingStruct.d: Field;
+
+procedure RegressionTestInput.S.#default_ctor($this: Ref);
+
+
+
+function {:constructor} T$RegressionTestInput.S() : Type;
+
+axiom (forall $T: Type :: { $Subtype(T$RegressionTestInput.S(), $T) } $Subtype(T$RegressionTestInput.S(), $T) <==> T$RegressionTestInput.S() == $T || $Subtype(T$System.ValueType(), $T));
+
+const unique F$RegressionTestInput.StructContainingStruct.s: Field;
+
+implementation {:inline 1} RegressionTestInput.StructContainingStruct.#default_ctor($this: Ref)
+{
+  var $tmp0: Ref;
+
+    $Heap := Write($Heap, $this, F$RegressionTestInput.StructContainingStruct.d, Real2Box($DefaultReal));
+    call $tmp0 := Alloc();
+    call RegressionTestInput.S.#default_ctor($tmp0);
+    assume $DynamicType($tmp0) == T$RegressionTestInput.S();
+    $Heap := Write($Heap, $this, F$RegressionTestInput.StructContainingStruct.s, Ref2Box($tmp0));
+}
+
+
+
+procedure RegressionTestInput.StructContainingStruct.#copy_ctor(this: Ref) returns (other: Ref);
+  free ensures this != other;
+
+
+
+procedure RegressionTestInput.S.#copy_ctor(this: Ref) returns (other: Ref);
+  free ensures this != other;
+
+
+
+implementation {:inline 1} RegressionTestInput.StructContainingStruct.#copy_ctor(this: Ref) returns (other: Ref)
+{
+  var $tmp1: Ref;
+
+    call other := Alloc();
+    assume $DynamicType(other) == T$RegressionTestInput.StructContainingStruct();
+    $Heap := Write($Heap, other, F$RegressionTestInput.StructContainingStruct.d, Real2Box(Box2Real(Read($Heap, this, F$RegressionTestInput.StructContainingStruct.d))));
+    call $tmp1 := RegressionTestInput.S.#copy_ctor(Box2Ref(Read($Heap, this, F$RegressionTestInput.StructContainingStruct.s)));
+    $Heap := Write($Heap, other, F$RegressionTestInput.StructContainingStruct.s, Ref2Box($tmp1));
+}
+
+
+
+procedure RegressionTestInput.StructContainingStruct.ReturnCopy$RegressionTestInput.StructContainingStruct($this: Ref, s$in: Ref) returns ($result: Ref);
+
+
+
+implementation RegressionTestInput.StructContainingStruct.ReturnCopy$RegressionTestInput.StructContainingStruct($this: Ref, s$in: Ref) returns ($result: Ref)
+{
+  var s: Ref;
+  var t_Ref: Ref;
+  var $tmp0: Ref;
+  var $localExc: Ref;
+  var $label: int;
+
+    s := s$in;
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 206} true;
+    call $tmp0 := Alloc();
+    call RegressionTestInput.StructContainingStruct.#default_ctor($tmp0);
+    assume $DynamicType($tmp0) == T$RegressionTestInput.StructContainingStruct();
+    t_Ref := $tmp0;
+    call t_Ref := RegressionTestInput.StructContainingStruct.#copy_ctor(s);
+    assert {:sourceFile "C:\dev\BoogieCodePlex\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 208} true;
+    $result := t_Ref;
+    return;
+}
+
+
+
+function {:constructor} T$RegressionTestInput.RealNumbers() : Type;
 
 axiom (forall $T: Type :: { $Subtype(T$RegressionTestInput.RealNumbers(), $T) } $Subtype(T$RegressionTestInput.RealNumbers(), $T) <==> T$RegressionTestInput.RealNumbers() == $T || $Subtype(T$System.Object(), $T));
 
@@ -653,18 +739,6 @@ axiom (forall $T: Type :: { $Subtype(T$RegressionTestInput.CreateStruct(), $T) }
 procedure RegressionTestInput.CreateStruct.Create($this: Ref) returns ($result: Ref);
 
 
-
-procedure RegressionTestInput.S.#default_ctor($this: Ref);
-
-
-
-function {:constructor} T$RegressionTestInput.S() : Type;
-
-function {:constructor} {:extern} T$System.ValueType() : Type;
-
-axiom (forall $T: Type :: { $Subtype(T$System.ValueType(), $T) } $Subtype(T$System.ValueType(), $T) <==> T$System.ValueType() == $T || $Subtype(T$System.Object(), $T));
-
-axiom (forall $T: Type :: { $Subtype(T$RegressionTestInput.S(), $T) } $Subtype(T$RegressionTestInput.S(), $T) <==> T$RegressionTestInput.S() == $T || $Subtype(T$System.ValueType(), $T));
 
 const unique F$RegressionTestInput.S.x: Field;
 
@@ -1314,11 +1388,6 @@ implementation {:inline 1} RegressionTestInput.S.#default_ctor($this: Ref)
     $Heap := Write($Heap, $this, F$RegressionTestInput.S.x, Int2Box(0));
     $Heap := Write($Heap, $this, F$RegressionTestInput.S.b, Bool2Box(false));
 }
-
-
-
-procedure RegressionTestInput.S.#copy_ctor(this: Ref) returns (other: Ref);
-  free ensures this != other;
 
 
 

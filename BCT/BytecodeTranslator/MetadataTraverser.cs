@@ -275,6 +275,8 @@ namespace BytecodeTranslator {
         new Bpl.AssumeCmd(tok, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, this.sink.Heap.DynamicType(o), this.sink.FindOrCreateTypeReference(typeDefinition, true)))
         );
 
+      var localVars = new Bpl.VariableSeq();
+
       foreach (var f in typeDefinition.Fields) {
         if (f.IsStatic) continue;
 
@@ -285,8 +287,13 @@ namespace BytecodeTranslator {
           // generate a call to the copy constructor to copy the contents of f
           var proc2 = this.sink.FindOrCreateProcedureForStructCopy(f.Type);
           var e = this.sink.Heap.ReadHeap(Bpl.Expr.Ident(proc.InParams[0]), fExp, AccessType.Struct, boogieType);
-          var cmd = new Bpl.CallCmd(tok, proc2.Name, new List<Bpl.Expr> { e, }, new List<Bpl.IdentifierExpr>{ o, });
+          var bplLocal = this.sink.CreateFreshLocal(f.Type);
+          var localExpr = Bpl.Expr.Ident(bplLocal);
+          localVars.Add(bplLocal);
+          var cmd = new Bpl.CallCmd(tok, proc2.Name, new List<Bpl.Expr> { e, }, new List<Bpl.IdentifierExpr>{ localExpr, });
           stmtBuilder.Add(cmd);
+          var c = this.sink.Heap.WriteHeap(tok, o, fExp, localExpr, AccessType.Struct, boogieType);
+          stmtBuilder.Add(c);
         } else {
           // just generate a normal assignment to the field f
           var e = this.sink.Heap.ReadHeap(Bpl.Expr.Ident(proc.InParams[0]), fExp, AccessType.Struct, boogieType);
@@ -305,7 +312,7 @@ namespace BytecodeTranslator {
         new Bpl.TypeVariableSeq(),
         proc.InParams,
         proc.OutParams,
-        new Bpl.VariableSeq(),
+        localVars,
         stmtBuilder.Collect(Bpl.Token.NoToken),
         attrib,
         new Bpl.Errors()
