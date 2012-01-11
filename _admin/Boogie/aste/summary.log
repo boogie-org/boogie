@@ -1,15 +1,15 @@
-# Aste started: 2012-01-10 07:00:11
+# Aste started: 2012-01-11 07:00:08
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2012-01-10 07:03:15] SpecSharp revision: 0c4056f6d0bd
-# [2012-01-10 07:03:15] SscBoogie revision: 0c4056f6d0bd
-# [2012-01-10 07:05:11] Boogie revision: c6698bea5cb9
-[2012-01-10 07:06:40] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
+# [2012-01-11 07:03:04] SpecSharp revision: 0c4056f6d0bd
+# [2012-01-11 07:03:04] SscBoogie revision: 0c4056f6d0bd
+# [2012-01-11 07:04:56] Boogie revision: 65280a4c5ba4
+[2012-01-11 07:06:21] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
 
     1>corflags : warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
     warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-[2012-01-10 07:08:16] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+[2012-01-11 07:07:58] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -43,12 +43,5 @@
     warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Houdini.InlineRequiresVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)' overrides 'Microsoft.Boogie.StandardVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Houdini.FreeRequiresVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)' overrides 'Microsoft.Boogie.StandardVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)', thus cannot add Requires.
-[2012-01-10 07:08:27] [Error] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Dafny.sln /Rebuild Checked
-
-    D:\Temp\aste\Boogie\Source\Dafny\Translator.cs(3117,7): error CC1002: In method Microsoft.Dafny.Translator.Assert(Microsoft.Boogie.IToken,Microsoft.Boogie.Expr,System.String): Detected a call to Result with 'Microsoft.Boogie.AssertCmd', should be 'Microsoft.Boogie.PredicateCmd'.
-    D:\Temp\aste\Boogie\Source\Dafny\Translator.cs(3134,7): error CC1002: In method Microsoft.Dafny.Translator.AssertNS(Microsoft.Boogie.IToken,Microsoft.Boogie.Expr,System.String): Detected a call to Result with 'Microsoft.Boogie.AssertCmd', should be 'Microsoft.Boogie.PredicateCmd'.
-    D:\Temp\aste\Boogie\Source\Dafny\Translator.cs(3153,7): error CC1002: In method Microsoft.Dafny.Translator.Assert(Microsoft.Boogie.IToken,Microsoft.Boogie.Expr,System.String,Microsoft.Boogie.QKeyValue): Detected a call to Result with 'Microsoft.Boogie.AssertCmd', should be 'Microsoft.Boogie.PredicateCmd'.
-    C:\Program Files (x86)\Microsoft\Contracts\MsBuild\v4.0\Microsoft.CodeContracts.targets(240,5): error MSB3073: The command ""C:\Program Files (x86)\Microsoft\Contracts\Bin\ccrewrite" "@DafnyPipelineccrewrite.rsp"" exited with code 3.
-    error CS0006: Metadata file 'D:\Temp\aste\Boogie\Source\Dafny\bin\Checked\DafnyPipeline.dll' could not be found
-    1 error
-    2 failed
+[2012-01-11 08:06:32] 0 out of 33 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2012-01-11 08:07:15] Released nightly of Boogie
