@@ -90,6 +90,9 @@ namespace BytecodeTranslator {
 
     public override void TraverseChildren(IModule module) {
       this.PdbReaders.TryGetValue(module, out this.PdbReader);
+      if (!(module.EntryPoint is Dummy))
+        this.entryPoint = module.EntryPoint;
+
       base.TraverseChildren(module);
     }
 
@@ -323,6 +326,7 @@ namespace BytecodeTranslator {
     }
 
     private bool sawCctor = false;
+    private IMethodReference/*?*/ entryPoint = null;
 
     private void CreateStaticConstructor(ITypeDefinition typeDefinition) {
       var typename = TypeHelper.GetTypeName(typeDefinition, Microsoft.Cci.NameFormattingOptions.DocumentationId);
@@ -411,6 +415,10 @@ namespace BytecodeTranslator {
       var decl = procInfo.Decl;
       var proc = decl as Bpl.Procedure;
       var formalMap = procInfo.FormalMap;
+
+      if (this.entryPoint != null && method.InternedKey == this.entryPoint.InternedKey) {
+        decl.AddAttribute("entrypoint");
+      }
 
       // FEEDBACK inline handler methods to avoid more false alarms
       if (PhoneCodeHelper.instance().PhoneFeedbackToggled && PhoneCodeHelper.instance().isMethodInputHandlerOrFeedbackOverride(method) &&
