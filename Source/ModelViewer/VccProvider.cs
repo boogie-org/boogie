@@ -936,6 +936,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       List<ElementNode> result = new List<ElementNode>();
       Model.FuncTuple tpl;
 
+      if (elt == null) return result;
+
       var kind = GetKind(tp, out tpl);
       if (kind == DataKind.PhysPtr || kind == DataKind.SpecPtr || kind == DataKind.Object) {
         var heap = state.State.TryGet("$s");
@@ -943,7 +945,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           heap = f_heap.TryEval(heap);
         var addresses = new HashSet<Model.Element>();
 
-        if (heap != null && elt != null) {
+        if (heap != null) {
           var basePtr = f_base.TryEval(elt);
           foreach (var fld in f_select_field.AppsWithArg(0, heap)) {
             var val = f_select_value.TryEval(fld.Result, elt);
@@ -963,7 +965,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           //result.Sort(CompareFields);
         }
 
-        if (elt != null) {
+        {
           var eltBase = f_base.TryEval(elt);
           var eltField = f_field.TryEval(elt);
           if (eltBase != null && eltField != null) {
@@ -994,18 +996,16 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           }
         }
 
-        if (elt != null) {
-          foreach (var ptr in f_dot.AppsWithArg(0, elt)) {
-            if (addresses.Contains(ptr.Result)) continue;
-            var fld = ptr.Args[1];
-            var idx = f_field_arr_index.TryEval(fld);
-            if (idx != null) {
-              var xtp = f_field_type.TryEval(fld);
-              result.Add(new MapletNode(state, new EdgeName(this, "&[%0] of %1", idx, f_field_arr_size.TryEval(fld)), ptr.Result, GuessPtrTo(xtp)) { Category = NodeCategory.Maplet });
-            }
-            if (!IsConstantField(ptr.Args[1])) continue;
-            BuildFieldNode(result, state, ptr.Result, ptr.Args[1], null, ptr.Result);
+        foreach (var ptr in f_dot.AppsWithArg(0, elt)) {
+          if (addresses.Contains(ptr.Result)) continue;
+          var fld = ptr.Args[1];
+          var idx = f_field_arr_index.TryEval(fld);
+          if (idx != null) {
+            var xtp = f_field_type.TryEval(fld);
+            result.Add(new MapletNode(state, new EdgeName(this, "&[%0] of %1", idx, f_field_arr_size.TryEval(fld)), ptr.Result, GuessPtrTo(xtp)) { Category = NodeCategory.Maplet });
           }
+          if (!IsConstantField(ptr.Args[1])) continue;
+          BuildFieldNode(result, state, ptr.Result, ptr.Args[1], null, ptr.Result);
         }
 
         AddSpecialField(state, elt, result, "\\closed", f_closed);
@@ -1015,7 +1015,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         AddPointerFunction(state, elt, result, "\\embedding", f_prim_emb, tp_object);
         AddPointerFunction(state, elt, result, "\\addr", f_addr, tp_mathint);
 
-        if (viewOpts.ViewLevel >= 1 && elt != null) {
+        if (viewOpts.ViewLevel >= 1) {
           AddPtrType(state, elt, result);
           AddCasts(state, elt, result);
           var sets = new SetsNode(state, elt);
@@ -1026,7 +1026,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       } else if (kind == DataKind.Map) {
         var elTp = tpl.Args[1];
         foreach (var sel in model.Functions)
-          if (elt != null && sel.Arity == 2 && sel.Name.StartsWith("$select.$map_t")) {
+          if (sel.Arity == 2 && sel.Name.StartsWith("$select.$map_t")) {
             foreach (var app in sel.AppsWithArg(0, elt)) {
               var val = WrapForUse(app.Result, elTp);
               var edgname = new EdgeName(this, "[%0]", app.Args[1]);
@@ -1060,7 +1060,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         }
       }
 
-      if (elt != null && !(elt is Model.Boolean)) {
+      if (!(elt is Model.Boolean)) {
         var curState = state.State.TryGet("$s");
 
         foreach (var tupl in elt.References) {
