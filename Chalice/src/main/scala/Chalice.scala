@@ -17,6 +17,8 @@ object Chalice {
    * Reporting options
    */
   private[chalice] var vsMode = false;
+  private[chalice] var rise4funMode = false;
+  private[chalice] var InputFilename = "";  // the name of the last input file mentioned on the command line, or "" if none
 
   /**
    * Translation options
@@ -69,6 +71,9 @@ object Chalice {
      "vs" -> (
        {() => vsMode = true},
        "Microsoft Visual Studio mode (special error reporting for Visual Studio; requires an existing, writable directory at C:\\tmp)"),
+     "rise4fun" -> (
+       {() => rise4funMode = true},
+       "rise4fun mode (generates error messages in a format expected by the rise4fun harness"),
      "checkLeaks" -> (
        {() => checkLeaks = true},
        "(no description available)"),
@@ -183,6 +188,7 @@ object Chalice {
        CommandLineError("input file " + file.getName() + " could not be found", help);
        return
      }
+     InputFilename = input
      file;
     }
 
