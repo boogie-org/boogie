@@ -453,6 +453,9 @@ namespace BytecodeTranslator
       throw new TranslationException("For statements are not handled");
     }
 
+    public override void TraverseChildren(IDoUntilStatement doUntilStatement) {
+      throw new TranslationException("DoUntil statements are not handled");
+    }
     #endregion
 
     public void GenerateDispatchContinuation(ITryCatchFinallyStatement tryCatchFinallyStatement) {
