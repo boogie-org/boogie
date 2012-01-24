@@ -89,18 +89,22 @@ namespace BytecodeTranslator {
 
     public override Bpl.Variable CreateEventVariable(IEventDefinition e) {
       Bpl.Variable v;
-      string eventName = TypeHelper.GetTypeName(e.ContainingType) + "." + e.Name.Value;
-      eventName = TranslationHelper.TurnStringIntoValidIdentifier(eventName);
+      string fieldName = MemberHelper.GetMemberSignature(e, NameFormattingOptions.DocumentationId);
+
+      // HACK
+      fieldName = fieldName.Replace("E:", "F:");
+
+      fieldName = TranslationHelper.TurnStringIntoValidIdentifier(fieldName);
       Bpl.IToken tok = e.Token();
       Bpl.Type t = this.sink.CciTypeToBoogie(e.Type.ResolvedType);
 
       if (e.Adder.ResolvedMethod.IsStatic) {
-        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, eventName, t);
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldName, t);
         v = new Bpl.GlobalVariable(tok, tident);
       }
       else {
         Bpl.Type mt = new Bpl.MapType(tok, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(this.RefType), t);
-        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, eventName, mt);
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldName, mt);
         v = new Bpl.GlobalVariable(tok, tident);
       }
       return v;
