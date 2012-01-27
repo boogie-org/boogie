@@ -565,10 +565,10 @@ namespace BytecodeTranslator {
         Bpl.Expr rexpr = Bpl.Expr.Ident(rvar);
         if (rtype == ltype) {
           // do nothing
-        } else if (ltype == sink.Heap.BoxType) {
+        } else if (ltype == sink.Heap.UnionType) {
           rexpr = sink.Heap.Box(Bpl.Token.NoToken, rtype, rexpr);
         }
-        else if (rtype == sink.Heap.BoxType) {
+        else if (rtype == sink.Heap.UnionType) {
           rexpr = sink.Heap.Unbox(Bpl.Token.NoToken, ltype, rexpr);
         }
         else {
