@@ -1038,7 +1038,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           var edgname = new EdgeName(this, "[%0]", sel.Args[1]);
           result.Add(new MapletNode(state, edgname, sel.Result, tp_bool) { Category = NodeCategory.Maplet });
         }
-      } else if (kind == DataKind.Flat && elt != null) {
+      } else if (kind == DataKind.Flat) {
         foreach (var tupl in elt.References) {
           if (tupl.Args.Length == 1 && tupl.Args[0] == elt) {
             var fname = tupl.Func.Name;
@@ -1071,7 +1071,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             var args = tupl.Args;
             for (int i = 0; i < args.Length; ++i) {
               if (args[i] == elt) seenSelf = true;
-              else if (IsThisState(curState, args[i])) seenThisState = true;
+              if (IsThisState(curState, args[i])) seenThisState = true;
               else if (IsSomeState(args[i])) seenState = true;
             }
             if (!seenSelf) continue; // not looking for aliases (maybe we should?)
