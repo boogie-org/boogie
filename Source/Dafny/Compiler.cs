@@ -290,8 +290,10 @@ namespace Microsoft.Dafny {
       //   ...
       // }
       string DtT = dt.Name;
+      string DtT_TypeArgs = "";
       if (dt.TypeArgs.Count != 0) {
-        DtT += "<" + TypeParameters(dt.TypeArgs) + ">";
+        DtT_TypeArgs = "<" + TypeParameters(dt.TypeArgs) + ">";
+        DtT += DtT_TypeArgs;
       }
 
       Indent(indent);
@@ -342,7 +344,7 @@ namespace Microsoft.Dafny {
       foreach (var ctor in dt.Ctors) {
         //   public bool _Ctor0 { get { return _D is Dt_Ctor0; } }
         Indent(ind);
-        wr.WriteLine("public bool _{0} {{ get {{ return _D is {1}_{0}; }} }}", ctor.Name, DtT);
+        wr.WriteLine("public bool _{0} {{ get {{ return _D is {1}_{0}{2}; }} }}", ctor.Name, dt.Name, DtT_TypeArgs);
       }
 
       // destructors
@@ -351,7 +353,7 @@ namespace Microsoft.Dafny {
           if (arg.HasName) {
             //   public T0 @Dtor0 { get { return ((DT_Ctor)_D).@Dtor0; } }
             Indent(ind);
-            wr.WriteLine("public {0} dtor_{1} {{ get {{ return (({2}_{3})_D).@{1}; }} }}", TypeName(arg.Type), arg.Name, DtT, ctor.Name);
+            wr.WriteLine("public {0} dtor_{1} {{ get {{ return (({2}_{3}{4})_D).@{1}; }} }}", TypeName(arg.Type), arg.Name, dt.Name, ctor.Name, DtT_TypeArgs);
           }
         }
       }
@@ -543,16 +545,17 @@ namespace Microsoft.Dafny {
       Contract.Requires(0 <= indent);
       if (expr == null) {
         // allow "null" as an argument; nothing to do
-      } else if (expr is LetExpr) {
+        return;
+      }
+      if (expr is LetExpr) {
         var e = (LetExpr)expr;
         foreach (var v in e.Vars) {
           Indent(indent);
           wr.WriteLine("{0} @{1};", TypeName(v.Type), v.Name);
         }
-      } else {
-        foreach (var ee in expr.SubExpressions) {
-          SpillLetVariableDecls(ee, indent);
-        }
+      }
+      foreach (var ee in expr.SubExpressions) {
+        SpillLetVariableDecls(ee, indent);
       }
     }
 
@@ -906,6 +909,10 @@ namespace Microsoft.Dafny {
         var s = (ParallelStmt)stmt;
         if (s.Kind != ParallelStmt.ParBodyKind.Assign) {
           // Call and Proof have no side effects, so they can simply be optimized away.
+          return;
+        } else if (s.BoundVars.Count == 0) {
+          // the bound variables just spell out a single point, so the parallel statement is equivalent to one execution of the body
+          TrStmt(s.Body, indent);
           return;
         }
         var s0 = (AssignStmt)s.S0;

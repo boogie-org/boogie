@@ -124,7 +124,13 @@ namespace BytecodeTranslator {
         Contract.Assert(!methodCall.IsStaticCall);
         Contract.Assert(!resolvedMethod.IsConstructor);
         var overrides = FindOverrides(containingType, resolvedMethod);
-        if (0 == overrides.Count) {
+        bool same = true;
+        foreach (var o in overrides) {
+          IMethodDefinition resolvedOverride = Sink.Unspecialize(o.Item2).ResolvedMethod;
+          if (resolvedOverride != resolvedMethod)
+            same = false;
+        }
+        if (0 == overrides.Count || same) {
           base.TraverseChildren(methodCall);
           return;
         }

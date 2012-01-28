@@ -53,7 +53,7 @@ method ParallelStatement_Resolve(
   }
 }
 
-method Lemma(c: C, x: int, y: int)
+ghost method Lemma(c: C, x: int, y: int)
   requires c != null;
   ensures c.data <= x+y;
 ghost method PowerLemma(x: int, y: int)
@@ -197,4 +197,112 @@ method OmittedRange() {
   parallel (x) {
     DontDoMuch(x);
   }
+}
+
+// ----------------------- two-state postconditions ---------------------------------
+
+class TwoState_C { ghost var data: int; }
+
+ghost static method TwoState0(y: int)
+  ensures exists o: TwoState_C :: o != null && fresh(o);
+{
+  var p := new TwoState_C;
+}
+
+method TwoState_Main0() {
+  parallel (x) { TwoState0(x); }
+  assert false;  // error: this location is indeed reachable (if the translation before it is sound)
+}
+
+ghost static method TwoState1(y: int)
+  ensures exists c: TwoState_C :: c != null && c.data != old(c.data);
+{
+  var c := new TwoState_C;
+  c.data := c.data + 1;
+}
+
+method TwoState_Main1() {
+  parallel (x) { TwoState1(x); }
+  assert false;  // error: this location is indeed reachable (if the translation before it is sound)
+}
+
+method X_Legit(c: TwoState_C)
+  requires c != null;
+  modifies c;
+{
+  c.data := c.data + 1;
+  parallel (x | c.data <= x)
+    ensures old(c.data) < x;  // note that the 'old' refers to the method's initial state
+  {
+  }
+}
+
+// At first glance, this looks like a version of TwoState_Main0 above, but with an
+// ensures clause.
+// However, there's an important difference in the translation, which is that the
+// occurrence of 'fresh' here refers to the initial state of the TwoStateMain2
+// method, not the beginning of the 'parallel' statement.
+// Still, care needs to be taken in the translation to make sure that the parallel
+// statement's effect on the heap is not optimized away.
+method TwoState_Main2()
+{
+  parallel (x: int)
+    ensures exists o: TwoState_C :: o != null && fresh(o);
+  {
+    TwoState0(x);
+  }
+  assert false;  // error: this location is indeed reachable (if the translation before it is sound)
+}
+
+// At first glance, this looks like an inlined version of TwoState_Main0 above.
+// However, there's an important difference in the translation, which is that the
+// occurrence of 'fresh' here refers to the initial state of the TwoStateMain3
+// method, not the beginning of the 'parallel' statement.
+// Still, care needs to be taken in the translation to make sure that the parallel
+// statement's effect on the heap is not optimized away.
+method TwoState_Main3()
+{
+  parallel (x: int)
+    ensures exists o: TwoState_C :: o != null && fresh(o);
+  {
+    var p := new TwoState_C;
+  }
+  assert false;  // error: this location is indeed reachable (if the translation before it is sound)
+}
+
+// ------- empty parallel statement -----------------------------------------
+
+var emptyPar: int;
+
+method Empty_Parallel0()
+  modifies this;
+  ensures emptyPar == 8;
+{
+  parallel () {
+    this.emptyPar := 8;
+  }
+}
+
+function EmptyPar_P(x: int): bool
+ghost method EmptyPar_Lemma(x: int)
+  ensures EmptyPar_P(x);
+
+method Empty_Parallel1()
+  ensures EmptyPar_P(8);
+{
+  parallel () {
+    EmptyPar_Lemma(8);
+  }
+}
+
+method Empty_Parallel2()
+{
+  parallel ()
+    ensures exists k :: EmptyPar_P(k);
+  {
+    var y := 8;
+    assume EmptyPar_P(y);
+  }
+  assert exists k :: EmptyPar_P(k);  // yes
+  assert EmptyPar_P(8);  // error: the parallel statement's ensures clause does not promise this
 }
