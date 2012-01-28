@@ -446,7 +446,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       kind = null;
       return null;
     }
-    
+
 
     private string LiteralName(Model.Element elt)
     {
@@ -464,6 +464,10 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       var i = elt as Model.Integer;
       if (i != null)
         return AsPow2(i);
+
+      var bv = elt as Model.BitVector;
+      if (bv != null)
+        return bv.Numeral + "bv" + bv.Size.ToString();
 
       return null;
     }
