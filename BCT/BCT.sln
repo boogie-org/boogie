@@ -54,9 +54,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ILGarbageCollect", "..\..\C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ControlAndDataFlowGraph", "..\..\ccicodebox\CodeGenerators\ControlAndDataFlowGraph\ControlAndDataFlowGraph.csproj", "{2596EFB0-87AE-42CE-89EB-84F35D6350D2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NewILToCodeModel", "..\..\ccicodebox\Converters\NewILToCodeModel\NewILToCodeModel.csproj", "{A555D4CB-F16F-4049-A8CF-180B8A05C755}"
+EndProject
 Global
 	GlobalSection(TeamFoundationVersionControl) = preSolution
-		SccNumberOfProjects = 17
+		SccNumberOfProjects = 18
 		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
 		SccTeamFoundationServer = http://vstfcodebox:8080/tfs/psi
 		SccProjectUniqueName0 = ..\\..\\CCICodeBox\\CoreObjectModel\\CodeModel\\CodeModel.csproj
@@ -144,6 +146,11 @@ Global
 		SccAuxPath16 = http://vstfcodebox:8080/tfs/psi
 		SccLocalPath16 = ..\\..\\ccicodebox\\CodeGenerators\\ControlAndDataFlowGraph
 		SccProvider16 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccProjectUniqueName17 = ..\\..\\ccicodebox\\Converters\\NewILToCodeModel\\NewILToCodeModel.csproj
+		SccProjectName17 = $/cci/Converters/NewILToCodeModel
+		SccAuxPath17 = http://vstfcodebox:8080/tfs/psi
+		SccLocalPath17 = ..\\..\\ccicodebox\\Converters\\NewILToCodeModel
+		SccProvider17 = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
 	EndGlobalSection
 	GlobalSection(TestCaseManagementSettings) = postSolution
 		CategoryFile = BCT.vsmdi
@@ -829,6 +836,36 @@ Global
 		{2596EFB0-87AE-42CE-89EB-84F35D6350D2}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{2596EFB0-87AE-42CE-89EB-84F35D6350D2}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{2596EFB0-87AE-42CE-89EB-84F35D6350D2}.Release|x86.ActiveCfg = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.CompilerOnly|Any CPU.ActiveCfg = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.CompilerOnly|Any CPU.Build.0 = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.CompilerOnly|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.CompilerOnly|Mixed Platforms.Build.0 = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.CompilerOnly|x86.ActiveCfg = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.FastpathSim|Any CPU.ActiveCfg = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.FastpathSim|Any CPU.Build.0 = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.FastpathSim|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.FastpathSim|Mixed Platforms.Build.0 = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.FastpathSim|x86.ActiveCfg = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.NightlyDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.NightlyDebug|Any CPU.Build.0 = Debug|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.NightlyDebug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.NightlyDebug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.NightlyDebug|x86.ActiveCfg = Debug|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.NightlyRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.NightlyRelease|Any CPU.Build.0 = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.NightlyRelease|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.NightlyRelease|Mixed Platforms.Build.0 = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.NightlyRelease|x86.ActiveCfg = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{A555D4CB-F16F-4049-A8CF-180B8A05C755}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
