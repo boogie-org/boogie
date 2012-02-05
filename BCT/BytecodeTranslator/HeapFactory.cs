@@ -73,8 +73,6 @@ namespace BytecodeTranslator {
 
     public abstract Bpl.Variable CreateFieldVariable(IFieldReference field);
 
-    public abstract Bpl.Variable BoxField { get; }
-
     #region Boogie Types
 
     [RepresentationFor("Delegate", "type {:datatype} Delegate;")]
@@ -101,7 +99,7 @@ namespace BytecodeTranslator {
     public Bpl.TypeCtorDecl FieldTypeDecl = null;
     public Bpl.CtorType FieldType;
 
-    [RepresentationFor("Union", "type Union;")]
+    [RepresentationFor("Union", "type {:datatype} Union;")]
     public Bpl.TypeCtorDecl UnionTypeDecl = null;
     public Bpl.CtorType UnionType;
 
@@ -126,38 +124,81 @@ namespace BytecodeTranslator {
 
     #endregion
 
+    #region CLR Boxing
+
+    [RepresentationFor("$BoxFromBool", "procedure $BoxFromBool(b: bool) returns (r: Ref) free ensures $BoxedValue(r) == Bool2Union(b); { call r := Alloc(); assume $BoxedValue(r) == Bool2Union(b); }")]
+    public Bpl.Procedure BoxFromBool = null;
+
+    [RepresentationFor("$BoxFromInt", "procedure $BoxFromInt(i: int) returns (r: Ref) free ensures $BoxedValue(r) == Int2Union(i); { call r := Alloc(); assume $BoxedValue(r) == Int2Union(i); }")]
+    public Bpl.Procedure BoxFromInt = null;
+
+    [RepresentationFor("$BoxFromReal", "procedure $BoxFromReal(r: Real) returns (rf: Ref) free ensures $BoxedValue(rf) == Real2Union(r); { call rf := Alloc(); assume $BoxedValue(rf) == Real2Union(r); }")]
+    public Bpl.Procedure BoxFromReal = null;
+
+    [RepresentationFor("$BoxFromStruct", "procedure $BoxFromStruct(s: Ref) returns (r: Ref) free ensures $BoxedValue(r) == Struct2Union(s); { call r := Alloc(); assume $BoxedValue(r) == Struct2Union(s); }")]
+    public Bpl.Procedure BoxFromStruct = null;
+
+    [RepresentationFor("$BoxFromUnion", "procedure {:inline 1} $BoxFromUnion(u: Union) returns (r: Ref) { if (is#Ref2Union(u)) { r := refValue#Ref2Union(u); } else { call r := Alloc(); assume $BoxedValue(r) == u; } }")]
+    public Bpl.Procedure BoxFromUnion = null;
+
+    [RepresentationFor("$BoxedValue", "function $BoxedValue(r: Ref): Union;")]
+    public Bpl.Function BoxedValue = null;
+
+    [RepresentationFor("$Unbox2Bool", "function $Unbox2Bool(r: Ref): (bool) { boolValue#Bool2Union($BoxedValue(r)) }")]
+    public Bpl.Function Unbox2Bool = null;
+
+    [RepresentationFor("$Unbox2Int", "function $Unbox2Int(r: Ref): (int) { intValue#Int2Union($BoxedValue(r)) }")]
+    public Bpl.Function Unbox2Int = null;
+
+    [RepresentationFor("$Unbox2Real", "function $Unbox2Real(r: Ref): (Real) { realValue#Real2Union($BoxedValue(r)) }")]
+    public Bpl.Function Unbox2Real = null;
+
+    [RepresentationFor("$Unbox2Struct", "function $Unbox2Struct(r: Ref): (Ref) { structValue#Struct2Union($BoxedValue(r)) }")]
+    public Bpl.Function Unbox2Struct = null;
+
+    [RepresentationFor("$Unbox2Union", "function $Unbox2Union(r: Ref): (Union) { $BoxedValue(r) }")]
+    public Bpl.Function Unbox2Union = null;
+
+    #endregion
+
     #region Conversions
 
     #region Heap values
 
-    [RepresentationFor("Union2Bool", "function Union2Bool(Union): bool;")]
+    [RepresentationFor("Union2Bool", "function Union2Bool(u: Union): (bool) { boolValue#Bool2Union(u) }")]
     public Bpl.Function Union2Bool = null;
     
-    [RepresentationFor("Union2Int", "function Union2Int(Union): int;")]
+    [RepresentationFor("Union2Int", "function Union2Int(u: Union): (int) { intValue#Int2Union(u) }")]
     public Bpl.Function Union2Int = null;
     
-    [RepresentationFor("Union2Ref", "function Union2Ref(Union): Ref;")]
+    [RepresentationFor("Union2Ref", "function Union2Ref(u: Union): (Ref) { refValue#Ref2Union(u) }")]
     public Bpl.Function Union2Ref = null;
 
-    [RepresentationFor("Union2Real", "function Union2Real(Union): Real;")]
+    [RepresentationFor("Union2Real", "function Union2Real(u: Union): (Real) { realValue#Real2Union(u) }")]
     public Bpl.Function Union2Real = null;
 
-    [RepresentationFor("Bool2Union", "function Bool2Union(bool): Union;")]
+    [RepresentationFor("Union2Struct", "function Union2Struct(u: Union): (Ref) { structValue#Struct2Union(u) }")]
+    public Bpl.Function Union2Struct = null;
+
+    [RepresentationFor("Bool2Union", "function {:constructor} Bool2Union(boolValue: bool): Union;")]
     public Bpl.Function Bool2Union = null;
 
-    [RepresentationFor("Int2Union", "function Int2Union(int): Union;")]
+    [RepresentationFor("Int2Union", "function {:constructor} Int2Union(intValue: int): Union;")]
     public Bpl.Function Int2Union = null;
 
-    [RepresentationFor("Ref2Union", "function Ref2Union(Ref): Union;")]
+    [RepresentationFor("Ref2Union", "function {:constructor} Ref2Union(refValue: Ref): Union;")]
     public Bpl.Function Ref2Union = null;
 
-    [RepresentationFor("Real2Union", "function Real2Union(Real): Union;")]
+    [RepresentationFor("Real2Union", "function {:constructor} Real2Union(realValue: Real): Union;")]
     public Bpl.Function Real2Union = null;
+
+    [RepresentationFor("Struct2Union", "function {:constructor} Struct2Union(structValue: Ref): Union;")]
+    public Bpl.Function Struct2Union = null;
 
     [RepresentationFor("Union2Union", "function {:inline true} Union2Union(u: Union): Union { u }")]
     public Bpl.Function Union2Union = null;
 
-    public Bpl.Expr Box(Bpl.IToken tok, Bpl.Type boogieType, Bpl.Expr expr) {
+    public Bpl.Expr ToUnion(Bpl.IToken tok, Bpl.Type boogieType, Bpl.Expr expr) {
       Bpl.Function conversion;
       if (boogieType == Bpl.Type.Bool)
         conversion = this.Bool2Union;
@@ -180,7 +221,7 @@ namespace BytecodeTranslator {
       return callConversion;
     }
 
-    public Bpl.Expr Unbox(Bpl.IToken tok, Bpl.Type boogieType, Bpl.Expr expr) {
+    public Bpl.Expr FromUnion(Bpl.IToken tok, Bpl.Type boogieType, Bpl.Expr expr) {
       Bpl.Function conversion = null;
       if (boogieType == Bpl.Type.Bool)
         conversion = this.Union2Bool;
@@ -383,10 +424,6 @@ procedure {:inline 1} System.Object.GetType(this: Ref) returns ($result: Ref)
 axiom Union2Int($DefaultHeapValue) == 0;
 axiom Union2Bool($DefaultHeapValue) == false;
 axiom Union2Ref($DefaultHeapValue) == null;
-
-axiom (forall x: int :: { Int2Union(x) } Union2Int(Int2Union(x)) == x );
-axiom (forall x: bool :: { Bool2Union(x) } Union2Bool(Bool2Union(x)) == x );
-axiom (forall x: Ref :: { Ref2Union(x) } Union2Ref(Ref2Union(x)) == x );
 
 function $ThreadDelegate(Ref) : Ref;
 

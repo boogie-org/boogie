@@ -566,10 +566,10 @@ namespace BytecodeTranslator {
         if (rtype == ltype) {
           // do nothing
         } else if (ltype == sink.Heap.UnionType) {
-          rexpr = sink.Heap.Box(Bpl.Token.NoToken, rtype, rexpr);
+          rexpr = sink.Heap.ToUnion(Bpl.Token.NoToken, rtype, rexpr);
         }
         else if (rtype == sink.Heap.UnionType) {
-          rexpr = sink.Heap.Unbox(Bpl.Token.NoToken, ltype, rexpr);
+          rexpr = sink.Heap.FromUnion(Bpl.Token.NoToken, ltype, rexpr);
         }
         else {
           System.Diagnostics.Debug.Assert(false);
