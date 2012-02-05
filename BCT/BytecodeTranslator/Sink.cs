@@ -144,7 +144,7 @@ namespace BytecodeTranslator {
           if (TypeHelper.TypesAreEquivalent(c, type.PlatformType.SystemValueType)) continue;
           return CciTypeToBoogie(c);
         }
-        return heap.BoxType;
+        return heap.UnionType;
       } else
         return heap.RefType;
     }
