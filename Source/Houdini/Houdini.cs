@@ -1190,6 +1190,12 @@ namespace Microsoft.Boogie.Houdini {
           this.NotifyAssignment(current.Assignment);
 
           //check the VC with the current assignment
+          if (CommandLineOptions.Clo.Trace) {
+            Console.WriteLine("Verifying " + session.descriptiveName + " with the following assignment:");
+            foreach (var key in current.Assignment.Keys) {
+              Console.WriteLine(key + " -> " + current.Assignment[key]);
+            }
+          }
           outcome = session.Verify(checker, currentAx, out errors);
           this.NotifyOutcome(outcome);
 
