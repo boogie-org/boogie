@@ -100,8 +100,12 @@ namespace BytecodeTranslator {
     public readonly string DelegateAddName = "DelegateAdd";
     public readonly string DelegateRemoveName = "DelegateRemove";
 
+    public Bpl.Expr ReadDelegateMultiset(Bpl.Expr delegateReference) {
+      return new Bpl.NAryExpr(delegateReference.tok, new Bpl.FunctionCall(Heap.RefToDelegateMultiset), new Bpl.ExprSeq(delegateReference));
+    }
+
     public Bpl.Expr ReadDelegate(Bpl.Expr delegateReference) {
-      return new Bpl.NAryExpr(delegateReference.tok, new Bpl.FunctionCall(Heap.Delegate), new Bpl.ExprSeq(delegateReference));
+      return new Bpl.NAryExpr(delegateReference.tok, new Bpl.FunctionCall(Heap.RefToDelegate), new Bpl.ExprSeq(delegateReference));
     }
 
     public Bpl.Expr ReadMethod(Bpl.Expr delegateExpr) {

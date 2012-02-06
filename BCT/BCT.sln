@@ -18,8 +18,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TranslationPlugins", "TranslationPlugins\TranslationPlugins.csproj", "{8C242D42-9714-440F-884D-F64F09E78C7B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AssertionInjector", "GetMeHere\AssertionInjector\AssertionInjector.csproj", "{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeModel", "..\..\CCICodeBox\CoreObjectModel\CodeModel\CodeModel.csproj", "{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContractExtractor", "..\..\CCICodeBox\Converters\ContractExtractor\ContractExtractor.csproj", "{0703D916-A881-45E6-A5CD-6BC50E2E30E2}"
@@ -296,36 +294,6 @@ Global
 		{8C242D42-9714-440F-884D-F64F09E78C7B}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{8C242D42-9714-440F-884D-F64F09E78C7B}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{8C242D42-9714-440F-884D-F64F09E78C7B}.Release|x86.ActiveCfg = Release|Any CPU
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.CompilerOnly|Any CPU.ActiveCfg = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.CompilerOnly|Mixed Platforms.ActiveCfg = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.CompilerOnly|Mixed Platforms.Build.0 = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.CompilerOnly|x86.ActiveCfg = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.CompilerOnly|x86.Build.0 = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.Debug|Any CPU.ActiveCfg = Debug|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.Debug|Mixed Platforms.ActiveCfg = Debug|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.Debug|Mixed Platforms.Build.0 = Debug|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.Debug|x86.ActiveCfg = Debug|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.Debug|x86.Build.0 = Debug|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.FastpathSim|Any CPU.ActiveCfg = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.FastpathSim|Mixed Platforms.ActiveCfg = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.FastpathSim|Mixed Platforms.Build.0 = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.FastpathSim|x86.ActiveCfg = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.FastpathSim|x86.Build.0 = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.NightlyDebug|Any CPU.ActiveCfg = Debug|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.NightlyDebug|Mixed Platforms.ActiveCfg = Debug|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.NightlyDebug|Mixed Platforms.Build.0 = Debug|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.NightlyDebug|x86.ActiveCfg = Debug|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.NightlyDebug|x86.Build.0 = Debug|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.NightlyRelease|Any CPU.ActiveCfg = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.NightlyRelease|Mixed Platforms.ActiveCfg = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.NightlyRelease|Mixed Platforms.Build.0 = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.NightlyRelease|x86.ActiveCfg = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.NightlyRelease|x86.Build.0 = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.Release|Any CPU.ActiveCfg = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.Release|Mixed Platforms.ActiveCfg = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.Release|Mixed Platforms.Build.0 = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.Release|x86.ActiveCfg = Release|x86
-		{F55B9215-F618-4DCD-AD4C-2DB72CAE5A99}.Release|x86.Build.0 = Release|x86
 		{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}.CompilerOnly|Any CPU.ActiveCfg = Release|Any CPU
 		{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}.CompilerOnly|Any CPU.Build.0 = Release|Any CPU
 		{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}.CompilerOnly|Mixed Platforms.ActiveCfg = Release|Any CPU

@@ -174,12 +174,11 @@ namespace BytecodeTranslator {
         var fileName = assemblyNames[0];
         fileName = Path.GetFileNameWithoutExtension(fileName);
         string outputFileName = fileName + ".bpl";
-        Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(outputFileName);
+        Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter("_" + outputFileName);
         Prelude.Emit(writer);
         pgm.Emit(writer);
         writer.Close();
-        return 0; // success
-
+        return Inline(outputFileName);
       } catch (Exception e) { // swallow everything and just return an error code
         Console.WriteLine("The byte-code translator failed: {0}", e.Message);
         // Console.WriteLine("Stack trace: {0}", e.StackTrace);
@@ -188,6 +187,59 @@ namespace BytecodeTranslator {
     }
 
     private static List<IModule> modules;
+
+    public static int Inline(string bplFileName) {
+      Bpl.CommandLineOptions options = new Bpl.CommandLineOptions();
+      Bpl.CommandLineOptions.Install(options);
+      Bpl.CommandLineOptions.Clo.DoModSetAnalysis = true;
+      Bpl.Program program;
+      string _bplFileName = "_" + bplFileName;
+
+      Bpl.Parser.Parse(_bplFileName, new List<string>(), out program);
+      int errorCount = program.Resolve();
+      if (errorCount != 0) {
+        Console.WriteLine("{0} name resolution errors detected in {1}", errorCount, _bplFileName);
+        return -1;
+      }
+      errorCount = program.Typecheck();
+      if (errorCount != 0) {
+        Console.WriteLine("{0} type checking errors detected in {1}", errorCount, _bplFileName);
+        return -1;
+      }
+      bool inline = false;
+      foreach (var d in program.TopLevelDeclarations) {
+        if (d.FindExprAttribute("inline") != null) {
+          inline = true;
+        }
+      }
+      if (inline) {
+        foreach (var d in program.TopLevelDeclarations) {
+          var impl = d as Bpl.Implementation;
+          if (impl != null) {
+            impl.OriginalBlocks = impl.Blocks;
+            impl.OriginalLocVars = impl.LocVars;
+          }
+        }
+        foreach (var d in program.TopLevelDeclarations) {
+          var impl = d as Bpl.Implementation;
+          if (impl != null && !impl.SkipVerification) {
+            Bpl.Inliner.ProcessImplementation(program, impl);
+          }
+        }
+        foreach (var d in program.TopLevelDeclarations) {
+          var impl = d as Bpl.Implementation;
+          if (impl != null) {
+            impl.OriginalBlocks = null;
+            impl.OriginalLocVars = null;
+          }
+        }
+      }
+      Microsoft.Boogie.TokenTextWriter writer = new Microsoft.Boogie.TokenTextWriter(bplFileName);
+      options.PrintInstrumented = true;
+      program.Emit(writer);
+      writer.Close();
+      return 0;
+    }
 
     public static int TranslateAssemblyAndWriteOutput(List<string> assemblyNames, HeapFactory heapFactory, Options options, List<Regex> exemptionList, bool whiteList) {
       Contract.Requires(assemblyNames != null);
@@ -578,6 +630,19 @@ namespace BytecodeTranslator {
       }
     }
 
+    private static void GenerateInAndOutExprs(Bpl.Expr e, Bpl.VariableSeq invars, Bpl.VariableSeq outvars, out Bpl.ExprSeq inExprs, out Bpl.IdentifierExprSeq outExprs) {
+      inExprs = new Bpl.ExprSeq();
+      inExprs.Add(e);
+      for (int i = 1; i < invars.Length; i++) {
+        Bpl.Variable f = invars[i];
+        inExprs.Add(Bpl.Expr.Ident(f));
+      }
+      outExprs = new Bpl.IdentifierExprSeq();
+      foreach (Bpl.Formal f in outvars) {
+        outExprs.Add(Bpl.Expr.Ident(f));
+      } 
+    }
+
     private static void CreateDispatchMethod(Sink sink, ITypeDefinition type, HashSet<IMethodDefinition> delegates) {
       Contract.Assert(type.IsDelegate);
       IMethodDefinition invokeMethod = null;
@@ -722,28 +787,29 @@ namespace BytecodeTranslator {
         dispatchImpl.Proc = dispatchProcedure;
         sink.TranslatedProgram.TopLevelDeclarations.Add(dispatchImpl);
 
+        Bpl.ExprSeq inExprs;
+        Bpl.IdentifierExprSeq outExprs;
+
         Bpl.LocalVariable iter = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "iter", sink.Heap.DelegateMultisetType));
         Bpl.LocalVariable d = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "d", sink.Heap.DelegateType));
         Bpl.LocalVariable all = new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, "all", sink.Heap.DelegateMultisetType));
 
         Bpl.StmtListBuilder implStmtBuilder = new Bpl.StmtListBuilder();
-        implStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(all), sink.ReadDelegate(Bpl.Expr.Ident(invars[0]))));
-        implStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(iter), Bpl.Expr.Ident(sink.Heap.MultisetEmpty)));
+        implStmtBuilder.Add(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.Neq(Bpl.Expr.Ident(invars[0]), Bpl.Expr.Ident(sink.Heap.NullRef))));
+        GenerateInAndOutExprs(sink.ReadDelegate(Bpl.Expr.Ident(invars[0])), invars, outvars, out inExprs, out outExprs);
+        implStmtBuilder.Add(new Bpl.CallCmd(token, dispatchProcedure.Name, inExprs, outExprs));
+        implStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(all), sink.ReadDelegateMultiset(Bpl.Expr.Ident(invars[0]))));
+        implStmtBuilder.Add(
+          TranslationHelper.BuildAssignCmd(
+          Bpl.Expr.Ident(iter), 
+          new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(sink.Heap.MultisetSingleton), new Bpl.ExprSeq(sink.ReadDelegate(Bpl.Expr.Ident(invars[0]))))));
 
         Bpl.StmtListBuilder whileStmtBuilder = new Bpl.StmtListBuilder();
         whileStmtBuilder.Add(BuildReturnCmd(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, Bpl.Expr.Ident(iter), Bpl.Expr.Ident(all))));
         whileStmtBuilder.Add(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Gt, Bpl.Expr.Select(new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(sink.Heap.MultisetMinus), new Bpl.ExprSeq(Bpl.Expr.Ident(all), Bpl.Expr.Ident(iter))), Bpl.Expr.Ident(d)), new Bpl.LiteralExpr(Bpl.Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0)))));
-        Bpl.ExprSeq inExprs = new Bpl.ExprSeq();
-        inExprs.Add(Bpl.Expr.Ident(d));
-        for (int i = 1; i < invars.Length; i++) {
-          Bpl.Variable f = invars[i];
-          inExprs.Add(Bpl.Expr.Ident(f));
-        }
-        Bpl.IdentifierExprSeq outExprs = new Bpl.IdentifierExprSeq();
-        foreach (Bpl.Formal f in outvars) {
-          outExprs.Add(Bpl.Expr.Ident(f));
-        }
+        
         whileStmtBuilder.Add(EmitDummySourceContext());
+        GenerateInAndOutExprs(Bpl.Expr.Ident(d), invars, outvars, out inExprs, out outExprs);
         whileStmtBuilder.Add(new Bpl.CallCmd(token, dispatchProcedure.Name, inExprs, outExprs));
         whileStmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(iter), new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(sink.Heap.MultisetPlus), new Bpl.ExprSeq(Bpl.Expr.Ident(iter), new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(sink.Heap.MultisetSingleton), new Bpl.ExprSeq(Bpl.Expr.Ident(d)))))));
         whileStmtBuilder.Add(new Bpl.HavocCmd(Bpl.Token.NoToken, new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(d))));
