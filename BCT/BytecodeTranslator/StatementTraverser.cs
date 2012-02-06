@@ -122,6 +122,8 @@ namespace BytecodeTranslator
           foreach (var sloc in slocs) {
             fileName = sloc.Document.Location;
             lineNumber = sloc.StartLine;
+
+            this.parent.lastSourceLocation = sloc;
             break;
           }
           if (fileName != null) {
@@ -237,6 +239,7 @@ namespace BytecodeTranslator
     }
 
     private static int counter = 0;
+    public IPrimarySourceLocation lastSourceLocation;
     internal int NextUniqueNumber() {
       return counter++;
     }
@@ -336,14 +339,16 @@ namespace BytecodeTranslator
       // then a struct value of type S is being assigned: "lhs := s"
       // model this as the statement "call lhs := S..#copy_ctor(s)" that does the bit-wise copying
       if (isStruct) {
-        var defaultValue = new DefaultValue() {
-          DefaultValueType = typ,
-          Locations = new List<ILocation>(localDeclarationStatement.Locations),
-          Type = typ,
-        };
-        var e2 = ExpressionFor(defaultValue);
-        StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, boogieLocalExpr, e2));
-        if (structCopy) {
+        if (!structCopy) {
+          var defaultValue = new DefaultValue() {
+            DefaultValueType = typ,
+            Locations = new List<ILocation>(localDeclarationStatement.Locations),
+            Type = typ,
+          };
+          var e2 = ExpressionFor(defaultValue);
+          StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, boogieLocalExpr, e2));
+        } else 
+        /*if (structCopy) */{
           var proc = this.sink.FindOrCreateProcedureForStructCopy(typ);
           e = ExpressionFor(initVal);
           StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr> { e, }, new List<Bpl.IdentifierExpr>{ boogieLocalExpr, }));
