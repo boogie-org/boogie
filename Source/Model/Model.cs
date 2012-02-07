@@ -850,7 +850,7 @@ namespace Microsoft.Boogie
                   if (fn == null)
                     fn = currModel.MkFunc(funName, 1);
                   if (tuple0 == "}") break;
-                  fn.Else = GetElt(tuple0);
+                  fn.Else = GetElt(tuple[0]);
                   continue;
                 }
                 string tuplePenultimate = tuple[tuple.Count - 2] as string;

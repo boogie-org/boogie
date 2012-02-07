@@ -86,13 +86,13 @@ namespace BytecodeTranslator {
     [RepresentationFor("MultisetEmpty", "const unique MultisetEmpty: DelegateMultiset;")]
     public Bpl.Constant MultisetEmpty = null;
 
-    [RepresentationFor("MultisetSingleton", "function {:inline} MultisetSingleton(x: Delegate): DelegateMultiset { MultisetEmpty[x := 1] }")]
+    [RepresentationFor("MultisetSingleton", "function {:inline true} MultisetSingleton(x: Delegate): DelegateMultiset { MultisetEmpty[x := 1] }")]
     public Bpl.Function MultisetSingleton = null;
 
-    [RepresentationFor("MultisetPlus", "function {:inline} MultisetPlus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { mapadd(x, y) }")]
+    [RepresentationFor("MultisetPlus", "function {:inline true} MultisetPlus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { mapadd(x, y) }")]
     public  Bpl.Function MultisetPlus = null;
 
-    [RepresentationFor("MultisetMinus", "function {:inline} MultisetMinus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { mapiteint(mapgt(x, y), mapsub(x, y), mapconstint(0)) }")]
+    [RepresentationFor("MultisetMinus", "function {:inline true} MultisetMinus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { mapiteint(mapgt(x, y), mapsub(x, y), mapconstint(0)) }")]
     public Bpl.Function MultisetMinus = null;
 
     [RepresentationFor("Field", "type Field;")]
@@ -144,19 +144,19 @@ namespace BytecodeTranslator {
     [RepresentationFor("$BoxedValue", "function $BoxedValue(r: Ref): Union;")]
     public Bpl.Function BoxedValue = null;
 
-    [RepresentationFor("$Unbox2Bool", "function $Unbox2Bool(r: Ref): (bool) { boolValue#Bool2Union($BoxedValue(r)) }")]
+    [RepresentationFor("$Unbox2Bool", "function {:inline true} $Unbox2Bool(r: Ref): (bool) { boolValue#Bool2Union($BoxedValue(r)) }")]
     public Bpl.Function Unbox2Bool = null;
 
-    [RepresentationFor("$Unbox2Int", "function $Unbox2Int(r: Ref): (int) { intValue#Int2Union($BoxedValue(r)) }")]
+    [RepresentationFor("$Unbox2Int", "function {:inline true} $Unbox2Int(r: Ref): (int) { intValue#Int2Union($BoxedValue(r)) }")]
     public Bpl.Function Unbox2Int = null;
 
-    [RepresentationFor("$Unbox2Real", "function $Unbox2Real(r: Ref): (Real) { realValue#Real2Union($BoxedValue(r)) }")]
+    [RepresentationFor("$Unbox2Real", "function {:inline true} $Unbox2Real(r: Ref): (Real) { realValue#Real2Union($BoxedValue(r)) }")]
     public Bpl.Function Unbox2Real = null;
 
-    [RepresentationFor("$Unbox2Struct", "function $Unbox2Struct(r: Ref): (Ref) { structValue#Struct2Union($BoxedValue(r)) }")]
+    [RepresentationFor("$Unbox2Struct", "function {:inline true} $Unbox2Struct(r: Ref): (Ref) { structValue#Struct2Union($BoxedValue(r)) }")]
     public Bpl.Function Unbox2Struct = null;
 
-    [RepresentationFor("$Unbox2Union", "function $Unbox2Union(r: Ref): (Union) { $BoxedValue(r) }")]
+    [RepresentationFor("$Unbox2Union", "function {:inline true} $Unbox2Union(r: Ref): (Union) { $BoxedValue(r) }")]
     public Bpl.Function Unbox2Union = null;
 
     #endregion
@@ -165,19 +165,19 @@ namespace BytecodeTranslator {
 
     #region Heap values
 
-    [RepresentationFor("Union2Bool", "function Union2Bool(u: Union): (bool) { boolValue#Bool2Union(u) }")]
+    [RepresentationFor("Union2Bool", "function {:inline true} Union2Bool(u: Union): (bool) { boolValue#Bool2Union(u) }")]
     public Bpl.Function Union2Bool = null;
-    
-    [RepresentationFor("Union2Int", "function Union2Int(u: Union): (int) { intValue#Int2Union(u) }")]
+
+    [RepresentationFor("Union2Int", "function {:inline true} Union2Int(u: Union): (int) { intValue#Int2Union(u) }")]
     public Bpl.Function Union2Int = null;
-    
-    [RepresentationFor("Union2Ref", "function Union2Ref(u: Union): (Ref) { refValue#Ref2Union(u) }")]
+
+    [RepresentationFor("Union2Ref", "function {:inline true} Union2Ref(u: Union): (Ref) { refValue#Ref2Union(u) }")]
     public Bpl.Function Union2Ref = null;
 
-    [RepresentationFor("Union2Real", "function Union2Real(u: Union): (Real) { realValue#Real2Union(u) }")]
+    [RepresentationFor("Union2Real", "function {:inline true} Union2Real(u: Union): (Real) { realValue#Real2Union(u) }")]
     public Bpl.Function Union2Real = null;
 
-    [RepresentationFor("Union2Struct", "function Union2Struct(u: Union): (Ref) { structValue#Struct2Union(u) }")]
+    [RepresentationFor("Union2Struct", "function {:inline true} Union2Struct(u: Union): (Ref) { structValue#Struct2Union(u) }")]
     public Bpl.Function Union2Struct = null;
 
     [RepresentationFor("Bool2Union", "function {:constructor} Bool2Union(boolValue: bool): Union;")]
