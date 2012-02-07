@@ -326,7 +326,7 @@ namespace BytecodeTranslator
       var boogieT = this.sink.CciTypeToBoogie(t);
 
       if (t is IGenericParameterReference) {
-        if (boogieT == this.sink.Heap.BoxType) {
+        if (boogieT == this.sink.Heap.UnionType) {
           // then the expression will be represented by something of type Box
           // but the address of it must be a ref, so do the conversion
           this.Traverse(addressOf.Expression);
@@ -481,8 +481,8 @@ namespace BytecodeTranslator
         e = lit;
       } else if (bplType == this.sink.Heap.RefType) {
         e = Bpl.Expr.Ident(this.sink.Heap.NullRef);
-      } else if (bplType == this.sink.Heap.BoxType) {
-        e = Bpl.Expr.Ident(this.sink.Heap.DefaultBox);
+      } else if (bplType == this.sink.Heap.UnionType) {
+        e = Bpl.Expr.Ident(this.sink.Heap.DefaultHeapValue);
       } else if (bplType == this.sink.Heap.RealType) {
         e = Bpl.Expr.Ident(this.sink.Heap.DefaultReal);
       } else {
@@ -755,7 +755,7 @@ namespace BytecodeTranslator
           e = bplLocal;
         }
 
-        if (currentType is IGenericParameterReference && this.sink.CciTypeToBoogie(currentType) == this.sink.Heap.BoxType)
+        if (currentType is IGenericParameterReference && this.sink.CciTypeToBoogie(currentType) == this.sink.Heap.UnionType)
           inexpr.Add(sink.Heap.Box(token, this.sink.CciTypeToBoogie(expressionToTraverse.Type), e));
         else {
           inexpr.Add(e);
@@ -767,8 +767,8 @@ namespace BytecodeTranslator
           }
           if (penum.Current.Type is IGenericParameterReference) {
             var boogieType = this.sink.CciTypeToBoogie(penum.Current.Type);
-            if (boogieType == this.sink.Heap.BoxType) {
-              Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(sink.CreateFreshLocal(this.sink.Heap.BoxType));
+            if (boogieType == this.sink.Heap.UnionType) {
+              Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(sink.CreateFreshLocal(this.sink.Heap.UnionType));
               toBoxed[unboxed] = boxed;
               outvars.Add(boxed);
             } else {
@@ -803,8 +803,8 @@ namespace BytecodeTranslator
           Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(token, v);
           if (resolvedMethod.Type is IGenericParameterReference) {
             var boogieType = this.sink.CciTypeToBoogie(resolvedMethod.Type);
-            if (boogieType == this.sink.Heap.BoxType) {
-              Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
+            if (boogieType == this.sink.Heap.UnionType) {
+              Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.UnionType));
               toBoxed[unboxed] = boxed;
               outvars.Add(boxed);
             } else {
@@ -1596,8 +1596,8 @@ namespace BytecodeTranslator
           expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Real2Int), new Bpl.ExprSeq(exp));
           expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, expr, Bpl.Expr.Literal(0));
         }
-        else if (boogieTypeOfValue == this.sink.Heap.BoxType) {
-          expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Box2Bool), new Bpl.ExprSeq(exp));
+        else if (boogieTypeOfValue == this.sink.Heap.UnionType) {
+          expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Union2Bool), new Bpl.ExprSeq(exp));
         }
         else {
           throw new NotImplementedException(msg);
@@ -1617,8 +1617,8 @@ namespace BytecodeTranslator
         else if (boogieTypeOfValue == this.sink.Heap.RealType) {
           expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Real2Int), new Bpl.ExprSeq(exp));
         }
-        else if (boogieTypeOfValue == this.sink.Heap.BoxType) {
-          expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Box2Int), new Bpl.ExprSeq(exp));
+        else if (boogieTypeOfValue == this.sink.Heap.UnionType) {
+          expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Union2Int), new Bpl.ExprSeq(exp));
         }
         else {
           throw new NotImplementedException(msg);
@@ -1647,8 +1647,8 @@ namespace BytecodeTranslator
         else if (boogieTypeOfValue == this.sink.Heap.RefType) {
           expr = this.sink.Heap.ReadHeap(exp, Bpl.Expr.Ident(this.sink.Heap.BoxField), AccessType.Heap, this.sink.Heap.RealType);
         }
-        else if (boogieTypeOfValue == this.sink.Heap.BoxType) {
-          expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Box2Real), new Bpl.ExprSeq(exp));
+        else if (boogieTypeOfValue == this.sink.Heap.UnionType) {
+          expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Union2Real), new Bpl.ExprSeq(exp));
         }
         else {
           throw new NotImplementedException(msg);
@@ -1657,19 +1657,19 @@ namespace BytecodeTranslator
         return;
       }
       
-      if (boogieTypeToBeConvertedTo == this.sink.Heap.BoxType) {
+      if (boogieTypeToBeConvertedTo == this.sink.Heap.UnionType) {
         Bpl.Function func;
         if (boogieTypeOfValue == Bpl.Type.Bool) {
-          func = this.sink.Heap.Bool2Box;
+          func = this.sink.Heap.Bool2Union;
         }
         else if (boogieTypeOfValue == Bpl.Type.Int) {
-          func = this.sink.Heap.Int2Box;
+          func = this.sink.Heap.Int2Union;
         }
         else if (boogieTypeOfValue == this.sink.Heap.RefType) {
-          func = this.sink.Heap.Ref2Box;
+          func = this.sink.Heap.Ref2Union;
         }
         else if (boogieTypeOfValue == this.sink.Heap.RealType) {
-          func = this.sink.Heap.Real2Box;
+          func = this.sink.Heap.Real2Union;
         }
         else {
           throw new NotImplementedException(msg);

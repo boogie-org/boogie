@@ -52,7 +52,7 @@ namespace BytecodeTranslator {
       string prelude = this.InitialPreludeText + this.CommonText;
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       if (b) {
-        this.BoxType = new Bpl.CtorType(this.BoxTypeDecl.tok, this.BoxTypeDecl, new Bpl.TypeSeq());
+        this.UnionType = new Bpl.CtorType(this.UnionTypeDecl.tok, this.UnionTypeDecl, new Bpl.TypeSeq());
         this.DelegateType = new Bpl.CtorType(this.DelegateTypeDecl.tok, this.DelegateTypeDecl, new Bpl.TypeSeq());
         this.DelegateMultisetType = new Bpl.TypeSynonymAnnotation(this.DelegateMultisetTypeDecl.tok, this.DelegateMultisetTypeDecl, new Bpl.TypeSeq());
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
@@ -173,17 +173,17 @@ namespace BytecodeTranslator {
     [RepresentationFor("$Heap", "var $Heap: HeapType;", true)]
     private Bpl.Variable HeapVariable = null;
     
-    [RepresentationFor("Read", "function {:inline true} Read(H:HeapType, o:Ref, f:Field): Box { H[o][f] }")]
+    [RepresentationFor("Read", "function {:inline true} Read(H:HeapType, o:Ref, f:Field): Union { H[o][f] }")]
     private Bpl.Function Read = null;
 
-    [RepresentationFor("Write", "function {:inline true} Write(H:HeapType, o:Ref, f:Field, v:Box): HeapType { H[o := H[o][f := v]] }")]
+    [RepresentationFor("Write", "function {:inline true} Write(H:HeapType, o:Ref, f:Field, v:Union): HeapType { H[o := H[o][f := v]] }")]
     private Bpl.Function Write = null;
 
     /// <summary>
     /// Prelude text for which access to the ASTs is not needed
     /// </summary>
     private readonly string InitialPreludeText =
-      @"type HeapType = [Ref][Field]Box;
+      @"type HeapType = [Ref][Field]Union;
 
 ";
     private Sink sink;
@@ -197,7 +197,7 @@ namespace BytecodeTranslator {
       string prelude = this.InitialPreludeText + this.CommonText;
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       if (b) {
-        this.BoxType = new Bpl.CtorType(this.BoxTypeDecl.tok, this.BoxTypeDecl, new Bpl.TypeSeq());
+        this.UnionType = new Bpl.CtorType(this.UnionTypeDecl.tok, this.UnionTypeDecl, new Bpl.TypeSeq());
         this.DelegateType = new Bpl.CtorType(this.DelegateTypeDecl.tok, this.DelegateTypeDecl, new Bpl.TypeSeq());
         this.DelegateMultisetType = new Bpl.TypeSynonymAnnotation(this.DelegateMultisetTypeDecl.tok, this.DelegateMultisetTypeDecl, new Bpl.TypeSeq());
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
