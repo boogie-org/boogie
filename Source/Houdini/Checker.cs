@@ -20,7 +20,7 @@ namespace Microsoft.Boogie.Houdini {
   public class HoudiniSession {
     public static double proverTime = 0;
     public static int numProverQueries = 0;
-    private string descriptiveName;
+    public string descriptiveName;
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
     ConditionGeneration.CounterexampleCollector collector;

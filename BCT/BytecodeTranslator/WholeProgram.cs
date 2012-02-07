@@ -140,7 +140,7 @@ namespace BytecodeTranslator {
         List<Bpl.Expr> inexpr;
         List<Bpl.IdentifierExpr> outvars;
         Bpl.IdentifierExpr thisExpr;
-        Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed;
+        Dictionary<Bpl.IdentifierExpr, Tuple<Bpl.IdentifierExpr,bool>> toBoxed;
         var proc = TranslateArgumentsAndReturnProcedure(token, methodCall.MethodToCall, resolvedMethod, methodCall.IsStaticCall ? null : methodCall.ThisArgument, methodCall.Arguments, out inexpr, out outvars, out thisExpr, out toBoxed);
 
 

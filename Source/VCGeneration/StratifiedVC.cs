@@ -29,6 +29,7 @@ namespace VC
         public readonly static string recordProcName = "boogie_si_record";
         private bool useSummary;
         private SummaryComputation summaryComputation;
+        private HashSet<string> procsThatReachedRecBound;
 
         [ContractInvariantMethod]
         void ObjectInvariant()
@@ -50,6 +51,7 @@ namespace VC
             this.GenerateVCsForStratifiedInlining(program);
             PersistCallTree = false;
             useSummary = false;
+            procsThatReachedRecBound = new HashSet<string>();
         }
 
         public static RECORD_TYPES getRecordType(Bpl.Type type)
@@ -1898,6 +1900,10 @@ namespace VC
 
             numInlined = (calls.candidateParent.Keys.Count + 1) - (calls.currCandidates.Count);
 
+            var rbound = "Procs that reached bound: ";
+            foreach (var s in procsThatReachedRecBound) rbound += "  " + s;
+            if(ret == Outcome.ReachedBound) Helpers.ExtraTraceInformation(rbound);
+
             // Store current call tree
             if (PersistCallTree && (ret == Outcome.Correct || ret == Outcome.Errors || ret == Outcome.ReachedBound))
             {
@@ -2250,6 +2256,8 @@ namespace VC
           }
         }
 
+        
+
         // A step of the stratified inlining algorithm: both under-approx and over-approx queries
         private Outcome stratifiedStep(int bound, VerificationState vState, HashSet<int> block)
         {
@@ -2330,6 +2338,8 @@ namespace VC
             bool allFalse = true;
 
             assumptions = new List<VCExpr>();
+            procsThatReachedRecBound.Clear();
+
             foreach (int id in calls.currCandidates)
             {
                 if (calls.getRecursionBound(id) <= bound)
@@ -2349,6 +2359,7 @@ namespace VC
                 }
                 else
                 {
+                    procsThatReachedRecBound.Add(calls.getProc(id));
                     //checker.AddAxiom(calls.getFalseExpr(id));
                     assumptions.Add(calls.getFalseExpr(id));
                     allTrue = false;

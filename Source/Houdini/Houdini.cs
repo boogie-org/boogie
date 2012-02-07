@@ -638,6 +638,9 @@ namespace Microsoft.Boogie.Houdini {
     }
 
     private void UpdateAssignment(HoudiniState current, RefutedAnnotation refAnnot) {
+      if (CommandLineOptions.Clo.Trace) {
+        Console.WriteLine("Removing " + refAnnot.Constant);
+      }
       current.Assignment.Remove(refAnnot.Constant);
       current.Assignment.Add(refAnnot.Constant, false);
       this.NotifyConstant(refAnnot.Constant);
@@ -1190,6 +1193,9 @@ namespace Microsoft.Boogie.Houdini {
           this.NotifyAssignment(current.Assignment);
 
           //check the VC with the current assignment
+          if (CommandLineOptions.Clo.Trace) {
+            Console.WriteLine("Verifying " + session.descriptiveName);
+          }
           outcome = session.Verify(checker, currentAx, out errors);
           this.NotifyOutcome(outcome);
 
