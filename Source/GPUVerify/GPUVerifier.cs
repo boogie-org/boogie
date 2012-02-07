@@ -29,37 +29,37 @@ namespace GPUVerify
         private int TempCounter = 0;
         private int invariantGenerationCounter;
 
-        private Constant _X = null;
-        private Constant _Y = null;
-        private Constant _Z = null;
+        private const string LOCAL_ID_X_STRING = "local_id_x";
+        private const string LOCAL_ID_Y_STRING = "local_id_y";
+        private const string LOCAL_ID_Z_STRING = "local_id_z";
 
-        private const string _X_name = "_X";
-        private const string _Y_name = "_Y";
-        private const string _Z_name = "_Z";
+        private static Constant _X = null;
+        private static Constant _Y = null;
+        private static Constant _Z = null;
 
         private Constant _GROUP_SIZE_X = null;
         private Constant _GROUP_SIZE_Y = null;
         private Constant _GROUP_SIZE_Z = null;
 
-        private const string _GROUP_SIZE_X_name = "_GROUP_SIZE_X";
-        private const string _GROUP_SIZE_Y_name = "_GROUP_SIZE_Y";
-        private const string _GROUP_SIZE_Z_name = "_GROUP_SIZE_Z";
+        private const string GROUP_SIZE_X_STRING = "group_size_x";
+        private const string GROUP_SIZE_Y_STRING = "group_size_y";
+        private const string GROUP_SIZE_Z_STRING = "group_size_z";
 
         private Constant _GROUP_X = null;
         private Constant _GROUP_Y = null;
         private Constant _GROUP_Z = null;
 
-        private const string _GROUP_X_name = "_GROUP_X";
-        private const string _GROUP_Y_name = "_GROUP_Y";
-        private const string _GROUP_Z_name = "_GROUP_Z";
+        private const string GROUP_ID_X_STRING = "group_id_x";
+        private const string GROUP_ID_Y_STRING = "group_id_y";
+        private const string GROUP_ID_Z_STRING = "group_id_z";
 
         private Constant _NUM_GROUPS_X = null;
         private Constant _NUM_GROUPS_Y = null;
         private Constant _NUM_GROUPS_Z = null;
 
-        private const string _NUM_GROUPS_X_name = "_NUM_GROUPS_X";
-        private const string _NUM_GROUPS_Y_name = "_NUM_GROUPS_Y";
-        private const string _NUM_GROUPS_Z_name = "_NUM_GROUPS_Z";
+        private const string NUM_GROUPS_X_STRING = "num_groups_x";
+        private const string NUM_GROUPS_Y_STRING = "num_groups_y";
+        private const string NUM_GROUPS_Z_STRING = "num_groups_z";
 
         public IRaceInstrumenter RaceInstrumenter;
 
@@ -176,62 +176,62 @@ namespace GPUVerify
                 else if (D is Constant)
                 {
                     Constant C = D as Constant;
-                    if (C.Name.Equals(_X_name))
+                    if(QKeyValue.FindBoolAttribute(C.Attributes, LOCAL_ID_X_STRING))
                     {
                         CheckSpecialConstantType(C);
                         _X = C;
                     }
-                    if (C.Name.Equals(_Y_name))
+                    if (QKeyValue.FindBoolAttribute(C.Attributes, LOCAL_ID_Y_STRING))
                     {
                         CheckSpecialConstantType(C);
                         _Y = C;
                     }
-                    if (C.Name.Equals(_Z_name))
+                    if (QKeyValue.FindBoolAttribute(C.Attributes, LOCAL_ID_Z_STRING))
                     {
                         CheckSpecialConstantType(C);
                         _Z = C;
                     }
-                    if (C.Name.Equals(_GROUP_SIZE_X_name))
+                    if (QKeyValue.FindBoolAttribute(C.Attributes, GROUP_SIZE_X_STRING))
                     {
                         CheckSpecialConstantType(C);
                         _GROUP_SIZE_X = C;
                     }
-                    if (C.Name.Equals(_GROUP_SIZE_Y_name))
+                    if (QKeyValue.FindBoolAttribute(C.Attributes, GROUP_SIZE_Y_STRING))
                     {
                         CheckSpecialConstantType(C);
                         _GROUP_SIZE_Y = C;
                     }
-                    if (C.Name.Equals(_GROUP_SIZE_Z_name))
+                    if (QKeyValue.FindBoolAttribute(C.Attributes, GROUP_SIZE_Z_STRING))
                     {
                         CheckSpecialConstantType(C);
                         _GROUP_SIZE_Z = C;
                     }
-                    if (C.Name.Equals(_GROUP_X_name))
+                    if (QKeyValue.FindBoolAttribute(C.Attributes, GROUP_ID_X_STRING))
                     {
                         CheckSpecialConstantType(C);
                         _GROUP_X = C;
                     }
-                    if (C.Name.Equals(_GROUP_Y_name))
+                    if (QKeyValue.FindBoolAttribute(C.Attributes, GROUP_ID_Y_STRING))
                     {
                         CheckSpecialConstantType(C);
                         _GROUP_Y = C;
                     }
-                    if (C.Name.Equals(_GROUP_Z_name))
+                    if (QKeyValue.FindBoolAttribute(C.Attributes, GROUP_ID_Z_STRING))
                     {
                         CheckSpecialConstantType(C);
                         _GROUP_Z = C;
                     }
-                    if (C.Name.Equals(_NUM_GROUPS_X_name))
+                    if (QKeyValue.FindBoolAttribute(C.Attributes, NUM_GROUPS_X_STRING))
                     {
                         CheckSpecialConstantType(C);
                         _NUM_GROUPS_X = C;
                     }
-                    if (C.Name.Equals(_NUM_GROUPS_Y_name))
+                    if (QKeyValue.FindBoolAttribute(C.Attributes, NUM_GROUPS_Y_STRING))
                     {
                         CheckSpecialConstantType(C);
                         _NUM_GROUPS_Y = C;
                     }
-                    if (C.Name.Equals(_NUM_GROUPS_Z_name))
+                    if (QKeyValue.FindBoolAttribute(C.Attributes, NUM_GROUPS_Z_STRING))
                     {
                         CheckSpecialConstantType(C);
                         _NUM_GROUPS_Z = C;
@@ -1248,12 +1248,11 @@ namespace GPUVerify
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
             string name = null;
-            if (dimension.Equals("X")) name = _X_name;
-            if (dimension.Equals("Y")) name = _Y_name;
-            if (dimension.Equals("Z")) name = _Z_name;
+            if (dimension.Equals("X")) name = _X.Name;
+            if (dimension.Equals("Y")) name = _Y.Name;
+            if (dimension.Equals("Z")) name = _Z.Name;
             Debug.Assert(name != null);
-            name = name + "$" + number;
-            return new Constant(tok, new TypedIdent(tok, "_" + dimension + "$" + number, GetTypeOfId(dimension)));
+            return new Constant(tok, new TypedIdent(tok, name + "$" + number, GetTypeOfId(dimension)));
         }
 
         private Constant GetGroupId(string dimension)
@@ -2216,22 +2215,22 @@ namespace GPUVerify
 
             if (!KernelHasIdX())
             {
-                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _X_name + "'");
+                MissingKernelAttributeError("Kernel", LOCAL_ID_X_STRING);
             }
 
             if (!KernelHasGroupSizeX())
             {
-                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _GROUP_SIZE_X_name + "'");
+                MissingKernelAttributeError("Kernel", GROUP_SIZE_X_STRING);
             }
 
             if (!KernelHasNumGroupsX())
             {
-                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _NUM_GROUPS_X_name + "'");
+                MissingKernelAttributeError("Kernel", NUM_GROUPS_X_STRING);
             }
 
             if (!KernelHasGroupIdX())
             {
-                Error(KernelProcedure.tok, "Kernel must declare global constant '" + _GROUP_X_name + "'");
+                MissingKernelAttributeError("Kernel", GROUP_ID_X_STRING);
             }
 
             if (KernelHasIdY() || KernelHasGroupSizeY() || KernelHasNumGroupsY() || KernelHasGroupIdY())
@@ -2239,22 +2238,22 @@ namespace GPUVerify
 
                 if (!KernelHasIdY())
                 {
-                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _Y_name + "'");
+                    MissingKernelAttributeError("2D kernel", LOCAL_ID_Y_STRING);
                 }
 
                 if (!KernelHasGroupSizeY())
                 {
-                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _GROUP_SIZE_Y_name + "'");
+                    MissingKernelAttributeError("2D kernel", GROUP_SIZE_Y_STRING);
                 }
 
                 if (!KernelHasNumGroupsY())
                 {
-                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _NUM_GROUPS_Y_name + "'");
+                    MissingKernelAttributeError("2D kernel", NUM_GROUPS_Y_STRING);
                 }
 
                 if (!KernelHasGroupIdY())
                 {
-                    Error(KernelProcedure.tok, "2D kernel must declare global constant '" + _GROUP_Y_name + "'");
+                    MissingKernelAttributeError("2D kernel", GROUP_ID_Y_STRING);
                 }
 
             }
@@ -2264,52 +2263,61 @@ namespace GPUVerify
 
                 if (!KernelHasIdY())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _Y_name + "'");
+                    MissingKernelAttributeError("3D kernel", LOCAL_ID_Y_STRING);
                 }
 
                 if (!KernelHasGroupSizeY())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _GROUP_SIZE_Y_name + "'");
+                    MissingKernelAttributeError("3D kernel", GROUP_SIZE_Y_STRING);
                 }
 
                 if (!KernelHasNumGroupsY())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _NUM_GROUPS_Y_name + "'");
+                    MissingKernelAttributeError("3D kernel", NUM_GROUPS_Y_STRING);
                 }
 
                 if (!KernelHasGroupIdY())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _GROUP_Y_name + "'");
+                    MissingKernelAttributeError("3D kernel", GROUP_ID_Y_STRING);
                 }
 
                 if (!KernelHasIdZ())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _Z_name + "'");
+                    MissingKernelAttributeError("3D kernel", LOCAL_ID_Z_STRING);
                 }
 
                 if (!KernelHasGroupSizeZ())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _GROUP_SIZE_Z_name + "'");
+                    MissingKernelAttributeError("3D kernel", GROUP_SIZE_Z_STRING);
                 }
 
                 if (!KernelHasNumGroupsZ())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _NUM_GROUPS_Z_name + "'");
+                    MissingKernelAttributeError("3D kernel", NUM_GROUPS_Z_STRING);
                 }
 
                 if (!KernelHasGroupIdZ())
                 {
-                    Error(KernelProcedure.tok, "3D kernel must declare global constant '" + _GROUP_Z_name + "'");
+                    MissingKernelAttributeError("3D kernel", GROUP_ID_Z_STRING);
                 }
+
 
             }
 
             return ErrorCount;
         }
 
+        private void MissingKernelAttributeError(string kindOfKernel, string attribute)
+        {
+            Error(KernelProcedure.tok, kindOfKernel + " must declare global constant marked with attribute ':" + attribute + "'");
+        }
+
         public static bool IsThreadLocalIdConstant(Variable variable)
         {
-            return variable is Constant && (variable.Name.Equals(_X_name) || variable.Name.Equals(_Y_name) || variable.Name.Equals(_Z_name));
+            return variable is Constant && (
+                QKeyValue.FindBoolAttribute(variable.Attributes, LOCAL_ID_X_STRING) || 
+                QKeyValue.FindBoolAttribute(variable.Attributes, LOCAL_ID_Y_STRING) ||
+                QKeyValue.FindBoolAttribute(variable.Attributes, LOCAL_ID_Z_STRING));
         }
 
         internal HashSet<string> GetProceduresThatIndirectlyCallProcedure(string Name)
