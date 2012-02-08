@@ -143,6 +143,10 @@ namespace GPUVerify
                 {
                     firstBigBlock.simpleCmds.Add(new AssertCmd(c.tok, Expr.Imp(IncomingPredicate, (c as AssertCmd).Expr)));
                 }
+                else if (c is AssumeCmd)
+                {
+                    firstBigBlock.simpleCmds.Add(new AssumeCmd(c.tok, Expr.Imp(IncomingPredicate, (c as AssumeCmd).Expr)));
+                }
                 else
                 {
                     Debug.Assert(false);
