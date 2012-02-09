@@ -155,8 +155,35 @@ namespace GPUVerify
             }
         }
 
-        private void FindNonLocalVariables(Program program)
+
+        private void ReportMultipleAttributeError(string attribute, IToken first, IToken second)
         {
+            Error(
+                second, 
+                "Can only have one {0} attribute, but previously saw this attribute at ({1}, {2})", 
+                attribute,
+                first.filename,
+                first.line, first.col - 1);
+        }
+
+        private bool setConstAttributeField(Constant constInProgram, string attr, ref Constant constFieldRef)
+        {
+            if (QKeyValue.FindBoolAttribute(constInProgram.Attributes, attr))
+            {
+                if (constFieldRef != null)
+                {
+                    ReportMultipleAttributeError(attr, constFieldRef.tok, constInProgram.tok);
+                    return false;
+                }
+                CheckSpecialConstantType(constInProgram);
+                constFieldRef = constInProgram;
+            }
+            return true;
+        }
+
+        private bool FindNonLocalVariables(Program program)
+        {
+            bool success = true;
             foreach (Declaration D in program.TopLevelDeclarations)
             {
                 if (D is Variable && (D as Variable).IsMutable)
@@ -176,69 +203,28 @@ namespace GPUVerify
                 else if (D is Constant)
                 {
                     Constant C = D as Constant;
-                    if(QKeyValue.FindBoolAttribute(C.Attributes, LOCAL_ID_X_STRING))
-                    {
-                        CheckSpecialConstantType(C);
-                        _X = C;
-                    }
-                    if (QKeyValue.FindBoolAttribute(C.Attributes, LOCAL_ID_Y_STRING))
-                    {
-                        CheckSpecialConstantType(C);
-                        _Y = C;
-                    }
-                    if (QKeyValue.FindBoolAttribute(C.Attributes, LOCAL_ID_Z_STRING))
-                    {
-                        CheckSpecialConstantType(C);
-                        _Z = C;
-                    }
-                    if (QKeyValue.FindBoolAttribute(C.Attributes, GROUP_SIZE_X_STRING))
-                    {
-                        CheckSpecialConstantType(C);
-                        _GROUP_SIZE_X = C;
-                    }
-                    if (QKeyValue.FindBoolAttribute(C.Attributes, GROUP_SIZE_Y_STRING))
-                    {
-                        CheckSpecialConstantType(C);
-                        _GROUP_SIZE_Y = C;
-                    }
-                    if (QKeyValue.FindBoolAttribute(C.Attributes, GROUP_SIZE_Z_STRING))
-                    {
-                        CheckSpecialConstantType(C);
-                        _GROUP_SIZE_Z = C;
-                    }
-                    if (QKeyValue.FindBoolAttribute(C.Attributes, GROUP_ID_X_STRING))
-                    {
-                        CheckSpecialConstantType(C);
-                        _GROUP_X = C;
-                    }
-                    if (QKeyValue.FindBoolAttribute(C.Attributes, GROUP_ID_Y_STRING))
-                    {
-                        CheckSpecialConstantType(C);
-                        _GROUP_Y = C;
-                    }
-                    if (QKeyValue.FindBoolAttribute(C.Attributes, GROUP_ID_Z_STRING))
-                    {
-                        CheckSpecialConstantType(C);
-                        _GROUP_Z = C;
-                    }
-                    if (QKeyValue.FindBoolAttribute(C.Attributes, NUM_GROUPS_X_STRING))
-                    {
-                        CheckSpecialConstantType(C);
-                        _NUM_GROUPS_X = C;
-                    }
-                    if (QKeyValue.FindBoolAttribute(C.Attributes, NUM_GROUPS_Y_STRING))
-                    {
-                        CheckSpecialConstantType(C);
-                        _NUM_GROUPS_Y = C;
-                    }
-                    if (QKeyValue.FindBoolAttribute(C.Attributes, NUM_GROUPS_Z_STRING))
-                    {
-                        CheckSpecialConstantType(C);
-                        _NUM_GROUPS_Z = C;
-                    }
+
+                    success &= setConstAttributeField(C, LOCAL_ID_X_STRING, ref _X);
+                    success &= setConstAttributeField(C, LOCAL_ID_Y_STRING, ref _Y);
+                    success &= setConstAttributeField(C, LOCAL_ID_Z_STRING, ref _Z);
+
+                    success &= setConstAttributeField(C, GROUP_SIZE_X_STRING, ref _GROUP_SIZE_X);
+                    success &= setConstAttributeField(C, GROUP_SIZE_Y_STRING, ref _GROUP_SIZE_Y);
+                    success &= setConstAttributeField(C, GROUP_SIZE_Z_STRING, ref _GROUP_SIZE_Z);
+
+                    success &= setConstAttributeField(C, GROUP_ID_X_STRING, ref _GROUP_X);
+                    success &= setConstAttributeField(C, GROUP_ID_Y_STRING, ref _GROUP_Y);
+                    success &= setConstAttributeField(C, GROUP_ID_Z_STRING, ref _GROUP_Z);
+
+                    success &= setConstAttributeField(C, NUM_GROUPS_X_STRING, ref _NUM_GROUPS_X);
+                    success &= setConstAttributeField(C, NUM_GROUPS_Y_STRING, ref _NUM_GROUPS_Y);
+                    success &= setConstAttributeField(C, NUM_GROUPS_Z_STRING, ref _NUM_GROUPS_Z);
+
 
                 }
             }
+
+            return success;
         }
 
         private void CheckSpecialConstantType(Constant C)
@@ -2209,7 +2195,10 @@ namespace GPUVerify
                 Error(BarrierProcedure, "Barrier procedure must not return any results");
             }
 
-            FindNonLocalVariables(Program);
+            if (!FindNonLocalVariables(Program))
+            {
+                return ErrorCount;
+            }
 
             CheckKernelImplementation();
 
