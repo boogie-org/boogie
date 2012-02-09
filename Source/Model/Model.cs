@@ -35,6 +35,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Boogie
 {
@@ -701,10 +702,13 @@ namespace Microsoft.Boogie
         if (f < 0) BadModel("mismatched parentheses in datatype term");
         return f;
       }
+     
+      static Regex bv = new Regex(@"\(_ BitVec (\d+)\)");
 
       List<object> GetFunctionTuple(string newLine) {
         if (newLine == null)
           return null;
+        newLine = bv.Replace(newLine, "bv${1}");
         string line = newLine;
         int openParenCounter = CountOpenParentheses(newLine, 0);
         if (!newLine.Contains("}")) {
