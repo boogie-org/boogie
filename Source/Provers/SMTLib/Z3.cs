@@ -43,8 +43,10 @@ namespace Microsoft.Boogie.SMTLib
         _proverPath = Path.Combine(CodebaseString(), proverExe);
         string firstTry = _proverPath;
 
-        if (File.Exists(firstTry))
+        if (File.Exists(firstTry)) {
+          Console.WriteLine("[TRACE] Using prover: " + _proverPath);
           return;
+        }
 
         string programFiles = Environment.GetEnvironmentVariable("ProgramFiles");
         Contract.Assert(programFiles != null);
