@@ -39,11 +39,9 @@ namespace GPUVerify
                 {
                     extension = extension.ToLower();
                 }
-                if (extension != ".bpl")
+                if (extension != ".gbpl")
                 {
-                    OnlyBoogie.ErrorWriteLine("*** Error: '{0}': Filename extension '{1}' is not supported. Input files must be BoogiePL programs (.bpl).", file,
-                        extension == null ? "" : extension);
-                    Environment.Exit(1);
+                    OnlyBoogie.AdvisoryWriteLine("Warning '{0}': Should only pass filename with extension .gbpl. Input must be GBoogie programs.", file + extension);
                 }
             }
 
