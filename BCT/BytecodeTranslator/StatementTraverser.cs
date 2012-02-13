@@ -129,6 +129,7 @@ namespace BytecodeTranslator
           if (fileName != null) {
             var attrib = new Bpl.QKeyValue(tok, "sourceLine", new List<object> { Bpl.Expr.Literal((int)lineNumber) }, null);
             attrib = new Bpl.QKeyValue(tok, "sourceFile", new List<object> { fileName }, attrib);
+            attrib = new Bpl.QKeyValue(tok, "first", new List<object>(), attrib);
             this.parent.StmtBuilder.Add(
               new Bpl.AssertCmd(tok, Bpl.Expr.True, attrib)
               );
