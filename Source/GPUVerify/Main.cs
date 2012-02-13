@@ -41,7 +41,7 @@ namespace GPUVerify
                 }
                 if (extension != ".gbpl")
                 {
-                    OnlyBoogie.AdvisoryWriteLine("Warning '{0}': Should only pass filename with extension .gbpl. Input must be GBoogie programs.", file + extension);
+                    OnlyBoogie.AdvisoryWriteLine("Warning '{0}': Should only pass filename with extension .gbpl. Input must be GBoogie programs.", file);
                 }
             }
 
