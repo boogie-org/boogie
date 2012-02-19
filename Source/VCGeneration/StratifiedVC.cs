@@ -1858,7 +1858,12 @@ namespace VC
                         }
 
                         #region expand call tree
-
+                        if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0)
+                        {
+                            Console.Write(">> SI Inlining: ");
+                            reporter.candidatesToExpand.ForEach(c => Console.Write("{0} ", calls.getProc(c)));
+                            Console.WriteLine();
+                        }
                         // Expand and try again
                         vState.checker.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
                         DoExpansion(incrementalSearch, reporter.candidatesToExpand, vState);
