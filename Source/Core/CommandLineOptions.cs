@@ -447,6 +447,7 @@ namespace Microsoft.Boogie {
     public int EnhancedErrorMessages = 0;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
+    public bool UseLabels = false;
     public bool MonomorphicArrays {
       get {
         return UseArrayTheory || TypeEncodingMethod == TypeEncoding.Monomorphic;

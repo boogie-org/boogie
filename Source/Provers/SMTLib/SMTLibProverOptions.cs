@@ -41,6 +41,11 @@ namespace Microsoft.Boogie.SMTLib
     public string Inspector = null;
     public bool OptimizeForBv = false;
 
+    public bool ProduceModel() {
+      return !CommandLineOptions.Clo.UseLabels ||
+             ExpectingModel();
+    }
+
     public bool ExpectingModel()
     {
         return CommandLineOptions.Clo.PrintErrorModel >= 1 ||

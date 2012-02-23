@@ -187,7 +187,7 @@ namespace Microsoft.Boogie.SMTLib
       if (common.Length == 0) {
         SendCommon("(set-option :print-success false)");
         SendCommon("(set-info :smt-lib-version 2.0)");
-        if (options.ExpectingModel())
+        if (options.ProduceModel())
           SendCommon("(set-option :produce-models true)");
         foreach (var opt in options.SmtOptions) {
           SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
@@ -449,9 +449,38 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    private string[] CalculatePath() {
+      SendThisVC("(get-value ((ControlFlow @cfc 0)))");
+      var path = new List<string>();
+      while (true) {
+        var resp = Process.GetProverResponse();
+        if (resp == null)
+          break;
+        if (!(resp.Name == "" && resp.ArgCount == 1)) break;
+        resp = resp.Arguments[0];
+        if (!(resp.Name == "" && resp.ArgCount == 2)) break;
+        resp = resp.Arguments[1];
+        var v = resp.Name;
+        if (v == "-" && resp.ArgCount == 1) 
+          v += resp.Arguments[0].Name;
+        else if (resp.ArgCount != 0) 
+          break;
+        if (v.StartsWith("-")) {
+          path.Add("@" + v.Substring(1));
+          break;
+        }
+        else {
+          path.Add("+" + v);
+        }
+        SendThisVC("(get-value ((ControlFlow @cfc " + v + ")))");
+      }
+      return path.ToArray();
+    }
+
     private string[] GetLabelsInfo(ErrorHandler handler)
     {
-      SendThisVC("(labels)");
+      if (CommandLineOptions.Clo.UseLabels)
+        SendThisVC("(labels)");
       if (options.ExpectingModel())
         SendThisVC("(get-model)");
       Process.Ping();
@@ -497,6 +526,14 @@ namespace Microsoft.Boogie.SMTLib
             HandleProverError("Unexpected prover response (getting labels/model): " + resp.ToString());
           }
         }
+      }
+
+      if (!CommandLineOptions.Clo.UseLabels) {
+        res = CalculatePath();
+        if (res.Length == 0) 
+          res = null;
+        else
+          labelNums = res.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
       }
 
       if (labelNums != null) {

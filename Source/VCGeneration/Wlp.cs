@@ -134,7 +134,7 @@ namespace VC {
             Contract.Assert(controlFlowVariableExpr != null);
             VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(b.UniqueId)));
             Contract.Assert(controlFlowFunctionAppl != null);
-            VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(ac.UniqueId)));
+            VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(-ac.UniqueId)));
             if (ctxt.Label2absy == null) {
               return gen.AndSimp(gen.Implies(assertFailure, C), gen.Implies(C, N));
             } else {

@@ -1536,9 +1536,24 @@ namespace VC {
           }
 		  ));
 
-        VCExpr vc = parent.GenerateVCAux(impl, null, label2absy, checker);
+        LocalVariable controlFlowVariable = null;
+
+        if (!CommandLineOptions.Clo.UseLabels) {
+          controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
+          impl.LocVars.Add(controlFlowVariable);
+        }
+
+        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariable, label2absy, checker);
         Contract.Assert(vc != null);
 
+        if (!CommandLineOptions.Clo.UseLabels) {
+          VCExpr controlFlowVariableExpr = bet.LookupVariable(controlFlowVariable);
+          Contract.Assert(controlFlowVariableExpr != null);
+          VCExpr controlFlowFunctionAppl = ctx.ExprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, ctx.ExprGen.Integer(BigNum.ZERO));
+          Contract.Assert(controlFlowFunctionAppl != null);
+          vc = ctx.ExprGen.Implies(ctx.ExprGen.Eq(controlFlowFunctionAppl, ctx.ExprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId))), vc);
+        }
+        
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
           reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, parent.implName2LazyInliningInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);
         } else {
