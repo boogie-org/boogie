@@ -285,6 +285,15 @@ namespace Microsoft.Boogie.SMTLib
         Process.Close();
     }
 
+    string controlFlowVariable;
+
+    private VCExpr ArgumentZero(VCExpr vc) {
+      VCExprNAry naryExpr = vc as VCExprNAry;
+      if (naryExpr == null)
+        return null;
+      return naryExpr[0];
+    }
+
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       //Contract.Requires(descriptiveName != null);
@@ -297,6 +306,9 @@ namespace Microsoft.Boogie.SMTLib
         currentLogFile = OpenOutputFile(descriptiveName);
         currentLogFile.Write(common.ToString());
       }
+
+      if (!CommandLineOptions.Clo.UseLabels)
+        controlFlowVariable = VCExpr2String(ArgumentZero(ArgumentZero(ArgumentZero(vc))),1);
 
       PrepareCommon();
       string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
@@ -450,7 +462,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     private string[] CalculatePath() {
-      SendThisVC("(get-value ((ControlFlow @cfc 0)))");
+      SendThisVC("(get-value ((ControlFlow " + controlFlowVariable + " 0)))");
       var path = new List<string>();
       while (true) {
         var resp = Process.GetProverResponse();
@@ -472,7 +484,7 @@ namespace Microsoft.Boogie.SMTLib
         else {
           path.Add("+" + v);
         }
-        SendThisVC("(get-value ((ControlFlow @cfc " + v + ")))");
+        SendThisVC("(get-value ((ControlFlow " + controlFlowVariable + " " + v + ")))");
       }
       return path.ToArray();
     }

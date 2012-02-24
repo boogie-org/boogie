@@ -447,7 +447,7 @@ namespace Microsoft.Boogie {
     public int EnhancedErrorMessages = 0;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
-    public bool UseLabels = false;
+    public bool UseLabels = true;
     public bool MonomorphicArrays {
       get {
         return UseArrayTheory || TypeEncodingMethod == TypeEncoding.Monomorphic;
@@ -1224,7 +1224,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("z3multipleErrors", ref z3AtFlag, false) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
-              ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis)
+              ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
+              ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false)
               ) {
             // one of the boolean flags matched
             return true;

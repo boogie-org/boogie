@@ -443,6 +443,11 @@ namespace Microsoft.Boogie {
       Contract.Ensures(0 <= Contract.ValueAtReturn(out inconclusives) && 0 <= Contract.ValueAtReturn(out timeOuts));
 
       errorCount = verified = inconclusives = timeOuts = outOfMemories = 0;
+      CommandLineOptions.Clo.UseLabels =
+        CommandLineOptions.Clo.UseLabels ||
+        CommandLineOptions.Clo.SoundnessSmokeTest ||
+        !(CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Dag ||
+          CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.DagIterative);
 
       // ---------- Infer invariants --------------------------------------------------------
 

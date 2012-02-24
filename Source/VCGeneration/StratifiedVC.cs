@@ -208,8 +208,12 @@ namespace VC
             Hashtable/*<int, Absy!>*/ label2absy;
             VCExpressionGenerator gen = checker.VCExprGen;
             Contract.Assert(gen != null);
+
+
             VCExpr vcexpr = gen.Not(GenerateVC(impl, null, out label2absy, checker));
             Contract.Assert(vcexpr != null);
+          
+          
             info.label2absy = label2absy;
             info.mvInfo = mvInfo;
 

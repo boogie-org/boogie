@@ -24,6 +24,8 @@ namespace Microsoft.Boogie.Houdini {
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
     ConditionGeneration.CounterexampleCollector collector;
+    LocalVariable controlFlowVariable;
+    int entryBlockId;
 
     public HoudiniSession(VCGen vcgen, Checker checker, Program program, Implementation impl) {
       descriptiveName = impl.Name;
@@ -37,8 +39,14 @@ namespace Microsoft.Boogie.Houdini {
       ModelViewInfo mvInfo;
       Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.PassifyImpl(impl, program, out mvInfo);
       Hashtable/*<int, Absy!>*/ label2absy;
+
+      if (!CommandLineOptions.Clo.UseLabels) {
+        controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
+        impl.LocVars.Add(controlFlowVariable);
+        entryBlockId = impl.Blocks[0].UniqueId;
+      }
       
-      conjecture = vcgen.GenerateVC(impl, null, out label2absy, checker);
+      conjecture = vcgen.GenerateVC(impl, controlFlowVariable, out label2absy, checker);
 
       if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
         handler = new VCGen.ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, vcgen.implName2LazyInliningInfo, checker.TheoremProver.Context, program);
@@ -51,6 +59,16 @@ namespace Microsoft.Boogie.Houdini {
     public ProverInterface.Outcome Verify(Checker checker, VCExpr axiom, out List<Counterexample> errors) {
       collector.examples.Clear();
       VCExpr vc = checker.VCExprGen.Implies(axiom, conjecture);
+
+      if (!CommandLineOptions.Clo.UseLabels) {
+        var ctx = checker.TheoremProver.Context;
+        var bet = ctx.BoogieExprTranslator;
+        VCExpr controlFlowVariableExpr = bet.LookupVariable(controlFlowVariable);
+        Contract.Assert(controlFlowVariableExpr != null);
+        VCExpr controlFlowFunctionAppl = ctx.ExprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, ctx.ExprGen.Integer(Microsoft.Basetypes.BigNum.ZERO));
+        Contract.Assert(controlFlowFunctionAppl != null);
+        vc = ctx.ExprGen.Implies(ctx.ExprGen.Eq(controlFlowFunctionAppl, ctx.ExprGen.Integer(Microsoft.Basetypes.BigNum.FromInt(entryBlockId))), vc);
+      }
 
       DateTime now = DateTime.UtcNow;
       checker.BeginCheck(descriptiveName, vc, handler);
