@@ -179,7 +179,7 @@ function LastSeen$Credits(Mu, int) returns (CreditsType);
 
 const unique rdheld: Field bool;
 axiom NonPredicateField(rdheld);
-function wf(h: HeapType, m: MaskType) returns (bool);
+function wf(h: HeapType, m: MaskType, sm: MaskType) returns (bool);
 
 function IsGoodInhaleState(ih: HeapType, h: HeapType,
                            m: MaskType, sm: MaskType) returns (bool)
@@ -226,7 +226,7 @@ function {:expand true} IsGoodMask(m: MaskType) returns (bool)
       (m[o,f][perm$N] < 0 ==> 0 < m[o,f][perm$R]))
 }
 
-axiom (forall h: HeapType, m: MaskType, o: ref, q: ref :: {wf(h, m), h[o, mu], h[q, mu]} wf(h, m) && o!=q && (0 < h[o, held] || h[o, rdheld]) && (0 < h[q, held] || h[q, rdheld]) ==> h[o, mu] != h[q, mu]);
+axiom (forall h: HeapType, m, sm: MaskType, o: ref, q: ref :: {wf(h, m, sm), h[o, mu], h[q, mu]} wf(h, m, sm) && o!=q && (0 < h[o, held] || h[o, rdheld]) && (0 < h[q, held] || h[q, rdheld]) ==> h[o, mu] != h[q, mu]);
 
 function DecPerm<T>(m: MaskType, o: ref, f: Field T, howMuch: int) returns (MaskType);
 
