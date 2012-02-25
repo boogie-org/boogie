@@ -122,10 +122,9 @@ class Translator {
         methodKStmts :::
         BLocal(h0V) :: BLocal(m0V) :: BLocal(sm0V) :: BLocal(c0V) :: BLocal(h1V) :: BLocal(m1V) :: BLocal(sm1V) :: BLocal(c1V) :: BLocal(lkV) ::
         bassume(wf(h0, m0, sm0)) :: bassume(wf(h1, m1, sm1)) ::
-        (oldTranslator.Mask := ZeroMask) :: (oldTranslator.SecMask := ZeroMask) :: (oldTranslator.Credits := ZeroCredits) ::
+        resetState(oldTranslator) :::
         oldTranslator.Inhale(invs map { mi => mi.e}, "monitor invariant", false, methodK) :::
-        (etran.Mask := ZeroMask) :: (etran.SecMask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
-        Havoc(etran.Heap) ::
+        resetState(etran) :::
         // check that invariant is well-defined
         etran.WhereOldIs(h1, m1, sm1, c1).Inhale(invs map { mi => mi.e}, "monitor invariant", true, methodK) :::
         // smoke test: is the monitor invariant equivalent to false?
@@ -366,8 +365,7 @@ class Translator {
         // check precondition
         InhaleWithChecking(Preconditions(method.spec), "precondition", methodK) :::
         DefineInitialState :::
-        (etran.Mask := ZeroMask) :: (etran.SecMask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
-        Havoc(etran.Heap) ::
+        resetState(etran) :::
         // check postcondition
         InhaleWithChecking(Postconditions(method.spec), "postcondition", methodK) :::
         // check lockchange
@@ -418,8 +416,7 @@ class Translator {
         // check precondition
         InhaleWithChecking(Preconditions(mt.Spec) ::: preCI, "precondition", todoiparam) :::
         DefineInitialState :::
-        (etran.Mask := ZeroMask) :: (etran.SecMask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
-        Havoc(etran.Heap) ::
+        resetState(etran) :::
         // check postcondition
         InhaleWithChecking(Postconditions(mt.refines.Spec), "postcondition", todoiparam) :::
         tag(InhaleWithChecking(postCI ::: Postconditions(mt.spec), "postcondition", todoiparam), keepTag)
@@ -1078,7 +1075,7 @@ class Translator {
     // 1. CHECK  DEFINEDNESS OF INVARIANT
       Comment("check loop invariant definedness") ::
       //(w.LoopTargets.toList map { v: Variable => Boogie.Havoc(Boogie.VarExpr(v.id)) }) :::
-      Boogie.Havoc(etran.Heap) :: Boogie.Assign(etran.Mask, ZeroMask) :: Boogie.Assign(etran.SecMask, ZeroMask) :: Boogie.Assign(etran.Credits, ZeroCredits) ::
+      resetState(etran) :::
       InhaleWithChecking(w.oldInvs, "loop invariant definedness", whileK) :::
       tag(InhaleWithChecking(w.newInvs, "loop invariant definedness", whileK), keepTag) :::                  
       bassume(false)
@@ -1086,7 +1083,7 @@ class Translator {
     // 2. CHECK LOOP BODY
       // Renew state: set Mask to ZeroMask and Credits to ZeroCredits, and havoc Heap everywhere except
       // at {old(local),local}.{held,rdheld}
-      Havoc(etran.Heap) :: (etran.Mask := ZeroMask) :: (etran.SecMask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
+      resetState(etran) :::
       Inhale(w.Invs, "loop invariant, body", whileK) :::
       // assume lockchange at the beginning of the loop iteration
       Comment("assume lockchange at the beginning of the loop iteration") ::
@@ -1394,7 +1391,9 @@ class Translator {
 case class FoldedPredicate(predicate: String, receiver: Expr, version: Expr, conditions: Set[(VarExpr,Boolean)])
 case class FoldedPredicatesInformation(foldedPredicates: List[FoldedPredicate])
 
-case class Globals(heap: Expr, mask: Expr, secmask: Expr, credits: Expr)
+case class Globals(heap: Expr, mask: Expr, secmask: Expr, credits: Expr) {
+  def list: List[Expr] = List(heap, mask, secmask, credits)
+}
 
 class ExpressionTranslator(val globals: Globals, preGlobals: Globals, currentClass: Class, checkTermination: Boolean) {
 
@@ -1492,12 +1491,8 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, currentCla
       case Not(e) =>
         isDefined(e)
       case func@FunctionApplication(obj, id, args) =>
-        // TODO refactor
-        val (tmpHeapV, tmpHeap) = Boogie.NewBVar("Heap", theap, true);
-        val (tmpMaskV, tmpMask) = Boogie.NewBVar("Mask", tmask, true); 
-        val (tmpSecMaskV, tmpSecMask) = Boogie.NewBVar("SecMask", tmask, true); 
-        val (tmpCreditsV, tmpCredits) = Boogie.NewBVar("Credits", tcredits, true); 
-        val tmpTranslator = new ExpressionTranslator(Globals(tmpHeap,tmpMask,tmpSecMask,tmpCredits), etran.oldEtran.globals, currentClass);
+        val (tmpGlobalsV, tmpGlobals) = etran.FreshGlobals("fapp")
+        val tmpTranslator = new ExpressionTranslator(tmpGlobals, etran.oldEtran.globals, currentClass);
         
         // pick new k
         val (funcappKV, funcappK) = Boogie.NewBVar("funcappK", tint, true)
@@ -1510,22 +1505,16 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, currentCla
         Comment("check precondition of call") ::
         BLocal(funcappKV) :: bassume(0 < funcappK && 1000*funcappK < percentPermission(1)) ::
         bassume(assumption) ::
-        BLocal(tmpHeapV) :: (tmpHeap := Heap) ::
-        BLocal(tmpMaskV) :: (tmpMask := Mask) ::
-        BLocal(tmpSecMaskV) :: (tmpSecMask := SecMask) ::
-        BLocal(tmpCreditsV) :: (tmpCredits := Credits) :::
+        BLocals(tmpGlobalsV) :::
+        copyState(tmpGlobals, etran) :::
         tmpTranslator.Exhale(Preconditions(func.f.spec) map { pre=> (SubstVars(pre, obj, func.f.ins, args), ErrorMessage(func.pos, "Precondition at " + pre.pos + " might not hold."))},
                              "function call",
                              false, funcappK, false) :::
         // size of the heap of callee must be strictly smaller than size of the heap of the caller
-        (if(checkTermination) { List(prove(NonEmptyMask(tmpMask), func.pos, "The heap of the callee might not be strictly smaller than the heap of the caller.")) } else Nil)
+        (if(checkTermination) { List(prove(NonEmptyMask(tmpGlobals.mask), func.pos, "The heap of the callee might not be strictly smaller than the heap of the caller.")) } else Nil)
       case unfolding@Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), e) =>
-        // TODO refactor
-        val (tmpHeapV, tmpHeap) = Boogie.NewBVar("Heap", theap, true);
-        val (tmpMaskV, tmpMask) = Boogie.NewBVar("Mask", tmask, true);
-        val (tmpSecMaskV, tmpSecMask) = Boogie.NewBVar("SecMask", tmask, true); 
-        val (tmpCreditsV, tmpCredits) = Boogie.NewBVar("Credits", tcredits, true);
-        val tmpTranslator = new ExpressionTranslator(Globals(tmpHeap, tmpMask, tmpSecMask, tmpCredits), etran.oldEtran.globals, currentClass);
+        val (tmpGlobalsV, tmpGlobals) = etran.FreshGlobals("unfolding")
+        val tmpTranslator = new ExpressionTranslator(tmpGlobals, etran.oldEtran.globals, currentClass);
         
         val receiverOk = isDefined(obj) ::: prove(nonNull(Tr(obj)), obj.pos, "Receiver might be null.");
         val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), obj), perm, unfolding.pos)
@@ -1538,10 +1527,8 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, currentCla
         // check definedness
         receiverOk ::: isDefined(perm) :::
         // copy state into temporary variables
-        BLocal(tmpHeapV) :: Boogie.Assign(tmpHeap, Heap) ::
-        BLocal(tmpMaskV) :: Boogie.Assign(tmpMask, Mask) ::
-        BLocal(tmpSecMaskV) :: (tmpSecMask := SecMask) ::
-        BLocal(tmpCreditsV) :: Boogie.Assign(tmpCredits, Credits) ::
+        BLocals(tmpGlobalsV) :::
+        copyState(tmpGlobals, etran) :::
         // exhale the predicate
         tmpTranslator.Exhale(List((acc, ErrorMessage(unfolding.pos, "Unfolding might fail."))), "unfolding", false, unfoldingK, false) :::
         // inhale the definition of the predicate
@@ -2514,11 +2501,15 @@ object TranslationHelper {
   def copyState(globals: Globals, et: ExpressionTranslator): List[Stmt] =
     copyState(globals, et.globals)
   def copyState(globals: Globals, globalsToCopyFrom: Globals): List[Stmt] = {
-    val l = List((globals.heap, globalsToCopyFrom.heap),
-        (globals.mask, globalsToCopyFrom.mask),
-        (globals.secmask, globalsToCopyFrom.secmask),
-        (globals.credits, globalsToCopyFrom.credits))
-    for ((a, b) <- l) yield (a := b)
+    for ((a, b) <- globals.list zip globalsToCopyFrom.list) yield (a := b)
+  }
+  def resetState(et: ExpressionTranslator): List[Stmt] = resetState(et.globals)
+  def resetState(globals: Globals): List[Stmt] = {
+    (globals.mask := ZeroMask) ::
+    (globals.secmask := ZeroMask) ::
+    (globals.credits := ZeroCredits) ::
+    Havoc(globals.heap) ::
+    Nil
   }
   
   // sequences
