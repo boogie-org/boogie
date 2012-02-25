@@ -285,10 +285,10 @@ class Translator {
       var args = VarExpr("this") :: (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
 
       // create two heaps
-      val globals1 = etran.FreshGlobals("a"); val etran1 = new ExpressionTranslator(globals1 map {v => new Boogie.VarExpr(v)}, currentClass);
-      val globals2 = etran.FreshGlobals("b"); val etran2 = new ExpressionTranslator(globals2 map {v => new Boogie.VarExpr(v)}, currentClass);
-      val List(heap1, mask1, _, _) = globals1;
-      val List(heap2, mask2, _, _) = globals2;
+      val (globals1V, globals1) = etran.FreshGlobals("a"); val etran1 = new ExpressionTranslator(globals1, currentClass);
+      val (globals2V, globals2) = etran.FreshGlobals("b"); val etran2 = new ExpressionTranslator(globals2, currentClass);
+      val List(heap1, mask1, _, _) = globals1V;
+      val List(heap2, mask2, _, _) = globals2V;
       val apply1 = FunctionApp(functionName(f), etran1.Heap :: etran1.Mask :: etran1.SecMask :: args);
       val apply2 = FunctionApp(functionName(f), etran2.Heap :: etran2.Mask :: etran2.SecMask :: args);
 
@@ -480,18 +480,13 @@ class Translator {
       case a@Assert(e) =>
         a.smokeErrorNr match {
           case None =>
-            val newGlobals = etran.FreshGlobals("assert");
-            val tmpHeap = Boogie.NewBVar(HeapName, theap, true);
-            val tmpMask = Boogie.NewBVar(MaskName, tmask, true); 
-            val tmpSecMask = Boogie.NewBVar(SecMaskName, tmask, true); 
-            val tmpCredits = Boogie.NewBVar(CreditsName, tcredits, true); 
-            val tmpTranslator = new ExpressionTranslator(List(tmpHeap._1.id, tmpMask._1.id, tmpSecMask._1.id, tmpCredits._1.id), List(etran.ChooseEtran(true).Heap, etran.ChooseEtran(true).Mask, etran.ChooseEtran(true).SecMask, etran.ChooseEtran(true).Credits), currentClass);        
+            val (tmpGlobalsV, tmpGlobals) = etran.FreshGlobals("assert");
+            val (tmpHeap, tmpMask, tmpSecMask, tmpCredits) = tmpGlobals
+            val tmpTranslator = new ExpressionTranslator(tmpGlobals, etran.preGlobals, currentClass);        
             Comment("assert") ::
             // exhale e in a copy of the heap/mask/credits
-            BLocal(tmpHeap._1) :: (tmpHeap._2 := etran.Heap) ::
-            BLocal(tmpMask._1) :: (tmpMask._2 := etran.Mask) ::
-            BLocal(tmpSecMask._1) :: (tmpSecMask._2 := etran.SecMask) ::
-            BLocal(tmpCredits._1) :: (tmpCredits._2 := etran.Credits) ::
+            BLocals(tmpGlobalsV) :::
+            copyState(tmpGlobals, etran) :::
             tmpTranslator.Exhale(List((e, ErrorMessage(s.pos, "Assertion might not hold."))), "assert", true, methodK, true)
           case Some(err) =>
             bassert(e, a.pos, "SMOKE-TEST-" + err + ". ("+SmokeTest.smokeWarningMessage(err)+")", 0) :: Nil
@@ -977,14 +972,14 @@ class Translator {
 
   // TODO: This method has not yet been updated to the new permission model
   def translateSpecStmt(s: SpecStmt): List[Stmt] = {
-    val preGlobals = etran.FreshGlobals("pre")
+    val (preGlobalsV, preGlobals) = etran.FreshGlobals("pre")
 
     // declare new local variables
     s.locals.flatMap(v => translateLocalVarDecl(v, true)) :::
     Comment("spec statement") ::
-    (for (v <- preGlobals) yield BLocal(v)) :::
+    BLocals(preGlobalsV) :::
     // remember values of globals
-    (for ((o,g) <- preGlobals zip etran.Globals) yield (new Boogie.VarExpr(o) := g)) :::
+    copyState(preGlobals, etran) :::
     // exhale preconditions
     etran.Exhale(List((s.pre, ErrorMessage(s.pos, "The specification statement precondition at " + s.pos + " might not hold."))), "spec stmt precondition", true, todoiparam, todobparam) :::
     // havoc locals
@@ -1004,7 +999,7 @@ class Translator {
     val formalIns = for (v <- formalInsV) yield new VariableExpr(v)
     val formalOutsV = for (p <- c.m.Outs) yield new Variable(p.id, p.t)
     val formalOuts = for (v <- formalOutsV) yield new VariableExpr(v)
-    val preGlobals = etran.FreshGlobals("call")
+    val (preGlobalsV, preGlobals) = etran.FreshGlobals("call")
     val postEtran = etran.FromPreGlobals(preGlobals)
     
     // pick new k for this method call
@@ -1014,9 +1009,9 @@ class Translator {
     Comment("call " + id) ::
     // introduce formal parameters and pre-state globals
     (for (v <- formalThisV :: formalInsV ::: formalOutsV) yield BLocal(Variable2BVarWhere(v))) :::
-    (for (v <- preGlobals) yield BLocal(v)) :::
+    BLocals(preGlobalsV) :::
     // remember values of globals
-    (for ((o,g) <- preGlobals zip etran.Globals) yield (new Boogie.VarExpr(o) := g)) :::
+    copyState(preGlobals, etran) :::
     // check definedness of arguments
     isDefined(obj) :::
     bassert(nonNull(obj), c.pos, "The target of the method call might be null.") ::
@@ -1045,9 +1040,9 @@ class Translator {
     val lkch = w.lkch;
     val body = w.body;
 
-    val preLoopGlobals = etran.FreshGlobals("while")
+    val (preLoopGlobalsV, preLoopGlobals) = etran.FreshGlobals("while")
     val loopEtran = etran.FromPreGlobals(preLoopGlobals)
-    val iterStartGlobals = etran.FreshGlobals("iterStart")
+    val (iterStartGlobalsV, iterStartGlobals) = etran.FreshGlobals("iterStart")
     val iterStartEtran = etran.FromPreGlobals(iterStartGlobals)
     val saveLocalsV = for (v <- w.LoopTargets) yield new Variable(v.id, v.t)
     val iterStartLocalsV = for (v <- w.LoopTargets) yield new Variable(v.id, v.t)
@@ -1065,11 +1060,8 @@ class Translator {
     BLocal(whileKV) ::
     bassume(0 < whileK && 1000*whileK < percentPermission(1) && 1000*whileK < methodK) ::
     // save globals
-    (for (v <- preLoopGlobals) yield BLocal(v)) :::
-    (loopEtran.oldEtran.Heap := loopEtran.Heap) ::
-    (loopEtran.oldEtran.Mask := loopEtran.Mask) ::  // oldMask is not actually used below
-    (loopEtran.oldEtran.SecMask := loopEtran.SecMask) ::
-    (loopEtran.oldEtran.Credits := loopEtran.Credits) ::  // is oldCredits?
+    BLocal(preLoopGlobalsV) :::
+    copyState(preLoopGlobals, loopEtran) :::
     // check invariant on entry to the loop
     Exhale(w.oldInvs map { inv => (inv, ErrorMessage(inv.pos, "The loop invariant might not hold on entry to the loop."))}, "loop invariant, initially", whileK, false) :::
     tag(Exhale(w.newInvs map { inv => (inv, ErrorMessage(inv.pos, "The loop invariant might not hold on entry to the loop."))}, "loop invariant, initially", whileK, false), keepTag) :::
@@ -1102,11 +1094,8 @@ class Translator {
       Comment("assume lockchange at the beginning of the loop iteration") ::
       (bassume(LockFrame(lkch, etran))) ::
       // this is the state at the beginning of the loop iteration; save these values
-      (for (v <- iterStartGlobals) yield BLocal(v)) :::
-      (iterStartEtran.oldEtran.Heap := iterStartEtran.Heap) ::
-      (iterStartEtran.oldEtran.Mask := iterStartEtran.Mask) ::  // oldMask is not actually used below
-      (iterStartEtran.oldEtran.SecMask := iterStartEtran.SecMask) ::
-      (iterStartEtran.oldEtran.Credits := iterStartEtran.Credits) ::  // is oldCredits?
+      BLocal(iterStartGlobalsV) :::
+      copyState(iterStartGlobals, iterStartEtran) :::
       (for (isv <- iterStartLocalsV) yield BLocal(Variable2BVarWhere(isv))) :::
       (for ((v,isv) <- w.LoopTargets zip iterStartLocalsV) yield
          (new VariableExpr(isv) := new VariableExpr(v))) :::
@@ -1137,8 +1126,8 @@ class Translator {
     // abstract expression translator
     val absTran = etran;
     // concrete expression translate
-    val conGlobals = etran.FreshGlobals("concrete")
-    val conTran = new ExpressionTranslator(conGlobals map {v => new VarExpr(v)}, etran.oldEtran.Globals, currentClass);
+    val (conGlobalsV, conGlobals) = etran.FreshGlobals("concrete")
+    val conTran = new ExpressionTranslator(conGlobals, etran.oldEtran.globals, currentClass);
     // shared locals before block (excluding immutable)
     val before = for (v <- r.before; if (! v.isImmutable)) yield v;
     // shared locals in block
@@ -1150,8 +1139,8 @@ class Translator {
 
     Comment("refinement block") ::
     // save heap
-    (for (c <- conGlobals) yield BLocal(c)) :::
-    (for ((c, a) <- conGlobals zip etran.Globals) yield (new VarExpr(c) := a)) :::
+    BLocals(conGlobalsV) :::
+    copyState(conGlobals, etran) :::
     // save shared local variables
     (for (v <- beforeV) yield BLocal(Variable2BVarWhere(v))) :::            
     (for ((v, w) <- beforeV zip before) yield (new VariableExpr(v) := new VariableExpr(w))) :::
@@ -1408,7 +1397,7 @@ case class FoldedPredicate(predicate: String, receiver: Expr, version: Expr, con
 case class FoldedPredicatesInformation(foldedPredicates: List[FoldedPredicate])
 
 object ExpressionTranslator {
-  val Globals = {
+  val GlobalsVariables = {
     (HeapName, theap) ::
     (MaskName, tmask) ::
     (SecMaskName, tmask) ::
@@ -1431,25 +1420,29 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
 
   def this(globals: List[Boogie.Expr], preGlobals: List[Boogie.Expr], currentClass: Class) = this(globals, preGlobals, currentClass, false)
   def this(globals: List[Boogie.Expr], cl: Class) = this(globals, globals map (g => Boogie.Old(g)), cl)
-  def this(cl: Class) = this(for ((id,t) <- ExpressionTranslator.Globals) yield Boogie.VarExpr(id), cl)
+  def this(cl: Class) = this(for ((id,t) <- ExpressionTranslator.GlobalsVariables) yield Boogie.VarExpr(id), cl)
 
-  def Globals = List(Heap, Mask, SecMask, Credits)
   def ChooseEtran(chooseOld: Boolean) = if (chooseOld) oldEtran else this
 
   /**
    * Create a list of fresh global variables
    */
-  def FreshGlobals(prefix: String):List[Boogie.BVar] = {
-    new Boogie.BVar(prefix + HeapName, theap, true) ::
+  def FreshGlobals(prefix: String): (List[Boogie.BVar], List[Boogie.VarExpr]) = {
+    val vs = new Boogie.BVar(prefix + HeapName, theap, true) ::
     new Boogie.BVar(prefix + MaskName, tmask, true) ::
     new Boogie.BVar(prefix + SecMaskName, tmask, true) ::
     new Boogie.BVar(prefix + CreditsName, tcredits, true) ::
     Nil
+    val es = vs map {v => new Boogie.VarExpr(v)}
+    (vs, es)
   }
 
-  def FromPreGlobals(preGlobals: List[Boogie.BVar]) = {
-    val pg = preGlobals map (g => new VarExpr(g))
-    new ExpressionTranslator(globals, pg, currentClass, checkTermination)
+  def FromPreGlobals(preGlobalsV: List[Boogie.BVar]) = {
+    val preGlobals = preGlobalsV map (g => new VarExpr(g))
+    new ExpressionTranslator(globals, preGlobals, currentClass, checkTermination)
+  }
+  def FromPreGlobals(preGlobals: List[Boogie.VarExpr]) = {
+    new ExpressionTranslator(globals, preGlobals, currentClass, checkTermination)
   }
 
   def UseCurrentAsOld() = {
@@ -1519,7 +1512,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val (tmpMaskV, tmpMask) = Boogie.NewBVar("Mask", tmask, true); 
         val (tmpSecMaskV, tmpSecMask) = Boogie.NewBVar("SecMask", tmask, true); 
         val (tmpCreditsV, tmpCredits) = Boogie.NewBVar("Credits", tcredits, true); 
-        val tmpTranslator = new ExpressionTranslator(List(tmpHeap,tmpMask,tmpSecMask,tmpCredits), etran.oldEtran.Globals, currentClass);
+        val tmpTranslator = new ExpressionTranslator(List(tmpHeap,tmpMask,tmpSecMask,tmpCredits), etran.oldEtran.globals, currentClass);
         
         // pick new k
         val (funcappKV, funcappK) = Boogie.NewBVar("funcappK", tint, true)
@@ -1546,7 +1539,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val (tmpMaskV, tmpMask) = Boogie.NewBVar("Mask", tmask, true);
         val (tmpSecMaskV, tmpSecMask) = Boogie.NewBVar("SecMask", tmask, true); 
         val (tmpCreditsV, tmpCredits) = Boogie.NewBVar("Credits", tcredits, true);
-        val tmpTranslator = new ExpressionTranslator(List(tmpHeap, tmpMask, tmpSecMask, tmpCredits), etran.oldEtran.Globals, currentClass);
+        val tmpTranslator = new ExpressionTranslator(List(tmpHeap, tmpMask, tmpSecMask, tmpCredits), etran.oldEtran.globals, currentClass);
         
         val receiverOk = isDefined(obj) ::: prove(nonNull(Tr(obj)), obj.pos, "Receiver might be null.");
         val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), obj), perm, unfolding.pos)
@@ -1621,7 +1614,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         isDefined(e0) ::: isDefined(e1)
       case Eval(h, e) =>
         val (evalHeap, evalMask, evalSecMask, evalCredits, checks, assumptions) = fromEvalState(h);
-        val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalSecMask, evalCredits), etran.oldEtran.Globals, currentClass);
+        val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalSecMask, evalCredits), etran.oldEtran.globals, currentClass);
         evalEtran.isDefined(e)
       case _ : SeqQuantification => throw new InternalErrorException("should be desugared")
       case tq @ TypeQuantification(_, _, _, e, (min, max)) =>
@@ -1763,7 +1756,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     case Contains(e0, e1) => SeqContains(trrecursive(e1), trrecursive(e0))
     case Eval(h, e) =>
       val (evalHeap, evalMask, evalSecMask, evalCredits, checks, assumptions) = fromEvalState(h);
-      val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalSecMask, evalCredits), etran.oldEtran.Globals, currentClass);
+      val evalEtran = new ExpressionTranslator(List(evalHeap, evalMask, evalSecMask, evalCredits), etran.oldEtran.globals, currentClass);
       trrec(e, evalEtran)
     case _:SeqQuantification => throw new InternalErrorException("should be desugared")
     case tq @ TypeQuantification(Forall, _, _, e, _) =>
@@ -1950,9 +1943,9 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       bassume(wf(ih, Mask, SecMask))
     case Eval(h, e) => 
       val (evalHeap, evalMask, evalSecMask, evalCredits, checks, proofOrAssume) = fromEvalState(h);
-      val preGlobals = etran.FreshGlobals("eval")
-      val preEtran = new ExpressionTranslator(preGlobals map (v => new Boogie.VarExpr(v)), currentClass)
-      BLocal(preGlobals(0)) :: BLocal(preGlobals(1)) :: BLocal(preGlobals(2)) :: BLocal(preGlobals(3)) ::
+      val (preGlobalsV, preGlobals) = etran.FreshGlobals("eval")
+      val preEtran = new ExpressionTranslator(preGlobals, currentClass)
+      BLocals(preGlobalsV) :::
       (new VarExpr(preGlobals(1)) := ZeroMask) ::
       (new VarExpr(preGlobals(2)) := ZeroMask) ::
       // Should we start from ZeroMask instead of an arbitrary mask? In that case, assume submask(preEtran.Mask, evalMask); at the end!
@@ -2157,12 +2150,10 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       bassume(wf(Heap, em, SecMask))
     case Eval(h, e) if !onlyExactCheckingPermissions =>
       val (evalHeap, evalMask, evalSecMask, evalCredits, checks, proofOrAssume) = fromEvalState(h);
-      val preGlobals = etran.FreshGlobals("eval")
-      val preEtran = new ExpressionTranslator(List(Boogie.VarExpr(preGlobals(0).id), Boogie.VarExpr(preGlobals(1).id), Boogie.VarExpr(preGlobals(2).id), Boogie.VarExpr(preGlobals(3).id)), currentClass);
-      BLocal(preGlobals(0)) :: (VarExpr(preGlobals(0).id) := evalHeap) ::
-      BLocal(preGlobals(1)) :: (VarExpr(preGlobals(1).id) := evalMask) ::
-      BLocal(preGlobals(2)) :: (VarExpr(preGlobals(2).id) := evalSecMask) ::
-      BLocal(preGlobals(3)) :: (VarExpr(preGlobals(3).id) := evalCredits) ::
+      val (preGlobalsV, preGlobals) = etran.FreshGlobals("eval")
+      val preEtran = new ExpressionTranslator(preGlobals, currentClass);
+      BLocals(preGlobalsV) :::
+      copyState(preGlobals, List(evalHeap, evalMask, evalSecMask, evalCredits)) :::
       (if(check) checks else Nil) :::
       bassume(AreGoodMasks(preEtran.Mask, preEtran.SecMask)) ::
       bassume(wf(preEtran.Heap, preEtran.Mask, preEtran.SecMask)) ::
@@ -2456,6 +2447,7 @@ object TranslationHelper {
   def bassume(e: Expr) = Boogie.Assume(e)
   def BLocal(id: String, tp: BType) = new Boogie.LocalVar(id, tp)
   def BLocal(x: Boogie.BVar) = Boogie.LocalVar(x)
+  def BLocals(xs: List[Boogie.BVar]) = xs map BLocal
   def tArgSeq = NamedType("ArgSeq");
   def tref = NamedType("ref");
   def tbool = NamedType("bool");
@@ -2532,6 +2524,11 @@ object TranslationHelper {
     }
   }
   def tpartialheap = NamedType("PartialHeapType");
+  
+  def copyState(globals: List[VarExpr], et: ExpressionTranslator): List[Statement] =
+    copyState(globals, List(et.Heap, et.Mask, et.SecMask, et.Credits))
+  def copyState(globals: List[VarExpr], globalsToCopyFrom: List[VarExpr]): List[Statement] =
+    for ((a, b) <- globals zip globalsToCopyFrom) yield (a := b)
 
   // sequences
 
