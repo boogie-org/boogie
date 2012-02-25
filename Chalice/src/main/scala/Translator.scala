@@ -2258,7 +2258,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         (if (transferPermissionToSecMask) InhalePermission(perm, trE, memberName, currentK, sm)
         else Nil) :::
         // give up secondary permission to locations of the body of the predicate (also recursively)
-        (if (e.isPredicate)
+        (if (e.isPredicate && !transferPermissionToSecMask)
           (if (isUpdatingSecMask)
             UpdateSecMask(e.predicate, trE, Heap.select(trE, memberName), perm, currentK, recurseOnPredicatesDepth, previousReceivers)
           else
