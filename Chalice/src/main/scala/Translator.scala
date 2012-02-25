@@ -677,6 +677,7 @@ class Translator {
         var definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), e), perm, fold.pos)
         val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
         val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
+        val (flagV, flag) = Boogie.NewBVar("predFlag", tbool, true)
         
         // pick new k
         val (foldKV, foldK) = Boogie.NewBVar("foldK", tint, true)
@@ -691,10 +692,11 @@ class Translator {
         Inhale(List(acc), "fold", foldK) :::
         BLocal(receiverV) :: (receiver := o) ::
         BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) ::
+        BLocal(flagV) :: (flag := true) ::
         bassume(wf(etran.Heap, etran.Mask, etran.SecMask))
         
         // record folded predicate
-        etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions))
+        etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions, flag))
         
         stmts
       case unfld@Unfold(acc@Access(pred@MemberAccess(e, f), perm:Permission)) =>
@@ -1438,7 +1440,7 @@ class Translator {
 /** Represents a predicate that has been folded by ourselfs, or that we have peeked
  * at using unfolding.
  */
-case class FoldedPredicate(predicate: Predicate, receiver: Expr, version: Expr, conditions: Set[(VarExpr,Boolean)])
+case class FoldedPredicate(predicate: Predicate, receiver: Expr, version: Expr, conditions: Set[(VarExpr,Boolean)], flag: Expr)
 
 /** All information that we need to keep track of about folded predicates. */
 class FoldedPredicatesInfo {
@@ -2038,9 +2040,11 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       // in the secondary mask and track the predicate in the auxilary information
       val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
       val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
+      val (flagV, flag) = Boogie.NewBVar("predFlag", tbool, true)
       val o = TrExpr(obj);
       
       val stmts = BLocal(receiverV) :: (receiver := o) ::
+      BLocal(flagV) :: (flag := true) ::
       functionTrigger(o, pred.predicate) ::
       BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) ::
       (if(check) isDefined(uf)(true) else Nil) :::
@@ -2048,7 +2052,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassume(Tr(uf))
       
       // record folded predicate
-      etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions))
+      etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions, flag))
       
       stmts
     case e =>
@@ -2106,10 +2110,12 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     val occasion = "update SecMask"
     
     // condition: if any folded predicate matches (both receiver and version), update the secondary map
-    val b = (for (fp <- etran.fpi.getFoldedPredicates(predicate)) yield {
-      val conditions = (fp.conditions map (c => if (c._2) c._1 else !c._1)).foldLeft(true: Expr){ (a: Expr, b: Expr) => a && b }
-      fp.version ==@ version && fp.receiver ==@ receiver && conditions
-    }).foldLeft(false: Expr){ (a: Expr, b: Expr) => a || b }
+    val disj = (for (fp <- etran.fpi.getFoldedPredicates(predicate)) yield {
+        val conditions = (fp.conditions map (c => if (c._2) c._1 else !c._1)).foldLeft(true: Expr){ (a: Expr, b: Expr) => a && b }
+        val b = fp.version ==@ version && fp.receiver ==@ receiver && conditions && fp.flag
+        (b, fp.flag)
+      })
+    val b = (disj map (a => a._1)).foldLeft(false: Expr){ (a: Expr, b: Expr) => a || b }
     
     // add receiver to list of previous receivers
     val newPreviousReceivers = previousReceivers + (predicate.FullName -> (receiver :: previousReceivers.getOrElse(predicate.FullName, Nil)))
@@ -2120,6 +2126,9 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     }) :::
     // actually update the secondary mask
     Boogie.If(b,
+      // remove correct predicate from the auxiliary information by setting
+      // its flag to false
+      (disj.foldLeft(Nil: List[Stmt]){ (a: List[Stmt], b: (Expr, Expr)) => Boogie.If(b._1,(b._2 := false) :: Nil,a) :: Nil }) :::
       // asserts are converted to assumes, so error messages do not matter
       assert2assume(Exhale(SecMask, SecMask, List((definition, ErrorMessage(NoPosition, ""))), occasion, false, currentK, false /* it should not important what we pass here */, false, depth-1, true, newPreviousReceivers, false)),
       Nil) :: Nil
