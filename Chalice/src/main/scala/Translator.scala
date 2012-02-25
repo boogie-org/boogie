@@ -19,7 +19,7 @@ class Translator {
   var currentClass = null: Class;
   var modules = Nil: List[String]
   var etran = new ExpressionTranslator(null);
-
+  
   def translateProgram(decls: List[TopLevelDecl]): List[Decl] = {
     decls flatMap {
       case cl: Class => translateClass(cl)
@@ -202,12 +202,13 @@ class Translator {
     // postcondition axiom(s)
     postconditionAxiom(f)
   }
-
+  
   def definitionAxiom(f: Function, definition: Expression): List[Decl] = {
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
     val args = VarExpr("this") :: inArgs;
     val formals = BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar);
     val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask, etran.SecMask) ::: args);
+    val trigger = FunctionApp(functionName(f)+"#trigger", VarExpr("receiver") :: Nil);
     val pre = Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) });
 
     /** Limit application of the function by introducing a second (limited) function */
@@ -234,9 +235,9 @@ class Translator {
     /* axiom (forall h: HeapType, m, sm: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
          wf(h, m, sm) && CurrentModule == module#C ==> #C.f(h, m, this, x_1, ..., x_n) == tr(body))
     */    
-    Axiom(new Boogie.Forall(
-      formals, new Trigger(applyF),
-        (wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName)) && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
+    Axiom(new Boogie.Forall(Nil,
+      BVar("receiver", tref) :: formals, List(new Trigger(applyF),new Trigger(trigger)),
+        (trigger) && (wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName)) && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
         ==>
         (applyF ==@ body))) ::
     (if (f.isRecursive)
@@ -247,7 +248,9 @@ class Translator {
         applyF ==@ FunctionApp(functionName(f) + "#limited", List(etran.Heap, etran.Mask, etran.SecMask) ::: args))) ::
       Nil
     else
-      Nil)            
+      Nil) :::
+    Boogie.Function(functionName(f) + "#trigger", BVar("receiver", tref) :: Nil, BVar("$myresult", tbool)) ::
+    Axiom(new Boogie.Forall(BVar("receiver", tref) :: Nil, new Trigger(trigger), trigger ==@ true)) :: Nil
   }
 
   def framingAxiom(f: Function): List[Decl] = {
@@ -667,6 +670,7 @@ class Translator {
         // pick new k
         val (foldKV, foldK) = Boogie.NewBVar("foldK", tint, true)
         val stmts = Comment("fold") ::
+        functionTrigger(o, pred.predicate) :::
         BLocal(foldKV) :: bassume(0 < foldK && 1000*foldK < percentPermission(1) && 1000*foldK < methodK) ::
         isDefined(e) :::
         isDefined(perm) :::
@@ -2703,6 +2707,14 @@ object TranslationHelper {
   def NonPredicateField(f: String) = FunctionApp("NonPredicateField", List(VarExpr(f)))
   def PredicateField(f: String) = FunctionApp("PredicateField", List(VarExpr(f)))
   def cast(a: Expr, b: Expr) = FunctionApp("cast", List(a, b))
+  
+  // output a dummy function assumption that serves as trigger for the function
+  // definition axiom.
+  def functionTrigger(receiver: Expr, predicate: Predicate): List[Stmt] = {
+    for (f <- predicate.dependentFunctions) yield {
+      bassume(FunctionApp(functionName(f)+"#trigger", List(receiver)))
+    }
+  }
   
   def emptyPartialHeap: Expr = Boogie.VarExpr("emptyPartialHeap")
   def heapFragment(dep: Expr): Expr = Boogie.FunctionApp("heapFragment", List(dep))
