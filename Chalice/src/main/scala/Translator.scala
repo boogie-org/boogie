@@ -302,6 +302,10 @@ class Translator {
     }
   }
   
+  /** Get the definition of a precondition with the pure assertions only (i.e.
+   *  only functional specifications such as heap properties, assertsions about
+   *  variables, etc).
+   */
   def translatePrecondition(pre: Expression): Expression = {
     desugar(pre) transform {
       case _:PermissionExpr => Some(BoolLiteral(true))
