@@ -1444,7 +1444,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     new Boogie.BVar(prefix + CreditsName, tcredits, true) ::
     Nil
     val es = vs map {v => new Boogie.VarExpr(v)}
-    (vs, Globals(es(1), es(2), es(3), es(4)))
+    (vs, Globals(es(0), es(1), es(2), es(3)))
   }
 
   def FromPreGlobals(pg: Globals) = {
