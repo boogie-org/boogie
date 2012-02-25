@@ -1853,8 +1853,14 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         IncPermission(obj, memberName, f, m)
     })
   }
+  
+  def Inhale(p: Expression, ih: Boogie.Expr, check: Boolean, currentK: Expr): List[Boogie.Stmt] =
+    InhaleImplementation(p, ih, check, currentK, false)
+  
+  def InhaleToSecMask(p: Expression): List[Boogie.Stmt] =
+    InhaleImplementation(p, Heap /* it should not matter what we pass here */, false /* check */, -1 /* it should not matter what we pass here */, true)
 
-  def Inhale(p: Expression, ih: Boogie.Expr, check: Boolean, currentK: Expr): List[Boogie.Stmt] = desugar(p) match {
+  def InhaleImplementation(p: Expression, ih: Boogie.Expr, check: Boolean, currentK: Expr, transferToSecMask: Boolean): List[Boogie.Stmt] = desugar(p) match {
     case pred@MemberAccess(e, p) if pred.isPredicate => 
       val chk = (if (check) {
         isDefined(e)(true) ::: 
@@ -1862,7 +1868,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       } else Nil)
       val tmp = Access(pred, Full);
       tmp.pos = pred.pos;
-      chk ::: Inhale(tmp, ih, check, currentK)
+      chk ::: InhaleImplementation(tmp, ih, check, currentK, transferToSecMask)
     case AccessAll(obj, perm) => throw new InternalErrorException("should be desugared")
     case AccessSeq(s, None, perm) => throw new InternalErrorException("should be desugared")
     case acc@Access(e,perm) =>
@@ -1877,12 +1883,13 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       new MapUpdate(Heap, trE, VarExpr(memberName), new Boogie.MapSelect(ih, trE, memberName)) ::
       bassume(wf(Heap, Mask, SecMask)) ::
       (if(e.isPredicate) Nil else List(bassume(TypeInformation(new Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
-      InhalePermission(perm, trE, memberName, currentK) :::
+      InhalePermission(perm, trE, memberName, currentK, (if (transferToSecMask) SecMask else Mask)) :::
       bassume(AreGoodMasks(Mask, SecMask)) ::
       bassume(IsGoodState(heapFragment(new Boogie.MapSelect(ih, trE, memberName)))) ::
       bassume(wf(Heap, Mask, SecMask)) ::
       bassume(wf(ih, Mask, SecMask))
     case acc @ AccessSeq(s, Some(member), perm) =>
+	  if (transferToSecMask) throw new NotSupportedException("not yet implemented")
       if (member.isPredicate) throw new NotSupportedException("not yet implemented");
       val e = Tr(s);
       val memberName = member.f.FullName;
@@ -1937,12 +1944,12 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       new Boogie.MapUpdate(Credits, trCh, new Boogie.MapSelect(Credits, trCh) + Tr(cr.N))
     case Implies(e0,e1) =>
       (if(check) isDefined(e0)(true) else Nil) :::
-      Boogie.If(Tr(e0), Inhale(e1, ih, check, currentK), Nil)
+      Boogie.If(Tr(e0), InhaleImplementation(e1, ih, check, currentK, transferToSecMask), Nil)
     case IfThenElse(con, then, els) =>
       (if(check) isDefined(con)(true) else Nil) :::
-      Boogie.If(Tr(con), Inhale(then, ih, check, currentK), Inhale(els, ih, check, currentK))
+      Boogie.If(Tr(con), InhaleImplementation(then, ih, check, currentK, transferToSecMask), InhaleImplementation(els, ih, check, currentK, transferToSecMask))
     case And(e0,e1) =>
-      Inhale(e0, ih, check, currentK) ::: Inhale(e1, ih, check, currentK)
+      InhaleImplementation(e0, ih, check, currentK, transferToSecMask) ::: InhaleImplementation(e1, ih, check, currentK, transferToSecMask)
     case holds@Holds(e) =>
       val trE = Tr(e);
       (if(check)
@@ -1963,6 +1970,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassume(wf(Heap, Mask, SecMask)) ::
       bassume(wf(ih, Mask, SecMask))
     case Eval(h, e) => 
+	  if (transferToSecMask) throw new NotSupportedException("not yet implemented")
       val (evalHeap, evalMask, evalSecMask, evalCredits, checks, proofOrAssume) = fromEvalState(h);
       val (preGlobalsV, preGlobals) = etran.FreshGlobals("eval")
       val preEtran = new ExpressionTranslator(preGlobals, currentClass)
@@ -1980,20 +1988,21 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassume(AreGoodMasks(preEtran.Mask, preEtran.SecMask)) ::
       bassume(wf(preEtran.Heap, preEtran.Mask, preEtran.SecMask)) ::
       bassume(proofOrAssume) ::
-      preEtran.Inhale(e, ih, check, currentK) :::
+      preEtran.InhaleImplementation(e, ih, check, currentK, transferToSecMask) :::
       bassume(preEtran.Heap ==@ evalHeap) ::
       bassume(submask(preEtran.Mask, evalMask))
     case uf@Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), ufexpr) =>
-      // handle like the next case, but also record permissions of the predicate
+	  if (transferToSecMask) throw new NotSupportedException("not yet implemented")
+      // handle unfolding like the next case, but also record permissions of the predicate
       // in the secondary mask and track the predicate in the auxilary information
       val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
       val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
       val o = TrExpr(obj);
       
-      stmts = BLocal(receiverV) :: (receiver := o) ::
+      val stmts = BLocal(receiverV) :: (receiver := o) ::
       BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) ::
       (if(check) isDefined(uf)(true) else Nil) :::
-      TransferPermissionToSecMask(receiver, pred.predicate) :::
+      TransferPermissionToSecMask(pred.predicate, BoogieExpr(receiver), perm, uf.pos) :::
       bassume(Tr(uf))
       
       // record folded predicate
@@ -2008,11 +2017,10 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   /** Transfer the permissions mentioned in the body of the predicate to the
    * secondary mask.
   */
-  def TransferPermissionToSecMask(pred: Predicate, obj: Expression): List[Stmt] = {
+  def TransferPermissionToSecMask(pred: Predicate, obj: Expression, perm: Permission, pos: Position): List[Stmt] = {
+    var definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred), obj), perm, pos)
     // go through definition and handle all permisions correctly
-    def transferHelper(e: Expr): List[Stmt] = e match {
-    
-    }
+    InhaleToSecMask(definition)
   }
   
   // Exhale is done in two passes: In the first run, everything except permissions
