@@ -168,7 +168,7 @@ class Translator {
     val functionKStmts = BLocal(functionKV) :: bassume(0 < functionK && 1000*functionK < permissionOnePercent)
     
     // Boogie function that represents the Chalice function
-    Boogie.Function(functionName(f), BVar("heap", theap) :: BVar("mask", tmask) :: BVar("secmask", tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar), BVar("$myresult", f.out.typ)) ::
+    Boogie.Function(functionName(f), BVar("heap", theap) :: BVar("this", tref) :: (f.ins map Variable2BVar), BVar("$myresult", f.out.typ)) ::
     // check definedness of the function's precondition and body
     Proc(f.FullName + "$checkDefinedness", 
       NewBVarWhere("this", new Type(currentClass)) :: (f.ins map {i => Variable2BVarWhere(i)}),
@@ -208,16 +208,19 @@ class Translator {
     val thisArg = VarExpr("this")
     val args = thisArg :: inArgs;
     
-    val f1 = BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: Nil
+    val f1 = BVar(HeapName, theap) :: Nil
+    val f1b = BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: Nil
     val f2 = (f.ins map Variable2BVar)
     val f3 = BVar("this", tref)
-    val formals = f1 ::: f3 :: f2;
+    val formals = f1 ::: f1b ::: f3 :: f2
+    val formalsNoMask = f1 ::: f3 :: f2
     val formalsOnlyReceiver = f3 :: Nil
-    val formalsWithoutReceiver = f1 ::: f2;
-    val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask, etran.SecMask) ::: args);
-    val limitedApplyF = FunctionApp(functionName(f) + "#limited", List(etran.Heap, etran.Mask, etran.SecMask) ::: args)
+    val formalsWithoutReceiver = f1 ::: f1b ::: f2;
+    val applyF = FunctionApp(functionName(f), List(etran.Heap) ::: args);
+    val limitedApplyF = FunctionApp(functionName(f) + "#limited", List(etran.Heap) ::: args)
     val trigger = FunctionApp(functionName(f)+"#trigger", thisArg :: Nil);
     val pre = Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) });
+    val wellformed = wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName))
 
     /** Limit application of the function by introducing a second (limited) function */
     val body = etran.Tr(
@@ -244,20 +247,20 @@ class Translator {
          wf(h, m, sm) && CurrentModule == module#C ==> #C.f(h, m, this, x_1, ..., x_n) == tr(body))
     */
     Axiom(new Boogie.Forall(Nil,
-      formals, List(new Trigger(applyF)),
-        (wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName)) && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
+      formals, List(new Trigger(List(applyF,wellformed))),
+        (wellformed && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
         ==>
         (applyF ==@ body))) ::
     (if (f.isRecursive)
       // define the limited function (even for unlimited function since its SCC might have limited functions)
-      Boogie.Function(functionName(f) + "#limited", formals, BVar("$myresult", f.out.typ)) ::
+      Boogie.Function(functionName(f) + "#limited", formalsNoMask, BVar("$myresult", f.out.typ)) ::
       Axiom(new Boogie.Forall(formals,
-            new Trigger(applyF),
-            (applyF ==@ limitedApplyF))) ::
+            new Trigger(List(applyF,wellformed)),
+            (wellformed ==> (applyF ==@ limitedApplyF)))) ::
       Axiom(new Boogie.Forall(formalsOnlyReceiver,
         new Trigger(trigger),
         new Boogie.Forall(formalsWithoutReceiver,
-            new Trigger(limitedApplyF),
+            new Trigger(List(limitedApplyF,wellformed)),
             (applyF ==@ limitedApplyF)))) ::
       Nil
     else
@@ -281,13 +284,15 @@ class Translator {
       val frameFunctionName = "#" + functionName(f);
 
       val args = VarExpr("this") :: inArgs;
-      val applyF = FunctionApp(functionName(f) + (if (f.isRecursive) "#limited" else ""), List(etran.Heap, etran.Mask, etran.SecMask) ::: args);
-      val applyFrameFunction = FunctionApp(frameFunctionName, partialHeap :: args);
+      val applyF = FunctionApp(functionName(f) + (if (f.isRecursive) "#limited" else ""), List(etran.Heap) ::: args);
+      val applyFrameFunction = FunctionApp(frameFunctionName, partialHeap :: args)
+      val wellformed = wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName))
+      
       Boogie.Function(frameFunctionName, Boogie.BVar("state", tpartialheap) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new BVar("$myresult", f.out.typ)) ::
       Axiom(new Boogie.Forall(
         BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
-        new Trigger(applyF),
-          (wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName)) && IsGoodState(partialHeap) && CanAssumeFunctionDefs)
+        new Trigger(List(applyF, wellformed)),
+          (wellformed && IsGoodState(partialHeap) && CanAssumeFunctionDefs)
           ==>
           (applyF ==@ applyFrameFunction))
       )
@@ -304,15 +309,17 @@ class Translator {
       val (globals2V, globals2) = etran.FreshGlobals("b"); val etran2 = new ExpressionTranslator(globals2, currentClass);
       val List(heap1, mask1, secmask1, _) = globals1V;
       val List(heap2, mask2, secmask2, _) = globals2V;
-      val apply1 = FunctionApp(functionName(f), etran1.Heap :: etran1.Mask :: etran1.SecMask :: args);
-      val apply2 = FunctionApp(functionName(f), etran2.Heap :: etran2.Mask :: etran2.SecMask :: args);
+      val apply1 = FunctionApp(functionName(f), etran1.Heap :: args)
+      val apply2 = FunctionApp(functionName(f), etran2.Heap :: args)
+      val wellformed1 = wf(etran1.Heap, etran1.Mask, etran1.SecMask)
+      val wellformed2 = wf(etran2.Heap, etran2.Mask, etran2.SecMask)
 
       Axiom(new Boogie.Forall(
         heap1 :: heap2 :: mask1 :: mask2 :: secmask1 :: secmask2 :: BVar("this", tref) :: (f.ins map Variable2BVar),
-        new Trigger(List(apply1, apply2)),
-          ((wf(etran1.Heap, etran1.Mask, etran1.SecMask) && wf(etran2.Heap, etran2.Mask, etran2.SecMask) && functionDependenciesEqual(pre, etran1, etran2) && CanAssumeFunctionDefs)
+        new Trigger(List(apply1, apply2, wellformed1, wellformed2)),
+          (wellformed1 && wellformed2 && functionDependenciesEqual(pre, etran1, etran2) && CanAssumeFunctionDefs)
           ==>
-          (apply1 ==@ apply2))
+          (apply1 ==@ apply2)
       ))
     }
   }
@@ -324,13 +331,15 @@ class Translator {
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
     val myresult = Boogie.BVar("result", f.out.typ);
     val args = VarExpr("this") :: inArgs;
-    val applyF = FunctionApp(functionName(f), List(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName)) ::: args)
+    val applyF = FunctionApp(functionName(f), List(VarExpr(HeapName)) ::: args)
+    val wellformed = wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName))
+    
     //postcondition axioms
     (Postconditions(f.spec) map { post : Expression =>
       Axiom(new Boogie.Forall(
         BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
-        new Trigger(applyF),
-        (wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName)) && CanAssumeFunctionDefs)
+        new Trigger(List(applyF, wellformed)),
+        (wellformed && CanAssumeFunctionDefs)
           ==>
         etran.Tr(SubstResult(post, f.apply(ExplicitThisExpr(), f.ins map { arg => new VariableExpr(arg) })))
         ))
@@ -1737,7 +1746,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     case Not(e) =>
       ! trrecursive(e)
     case func@FunctionApplication(obj, id, args) =>
-      FunctionApp(functionName(func.f), Heap :: Mask :: SecMask :: (obj :: args map { arg => trrecursive(arg)}))
+      FunctionApp(functionName(func.f), Heap :: (obj :: args map { arg => trrecursive(arg)}))
     case uf@Unfolding(_, e) =>
       trrecursive(e)
     case Iff(e0,e1) =>
