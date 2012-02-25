@@ -1983,7 +1983,36 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       preEtran.Inhale(e, ih, check, currentK) :::
       bassume(preEtran.Heap ==@ evalHeap) ::
       bassume(submask(preEtran.Mask, evalMask))
-    case e => (if(check) isDefined(e)(true) else Nil) ::: bassume(Tr(e))
+    case uf@Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), ufexpr) =>
+      // handle like the next case, but also record permissions of the predicate
+      // in the secondary mask and track the predicate in the auxilary information
+      val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
+      val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
+      val o = TrExpr(obj);
+      
+      stmts = BLocal(receiverV) :: (receiver := o) ::
+      BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) ::
+      (if(check) isDefined(uf)(true) else Nil) :::
+      TransferPermissionToSecMask(receiver, pred.predicate) :::
+      bassume(Tr(uf))
+      
+      // record folded predicate
+      etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions))
+      
+      stmts
+    case e =>
+      (if(check) isDefined(e)(true) else Nil) :::
+      bassume(Tr(e))
+  }
+  
+  /** Transfer the permissions mentioned in the body of the predicate to the
+   * secondary mask.
+  */
+  def TransferPermissionToSecMask(pred: Predicate, obj: Expression): List[Stmt] = {
+    // go through definition and handle all permisions correctly
+    def transferHelper(e: Expr): List[Stmt] = e match {
+    
+    }
   }
   
   // Exhale is done in two passes: In the first run, everything except permissions
