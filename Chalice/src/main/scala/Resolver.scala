@@ -228,14 +228,7 @@ object Resolver {
            case f@Function(id, ins, out, spec, definition) =>
               // TODO: disallow credit(...) expressions in function specifications
              spec foreach {
-               case Precondition(e) =>
-                 ResolveExpr(e, context, false, true)(false)
-                 // add the function to all predicates it depends on
-                 e visit {_ match {
-                   case pred@MemberAccess(e, p) if pred.isPredicate =>
-                     pred.predicate.dependentFunctions = f :: pred.predicate.dependentFunctions
-                   case _ =>}
-                 }
+               case Precondition(e) => ResolveExpr(e, context, false, true)(false)
                case Postcondition(e) => ResolveExpr(e, context, false, true)(false)
                case lc : LockChange => context.Error(lc.pos, "lockchange not allowed on function") 
              }

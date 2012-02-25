@@ -264,8 +264,7 @@ class Translator {
             (applyF ==@ limitedApplyF)))) ::
       Nil
     else
-      Nil) :::
-    Boogie.Function(functionName(f) + "#trigger", formalsOnlyReceiver, BVar("$myresult", tbool)) :: Nil
+      Nil)
   }
 
   def framingAxiom(f: Function): List[Decl] = {
@@ -693,7 +692,7 @@ class Translator {
         // pick new k
         val (foldKV, foldK) = Boogie.NewBVar("foldK", tint, true)
         val stmts = Comment("fold") ::
-        functionTrigger(o, pred.predicate) :::
+        functionTrigger(o, pred.predicate) ::
         BLocal(foldKV) :: bassume(0 < foldK && 1000*foldK < percentPermission(1) && 1000*foldK < methodK) ::
         isDefined(e) :::
         isDefined(perm) :::
@@ -2733,21 +2732,8 @@ object TranslationHelper {
   
   // output a dummy function assumption that serves as trigger for the function
   // definition axiom.
-  def functionTrigger(receiver: Expr, predicate: Predicate): List[Stmt] = {
-    bassume(FunctionApp("#" + predicate.FullName+"#trigger", receiver :: Nil)) :: Nil
-  }
-  def defaultValue(t: Type): Expr = {
-    t match {
-      case _ => 0
-      //case Type(MuClass, _) => bLockBottom
-      //case NamedType("ref") => bnull
-      /*case NamedType("bool") => false
-      case NamedType("int") => false
-      case NamedType("seq") => false
-      case NamedType("string") => 0
-      case IndexedType("Seq", arg) => createEmptySeq*/
-      //case _ => throw new InternalErrorException("unexpected type: " +t)
-    }
+  def functionTrigger(receiver: Expr, predicate: Predicate): Stmt = {
+    bassume(FunctionApp("#" + predicate.FullName+"#trigger", receiver :: Nil))
   }
   
   def emptyPartialHeap: Expr = Boogie.VarExpr("emptyPartialHeap")
