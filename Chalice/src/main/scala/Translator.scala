@@ -244,7 +244,7 @@ class Translator {
       Boogie.Function(functionName(f) + "#limited", formals, BVar("$myresult", f.out.typ)) ::
       Axiom(new Boogie.Forall(
         formals, new Trigger(applyF),
-        applyF ==@ FunctionApp(functionName(f) + "#limited", List(etran.Heap, etran.Mask) ::: args))) ::
+        applyF ==@ FunctionApp(functionName(f) + "#limited", List(etran.Heap, etran.Mask, etran.SecMask) ::: args))) ::
       Nil
     else
       Nil)            
