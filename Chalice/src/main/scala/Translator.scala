@@ -218,7 +218,7 @@ class Translator {
     val formalsWithoutReceiver = f1 ::: f1b ::: f2;
     val applyF = FunctionApp(functionName(f), List(etran.Heap) ::: args);
     val limitedApplyF = FunctionApp(functionName(f) + "#limited", List(etran.Heap) ::: args)
-    val trigger = FunctionApp(functionName(f)+"#trigger", thisArg :: Nil);
+    val triggers = f.dependentPredicates map (p => new Trigger(FunctionApp("#" + p.FullName+"#trigger", thisArg :: Nil)))
     val pre = Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) });
     val wellformed = wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName))
 
@@ -257,8 +257,8 @@ class Translator {
       Axiom(new Boogie.Forall(formals,
             new Trigger(List(applyF,wellformed)),
             (wellformed ==> (applyF ==@ limitedApplyF)))) ::
-      Axiom(new Boogie.Forall(formalsOnlyReceiver,
-        new Trigger(trigger),
+      Axiom(new Boogie.Forall(Nil, formalsOnlyReceiver,
+        triggers,
         new Boogie.Forall(formalsWithoutReceiver,
             new Trigger(List(limitedApplyF,wellformed)),
             (applyF ==@ limitedApplyF)))) ::
@@ -356,6 +356,8 @@ class Translator {
     Const(pred.FullName, true, FieldType(tint)) ::
     // axiom PredicateField(f);
     Axiom(PredicateField(pred.FullName)) ::
+    // trigger function to unfold function definitions
+    Boogie.Function("#" + pred.FullName + "#trigger", BVar("this", tref) :: Nil, BVar("$myresult", tbool)) ::
     // check definedness of predicate body
     Proc(pred.FullName + "$checkDefinedness",
       List(NewBVarWhere("this", new Type(currentClass))),
@@ -2732,12 +2734,7 @@ object TranslationHelper {
   // output a dummy function assumption that serves as trigger for the function
   // definition axiom.
   def functionTrigger(receiver: Expr, predicate: Predicate): List[Stmt] = {
-    for (f <- predicate.dependentFunctions) yield {
-      val args = for (i <- f.ins) yield {
-        defaultValue(i.t)
-      }
-      bassume(FunctionApp(functionName(f)+"#trigger", receiver :: Nil))
-    }
+    bassume(FunctionApp("#" + predicate.FullName+"#trigger", receiver :: Nil)) :: Nil
   }
   def defaultValue(t: Type): Expr = {
     t match {

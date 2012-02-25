@@ -191,6 +191,21 @@ case class Predicate(id: String, private val rawDefinition: Expression) extends 
   }
 }
 case class Function(id: String, ins: List[Variable], out: Type, spec: List[Specification], definition: Option[Expression]) extends NamedMember(id) {
+  // list of predicates that this function possibly depends on (that is, predicates
+  // that are mentioned in the functions precondition)
+  def dependentPredicates: List[Predicate] = {
+    var predicates: List[Predicate] = List()
+    spec foreach {
+      case Precondition(e) =>
+        e visit {_ match {
+          case pred@MemberAccess(e, p) if pred.isPredicate =>
+            predicates = pred.predicate :: predicates
+          case _ =>}
+        }
+      case _ =>
+    }
+    predicates
+  }
   def apply(rec: Expression, args: List[Expression]): FunctionApplication = {
     val result = FunctionApplication(rec, id, args);
     result.f = this;
