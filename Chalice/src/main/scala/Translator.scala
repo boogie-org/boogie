@@ -204,6 +204,7 @@ class Translator {
     val args = VarExpr("this") :: inArgs;
     val formals = BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar);
     val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask) ::: args);
+    val pre = Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) });
 
     /** Limit application of the function by introducing a second (limited) function */
     val body = etran.Tr(
@@ -231,7 +232,7 @@ class Translator {
     */    
     Axiom(new Boogie.Forall(
       formals, new Trigger(applyF),
-        (wf(VarExpr(HeapName), VarExpr(MaskName)) && (CurrentModule ==@ ModuleName(currentClass)))
+        (wf(VarExpr(HeapName), VarExpr(MaskName)) && (CurrentModule ==@ ModuleName(currentClass)) && etran.Tr(translatePrecondition(pre)))
         ==>
         (applyF ==@ body))) ::
     (if (f.isRecursive)
@@ -294,6 +295,14 @@ class Translator {
           ==>
           (apply1 ==@ apply2))
       ))
+    }
+  }
+  
+  def translatePrecondition(pre: Expression): Expression = {
+    desugar(pre) transform {
+      case _:PermissionExpr => Some(BoolLiteral(true))
+      case _:Credit => Some(BoolLiteral(true))
+      case _ => None
     }
   }
 
