@@ -1424,7 +1424,9 @@ class FoldedPredicatesInfo {
   }
   
   /** get an upper bound on the recursion depth when updating the secondary mask */
-  def recursionBound: Int = foldedPredicates.size
+  def getRecursionBound(predicate: Predicate): Int = {
+    foldedPredicates count (fp => fp.predicate.FullName == predicate.FullName)
+  }
   
 }
 object FoldedPredicatesInfo {
@@ -1998,18 +2000,21 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     Exhale(Mask, SecMask, predicates, occasion, check, currentK, exactchecking)
   /** Regular exhale with specific mask/secmask */
   def Exhale(m: Expr, sm: Expr, predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean, currentK: Expr, exactchecking: Boolean): List[Boogie.Stmt] = {
-    val maxRecDepth = etran.fpi.recursionBound
-    Exhale(m, sm, predicates, occasion, check, currentK, exactchecking, false, maxRecDepth, false)
+    Exhale(m, sm, predicates, occasion, check, currentK, exactchecking, false, -1, false)
   }
   /** Exhale that transfers permission to the secondary mask */
   def ExhaleAndTransferToSecMask(predicates: List[(Expression, ErrorMessage)], occasion: String, currentK: Expr, exactchecking: Boolean): List[Boogie.Stmt] = {
-    val maxRecDepth = etran.fpi.recursionBound
-    Exhale(Mask, SecMask, predicates, occasion, false, currentK, exactchecking, true /* transfer to SecMask */, maxRecDepth, false)
+    Exhale(Mask, SecMask, predicates, occasion, false, currentK, exactchecking, true /* transfer to SecMask */, -1, false)
   }
   /** Remove permission from the secondary mask, and assume all assertions that
    * would get generated. Recursion is bouded by the parameter depth.
    */
+  def UpdateSecMask(predicate: Predicate, receiver: Expr, version: Expr, perm: Permission, currentK: Expr): List[Stmt] = {
+    val depth = etran.fpi.getRecursionBound(predicate)
+    UpdateSecMask(predicate, receiver, version, perm, currentK, depth)
+  }
   def UpdateSecMask(predicate: Predicate, receiver: Expr, version: Expr, perm: Permission, currentK: Expr, depth: Int): List[Stmt] = {
+    assert (depth >= 0)
     if (depth <= 0) return Nil
     
     val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(predicate), BoogieExpr(receiver)), perm, NoPosition)
@@ -2028,7 +2033,13 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   /** Most general form of exhale; implements all the specific versions above */
   // Assumption: if isUpdatingSecMask==true, then the exhale heap is not used at
   // all, and the regular heap is not changed.
+  // Assumption 2: If isUpdatingSecMask is false, then recurseOnPredicatesDepth
+  // is meaningless (and should be -1 by convention). Only if isUpdatingSecMask
+  // is true, then the depth is important. It is initially set in the method
+  // UpdateSecMask (because only there we have precise knowledge of what upper
+  // bound we want to use).
   def Exhale(m: Expr, sm: Expr, predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean, currentK: Expr, exactchecking: Boolean, transferPermissionToSecMask: Boolean, recurseOnPredicatesDepth: Int, isUpdatingSecMask: Boolean): List[Boogie.Stmt] = {
+    assert ((isUpdatingSecMask && recurseOnPredicatesDepth >= 0) || (!isUpdatingSecMask && recurseOnPredicatesDepth == -1)) // check assumption 2
     if (predicates.size == 0) return Nil;
     val (ehV, eh) = Boogie.NewBVar("exhaleHeap", theap, true)
     Comment("begin exhale (" + occasion + ")") ::
@@ -2124,7 +2135,11 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         else Nil) :::
         // give up secondary permission to locations of the body of the predicate (also recursively)
         (if (e.isPredicate)
-          UpdateSecMask(e.predicate, trE, Heap.select(trE, memberName), perm, currentK, recurseOnPredicatesDepth)
+          (if (isUpdatingSecMask)
+            UpdateSecMask(e.predicate, trE, Heap.select(trE, memberName), perm, currentK, recurseOnPredicatesDepth)
+          else
+            UpdateSecMask(e.predicate, trE, Heap.select(trE, memberName), perm, currentK)
+          )
         else Nil) :::
         bassume(AreGoodMasks(m, sm)) ::
         bassume(wf(Heap, m, sm))
