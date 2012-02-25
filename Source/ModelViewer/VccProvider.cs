@@ -37,7 +37,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     public readonly Model.Func f_ptr_to, f_phys_ptr_cast, f_spec_ptr_cast, f_mathint, f_local_value_is, f_spec_ptr_to, f_heap, f_select_field,
                                f_select_value, f_field, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t, f_select_ptr,
                                f_owners, f_closed, f_roots, f_timestamps, f_select_bool, f_select_int, f_is_null, f_good_state,
-                               f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, f_field_plus,
+                               f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, 
                                f_is_sequential_field, f_is_volatile_field, f_type_project_0, f_array, f_active_option, f_int_to_field,
                                f_blob_type, f_array_emb, f_addr, f_address_root, f_base, f_field_arr_size, f_field_arr_root, f_field_arr_index,
                                f_dot, f_prim_emb;
@@ -92,7 +92,6 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_is_ghost_field = m.MkFunc("$is_ghost_field", 1);
       f_is_phys_field = m.MkFunc("$is_phys_field", 1);
       f_idx = m.MkFunc("$idx", 2);
-      f_field_plus = m.MkFunc("$field_plus", 2);
       f_is_sequential_field = m.MkFunc("$is_sequential_field", 1);
       f_is_volatile_field = m.MkFunc("$is_volatile_field", 1);
       f_type_project_0 = m.MkFunc("$type_project_0", 1);
@@ -970,33 +969,26 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         }
 
         {
-          var eltBase = f_base.TryEval(elt);
-          var eltField = f_field.TryEval(elt);
-          if (eltBase != null && eltField != null) {
-            foreach (var app in f_field_plus.AppsWithArg(0, eltField)) {
-              var fieldName = app.Result;
-              var addr = f_dot.TryEval(eltBase, fieldName);
-              if (addr == null) continue;
+          foreach (var app in f_idx.AppsWithArg(0, elt)) {
+            var addr = app.Result;
+            Model.Element val = null, atp = tp;
 
-              Model.Element val = null, atp = tp;
+            addresses.Add(addr);
 
-              addresses.Add(addr);
-
-              foreach (var papp in f_dot.AppsWithResult(addr)) {
-                var tmp = f_select_value.OptEval(f_select_field.OptEval(heap, papp.Args[1]), papp.Args[0]);
-                if (tmp != null) {
-                  val = tmp;
-                  var tt = f_field_type.TryEval(papp.Args[1]);
-                  if (tt != null) atp = tt;
-                }
+            foreach (var papp in f_dot.AppsWithResult(addr)) {
+              var tmp = f_select_value.OptEval(f_select_field.OptEval(heap, papp.Args[1]), papp.Args[0]);
+              if (tmp != null) {
+                val = tmp;
+                var tt = f_field_type.TryEval(papp.Args[1]);
+                if (tt != null) atp = tt;
               }
-
-              if (val != null)
-                val = WrapForUse(val, atp);
-              result.Add(new MapletNode(state, new EdgeName(this, "[%0]", app.Args[1]), val, atp) { Category = NodeCategory.Maplet });
-              if (addr != null)
-                result.Add(new MapletNode(state, new EdgeName(this, "&[%0]", app.Args[1]), addr, GuessPtrTo(atp)) { Category = NodeCategory.Maplet });
             }
+
+            if (val != null)
+              val = WrapForUse(val, atp);
+            result.Add(new MapletNode(state, new EdgeName(this, "[%0]", app.Args[1]), val, atp) { Category = NodeCategory.Maplet });
+            if (addr != null)
+              result.Add(new MapletNode(state, new EdgeName(this, "&[%0]", app.Args[1]), addr, GuessPtrTo(atp)) { Category = NodeCategory.Maplet });
           }
         }
 
