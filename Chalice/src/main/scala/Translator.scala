@@ -1404,6 +1404,9 @@ class Translator {
 *****************          EXPRESSIONS                *****************
 **********************************************************************/
 
+case class FoldedPredicate(predicate: String, receiver: Expr, version: Expr, conditions: Set[(VarExpr,Boolean)])
+case class FoldedPredicatesInformation(foldedPredicates: List[FoldedPredicate])
+
 object ExpressionTranslator {
   val Globals = {
     (HeapName, theap) ::
