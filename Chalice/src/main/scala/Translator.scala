@@ -1186,8 +1186,8 @@ class Translator {
           (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
           BLocal(m) ::
           (me := absTran.Mask) ::
-          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam, false) :::
-          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam, true) :::
+          absTran.ExhaleHelper(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam, false) :::
+          absTran.ExhaleHelper(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam, true) :::
           (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
              bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable not in frame of the specification statement: " + v.id)),
           keepTag)
@@ -1968,6 +1968,17 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     case e => (if(check) isDefined(e)(true) else Nil) ::: bassume(Tr(e))
   }
   
+  // Exhale is done in two passes: In the first run, everything except permissions
+  // which need exact checking are exhaled. Then, in the second run, those
+  // permissions are exhaled. The behaviour is controlled with the parameter
+  // onlyExactCheckingPermissions.
+  // The reason for this behaviour is that we want to support preconditions like
+  // "acc(o.f,100-rd) && acc(o.f,rd)", which should be equivalent to a full
+  // permission to o.f. However, when we exhale in the given order, we cannot
+  // use inexact checking for the abstract read permission ("acc(o.f,rd)"), as
+  // this would introduce the (unsound) assumption that "methodcallk < mask[o.f]".
+  // To avoid detecting this, we exhale all abstract read permissions first (or,
+  // more precisely, we exhale all permissions with exact checking later).
   def Exhale(predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean, currentK: Expr, exactchecking: Boolean): List[Boogie.Stmt] = {
     if (predicates.size == 0) return Nil;
     val (emV, em) = NewBVar("exhaleMask", tmask, true)
@@ -1975,8 +1986,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     Comment("begin exhale (" + occasion + ")") ::
     BLocal(ehV) :: Boogie.Havoc(eh) ::
     BLocal(emV) :: (em := Mask) ::
-    (for (p <- predicates) yield Exhale(p._1, em, eh, p._2, check, currentK, exactchecking, false)).flatten :::
-    (for (p <- predicates) yield Exhale(p._1, em, eh, p._2, check, currentK, exactchecking, true)).flatten :::
+    (for (p <- predicates) yield ExhaleHelper(p._1, em, eh, p._2, check, currentK, exactchecking, false)).flatten :::
+    (for (p <- predicates) yield ExhaleHelper(p._1, em, eh, p._2, check, currentK, exactchecking, true)).flatten :::
     (Mask := em) ::
     bassume(IsGoodExhaleState(eh, Heap, Mask, SecMask)) ::
     (Heap := eh) ::
@@ -2032,22 +2043,11 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     }
   }
   
-  // Exhale is done in two passes: In the first run, everything except permissions
-  // which need exact checking are exhaled. Then, in the second run, those
-  // permissions are exhaled. The behaviour is controlled with the parameter
-  // onlyExactCheckingPermissions.
-  // The reason for this behaviour is that we want to support preconditions like
-  // "acc(o.f,100-rd) && acc(o.f,rd)", which should be equivalent to a full
-  // permission to o.f. However, when we exhale in the given order, we cannot
-  // use inexact checking for the abstract read permission ("acc(o.f,rd)"), as
-  // this would introduce the (unsound) assumption that "methodcallk < mask[o.f]".
-  // To avoid detecting this, we exhale all abstract read permissions first (or,
-  // more precisely, we exhale all permissions with exact checking later).
-  def Exhale(p: Expression, em: Boogie.Expr, eh: Boogie.Expr, error: ErrorMessage, check: Boolean, currentK: Expr, exactchecking: Boolean, onlyExactCheckingPermissions: Boolean): List[Boogie.Stmt] = desugar(p) match {
+  def ExhaleHelper(p: Expression, em: Boogie.Expr, eh: Boogie.Expr, error: ErrorMessage, check: Boolean, currentK: Expr, exactchecking: Boolean, onlyExactCheckingPermissions: Boolean): List[Boogie.Stmt] = desugar(p) match {
     case pred@MemberAccess(e, p) if pred.isPredicate =>
       val tmp = Access(pred, Full);
       tmp.pos = pred.pos;
-      Exhale(tmp, em , eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions)
+      ExhaleHelper(tmp, em , eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions)
     case AccessAll(obj, perm) => throw new InternalErrorException("should be desugared")
     case AccessSeq(s, None, perm) => throw new InternalErrorException("should be desugared")
     case acc@Access(e,perm) =>
@@ -2136,12 +2136,12 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       new Boogie.MapUpdate(Credits, trCh, new Boogie.MapSelect(Credits, trCh) - Tr(cr.N))
     case Implies(e0,e1) =>
       (if(check && !onlyExactCheckingPermissions) isDefined(e0)(true) else Nil) :::
-      Boogie.If(Tr(e0), Exhale(e1, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions), Nil)
+      Boogie.If(Tr(e0), ExhaleHelper(e1, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions), Nil)
     case IfThenElse(con, then, els) =>
       (if(check) isDefined(con)(true) else Nil) :::
-      Boogie.If(Tr(con), Exhale(then, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions), Exhale(els, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions))
+      Boogie.If(Tr(con), ExhaleHelper(then, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions), ExhaleHelper(els, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions))
     case And(e0,e1) =>
-      Exhale(e0, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions) ::: Exhale(e1, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions)
+      ExhaleHelper(e0, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions) ::: ExhaleHelper(e1, em, eh, error, check, currentK, exactchecking, onlyExactCheckingPermissions)
     case holds@Holds(e) if !onlyExactCheckingPermissions => 
       (if(check) isDefined(e)(true) :::
       bassert(nonNull(Tr(e)), error.pos, error.message + " The target of the holds predicate at " + holds.pos + " might be null.") :: Nil else Nil) :::
