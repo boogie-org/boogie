@@ -2042,13 +2042,16 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     assert ((isUpdatingSecMask && recurseOnPredicatesDepth >= 0) || (!isUpdatingSecMask && recurseOnPredicatesDepth == -1)) // check assumption 2
     if (predicates.size == 0) return Nil;
     val (ehV, eh) = Boogie.NewBVar("exhaleHeap", theap, true)
+    val (emV, em) = Boogie.NewBVar("exhaleMask", tmask, true)
     Comment("begin exhale (" + occasion + ")") ::
     (if (!isUpdatingSecMask)
+      BLocal(emV) :: (em := Mask) ::
       BLocal(ehV) :: Boogie.Havoc(eh) :: Nil
     else Nil) :::
     (for (p <- predicates) yield ExhaleHelper(p._1, m, sm, eh, p._2, check, currentK, exactchecking, false, transferPermissionToSecMask, recurseOnPredicatesDepth, isUpdatingSecMask)).flatten :::
     (for (p <- predicates) yield ExhaleHelper(p._1, m, sm, eh, p._2, check, currentK, exactchecking, true, transferPermissionToSecMask, recurseOnPredicatesDepth, isUpdatingSecMask)).flatten :::
     (if (!isUpdatingSecMask)
+      (m := em) ::
       bassume(IsGoodExhaleState(eh, Heap, m, sm)) ::
       (Heap := eh) :: Nil
     else Nil) :::
