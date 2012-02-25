@@ -325,7 +325,7 @@ class Translator {
     val predicateKStmts = BLocal(predicateKV) :: bassume(0 < predicateK && 1000*predicateK < permissionOnePercent)
     
     // const unique class.name: HeapType;
-    Const(pred.FullName, true, FieldType(theap)) ::
+    Const(pred.FullName, true, FieldType(tint)) ::
     // axiom PredicateField(f);
     Axiom(PredicateField(pred.FullName)) ::
     // check definedness of predicate body
@@ -660,7 +660,7 @@ class Translator {
         // remove the definition from the current state, and replace by predicate itself
         Exhale(List((definition, ErrorMessage(s.pos, "Fold might fail because the definition of " + pred.predicate.FullName + " does not hold."))), "fold", foldK, false) :::
         Inhale(List(acc), "fold", foldK) :::
-        etran.Heap.store(o, pred.predicate.FullName, etran.Heap) :: // Is this necessary?      
+        updatePredicateVersion(o, pred.predicate.FullName, etran) :::
         bassume(wf(etran.Heap, etran.Mask))
       case unfld@Unfold(acc@Access(pred@MemberAccess(e, f), perm:Permission)) =>
         val o = TrExpr(e);
@@ -674,7 +674,7 @@ class Translator {
         bassert(nonNull(o), s.pos, "The target of the fold statement might be null.") ::
         isDefined(perm) :::
         Exhale(List((acc, ErrorMessage(s.pos, "unfold might fail because the predicate " + pred.predicate.FullName + " does not hold."))), "unfold", unfoldK, false) :::
-        etran.InhaleFrom(List(definition), "unfold", false, etran.Heap.select(o, pred.predicate.FullName), unfoldK)
+        etran.Inhale(List(definition), "unfold", false, unfoldK)
       case c@CallAsync(declaresLocal, token, obj, id, args) =>
         val formalThisV = new Variable("this", new Type(c.m.Parent))
         val formalThis = new VariableExpr(formalThisV)
@@ -1777,7 +1777,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     Comment("inhale (" + occasion + ")") ::
     BLocal(ihV) :: Boogie.Assign(ih, useHeap) ::
     bassume(IsGoodInhaleState(ih, Heap, Mask)) ::
-    (for (p <- predicates) yield Inhale(p,ih, check, currentK)).flatten :::
+    (for (p <- predicates) yield Inhale(p, ih, check, currentK)).flatten :::
     bassume(IsGoodMask(Mask)) ::
     bassume(wf(Heap, Mask)) ::
     Comment("end inhale")
@@ -1824,8 +1824,12 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       else Nil) :::
       bassume(nonNull(trE)) ::
       new MapUpdate(Heap, trE, VarExpr(memberName), new Boogie.MapSelect(ih, trE, memberName)) ::
+      (if (e.isPredicate)
+        // update the predicate's version if we newly gained access to it
+        Boogie.If((new Boogie.MapSelect(Mask, trE, memberName, "perm$R") ==@ 0) && (new Boogie.MapSelect(Mask, trE, memberName, "perm$N") ==@ 0),
+        updatePredicateVersion(trE, memberName, etran), Nil) :: Nil
+      else Nil) :::
       bassume(wf(Heap, Mask)) ::
-      (if(e.isPredicate && e.predicate.Parent.module.equals(currentClass.module)) List(bassume(new Boogie.MapSelect(ih, trE, memberName) ==@ Heap)) else Nil) :::
       (if(e.isPredicate) Nil else List(bassume(TypeInformation(new Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
       InhalePermission(perm, trE, memberName, currentK) :::
       bassume(IsGoodMask(Mask)) ::
@@ -2524,6 +2528,37 @@ object TranslationHelper {
     } else {
       true
     }
+  }
+  
+  def updatePredicateVersion(obj: Expr, predicate: String, etran: ExpressionTranslator): List[Stmt] = {
+    val (oldVersionV, oldVersion) = NewBVar("oldPredicateVersion", IntClass, true)
+    val version = etran.Heap.select(obj, predicate)
+    BLocal(oldVersionV) :: Havoc(version) :: bassume(oldVersion < version)
+  }
+  
+  /** Get a list of all expressions a function can depend on (determined by
+   *  examining the functions preconditions)
+   */
+  def functionDependencies(pre: Expression, etran: ExpressionTranslator): List[Boogie.Expr] = {
+    desugar(pre) match {
+      case pred@MemberAccess(e, p) if pred.isPredicate =>
+        functionDependencies(Access(pred, Full), etran)
+      case acc@Access(e, _) =>
+        val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
+        new Boogie.MapSelect(etran.Heap, etran.Tr(e.e), memberName) :: Nil
+      case Implies(e0,e1) =>
+        Boogie.Ite(etran.Tr(e0), functionDependencies(e1, etran), Nil)
+      case And(e0,e1) =>
+        functionDependencies(e0, etran) :::
+        functionDependencies(e1, etran)
+      case IfThenElse(con, then, els) =>
+        Boogie.Ite(etran.Tr(con), Version(then, etran), Version(els, etran))
+      case _: PermissionExpr => throw new InternalErrorException("unexpected permission expression")
+      case e =>
+        e visit {_ match { case _ : PermissionExpr => throw new InternalErrorException("unexpected permission expression"); case _ =>}}
+        nostate
+    }
+    Nil
   }
 
   def Version(expr: Expression, etran: ExpressionTranslator): Boogie.Expr = {
