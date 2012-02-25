@@ -215,6 +215,7 @@ class Translator {
     val formalsOnlyReceiver = f3 :: Nil
     val formalsWithoutReceiver = f1 ::: f2;
     val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask, etran.SecMask) ::: args);
+    val limitedApplyF = FunctionApp(functionName(f) + "#limited", List(etran.Heap, etran.Mask, etran.SecMask) ::: args)
     val trigger = FunctionApp(functionName(f)+"#trigger", thisArg :: Nil);
     val pre = Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) });
 
@@ -250,11 +251,14 @@ class Translator {
     (if (f.isRecursive)
       // define the limited function (even for unlimited function since its SCC might have limited functions)
       Boogie.Function(functionName(f) + "#limited", formals, BVar("$myresult", f.out.typ)) ::
+      Axiom(new Boogie.Forall(formals,
+            new Trigger(applyF),
+            (applyF ==@ limitedApplyF))) ::
       Axiom(new Boogie.Forall(formalsOnlyReceiver,
         new Trigger(trigger),
         new Boogie.Forall(formalsWithoutReceiver,
-            new Trigger(applyF),
-            (applyF ==@ FunctionApp(functionName(f) + "#limited", List(etran.Heap, etran.Mask, etran.SecMask) ::: args))))) ::
+            new Trigger(limitedApplyF),
+            (applyF ==@ limitedApplyF)))) ::
       Nil
     else
       Nil) :::
