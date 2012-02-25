@@ -1072,6 +1072,7 @@ class Translator {
     val iterStartLocks = lkchIterStart map (e => iterStartEtran.oldEtran.Tr(e))
     val newLocks = lkch map (e => loopEtran.Tr(e));
     val (whileKV, whileK) = Boogie.NewBVar("whileK", tint, true)
+    val previousEtran = etran // save etran
     
     Comment("while") ::
     // pick new k for this method call
@@ -1096,16 +1097,18 @@ class Translator {
       case _ => Boogie.Havoc(Boogie.VarExpr(v.UniqueName)) }) :: vars) :::
     Boogie.If(null,
     // 1. CHECK  DEFINEDNESS OF INVARIANT
+      { etran = etran.resetFpi
       Comment("check loop invariant definedness") ::
       //(w.LoopTargets.toList map { v: Variable => Boogie.Havoc(Boogie.VarExpr(v.id)) }) :::
       resetState(etran) :::
       InhaleWithChecking(w.oldInvs, "loop invariant definedness", whileK) :::
       tag(InhaleWithChecking(w.newInvs, "loop invariant definedness", whileK), keepTag) :::                  
-      bassume(false)
+      bassume(false) }
     , Boogie.If(null,
     // 2. CHECK LOOP BODY
       // Renew state: set Mask to ZeroMask and Credits to ZeroCredits, and havoc Heap everywhere except
       // at {old(local),local}.{held,rdheld}
+      { etran = etran.resetFpi
       resetState(etran) :::
       Inhale(w.Invs, "loop invariant, body", whileK) :::
       // assume lockchange at the beginning of the loop iteration
@@ -1129,14 +1132,15 @@ class Translator {
         (bassert(LockFrame(lkch, etran), w.pos, "The loop might lock/unlock more than the lockchange clause allows.")) ::
       // perform debt check
       bassert(DebtCheck, w.pos, "Loop body is not allowed to leave any debt.") :::
-      bassume(false),
+      bassume(false)},
    // 3. AFTER LOOP
+     { etran = previousEtran
      LockHavoc(oldLocks ++ newLocks, loopEtran) :::
      // assume lockchange after the loop
      Comment("assume lockchange after the loop") ::
      (bassume(LockFrame(lkch, etran))) ::
      Inhale(w.Invs, "loop invariant, after loop", whileK) :::
-     bassume(!guard)))
+     bassume(!guard)}))
   }
 
   // TODO: This method has not yet been updated to the new permission model
@@ -1469,6 +1473,11 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   def this(cl: Class) = this(Globals(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName), VarExpr(CreditsName)), cl)
 
   def ChooseEtran(chooseOld: Boolean) = if (chooseOld) oldEtran else this
+  
+  /** return a new etran which is identical, expect for the fpi */
+  def resetFpi = {
+    new ExpressionTranslator(globals, preGlobals, new FoldedPredicatesInfo, currentClass, checkTermination)
+  }
 
   /**
    * Create a list of fresh global variables
