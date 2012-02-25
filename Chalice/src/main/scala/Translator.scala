@@ -715,6 +715,7 @@ class Translator {
         // pick new k
         val (unfoldKV, unfoldK) = Boogie.NewBVar("unfoldK", tint, true)
         Comment("unfold") ::
+        functionTrigger(o, pred.predicate) ::
         BLocal(unfoldKV) :: bassume(0 < unfoldK && unfoldK < percentPermission(1) && 1000*unfoldK < methodK) ::
         isDefined(e) :::
         bassert(nonNull(o), s.pos, "The target of the fold statement might be null.") ::
@@ -2051,6 +2052,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       val o = TrExpr(obj);
       
       val stmts = BLocal(receiverV) :: (receiver := o) ::
+      functionTrigger(o, pred.predicate) ::
       BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) ::
       (if(check) isDefined(uf)(true) else Nil) :::
       TransferPermissionToSecMask(pred.predicate, BoogieExpr(receiver), perm, uf.pos) :::
