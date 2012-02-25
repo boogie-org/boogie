@@ -372,6 +372,8 @@ class Translator {
         InhaleWithChecking(Postconditions(method.spec), "postcondition", methodK) :::
         // check lockchange
         (LockChanges(method.spec) flatMap { lc => isDefined(lc)})) ::
+    {
+    etran.fpi.reset
     // check that method body satisfies the method contract
     Proc(method.FullName,
       NewBVarWhere("this", new Type(currentClass)) :: (method.ins map {i => Variable2BVarWhere(i)}),
@@ -389,6 +391,7 @@ class Translator {
         (if(Chalice.checkLeaks) isLeaking(method.pos, "Method " + method.FullName + " might leak references.") else Nil) :::
         bassert(LockFrame(LockChanges(method.spec), etran), method.pos, "Method might lock/unlock more than allowed.") :::
         bassert(DebtCheck, method.pos, "Method body is not allowed to leave any debt."))
+    }
   }
 
   // TODO: This method has not yet been updated to the new permission model
