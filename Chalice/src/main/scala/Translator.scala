@@ -208,19 +208,13 @@ class Translator {
     val thisArg = VarExpr("this")
     val args = thisArg :: inArgs;
     
-    val f1 = BVar(HeapName, theap) :: Nil
-    val f1b = BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: Nil
-    val f2 = (f.ins map Variable2BVar)
-    val f3 = BVar("this", tref)
-    val formals = f1 ::: f1b ::: f3 :: f2
-    val formalsNoMask = f1 ::: f3 :: f2
-    val formalsOnlyReceiver = f3 :: Nil
-    val formalsWithoutReceiver = f1 ::: f1b ::: f2;
+    val formalsNoMask = BVar(HeapName, theap) :: BVar("this", tref) :: (f.ins map Variable2BVar)
+    val formals = BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: formalsNoMask
     val applyF = FunctionApp(functionName(f), List(etran.Heap) ::: args);
     val limitedApplyF = FunctionApp(functionName(f) + "#limited", List(etran.Heap) ::: args)
-    val triggers = f.dependentPredicates map (p => new Trigger(FunctionApp("#" + p.FullName+"#trigger", thisArg :: Nil)))
     val pre = Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) });
     val wellformed = wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName))
+    val triggers = f.dependentPredicates map (p => new Trigger(List(limitedApplyF, wellformed, FunctionApp("#" + p.FullName+"#trigger", thisArg :: Nil))))
 
     /** Limit application of the function by introducing a second (limited) function */
     val body = etran.Tr(
@@ -254,14 +248,9 @@ class Translator {
     (if (f.isRecursive)
       // define the limited function (even for unlimited function since its SCC might have limited functions)
       Boogie.Function(functionName(f) + "#limited", formalsNoMask, BVar("$myresult", f.out.typ)) ::
-      Axiom(new Boogie.Forall(formals,
-            new Trigger(List(applyF,wellformed)),
+      Axiom(new Boogie.Forall(Nil, formals,
+            new Trigger(List(applyF,wellformed)) :: triggers,
             (wellformed ==> (applyF ==@ limitedApplyF)))) ::
-      Axiom(new Boogie.Forall(Nil, formalsOnlyReceiver,
-        triggers,
-        new Boogie.Forall(formalsWithoutReceiver,
-            new Trigger(List(applyF,wellformed)),
-            (applyF ==@ limitedApplyF)))) ::
       Nil
     else
       Nil)
