@@ -1465,8 +1465,8 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   import TranslationHelper._
 
   val Heap = globals.heap;
-  var Mask = globals.mask;
-  var SecMask = globals.secmask;
+  val Mask = globals.mask;
+  val SecMask = globals.secmask;
   val Credits = globals.credits;
   lazy val oldEtran = new ExpressionTranslator(preGlobals, preGlobals, fpi, currentClass, checkTermination)
 
@@ -1505,10 +1505,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
 
   def WhereOldIs(h: Boogie.Expr, m: Boogie.Expr, sm: Boogie.Expr, c: Boogie.Expr) = {
     new ExpressionTranslator(globals, Globals(h, m, sm, c), fpi, currentClass, checkTermination);
-  }
-  
-  def FromGlobals(g: Globals) = {
-    new ExpressionTranslator(g, preGlobals, fpi, currentClass, checkTermination)
   }
 
   def CheckTermination(check: Boolean) = {
@@ -2212,11 +2208,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     }
   }
   
-  def ExhaleHelper(p: Expression, m: Boogie.Expr, sm: Boogie.Expr, eh: Boogie.Expr, error: ErrorMessage, check: Boolean, currentK: Expr, exactchecking: Boolean, onlyExactCheckingPermissions: Boolean, transferPermissionToSecMask: Boolean, recurseOnPredicatesDepth: Int, isUpdatingSecMask: Boolean, previousReceivers: Map[String,List[Expr]], duringUnfold: Boolean): List[Boogie.Stmt] = {
-  val (oldm, oldsm) = (Mask, SecMask)
-  Mask = m
-  SecMask = sm
-  var res = desugar(p) match {
+  def ExhaleHelper(p: Expression, m: Boogie.Expr, sm: Boogie.Expr, eh: Boogie.Expr, error: ErrorMessage, check: Boolean, currentK: Expr, exactchecking: Boolean, onlyExactCheckingPermissions: Boolean, transferPermissionToSecMask: Boolean, recurseOnPredicatesDepth: Int, isUpdatingSecMask: Boolean, previousReceivers: Map[String,List[Expr]], duringUnfold: Boolean): List[Boogie.Stmt] = desugar(p) match {
     case pred@MemberAccess(e, p) if pred.isPredicate =>
       val tmp = Access(pred, Full);
       tmp.pos = pred.pos;
@@ -2356,10 +2348,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       preEtran.Exhale(List((e, error)), "eval", check, currentK, exactchecking)
     case e if !onlyExactCheckingPermissions => (if(check) isDefined(e)(true) else Nil) ::: List(bassert(Tr(e), error.pos, error.message + " The expression at " + e.pos + " might not evaluate to true."))
     case _ => Nil
-  }
-  Mask = oldm
-  SecMask = oldsm
-  res
   }
   
   def extractKFromPermission(expr: Permission, currentK: Expr): (Expr, List[Boogie.Stmt]) = expr match {
