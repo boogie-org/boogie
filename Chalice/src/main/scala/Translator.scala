@@ -1464,7 +1464,7 @@ class FoldedPredicatesInfo {
   
   /** get an upper bound on the recursion depth when updating the secondary mask */
   def getRecursionBound(predicate: Predicate): Int = {
-    foldedPredicates count (fp => fp.predicate.FullName == predicate.FullName)
+    foldedPredicates length
   }
   
 }
