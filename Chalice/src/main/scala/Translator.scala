@@ -1560,8 +1560,8 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       case Not(e) =>
         isDefined(e)
       case func@FunctionApplication(obj, id, args) =>
-        val (tmpGlobalsV, tmpGlobals) = etran.FreshGlobals("fapp")
-        val tmpTranslator = new ExpressionTranslator(tmpGlobals, etran.oldEtran.globals, currentClass);
+        val (tmpGlobalsV, tmpGlobals) = this.FreshGlobals("fapp")
+        val tmpTranslator = new ExpressionTranslator(tmpGlobals, this.oldEtran.globals, currentClass);
         
         // pick new k
         val (funcappKV, funcappK) = Boogie.NewBVar("funcappK", tint, true)
@@ -1575,15 +1575,15 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         BLocal(funcappKV) :: bassume(0 < funcappK && 1000*funcappK < percentPermission(1)) ::
         bassume(assumption) ::
         BLocals(tmpGlobalsV) :::
-        copyState(tmpGlobals, etran) :::
+        copyState(tmpGlobals, this) :::
         tmpTranslator.Exhale(Preconditions(func.f.spec) map { pre=> (SubstVars(pre, obj, func.f.ins, args), ErrorMessage(func.pos, "Precondition at " + pre.pos + " might not hold."))},
                              "function call",
                              false, funcappK, false) :::
         // size of the heap of callee must be strictly smaller than size of the heap of the caller
         (if(checkTermination) { List(prove(NonEmptyMask(tmpGlobals.mask), func.pos, "The heap of the callee might not be strictly smaller than the heap of the caller.")) } else Nil)
       case unfolding@Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), e) =>
-        val (tmpGlobalsV, tmpGlobals) = etran.FreshGlobals("unfolding")
-        val tmpTranslator = new ExpressionTranslator(tmpGlobals, etran.oldEtran.globals, currentClass);
+        val (tmpGlobalsV, tmpGlobals) = this.FreshGlobals("unfolding")
+        val tmpTranslator = new ExpressionTranslator(tmpGlobals, this.oldEtran.globals, currentClass);
         
         val receiverOk = isDefined(obj) ::: prove(nonNull(Tr(obj)), obj.pos, "Receiver might be null.");
         val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), obj), perm, unfolding.pos)
@@ -1597,7 +1597,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         receiverOk ::: isDefined(perm) :::
         // copy state into temporary variables
         BLocals(tmpGlobalsV) :::
-        copyState(tmpGlobals, etran) :::
+        copyState(tmpGlobals, this) :::
         // exhale the predicate
         tmpTranslator.ExhaleDuringUnfold(List((acc, ErrorMessage(unfolding.pos, "Unfolding might fail."))), "unfolding", false, unfoldingK, false) :::
         // inhale the definition of the predicate
@@ -1656,7 +1656,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         isDefined(e0) ::: isDefined(e1)
       case Eval(h, e) =>
         val (evalHeap, evalMask, evalSecMask, evalCredits, checks, assumptions) = fromEvalState(h);
-        val evalEtran = new ExpressionTranslator(Globals(evalHeap, evalMask, evalSecMask, evalCredits), etran.oldEtran.globals, currentClass);
+        val evalEtran = new ExpressionTranslator(Globals(evalHeap, evalMask, evalSecMask, evalCredits), this.oldEtran.globals, currentClass);
         evalEtran.isDefined(e)
       case _ : SeqQuantification => throw new InternalErrorException("should be desugared")
       case tq @ TypeQuantification(_, _, _, e, (min, max)) =>
