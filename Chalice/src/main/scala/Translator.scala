@@ -2215,6 +2215,15 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         // transfer permission to secondary mask if necessary
         (if (transferPermissionToSecMask) InhalePermission(perm, trE, memberName, currentK, sm)
         else Nil) :::
+        // give up secondary permission to locations of the body of the predicate (also recursively)
+        (if (e.isPredicate)
+          (if (isUpdatingSecMask)
+            UpdateSecMask(e.predicate, trE, Heap.select(trE, memberName), perm, currentK, recurseOnPredicatesDepth, previousReceivers)
+          else
+            UpdateSecMask(e.predicate, trE, Heap.select(trE, memberName), perm, currentK)
+          )
+        else Nil) :::
+        // update version number (if necessary)
         (if (e.isPredicate && !isUpdatingSecMask)
           Boogie.If(!CanRead(trE, memberName, m, sm), // if we cannot access the predicate anymore, then its version will be havoced
             (if (!duringUnfold) bassume(Heap.select(trE, memberName) < eh.select(trE, memberName)) :: Nil // assume that the predicate's version grows monotonically
@@ -2226,14 +2235,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
               bassume(oldVers < Heap.select(trE, memberName)) :: Nil
             }),
             Nil) :: Nil
-        else Nil) :::
-        // give up secondary permission to locations of the body of the predicate (also recursively)
-        (if (e.isPredicate)
-          (if (isUpdatingSecMask)
-            UpdateSecMask(e.predicate, trE, Heap.select(trE, memberName), perm, currentK, recurseOnPredicatesDepth, previousReceivers)
-          else
-            UpdateSecMask(e.predicate, trE, Heap.select(trE, memberName), perm, currentK)
-          )
         else Nil) :::
         bassume(AreGoodMasks(m, sm)) ::
         bassume(wf(Heap, m, sm))
