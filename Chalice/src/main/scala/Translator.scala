@@ -287,13 +287,13 @@ class Translator {
       // create two heaps
       val (globals1V, globals1) = etran.FreshGlobals("a"); val etran1 = new ExpressionTranslator(globals1, currentClass);
       val (globals2V, globals2) = etran.FreshGlobals("b"); val etran2 = new ExpressionTranslator(globals2, currentClass);
-      val List(heap1, mask1, _, _) = globals1V;
-      val List(heap2, mask2, _, _) = globals2V;
+      val List(heap1, mask1, secmask1, _) = globals1V;
+      val List(heap2, mask2, secmask2, _) = globals2V;
       val apply1 = FunctionApp(functionName(f), etran1.Heap :: etran1.Mask :: etran1.SecMask :: args);
       val apply2 = FunctionApp(functionName(f), etran2.Heap :: etran2.Mask :: etran2.SecMask :: args);
 
       Axiom(new Boogie.Forall(
-        heap1 :: heap2 :: mask1 :: mask2 :: BVar("this", tref) :: (f.ins map Variable2BVar),
+        heap1 :: heap2 :: mask1 :: mask2 :: secmask1 :: secmask2 :: BVar("this", tref) :: (f.ins map Variable2BVar),
         new Trigger(List(apply1, apply2)),
           ((wf(etran1.Heap, etran1.Mask, etran1.SecMask) && wf(etran2.Heap, etran2.Mask, etran2.SecMask) && functionDependenciesEqual(pre, etran1, etran2) && CanAssumeFunctionDefs)
           ==>
@@ -2686,6 +2686,7 @@ object TranslationHelper {
   def CallArgs(joinableBit: Expr) = FunctionApp("Call$Args", List(joinableBit))
   def submask(m0: Expr, m1: Expr) = FunctionApp("submask", List(m0, m1))
 
+  def wf(g: Globals) = FunctionApp("wf", List(g.heap, g.mask, g.secmask));
   def wf(h: Expr, m: Expr, sm: Expr) = FunctionApp("wf", List(h, m, sm));
   def IsGoodMask(m: Expr) = FunctionApp("IsGoodMask", List(m))
   def AreGoodMasks(m: Expr, sm: Expr) = IsGoodMask(m) // && IsGoodMask(sm) /** The second mask does currently not necessarily contain positive permissions, which means that we cannot assume IsGoodMask(sm). This might change in the future if we see a need for it */
@@ -2712,7 +2713,8 @@ object TranslationHelper {
   def copyState(globals: Globals, et: ExpressionTranslator): List[Stmt] =
     copyState(globals, et.globals)
   def copyState(globals: Globals, globalsToCopyFrom: Globals): List[Stmt] = {
-    for ((a, b) <- globals.list zip globalsToCopyFrom.list) yield (a := b)
+    (for ((a, b) <- globals.list zip globalsToCopyFrom.list) yield (a := b)) :::
+    bassume(wf(globals)) :: Nil
   }
   def resetState(et: ExpressionTranslator): List[Stmt] = resetState(et.globals)
   def resetState(globals: Globals): List[Stmt] = {
