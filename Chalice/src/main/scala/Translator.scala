@@ -45,6 +45,7 @@ class Translator {
     declarations = declarations ::: translateMonitorInvariant(cl.MonitorInvariants, cl.pos);
     // translate each member
     for(member <- cl.members) {
+      etran.fpi.reset
       declarations = declarations ::: translateMember(member);
     }
     declarations
@@ -349,6 +350,7 @@ class Translator {
   }
 
   def translateMethod(method: Method): List[Decl] = {
+    
     // pick new k for this method, that represents the fraction for read permissions
     val (methodKV, methodK) = Boogie.NewBVar("methodK", tint, true)
     val methodKStmts = BLocal(methodKV) :: bassume(0 < methodK && 1000*methodK < permissionOnePercent)
@@ -1122,7 +1124,7 @@ class Translator {
     val absTran = etran;
     // concrete expression translate
     val (conGlobalsV, conGlobals) = etran.FreshGlobals("concrete")
-    val conTran = new ExpressionTranslator(conGlobals, etran.oldEtran.globals, currentClass);
+    val conTran = new ExpressionTranslator(conGlobals, etran.oldEtran.globals, currentClass); // TODO: what about FoldedPredicateInfo?
     // shared locals before block (excluding immutable)
     val before = for (v <- r.before; if (! v.isImmutable)) yield v;
     // shared locals in block
@@ -1388,14 +1390,34 @@ class Translator {
 *****************          EXPRESSIONS                *****************
 **********************************************************************/
 
+/** Represents a predicate that has been folded by ourselfs, or that we have peeked
+ * at using unfolding.
+ */
 case class FoldedPredicate(predicate: String, receiver: Expr, version: Expr, conditions: Set[(VarExpr,Boolean)])
-case class FoldedPredicatesInformation(foldedPredicates: List[FoldedPredicate])
+
+/** All information that we need to keep track of about folded predicates. */
+class FoldedPredicatesInfo(private var foldedPredicates: List[FoldedPredicate]) {
+  
+  /** Add a predicate that we have folded */
+  def addFoldedPredicate(predicate: FoldedPredicate) {
+    foldedPredicates ::= predicate
+  }
+  
+  /** Start again with the empty information about folded predicates. */
+  def reset {
+    foldedPredicates = List()
+  }
+  
+}
+object FoldedPredicatesInfo {
+  def apply(foldedPredicates: List[FoldedPredicate]) = new FoldedPredicatesInfo(foldedPredicates)
+}
 
 case class Globals(heap: Expr, mask: Expr, secmask: Expr, credits: Expr) {
   def list: List[Expr] = List(heap, mask, secmask, credits)
 }
 
-class ExpressionTranslator(val globals: Globals, preGlobals: Globals, currentClass: Class, checkTermination: Boolean) {
+class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: FoldedPredicatesInfo, currentClass: Class, checkTermination: Boolean) {
 
   import TranslationHelper._
 
@@ -1403,9 +1425,10 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, currentCla
   val Mask = globals.mask;
   val SecMask = globals.secmask;
   val Credits = globals.credits;
-  lazy val oldEtran = new ExpressionTranslator(preGlobals, preGlobals, currentClass, checkTermination)
+  lazy val oldEtran = new ExpressionTranslator(preGlobals, preGlobals, fpi, currentClass, checkTermination)
 
-  def this(globals: Globals, preGlobals: Globals, currentClass: Class) = this(globals, preGlobals, currentClass, false)
+  def this(globals: Globals, preGlobals: Globals, fpi: FoldedPredicatesInfo, currentClass: Class) = this(globals, preGlobals, fpi, currentClass, false)
+  def this(globals: Globals, preGlobals: Globals, currentClass: Class) = this(globals, preGlobals, FoldedPredicatesInfo(List()), currentClass, false)
   def this(globals: Globals, cl: Class) = this(globals, Globals(Boogie.Old(globals.heap), Boogie.Old(globals.mask), Boogie.Old(globals.secmask), Boogie.Old(globals.credits)), cl)
   def this(cl: Class) = this(Globals(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName), VarExpr(CreditsName)), cl)
 
@@ -1425,21 +1448,21 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, currentCla
   }
 
   def FromPreGlobals(pg: Globals) = {
-    new ExpressionTranslator(globals, pg, currentClass, checkTermination)
+    new ExpressionTranslator(globals, pg, fpi, currentClass, checkTermination)
   }
 
   def UseCurrentAsOld() = {
-    new ExpressionTranslator(globals, globals, currentClass, checkTermination);
+    new ExpressionTranslator(globals, globals, fpi, currentClass, checkTermination);
   }
 
   def WhereOldIs(h: Boogie.Expr, m: Boogie.Expr, sm: Boogie.Expr, c: Boogie.Expr) = {
-    new ExpressionTranslator(globals, Globals(h, m, sm, c), currentClass, checkTermination);
+    new ExpressionTranslator(globals, Globals(h, m, sm, c), fpi, currentClass, checkTermination);
   }
 
   def CheckTermination(check: Boolean) = {
-    new ExpressionTranslator(globals, preGlobals, currentClass, check);
+    new ExpressionTranslator(globals, preGlobals, fpi, currentClass, check);
   }
-
+  
   /**********************************************************************
   *****************              TR/DF                  *****************
   **********************************************************************/
