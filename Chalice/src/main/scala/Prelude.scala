@@ -73,6 +73,7 @@ type PermissionComponent;
 const unique perm$R: PermissionComponent;
 const unique perm$N: PermissionComponent;
 var Mask: MaskType where IsGoodMask(Mask);
+var SecMask: MaskType where IsGoodMask(SecMask);
 const Permission$denominator: int;
 axiom Permission$denominator > 0;
 const Permission$FullFraction: int;
@@ -167,11 +168,13 @@ axiom (forall m, n: Mu :: MuBelow(m, n) ==> n != $LockBottom);
 const unique held: Field int;
 function Acquire$Heap(int) returns (HeapType);
 function Acquire$Mask(int) returns (MaskType);
+function Acquire$SecMask(int) returns (MaskType);
 function Acquire$Credits(int) returns (CreditsType);
 axiom NonPredicateField(held);
 
 function LastSeen$Heap(Mu, int) returns (HeapType);
 function LastSeen$Mask(Mu, int) returns (MaskType);
+function LastSeen$SecMask(Mu, int) returns (MaskType);
 function LastSeen$Credits(Mu, int) returns (CreditsType);
 
 const unique rdheld: Field bool;
@@ -256,6 +259,7 @@ axiom (forall<T,U> h: HeapType, o: ref, f: Field T, newValue: U, q: ref, g: Fiel
 
 function Call$Heap(int) returns (HeapType);
 function Call$Mask(int) returns (MaskType);
+function Call$SecMask(int) returns (MaskType);
 function Call$Credits(int) returns (CreditsType);
 function Call$Args(int) returns (ArgSeq);
 type ArgSeq = <T>[int]T;
