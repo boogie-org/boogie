@@ -192,7 +192,8 @@ function IsGoodExhaleState(eh: HeapType, h: HeapType,
   (forall o: ref :: { eh[o, held] }  (0<eh[o, held]) == (0<h[o, held])) &&
   (forall o: ref :: { eh[o, rdheld] }  eh[o, rdheld] == h[o, rdheld]) &&
   (forall o: ref :: { h[o, held] }  (0<h[o, held]) ==> eh[o, mu] == h[o, mu]) &&
-  (forall o: ref :: { h[o, rdheld] }  h[o, rdheld] ==> eh[o, mu] == h[o, mu])
+  (forall o: ref :: { h[o, rdheld] }  h[o, rdheld] ==> eh[o, mu] == h[o, mu]) &&
+  (forall o: ref :: { h[o, forkK] } { eh[o, forkK] } h[o, forkK] == eh[o, forkK])
 }"""
 }
 object PermissionFunctionsAndAxiomsPL extends PreludeComponent {
