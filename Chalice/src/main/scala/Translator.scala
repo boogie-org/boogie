@@ -2102,6 +2102,9 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     val depth = etran.fpi.getRecursionBound(predicate)
     UpdateSecMask(predicate, receiver, version, perm, currentK, depth, Map())
   }
+  def UpdateSecMaskDuringUnfold(predicate: Predicate, receiver: Expr, version: Expr, perm: Permission, currentK: Expr): List[Stmt] = {
+    UpdateSecMask(predicate, receiver, version, perm, currentK, 1, Map())
+  }
   def UpdateSecMask(predicate: Predicate, receiver: Expr, version: Expr, perm: Permission, currentK: Expr, depth: Int, previousReceivers: Map[String,List[Expr]]): List[Stmt] = {
     assert (depth >= 0)
     if (depth <= 0) return Nil
@@ -2263,7 +2266,11 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
           (if (isUpdatingSecMask)
             UpdateSecMask(e.predicate, trE, Heap.select(trE, memberName), perm, currentK, recurseOnPredicatesDepth, previousReceivers)
           else
-            UpdateSecMask(e.predicate, trE, Heap.select(trE, memberName), perm, currentK)
+            (if (duringUnfold)
+              UpdateSecMaskDuringUnfold(e.predicate, trE, Heap.select(trE, memberName), perm, currentK)
+            else
+              UpdateSecMask(e.predicate, trE, Heap.select(trE, memberName), perm, currentK)
+            )
           )
         else Nil) :::
         // update version number (if necessary)
