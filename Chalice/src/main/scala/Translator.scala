@@ -1418,6 +1418,7 @@ class FoldedPredicatesInfo {
   /** Start again with the empty information about folded predicates. */
   def reset {
     foldedPredicates = List()
+    currentConditions = Set()
   }
   
   /** return a list of folded predicates that might match for predicate */
