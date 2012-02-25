@@ -8,9 +8,7 @@ using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
-using Microsoft.Boogie.Simplify;
-using Microsoft.Boogie.Z3;
-using Microsoft.Boogie.SMTLib;
+using Microsoft.Basetypes;
 using System.Collections;
 using System.IO;
 using System.Threading;
@@ -31,9 +29,6 @@ namespace Microsoft.Boogie.Houdini {
       descriptiveName = impl.Name;
       collector = new ConditionGeneration.CounterexampleCollector();
       collector.OnProgress("HdnVCGen", 0, 0, 0.0);
-      if (CommandLineOptions.Clo.SoundnessSmokeTest) {
-        throw new Exception("HoudiniVCGen does not support Soundness smoke test.");
-      }
 
       vcgen.ConvertCFG2DAG(impl, program);
       ModelViewInfo mvInfo;
@@ -64,10 +59,10 @@ namespace Microsoft.Boogie.Houdini {
         var ctx = checker.TheoremProver.Context;
         var bet = ctx.BoogieExprTranslator;
         VCExpr controlFlowVariableExpr = bet.LookupVariable(controlFlowVariable);
-        Contract.Assert(controlFlowVariableExpr != null);
-        VCExpr controlFlowFunctionAppl = ctx.ExprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, ctx.ExprGen.Integer(Microsoft.Basetypes.BigNum.ZERO));
-        Contract.Assert(controlFlowFunctionAppl != null);
-        vc = ctx.ExprGen.Implies(ctx.ExprGen.Eq(controlFlowFunctionAppl, ctx.ExprGen.Integer(Microsoft.Basetypes.BigNum.FromInt(entryBlockId))), vc);
+        VCExpr eqExpr1 = ctx.ExprGen.Eq(controlFlowVariableExpr, ctx.ExprGen.Integer(BigNum.ZERO));
+        VCExpr controlFlowFunctionAppl = ctx.ExprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, ctx.ExprGen.Integer(BigNum.ZERO));
+        VCExpr eqExpr2 = ctx.ExprGen.Eq(controlFlowFunctionAppl, ctx.ExprGen.Integer(BigNum.FromInt(entryBlockId)));
+        vc = ctx.ExprGen.Implies(eqExpr1, ctx.ExprGen.Implies(eqExpr2, vc));
       }
 
       DateTime now = DateTime.UtcNow;

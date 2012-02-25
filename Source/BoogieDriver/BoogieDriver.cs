@@ -443,11 +443,6 @@ namespace Microsoft.Boogie {
       Contract.Ensures(0 <= Contract.ValueAtReturn(out inconclusives) && 0 <= Contract.ValueAtReturn(out timeOuts));
 
       errorCount = verified = inconclusives = timeOuts = outOfMemories = 0;
-      CommandLineOptions.Clo.UseLabels =
-        CommandLineOptions.Clo.UseLabels ||
-        CommandLineOptions.Clo.SoundnessSmokeTest ||
-        !(CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Dag ||
-          CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.DagIterative);
 
       // ---------- Infer invariants --------------------------------------------------------
 
@@ -508,13 +503,6 @@ namespace Microsoft.Boogie {
       }
 
       #region Verify each implementation
-
-#if ROB_DEBUG
-      string now = DateTime.Now.ToString().Replace(' ','-').Replace('/','-').Replace(':','-');
-      System.IO.StreamWriter w = new System.IO.StreamWriter(@"\temp\batch_"+now+".bpl");
-      program.Emit(new TokenTextWriter(w));
-      w.Close();
-#endif
 
       ConditionGeneration vcgen = null;
       try {
