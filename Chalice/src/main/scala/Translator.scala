@@ -2673,7 +2673,7 @@ object TranslationHelper {
 
   def wf(h: Expr, m: Expr, sm: Expr) = FunctionApp("wf", List(h, m, sm));
   def IsGoodMask(m: Expr) = FunctionApp("IsGoodMask", List(m))
-  def AreGoodMasks(m: Expr, sm: Expr) = IsGoodMask(m) && IsGoodMask(sm)
+  def AreGoodMasks(m: Expr, sm: Expr) = IsGoodMask(m) // && IsGoodMask(sm) /** The second mask does currently not necessarily contain positive permissions, which means that we cannot assume IsGoodMask(sm). This might change in the future if we see a need for it */
   def IsGoodInhaleState(ih: Expr, h: Expr, m: Expr, sm: Expr) = FunctionApp("IsGoodInhaleState", List(ih,h,m,sm))
   def IsGoodExhaleState(eh: Expr, h: Expr, m: Expr, sm: Expr) = FunctionApp("IsGoodExhaleState", List(eh,h,m,sm))
   def contributesToWaitLevel(e: Expr, h: Expr, c: Expr) =
