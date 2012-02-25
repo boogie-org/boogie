@@ -212,6 +212,10 @@ function {:expand false} CanRead<T>(m: MaskType, sm: MaskType, obj: ref, f: Fiel
   0 <  m[obj,f][perm$R] || 0 <  m[obj,f][perm$N] ||
   0 < sm[obj,f][perm$R] || 0 < sm[obj,f][perm$N]
 }
+function {:expand false} CanReadForSure<T>(m: MaskType, obj: ref, f: Field T) returns (bool)
+{
+  0 < m[obj,f][perm$R] || 0 < m[obj,f][perm$N]
+}
 function {:expand false} CanWrite<T>(m: MaskType, obj: ref, f: Field T) returns (bool)
 {
   m[obj,f][perm$R] == Permission$FullFraction && m[obj,f][perm$N] == 0
