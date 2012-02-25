@@ -37,7 +37,6 @@ class C {
   {
     var prev := F;
     call P(2);
-    assert false; // succeeds because postcondition of P is not well-defined (i.e. we do not havoc this.F, so the verifier assumes the value is the same in pre and post) 
   }
 
   method Q(n: int)
