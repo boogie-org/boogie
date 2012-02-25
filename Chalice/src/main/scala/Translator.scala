@@ -705,6 +705,7 @@ class Translator {
         val (asyncStateV,asyncState) = NewBVar("asyncstate", tint, true)
         val (preCallHeapV, preCallHeap) = NewBVar("preCallHeap", theap, true)
         val (preCallMaskV, preCallMask) = NewBVar("preCallMask", tmask, true)
+        val (preCallSecMaskV, preCallSecMask) = NewBVar("preCallSecMask", tmask, true)
         val (preCallCreditsV, preCallCredits) = NewBVar("preCallCredits", tcredits, true)
         val (argsSeqV, argsSeq) = NewBVar("argsSeq", tArgSeq, true)
         val argsSeqLength = 1 + args.length;
@@ -722,6 +723,7 @@ class Translator {
         // remember the value of the heap/mask/credits
         BLocal(preCallHeapV) :: (preCallHeap := etran.Heap) ::
         BLocal(preCallMaskV) :: (preCallMask := etran.Mask) ::
+        BLocal(preCallSecMaskV) :: (preCallSecMask := etran.SecMask) ::
         BLocal(preCallCreditsV) :: (preCallCredits := etran.Credits) ::
         BLocal(argsSeqV) ::
         // introduce formal parameters and pre-state globals
@@ -756,6 +758,7 @@ class Translator {
         // assume the pre call state for the token is the state before inhaling the precondition
         bassume(CallHeap(asyncState) ==@ preCallHeap) ::
         bassume(CallMask(asyncState) ==@ preCallMask) ::
+        bassume(CallSecMask(asyncState) ==@ preCallSecMask) ::
         bassume(CallCredits(asyncState) ==@ preCallCredits) ::
         bassume(CallArgs(asyncState) ==@ argsSeq) :::
         // assign the returned token to the variable
