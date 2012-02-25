@@ -208,6 +208,9 @@ case class Variable(id: String, t: Type, isGhost: Boolean, isImmutable: Boolean)
   def this(name: String, typ: Type) = this(name,typ,false,false);
   override def toString = (if (isGhost) "ghost " else "") + (if (isImmutable) "const " else "var ") + id;
 }
+case class BoogieExpr(expr: Boogie.Expr) extends ASTNode {
+  override def toString = "BoogieExpr("+expr+")"
+}
 object S_Variable { var VariableCount = 0 }
 case class SpecialVariable(name: String, typ: Type) extends Variable(name, typ, false, false) {
   override val UniqueName = name

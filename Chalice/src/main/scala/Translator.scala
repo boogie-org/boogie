@@ -1982,10 +1982,24 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   // this would introduce the (unsound) assumption that "methodcallk < mask[o.f]".
   // To avoid detecting this, we exhale all abstract read permissions first (or,
   // more precisely, we exhale all permissions with exact checking later).
+  
+  /** Regular exhale */
   def Exhale(predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean, currentK: Expr, exactchecking: Boolean): List[Boogie.Stmt] = 
     Exhale(Mask, SecMask, predicates, occasion, check, currentK, exactchecking)
+  /** Regular exhale with specific mask/secmask */
   def Exhale(m: Expr, sm: Expr, predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean, currentK: Expr, exactchecking: Boolean): List[Boogie.Stmt] =
     Exhale(m, sm, predicates, occasion, check, currentK, exactchecking, false, false)
+  /** Remove permission from the secondary mask, and assume all assertions that
+   * would get generated.
+   */
+  def UpdateSecMask(fp: FoldedPredicate, perm: Permission, currentK: Expr): List[Stmt] = {
+    val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(fp.predicate), BoogieExpr(fp.receiver)), perm, NoPosition)
+    
+    val occasion = "update SecMask ("+fp.receiver+"."+fp.predicate.FullName + ", version "+fp.version+")"
+    // asserts are converted to assumes, so error messages do not matter
+    assert2assume(Exhale(SecMask, SecMask, List((definition, ErrorMessage(NoPosition, ""))), occasion, check=false, currentK, exactchecking=false /* it should not important what we pass here */, transferPermissionToSecMask=false, recurseOnPredicates=true))
+  }
+  /** Most general form of exhale; implements all the specific versions above */
   def Exhale(m: Expr, sm: Expr, predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean, currentK: Expr, exactchecking: Boolean, transferPermissionToSecMask: Boolean, recurseOnPredicates: Boolean): List[Boogie.Stmt] = {
     if (predicates.size == 0) return Nil;
     val (ehV, eh) = Boogie.NewBVar("exhaleHeap", theap, true)
@@ -2068,8 +2082,10 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         // TODO: include automagic again
         // check that the necessary permissions are there and remove them from the mask
         ExhalePermission(perm, trE, memberName, currentK, acc.pos, error, m, ec) :::
+        // transfer permission to secondary mask if necessary
         (if (transferPermissionToSecMask) InhalePermission(perm, trE, memberName, currentK, sm)
         else Nil) :::
+        // give up secondary permission to locations of the body of the predicate (also recursively)
         bassume(AreGoodMasks(m, sm)) ::
         bassume(wf(Heap, m, sm)) ::
         (if (e.isPredicate)
