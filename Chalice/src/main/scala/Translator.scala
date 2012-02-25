@@ -1563,7 +1563,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         // exhale the predicate
         tmpTranslator.Exhale(List((acc, ErrorMessage(unfolding.pos, "Unfolding might fail."))), "unfolding", false, unfoldingK, false) :::
         // inhale the definition of the predicate
-        tmpTranslator.InhaleFrom(List(definition), "unfolding", false, Heap.select(Tr(obj), pred.predicate.FullName), unfoldingK) :::
+        tmpTranslator.Inhale(List(definition), "unfolding", false, unfoldingK) :::
         // check definedness of e in state where the predicate is unfolded
         tmpTranslator.isDefined(e)
       case Iff(e0,e1) =>
@@ -1812,19 +1812,6 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     //BLocal(ihV) :: Boogie.Havoc(ih) ::
     //bassume(IsGoodInhaleState(ih, Heap, Mask, SecMask)) ::
     (for (p <- predicates) yield Inhale(p, Heap, check, currentK)).flatten :::
-    bassume(AreGoodMasks(Mask, SecMask)) ::
-    bassume(wf(Heap, Mask, SecMask)) ::
-    Comment("end inhale")
-  }
-
-  def InhaleFrom(predicates: List[Expression], occasion: String, check: Boolean, useHeap: Boogie.Expr, currentK: Expr): List[Boogie.Stmt] = {
-    if (predicates.size == 0) return Nil;
-    
-    val (ihV, ih) = Boogie.NewBVar("inhaleHeap", theap, true)
-    Comment("inhale (" + occasion + ")") ::
-    BLocal(ihV) :: Boogie.Assign(ih, useHeap) ::
-    bassume(IsGoodInhaleState(ih, Heap, Mask, SecMask)) ::
-    (for (p <- predicates) yield Inhale(p, ih, check, currentK)).flatten :::
     bassume(AreGoodMasks(Mask, SecMask)) ::
     bassume(wf(Heap, Mask, SecMask)) ::
     Comment("end inhale")
