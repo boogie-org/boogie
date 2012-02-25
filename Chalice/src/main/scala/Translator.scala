@@ -2131,7 +2131,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     Boogie.If(b,
       // remove correct predicate from the auxiliary information by setting
       // its flag to false
-      (disj.foldLeft(Nil: List[Stmt]){ (a: List[Stmt], b: (Expr, Expr)) => Boogie.If(b._1,(b._2 := false) :: Nil,a) :: Nil }) :::
+      (disj.foldLeft(Nil: List[Stmt]){ (a: List[Stmt], b: (Expr, Expr)) => Boogie.If(b._1,/*(b._2 := false) :: */Nil,a) :: Nil }) :::
       // asserts are converted to assumes, so error messages do not matter
       assert2assume(Exhale(SecMask, SecMask, List((definition, ErrorMessage(NoPosition, ""))), occasion, false, currentK, false /* it should not important what we pass here */, false, depth-1, true, newPreviousReceivers, false)),
       Nil) :: Nil
