@@ -1827,12 +1827,12 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         TrAll(tmp)
       case acc@Access(e,perm) =>
         val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
-        CanReadForSure(Tr(e.e), memberName)
+        CanRead(Tr(e.e), memberName)
       case acc @ AccessSeq(s, Some(member), perm) =>
         if (member.isPredicate) throw new NotSupportedException("not yet implemented");
         val memberName = member.f.FullName;
         val (refV, ref) = Boogie.NewBVar("ref", tref, true);
-        (SeqContains(Tr(s), ref) ==> CanReadForSure(ref, memberName)).forall(refV)
+        (SeqContains(Tr(s), ref) ==> CanRead(ref, memberName)).forall(refV)
       case _ => etran.Tr(e, TrAllHelper)
     }
     TrAllHelper(e, this)
