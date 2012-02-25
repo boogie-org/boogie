@@ -652,12 +652,9 @@ class Translator {
         val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
         val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
         
-        // record folded predicate
-        etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions))
-        
         // pick new k
         val (foldKV, foldK) = Boogie.NewBVar("foldK", tint, true)
-        Comment("fold") ::
+        val stmts = Comment("fold") ::
         BLocal(receiverV) :: (receiver := o) ::
         BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) ::
         BLocal(foldKV) :: bassume(0 < foldK && 1000*foldK < percentPermission(1) && 1000*foldK < methodK) ::
@@ -668,6 +665,11 @@ class Translator {
         etran.ExhaleAndTransferToSecMask(List((definition, ErrorMessage(s.pos, "Fold might fail because the definition of " + pred.predicate.FullName + " does not hold."))), "fold", foldK, false) :::
         Inhale(List(acc), "fold", foldK) :::
         bassume(wf(etran.Heap, etran.Mask, etran.SecMask))
+        
+        // record folded predicate
+        etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions))
+        
+        stmts
       case unfld@Unfold(acc@Access(pred@MemberAccess(e, f), perm:Permission)) =>
         val o = TrExpr(e);
         val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), e), perm, unfld.pos)
@@ -1404,7 +1406,7 @@ case class FoldedPredicate(predicate: Predicate, receiver: Expr, version: Expr, 
 
 /** All information that we need to keep track of about folded predicates. */
 class FoldedPredicatesInfo {
-    
+  
   private var foldedPredicates: List[FoldedPredicate] = List()
   var currentConditions: Set[(VarExpr,Boolean)] = Set()
   
