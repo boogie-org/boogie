@@ -2016,14 +2016,14 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     val occasion = "update SecMask"
     
     // for every folded predicate that matches (both receiver and version), update the secondary map
-    (for (fp <- etran.fpi.getFoldedPredicates(predicate)) yield {
+    val b = (for (fp <- etran.fpi.getFoldedPredicates(predicate)) yield {
       val conditions = (fp.conditions map (c => if (c._2) c._1 else !c._1)).foldLeft(true: Expr){ (a: Expr, b: Expr) => a && b }
-      val b = fp.version ==@ version && fp.receiver ==@ receiver && conditions
-      Boogie.If(b,
+      fp.version ==@ version && fp.receiver ==@ receiver && conditions
+    }).foldLeft(false: Expr){ (a: Expr, b: Expr) => a || b }
+    Boogie.If(b,
       // asserts are converted to assumes, so error messages do not matter
       assert2assume(Exhale(SecMask, SecMask, List((definition, ErrorMessage(NoPosition, ""))), occasion, false, currentK, false /* it should not important what we pass here */, false, depth-1, true)),
-      Nil)
-    }).flatten
+      Nil) :: Nil
   }
   /** Most general form of exhale; implements all the specific versions above */
   // Assumption: if isUpdatingSecMask==true, then the exhale heap is not used at
