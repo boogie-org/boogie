@@ -1799,7 +1799,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     case Contains(e0, e1) => SeqContains(trrecursive(e1), trrecursive(e0))
     case Eval(h, e) =>
       val (evalHeap, evalMask, evalSecMask, evalCredits, checks, assumptions) = fromEvalState(h);
-      val evalEtran = new ExpressionTranslator(Globals(evalHeap, evalMask, evalSecMask, evalCredits), etran.oldEtran.globals, currentClass);
+      val evalEtran = new ExpressionTranslator(Globals(evalHeap, evalMask, evalSecMask, evalCredits), oldEtran.globals, currentClass);
       trrec(e, evalEtran)
     case _:SeqQuantification => throw new InternalErrorException("should be desugared")
     case tq @ TypeQuantification(Forall, _, _, e, _) =>
