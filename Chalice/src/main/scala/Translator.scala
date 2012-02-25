@@ -684,9 +684,8 @@ class Translator {
         isDefined(e) :::
         bassert(nonNull(o), s.pos, "The target of the fold statement might be null.") ::
         isDefined(perm) :::
-        etran.Inhale(List(definition), "unfold", false, unfoldK) :::
         Exhale(List((acc, ErrorMessage(s.pos, "unfold might fail because the predicate " + pred.predicate.FullName + " does not hold."))), "unfold", unfoldK, false) :::
-        Nil
+        etran.Inhale(List(definition), "unfold", false, unfoldK)
       case c@CallAsync(declaresLocal, token, obj, id, args) =>
         val formalThisV = new Variable("this", new Type(c.m.Parent))
         val formalThis = new VariableExpr(formalThisV)
