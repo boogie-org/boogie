@@ -1418,7 +1418,6 @@ class FoldedPredicatesInfo {
   /** Start again with the empty information about folded predicates. */
   def reset {
     foldedPredicates = List()
-    currentConditions = Set()
   }
   
   /** return a list of folded predicates that might match for predicate */
@@ -1561,22 +1560,16 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         (if(checkTermination) { List(prove(NonEmptyMask(tmpGlobals.mask), func.pos, "The heap of the callee might not be strictly smaller than the heap of the caller.")) } else Nil)
       case unfolding@Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), e) =>
         val (tmpGlobalsV, tmpGlobals) = etran.FreshGlobals("unfolding")
-        val tmpTranslator = new ExpressionTranslator(Globals(tmpGlobals.heap, tmpGlobals.mask, etran.SecMask, tmpGlobals.credits), etran.oldEtran.globals, currentClass);
+        val tmpTranslator = new ExpressionTranslator(tmpGlobals, etran.oldEtran.globals, currentClass);
         
-        val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
-        val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
-        
-        val trO = Tr(obj)
-        val receiverOk = isDefined(obj) ::: prove(nonNull(trO), obj.pos, "Receiver might be null.");
+        val receiverOk = isDefined(obj) ::: prove(nonNull(Tr(obj)), obj.pos, "Receiver might be null.");
         val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), obj), perm, unfolding.pos)
         
         // pick new k
         val (unfoldingKV, unfoldingK) = Boogie.NewBVar("unfoldingK", tint, true)
         
-        val stmts = Comment("unfolding") ::
+        Comment("unfolding") ::
         BLocal(unfoldingKV) :: bassume(0 < unfoldingK && 1000*unfoldingK < percentPermission(1)) ::
-        BLocal(receiverV) :: (receiver := trO) ::
-        BLocal(versionV) :: (version := etran.Heap.select(trO, pred.predicate.FullName)) ::
         // check definedness
         receiverOk ::: isDefined(perm) :::
         // copy state into temporary variables
@@ -1585,14 +1578,9 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         // exhale the predicate
         tmpTranslator.Exhale(List((acc, ErrorMessage(unfolding.pos, "Unfolding might fail."))), "unfolding", false, unfoldingK, false) :::
         // inhale the definition of the predicate
-        tmpTranslator.InhaleAndTransferToSecMask(List(definition), "unfolding", false, unfoldingK) :::
+        tmpTranslator.Inhale(List(definition), "unfolding", false, unfoldingK) :::
         // check definedness of e in state where the predicate is unfolded
         tmpTranslator.isDefined(e)
-        
-        // record folded predicate
-        etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions))
-        
-        stmts
       case Iff(e0,e1) =>
         isDefined(e0) ::: isDefined(e1)
       case Implies(e0,e1) =>
@@ -1831,16 +1819,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   /**********************************************************************
   *****************          INHALE/EXHALE              *****************
   **********************************************************************/
-  
-  def InhaleAndTransferToSecMask(predicates: List[Expression], occasion: String, check: Boolean, currentK: Expr): List[Boogie.Stmt] = {
-    if (predicates.size == 0) return Nil;
-    
-    Comment("inhale (" + occasion + ")") ::
-    (for (p <- predicates) yield Inhale(p, Heap, check, currentK, true)).flatten :::
-    bassume(AreGoodMasks(Mask, SecMask)) ::
-    bassume(wf(Heap, Mask, SecMask)) ::
-    Comment("end inhale")
-  }
 
   def Inhale(predicates: List[Expression], occasion: String, check: Boolean, currentK: Expr): List[Boogie.Stmt] = {
     if (predicates.size == 0) return Nil;
@@ -1849,7 +1827,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     Comment("inhale (" + occasion + ")") ::
     //BLocal(ihV) :: Boogie.Havoc(ih) ::
     //bassume(IsGoodInhaleState(ih, Heap, Mask, SecMask)) ::
-    (for (p <- predicates) yield Inhale(p, Heap, check, currentK, false)).flatten :::
+    (for (p <- predicates) yield Inhale(p, Heap, check, currentK)).flatten :::
     bassume(AreGoodMasks(Mask, SecMask)) ::
     bassume(wf(Heap, Mask, SecMask)) ::
     Comment("end inhale")
@@ -1875,7 +1853,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     })
   }
 
-  def Inhale(p: Expression, ih: Boogie.Expr, check: Boolean, currentK: Expr, transferToSecMask: Boolean): List[Boogie.Stmt] = desugar(p) match {
+  def Inhale(p: Expression, ih: Boogie.Expr, check: Boolean, currentK: Expr): List[Boogie.Stmt] = desugar(p) match {
     case pred@MemberAccess(e, p) if pred.isPredicate => 
       val chk = (if (check) {
         isDefined(e)(true) ::: 
@@ -1883,7 +1861,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       } else Nil)
       val tmp = Access(pred, Full);
       tmp.pos = pred.pos;
-      chk ::: Inhale(tmp, ih, check, currentK, transferToSecMask)
+      chk ::: Inhale(tmp, ih, check, currentK)
     case AccessAll(obj, perm) => throw new InternalErrorException("should be desugared")
     case AccessSeq(s, None, perm) => throw new InternalErrorException("should be desugared")
     case acc@Access(e,perm) =>
@@ -1899,9 +1877,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassume(wf(Heap, Mask, SecMask)) ::
       (if(e.isPredicate) Nil else List(bassume(TypeInformation(new Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
       InhalePermission(perm, trE, memberName, currentK) :::
-      (if (transferToSecMask)
-        InhalePermission(perm, trE, memberName, currentK, SecMask)
-      else Nil) :::
       bassume(AreGoodMasks(Mask, SecMask)) ::
       bassume(IsGoodState(heapFragment(new Boogie.MapSelect(ih, trE, memberName)))) ::
       bassume(wf(Heap, Mask, SecMask)) ::
@@ -1961,12 +1936,12 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       new Boogie.MapUpdate(Credits, trCh, new Boogie.MapSelect(Credits, trCh) + Tr(cr.N))
     case Implies(e0,e1) =>
       (if(check) isDefined(e0)(true) else Nil) :::
-      Boogie.If(Tr(e0), Inhale(e1, ih, check, currentK, transferToSecMask), Nil)
+      Boogie.If(Tr(e0), Inhale(e1, ih, check, currentK), Nil)
     case IfThenElse(con, then, els) =>
       (if(check) isDefined(con)(true) else Nil) :::
-      Boogie.If(Tr(con), Inhale(then, ih, check, currentK, transferToSecMask), Inhale(els, ih, check, currentK, transferToSecMask))
+      Boogie.If(Tr(con), Inhale(then, ih, check, currentK), Inhale(els, ih, check, currentK))
     case And(e0,e1) =>
-      Inhale(e0, ih, check, currentK, transferToSecMask) ::: Inhale(e1, ih, check, currentK, transferToSecMask)
+      Inhale(e0, ih, check, currentK) ::: Inhale(e1, ih, check, currentK)
     case holds@Holds(e) =>
       val trE = Tr(e);
       (if(check)
@@ -2004,7 +1979,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassume(AreGoodMasks(preEtran.Mask, preEtran.SecMask)) ::
       bassume(wf(preEtran.Heap, preEtran.Mask, preEtran.SecMask)) ::
       bassume(proofOrAssume) ::
-      preEtran.Inhale(e, ih, check, currentK, transferToSecMask) :::
+      preEtran.Inhale(e, ih, check, currentK) :::
       bassume(preEtran.Heap ==@ evalHeap) ::
       bassume(submask(preEtran.Mask, evalMask))
     case e => (if(check) isDefined(e)(true) else Nil) ::: bassume(Tr(e))
