@@ -499,13 +499,22 @@ class Translator {
       case BlockStmt(ss) =>
         translateStatements(ss, methodK)
       case IfStmt(guard, then, els) =>
+        val (condV, cond) = Boogie.NewBVar("cond", tbool, true)
+        val oldConditions = etran.fpi.currentConditions
+        etran.fpi.currentConditions += ((cond, true))
         val tt = translateStatement(then, methodK)
         val et = els match {
           case None => Nil
-          case Some(els) => translateStatement(els, methodK) }
+          case Some(els) =>
+            etran.fpi.currentConditions = oldConditions
+            etran.fpi.currentConditions += ((cond, false))
+            translateStatement(els, methodK)
+        }
         Comment("if") ::
+        BLocal(condV) ::
+        (cond := etran.Tr(guard)) ::
         isDefined(guard) :::
-        Boogie.If(guard, tt, et)
+        Boogie.If(cond, tt, et)
       case w: WhileStmt =>
         translateWhile(w, methodK)
       case Assign(lhs, rhs) =>
