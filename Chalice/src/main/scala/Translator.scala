@@ -1599,7 +1599,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         BLocals(tmpGlobalsV) :::
         copyState(tmpGlobals, etran) :::
         // exhale the predicate
-        tmpTranslator.Exhale(List((acc, ErrorMessage(unfolding.pos, "Unfolding might fail."))), "unfolding", false, unfoldingK, false) :::
+        tmpTranslator.ExhaleDuringUnfold(List((acc, ErrorMessage(unfolding.pos, "Unfolding might fail."))), "unfolding", false, unfoldingK, false) :::
         // inhale the definition of the predicate
         tmpTranslator.Inhale(List(definition), "unfolding", false, unfoldingK) :::
         // check definedness of e in state where the predicate is unfolded
