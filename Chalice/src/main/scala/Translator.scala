@@ -2108,7 +2108,11 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   // Note: If isUpdatingSecMask, then m is actually a secondary mask, and at the
   // moment we do not want an assumption IsGoodMask(SecMask). Therefore, we omit
   // those if isUpdatingSecMask.
-
+  // Furthermore, we do not want to generate assumptions that we have enough
+  // permission available (something like "assume 50% >= SecMask[obj,f]"; note
+  // that these assumption come from the assertions that check that the necessary
+  // permissions are available, and are then turned into assumptions by
+  // assertion2assumption.
   //
   // Assumption 1: if isUpdatingSecMask==true, then the exhale heap is not used at
   // all, and the regular heap is not changed.
@@ -2149,11 +2153,12 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     Comment("end exhale")
   }
   
-  def ExhalePermission(perm: Permission, obj: Expr, memberName: String, currentK: Expr, pos: Position, error: ErrorMessage, em: Boogie.Expr, exactchecking: Boolean): List[Boogie.Stmt] = {
+  // see comment in front of method exhale about parameter isUpdatingSecMask
+  def ExhalePermission(perm: Permission, obj: Expr, memberName: String, currentK: Expr, pos: Position, error: ErrorMessage, em: Boogie.Expr, exactchecking: Boolean, isUpdatingSecMask: Boolean): List[Boogie.Stmt] = {
     val (f, stmts) = extractKFromPermission(perm, currentK)
     val n = extractEpsilonsFromPermission(perm);
     
-    stmts :::
+    val res = stmts :::
     (perm.permissionType match {
       case PermissionType.Mixed =>
         bassert(f > 0 || (f == 0 && n > 0), error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
@@ -2165,6 +2170,10 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         bassert(f > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
         DecPermission(obj, memberName, f, em, error, pos, exactchecking)
     })
+    
+    if (isUpdatingSecMask)
+      res filter (a => !a.isInstanceOf[Boogie.Assert]) // we do not want "insufficient permission checks" at the moment, as they will be turned into (possibly wrong) assumptions
+    else res
   }
   
   // does this permission require exact checking, or is it enough to check that we have any permission > 0?
@@ -2216,7 +2225,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         // if the mask does not contain sufficient permissions, try folding acc(e, fraction)
         // TODO: include automagic again
         // check that the necessary permissions are there and remove them from the mask
-        ExhalePermission(perm, trE, memberName, currentK, acc.pos, error, m, ec) :::
+        ExhalePermission(perm, trE, memberName, currentK, acc.pos, error, m, ec, isUpdatingSecMask) :::
         // transfer permission to secondary mask if necessary
         (if (transferPermissionToSecMask) InhalePermission(perm, trE, memberName, currentK, sm)
         else Nil) :::
@@ -2272,14 +2281,15 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
               case PermissionType.Epsilons => n > 0
             })).forall(refV), error.pos, error.message + " The permission at " + acc.pos + " might not be positive.") ::
           // make sure enough permission is available
-          bassert((SeqContains(e, ref) ==>
+          //  (see comment in front of method exhale for explanation of isUpdatingSecMask)
+          (if (!isUpdatingSecMask) bassert((SeqContains(e, ref) ==>
             ((perm,perm.permissionType) match {
               case _ if !ec     => mr > 0
               case (Star,_)     => mr > 0
               case (_,PermissionType.Fraction) => r <= mr && (r ==@ mr ==> 0 <= mn)
               case (_,PermissionType.Mixed)    => r <= mr && (r ==@ mr ==> n <= mn)
               case (_,PermissionType.Epsilons) => mr ==@ 0 ==> n <= mn
-            })).forall(refV), error.pos, error.message + " Insufficient permission at " + acc.pos + " for " + member.f.FullName) ::
+            })).forall(refV), error.pos, error.message + " Insufficient permission at " + acc.pos + " for " + member.f.FullName) :: Nil else Nil) :::
           // additional assumption on k if we have a star permission or use inexact checking
           ( perm match {
               case _ if !ec => bassume((SeqContains(e, ref) ==> (r < mr)).forall(refV)) :: Nil
