@@ -207,8 +207,10 @@ class Translator {
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
     val args = VarExpr("this") :: inArgs;
     val formals = BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar);
+    val formals2 = BVar(HeapName+"2", theap) :: BVar(MaskName+"2", tmask) :: BVar(SecMaskName+"2", tmask) :: Nil;
     val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask, etran.SecMask) ::: args);
     val trigger = FunctionApp(functionName(f)+"#trigger", List(etran.Heap, etran.Mask, etran.SecMask) ::: args);
+    val trigger2 = FunctionApp(functionName(f)+"#trigger", VarExpr(HeapName+"2") :: VarExpr(MaskName+"2") :: VarExpr(SecMaskName+"2") :: args);
     val pre = Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) });
 
     /** Limit application of the function by introducing a second (limited) function */
@@ -250,7 +252,8 @@ class Translator {
     else
       Nil) :::
     Boogie.Function(functionName(f) + "#trigger", formals, BVar("$myresult", tbool)) ::
-    Axiom(new Boogie.Forall(formals, new Trigger(trigger), trigger ==@ true)) :: Nil
+    Axiom(new Boogie.Forall(formals, new Trigger(trigger), trigger ==@ true)) ::
+    Axiom(new Boogie.Forall(formals ::: formals2, new Trigger(List(trigger,trigger2)), trigger ==@ trigger2)) :: Nil
   }
 
   def framingAxiom(f: Function): List[Decl] = {
