@@ -667,8 +667,6 @@ class Translator {
         // pick new k
         val (foldKV, foldK) = Boogie.NewBVar("foldK", tint, true)
         val stmts = Comment("fold") ::
-        BLocal(receiverV) :: (receiver := o) ::
-        BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) ::
         BLocal(foldKV) :: bassume(0 < foldK && 1000*foldK < percentPermission(1) && 1000*foldK < methodK) ::
         isDefined(e) :::
         isDefined(perm) :::
@@ -676,6 +674,8 @@ class Translator {
         // remove the definition from the current state, and replace by predicate itself
         etran.ExhaleAndTransferToSecMask(List((definition, ErrorMessage(s.pos, "Fold might fail because the definition of " + pred.predicate.FullName + " does not hold."))), "fold", foldK, false) :::
         Inhale(List(acc), "fold", foldK) :::
+        BLocal(receiverV) :: (receiver := o) ::
+        BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) ::
         bassume(wf(etran.Heap, etran.Mask, etran.SecMask))
         
         // record folded predicate
