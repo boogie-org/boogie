@@ -679,7 +679,6 @@ class Translator {
         // remove the definition from the current state, and replace by predicate itself
         Exhale(List((definition, ErrorMessage(s.pos, "Fold might fail because the definition of " + pred.predicate.FullName + " does not hold."))), "fold", foldK, false) :::
         Inhale(List(acc), "fold", foldK) :::
-        updatePredicateVersion(o, pred.predicate.FullName, etran) :::
         bassume(wf(etran.Heap, etran.Mask, etran.SecMask))
       case unfld@Unfold(acc@Access(pred@MemberAccess(e, f), perm:Permission)) =>
         val o = TrExpr(e);
@@ -1858,11 +1857,6 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       else Nil) :::
       bassume(nonNull(trE)) ::
       new MapUpdate(Heap, trE, VarExpr(memberName), new Boogie.MapSelect(ih, trE, memberName)) ::
-      (if (e.isPredicate)
-        // update the predicate's version if we newly gained access to it
-        Boogie.If((new Boogie.MapSelect(Mask, trE, memberName, "perm$R") ==@ 0) && (new Boogie.MapSelect(Mask, trE, memberName, "perm$N") ==@ 0),
-        updatePredicateVersion(trE, memberName, etran), Nil) :: Nil
-      else Nil) :::
       bassume(wf(Heap, Mask, SecMask)) ::
       (if(e.isPredicate) Nil else List(bassume(TypeInformation(new Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
       InhalePermission(perm, trE, memberName, currentK) :::
@@ -1979,11 +1973,11 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     val (emV, em) = NewBVar("exhaleMask", tmask, true)
     val (ehV, eh) = Boogie.NewBVar("exhaleHeap", theap, true)
     Comment("begin exhale (" + occasion + ")") ::
-    BLocal(emV) :: (em := Mask) ::
-    (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check, currentK, exactchecking, false)).flatten :::
-    (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check, currentK, exactchecking, true)).flatten :::
-    (Mask := em) ::
     BLocal(ehV) :: Boogie.Havoc(eh) ::
+    BLocal(emV) :: (em := Mask) ::
+    (for (p <- predicates) yield Exhale(p._1, em, eh, p._2, check, currentK, exactchecking, false)).flatten :::
+    (for (p <- predicates) yield Exhale(p._1, em, eh, p._2, check, currentK, exactchecking, true)).flatten :::
+    (Mask := em) ::
     bassume(IsGoodExhaleState(eh, Heap, Mask, SecMask)) ::
     (Heap := eh) ::
     bassume(AreGoodMasks(Mask, SecMask)) ::
@@ -2061,6 +2055,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       if (ec != onlyExactCheckingPermissions) Nil else {
         val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
         val (starKV, starK) = NewBVar("starK", tint, true);
+        val trE = Tr(e.e)
         
         // check definedness
         (if(check) isDefined(e.e)(true) :::
@@ -2068,10 +2063,15 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         // if the mask does not contain sufficient permissions, try folding acc(e, fraction)
         // TODO: include automagic again
         // check that the necessary permissions are there and remove them from the mask
-        ExhalePermission(perm, Tr(e.e), memberName, currentK, acc.pos, error, em, ec) :::
+        ExhalePermission(perm, trE, memberName, currentK, acc.pos, error, em, ec) :::
         bassume(AreGoodMasks(Mask, SecMask)) ::
         bassume(wf(Heap, Mask, SecMask)) ::
-        bassume(wf(Heap, em, SecMask))
+        bassume(wf(Heap, em, SecMask)) ::
+        (if (e.isPredicate)
+          Boogie.If(!CanRead(trE, memberName, em, SecMask), // if we cannot access the predicate anymore, then its version will be havoced
+            bassume(Heap.select(trE, memberName) < eh.select(trE, memberName)) :: Nil, // assume that the predicate's version grows monotonically
+            Nil) :: Nil
+        else Nil)
       }
     case acc @ AccessSeq(s, Some(member), perm) =>
       if (member.isPredicate) throw new NotSupportedException("not yet implemented");
@@ -2268,6 +2268,8 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   *****************          PERMISSIONS                *****************
   **********************************************************************/
 
+  def CanRead(obj: Boogie.Expr, field: Boogie.Expr, m: Boogie.Expr, sm: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanRead", List(m, sm, obj, field))
+  def CanRead(obj: Boogie.Expr, field: String, m: Boogie.Expr, sm: Boogie.Expr): Boogie.Expr = CanRead(obj, new Boogie.VarExpr(field), m, sm)
   def CanRead(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanRead", List(Mask, SecMask, obj, field))
   def CanRead(obj: Boogie.Expr, field: String): Boogie.Expr = CanRead(obj, new Boogie.VarExpr(field))
   def CanWrite(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanWrite", Mask, obj, field)
@@ -2583,12 +2585,6 @@ object TranslationHelper {
     } else {
       true
     }
-  }
-  
-  def updatePredicateVersion(obj: Expr, predicate: String, etran: ExpressionTranslator): List[Stmt] = {
-    val (oldVersionV, oldVersion) = NewBVar("oldPredicateVersion", IntClass, true)
-    val version = etran.Heap.select(obj, predicate)
-    BLocal(oldVersionV) :: Havoc(version) :: bassume(oldVersion < version)
   }
   
   /** Generate an expression that represents the state a function can depend on
