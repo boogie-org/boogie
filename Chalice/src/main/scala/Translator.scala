@@ -1793,7 +1793,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     //val (ihV, ih) = Boogie.NewBVar("inhaleHeap", theap, true)
     Comment("inhale (" + occasion + ")") ::
     //BLocal(ihV) :: Boogie.Havoc(ih) ::
-    //bassume(IsGoodInhaleState(ih, Heap, Mask)) ::
+    //bassume(IsGoodInhaleState(ih, Heap, Mask, SecMask)) ::
     (for (p <- predicates) yield Inhale(p, Heap, check, currentK)).flatten :::
     bassume(AreGoodMasks(Mask, SecMask)) ::
     bassume(wf(Heap, Mask)) ::
@@ -1806,7 +1806,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     val (ihV, ih) = Boogie.NewBVar("inhaleHeap", theap, true)
     Comment("inhale (" + occasion + ")") ::
     BLocal(ihV) :: Boogie.Assign(ih, useHeap) ::
-    bassume(IsGoodInhaleState(ih, Heap, Mask)) ::
+    bassume(IsGoodInhaleState(ih, Heap, Mask, SecMask)) ::
     (for (p <- predicates) yield Inhale(p, ih, check, currentK)).flatten :::
     bassume(AreGoodMasks(Mask, SecMask)) ::
     bassume(wf(Heap, Mask)) ::
@@ -1980,7 +1980,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check, currentK, exactchecking, true)).flatten :::
     (Mask := em) ::
     BLocal(ehV) :: Boogie.Havoc(eh) ::
-    bassume(IsGoodExhaleState(eh, Heap, Mask)) ::
+    bassume(IsGoodExhaleState(eh, Heap, Mask, SecMask)) ::
     (Heap := eh) ::
     bassume(AreGoodMasks(Mask, SecMask)) ::
     bassume(wf(Heap, Mask)) ::
@@ -2264,7 +2264,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   *****************          PERMISSIONS                *****************
   **********************************************************************/
 
-  def CanRead(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanRead", Mask, obj, field)
+  def CanRead(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanRead", List(Mask, SecMask, obj, field))
   def CanRead(obj: Boogie.Expr, field: String): Boogie.Expr = CanRead(obj, new Boogie.VarExpr(field))
   def CanWrite(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanWrite", Mask, obj, field)
   def CanWrite(obj: Boogie.Expr, field: String): Boogie.Expr = CanWrite(obj, new Boogie.VarExpr(field))
@@ -2500,8 +2500,8 @@ object TranslationHelper {
   def wf(h: Expr, m: Expr) = FunctionApp("wf", List(h, m));
   def IsGoodMask(m: Expr) = FunctionApp("IsGoodMask", List(m))
   def AreGoodMasks(m: Expr, sm: Expr) = IsGoodMask(m) && IsGoodMask(sm)
-  def IsGoodInhaleState(a: Expr, b: Expr, c: Expr) = FunctionApp("IsGoodInhaleState", List(a, b, c))
-  def IsGoodExhaleState(eh: Expr, h: Expr, m: Expr) = FunctionApp("IsGoodExhaleState", List(eh,h,m))
+  def IsGoodInhaleState(ih: Expr, h: Expr, m: Expr, sm: Expr) = FunctionApp("IsGoodInhaleState", List(ih,h,m,sm))
+  def IsGoodExhaleState(eh: Expr, h: Expr, m: Expr, sm: Expr) = FunctionApp("IsGoodExhaleState", List(eh,h,m,sm))
   def contributesToWaitLevel(e: Expr, h: Expr, c: Expr) =
     (0 < h.select(e, "held")) || h.select(e, "rdheld")  || (new Boogie.MapSelect(c, e) < 0)
   def NonEmptyMask(m: Expr) = ! FunctionApp("EmptyMask", List(m))

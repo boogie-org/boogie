@@ -182,18 +182,18 @@ axiom NonPredicateField(rdheld);
 function wf(h: HeapType, m: MaskType) returns (bool);
 
 function IsGoodInhaleState(ih: HeapType, h: HeapType,
-                           m: MaskType) returns (bool)
+                           m: MaskType, sm: MaskType) returns (bool)
 {
-  (forall<T> o: ref, f: Field T :: { ih[o, f] }  CanRead(m, o, f) ==> ih[o, f] == h[o, f]) &&
+  (forall<T> o: ref, f: Field T :: { ih[o, f] }  CanRead(m, sm, o, f) ==> ih[o, f] == h[o, f]) &&
   (forall o: ref :: { ih[o, held] }  (0<ih[o, held]) == (0<h[o, held])) &&
   (forall o: ref :: { ih[o, rdheld] }  ih[o, rdheld] == h[o, rdheld]) &&
   (forall o: ref :: { h[o, held] }  (0<h[o, held]) ==> ih[o, mu] == h[o, mu]) &&
   (forall o: ref :: { h[o, rdheld] }  h[o, rdheld] ==> ih[o, mu] == h[o, mu])
 }
 function IsGoodExhaleState(eh: HeapType, h: HeapType,
-                           m: MaskType) returns (bool)
+                           m: MaskType, sm: MaskType) returns (bool)
 {
-  (forall<T> o: ref, f: Field T :: { eh[o, f] }  CanRead(m, o, f) ==> eh[o, f] == h[o, f]) &&
+  (forall<T> o: ref, f: Field T :: { eh[o, f] }  CanRead(m, sm, o, f) ==> eh[o, f] == h[o, f]) &&
   (forall o: ref :: { eh[o, held] }  (0<eh[o, held]) == (0<h[o, held])) &&
   (forall o: ref :: { eh[o, rdheld] }  eh[o, rdheld] == h[o, rdheld]) &&
   (forall o: ref :: { h[o, held] }  (0<h[o, held]) ==> eh[o, mu] == h[o, mu]) &&
@@ -207,9 +207,10 @@ object PermissionFunctionsAndAxiomsPL extends PreludeComponent {
 // -- Permissions ------------------------------------------------
 // ---------------------------------------------------------------
 
-function {:expand false} CanRead<T>(m: MaskType, obj: ref, f: Field T) returns (bool)
+function {:expand false} CanRead<T>(m: MaskType, sm: MaskType, obj: ref, f: Field T) returns (bool)
 {
-  0 < m[obj,f][perm$R] || 0 < m[obj,f][perm$N]
+  0 <  m[obj,f][perm$R] || 0 <  m[obj,f][perm$N] ||
+  0 < sm[obj,f][perm$R] || 0 < sm[obj,f][perm$N]
 }
 function {:expand false} CanWrite<T>(m: MaskType, obj: ref, f: Field T) returns (bool)
 {
