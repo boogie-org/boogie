@@ -2254,7 +2254,8 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
             Nil) :: Nil
         else Nil) :::
         (if (isUpdatingSecMask) Nil else bassume(AreGoodMasks(m, sm)) :: Nil) :::
-        bassume(wf(Heap, m, sm))
+        bassume(wf(Heap, m, sm)) :::
+        (if (m != Mask || sm != SecMask) bassume(wf(Heap, Mask, SecMask)) :: Nil else Nil)
       }
     case acc @ AccessSeq(s, Some(member), perm) =>
       if (member.isPredicate) throw new NotSupportedException("not yet implemented");
@@ -2306,7 +2307,8 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
               m(ref, f))))
         } :::
         (if (isUpdatingSecMask) Nil else bassume(AreGoodMasks(m, sm)) :: Nil) :::
-        bassume(wf(Heap, m, sm))
+        bassume(wf(Heap, m, sm)) :::
+        (if (m != Mask || sm != SecMask) bassume(wf(Heap, Mask, SecMask)) :: Nil else Nil)
       }
     case cr@Credit(ch, n) if !onlyExactCheckingPermissions =>
       val trCh = Tr(ch)
