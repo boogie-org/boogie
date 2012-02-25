@@ -238,16 +238,16 @@ class Translator {
          wf(h, m, sm) && CurrentModule == module#C ==> #C.f(h, m, this, x_1, ..., x_n) == tr(body))
     */
     Axiom(new Boogie.Forall(Nil,
-      formals, List(new Trigger(applyF),new Trigger(trigger)),
-        (trigger) && (wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName)) && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
+      formals, List(new Trigger(applyF)),
+        (wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName)) && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
         ==>
         (applyF ==@ body))) ::
     (if (f.isRecursive)
       // define the limited function (even for unlimited function since its SCC might have limited functions)
       Boogie.Function(functionName(f) + "#limited", formals, BVar("$myresult", f.out.typ)) ::
-      Axiom(new Boogie.Forall(
-        formals, new Trigger(applyF),
-        applyF ==@ FunctionApp(functionName(f) + "#limited", List(etran.Heap, etran.Mask, etran.SecMask) ::: args))) ::
+      Axiom(new Boogie.Forall(Nil,
+        formals, List(new Trigger(applyF), new Trigger(trigger)),
+        (trigger) && (applyF ==@ FunctionApp(functionName(f) + "#limited", List(etran.Heap, etran.Mask, etran.SecMask) ::: args)))) ::
       Nil
     else
       Nil) :::
