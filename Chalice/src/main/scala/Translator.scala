@@ -208,7 +208,7 @@ class Translator {
     val args = VarExpr("this") :: inArgs;
     val formals = BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar);
     val applyF = FunctionApp(functionName(f), List(etran.Heap, etran.Mask, etran.SecMask) ::: args);
-    val trigger = FunctionApp(functionName(f)+"#trigger", VarExpr("receiver") :: Nil);
+    val trigger = FunctionApp(functionName(f)+"#trigger", List(etran.Heap, etran.Mask, etran.SecMask) ::: args);
     val pre = Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) });
 
     /** Limit application of the function by introducing a second (limited) function */
@@ -234,9 +234,9 @@ class Translator {
 
     /* axiom (forall h: HeapType, m, sm: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
          wf(h, m, sm) && CurrentModule == module#C ==> #C.f(h, m, this, x_1, ..., x_n) == tr(body))
-    */    
+    */
     Axiom(new Boogie.Forall(Nil,
-      BVar("receiver", tref) :: formals, List(new Trigger(applyF),new Trigger(trigger)),
+      formals, List(new Trigger(applyF),new Trigger(trigger)),
         (trigger) && (wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName)) && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
         ==>
         (applyF ==@ body))) ::
@@ -249,8 +249,8 @@ class Translator {
       Nil
     else
       Nil) :::
-    Boogie.Function(functionName(f) + "#trigger", BVar("receiver", tref) :: Nil, BVar("$myresult", tbool)) ::
-    Axiom(new Boogie.Forall(BVar("receiver", tref) :: Nil, new Trigger(trigger), trigger ==@ true)) :: Nil
+    Boogie.Function(functionName(f) + "#trigger", formals, BVar("$myresult", tbool)) ::
+    Axiom(new Boogie.Forall(formals, new Trigger(trigger), trigger ==@ true)) :: Nil
   }
 
   def framingAxiom(f: Function): List[Decl] = {
@@ -2712,7 +2712,23 @@ object TranslationHelper {
   // definition axiom.
   def functionTrigger(receiver: Expr, predicate: Predicate): List[Stmt] = {
     for (f <- predicate.dependentFunctions) yield {
-      bassume(FunctionApp(functionName(f)+"#trigger", List(receiver)))
+      val args = for (i <- f.ins) yield {
+        defaultValue(i.t)
+      }
+      bassume(FunctionApp(functionName(f)+"#trigger", List(etran.Heap, etran.Mask, etran.SecMask, receiver) ::: args))
+    }
+  }
+  def defaultValue(t: Type): Expr = {
+    t match {
+      case _ => 0
+      //case Type(MuClass, _) => bLockBottom
+      //case NamedType("ref") => bnull
+      /*case NamedType("bool") => false
+      case NamedType("int") => false
+      case NamedType("seq") => false
+      case NamedType("string") => 0
+      case IndexedType("Seq", arg) => createEmptySeq*/
+      //case _ => throw new InternalErrorException("unexpected type: " +t)
     }
   }
   
