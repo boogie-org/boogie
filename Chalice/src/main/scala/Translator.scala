@@ -564,12 +564,12 @@ class Translator {
         bassert(nonNull(obj), s.pos, "The target of the share statement might be null.") ::
         UpdateMu(obj, true, false, lowerBounds, upperBounds, ErrorMessage(s.pos, "Share might fail.")) :::
         bassume(!isHeld(obj) && ! isRdHeld(obj)) :: // follows from o.mu==lockbottom
-        // exhale the monitor invariant (using the current state as the old state)
-        ExhaleInvariants(obj, false, ErrorMessage(s.pos, "Monitor invariant might not hold."), etran.UseCurrentAsOld(), methodK) :::
         // assume a seen state is the one right before the share
         bassume(LastSeenHeap(etran.Heap.select(obj, "mu"), etran.Heap.select(obj, "held")) ==@ etran.Heap) ::
         bassume(LastSeenMask(etran.Heap.select(obj, "mu"), etran.Heap.select(obj, "held")) ==@ preShareMask) ::
-        bassume(LastSeenCredits(etran.Heap.select(obj, "mu"), etran.Heap.select(obj, "held")) ==@ etran.Credits)
+        bassume(LastSeenCredits(etran.Heap.select(obj, "mu"), etran.Heap.select(obj, "held")) ==@ etran.Credits) ::
+        // exhale the monitor invariant (using the current state as the old state)
+        ExhaleInvariants(obj, false, ErrorMessage(s.pos, "Monitor invariant might not hold."), etran.UseCurrentAsOld(), methodK)
       case Unshare(obj) =>
         val (heldV, held) = Boogie.NewBVar("held", Boogie.NamedType("int"), true)
         val o = TrExpr(obj)
@@ -1760,11 +1760,11 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   def Inhale(predicates: List[Expression], occasion: String, check: Boolean, currentK: Expr): List[Boogie.Stmt] = {
     if (predicates.size == 0) return Nil;
     
-    val (ihV, ih) = Boogie.NewBVar("inhaleHeap", theap, true)
+    //val (ihV, ih) = Boogie.NewBVar("inhaleHeap", theap, true)
     Comment("inhale (" + occasion + ")") ::
-    BLocal(ihV) :: Boogie.Havoc(ih) ::
-    bassume(IsGoodInhaleState(ih, Heap, Mask)) ::
-    (for (p <- predicates) yield Inhale(p, ih, check, currentK)).flatten :::
+    //BLocal(ihV) :: Boogie.Havoc(ih) ::
+    //bassume(IsGoodInhaleState(ih, Heap, Mask)) ::
+    (for (p <- predicates) yield Inhale(p, Heap, check, currentK)).flatten :::
     bassume(IsGoodMask(Mask)) ::
     bassume(wf(Heap, Mask)) ::
     Comment("end inhale")
@@ -1938,11 +1938,16 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   def Exhale(predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean, currentK: Expr, exactchecking: Boolean): List[Boogie.Stmt] = {
     if (predicates.size == 0) return Nil;
     val (emV, em) = NewBVar("exhaleMask", tmask, true)
+    val (ehV, eh) = Boogie.NewBVar("exhaleHeap", theap, true)
     Comment("begin exhale (" + occasion + ")") ::
     BLocal(emV) :: (em := Mask) ::
     (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check, currentK, exactchecking, false)).flatten :::
     (for (p <- predicates) yield Exhale(p._1, em, null, p._2, check, currentK, exactchecking, true)).flatten :::
     (Mask := em) ::
+    BLocal(ehV) :: Boogie.Havoc(eh) ::
+    bassume(IsGoodExhaleState(eh, Heap, Mask)) ::
+    (Heap := eh) ::
+    bassume(IsGoodMask(Mask)) ::
     bassume(wf(Heap, Mask)) ::
     Comment("end exhale")
   }
@@ -2452,6 +2457,7 @@ object TranslationHelper {
   def wf(h: Expr, m: Expr) = FunctionApp("wf", List(h, m));
   def IsGoodMask(m: Expr) = FunctionApp("IsGoodMask", List(m))
   def IsGoodInhaleState(a: Expr, b: Expr, c: Expr) = FunctionApp("IsGoodInhaleState", List(a, b, c))
+  def IsGoodExhaleState(eh: Expr, h: Expr, m: Expr) = FunctionApp("IsGoodExhaleState", List(eh,h,m))
   def contributesToWaitLevel(e: Expr, h: Expr, c: Expr) =
     (0 < h.select(e, "held")) || h.select(e, "rdheld")  || (new Boogie.MapSelect(c, e) < 0)
   def NonEmptyMask(m: Expr) = ! FunctionApp("EmptyMask", List(m))
