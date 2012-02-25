@@ -260,7 +260,7 @@ class Translator {
       Axiom(new Boogie.Forall(Nil, formalsOnlyReceiver,
         triggers,
         new Boogie.Forall(formalsWithoutReceiver,
-            new Trigger(List(limitedApplyF,wellformed)),
+            new Trigger(List(applyF,wellformed)),
             (applyF ==@ limitedApplyF)))) ::
       Nil
     else
