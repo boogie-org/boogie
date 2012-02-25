@@ -1709,7 +1709,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     case func@FunctionApplication(obj, id, args) =>
       FunctionApp(functionName(func.f), Heap :: Mask :: SecMask :: (obj :: args map { arg => trrecursive(arg)}))
     case uf@Unfolding(_, e) =>
-      Thread.dumpStack()
       trrecursive(e)
     case Iff(e0,e1) =>
       trrecursive(e0) <==> trrecursive(e1)
