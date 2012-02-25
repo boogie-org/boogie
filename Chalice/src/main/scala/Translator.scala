@@ -1179,15 +1179,14 @@ class Translator {
     r.abs match {
       case List(s: SpecStmt) =>
         var (m, me) = NewBVar("specMask", tmask, true)
-
+        var (sm, sme) = NewBVar("specSecMask", tmask, true)
         tag(
           Comment("give witnesses to declared local variables") ::
           (for (v <- duringA) yield BLocal(Variable2BVarWhere(v))) :::
           (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
-          BLocal(m) ::
-          (me := absTran.Mask) ::
-          absTran.ExhaleHelper(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam, false) :::
-          absTran.ExhaleHelper(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."), false, todoiparam, todobparam, true) :::
+          BLocal(m) :: BLocal(sm) ::
+          (me := absTran.Mask) :: (sme := absTran.SecMask) ::
+          absTran.Exhale(me, sme, List((s.post,ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."))), "SpecStmt", false, todoiparam, todobparam) :::
           (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
              bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable not in frame of the specification statement: " + v.id)),
           keepTag)
@@ -1979,20 +1978,21 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
   // this would introduce the (unsound) assumption that "methodcallk < mask[o.f]".
   // To avoid detecting this, we exhale all abstract read permissions first (or,
   // more precisely, we exhale all permissions with exact checking later).
-  def Exhale(predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean, currentK: Expr, exactchecking: Boolean): List[Boogie.Stmt] = {
+  def Exhale(predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean, currentK: Expr, exactchecking: Boolean): List[Boogie.Stmt] = Exhale(Mask, SecMask, predicates, occasion, check, currentK, exactchecking)
+  def Exhale(m: Expr, sm: Expr, predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean, currentK: Expr, exactchecking: Boolean): List[Boogie.Stmt] = {
     if (predicates.size == 0) return Nil;
     val (emV, em) = NewBVar("exhaleMask", tmask, true)
     val (ehV, eh) = Boogie.NewBVar("exhaleHeap", theap, true)
     Comment("begin exhale (" + occasion + ")") ::
     BLocal(ehV) :: Boogie.Havoc(eh) ::
-    BLocal(emV) :: (em := Mask) ::
+    BLocal(emV) :: (em := m) ::
     (for (p <- predicates) yield ExhaleHelper(p._1, em, eh, p._2, check, currentK, exactchecking, false)).flatten :::
     (for (p <- predicates) yield ExhaleHelper(p._1, em, eh, p._2, check, currentK, exactchecking, true)).flatten :::
-    (Mask := em) ::
-    bassume(IsGoodExhaleState(eh, Heap, Mask, SecMask)) ::
+    (m := em) ::
+    bassume(IsGoodExhaleState(eh, Heap, m, sm)) ::
     (Heap := eh) ::
-    bassume(AreGoodMasks(Mask, SecMask)) ::
-    bassume(wf(Heap, Mask, SecMask)) ::
+    bassume(AreGoodMasks(m, sm)) ::
+    bassume(wf(Heap, m, sm)) ::
     Comment("end exhale")
   }
   
