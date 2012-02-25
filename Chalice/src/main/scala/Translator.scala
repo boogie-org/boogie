@@ -251,24 +251,23 @@ class Translator {
     pre visit {_ match {case _: AccessSeq => hasAccessSeq = true; case _ => }}
 
     if (!hasAccessSeq) {
-      // Encoding with nostate and combine
+      // Encoding with heapFragment and combine
       /* function ##C.f(state, ref, t_1, ..., t_n) returns (t);
          axiom (forall h: HeapType, m: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
-            wf(h, m) && IsGoodState(version) ==> #C.f(h, m, this, x_1, ..., x_n) ==  ##C.f(version, this, x_1, ..., x_n))
+            wf(h, m) && IsGoodState(partialHeap) ==> #C.f(h, m, this, x_1, ..., x_n) ==  ##C.f(partialHeap, this, x_1, ..., x_n))
       */
-      // make sure version is of HeapType
-      val version = Boogie.FunctionApp("combine", List("nostate", Version(pre, etran)));
+      val partialHeap = functionDependencies(pre, etran);
       val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
       val frameFunctionName = "#" + functionName(f);
 
       val args = VarExpr("this") :: inArgs;
       val applyF = FunctionApp(functionName(f) + (if (f.isRecursive) "#limited" else ""), List(etran.Heap, etran.Mask) ::: args);
-      val applyFrameFunction = FunctionApp(frameFunctionName, version :: args);
-      Boogie.Function(frameFunctionName, Boogie.BVar("state", theap) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new BVar("$myresult", f.out.typ)) ::
+      val applyFrameFunction = FunctionApp(frameFunctionName, partialHeap :: args);
+      Boogie.Function(frameFunctionName, Boogie.BVar("state", tpartialheap) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new BVar("$myresult", f.out.typ)) ::
       Axiom(new Boogie.Forall(
         BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
         new Trigger(applyF),
-          (wf(VarExpr(HeapName), VarExpr(MaskName)) && IsGoodState(version) && CanAssumeFunctionDefs)
+          (wf(VarExpr(HeapName), VarExpr(MaskName)) && IsGoodState(partialHeap) && CanAssumeFunctionDefs)
           ==>
           (applyF ==@ applyFrameFunction))
       )
@@ -1833,7 +1832,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       (if(e.isPredicate) Nil else List(bassume(TypeInformation(new Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
       InhalePermission(perm, trE, memberName, currentK) :::
       bassume(IsGoodMask(Mask)) ::
-      bassume(IsGoodState(new Boogie.MapSelect(ih, trE, memberName))) ::
+      bassume(IsGoodState(heapFragment(new Boogie.MapSelect(ih, trE, memberName)))) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(ih, Mask))
     case acc @ AccessSeq(s, Some(member), perm) =>
@@ -1904,7 +1903,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
          bassert(nonNull(trE), holds.pos, "The target of the holds predicate might be null.")
        else Nil) :::
       bassume(IsGoodMask(Mask)) ::
-      bassume(IsGoodState(new Boogie.MapSelect(ih, trE, "held"))) ::
+      bassume(IsGoodState(heapFragment(new Boogie.MapSelect(ih, trE, "held")))) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(ih, Mask)) ::
       new Boogie.MapUpdate(Heap, trE, VarExpr("held"),
@@ -1913,7 +1912,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       bassume(! new Boogie.MapSelect(ih, trE, "rdheld")) ::
       bassume(wf(Heap, Mask)) ::
       bassume(IsGoodMask(Mask)) ::
-      bassume(IsGoodState(new Boogie.MapSelect(ih, trE, "held"))) ::
+      bassume(IsGoodState(heapFragment(new Boogie.MapSelect(ih, trE, "held")))) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(ih, Mask))
     case Eval(h, e) => 
@@ -2468,6 +2467,17 @@ object TranslationHelper {
   def NonPredicateField(f: String) = FunctionApp("NonPredicateField", List(VarExpr(f)))
   def PredicateField(f: String) = FunctionApp("PredicateField", List(VarExpr(f)))
   def cast(a: Expr, b: Expr) = FunctionApp("cast", List(a, b))
+  
+  def emptyPartialHeap: Expr = Boogie.VarExpr("emptyPartialHeap")
+  def heapFragment(dep: Expr): Expr = Boogie.FunctionApp("heapFragment", List(dep))
+  def combine(l: Expr, r: Expr): Expr = {
+    (l,r) match {
+      case (VarExpr("emptyPartialHeap"), a) => a
+      case (a, VarExpr("emptyPartialHeap")) => a
+      case _ => Boogie.FunctionApp("combine", List(l, r))
+    }
+  }
+  def tpartialheap = NamedType("PartialHeapType");
 
   // sequences
 
@@ -2536,53 +2546,26 @@ object TranslationHelper {
     BLocal(oldVersionV) :: Havoc(version) :: bassume(oldVersion < version)
   }
   
-  /** Get a list of all expressions a function can depend on (determined by
-   *  examining the functions preconditions)
+  /** Generate an expression that represents the state a function can depend on
+   *  (as determined by examining the functions preconditions).
    */
-  def functionDependencies(pre: Expression, etran: ExpressionTranslator): List[Boogie.Expr] = {
+  def functionDependencies(pre: Expression, etran: ExpressionTranslator): Boogie.Expr = {
     desugar(pre) match {
       case pred@MemberAccess(e, p) if pred.isPredicate =>
         functionDependencies(Access(pred, Full), etran)
       case acc@Access(e, _) =>
         val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
-        new Boogie.MapSelect(etran.Heap, etran.Tr(e.e), memberName) :: Nil
+        heapFragment(new Boogie.MapSelect(etran.Heap, etran.Tr(e.e), memberName))
       case Implies(e0,e1) =>
-        Boogie.Ite(etran.Tr(e0), functionDependencies(e1, etran), Nil)
+        heapFragment(Boogie.Ite(etran.Tr(e0), functionDependencies(e1, etran), emptyPartialHeap))
       case And(e0,e1) =>
-        functionDependencies(e0, etran) :::
-        functionDependencies(e1, etran)
+        combine(functionDependencies(e0, etran), functionDependencies(e1, etran))
       case IfThenElse(con, then, els) =>
-        Boogie.Ite(etran.Tr(con), Version(then, etran), Version(els, etran))
+        heapFragment(Boogie.Ite(etran.Tr(con), functionDependencies(then, etran), functionDependencies(els, etran)))
       case _: PermissionExpr => throw new InternalErrorException("unexpected permission expression")
       case e =>
         e visit {_ match { case _ : PermissionExpr => throw new InternalErrorException("unexpected permission expression"); case _ =>}}
-        nostate
-    }
-    Nil
-  }
-
-  def Version(expr: Expression, etran: ExpressionTranslator): Boogie.Expr = {
-    val nostate = Boogie.VarExpr("nostate");
-    desugar(expr) match {
-      case pred@MemberAccess(e, p) if pred.isPredicate =>
-        Version(Access(pred, Full), etran)
-      case acc@Access(e, _) =>
-        val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
-        new Boogie.MapSelect(etran.Heap, etran.Tr(e.e), memberName)
-      case Implies(e0,e1) =>
-        Boogie.Ite(etran.Tr(e0), Version(e1, etran), nostate)
-      case And(e0,e1) =>
-        val l = Version(e0, etran);
-        val r = Version(e1, etran);
-        if (l == nostate) r
-        else if (r == nostate) l
-        else Boogie.FunctionApp("combine", List(l, r))
-      case IfThenElse(con, then, els) =>
-        Boogie.Ite(etran.Tr(con), Version(then, etran), Version(els, etran))
-      case _: PermissionExpr => throw new InternalErrorException("unexpected permission expression")
-      case e =>
-        e visit {_ match { case _ : PermissionExpr => throw new InternalErrorException("unexpected permission expression"); case _ =>}}
-        nostate
+        emptyPartialHeap
     }
   }
 
