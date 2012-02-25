@@ -1217,7 +1217,7 @@ class Translator {
           (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
           BLocal(m) :: BLocal(sm) ::
           (me := absTran.Mask) :: (sme := absTran.SecMask) ::
-          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy the specification statement post-condition."), false, methodK, false, false) :::
+          absTran.Exhale(me, sme, List((s.post,ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."))), "SpecStmt", false, methodK, false) :::
           (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
              bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable outside of the frame of the specification statement: " + v.id)),
           keepTag)
