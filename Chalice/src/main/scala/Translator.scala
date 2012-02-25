@@ -1590,8 +1590,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         tmpTranslator.isDefined(e)
         
         // record folded predicate
-        Thread.dumpStack()
-        println(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions))
         etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions))
         
         stmts
@@ -1711,6 +1709,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     case func@FunctionApplication(obj, id, args) =>
       FunctionApp(functionName(func.f), Heap :: Mask :: SecMask :: (obj :: args map { arg => trrecursive(arg)}))
     case uf@Unfolding(_, e) =>
+      Thread.dumpStack()
       trrecursive(e)
     case Iff(e0,e1) =>
       trrecursive(e0) <==> trrecursive(e1)
