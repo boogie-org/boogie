@@ -274,7 +274,7 @@ class Translator {
     } else {
       // Encoding with universal quantification over two heaps
       /* axiom (forall h1, h2: HeapType, m1, m2: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
-            wf(h1,m1) && wf(h2,m2) && version(h1, h2, #C.f) ==>
+            wf(h1,m1) && wf(h2,m2) && functionDependenciesEqual(h1, h2, #C.f) ==>
               #C.f(h1, m1, this, x_1, ..., x_n) == #C.f(h2, m2, this, x_1, ..., x_n)
        */
       var args = VarExpr("this") :: (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
@@ -290,7 +290,7 @@ class Translator {
       Axiom(new Boogie.Forall(
         heap1 :: heap2 :: mask1 :: mask2 :: BVar("this", tref) :: (f.ins map Variable2BVar),
         new Trigger(List(apply1, apply2)),
-          ((wf(etran1.Heap, etran1.Mask) && wf(etran2.Heap, etran2.Mask) && Version(pre, etran1, etran2) && CanAssumeFunctionDefs)
+          ((wf(etran1.Heap, etran1.Mask) && wf(etran2.Heap, etran2.Mask) && functionDependenciesEqual(pre, etran1, etran2) && CanAssumeFunctionDefs)
           ==>
           (apply1 ==@ apply2))
       ))
@@ -2569,12 +2569,18 @@ object TranslationHelper {
     }
   }
 
-  // conservative for Implies and IfThenElse
-  // returns an expression of Boogie type bool
-  def Version(expr: Expression, etran1: ExpressionTranslator, etran2: ExpressionTranslator): Boogie.Expr = {
-    desugar(expr) match {
+  /** Generate the boolean condition that needs to be true in order to assume
+   *  that a function with precondition pre has the same value in two different
+   *  states. Essentially, everything that the function can depend on must be
+   *  equal.
+   *
+   *  - conservative for Implies and IfThenElse
+   *  - returns an expression of Boogie type bool
+   */
+  def functionDependenciesEqual(pre: Expression, etran1: ExpressionTranslator, etran2: ExpressionTranslator): Boogie.Expr = {
+    desugar(pre) match {
       case pred@MemberAccess(e, p) if pred.isPredicate =>
-        Version(Access(pred, Full), etran1, etran2)
+        functionDependenciesEqual(Access(pred, Full), etran1, etran2)
       case Access(e, _) =>
         val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
         etran1.Heap.select(etran1.Tr(e.e), memberName) ==@ etran2.Heap.select(etran2.Tr(e.e), memberName)
@@ -2585,11 +2591,11 @@ object TranslationHelper {
         ((((0 <= i) && (i < SeqLength(etran1.Tr(s)))) ==>
           (etran1.Heap.select(SeqIndex(etran1.Tr(s), i), name) ==@ etran2.Heap.select(SeqIndex(etran2.Tr(s), i), name))).forall(iV))
       case Implies(e0,e1) =>
-        Boogie.Ite(etran1.Tr(e0) || etran2.Tr(e0), Version(e1, etran1, etran2), true)
+        Boogie.Ite(etran1.Tr(e0) || etran2.Tr(e0), functionDependenciesEqual(e1, etran1, etran2), true)
       case And(e0,e1) =>
-        Version(e0, etran1, etran2) && Version(e1, etran1, etran2)
+        functionDependenciesEqual(e0, etran1, etran2) && functionDependenciesEqual(e1, etran1, etran2)
       case IfThenElse(con, then, els) =>
-        Version(then, etran1, etran2) && Version(els, etran1, etran2)
+        functionDependenciesEqual(then, etran1, etran2) && functionDependenciesEqual(els, etran1, etran2)
       case _: PermissionExpr => throw new InternalErrorException("unexpected permission expression")
       case e =>
         e visit {_ match { case _ : PermissionExpr => throw new InternalErrorException("unexpected permission expression"); case _ =>}}
