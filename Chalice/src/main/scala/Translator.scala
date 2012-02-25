@@ -1490,6 +1490,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       case LockBottomLiteral() => Nil
       case _:ThisExpr => Nil
       case _:Result => Nil
+      case _:BoogieExpr => Nil
       case _:VariableExpr => Nil
       case fs @ MemberAccess(e, f) =>       
         assert(!fs.isPredicate);
@@ -1652,6 +1653,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       // since there currently are no operations defined on string, except == and !=, just translate
       // each string to a unique number
       s.hashCode()
+    case BoogieExpr(b) => b
     case MaxLockLiteral() => throw new InternalErrorException("waitlevel case should be handled in << and == and !=")
     case LockBottomLiteral() => bLockBottom
     case _:ThisExpr => VarExpr("this")
@@ -1997,7 +1999,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     
     val occasion = "update SecMask ("+fp.receiver+"."+fp.predicate.FullName + ", version "+fp.version+")"
     // asserts are converted to assumes, so error messages do not matter
-    assert2assume(Exhale(SecMask, SecMask, List((definition, ErrorMessage(NoPosition, ""))), occasion, check=false, currentK, exactchecking=false /* it should not important what we pass here */, transferPermissionToSecMask=false, recurseOnPredicates=true))
+    assert2assume(Exhale(SecMask, SecMask, List((definition, ErrorMessage(NoPosition, ""))), occasion, false, currentK, false /* it should not important what we pass here */, false, true))
   }
   /** Most general form of exhale; implements all the specific versions above */
   def Exhale(m: Expr, sm: Expr, predicates: List[(Expression, ErrorMessage)], occasion: String, check: Boolean, currentK: Expr, exactchecking: Boolean, transferPermissionToSecMask: Boolean, recurseOnPredicates: Boolean): List[Boogie.Stmt] = {
@@ -2145,7 +2147,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         bassume(AreGoodMasks(m, sm)) ::
         bassume(wf(Heap, m, sm))
       }
-    case cr@Credit(ch, n) if !onlyExactCheckingPermissions =>
+    case cr@Credit(ch, n) if !onlyExactCheckingPermissions && !recurseOnPredicates =>
       val trCh = Tr(ch)
       (if (check)
          isDefined(ch)(true) :::

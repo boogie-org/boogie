@@ -208,9 +208,6 @@ case class Variable(id: String, t: Type, isGhost: Boolean, isImmutable: Boolean)
   def this(name: String, typ: Type) = this(name,typ,false,false);
   override def toString = (if (isGhost) "ghost " else "") + (if (isImmutable) "const " else "var ") + id;
 }
-case class BoogieExpr(expr: Boogie.Expr) extends ASTNode {
-  override def toString = "BoogieExpr("+expr+")"
-}
 object S_Variable { var VariableCount = 0 }
 case class SpecialVariable(name: String, typ: Type) extends Variable(name, typ, false, false) {
   override val UniqueName = name
@@ -410,6 +407,10 @@ case class VariableExpr(id: String) extends Expression {
   var v: Variable = null
   def this(vr: Variable) = { this(vr.id); v = vr; typ = vr.t.typ }
   def Resolve(vr: Variable) = { v = vr; typ = vr.t.typ }
+}
+// hack to allow boogie expressions in the Chalice AST during transformation
+case class BoogieExpr(expr: Boogie.Expr) extends Expression {
+  override def toString = "BoogieExpr("+expr+")"
 }
 case class Result() extends Expression
 sealed abstract class ThisExpr extends Expression
@@ -757,6 +758,7 @@ object AST {
       case _:ThisExpr => expr
       case _:Result => expr
       case _:VariableExpr => expr
+      case _:BoogieExpr => expr
       case ma@MemberAccess(e, id) =>
         val g = MemberAccess(func(e), id);
         g.f = ma.f;
@@ -855,6 +857,7 @@ object AST {
      case _:ThisExpr => ;
      case _:Result => ;
      case _:VariableExpr => ;
+     case _:BoogieExpr => ;
      case MemberAccess(e, _) =>
        visit(e, f);
 
