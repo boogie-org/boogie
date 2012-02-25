@@ -1795,7 +1795,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     //BLocal(ihV) :: Boogie.Havoc(ih) ::
     //bassume(IsGoodInhaleState(ih, Heap, Mask)) ::
     (for (p <- predicates) yield Inhale(p, Heap, check, currentK)).flatten :::
-    bassume(IsGoodMask(Mask)) ::
+    bassume(AreGoodMasks(Mask, SecMask)) ::
     bassume(wf(Heap, Mask)) ::
     Comment("end inhale")
   }
@@ -1808,7 +1808,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     BLocal(ihV) :: Boogie.Assign(ih, useHeap) ::
     bassume(IsGoodInhaleState(ih, Heap, Mask)) ::
     (for (p <- predicates) yield Inhale(p, ih, check, currentK)).flatten :::
-    bassume(IsGoodMask(Mask)) ::
+    bassume(AreGoodMasks(Mask, SecMask)) ::
     bassume(wf(Heap, Mask)) ::
     Comment("end inhale")
   }
@@ -1862,7 +1862,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       bassume(wf(Heap, Mask)) ::
       (if(e.isPredicate) Nil else List(bassume(TypeInformation(new Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
       InhalePermission(perm, trE, memberName, currentK) :::
-      bassume(IsGoodMask(Mask)) ::
+      bassume(AreGoodMasks(Mask, SecMask)) ::
       bassume(IsGoodState(heapFragment(new Boogie.MapSelect(ih, trE, memberName)))) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(ih, Mask))
@@ -1907,7 +1907,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
                 Mask(ref, f)("perm$N") + n)),
             Mask(ref, f)))
       } :::
-      bassume(IsGoodMask(Mask)) ::
+      bassume(AreGoodMasks(Mask, SecMask)) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(ih, Mask))
     case cr@Credit(ch, n) =>
@@ -1933,7 +1933,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
          isDefined(e)(true) :::
          bassert(nonNull(trE), holds.pos, "The target of the holds predicate might be null.")
        else Nil) :::
-      bassume(IsGoodMask(Mask)) ::
+      bassume(AreGoodMasks(Mask, SecMask)) ::
       bassume(IsGoodState(heapFragment(new Boogie.MapSelect(ih, trE, "held")))) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(ih, Mask)) ::
@@ -1942,7 +1942,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       bassume(0 < new Boogie.MapSelect(ih, trE, "held")) ::
       bassume(! new Boogie.MapSelect(ih, trE, "rdheld")) ::
       bassume(wf(Heap, Mask)) ::
-      bassume(IsGoodMask(Mask)) ::
+      bassume(AreGoodMasks(Mask, SecMask)) ::
       bassume(IsGoodState(heapFragment(new Boogie.MapSelect(ih, trE, "held")))) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(ih, Mask))
@@ -1961,7 +1961,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         val obj = Tr(h.target());
         List(BLocal(freshHeldV), bassume((0<Heap.select(obj, "held")) <==> (0<freshHeld)), (Heap.select(obj, "held") := freshHeld))
       } else Nil) :::
-      bassume(IsGoodMask(preEtran.Mask)) ::
+      bassume(AreGoodMasks(preEtran.Mask, preEtran.SecMask)) ::
       bassume(wf(preEtran.Heap, preEtran.Mask)) ::
       bassume(proofOrAssume) ::
       preEtran.Inhale(e, ih, check, currentK) :::
@@ -1982,7 +1982,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
     BLocal(ehV) :: Boogie.Havoc(eh) ::
     bassume(IsGoodExhaleState(eh, Heap, Mask)) ::
     (Heap := eh) ::
-    bassume(IsGoodMask(Mask)) ::
+    bassume(AreGoodMasks(Mask, SecMask)) ::
     bassume(wf(Heap, Mask)) ::
     Comment("end exhale")
   }
@@ -2065,7 +2065,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
         // TODO: include automagic again
         // check that the necessary permissions are there and remove them from the mask
         ExhalePermission(perm, Tr(e.e), memberName, currentK, acc.pos, error, em, ec) :::
-        bassume(IsGoodMask(Mask)) ::
+        bassume(AreGoodMasks(Mask, SecMask)) ::
         bassume(wf(Heap, Mask)) ::
         bassume(wf(Heap, em))
       }
@@ -2117,7 +2117,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
               Lambda(List(), List(pcV), (pc ==@ "perm$R").thenElse(mr - r, mn - n)),
               em(ref, f))))
         } :::
-        bassume(IsGoodMask(Mask)) ::
+        bassume(AreGoodMasks(Mask, SecMask)) ::
         bassume(wf(Heap, Mask)) ::
         bassume(wf(Heap, em))
       }
@@ -2143,7 +2143,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       bassert(nonNull(Tr(e)), error.pos, error.message + " The target of the holds predicate at " + holds.pos + " might be null.") :: Nil else Nil) :::
       bassert(0 < new Boogie.MapSelect(Heap, Tr(e), "held"), error.pos, error.message + " The current thread might not hold lock at " + holds.pos + ".") ::
       bassert(! new Boogie.MapSelect(Heap, Tr(e), "rdheld"), error.pos, error.message + " The current thread might hold the read lock at " + holds.pos + ".") ::
-      bassume(IsGoodMask(Mask)) ::
+      bassume(AreGoodMasks(Mask, SecMask)) ::
       bassume(wf(Heap, Mask)) ::
       bassume(wf(Heap, em))
     case Eval(h, e) if !onlyExactCheckingPermissions =>
@@ -2155,7 +2155,7 @@ class ExpressionTranslator(globals: List[Boogie.Expr], preGlobals: List[Boogie.E
       BLocal(preGlobals(2)) :: (VarExpr(preGlobals(2).id) := evalSecMask) ::
       BLocal(preGlobals(3)) :: (VarExpr(preGlobals(3).id) := evalCredits) ::
       (if(check) checks else Nil) :::
-      bassume(IsGoodMask(preEtran.Mask)) ::
+      bassume(AreGoodMasks(preEtran.Mask, preEtran.SecMask)) ::
       bassume(wf(preEtran.Heap, preEtran.Mask)) ::
       bassert(proofOrAssume, p.pos, "Arguments for joinable might not match up.") ::
       preEtran.Exhale(List((e, error)), "eval", check, currentK, exactchecking)
@@ -2499,6 +2499,7 @@ object TranslationHelper {
 
   def wf(h: Expr, m: Expr) = FunctionApp("wf", List(h, m));
   def IsGoodMask(m: Expr) = FunctionApp("IsGoodMask", List(m))
+  def AreGoodMasks(m: Expr, sm: Expr) = IsGoodMask(m) && IsGoodMask(sm)
   def IsGoodInhaleState(a: Expr, b: Expr, c: Expr) = FunctionApp("IsGoodInhaleState", List(a, b, c))
   def IsGoodExhaleState(eh: Expr, h: Expr, m: Expr) = FunctionApp("IsGoodExhaleState", List(eh,h,m))
   def contributesToWaitLevel(e: Expr, h: Expr, c: Expr) =
